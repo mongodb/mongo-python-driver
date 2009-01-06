@@ -33,7 +33,7 @@ def _validate_number(data):
     return data[8:]
 
 def _validate_string(data):
-    (length, remainder) = _get_int(data)
+    (length, data) = _get_int(data)
     assert len(data) >= length
     assert data[length - 1] == "\x00"
     return data[length:]
@@ -47,31 +47,41 @@ def _validate_array(data):
     return _validate_document(data, _valid_array_name)
 
 def _validate_binary(data):
-    pass
+    (length, data) = _get_int(data)
+    assert len(data) >= length
+    return data[length:]
 
+_OID_SIZE = 12
 def _validate_oid(data):
-    pass
+    assert len(data) >= _OID_SIZE
+    return data[_OID_SIZE:]
 
 def _validate_boolean(data):
-    pass
+    assert len(data) >= 1
+    return data[1:]
 
+_DATE_SIZE = 8
 def _validate_date(data):
-    pass
+    assert len(data) >= _DATE_SIZE
+    return data[_DATE_SIZE:]
 
 def _validate_null(data):
     return data
 
 def _validate_regex(data):
-    pass
+    (regex, data) = _get_c_string(data)
+    (options, data) = _get_c_string(data)
+    return data
 
 def _validate_ref(data):
-    pass
+    (namespace, data) = _get_c_string(data)
+    return _validate_oid(data)
 
-def _validate_code(data):
-    pass
+_validate_code = _validate_string
 
 def _validate_number_int(data):
-    pass
+    assert len(data) >= 4
+    return data[4:]
 
 _element_validator = {
     "\x01": _validate_number,
@@ -100,9 +110,9 @@ def _validate_element_data(type, data):
 
 def _validate_element(data, valid_name):
     element_type = data[0]
-    (element_name, remainder) = _get_c_string(data[1:])
+    (element_name, data) = _get_c_string(data[1:])
     assert valid_name.match(element_name)
-    return _validate_element_data(element_type, remainder)
+    return _validate_element_data(element_type, data)
 
 def _validate_elements(data, valid_name):
     while data:
