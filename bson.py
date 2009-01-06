@@ -4,11 +4,24 @@ Generally not needed to be used by application developers."""
 
 import unittest
 import types
+import struct
+import random
 
 class InvalidBSON(Exception):
     """Raised when trying to create a BSON object from invalid data.
     """
 
+def validate_document(document):
+    try:
+        obj_size = struct.unpack("<I", document[:4])[0]
+    except struct.error:
+        raise InvalidBSON()
+    assert obj_size == len(document)
+
+    eoo = document[-1:]
+    assert eoo == "\x00"
+
+    elements = document[4:-1]
 
 def is_valid(bson):
     """Validate that the given string represents valid BSON data.
@@ -21,8 +34,12 @@ def is_valid(bson):
     """
     if not isinstance(bson, types.StringType):
         return False
-    return True
 
+    try:
+        validate_document(bson)
+        return True
+    except (AssertionError, InvalidBSON):
+        return False
 
 class BSON(str):
     """BSON data.
@@ -53,9 +70,26 @@ class TestBSON(unittest.TestCase):
         self.assertFalse(is_valid(u"test"))
         self.assertFalse(is_valid(10.4))
         self.assertFalse(is_valid("test"))
-        # The simplest valid BSON document
-        self.assertTrue(is_valid("\x05\x00\x00\x00\x00"))
 
+        # the simplest valid BSON document
+        self.assertTrue(is_valid("\x05\x00\x00\x00\x00"))
+        self.assertFalse(is_valid("\x04\x00\x00\x00\x00"))
+        self.assertFalse(is_valid("\x05\x00\x00\x00\x01"))
+        self.assertFalse(is_valid("\x05\x00\x00\x00"))
+        self.assertFalse(is_valid("\x05\x00\x00\x00\x00\x00"))
+
+        def random_char(size):
+            return chr(random.randint(0, 255))
+
+        def random_string(size):
+            return "".join(random_list(random_char)(size))
+
+        def random_list(generator):
+            return lambda size: [generator(size) for _ in range(size)]
+
+        # random strings are not valid BSON (with extremely high probability)
+        for i in range(100):
+            self.assertFalse(is_valid(random_string(i)))
 
 if __name__ == "__main__":
     unittest.main()
