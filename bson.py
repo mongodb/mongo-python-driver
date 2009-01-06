@@ -6,38 +6,140 @@ import unittest
 import types
 import struct
 import random
+import re
 
-class InvalidBSON(Exception):
+class InvalidBSON(ValueError):
     """Raised when trying to create a BSON object from invalid data.
     """
 
-def _validate_document(document):
+def _get_int(data):
     try:
-        obj_size = struct.unpack("<I", document[:4])[0]
+        int = struct.unpack("<I", data[:4])[0]
     except struct.error:
         raise InvalidBSON()
-    assert obj_size == len(document)
 
-    eoo = document[-1:]
+    return (int, data[4:])
+
+def _get_c_string(data):
+    try:
+        end = data.index("\x00")
+    except ValueError:
+        raise InvalidBSON()
+
+    return (unicode(data[:end - 1], "utf-8"), data[end:])
+
+def _validate_number(data):
+    assert len(data) >= 8
+    return data[8:]
+
+def _validate_string(data):
+    (length, remainder) = _get_int(data)
+    assert len(data) >= length
+    assert data[length - 1] == "\x00"
+    return data[length:]
+
+_valid_object_name = re.compile("^.*$")
+def _validate_object(data):
+    return _validate_document(data, _valid_object_name)
+
+_valid_array_name = re.compile("^\d+$")
+def _validate_array(data):
+    return _validate_document(data, _valid_array_name)
+
+def _validate_binary(data):
+    pass
+
+def _validate_oid(data):
+    pass
+
+def _validate_boolean(data):
+    pass
+
+def _validate_date(data):
+    pass
+
+def _validate_null(data):
+    return data
+
+def _validate_regex(data):
+    pass
+
+def _validate_ref(data):
+    pass
+
+def _validate_code(data):
+    pass
+
+def _validate_number_int(data):
+    pass
+
+_element_validator = {
+    "\x01": _validate_number,
+    "\x02": _validate_string,
+    "\x03": _validate_object,
+    "\x04": _validate_array,
+    "\x05": _validate_binary,
+    "\x06": _validate_oid,
+    "\x07": _validate_boolean,
+    "\x08": _validate_date,
+    "\x09": _validate_null,
+    "\x0A": _validate_regex,
+    "\x0B": _validate_ref,
+    "\x0C": _validate_code,
+# TODO need to look into these
+#    "\x0D": _validate_symbol,
+#    "\x0E": _validate_code_w_scope,
+    "\x0F": _validate_number_int,
+}
+
+def _validate_element_data(type, data):
+    try:
+        return _element_validator[type](data)
+    except KeyError:
+        raise InvalidBSON()
+
+def _validate_element(data, valid_name):
+    element_type = data[0]
+    (element_name, remainder) = _get_c_string(data[1:])
+    assert valid_name.match(element_name)
+    return _validate_element_data(element_type, remainder)
+
+def _validate_elements(data, valid_name):
+    while data:
+        data = _validate_element(data, valid_name)
+
+def _validate_document(data, valid_name=_valid_object_name):
+    try:
+        obj_size = struct.unpack("<I", data[:4])[0]
+    except struct.error:
+        raise InvalidBSON()
+
+    assert obj_size <= len(data)
+    object = data[4:obj_size + 4]
+
+    eoo = object[-1]
     assert eoo == "\x00"
 
-    elements = document[4:-1]
+    elements = object[:-1]
+    _validate_elements(elements, valid_name)
+
+    return data[obj_size:]
 
 def is_valid(bson):
     """Validate that the given string represents valid BSON data.
 
-    Returns True if the data represents a valid BSON object (which must be a
-    subclass of str), False otherwise.
+    Raises TypeError if the data is not an instance of a subclass of str.
+    Returns True if the data represents a valid BSON object, False otherwise.
 
     Arguments:
     - `bson`: the data to be validated
     """
     if not isinstance(bson, types.StringType):
-        return False
+        raise TypeError("BSON data must be an instance of a subclass of str")
 
     try:
-        _validate_document(bson)
-        return True
+        remainder = _validate_document(bson)
+        return remainder == ""
     except (AssertionError, InvalidBSON):
         return False
 
@@ -50,7 +152,7 @@ class BSON(str):
         """Initialize a new BSON object with some data
 
         The data given must be a string instance and represent a valid BSON
-        object, otherwise an InvalidBSON exception is raised.
+        object, otherwise an TypeError or InvalidBSON exception is raised.
 
         Arguments:
         - `bson`: the initial data
@@ -60,19 +162,20 @@ class BSON(str):
 
         return str.__new__(cls, bson)
 
-
 class TestBSON(unittest.TestCase):
     def setUp(self):
         pass
 
     def testValidate(self):
-        self.assertFalse(is_valid(100))
-        self.assertFalse(is_valid(u"test"))
-        self.assertFalse(is_valid(10.4))
+        self.assertRaises(TypeError, is_valid, 100)
+        self.assertRaises(TypeError, is_valid, u"test")
+        self.assertRaises(TypeError, is_valid, 10.4)
+
         self.assertFalse(is_valid("test"))
 
         # the simplest valid BSON document
         self.assertTrue(is_valid("\x05\x00\x00\x00\x00"))
+        self.assertTrue(is_valid(BSON("\x05\x00\x00\x00\x00")))
         self.assertFalse(is_valid("\x04\x00\x00\x00\x00"))
         self.assertFalse(is_valid("\x05\x00\x00\x00\x01"))
         self.assertFalse(is_valid("\x05\x00\x00\x00"))
