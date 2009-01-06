@@ -34,6 +34,9 @@ def _get_c_string(data):
 
     return (unicode(data[:end], "utf-8"), data[end + 1:])
 
+def _make_c_string(string):
+    return string.encode("utf-8") + "\x00"
+
 def _validate_number(data):
     assert len(data) >= 8
     return data[8:]
@@ -148,7 +151,36 @@ def _validate_document(data, valid_name=_valid_object_name):
     return data[obj_size:]
 
 def _int_to_bson(int):
-    return struct.pack("<I", int)
+    return struct.pack("<i", int)
+
+def _value_to_bson(value):
+    if isinstance(value, types.FloatType):
+        return ("\x01", struct.pack("<d", value))
+    if isinstance(value, types.UnicodeType):
+        cstring = _make_c_string(value)
+        length = _int_to_bson(len(cstring))
+        return ("\x02", length + cstring)
+    if isinstance(value, types.DictType):
+        return ("\x03", BSON.from_dict(value))
+    if isinstance(value, types.ListType):
+        as_dict = dict(zip([str(i) for i in range(len(value))], value))
+        return ("\x04", BSON.from_dict(as_dict))
+    if isinstance(value, types.BooleanType):
+        if value:
+            return ("\x08", "\x01")
+        return ("\x08", "\x00")
+    if isinstance(value, types.IntType):
+        return ("\x10", _int_to_bson(value))
+    raise InvalidDocument("cannot convert value of type %s to bson" % value.__class__)
+
+def _element_to_bson(key, value):
+    if not isinstance(key, types.StringTypes):
+        raise TypeError("all keys must be instances of (str, unicode)")
+
+    element_name = _make_c_string(key)
+    (element_type, element_data) = _value_to_bson(value)
+
+    return element_type + element_name + element_data
 
 def is_valid(bson):
     """Validate that the given string represents valid BSON data.
@@ -188,23 +220,20 @@ class BSON(str):
         return str.__new__(cls, bson)
 
     @classmethod
-    def from_sequence(cls, sequence):
-        """Create a new BSON object from a (key, value) sequence.
+    def from_dict(cls, dict):
+        """Create a new BSON object from a python mapping type (like dict).
 
-        Raises TypeError if the argument is not a sequence of (key, value) pairs.
-        Raises InvalidDocument if the sequence cannot be converted to BSON.
+        Raises TypeError if the argument is not a mapping type, or contains keys
+        that are not instance of (str, unicode). Raises InvalidDocument if the
+        dictionary cannot be converted to BSON.
 
         Arguments:
-        - `sequence`: (key, value) sequence representing a Mongo document
+        - `dict`: mapping type representing a Mongo document
         """
         try:
-            elements = "".join([_element_to_bson(key, value) for (key, value) in sequence])
-        except InvalidDocument:
-            raise
-        except ValueError:
-            raise TypeError("argument must be a sequence of (key, value) pairs")
-        except:
-            raise
+            elements = "".join([_element_to_bson(key, value) for (key, value) in dict.iteritems()])
+        except AttributeError:
+            raise TypeError("argument to from_dict must be a mapping type")
 
         length = len(elements) + 5
         bson = _int_to_bson(length) + elements + "\x00"
@@ -245,12 +274,13 @@ class TestBSON(unittest.TestCase):
         for i in range(100):
             self.assertFalse(is_valid(random_string(i)))
 
-    def test_basic_from_sequence(self):
-        self.assertRaises(TypeError, BSON.from_sequence, 100)
-        self.assertRaises(TypeError, BSON.from_sequence, "hello")
-        self.assertRaises(TypeError, BSON.from_sequence, None)
+    def test_basic_from_dict(self):
+        self.assertRaises(TypeError, BSON.from_dict, 100)
+        self.assertRaises(TypeError, BSON.from_dict, "hello")
+        self.assertRaises(TypeError, BSON.from_dict, None)
+        self.assertRaises(TypeError, BSON.from_dict, [])
 
-        self.assertEqual(BSON.from_sequence([]), BSON("\x05\x00\x00\x00\x00"))
+        self.assertEqual(BSON.from_dict({}), BSON("\x05\x00\x00\x00\x00"))
 
 if __name__ == "__main__":
     unittest.main()
