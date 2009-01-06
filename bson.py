@@ -11,7 +11,7 @@ class InvalidBSON(Exception):
     """Raised when trying to create a BSON object from invalid data.
     """
 
-def validate_document(document):
+def _validate_document(document):
     try:
         obj_size = struct.unpack("<I", document[:4])[0]
     except struct.error:
@@ -36,7 +36,7 @@ def is_valid(bson):
         return False
 
     try:
-        validate_document(bson)
+        _validate_document(bson)
         return True
     except (AssertionError, InvalidBSON):
         return False
