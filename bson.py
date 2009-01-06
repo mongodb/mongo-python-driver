@@ -14,6 +14,10 @@ class InvalidBSON(ValueError):
     """Raised when trying to create a BSON object from invalid data.
     """
 
+class InvalidDocument(ValueError):
+    """Raised when trying to create a BSON object from an invalid document.
+    """
+
 def _get_int(data):
     try:
         int = struct.unpack("<I", data[:4])[0]
@@ -143,6 +147,9 @@ def _validate_document(data, valid_name=_valid_object_name):
 
     return data[obj_size:]
 
+def _int_to_bson(int):
+    return struct.pack("<I", int)
+
 def is_valid(bson):
     """Validate that the given string represents valid BSON data.
 
@@ -167,7 +174,7 @@ class BSON(str):
     Represents binary data storable in and retrievable from Mongo.
     """
     def __new__(cls, bson):
-        """Initialize a new BSON object with some data
+        """Initialize a new BSON object with some data.
 
         The data given must be a string instance and represent a valid BSON
         object, otherwise an TypeError or InvalidBSON exception is raised.
@@ -180,11 +187,34 @@ class BSON(str):
 
         return str.__new__(cls, bson)
 
+    @classmethod
+    def from_sequence(cls, sequence):
+        """Create a new BSON object from a (key, value) sequence.
+
+        Raises TypeError if the argument is not a sequence of (key, value) pairs.
+        Raises InvalidDocument if the sequence cannot be converted to BSON.
+
+        Arguments:
+        - `sequence`: (key, value) sequence representing a Mongo document
+        """
+        try:
+            elements = "".join([_element_to_bson(key, value) for (key, value) in sequence])
+        except InvalidDocument:
+            raise
+        except ValueError:
+            raise TypeError("argument must be a sequence of (key, value) pairs")
+        except:
+            raise
+
+        length = len(elements) + 5
+        bson = _int_to_bson(length) + elements + "\x00"
+        return cls(bson)
+
 class TestBSON(unittest.TestCase):
     def setUp(self):
         pass
 
-    def testValidate(self):
+    def test_basic_validation(self):
         self.assertRaises(TypeError, is_valid, 100)
         self.assertRaises(TypeError, is_valid, u"test")
         self.assertRaises(TypeError, is_valid, 10.4)
@@ -202,6 +232,7 @@ class TestBSON(unittest.TestCase):
         for data in test_data.valid_bson:
             self.assertTrue(is_valid(data))
 
+    def test_random_data_is_not_bson(self):
         def random_char(size):
             return chr(random.randint(0, 255))
 
@@ -211,9 +242,15 @@ class TestBSON(unittest.TestCase):
         def random_list(generator):
             return lambda size: [generator(size) for _ in range(size)]
 
-        # random strings are not valid BSON (with extremely high probability)
         for i in range(100):
             self.assertFalse(is_valid(random_string(i)))
+
+    def test_basic_from_sequence(self):
+        self.assertRaises(TypeError, BSON.from_sequence, 100)
+        self.assertRaises(TypeError, BSON.from_sequence, "hello")
+        self.assertRaises(TypeError, BSON.from_sequence, None)
+
+        self.assertEqual(BSON.from_sequence([]), BSON("\x05\x00\x00\x00\x00"))
 
 if __name__ == "__main__":
     unittest.main()
