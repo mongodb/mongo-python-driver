@@ -79,6 +79,8 @@ def _validate_ref(data):
 
 _validate_code = _validate_string
 
+_validate_symbol = _validate_string
+
 def _validate_number_int(data):
     assert len(data) >= 4
     return data[4:]
@@ -96,8 +98,8 @@ _element_validator = {
     "\x0A": _validate_regex,
     "\x0B": _validate_ref,
     "\x0C": _validate_code,
-# TODO need to look into these
-#    "\x0D": _validate_symbol,
+    "\x0D": _validate_symbol,
+# TODO look into this
 #    "\x0E": _validate_code_w_scope,
     "\x0F": _validate_number_int,
 }
