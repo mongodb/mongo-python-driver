@@ -8,6 +8,8 @@ import struct
 import random
 import re
 
+from test import test_data
+
 class InvalidBSON(ValueError):
     """Raised when trying to create a BSON object from invalid data.
     """
@@ -26,7 +28,7 @@ def _get_c_string(data):
     except ValueError:
         raise InvalidBSON()
 
-    return (unicode(data[:end - 1], "utf-8"), data[end:])
+    return (unicode(data[:end], "utf-8"), data[end + 1:])
 
 def _validate_number(data):
     assert len(data) >= 8
@@ -51,6 +53,9 @@ def _validate_binary(data):
     assert len(data) >= length
     return data[length:]
 
+def _validate_undefined(data):
+    return data
+
 _OID_SIZE = 12
 def _validate_oid(data):
     assert len(data) >= _OID_SIZE
@@ -65,8 +70,7 @@ def _validate_date(data):
     assert len(data) >= _DATE_SIZE
     return data[_DATE_SIZE:]
 
-def _validate_null(data):
-    return data
+_validate_null = _validate_undefined
 
 def _validate_regex(data):
     (regex, data) = _get_c_string(data)
@@ -91,17 +95,18 @@ _element_validator = {
     "\x03": _validate_object,
     "\x04": _validate_array,
     "\x05": _validate_binary,
-    "\x06": _validate_oid,
-    "\x07": _validate_boolean,
-    "\x08": _validate_date,
-    "\x09": _validate_null,
-    "\x0A": _validate_regex,
-    "\x0B": _validate_ref,
-    "\x0C": _validate_code,
-    "\x0D": _validate_symbol,
+    "\x06": _validate_undefined,
+    "\x07": _validate_oid,
+    "\x08": _validate_boolean,
+    "\x09": _validate_date,
+    "\x0A": _validate_null,
+    "\x0B": _validate_regex,
+    "\x0C": _validate_ref,
+    "\x0D": _validate_code,
+    "\x0E": _validate_symbol,
 # TODO look into this
-#    "\x0E": _validate_code_w_scope,
-    "\x0F": _validate_number_int,
+#    "\x0F": _validate_code_w_scope,
+    "\x10": _validate_number_int,
 }
 
 def _validate_element_data(type, data):
@@ -127,7 +132,8 @@ def _validate_document(data, valid_name=_valid_object_name):
         raise InvalidBSON()
 
     assert obj_size <= len(data)
-    object = data[4:obj_size + 4]
+    object = data[4:obj_size]
+    assert len(object)
 
     eoo = object[-1]
     assert eoo == "\x00"
@@ -192,6 +198,9 @@ class TestBSON(unittest.TestCase):
         self.assertFalse(is_valid("\x05\x00\x00\x00\x01"))
         self.assertFalse(is_valid("\x05\x00\x00\x00"))
         self.assertFalse(is_valid("\x05\x00\x00\x00\x00\x00"))
+
+        for data in test_data.valid_bson:
+            self.assertTrue(is_valid(data))
 
         def random_char(size):
             return chr(random.randint(0, 255))
