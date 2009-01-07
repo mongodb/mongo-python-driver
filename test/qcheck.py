@@ -1,6 +1,7 @@
 import random
 import sys
 import traceback
+import datetime
 
 gen_target = 100
 examples = 5
@@ -44,6 +45,16 @@ def gen_unicode(gen_length):
 def gen_list(generator, gen_length):
     return lambda: [generator() for _ in range(gen_length())]
 
+# This is a little Mongo specific...
+def gen_datetime():
+    return lambda: datetime.datetime(random.randint(1970, 2037),
+                                     random.randint(1, 12),
+                                     random.randint(1, 28),
+                                     random.randint(0, 23),
+                                     random.randint(0, 59),
+                                     random.randint(0, 59),
+                                     random.randint(0, 999) * 1000)
+
 def gen_dict(gen_key, gen_value, gen_length):
     def a_dict(gen_key, gen_value, length):
         result = {}
@@ -58,6 +69,7 @@ def gen_mongo_value(depth):
                gen_int(),
                gen_float(),
                gen_boolean(),
+               gen_datetime(),
                lift(None),]
     if depth > 0:
         choices.append(gen_mongo_list(depth))

@@ -7,6 +7,8 @@ import types
 import struct
 import random
 import re
+import datetime
+import time
 
 from test import test_data, qcheck
 
@@ -186,6 +188,10 @@ def _get_binary(data):
 def _get_boolean(data):
     return (data[0] == "\x01", data[1:])
 
+def _get_date(data):
+    seconds = float(struct.unpack("<q", data[:8])[0]) / 1000.0
+    return (datetime.datetime.fromtimestamp(seconds), data[8:])
+
 def _get_null(data):
     return (None, data)
 
@@ -198,7 +204,7 @@ _element_getter = {
     "\x06": _get_null, # undefined
 #    "\x07": _get_oid,
     "\x08": _get_boolean,
-#    "\x09": _get_date,
+    "\x09": _get_date,
     "\x0A": _get_null,
 #    "\x0B": _get_regex,
 #    "\x0C": _get_ref,
@@ -229,6 +235,9 @@ def _document_to_dict(data):
 def _int_to_bson(int):
     return struct.pack("<i", int)
 
+def _int_64_to_bson(int):
+    return struct.pack("<q", int)
+
 def _value_to_bson(value):
     if isinstance(value, types.FloatType):
         return ("\x01", struct.pack("<d", value))
@@ -247,6 +256,9 @@ def _value_to_bson(value):
         if value:
             return ("\x08", "\x01")
         return ("\x08", "\x00")
+    if isinstance(value, datetime.datetime):
+        millis = int(time.mktime(value.timetuple()) * 1000 + value.microsecond / 1000)
+        return ("\x09", _int_64_to_bson(millis))
     if isinstance(value, types.NoneType):
         return ("\x0A", "")
     if isinstance(value, types.IntType):
@@ -374,6 +386,8 @@ class TestBSON(unittest.TestCase):
                          "\x13\x00\x00\x00\x05\x74\x65\x73\x74\x00\x04\x00\x00\x00\x74\x65\x73\x74\x00")
         self.assertEqual(BSON.from_dict({"test": None}),
                          "\x0B\x00\x00\x00\x0A\x74\x65\x73\x74\x00\x00")
+        self.assertEqual(BSON.from_dict({"date": datetime.datetime(2007, 1, 7, 19, 30, 11)}),
+                         "\x13\x00\x00\x00\x09\x64\x61\x74\x65\x00\x38\xBE\x1C\xFF\x0F\x01\x00\x00\x00")
 
     def test_from_then_to_dict(self):
         def helper(dict):
