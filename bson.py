@@ -281,6 +281,20 @@ class TestBSON(unittest.TestCase):
         self.assertRaises(TypeError, BSON.from_dict, [])
 
         self.assertEqual(BSON.from_dict({}), BSON("\x05\x00\x00\x00\x00"))
+        self.assertEqual(BSON.from_dict({"test": u"hello world"}),
+                         "\x1B\x00\x00\x00\x02\x74\x65\x73\x74\x00\x0C\x00\x00\x00\x68\x65\x6C\x6C\x6F\x20\x77\x6F\x72\x6C\x64\x00\x00")
+        self.assertEqual(BSON.from_dict({u"mike": 100}),
+                         "\x0F\x00\x00\x00\x10\x6D\x69\x6B\x65\x00\x64\x00\x00\x00\x00")
+        self.assertEqual(BSON.from_dict({"hello": 1.5}),
+                         "\x14\x00\x00\x00\x01\x68\x65\x6C\x6C\x6F\x00\x00\x00\x00\x00\x00\x00\xF8\x3F\x00")
+        self.assertEqual(BSON.from_dict({"true": True}),
+                         "\x0C\x00\x00\x00\x08\x74\x72\x75\x65\x00\x01\x00")
+        self.assertEqual(BSON.from_dict({"false": False}),
+                         "\x0D\x00\x00\x00\x08\x66\x61\x6C\x73\x65\x00\x00\x00")
+        self.assertEqual(BSON.from_dict({"empty": []}),
+                         "\x11\x00\x00\x00\x04\x65\x6D\x70\x74\x79\x00\x05\x00\x00\x00\x00\x00")
+        self.assertEqual(BSON.from_dict({"none": {}}),
+                         "\x10\x00\x00\x00\x03\x6E\x6F\x6E\x65\x00\x05\x00\x00\x00\x00\x00")
 
 if __name__ == "__main__":
     unittest.main()
