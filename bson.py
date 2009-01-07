@@ -20,7 +20,7 @@ class InvalidDocument(ValueError):
 
 def _get_int(data):
     try:
-        int = struct.unpack("<I", data[:4])[0]
+        int = struct.unpack("<i", data[:4])[0]
     except struct.error:
         raise InvalidBSON()
 
@@ -134,7 +134,7 @@ def _validate_elements(data, valid_name):
 
 def _validate_document(data, valid_name=_valid_object_name):
     try:
-        obj_size = struct.unpack("<I", data[:4])[0]
+        obj_size = struct.unpack("<i", data[:4])[0]
     except struct.error:
         raise InvalidBSON()
 
@@ -149,6 +149,67 @@ def _validate_document(data, valid_name=_valid_object_name):
     _validate_elements(elements, valid_name)
 
     return data[obj_size:]
+
+def _get_number(data):
+    return (struct.unpack("<d", data[:8])[0], data[8:])
+
+def _get_string(data):
+    return _get_c_string(data[4:])
+
+def _get_object(data):
+    return _document_to_dict(data)
+
+def _get_array(data):
+    (dict, data) = _get_object(data)
+    result = []
+    i = 0
+    while True:
+        try:
+            result.append(dict[str(i)])
+            i += 1
+        except KeyError:
+            break
+    return (result, data)
+
+def _get_boolean(data):
+    return (data[0] == "\x01", data[1:])
+
+_element_getter = {
+    "\x01": _get_number,
+    "\x02": _get_string,
+    "\x03": _get_object,
+    "\x04": _get_array,
+#    "\x05": _get_binary,
+#    "\x06": _get_undefined,
+#    "\x07": _get_oid,
+    "\x08": _get_boolean,
+#    "\x09": _get_date,
+#    "\x0A": _get_null,
+#    "\x0B": _get_regex,
+#    "\x0C": _get_ref,
+#    "\x0D": _get_code,
+#    "\x0E": _get_symbol,
+#    "\x0F": _validate_code_w_scope,
+    "\x10": _get_int,
+}
+
+def _element_to_dict(data):
+    element_type = data[0]
+    (element_name, data) = _get_c_string(data[1:])
+    (value, data) = _element_getter[element_type](data)
+    return (element_name, value, data)
+
+def _elements_to_dict(data):
+    result = {}
+    while data:
+        (key, value, data) = _element_to_dict(data)
+        result[key] = value
+    return result
+
+def _document_to_dict(data):
+    obj_size = struct.unpack("<i", data[:4])[0]
+    elements = data[4:obj_size - 1]
+    return (_elements_to_dict(elements), data[obj_size:])
 
 def _int_to_bson(int):
     return struct.pack("<i", int)
@@ -239,6 +300,11 @@ class BSON(str):
         bson = _int_to_bson(length) + elements + "\x00"
         return cls(bson)
 
+    def to_dict(self):
+        """Get the dictionary representation of this data."""
+        (dict, _) = _document_to_dict(self)
+        return dict
+
 class TestBSON(unittest.TestCase):
     def setUp(self):
         pass
@@ -295,6 +361,18 @@ class TestBSON(unittest.TestCase):
                          "\x11\x00\x00\x00\x04\x65\x6D\x70\x74\x79\x00\x05\x00\x00\x00\x00\x00")
         self.assertEqual(BSON.from_dict({"none": {}}),
                          "\x10\x00\x00\x00\x03\x6E\x6F\x6E\x65\x00\x05\x00\x00\x00\x00\x00")
+
+    def test_from_then_to_dict(self):
+        def helper(dict):
+            self.assertEqual(dict, (BSON.from_dict(dict)).to_dict())
+        helper({})
+        helper({"test": u"hello"})
+        helper({"mike": -10120})
+        helper({u"hello": 0.0013109})
+        helper({"something": True})
+        helper({"false": False})
+        helper({"an array": [1, True, 3.8, u"world"]})
+        helper({"an object": {"test": u"something"}})
 
 if __name__ == "__main__":
     unittest.main()
