@@ -35,7 +35,15 @@ def _get_c_string(data):
     return (unicode(data[:end], "utf-8"), data[end + 1:])
 
 def _make_c_string(string):
-    return string.encode("utf-8") + "\x00"
+    string = string.encode("utf-8")
+    try:
+        string.index("\x00")
+        raise InvalidDocument("cannot encode string %r: contains '\\x00'" % string)
+    except InvalidDocument:
+        raise
+    except ValueError:
+        pass
+    return string + "\x00"
 
 def _validate_number(data):
     assert len(data) >= 8
@@ -47,9 +55,8 @@ def _validate_string(data):
     assert data[length - 1] == "\x00"
     return data[length:]
 
-_valid_object_name = re.compile("^.*$")
 def _validate_object(data):
-    return _validate_document(data, _valid_object_name)
+    return _validate_document(data, None)
 
 _valid_array_name = re.compile("^\d+$")
 def _validate_array(data):
@@ -120,19 +127,20 @@ def _validate_element_data(type, data):
     try:
         return _element_validator[type](data)
     except KeyError:
-        raise InvalidBSON()
+        raise InvalidBSON("unrecognized type: %s" % type)
 
 def _validate_element(data, valid_name):
     element_type = data[0]
     (element_name, data) = _get_c_string(data[1:])
-    assert valid_name.match(element_name)
+    if valid_name:
+        assert valid_name.match(element_name), "%r doesn't match %s" % (element_name, valid_name.pattern)
     return _validate_element_data(element_type, data)
 
 def _validate_elements(data, valid_name):
     while data:
         data = _validate_element(data, valid_name)
 
-def _validate_document(data, valid_name=_valid_object_name):
+def _validate_document(data, valid_name=None):
     try:
         obj_size = struct.unpack("<i", data[:4])[0]
     except struct.error:
@@ -363,6 +371,11 @@ class TestBSON(unittest.TestCase):
         helper({"false": False})
         helper({"an array": [1, True, 3.8, u"world"]})
         helper({"an object": {"test": u"something"}})
+
+        def from_then_to_dict(dict):
+            return dict == (BSON.from_dict(dict)).to_dict()
+
+        qcheck.check_unittest(self, from_then_to_dict, qcheck.gen_mongo_dict(3))
 
 if __name__ == "__main__":
     unittest.main()
