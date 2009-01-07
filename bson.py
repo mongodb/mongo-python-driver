@@ -8,7 +8,7 @@ import struct
 import random
 import re
 
-from test import test_data
+from test import test_data, qcheck
 
 class InvalidBSON(ValueError):
     """Raised when trying to create a BSON object from invalid data.
@@ -328,17 +328,7 @@ class TestBSON(unittest.TestCase):
             self.assertTrue(is_valid(data))
 
     def test_random_data_is_not_bson(self):
-        def random_char(size):
-            return chr(random.randint(0, 255))
-
-        def random_string(size):
-            return "".join(random_list(random_char)(size))
-
-        def random_list(generator):
-            return lambda size: [generator(size) for _ in range(size)]
-
-        for i in range(100):
-            self.assertFalse(is_valid(random_string(i)))
+        qcheck.check_unittest(self, qcheck.isnt(is_valid), qcheck.gen_string(qcheck.gen_range(0, 40)))
 
     def test_basic_from_dict(self):
         self.assertRaises(TypeError, BSON.from_dict, 100)
