@@ -5,6 +5,12 @@ import traceback
 gen_target = 100
 examples = 5
 
+def lift(value):
+    return lambda: value
+
+def choose(list):
+    return lambda: random.choice(list)()
+
 def gen_range(start, stop):
     return lambda: random.randint(start, stop)
 
@@ -51,11 +57,12 @@ def gen_mongo_value(depth):
                gen_string(gen_range(0, 1000)),
                gen_int(),
                gen_float(),
-               gen_boolean()]
+               gen_boolean(),
+               lift(None),]
     if depth > 0:
         choices.append(gen_mongo_list(depth))
         choices.append(gen_mongo_dict(depth))
-    return lambda: random.choice(choices)()
+    return choose(choices)
 
 def gen_mongo_list(depth):
     return gen_list(gen_mongo_value(depth - 1), gen_range(0, 10))

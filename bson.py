@@ -186,23 +186,26 @@ def _get_binary(data):
 def _get_boolean(data):
     return (data[0] == "\x01", data[1:])
 
+def _get_null(data):
+    return (None, data)
+
 _element_getter = {
     "\x01": _get_number,
     "\x02": _get_string,
     "\x03": _get_object,
     "\x04": _get_array,
     "\x05": _get_binary,
-#    "\x06": _get_undefined,
+    "\x06": _get_null, # undefined
 #    "\x07": _get_oid,
     "\x08": _get_boolean,
 #    "\x09": _get_date,
-#    "\x0A": _get_null,
+    "\x0A": _get_null,
 #    "\x0B": _get_regex,
 #    "\x0C": _get_ref,
 #    "\x0D": _get_code,
 #    "\x0E": _get_symbol,
 #    "\x0F": _validate_code_w_scope,
-    "\x10": _get_int,
+    "\x10": _get_int, # number_int
 }
 
 def _element_to_dict(data):
@@ -244,6 +247,8 @@ def _value_to_bson(value):
         if value:
             return ("\x08", "\x01")
         return ("\x08", "\x00")
+    if isinstance(value, types.NoneType):
+        return ("\x0A", "")
     if isinstance(value, types.IntType):
         return ("\x10", _int_to_bson(value))
     raise InvalidDocument("cannot convert value of type %s to bson" % value.__class__)
