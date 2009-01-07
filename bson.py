@@ -179,6 +179,10 @@ def _get_array(data):
             break
     return (result, data)
 
+def _get_binary(data):
+    (length, data) = _get_int(data)
+    return (data[:length], data[length:])
+
 def _get_boolean(data):
     return (data[0] == "\x01", data[1:])
 
@@ -187,7 +191,7 @@ _element_getter = {
     "\x02": _get_string,
     "\x03": _get_object,
     "\x04": _get_array,
-#    "\x05": _get_binary,
+    "\x05": _get_binary,
 #    "\x06": _get_undefined,
 #    "\x07": _get_oid,
     "\x08": _get_boolean,
@@ -234,6 +238,8 @@ def _value_to_bson(value):
     if isinstance(value, types.ListType):
         as_dict = dict(zip([str(i) for i in range(len(value))], value))
         return ("\x04", BSON.from_dict(as_dict))
+    if isinstance(value, types.StringType):
+        return ("\x05", _int_to_bson(len(value)) + value)
     if isinstance(value, types.BooleanType):
         if value:
             return ("\x08", "\x01")

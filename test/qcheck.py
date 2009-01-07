@@ -48,6 +48,7 @@ def gen_dict(gen_key, gen_value, gen_length):
 
 def gen_mongo_value(depth):
     choices = [gen_unicode(gen_range(0, 50)),
+               gen_string(gen_range(0, 1000)),
                gen_int(),
                gen_float(),
                gen_boolean()]
