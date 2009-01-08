@@ -245,8 +245,8 @@ _element_getter = {
     "\x0B": _get_regex,
 #    "\x0C": _get_ref,
 #    "\x0D": _get_code,
-#    "\x0E": _get_symbol,
-#    "\x0F": _validate_code_w_scope,
+    "\x0E": _get_string, # symbol
+#    "\x0F": _get_code_w_scope
     "\x10": _get_int, # number_int
 }
 
@@ -415,6 +415,10 @@ class TestBSON(unittest.TestCase):
 
     def test_random_data_is_not_bson(self):
         qcheck.check_unittest(self, qcheck.isnt(is_valid), qcheck.gen_string(qcheck.gen_range(0, 40)))
+
+    def test_basic_to_dict(self):
+        self.assertEqual({"test": u"hello world"},
+                         BSON("\x1B\x00\x00\x00\x0E\x74\x65\x73\x74\x00\x0C\x00\x00\x00\x68\x65\x6C\x6C\x6F\x20\x77\x6F\x72\x6C\x64\x00\x00").to_dict())
 
     def test_basic_from_dict(self):
         self.assertRaises(TypeError, BSON.from_dict, 100)
