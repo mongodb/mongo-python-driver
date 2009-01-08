@@ -22,7 +22,7 @@ class Mongo(object):
     def __init__(self, host="localhost", port=27017):
         """Open a new connection to the database at host:port.
 
-        Raises TypeError if host is not an instance of (str, unicode) or port is
+        Raises TypeError if host is not an instance of string or port is
         not an instance of int. Raises ConnectionException if the connection
         cannot be made.
 
@@ -31,10 +31,13 @@ class Mongo(object):
                              connect to
         - `port` (optional): the port number on which to connect
         """
-        if not isinstance(host, types.StringTypes):
-            raise TypeError("host must be an instance of (str, unicode)")
+        if not isinstance(host, types.StringType):
+            raise TypeError("host must be an instance of str")
         if not isinstance(port, types.IntType):
             raise TypeError("port must be an instance of int")
+
+        self.__host = host
+        self.__port = port
 
         try:
             self.__connection = socket.socket()
@@ -43,12 +46,15 @@ class Mongo(object):
             raise ConnectionException("could not connect to %s:%s, got: %s" %
                                       (host, port, traceback.format_exc()))
 
+    def __repr__(self):
+        return "Mongo(" + repr(self.__host) + ", " + repr(self.__port) + ")"
+
 class TestMongo(unittest.TestCase):
     def setUp(self):
         self.host = os.environ.get("db_ip", "localhost")
         self.port = int(os.environ.get("db_port", 27017))
 
-    def testConnection(self):
+    def test_connection(self):
         self.assertRaises(TypeError, Mongo, 1)
         self.assertRaises(TypeError, Mongo, 1.14)
         self.assertRaises(TypeError, Mongo, None)
@@ -62,6 +68,10 @@ class TestMongo(unittest.TestCase):
         self.assertRaises(ConnectionException, Mongo, self.host, 123456789)
 
         self.assertTrue(Mongo(self.host, self.port))
+
+    def test_repr(self):
+        self.assertEqual(repr(Mongo(self.host, self.port)),
+                         "Mongo('%s', %s)" % (self.host, self.port))
 
 if __name__ == "__main__":
     unittest.main()
