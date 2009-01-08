@@ -10,7 +10,7 @@ class SON(DictMixin):
     """SON data.
 
     A subclass of dict that maintains ordering of keys and provides a few extra
-    niceties.
+    niceties for dealing with SON.
     """
     def __init__(self, data=None, **kwargs):
         self.__keys = []
