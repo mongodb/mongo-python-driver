@@ -12,6 +12,7 @@ import time
 import logging
 
 from test import test_data, qcheck
+from objectid import ObjectId
 
 _logger = logging.getLogger("mongo.bson")
 # _logger.setLevel(logging.DEBUG)
@@ -213,6 +214,10 @@ def _get_binary(data):
     (length, data) = _get_int(data)
     return (data[:length], data[length:])
 
+def _get_oid(data):
+    _logger.debug("unpacking oid")
+    return (ObjectId(data[:12]), data[12:])
+
 def _get_boolean(data):
     _logger.debug("unpacking boolean")
     return (data[0] == "\x01", data[1:])
@@ -244,7 +249,7 @@ _element_getter = {
     "\x04": _get_array,
     "\x05": _get_binary,
     "\x06": _get_null, # undefined
-#    "\x07": _get_oid,
+    "\x07": _get_oid,
     "\x08": _get_boolean,
     "\x09": _get_date,
     "\x0A": _get_null,
@@ -283,7 +288,7 @@ def _int_64_to_bson(int):
 _RE_TYPE = type(_valid_array_name)
 def _value_to_bson(value):
     if isinstance(value, types.FloatType):
-        _logger.debug("packing float")
+        _logger.debug("packing number")
         return ("\x01", struct.pack("<d", value))
     if isinstance(value, types.UnicodeType):
         _logger.debug("packing string")
@@ -300,6 +305,9 @@ def _value_to_bson(value):
     if isinstance(value, types.StringType):
         _logger.debug("packing binary")
         return ("\x05", _int_to_bson(len(value)) + value)
+    if isinstance(value, ObjectId):
+        _logger.debug("packing oid")
+        return ("\x07", str(value))
     if isinstance(value, types.BooleanType):
         _logger.debug("packing boolean")
         if value:
@@ -471,6 +479,8 @@ class TestBSON(unittest.TestCase):
                          "\x16\x00\x00\x00\x0D\x24\x77\x68\x65\x72\x65\x00\x05\x00\x00\x00\x74\x65\x73\x74\x00\x00")
         self.assertEqual(BSON.from_dict({"$where": u"test"}),
                          "\x16\x00\x00\x00\x0D\x24\x77\x68\x65\x72\x65\x00\x05\x00\x00\x00\x74\x65\x73\x74\x00\x00")
+        self.assertEqual(BSON.from_dict({"oid": ObjectId("\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0A\x0B")}),
+                         "\x16\x00\x00\x00\x07\x6F\x69\x64\x00\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0A\x0B\x00")
 
     def test_from_then_to_dict(self):
         def helper(dict):

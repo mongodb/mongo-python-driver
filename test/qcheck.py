@@ -4,6 +4,8 @@ import traceback
 import datetime
 import re
 
+from objectid import ObjectId
+
 gen_target = 100
 examples = 5
 
@@ -81,6 +83,9 @@ def gen_regexp(gen_length):
         return flags
     return lambda: re.compile(pattern(), gen_flags())
 
+def gen_objectid():
+    return lambda: ObjectId()
+
 def gen_mongo_value(depth):
     choices = [gen_unicode(gen_range(0, 50)),
                gen_string(gen_range(0, 1000)),
@@ -89,6 +94,7 @@ def gen_mongo_value(depth):
                gen_boolean(),
                gen_datetime(),
                gen_regexp(gen_range(0, 20)),
+               gen_objectid(),
                lift(None),]
     if depth > 0:
         choices.append(gen_mongo_list(depth))
@@ -112,10 +118,8 @@ def check(predicate, generator):
         case = generator()
         try:
             if not predicate(case):
-                print "FAIL"
                 counter_examples.append(repr(case))
         except:
-            print "FAIL"
             counter_examples.append("%r : %s" % (case, traceback.format_exc()))
     return counter_examples
 
