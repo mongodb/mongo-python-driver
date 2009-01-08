@@ -195,6 +195,24 @@ def _get_date(data):
 def _get_null(data):
     return (None, data)
 
+_re_stack = []
+
+def _get_regex(data):
+    (pattern, data) = _get_c_string(data)
+    print "out %r" % pattern
+    (bson_flags, data) = _get_c_string(data)
+    flags = 0
+    if bson_flags.find("i") > -1:
+        flags |= re.IGNORECASE
+    if bson_flags.find("m") > -1:
+        flags |= re.MULTILINE
+    print "out %r" % flags
+    res = re.compile(pattern, flags)
+    other = _re_stack.pop(0)
+    assert res.pattern == other.pattern, "%r %r" % (res.pattern, other.pattern)
+    assert res == other, "%r %r" % (res.pattern, other.pattern)
+    return (re.compile(pattern, flags), data)
+
 _element_getter = {
     "\x01": _get_number,
     "\x02": _get_string,
@@ -206,7 +224,7 @@ _element_getter = {
     "\x08": _get_boolean,
     "\x09": _get_date,
     "\x0A": _get_null,
-#    "\x0B": _get_regex,
+    "\x0B": _get_regex,
 #    "\x0C": _get_ref,
 #    "\x0D": _get_code,
 #    "\x0E": _get_symbol,
@@ -238,6 +256,7 @@ def _int_to_bson(int):
 def _int_64_to_bson(int):
     return struct.pack("<q", int)
 
+_RE_TYPE = type(_valid_array_name)
 def _value_to_bson(value):
     if isinstance(value, types.FloatType):
         return ("\x01", struct.pack("<d", value))
@@ -261,9 +280,20 @@ def _value_to_bson(value):
         return ("\x09", _int_64_to_bson(millis))
     if isinstance(value, types.NoneType):
         return ("\x0A", "")
+    if isinstance(value, _RE_TYPE):
+        _re_stack.append(value)
+        pattern = value.pattern
+        print "in %r" % pattern
+        print "in %r" % value.flags
+        flags = "g" # TODO should it be global by default?
+        if value.flags & re.IGNORECASE:
+            flags += "i"
+        if value.flags & re.MULTILINE:
+            flags += "m"
+        return ("\x0B", _make_c_string(pattern) + _make_c_string(flags))
     if isinstance(value, types.IntType):
         return ("\x10", _int_to_bson(value))
-    raise InvalidDocument("cannot convert value of type %s to bson" % value.__class__)
+    raise InvalidDocument("cannot convert value of type %s to bson" % type(value))
 
 def _element_to_bson(key, value):
     if not isinstance(key, types.StringTypes):
@@ -388,6 +418,8 @@ class TestBSON(unittest.TestCase):
                          "\x0B\x00\x00\x00\x0A\x74\x65\x73\x74\x00\x00")
         self.assertEqual(BSON.from_dict({"date": datetime.datetime(2007, 1, 7, 19, 30, 11)}),
                          "\x13\x00\x00\x00\x09\x64\x61\x74\x65\x00\x38\xBE\x1C\xFF\x0F\x01\x00\x00\x00")
+#        self.assertEqual(BSON.from_dict({"regex": re.compile("a*b", re.IGNORECASE)}),
+#                         "\x13\x00\x00\x00\x0B\x72\x65\x67\x65\x78\x00\x61\x2A\x62\x00\x67\x69\x00\x00")
 
     def test_from_then_to_dict(self):
         def helper(dict):
@@ -400,6 +432,8 @@ class TestBSON(unittest.TestCase):
         helper({"false": False})
         helper({"an array": [1, True, 3.8, u"world"]})
         helper({"an object": {"test": u"something"}})
+
+#        helper({"re": re.compile(u"", re.MULTILINE)})
 
         def from_then_to_dict(dict):
             return dict == (BSON.from_dict(dict)).to_dict()

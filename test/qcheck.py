@@ -2,12 +2,16 @@ import random
 import sys
 import traceback
 import datetime
+import re
 
 gen_target = 100
 examples = 5
 
 def lift(value):
     return lambda: value
+
+def choose_lifted(list):
+    return lambda: random.choice(list)
 
 def choose(list):
     return lambda: random.choice(list)()
@@ -30,7 +34,7 @@ def gen_printable_char():
 def gen_printable_string(gen_length):
     return lambda: "".join(gen_list(gen_printable_char(), gen_length)())
 
-def gen_char():
+def gen_char(set=None):
     return lambda: chr(random.randint(0, 255))
 
 def gen_string(gen_length):
@@ -63,6 +67,17 @@ def gen_dict(gen_key, gen_value, gen_length):
         return result
     return lambda: a_dict(gen_key, gen_value, gen_length())
 
+def gen_regexp(gen_length):
+    pattern = lambda: u"".join(gen_list(choose_lifted(u"abc."), gen_length)())
+    def gen_flags():
+        flags = 0
+        if random.random() > 0.5:
+            flags = flags | re.IGNORECASE
+        if random.random() > 0.5:
+            flags = flags | re.MULTILINE
+        return flags
+    return lambda: re.compile(pattern(), gen_flags())
+
 def gen_mongo_value(depth):
     choices = [gen_unicode(gen_range(0, 50)),
                gen_string(gen_range(0, 1000)),
@@ -70,6 +85,7 @@ def gen_mongo_value(depth):
                gen_float(),
                gen_boolean(),
                gen_datetime(),
+               gen_regexp(gen_range(0, 20)),
                lift(None),]
     if depth > 0:
         choices.append(gen_mongo_list(depth))
@@ -93,8 +109,10 @@ def check(predicate, generator):
         case = generator()
         try:
             if not predicate(case):
+                print "FAIL"
                 counter_examples.append(repr(case))
         except:
+            print "FAIL"
             counter_examples.append("%r : %s" % (case, traceback.format_exc()))
     return counter_examples
 
