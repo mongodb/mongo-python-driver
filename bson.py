@@ -13,6 +13,7 @@ import logging
 
 from test import test_data, qcheck
 from objectid import ObjectId
+from dbref import DBRef
 
 _logger = logging.getLogger("mongo.bson")
 # _logger.setLevel(logging.DEBUG)
@@ -242,6 +243,12 @@ def _get_regex(data):
         flags |= re.MULTILINE
     return (re.compile(pattern, flags), data)
 
+def _get_ref(data):
+    _logger.debug("unpacking ref")
+    (collection, data) = _get_c_string(data)
+    (oid, data) = _get_oid(data)
+    return (DBRef(collection, oid), data)
+
 _element_getter = {
     "\x01": _get_number,
     "\x02": _get_string,
@@ -254,7 +261,7 @@ _element_getter = {
     "\x09": _get_date,
     "\x0A": _get_null,
     "\x0B": _get_regex,
-#    "\x0C": _get_ref,
+    "\x0C": _get_ref,
 #    "\x0D": _get_code,
     "\x0E": _get_string, # symbol
 #    "\x0F": _get_code_w_scope
@@ -329,6 +336,9 @@ def _value_to_bson(value):
         if value.flags & re.MULTILINE:
             flags += "m"
         return ("\x0B", _make_c_string(pattern) + _make_c_string(flags))
+    if isinstance(value, DBRef):
+        _logger.debug("packing ref")
+        return ("\x0C", _make_c_string(value.collection()) + str(value.id()))
     if isinstance(value, types.IntType):
         _logger.debug("packing int")
         return ("\x10", _int_to_bson(value))
@@ -479,8 +489,11 @@ class TestBSON(unittest.TestCase):
                          "\x16\x00\x00\x00\x0D\x24\x77\x68\x65\x72\x65\x00\x05\x00\x00\x00\x74\x65\x73\x74\x00\x00")
         self.assertEqual(BSON.from_dict({"$where": u"test"}),
                          "\x16\x00\x00\x00\x0D\x24\x77\x68\x65\x72\x65\x00\x05\x00\x00\x00\x74\x65\x73\x74\x00\x00")
-        self.assertEqual(BSON.from_dict({"oid": ObjectId("\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0A\x0B")}),
+        a = ObjectId("\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0A\x0B")
+        self.assertEqual(BSON.from_dict({"oid": a}),
                          "\x16\x00\x00\x00\x07\x6F\x69\x64\x00\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0A\x0B\x00")
+        self.assertEqual(BSON.from_dict({"ref": DBRef("coll", a)}),
+                         "\x1B\x00\x00\x00\x0C\x72\x65\x66\x00\x63\x6F\x6C\x6C\x00\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0A\x0B\x00")
 
     def test_from_then_to_dict(self):
         def helper(dict):

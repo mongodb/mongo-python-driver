@@ -5,6 +5,7 @@ import datetime
 import re
 
 from objectid import ObjectId
+from dbref import DBRef
 
 gen_target = 100
 examples = 5
@@ -86,6 +87,10 @@ def gen_regexp(gen_length):
 def gen_objectid():
     return lambda: ObjectId()
 
+def gen_dbref():
+    collection = gen_unicode(gen_range(0, 20))
+    return lambda: DBRef(collection(), gen_objectid()())
+
 def gen_mongo_value(depth):
     choices = [gen_unicode(gen_range(0, 50)),
                gen_string(gen_range(0, 1000)),
@@ -95,6 +100,7 @@ def gen_mongo_value(depth):
                gen_datetime(),
                gen_regexp(gen_range(0, 20)),
                gen_objectid(),
+               gen_dbref(),
                lift(None),]
     if depth > 0:
         choices.append(gen_mongo_list(depth))
