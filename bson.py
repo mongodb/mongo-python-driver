@@ -320,12 +320,23 @@ def _value_to_bson(value):
         return ("\x10", _int_to_bson(value))
     raise InvalidDocument("cannot convert value of type %s to bson" % type(value))
 
+def _where_value_to_bson(value):
+    _logger.debug("packing code")
+    if not isinstance(value, types.StringTypes):
+        raise TypeError("$where value must be an instance of (str, unicode)")
+    cstring = _make_c_string(value)
+    length = _int_to_bson(len(cstring))
+    return ("\x0D", length + cstring)
+
 def _element_to_bson(key, value):
     if not isinstance(key, types.StringTypes):
         raise TypeError("all keys must be instances of (str, unicode)")
 
     element_name = _make_c_string(key)
-    (element_type, element_data) = _value_to_bson(value)
+    if key == "$where":
+        (element_type, element_data) = _where_value_to_bson(value)
+    else:
+        (element_type, element_data) = _value_to_bson(value)
 
     return element_type + element_name + element_data
 
@@ -449,6 +460,11 @@ class TestBSON(unittest.TestCase):
                          "\x13\x00\x00\x00\x09\x64\x61\x74\x65\x00\x38\xBE\x1C\xFF\x0F\x01\x00\x00\x00")
         self.assertEqual(BSON.from_dict({"regex": re.compile("a*b", re.IGNORECASE)}),
                          "\x13\x00\x00\x00\x0B\x72\x65\x67\x65\x78\x00\x61\x2A\x62\x00\x67\x69\x00\x00")
+        self.assertRaises(TypeError, BSON.from_dict, {"$where": 5})
+        self.assertEqual(BSON.from_dict({"$where": "test"}),
+                         "\x16\x00\x00\x00\x0D\x24\x77\x68\x65\x72\x65\x00\x05\x00\x00\x00\x74\x65\x73\x74\x00\x00")
+        self.assertEqual(BSON.from_dict({"$where": u"test"}),
+                         "\x16\x00\x00\x00\x0D\x24\x77\x68\x65\x72\x65\x00\x05\x00\x00\x00\x74\x65\x73\x74\x00\x00")
 
     def test_from_then_to_dict(self):
         def helper(dict):
