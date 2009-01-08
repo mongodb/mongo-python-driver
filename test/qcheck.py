@@ -6,6 +6,7 @@ import re
 
 from objectid import ObjectId
 from dbref import DBRef
+from son import SON
 
 gen_target = 100
 examples = 5
@@ -13,8 +14,11 @@ examples = 5
 def lift(value):
     return lambda: value
 
-def choose_lifted(list):
-    return lambda: random.choice(list)
+def choose_lifted(generator_list):
+    return lambda: random.choice(generator_list)
+
+def map(generator, function):
+    return lambda: function(generator())
 
 def choose(list):
     return lambda: random.choice(list)()
@@ -111,7 +115,7 @@ def gen_mongo_list(depth):
     return gen_list(gen_mongo_value(depth - 1), gen_range(0, 10))
 
 def gen_mongo_dict(depth):
-    return gen_dict(gen_unicode(gen_range(0, 20)), gen_mongo_value(depth - 1), gen_range(0, 10))
+    return map(gen_dict(gen_unicode(gen_range(0, 20)), gen_mongo_value(depth - 1), gen_range(0, 10)), SON)
 
 
 def isnt(predicate):
