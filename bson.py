@@ -14,6 +14,7 @@ import logging
 from test import test_data, qcheck
 from objectid import ObjectId
 from dbref import DBRef
+from son import SON
 
 _logger = logging.getLogger("mongo.bson")
 # _logger.setLevel(logging.DEBUG)
@@ -302,7 +303,7 @@ def _value_to_bson(value):
         cstring = _make_c_string(value)
         length = _int_to_bson(len(cstring))
         return ("\x02", length + cstring)
-    if isinstance(value, types.DictType):
+    if isinstance(value, (types.DictType, SON)):
         _logger.debug("packing object")
         return ("\x03", BSON.from_dict(value))
     if isinstance(value, types.ListType):
