@@ -39,12 +39,16 @@ class Mongo(object):
         self.__host = host
         self.__port = port
 
+        self.__connect()
+
+    def __connect(self):
+        """(Re-)connect to the database."""
         try:
             self.__connection = socket.socket()
-            self.__connection.connect((host, port))
+            self.__connection.connect((self.__host, self.__port))
         except socket.error:
             raise ConnectionException("could not connect to %s:%s, got: %s" %
-                                      (host, port, traceback.format_exc()))
+                                      (self.__host, self.__port, traceback.format_exc()))
 
     def __repr__(self):
         return "Mongo(" + repr(self.__host) + ", " + repr(self.__port) + ")"
