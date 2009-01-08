@@ -115,6 +115,13 @@ def _validate_ref(data):
 
 _validate_code = _validate_string
 
+# still not sure what is actually stored here, but i know how big it is...
+def _validate_code_w_scope(data):
+    _logger.debug("validating code w/ scope")
+    (length, data) = _get_int(data)
+    assert len(data) >= length + 1
+    return data[length + 1:]
+
 _validate_symbol = _validate_string
 
 def _validate_number_int(data):
@@ -137,8 +144,7 @@ _element_validator = {
     "\x0C": _validate_ref,
     "\x0D": _validate_code,
     "\x0E": _validate_symbol,
-# TODO look into this
-#    "\x0F": _validate_code_w_scope,
+    "\x0F": _validate_code_w_scope,
     "\x10": _validate_number_int,
 }
 
