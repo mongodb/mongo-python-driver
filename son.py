@@ -23,8 +23,8 @@ class SON(DictMixin):
             for item in items:
                 if len(item) != 2:
                     raise ValueError("sequence elements must have length 2")
-                self.__keys.append(items[0])
-                self.__data[items[0]] = items[1]
+                self.__keys.append(item[0])
+                self.__data[item[0]] = item[1]
         if kwargs:
             self.__merge_keys(kwargs.iterkeys())
             self.update(kwargs)
@@ -79,6 +79,10 @@ class TestSON(unittest.TestCase):
         a["mike"] = "awesome"
         a["hello_"] = "mike"
         self.assertEqual(a.items(), [("hello", "world"), ("mike", "awesome"), ("hello_", "mike")])
+
+        b = SON({"hello": "world"})
+        self.assertEqual(b["hello"], "world")
+        self.assertRaises(KeyError, lambda: b["goodbye"])
 
 if __name__ == "__main__":
     unittest.main()
