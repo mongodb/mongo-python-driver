@@ -10,6 +10,7 @@ import re
 import datetime
 import time
 import logging
+import glob
 
 from test import test_data, qcheck
 from objectid import ObjectId
@@ -238,10 +239,18 @@ def _get_regex(data):
     (pattern, data) = _get_c_string(data)
     (bson_flags, data) = _get_c_string(data)
     flags = 0
-    if bson_flags.find("i") > -1:
+    if "i" in bson_flags:
         flags |= re.IGNORECASE
-    if bson_flags.find("m") > -1:
+    if "l" in bson_flags:
+        flags |= re.LOCALE
+    if "m" in bson_flags:
         flags |= re.MULTILINE
+    if "s" in bson_flags:
+        flags |= re.DOTALL
+    if "u" in bson_flags:
+        flags |= re.UNICODE
+    if "x" in bson_flags:
+        flags |= re.VERBOSE
     return (re.compile(pattern, flags), data)
 
 def _get_ref(data):
@@ -276,7 +285,7 @@ def _element_to_dict(data):
     return (element_name, value, data)
 
 def _elements_to_dict(data):
-    result = {}
+    result = SON()
     while data:
         (key, value, data) = _element_to_dict(data)
         result[key] = value
@@ -308,7 +317,7 @@ def _value_to_bson(value):
         return ("\x03", BSON.from_dict(value))
     if isinstance(value, types.ListType):
         _logger.debug("packing array")
-        as_dict = dict(zip([str(i) for i in range(len(value))], value))
+        as_dict = SON(zip([str(i) for i in range(len(value))], value))
         return ("\x04", BSON.from_dict(as_dict))
     if isinstance(value, types.StringType):
         _logger.debug("packing binary")
@@ -331,11 +340,19 @@ def _value_to_bson(value):
     if isinstance(value, _RE_TYPE):
         _logger.debug("packing regex")
         pattern = value.pattern
-        flags = "g" # TODO should it be global by default?
+        flags = ""
         if value.flags & re.IGNORECASE:
             flags += "i"
+        if value.flags & re.LOCALE:
+            flags += "l"
         if value.flags & re.MULTILINE:
             flags += "m"
+        if value.flags & re.DOTALL:
+            flags += "s"
+        if value.flags & re.UNICODE:
+            flags += "u"
+        if value.flags & re.VERBOSE:
+            flags += "x"
         return ("\x0B", _make_c_string(pattern) + _make_c_string(flags))
     if isinstance(value, DBRef):
         _logger.debug("packing ref")
@@ -484,7 +501,7 @@ class TestBSON(unittest.TestCase):
         self.assertEqual(BSON.from_dict({"date": datetime.datetime(2007, 1, 7, 19, 30, 11)}),
                          "\x13\x00\x00\x00\x09\x64\x61\x74\x65\x00\x38\xBE\x1C\xFF\x0F\x01\x00\x00\x00")
         self.assertEqual(BSON.from_dict({"regex": re.compile("a*b", re.IGNORECASE)}),
-                         "\x13\x00\x00\x00\x0B\x72\x65\x67\x65\x78\x00\x61\x2A\x62\x00\x67\x69\x00\x00")
+                         "\x12\x00\x00\x00\x0B\x72\x65\x67\x65\x78\x00\x61\x2A\x62\x00\x69\x00\x00")
         self.assertRaises(TypeError, BSON.from_dict, {"$where": 5})
         self.assertEqual(BSON.from_dict({"$where": "test"}),
                          "\x16\x00\x00\x00\x0D\x24\x77\x68\x65\x72\x65\x00\x05\x00\x00\x00\x74\x65\x73\x74\x00\x00")
@@ -512,6 +529,20 @@ class TestBSON(unittest.TestCase):
             return dict == (BSON.from_dict(dict)).to_dict()
 
         qcheck.check_unittest(self, from_then_to_dict, qcheck.gen_mongo_dict(3))
+
+    def test_data_files(self):
+        # TODO don't hardcode this, actually clone the repo
+        data_files = "../mongo-qa/modules/bson_tests/*.xml"
+        for file in glob.iglob(data_files):
+            f = open(file, "r")
+            xml = f.read()
+            f.close()
+
+            f = open(file.replace(".xml", ".bson"), "r")
+            bson = f.read()
+            f.close()
+
+            self.assertEqual(BSON.from_dict(SON.from_xml(xml)), bson)
 
 if __name__ == "__main__":
     unittest.main()

@@ -85,6 +85,9 @@ def gen_regexp(gen_length):
             flags = flags | re.IGNORECASE
         if random.random() > 0.5:
             flags = flags | re.MULTILINE
+        if random.random() > 0.5:
+            flags = flags | re.VERBOSE
+
         return flags
     return lambda: re.compile(pattern(), gen_flags())
 

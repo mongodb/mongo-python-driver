@@ -122,6 +122,9 @@ class SON(DictMixin):
             elif name == "null":
                 set(attributes["name"], None)
 
+            if name in ["string", "code", "ns", "pattern", "options"]:
+                info["empty"] = True
+
         def end_element(name):
             if name == "doc":
                 append_to.pop()
@@ -136,10 +139,24 @@ class SON(DictMixin):
             elif name == "regex":
                 set(info["key"], re.compile(extra["pattern"], extra["options"]))
 
+            if info.get("empty", False):
+                if info["current"] == "string":
+                    set(info["key"], u"")
+                elif info["current"] == "code":
+                    set(info["key"], "")
+                elif info["current"] in ["ns", "pattern"]:
+                    extra[info["current"]] = u""
+                elif info["current"] == "options":
+                    extra["options"] = 0
+                info["empty"] = False
+
         def char_data(data):
             data = data.strip()
             if not data:
                 return
+
+            info["empty"] = False
+
             if info["current"] == "oid":
                 oid = ObjectId(binascii.unhexlify(data))
                 if info.get("ref", False):
