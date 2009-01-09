@@ -7,9 +7,10 @@ import socket
 import types
 import traceback
 import os
+import struct
 
 from son import SON
-from bson import BSON
+import bson
 from objectid import ObjectId
 from dbref import DBRef
 
@@ -43,6 +44,7 @@ class Mongo(object):
 
         self.__host = host
         self.__port = port
+        self.__id = 1
 
         self.__connect()
 
@@ -54,6 +56,27 @@ class Mongo(object):
         except socket.error:
             raise ConnectionException("could not connect to %s:%s, got: %s" %
                                       (self.__host, self.__port, traceback.format_exc()))
+
+    def _send_message(self, operation, data):
+        """Say something to the database. Return the response.
+
+        Arguments:
+        - `operation`: the opcode of the message
+        - `data`: the data to send
+        """
+        to_send = ""
+
+        # header
+        to_send += struct.pack("<i", 16 + len(data))
+        to_send += struct.pack("<i", self.__id)
+        self.__id += 1
+        to_send += struct.pack("<i", 0) # responseTo
+        to_send += struct.pack("<i", operation)
+
+        to_send += data
+
+        # TODO be more robust
+        sent = self.__connection.send(to_send)
 
     def __cmp__(self, other):
         if isinstance(other, Mongo):
@@ -127,7 +150,27 @@ class Collection(object):
         return NotImplemented
 
     def save(self, to_save):
-        pass
+        """Save a SON object in this collection.
+
+        Raises TypeError if to_save is not an instance of (dict, SON).
+
+        Arguments:
+        - `to_save`: the SON object to be saved
+        """
+        if not isinstance(to_save, (types.DictType, SON)):
+            raise TypeError("cannot save object of type %s" % type(to_save))
+
+        if hasattr(to_save, "_id"):
+            assert isinstance(to_save["_id"], ObjectId), "'_id' must be an ObjectId"
+        else:
+            to_save["_id"] = ObjectId()
+
+        # TODO possibly add _ns?
+
+        # TODO support for named databases instead of just prepending test.
+        message_data = "\x00\x00\x00\x00%s%s" % (bson._make_c_string("test." + self.__collection_name), bson.BSON.from_dict(to_save))
+
+        self.__database._send_message(2002, message_data)
 
     def find_one(self, spec):
         pass
@@ -189,8 +232,8 @@ class TestMongo(unittest.TestCase):
 
         a_doc = SON({"hello": u"world"})
         db.test.save(a_doc)
-#        self.assertTrue(isinstance(a_doc["_id"], ObjectId))
-#        self.assertEqual(a_doc, db.test.find_one({"_id": a_doc["_id"]}))
+        self.assertTrue(isinstance(a_doc["_id"], ObjectId))
+        self.assertEqual(a_doc, db.test.find_one({"_id": a_doc["_id"]}))
 
 if __name__ == "__main__":
     unittest.main()
