@@ -60,7 +60,7 @@ class ObjectId(object):
         return self.__id
 
     def __repr__(self):
-        return "ObjectId('%s')" % self.__id
+        return "ObjectId('%r')" % self.__id
 
     def __cmp__(self, other):
         if isinstance(other, ObjectId):
