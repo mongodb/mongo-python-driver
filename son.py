@@ -111,8 +111,14 @@ class SON(DictMixin):
                 set(attributes["name"], a)
                 list_stack.append(a)
                 append_to.append("array")
-            elif name in ["id", "int", "string", "boolean", "number", "date", "code", "ref", "regex"]:
+            elif name in ["int", "string", "boolean", "number", "date", "code", "regex"]:
                 info["key"] = attributes["name"]
+            elif name == "ref":
+                info["key"] = attributes["name"]
+                info["ref"] = True
+            elif name == "oid":
+                if not info.get("ref", False):
+                    info["key"] = attributes["name"]
             elif name == "null":
                 set(attributes["name"], None)
 
@@ -126,6 +132,7 @@ class SON(DictMixin):
                 list_stack.pop()
             elif name == "ref":
                 set(info["key"], DBRef(extra["ns"], extra["oid"]))
+                info["ref"] = False
             elif name == "regex":
                 set(info["key"], re.compile(extra["pattern"], extra["options"]))
 
@@ -133,8 +140,12 @@ class SON(DictMixin):
             data = data.strip()
             if not data:
                 return
-            if info["current"] == "id":
-                set(info["key"], ObjectId(binascii.unhexlify(data)))
+            if info["current"] == "oid":
+                oid = ObjectId(binascii.unhexlify(data))
+                if info.get("ref", False):
+                    extra["oid"] = oid
+                else:
+                    set(info["key"], oid)
             elif info["current"] == "int":
                 set(info["key"], int(data))
             elif info["current"] == "string":
@@ -149,8 +160,6 @@ class SON(DictMixin):
                 set(info["key"], datetime.datetime.fromtimestamp(float(data) / 1000.0))
             elif info["current"] == "ns":
                 extra["ns"] = data
-            elif info["current"] == "oid":
-                extra["oid"] = ObjectId(binascii.unhexlify(data))
             elif info["current"] == "pattern":
                 extra["pattern"] = data
             elif info["current"] == "options":
@@ -188,7 +197,7 @@ class TestSON(unittest.TestCase):
 <twonk>
   <meta/>
   <doc>
-    <id name="_id">285a664923b5fcd8ec000000</id>
+    <oid name="_id">285a664923b5fcd8ec000000</oid>
     <int name="the_answer">42</int>
     <string name="b">foo</string>
     <boolean name="c">true</boolean>
