@@ -75,8 +75,12 @@ class Mongo(object):
 
         to_send += data
 
-        # TODO be more robust
-        sent = self.__connection.send(to_send)
+        total_sent = 0
+        while total_sent < len(to_send):
+            sent = self.__connection.send(to_send[total_sent:])
+            if sent == 0:
+                raise ConnectionException("connection closed")
+            total_sent += sent
 
     def __cmp__(self, other):
         if isinstance(other, Mongo):
