@@ -15,7 +15,7 @@ import glob
 from test import test_data, qcheck
 from objectid import ObjectId
 from dbref import DBRef
-from son import SON
+import son
 
 _logger = logging.getLogger("mongo.bson")
 # _logger.setLevel(logging.DEBUG)
@@ -285,7 +285,7 @@ def _element_to_dict(data):
     return (element_name, value, data)
 
 def _elements_to_dict(data):
-    result = SON()
+    result = son.SON()
     while data:
         (key, value, data) = _element_to_dict(data)
         result[key] = value
@@ -312,12 +312,12 @@ def _value_to_bson(value):
         cstring = _make_c_string(value)
         length = _int_to_bson(len(cstring))
         return ("\x02", length + cstring)
-    if isinstance(value, (types.DictType, SON)):
+    if isinstance(value, (types.DictType, son.SON)):
         _logger.debug("packing object")
         return ("\x03", BSON.from_dict(value))
     if isinstance(value, types.ListType):
         _logger.debug("packing array")
-        as_dict = SON(zip([str(i) for i in range(len(value))], value))
+        as_dict = son.SON(zip([str(i) for i in range(len(value))], value))
         return ("\x04", BSON.from_dict(as_dict))
     if isinstance(value, types.StringType):
         _logger.debug("packing binary")
@@ -532,17 +532,36 @@ class TestBSON(unittest.TestCase):
 
     def test_data_files(self):
         # TODO don't hardcode this, actually clone the repo
-        data_files = "../mongo-qa/modules/bson_tests/*.xml"
+        data_files = "../mongo-qa/modules/bson_tests/*/*.xson"
+        generate = False
+
         for file in glob.iglob(data_files):
             f = open(file, "r")
             xml = f.read()
             f.close()
 
-            f = open(file.replace(".xml", ".bson"), "r")
-            bson = f.read()
-            f.close()
+            try:
+                bson = BSON.from_dict(son.SON.from_xml(xml))
+            except son.UnsupportedType:
+                print "skipped file %s" % file
+                continue
+            except:
+                print "failed to parse %s" % file
+                continue
 
-            self.assertEqual(BSON.from_dict(SON.from_xml(xml)), bson)
+            try:
+                f = open(file.replace(".xson", ".bson"), "r")
+                expected = f.read()
+                f.close()
+
+                self.assertEqual(bson, expected)
+            except IOError:
+                if generate:
+                    print "generating .bson for %s" % file
+
+                    f = open(file.replace(".xson", ".bson"), "w")
+                    f.write(bson)
+                    f.close()
 
 if __name__ == "__main__":
     unittest.main()
