@@ -11,6 +11,11 @@ from dbref import DBRef
 import datetime
 import re
 import binascii
+import base64
+
+class UnsupportedType(ValueError):
+    """Raised when trying to convert an unsupported type to SON.
+    """
 
 class SON(DictMixin):
     """SON data.
@@ -90,13 +95,28 @@ class SON(DictMixin):
             while index >= len(list):
                 list.append(None)
 
-        def set(key, value):
+        def get(key):
+            try:
+                if append_to[-1] == "array":
+                    return list_stack[-1][int(key)]
+                else:
+                    return son_stack[-1][key]
+            except:
+                return None
+
+        def set(key, value, reset=False):
             if append_to[-1] == "array":
                 index = int(key)
                 pad(list_stack[-1], index)
-                list_stack[-1][int(key)] = value
+                if get(key) == None or reset:
+                    list_stack[-1][int(key)] = value
+                else:
+                    list_stack[-1][int(key)] = get(key) + value
             else:
-                son_stack[-1][key] = value
+                if get(key) == None or reset:
+                    son_stack[-1][key] = value
+                else:
+                    son_stack[-1][key] = get(key) + value
 
         def start_element(name, attributes):
             info["current"] = name
@@ -111,7 +131,7 @@ class SON(DictMixin):
                 set(attributes["name"], a)
                 list_stack.append(a)
                 append_to.append("array")
-            elif name in ["int", "string", "boolean", "number", "date", "code", "regex"]:
+            elif name in ["int", "string", "boolean", "number", "date", "code", "regex", "binary"]:
                 info["key"] = attributes["name"]
             elif name == "ref":
                 info["key"] = attributes["name"]
@@ -121,8 +141,10 @@ class SON(DictMixin):
                     info["key"] = attributes["name"]
             elif name == "null":
                 set(attributes["name"], None)
+            elif name in ["undefined", "symbol"]:
+                raise UnsupportedType("unsupported xson element: %s" % name)
 
-            if name in ["string", "code", "ns", "pattern", "options"]:
+            if name in ["string", "code", "ns", "pattern", "options", "binary"]:
                 info["empty"] = True
 
         def end_element(name):
@@ -142,13 +164,19 @@ class SON(DictMixin):
             if info.get("empty", False):
                 if info["current"] == "string":
                     set(info["key"], u"")
-                elif info["current"] == "code":
+                elif info["current"] in ["code", "binary"]:
                     set(info["key"], "")
                 elif info["current"] in ["ns", "pattern"]:
                     extra[info["current"]] = u""
                 elif info["current"] == "options":
                     extra["options"] = 0
                 info["empty"] = False
+
+            if name == "binary":
+                if get(info["key"]) == None:
+                    set(info["key"], "")
+                else:
+                    set(info["key"], base64.b64decode(get(info["key"])), True)
 
         def char_data(data):
             data = data.strip()
@@ -169,6 +197,8 @@ class SON(DictMixin):
                 set(info["key"], data)
             elif info["current"] == "code":
                 set(info["key"], data.encode("utf-8"))
+            elif info["current"] == "binary":
+                set(info["key"], data)
             elif info["current"] == "boolean":
                 set(info["key"], data == "true")
             elif info["current"] == "number":
@@ -183,8 +213,16 @@ class SON(DictMixin):
                 options = 0
                 if "i" in data:
                     options |= re.IGNORECASE
+                if "l" in data:
+                    options |= re.LOCALE
                 if "m" in data:
                     options |= re.MULTILINE
+                if "s" in data:
+                    options |= re.DOTALL
+                if "u" in data:
+                    options |= re.UNICODE
+                if "x" in data:
+                    options |= re.VERBOSE
                 extra["options"] = options
 
         parser.StartElementHandler = start_element
