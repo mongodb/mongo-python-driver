@@ -223,6 +223,23 @@ class Collection(object):
 
         return to_save["_id"]
 
+    def remove(self, spec_or_object_id):
+        """Remove an object(s) from this collection.
+
+        Raises TypeEror if the argument is not an instance of
+        (dict, SON, ObjectId).
+
+        Arguments:
+        - `spec_or_object_id` (optional): a SON object specifying elements
+            which must be present for a document to be removed OR an instance of
+            ObjectId to be used as the value for an _id element
+        """
+        spec = spec_or_object_id
+        if isinstance(spec, ObjectId):
+            spec = SON({"_id": spec})
+
+        self._send_message(2006, "\x00\x00\x00\x00" + bson.BSON.from_dict(spec))
+
     def find_one(self, spec_or_object_id=SON()):
         """Get a single object from the database.
 
@@ -303,7 +320,7 @@ class Cursor(object):
             return len(self.__data)
 
         if self.__id is None:
-            # Initial query
+            # Query
             message = ""
             message += struct.pack("<i", self.__skip)
             message += struct.pack("<i", self.__limit)
@@ -328,6 +345,7 @@ class Cursor(object):
             assert len(self.__data) == number_returned
 
         else:
+            # Get More
             raise Exception("unimplemented...")
 
         return len(self.__data)
@@ -400,11 +418,17 @@ class TestMongo(unittest.TestCase):
 
     def test_save_find_one(self):
         db = Mongo("test", self.host, self.port)
+        db.test.remove({})
 
         a_doc = SON({"hello": u"world"})
-        db.test.save(a_doc)
+        a_key = db.test.save(a_doc)
         self.assertTrue(isinstance(a_doc["_id"], ObjectId))
+        self.assertEqual(a_doc["_id"], a_key)
         self.assertEqual(a_doc, db.test.find_one({"_id": a_doc["_id"]}))
+        self.assertEqual(a_doc, db.test.find_one(a_key))
+        self.assertEqual(None, db.test.find_one(ObjectId()))
+        self.assertEqual(a_doc, db.test.find_one({"hello": u"world"}))
+        self.assertEqual(None, db.test.find_one({"hello": u"test"}))
 
 if __name__ == "__main__":
     unittest.main()
