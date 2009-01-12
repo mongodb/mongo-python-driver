@@ -12,8 +12,12 @@ def main():
     f.close()
 
     f = open(out_file, "w")
-    f.write(BSON.from_dict(SON.from_xml(xml)))
+    doc = SON.from_xml(xml)
+    bson = BSON.from_dict(doc)
+    f.write(bson)
     f.close()
+
+    assert doc == bson.to_dict()
 
 if __name__ == "__main__":
     main()
