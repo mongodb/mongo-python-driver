@@ -273,7 +273,7 @@ _element_getter = {
     "\x0A": _get_null,
     "\x0B": _get_regex,
     "\x0C": _get_ref,
-#    "\x0D": _get_code,
+    "\x0D": _get_string, # code
     "\x0E": _get_string, # symbol
 #    "\x0F": _get_code_w_scope
     "\x10": _get_int, # number_int
@@ -537,7 +537,7 @@ class TestBSON(unittest.TestCase):
     def test_data_files(self):
         # TODO don't hardcode this, actually clone the repo
         data_files = "../mongo-qa/modules/bson_tests/*/*.xson"
-        generate = False
+        generate = True
 
         for file in glob.iglob(data_files):
             f = open(file, "r")
@@ -545,7 +545,8 @@ class TestBSON(unittest.TestCase):
             f.close()
 
             try:
-                bson = BSON.from_dict(son.SON.from_xml(xml))
+                doc = son.SON.from_xml(xml)
+                bson = BSON.from_dict(doc)
             except son.UnsupportedType:
                 print "skipped file %s" % file
                 continue
@@ -559,6 +560,8 @@ class TestBSON(unittest.TestCase):
                 f.close()
 
                 self.assertEqual(bson, expected, file)
+                self.assertEqual(doc, bson.to_dict(), file)
+
             except IOError:
                 if generate:
                     print "generating .bson for %s" % file
