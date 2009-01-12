@@ -458,7 +458,7 @@ class TestMongo(unittest.TestCase):
         length = 0
         for _ in db.test.find():
             length += 1
-        self.assertEqual (length, 3)
+        self.assertEqual(length, 3)
 
         db.test.remove(one)
         length = 0
