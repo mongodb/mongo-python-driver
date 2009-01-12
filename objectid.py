@@ -22,7 +22,7 @@ class ObjectId(object):
         Arguments:
         - `id` (optional): a valid ObjectId
         """
-        if id == None:
+        if id is None:
             self.__generate()
         else:
             self.__validate(id)

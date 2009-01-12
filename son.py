@@ -108,12 +108,12 @@ class SON(DictMixin):
             if append_to[-1] == "array":
                 index = int(key)
                 pad(list_stack[-1], index)
-                if get(key) == None or reset:
+                if get(key) is None or reset:
                     list_stack[-1][int(key)] = value
                 else:
                     list_stack[-1][int(key)] = get(key) + value
             else:
-                if get(key) == None or reset:
+                if get(key) is None or reset:
                     son_stack[-1][key] = value
                 else:
                     son_stack[-1][key] = get(key) + value
@@ -173,7 +173,7 @@ class SON(DictMixin):
                 info["empty"] = False
 
             if name == "binary":
-                if get(info["key"]) == None:
+                if get(info["key"]) is None:
                     set(info["key"], "")
                 else:
                     set(info["key"], base64.b64decode(get(info["key"])), True)
