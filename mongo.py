@@ -470,5 +470,17 @@ class TestMongo(unittest.TestCase):
         db.test.remove(db.test.find_one())
         self.assertEqual(db.test.find_one(), None)
 
+        one = db.test.save({"x": 1})
+        two = db.test.save({"x": 2})
+        three = db.test.save({"x": 3})
+
+        self.assertTrue(db.test.find_one({"x": 2}))
+        db.test.remove({"x": 2})
+        self.assertFalse(db.test.find_one({"x": 2}))
+
+        self.assertTrue(db.test.find_one())
+        db.test.remove({})
+        self.assertFalse(db.test.find_one())
+
 if __name__ == "__main__":
     unittest.main()
