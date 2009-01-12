@@ -404,6 +404,17 @@ def is_valid(bson):
     except (AssertionError, InvalidBSON):
         return False
 
+def to_dicts(data):
+    """Convert binary data to sequence of SON objects.
+
+    Data must be concatenated strings of valid BSON data.
+    """
+    dicts = []
+    while len(data):
+        (dict, data) = _document_to_dict(data)
+        dicts.append(dict)
+    return dicts
+
 class BSON(str):
     """BSON data.
 
@@ -476,6 +487,8 @@ class TestBSON(unittest.TestCase):
     def test_basic_to_dict(self):
         self.assertEqual({"test": u"hello world"},
                          BSON("\x1B\x00\x00\x00\x0E\x74\x65\x73\x74\x00\x0C\x00\x00\x00\x68\x65\x6C\x6C\x6F\x20\x77\x6F\x72\x6C\x64\x00\x00").to_dict())
+        self.assertEqual([{"test": u"hello world"}, {}],
+                         to_dicts("\x1B\x00\x00\x00\x0E\x74\x65\x73\x74\x00\x0C\x00\x00\x00\x68\x65\x6C\x6C\x6F\x20\x77\x6F\x72\x6C\x64\x00\x00\x05\x00\x00\x00\x00"))
 
     def test_basic_from_dict(self):
         self.assertRaises(TypeError, BSON.from_dict, 100)
