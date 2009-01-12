@@ -482,5 +482,18 @@ class TestMongo(unittest.TestCase):
         db.test.remove({})
         self.assertFalse(db.test.find_one())
 
+    def test_save_a_bunch(self):
+        db = Mongo("test", self.host, self.port)
+        db.test.remove({})
+
+        for i in xrange(1000):
+            db.test.save({"x": i})
+
+        count = 0
+        for _ in db.test.find():
+            count += 1
+
+        self.assertEqual(1000, count)
+
 if __name__ == "__main__":
     unittest.main()
