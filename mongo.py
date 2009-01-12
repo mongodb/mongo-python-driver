@@ -238,6 +238,9 @@ class Collection(object):
         if isinstance(spec, ObjectId):
             spec = SON({"_id": spec})
 
+        if not isinstance(spec, (types.DictType, SON)):
+            raise TypeError("spec must be an instance of (dict, SON)")
+
         self._send_message(2006, "\x00\x00\x00\x00" + bson.BSON.from_dict(spec))
 
     def find_one(self, spec_or_object_id=SON()):
@@ -309,6 +312,7 @@ class Cursor(object):
 
         self.__data = []
         self.__id = None
+        self.__retrieved = 0
 
     def _refresh(self):
         """Refreshes the cursor with more data from Mongo.
@@ -319,34 +323,44 @@ class Cursor(object):
         if len(self.__data):
             return len(self.__data)
 
-        if self.__id is None:
-            # Query
-            message = ""
-            message += struct.pack("<i", self.__skip)
-            message += struct.pack("<i", self.__limit)
-            message += bson.BSON.from_dict(self.__spec)
-            if self.__fields:
-                message += bson.BSON.from_dict(self.__fields)
-
+        def send_message(operation, message):
             # TODO the send and receive here should be synchronized...
-            request_id = self.__collection._send_message(2004, message)
+            request_id = self.__collection._send_message(operation, message)
             response = self.__collection.database()._receive_message(1, request_id)
 
             # TODO handle non-zero response flags
             assert struct.unpack("<i", response[:4])[0] == 0
 
             self.__id = struct.unpack("<q", response[4:12])[0]
-
-            # starting from
-            assert struct.unpack("<i", response[12:16])[0] == self.__skip
+            assert struct.unpack("<i", response[12:16])[0] == self.__skip + self.__retrieved
 
             number_returned = struct.unpack("<i", response[16:20])[0]
+            self.__retrieved += number_returned
             self.__data = bson.to_dicts(response[20:])
             assert len(self.__data) == number_returned
 
-        else:
+        if self.__id is None:
+            # Query
+            message = struct.pack("<i", self.__skip)
+            message += struct.pack("<i", self.__limit)
+            message += bson.BSON.from_dict(self.__spec)
+            if self.__fields:
+                message += bson.BSON.from_dict(self.__fields)
+
+            send_message(2004, message)
+        elif self.__id != 0:
             # Get More
-            raise Exception("unimplemented...")
+            limit = 0
+            if self.__limit:
+                if self.__limit > self.__retrieved:
+                    limit = self.__limit - self.__retrieved
+                else:
+                    return 0
+
+            message = struct.pack("<i", limit)
+            message += struct.pack("<q", self.__id)
+
+            send_message(2005, message)
 
         return len(self.__data)
 
@@ -429,6 +443,32 @@ class TestMongo(unittest.TestCase):
         self.assertEqual(None, db.test.find_one(ObjectId()))
         self.assertEqual(a_doc, db.test.find_one({"hello": u"world"}))
         self.assertEqual(None, db.test.find_one({"hello": u"test"}))
+
+    def test_remove(self):
+        db = Mongo("test", self.host, self.port)
+        db.test.remove({})
+
+        self.assertRaises(TypeError, db.test.remove, 5)
+        self.assertRaises(TypeError, db.test.remove, "test")
+        self.assertRaises(TypeError, db.test.remove, [])
+
+        one = db.test.save({"x": 1})
+        two = db.test.save({"x": 2})
+        three = db.test.save({"x": 3})
+        length = 0
+        for _ in db.test.find():
+            length += 1
+        self.assertEqual (length, 3)
+
+        db.test.remove(one)
+        length = 0
+        for _ in db.test.find():
+            length += 1
+        self.assertEqual(length, 2)
+
+        db.test.remove(db.test.find_one())
+        db.test.remove(db.test.find_one())
+        self.assertEqual(db.test.find_one(), None)
 
 if __name__ == "__main__":
     unittest.main()
