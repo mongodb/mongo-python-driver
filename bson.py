@@ -219,7 +219,8 @@ def _get_binary(data):
 
 def _get_oid(data):
     _logger.debug("unpacking oid")
-    return (ObjectId(data[:12]), data[12:])
+    oid = _shuffle_oid(data[:12])
+    return (ObjectId(oid), data[12:])
 
 def _get_boolean(data):
     _logger.debug("unpacking boolean")
@@ -302,6 +303,9 @@ def _int_to_bson(int):
 def _int_64_to_bson(int):
     return struct.pack("<q", int)
 
+def _shuffle_oid(data):
+    return data[7::-1] + data[:7:-1]
+
 _RE_TYPE = type(_valid_array_name)
 def _value_to_bson(value):
     if isinstance(value, types.FloatType):
@@ -324,7 +328,7 @@ def _value_to_bson(value):
         return ("\x05", _int_to_bson(len(value)) + value)
     if isinstance(value, ObjectId):
         _logger.debug("packing oid")
-        return ("\x07", str(value))
+        return ("\x07", _shuffle_oid(str(value)))
     if isinstance(value, types.BooleanType):
         _logger.debug("packing boolean")
         if value:
@@ -356,7 +360,7 @@ def _value_to_bson(value):
         return ("\x0B", _make_c_string(pattern) + _make_c_string(flags))
     if isinstance(value, DBRef):
         _logger.debug("packing ref")
-        return ("\x0C", _make_c_string(value.collection()) + str(value.id()))
+        return ("\x0C", _make_c_string(value.collection()) + _shuffle_oid(str(value.id())))
     if isinstance(value, types.IntType):
         _logger.debug("packing int")
         return ("\x10", _int_to_bson(value))
@@ -509,9 +513,9 @@ class TestBSON(unittest.TestCase):
                          "\x16\x00\x00\x00\x0D\x24\x77\x68\x65\x72\x65\x00\x05\x00\x00\x00\x74\x65\x73\x74\x00\x00")
         a = ObjectId("\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0A\x0B")
         self.assertEqual(BSON.from_dict({"oid": a}),
-                         "\x16\x00\x00\x00\x07\x6F\x69\x64\x00\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0A\x0B\x00")
+                         "\x16\x00\x00\x00\x07\x6F\x69\x64\x00\x07\x06\x05\x04\x03\x02\x01\x00\x0B\x0A\x09\x08\x00")
         self.assertEqual(BSON.from_dict({"ref": DBRef("coll", a)}),
-                         "\x1B\x00\x00\x00\x0C\x72\x65\x66\x00\x63\x6F\x6C\x6C\x00\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0A\x0B\x00")
+                         "\x1B\x00\x00\x00\x0C\x72\x65\x66\x00\x63\x6F\x6C\x6C\x00\x07\x06\x05\x04\x03\x02\x01\x00\x0B\x0A\x09\x08\x00")
 
     def test_from_then_to_dict(self):
         def helper(dict):
@@ -554,7 +558,7 @@ class TestBSON(unittest.TestCase):
                 expected = f.read()
                 f.close()
 
-                self.assertEqual(bson, expected)
+                self.assertEqual(bson, expected, file)
             except IOError:
                 if generate:
                     print "generating .bson for %s" % file
