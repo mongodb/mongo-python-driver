@@ -31,6 +31,7 @@ class ObjectId(object):
         """Generate a new value for this ObjectId.
         """
         # TODO for now, just generate 12 random bytes. this will change when we decide on an _id algorithm...
+        self.__new = True
         id = ""
         for _ in range(12):
             id += chr(random.randint(0, 255))
@@ -46,6 +47,7 @@ class ObjectId(object):
         Arguments:
         - `id`: a valid ObjectId
         """
+        self.__new = False
         if isinstance(id, ObjectId):
             self.__id = id.__id
         elif isinstance(id, types.StringType):
@@ -66,6 +68,14 @@ class ObjectId(object):
         if isinstance(other, ObjectId):
             return cmp(self.__id, other.__id)
         return NotImplemented
+
+    def _use(self):
+        self.__new = False
+
+    def is_new(self):
+        """Return True if this ObjectId has not been used as an _id field.
+        """
+        return self.__new
 
 class TestObjectId(unittest.TestCase):
     def setUp(self):
@@ -95,6 +105,16 @@ class TestObjectId(unittest.TestCase):
         self.assertEqual(ObjectId("123456789012"), ObjectId("123456789012"))
         self.assertNotEqual(ObjectId(), ObjectId())
         self.assertNotEqual(ObjectId("123456789012"), "123456789012")
+
+    def test_new(self):
+        a = ObjectId()
+        b = ObjectId("123456789012")
+        self.assertTrue(a.is_new())
+        self.assertFalse(b.is_new())
+        a._use()
+        b._use()
+        self.assertFalse(a.is_new())
+        self.assertFalse(b.is_new())
 
 if __name__ == "__main__":
     unittest.main()
