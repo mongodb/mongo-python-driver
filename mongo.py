@@ -24,6 +24,7 @@ class InvalidCollection(ValueError):
 
 _ZERO = "\x00\x00\x00\x00"
 _ONE = "\x01\x00\x00\x00"
+_MAX_DYING_CURSORS = 20
 
 class Mongo(object):
     """A connection to a Mongo database.
@@ -52,6 +53,7 @@ class Mongo(object):
         self.__host = host
         self.__port = port
         self.__id = 1
+        self.__dying_cursors = []
 
         self.__connect()
 
@@ -75,10 +77,8 @@ class Mongo(object):
         - `operation`: the opcode of the message
         - `data`: the data to send
         """
-        to_send = ""
-
         # header
-        to_send += struct.pack("<i", 16 + len(data))
+        to_send = struct.pack("<i", 16 + len(data))
         to_send += struct.pack("<i", self.__id)
         self.__id += 1
         to_send += struct.pack("<i", 0) # responseTo
@@ -120,6 +120,17 @@ class Mongo(object):
         assert operation == struct.unpack("<i", header[12:])[0]
 
         return receive(length - 16)
+
+    def _kill_cursor(self, cursor_id):
+        self.__dying_cursors.append(cursor_id)
+
+        if len(self.__dying_cursors) > _MAX_DYING_CURSORS:
+            message = _ZERO
+            message += struct.pack("<i", len(self.__dying_cursors))
+            for cursor_id in self.__dying_cursors:
+                message += struct.pack("<q", cursor_id)
+            self._send_message(2007, message)
+            self.__dying_cursors = []
 
     def __cmp__(self, other):
         if isinstance(other, Mongo):
@@ -350,6 +361,17 @@ class Cursor(object):
         self.__data = []
         self.__id = None
         self.__retrieved = 0
+        self.__killed = False
+
+    def __del__(self):
+        if self.__id and not self.__killed:
+            self._die()
+
+    def _die(self):
+        """Kills this cursor.
+        """
+        self.__collection.database()._kill_cursor(self.__id)
+        self.__killed = True
 
     def _refresh(self):
         """Refreshes the cursor with more data from Mongo.
@@ -357,7 +379,7 @@ class Cursor(object):
         Returns the length of self.__data after refresh. Will exit early if
         self.__data is already non-empty.
         """
-        if len(self.__data):
+        if len(self.__data) or self.__killed:
             return len(self.__data)
 
         def send_message(operation, message):
@@ -392,14 +414,17 @@ class Cursor(object):
                 if self.__limit > self.__retrieved:
                     limit = self.__limit - self.__retrieved
                 else:
-                    return 0
+                    self._die()
 
             message = struct.pack("<i", limit)
             message += struct.pack("<q", self.__id)
 
             send_message(2005, message)
 
-        return len(self.__data)
+        length = len(self.__data)
+        if not length:
+            self._die()
+        return length
 
     def __iter__(self):
         return self
@@ -545,6 +570,11 @@ class TestMongo(unittest.TestCase):
             count += 1
 
         self.assertEqual(1000, count)
+
+        # test that kill cursors doesn't assert or anything
+        for _ in xrange(3 * _MAX_DYING_CURSORS + 2):
+            for _ in db.test.find():
+                break
 
 if __name__ == "__main__":
     unittest.main()
