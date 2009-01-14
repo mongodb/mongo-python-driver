@@ -901,5 +901,17 @@ class TestMongo(unittest.TestCase):
         desc = [i["x"] for i in db.test.find().sort([("x", DESCENDING)])]
         self.assertEqual(desc, expect)
 
+        expected = [(1, 5), (2, 5), (0, 3), (7, 3), (9, 2), (2, 1), (3, 1)]
+        shuffled = list(expected)
+        random.shuffle(shuffled)
+
+        db.test.remove({})
+        for (a, b) in shuffled:
+            db.test.save({"a": a, "b": b})
+
+        result = [(i["a"], i["b"]) for i in db.test.find().sort([("b", DESCENDING),
+                                                                 ("a", ASCENDING)])]
+        self.assertEqual(result, expected)
+
 if __name__ == "__main__":
     unittest.main()
