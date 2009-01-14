@@ -472,6 +472,22 @@ class Cursor(object):
         self.__limit = limit
         return self
 
+    def skip(self, skip):
+        """Skips the first `skip` results of this cursor.
+
+        Raises TypeError if skip is not an instance of int. Raises
+        InvalidOperation if this cursor has already been used.
+
+        Arguments:
+        - `skip`: the number of results to skip
+        """
+        if not isinstance(skip, types.IntType):
+            raise TypeError("skip must be an int")
+        self.__check_okay_to_chain()
+
+        self.__skip = skip
+        return self
+
     def _refresh(self):
         """Refreshes the cursor with more data from Mongo.
 
@@ -490,7 +506,7 @@ class Cursor(object):
             assert struct.unpack("<i", response[:4])[0] == 0
 
             self.__id = struct.unpack("<q", response[4:12])[0]
-            assert struct.unpack("<i", response[12:16])[0] == self.__skip + self.__retrieved
+            assert struct.unpack("<i", response[12:16])[0] == self.__retrieved
 
             number_returned = struct.unpack("<i", response[16:20])[0]
             self.__retrieved += number_returned
@@ -761,8 +777,49 @@ class TestMongo(unittest.TestCase):
             break
         self.assertRaises(InvalidOperation, a.limit, 5)
 
+    def test_limit(self):
+        db = Mongo("test", self.host, self.port)
 
+        self.assertRaises(TypeError, db.test.find().skip, None)
+        self.assertRaises(TypeError, db.test.find().skip, "hello")
+        self.assertRaises(TypeError, db.test.find().skip, 5.5)
 
+        db.test.remove({})
+        for i in range(100):
+            db.test.save({"x": i})
+
+        for i in db.test.find():
+            self.assertEqual(i["x"], 0)
+            break
+
+        for i in db.test.find().skip(20):
+            self.assertEqual(i["x"], 20)
+            break
+
+        for i in db.test.find().skip(99):
+            self.assertEqual(i["x"], 99)
+            break
+
+        for i in db.test.find().skip(1):
+            self.assertEqual(i["x"], 1)
+            break
+
+        for i in db.test.find().skip(0):
+            self.assertEqual(i["x"], 0)
+            break
+
+        for i in db.test.find().skip(0).skip(50).skip(10):
+            self.assertEqual(i["x"], 10)
+            break
+
+        for i in db.test.find().skip(1000):
+            self.fail()
+
+        a = db.test.find()
+        a.skip(10)
+        for _ in a:
+            break
+        self.assertRaises(InvalidOperation, a.skip, 5)
 
 if __name__ == "__main__":
     unittest.main()
