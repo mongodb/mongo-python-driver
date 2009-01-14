@@ -121,16 +121,19 @@ class Mongo(object):
 
         return receive(length - 16)
 
+    def _kill_cursors(self):
+        message = _ZERO
+        message += struct.pack("<i", len(self.__dying_cursors))
+        for cursor_id in self.__dying_cursors:
+            message += struct.pack("<q", cursor_id)
+        self._send_message(2007, message)
+        self.__dying_cursors = []
+
     def _kill_cursor(self, cursor_id):
         self.__dying_cursors.append(cursor_id)
 
         if len(self.__dying_cursors) > _MAX_DYING_CURSORS:
-            message = _ZERO
-            message += struct.pack("<i", len(self.__dying_cursors))
-            for cursor_id in self.__dying_cursors:
-                message += struct.pack("<q", cursor_id)
-            self._send_message(2007, message)
-            self.__dying_cursors = []
+            self._kill_cursors()
 
     def __cmp__(self, other):
         if isinstance(other, Mongo):
