@@ -8,6 +8,7 @@ import types
 import traceback
 import os
 import struct
+import random
 
 from son import SON
 import bson
@@ -434,6 +435,7 @@ class Cursor(object):
         self.__fields = fields
         self.__skip = skip
         self.__limit = limit
+        self.__ordering = None
 
         self.__data = []
         self.__id = None
@@ -449,6 +451,17 @@ class Cursor(object):
         """
         self.__collection.database()._kill_cursor(self.__id)
         self.__killed = True
+
+    def __query_spec(self):
+        """Get the spec to use for a query.
+
+        Just `self.__spec`, unless this cursor needs special query fields, like
+        orderby.
+        """
+        if not self.__ordering:
+            return self.__spec
+        return SON([("query", self.__spec),
+                    ("orderby", self.__ordering)])
 
     def __check_okay_to_chain(self):
         """Check if it is okay to chain more options onto this cursor.
@@ -488,6 +501,43 @@ class Cursor(object):
         self.__skip = skip
         return self
 
+    def sort(self, key_or_list, direction=None):
+        """Sorts this cursors results.
+
+        Takes either a single key and a direction, or a list of (key, direction)
+        pairs. The key(s) must be an instance of (str, unicode), and the
+        direction(s) must be one of (Mongo.ASCENDING, Mongo.DESCENDING).
+
+        Arguments:
+        - `key_or_list`: a single key or a list of (key, direction) pairs
+            specifying the keys to sort on
+        - `direction` (optional): must be included if key_or_list is a single
+            key, otherwise must be None
+        """
+        self.__check_okay_to_chain()
+
+        # TODO a lot of this logic could be shared with create_index()
+        if direction:
+            keys = [(key_or_list, direction)]
+        else:
+            keys = key_or_list
+
+        if not isinstance(keys, types.ListType):
+            raise TypeError("if no direction is specified, key_or_list must be an instance of list")
+        if not len(keys):
+            raise ValueError("key_or_list must not be the empty list")
+
+        orderby = SON()
+        for (key, value) in keys:
+            if not isinstance(key, types.StringTypes):
+                raise TypeError("first item in each key pair must be a string")
+            if not isinstance(value, types.IntType):
+                raise TypeError("second item in each key pair must be Mongo.ASCENDING or Mongo.DESCENDING")
+            orderby[key] = value
+
+        self.__ordering = orderby
+        return self
+
     def _refresh(self):
         """Refreshes the cursor with more data from Mongo.
 
@@ -517,7 +567,7 @@ class Cursor(object):
             # Query
             message = struct.pack("<i", self.__skip)
             message += struct.pack("<i", self.__limit)
-            message += bson.BSON.from_dict(self.__spec)
+            message += bson.BSON.from_dict(self.__query_spec())
             if self.__fields:
                 message += bson.BSON.from_dict(self.__fields)
 
@@ -820,6 +870,36 @@ class TestMongo(unittest.TestCase):
         for _ in a:
             break
         self.assertRaises(InvalidOperation, a.skip, 5)
+
+    def test_sort(self):
+        db = Mongo("test", self.host, self.port)
+
+        self.assertRaises(TypeError, db.test.find().sort, 5)
+        self.assertRaises(TypeError, db.test.find().sort, "hello")
+        self.assertRaises(ValueError, db.test.find().sort, [])
+        self.assertRaises(TypeError, db.test.find().sort, [], ASCENDING)
+        self.assertRaises(TypeError, db.test.find().sort, [("hello", DESCENDING)], DESCENDING)
+        self.assertRaises(TypeError, db.test.find().sort, "hello", "world")
+
+        db.test.remove({})
+
+        unsort = range(10)
+        random.shuffle(unsort)
+
+        for i in unsort:
+            db.test.save({"x": i})
+
+        asc = [i["x"] for i in db.test.find().sort("x", ASCENDING)]
+        self.assertEqual(asc, range(10))
+        asc = [i["x"] for i in db.test.find().sort([("x", ASCENDING)])]
+        self.assertEqual(asc, range(10))
+
+        expect = range(10)
+        expect.reverse()
+        desc = [i["x"] for i in db.test.find().sort("x", DESCENDING)]
+        self.assertEqual(desc, expect)
+        desc = [i["x"] for i in db.test.find().sort([("x", DESCENDING)])]
+        self.assertEqual(desc, expect)
 
 if __name__ == "__main__":
     unittest.main()
