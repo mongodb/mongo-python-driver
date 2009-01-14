@@ -14,6 +14,10 @@ import bson
 from objectid import ObjectId
 from dbref import DBRef
 
+class DatabaseException(Exception):
+    """Raised when a database operation fails.
+    """
+
 class ConnectionException(IOError):
     """Raised when a connection to the database cannot be made or is lost.
     """
@@ -25,6 +29,10 @@ class InvalidCollection(ValueError):
 _ZERO = "\x00\x00\x00\x00"
 _ONE = "\x01\x00\x00\x00"
 _MAX_DYING_CURSORS = 20
+_SYSTEM_INDEX_COLLECTION = "system.indexes"
+
+ASCENDING = 1
+DESCENDING = -1
 
 class Mongo(object):
     """A connection to a Mongo database.
@@ -121,6 +129,11 @@ class Mongo(object):
 
         return receive(length - 16)
 
+    def _command(self, command):
+        """Issue a DB command.
+        """
+        return self["$cmd"].find_one(command)
+
     def _kill_cursors(self):
         message = _ZERO
         message += struct.pack("<i", len(self.__dying_cursors))
@@ -177,13 +190,13 @@ class Collection(object):
 
         if not name or ".." in name:
             raise InvalidCollection("collection names cannot be empty")
-        if "$" in name:
+        if "$" in name and name not in ["$cmd"]:
             raise InvalidCollection("collection names must not contain '$'")
         if name[0] == "." or name[-1] == ".":
             raise InvalidCollection("collecion names must not start or end with '.'")
 
         self.__database = database
-        self.__collection_name = name
+        self.__collection_name = unicode(name)
 
     def __getattr__(self, name):
         """Get a sub-collection of this collection by name.
@@ -208,7 +221,7 @@ class Collection(object):
         return NotImplemented
 
     def _full_name(self):
-        return "%s.%s" % (self.__database.name(), self.__collection_name)
+        return u"%s.%s" % (self.__database.name(), self.__collection_name)
 
     def _send_message(self, operation, data):
         """Wrap up a message and send it.
@@ -222,31 +235,35 @@ class Collection(object):
     def database(self):
         return self.__database
 
-    def save(self, to_save):
+    def save(self, to_save, add_meta=True):
         """Save a SON object in this collection.
 
         Raises TypeError if to_save is not an instance of (dict, SON).
 
         Arguments:
         - `to_save`: the SON object to be saved
+        - `add_meta` (optional): add meta information (like _id) to the object
+            if it's missing
         """
         if not isinstance(to_save, (types.DictType, SON)):
             raise TypeError("cannot save object of type %s" % type(to_save))
 
         if "_id" in to_save:
             assert isinstance(to_save["_id"], ObjectId), "'_id' must be an ObjectId"
-        else:
+        elif add_meta:
             to_save["_id"] = ObjectId()
 
         # TODO possibly add _ns?
 
-        if to_save["_id"].is_new():
+        if "_id" not in to_save:
+            self._send_message(2002, bson.BSON.from_dict(to_save))
+        elif to_save["_id"].is_new():
             to_save["_id"]._use()
             self._send_message(2002, bson.BSON.from_dict(to_save))
         else:
             self._update({"_id": to_save["_id"]}, to_save, True)
 
-        return to_save["_id"]
+        return to_save.get("_id", None)
 
     def _update(self, spec, document, upsert=False):
         """Update an object(s) in this collection.
@@ -346,6 +363,59 @@ class Collection(object):
             return_fields[field] = 1
 
         return Cursor(self, spec, return_fields, skip, limit)
+
+    def _gen_index_name(self, keys):
+        """Generate an index name from the set of fields it is over.
+        """
+        return u"_".join([u"%s_%s" % item for item in keys])
+
+    def create_index(self, key_or_list, direction=None):
+        """Creates an index on this collection.
+
+        Takes either a single key and a direction, or a list of (key, direction)
+        pairs. The key(s) must be an instance of (str, unicode), and the
+        direction(s) must be one of (Mongo.ASCENDING, Mongo.DESCENDING).
+
+        Arguments:
+        - `key_or_list`: a single key or a list of (key, direction) pairs
+            specifying the index to ensure
+        - `direction` (optional): must be included if key_or_list is a single
+            key, otherwise must be None
+        """
+        if direction:
+            keys = [(key_or_list, direction)]
+        else:
+            keys = key_or_list
+
+        if not isinstance(keys, types.ListType):
+            raise TypeError("if no direction is specified, key_or_list must be an instance of list")
+        if not len(keys):
+            raise ValueError("key_or_list must not be the empty list")
+
+        to_save = SON()
+        to_save["name"] = self._gen_index_name(keys)
+        to_save["ns"] = self._full_name()
+
+        key_object = SON()
+        for (key, value) in keys:
+            if not isinstance(key, types.StringTypes):
+                raise TypeError("first item in each key pair must be a string")
+            if not isinstance(value, types.IntType):
+                raise TypeError("second item in each key pair must be Mongo.ASCENDING or Mongo.DESCENDING")
+            key_object[key] = value
+        to_save["key"] = key_object
+
+        self.__database[_SYSTEM_INDEX_COLLECTION].save(to_save, False)
+
+    def drop_indexes(self):
+        """Drops all indexes on this collection.
+        """
+        response = self.__database._command(SON([("deleteIndexes", self.__collection_name),
+                                                 ("index", u"*")]))
+        if response["ok"] != 1:
+            if response["errmsg"] == "ns not found":
+                return
+            raise DatabaseException("error dropping indexes: %s" % response["errmsg"])
 
 class Cursor(object):
     """A cursor / iterator over Mongo query results.
@@ -467,7 +537,7 @@ class TestMongo(unittest.TestCase):
         self.assertEqual(repr(Mongo("test", self.host, self.port)),
                          "Mongo('test', '%s', %s)" % (self.host, self.port))
         self.assertEqual(repr(Mongo("test", self.host, self.port).test),
-                         "Collection(Mongo('test', '%s', %s), 'test')" % (self.host, self.port))
+                         "Collection(Mongo('test', '%s', %s), u'test')" % (self.host, self.port))
 
     def test_collection(self):
         db = Mongo(u"test", self.host, self.port)
@@ -578,6 +648,45 @@ class TestMongo(unittest.TestCase):
         for _ in xrange(3 * _MAX_DYING_CURSORS + 2):
             for _ in db.test.find():
                 break
+
+    def test_create_index(self):
+        db = Mongo("test", self.host, self.port)
+
+        self.assertRaises(TypeError, db.test.create_index, 5)
+        self.assertRaises(TypeError, db.test.create_index, "hello")
+        self.assertRaises(ValueError, db.test.create_index, [])
+        self.assertRaises(TypeError, db.test.create_index, [], ASCENDING)
+        self.assertRaises(TypeError, db.test.create_index, [("hello", DESCENDING)], DESCENDING)
+        self.assertRaises(TypeError, db.test.create_index, "hello", "world")
+
+        db.test.drop_indexes()
+        self.assertFalse(db[_SYSTEM_INDEX_COLLECTION].find_one({"ns": u"test.test"}))
+
+        db.test.create_index("hello", ASCENDING)
+        db.test.create_index([("hello", DESCENDING), ("world", ASCENDING)])
+
+        count = 0
+        for _ in db[_SYSTEM_INDEX_COLLECTION].find({"ns": u"test.test"}):
+            count += 1
+        self.assertEqual(count, 2)
+
+        db.test.drop_indexes()
+        self.assertFalse(db[_SYSTEM_INDEX_COLLECTION].find_one({"ns": u"test.test"}))
+        db.test.create_index("hello", ASCENDING)
+        self.assertEqual(db[_SYSTEM_INDEX_COLLECTION].find_one({"ns": u"test.test"}),
+                         SON([(u"name", u"hello_1"),
+                              (u"ns", u"test.test"),
+                              (u"key", SON([(u"hello", 1)]))]))
+
+        db.test.drop_indexes()
+        self.assertFalse(db[_SYSTEM_INDEX_COLLECTION].find_one({"ns": u"test.test"}))
+        db.test.create_index([("hello", DESCENDING), ("world", ASCENDING)])
+        self.assertEqual(db[_SYSTEM_INDEX_COLLECTION].find_one({"ns": u"test.test"}),
+                         SON([(u"name", u"hello_-1_world_1"),
+                              (u"ns", u"test.test"),
+                              (u"key", SON([(u"hello", -1),
+                                            (u"world", 1)]))]))
+
 
 if __name__ == "__main__":
     unittest.main()
