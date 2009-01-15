@@ -653,7 +653,8 @@ class Cursor(object):
         """Refreshes the cursor with more data from Mongo.
 
         Returns the length of self.__data after refresh. Will exit early if
-        self.__data is already non-empty.
+        self.__data is already non-empty. Raises DatabaseException when the
+        cursor cannot be refreshed due to an error on the query.
         """
         if len(self.__data) or self.__killed:
             return len(self.__data)
@@ -663,8 +664,14 @@ class Cursor(object):
             request_id = self.__collection._send_message(operation, message)
             response = self.__collection.database()._receive_message(1, request_id)
 
-            # TODO handle non-zero response flags
-            assert struct.unpack("<i", response[:4])[0] == 0
+            response_flag = struct.unpack("<i", response[:4])[0]
+            if response_flag == 1:
+                raise DatabaseException("cursor id '%s' not valid at server" % self.__id)
+            elif response_flag == 2:
+                error_object = bson.to_dict(response[20:])
+                raise DatabaseException("database error: %s" % error_object["$err"])
+            else:
+                assert response_flag == 0
 
             self.__id = struct.unpack("<q", response[4:12])[0]
             assert struct.unpack("<i", response[12:16])[0] == self.__retrieved
