@@ -42,7 +42,6 @@ DESCENDING = -1
 class Mongo(object):
     """A connection to a Mongo database.
     """
-    # TODO auto_reference to go with auto_dereference
     def __init__(self, name, host="localhost", port=27017, settings={}):
         """Open a new connection to the database at host:port.
 
@@ -54,6 +53,8 @@ class Mongo(object):
         their default values (in parens), are listed below:
         - "auto_dereference" (False): automatically dereference any `DBRef`s
             contained within SON objects being returned from queries
+        - "auto_reference" (False): automatically create `DBRef`s out of any
+            sub-objects that have already been saved in the database
 
         Arguments:
         - `name`: the name of the database to connect to
@@ -77,6 +78,7 @@ class Mongo(object):
         self.__id = 1
         self.__dying_cursors = []
         self.__auto_dereference = settings.get("auto_dereference", False)
+        self.__auto_reference = settings.get("auto_reference", False)
 
         self.__connect()
 
@@ -197,7 +199,7 @@ class Mongo(object):
             raise TypeError("cannot dereference a %s" % type(dbref))
         return self[dbref.collection()].find_one(dbref.id())
 
-    def _fix(self, son):
+    def _fix_outgoing(self, son):
         """Fixes an object coming out of the database.
 
         Used to do things like auto dereferencing, if the option is enabled.
@@ -210,9 +212,12 @@ class Mongo(object):
 
         def fix_value(value):
             if isinstance(value, DBRef):
-                return self._fix(self.dereference(value))
+                deref = self.dereference(value)
+                if deref is None:
+                    return value
+                return self._fix_outgoing(deref)
             elif isinstance(value, (SON, types.DictType)):
-                return self._fix(value)
+                return self._fix_outgoing(value)
             elif isinstance(value, types.ListType):
                 return [fix_value(v) for v in value]
             return value
@@ -221,6 +226,43 @@ class Mongo(object):
             son[key] = fix_value(value)
 
         return son
+
+    def _fix_incoming(self, to_save, collection, add_meta):
+        """Fixes an object going in to the database.
+
+        Used to do things like auto referencing, if the option is enabled.
+        Will also add _id and _ns if they are missing and desired (as specified
+        by add_meta).
+
+        Arguments:
+        - `to_save`: a SON object going into the database
+        - `collection`: collection into which this object is being saved
+        - `add_meta`: should _id and other meta-fields be added to the object
+        """
+        if "_id" in to_save:
+            assert isinstance(to_save["_id"], ObjectId), "'_id' must be an ObjectId"
+        elif add_meta:
+            to_save["_id"] = ObjectId()
+
+        if add_meta:
+            to_save["_ns"] = collection._name()
+
+        if not self.__auto_reference:
+            return to_save
+
+        # make a copy, so only what is being saved gets auto-ref'ed
+        to_save = SON(to_save)
+
+        def fix_value(value):
+            if isinstance(value, (SON, types.DictType)):
+                if "_id" in value and not value["_id"].is_new() and "_ns" in value:
+                    return DBRef(value["_ns"], value["_id"])
+            return value
+
+        for (key, value) in to_save.items():
+            to_save[key] = fix_value(value)
+
+        return to_save
 
 class Collection(object):
     """A Mongo collection.
@@ -304,12 +346,7 @@ class Collection(object):
         if not isinstance(to_save, (types.DictType, SON)):
             raise TypeError("cannot save object of type %s" % type(to_save))
 
-        if "_id" in to_save:
-            assert isinstance(to_save["_id"], ObjectId), "'_id' must be an ObjectId"
-        elif add_meta:
-            to_save["_id"] = ObjectId()
-
-        # TODO possibly add _ns?
+        to_save = self.__database._fix_incoming(to_save, self, add_meta)
 
         if "_id" not in to_save:
             self._send_message(2002, bson.BSON.from_dict(to_save))
@@ -669,9 +706,9 @@ class Cursor(object):
 
     def next(self):
         if len(self.__data):
-            return self.__collection.database()._fix(self.__data.pop(0))
+            return self.__collection.database()._fix_outgoing(self.__data.pop(0))
         if self._refresh():
-            return self.__collection.database()._fix(self.__data.pop(0))
+            return self.__collection.database()._fix_outgoing(self.__data.pop(0))
         raise StopIteration
 
 class TestMongo(unittest.TestCase):
@@ -1034,33 +1071,65 @@ class TestMongo(unittest.TestCase):
 
     def test_auto_deref(self):
         db = Mongo("test", self.host, self.port)
-        db.test.remove({})
-        db.mike.remove({})
+        db.test.a.remove({})
+        db.test.b.remove({})
 
         a = {"hello": u"world"}
-        key = db.mike.save(a)
-        dbref = DBRef("mike", key)
+        key = db.test.b.save(a)
+        dbref = DBRef("test.b", key)
 
         self.assertEqual(db.dereference(dbref), a)
 
-        b = {"mike_obj": dbref}
-        db.test.save(b)
-        self.assertEqual(dbref, db.test.find_one()["mike_obj"])
-        self.assertEqual(a, db.dereference(db.test.find_one()["mike_obj"]))
+        b = {"b_obj": dbref}
+        db.test.a.save(b)
+        self.assertEqual(dbref, db.test.a.find_one()["b_obj"])
+        self.assertEqual(a, db.dereference(db.test.a.find_one()["b_obj"]))
 
         db = Mongo("test", self.host, self.port, {"auto_dereference": False})
-        self.assertEqual(dbref, db.test.find_one()["mike_obj"])
+        self.assertEqual(dbref, db.test.a.find_one()["b_obj"])
 
         db = Mongo("test", self.host, self.port, {"auto_dereference": True})
-        self.assertNotEqual(dbref, db.test.find_one()["mike_obj"])
-        self.assertEqual(a, db.test.find_one()["mike_obj"])
+        self.assertNotEqual(dbref, db.test.a.find_one()["b_obj"])
+        self.assertEqual(a, db.test.a.find_one()["b_obj"])
 
-        key2 = db.test.save({"x": [dbref]})
-        self.assertEqual(a, db.test.find_one(key2)["x"][0])
+        key2 = db.test.a.save({"x": [dbref]})
+        self.assertEqual(a, db.test.a.find_one(key2)["x"][0])
 
-        dbref2 = DBRef("test", key2)
-        key3 = db.mike.save({"x": dbref2})
-        self.assertEqual(a, db.mike.find_one(key3)["x"]["x"][0])
+        dbref2 = DBRef("test.a", key2)
+        key3 = db.test.b.save({"x": dbref2})
+        self.assertEqual(a, db.test.b.find_one(key3)["x"]["x"][0])
+
+        dbref = DBRef("test.c", ObjectId())
+        key = db.test.save({"x": dbref})
+        self.assertEqual(dbref, db.test.find_one(key)["x"])
+
+    def test_auto_ref(self):
+        db = Mongo("test", self.host, self.port)
+        db.test.a.remove({})
+        db.test.b.remove({})
+
+        a = SON({u"hello": u"world"})
+        db.test.a.save(a)
+        self.assertEqual(a["_ns"], "test.a")
+
+        b = SON({"ref?": a})
+        key = db.test.b.save(b)
+        self.assertEqual(b["_ns"], "test.b")
+        self.assertEqual(b["ref?"], a)
+        self.assertEqual(db.test.b.find_one(key)["ref?"], a)
+
+        db = Mongo("test", self.host, self.port, {"auto_reference": False})
+        key = db.test.b.save(b)
+        self.assertEqual(b["_ns"], "test.b")
+        self.assertEqual(b["ref?"], a)
+        self.assertEqual(db.test.b.find_one(key)["ref?"], a)
+
+        db = Mongo("test", self.host, self.port, {"auto_reference": True})
+        key = db.test.b.save(b)
+        self.assertEqual(b["_ns"], "test.b")
+        self.assertEqual(b["ref?"], a)
+        self.assertNotEqual(db.test.b.find_one(key)["ref?"], a)
+        self.assertEqual(db.dereference(db.test.b.find_one(key)["ref?"]), a)
 
 if __name__ == "__main__":
     unittest.main()
