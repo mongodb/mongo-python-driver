@@ -42,18 +42,25 @@ DESCENDING = -1
 class Mongo(object):
     """A connection to a Mongo database.
     """
-    def __init__(self, name, host="localhost", port=27017):
+    # TODO auto_reference to go with auto_dereference
+    def __init__(self, name, host="localhost", port=27017, settings={}):
         """Open a new connection to the database at host:port.
 
         Raises TypeError if name or host is not an instance of string or port is
         not an instance of int. Raises ConnectionException if the connection
         cannot be made.
 
+        Settings are passed in as a dictionary. Possible settings, along with
+        their default values (in parens), are listed below:
+        - "auto_dereference" (False): automatically dereference any `DBRef`s
+            contained within SON objects being returned from queries
+
         Arguments:
         - `name`: the name of the database to connect to
         - `host` (optional): the hostname or IPv4 address of the database to
             connect to
         - `port` (optional): the port number on which to connect
+        - `settings` (optional): a dictionary of settings
         """
         if not isinstance(name, types.StringTypes):
             raise TypeError("name must be an instance of (str, unicode)")
@@ -61,12 +68,15 @@ class Mongo(object):
             raise TypeError("host must be an instance of str")
         if not isinstance(port, types.IntType):
             raise TypeError("port must be an instance of int")
+        if not isinstance(settings, types.DictType):
+            raise TypeError("settings must be an instance of dict")
 
         self.__name = name
         self.__host = host
         self.__port = port
         self.__id = 1
         self.__dying_cursors = []
+        self.__auto_dereference = settings.get("auto_dereference", False)
 
         self.__connect()
 
@@ -657,6 +667,8 @@ class TestMongo(unittest.TestCase):
         self.assertRaises(TypeError, Mongo, "test", "localhost", 1.14)
         self.assertRaises(TypeError, Mongo, "test", "localhost", None)
         self.assertRaises(TypeError, Mongo, "test", "localhost", [])
+        self.assertRaises(TypeError, Mongo, "test", "localhost", 27017, "settings")
+        self.assertRaises(TypeError, Mongo, "test", "localhost", 27017, None)
 
         self.assertRaises(ConnectionException, Mongo, "test", "somedomainthatdoesntexist.org")
         self.assertRaises(ConnectionException, Mongo, "test", self.host, 123456789)
