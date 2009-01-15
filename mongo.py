@@ -1055,5 +1055,12 @@ class TestMongo(unittest.TestCase):
         self.assertNotEqual(dbref, db.test.find_one()["mike_obj"])
         self.assertEqual(a, db.test.find_one()["mike_obj"])
 
+        key2 = db.test.save({"x": [dbref]})
+        self.assertEqual(a, db.test.find_one(key2)["x"][0])
+
+        dbref2 = DBRef("test", key2)
+        key3 = db.mike.save({"x": dbref2})
+        self.assertEqual(a, db.mike.find_one(key3)["x"]["x"][0])
+
 if __name__ == "__main__":
     unittest.main()
