@@ -1073,6 +1073,7 @@ class TestMongo(unittest.TestCase):
         db = Mongo("test", self.host, self.port)
         db.test.a.remove({})
         db.test.b.remove({})
+        db.test.remove({})
 
         a = {"hello": u"world"}
         key = db.test.b.save(a)
@@ -1130,6 +1131,28 @@ class TestMongo(unittest.TestCase):
         self.assertEqual(b["ref?"], a)
         self.assertNotEqual(db.test.b.find_one(key)["ref?"], a)
         self.assertEqual(db.dereference(db.test.b.find_one(key)["ref?"]), a)
+
+    def test_auto_ref_and_deref(self):
+        db = Mongo("test", self.host, self.port, {"auto_reference": True, "auto_dereference": True})
+        db.test.a.remove({})
+        db.test.b.remove({})
+        db.test.c.remove({})
+
+        a = SON({"hello": u"world"})
+        b = SON({"test": a})
+        c = SON({"another test": b})
+
+        db.test.a.save(a)
+        db.test.b.save(b)
+        db.test.c.save(c)
+
+        self.assertEqual(db.test.a.find_one(), a)
+        self.assertEqual(db.test.b.find_one()["test"], a)
+        self.assertEqual(db.test.c.find_one()["another test"]["test"], a)
+        self.assertEqual(db.test.b.find_one(), b)
+        self.assertEqual(db.test.c.find_one()["another test"], b)
+        self.assertEqual(db.test.c.find_one(), c)
+
 
 if __name__ == "__main__":
     unittest.main()
