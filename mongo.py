@@ -1057,6 +1057,8 @@ class TestMongo(unittest.TestCase):
             break
         self.assertRaises(InvalidOperation, a.count)
 
+        self.assertEqual(0, db.test.acollectionthatdoesntexist.find().count())
+
     def test_deref(self):
         db = Mongo("test", self.host, self.port)
         db.test.remove({})
