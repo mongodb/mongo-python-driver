@@ -115,7 +115,7 @@ def _validate_regex(data):
 
 def _validate_ref(data):
     _logger.debug("validating ref")
-    (namespace, data) = _get_c_string(data)
+    data = _validate_string(data)
     return _validate_oid(data)
 
 _validate_code = _validate_string
@@ -257,7 +257,7 @@ def _get_regex(data):
 
 def _get_ref(data):
     _logger.debug("unpacking ref")
-    (collection, data) = _get_c_string(data)
+    (collection, data) = _get_c_string(data[4:])
     (oid, data) = _get_oid(data)
     return (DBRef(collection, oid), data)
 
@@ -361,7 +361,8 @@ def _value_to_bson(value):
         return ("\x0B", _make_c_string(pattern) + _make_c_string(flags))
     if isinstance(value, DBRef):
         _logger.debug("packing ref")
-        return ("\x0C", _make_c_string(value.collection()) + _shuffle_oid(str(value.id())))
+        ns = _make_c_string(value.collection())
+        return ("\x0C", _int_to_bson(len(ns)) + ns + _shuffle_oid(str(value.id())))
     if isinstance(value, types.IntType):
         _logger.debug("packing int")
         return ("\x10", _int_to_bson(value))
@@ -529,7 +530,7 @@ class TestBSON(unittest.TestCase):
         self.assertEqual(BSON.from_dict({"oid": a}),
                          "\x16\x00\x00\x00\x07\x6F\x69\x64\x00\x07\x06\x05\x04\x03\x02\x01\x00\x0B\x0A\x09\x08\x00")
         self.assertEqual(BSON.from_dict({"ref": DBRef("coll", a)}),
-                         "\x1B\x00\x00\x00\x0C\x72\x65\x66\x00\x63\x6F\x6C\x6C\x00\x07\x06\x05\x04\x03\x02\x01\x00\x0B\x0A\x09\x08\x00")
+                         "\x1F\x00\x00\x00\x0C\x72\x65\x66\x00\x05\x00\x00\x00\x63\x6F\x6C\x6C\x00\x07\x06\x05\x04\x03\x02\x01\x00\x0B\x0A\x09\x08\x00")
 
     def test_from_then_to_dict(self):
         def helper(dict):
