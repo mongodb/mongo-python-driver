@@ -1153,6 +1153,5 @@ class TestMongo(unittest.TestCase):
         self.assertEqual(db.test.c.find_one()["another test"], b)
         self.assertEqual(db.test.c.find_one(), c)
 
-
 if __name__ == "__main__":
     unittest.main()
