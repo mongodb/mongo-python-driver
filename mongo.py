@@ -228,6 +228,9 @@ class Collection(object):
     def _full_name(self):
         return u"%s.%s" % (self.__database.name(), self.__collection_name)
 
+    def _name(self):
+        return self.__collection_name
+
     def _send_message(self, operation, data):
         """Wrap up a message and send it.
         """
@@ -414,6 +417,9 @@ class Collection(object):
 
     def drop_indexes(self):
         """Drops all indexes on this collection.
+
+        Can be used on non-existant collections or collections with no indexes.
+        Raises DatabaseException on an error.
         """
         response = self.__database._command(SON([("deleteIndexes", self.__collection_name),
                                                  ("index", u"*")]))
@@ -506,7 +512,8 @@ class Cursor(object):
 
         Takes either a single key and a direction, or a list of (key, direction)
         pairs. The key(s) must be an instance of (str, unicode), and the
-        direction(s) must be one of (Mongo.ASCENDING, Mongo.DESCENDING).
+        direction(s) must be one of (Mongo.ASCENDING, Mongo.DESCENDING). Raises
+        InvalidOperation if this cursor has already been used.
 
         Arguments:
         - `key_or_list`: a single key or a list of (key, direction) pairs
@@ -537,6 +544,23 @@ class Cursor(object):
 
         self.__ordering = orderby
         return self
+
+    def count(self):
+        """Get the size of the results set for this query.
+
+        Returns the number of objects in the results set for this query. Does
+        not take limit and skip into account. Raises Invalid Operation if this
+        cursor has already been used. Raises DatabaseException on a database
+        error.
+        """
+        self.__check_okay_to_chain()
+
+        command = SON([("count", self.__collection._name()),
+                       ("query", self.__spec)])
+        response = self.__collection.database()._command(command)
+        if response["ok"] != 1:
+            raise DatabaseException("error getting count")
+        return int(response["n"])
 
     def _refresh(self):
         """Refreshes the cursor with more data from Mongo.
@@ -920,6 +944,29 @@ class TestMongo(unittest.TestCase):
         for _ in a:
             break
         self.assertRaises(InvalidOperation, a.sort, "x", ASCENDING)
+
+    def test_count(self):
+        db = Mongo("test", self.host, self.port)
+        db.test.remove({})
+
+        self.assertEqual(0, db.test.find().count())
+
+        for i in range(10):
+            db.test.save({"x": i})
+
+        self.assertEqual(10, db.test.find().count())
+        self.assertTrue(isinstance(db.test.find().count(), types.IntType))
+        self.assertEqual(10, db.test.find().limit(5).count())
+        self.assertEqual(10, db.test.find().skip(5).count())
+
+        self.assertEqual(1, db.test.find({"x": 1}).count())
+        self.assertEqual(5, db.test.find({"x": {"$lt": 5}}).count())
+
+        a = db.test.find()
+        b = a.count()
+        for _ in a:
+            break
+        self.assertRaises(InvalidOperation, a.count)
 
 if __name__ == "__main__":
     unittest.main()
