@@ -174,6 +174,19 @@ class Mongo(object):
     def __getitem__(self, name):
         return self.__getattr__(name)
 
+    def dereference(self, dbref):
+        """Dereference a DBRef, getting the SON object it points to.
+
+        Raises TypeError if dbref is not an instance of DBRef. Returns a SON
+        object or None if the reference does not point to a valid object.
+
+        Arguments:
+        - `dbref`: the reference
+        """
+        if not isinstance(dbref, DBRef):
+            raise TypeError("cannot dereference a %s" % type(dbref))
+        return self[dbref.collection()].find_one(dbref.id())
+
 class Collection(object):
     """A Mongo collection.
     """
@@ -967,6 +980,20 @@ class TestMongo(unittest.TestCase):
         for _ in a:
             break
         self.assertRaises(InvalidOperation, a.count)
+
+    def test_deref(self):
+        db = Mongo("test", self.host, self.port)
+        db.test.remove({})
+
+        self.assertRaises(TypeError, db.dereference, 5)
+        self.assertRaises(TypeError, db.dereference, "hello")
+        self.assertRaises(TypeError, db.dereference, None)
+
+        self.assertEqual(None, db.dereference(DBRef("test", ObjectId())))
+
+        obj = {"x": True}
+        key = db.test.save(obj)
+        self.assertEqual(obj, db.dereference(DBRef("test", key)))
 
 if __name__ == "__main__":
     unittest.main()
