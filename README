@@ -30,6 +30,9 @@ SON([(u'x', 10), (u'_id', ObjectId('\xe8\xc6M\x89+\xf3\x9b\xc0D\x10\xca\xe7'))])
 8
 11
 
+>>> # NOTE this is currently a heavy-weight operation
+...
+
 >>> db.my_collection.create_index("x", mongo.ASCENDING)
 
 >>> for item in db.my_collection.find().sort("x", mongo.ASCENDING):
