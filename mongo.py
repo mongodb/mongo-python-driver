@@ -644,7 +644,9 @@ class Cursor(object):
                        ("query", self.__spec)])
         response = self.__collection.database()._command(command)
         if response["ok"] != 1:
-            raise DatabaseException("error getting count")
+            if response["errmsg"] == "ns does not exist":
+                return 0
+            raise DatabaseException("error getting count: %s" % response["errmsg"])
         return int(response["n"])
 
     def _refresh(self):
