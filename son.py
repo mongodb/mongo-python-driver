@@ -4,14 +4,17 @@ Regular dictionaries can be used instead of SON objects, but not when the order
 of keys is important."""
 
 import unittest
-from UserDict import DictMixin
-from xml.parsers import expat
-from objectid import ObjectId
-from dbref import DBRef
 import datetime
 import re
 import binascii
 import base64
+from UserDict import DictMixin
+
+import ElementTree as ET
+from objectid import ObjectId
+from dbref import DBRef
+
+
 
 class UnsupportedType(ValueError):
     """Raised when trying to convert an unsupported type to SON.
@@ -84,153 +87,99 @@ class SON(DictMixin):
     def from_xml(cls, xml):
         """Create an instance of SON from an xml document.
         """
-        parser = expat.ParserCreate()
-        son_stack = []
-        list_stack = []
-        append_to = []
-        info = {}
-        extra = {}
-
         def pad(list, index):
             while index >= len(list):
                 list.append(None)
 
-        def get(key):
-            try:
-                if append_to[-1] == "array":
-                    return list_stack[-1][int(key)]
-                else:
-                    return son_stack[-1][key]
-            except:
-                return None
-
-        def set(key, value, reset=False):
-            if append_to[-1] == "array":
+        def make_array(array):
+            doc = make_doc(array)
+            list = []
+            for (key, value) in doc.items():
                 index = int(key)
-                pad(list_stack[-1], index)
-                if get(key) is None or reset:
-                    list_stack[-1][int(key)] = value
-                else:
-                    list_stack[-1][int(key)] = get(key) + value
-            else:
-                if get(key) is None or reset:
-                    son_stack[-1][key] = value
-                else:
-                    son_stack[-1][key] = get(key) + value
+                pad(list, index)
+                list[index] = value
+            return list
 
-        def start_element(name, attributes):
-            info["current"] = name
-            if name == "doc":
-                a = SON()
-                if attributes.has_key("name"):
-                    set(attributes["name"], a)
-                son_stack.append(a)
-                append_to.append("doc")
-            elif name == "array":
-                a = []
-                set(attributes["name"], a)
-                list_stack.append(a)
-                append_to.append("array")
-            elif name in ["int", "string", "boolean", "number", "date", "code", "regex", "binary"]:
-                info["key"] = attributes["name"]
-            elif name == "ref":
-                info["key"] = attributes["name"]
-                info["ref"] = True
-            elif name == "oid":
-                if not info.get("ref", False):
-                    info["key"] = attributes["name"]
-            elif name == "null":
-                set(attributes["name"], None)
-            elif name in ["undefined", "symbol"]:
-                raise UnsupportedType("unsupported xson element: %s" % name)
+        def make_string(string):
+            return string.text is not None and unicode(string.text) or u""
 
-            if name in ["string", "code", "ns", "pattern", "options", "binary"]:
-                info["empty"] = True
+        def make_binary(binary):
+            return binary.text is not None and base64.b64decode(binary.text) or ""
 
-        def end_element(name):
-            if name == "doc":
-                append_to.pop()
-                info["last"] = son_stack.pop()
-            elif name == "array":
-                append_to.pop()
-                info["array"] = False
-                list_stack.pop()
-            elif name == "ref":
-                set(info["key"], DBRef(extra["ns"], extra["oid"]))
-                info["ref"] = False
-            elif name == "regex":
-                set(info["key"], re.compile(extra["pattern"], extra["options"]))
+        def make_boolean(bool):
+            return bool.text == "true"
 
-            if info.get("empty", False):
-                if info["current"] == "string":
-                    set(info["key"], u"")
-                elif info["current"] in ["code", "binary"]:
-                    set(info["key"], "")
-                elif info["current"] in ["ns", "pattern"]:
-                    extra[info["current"]] = u""
-                elif info["current"] == "options":
-                    extra["options"] = 0
-                info["empty"] = False
+        def make_date(date):
+            return datetime.datetime.fromtimestamp(float(date.text) / 1000.0)
 
-            if name == "binary":
-                if get(info["key"]) is None:
-                    set(info["key"], "")
-                else:
-                    set(info["key"], base64.b64decode(get(info["key"])), True)
+        def make_ref(dbref):
+            return DBRef(make_elem(dbref[0]), make_elem(dbref[1]))
 
-        def char_data(data):
-            data = data.strip()
-            if not data:
-                return
+        def make_oid(oid):
+            return ObjectId(binascii.unhexlify(oid.text))
 
-            info["empty"] = False
+        def make_int(data):
+            return int(data.text)
 
-            if info["current"] == "oid":
-                oid = ObjectId(binascii.unhexlify(data))
-                if info.get("ref", False):
-                    extra["oid"] = oid
-                else:
-                    set(info["key"], oid)
-            elif info["current"] == "int":
-                set(info["key"], int(data))
-            elif info["current"] == "string":
-                set(info["key"], data)
-            elif info["current"] == "code":
-                set(info["key"], data.encode("utf-8"))
-            elif info["current"] == "binary":
-                set(info["key"], data)
-            elif info["current"] == "boolean":
-                set(info["key"], data == "true")
-            elif info["current"] == "number":
-                set(info["key"], float(data))
-            elif info["current"] == "date":
-                set(info["key"], datetime.datetime.fromtimestamp(float(data) / 1000.0))
-            elif info["current"] == "ns":
-                extra["ns"] = data
-            elif info["current"] == "pattern":
-                extra["pattern"] = data
-            elif info["current"] == "options":
-                options = 0
-                if "i" in data:
-                    options |= re.IGNORECASE
-                if "l" in data:
-                    options |= re.LOCALE
-                if "m" in data:
-                    options |= re.MULTILINE
-                if "s" in data:
-                    options |= re.DOTALL
-                if "u" in data:
-                    options |= re.UNICODE
-                if "x" in data:
-                    options |= re.VERBOSE
-                extra["options"] = options
+        def make_null(null):
+            return None
 
-        parser.StartElementHandler = start_element
-        parser.EndElementHandler = end_element
-        parser.CharacterDataHandler = char_data
+        def make_number(number):
+            return float(number.text)
 
-        parser.Parse(xml)
-        return info["last"]
+        def make_regex(regex):
+            return re.compile(make_elem(regex[0]), make_elem(regex[1]))
+
+        def make_options(data):
+            options = 0
+            if not data.text:
+                return options
+            if "i" in data.text:
+                options |= re.IGNORECASE
+            if "l" in data.text:
+                options |= re.LOCALE
+            if "m" in data.text:
+                options |= re.MULTILINE
+            if "s" in data.text:
+                options |= re.DOTALL
+            if "u" in data.text:
+                options |= re.UNICODE
+            if "x" in data.text:
+                options |= re.VERBOSE
+            return options
+
+        def make_elem(elem):
+            try:
+                return {"array": make_array,
+                        "doc": make_doc,
+                        "string": make_string,
+                        "binary": make_binary,
+                        "boolean": make_boolean,
+                        "code": make_string,
+                        "date": make_date,
+                        "ref": make_ref,
+                        "ns": make_string,
+                        "oid": make_oid,
+                        "int": make_int,
+                        "null": make_null,
+                        "number": make_number,
+                        "regex": make_regex,
+                        "pattern": make_string,
+                        "options": make_options,
+                        }[elem.tag](elem)
+            except KeyError:
+                raise UnsupportedType("cannot parse tag: %s" % elem.tag)
+
+        def make_doc(doc):
+            son = SON()
+            for elem in doc:
+                son[elem.attrib["name"]] = make_elem(elem)
+            return son
+
+        tree = ET.XML(xml)
+        doc = tree[1]
+
+        return make_doc(doc)
 
 class TestSON(unittest.TestCase):
     def setUp(self):

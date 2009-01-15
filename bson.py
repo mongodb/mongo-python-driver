@@ -11,6 +11,7 @@ import datetime
 import time
 import logging
 import glob
+import sys
 
 from test import test_data, qcheck
 from objectid import ObjectId
@@ -549,7 +550,7 @@ class TestBSON(unittest.TestCase):
 
     def test_data_files(self):
         # TODO don't hardcode this, actually clone the repo
-        data_files = "../mongo-qa/modules/bson_tests/*/*.xson"
+        data_files = "../mongo-qa/modules/bson_tests/tests/*/*.xson"
         generate = True
 
         for file in glob.iglob(data_files):
@@ -561,10 +562,10 @@ class TestBSON(unittest.TestCase):
                 doc = son.SON.from_xml(xml)
                 bson = BSON.from_dict(doc)
             except son.UnsupportedType:
-                print "skipped file %s" % file
+                print "skipped file %s: %s" % (file, sys.exc_info()[1])
                 continue
             except:
-                print "failed to parse %s" % file
+                print "failed to parse %s: %s" % (file, sys.exc_info()[1])
                 continue
 
             try:
