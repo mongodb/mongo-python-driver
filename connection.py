@@ -4,12 +4,9 @@ import socket
 import struct
 import types
 import traceback
-import os
-import unittest
 
-class ConnectionFailed(IOError):
-    """Raised when a connection to the database cannot be made or is lost.
-    """
+from errors import ConnectionFailure, InvalidName
+from database import Database
 
 class Connection(object):
     """A connection to Mongo.
@@ -18,7 +15,7 @@ class Connection(object):
         """Open a new connection to the database at host:port.
 
         Raises TypeError if host is not an instance of string or port is not an
-        instance of int. Raises ConnectionFailed if the connection cannot be
+        instance of int. Raises ConnectionFailure if the connection cannot be
         made.
 
         Arguments:
@@ -36,20 +33,30 @@ class Connection(object):
 
         self.__connect()
 
+    def host(self):
+        """Get the connection host.
+        """
+        return self.__host
+
+    def port(self):
+        """Get the connection port.
+        """
+        return self.__port
+
     def __connect(self):
         """(Re-)connect to Mongo."""
         try:
             self.__socket = socket.socket()
             self.__socket.connect((self.__host, self.__port))
         except socket.error:
-            raise ConnectionFailed("could not connect to %s:%s, got: %s" %
-                                   (self.__host, self.__port,
-                                    traceback.format_exc()))
+            raise ConnectionFailure("could not connect to %s:%s, got: %s" %
+                                    (self.__host, self.__port,
+                                     traceback.format_exc()))
 
     def send_message(self, operation, data):
         """Say something to Mongo.
 
-        Raises ConnectionFailed if the message cannot be sent. Returns the
+        Raises ConnectionFailure if the message cannot be sent. Returns the
         request id of the sent message.
 
         Arguments:
@@ -69,7 +76,7 @@ class Connection(object):
         while total_sent < len(to_send):
             sent = self.__socket.send(to_send[total_sent:])
             if sent == 0:
-                raise ConnectionFailed("connection closed")
+                raise ConnectionFailure("connection closed")
             total_sent += sent
 
         return self.__id - 1
@@ -90,7 +97,7 @@ class Connection(object):
             while len(message) < length:
                 chunk = self.__socket.recv(length - len(message))
                 if chunk == "":
-                    raise ConnectionFailed("connection closed")
+                    raise ConnectionFailure("connection closed")
                 message += chunk
             return message
 
@@ -109,26 +116,37 @@ class Connection(object):
     def __repr__(self):
         return "Connection(%r, %r)" % (self.__host, self.__port)
 
-class TestConnection(unittest.TestCase):
-    def setUp(self):
-        self.host = os.environ.get("db_ip", "localhost")
-        self.port = int(os.environ.get("db_port", 27017))
+    def __getattr__(self, name):
+        """Get a database by name.
 
-    def test_types(self):
-        self.assertRaises(TypeError, Connection, 1)
-        self.assertRaises(TypeError, Connection, 1.14)
-        self.assertRaises(TypeError, Connection, None)
-        self.assertRaises(TypeError, Connection, [])
-        self.assertRaises(TypeError, Connection, "localhost", "27017")
-        self.assertRaises(TypeError, Connection, "localhost", 1.14)
-        self.assertRaises(TypeError, Connection, "localhost", None)
-        self.assertRaises(TypeError, Connection, "localhost", [])
+        Raises InvalidName if an invalid database name is used.
 
-    def test_connect(self):
-        self.assertRaises(ConnectionFailed, Connection, "somedomainthatdoesntexist.org")
-        self.assertRaises(ConnectionFailed, Connection, self.host, 123456789)
+        Arguments:
+        - `name`: the name of the database to get
+        """
+        return Database(self, name)
 
-        self.assertTrue(Connection(self.host, self.port))
+    def __getitem__(self, name):
+        """Get a database by name.
 
-if __name__ == "__main__":
-    unittest.main()
+        Raises InvalidName if an invalid database name is used.
+
+        Arguments:
+        - `name`: the name of the database to get
+        """
+        return self.__getattr__(name)
+
+    # TODO implement and test this
+    def database_names(self):
+        """Get a list of all database names.
+        """
+        raise Exception("unimplemented")
+
+    # TODO implement and test this
+    def drop_database(self, name_or_database):
+        """Drop a database.
+
+        Arguments:
+        - `name_or_database`: the name of a database to drop or the object itself
+        """
+        raise Exception("unimplemented")
