@@ -27,3 +27,7 @@ class InvalidDocument(ValueError):
 class UnsupportedTag(ValueError):
     """Raised when trying to parse an unsupported tag in an XML document.
     """
+
+class InvalidId(ValueError):
+    """Raised when trying to create an ObjectId from invalid data.
+    """
