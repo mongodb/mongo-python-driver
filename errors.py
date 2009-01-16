@@ -12,12 +12,8 @@ class InvalidOperation(Exception):
     """Raised when a client attempts to perform an invalid operation.
     """
 
-class InvalidDatabaseName(ValueError):
-    """Raised when an invalid database name is used.
-    """
-
-class InvalidCollectionName(ValueError):
-    """Raised when an invalid collection name is used.
+class InvalidName(ValueError):
+    """Raised when an invalid name is used.
     """
 
 class InvalidBSON(ValueError):
