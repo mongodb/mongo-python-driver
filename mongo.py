@@ -7,17 +7,17 @@ import types
 import traceback
 import struct
 
-from database import Database
+import database
 from connection import Connection
 from son import SON
 from objectid import ObjectId
 from dbref import DBRef
 from cursor_manager import BatchCursorManager
 
-ASCENDING = 1
-DESCENDING = -1
+ASCENDING = database.ASCENDING
+DESCENDING = database.DESCENDING
 
-class Mongo(Database):
+class Mongo(database.Database):
     """A connection to a Mongo database.
     """
     def __init__(self, name, host="localhost", port=27017, settings={}):
@@ -50,7 +50,7 @@ class Mongo(Database):
         connection = Connection(host, port)
         connection.set_cursor_manager(BatchCursorManager)
 
-        Database.__init__(self, connection, name)
+        database.Database.__init__(self, connection, name)
 
     def __repr__(self):
         return "Mongo(%r, %r, %r)" % (self.name(), self.connection().host(), self.connection().port())

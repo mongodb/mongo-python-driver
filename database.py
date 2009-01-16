@@ -5,6 +5,9 @@ import types
 from collection import Collection
 from errors import InvalidName
 
+ASCENDING = 1
+DESCENDING = -1
+
 class Database(object):
     """A Mongo database.
     """
