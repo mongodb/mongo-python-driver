@@ -1,6 +1,6 @@
 [epydoc]
 
-modules: __init__, bson, objectid, dbref, mongo, son
+modules: __init__, bson, collection, connection, cursor, database, dbref, errors, mongo, objectid, son
 output: html
 target: doc/
 verbosity: 1
