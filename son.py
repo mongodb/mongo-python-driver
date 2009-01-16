@@ -39,7 +39,7 @@ class SON(DictMixin):
             self.update(kwargs)
 
     def __merge_keys(self, keys):
-        self._keys.extend(keys)
+        self.__keys.extend(keys)
         newkeys = {}
         self.__keys = [newkeys.setdefault(x, x) for x in self.__keys if x not in newkeys]
 
@@ -55,7 +55,7 @@ class SON(DictMixin):
                 self.__merge_keys(data.iterkeys())
             else:
                 self.__merge_keys(data.keys())
-            self._data.update(data)
+            self.__data.update(data)
 
     def __getitem__(self, key):
         return self.__data[key]
@@ -88,12 +88,12 @@ class SON(DictMixin):
 
         def make_array(array):
             doc = make_doc(array)
-            list = []
+            array = []
             for (key, value) in doc.items():
                 index = int(key)
-                pad(list, index)
-                list[index] = value
-            return list
+                pad(array, index)
+                array[index] = value
+            return array
 
         def make_string(string):
             return string.text is not None and unicode(string.text) or u""
