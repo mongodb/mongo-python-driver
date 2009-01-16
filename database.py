@@ -74,6 +74,26 @@ class Database(object):
         """
         return self.__getattr__(name)
 
+    def _fix_outgoing(self, son, *args, **kwargs):
+        """Fix a SON object as it comes out of the database.
+
+        Override this in sub-classes to handle meta-data, etc.
+
+        Arguments:
+        - `son`: the son object coming out of the database
+        """
+        return son
+
+    def _fix_incoming(self, son, *args, **kwargs):
+        """Fix an incoming SON object before it gets stored.
+
+        Override this in sub-classes to do things like adding meta-data, etc.
+
+        Arguments:
+        - `son`: the son object coming out of the database
+        """
+        return son
+
     def _command(self, command):
         """Issue a DB command.
         """
