@@ -13,12 +13,7 @@ from UserDict import DictMixin
 import ElementTree as ET
 from objectid import ObjectId
 from dbref import DBRef
-
-
-
-class UnsupportedType(ValueError):
-    """Raised when trying to convert an unsupported type to SON.
-    """
+from errors import UnsupportedTag
 
 class SON(DictMixin):
     """SON data.
@@ -168,7 +163,7 @@ class SON(DictMixin):
                         "options": make_options,
                         }[elem.tag](elem)
             except KeyError:
-                raise UnsupportedType("cannot parse tag: %s" % elem.tag)
+                raise UnsupportedTag("cannot parse tag: %s" % elem.tag)
 
         def make_doc(doc):
             son = SON()

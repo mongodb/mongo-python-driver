@@ -16,27 +16,20 @@ import sys
 from test import test_data, qcheck
 from objectid import ObjectId
 from dbref import DBRef
-import son
+from son import SON
+from errors import InvalidBSON, InvalidDocument, UnsupportedTag
 
 _logger = logging.getLogger("mongo.bson")
 # _logger.setLevel(logging.DEBUG)
 # _logger.addHandler(logging.StreamHandler())
 
-class InvalidBSON(ValueError):
-    """Raised when trying to create a BSON object from invalid data.
-    """
-
-class InvalidDocument(ValueError):
-    """Raised when trying to create a BSON object from an invalid document.
-    """
-
 def _get_int(data):
     try:
-        int = struct.unpack("<i", data[:4])[0]
+        value = struct.unpack("<i", data[:4])[0]
     except struct.error:
         raise InvalidBSON()
 
-    return (int, data[4:])
+    return (value, data[4:])
 
 def _get_c_string(data):
     try:
@@ -177,13 +170,13 @@ def _validate_document(data, valid_name=None):
         raise InvalidBSON()
 
     assert obj_size <= len(data)
-    object = data[4:obj_size]
-    assert len(object)
+    obj = data[4:obj_size]
+    assert len(obj)
 
-    eoo = object[-1]
+    eoo = obj[-1]
     assert eoo == "\x00"
 
-    elements = object[:-1]
+    elements = obj[:-1]
     _validate_elements(elements, valid_name)
 
     return data[obj_size:]
@@ -202,12 +195,12 @@ def _get_object(data):
 
 def _get_array(data):
     _logger.debug("unpacking array")
-    (dict, data) = _get_object(data)
+    (obj, data) = _get_object(data)
     result = []
     i = 0
     while True:
         try:
-            result.append(dict[str(i)])
+            result.append(obj[str(i)])
             i += 1
         except KeyError:
             break
@@ -287,7 +280,7 @@ def _element_to_dict(data):
     return (element_name, value, data)
 
 def _elements_to_dict(data):
-    result = son.SON()
+    result = SON()
     while data:
         (key, value, data) = _element_to_dict(data)
         result[key] = value
@@ -317,12 +310,12 @@ def _value_to_bson(value):
         cstring = _make_c_string(value)
         length = _int_to_bson(len(cstring))
         return ("\x02", length + cstring)
-    if isinstance(value, (types.DictType, son.SON)):
+    if isinstance(value, (types.DictType, SON)):
         _logger.debug("packing object")
         return ("\x03", BSON.from_dict(value))
     if isinstance(value, types.ListType):
         _logger.debug("packing array")
-        as_dict = son.SON(zip([str(i) for i in range(len(value))], value))
+        as_dict = SON(zip([str(i) for i in range(len(value))], value))
         return ("\x04", BSON.from_dict(as_dict))
     if isinstance(value, types.StringType):
         _logger.debug("packing binary")
@@ -413,8 +406,8 @@ def to_dicts(data):
     """
     dicts = []
     while len(data):
-        (dict, data) = _document_to_dict(data)
-        dicts.append(dict)
+        (son, data) = _document_to_dict(data)
+        dicts.append(son)
     return dicts
 
 class BSON(str):
@@ -458,8 +451,8 @@ class BSON(str):
 
     def to_dict(self):
         """Get the dictionary representation of this data."""
-        (dict, _) = _document_to_dict(self)
-        return dict
+        (son, _) = _document_to_dict(self)
+        return son
 
 class TestBSON(unittest.TestCase):
     def setUp(self):
@@ -554,34 +547,34 @@ class TestBSON(unittest.TestCase):
         data_files = "../mongo-qa/modules/bson_tests/tests/*/*.xson"
         generate = True
 
-        for file in glob.iglob(data_files):
-            f = open(file, "r")
+        for file_name in glob.iglob(data_files):
+            f = open(file_name, "r")
             xml = f.read()
             f.close()
 
             try:
-                doc = son.SON.from_xml(xml)
+                doc = SON.from_xml(xml)
                 bson = BSON.from_dict(doc)
-            except son.UnsupportedType:
-                print "skipped file %s: %s" % (file, sys.exc_info()[1])
+            except UnsupportedTag:
+                print "skipped file %s: %s" % (file_name, sys.exc_info()[1])
                 continue
             except:
-                print "failed to parse %s: %s" % (file, sys.exc_info()[1])
+                print "failed to parse %s: %s" % (file_name, sys.exc_info()[1])
                 continue
 
             try:
-                f = open(file.replace(".xson", ".bson"), "r")
+                f = open(file_name.replace(".xson", ".bson"), "r")
                 expected = f.read()
                 f.close()
 
-                self.assertEqual(bson, expected, file)
-                self.assertEqual(doc, bson.to_dict(), file)
+                self.assertEqual(bson, expected, file_name)
+                self.assertEqual(doc, bson.to_dict(), file_name)
 
             except IOError:
                 if generate:
-                    print "generating .bson for %s" % file
+                    print "generating .bson for %s" % file_name
 
-                    f = open(file.replace(".xson", ".bson"), "w")
+                    f = open(file_name.replace(".xson", ".bson"), "w")
                     f.write(bson)
                     f.close()
 
