@@ -136,7 +136,7 @@ class Cursor(object):
 
         command = SON([("count", self.__collection._name()),
                        ("query", self.__spec)])
-        response = self.__collection.database().command(command)
+        response = self.__collection.database()._command(command)
         if response["ok"] != 1:
             if response["errmsg"] == "ns does not exist":
                 return 0

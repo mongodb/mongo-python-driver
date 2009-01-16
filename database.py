@@ -71,6 +71,11 @@ class Database(object):
         """
         return self.__getattr__(name)
 
+    def _command(self, command):
+        """Issue a DB command.
+        """
+        return self["$cmd"].find_one(command)
+
     def collection_names(self):
         """Get a list of all the collection names in this database.
         """

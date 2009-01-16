@@ -54,11 +54,6 @@ class Mongo(Database):
 
         Database.__init__(self, Connection(host, port), name)
 
-    def command(self, command):
-        """Issue a DB command.
-        """
-        return self["$cmd"].find_one(command)
-
     def _kill_cursors(self):
         message = "\x00\x00\x00\x00"
         message += struct.pack("<i", len(self.__dying_cursors))

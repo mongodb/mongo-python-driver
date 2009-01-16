@@ -251,7 +251,7 @@ class Collection(object):
         Can be used on non-existant collections or collections with no indexes.
         Raises OperationFailure on an error.
         """
-        response = self.__database.command(SON([("deleteIndexes", self.__collection_name),
+        response = self.__database._command(SON([("deleteIndexes", self.__collection_name),
                                                  ("index", u"*")]))
         if response["ok"] != 1:
             if response["errmsg"] == "ns not found":
