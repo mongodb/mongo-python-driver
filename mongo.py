@@ -12,8 +12,7 @@ from connection import Connection
 from son import SON
 from objectid import ObjectId
 from dbref import DBRef
-
-_MAX_DYING_CURSORS = 20
+from cursor_manager import BatchCursorManager
 
 ASCENDING = 1
 DESCENDING = -1
@@ -45,25 +44,13 @@ class Mongo(Database):
         if not isinstance(settings, types.DictType):
             raise TypeError("settings must be an instance of dict")
 
-        self.__dying_cursors = []
         self.__auto_dereference = settings.get("auto_dereference", False)
         self.__auto_reference = settings.get("auto_reference", False)
 
-        Database.__init__(self, Connection(host, port), name)
+        connection = Connection(host, port)
+        connection.set_cursor_manager(BatchCursorManager)
 
-    def _kill_cursors(self):
-        message = "\x00\x00\x00\x00"
-        message += struct.pack("<i", len(self.__dying_cursors))
-        for cursor_id in self.__dying_cursors:
-            message += struct.pack("<q", cursor_id)
-        self.connection().send_message(2007, message)
-        self.__dying_cursors = []
-
-    def _kill_cursor(self, cursor_id):
-        self.__dying_cursors.append(cursor_id)
-
-        if len(self.__dying_cursors) > _MAX_DYING_CURSORS:
-            self._kill_cursors()
+        Database.__init__(self, connection, name)
 
     def __repr__(self):
         return "Mongo(%r, %r, %r)" % (self.name(), self.connection().host(), self.connection().port())

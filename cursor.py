@@ -32,9 +32,9 @@ class Cursor(object):
             self.__die()
 
     def __die(self):
-        """Kills this cursor.
+        """Closes this cursor.
         """
-        self.__collection.database()._kill_cursor(self.__id)
+        self.__collection.database().connection().close_cursor(self.__id)
         self.__killed = True
 
     def __query_spec(self):

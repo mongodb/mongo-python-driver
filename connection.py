@@ -7,6 +7,7 @@ import traceback
 
 from errors import ConnectionFailure, InvalidName
 from database import Database
+from cursor_manager import CursorManager
 
 class Connection(object):
     """A connection to Mongo.
@@ -30,8 +31,23 @@ class Connection(object):
         self.__host = host
         self.__port = port
         self.__id = 1
+        self.__cursor_manager = CursorManager(self)
 
         self.__connect()
+
+    def set_cursor_manager(self, manager_class):
+        """Set this connections cursor manager.
+
+        Raises TypeError if manager_class is not a subclass of CursorManager. A
+        cursor manager handles closing cursors. Different managers can implement
+        different policies in terms of when to actually kill a cursor that has
+        been closed.
+        """
+        manager = manager_class(self)
+        if not isinstance(manager, CursorManager):
+            raise TypeError("manager_class must be a subclass of CursorManager")
+
+        self.__cursor_manager = manager
 
     def host(self):
         """Get the connection host.
@@ -135,6 +151,37 @@ class Connection(object):
         - `name`: the name of the database to get
         """
         return self.__getattr__(name)
+
+    def close_cursor(self, cursor_id):
+        """Close a single database cursor.
+
+        Raises TypeError if cursor_id is not an instance of (int, long). What
+        closing the cursor actually means depends on this connection's cursor
+        manager.
+
+        Arguments:
+        - `cursor_id`: cursor id to close
+        """
+        if not isinstance(cursor_id, (types.IntType, types.LongType)):
+            raise TypeError("cursor_id must be an instance of (int, long)")
+
+        self.__cursor_manager.close(cursor_id)
+
+    def kill_cursors(self, cursor_ids):
+        """Kill database cursors with the given ids.
+
+        Raises TypeError if cursor_ids is not an instance of list.
+
+        Arguments:
+        - `cursor_ids`: list of cursor ids to kill
+        """
+        if not isinstance(cursor_ids, types.ListType):
+            raise TypeError("cursor_ids must be a list")
+        message = "\x00\x00\x00\x00"
+        message += struct.pack("<i", len(cursor_ids))
+        for cursor_id in cursor_ids:
+            message += struct.pack("<q", cursor_id)
+        self.send_message(2007, message)
 
     # TODO implement and test this
     def database_names(self):

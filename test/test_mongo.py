@@ -10,7 +10,7 @@ from dbref import DBRef
 from son import SON
 from errors import InvalidOperation, ConnectionFailure
 from collection import SYSTEM_INDEX_COLLECTION
-from mongo import Mongo, ASCENDING, DESCENDING, _MAX_DYING_CURSORS
+from mongo import Mongo, ASCENDING, DESCENDING
 
 class TestMongo(unittest.TestCase):
     def setUp(self):
@@ -124,7 +124,7 @@ class TestMongo(unittest.TestCase):
         self.assertEqual(1000, count)
 
         # test that kill cursors doesn't assert or anything
-        for _ in xrange(3 * _MAX_DYING_CURSORS + 2):
+        for _ in xrange(62):
             for _ in db.test.find():
                 break
 
