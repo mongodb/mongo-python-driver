@@ -6,15 +6,12 @@ import socket
 import types
 import traceback
 import struct
-import random
 
 from database import Database
 from connection import Connection
 from son import SON
 from objectid import ObjectId
 from dbref import DBRef
-from errors import ConnectionFailure, InvalidOperation
-from collection import SYSTEM_INDEX_COLLECTION
 
 _MAX_DYING_CURSORS = 20
 
