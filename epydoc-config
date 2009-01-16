@@ -1,0 +1,15 @@
+[epydoc]
+
+modules: __init__, bson, objectid, dbref, mongo, son
+output: html
+target: doc/
+verbosity: 1
+debug: 1
+
+docformat: reStructuredText
+inheritance: grouped
+private: no
+imports: no
+
+name: Python Mongo Driver
+url: http://github.com/mongodb/mongo-python-driver/tree/master
