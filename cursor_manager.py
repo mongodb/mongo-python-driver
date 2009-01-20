@@ -29,7 +29,6 @@ class CursorManager(object):
         if not isinstance(cursor_id, (types.IntType, types.LongType)):
             raise TypeError("cursor_id must be an instance of (int, long)")
 
-        print "killing cursors"
         self.__connection.kill_cursors([cursor_id])
 
 class BatchCursorManager(CursorManager):
@@ -66,6 +65,5 @@ class BatchCursorManager(CursorManager):
         self.__dying_cursors.append(cursor_id)
 
         if len(self.__dying_cursors) > self.__max_dying_cursors:
-            print "killing cursors"
             self.__connection.kill_cursors(self.__dying_cursors)
             self.__dying_cursors = []
