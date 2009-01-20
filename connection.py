@@ -5,7 +5,7 @@ import struct
 import types
 import traceback
 
-from errors import ConnectionFailure, InvalidName
+from errors import ConnectionFailure, InvalidName, OperationFailure
 from database import Database
 from cursor_manager import CursorManager
 
@@ -183,11 +183,19 @@ class Connection(object):
             message += struct.pack("<q", cursor_id)
         self.send_message(2007, message)
 
-    # TODO implement and test this
+    def __database_info(self):
+        """Get a dictionary of (database_name: size_on_disk).
+        """
+        result = self.admin._command({"listDatabases": 1})
+        if result["ok"] != 1:
+            raise OperationFailure("failed to get database names")
+        info = result["databases"]
+        return dict([(db["name"], db["sizeOnDisk"]) for db in info])
+
     def database_names(self):
         """Get a list of all database names.
         """
-        raise Exception("unimplemented")
+        return self.__database_info().keys()
 
     # TODO implement and test this
     def drop_database(self, name_or_database):

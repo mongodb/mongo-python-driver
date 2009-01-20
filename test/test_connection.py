@@ -57,5 +57,15 @@ class TestConnection(unittest.TestCase):
         self.assertEqual(connection.test, connection["test"])
         self.assertEqual(connection.test, Database(connection, "test"))
 
+    def test_database_names(self):
+        connection = Connection(self.host, self.port)
+
+        connection.test.test.save({"dummy": "object"})
+        connection.test_mike.test.save({"dummy": "object"})
+
+        dbs = connection.database_names()
+        self.assertTrue("test" in dbs)
+        self.assertTrue("test_mike" in dbs)
+
 if __name__ == "__main__":
     unittest.main()
