@@ -47,6 +47,27 @@ class TestDatabase(unittest.TestCase):
         for coll in colls:
             self.assertTrue("$" not in coll)
 
+    def test_drop_collection(self):
+        db = Database(self.connection, "test")
+
+        self.assertRaises(TypeError, db.drop_collection, 5)
+        self.assertRaises(TypeError, db.drop_collection, None)
+
+        db.test.save({"dummy": u"object"})
+        self.assertTrue("test" in db.collection_names())
+        db.drop_collection("test")
+        self.assertFalse("test" in db.collection_names())
+
+        db.test.save({"dummy": u"object"})
+        self.assertTrue("test" in db.collection_names())
+        db.drop_collection(u"test")
+        self.assertFalse("test" in db.collection_names())
+
+        db.test.save({"dummy": u"object"})
+        self.assertTrue("test" in db.collection_names())
+        db.drop_collection(db.test)
+        self.assertFalse("test" in db.collection_names())
+
     def test_save_find_one(self):
         db = Database(self.connection, "test")
         db.test.remove({})

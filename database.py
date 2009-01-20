@@ -117,3 +117,23 @@ class Database(object):
                  if n.startswith(self.__name + ".")]
         names = [n for n in names if "$" not in n]
         return names
+
+    def drop_collection(self, name_or_collection):
+        """Drop a collection.
+
+        Arguments:
+        - `name_or_collection`: the name of a collection to drop or the
+            collection object itself
+        """
+        name = name_or_collection
+        if isinstance(name, Collection):
+            name = name.name()
+
+        if not isinstance(name, types.StringTypes):
+            raise TypeError("name_or_collection must be an instance of (Collection, str, unicode)")
+
+        self[name].drop_indexes() # must manually drop indexes
+
+        result = self._command({"drop": unicode(name)})
+        if result["ok"] != 1:
+            raise OperationFailure("failed to drop collection")
