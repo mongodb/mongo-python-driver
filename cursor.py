@@ -134,7 +134,7 @@ class Cursor(object):
         """
         self.__check_okay_to_chain()
 
-        command = SON([("count", self.__collection._name()),
+        command = SON([("count", self.__collection.name()),
                        ("query", self.__spec)])
         response = self.__collection.database()._command(command)
         if response["ok"] != 1:

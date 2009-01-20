@@ -114,7 +114,7 @@ class Mongo(database.Database):
             to_save["_id"] = ObjectId()
 
         if add_meta:
-            to_save["_ns"] = collection._name()
+            to_save["_ns"] = collection.name()
 
         if not self.__auto_reference:
             return to_save
