@@ -70,6 +70,9 @@ class Mongo(database.Database):
             raise TypeError("cannot dereference a %s" % type(dbref))
         return self[dbref.collection()].find_one(dbref.id())
 
+    # TODO these should just be a SONManipulator, so we don't need to override
+    # these two methods. I haven't done this yet because we aren't spending any
+    # time on DBRef code right now.
     def _fix_outgoing(self, son, collection):
         """Fixes an object coming out of the database.
 
