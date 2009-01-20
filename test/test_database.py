@@ -3,11 +3,12 @@
 import unittest
 import types
 import random
+import datetime
 
 from errors import InvalidName, InvalidOperation, CollectionInvalid, OperationFailure
 from son import SON
 from objectid import ObjectId
-from database import Database, ASCENDING, DESCENDING
+from database import Database, ASCENDING, DESCENDING, OFF, SLOW_ONLY, ALL
 from connection import Connection
 from collection import Collection, SYSTEM_INDEX_COLLECTION
 from test_connection import get_connection
@@ -83,6 +84,37 @@ class TestDatabase(unittest.TestCase):
 
         self.assertTrue(db.validate_collection("test"))
         self.assertTrue(db.validate_collection(db.test))
+
+    def test_profiling_levels(self):
+        db = self.connection.test
+        self.assertEqual(db.profiling_level(), OFF) #default
+
+        self.assertRaises(ValueError, db.set_profiling_level, 5.5)
+        self.assertRaises(ValueError, db.set_profiling_level, None)
+        self.assertRaises(ValueError, db.set_profiling_level, -1)
+
+        db.set_profiling_level(SLOW_ONLY)
+        self.assertEqual(db.profiling_level(), SLOW_ONLY)
+
+        db.set_profiling_level(ALL)
+        self.assertEqual(db.profiling_level(), ALL)
+
+        db.set_profiling_level(OFF)
+        self.assertEqual(db.profiling_level(), OFF)
+
+    def test_profiling_info(self):
+        db = self.connection.test
+
+        db.set_profiling_level(ALL)
+        db.test.find()
+        db.set_profiling_level(OFF)
+
+        info = db.profiling_info()
+        self.assertTrue(isinstance(info, types.ListType))
+        self.assertTrue(len(info) >= 1)
+        self.assertTrue(isinstance(info[0]["info"], types.StringTypes))
+        self.assertTrue(isinstance(info[0]["ts"], datetime.datetime))
+        self.assertTrue(isinstance(info[0]["millis"], types.FloatType))
 
     def test_save_find_one(self):
         db = Database(self.connection, "test")

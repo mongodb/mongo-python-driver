@@ -9,6 +9,11 @@ from errors import InvalidName, CollectionInvalid, OperationFailure
 ASCENDING = 1
 DESCENDING = -1
 
+# profiling levels
+OFF = 0
+SLOW_ONLY = 1
+ALL = 2
+
 class Database(object):
     """A Mongo database.
     """
@@ -162,3 +167,35 @@ class Database(object):
         if info.find("exception") != -1 or info.find("corrupt") != -1:
             raise CollectionInvalid("%s invalid: %s" % (name, info))
         return info
+
+    def profiling_level(self):
+        """Get the database's current profiling level.
+
+        Returns one of (OFF, SLOW_ONLY, ALL).
+        """
+        result = self._command({"profile": -1})
+        if result["ok"] != 1:
+            raise OperationFailure("failed to get profiling level: %s" % result["errmsg"])
+
+        assert result["was"] >= 0 and result["was"] <= 2
+        return result["was"]
+
+    def set_profiling_level(self, level):
+        """Set the database's profiling level.
+
+        Raises ValueError if level is not one of (OFF, SLOW_ONLY, ALL).
+
+        Arguments:
+        - `level`: the profiling level to use
+        """
+        if not isinstance(level, types.IntType) or level < 0 or level > 2:
+            raise ValueError("level must be one of (OFF, SLOW_ONLY, ALL)")
+
+        result = self._command({"profile": level})
+        if result["ok"] != 1:
+            raise OperationFailure("failed to set profiling level: %s" % result["errmsg"])
+
+    def profiling_info(self):
+        """Returns a list containing current profiling information.
+        """
+        return list(self.system.profile.find())
