@@ -46,6 +46,7 @@ class ObjectIdInjector(SONManipulator):
             assert isinstance(son["_id"], ObjectId), "'_id' must be an ObjectId"
         else:
             son["_id"] = ObjectId()
+            son["_id"]._use()
         return son
 
 class NamespaceInjector(SONManipulator):

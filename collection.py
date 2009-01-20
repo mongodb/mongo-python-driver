@@ -77,32 +77,52 @@ class Collection(object):
     def database(self):
         return self.__database
 
-    def save(self, to_save, do_manipulate=True):
+    def save(self, to_save, manipulate=True):
         """Save a SON object in this collection.
 
         Raises TypeError if to_save is not an instance of (dict, SON).
 
         Arguments:
         - `to_save`: the SON object to be saved
-        - `do_manipulate` (optional): manipulate the son object before saving it
+        - `manipulate` (optional): manipulate the son object before saving it
         """
         if not isinstance(to_save, (types.DictType, SON)):
             raise TypeError("cannot save object of type %s" % type(to_save))
 
-        if do_manipulate:
-            to_save = self.__database._fix_incoming(to_save, self)
-
-        if "_id" not in to_save:
-            self._send_message(2002, bson.BSON.from_dict(to_save))
-        elif to_save["_id"].is_new():
-            to_save["_id"]._use()
-            self._send_message(2002, bson.BSON.from_dict(to_save))
+        if "_id" not in to_save or to_save["_id"].is_new():
+            result = self.insert(to_save, manipulate)
+            return result.get("_id", None)
         else:
-            self._update({"_id": to_save["_id"]}, to_save, True)
+            self.update({"_id": to_save["_id"]}, to_save, True, manipulate)
+            return to_save.get("_id", None)
 
-        return to_save.get("_id", None)
+    def insert(self, doc_or_docs, manipulate=True):
+        """Insert a document(s) into this collection.
 
-    def _update(self, spec, document, upsert=False):
+        If manipulate is set the document(s) are manipulated using any
+        SONManipulators that have been added to this database. Returns the
+        inserted object or a list of inserted objects.
+
+        Arguments:
+        - `doc_or_docs`: a SON object or list of SON objects to be inserted
+        - `manipulate` (optional): monipulate the objects before inserting?
+        """
+        docs = doc_or_docs
+        if isinstance(docs, (types.DictType, SON)):
+            docs = [docs]
+
+        if not isinstance(docs, types.ListType):
+            raise TypeError("insert takes a document or list of documents")
+
+        if manipulate:
+            docs = [self.__database._fix_incoming(doc, self) for doc in docs]
+
+        data = [bson.BSON.from_dict(doc) for doc in docs]
+        self._send_message(2002, "".join(data))
+
+        return len(docs) == 1 and docs[0] or docs
+
+    def update(self, spec, document, upsert=False, manipulate=True):
         """Update an object(s) in this collection.
 
         Raises TypeError if either spec or document isn't an instance of
@@ -114,6 +134,7 @@ class Collection(object):
             selected document(s), or (in the case of an upsert) the document to
             be inserted.
         - `upsert` (optional): perform an upsert operation
+        - `manipulate` (optional): monipulate the document before updating?
         """
         if not isinstance(spec, (types.DictType, SON)):
             raise TypeError("spec must be an instance of (dict, SON)")
@@ -121,6 +142,9 @@ class Collection(object):
             raise TypeError("document must be an instance of (dict, SON)")
         if not isinstance(upsert, types.BooleanType):
             raise TypeError("upsert must be an instance of bool")
+
+        if manipulate:
+            document = self.__database._fix_incoming(document, self)
 
         message = upsert and _ONE or _ZERO
         message += bson.BSON.from_dict(spec)
