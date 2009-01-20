@@ -70,6 +70,9 @@ class TestConnection(unittest.TestCase):
     def test_drop_database(self):
         connection = Connection(self.host, self.port)
 
+        self.assertRaises(TypeError, connection.drop_database, 5)
+        self.assertRaises(TypeError, connection.drop_database, None)
+
         connection.test.test.save({"dummy": u"object"})
         dbs = connection.database_names()
         self.assertTrue("test" in dbs)
