@@ -2,6 +2,7 @@
 
 import types
 
+from son_manipulator import ObjectIdInjector
 from collection import Collection
 from errors import InvalidName
 
@@ -28,6 +29,7 @@ class Database(object):
 
         self.__name = unicode(name)
         self.__connection = connection
+        self.__manipulators = [ObjectIdInjector(self)]
 
     def __check_name(self, name):
         for invalid_char in " .$/\\":
@@ -35,6 +37,11 @@ class Database(object):
                 raise InvalidName("database names cannot contain the character %r" % name)
         if not name:
             raise InvalidName("database name cannot be the empty string")
+
+    def add_son_manipulator(self, manipulator):
+        """Add a new son manipulator to this database.
+        """
+        self.__manipulators.append(manipulator)
 
     def connection(self):
         """Get the database connection.
@@ -74,24 +81,26 @@ class Database(object):
         """
         return self.__getattr__(name)
 
-    def _fix_outgoing(self, son, *args, **kwargs):
-        """Fix a SON object as it comes out of the database.
-
-        Override this in sub-classes to handle meta-data, etc.
+    def _fix_incoming(self, son, collection):
+        """Apply manipulators to an incoming SON object before it gets stored.
 
         Arguments:
-        - `son`: the son object coming out of the database
+        - `son`: the son object going into the database
+        - `collection`: the collection the son object is being saved in
         """
+        for manipulator in self.__manipulators:
+            son = manipulator.transform_incoming(son, collection)
         return son
 
-    def _fix_incoming(self, son, *args, **kwargs):
-        """Fix an incoming SON object before it gets stored.
-
-        Override this in sub-classes to do things like adding meta-data, etc.
+    def _fix_outgoing(self, son, collection):
+        """Apply manipulators to a SON object as it comes out of the database.
 
         Arguments:
         - `son`: the son object coming out of the database
+        - `collection`: the collection the son object was saved in
         """
+        for manipulator in self.__manipulators:
+            son = manipulator.transform_outgoing(son, collection)
         return son
 
     def _command(self, command):

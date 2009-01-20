@@ -10,6 +10,7 @@ import struct
 import database
 from connection import Connection
 from son import SON
+from son_manipulator import NamespaceInjector
 from objectid import ObjectId
 from dbref import DBRef
 from cursor_manager import BatchCursorManager
@@ -51,6 +52,7 @@ class Mongo(database.Database):
         connection.set_cursor_manager(BatchCursorManager)
 
         database.Database.__init__(self, connection, name)
+        self.add_son_manipulator(NamespaceInjector(self))
 
     def __repr__(self):
         return "Mongo(%r, %r, %r)" % (self.name(), self.connection().host(), self.connection().port())
@@ -68,14 +70,17 @@ class Mongo(database.Database):
             raise TypeError("cannot dereference a %s" % type(dbref))
         return self[dbref.collection()].find_one(dbref.id())
 
-    def _fix_outgoing(self, son):
+    def _fix_outgoing(self, son, collection):
         """Fixes an object coming out of the database.
 
         Used to do things like auto dereferencing, if the option is enabled.
 
         Arguments:
         - `son`: a SON object coming out of the database
+        - `collection`: collection this object is being retrieved from
         """
+        son = database.Database._fix_outgoing(self, son, collection)
+
         if not self.__auto_dereference:
             return son
 
@@ -84,9 +89,9 @@ class Mongo(database.Database):
                 deref = self.dereference(value)
                 if deref is None:
                     return value
-                return self._fix_outgoing(deref)
+                return self._fix_outgoing(deref, collection)
             elif isinstance(value, (SON, types.DictType)):
-                return self._fix_outgoing(value)
+                return self._fix_outgoing(value, collection)
             elif isinstance(value, types.ListType):
                 return [fix_value(v) for v in value]
             return value
@@ -96,7 +101,7 @@ class Mongo(database.Database):
 
         return son
 
-    def _fix_incoming(self, to_save, collection, add_meta):
+    def _fix_incoming(self, to_save, collection):
         """Fixes an object going in to the database.
 
         Used to do things like auto referencing, if the option is enabled.
@@ -106,15 +111,8 @@ class Mongo(database.Database):
         Arguments:
         - `to_save`: a SON object going into the database
         - `collection`: collection into which this object is being saved
-        - `add_meta`: should _id and other meta-fields be added to the object
         """
-        if "_id" in to_save:
-            assert isinstance(to_save["_id"], ObjectId), "'_id' must be an ObjectId"
-        elif add_meta:
-            to_save["_id"] = ObjectId()
-
-        if add_meta:
-            to_save["_ns"] = collection.name()
+        to_save = database.Database._fix_incoming(self, to_save, collection)
 
         if not self.__auto_reference:
             return to_save

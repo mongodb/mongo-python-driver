@@ -209,7 +209,7 @@ class Cursor(object):
 
     def next(self):
         if len(self.__data):
-            return self.__collection.database()._fix_outgoing(self.__data.pop(0))
+            return self.__collection.database()._fix_outgoing(self.__data.pop(0), self.__collection)
         if self._refresh():
-            return self.__collection.database()._fix_outgoing(self.__data.pop(0))
+            return self.__collection.database()._fix_outgoing(self.__data.pop(0), self.__collection)
         raise StopIteration

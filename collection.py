@@ -78,20 +78,20 @@ class Collection(object):
     def database(self):
         return self.__database
 
-    def save(self, to_save, add_meta=True):
+    def save(self, to_save, do_manipulate=True):
         """Save a SON object in this collection.
 
         Raises TypeError if to_save is not an instance of (dict, SON).
 
         Arguments:
         - `to_save`: the SON object to be saved
-        - `add_meta` (optional): add meta information (like _id) to the object
-            if it's missing
+        - `do_manipulate` (optional): manipulate the son object before saving it
         """
         if not isinstance(to_save, (types.DictType, SON)):
             raise TypeError("cannot save object of type %s" % type(to_save))
 
-        to_save = self.__database._fix_incoming(to_save, self, add_meta)
+        if do_manipulate:
+            to_save = self.__database._fix_incoming(to_save, self)
 
         if "_id" not in to_save:
             self._send_message(2002, bson.BSON.from_dict(to_save))
