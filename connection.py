@@ -201,7 +201,8 @@ class Connection(object):
         """Drop a database.
 
         Arguments:
-        - `name_or_database`: the name of a database to drop or the object itself
+        - `name_or_database`: the name of a database to drop or the object
+            itself
         """
         name = name_or_database
         if isinstance(name, Database):
