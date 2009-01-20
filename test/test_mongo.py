@@ -213,7 +213,7 @@ class TestMongo(unittest.TestCase):
             break
         self.assertRaises(InvalidOperation, a.limit, 5)
 
-    def test_limit(self):
+    def test_skip(self):
         db = Mongo("test", self.host, self.port)
 
         self.assertRaises(TypeError, db.test.find().skip, None)
