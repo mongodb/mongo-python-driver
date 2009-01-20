@@ -111,4 +111,9 @@ class Database(object):
     def collection_names(self):
         """Get a list of all the collection names in this database.
         """
-        raise Exception("unimplemented")
+        results = self.system.namespaces.find()
+        names = [r["name"] for r in results]
+        names = [n[len(self.__name) + 1:] for n in names
+                 if n.startswith(self.__name + ".")]
+        names = [n for n in names if "$" not in n]
+        return names

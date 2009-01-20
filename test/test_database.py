@@ -36,6 +36,17 @@ class TestDatabase(unittest.TestCase):
         self.assertNotEqual(db.test, Collection(db, "mike"))
         self.assertEqual(db.test.mike, db["test.mike"])
 
+    def test_collection_names(self):
+        db = Database(self.connection, "test")
+        db.test.save({"dummy": u"object"})
+        db.test.mike.save({"dummy": u"object"})
+
+        colls = db.collection_names()
+        self.assertTrue("test" in colls)
+        self.assertTrue("test.mike" in colls)
+        for coll in colls:
+            self.assertTrue("$" not in coll)
+
     def test_save_find_one(self):
         db = Database(self.connection, "test")
         db.test.remove({})
