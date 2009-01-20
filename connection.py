@@ -197,11 +197,19 @@ class Connection(object):
         """
         return self.__database_info().keys()
 
-    # TODO implement and test this
     def drop_database(self, name_or_database):
         """Drop a database.
 
         Arguments:
         - `name_or_database`: the name of a database to drop or the object itself
         """
-        raise Exception("unimplemented")
+        name = name_or_database
+        if isinstance(name, Database):
+            name = name.name()
+
+        if not isinstance(name, types.StringTypes):
+            raise TypeError("name_or_database must be an instance of (Database, str, unicode)")
+
+        result = self[name]._command({"dropDatabase": 1})
+        if result["ok"] != 1:
+            raise OperationFailure("failed to drop database")

@@ -60,12 +60,29 @@ class TestConnection(unittest.TestCase):
     def test_database_names(self):
         connection = Connection(self.host, self.port)
 
-        connection.test.test.save({"dummy": "object"})
-        connection.test_mike.test.save({"dummy": "object"})
+        connection.test.test.save({"dummy": u"object"})
+        connection.test_mike.test.save({"dummy": u"object"})
 
         dbs = connection.database_names()
         self.assertTrue("test" in dbs)
         self.assertTrue("test_mike" in dbs)
+
+    def test_drop_database(self):
+        connection = Connection(self.host, self.port)
+
+        connection.test.test.save({"dummy": u"object"})
+        dbs = connection.database_names()
+        self.assertTrue("test" in dbs)
+        connection.drop_database("test")
+        dbs = connection.database_names()
+        self.assertTrue("test" not in dbs)
+
+        connection.test.test.save({"dummy": u"object"})
+        dbs = connection.database_names()
+        self.assertTrue("test" in dbs)
+        connection.drop_database(connection.test)
+        dbs = connection.database_names()
+        self.assertTrue("test" not in dbs)
 
 if __name__ == "__main__":
     unittest.main()
