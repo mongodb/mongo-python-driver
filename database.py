@@ -6,6 +6,7 @@ from son_manipulator import ObjectIdInjector
 from collection import Collection
 from errors import InvalidName, CollectionInvalid, OperationFailure
 
+# sort directions
 ASCENDING = 1
 DESCENDING = -1
 

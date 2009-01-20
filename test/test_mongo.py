@@ -9,7 +9,6 @@ from objectid import ObjectId
 from dbref import DBRef
 from son import SON
 from errors import InvalidOperation, ConnectionFailure
-from collection import SYSTEM_INDEX_COLLECTION
 from mongo import Mongo, ASCENDING, DESCENDING
 
 class TestMongo(unittest.TestCase):
@@ -139,28 +138,28 @@ class TestMongo(unittest.TestCase):
         self.assertRaises(TypeError, db.test.create_index, "hello", "world")
 
         db.test.drop_indexes()
-        self.assertFalse(db[SYSTEM_INDEX_COLLECTION].find_one({"ns": u"test.test"}))
+        self.assertFalse(db.system.indexes.find_one({"ns": u"test.test"}))
 
         db.test.create_index("hello", ASCENDING)
         db.test.create_index([("hello", DESCENDING), ("world", ASCENDING)])
 
         count = 0
-        for _ in db[SYSTEM_INDEX_COLLECTION].find({"ns": u"test.test"}):
+        for _ in db.system.indexes.find({"ns": u"test.test"}):
             count += 1
         self.assertEqual(count, 2)
 
         db.test.drop_indexes()
-        self.assertFalse(db[SYSTEM_INDEX_COLLECTION].find_one({"ns": u"test.test"}))
+        self.assertFalse(db.system.indexes.find_one({"ns": u"test.test"}))
         db.test.create_index("hello", ASCENDING)
-        self.assertEqual(db[SYSTEM_INDEX_COLLECTION].find_one({"ns": u"test.test"}),
+        self.assertEqual(db.system.indexes.find_one({"ns": u"test.test"}),
                          SON([(u"name", u"hello_1"),
                               (u"ns", u"test.test"),
                               (u"key", SON([(u"hello", 1)]))]))
 
         db.test.drop_indexes()
-        self.assertFalse(db[SYSTEM_INDEX_COLLECTION].find_one({"ns": u"test.test"}))
+        self.assertFalse(db.system.indexes.find_one({"ns": u"test.test"}))
         db.test.create_index([("hello", DESCENDING), ("world", ASCENDING)])
-        self.assertEqual(db[SYSTEM_INDEX_COLLECTION].find_one({"ns": u"test.test"}),
+        self.assertEqual(db.system.indexes.find_one({"ns": u"test.test"}),
                          SON([(u"name", u"hello_-1_world_1"),
                               (u"ns", u"test.test"),
                               (u"key", SON([(u"hello", -1),

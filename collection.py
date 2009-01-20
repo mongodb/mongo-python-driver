@@ -10,7 +10,6 @@ from errors import InvalidName, OperationFailure
 
 _ZERO = "\x00\x00\x00\x00"
 _ONE = "\x01\x00\x00\x00"
-SYSTEM_INDEX_COLLECTION = "system.indexes"
 
 class Collection(object):
     """A Mongo collection.
@@ -243,7 +242,7 @@ class Collection(object):
             key_object[key] = value
         to_save["key"] = key_object
 
-        self.__database[SYSTEM_INDEX_COLLECTION].save(to_save, False)
+        self.__database.system.indexes.save(to_save, False)
 
     def drop_indexes(self):
         """Drops all indexes on this collection.
