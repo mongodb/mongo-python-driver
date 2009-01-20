@@ -4,7 +4,7 @@ import types
 
 from son_manipulator import ObjectIdInjector
 from collection import Collection
-from errors import InvalidName
+from errors import InvalidName, CollectionInvalid, OperationFailure
 
 ASCENDING = 1
 DESCENDING = -1
@@ -132,8 +132,33 @@ class Database(object):
         if not isinstance(name, types.StringTypes):
             raise TypeError("name_or_collection must be an instance of (Collection, str, unicode)")
 
+        if name not in self.collection_names():
+            return
+
         self[name].drop_indexes() # must manually drop indexes
 
         result = self._command({"drop": unicode(name)})
         if result["ok"] != 1:
-            raise OperationFailure("failed to drop collection")
+            raise OperationFailure("failed to drop collection: %s" % result["errmsg"])
+
+    def validate_collection(self, name_or_collection):
+        """Validate a collection.
+
+        Returns a string of validation info. Raises CollectionInvalid if
+        validation fails.
+        """
+        name = name_or_collection
+        if isinstance(name, Collection):
+            name = name.name()
+
+        if not isinstance(name, types.StringTypes):
+            raise TypeError("name_or_collection must be an instance of (Collection, str, unicode)")
+
+        result = self._command({"validate": unicode(name)})
+        if result["ok"] != 1:
+            raise OperationFailure("failed to validate collection: %s" % result["errmsg"])
+
+        info = result["result"]
+        if info.find("exception") != -1 or info.find("corrupt") != -1:
+            raise CollectionInvalid("%s invalid: %s" % (name, info))
+        return info

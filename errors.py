@@ -12,6 +12,10 @@ class InvalidOperation(Exception):
     """Raised when a client attempts to perform an invalid operation.
     """
 
+class CollectionInvalid(Exception):
+    """Raised when collection validation fails.
+    """
+
 class InvalidName(ValueError):
     """Raised when an invalid name is used.
     """

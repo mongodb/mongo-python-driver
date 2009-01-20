@@ -4,7 +4,7 @@ import unittest
 import types
 import random
 
-from errors import InvalidName, InvalidOperation
+from errors import InvalidName, InvalidOperation, CollectionInvalid, OperationFailure
 from son import SON
 from objectid import ObjectId
 from database import Database, ASCENDING, DESCENDING
@@ -67,6 +67,22 @@ class TestDatabase(unittest.TestCase):
         self.assertTrue("test" in db.collection_names())
         db.drop_collection(db.test)
         self.assertFalse("test" in db.collection_names())
+
+        db.drop_collection(db.test.doesnotexist)
+
+    def test_validate_collection(self):
+        db = self.connection.test
+
+        self.assertRaises(TypeError, db.validate_collection, 5)
+        self.assertRaises(TypeError, db.validate_collection, None)
+
+        db.test.save({"dummy": u"object"})
+
+        self.assertRaises(OperationFailure, db.validate_collection, "test.doesnotexist")
+        self.assertRaises(OperationFailure, db.validate_collection, db.test.doesnotexist)
+
+        self.assertTrue(db.validate_collection("test"))
+        self.assertTrue(db.validate_collection(db.test))
 
     def test_save_find_one(self):
         db = Database(self.connection, "test")
