@@ -4,24 +4,28 @@ Here is a sample interactive session showing it's basic usage. More
 documentation is available in the extensive docstrings w/in the
 project. There will be auto-generated documentation soon.
 
->>> import mongo
-
->>> db = mongo.Mongo("test", "localhost", 27017)
+>>> from pymongo.connection import Connection
+>>> connection = Connection("localhost", 27017)
+>>> db = connection.test
+>>> db.name()
+u'test'
 
 >>> db.my_collection
-Collection(Mongo('test', 'localhost', 27017), u'my_collection')
+Collection(Database(Connection('localhost', 27017), u'test'),
+u'my_collection')
 
 >>> db.my_collection.save({"x": 10})
-ObjectId('\xe8\xc6M\x89+\xf3\x9b\xc0D\x10\xca\xe7')
+ObjectId('\x03\x1c\x06\x8d|\x9d}O\x8b\xaf!\xa0')
 
 >>> db.my_collection.save({"x": 8})
-ObjectId('\xa0\xbe\xe5M\xbbm\r\xc8\x9e\x9d\xe8^')
+ObjectId('\x18\x1f\xa4lOV&\x0bH\xf9%A')
 
 >>> db.my_collection.save({"x": 11})
-ObjectId('#`\x02\x8d\xfc}\x9a>\x87\x8b\x99\xb9')
+ObjectId('R\xa3\x85p\xc3m=\xe5\x0e*\x1d\xa7')
 
 >>> db.my_collection.find_one()
-SON([(u'x', 10), (u'_id', ObjectId('\xe8\xc6M\x89+\xf3\x9b\xc0D\x10\xca\xe7'))])
+SON([(u'x', 10), (u'_id',
+ObjectId('\x03\x1c\x06\x8d|\x9d}O\x8b\xaf!\xa0'))])
 
 >>> for item in db.my_collection.find():
 ...     print item["x"]
@@ -30,20 +34,14 @@ SON([(u'x', 10), (u'_id', ObjectId('\xe8\xc6M\x89+\xf3\x9b\xc0D\x10\xca\xe7'))])
 8
 11
 
->>> # NOTE this is currently a heavy-weight operation
-...
-
->>> db.my_collection.create_index("x", mongo.ASCENDING)
-
->>> for item in db.my_collection.find().sort("x", mongo.ASCENDING):
+>>> from pymongo.database import ASCENDING
+>>> db.my_collection.create_index("x", ASCENDING)
+>>> for item in db.my_collection.find().sort("x", ASCENDING):
 ...     print item["x"]
 ...
 8
 10
 11
 
->>> for item in db.my_collection.find().limit(2).skip(1):
-...     print item["x"]
-...
-8
-11
+>>> [item["x"] for item in db.my_collection.find().limit(2).skip(1)]
+[8, 11]
