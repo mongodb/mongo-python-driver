@@ -60,10 +60,10 @@ class Collection(object):
                        (other.__database, other.__collection_name))
         return NotImplemented
 
-    def _full_name(self):
+    def full_name(self):
         return u"%s.%s" % (self.__database.name(), self.__collection_name)
 
-    def _name(self):
+    def name(self):
         return self.__collection_name
 
     def _send_message(self, operation, data):
@@ -71,7 +71,7 @@ class Collection(object):
         """
         # reserved int, full collection name, message data
         message = _ZERO
-        message += bson._make_c_string(self._full_name())
+        message += bson._make_c_string(self.full_name())
         message += data
         return self.__database.connection().send_message(operation, message)
 
@@ -145,7 +145,7 @@ class Collection(object):
             spec = SON({"_id": spec})
 
         if not isinstance(spec, (types.DictType, SON)):
-            raise TypeError("spec must be an instance of (dict, SON)")
+            raise TypeError("spec must be an instance of (dict, SON), not %s" % type(spec))
 
         self._send_message(2006, _ZERO + bson.BSON.from_dict(spec))
 
@@ -232,7 +232,7 @@ class Collection(object):
 
         to_save = SON()
         to_save["name"] = self._gen_index_name(keys)
-        to_save["ns"] = self._full_name()
+        to_save["ns"] = self.full_name()
 
         key_object = SON()
         for (key, value) in keys:
