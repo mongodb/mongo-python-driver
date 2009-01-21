@@ -107,7 +107,6 @@ def gen_mongo_value(depth):
                gen_float(),
                gen_boolean(),
                gen_datetime(),
-               gen_regexp(gen_range(0, 20)),
                gen_objectid(),
                gen_dbref(),
                lift(None),]
