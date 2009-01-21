@@ -62,7 +62,7 @@ class TestSON(unittest.TestCase):
                               (u"c", True),
                               (u"pi", 3.14159265358979),
                               (u"an_array", [u"x", u"y", u"z", SON([(u"subobject", u"yup")])]),
-                              (u"now", datetime.datetime(1973, 11, 26, 1, 47, 32, 57000)),
+                              (u"now", datetime.datetime(1973, 11, 26, 6, 47, 32, 57000)),
                               (u"dbref",
                                DBRef("namespace",
                                      ObjectId("\xCA\x5C\x67\x49\x6C\x01\xD8\x96\xF7\x01\x00\x00"))),
