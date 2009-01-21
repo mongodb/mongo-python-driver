@@ -200,44 +200,6 @@ class TestDatabase(unittest.TestCase):
             for _ in db.test.find():
                 break
 
-    def test_create_index(self):
-        db = self.connection.test
-
-        self.assertRaises(TypeError, db.test.create_index, 5)
-        self.assertRaises(TypeError, db.test.create_index, "hello")
-        self.assertRaises(ValueError, db.test.create_index, [])
-        self.assertRaises(TypeError, db.test.create_index, [], ASCENDING)
-        self.assertRaises(TypeError, db.test.create_index, [("hello", DESCENDING)], DESCENDING)
-        self.assertRaises(TypeError, db.test.create_index, "hello", "world")
-
-        db.test.drop_indexes()
-        self.assertFalse(db.system.indexes.find_one({"ns": u"test.test"}))
-
-        db.test.create_index("hello", ASCENDING)
-        db.test.create_index([("hello", DESCENDING), ("world", ASCENDING)])
-
-        count = 0
-        for _ in db.system.indexes.find({"ns": u"test.test"}):
-            count += 1
-        self.assertEqual(count, 2)
-
-        db.test.drop_indexes()
-        self.assertFalse(db.system.indexes.find_one({"ns": u"test.test"}))
-        db.test.create_index("hello", ASCENDING)
-        self.assertEqual(db.system.indexes.find_one({"ns": u"test.test"}),
-                         SON([(u"name", u"hello_1"),
-                              (u"ns", u"test.test"),
-                              (u"key", SON([(u"hello", 1)]))]))
-
-        db.test.drop_indexes()
-        self.assertFalse(db.system.indexes.find_one({"ns": u"test.test"}))
-        db.test.create_index([("hello", DESCENDING), ("world", ASCENDING)])
-        self.assertEqual(db.system.indexes.find_one({"ns": u"test.test"}),
-                         SON([(u"name", u"hello_-1_world_1"),
-                              (u"ns", u"test.test"),
-                              (u"key", SON([(u"hello", -1),
-                                            (u"world", 1)]))]))
-
     def test_limit(self):
         db = self.connection.test
 
