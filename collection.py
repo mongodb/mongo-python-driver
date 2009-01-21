@@ -14,18 +14,26 @@ _ONE = "\x01\x00\x00\x00"
 class Collection(object):
     """A Mongo collection.
     """
-    def __init__(self, database, name):
+    def __init__(self, database, name, options={}):
         """Get / create a Mongo collection.
 
         Raises TypeError if name is not an instance of (str, unicode). Raises
-        InvalidName if name is not a valid collection name.
+        InvalidName if name is not a valid collection name. Raises TypeError if
+        options is not an instance of dict. If options is non-empty a create
+        command will be sent to the database. Otherwise the collection will be
+        created implicitly on first use.
 
         Arguments:
         - `database`: the database to get a collection from
         - `name`: the name of the collection to get
+        - `options`: dictionary of collection options.
+            see `Database.create_collection` for details.
         """
         if not isinstance(name, types.StringTypes):
             raise TypeError("name must be an instance of (str, unicode)")
+
+        if not isinstance(options, types.DictType):
+            raise TypeError("options must be an instance of dict")
 
         if not name or ".." in name:
             raise InvalidName("collection names cannot be empty")
@@ -36,6 +44,19 @@ class Collection(object):
 
         self.__database = database
         self.__collection_name = unicode(name)
+        if options:
+            self.__create(options)
+
+    def __create(self, options):
+        """Sends a create command with the given options.
+        """
+        command = SON({"create": self.__collection_name})
+        command.update(options)
+
+        response = self.__database._command(command)
+        if response["ok"] not in [0, 1]:
+            raise OperationFailure("error creating collection: %s" %
+                                   response["errmsg"])
 
     def __getattr__(self, name):
         """Get a sub-collection of this collection by name.

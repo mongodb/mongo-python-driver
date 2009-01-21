@@ -87,6 +87,29 @@ class Database(object):
         """
         return self.__getattr__(name)
 
+    def create_collection(self, name, options={}):
+        """Create a new collection in this database.
+
+        Normally collection creation is automatic. This method should only if you
+        want to specify options on creation. CollectionInvalid is raised if the
+        collection already exists.
+
+        Options should be a dictionary, with any of the following options:
+        - "size": desired initial size for the collection. must be less than or
+            equal to 10000000000. for capped collections this size is the max
+            size of the collection.
+        - "capped": if True, this is a capped collection
+        - "max": maximum number of objects if capped (optional)
+
+        Arguments:
+        - `name`: the name of the collection to create
+        - `options` (optional): options to use on the new collection
+        """
+        if name in self.collection_names():
+            raise CollectionInvalid("collection %s already exists" % name)
+
+        return Collection(self, name, options)
+
     def _fix_incoming(self, son, collection):
         """Apply manipulators to an incoming SON object before it gets stored.
 

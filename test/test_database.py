@@ -37,6 +37,31 @@ class TestDatabase(unittest.TestCase):
         self.assertNotEqual(db.test, Collection(db, "mike"))
         self.assertEqual(db.test.mike, db["test.mike"])
 
+    def test_create_collection(self):
+        db = Database(self.connection, "test")
+
+        db.test.insert({"hello": "world"})
+        self.assertRaises(CollectionInvalid, db.create_collection, "test")
+
+        db.drop_collection("test")
+
+        self.assertRaises(TypeError, db.create_collection, 5)
+        self.assertRaises(TypeError, db.create_collection, None)
+        self.assertRaises(InvalidName, db.create_collection, "coll..ection")
+        self.assertRaises(TypeError, db.create_collection, "test", 5)
+        self.assertRaises(TypeError, db.create_collection, "test", None)
+
+        test = db.create_collection("test")
+        test.save({"hello": u"world"})
+        self.assertEqual(db.test.find_one()["hello"], "world")
+        self.assertTrue(u"test" in db.collection_names())
+
+        db.drop_collection("test.foo")
+        db.create_collection("test.foo")
+        self.assertFalse(u"test.foo" in db.collection_names())
+        db.create_collection("test.foo", {"capped": True})
+        self.assertTrue(u"test.foo" in db.collection_names())
+
     def test_collection_names(self):
         db = Database(self.connection, "test")
         db.test.save({"dummy": u"object"})
