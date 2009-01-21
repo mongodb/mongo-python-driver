@@ -235,7 +235,8 @@ class Collection(object):
 
         Takes either a single key and a direction, or a list of (key, direction)
         pairs. The key(s) must be an instance of (str, unicode), and the
-        direction(s) must be one of (Mongo.ASCENDING, Mongo.DESCENDING).
+        direction(s) must be one of (Mongo.ASCENDING, Mongo.DESCENDING). Returns
+        the name of the created index.
 
         Arguments:
         - `key_or_list`: a single key or a list of (key, direction) pairs
@@ -267,6 +268,7 @@ class Collection(object):
         to_save["key"] = key_object
 
         self.__database.system.indexes.save(to_save, False)
+        return to_save["name"]
 
     def drop_indexes(self):
         """Drops all indexes on this collection.
@@ -274,9 +276,26 @@ class Collection(object):
         Can be used on non-existant collections or collections with no indexes.
         Raises OperationFailure on an error.
         """
-        response = self.__database._command(SON([("deleteIndexes", self.__collection_name),
-                                                 ("index", u"*")]))
+        self.drop_index(u"*")
+
+    def drop_index(self, index):
+        """Drops the specified index on this collection.
+
+        Can be used on non-existant collections or collections with no indexes.
+        Raises OperationFailure on an error. Raises TypeError if index is not an
+        instance of (str, unicode).
+
+        Arguments:
+        - `index`: the name of the index to drop
+        """
+        if not isinstance(index, types.StringTypes):
+            raise TypeError("index must be an instance of (str, unicode)")
+
+        response = self.__database._command(SON([("deleteIndexes",
+                                                  self.__collection_name),
+                                                 ("index", unicode(index))]))
         if response["ok"] != 1:
             if response["errmsg"] == "ns not found":
                 return
-            raise OperationFailure("error ping indexes: %s" % response["errmsg"])
+            raise OperationFailure("error dropping index(es): %s" %
+                                   response["errmsg"])

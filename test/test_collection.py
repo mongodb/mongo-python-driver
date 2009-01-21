@@ -72,5 +72,20 @@ class TestCollection(unittest.TestCase):
                               (u"key", SON([(u"hello", -1),
                                             (u"world", 1)]))]))
 
+    def test_drop_index(self):
+        db = self.db
+        db.test.drop_indexes()
+        db.test.create_index("hello", ASCENDING)
+        name = db.test.create_index("goodbye", DESCENDING)
+
+        self.assertEqual(db.system.indexes.find({"ns": u"test.test"}).count(), 2)
+        self.assertEqual(name, "goodbye_-1")
+        db.test.drop_index(name)
+        self.assertEqual(db.system.indexes.find({"ns": u"test.test"}).count(), 1)
+        self.assertEqual(db.system.indexes.find_one({"ns": u"test.test"}),
+                         SON([(u"name", u"hello_1"),
+                              (u"ns", u"test.test"),
+                              (u"key", SON([(u"hello", 1)]))]))
+
 if __name__ == "__main__":
     unittest.main()
