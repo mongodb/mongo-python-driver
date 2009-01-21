@@ -21,6 +21,7 @@ class Cursor(object):
         self.__skip = skip
         self.__limit = limit
         self.__ordering = None
+        self.__explain = False
 
         self.__data = []
         self.__id = None
@@ -30,6 +31,13 @@ class Cursor(object):
     def __del__(self):
         if self.__id and not self.__killed:
             self.__die()
+
+    def __copy(self):
+        copy = Cursor(self.__collection, self.__spec, self.__fields,
+                      self.__skip, self.__limit)
+        copy.__ordering = self.__ordering
+        copy.__explain = self.__explain
+        return copy
 
     def __die(self):
         """Closes this cursor.
@@ -43,10 +51,15 @@ class Cursor(object):
         Just `self.__spec`, unless this cursor needs special query fields, like
         orderby.
         """
-        if not self.__ordering:
+        if not self.__ordering and not self.__explain:
             return self.__spec
-        return SON([("query", self.__spec),
-                    ("orderby", self.__ordering)])
+
+        spec = SON({"query": self.__spec})
+        if self.__ordering:
+            spec["orderby"] = self.__ordering
+        if self.__explain:
+            spec["$explain"] = True
+        return spec
 
     def __check_okay_to_chain(self):
         """Check if it is okay to chain more options onto this cursor.
@@ -142,6 +155,13 @@ class Cursor(object):
                 return 0
             raise OperationFailure("error getting count: %s" % response["errmsg"])
         return int(response["n"])
+
+    def explain(self):
+        """Returns an explain plan record for this cursor.
+        """
+        c = self.__copy()
+        c.__explain = True
+        return c.next()
 
     def _refresh(self):
         """Refreshes the cursor with more data from Mongo.

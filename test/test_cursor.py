@@ -9,8 +9,13 @@ class TestCursor(unittest.TestCase):
     def setUp(self):
         self.db = Database(get_connection(), "test")
 
-# TODO are there any tests that belong here? a lot of cursor stuff is hard to
-# test seperately...
+    def test_explain(self):
+        a = self.db.test.find()
+        explanation = a.explain()
+        for _ in a:
+            break
+        self.assertEqual(a.explain(), explanation)
+        self.assertTrue("cursor" in explanation)
 
 if __name__ == "__main__":
     unittest.main()
