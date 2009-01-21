@@ -20,6 +20,46 @@ class TestCursor(unittest.TestCase):
         self.assertEqual(a.explain(), explanation)
         self.assertTrue("cursor" in explanation)
 
+    def test_hint(self):
+        db = self.db
+        self.assertRaises(TypeError, db.test.find().hint, 5.5)
+        db.test.remove({})
+        db.test.drop_indexes()
+
+        for i in range(100):
+            db.test.insert({"num": i, "foo": i})
+
+        self.assertEqual(db.test.find({"num": 17, "foo": 17}
+                                      ).hint([("num", ASCENDING)]
+                                             ).explain()["nscanned"], 100)
+        self.assertEqual(db.test.find({"num": 17, "foo": 17}
+                                      ).hint([("foo", ASCENDING)]
+                                             ).explain()["nscanned"], 100)
+
+        index = db.test.create_index("num", ASCENDING)
+
+        self.assertEqual(db.test.find({"num": 17}).explain()["nscanned"], 1)
+        self.assertEqual(db.test.find({"num": 17, "foo": 17}
+                                      ).explain()["nscanned"], 100)
+        self.assertEqual(db.test.find({"num": 17, "foo": 17}
+                                      ).hint(index).explain()["nscanned"], 1)
+        self.assertEqual(db.test.find({"num": 17, "foo": 17}
+                                      ).hint(index
+                                             ).hint(None
+                                                    ).explain()["nscanned"], 100)
+        self.assertEqual(db.test.find({"num": 17, "foo": 17}
+                                      ).hint([("num", ASCENDING)]
+                                             ).explain()["nscanned"], 1)
+        self.assertEqual(db.test.find({"num": 17, "foo": 17}
+                                      ).hint([("foo", ASCENDING)]
+                                             ).explain()["nscanned"], 100)
+
+        a = db.test.find({"num": 17})
+        a.hint(index)
+        for _ in a:
+            break
+        self.assertRaises(InvalidOperation, a.hint, index)
+
     def test_limit(self):
         db = self.db
 
@@ -74,7 +114,8 @@ class TestCursor(unittest.TestCase):
         self.assertRaises(TypeError, db.test.find().skip, "hello")
         self.assertRaises(TypeError, db.test.find().skip, 5.5)
 
-        db.test.remove({})
+        db.drop_collection("test")
+
         for i in range(100):
             db.test.save({"x": i})
 

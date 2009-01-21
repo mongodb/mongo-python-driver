@@ -22,6 +22,7 @@ class Cursor(object):
         self.__limit = limit
         self.__ordering = None
         self.__explain = False
+        self.__hint = None
 
         self.__data = []
         self.__id = None
@@ -37,6 +38,7 @@ class Cursor(object):
                       self.__skip, self.__limit)
         copy.__ordering = self.__ordering
         copy.__explain = self.__explain
+        copy.__hint = self.__hint
         return copy
 
     def __die(self):
@@ -51,7 +53,7 @@ class Cursor(object):
         Just `self.__spec`, unless this cursor needs special query fields, like
         orderby.
         """
-        if not self.__ordering and not self.__explain:
+        if not self.__ordering and not self.__explain and not self.__hint:
             return self.__spec
 
         spec = SON({"query": self.__spec})
@@ -59,6 +61,8 @@ class Cursor(object):
             spec["orderby"] = self.__ordering
         if self.__explain:
             spec["$explain"] = True
+        if self.__hint:
+            spec["$hint"] = self.__hint
         return spec
 
     def __check_okay_to_chain(self):
@@ -162,6 +166,35 @@ class Cursor(object):
         c = self.__copy()
         c.__explain = True
         return c.next()
+
+    def hint(self, index_or_name):
+        """Adds a 'hint', telling Mongo the proper index to use for the query.
+
+        Judicious use of hints can greatly improve query performance. When doing
+        a query on multiple fields (at least one of which is indexed) pass the
+        indexed field as a hint to the query. Hinting will not do anything if
+        the corresponding index does not exist. Raises InvalidOperation if this
+        cursor has already been used.
+
+        `index_or_name` can be either an index name (as returned by
+        create_index) or an index (as passed to create_index). If index_or_name
+        is None any existing hints for this query are cleared.
+
+        Arguments:
+        - `index_or_name`: index (or name of the index) to hint on
+        """
+        self.__check_okay_to_chain()
+        if index_or_name is None:
+            self.__hint = None
+            return self
+
+        if not isinstance(index_or_name, (types.StringTypes, types.ListType)):
+            raise TypeError("hint takes an index name or a list specifying an index")
+        name = index_or_name
+        if isinstance(name, types.ListType):
+            name = self.__collection._gen_index_name(name)
+        self.__hint = name
+        return self
 
     def _refresh(self):
         """Refreshes the cursor with more data from Mongo.
