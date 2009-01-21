@@ -70,8 +70,9 @@ def _validate_array(data):
 def _validate_binary(data):
     _logger.debug("validating binary")
     (length, data) = _get_int(data)
-    assert len(data) >= length
-    return data[length:]
+    # + 1 for the subtype byte
+    assert len(data) >= length + 1
+    return data[length + 1:]
 
 def _validate_undefined(data):
     _logger.debug("validating undefined")
@@ -205,7 +206,14 @@ def _get_array(data):
 def _get_binary(data):
     _logger.debug("unpacking binary")
     (length, data) = _get_int(data)
-    return (data[:length], data[length:])
+    subtype = data[0]
+    data = data[1:]
+    if subtype != "\x02":
+        raise InvalidBSON("binary subtype %r is unsupported" % subtype)
+    (length2, data) = _get_int(data)
+    if length2 != length - 4:
+        raise InvalidBSON("invalid binary - lengths don't match!")
+    return (data[:length2], data[length2:])
 
 def _get_oid(data):
     _logger.debug("unpacking oid")
@@ -314,8 +322,10 @@ def _value_to_bson(value):
         as_dict = SON(zip([str(i) for i in range(len(value))], value))
         return ("\x04", BSON.from_dict(as_dict))
     if isinstance(value, types.StringType):
-        _logger.debug("packing binary")
-        return ("\x05", _int_to_bson(len(value)) + value)
+        _logger.debug("packing binary using subtype '\x02'")
+        length = len(value)
+        return ("\x05",
+                _int_to_bson(length + 4) + "\x02" + _int_to_bson(length) + value)
     if isinstance(value, ObjectId):
         _logger.debug("packing oid")
         return ("\x07", _shuffle_oid(str(value)))

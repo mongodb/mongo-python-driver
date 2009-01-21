@@ -63,7 +63,7 @@ class TestBSON(unittest.TestCase):
         self.assertEqual(BSON.from_dict({"none": {}}),
                          "\x10\x00\x00\x00\x03\x6E\x6F\x6E\x65\x00\x05\x00\x00\x00\x00\x00")
         self.assertEqual(BSON.from_dict({"test": "test"}),
-                         "\x13\x00\x00\x00\x05\x74\x65\x73\x74\x00\x04\x00\x00\x00\x74\x65\x73\x74\x00")
+                         "\x18\x00\x00\x00\x05\x74\x65\x73\x74\x00\x08\x00\x00\x00\x02\x04\x00\x00\x00\x74\x65\x73\x74\x00")
         self.assertEqual(BSON.from_dict({"test": None}),
                          "\x0B\x00\x00\x00\x0A\x74\x65\x73\x74\x00\x00")
         self.assertEqual(BSON.from_dict({"date": datetime.datetime(2007, 1, 7, 19, 30, 11)}),
@@ -113,9 +113,6 @@ class TestBSON(unittest.TestCase):
                 bson = BSON.from_dict(doc)
             except UnsupportedTag:
                 print "skipped file %s: %s" % (file_name, sys.exc_info()[1])
-                continue
-            except:
-                print "failed to parse %s: %s" % (file_name, sys.exc_info()[1])
                 continue
 
             try:
