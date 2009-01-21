@@ -87,5 +87,20 @@ class TestCollection(unittest.TestCase):
                               (u"ns", u"test.test"),
                               (u"key", SON([(u"hello", 1)]))]))
 
+    def test_index_info(self):
+        db = self.db
+        db.test.drop_indexes()
+        self.assertEqual(db.test.index_information(), {})
+
+        db.test.create_index("hello", ASCENDING)
+        self.assertEqual(db.test.index_information(),
+                         {"hello_1": [("hello", ASCENDING)]})
+
+        db.test.create_index([("hello", DESCENDING), ("world", ASCENDING)])
+        self.assertEqual(db.test.index_information(),
+                         {"hello_1": [("hello", ASCENDING)],
+                          "hello_-1_world_1": [("hello", DESCENDING),
+                                               ("world", ASCENDING)]})
+
 if __name__ == "__main__":
     unittest.main()

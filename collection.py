@@ -299,3 +299,16 @@ class Collection(object):
                 return
             raise OperationFailure("error dropping index(es): %s" %
                                    response["errmsg"])
+
+    def index_information(self):
+        """Get information on this collection's indexes.
+
+        Returns a dictionary where the keys are index names (as returned by
+        create_index()) and the values are lists of (key, direction) pairs
+        specifying the index (as passed to create_index()).
+        """
+        raw = self.__database.system.indexes.find({"ns": self.full_name()})
+        info = {}
+        for index in raw:
+            info[index["name"]] = index["key"].items()
+        return info
