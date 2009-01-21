@@ -104,7 +104,7 @@ class SON(DictMixin):
             return bool.text == "true"
 
         def make_date(date):
-            return datetime.datetime.fromtimestamp(float(date.text) / 1000.0)
+            return datetime.datetime.utcfromtimestamp(float(date.text) / 1000.0)
 
         def make_ref(dbref):
             return DBRef(make_elem(dbref[0]), make_elem(dbref[1]))

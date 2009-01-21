@@ -66,7 +66,7 @@ class TestBSON(unittest.TestCase):
                          "\x18\x00\x00\x00\x05\x74\x65\x73\x74\x00\x08\x00\x00\x00\x02\x04\x00\x00\x00\x74\x65\x73\x74\x00")
         self.assertEqual(BSON.from_dict({"test": None}),
                          "\x0B\x00\x00\x00\x0A\x74\x65\x73\x74\x00\x00")
-        self.assertEqual(BSON.from_dict({"date": datetime.datetime(2007, 1, 7, 19, 30, 11)}),
+        self.assertEqual(BSON.from_dict({"date": datetime.datetime(2007, 1, 8, 0, 30, 11)}),
                          "\x13\x00\x00\x00\x09\x64\x61\x74\x65\x00\x38\xBE\x1C\xFF\x0F\x01\x00\x00\x00")
         self.assertEqual(BSON.from_dict({"regex": re.compile("a*b", re.IGNORECASE)}),
                          "\x12\x00\x00\x00\x0B\x72\x65\x67\x65\x78\x00\x61\x2A\x62\x00\x69\x00\x00")
@@ -92,7 +92,7 @@ class TestBSON(unittest.TestCase):
         helper({"false": False})
         helper({"an array": [1, True, 3.8, u"world"]})
         helper({"an object": {"test": u"something"}})
-        helper(SON([(u'a date', datetime.datetime(1993, 4, 4, 2, 58, 4, 231000))]))
+        helper(SON([(u'test dst', datetime.datetime(1993, 4, 4, 2))]))
 
         def from_then_to_dict(dict):
             return dict == (BSON.from_dict(dict)).to_dict()

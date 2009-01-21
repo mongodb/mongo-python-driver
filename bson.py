@@ -7,7 +7,7 @@ import struct
 import random
 import re
 import datetime
-import time
+import calendar
 import logging
 
 from objectid import ObjectId
@@ -227,7 +227,7 @@ def _get_boolean(data):
 def _get_date(data):
     _logger.debug("unpacking date")
     seconds = float(struct.unpack("<q", data[:8])[0]) / 1000.0
-    return (datetime.datetime.fromtimestamp(seconds), data[8:])
+    return (datetime.datetime.utcfromtimestamp(seconds), data[8:])
 
 def _get_null(data):
     _logger.debug("unpacking null")
@@ -336,7 +336,7 @@ def _value_to_bson(value):
         return ("\x08", "\x00")
     if isinstance(value, datetime.datetime):
         _logger.debug("packing date")
-        millis = int(time.mktime(value.timetuple()) * 1000 + value.microsecond / 1000)
+        millis = int(calendar.timegm(value.timetuple()) * 1000 + value.microsecond / 1000)
         return ("\x09", _int_64_to_bson(millis))
     if isinstance(value, types.NoneType):
         _logger.debug("packing null")
