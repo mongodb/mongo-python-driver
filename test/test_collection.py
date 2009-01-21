@@ -102,5 +102,17 @@ class TestCollection(unittest.TestCase):
                           "hello_-1_world_1": [("hello", DESCENDING),
                                                ("world", ASCENDING)]})
 
+    def test_options(self):
+        db = self.db
+        db.drop_collection("test")
+        db.test.save({})
+        self.assertEqual(db.test.options(), {})
+        self.assertEqual(db.test.doesnotexist.options(), {})
+
+        db.drop_collection("test")
+        options = {"capped": True}
+        db.create_collection("test", options)
+        self.assertEqual(db.test.options(), options)
+
 if __name__ == "__main__":
     unittest.main()

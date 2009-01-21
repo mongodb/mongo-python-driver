@@ -333,3 +333,23 @@ class Collection(object):
         for index in raw:
             info[index["name"]] = index["key"].items()
         return info
+
+    def options(self):
+        """Get the options set on this collection.
+
+        Returns a dictionary of options and their values - see
+        `Database.create_collection` for more information on the options
+        dictionary. Returns an empty dictionary if the collection has not been
+        created yet.
+        """
+        result = self.__database.system.namespaces.find_one(
+            {"name": self.full_name()})
+
+        if not result:
+            return {}
+
+        options = result.get("options", {})
+        if "create" in options:
+            del options["create"]
+
+        return options
