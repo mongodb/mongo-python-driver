@@ -92,6 +92,7 @@ class TestBSON(unittest.TestCase):
         helper({"false": False})
         helper({"an array": [1, True, 3.8, u"world"]})
         helper({"an object": {"test": u"something"}})
+        helper(SON([(u'a date', datetime.datetime(1993, 4, 4, 2, 58, 4, 231000))]))
 
         def from_then_to_dict(dict):
             return dict == (BSON.from_dict(dict)).to_dict()

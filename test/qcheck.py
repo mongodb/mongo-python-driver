@@ -3,12 +3,14 @@ import sys
 import traceback
 import datetime
 import re
+import types
 
 from objectid import ObjectId
 from dbref import DBRef
 from son import SON
 
 gen_target = 100
+reduction_attempts = 100
 examples = 5
 
 def lift(value):
@@ -120,6 +122,47 @@ def gen_mongo_list(depth):
 def gen_mongo_dict(depth):
     return map(gen_dict(gen_unicode(gen_range(0, 20)), gen_mongo_value(depth - 1), gen_range(0, 10)), SON)
 
+# TODO this is a hack - only really works for mongo_dicts right now...
+def simplify(case):
+    if isinstance(case, SON):
+        simplified = SON(case) # make a copy!
+        if random.choice([True, False]):
+            # delete
+            if not len(simplified.keys()):
+                return (False, case)
+            del simplified[random.choice(simplified.keys())]
+            return (True, simplified)
+        else:
+            # simplify a value
+            if not len(simplified.items()):
+                return (False, case)
+            (key, value) = random.choice(simplified.items())
+            (success, value) = simplify(value)
+            simplified[key] = value
+            return (success, success and simplified or case)
+    if isinstance(case, types.ListType):
+        simplified = list(case)
+        if random.choice([True, False]):
+            # delete
+            if not len(simplified):
+                return (False, case)
+            simplified.pop(random.randrange(len(simplified)))
+            return (True, simplified)
+        else:
+            # simplify an item
+            if not len(simplified):
+                return (False, case)
+            index = random.randrange(len(simplified))
+            (success, value) = simplify(simplified[index])
+            simplified[index] = value
+            return (success, success and simplified or case)
+    return (False, case)
+def reduce(case, predicate, reductions=0):
+    for _ in range(reduction_attempts):
+        (reduced, simplified) = simplify(case)
+        if reduced and not predicate(simplified):
+            return reduce(simplified, predicate, reductions + 1)
+    return (reductions, case)
 
 def isnt(predicate):
     return lambda x: not predicate(x)
@@ -131,7 +174,8 @@ def check(predicate, generator):
         case = generator()
         try:
             if not predicate(case):
-                counter_examples.append(repr(case))
+                reduction = reduce(case, predicate)
+                counter_examples.append("after %s reductions: %r" % reduction)
         except:
             counter_examples.append("%r : %s" % (case, traceback.format_exc()))
     return counter_examples
