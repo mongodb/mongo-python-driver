@@ -27,7 +27,7 @@ class Collection(object):
         - `database`: the database to get a collection from
         - `name`: the name of the collection to get
         - `options`: dictionary of collection options.
-            see `Database.create_collection` for details.
+            see `pymongo.database.Database.create_collection` for details.
         """
         if not isinstance(name, types.StringTypes):
             raise TypeError("name must be an instance of (str, unicode)")
@@ -338,9 +338,9 @@ class Collection(object):
         """Get the options set on this collection.
 
         Returns a dictionary of options and their values - see
-        `Database.create_collection` for more information on the options
-        dictionary. Returns an empty dictionary if the collection has not been
-        created yet.
+        `pymongo.database.Database.create_collection` for more information on
+        the options dictionary. Returns an empty dictionary if the collection
+        has not been created yet.
         """
         result = self.__database.system.namespaces.find_one(
             {"name": self.full_name()})

@@ -1,7 +1,7 @@
 """Manipulators that can edit SON objects as the enter and exit a database.
 
 New manipulators should be defined as subclasses of SONManipulator and can be
-installed on a database by calling `Database.add_son_manipulator`."""
+installed on a database by calling `pymongo.database.Database.add_son_manipulator`."""
 
 from objectid import ObjectId
 

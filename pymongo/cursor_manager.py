@@ -1,7 +1,7 @@
 """Different managers to handle when cursors are killed after they are closed.
 
 New cursor managers should be defined as subclasses of CursorManager and can be
-installed on a connection by calling `Connection.set_cursor_manager`."""
+installed on a connection by calling `pymongo.connection.Connection.set_cursor_manager`."""
 
 import types
 
