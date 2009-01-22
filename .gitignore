@@ -5,3 +5,6 @@
 *.class
 *.pyc
 doc/
+build/
+dist/
+pymongo.egg-info/
