@@ -43,7 +43,8 @@ def gen_range(start, stop):
     return lambda: random.randint(start, stop)
 
 def gen_int():
-    return lambda: random.randint(-sys.maxint-1, sys.maxint)
+    max_int = 2147483647
+    return lambda: random.randint(-max_int - 1, max_int)
 
 def gen_float():
     return lambda: (random.random() - 0.5) * sys.maxint
