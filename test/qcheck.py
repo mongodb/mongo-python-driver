@@ -5,9 +5,9 @@ import datetime
 import re
 import types
 
-from objectid import ObjectId
-from dbref import DBRef
-from son import SON
+from pymongo.objectid import ObjectId
+from pymongo.dbref import DBRef
+from pymongo.son import SON
 
 gen_target = 100
 reduction_attempts = 100

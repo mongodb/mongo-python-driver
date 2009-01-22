@@ -1,11 +1,11 @@
 """Test the collection module."""
 import unittest
 
-from collection import Collection
 from test_connection import get_connection
-from errors import InvalidName
-from database import ASCENDING, DESCENDING
-from son import SON
+from pymongo.collection import Collection
+from pymongo.errors import InvalidName
+from pymongo.database import ASCENDING, DESCENDING
+from pymongo.son import SON
 
 class TestCollection(unittest.TestCase):
     def setUp(self):

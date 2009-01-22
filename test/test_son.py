@@ -4,9 +4,9 @@ import unittest
 import datetime
 import re
 
-from objectid import ObjectId
-from dbref import DBRef
-from son import SON
+from pymongo.objectid import ObjectId
+from pymongo.dbref import DBRef
+from pymongo.son import SON
 
 class TestSON(unittest.TestCase):
     def setUp(self):

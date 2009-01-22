@@ -5,13 +5,13 @@ import types
 import random
 import datetime
 
-from errors import InvalidName, InvalidOperation, CollectionInvalid, OperationFailure
-from son import SON
-from objectid import ObjectId
-from database import Database, ASCENDING, DESCENDING, OFF, SLOW_ONLY, ALL
-from connection import Connection
-from collection import Collection
 from test_connection import get_connection
+from pymongo.errors import InvalidName, InvalidOperation, CollectionInvalid, OperationFailure
+from pymongo.son import SON
+from pymongo.objectid import ObjectId
+from pymongo.database import Database, ASCENDING, DESCENDING, OFF, SLOW_ONLY, ALL
+from pymongo.connection import Connection
+from pymongo.collection import Collection
 
 class TestDatabase(unittest.TestCase):
     def setUp(self):

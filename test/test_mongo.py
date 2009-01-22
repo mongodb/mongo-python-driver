@@ -5,11 +5,11 @@ import random
 import types
 import os
 
-from objectid import ObjectId
-from dbref import DBRef
-from son import SON
-from errors import InvalidOperation, ConnectionFailure
-from mongo import Mongo, ASCENDING, DESCENDING
+from pymongo.objectid import ObjectId
+from pymongo.dbref import DBRef
+from pymongo.son import SON
+from pymongo.errors import InvalidOperation, ConnectionFailure
+from pymongo.mongo import Mongo, ASCENDING, DESCENDING
 
 class TestMongo(unittest.TestCase):
     def setUp(self):

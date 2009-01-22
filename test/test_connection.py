@@ -3,9 +3,9 @@
 import unittest
 import os
 
-from errors import ConnectionFailure, InvalidName
-from database import Database
-from connection import Connection
+from pymongo.errors import ConnectionFailure, InvalidName
+from pymongo.database import Database
+from pymongo.connection import Connection
 
 def get_connection():
     host = os.environ.get("db_ip", "localhost")

@@ -3,8 +3,8 @@
 import unittest
 import types
 
-from objectid import ObjectId
-from dbref import DBRef
+from pymongo.objectid import ObjectId
+from pymongo.dbref import DBRef
 
 class TestDBRef(unittest.TestCase):
     def setUp(self):

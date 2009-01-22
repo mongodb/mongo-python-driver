@@ -2,8 +2,8 @@
 
 import unittest
 
-from objectid import ObjectId
-from errors import InvalidId
+from pymongo.objectid import ObjectId
+from pymongo.errors import InvalidId
 
 class TestObjectId(unittest.TestCase):
     def setUp(self):

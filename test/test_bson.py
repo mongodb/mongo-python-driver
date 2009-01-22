@@ -6,12 +6,12 @@ import re
 import glob
 import sys
 
-from objectid import ObjectId
-from dbref import DBRef
 import qcheck
-from son import SON
-from bson import BSON, is_valid, to_dicts
-from errors import UnsupportedTag
+from pymongo.objectid import ObjectId
+from pymongo.dbref import DBRef
+from pymongo.son import SON
+from pymongo.bson import BSON, is_valid, to_dicts
+from pymongo.errors import UnsupportedTag
 
 class TestBSON(unittest.TestCase):
     def setUp(self):

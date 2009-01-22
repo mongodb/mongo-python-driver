@@ -4,10 +4,10 @@
 import unittest
 
 import qcheck
-from objectid import ObjectId
-from son_manipulator import SONManipulator, ObjectIdInjector, NamespaceInjector
-from database import Database
 from test_connection import get_connection
+from pymongo.objectid import ObjectId
+from pymongo.son_manipulator import SONManipulator, ObjectIdInjector, NamespaceInjector
+from pymongo.database import Database
 
 class TestSONManipulator(unittest.TestCase):
     def setUp(self):

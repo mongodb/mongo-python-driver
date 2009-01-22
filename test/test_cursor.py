@@ -3,10 +3,10 @@ import unittest
 import types
 import random
 
-from errors import InvalidOperation
-from cursor import Cursor
-from database import Database, ASCENDING, DESCENDING
 from test_connection import get_connection
+from pymongo.errors import InvalidOperation
+from pymongo.cursor import Cursor
+from pymongo.database import Database, ASCENDING, DESCENDING
 
 class TestCursor(unittest.TestCase):
     def setUp(self):
