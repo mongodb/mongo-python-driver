@@ -83,7 +83,7 @@ class Connection(object):
                                     (self.__host, self.__port,
                                      traceback.format_exc()))
 
-    def send_message(self, operation, data):
+    def _send_message(self, operation, data):
         """Say something to Mongo.
 
         Raises ConnectionFailure if the message cannot be sent. Returns the
@@ -111,7 +111,7 @@ class Connection(object):
 
         return self.__id - 1
 
-    def receive_message(self, operation, request_id):
+    def _receive_message(self, operation, request_id):
         """Receive a message from Mongo.
 
         Returns the message body. Asserts that the message uses the given opcode
@@ -195,7 +195,7 @@ class Connection(object):
         message += struct.pack("<i", len(cursor_ids))
         for cursor_id in cursor_ids:
             message += struct.pack("<q", cursor_id)
-        self.send_message(2007, message)
+        self._send_message(2007, message)
 
     def __database_info(self):
         """Get a dictionary of (database_name: size_on_disk).

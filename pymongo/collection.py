@@ -107,7 +107,7 @@ class Collection(object):
         message = _ZERO
         message += bson._make_c_string(self.full_name())
         message += data
-        return self.__database.connection().send_message(operation, message)
+        return self.__database.connection()._send_message(operation, message)
 
     def database(self):
         return self.__database

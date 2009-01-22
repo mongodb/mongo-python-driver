@@ -223,7 +223,7 @@ class Cursor(object):
         def send_message(operation, message):
             # TODO the send and receive here should be synchronized...
             request_id = self.__collection._send_message(operation, message)
-            response = self.__collection.database().connection().receive_message(1, request_id)
+            response = self.__collection.database().connection()._receive_message(1, request_id)
 
             response_flag = struct.unpack("<i", response[:4])[0]
             if response_flag == 1:
