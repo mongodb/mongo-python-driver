@@ -9,7 +9,8 @@ import binascii
 import base64
 from UserDict import DictMixin
 
-import ElementTree as ET
+import elementtree.ElementTree as ET
+
 from objectid import ObjectId
 from dbref import DBRef
 from errors import UnsupportedTag
