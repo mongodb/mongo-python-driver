@@ -17,4 +17,5 @@ information on Mongo.
     author_email="mike@10gen.com",
     url="http://github.com/mongodb/mongo-python-driver",
     packages=["pymongo"],
-    install_requires=['elementtree'])
+    install_requires=['elementtree'],
+    test_suite = 'nose.collector')
