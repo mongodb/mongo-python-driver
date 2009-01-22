@@ -1,7 +1,7 @@
 import sys
 
-from bson import BSON
-from son import SON
+from pymongo.bson import BSON
+from pymongo.son import SON
 
 def main():
     xml_file = sys.argv[1]
