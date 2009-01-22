@@ -6,7 +6,7 @@ from setuptools import setup
 
 setup(
     name="pymongo",
-    version="0.1",
+    version="0.1pre",
     description="Driver for the Mongo database <http://www.mongodb.org>",
     long_description="""\
 The pymongo package is a driver for Mongo, a high performance, document-based
@@ -18,4 +18,5 @@ information on Mongo.
     url="http://github.com/mongodb/mongo-python-driver",
     packages=["pymongo"],
     install_requires=['elementtree'],
-    test_suite = 'nose.collector')
+    license="Apache License, Version 2.0",
+    test_suite='nose.collector')
