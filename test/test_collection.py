@@ -128,5 +128,27 @@ class TestCollection(unittest.TestCase):
         db.create_collection("test", options)
         self.assertEqual(db.test.options(), options)
 
+    def test_insert_find_one(self):
+        db = self.db
+        db.test.remove({})
+        self.assertEqual(db.test.find().count(), 0)
+        doc = {"hello": u"world"}
+        db.test.insert(doc)
+        self.assertEqual(db.test.find().count(), 1)
+        self.assertEqual(doc, db.test.find_one())
+
+# TODO enable this test when Mongo insert multiple is fixed
+# OR remove the insert a list functionality from the driver
+#     def test_insert_multiple(self):
+#         db = self.db
+#         db.test.remove({})
+#         doc1 = {"hello": u"world"}
+#         doc2 = {"hello": u"mike"}
+#         self.assertEqual(db.test.find().count(), 0)
+#         db.test.insert([doc1, doc2])
+#         self.assertEqual(db.test.find().count(), 2)
+#         self.assertEqual(doc1, db.test.find_one({"hello": u"world"}))
+#         self.assertEqual(doc2, db.test.find_one({"hello": u"mike"}))
+
 if __name__ == "__main__":
     unittest.main()
