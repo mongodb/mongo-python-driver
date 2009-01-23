@@ -25,6 +25,7 @@ from UserDict import DictMixin
 
 import elementtree.ElementTree as ET
 
+from binary import Binary
 from objectid import ObjectId
 from dbref import DBRef
 from errors import UnsupportedTag
@@ -143,7 +144,7 @@ class SON(DictMixin):
             return string.text is not None and unicode(string.text) or u""
 
         def make_binary(binary):
-            return binary.text is not None and base64.b64decode(binary.text) or ""
+            return binary.text is not None and Binary(base64.b64decode(binary.text)) or Binary("")
 
         def make_boolean(bool):
             return bool.text == "true"
