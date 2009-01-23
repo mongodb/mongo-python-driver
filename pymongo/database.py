@@ -311,13 +311,14 @@ class Database(object):
         if nonce["ok"] != 1:
             raise OperationFailure("failed to get nonce: %s" % nonce["errmsg"])
         nonce = nonce["nonce"]
+        key = unicode(md5.new("%s%s%s" % (nonce,
+                                          unicode(name),
+                                          self._password_digest(password))
+                              ).hexdigest())
         result = self._command(SON([("authenticate", 1),
                                     ("user", unicode(name)),
                                     ("nonce", nonce),
-                                    ("key", unicode(md5.new("%s%s%s" % (nonce,
-                                                                        unicode(name),
-                                                                        self._password_digest(password)
-                                                                        )).hexdigest()))]))
+                                    ("key", key)]))
         return result["ok"] == 1
 
     def logout(self):
