@@ -309,7 +309,7 @@ class Database(object):
 
         nonce = self._command({"getnonce": 1})
         if nonce["ok"] != 1:
-            raise OperationFailure("failed to get nonce: %s" % result["errmsg"])
+            raise OperationFailure("failed to get nonce: %s" % nonce["errmsg"])
         nonce = nonce["nonce"]
         result = self._command(SON([("authenticate", 1),
                                     ("user", unicode(name)),
