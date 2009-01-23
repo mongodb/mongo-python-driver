@@ -58,6 +58,10 @@ class SON(DictMixin):
     unicode                      code           mongo -> py
     unicode                      symbol         mongo -> py
     ===========================  =============  ===================
+
+    Note that to save binary data it must be wrapped as an instance of
+    `pymongo.binary.Binary`. Otherwise it will be saved as a Mongo string and
+    retrieved as unicode.
     """
     def __init__(self, data=None, **kwargs):
         self.__keys = []
