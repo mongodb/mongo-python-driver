@@ -15,6 +15,7 @@
 """Test the collection module."""
 import unittest
 
+import qcheck
 from test_connection import get_connection
 from pymongo.collection import Collection
 from pymongo.errors import InvalidName
@@ -127,6 +128,7 @@ class TestCollection(unittest.TestCase):
         options = {"capped": True}
         db.create_collection("test", options)
         self.assertEqual(db.test.options(), options)
+        db.drop_collection("test")
 
     def test_insert_find_one(self):
         db = self.db
@@ -136,6 +138,13 @@ class TestCollection(unittest.TestCase):
         db.test.insert(doc)
         self.assertEqual(db.test.find().count(), 1)
         self.assertEqual(doc, db.test.find_one())
+
+        def remove_insert_find_one(dict):
+            db.test.remove({})
+            db.test.insert(dict)
+            return db.test.find_one() == dict
+
+        qcheck.check_unittest(self, remove_insert_find_one, qcheck.gen_mongo_dict(3))
 
     def test_iteration(self):
         db = self.db
