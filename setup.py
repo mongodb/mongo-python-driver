@@ -6,7 +6,7 @@ from setuptools import setup
 
 setup(
     name="pymongo",
-    version="0.1pre",
+    version="0.1.1pre",
     description="Driver for the Mongo database <http://www.mongodb.org>",
     long_description="""\
 The pymongo package is a driver for Mongo, a high performance, document-based
