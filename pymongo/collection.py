@@ -367,3 +367,9 @@ class Collection(object):
             del options["create"]
 
         return options
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        raise TypeError("'Collection' object is not iterable")

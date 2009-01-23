@@ -137,6 +137,14 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(db.test.find().count(), 1)
         self.assertEqual(doc, db.test.find_one())
 
+    def test_iteration(self):
+        db = self.db
+
+        def iterate():
+            [a for a in db.test]
+
+        self.assertRaises(TypeError, iterate)
+
 # TODO enable this test when Mongo insert multiple is fixed
 # OR remove the insert a list functionality from the driver
 #     def test_insert_multiple(self):
