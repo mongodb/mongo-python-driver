@@ -17,6 +17,7 @@ import unittest
 
 import qcheck
 from test_connection import get_connection
+from pymongo.objectid import ObjectId
 from pymongo.collection import Collection
 from pymongo.errors import InvalidName
 from pymongo.database import ASCENDING, DESCENDING
@@ -145,6 +146,26 @@ class TestCollection(unittest.TestCase):
             return db.test.find_one() == dict
 
         qcheck.check_unittest(self, remove_insert_find_one, qcheck.gen_mongo_dict(3))
+
+    def test_id_can_be_anything(self):
+        db = self.db
+
+        db.test.remove({})
+        auto_id = {"hello": "world"}
+        db.test.insert(auto_id)
+        self.assertTrue(isinstance(auto_id["_id"], ObjectId))
+
+        numeric = {"_id": 240, "hello": "world"}
+        db.test.insert(numeric)
+        self.assertEqual(numeric["_id"], 240)
+
+        object = {"_id": numeric, "hello": "world"}
+        db.test.insert(object)
+        self.assertEqual(object["_id"], numeric)
+
+        for x in db.test.find():
+            self.assertEqual(x["hello"], u"world")
+            self.assertTrue("_id" in x)
 
     def test_iteration(self):
         db = self.db
