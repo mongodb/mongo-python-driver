@@ -48,15 +48,5 @@ class TestObjectId(unittest.TestCase):
         self.assertNotEqual(ObjectId(), ObjectId())
         self.assertNotEqual(ObjectId("123456789012"), "123456789012")
 
-    def test_new(self):
-        a = ObjectId()
-        b = ObjectId("123456789012")
-        self.assertTrue(a.is_new())
-        self.assertFalse(b.is_new())
-        a._use()
-        b._use()
-        self.assertFalse(a.is_new())
-        self.assertFalse(b.is_new())
-
 if __name__ == "__main__":
     unittest.main()

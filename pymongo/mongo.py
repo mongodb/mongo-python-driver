@@ -139,7 +139,7 @@ class Mongo(database.Database):
 
         def fix_value(value):
             if isinstance(value, (SON, types.DictType)):
-                if "_id" in value and not value["_id"].is_new() and "_ns" in value:
+                if "_id" in value and "_ns" in value:
                     return DBRef(value["_ns"], value["_id"])
             return value
 

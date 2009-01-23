@@ -56,11 +56,8 @@ class ObjectIdInjector(SONManipulator):
     def transform_incoming(self, son, collection):
         """Add an _id field if it is missing.
         """
-        if "_id" in son:
-            assert isinstance(son["_id"], ObjectId), "'_id' must be an ObjectId"
-        else:
+        if not "_id" in son:
             son["_id"] = ObjectId()
-            son["_id"]._use()
         return son
 
 class NamespaceInjector(SONManipulator):

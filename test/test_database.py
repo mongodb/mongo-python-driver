@@ -234,7 +234,6 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(None, db.test.find_one({"hello": u"test"}))
 
         b = db.test.find_one()
-        self.assertFalse(b["_id"].is_new())
         b["hello"] = u"mike"
         db.test.save(b)
 

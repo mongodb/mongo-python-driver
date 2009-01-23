@@ -48,7 +48,6 @@ class TestSONManipulator(unittest.TestCase):
         def incoming_adds_id(son):
             son = manip.transform_incoming(son, collection)
             assert "_id" in son
-            assert isinstance(son["_id"], ObjectId)
             return True
         qcheck.check_unittest(self, incoming_adds_id,
                               qcheck.gen_mongo_dict(3))

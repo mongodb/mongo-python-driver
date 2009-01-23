@@ -124,7 +124,7 @@ class Collection(object):
         if not isinstance(to_save, (types.DictType, SON)):
             raise TypeError("cannot save object of type %s" % type(to_save))
 
-        if "_id" not in to_save or to_save["_id"].is_new():
+        if "_id" not in to_save:
             result = self.insert(to_save, manipulate)
             return result.get("_id", None)
         else:
