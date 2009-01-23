@@ -33,7 +33,34 @@ class SON(DictMixin):
     """SON data.
 
     A subclass of dict that maintains ordering of keys and provides a few extra
-    niceties for dealing with SON.
+    niceties for dealing with SON. SON objects can be saved and retrieved from
+    Mongo.
+
+    The mapping from Python types to Mongo types is as follows:
+
+    ===========================  =============  ===================
+    Python Type                  Mongo Type     Supported Direction
+    ===========================  =============  ===================
+    float                        number (real)  both
+    unicode                      string         both
+    dict / `SON`                 object         both
+    list                         array          both
+    string                       binary         both
+    `pymongo.objectid.ObjectId`  oid            both
+    bool                         boolean        both
+    datetime.datetime            date           both
+    None                         null           both
+    compiled re                  regex          both
+    `pymongo.dbref.DBRef`        dbref          both
+    int                          number (int)   both
+    None                         undefined      mongo -> py
+    unicode                      code           mongo -> py
+    unicode                      symbol         mongo -> py
+    ===========================  =============  ===================
+
+    The most important thing to note about this mapping is that Mongo strings
+    are only created from Python unicode objects. Python strings will be saved
+    as the Mongo binary type.
     """
     def __init__(self, data=None, **kwargs):
         self.__keys = []
