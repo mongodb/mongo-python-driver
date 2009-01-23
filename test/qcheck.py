@@ -19,6 +19,7 @@ import datetime
 import re
 import types
 
+from pymongo.binary import Binary
 from pymongo.objectid import ObjectId
 from pymongo.dbref import DBRef
 from pymongo.son import SON
@@ -117,7 +118,8 @@ def gen_dbref():
 
 def gen_mongo_value(depth):
     choices = [gen_unicode(gen_range(0, 50)),
-               gen_string(gen_range(0, 1000)),
+               gen_printable_string(gen_range(0, 50)),
+               map(gen_string(gen_range(0, 1000)), Binary),
                gen_int(),
                gen_float(),
                gen_boolean(),
