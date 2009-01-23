@@ -41,26 +41,23 @@ class SON(DictMixin):
     ===========================  =============  ===================
     Python Type                  Mongo Type     Supported Direction
     ===========================  =============  ===================
-    float                        number (real)  both
-    unicode                      string         both
-    dict / `SON`                 object         both
-    list                         array          both
-    string                       binary         both
-    `pymongo.objectid.ObjectId`  oid            both
-    bool                         boolean        both
-    datetime.datetime            date           both
     None                         null           both
-    compiled re                  regex          both
-    `pymongo.dbref.DBRef`        dbref          both
+    bool                         boolean        both
     int                          number (int)   both
+    float                        number (real)  both
+    string                       string         py -> mongo
+    unicode                      string         both
+    list                         array          both
+    dict / `SON`                 object         both
+    datetime.datetime            date           both
+    compiled re                  regex          both
+    `pymongo.binary.Binary`      binary         both
+    `pymongo.objectid.ObjectId`  oid            both
+    `pymongo.dbref.DBRef`        dbref          both
     None                         undefined      mongo -> py
     unicode                      code           mongo -> py
     unicode                      symbol         mongo -> py
     ===========================  =============  ===================
-
-    The most important thing to note about this mapping is that Mongo strings
-    are only created from Python unicode objects. Python strings will be saved
-    as the Mongo binary type.
     """
     def __init__(self, data=None, **kwargs):
         self.__keys = []
