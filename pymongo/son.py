@@ -63,13 +63,15 @@ class SON(DictMixin):
             result.append("(%r, %r)" % (key, self.__data[key]))
         return "SON([%s])" % ", ".join(result)
 
-    def update(self, data):
+    def update(self, data=None, **kwargs):
         if data is not None:
             if hasattr(data, "iterkeys"):
                 self.__merge_keys(data.iterkeys())
             else:
                 self.__merge_keys(data.keys())
             self.__data.update(data)
+        if kwargs:
+            self.update(kwargs)
 
     def __getitem__(self, key):
         return self.__data[key]
