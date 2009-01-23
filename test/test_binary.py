@@ -30,5 +30,11 @@ class TestBinary(unittest.TestCase):
         self.assertTrue(binary.is_binary(a_binary))
         self.assertFalse(binary.is_binary(a_string))
 
+    def test_repr(self):
+        b = binary.Binary("hello world")
+        self.assertEqual(repr(b), "Binary('hello world')")
+        c = binary.Binary("\x08\xFF")
+        self.assertEqual(repr(c), "Binary('\\x08\\xff')")
+
 if __name__ == "__main__":
     unittest.main()

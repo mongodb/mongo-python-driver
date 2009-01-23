@@ -27,4 +27,5 @@ def is_binary(data):
 class Binary(str):
     """Binary data stored in or retrieved from Mongo.
     """
-    pass
+    def __repr__(self):
+        return "Binary(%s)" % str.__repr__(self)
