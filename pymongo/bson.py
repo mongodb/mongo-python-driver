@@ -24,6 +24,7 @@ import datetime
 import calendar
 import logging
 
+from binary import Binary, is_binary
 from objectid import ObjectId
 from dbref import DBRef
 from son import SON
@@ -227,7 +228,7 @@ def _get_binary(data):
     (length2, data) = _get_int(data)
     if length2 != length - 4:
         raise InvalidBSON("invalid binary - lengths don't match!")
-    return (data[:length2], data[length2:])
+    return (Binary(data[:length2]), data[length2:])
 
 def _get_oid(data):
     _logger.debug("unpacking oid")
@@ -323,9 +324,14 @@ def _value_to_bson(value):
     if isinstance(value, types.FloatType):
         _logger.debug("packing number")
         return ("\x01", struct.pack("<d", value))
-    if isinstance(value, types.UnicodeType):
+    if is_binary(value):
+        _logger.debug("packing binary using subtype '\x02'")
+        length = len(value)
+        return ("\x05",
+                _int_to_bson(length + 4) + "\x02" + _int_to_bson(length) + value)
+    if isinstance(value, types.StringTypes):
         _logger.debug("packing string")
-        cstring = _make_c_string(value)
+        cstring = _make_c_string(unicode(value))
         length = _int_to_bson(len(cstring))
         return ("\x02", length + cstring)
     if isinstance(value, (types.DictType, SON)):
@@ -335,11 +341,6 @@ def _value_to_bson(value):
         _logger.debug("packing array")
         as_dict = SON(zip([str(i) for i in range(len(value))], value))
         return ("\x04", BSON.from_dict(as_dict))
-    if isinstance(value, types.StringType):
-        _logger.debug("packing binary using subtype '\x02'")
-        length = len(value)
-        return ("\x05",
-                _int_to_bson(length + 4) + "\x02" + _int_to_bson(length) + value)
     if isinstance(value, ObjectId):
         _logger.debug("packing oid")
         return ("\x07", _shuffle_oid(str(value)))
