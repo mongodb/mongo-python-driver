@@ -101,5 +101,13 @@ class TestConnection(unittest.TestCase):
         dbs = connection.database_names()
         self.assertTrue("test" not in dbs)
 
+    def test_iteration(self):
+        connection = Connection(self.host, self.port)
+
+        def iterate():
+            [a for a in connection]
+
+        self.assertRaises(TypeError, iterate)
+
 if __name__ == "__main__":
     unittest.main()

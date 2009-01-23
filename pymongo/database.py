@@ -237,3 +237,9 @@ class Database(object):
         """Returns a list containing current profiling information.
         """
         return list(self.system.profile.find())
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        raise TypeError("'Database' object is not iterable")

@@ -228,3 +228,9 @@ class Connection(object):
         result = self[name]._command({"dropDatabase": 1})
         if result["ok"] != 1:
             raise OperationFailure("failed to drop database")
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        raise TypeError("'Connection' object is not iterable")

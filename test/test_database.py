@@ -155,6 +155,14 @@ class TestDatabase(unittest.TestCase):
         self.assertTrue(isinstance(info[0]["ts"], datetime.datetime))
         self.assertTrue(isinstance(info[0]["millis"], types.FloatType))
 
+    def test_iteration(self):
+        db = self.connection.test
+
+        def iterate():
+            [a for a in db]
+
+        self.assertRaises(TypeError, iterate)
+
     def test_save_find_one(self):
         db = Database(self.connection, "test")
         db.test.remove({})
