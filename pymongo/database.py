@@ -238,6 +238,37 @@ class Database(object):
         """
         return list(self.system.profile.find())
 
+    def error(self):
+        """Get a database error if one occured on the last operation.
+
+        Return None if the last operation was error-free. Otherwise return the
+        error that occurred.
+        """
+        error = self._command({"getlasterror": 1})
+        if error.get("err", 0) is None:
+            return None
+        return error
+
+    def previous_error(self):
+        """Get the most recent error to have occurred on this database.
+
+        Only returns errors that have occurred since the last call to
+        `Database.reset_error_history`. Returns None if no such errors have
+        occurred.
+        """
+        error = self._command({"getpreverror": 1})
+        if error.get("err", 0) is None:
+            return None
+        return error
+
+    def reset_error_history(self):
+        """Reset the error history of this database.
+
+        Calls to `Database.previous_error` will only return errors that have
+        occurred since the most recent call to this method.
+        """
+        self._command({"reseterror": 1})
+
     def __iter__(self):
         return self
 

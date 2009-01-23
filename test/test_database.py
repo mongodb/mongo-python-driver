@@ -163,6 +163,34 @@ class TestDatabase(unittest.TestCase):
 
         self.assertRaises(TypeError, iterate)
 
+    def test_errors(self):
+        db = self.connection.test
+
+        db.reset_error_history()
+        self.assertEqual(None, db.error())
+        self.assertEqual(None, db.previous_error())
+
+        db._command({"forceerror": 1})
+        self.assertTrue(db.error())
+        self.assertTrue(db.previous_error())
+
+        db._command({"forceerror": 1})
+        self.assertTrue(db.error())
+        prev_error = db.previous_error()
+        self.assertEqual(prev_error["nPrev"], 1)
+        del prev_error["nPrev"]
+        self.assertEqual(db.error(), prev_error)
+
+        db.test.find_one()
+        self.assertEqual(None, db.error())
+        self.assertTrue(db.previous_error())
+        self.assertEqual(db.previous_error()["nPrev"], 2)
+
+        db.reset_error_history()
+        self.assertEqual(None, db.error())
+        self.assertEqual(None, db.previous_error())
+
+    # TODO some of these tests belong in the collection level testing.
     def test_save_find_one(self):
         db = Database(self.connection, "test")
         db.test.remove({})
