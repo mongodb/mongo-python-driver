@@ -19,6 +19,7 @@ import datetime
 import re
 import glob
 import sys
+import types
 
 import qcheck
 from pymongo.binary import Binary
@@ -101,6 +102,8 @@ class TestBSON(unittest.TestCase):
             self.assertEqual(dict, (BSON.from_dict(dict)).to_dict())
         helper({})
         helper({"test": u"hello"})
+        self.assertTrue(isinstance(BSON.from_dict({"hello": "world"}).to_dict()["hello"],
+                                   types.UnicodeType))
         helper({"mike": -10120})
         helper({u"hello": 0.0013109})
         helper({"something": True})
