@@ -190,6 +190,34 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(None, db.error())
         self.assertEqual(None, db.previous_error())
 
+    def test_password_digest(self):
+        db = self.connection.test
+
+        self.assertRaises(TypeError, db._password_digest, 5)
+        self.assertRaises(TypeError, db._password_digest, True)
+        self.assertRaises(TypeError, db._password_digest, None)
+
+        self.assertTrue(isinstance(db._password_digest("password"), types.UnicodeType))
+        self.assertEqual(db._password_digest("password"), u"3b483f665f97e2fdf97575e72321fc5b")
+        self.assertEqual(db._password_digest("password"), db._password_digest(u"password"))
+
+    def test_authenticate(self):
+        db = self.connection.test
+        db.system.users.remove({})
+        db.system.users.insert({"user": u"mike", "pwd": db._password_digest("password")})
+
+        self.assertRaises(TypeError, db.authenticate, 5, "password")
+        self.assertRaises(TypeError, db.authenticate, "mike", 5)
+
+        self.assertFalse(db.authenticate("mike", "not a real password"))
+        self.assertFalse(db.authenticate("faker", "password"))
+        self.assertTrue(db.authenticate("mike", "password"))
+        self.assertTrue(db.authenticate(u"mike", u"password"))
+
+        # just make sure there are no exceptions here
+        db.logout()
+        db.logout()
+
     # TODO some of these tests belong in the collection level testing.
     def test_save_find_one(self):
         db = Database(self.connection, "test")
