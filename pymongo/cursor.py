@@ -61,7 +61,8 @@ class Cursor(object):
     def __die(self):
         """Closes this cursor.
         """
-        self.__collection.database().connection().close_cursor(self.__id)
+        if self.__id and not self.__killed:
+            self.__collection.database().connection().close_cursor(self.__id)
         self.__killed = True
 
     def __query_spec(self):
@@ -255,14 +256,16 @@ class Cursor(object):
                 message += bson.BSON.from_dict(self.__fields)
 
             send_message(2004, message)
-        elif self.__id != 0:
+            if not self.__id:
+                self.__killed = True
+        elif self.__id:
             # Get More
             limit = 0
             if self.__limit:
                 if self.__limit > self.__retrieved:
                     limit = self.__limit - self.__retrieved
                 else:
-                    self.__die()
+                    self.__killed = True
                     return 0
 
             message = struct.pack("<i", limit)
@@ -270,10 +273,7 @@ class Cursor(object):
 
             send_message(2005, message)
 
-        length = len(self.__data)
-        if not length:
-            self.__die()
-        return length
+        return len(self.__data)
 
     def __iter__(self):
         return self
