@@ -151,7 +151,7 @@ class GridFile(object):
         """Flush the GridFile to the database.
         """
         self.__assert_open()
-        if self.mode != "w":
+        if self.mode != "w" or not self.__current_chunk:
             return
 
         file = self.__collection.find_one(self.__id)

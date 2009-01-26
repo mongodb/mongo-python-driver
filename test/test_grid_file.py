@@ -34,11 +34,27 @@ class TestGridFile(unittest.TestCase):
         file = GridFile({"filename": "test"}, self.db, "w")
         file.write("hello world")
         file.close()
+
         self.assertEqual(self.db._files.find().count(), 1)
         self.assertEqual(self.db._chunks.find().count(), 1)
 
         file = GridFile({"filename": "test"}, self.db)
         self.assertEqual(file.read(), "hello world")
+        file.close()
+
+        # make sure it's still there...
+        file = GridFile({"filename": "test"}, self.db)
+        self.assertEqual(file.read(), "hello world")
+        file.close()
+
+        file = GridFile({"filename": "test"}, self.db, "w")
+        file.close()
+
+        self.assertEqual(self.db._files.find().count(), 1)
+        self.assertEqual(self.db._chunks.find().count(), 0)
+
+        file = GridFile({"filename": "test"}, self.db)
+        self.assertEqual(file.read(), "")
         file.close()
 
     def test_create_grid_file(self):
