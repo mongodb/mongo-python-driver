@@ -3,12 +3,11 @@ PyMongo
 =======
 :Info: See `the mongo site <http://www.mongodb.org>`_ for more information. See `github <http://github.com/mongodb/mongo-python-driver/tree>`_ for the latest source.
 :Author: Mike Dirolf <mike@10gen.com>
-:Date: $Date: 2009-01-22$
-:Description: README file for the PyMongo distribution
 
 About
 =====
-The ``pymongo`` module is a native Python driver for the Mongo database.
+The PyMongo distribution contains tools for interacting with the Mongo database from Python.
+The ``pymongo`` package is a native Python driver for the Mongo database.
 
 Installation
 ============
