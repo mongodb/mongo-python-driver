@@ -4,12 +4,13 @@ from ez_setup import use_setuptools
 use_setuptools()
 from setuptools import setup
 
+f = open("README.rst")
 try:
-    f = open("README.rst")
     readme_content = f.read()
-    f.close()
 except:
     readme_content = ""
+finally:
+    f.close()
 
 setup(
     name="pymongo",
