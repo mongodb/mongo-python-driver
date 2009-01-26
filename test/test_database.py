@@ -26,6 +26,7 @@ from pymongo.objectid import ObjectId
 from pymongo.database import Database, ASCENDING, DESCENDING, OFF, SLOW_ONLY, ALL
 from pymongo.connection import Connection
 from pymongo.collection import Collection
+from pymongo.dbref import DBRef
 
 class TestDatabase(unittest.TestCase):
     def setUp(self):
@@ -229,6 +230,20 @@ class TestDatabase(unittest.TestCase):
             for (k, v) in x.items():
                 self.assertEqual(k, "_id")
                 break
+
+    def test_deref(self):
+        db = self.connection.test
+        db.test.remove({})
+
+        self.assertRaises(TypeError, db.dereference, 5)
+        self.assertRaises(TypeError, db.dereference, "hello")
+        self.assertRaises(TypeError, db.dereference, None)
+
+        self.assertEqual(None, db.dereference(DBRef("test", ObjectId())))
+
+        obj = {"x": True}
+        key = db.test.save(obj)
+        self.assertEqual(obj, db.dereference(DBRef("test", key)))
 
     # TODO some of these tests belong in the collection level testing.
     def test_save_find_one(self):

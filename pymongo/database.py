@@ -18,6 +18,7 @@ import types
 import md5
 
 from son import SON
+from dbref import DBRef
 from son_manipulator import ObjectIdInjector, ObjectIdShuffler
 from collection import Collection
 from errors import InvalidName, CollectionInvalid, OperationFailure
@@ -333,3 +334,16 @@ class Database(object):
         result = self._command({"logout": 1})
         if result["ok"] != 1:
             raise OperationFailure("logout failed: %s" % result["errmsg"])
+
+    def dereference(self, dbref):
+        """Dereference a DBRef, getting the SON object it points to.
+
+        Raises TypeError if dbref is not an instance of DBRef. Returns a SON
+        object or None if the reference does not point to a valid object.
+
+        Arguments:
+        - `dbref`: the reference
+        """
+        if not isinstance(dbref, DBRef):
+            raise TypeError("cannot dereference a %s" % type(dbref))
+        return self[dbref.collection()].find_one(dbref.id())

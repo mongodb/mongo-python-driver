@@ -71,19 +71,6 @@ class Mongo(database.Database):
     def __repr__(self):
         return "Mongo(%r, %r, %r)" % (self.name(), self.connection().host(), self.connection().port())
 
-    def dereference(self, dbref):
-        """Dereference a DBRef, getting the SON object it points to.
-
-        Raises TypeError if dbref is not an instance of DBRef. Returns a SON
-        object or None if the reference does not point to a valid object.
-
-        Arguments:
-        - `dbref`: the reference
-        """
-        if not isinstance(dbref, DBRef):
-            raise TypeError("cannot dereference a %s" % type(dbref))
-        return self[dbref.collection()].find_one(dbref.id())
-
     # TODO these should just be a SONManipulator, so we don't need to override
     # these two methods. I haven't done this yet because we aren't spending any
     # time on DBRef code right now.
