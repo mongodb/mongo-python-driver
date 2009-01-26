@@ -97,12 +97,17 @@ class TestGridFile(unittest.TestCase):
         self.db._files.remove({})
         self.db._chunks.remove({})
 
-        # just write a blank file so that reads on {} don't fail
         file = GridFile({"filename": "test"}, self.db, "w")
+        self.assertEqual(file.mode, "w")
+        self.assertFalse(file.closed)
         file.close()
+        self.assertTrue(file.closed)
 
         self.assertRaises(IOError, GridFile, {"filename": "mike"}, self.db)
         a = GridFile({"filename": "test"}, self.db)
+
+        self.assertEqual(a.mode, "r")
+        self.assertFalse(a.closed)
 
         self.assertEqual(a.length, 0)
         self.assertEqual(a.content_type, None)
