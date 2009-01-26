@@ -91,8 +91,19 @@ class TestGridFile(unittest.TestCase):
         self.assertRaises(TypeError, GridFile, {}, self.db, "r", [])
 
         self.assertRaises(IOError, GridFile, {"filename": "mike"}, self.db)
+        self.assertTrue(GridFile({"filename": "test"}, self.db))
 
+    def test_properties(self):
+        self.db._files.remove({})
+        self.db._chunks.remove({})
+
+        # just write a blank file so that reads on {} don't fail
+        file = GridFile({"filename": "test"}, self.db, "w")
+        file.close()
+
+        self.assertRaises(IOError, GridFile, {"filename": "mike"}, self.db)
         a = GridFile({"filename": "test"}, self.db)
+
         self.assertEqual(a.length, 0)
         self.assertEqual(a.content_type, None)
         self.assertEqual(a.name, "test")
@@ -100,6 +111,34 @@ class TestGridFile(unittest.TestCase):
         self.assertTrue(isinstance(a.upload_date, datetime.datetime))
         self.assertEqual(a.aliases, None)
         self.assertEqual(a.next, None)
+
+        a.content_type = "something"
+        self.assertEqual(a.content_type, "something")
+
+        def set_length():
+            a.length = 10
+        self.assertRaises(AttributeError, set_length)
+
+        def set_chunk_size():
+            a.chunk_size = 100
+        self.assertRaises(AttributeError, set_chunk_size)
+
+        def set_upload_date():
+            a.upload_date = datetime.datetime.now()
+        self.assertRaises(AttributeError, set_upload_date)
+
+        a.aliases = ["hello", "world"]
+        self.assertEqual(a.aliases, ["hello", "world"])
+
+        def set_next():
+            a.next = None
+        self.assertRaises(AttributeError, set_next)
+
+        a.name = "mike"
+        a.close()
+
+        self.assertRaises(IOError, GridFile, {"filename": "test"}, self.db)
+        a = GridFile({"filename": "mike"}, self.db)
 
 if __name__ == "__main__":
     unittest.main()
