@@ -139,11 +139,63 @@ class TestGridFile(unittest.TestCase):
             a.next = None
         self.assertRaises(AttributeError, set_next)
 
-        a.name = "mike"
-        a.close()
+        def set_name():
+            a.name = "hello"
+        self.assertRaises(AttributeError, set_name)
+
+    def test_rename(self):
+        self.db._files.remove({})
+        self.db._chunks.remove({})
+
+        file = GridFile({"filename": "test"}, self.db, "w")
+        file.close()
+
+        self.assertRaises(IOError, GridFile, {"filename": "mike"}, self.db)
+        a = GridFile({"filename": "test"}, self.db)
+
+        a.rename("mike")
+        self.assertEqual("mike", a.name)
 
         self.assertRaises(IOError, GridFile, {"filename": "test"}, self.db)
         a = GridFile({"filename": "mike"}, self.db)
+
+    def test_flush_close(self):
+        self.db._files.remove({})
+        self.db._chunks.remove({})
+
+        file = GridFile({"filename": "test"}, self.db, "w")
+        file.flush()
+        file.close()
+        file.close()
+        self.assertRaises(ValueError, file.write, "test")
+        self.assertEqual(GridFile({}, self.db).read(), "")
+
+        file = GridFile({"filename": "test"}, self.db, "w")
+        file.write("mike")
+        file.flush()
+        file.write("test")
+        file.flush()
+        file.write("huh")
+        file.flush()
+        file.flush()
+        file.close()
+        file.close()
+        self.assertRaises(ValueError, file.write, "test")
+        self.assertEqual(GridFile({}, self.db).read(), "miketesthuh")
+
+    def test_overwrite(self):
+        self.db._files.remove({})
+        self.db._chunks.remove({})
+
+        file = GridFile({"filename": "test"}, self.db, "w")
+        file.write("test")
+        file.close()
+
+        file = GridFile({"filename": "test"}, self.db, "w")
+        file.write("mike")
+        file.close()
+
+        self.assertEqual(GridFile({}, self.db).read(), "mike")
 
 if __name__ == "__main__":
     unittest.main()
