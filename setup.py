@@ -4,19 +4,31 @@ from ez_setup import use_setuptools
 use_setuptools()
 from setuptools import setup
 
+try:
+    f = open("README.rst")
+    readme_content = f.read()
+    f.close()
+except:
+    readme_content = ""
+
 setup(
     name="pymongo",
     version="0.1.2pre",
     description="Driver for the Mongo database <http://www.mongodb.org>",
-    long_description="""\
-The pymongo package is a driver for Mongo, a high performance, document-based
-database. See http://www.mongodb.org and http://www.10gen.com for more
-information on Mongo.
-""",
+    long_description=readme_content,
     author="10gen",
     author_email="mike@10gen.com",
     url="http://github.com/mongodb/mongo-python-driver",
     packages=["pymongo"],
-    install_requires=['elementtree'],
+    install_requires=["elementtree"],
     license="Apache License, Version 2.0",
-    test_suite='nose.collector')
+    test_suite="nose.collector",
+    classifiers=[
+        "Development Status :: 2 - Pre-Alpha",
+        "Intended Audience :: Developers",
+        "License :: OSI Approved :: Apache Software License",
+        "Operating System :: MacOS :: MacOS X",
+        "Operating System :: Microsoft :: Windows",
+        "Operating System :: POSIX",
+        "Programming Language :: Python",
+        "Topic :: Database"])
