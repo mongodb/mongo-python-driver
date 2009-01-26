@@ -79,6 +79,8 @@ class GridFile(object):
         if file:
             self.__id = file["_id"]
         else:
+            if mode == "r":
+                raise IOError("No such file: %r" % file_spec)
             file_spec["length"] = 0
             file_spec["uploadDate"] = datetime.datetime.now()
             file_spec.setdefault("chunkSize", 256000)

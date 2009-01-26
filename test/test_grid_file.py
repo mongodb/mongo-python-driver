@@ -58,6 +58,13 @@ class TestGridFile(unittest.TestCase):
         file.close()
 
     def test_create_grid_file(self):
+        self.db._files.remove({})
+        self.db._chunks.remove({})
+
+        # just write a blank file so that reads on {} don't fail
+        file = GridFile({"filename": "test"}, self.db, "w")
+        file.close()
+
         self.assertRaises(TypeError, GridFile, "hello", self.db)
         self.assertRaises(TypeError, GridFile, None, self.db)
         self.assertRaises(TypeError, GridFile, 5, self.db)
@@ -80,6 +87,9 @@ class TestGridFile(unittest.TestCase):
         self.assertRaises(TypeError, GridFile, {}, self.db, "r", None)
         self.assertRaises(TypeError, GridFile, {}, self.db, "r", 5)
         self.assertRaises(TypeError, GridFile, {}, self.db, "r", [])
+
+        self.assertRaises(IOError, GridFile, {"filename": "mike"}, self.db)
+        self.assertTrue(GridFile({"filename": "test"}, self.db))
 
 if __name__ == "__main__":
     unittest.main()
