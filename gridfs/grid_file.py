@@ -31,8 +31,8 @@ class GridFile(object):
     def __init__(self, file_spec, database, mode="r", collection="_files"):
         """Open a "file" in GridFS.
 
-        Application developers should not need to instantiate this class
-        directly.
+        Application developers should generally not need to instantiate this
+        class directly.
 
         Raises TypeError if file_spec is not an instance of (dict,
         `pymongo.son.SON`), database is not an instance of
