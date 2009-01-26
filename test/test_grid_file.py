@@ -16,6 +16,7 @@
 """
 
 import unittest
+import datetime
 
 import qcheck
 from test_connection import get_connection
@@ -54,6 +55,7 @@ class TestGridFile(unittest.TestCase):
         self.assertEqual(self.db._chunks.find().count(), 0)
 
         file = GridFile({"filename": "test"}, self.db)
+        self.assertEqual(file.next, None)
         self.assertEqual(file.read(), "")
         file.close()
 
@@ -89,7 +91,15 @@ class TestGridFile(unittest.TestCase):
         self.assertRaises(TypeError, GridFile, {}, self.db, "r", [])
 
         self.assertRaises(IOError, GridFile, {"filename": "mike"}, self.db)
-        self.assertTrue(GridFile({"filename": "test"}, self.db))
+
+        a = GridFile({"filename": "test"}, self.db)
+        self.assertEqual(a.length, 0)
+        self.assertEqual(a.content_type, None)
+        self.assertEqual(a.name, "test")
+        self.assertEqual(a.chunk_size, 256000)
+        self.assertTrue(isinstance(a.upload_date, datetime.datetime))
+        self.assertEqual(a.aliases, None)
+        self.assertEqual(a.next, None)
 
 if __name__ == "__main__":
     unittest.main()

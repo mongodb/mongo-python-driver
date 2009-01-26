@@ -139,7 +139,7 @@ class GridFile(object):
     name = __create_property("filename")
     content_type = __create_property("contentType")
     length = __create_property("length", True)
-    chunk_size = __create_property("filename", True)
+    chunk_size = __create_property("chunkSize", True)
     upload_date = __create_property("uploadDate", True)
     aliases = __create_property("aliases")
     next = __create_property("next", True)
