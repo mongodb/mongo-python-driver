@@ -237,5 +237,23 @@ class TestGridFile(unittest.TestCase):
 
         qcheck.check_unittest(self, helper, qcheck.gen_string(qcheck.gen_range(0, 20)))
 
+    def test_modes(self):
+        self.db._files.remove({})
+        self.db._chunks.remove({})
+
+        file = GridFile({"filename": "test"}, self.db, "w")
+        self.assertRaises(ValueError, file.read)
+        file.write("hello")
+        file.close()
+        self.assertRaises(ValueError, file.read)
+        self.assertRaises(ValueError, file.write, "hello")
+
+        file = GridFile({"filename": "test"}, self.db, "r")
+        self.assertRaises(ValueError, file.write, "hello")
+        file.read()
+        file.close()
+        self.assertRaises(ValueError, file.read)
+        self.assertRaises(ValueError, file.write, "hello")
+
 if __name__ == "__main__":
     unittest.main()
