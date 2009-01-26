@@ -197,5 +197,20 @@ class TestGridFile(unittest.TestCase):
 
         self.assertEqual(GridFile({}, self.db).read(), "mike")
 
+    def test_multi_chunk_file(self):
+        self.db._files.remove({})
+        self.db._chunks.remove({})
+
+        random_string = qcheck.gen_string(qcheck.lift(300000))()
+
+        file = GridFile({"filename": "test"}, self.db, "w")
+        file.write(random_string)
+        file.close()
+
+        self.assertEqual(self.db._files.find().count(), 1)
+        self.assertEqual(self.db._chunks.find().count(), 2)
+
+        self.assertEqual(GridFile({}, self.db).read(), random_string)
+
 if __name__ == "__main__":
     unittest.main()
