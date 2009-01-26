@@ -88,9 +88,6 @@ class GridFile(object):
             self.__current_chunk = None
         self.__closed = False
 
-    def __del__(self):
-        self.close()
-
     def __erase(self):
         """Erase all of the data stored in this GridFile.
         """
