@@ -25,16 +25,45 @@ class TestGridFile(unittest.TestCase):
     def setUp(self):
         self.db = get_connection().test
 
-    def test_write_then_read(self):
+    def test_basic(self):
         self.db._files.remove({})
+        self.db._chunks.remove({})
 
+        self.assertEqual(self.db._files.find().count(), 0)
+        self.assertEqual(self.db._chunks.find().count(), 0)
         file = GridFile({"filename": "test"}, self.db, "w")
         file.write("hello world")
         file.close()
+        self.assertEqual(self.db._files.find().count(), 1)
+        self.assertEqual(self.db._chunks.find().count(), 1)
 
         file = GridFile({"filename": "test"}, self.db)
         self.assertEqual(file.read(), "hello world")
         file.close()
+
+    def test_create_grid_file(self):
+        self.assertRaises(TypeError, GridFile, "hello", self.db)
+        self.assertRaises(TypeError, GridFile, None, self.db)
+        self.assertRaises(TypeError, GridFile, 5, self.db)
+
+        self.assertRaises(TypeError, GridFile, {}, "hello")
+        self.assertRaises(TypeError, GridFile, {}, None)
+        self.assertRaises(TypeError, GridFile, {}, 5)
+        self.assertTrue(GridFile({}, self.db))
+
+        self.assertRaises(TypeError, GridFile, {}, self.db, None)
+        self.assertRaises(TypeError, GridFile, {}, self.db, 5)
+        self.assertRaises(TypeError, GridFile, {}, self.db, [])
+        self.assertRaises(ValueError, GridFile, {}, self.db, "m")
+        self.assertRaises(ValueError, GridFile, {}, self.db, u"m")
+        self.assertTrue(GridFile({}, self.db, "r"))
+        self.assertTrue(GridFile({}, self.db, u"r"))
+        self.assertTrue(GridFile({}, self.db, "w"))
+        self.assertTrue(GridFile({}, self.db, u"w"))
+
+        self.assertRaises(TypeError, GridFile, {}, self.db, "r", None)
+        self.assertRaises(TypeError, GridFile, {}, self.db, "r", 5)
+        self.assertRaises(TypeError, GridFile, {}, self.db, "r", [])
 
 if __name__ == "__main__":
     unittest.main()

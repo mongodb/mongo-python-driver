@@ -68,6 +68,8 @@ class GridFile(object):
             raise TypeError("database must be an instance of database")
         if not isinstance(collection, types.StringTypes):
             raise TypeError("collection must be an instance of (str, unicode)")
+        if not isinstance(mode, types.StringTypes):
+            raise TypeError("mode must be an instance of (str, unicode)")
         if mode not in ("r", "w"):
             raise ValueError("mode must be one of ('r', 'w')")
 
