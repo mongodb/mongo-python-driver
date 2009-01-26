@@ -21,6 +21,7 @@ from pymongo.son import SON
 from pymongo.database import Database
 from pymongo.objectid import ObjectId
 from pymongo.dbref import DBRef
+from pymongo.binary import Binary
 from errors import CorruptGridFile
 
 class GridFile(object):
@@ -152,6 +153,7 @@ class GridFile(object):
     __chunks_collection = "_chunks"
     def __write_current_chunk(self):
         # TODO _chunks collection should be configurable?
+        self.__current_chunk["data"] = Binary(self.__current_chunk["data"])
         self.__collection.database()[self.__chunks_collection].save(self.__current_chunk)
 
     def flush(self):
