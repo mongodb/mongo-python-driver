@@ -136,13 +136,18 @@ class GridFile(object):
             return property(get, set)
         return property(get)
 
-    name = __create_property("filename")
+    name = __create_property("filename", True)
     content_type = __create_property("contentType")
     length = __create_property("length", True)
     chunk_size = __create_property("chunkSize", True)
     upload_date = __create_property("uploadDate", True)
     aliases = __create_property("aliases")
     next = __create_property("next", True)
+
+    def rename(self, filename):
+        file = self.__collection.find_one(self.__id)
+        file["filename"] = filename
+        self.__collection.save(file)
 
     __chunks_collection = "_chunks"
     def __write_current_chunk(self):
