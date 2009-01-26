@@ -20,7 +20,8 @@ import unittest
 import qcheck
 from test_connection import get_connection
 from pymongo.objectid import ObjectId
-from pymongo.son_manipulator import SONManipulator, ObjectIdInjector, NamespaceInjector
+from pymongo.son import SON
+from pymongo.son_manipulator import SONManipulator, ObjectIdInjector, NamespaceInjector, ObjectIdShuffler
 from pymongo.database import Database
 
 class TestSONManipulator(unittest.TestCase):
@@ -51,6 +52,30 @@ class TestSONManipulator(unittest.TestCase):
             return True
         qcheck.check_unittest(self, incoming_adds_id,
                               qcheck.gen_mongo_dict(3))
+
+        def outgoing_is_identity(son):
+            return son == manip.transform_outgoing(son, collection)
+        qcheck.check_unittest(self, outgoing_is_identity,
+                              qcheck.gen_mongo_dict(3))
+
+    def test_id_shuffling(self):
+        manip = ObjectIdShuffler(self.db)
+        collection = self.db.test
+
+        def incoming_moves_id(son_in):
+            son = manip.transform_incoming(son_in, collection)
+            if not "_id" in son:
+                return True
+            for (k, v) in son.items():
+                self.assertEqual(k, "_id")
+                break
+            return son_in == son
+
+        self.assertTrue(incoming_moves_id({}))
+        self.assertTrue(incoming_moves_id({"_id": 12}))
+        self.assertTrue(incoming_moves_id({"hello": "world", "_id": 12}))
+        self.assertTrue(incoming_moves_id(SON([("hello", "world"),
+                                               ("_id", 12)])))
 
         def outgoing_is_identity(son):
             return son == manip.transform_outgoing(son, collection)

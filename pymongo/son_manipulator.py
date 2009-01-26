@@ -18,6 +18,7 @@ New manipulators should be defined as subclasses of SONManipulator and can be
 installed on a database by calling `pymongo.database.Database.add_son_manipulator`."""
 
 from objectid import ObjectId
+from son import SON
 
 class SONManipulator(object):
     """A base son manipulator.
@@ -59,6 +60,18 @@ class ObjectIdInjector(SONManipulator):
         if not "_id" in son:
             son["_id"] = ObjectId()
         return son
+
+class ObjectIdShuffler(SONManipulator):
+    """A son manipulator that moves _id to the first position.
+    """
+    def transform_incoming(self, son, collection):
+        """Move _id to the front if it's there.
+        """
+        if not "_id" in son:
+            return son
+        transformed = SON({"_id": son["_id"]})
+        transformed.update(son)
+        return transformed
 
 class NamespaceInjector(SONManipulator):
     """A son manipulator that adds the _ns field.

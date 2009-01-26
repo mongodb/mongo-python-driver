@@ -218,6 +218,18 @@ class TestDatabase(unittest.TestCase):
         db.logout()
         db.logout()
 
+    def test_id_ordering(self):
+        db = self.connection.test
+        db.test.remove({})
+
+        db.test.insert({"hello": "world", "_id": 5})
+        db.test.insert(SON([("hello", "world"),
+                            ("_id", 5)]))
+        for x in db.test.find():
+            for (k, v) in x.items():
+                self.assertEqual(k, "_id")
+                break
+
     # TODO some of these tests belong in the collection level testing.
     def test_save_find_one(self):
         db = Database(self.connection, "test")

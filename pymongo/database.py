@@ -18,7 +18,7 @@ import types
 import md5
 
 from son import SON
-from son_manipulator import ObjectIdInjector
+from son_manipulator import ObjectIdInjector, ObjectIdShuffler
 from collection import Collection
 from errors import InvalidName, CollectionInvalid, OperationFailure
 
@@ -51,7 +51,7 @@ class Database(object):
 
         self.__name = unicode(name)
         self.__connection = connection
-        self.__manipulators = [ObjectIdInjector(self)]
+        self.__manipulators = [ObjectIdInjector(self), ObjectIdShuffler(self)]
 
     def __check_name(self, name):
         for invalid_char in " .$/\\":
@@ -60,10 +60,14 @@ class Database(object):
         if not name:
             raise InvalidName("database name cannot be the empty string")
 
-    def add_son_manipulator(self, manipulator):
+    def add_son_manipulator(self, manipulator, index=-1):
         """Add a new son manipulator to this database.
+
+        Arguments:
+        - `manipulator`: the manipulator to add
+        - `index` (optional): the index to add the manipulator on the manipulator list
         """
-        self.__manipulators.append(manipulator)
+        self.__manipulators[index:index] = [manipulator]
 
     def connection(self):
         """Get the database connection.

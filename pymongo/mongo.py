@@ -66,7 +66,7 @@ class Mongo(database.Database):
         connection.set_cursor_manager(BatchCursorManager)
 
         database.Database.__init__(self, connection, name)
-        self.add_son_manipulator(NamespaceInjector(self))
+        self.add_son_manipulator(NamespaceInjector(self), 0)
 
     def __repr__(self):
         return "Mongo(%r, %r, %r)" % (self.name(), self.connection().host(), self.connection().port())
