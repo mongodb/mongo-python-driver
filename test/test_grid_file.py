@@ -212,5 +212,30 @@ class TestGridFile(unittest.TestCase):
 
         self.assertEqual(GridFile({}, self.db).read(), random_string)
 
+    def test_small_chunks(self):
+        self.db._files.remove({})
+        self.db._chunks.remove({})
+
+        self.files = 0
+        self.chunks = 0
+
+        def helper(data):
+            filename = qcheck.gen_printable_string(qcheck.lift(20))()
+
+            f = GridFile({"filename": filename, "chunkSize": 1}, self.db, "w")
+            f.write(data)
+            f.close()
+
+            self.files += 1
+            self.chunks += len(data)
+
+            self.assertEqual(self.db._files.find().count(), self.files)
+            self.assertEqual(self.db._chunks.find().count(), self.chunks)
+
+            self.assertEqual(GridFile({"filename": filename}, self.db).read(), data)
+            return True
+
+        qcheck.check_unittest(self, helper, qcheck.gen_string(qcheck.gen_range(0, 20)))
+
 if __name__ == "__main__":
     unittest.main()
