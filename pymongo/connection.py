@@ -26,7 +26,7 @@ from cursor_manager import CursorManager
 class Connection(object):
     """A connection to Mongo.
     """
-    def __init__(self, host="localhost", port=27017):
+    def __init__(self, host="localhost", port=27017, slave_ok=False):
         """Open a new connection to the database at host:port.
 
         Raises TypeError if host is not an instance of string or port is not an
@@ -37,6 +37,7 @@ class Connection(object):
           - `host` (optional): the hostname or IPv4 address of the database to
             connect to
           - `port` (optional): the port number on which to connect
+          - `slave_ok` (optional): is it okay to query a slave?
         """
         if not isinstance(host, types.StringType):
             raise TypeError("host must be an instance of str")
@@ -44,6 +45,7 @@ class Connection(object):
             raise TypeError("port must be an instance of int")
         self.__host = host
         self.__port = port
+        self.__slave_ok = slave_ok
         self.__id = 1
         self.__cursor_manager = CursorManager(self)
 
