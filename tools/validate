@@ -1,3 +1,5 @@
 #!/usr/bin/env bash
 
-python validate.py $1 $2
+pushd .. > /dev/null
+python "tools/validate.py" $1 $2
+popd > /dev/null
