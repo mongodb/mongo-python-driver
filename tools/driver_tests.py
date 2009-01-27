@@ -27,6 +27,30 @@ def test1(db):
     for i in range(100):
         db.part1.save({"x": i})
 
+def remove(db):
+    db.remove1.remove({})
+    db.remove2.remove({"a": 3})
+
+def find(db):
+    db.test.insert({"a": 2})
+
+def circular(db):
+    # TODO skipping this test for now because as it's written it *sort of*
+    # depends on auto-ref and auto-deref
+    pass
+
+def capped(db):
+    collection = db.create_collection("capped1", {"capped": True, "size": 500})
+    collection.insert({"x": 1})
+    collection.insert({"x": 2})
+
+    # TODO ignoring $nExtents for now
+    collection2 = db.create_collection("capped2", {"capped": True, "size": 1000})
+    str = ""
+    for _ in range(100):
+        collection2.insert({"dashes": str})
+        str += "-"
+
 def main(test, out_file):
     db = Connection()[test]
     test_function = globals()[test]
