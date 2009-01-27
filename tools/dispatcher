@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+pushd .. > /dev/null
+
+python "tools/driver-tests/${1}.py"
+exitval=$?
+
+echo "exit_code:$exitval" >> $2
+
+popd > /dev/null
