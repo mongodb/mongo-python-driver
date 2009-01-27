@@ -51,7 +51,7 @@ class Connection(object):
 
         self.__connect()
 
-    def master(self):
+    def _master(self):
         """Get the hostname and port of the master Mongo instance.
 
         Return a tuple (host, port). Works even if we're already connected to
