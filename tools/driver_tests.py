@@ -25,7 +25,7 @@ from pymongo.connection import Connection
 
 def test1(db):
     for i in range(100):
-        db.part1.save({"x": i})
+        db.part1.insert({"x": i})
 
 def remove(db):
     db.remove1.remove({})
