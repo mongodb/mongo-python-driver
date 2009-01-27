@@ -1,6 +1,6 @@
 [epydoc]
 
-modules: pymongo
+modules: pymongo, gridfs
 output: html
 target: doc/
 verbosity: 1
