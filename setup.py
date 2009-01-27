@@ -20,7 +20,7 @@ setup(
     author="10gen",
     author_email="mike@10gen.com",
     url="http://github.com/mongodb/mongo-python-driver",
-    packages=["pymongo"],
+    packages=["pymongo", "gridfs"],
     install_requires=["elementtree"],
     license="Apache License, Version 2.0",
     test_suite="nose.collector",
