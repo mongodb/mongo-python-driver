@@ -233,6 +233,9 @@ class TestGridFile(unittest.TestCase):
             self.assertEqual(self.db._chunks.find().count(), self.chunks)
 
             self.assertEqual(GridFile({"filename": filename}, self.db).read(), data)
+
+            f = GridFile({"filename": filename}, self.db)
+            self.assertEqual(f.read(10) + f.read(10), data)
             return True
 
         qcheck.check_unittest(self, helper, qcheck.gen_string(qcheck.gen_range(0, 20)))
@@ -254,6 +257,23 @@ class TestGridFile(unittest.TestCase):
         file.close()
         self.assertRaises(ValueError, file.read)
         self.assertRaises(ValueError, file.write, "hello")
+
+    def test_multiple_reads(self):
+        self.db._files.remove({})
+        self.db._chunks.remove({})
+
+        file = GridFile({"filename": "test"}, self.db, "w")
+        file.write("hello world")
+        file.close()
+
+        file = GridFile({"filename": "test"}, self.db, "r")
+        self.assertEqual(file.read(2), "he")
+        self.assertEqual(file.read(2), "ll")
+        self.assertEqual(file.read(2), "o ")
+        self.assertEqual(file.read(2), "wo")
+        self.assertEqual(file.read(2), "rl")
+        self.assertEqual(file.read(2), "d")
+        self.assertEqual(file.read(2), "")
 
 if __name__ == "__main__":
     unittest.main()

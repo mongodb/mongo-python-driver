@@ -16,6 +16,7 @@
 
 import types
 import datetime
+import math
 
 from pymongo.son import SON
 from pymongo.database import Database
@@ -91,6 +92,10 @@ class GridFile(object):
         if mode == "w":
             self.__erase()
             self.__current_chunk = None
+        elif mode == "r":
+            self.__position = 0
+            self.__current_chunk = file["next"]
+            self.__read_buffer = ""
         self.__closed = False
 
     def __erase(self):
@@ -199,18 +204,21 @@ class GridFile(object):
         """
         self.__assert_open("r")
 
-        if size < 0 or size > self.length:
-            size = self.length
+        if size == 0:
+            return ""
 
-        bytes = ""
-        next = self.next
-        chunk_number = 0
+        remainder = self.length - self.__position
+        if size < 0 or size > remainder:
+            size = remainder
+
+        bytes = self.__read_buffer
+        chunk_number = math.floor(self.__position / self.chunk_size)
         while len(bytes) < size:
-            if not next:
+            if not self.__current_chunk:
                 raise CorruptGridFile("incorrect length for file: %r" % self)
-            chunk = self.__collection.database().dereference(next)
+            chunk = self.__collection.database().dereference(self.__current_chunk)
             if not chunk:
-                raise CorruptGridFile("could not dereference: %r" % next)
+                raise CorruptGridFile("could not dereference: %r" % self.__current_chunk)
             if chunk["cn"] != chunk_number:
                 raise CorruptGridFile("incorrect chunk number: %r, should be: %r" %
                                       (chunk["cn"], chunk_number))
@@ -218,10 +226,12 @@ class GridFile(object):
             bytes += chunk["data"]
 
             chunk_number += 1
-            next = chunk["next"]
+            self.__current_chunk = chunk["next"]
 
-        bytes = bytes[:size]
-        return bytes
+        self.__position += size
+        to_return = bytes[:size]
+        self.__read_buffer = bytes[size:]
+        return to_return
 
     # TODO should support writing unicode to a file. this means that files will
     # need to have an encoding attribute.
