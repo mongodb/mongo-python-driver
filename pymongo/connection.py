@@ -27,7 +27,7 @@ class Connection(object):
     """A connection to Mongo.
     """
     def __init__(self, host="localhost", port=27017, slave_ok=False):
-        """Open a new connection to the database at host:port.
+        """Open a new connection to a Mongo instance at host:port.
 
         Raises TypeError if host is not an instance of string or port is not an
         instance of int. Raises ConnectionFailure if the connection cannot be
@@ -50,6 +50,21 @@ class Connection(object):
         self.__cursor_manager = CursorManager(self)
 
         self.__connect()
+
+    def master(self):
+        """Get the hostname and port of the master Mongo instance.
+
+        Return a tuple (host, port). Works even if we're already connected to
+        the master.
+        """
+        result = self.admin._command({"ismaster": 1})
+        if result["ok"] != 1:
+            raise OperationFailure("master() failed: %s" % result["errmsg"])
+
+        if result["ismaster"] == 1:
+            return (self.__host, self.__port)
+        else:
+            return tuple(result["remote"].rsplit(":", 1))
 
     def set_cursor_manager(self, manager_class):
         """Set this connections cursor manager.
