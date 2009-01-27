@@ -37,10 +37,10 @@ class Collection(object):
         command will be sent to the database. Otherwise the collection will be
         created implicitly on first use.
 
-        Arguments:
-        - `database`: the database to get a collection from
-        - `name`: the name of the collection to get
-        - `options`: dictionary of collection options.
+        :Parameters:
+          - `database`: the database to get a collection from
+          - `name`: the name of the collection to get
+          - `options`: dictionary of collection options.
             see `pymongo.database.Database.create_collection` for details.
         """
         if not isinstance(name, types.StringTypes):
@@ -77,8 +77,8 @@ class Collection(object):
 
         Raises InvalidName if an invalid collection name is used.
 
-        Arguments:
-        - `name`: the name of the collection to get
+        :Parameters:
+          - `name`: the name of the collection to get
         """
         return Collection(self.__database, u"%s.%s" % (self.__collection_name, name))
 
@@ -117,9 +117,9 @@ class Collection(object):
 
         Raises TypeError if to_save is not an instance of (dict, SON).
 
-        Arguments:
-        - `to_save`: the SON object to be saved
-        - `manipulate` (optional): manipulate the son object before saving it
+        :Parameters:
+          - `to_save`: the SON object to be saved
+          - `manipulate` (optional): manipulate the son object before saving it
         """
         if not isinstance(to_save, (types.DictType, SON)):
             raise TypeError("cannot save object of type %s" % type(to_save))
@@ -138,9 +138,9 @@ class Collection(object):
         SONManipulators that have been added to this database. Returns the
         inserted object or a list of inserted objects.
 
-        Arguments:
-        - `doc_or_docs`: a SON object or list of SON objects to be inserted
-        - `manipulate` (optional): monipulate the objects before inserting?
+        :Parameters:
+          - `doc_or_docs`: a SON object or list of SON objects to be inserted
+          - `manipulate` (optional): monipulate the objects before inserting?
         """
         docs = doc_or_docs
         if isinstance(docs, (types.DictType, SON)):
@@ -163,13 +163,14 @@ class Collection(object):
         Raises TypeError if either spec or document isn't an instance of
         (dict, SON) or upsert isn't an instance of bool.
 
-        - `spec`: a SON object specifying elements which must be present for a
+        :Parameters:
+          - `spec`: a SON object specifying elements which must be present for a
             document to be updated
-        - `document`: a SON object specifying the fields to be changed in the
+          - `document`: a SON object specifying the fields to be changed in the
             selected document(s), or (in the case of an upsert) the document to
             be inserted.
-        - `upsert` (optional): perform an upsert operation
-        - `manipulate` (optional): monipulate the document before updating?
+          - `upsert` (optional): perform an upsert operation
+          - `manipulate` (optional): monipulate the document before updating?
         """
         if not isinstance(spec, (types.DictType, SON)):
             raise TypeError("spec must be an instance of (dict, SON)")
@@ -193,8 +194,8 @@ class Collection(object):
         Raises TypeEror if the argument is not an instance of
         (dict, SON, ObjectId).
 
-        Arguments:
-        - `spec_or_object_id` (optional): a SON object specifying elements
+        :Parameters:
+          - `spec_or_object_id` (optional): a SON object specifying elements
             which must be present for a document to be removed OR an instance of
             ObjectId to be used as the value for an _id element
         """
@@ -213,8 +214,8 @@ class Collection(object):
         Raises TypeError if the argument is of an improper type. Returns a
         single SON object, or None if no result is found.
 
-        Arguments:
-        - `spec_or_object_id` (optional): a SON object specifying elements
+        :Parameters:
+          - `spec_or_object_id` (optional): a SON object specifying elements
             which must be present for a document to be included in the result
             set OR an instance of ObjectId to be used as the value for an _id
             query
@@ -233,14 +234,14 @@ class Collection(object):
         Raises TypeError if any of the arguments are of improper type. Returns
         an instance of Cursor corresponding to this query.
 
-        Arguments:
-        - `spec` (optional): a SON object specifying elements which must be
+        :Parameters:
+          - `spec` (optional): a SON object specifying elements which must be
             present for a document to be included in the result set
-        - `fields` (optional): a list of field names that should be returned
+          - `fields` (optional): a list of field names that should be returned
             in the result set
-        - `skip` (optional): the number of documents to omit (from the start of
-            the result set) when returning the results
-        - `limit` (optional): the maximum number of results to return in the
+          - `skip` (optional): the number of documents to omit (from the start
+            of the result set) when returning the results
+          - `limit` (optional): the maximum number of results to return in the
             first reply message, or 0 for the default return size
         """
         if not isinstance(spec, (types.DictType, SON)):
@@ -273,10 +274,10 @@ class Collection(object):
         direction(s) must be one of (Mongo.ASCENDING, Mongo.DESCENDING). Returns
         the name of the created index.
 
-        Arguments:
-        - `key_or_list`: a single key or a list of (key, direction) pairs
+        :Parameters:
+          - `key_or_list`: a single key or a list of (key, direction) pairs
             specifying the index to ensure
-        - `direction` (optional): must be included if key_or_list is a single
+          - `direction` (optional): must be included if key_or_list is a single
             key, otherwise must be None
         """
         if direction:
@@ -320,8 +321,8 @@ class Collection(object):
         Raises OperationFailure on an error. Raises TypeError if index is not an
         instance of (str, unicode).
 
-        Arguments:
-        - `index`: the name of the index to drop
+        :Parameters:
+          - `index`: the name of the index to drop
         """
         if not isinstance(index, types.StringTypes):
             raise TypeError("index must be an instance of (str, unicode)")

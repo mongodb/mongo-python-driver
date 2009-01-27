@@ -44,17 +44,18 @@ class Mongo(database.Database):
 
         Settings are passed in as a dictionary. Possible settings, along with
         their default values (in parens), are listed below:
-        - "auto_dereference" (False): automatically dereference any `DBRef`s
-            contained within SON objects being returned from queries
-        - "auto_reference" (False): automatically create `DBRef`s out of any
-            sub-objects that have already been saved in the database
 
-        Arguments:
-        - `name`: the name of the database to connect to
-        - `host` (optional): the hostname or IPv4 address of the database to
+        - "auto_dereference" (False): automatically dereference any `DBRef`
+          contained within SON objects being returned from queries
+        - "auto_reference" (False): automatically create `DBRef` out of any
+          sub-objects that have already been saved in the database
+
+        :Parameters:
+          - `name`: the name of the database to connect to
+          - `host` (optional): the hostname or IPv4 address of the database to
             connect to
-        - `port` (optional): the port number on which to connect
-        - `settings` (optional): a dictionary of settings
+          - `port` (optional): the port number on which to connect
+          - `settings` (optional): a dictionary of settings
         """
         if not isinstance(settings, types.DictType):
             raise TypeError("settings must be an instance of dict")
@@ -79,9 +80,9 @@ class Mongo(database.Database):
 
         Used to do things like auto dereferencing, if the option is enabled.
 
-        Arguments:
-        - `son`: a SON object coming out of the database
-        - `collection`: collection this object is being retrieved from
+        :Parameters:
+          - `son`: a SON object coming out of the database
+          - `collection`: collection this object is being retrieved from
         """
         son = database.Database._fix_outgoing(self, son, collection)
 
@@ -112,9 +113,9 @@ class Mongo(database.Database):
         Will also add _id and _ns if they are missing and desired (as specified
         by add_meta).
 
-        Arguments:
-        - `to_save`: a SON object going into the database
-        - `collection`: collection into which this object is being saved
+        :Parameters:
+          - `to_save`: a SON object going into the database
+          - `collection`: collection into which this object is being saved
         """
         to_save = database.Database._fix_incoming(self, to_save, collection)
 

@@ -41,9 +41,9 @@ class Database(object):
         Raises TypeError if name is not an instance of (str, unicode). Raises
         InvalidName if name is not a valid database name.
 
-        Arguments:
-        - `connection`: a connection to Mongo
-        - `name`: database name
+        :Parameters:
+          - `connection`: a connection to Mongo
+          - `name`: database name
         """
         if not isinstance(name, types.StringTypes):
             raise TypeError("name must be an instance of (str, unicode)")
@@ -64,9 +64,10 @@ class Database(object):
     def add_son_manipulator(self, manipulator, index=-1):
         """Add a new son manipulator to this database.
 
-        Arguments:
-        - `manipulator`: the manipulator to add
-        - `index` (optional): the index to add the manipulator on the manipulator list
+        :Parameters:
+          - `manipulator`: the manipulator to add
+          - `index` (optional): the index to add the manipulator on the
+            manipulator list
         """
         self.__manipulators[index:index] = [manipulator]
 
@@ -93,8 +94,8 @@ class Database(object):
 
         Raises InvalidName if an invalid collection name is used.
 
-        Arguments:
-        - `name`: the name of the collection to get
+        :Parameters:
+          - `name`: the name of the collection to get
         """
         return Collection(self, name)
 
@@ -103,8 +104,8 @@ class Database(object):
 
         Raises InvalidName if an invalid collection name is used.
 
-        Arguments:
-        - `name`: the name of the collection to get
+        :Parameters:
+          - `name`: the name of the collection to get
         """
         return self.__getattr__(name)
 
@@ -116,15 +117,16 @@ class Database(object):
         collection already exists.
 
         Options should be a dictionary, with any of the following options:
+
         - "size": desired initial size for the collection. must be less than or
-            equal to 10000000000. for capped collections this size is the max
-            size of the collection.
+          equal to 10000000000. for capped collections this size is the max
+          size of the collection.
         - "capped": if True, this is a capped collection
         - "max": maximum number of objects if capped (optional)
 
-        Arguments:
-        - `name`: the name of the collection to create
-        - `options` (optional): options to use on the new collection
+        :Parameters:
+          - `name`: the name of the collection to create
+          - `options` (optional): options to use on the new collection
         """
         if name in self.collection_names():
             raise CollectionInvalid("collection %s already exists" % name)
@@ -134,9 +136,9 @@ class Database(object):
     def _fix_incoming(self, son, collection):
         """Apply manipulators to an incoming SON object before it gets stored.
 
-        Arguments:
-        - `son`: the son object going into the database
-        - `collection`: the collection the son object is being saved in
+        :Parameters:
+          - `son`: the son object going into the database
+          - `collection`: the collection the son object is being saved in
         """
         for manipulator in self.__manipulators:
             son = manipulator.transform_incoming(son, collection)
@@ -145,9 +147,9 @@ class Database(object):
     def _fix_outgoing(self, son, collection):
         """Apply manipulators to a SON object as it comes out of the database.
 
-        Arguments:
-        - `son`: the son object coming out of the database
-        - `collection`: the collection the son object was saved in
+        :Parameters:
+          - `son`: the son object coming out of the database
+          - `collection`: the collection the son object was saved in
         """
         for manipulator in self.__manipulators:
             son = manipulator.transform_outgoing(son, collection)
@@ -171,8 +173,8 @@ class Database(object):
     def drop_collection(self, name_or_collection):
         """Drop a collection.
 
-        Arguments:
-        - `name_or_collection`: the name of a collection to drop or the
+        :Parameters:
+          - `name_or_collection`: the name of a collection to drop or the
             collection object itself
         """
         name = name_or_collection
@@ -230,8 +232,8 @@ class Database(object):
 
         Raises ValueError if level is not one of (OFF, SLOW_ONLY, ALL).
 
-        Arguments:
-        - `level`: the profiling level to use
+        :Parameters:
+          - `level`: the profiling level to use
         """
         if not isinstance(level, types.IntType) or level < 0 or level > 2:
             raise ValueError("level must be one of (OFF, SLOW_ONLY, ALL)")
@@ -303,9 +305,9 @@ class Database(object):
         to *all* databases. Effectively, "admin" access means root access to the
         database.
 
-        Arguments:
-        - `name`: the name of the user to authenticate
-        - `password`: the password of the user to authenticate
+        :Parameters:
+          - `name`: the name of the user to authenticate
+          - `password`: the password of the user to authenticate
         """
         if not isinstance(name, types.StringTypes):
             raise TypeError("name must be an instance of (str, unicode)")
@@ -341,8 +343,8 @@ class Database(object):
         Raises TypeError if dbref is not an instance of DBRef. Returns a SON
         object or None if the reference does not point to a valid object.
 
-        Arguments:
-        - `dbref`: the reference
+        :Parameters:
+          - `dbref`: the reference
         """
         if not isinstance(dbref, DBRef):
             raise TypeError("cannot dereference a %s" % type(dbref))

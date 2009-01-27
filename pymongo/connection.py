@@ -33,10 +33,10 @@ class Connection(object):
         instance of int. Raises ConnectionFailure if the connection cannot be
         made.
 
-        Arguments:
-        - `host` (optional): the hostname or IPv4 address of the database to
+        :Parameters:
+          - `host` (optional): the hostname or IPv4 address of the database to
             connect to
-        - `port` (optional): the port number on which to connect
+          - `port` (optional): the port number on which to connect
         """
         if not isinstance(host, types.StringType):
             raise TypeError("host must be an instance of str")
@@ -56,6 +56,9 @@ class Connection(object):
         cursor manager handles closing cursors. Different managers can implement
         different policies in terms of when to actually kill a cursor that has
         been closed.
+
+        :Parameters:
+          - `manager_class`: cursor manager to use
         """
         manager = manager_class(self)
         if not isinstance(manager, CursorManager):
@@ -89,9 +92,9 @@ class Connection(object):
         Raises ConnectionFailure if the message cannot be sent. Returns the
         request id of the sent message.
 
-        Arguments:
-        - `operation`: the opcode of the message
-        - `data`: the data to send
+        :Parameters:
+          - `operation`: the opcode of the message
+          - `data`: the data to send
         """
         # header
         to_send = struct.pack("<i", 16 + len(data))
@@ -118,9 +121,10 @@ class Connection(object):
         and request id. Calls to receive_message and send_message should be done
         synchronously.
 
-        Arguments:
-        - `operation`: the opcode of the message
-        - `request_id`: the request id that the message should be in response to
+        :Parameters:
+          - `operation`: the opcode of the message
+          - `request_id`: the request id that the message should be in response
+            to
         """
         def receive(length):
             message = ""
@@ -151,8 +155,8 @@ class Connection(object):
 
         Raises InvalidName if an invalid database name is used.
 
-        Arguments:
-        - `name`: the name of the database to get
+        :Parameters:
+          - `name`: the name of the database to get
         """
         return Database(self, name)
 
@@ -161,8 +165,8 @@ class Connection(object):
 
         Raises InvalidName if an invalid database name is used.
 
-        Arguments:
-        - `name`: the name of the database to get
+        :Parameters:
+          - `name`: the name of the database to get
         """
         return self.__getattr__(name)
 
@@ -173,8 +177,8 @@ class Connection(object):
         closing the cursor actually means depends on this connection's cursor
         manager.
 
-        Arguments:
-        - `cursor_id`: cursor id to close
+        :Parameters:
+          - `cursor_id`: cursor id to close
         """
         if not isinstance(cursor_id, (types.IntType, types.LongType)):
             raise TypeError("cursor_id must be an instance of (int, long)")
@@ -186,8 +190,8 @@ class Connection(object):
 
         Raises TypeError if cursor_ids is not an instance of list.
 
-        Arguments:
-        - `cursor_ids`: list of cursor ids to kill
+        :Parameters:
+          - `cursor_ids`: list of cursor ids to kill
         """
         if not isinstance(cursor_ids, types.ListType):
             raise TypeError("cursor_ids must be a list")
@@ -214,8 +218,8 @@ class Connection(object):
     def drop_database(self, name_or_database):
         """Drop a database.
 
-        Arguments:
-        - `name_or_database`: the name of a database to drop or the object
+        :Parameters:
+          - `name_or_database`: the name of a database to drop or the object
             itself
         """
         name = name_or_database

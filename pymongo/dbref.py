@@ -27,9 +27,9 @@ class DBRef(object):
         Raises TypeError if collection is not an instance of (str, unicode) or
         id is not an instance of ObjectId.
 
-        Arguments:
-        - `collection`: the collection the object is stored in
-        - `id`: the value of the object's _id field
+        :Parameters:
+          - `collection`: the collection the object is stored in
+          - `id`: the value of the object's _id field
         """
         if not isinstance(collection, types.StringTypes):
             raise TypeError("collection must be an instance of (str, unicode)")

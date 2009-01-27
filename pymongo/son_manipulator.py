@@ -28,26 +28,26 @@ class SONManipulator(object):
     def __init__(self, database):
         """Instantiate the manager.
 
-        Arguments:
-        - `database`: a Mongo Database
+        :Parameters:
+          - `database`: a Mongo Database
         """
         self.__database = database
 
     def transform_incoming(self, son, collection):
         """Manipulate an incoming son object.
 
-        Arguments:
-        - `son`: the son object to be inserted into the database
-        - `collection`: the collection the object is being inserted into
+        :Parameters:
+          - `son`: the son object to be inserted into the database
+          - `collection`: the collection the object is being inserted into
         """
         return son
 
     def transform_outgoing(self, son, collection):
         """Manipulate an outgoing son object.
 
-        Arguments:
-        - `son`: the son object being retrieved from the database
-        - `collection`: the collection this object was stored in
+        :Parameters:
+          - `son`: the son object being retrieved from the database
+          - `collection`: the collection this object was stored in
         """
         return son
 

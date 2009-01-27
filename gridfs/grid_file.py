@@ -58,11 +58,13 @@ class GridFile(object):
           * only used for querying, automatically set for inserts
         - "aliases": array of alias strings
 
-        Arguments:
-        - `file_spec`: query specifier as described above
-        - `database`: the database to store/retrieve this file in
-        - `mode` (optional): the mode to open this file with, one of ("r", "w")
-        - `collection` (optional): the collection to store/retrieve this file in
+        :Parameters:
+          - `file_spec`: query specifier as described above
+          - `database`: the database to store/retrieve this file in
+          - `mode` (optional): the mode to open this file with, one of
+            ("r", "w")
+          - `collection` (optional): the collection in which to store/retrieve
+            this file
         """
         if not isinstance(file_spec, (types.DictType, SON)):
             raise TypeError("file_spec must be an instance of (dict, SON)")
@@ -156,8 +158,8 @@ class GridFile(object):
         Due to buffering, the rename might not actually occur until `flush()` or
         `close()` is called.
 
-        Arguments:
-        - `filename`: the new name for this GridFile
+        :Parameters:
+          - `filename`: the new name for this GridFile
         """
         file = self.__collection.find_one(self.__id)
         file["filename"] = filename
@@ -207,8 +209,8 @@ class GridFile(object):
         The bytes are returned as a string object. If size is negative or omitted
         all data is read. Raises ValueError if this GridFile is already closed.
 
-        Arguments:
-        - `size` (optional): the number of bytes to read
+        :Parameters:
+          - `size` (optional): the number of bytes to read
         """
         self.__assert_open("r")
 
@@ -251,8 +253,8 @@ class GridFile(object):
         this GridFile is already closed. Raises TypeErrer if str is not an
         instance of str.
 
-        Arguments:
-        - `str`: string of bytes to be written to the file
+        :Parameters:
+          - `str`: string of bytes to be written to the file
         """
         self.__assert_open("w")
 

@@ -408,8 +408,8 @@ def is_valid(bson):
     Raises TypeError if the data is not an instance of a subclass of str.
     Returns True if the data represents a valid BSON object, False otherwise.
 
-    Arguments:
-    - `bson`: the data to be validated
+    :Parameters:
+      - `bson`: the data to be validated
     """
     if not isinstance(bson, types.StringType):
         raise TypeError("BSON data must be an instance of a subclass of str")
@@ -442,8 +442,8 @@ class BSON(str):
         The data given must be a string instance and represent a valid BSON
         object, otherwise an TypeError or InvalidBSON exception is raised.
 
-        Arguments:
-        - `bson`: the initial data
+        :Parameters:
+          - `bson`: the initial data
         """
         if not is_valid(bson):
             raise InvalidBSON()
@@ -458,8 +458,8 @@ class BSON(str):
         that are not instance of (str, unicode). Raises InvalidDocument if the
         dictionary cannot be converted to BSON.
 
-        Arguments:
-        - `dict`: mapping type representing a Mongo document
+        :Parameters:
+          - `dict`: mapping type representing a Mongo document
         """
         try:
             elements = "".join([_element_to_bson(key, value) for (key, value) in dict.iteritems()])

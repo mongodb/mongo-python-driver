@@ -27,8 +27,8 @@ class CursorManager(object):
     def __init__(self, connection):
         """Instantiate the manager.
 
-        Arguments:
-        - `connection`: a Mongo Connection
+        :Parameters:
+          - `connection`: a Mongo Connection
         """
         self.__connection = connection
 
@@ -37,8 +37,8 @@ class CursorManager(object):
 
         Raises TypeError if cursor_id is not an instance of (int, long).
 
-        Arguments:
-        - `cursor_id`: cursor id to close
+        :Parameters:
+          - `cursor_id`: cursor id to close
         """
         if not isinstance(cursor_id, (types.IntType, types.LongType)):
             raise TypeError("cursor_id must be an instance of (int, long)")
@@ -51,8 +51,8 @@ class BatchCursorManager(CursorManager):
     def __init__(self, connection):
         """Instantiate the manager.
 
-        Arguments:
-        - `connection`: a Mongo Connection
+        :Parameters:
+          - `connection`: a Mongo Connection
         """
         self.__dying_cursors = []
         self.__max_dying_cursors = 20
@@ -70,8 +70,8 @@ class BatchCursorManager(CursorManager):
 
         Raises TypeError if cursor_id is not an instance of (int, long).
 
-        Arguments:
-        - `cursor_id`: cursor id to close
+        :Parameters:
+          - `cursor_id`: cursor id to close
         """
         if not isinstance(cursor_id, (types.IntType, types.LongType)):
             raise TypeError("cursor_id must be an instance of (int, long)")

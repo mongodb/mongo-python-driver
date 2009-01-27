@@ -32,8 +32,8 @@ class GridFS(object):
         Raises TypeError if database is not an instance of
         `pymongo.database.Database`.
 
-        Arguments:
-        - `database`: database to use
+        :Parameters:
+          - `database`: database to use
         """
         if not isinstance(database, Database):
             raise TypeError("database must be an instance of Database")
@@ -46,9 +46,9 @@ class GridFS(object):
         Shorthand method for creating / opening a GridFile from a filename. mode
         must be a mode supported by `gridfs.grid_file.GridFile`
 
-        Arguments:
-        - `filename`: the name of the GridFile to open
-        - `mode` (optional): the mode to open the file in
+        :Parameters:
+          - `filename`: the name of the GridFile to open
+          - `mode` (optional): the mode to open the file in
         """
         return GridFile({"filename": filename}, self.__database, mode)
 
@@ -60,8 +60,8 @@ class GridFS(object):
         all GridFiles that match filename_or_spec. Raises TypeError if
         filename_or_spec is not an instance of (str, unicode, dict, SON).
 
-        Arguments:
-        - `filename_or_spec`: identifier of file(s) to remove
+        :Parameters:
+          - `filename_or_spec`: identifier of file(s) to remove
         """
         spec = filename_or_spec
         if isinstance(filename_or_spec, types.StringTypes):

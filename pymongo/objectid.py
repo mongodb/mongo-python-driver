@@ -29,8 +29,8 @@ class ObjectId(object):
         Otherwise, a TypeError is raised. If given an invalid id, InvalidId is
         raised.
 
-        Arguments:
-        - `id` (optional): a valid ObjectId
+        :Parameters:
+          - `id` (optional): a valid ObjectId
         """
         if id is None:
             self.__generate()
@@ -53,8 +53,8 @@ class ObjectId(object):
         Raises TypeError if id is not an instance of (str, ObjectId) and
         InvalidId if it is not a valid ObjectId.
 
-        Arguments:
-        - `id`: a valid ObjectId
+        :Parameters:
+          - `oid`: a valid ObjectId
         """
         if isinstance(oid, ObjectId):
             self.__id = oid.__id

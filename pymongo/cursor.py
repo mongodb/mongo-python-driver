@@ -95,8 +95,8 @@ class Cursor(object):
         Raises TypeError if limit is not an instance of int. Raises
         InvalidOperation if this cursor has already been used.
 
-        Arguments:
-        - `limit`: the number of results to return
+        :Parameters:
+          - `limit`: the number of results to return
         """
         if not isinstance(limit, types.IntType):
             raise TypeError("limit must be an int")
@@ -111,8 +111,8 @@ class Cursor(object):
         Raises TypeError if skip is not an instance of int. Raises
         InvalidOperation if this cursor has already been used.
 
-        Arguments:
-        - `skip`: the number of results to skip
+        :Parameters:
+          - `skip`: the number of results to skip
         """
         if not isinstance(skip, types.IntType):
             raise TypeError("skip must be an int")
@@ -129,10 +129,10 @@ class Cursor(object):
         direction(s) must be one of (Mongo.ASCENDING, Mongo.DESCENDING). Raises
         InvalidOperation if this cursor has already been used.
 
-        Arguments:
-        - `key_or_list`: a single key or a list of (key, direction) pairs
+        :Parameters:
+          - `key_or_list`: a single key or a list of (key, direction) pairs
             specifying the keys to sort on
-        - `direction` (optional): must be included if key_or_list is a single
+          - `direction` (optional): must be included if key_or_list is a single
             key, otherwise must be None
         """
         self.__check_okay_to_chain()
@@ -198,8 +198,8 @@ class Cursor(object):
         create_index) or an index (as passed to create_index). If index_or_name
         is None any existing hints for this query are cleared.
 
-        Arguments:
-        - `index_or_name`: index (or name of the index) to hint on
+        :Parameters:
+          - `index_or_name`: index (or name of the index) to hint on
         """
         self.__check_okay_to_chain()
         if index_or_name is None:
