@@ -54,7 +54,7 @@ class Connection(object):
     def _master(self):
         """Get the hostname and port of the master Mongo instance.
 
-        Return a tuple (host, port). Works even if we're already connected to
+        Return a tuple (host, port). Return True if this connection is
         the master.
         """
         result = self.admin._command({"ismaster": 1})
@@ -62,7 +62,7 @@ class Connection(object):
             raise OperationFailure("master() failed: %s" % result["errmsg"])
 
         if result["ismaster"] == 1:
-            return (self.__host, self.__port)
+            return True
         else:
             return tuple(result["remote"].rsplit(":", 1))
 
