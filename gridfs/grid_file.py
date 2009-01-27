@@ -151,6 +151,14 @@ class GridFile(object):
     next = __create_property("next", True)
 
     def rename(self, filename):
+        """Rename this GridFile.
+
+        Due to buffering, the rename might not actually occur until `flush()` or
+        `close()` is called.
+
+        Arguments:
+        - `filename`: the new name for this GridFile
+        """
         file = self.__collection.find_one(self.__id)
         file["filename"] = filename
         self.__collection.save(file)
