@@ -24,19 +24,18 @@ sys.path.append(os.path.join(os.getcwd(), ".."))
 from pymongo.connection import Connection
 
 def test1(db):
-    db.drop_collection("part1")
-    begin = datetime.datetime.now()
     for i in range(100):
         db.part1.save({"x": i})
-    return(begin, datetime.datetime.now())
 
 def main(test, out_file):
     db = Connection()[test]
+    test_function = globals()[test]
     try:
-        (begin, end) = globals()[test](db)
+        begin = datetime.datetime.now()
+        test_function(db)
+        end = datetime.datetime.now()
         exit_status = 0
     except:
-        raise
         begin = None
         begin = None
         exit_status = 1
