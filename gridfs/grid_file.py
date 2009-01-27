@@ -42,7 +42,7 @@ class GridFile(object):
         unicode).
 
         The file_spec argument must be a SON query specifier for the file to
-        open. The first file matching the specifier will be opened. If no such
+        open. The *first* file matching the specifier will be opened. If no such
         files exist, a new file is created using the metadata in file_spec.
         The valid fields in a file_spec are as follows:
 
