@@ -171,11 +171,11 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(None, db.error())
         self.assertEqual(None, db.previous_error())
 
-        db._command({"forceerror": 1})
+        db._command({"forceerror": 1}, check=False)
         self.assertTrue(db.error())
         self.assertTrue(db.previous_error())
 
-        db._command({"forceerror": 1})
+        db._command({"forceerror": 1}, check=False)
         self.assertTrue(db.error())
         prev_error = db.previous_error()
         self.assertEqual(prev_error["nPrev"], 1)

@@ -68,9 +68,6 @@ class Collection(object):
         command.update(options)
 
         response = self.__database._command(command)
-        if response["ok"] not in [0, 1]:
-            raise OperationFailure("error creating collection: %s" %
-                                   response["errmsg"])
 
     def __getattr__(self, name):
         """Get a sub-collection of this collection by name.
@@ -327,14 +324,10 @@ class Collection(object):
         if not isinstance(index, types.StringTypes):
             raise TypeError("index must be an instance of (str, unicode)")
 
-        response = self.__database._command(SON([("deleteIndexes",
-                                                  self.__collection_name),
-                                                 ("index", unicode(index))]))
-        if response["ok"] != 1:
-            if response["errmsg"] == "ns not found":
-                return
-            raise OperationFailure("error dropping index(es): %s" %
-                                   response["errmsg"])
+        self.__database._command(SON([("deleteIndexes",
+                                       self.__collection_name),
+                                      ("index", unicode(index))]),
+                                 ["ns not found"])
 
     def index_information(self):
         """Get information on this collection's indexes.

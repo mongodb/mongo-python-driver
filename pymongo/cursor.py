@@ -171,11 +171,9 @@ class Cursor(object):
 
         command = SON([("count", self.__collection.name()),
                        ("query", self.__spec)])
-        response = self.__collection.database()._command(command)
-        if response["ok"] != 1:
-            if response["errmsg"] == "ns does not exist":
-                return 0
-            raise OperationFailure("error getting count: %s" % response["errmsg"])
+        response = self.__collection.database()._command(command, ["ns does not exist"])
+        if response.get("errmsg", "") == "ns does not exist":
+            return 0
         return int(response["n"])
 
     def explain(self):

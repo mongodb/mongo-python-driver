@@ -58,8 +58,6 @@ class Connection(object):
         the master.
         """
         result = self.admin._command({"ismaster": 1})
-        if result["ok"] != 1:
-            raise OperationFailure("master() failed: %s" % result["errmsg"])
 
         if result["ismaster"] == 1:
             return True
@@ -222,8 +220,6 @@ class Connection(object):
         """Get a dictionary of (database_name: size_on_disk).
         """
         result = self.admin._command({"listDatabases": 1})
-        if result["ok"] != 1:
-            raise OperationFailure("failed to get database names")
         info = result["databases"]
         return dict([(db["name"], db["sizeOnDisk"]) for db in info])
 
@@ -246,9 +242,7 @@ class Connection(object):
         if not isinstance(name, types.StringTypes):
             raise TypeError("name_or_database must be an instance of (Database, str, unicode)")
 
-        result = self[name]._command({"dropDatabase": 1})
-        if result["ok"] != 1:
-            raise OperationFailure("failed to drop database")
+        self[name]._command({"dropDatabase": 1})
 
     def __iter__(self):
         return self

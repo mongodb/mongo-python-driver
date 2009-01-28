@@ -155,10 +155,15 @@ class Database(object):
             son = manipulator.transform_outgoing(son, collection)
         return son
 
-    def _command(self, command):
+    def _command(self, command, allowable_errors=[], check=True):
         """Issue a DB command.
         """
-        return self["$cmd"].find_one(command)
+        result = self["$cmd"].find_one(command)
+        if check and result["ok"] != 1:
+            if result["errmsg"] in allowable_errors:
+                return result
+            raise OperationFailure("command %r failed: %s" % (command, result["errmsg"]))
+        return result
 
     def collection_names(self):
         """Get a list of all the collection names in this database.
@@ -189,9 +194,7 @@ class Database(object):
 
         self[name].drop_indexes() # must manually drop indexes
 
-        result = self._command({"drop": unicode(name)})
-        if result["ok"] != 1:
-            raise OperationFailure("failed to drop collection: %s" % result["errmsg"])
+        self._command({"drop": unicode(name)})
 
     def validate_collection(self, name_or_collection):
         """Validate a collection.
@@ -207,8 +210,6 @@ class Database(object):
             raise TypeError("name_or_collection must be an instance of (Collection, str, unicode)")
 
         result = self._command({"validate": unicode(name)})
-        if result["ok"] != 1:
-            raise OperationFailure("failed to validate collection: %s" % result["errmsg"])
 
         info = result["result"]
         if info.find("exception") != -1 or info.find("corrupt") != -1:
@@ -221,8 +222,6 @@ class Database(object):
         Returns one of (OFF, SLOW_ONLY, ALL).
         """
         result = self._command({"profile": -1})
-        if result["ok"] != 1:
-            raise OperationFailure("failed to get profiling level: %s" % result["errmsg"])
 
         assert result["was"] >= 0 and result["was"] <= 2
         return result["was"]
@@ -238,9 +237,7 @@ class Database(object):
         if not isinstance(level, types.IntType) or level < 0 or level > 2:
             raise ValueError("level must be one of (OFF, SLOW_ONLY, ALL)")
 
-        result = self._command({"profile": level})
-        if result["ok"] != 1:
-            raise OperationFailure("failed to set profiling level: %s" % result["errmsg"])
+        self._command({"profile": level})
 
     def profiling_info(self):
         """Returns a list containing current profiling information.
@@ -314,28 +311,27 @@ class Database(object):
         if not isinstance(password, types.StringTypes):
             raise TypeError("password must be an instance of (str, unicode)")
 
-        nonce = self._command({"getnonce": 1})
-        if nonce["ok"] != 1:
-            raise OperationFailure("failed to get nonce: %s" % nonce["errmsg"])
-        nonce = nonce["nonce"]
+        result = self._command({"getnonce": 1})
+        nonce = result["nonce"]
         key = unicode(md5.new("%s%s%s" % (nonce,
                                           unicode(name),
                                           self._password_digest(password))
                               ).hexdigest())
-        result = self._command(SON([("authenticate", 1),
-                                    ("user", unicode(name)),
-                                    ("nonce", nonce),
-                                    ("key", key)]))
-        return result["ok"] == 1
+        try:
+            result = self._command(SON([("authenticate", 1),
+                                        ("user", unicode(name)),
+                                        ("nonce", nonce),
+                                        ("key", key)]))
+            return True
+        except OperationFailure:
+            return False
 
     def logout(self):
         """Deauthorize use of this database for this connection.
 
         Note that other databases may still be authorized.
         """
-        result = self._command({"logout": 1})
-        if result["ok"] != 1:
-            raise OperationFailure("logout failed: %s" % result["errmsg"])
+        self._command({"logout": 1})
 
     def dereference(self, dbref):
         """Dereference a DBRef, getting the SON object it points to.
