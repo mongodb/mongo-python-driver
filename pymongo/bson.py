@@ -30,7 +30,7 @@ from dbref import DBRef
 from son import SON
 from errors import InvalidBSON, InvalidDocument, UnsupportedTag
 
-_logger = logging.getLogger("mongo.bson")
+_logger = logging.getLogger("pymongo.bson")
 # _logger.setLevel(logging.DEBUG)
 # _logger.addHandler(logging.StreamHandler())
 
