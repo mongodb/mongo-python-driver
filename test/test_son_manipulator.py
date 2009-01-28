@@ -17,12 +17,18 @@
 
 import unittest
 
+try:
+    import pymongo
+except ImportError:
+    import sys
+    sys.path.append("")
+
 import qcheck
-from test_connection import get_connection
 from pymongo.objectid import ObjectId
 from pymongo.son import SON
 from pymongo.son_manipulator import SONManipulator, ObjectIdInjector, NamespaceInjector, ObjectIdShuffler
 from pymongo.database import Database
+from test_connection import get_connection
 
 class TestSONManipulator(unittest.TestCase):
     def setUp(self):

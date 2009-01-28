@@ -18,6 +18,12 @@
 import unittest
 import datetime
 
+try:
+    import pymongo
+except ImportError:
+    import sys
+    sys.path.append("")
+
 import qcheck
 from test_connection import get_connection
 from gridfs.grid_file import GridFile

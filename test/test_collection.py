@@ -15,6 +15,12 @@
 """Test the collection module."""
 import unittest
 
+try:
+    import pymongo
+except ImportError:
+    import sys
+    sys.path.append("")
+
 import qcheck
 from test_connection import get_connection
 from pymongo.objectid import ObjectId

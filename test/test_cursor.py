@@ -17,10 +17,16 @@ import unittest
 import types
 import random
 
-from test_connection import get_connection
+try:
+    import pymongo
+except ImportError:
+    import sys
+    sys.path.append("")
+
 from pymongo.errors import InvalidOperation
 from pymongo.cursor import Cursor
 from pymongo.database import Database, ASCENDING, DESCENDING
+from test_connection import get_connection
 
 class TestCursor(unittest.TestCase):
     def setUp(self):

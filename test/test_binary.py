@@ -16,6 +16,12 @@
 
 import unittest
 
+try:
+    import pymongo
+except ImportError:
+    import sys
+    sys.path.append("")
+
 from pymongo import binary
 
 class TestBinary(unittest.TestCase):

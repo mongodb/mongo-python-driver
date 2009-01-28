@@ -18,6 +18,12 @@ import unittest
 import datetime
 import re
 
+try:
+    import pymongo
+except ImportError:
+    import sys
+    sys.path.append("")
+
 from pymongo.objectid import ObjectId
 from pymongo.dbref import DBRef
 from pymongo.son import SON

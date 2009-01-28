@@ -17,8 +17,14 @@
 
 import unittest
 
-from test_connection import get_connection
+try:
+    import pymongo
+except ImportError:
+    import sys
+    sys.path.append("")
+
 import gridfs
+from test_connection import get_connection
 
 class TestGridfs(unittest.TestCase):
     def setUp(self):

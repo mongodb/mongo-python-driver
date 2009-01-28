@@ -17,6 +17,12 @@
 import unittest
 import types
 
+try:
+    import pymongo
+except ImportError:
+    import sys
+    sys.path.append("")
+
 from pymongo.objectid import ObjectId
 from pymongo.dbref import DBRef
 

@@ -16,6 +16,12 @@
 
 import unittest
 
+try:
+    import pymongo
+except ImportError:
+    import sys
+    sys.path.append("")
+
 from pymongo.objectid import ObjectId
 from pymongo.errors import InvalidId
 

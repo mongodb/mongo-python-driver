@@ -19,7 +19,12 @@ import types
 import random
 import datetime
 
-from test_connection import get_connection
+try:
+    import pymongo
+except ImportError:
+    import sys
+    sys.path.append("")
+
 from pymongo.errors import InvalidName, InvalidOperation, CollectionInvalid, OperationFailure
 from pymongo.son import SON
 from pymongo.objectid import ObjectId
@@ -27,6 +32,7 @@ from pymongo.database import Database, ASCENDING, DESCENDING, OFF, SLOW_ONLY, AL
 from pymongo.connection import Connection
 from pymongo.collection import Collection
 from pymongo.dbref import DBRef
+from test_connection import get_connection
 
 class TestDatabase(unittest.TestCase):
     def setUp(self):

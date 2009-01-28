@@ -25,6 +25,12 @@ import unittest
 import logging
 import os
 
+try:
+    import pymongo
+except ImportError:
+    import sys
+    sys.path.append("")
+
 from pymongo.errors import ConnectionFailure, ConfigurationError
 from pymongo.connection import Connection
 
