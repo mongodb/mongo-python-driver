@@ -18,15 +18,20 @@ import socket
 import struct
 import types
 import traceback
+import logging
 
-from errors import ConnectionFailure, InvalidName, OperationFailure
+from errors import ConnectionFailure, InvalidName, OperationFailure, ConfigurationError
 from database import Database
 from cursor_manager import CursorManager
+
+_logger = logging.getLogger("pymongo.connection")
+_logger.addHandler(logging.StreamHandler())
+# _logger.setLevel(logging.DEBUG)
 
 class Connection(object):
     """A connection to Mongo.
     """
-    def __init__(self, host="localhost", port=27017):
+    def __init__(self, host="localhost", port=27017, _connect=True):
         """Open a new connection to a Mongo instance at host:port.
 
         Raises TypeError if host is not an instance of string or port is not an
@@ -34,7 +39,7 @@ class Connection(object):
         made.
 
         :Parameters:
-          - `host` (optional): the hostname or IPv4 address of the database to
+          - `host` (optional): the hostname or IPv4 address of the instance to
             connect to
           - `port` (optional): the port number on which to connect
         """
@@ -44,10 +49,49 @@ class Connection(object):
             raise TypeError("port must be an instance of int")
         self.__host = host
         self.__port = port
+        self.__nodes = [(host, port)]
         self.__id = 1
         self.__cursor_manager = CursorManager(self)
 
+        self.__socket = None
+        if _connect:
+            self.__connect()
+
+    def __pair_with(self, host, port):
+        """Pair this connection with a Mongo instance running on host:port.
+
+        Raises TypeError if host is not an instance of string or port is not an
+        instance of int. Raises ConnectionFailure if the connection cannot be
+        made.
+
+        :Parameters:
+          - `host`: the hostname or IPv4 address of the instance to
+            pair with
+          - `port`: the port number on which to connect
+        """
+        if not isinstance(host, types.StringType):
+            raise TypeError("host must be an instance of str")
+        if not isinstance(port, types.IntType):
+            raise TypeError("port must be an instance of int")
+        self.__nodes.append((host, port))
         self.__connect()
+
+    @classmethod
+    def paired(cls, left, right=("localhost", 27017)):
+        """Open a new paired connection to Mongo.
+
+        Raises TypeError if either `left` or `right` is not a tuple of the form
+        (host, port). Raises ConnectionFailure if the connection cannot be made.
+
+        :Paremeters:
+          - `left`: (host, port) pair for the left Mongo instance
+          - `right` (optional): (host, port) pair for the right Mongo instance
+        """
+        left = list(left)
+        left.append(False) # _connect
+        connection = cls(*left)
+        connection.__pair_with(*right)
+        return connection
 
     def _master(self):
         """Get the hostname and port of the master Mongo instance.
@@ -60,7 +104,56 @@ class Connection(object):
         if result["ismaster"] == 1:
             return True
         else:
-            return tuple(result["remote"].rsplit(":", 1))
+            strings = result["remote"].rsplit(":", 1)
+            if len(strings) == 1:
+                port = 27017
+            else:
+                port = int(strings[1])
+            return (strings[0], port)
+
+    def host(self):
+        """Get the connection's current host.
+        """
+        return self.__host
+
+    def port(self):
+        """Get the connection's current port.
+        """
+        return self.__port
+
+    def __connect(self):
+        """(Re-)connect to Mongo.
+
+        Connect to the master if this is a paired connection.
+        """
+        _logger.debug("connecting...")
+        if self.__socket:
+            _logger.debug("closing previous connection")
+            self.__socket.close()
+
+        for (host, port) in self.__nodes:
+            _logger.debug("trying %r:%r" % (host, port))
+            try:
+                self.__socket = socket.socket()
+                self.__socket.connect((host, port))
+                master = self._master()
+                if master == True:
+                    _logger.debug("success")
+                    self.__host = host
+                    self.__port = port
+                    return
+                _logger.debug("not master, master is (%r, %r)" % master)
+                if master not in self.__nodes:
+                    raise ConfigurationError(
+                        "%r claims master is %r, but that's not configured" %
+                        ((host, port), master))
+            except socket.error:
+                self.__socket.close()
+                _logger.debug("could not connect, got: %s" %
+                              traceback.format_exc())
+                continue
+        raise ConnectionFailure("could not connect or could not find master. tried: %r" %
+                                self.__nodes)
 
     def set_cursor_manager(self, manager_class):
         """Set this connections cursor manager.
@@ -78,26 +171,6 @@ class Connection(object):
             raise TypeError("manager_class must be a subclass of CursorManager")
 
         self.__cursor_manager = manager
-
-    def host(self):
-        """Get the connection host.
-        """
-        return self.__host
-
-    def port(self):
-        """Get the connection port.
-        """
-        return self.__port
-
-    def __connect(self):
-        """(Re-)connect to Mongo."""
-        try:
-            self.__socket = socket.socket()
-            self.__socket.connect((self.__host, self.__port))
-        except socket.error:
-            raise ConnectionFailure("could not connect to %s:%s, got: %s" %
-                                    (self.__host, self.__port,
-                                     traceback.format_exc()))
 
     def _send_message(self, operation, data):
         """Say something to Mongo.

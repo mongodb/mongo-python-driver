@@ -18,6 +18,10 @@ class ConnectionFailure(IOError):
     """Raised when a connection to the database cannot be made or is lost.
     """
 
+class ConfigurationError(Exception):
+    """Raised when something is incorrectly configured.
+    """
+
 class OperationFailure(Exception):
     """Raised when a database operation fails.
     """
