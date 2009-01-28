@@ -24,7 +24,7 @@ import types
 try:
     import pymongo
 except ImportError:
-    sys.path.append("")
+    sys.path[0:0] = [""]
 
 import qcheck
 from pymongo.binary import Binary

@@ -23,7 +23,7 @@ try:
     import pymongo
 except ImportError:
     import sys
-    sys.path.append("")
+    sys.path[0:0] = [""]
 
 from pymongo.errors import InvalidName, InvalidOperation, CollectionInvalid, OperationFailure
 from pymongo.son import SON

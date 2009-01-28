@@ -20,7 +20,7 @@ try:
     import pymongo
 except ImportError:
     import sys
-    sys.path.append("")
+    sys.path[0:0] = [""]
 
 from pymongo import binary
 
