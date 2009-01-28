@@ -14,6 +14,7 @@
 
 import sys
 
+sys.path[0:0] = os.path.join(os.getcwd(), "..")
 from pymongo.bson import BSON
 from pymongo.son import SON
 
