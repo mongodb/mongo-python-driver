@@ -19,6 +19,11 @@ import datetime
 import re
 import types
 
+try:
+    import pymongo
+except ImportError:
+    sys.path.append("")
+
 from pymongo.binary import Binary
 from pymongo.objectid import ObjectId
 from pymongo.dbref import DBRef
