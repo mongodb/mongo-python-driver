@@ -15,12 +15,8 @@
 """Tests for the Binary wrapper."""
 
 import unittest
-
-try:
-    import pymongo
-except ImportError:
-    import sys
-    sys.path[0:0] = [""]
+import sys
+sys.path[0:0] = [""]
 
 from pymongo import binary
 

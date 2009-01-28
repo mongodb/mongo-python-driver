@@ -13,16 +13,12 @@
 # limitations under the License.
 
 import random
-import sys
 import traceback
 import datetime
 import re
 import types
-
-try:
-    import pymongo
-except ImportError:
-    sys.path[0:0] = [""]
+import sys
+sys.path[0:0] = [""]
 
 from pymongo.binary import Binary
 from pymongo.objectid import ObjectId

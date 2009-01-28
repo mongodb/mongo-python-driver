@@ -16,12 +16,8 @@
 """
 
 import unittest
-
-try:
-    import pymongo
-except ImportError:
-    import sys
-    sys.path[0:0] = [""]
+import sys
+sys.path[0:0] = [""]
 
 import qcheck
 from pymongo.objectid import ObjectId

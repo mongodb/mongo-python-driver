@@ -24,12 +24,8 @@ localhost:27017 and localhost:27018 by default.
 import unittest
 import logging
 import os
-
-try:
-    import pymongo
-except ImportError:
-    import sys
-    sys.path[0:0] = [""]
+import sys
+sys.path[0:0] = [""]
 
 from pymongo.errors import ConnectionFailure, ConfigurationError
 from pymongo.connection import Connection

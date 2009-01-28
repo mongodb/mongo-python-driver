@@ -21,10 +21,7 @@ import glob
 import sys
 import types
 
-try:
-    import pymongo
-except ImportError:
-    sys.path[0:0] = [""]
+sys.path[0:0] = [""]
 
 import qcheck
 from pymongo.binary import Binary

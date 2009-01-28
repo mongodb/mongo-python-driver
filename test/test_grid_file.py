@@ -17,12 +17,8 @@
 
 import unittest
 import datetime
-
-try:
-    import pymongo
-except ImportError:
-    import sys
-    sys.path[0:0] = [""]
+import sys
+sys.path[0:0] = [""]
 
 import qcheck
 from test_connection import get_connection

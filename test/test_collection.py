@@ -14,12 +14,8 @@
 
 """Test the collection module."""
 import unittest
-
-try:
-    import pymongo
-except ImportError:
-    import sys
-    sys.path[0:0] = [""]
+import sys
+sys.path[0:0] = [""]
 
 import qcheck
 from test_connection import get_connection

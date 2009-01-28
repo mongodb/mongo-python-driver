@@ -15,12 +15,8 @@
 """Tests for the objectid module."""
 
 import unittest
-
-try:
-    import pymongo
-except ImportError:
-    import sys
-    sys.path[0:0] = [""]
+import sys
+sys.path[0:0] = [""]
 
 from pymongo.objectid import ObjectId
 from pymongo.errors import InvalidId

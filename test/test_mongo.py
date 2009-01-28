@@ -18,12 +18,8 @@ import unittest
 import random
 import types
 import os
-
-try:
-    import pymongo
-except ImportError:
-    import sys
-    sys.path[0:0] = [""]
+import sys
+sys.path[0:0] = [""]
 
 from pymongo.objectid import ObjectId
 from pymongo.dbref import DBRef
