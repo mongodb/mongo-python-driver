@@ -14,6 +14,7 @@
 
 """Test the collection module."""
 import unittest
+import re
 import sys
 sys.path[0:0] = [""]
 
@@ -148,6 +149,21 @@ class TestCollection(unittest.TestCase):
             return db.test.find_one() == dict
 
         qcheck.check_unittest(self, remove_insert_find_one, qcheck.gen_mongo_dict(3))
+
+    def test_find_w_regex(self):
+        db = self.db
+        db.test.remove({})
+
+        db.test.insert({"x": "hello_world"})
+        db.test.insert({"x": "hello_mike"})
+        db.test.insert({"x": "hello_mikey"})
+        db.test.insert({"x": "hello_test"})
+
+        self.assertEqual(db.test.find().count(), 4)
+        self.assertEqual(db.test.find({"x": re.compile("^hello.*")}).count(), 4)
+        self.assertEqual(db.test.find({"x": re.compile("ello")}).count(), 4)
+        self.assertEqual(db.test.find({"x": re.compile("^hello$")}).count(), 0)
+        self.assertEqual(db.test.find({"x": re.compile("^hello_mi.*$")}).count(), 2)
 
     def test_id_can_be_anything(self):
         db = self.db
