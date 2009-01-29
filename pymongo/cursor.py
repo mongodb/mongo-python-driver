@@ -20,6 +20,7 @@ from threading import Lock
 
 import bson
 from son import SON
+from code import Code
 from errors import InvalidOperation, OperationFailure
 
 _query_lock = Lock()
@@ -210,6 +211,29 @@ class Cursor(object):
         if isinstance(name, types.ListType):
             name = self.__collection._gen_index_name(name)
         self.__hint = name
+        return self
+
+    def where(self, code):
+        """Adds a $where clause to this query.
+
+        The `code` argument must be an instance of (str, unicode) containing
+        a JavaScript expression. This expression will be evaluated for each
+        object scanned. Only those objects for which the expression evaluates
+        to *true* will be returned as results. The keyword *this* refers to the
+        object currently being scanned.
+
+        Raises TypeError if `code` is not an instance of (str, unicode). Raises
+        InvalidOperation if this cursor has already been used. Only the last
+        where clause applied to a cursor has any effect.
+
+        :Parameters:
+          - `code`: JavaScript expression to use as a filter
+        """
+        self.__check_okay_to_chain()
+        if not isinstance(code, types.StringTypes):
+            raise TypeError("argument to where must be one of (str, unicode)")
+
+        self.__spec["$where"] = Code(code)
         return self
 
     def _refresh(self):

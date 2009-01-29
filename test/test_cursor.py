@@ -243,5 +243,34 @@ class TestCursor(unittest.TestCase):
 
         self.assertEqual(0, db.test.acollectionthatdoesntexist.find().count())
 
+    def test_where(self):
+        db = self.db
+        db.test.remove({})
+
+        a = db.test.find()
+        self.assertRaises(TypeError, a.where, 5)
+        self.assertRaises(TypeError, a.where, None)
+        self.assertRaises(TypeError, a.where, {})
+
+        for i in range(10):
+            db.test.save({"x": i})
+
+        self.assertEqual(3, db.test.find().where('this.x < 3').count())
+        self.assertEqual([0, 1, 2],
+                         [a["x"] for a in db.test.find().where('this.x < 3')])
+        self.assertEqual([],
+                         [a["x"] for a in db.test.find({"x": 5}).where('this.x < 3')])
+        self.assertEqual([5],
+                         [a["x"] for a in db.test.find({"x": 5}).where('this.x > 3')])
+
+        cursor = db.test.find().where('this.x < 3').where('this.x > 7')
+        self.assertEqual([8, 9], [a["x"] for a in cursor])
+
+        a = db.test.find()
+        b = a.where('this.x > 3')
+        for _ in a:
+            break
+        self.assertRaises(InvalidOperation, a.where, 'this.x < 3')
+
 if __name__ == "__main__":
     unittest.main()
