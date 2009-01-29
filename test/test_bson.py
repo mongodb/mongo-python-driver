@@ -25,6 +25,7 @@ sys.path[0:0] = [""]
 
 import qcheck
 from pymongo.binary import Binary
+from pymongo.code import Code
 from pymongo.objectid import ObjectId
 from pymongo.dbref import DBRef
 from pymongo.son import SON
@@ -88,10 +89,7 @@ class TestBSON(unittest.TestCase):
                          "\x13\x00\x00\x00\x09\x64\x61\x74\x65\x00\x38\xBE\x1C\xFF\x0F\x01\x00\x00\x00")
         self.assertEqual(BSON.from_dict({"regex": re.compile("a*b", re.IGNORECASE)}),
                          "\x12\x00\x00\x00\x0B\x72\x65\x67\x65\x78\x00\x61\x2A\x62\x00\x69\x00\x00")
-        self.assertRaises(TypeError, BSON.from_dict, {"$where": 5})
-        self.assertEqual(BSON.from_dict({"$where": "test"}),
-                         "\x16\x00\x00\x00\x0D\x24\x77\x68\x65\x72\x65\x00\x05\x00\x00\x00\x74\x65\x73\x74\x00\x00")
-        self.assertEqual(BSON.from_dict({"$where": u"test"}),
+        self.assertEqual(BSON.from_dict({"$where": Code("test")}),
                          "\x16\x00\x00\x00\x0D\x24\x77\x68\x65\x72\x65\x00\x05\x00\x00\x00\x74\x65\x73\x74\x00\x00")
         a = ObjectId("\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0A\x0B")
         self.assertEqual(BSON.from_dict({"oid": a}),

@@ -25,6 +25,7 @@ from UserDict import DictMixin
 
 import elementtree.ElementTree as ET
 
+from code import Code
 from binary import Binary
 from objectid import ObjectId
 from dbref import DBRef
@@ -143,6 +144,9 @@ class SON(DictMixin):
         def make_string(string):
             return string.text is not None and unicode(string.text) or u""
 
+        def make_code(code):
+            return code.text is not None and Code(code.text) or Code("")
+
         def make_binary(binary):
             return binary.text is not None and Binary(base64.b64decode(binary.text)) or Binary("")
 
@@ -195,7 +199,7 @@ class SON(DictMixin):
                         "string": make_string,
                         "binary": make_binary,
                         "boolean": make_boolean,
-                        "code": make_string,
+                        "code": make_code,
                         "date": make_date,
                         "ref": make_ref,
                         "ns": make_string,
