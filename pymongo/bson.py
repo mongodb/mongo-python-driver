@@ -25,6 +25,7 @@ import calendar
 import logging
 
 from binary import Binary
+from code import Code
 from objectid import ObjectId
 from dbref import DBRef
 from son import SON
@@ -50,8 +51,10 @@ def _get_c_string(data):
 
     return (unicode(data[:end], "utf-8"), data[end + 1:])
 
-def _make_c_string(string):
-    return string.encode("utf-8") + "\x00"
+def _make_c_string(string, encode=True):
+    if encode and isinstance(string, unicode):
+        return string.encode("utf-8") + "\x00"
+    return string + "\x00"
 
 def _validate_number(data):
     assert len(data) >= 8
@@ -289,7 +292,15 @@ def _value_to_bson(value):
         length = len(value)
         return ("\x05",
                 struct.pack("<i", length + 4) + "\x02" + struct.pack("<i", length) + value)
-    if isinstance(value, basestring):
+    if isinstance(value, Code):
+        cstring = _make_c_string(value, False)
+        length = struct.pack("<i", len(cstring))
+        return ("\x0D", length + cstring)
+    if isinstance(value, str):
+        cstring = _make_c_string(value, False)
+        length = struct.pack("<i", len(cstring))
+        return ("\x02", length + cstring)
+    if isinstance(value, unicode):
         cstring = _make_c_string(value)
         length = struct.pack("<i", len(cstring))
         return ("\x02", length + cstring)
@@ -300,9 +311,9 @@ def _value_to_bson(value):
         return ("\x04", BSON.from_dict(as_dict))
     if isinstance(value, ObjectId):
         return ("\x07", _shuffle_oid(str(value)))
-    if isinstance(value, bool):
-        if value:
-            return ("\x08", "\x01")
+    if value is True:
+        return ("\x08", "\x01")
+    if value is False:
         return ("\x08", "\x00")
     if isinstance(value, int):
         return ("\x10", struct.pack("<i", value))
@@ -326,28 +337,24 @@ def _value_to_bson(value):
             flags += "u"
         if value.flags & re.VERBOSE:
             flags += "x"
-        return ("\x0B", _make_c_string(pattern) + _make_c_string(flags))
+        return ("\x0B", _make_c_string(pattern) + _make_c_string(flags, False))
     if isinstance(value, DBRef):
         ns = _make_c_string(value.collection())
         return ("\x0C", struct.pack("<i", len(ns)) + ns + _shuffle_oid(str(value.id())))
     raise InvalidDocument("cannot convert value of type %s to bson" % type(value))
 
-def _where_value_to_bson(value):
-    if not isinstance(value, types.StringTypes):
-        raise TypeError("$where value must be an instance of (str, unicode)")
-    cstring = _make_c_string(value)
-    length = struct.pack("<i", len(cstring))
-    return ("\x0D", length + cstring)
+# def _where_value_to_bson(value):
+#     if not isinstance(value, basestring):
+#         raise TypeError("$where value must be an instance of (str, unicode)")
+#     cstring = _make_c_string(value)
+#     length = struct.pack("<i", len(cstring))
+#     return ("\x0D", length + cstring)
 
+# TODO i just took out all support for where clauses. need to add a Code class,
+# like we use for Binary.
 def _element_to_bson(key, value):
-    if not isinstance(key, types.StringTypes):
-        raise TypeError("all keys must be instances of (str, unicode)")
-
     element_name = _make_c_string(key)
-    if key == "$where":
-        (element_type, element_data) = _where_value_to_bson(value)
-    else:
-        (element_type, element_data) = _value_to_bson(value)
+    (element_type, element_data) = _value_to_bson(value)
 
     return element_type + element_name + element_data
 
