@@ -255,7 +255,12 @@ class TestCursor(unittest.TestCase):
         for i in range(10):
             db.test.save({"x": i})
 
+        self.assertEqual(3, len(list(db.test.find().where('this.x < 3'))))
+        self.assertEqual(10, len(list(db.test.find())))
+
         self.assertEqual(3, db.test.find().where('this.x < 3').count())
+        self.assertEqual(10, db.test.find().count())
+        self.assertEqual(3, db.test.find().where(u'this.x < 3').count())
         self.assertEqual([0, 1, 2],
                          [a["x"] for a in db.test.find().where('this.x < 3')])
         self.assertEqual([],
