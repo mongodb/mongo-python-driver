@@ -94,7 +94,8 @@ class Cursor(object):
         """Limits the number of results to be returned by this cursor.
 
         Raises TypeError if limit is not an instance of int. Raises
-        InvalidOperation if this cursor has already been used.
+        InvalidOperation if this cursor has already been used. The last `limit`
+        applied to this cursor takes precedence.
 
         :Parameters:
           - `limit`: the number of results to return
@@ -110,7 +111,8 @@ class Cursor(object):
         """Skips the first `skip` results of this cursor.
 
         Raises TypeError if skip is not an instance of int. Raises
-        InvalidOperation if this cursor has already been used.
+        InvalidOperation if this cursor has already been used. The last `skip`
+        applied to this cursor takes precedence.
 
         :Parameters:
           - `skip`: the number of results to skip
@@ -128,7 +130,8 @@ class Cursor(object):
         Takes either a single key and a direction, or a list of (key, direction)
         pairs. The key(s) must be an instance of (str, unicode), and the
         direction(s) must be one of (Mongo.ASCENDING, Mongo.DESCENDING). Raises
-        InvalidOperation if this cursor has already been used.
+        InvalidOperation if this cursor has already been used. Only the last
+        `sort` applied to this cursor has any effect.
 
         :Parameters:
           - `key_or_list`: a single key or a list of (key, direction) pairs
@@ -195,7 +198,8 @@ class Cursor(object):
 
         `index_or_name` can be either an index name (as returned by
         create_index) or an index (as passed to create_index). If index_or_name
-        is None any existing hints for this query are cleared.
+        is None any existing hints for this query are cleared. The last hint
+        applied to this cursor takes precedence over all others.
 
         :Parameters:
           - `index_or_name`: index (or name of the index) to hint on
