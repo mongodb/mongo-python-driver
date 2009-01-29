@@ -67,7 +67,7 @@ def gen_string(gen_length):
     return lambda: "".join(gen_list(gen_char(), gen_length)())
 
 def gen_unichar():
-    return lambda: unichr(random.randint(1, 0xFFFF))
+    return lambda: unichr(random.randint(1, 0xFFF))
 
 def gen_unicode(gen_length):
     return lambda: u"".join(gen_list(gen_unichar(), gen_length)())
