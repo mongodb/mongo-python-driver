@@ -24,7 +24,7 @@ import datetime
 import calendar
 import logging
 
-from binary import Binary, is_binary
+from binary import Binary
 from objectid import ObjectId
 from dbref import DBRef
 from son import SON
@@ -51,15 +51,7 @@ def _get_c_string(data):
     return (unicode(data[:end], "utf-8"), data[end + 1:])
 
 def _make_c_string(string):
-    string = string.encode("utf-8")
-    try:
-        string.index("\x00")
-        raise InvalidDocument("cannot encode string %r: contains '\\x00'" % string)
-    except InvalidDocument:
-        raise
-    except ValueError:
-        pass
-    return string + "\x00"
+    return string.encode("utf-8") + "\x00"
 
 def _validate_number(data):
     assert len(data) >= 8
@@ -286,42 +278,38 @@ def _document_to_dict(data):
     elements = data[4:obj_size - 1]
     return (_elements_to_dict(elements), data[obj_size:])
 
-def _int_to_bson(int):
-    return struct.pack("<i", int)
-
-def _int_64_to_bson(int):
-    return struct.pack("<q", int)
-
 def _shuffle_oid(data):
     return data[7::-1] + data[:7:-1]
 
 _RE_TYPE = type(_valid_array_name)
 def _value_to_bson(value):
-    if isinstance(value, types.FloatType):
+    if isinstance(value, float):
         return ("\x01", struct.pack("<d", value))
-    if is_binary(value):
+    if isinstance(value, Binary):
         length = len(value)
         return ("\x05",
-                _int_to_bson(length + 4) + "\x02" + _int_to_bson(length) + value)
-    if isinstance(value, types.StringTypes):
-        cstring = _make_c_string(unicode(value))
-        length = _int_to_bson(len(cstring))
+                struct.pack("<i", length + 4) + "\x02" + struct.pack("<i", length) + value)
+    if isinstance(value, basestring):
+        cstring = _make_c_string(value)
+        length = struct.pack("<i", len(cstring))
         return ("\x02", length + cstring)
-    if isinstance(value, (types.DictType, SON)):
+    if isinstance(value, (dict, SON)):
         return ("\x03", BSON.from_dict(value))
-    if isinstance(value, types.ListType):
+    if isinstance(value, list):
         as_dict = SON(zip([str(i) for i in range(len(value))], value))
         return ("\x04", BSON.from_dict(as_dict))
     if isinstance(value, ObjectId):
         return ("\x07", _shuffle_oid(str(value)))
-    if isinstance(value, types.BooleanType):
+    if isinstance(value, bool):
         if value:
             return ("\x08", "\x01")
         return ("\x08", "\x00")
+    if isinstance(value, int):
+        return ("\x10", struct.pack("<i", value))
     if isinstance(value, datetime.datetime):
         millis = int(calendar.timegm(value.timetuple()) * 1000 + value.microsecond / 1000)
-        return ("\x09", _int_64_to_bson(millis))
-    if isinstance(value, types.NoneType):
+        return ("\x09", struct.pack("<q", millis))
+    if value is None:
         return ("\x0A", "")
     if isinstance(value, _RE_TYPE):
         pattern = value.pattern
@@ -341,16 +329,14 @@ def _value_to_bson(value):
         return ("\x0B", _make_c_string(pattern) + _make_c_string(flags))
     if isinstance(value, DBRef):
         ns = _make_c_string(value.collection())
-        return ("\x0C", _int_to_bson(len(ns)) + ns + _shuffle_oid(str(value.id())))
-    if isinstance(value, types.IntType):
-        return ("\x10", _int_to_bson(value))
+        return ("\x0C", struct.pack("<i", len(ns)) + ns + _shuffle_oid(str(value.id())))
     raise InvalidDocument("cannot convert value of type %s to bson" % type(value))
 
 def _where_value_to_bson(value):
     if not isinstance(value, types.StringTypes):
         raise TypeError("$where value must be an instance of (str, unicode)")
     cstring = _make_c_string(value)
-    length = _int_to_bson(len(cstring))
+    length = struct.pack("<i", len(cstring))
     return ("\x0D", length + cstring)
 
 def _element_to_bson(key, value):
@@ -426,7 +412,7 @@ class BSON(str):
             raise TypeError("argument to from_dict must be a mapping type")
 
         length = len(elements) + 5
-        bson = _int_to_bson(length) + elements + "\x00"
+        bson = struct.pack("<i", length) + elements + "\x00"
         return cls(bson)
 
     def to_dict(self):
