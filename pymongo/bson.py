@@ -285,43 +285,43 @@ def _shuffle_oid(data):
     return data[7::-1] + data[:7:-1]
 
 _RE_TYPE = type(_valid_array_name)
-def _value_to_bson(value):
+def _element_to_bson(key, value):
+    name = _make_c_string(key)
     if isinstance(value, float):
-        return ("\x01", struct.pack("<d", value))
+        return "\x01" + name + struct.pack("<d", value)
     if isinstance(value, Binary):
         length = len(value)
-        return ("\x05",
-                struct.pack("<i", length + 4) + "\x02" + struct.pack("<i", length) + value)
+        return "\x05" + name + struct.pack("<i", length + 4) + "\x02" + struct.pack("<i", length) + value
     if isinstance(value, Code):
         cstring = _make_c_string(value, False)
         length = struct.pack("<i", len(cstring))
-        return ("\x0D", length + cstring)
+        return "\x0D" + name + length + cstring
     if isinstance(value, str):
         cstring = _make_c_string(value, False)
         length = struct.pack("<i", len(cstring))
-        return ("\x02", length + cstring)
+        return "\x02" + name + length + cstring
     if isinstance(value, unicode):
         cstring = _make_c_string(value)
         length = struct.pack("<i", len(cstring))
-        return ("\x02", length + cstring)
+        return "\x02" + name + length + cstring
     if isinstance(value, (dict, SON)):
-        return ("\x03", BSON.from_dict(value))
+        return "\x03" + name + BSON.from_dict(value)
     if isinstance(value, list):
         as_dict = SON(zip([str(i) for i in range(len(value))], value))
-        return ("\x04", BSON.from_dict(as_dict))
+        return "\x04" + name + BSON.from_dict(as_dict)
     if isinstance(value, ObjectId):
-        return ("\x07", _shuffle_oid(str(value)))
+        return "\x07" + name + _shuffle_oid(str(value))
     if value is True:
-        return ("\x08", "\x01")
+        return "\x08" + name + "\x01"
     if value is False:
-        return ("\x08", "\x00")
-    if isinstance(value, int):
-        return ("\x10", struct.pack("<i", value))
+        return "\x08" + name + "\x00"
+    if isinstance(value, (int, long)):
+        return "\x10" + name + struct.pack("<i", value)
     if isinstance(value, datetime.datetime):
         millis = int(calendar.timegm(value.timetuple()) * 1000 + value.microsecond / 1000)
-        return ("\x09", struct.pack("<q", millis))
+        return "\x09" + name + struct.pack("<q", millis)
     if value is None:
-        return ("\x0A", "")
+        return "\x0A" + name
     if isinstance(value, _RE_TYPE):
         pattern = value.pattern
         flags = ""
@@ -337,17 +337,11 @@ def _value_to_bson(value):
             flags += "u"
         if value.flags & re.VERBOSE:
             flags += "x"
-        return ("\x0B", _make_c_string(pattern) + _make_c_string(flags, False))
+        return "\x0B" + name + _make_c_string(pattern) + _make_c_string(flags, False)
     if isinstance(value, DBRef):
         ns = _make_c_string(value.collection())
-        return ("\x0C", struct.pack("<i", len(ns)) + ns + _shuffle_oid(str(value.id())))
+        return "\x0C" + name + struct.pack("<i", len(ns)) + ns + _shuffle_oid(str(value.id()))
     raise InvalidDocument("cannot convert value of type %s to bson" % type(value))
-
-def _element_to_bson(key, value):
-    element_name = _make_c_string(key)
-    (element_type, element_data) = _value_to_bson(value)
-
-    return element_type + element_name + element_data
 
 def is_valid(bson):
     """Validate that the given string represents valid BSON data.
