@@ -237,9 +237,7 @@ class Cursor(object):
         if not isinstance(code, types.StringTypes):
             raise TypeError("argument to where must be one of (str, unicode)")
 
-        a = self.__spec.copy()
-        a["$where"] = Code(code.encode('utf-8'))
-        self.__spec = a
+        self.__spec["$where"] = Code(code.encode('utf-8'))
         return self
 
     def _refresh(self):

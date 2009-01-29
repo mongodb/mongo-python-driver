@@ -225,7 +225,7 @@ class Collection(object):
             return result
         return None
 
-    def find(self, spec=SON(), fields=[], skip=0, limit=0):
+    def find(self, spec=None, fields=[], skip=0, limit=0):
         """Query the database.
 
         Raises TypeError if any of the arguments are of improper type. Returns
@@ -241,6 +241,8 @@ class Collection(object):
           - `limit` (optional): the maximum number of results to return in the
             first reply message, or 0 for the default return size
         """
+        if spec is None:
+            spec = SON()
         if not isinstance(spec, (types.DictType, SON)):
             raise TypeError("spec must be an instance of (dict, SON)")
         if not isinstance(fields, types.ListType):
