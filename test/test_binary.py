@@ -18,7 +18,7 @@ import unittest
 import sys
 sys.path[0:0] = [""]
 
-from pymongo import binary
+from pymongo.binary import Binary
 
 class TestBinary(unittest.TestCase):
     def setUp(self):
@@ -26,16 +26,16 @@ class TestBinary(unittest.TestCase):
 
     def test_binary(self):
         a_string = "hello world"
-        a_binary = binary.Binary("hello world")
+        a_binary = Binary("hello world")
         self.assertTrue(a_binary.startswith("hello"))
         self.assertTrue(a_binary.endswith("world"))
-        self.assertTrue(binary.is_binary(a_binary))
-        self.assertFalse(binary.is_binary(a_string))
+        self.assertTrue(isinstance(a_binary, Binary))
+        self.assertFalse(isinstance(a_string, Binary))
 
     def test_repr(self):
-        b = binary.Binary("hello world")
+        b = Binary("hello world")
         self.assertEqual(repr(b), "Binary('hello world')")
-        c = binary.Binary("\x08\xFF")
+        c = Binary("\x08\xFF")
         self.assertEqual(repr(c), "Binary('\\x08\\xff')")
 
 if __name__ == "__main__":

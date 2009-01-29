@@ -19,11 +19,6 @@ type. We need to wrap binary so we can tell the difference between what should
 be considered binary and what should be considered a string.
 """
 
-def is_binary(data):
-    """Check if the given data is binary or not.
-    """
-    return isinstance(data, Binary)
-
 class Binary(str):
     """Binary data stored in or retrieved from Mongo.
     """
