@@ -28,7 +28,7 @@ from test_connection import get_connection
 
 class TestSONManipulator(unittest.TestCase):
     def setUp(self):
-        self.db = Database(get_connection(), "test")
+        self.db = Database(get_connection(), "pymongo_test")
 
     def test_basic(self):
         manip = SONManipulator(self.db)

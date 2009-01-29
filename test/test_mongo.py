@@ -51,16 +51,16 @@ class TestMongo(unittest.TestCase):
         self.assertRaises(ConnectionFailure, Mongo, "test", "somedomainthatdoesntexist.org")
         self.assertRaises(ConnectionFailure, Mongo, "test", self.host, 123456789)
 
-        self.assertTrue(Mongo("test", self.host, self.port))
+        self.assertTrue(Mongo("pymongo_test", self.host, self.port))
 
     def test_repr(self):
-        self.assertEqual(repr(Mongo("test", self.host, self.port)),
-                         "Mongo(u'test', '%s', %s)" % (self.host, self.port))
-        self.assertEqual(repr(Mongo("test", self.host, self.port).test),
-                         "Collection(Mongo(u'test', '%s', %s), u'test')" % (self.host, self.port))
+        self.assertEqual(repr(Mongo("pymongo_test", self.host, self.port)),
+                         "Mongo(u'pymongo_test', '%s', %s)" % (self.host, self.port))
+        self.assertEqual(repr(Mongo("pymongo_test", self.host, self.port).test),
+                         "Collection(Mongo(u'pymongo_test', '%s', %s), u'test')" % (self.host, self.port))
 
     def test_save_find_one(self):
-        db = Mongo("test", self.host, self.port)
+        db = Mongo("pymongo_test", self.host, self.port)
         db.test.remove({})
 
         a_doc = SON({"hello": u"world"})
@@ -87,7 +87,7 @@ class TestMongo(unittest.TestCase):
         self.assertEqual(count, 1)
 
     def test_remove(self):
-        db = Mongo("test", self.host, self.port)
+        db = Mongo("pymongo_test", self.host, self.port)
         db.test.remove({})
 
         self.assertRaises(TypeError, db.test.remove, 5)
@@ -125,7 +125,7 @@ class TestMongo(unittest.TestCase):
         self.assertFalse(db.test.find_one())
 
     def test_save_a_bunch(self):
-        db = Mongo("test", self.host, self.port)
+        db = Mongo("pymongo_test", self.host, self.port)
         db.test.remove({})
 
         for i in xrange(1000):
@@ -143,7 +143,7 @@ class TestMongo(unittest.TestCase):
                 break
 
     def test_create_index(self):
-        db = Mongo("test", self.host, self.port)
+        db = Mongo("pymongo_test", self.host, self.port)
 
         self.assertRaises(TypeError, db.test.create_index, 5)
         self.assertRaises(TypeError, db.test.create_index, "hello")
@@ -153,35 +153,35 @@ class TestMongo(unittest.TestCase):
         self.assertRaises(TypeError, db.test.create_index, "hello", "world")
 
         db.test.drop_indexes()
-        self.assertFalse(db.system.indexes.find_one({"ns": u"test.test"}))
+        self.assertFalse(db.system.indexes.find_one({"ns": u"pymongo_test.test"}))
 
         db.test.create_index("hello", ASCENDING)
         db.test.create_index([("hello", DESCENDING), ("world", ASCENDING)])
 
         count = 0
-        for _ in db.system.indexes.find({"ns": u"test.test"}):
+        for _ in db.system.indexes.find({"ns": u"pymongo_test.test"}):
             count += 1
         self.assertEqual(count, 2)
 
         db.test.drop_indexes()
-        self.assertFalse(db.system.indexes.find_one({"ns": u"test.test"}))
+        self.assertFalse(db.system.indexes.find_one({"ns": u"pymongo_test.test"}))
         db.test.create_index("hello", ASCENDING)
-        self.assertEqual(db.system.indexes.find_one({"ns": u"test.test"}),
+        self.assertEqual(db.system.indexes.find_one({"ns": u"pymongo_test.test"}),
                          SON([(u"name", u"hello_1"),
-                              (u"ns", u"test.test"),
+                              (u"ns", u"pymongo_test.test"),
                               (u"key", SON([(u"hello", 1)]))]))
 
         db.test.drop_indexes()
-        self.assertFalse(db.system.indexes.find_one({"ns": u"test.test"}))
+        self.assertFalse(db.system.indexes.find_one({"ns": u"pymongo_test.test"}))
         db.test.create_index([("hello", DESCENDING), ("world", ASCENDING)])
-        self.assertEqual(db.system.indexes.find_one({"ns": u"test.test"}),
+        self.assertEqual(db.system.indexes.find_one({"ns": u"pymongo_test.test"}),
                          SON([(u"name", u"hello_-1_world_1"),
-                              (u"ns", u"test.test"),
+                              (u"ns", u"pymongo_test.test"),
                               (u"key", SON([(u"hello", -1),
                                             (u"world", 1)]))]))
 
     def test_limit(self):
-        db = Mongo("test", self.host, self.port)
+        db = Mongo("pymongo_test", self.host, self.port)
 
         self.assertRaises(TypeError, db.test.find().limit, None)
         self.assertRaises(TypeError, db.test.find().limit, "hello")
@@ -228,7 +228,7 @@ class TestMongo(unittest.TestCase):
         self.assertRaises(InvalidOperation, a.limit, 5)
 
     def test_skip(self):
-        db = Mongo("test", self.host, self.port)
+        db = Mongo("pymongo_test", self.host, self.port)
 
         self.assertRaises(TypeError, db.test.find().skip, None)
         self.assertRaises(TypeError, db.test.find().skip, "hello")
@@ -272,7 +272,7 @@ class TestMongo(unittest.TestCase):
         self.assertRaises(InvalidOperation, a.skip, 5)
 
     def test_sort(self):
-        db = Mongo("test", self.host, self.port)
+        db = Mongo("pymongo_test", self.host, self.port)
 
         self.assertRaises(TypeError, db.test.find().sort, 5)
         self.assertRaises(TypeError, db.test.find().sort, "hello")
@@ -322,7 +322,7 @@ class TestMongo(unittest.TestCase):
         self.assertRaises(InvalidOperation, a.sort, "x", ASCENDING)
 
     def test_count(self):
-        db = Mongo("test", self.host, self.port)
+        db = Mongo("pymongo_test", self.host, self.port)
         db.test.remove({})
 
         self.assertEqual(0, db.test.find().count())
@@ -347,7 +347,7 @@ class TestMongo(unittest.TestCase):
         self.assertEqual(0, db.test.acollectionthatdoesntexist.find().count())
 
     def test_deref(self):
-        db = Mongo("test", self.host, self.port)
+        db = Mongo("pymongo_test", self.host, self.port)
         db.test.remove({})
 
         self.assertRaises(TypeError, db.dereference, 5)
@@ -361,7 +361,7 @@ class TestMongo(unittest.TestCase):
         self.assertEqual(obj, db.dereference(DBRef("test", key)))
 
     def test_auto_deref(self):
-        db = Mongo("test", self.host, self.port)
+        db = Mongo("pymongo_test", self.host, self.port)
         db.test.a.remove({})
         db.test.b.remove({})
         db.test.remove({})
@@ -377,10 +377,10 @@ class TestMongo(unittest.TestCase):
         self.assertEqual(dbref, db.test.a.find_one()["b_obj"])
         self.assertEqual(a, db.dereference(db.test.a.find_one()["b_obj"]))
 
-        db = Mongo("test", self.host, self.port, {"auto_dereference": False})
+        db = Mongo("pymongo_test", self.host, self.port, {"auto_dereference": False})
         self.assertEqual(dbref, db.test.a.find_one()["b_obj"])
 
-        db = Mongo("test", self.host, self.port, {"auto_dereference": True})
+        db = Mongo("pymongo_test", self.host, self.port, {"auto_dereference": True})
         self.assertNotEqual(dbref, db.test.a.find_one()["b_obj"])
         self.assertEqual(a, db.test.a.find_one()["b_obj"])
 
@@ -396,7 +396,7 @@ class TestMongo(unittest.TestCase):
         self.assertEqual(dbref, db.test.find_one(key)["x"])
 
     def test_auto_ref(self):
-        db = Mongo("test", self.host, self.port)
+        db = Mongo("pymongo_test", self.host, self.port)
         db.test.a.remove({})
         db.test.b.remove({})
 
@@ -410,13 +410,13 @@ class TestMongo(unittest.TestCase):
         self.assertEqual(b["ref?"], a)
         self.assertEqual(db.test.b.find_one(key)["ref?"], a)
 
-        db = Mongo("test", self.host, self.port, {"auto_reference": False})
+        db = Mongo("pymongo_test", self.host, self.port, {"auto_reference": False})
         key = db.test.b.save(b)
         self.assertEqual(b["_ns"], "test.b")
         self.assertEqual(b["ref?"], a)
         self.assertEqual(db.test.b.find_one(key)["ref?"], a)
 
-        db = Mongo("test", self.host, self.port, {"auto_reference": True})
+        db = Mongo("pymongo_test", self.host, self.port, {"auto_reference": True})
         key = db.test.b.save(b)
         self.assertEqual(b["_ns"], "test.b")
         self.assertEqual(b["ref?"], a)
@@ -424,7 +424,7 @@ class TestMongo(unittest.TestCase):
         self.assertEqual(db.dereference(db.test.b.find_one(key)["ref?"]), a)
 
     def test_auto_ref_and_deref(self):
-        db = Mongo("test", self.host, self.port, {"auto_reference": True, "auto_dereference": True})
+        db = Mongo("pymongo_test", self.host, self.port, {"auto_reference": True, "auto_dereference": True})
         db.test.a.remove({})
         db.test.b.remove({})
         db.test.c.remove({})

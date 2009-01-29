@@ -27,7 +27,7 @@ from pymongo.son import SON
 
 class TestCollection(unittest.TestCase):
     def setUp(self):
-        self.db = get_connection().test
+        self.db = get_connection().pymongo_test
 
     def test_collection(self):
         self.assertRaises(TypeError, Collection, self.db, 5)
@@ -63,30 +63,30 @@ class TestCollection(unittest.TestCase):
         self.assertRaises(TypeError, db.test.create_index, "hello", "world")
 
         db.test.drop_indexes()
-        self.assertFalse(db.system.indexes.find_one({"ns": u"test.test"}))
+        self.assertFalse(db.system.indexes.find_one({"ns": u"pymongo_test.test"}))
 
         db.test.create_index("hello", ASCENDING)
         db.test.create_index([("hello", DESCENDING), ("world", ASCENDING)])
 
         count = 0
-        for _ in db.system.indexes.find({"ns": u"test.test"}):
+        for _ in db.system.indexes.find({"ns": u"pymongo_test.test"}):
             count += 1
         self.assertEqual(count, 2)
 
         db.test.drop_indexes()
-        self.assertFalse(db.system.indexes.find_one({"ns": u"test.test"}))
+        self.assertFalse(db.system.indexes.find_one({"ns": u"pymongo_test.test"}))
         db.test.create_index("hello", ASCENDING)
-        self.assertEqual(db.system.indexes.find_one({"ns": u"test.test"}),
+        self.assertEqual(db.system.indexes.find_one({"ns": u"pymongo_test.test"}),
                          SON([(u"name", u"hello_1"),
-                              (u"ns", u"test.test"),
+                              (u"ns", u"pymongo_test.test"),
                               (u"key", SON([(u"hello", 1)]))]))
 
         db.test.drop_indexes()
-        self.assertFalse(db.system.indexes.find_one({"ns": u"test.test"}))
+        self.assertFalse(db.system.indexes.find_one({"ns": u"pymongo_test.test"}))
         db.test.create_index([("hello", DESCENDING), ("world", ASCENDING)])
-        self.assertEqual(db.system.indexes.find_one({"ns": u"test.test"}),
+        self.assertEqual(db.system.indexes.find_one({"ns": u"pymongo_test.test"}),
                          SON([(u"name", u"hello_-1_world_1"),
-                              (u"ns", u"test.test"),
+                              (u"ns", u"pymongo_test.test"),
                               (u"key", SON([(u"hello", -1),
                                             (u"world", 1)]))]))
 
@@ -96,13 +96,13 @@ class TestCollection(unittest.TestCase):
         db.test.create_index("hello", ASCENDING)
         name = db.test.create_index("goodbye", DESCENDING)
 
-        self.assertEqual(db.system.indexes.find({"ns": u"test.test"}).count(), 2)
+        self.assertEqual(db.system.indexes.find({"ns": u"pymongo_test.test"}).count(), 2)
         self.assertEqual(name, "goodbye_-1")
         db.test.drop_index(name)
-        self.assertEqual(db.system.indexes.find({"ns": u"test.test"}).count(), 1)
-        self.assertEqual(db.system.indexes.find_one({"ns": u"test.test"}),
+        self.assertEqual(db.system.indexes.find({"ns": u"pymongo_test.test"}).count(), 1)
+        self.assertEqual(db.system.indexes.find_one({"ns": u"pymongo_test.test"}),
                          SON([(u"name", u"hello_1"),
-                              (u"ns", u"test.test"),
+                              (u"ns", u"pymongo_test.test"),
                               (u"key", SON([(u"hello", 1)]))]))
 
     def test_index_info(self):

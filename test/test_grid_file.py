@@ -26,7 +26,7 @@ from gridfs.grid_file import GridFile
 
 class TestGridFile(unittest.TestCase):
     def setUp(self):
-        self.db = get_connection().test
+        self.db = get_connection().pymongo_test
 
     def test_basic(self):
         self.db._files.remove({})

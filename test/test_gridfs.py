@@ -24,7 +24,7 @@ from test_connection import get_connection
 
 class TestGridfs(unittest.TestCase):
     def setUp(self):
-        self.db = get_connection().test
+        self.db = get_connection().pymongo_test
         self.db._files.remove({})
         self.db._chunks.remove({})
         self.fs = gridfs.GridFS(self.db)

@@ -32,7 +32,7 @@ class SaveAndFind(threading.Thread):
 
 class TestThreads(unittest.TestCase):
     def setUp(self):
-        self.db = get_connection().test
+        self.db = get_connection().pymongo_test
 
     def test_threading(self):
         self.db.test.remove({})

@@ -26,7 +26,7 @@ from test_connection import get_connection
 
 class TestCursor(unittest.TestCase):
     def setUp(self):
-        self.db = Database(get_connection(), "test")
+        self.db = Database(get_connection(), "pymongo_test")
 
     def test_explain(self):
         a = self.db.test.find()

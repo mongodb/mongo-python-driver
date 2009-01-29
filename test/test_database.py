@@ -44,18 +44,18 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(Database(self.connection, "test"), Database(self.connection, "test"))
 
     def test_repr(self):
-        self.assertEqual(repr(Database(self.connection, "test")),
-                         "Database(%r, u'test')" % self.connection)
+        self.assertEqual(repr(Database(self.connection, "pymongo_test")),
+                         "Database(%r, u'pymongo_test')" % self.connection)
 
     def test_get_coll(self):
-        db = Database(self.connection, "test")
+        db = Database(self.connection, "pymongo_test")
         self.assertEqual(db.test, db["test"])
         self.assertEqual(db.test, Collection(db, "test"))
         self.assertNotEqual(db.test, Collection(db, "mike"))
         self.assertEqual(db.test.mike, db["test.mike"])
 
     def test_create_collection(self):
-        db = Database(self.connection, "test")
+        db = Database(self.connection, "pymongo_test")
 
         db.test.insert({"hello": "world"})
         self.assertRaises(CollectionInvalid, db.create_collection, "test")
@@ -80,7 +80,7 @@ class TestDatabase(unittest.TestCase):
         self.assertTrue(u"test.foo" in db.collection_names())
 
     def test_collection_names(self):
-        db = Database(self.connection, "test")
+        db = Database(self.connection, "pymongo_test")
         db.test.save({"dummy": u"object"})
         db.test.mike.save({"dummy": u"object"})
 
@@ -91,7 +91,7 @@ class TestDatabase(unittest.TestCase):
             self.assertTrue("$" not in coll)
 
     def test_drop_collection(self):
-        db = Database(self.connection, "test")
+        db = Database(self.connection, "pymongo_test")
 
         self.assertRaises(TypeError, db.drop_collection, 5)
         self.assertRaises(TypeError, db.drop_collection, None)
@@ -114,7 +114,7 @@ class TestDatabase(unittest.TestCase):
         db.drop_collection(db.test.doesnotexist)
 
     def test_validate_collection(self):
-        db = self.connection.test
+        db = self.connection.pymongo_test
 
         self.assertRaises(TypeError, db.validate_collection, 5)
         self.assertRaises(TypeError, db.validate_collection, None)
@@ -128,7 +128,7 @@ class TestDatabase(unittest.TestCase):
         self.assertTrue(db.validate_collection(db.test))
 
     def test_profiling_levels(self):
-        db = self.connection.test
+        db = self.connection.pymongo_test
         self.assertEqual(db.profiling_level(), OFF) #default
 
         self.assertRaises(ValueError, db.set_profiling_level, 5.5)
@@ -145,7 +145,7 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(db.profiling_level(), OFF)
 
     def test_profiling_info(self):
-        db = self.connection.test
+        db = self.connection.pymongo_test
 
         db.set_profiling_level(ALL)
         db.test.find()
@@ -159,7 +159,7 @@ class TestDatabase(unittest.TestCase):
         self.assertTrue(isinstance(info[0]["millis"], types.FloatType))
 
     def test_iteration(self):
-        db = self.connection.test
+        db = self.connection.pymongo_test
 
         def iterate():
             [a for a in db]
@@ -167,7 +167,7 @@ class TestDatabase(unittest.TestCase):
         self.assertRaises(TypeError, iterate)
 
     def test_errors(self):
-        db = self.connection.test
+        db = self.connection.pymongo_test
 
         db.reset_error_history()
         self.assertEqual(None, db.error())
@@ -194,7 +194,7 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(None, db.previous_error())
 
     def test_password_digest(self):
-        db = self.connection.test
+        db = self.connection.pymongo_test
 
         self.assertRaises(TypeError, db._password_digest, 5)
         self.assertRaises(TypeError, db._password_digest, True)
@@ -205,7 +205,7 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(db._password_digest("password"), db._password_digest(u"password"))
 
     def test_authenticate(self):
-        db = self.connection.test
+        db = self.connection.pymongo_test
         db.system.users.remove({})
         db.system.users.insert({"user": u"mike", "pwd": db._password_digest("password")})
 
@@ -222,7 +222,7 @@ class TestDatabase(unittest.TestCase):
         db.logout()
 
     def test_id_ordering(self):
-        db = self.connection.test
+        db = self.connection.pymongo_test
         db.test.remove({})
 
         db.test.insert({"hello": "world", "_id": 5})
@@ -234,7 +234,7 @@ class TestDatabase(unittest.TestCase):
                 break
 
     def test_deref(self):
-        db = self.connection.test
+        db = self.connection.pymongo_test
         db.test.remove({})
 
         self.assertRaises(TypeError, db.dereference, 5)
@@ -249,7 +249,7 @@ class TestDatabase(unittest.TestCase):
 
     # TODO some of these tests belong in the collection level testing.
     def test_save_find_one(self):
-        db = Database(self.connection, "test")
+        db = Database(self.connection, "pymongo_test")
         db.test.remove({})
 
         a_doc = SON({"hello": u"world"})
@@ -276,7 +276,7 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(count, 1)
 
     def test_remove(self):
-        db = self.connection.test
+        db = self.connection.pymongo_test
         db.test.remove({})
 
         self.assertRaises(TypeError, db.test.remove, 5)
@@ -314,7 +314,7 @@ class TestDatabase(unittest.TestCase):
         self.assertFalse(db.test.find_one())
 
     def test_save_a_bunch(self):
-        db = self.connection.test
+        db = self.connection.pymongo_test
         db.test.remove({})
 
         for i in xrange(1000):
