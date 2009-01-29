@@ -343,15 +343,6 @@ def _value_to_bson(value):
         return ("\x0C", struct.pack("<i", len(ns)) + ns + _shuffle_oid(str(value.id())))
     raise InvalidDocument("cannot convert value of type %s to bson" % type(value))
 
-# def _where_value_to_bson(value):
-#     if not isinstance(value, basestring):
-#         raise TypeError("$where value must be an instance of (str, unicode)")
-#     cstring = _make_c_string(value)
-#     length = struct.pack("<i", len(cstring))
-#     return ("\x0D", length + cstring)
-
-# TODO i just took out all support for where clauses. need to add a Code class,
-# like we use for Binary.
 def _element_to_bson(key, value):
     element_name = _make_c_string(key)
     (element_type, element_data) = _value_to_bson(value)
