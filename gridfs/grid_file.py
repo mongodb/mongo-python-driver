@@ -46,17 +46,17 @@ class GridFile(object):
         files exist, a new file is created using the metadata in file_spec.
         The valid fields in a file_spec are as follows:
 
-        - "_id": unique ID for this file
-          * default: `pymongo.objectid.ObjectId()`
-        - "filename": human name for the file
-        - "contentType": valid mime-type for the file
-        - "length": size of the file, in bytes
-          * only used for querying, automatically set for inserts
-        - "chunkSize": size of each of the chunks, in bytes
-          * default: 256 kb
-        - "uploadDate": date when the object was first stored
-          * only used for querying, automatically set for inserts
-        - "aliases": array of alias strings
+          - "_id": unique ID for this file
+            * default: `pymongo.objectid.ObjectId()`
+          - "filename": human name for the file
+          - "contentType": valid mime-type for the file
+          - "length": size of the file, in bytes
+            * only used for querying, automatically set for inserts
+          - "chunkSize": size of each of the chunks, in bytes
+            * default: 256 kb
+          - "uploadDate": date when the object was first stored
+            * only used for querying, automatically set for inserts
+          - "aliases": array of alias strings
 
         :Parameters:
           - `file_spec`: query specifier as described above

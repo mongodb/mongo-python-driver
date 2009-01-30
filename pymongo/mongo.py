@@ -42,10 +42,10 @@ class Mongo(database.Database):
         Settings are passed in as a dictionary. Possible settings, along with
         their default values (in parens), are listed below:
 
-        - "auto_dereference" (False): automatically dereference any `DBRef`
-          contained within SON objects being returned from queries
-        - "auto_reference" (False): automatically create `DBRef` out of any
-          sub-objects that have already been saved in the database
+          - "auto_dereference" (False): automatically dereference any `DBRef`
+            contained within SON objects being returned from queries
+          - "auto_reference" (False): automatically create `DBRef` out of any
+            sub-objects that have already been saved in the database
 
         :Parameters:
           - `name`: the name of the database to connect to
