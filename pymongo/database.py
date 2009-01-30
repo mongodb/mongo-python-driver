@@ -362,7 +362,8 @@ class Database(object):
 
         :Parameters:
           - `code`: string representation of JavaScript code to be evaluated
-          - `*args` (optional): arguments for the `code` being evaluated
+          - `args` (optional): additional positional arguments are passed to
+            the `code` being evaluated
         """
         if not isinstance(code, types.StringTypes):
             raise TypeError("code must be an instance of (str, unicode)")
