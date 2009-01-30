@@ -25,7 +25,8 @@ from pymongo.objectid import ObjectId
 from pymongo.dbref import DBRef
 from pymongo.son import SON
 from pymongo.errors import InvalidOperation, ConnectionFailure
-from pymongo.mongo import Mongo, ASCENDING, DESCENDING
+from pymongo.mongo import Mongo
+from pymongo import ASCENDING, DESCENDING
 
 class TestMongo(unittest.TestCase):
     def setUp(self):

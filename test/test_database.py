@@ -24,7 +24,8 @@ sys.path[0:0] = [""]
 from pymongo.errors import InvalidName, InvalidOperation, CollectionInvalid, OperationFailure
 from pymongo.son import SON
 from pymongo.objectid import ObjectId
-from pymongo.database import Database, ASCENDING, DESCENDING, OFF, SLOW_ONLY, ALL
+from pymongo.database import Database
+from pymongo import ASCENDING, DESCENDING, OFF, SLOW_ONLY, ALL
 from pymongo.connection import Connection
 from pymongo.collection import Collection
 from pymongo.dbref import DBRef

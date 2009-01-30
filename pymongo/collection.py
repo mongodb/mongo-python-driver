@@ -270,8 +270,8 @@ class Collection(object):
 
         Takes either a single key and a direction, or a list of (key, direction)
         pairs. The key(s) must be an instance of (str, unicode), and the
-        direction(s) must be one of (Mongo.ASCENDING, Mongo.DESCENDING). Returns
-        the name of the created index.
+        direction(s) must be one of (`pymongo.ASCENDING`, `pymongo.DESCENDING`).
+        Returns the name of the created index.
 
         :Parameters:
           - `key_or_list`: a single key or a list of (key, direction) pairs
@@ -298,7 +298,7 @@ class Collection(object):
             if not isinstance(key, types.StringTypes):
                 raise TypeError("first item in each key pair must be a string")
             if not isinstance(value, types.IntType):
-                raise TypeError("second item in each key pair must be Mongo.ASCENDING or Mongo.DESCENDING")
+                raise TypeError("second item in each key pair must be ASCENDING or DESCENDING")
             key_object[key] = value
         to_save["key"] = key_object
 

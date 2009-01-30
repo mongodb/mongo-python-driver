@@ -21,7 +21,8 @@ sys.path[0:0] = [""]
 
 from pymongo.errors import InvalidOperation
 from pymongo.cursor import Cursor
-from pymongo.database import Database, ASCENDING, DESCENDING
+from pymongo.database import Database
+from pymongo import ASCENDING, DESCENDING
 from test_connection import get_connection
 
 class TestCursor(unittest.TestCase):

@@ -129,9 +129,9 @@ class Cursor(object):
 
         Takes either a single key and a direction, or a list of (key, direction)
         pairs. The key(s) must be an instance of (str, unicode), and the
-        direction(s) must be one of (Mongo.ASCENDING, Mongo.DESCENDING). Raises
-        InvalidOperation if this cursor has already been used. Only the last
-        `sort` applied to this cursor has any effect.
+        direction(s) must be one of (`pymongo.ASCENDING`, `pymongo.DESCENDING`).
+        Raises InvalidOperation if this cursor has already been used. Only the
+        last `sort` applied to this cursor has any effect.
 
         :Parameters:
           - `key_or_list`: a single key or a list of (key, direction) pairs

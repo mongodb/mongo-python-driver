@@ -29,9 +29,6 @@ from objectid import ObjectId
 from dbref import DBRef
 from cursor_manager import BatchCursorManager
 
-ASCENDING = database.ASCENDING
-DESCENDING = database.DESCENDING
-
 class Mongo(database.Database):
     """A connection to a Mongo database.
     """

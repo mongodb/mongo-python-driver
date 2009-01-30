@@ -23,7 +23,7 @@ from test_connection import get_connection
 from pymongo.objectid import ObjectId
 from pymongo.collection import Collection
 from pymongo.errors import InvalidName
-from pymongo.database import ASCENDING, DESCENDING
+from pymongo import ASCENDING, DESCENDING
 from pymongo.son import SON
 
 class TestCollection(unittest.TestCase):

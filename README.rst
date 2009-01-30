@@ -47,7 +47,7 @@ ObjectId('\x03\x1c\x06\x8d|\x9d}O\x8b\xaf!\xa0'))])
 10
 8
 11
->>> from pymongo.database import ASCENDING
+>>> from pymongo import ASCENDING
 >>> db.my_collection.create_index("x", ASCENDING)
 >>> for item in db.my_collection.find().sort("x", ASCENDING):
 ...     print item["x"]

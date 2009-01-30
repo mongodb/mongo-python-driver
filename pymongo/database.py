@@ -24,15 +24,6 @@ from collection import Collection
 from errors import InvalidName, CollectionInvalid, OperationFailure
 from code import Code
 
-# sort directions
-ASCENDING = 1
-DESCENDING = -1
-
-# profiling levels
-OFF = 0
-SLOW_ONLY = 1
-ALL = 2
-
 class Database(object):
     """A Mongo database.
     """
@@ -220,7 +211,7 @@ class Database(object):
     def profiling_level(self):
         """Get the database's current profiling level.
 
-        Returns one of (OFF, SLOW_ONLY, ALL).
+        Returns one of (`pymongo.OFF`, `pymongo.SLOW_ONLY`, `pymongo.ALL`).
         """
         result = self._command({"profile": -1})
 
@@ -230,7 +221,8 @@ class Database(object):
     def set_profiling_level(self, level):
         """Set the database's profiling level.
 
-        Raises ValueError if level is not one of (OFF, SLOW_ONLY, ALL).
+        Raises ValueError if level is not one of (`pymongo.OFF`,
+        pymongo.SLOW_ONLY`, `pymongo.ALL`).
 
         :Parameters:
           - `level`: the profiling level to use
