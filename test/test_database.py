@@ -247,6 +247,26 @@ class TestDatabase(unittest.TestCase):
         key = db.test.save(obj)
         self.assertEqual(obj, db.dereference(DBRef("test", key)))
 
+    def test_eval(self):
+        db = self.connection.pymongo_test
+        db.test.remove({})
+
+        self.assertRaises(TypeError, db.eval, None)
+        self.assertRaises(TypeError, db.eval, 5)
+        self.assertRaises(TypeError, db.eval, [])
+
+        self.assertEqual(3, db.eval("function (x) {return x;}", 3))
+        self.assertEqual(3, db.eval(u"function (x) {return x;}", 3))
+
+        self.assertEqual(None, db.eval("function (x) {db.test.save({y:x});}", 5))
+        self.assertEqual(db.test.find_one()["y"], 5)
+
+        self.assertEqual(5, db.eval("function (x, y) {return x + y;}", 2, 3))
+        self.assertEqual(5, db.eval("function () {return 5;}"))
+        self.assertEqual(5, db.eval("2 + 3;"))
+
+        self.assertRaises(OperationFailure, db.eval, "5 ++ 5;")
+
     # TODO some of these tests belong in the collection level testing.
     def test_save_find_one(self):
         db = Database(self.connection, "pymongo_test")

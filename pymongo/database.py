@@ -22,6 +22,7 @@ from dbref import DBRef
 from son_manipulator import ObjectIdInjector, ObjectIdShuffler
 from collection import Collection
 from errors import InvalidName, CollectionInvalid, OperationFailure
+from code import Code
 
 # sort directions
 ASCENDING = 1
@@ -345,3 +346,23 @@ class Database(object):
         if not isinstance(dbref, DBRef):
             raise TypeError("cannot dereference a %s" % type(dbref))
         return self[dbref.collection()].find_one(dbref.id())
+
+    def eval(self, code, *args):
+        """Evaluate a JavaScript expression on the Mongo server.
+
+        Useful if you need to touch a lot of data lightly; in such a scenario
+        the network transfer of the data could be a bottleneck. The `code`
+        argument must be a JavaScript function. Additional positional
+        arguments will be passed to that function when it is run on the
+        server.
+
+        Raises TypeError if `code` is not an instance of (str, unicode). Raises
+        OperationFailure if the eval fails. Returns the result of the
+        evaluation.
+        """
+        if not isinstance(code, types.StringTypes):
+            raise TypeError("code must be an instance of (str, unicode)")
+
+        command = SON([("$eval", Code(code)), ("args", args)])
+        result = self._command(command)
+        return result.get("retval", None)
