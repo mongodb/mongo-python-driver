@@ -15,7 +15,8 @@
 """Tools for creating and manipulating SON, the Serialized Ocument Notation.
 
 Regular dictionaries can be used instead of SON objects, but not when the order
-of keys is important."""
+of keys is important. A SON object can be used just like a normal Python
+dictionary."""
 
 import datetime
 import re

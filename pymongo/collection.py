@@ -92,9 +92,15 @@ class Collection(object):
         return NotImplemented
 
     def full_name(self):
+        """Get the full name of this collection.
+
+        The full name is of the form database_name.collection_name.
+        """
         return u"%s.%s" % (self.__database.name(), self.__collection_name)
 
     def name(self):
+        """Get the name of this collection.
+        """
         return self.__collection_name
 
     def _send_message(self, operation, data):
@@ -107,6 +113,8 @@ class Collection(object):
         return self.__database.connection()._send_message(operation, message)
 
     def database(self):
+        """Get the database that this collection is a part of.
+        """
         return self.__database
 
     def save(self, to_save, manipulate=True):
