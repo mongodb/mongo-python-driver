@@ -51,8 +51,15 @@ def capped(db):
         collection2.insert({"dashes": str})
         str += "-"
 
+def count1(db):
+    print db.test1.find().count()
+    print db.test2.find().count()
+    print db.test3.find({"i": "a"}).count()
+    print db.test3.find({"i": 3}).count()
+    print db.test3.find({"i": {"$gte": 67}}).count()
+
 def main(test, out_file):
-    db = Connection()[test]
+    db = Connection().driver_test_framework
     test_function = globals()[test]
     try:
         begin = datetime.datetime.now()
