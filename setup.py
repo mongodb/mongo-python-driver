@@ -14,7 +14,7 @@ finally:
 
 setup(
     name="pymongo",
-    version="0.2pre",
+    version="0.3pre",
     description="Driver for the Mongo database <http://www.mongodb.org>",
     long_description=readme_content,
     author="10gen",
