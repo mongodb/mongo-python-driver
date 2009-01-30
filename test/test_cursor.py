@@ -19,7 +19,7 @@ import random
 import sys
 sys.path[0:0] = [""]
 
-from pymongo.errors import InvalidOperation
+from pymongo.errors import InvalidOperation, OperationFailure
 from pymongo.cursor import Cursor
 from pymongo.database import Database
 from pymongo import ASCENDING, DESCENDING
@@ -46,12 +46,12 @@ class TestCursor(unittest.TestCase):
         for i in range(100):
             db.test.insert({"num": i, "foo": i})
 
-        self.assertEqual(db.test.find({"num": 17, "foo": 17}
-                                      ).hint([("num", ASCENDING)]
-                                             ).explain()["nscanned"], 100)
-        self.assertEqual(db.test.find({"num": 17, "foo": 17}
-                                      ).hint([("foo", ASCENDING)]
-                                             ).explain()["nscanned"], 100)
+        self.assertRaises(OperationFailure,
+                          db.test.find({"num": 17, "foo": 17}
+                                       ).hint([("num", ASCENDING)]).explain)
+        self.assertRaises(OperationFailure,
+                          db.test.find({"num": 17, "foo": 17}
+                                       ).hint([("foo", ASCENDING)]).explain)
 
         index = db.test.create_index("num", ASCENDING)
 
@@ -67,9 +67,9 @@ class TestCursor(unittest.TestCase):
         self.assertEqual(db.test.find({"num": 17, "foo": 17}
                                       ).hint([("num", ASCENDING)]
                                              ).explain()["nscanned"], 1)
-        self.assertEqual(db.test.find({"num": 17, "foo": 17}
-                                      ).hint([("foo", ASCENDING)]
-                                             ).explain()["nscanned"], 100)
+        self.assertRaises(OperationFailure,
+                          db.test.find({"num": 17, "foo": 17}
+                                       ).hint([("foo", ASCENDING)]).explain)
 
         a = db.test.find({"num": 17})
         a.hint(index)
