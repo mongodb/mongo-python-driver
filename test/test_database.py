@@ -201,14 +201,14 @@ class TestDatabase(unittest.TestCase):
         self.assertRaises(TypeError, db._password_digest, True)
         self.assertRaises(TypeError, db._password_digest, None)
 
-        self.assertTrue(isinstance(db._password_digest("password"), types.UnicodeType))
-        self.assertEqual(db._password_digest("password"), u"3b483f665f97e2fdf97575e72321fc5b")
-        self.assertEqual(db._password_digest("password"), db._password_digest(u"password"))
+        self.assertTrue(isinstance(db._password_digest("mike", "password"), types.UnicodeType))
+        self.assertEqual(db._password_digest("mike", "password"), u"cd7e45b3b2767dc2fa9b6b548457ed00")
+        self.assertEqual(db._password_digest("mike", "password"), db._password_digest(u"mike", u"password"))
 
     def test_authenticate(self):
         db = self.connection.pymongo_test
         db.system.users.remove({})
-        db.system.users.insert({"user": u"mike", "pwd": db._password_digest("password")})
+        db.system.users.insert({"user": u"mike", "pwd": db._password_digest("mike", "password")})
 
         self.assertRaises(TypeError, db.authenticate, 5, "password")
         self.assertRaises(TypeError, db.authenticate, "mike", 5)

@@ -275,13 +275,15 @@ class Database(object):
         raise TypeError("'Database' object is not iterable")
 
     # TODO this should probably be private, but I'm using it for some tests right now...
-    def _password_digest(self, password):
-        """Get a password digest to use for authentication, given a password
+    def _password_digest(self, username, password):
+        """Get a password digest to use for authentication.
         """
         if not isinstance(password, types.StringTypes):
             raise TypeError("password must be an instance of (str, unicode)")
+        if not isinstance(username, types.StringTypes):
+            raise TypeError("username must be an instance of (str, unicode)")
 
-        return unicode(md5.new("mongo" + password).hexdigest())
+        return unicode(md5.new(username + ":mongo:" + password).hexdigest())
 
     def authenticate(self, name, password):
         """Authenticate to use this database.
@@ -306,9 +308,8 @@ class Database(object):
 
         result = self._command({"getnonce": 1})
         nonce = result["nonce"]
-        key = unicode(md5.new("%s%s%s" % (nonce,
-                                          unicode(name),
-                                          self._password_digest(password))
+        digest = self._password_digest(name, password)
+        key = unicode(md5.new("%s%s%s" % (nonce, unicode(name), digest)
                               ).hexdigest())
         try:
             result = self._command(SON([("authenticate", 1),
