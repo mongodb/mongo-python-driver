@@ -306,7 +306,13 @@ class Cursor(object):
 
     def next(self):
         if len(self.__data):
-            return self.__collection.database()._fix_outgoing(self.__data.pop(0), self.__collection)
-        if self._refresh():
-            return self.__collection.database()._fix_outgoing(self.__data.pop(0), self.__collection)
-        raise StopIteration
+            next = self.__collection.database()._fix_outgoing(self.__data.pop(0), self.__collection)
+        elif self._refresh():
+            next = self.__collection.database()._fix_outgoing(self.__data.pop(0), self.__collection)
+        else:
+            raise StopIteration
+        # TODO should this be a SONManipulator? probably not...
+        # TODO check for not master and do something special in that case
+        if next.get("$err", False):
+            raise OperationFailure("db error: %s" % next["$err"])
+        return next
