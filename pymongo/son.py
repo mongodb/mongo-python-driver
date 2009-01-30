@@ -59,6 +59,7 @@ class SON(DictMixin):
     `pymongo.dbref.DBRef`        dbref          both
     None                         undefined      mongo -> py
     unicode                      code           mongo -> py
+    `pymongo.code.Code`          code           py -> mongo
     unicode                      symbol         mongo -> py
     ===========================  =============  ===================
 
