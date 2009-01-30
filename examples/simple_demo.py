@@ -73,5 +73,5 @@ print "%s, %s!" % (key, db.pymongo.find_one({"greeting": True})[key])
 
 print """\
 There is a lot more that you can do with Mongo and pymongo.
-Checkout http://www.mongodb.org for more!
+Check out http://www.mongodb.org for more!
 """
