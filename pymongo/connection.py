@@ -83,7 +83,7 @@ class Connection(object):
         Raises TypeError if either `left` or `right` is not a tuple of the form
         (host, port). Raises ConnectionFailure if the connection cannot be made.
 
-        :Paremeters:
+        :Parameters:
           - `left`: (host, port) pair for the left Mongo instance
           - `right` (optional): (host, port) pair for the right Mongo instance
         """
@@ -234,7 +234,14 @@ class Connection(object):
         return NotImplemented
 
     def __repr__(self):
-        return "Connection(%r, %r)" % (self.__host, self.__port)
+        if len(self.__nodes) == 1:
+            return "Connection(%r, %r)" % (self.__host, self.__port)
+        elif len(self.__nodes) == 2:
+            return ("Connection.paired((%r, %r), (%r, %r))" %
+                    (self.__nodes[0][0],
+                     self.__nodes[0][1],
+                     self.__nodes[1][0],
+                     self.__nodes[1][1]))
 
     def __getattr__(self, name):
         """Get a database by name.

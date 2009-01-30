@@ -84,7 +84,16 @@ class TestPaired(unittest.TestCase):
         self.assertRaises(ConfigurationError, Connection.paired, slave, self.bad)
         self.assertRaises(ConfigurationError, Connection.paired, self.bad, slave)
 
-    # TODO test __repr__
+    def test_repr(self):
+        self.skip()
+        connection = Connection.paired(self.left, self.right)
+
+        self.assertEqual(repr(connection),
+                         "Connection.paired(('%s', %s), ('%s', %s))" %
+                         (self.left[0],
+                          self.left[1],
+                          self.right[0],
+                          self.right[1]))
 
 if __name__ == "__main__":
     skip_tests = False
