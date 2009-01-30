@@ -306,7 +306,7 @@ def _element_to_bson(key, value):
         return "\x02" + name + length + cstring
     if isinstance(value, (dict, SON)):
         return "\x03" + name + BSON.from_dict(value)
-    if isinstance(value, list):
+    if isinstance(value, (list, tuple)):
         as_dict = SON(zip([str(i) for i in range(len(value))], value))
         return "\x04" + name + BSON.from_dict(as_dict)
     if isinstance(value, ObjectId):
