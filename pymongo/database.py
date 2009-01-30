@@ -359,6 +359,10 @@ class Database(object):
         Raises TypeError if `code` is not an instance of (str, unicode). Raises
         OperationFailure if the eval fails. Returns the result of the
         evaluation.
+
+        :Parameters:
+          - `code`: string representation of JavaScript code to be evaluated
+          - `*args` (optional): arguments for the `code` being evaluated
         """
         if not isinstance(code, types.StringTypes):
             raise TypeError("code must be an instance of (str, unicode)")
