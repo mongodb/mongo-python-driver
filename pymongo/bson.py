@@ -365,6 +365,9 @@ def to_dicts(data):
     """Convert binary data to sequence of SON objects.
 
     Data must be concatenated strings of valid BSON data.
+
+    :Parameters:
+      - `data`: bson data
     """
     dicts = []
     while len(data):
