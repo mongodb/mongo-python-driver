@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Manipulators that can edit SON objects as the enter and exit a database.
+"""Manipulators that can edit SON objects as they enter and exit a database.
 
 New manipulators should be defined as subclasses of SONManipulator and can be
 installed on a database by calling `pymongo.database.Database.add_son_manipulator`."""

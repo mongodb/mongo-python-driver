@@ -11,5 +11,5 @@ inheritance: grouped
 private: no
 imports: no
 
-name: Python Mongo Driver
+name: PyMongo
 url: http://github.com/mongodb/mongo-python-driver/tree/master
