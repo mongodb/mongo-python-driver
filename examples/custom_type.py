@@ -122,6 +122,8 @@ assert db.test.find_one()["custom"].x() == 5
 # We can take this one step further by encoding to binary, using a user defined
 # subtype. This allows us to identify what to decode without resorting to tricks
 # like the "_type" field used above.
+# NOTE: you could just pickle the instance and save that. What we do here is a
+# little more lightweight...
 def to_binary(custom):
     return Binary(str(custom.x()), 128)
 def from_binary(binary):
