@@ -66,9 +66,25 @@ static PyObject* _cbson_shuffle_oid(PyObject* self, PyObject* args) {
   return result;
 }
 
+static PyObject* _cbson_element_to_bson(PyObject* self, PyObject* args) {
+  const char* name;
+  int name_length;
+  PyObject* value;
+
+  if (!PyArg_ParseTuple(args, "s#O", &name, &name_length, &value)) {
+    return NULL;
+  }
+
+  printf(value->ob_type->tp_name);
+  printf("\n");
+  return Py_BuildValue("s#", name, name_length);
+}
+
 static PyMethodDef _CBSONMethods[] = {
   {"_shuffle_oid", _cbson_shuffle_oid, METH_VARARGS,
    "shuffle an ObjectId into proper byte order."},
+  {"_element_to_bson", _cbson_element_to_bson, METH_VARARGS,
+   "convert a key and value to its bson representation."},
   {NULL, NULL, 0, NULL}
 };
 

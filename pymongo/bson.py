@@ -351,6 +351,8 @@ def _element_to_bson(name, value):
         ns = _make_c_string(value.collection())
         return "\x0C" + name + struct.pack("<i", len(ns)) + ns + _shuffle_oid(str(value.id()))
     raise InvalidDocument("cannot convert value of type %s to bson" % type(value))
+# if _use_c:
+#     _element_to_bson = _cbson._element_to_bson
 
 def is_valid(bson):
     """Validate that the given string represents valid BSON data.
