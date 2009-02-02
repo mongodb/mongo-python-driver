@@ -23,23 +23,23 @@ import datetime
 sys.path[0:0] = [os.path.join(os.getcwd(), "..")]
 from pymongo.connection import Connection
 
-def test1(db):
+def test1(db, out):
     for i in range(100):
         db.part1.insert({"x": i})
 
-def remove(db):
+def remove(db, out):
     db.remove1.remove({})
     db.remove2.remove({"a": 3})
 
-def find(db):
+def find(db, out):
     db.test.insert({"a": 2})
 
-def circular(db):
+def circular(db, out):
     # TODO skipping this test for now because as it's written it *sort of*
     # depends on auto-ref and auto-deref
     pass
 
-def capped(db):
+def capped(db, out):
     collection = db.create_collection("capped1", {"capped": True, "size": 500})
     collection.insert({"x": 1})
     collection.insert({"x": 2})
@@ -51,19 +51,21 @@ def capped(db):
         collection2.insert({"dashes": str})
         str += "-"
 
-def count1(db):
-    print db.test1.find().count()
-    print db.test2.find().count()
-    print db.test3.find({"i": "a"}).count()
-    print db.test3.find({"i": 3}).count()
-    print db.test3.find({"i": {"$gte": 67}}).count()
+def count1(db, out):
+    print >>out, db.test1.find().count()
+    print >>out, db.test2.find().count()
+    print >>out, db.test3.find({"i": "a"}).count()
+    print >>out, db.test3.find({"i": 3}).count()
+    print >>out, db.test3.find({"i": {"$gte": 67}}).count()
 
 def main(test, out_file):
     db = Connection().driver_test_framework
     test_function = globals()[test]
+
+    f = open(out_file, "w")
     try:
         begin = datetime.datetime.now()
-        test_function(db)
+        test_function(db, f)
         end = datetime.datetime.now()
         exit_status = 0
     except:
@@ -71,15 +73,12 @@ def main(test, out_file):
         begin = None
         exit_status = 1
 
-    f = open(out_file, "w")
-    try:
-        if begin and end:
-            f.write("begintime:%s\n" % begin)
-            f.write("endtime:%s\n" % end)
-            f.write("totaltime:%s\n" % (end - begin))
-        f.write("exit_code:%s\n" % exit_status)
-    finally:
-        f.close()
+    if begin and end:
+        f.write("begintime:%s\n" % begin)
+        f.write("endtime:%s\n" % end)
+        f.write("totaltime:%s\n" % (end - begin))
+    f.write("exit_code:%s\n" % exit_status)
+    f.close()
 
 if __name__ == "__main__":
     main(sys.argv[1], sys.argv[2])
