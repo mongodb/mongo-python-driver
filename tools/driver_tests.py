@@ -20,7 +20,7 @@ import sys
 import os
 import datetime
 
-sys.path[0:0] = os.path.join(os.getcwd(), "..")
+sys.path[0:0] = [os.path.join(os.getcwd(), "..")]
 from pymongo.connection import Connection
 
 def test1(db):
