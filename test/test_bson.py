@@ -83,6 +83,8 @@ class TestBSON(unittest.TestCase):
                          "\x10\x00\x00\x00\x03\x6E\x6F\x6E\x65\x00\x05\x00\x00\x00\x00\x00")
         self.assertEqual(BSON.from_dict({"test": Binary("test")}),
                          "\x18\x00\x00\x00\x05\x74\x65\x73\x74\x00\x08\x00\x00\x00\x02\x04\x00\x00\x00\x74\x65\x73\x74\x00")
+        self.assertEqual(BSON.from_dict({"test": Binary("test", 128)}),
+                         "\x14\x00\x00\x00\x05\x74\x65\x73\x74\x00\x04\x00\x00\x00\x80\x74\x65\x73\x74\x00")
         self.assertEqual(BSON.from_dict({"test": None}),
                          "\x0B\x00\x00\x00\x0A\x74\x65\x73\x74\x00\x00")
         self.assertEqual(BSON.from_dict({"date": datetime.datetime(2007, 1, 8, 0, 30, 11)}),
@@ -110,6 +112,8 @@ class TestBSON(unittest.TestCase):
         helper({"false": False})
         helper({"an array": [1, True, 3.8, u"world"]})
         helper({"an object": {"test": u"something"}})
+        helper({"a binary": Binary("test", 100)})
+        helper({"another binary": Binary("test")})
         helper(SON([(u'test dst', datetime.datetime(1993, 4, 4, 2))]))
 
         def from_then_to_dict(dict):

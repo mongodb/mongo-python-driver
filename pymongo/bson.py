@@ -198,14 +198,14 @@ def _get_array(data):
 
 def _get_binary(data):
     (length, data) = _get_int(data)
-    subtype = data[0]
+    subtype = ord(data[0])
     data = data[1:]
-    if subtype != "\x02":
-        raise InvalidBSON("binary subtype %r is unsupported" % subtype)
-    (length2, data) = _get_int(data)
-    if length2 != length - 4:
-        raise InvalidBSON("invalid binary - lengths don't match!")
-    return (Binary(data[:length2]), data[length2:])
+    if subtype == 2:
+        (length2, data) = _get_int(data)
+        if length2 != length - 4:
+            raise InvalidBSON("invalid binary (st 2) - lengths don't match!")
+        length = length2
+    return (Binary(data[:length], subtype), data[length:])
 
 def _get_oid(data):
     oid = _shuffle_oid(data[:12])
@@ -290,8 +290,10 @@ def _element_to_bson(key, value):
     if isinstance(value, float):
         return "\x01" + name + struct.pack("<d", value)
     if isinstance(value, Binary):
-        length = len(value)
-        return "\x05" + name + struct.pack("<i", length + 4) + "\x02" + struct.pack("<i", length) + value
+        subtype = value.subtype()
+        if subtype == 2:
+            value = struct.pack("<i", len(value)) + value
+        return "\x05" + name + struct.pack("<i", len(value)) + chr(subtype) + value
     if isinstance(value, Code):
         cstring = _make_c_string(value, False)
         length = struct.pack("<i", len(cstring))
