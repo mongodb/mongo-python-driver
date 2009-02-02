@@ -293,8 +293,7 @@ if _use_c:
     _shuffle_oid = _cbson._shuffle_oid
 
 _RE_TYPE = type(_valid_array_name)
-def _element_to_bson(key, value):
-    name = _make_c_string(key)
+def _element_to_bson(name, value):
     if isinstance(value, float):
         return "\x01" + name + struct.pack("<d", value)
     if isinstance(value, Binary):
@@ -412,7 +411,7 @@ class BSON(str):
           - `dict`: mapping type representing a Mongo document
         """
         try:
-            elements = "".join([_element_to_bson(key, value) for (key, value) in dict.iteritems()])
+            elements = "".join([_element_to_bson(_make_c_string(key), value) for (key, value) in dict.iteritems()])
         except AttributeError:
             raise TypeError("argument to from_dict must be a mapping type")
 
