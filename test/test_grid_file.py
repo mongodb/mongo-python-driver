@@ -150,6 +150,7 @@ class TestGridFile(unittest.TestCase):
         self.assertEqual(a.chunk_size, 256000)
         self.assertTrue(isinstance(a.upload_date, datetime.datetime))
         self.assertEqual(a.aliases, None)
+        self.assertEqual(a.metadata, None)
         self.assertEqual(a.next, None)
 
         a.content_type = "something"
@@ -169,6 +170,9 @@ class TestGridFile(unittest.TestCase):
 
         a.aliases = ["hello", "world"]
         self.assertEqual(a.aliases, ["hello", "world"])
+
+        a.metadata = {"something": "else"}
+        self.assertEqual(a.metadata, {"something": "else"})
 
         def set_next():
             a.next = None

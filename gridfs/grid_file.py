@@ -151,6 +151,7 @@ class GridFile(object):
     chunk_size = __create_property("chunkSize", True)
     upload_date = __create_property("uploadDate", True)
     aliases = __create_property("aliases")
+    metadata = __create_property("metadata")
     next = __create_property("next", True)
 
     def rename(self, filename):
