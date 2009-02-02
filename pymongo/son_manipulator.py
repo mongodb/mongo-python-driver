@@ -81,3 +81,9 @@ class NamespaceInjector(SONManipulator):
         """
         son["_ns"] = collection.name()
         return son
+
+# TODO make a generic translator for custom types. Take encode, decode,
+# should_encode and should_decode functions and just encode and decode where
+# necessary. See examples/custom_type.py for where this would be useful.
+# Alternatively it could take a should_encode, to_binary, from_binary and
+# binary subtype.
