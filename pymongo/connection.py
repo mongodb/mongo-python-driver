@@ -28,6 +28,8 @@ _logger = logging.getLogger("pymongo.connection")
 _logger.addHandler(logging.StreamHandler())
 # _logger.setLevel(logging.DEBUG)
 
+_TIMEOUT = 20.0
+
 class Connection(object):
     """A connection to Mongo.
     """
@@ -135,6 +137,7 @@ class Connection(object):
             _logger.debug("trying %r:%r" % (host, port))
             try:
                 self.__socket = socket.socket()
+                self.__socket.settimeout(_TIMEOUT)
                 self.__socket.connect((host, port))
                 master = self._master()
                 if master == True:
