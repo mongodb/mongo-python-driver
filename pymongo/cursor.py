@@ -157,7 +157,7 @@ class Cursor(object):
             if not isinstance(key, types.StringTypes):
                 raise TypeError("first item in each key pair must be a string")
             if not isinstance(value, types.IntType):
-                raise TypeError("second item in each key pair must be Mongo.ASCENDING or Mongo.DESCENDING")
+                raise TypeError("second item in each key pair must be ASCENDING or DESCENDING")
             orderby[key] = value
 
         self.__ordering = orderby
