@@ -32,11 +32,31 @@ class TestBinary(unittest.TestCase):
         self.assertTrue(isinstance(a_binary, Binary))
         self.assertFalse(isinstance(a_string, Binary))
 
+    def test_exceptions(self):
+        self.assertRaises(TypeError, Binary, None)
+        self.assertRaises(TypeError, Binary, u"hello")
+        self.assertRaises(TypeError, Binary, 5)
+        self.assertRaises(TypeError, Binary, 10.2)
+        self.assertRaises(TypeError, Binary, "hello", None)
+        self.assertRaises(TypeError, Binary, "hello", "100")
+        self.assertRaises(ValueError, Binary, "hello", -1)
+        self.assertRaises(ValueError, Binary, "hello", 256)
+        self.assertTrue(Binary("hello", 0))
+        self.assertTrue(Binary("hello", 255))
+
+    def test_subtype(self):
+        b = Binary("hello")
+        self.assertEqual(b.subtype(), 2)
+        c = Binary("hello", 100)
+        self.assertEqual(c.subtype(), 100)
+
     def test_repr(self):
         b = Binary("hello world")
-        self.assertEqual(repr(b), "Binary('hello world')")
+        self.assertEqual(repr(b), "Binary('hello world', 2)")
         c = Binary("\x08\xFF")
-        self.assertEqual(repr(c), "Binary('\\x08\\xff')")
+        self.assertEqual(repr(c), "Binary('\\x08\\xff', 2)")
+        d = Binary("test", 100)
+        self.assertEqual(repr(d), "Binary('test', 100)")
 
 if __name__ == "__main__":
     unittest.main()

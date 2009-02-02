@@ -19,8 +19,38 @@ type. We need to wrap binary so we can tell the difference between what should
 be considered binary and what should be considered a string.
 """
 
+import types
+
 class Binary(str):
     """Binary data stored in or retrieved from Mongo.
     """
+    def __new__(cls, data, subtype=2):
+        """Initialize a new binary object.
+
+        `subtype` is a binary subtype for this data. For more information on
+        subtypes, see the Mongo wiki_.
+
+        .. _wiki: https://mongodb.onconfluence.com/display/DOCS/BSON+Specification#BSONSpecification-noteondatabinary
+
+        Raises TypeError if `data` is not an instance of str or `subtype` is
+        not an instance of int. Raises ValueError if `subtype` not in [0, 256).
+
+        :Parameters:
+          - `data`: the binary data to represent
+          - `subtype` (optional): the binary subtype to use
+        """
+        if not isinstance(data, types.StringType):
+            raise TypeError("data must be an instance of str")
+        if not isinstance(subtype, types.IntType):
+            raise TypeError("subtype must be an instance of int")
+        if subtype >= 256 or subtype < 0:
+            raise ValueError("subtype must be contained in [0, 256)")
+        binary = str.__new__(cls, data)
+        binary.__subtype = subtype
+        return binary
+
+    def subtype(self):
+        return self.__subtype
+
     def __repr__(self):
-        return "Binary(%s)" % str.__repr__(self)
+        return "Binary(%s, %s)" % (str.__repr__(self), self.__subtype)
