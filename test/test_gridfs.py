@@ -25,8 +25,10 @@ from test_connection import get_connection
 class TestGridfs(unittest.TestCase):
     def setUp(self):
         self.db = get_connection().pymongo_test
-        self.db._files.remove({})
-        self.db._chunks.remove({})
+        self.db.gridfs.files.remove({})
+        self.db.gridfs.chunks.remove({})
+        self.db.pymongo_test.files.remove({})
+        self.db.pymongo_test.chunks.remove({})
         self.fs = gridfs.GridFS(self.db)
 
     def test_open(self):
@@ -68,14 +70,14 @@ class TestGridfs(unittest.TestCase):
         f.write("fly")
         f.close()
         self.assertEqual(["mike", "test", "hello world"], self.fs.list())
-        self.assertEqual(self.db._files.find().count(), 3)
-        self.assertEqual(self.db._chunks.find().count(), 3)
+        self.assertEqual(self.db.gridfs.files.find().count(), 3)
+        self.assertEqual(self.db.gridfs.chunks.find().count(), 3)
 
         self.fs.remove("test")
 
         self.assertEqual(["mike", "hello world"], self.fs.list())
-        self.assertEqual(self.db._files.find().count(), 2)
-        self.assertEqual(self.db._chunks.find().count(), 2)
+        self.assertEqual(self.db.gridfs.files.find().count(), 2)
+        self.assertEqual(self.db.gridfs.chunks.find().count(), 2)
         self.assertEqual(self.fs.open("mike").read(), "hi")
         self.assertEqual(self.fs.open("hello world").read(), "fly")
         self.assertRaises(IOError, self.fs.open, "test")
@@ -83,11 +85,59 @@ class TestGridfs(unittest.TestCase):
         self.fs.remove({})
 
         self.assertEqual([], self.fs.list())
-        self.assertEqual(self.db._files.find().count(), 0)
-        self.assertEqual(self.db._chunks.find().count(), 0)
+        self.assertEqual(self.db.gridfs.files.find().count(), 0)
+        self.assertEqual(self.db.gridfs.chunks.find().count(), 0)
         self.assertRaises(IOError, self.fs.open, "test")
         self.assertRaises(IOError, self.fs.open, "mike")
         self.assertRaises(IOError, self.fs.open, "hello world")
+
+    def test_open_alt_coll(self):
+        f = self.fs.open("my file", "w", "pymongo_test")
+        f.write("hello gridfs world!")
+        f.close()
+
+        self.assertRaises(IOError, self.fs.open, "my file", "r")
+        g = self.fs.open("my file", "r", "pymongo_test")
+        self.assertEqual("hello gridfs world!", g.read())
+        g.close()
+
+    def test_list_alt_coll(self):
+        f = self.fs.open("mike", "w", "pymongo_test")
+        f.close()
+
+        f = self.fs.open("test", "w", "pymongo_test")
+        f.close()
+
+        f = self.fs.open("hello world", "w", "pymongo_test")
+        f.close()
+
+        self.assertEqual([], self.fs.list())
+        self.assertEqual(["mike", "test", "hello world"], self.fs.list("pymongo_test"))
+
+    def test_remove_alt_coll(self):
+        f = self.fs.open("mike", "w", "pymongo_test")
+        f.write("hi")
+        f.close()
+        f = self.fs.open("test", "w", "pymongo_test")
+        f.write("bye")
+        f.close()
+        f = self.fs.open("hello world", "w", "pymongo_test")
+        f.write("fly")
+        f.close()
+
+        self.fs.remove("test")
+        self.assertEqual(["mike", "test", "hello world"], self.fs.list("pymongo_test"))
+        self.fs.remove("test", "pymongo_test")
+        self.assertEqual(["mike", "hello world"], self.fs.list("pymongo_test"))
+
+        self.assertEqual(self.fs.open("mike", collection="pymongo_test").read(), "hi")
+        self.assertEqual(self.fs.open("hello world", collection="pymongo_test").read(), "fly")
+
+        self.fs.remove({}, "pymongo_test")
+
+        self.assertEqual([], self.fs.list("pymongo_test"))
+        self.assertEqual(self.db.pymongo_test.files.find().count(), 0)
+        self.assertEqual(self.db.pymongo_test.chunks.find().count(), 0)
 
 if __name__ == "__main__":
     unittest.main()

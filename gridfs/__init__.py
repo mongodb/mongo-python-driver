@@ -40,49 +40,61 @@ class GridFS(object):
 
         self.__database = database
 
-    def open(self, filename, mode="r"):
+    def open(self, filename, mode="r", collection="gridfs"):
         """Open a GridFile for reading or writing.
 
         Shorthand method for creating / opening a GridFile from a filename. mode
         must be a mode supported by `gridfs.grid_file.GridFile`
 
         :Parameters:
-          - `filename`: the name of the GridFile to open
-          - `mode` (optional): the mode to open the file in
+          - `filename`: name of the GridFile to open
+          - `mode` (optional): mode to open the file in
+          - `collection` (optional): root collection to use for this file
         """
-        return GridFile({"filename": filename}, self.__database, mode)
+        return GridFile({"filename": filename}, self.__database, mode, collection)
 
-    def remove(self, filename_or_spec):
+    def remove(self, filename_or_spec, collection="gridfs"):
         """Remove one or more GridFile(s).
 
         Can remove by filename, or by an entire file spec (see
         `gridfs.grid_file.GridFile` for documentation on valid fields. Delete
         all GridFiles that match filename_or_spec. Raises TypeError if
-        filename_or_spec is not an instance of (str, unicode, dict, SON).
+        filename_or_spec is not an instance of (str, unicode, dict, SON) or
+        collection is not an instance of (str, unicode).
 
         :Parameters:
           - `filename_or_spec`: identifier of file(s) to remove
+          - `collection` (optional): root collection where this file is located
         """
         spec = filename_or_spec
         if isinstance(filename_or_spec, types.StringTypes):
             spec = {"filename": filename_or_spec}
+        if not isinstance(collection, types.StringTypes):
+            raise TypeError("collection must be an instance of (str, unicode)")
 
         # convert to _id's so we can uniquely create GridFile instances
         ids = []
-        for file in self.__database._files.find(spec):
+        for file in self.__database[collection].files.find(spec):
             ids.append(file["_id"])
 
         # open for writing to remove the chunks for these files
         for id in ids:
-            f = GridFile({"_id": id}, self.__database, "w")
+            f = GridFile({"_id": id}, self.__database, "w", collection)
             f.close()
 
-        self.__database._files.remove(spec)
+        self.__database[collection].files.remove(spec)
 
-    def list(self):
+    def list(self, collection="gridfs"):
         """List the names of all GridFiles stored in this instance of GridFS.
+
+        Raises TypeError if collection is not an instance of (str, unicode).
+
+        :Parameters:
+          - `collection` (optional): root collection to list files from
         """
+        if not isinstance(collection, types.StringTypes):
+            raise TypeError("collection must be an instance of (str, unicode)")
         names = []
-        for file in self.__database._files.find():
+        for file in self.__database[collection].files.find():
             names.append(file["filename"])
         return names

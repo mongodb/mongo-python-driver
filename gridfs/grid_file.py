@@ -30,7 +30,7 @@ class GridFile(object):
     """
     # TODO should be able to create a GridFile given a Collection object instead
     # of a database and collection name?
-    def __init__(self, file_spec, database, mode="r", collection="_files"):
+    def __init__(self, file_spec, database, mode="r", collection="gridfs"):
         """Open a "file" in GridFS.
 
         Application developers should generally not need to instantiate this
@@ -57,6 +57,7 @@ class GridFile(object):
           - "uploadDate": date when the object was first stored
             * only used for querying, automatically set for inserts
           - "aliases": array of alias strings
+          - "metadata": a SON document containing arbitrary data
 
         :Parameters:
           - `file_spec`: query specifier as described above
@@ -79,7 +80,7 @@ class GridFile(object):
 
         self.__collection = database[collection]
 
-        file = self.__collection.find_one(file_spec)
+        file = self.__collection.files.find_one(file_spec)
         if file:
             self.__id = file["_id"]
         else:
@@ -88,7 +89,7 @@ class GridFile(object):
             file_spec["length"] = 0
             file_spec["uploadDate"] = datetime.datetime.now()
             file_spec.setdefault("chunkSize", 256000)
-            self.__id = self.__collection.insert(file_spec)["_id"]
+            self.__id = self.__collection.files.insert(file_spec)["_id"]
 
         self.__mode = mode
         if mode == "w":
@@ -103,13 +104,13 @@ class GridFile(object):
     def __erase(self):
         """Erase all of the data stored in this GridFile.
         """
-        file = self.__collection.find_one(self.__id)
+        file = self.__collection.files.find_one(self.__id)
 
         next = file.get("next", None)
         chunk_number = 0
 
         while next:
-            chunk = self.__collection.database().dereference(next)
+            chunk = self.__collection.files.database().dereference(next)
             if not chunk:
                 raise CorruptGridFile("could not dereference: %r" % next)
             if chunk["cn"] != chunk_number:
@@ -123,7 +124,7 @@ class GridFile(object):
 
         file["next"] = None
         file["length"] = 0
-        self.__collection.save(file)
+        self.__collection.files.save(file)
 
     @property
     def closed(self):
@@ -135,11 +136,11 @@ class GridFile(object):
 
     def __create_property(field_name, read_only=False):
         def get(self):
-            return self.__collection.find_one(self.__id).get(field_name, None)
+            return self.__collection.files.find_one(self.__id).get(field_name, None)
         def set(self, value):
-            file = self.__collection.find_one(self.__id)
+            file = self.__collection.files.find_one(self.__id)
             file[field_name] = value
-            self.__collection.save(file)
+            self.__collection.files.save(file)
         if not read_only:
             return property(get, set)
         return property(get)
@@ -161,15 +162,13 @@ class GridFile(object):
         :Parameters:
           - `filename`: the new name for this GridFile
         """
-        file = self.__collection.find_one(self.__id)
+        file = self.__collection.files.find_one(self.__id)
         file["filename"] = filename
-        self.__collection.save(file)
+        self.__collection.files.save(file)
 
-    __chunks_collection = "_chunks"
     def __write_current_chunk(self):
-        # TODO _chunks collection should be configurable?
         self.__current_chunk["data"] = Binary(self.__current_chunk["data"])
-        self.__collection.database()[self.__chunks_collection].save(self.__current_chunk)
+        self.__collection.chunks.save(self.__current_chunk)
 
     def flush(self):
         """Flush the GridFile to the database.
@@ -178,13 +177,13 @@ class GridFile(object):
         if self.mode != "w" or not self.__current_chunk:
             return
 
-        file = self.__collection.find_one(self.__id)
+        file = self.__collection.files.find_one(self.__id)
 
         length = file["chunkSize"] * self.__current_chunk["cn"] + len(self.__current_chunk["data"])
         file["length"] = length
 
         self.__write_current_chunk()
-        self.__collection.save(file)
+        self.__collection.files.save(file)
 
     def close(self):
         """Close the GridFile.
@@ -274,10 +273,10 @@ class GridFile(object):
 
         if not self.__current_chunk:
             self.__current_chunk = initialize_chunk(0)
-            ref = DBRef(self.__chunks_collection, self.__current_chunk["_id"])
-            file = self.__collection.find_one(self.__id)
+            ref = DBRef(self.__collection.chunks.name(), self.__current_chunk["_id"])
+            file = self.__collection.files.find_one(self.__id)
             file["next"] = ref
-            self.__collection.save(file)
+            self.__collection.files.save(file)
 
         data = self.__current_chunk["data"]
         data += str
@@ -288,7 +287,7 @@ class GridFile(object):
 
             new_chunk = initialize_chunk(self.__current_chunk["cn"] + 1)
 
-            self.__current_chunk["next"] = DBRef(self.__chunks_collection, new_chunk["_id"])
+            self.__current_chunk["next"] = DBRef(self.__collection.chunks.name(), new_chunk["_id"])
             self.__write_current_chunk()
             self.__current_chunk = new_chunk
 
