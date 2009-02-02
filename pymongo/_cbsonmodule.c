@@ -23,12 +23,31 @@
 #include <Python.h>
 #include <string.h>
 
+static char* shuffle_oid(char* oid) {
+  char* shuffled = (char*) malloc(12);
+  int i;
+
+  if (!shuffled) {
+    PyErr_NoMemory();
+    return NULL;
+  }
+
+  for (i = 0; i < 8; i++) {
+    shuffled[i] = oid[7 - i];
+  }
+  for (i = 0; i < 4; i++) {
+    shuffled[i + 8] = oid[11 - i];
+  }
+
+  return shuffled;
+}
+
 static PyObject* _cbson_shuffle_oid(PyObject* self, PyObject* args) {
-PyObject* result;
+  PyObject* result;
   char* data;
   char* shuffled;
   int length;
-  int i;
+
   if (!PyArg_ParseTuple(args, "s#", &data, &length)) {
     return NULL;
   }
@@ -37,17 +56,9 @@ PyObject* result;
     PyErr_SetString(PyExc_ValueError, "oid must be of length 12");
   }
 
-  shuffled = (char*) malloc(12);
+  shuffled = shuffle_oid(data);
   if (!shuffled) {
-    PyErr_NoMemory();
     return NULL;
-  }
-
-  for (i = 0; i < 8; i++) {
-    shuffled[i] = data[7 - i];
-  }
-  for (i = 0; i < 4; i++) {
-    shuffled[i + 8] = data[11 - i];
   }
 
   result = Py_BuildValue("s#", shuffled, 12);
