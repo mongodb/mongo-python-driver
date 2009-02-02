@@ -45,12 +45,19 @@ class Binary(str):
             raise TypeError("subtype must be an instance of int")
         if subtype >= 256 or subtype < 0:
             raise ValueError("subtype must be contained in [0, 256)")
-        binary = str.__new__(cls, data)
-        binary.__subtype = subtype
-        return binary
+        self = str.__new__(cls, data)
+        self.__subtype = subtype
+        return self
 
     def subtype(self):
+        """Get the subtype of this binary data.
+        """
         return self.__subtype
+
+    def __eq__(self, other):
+        if isinstance(other, Binary):
+            return (self.__subtype, str(self)) == (other.__subtype, str(other))
+        return NotImplemented
 
     def __repr__(self):
         return "Binary(%s, %s)" % (str.__repr__(self), self.__subtype)
