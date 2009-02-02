@@ -8,3 +8,5 @@ doc/
 build/
 dist/
 pymongo.egg-info/
+examples/pymongo
+examples/gridfs
