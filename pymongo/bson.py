@@ -31,6 +31,12 @@ from dbref import DBRef
 from son import SON
 from errors import InvalidBSON, InvalidDocument, UnsupportedTag
 
+try:
+    import _cbson
+    _use_c = True
+except ImportError:
+    _use_c = False
+
 _logger = logging.getLogger("pymongo.bson")
 # _logger.setLevel(logging.DEBUG)
 # _logger.addHandler(logging.StreamHandler())
@@ -283,6 +289,8 @@ def _document_to_dict(data):
 
 def _shuffle_oid(data):
     return data[7::-1] + data[:7:-1]
+if _use_c:
+    _shuffle_oid = _cbson._shuffle_oid
 
 _RE_TYPE = type(_valid_array_name)
 def _element_to_bson(key, value):

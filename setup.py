@@ -3,6 +3,7 @@
 from ez_setup import use_setuptools
 use_setuptools()
 from setuptools import setup
+from distutils.core import Extension
 
 f = open("README.rst")
 try:
@@ -21,6 +22,7 @@ setup(
     author_email="mike@10gen.com",
     url="http://github.com/mongodb/mongo-python-driver",
     packages=["pymongo", "gridfs"],
+    ext_modules=[Extension('pymongo._cbson', ['pymongo/_cbsonmodule.c'])],
     install_requires=["elementtree"],
     license="Apache License, Version 2.0",
     test_suite="nose.collector",
