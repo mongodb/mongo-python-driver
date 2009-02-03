@@ -167,7 +167,7 @@ class Collection(object):
 
         return len(docs) == 1 and docs[0] or docs
 
-    def update(self, spec, document, upsert=False, manipulate=True):
+    def update(self, spec, document, upsert=False, manipulate=True, safe=False):
         """Update an object(s) in this collection.
 
         Raises TypeError if either spec or document isn't an instance of
@@ -197,6 +197,11 @@ class Collection(object):
         message += bson.BSON.from_dict(document)
 
         self._send_message(2001, message)
+
+        if safe:
+            error = self.__database.error()
+            if error:
+                raise OperationFailure("update failed: " + error["err"])
 
     def remove(self, spec_or_object_id):
         """Remove an object(s) from this collection.
