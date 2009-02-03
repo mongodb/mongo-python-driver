@@ -120,11 +120,15 @@ class Collection(object):
     def save(self, to_save, manipulate=True, safe=False):
         """Save a SON object in this collection.
 
-        Raises TypeError if to_save is not an instance of (dict, SON).
+        Raises TypeError if to_save is not an instance of (dict, SON). If `safe`
+        is True then the save will be checked for errors, raising
+        OperationFailure if one occurred. Checking for safety requires an extra
+        round-trip to the database.
 
         :Parameters:
           - `to_save`: the SON object to be saved
           - `manipulate` (optional): manipulate the son object before saving it
+          - `safe` (optional): check that the save succeeded?
         """
         if not isinstance(to_save, (types.DictType, SON)):
             raise TypeError("cannot save object of type %s" % type(to_save))
@@ -141,11 +145,15 @@ class Collection(object):
 
         If manipulate is set the document(s) are manipulated using any
         SONManipulators that have been added to this database. Returns the
-        inserted object or a list of inserted objects.
+        inserted object or a list of inserted objects. If `safe`is True then the
+        insert will be checked for errors, raising OperationFailure if one
+        occurred. Checking for safety requires an extra round-trip to the
+        database.
 
         :Parameters:
           - `doc_or_docs`: a SON object or list of SON objects to be inserted
           - `manipulate` (optional): monipulate the objects before inserting?
+          - `safe` (optional): check that the insert succeeded?
         """
         docs = doc_or_docs
         if isinstance(docs, (types.DictType, SON)):
@@ -171,7 +179,10 @@ class Collection(object):
         """Update an object(s) in this collection.
 
         Raises TypeError if either spec or document isn't an instance of
-        (dict, SON) or upsert isn't an instance of bool.
+        (dict, SON) or upsert isn't an instance of bool. If `safe` is True then
+        the update will be checked for errors, raising OperationFailure if one
+        occurred. Checking for safety requires an extra round-trip to the
+        database.
 
         :Parameters:
           - `spec`: a SON object specifying elements which must be present for a
@@ -181,6 +192,7 @@ class Collection(object):
             be inserted.
           - `upsert` (optional): perform an upsert operation
           - `manipulate` (optional): monipulate the document before updating?
+          - `safe` (optional): check that the update succeeded?
         """
         if not isinstance(spec, (types.DictType, SON)):
             raise TypeError("spec must be an instance of (dict, SON)")
