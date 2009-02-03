@@ -31,7 +31,7 @@ class GridFile(object):
     """
     # TODO should be able to create a GridFile given a Collection object instead
     # of a database and collection name?
-    def __init__(self, file_spec, database, mode="r", collection="gridfs"):
+    def __init__(self, file_spec, database, mode="r", collection="fs"):
         """Open a "file" in GridFS.
 
         Application developers should generally not need to instantiate this

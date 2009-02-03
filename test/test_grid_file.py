@@ -29,17 +29,17 @@ class TestGridFile(unittest.TestCase):
         self.db = get_connection().pymongo_test
 
     def test_basic(self):
-        self.db.gridfs.files.remove({})
-        self.db.gridfs.chunks.remove({})
+        self.db.fs.files.remove({})
+        self.db.fs.chunks.remove({})
 
-        self.assertEqual(self.db.gridfs.files.find().count(), 0)
-        self.assertEqual(self.db.gridfs.chunks.find().count(), 0)
+        self.assertEqual(self.db.fs.files.find().count(), 0)
+        self.assertEqual(self.db.fs.chunks.find().count(), 0)
         file = GridFile({"filename": "test"}, self.db, "w")
         file.write("hello world")
         file.close()
 
-        self.assertEqual(self.db.gridfs.files.find().count(), 1)
-        self.assertEqual(self.db.gridfs.chunks.find().count(), 1)
+        self.assertEqual(self.db.fs.files.find().count(), 1)
+        self.assertEqual(self.db.fs.chunks.find().count(), 1)
 
         file = GridFile({"filename": "test"}, self.db)
         self.assertEqual(file.read(), "hello world")
@@ -53,8 +53,8 @@ class TestGridFile(unittest.TestCase):
         file = GridFile({"filename": "test"}, self.db, "w")
         file.close()
 
-        self.assertEqual(self.db.gridfs.files.find().count(), 1)
-        self.assertEqual(self.db.gridfs.chunks.find().count(), 0)
+        self.assertEqual(self.db.fs.files.find().count(), 1)
+        self.assertEqual(self.db.fs.chunks.find().count(), 0)
 
         file = GridFile({"filename": "test"}, self.db)
         self.assertEqual(file.read(), "")
@@ -93,8 +93,8 @@ class TestGridFile(unittest.TestCase):
         file.close()
 
     def test_create_grid_file(self):
-        self.db.gridfs.files.remove({})
-        self.db.gridfs.chunks.remove({})
+        self.db.fs.files.remove({})
+        self.db.fs.chunks.remove({})
 
         # just write a blank file so that reads on {} don't fail
         file = GridFile({"filename": "test"}, self.db, "w")
@@ -127,8 +127,8 @@ class TestGridFile(unittest.TestCase):
         self.assertTrue(GridFile({"filename": "test"}, self.db))
 
     def test_properties(self):
-        self.db.gridfs.files.remove({})
-        self.db.gridfs.chunks.remove({})
+        self.db.fs.files.remove({})
+        self.db.fs.chunks.remove({})
 
         file = GridFile({"filename": "test"}, self.db, "w")
         self.assertEqual(file.mode, "w")
@@ -176,8 +176,8 @@ class TestGridFile(unittest.TestCase):
         self.assertRaises(AttributeError, set_name)
 
     def test_rename(self):
-        self.db.gridfs.files.remove({})
-        self.db.gridfs.chunks.remove({})
+        self.db.fs.files.remove({})
+        self.db.fs.chunks.remove({})
 
         file = GridFile({"filename": "test"}, self.db, "w")
         file.close()
@@ -192,8 +192,8 @@ class TestGridFile(unittest.TestCase):
         a = GridFile({"filename": "mike"}, self.db)
 
     def test_flush_close(self):
-        self.db.gridfs.files.remove({})
-        self.db.gridfs.chunks.remove({})
+        self.db.fs.files.remove({})
+        self.db.fs.chunks.remove({})
 
         file = GridFile({"filename": "test"}, self.db, "w")
         file.flush()
@@ -216,8 +216,8 @@ class TestGridFile(unittest.TestCase):
         self.assertEqual(GridFile({}, self.db).read(), "miketesthuh")
 
     def test_overwrite(self):
-        self.db.gridfs.files.remove({})
-        self.db.gridfs.chunks.remove({})
+        self.db.fs.files.remove({})
+        self.db.fs.chunks.remove({})
 
         file = GridFile({"filename": "test"}, self.db, "w")
         file.write("test")
@@ -230,8 +230,8 @@ class TestGridFile(unittest.TestCase):
         self.assertEqual(GridFile({}, self.db).read(), "mike")
 
     def test_multi_chunk_file(self):
-        self.db.gridfs.files.remove({})
-        self.db.gridfs.chunks.remove({})
+        self.db.fs.files.remove({})
+        self.db.fs.chunks.remove({})
 
         random_string = qcheck.gen_string(qcheck.lift(300000))()
 
@@ -239,14 +239,14 @@ class TestGridFile(unittest.TestCase):
         file.write(random_string)
         file.close()
 
-        self.assertEqual(self.db.gridfs.files.find().count(), 1)
-        self.assertEqual(self.db.gridfs.chunks.find().count(), 2)
+        self.assertEqual(self.db.fs.files.find().count(), 1)
+        self.assertEqual(self.db.fs.chunks.find().count(), 2)
 
         self.assertEqual(GridFile({}, self.db).read(), random_string)
 
     def test_small_chunks(self):
-        self.db.gridfs.files.remove({})
-        self.db.gridfs.chunks.remove({})
+        self.db.fs.files.remove({})
+        self.db.fs.chunks.remove({})
 
         self.files = 0
         self.chunks = 0
@@ -261,8 +261,8 @@ class TestGridFile(unittest.TestCase):
             self.files += 1
             self.chunks += len(data)
 
-            self.assertEqual(self.db.gridfs.files.find().count(), self.files)
-            self.assertEqual(self.db.gridfs.chunks.find().count(), self.chunks)
+            self.assertEqual(self.db.fs.files.find().count(), self.files)
+            self.assertEqual(self.db.fs.chunks.find().count(), self.chunks)
 
             self.assertEqual(GridFile({"filename": filename}, self.db).read(), data)
 
@@ -273,8 +273,8 @@ class TestGridFile(unittest.TestCase):
         qcheck.check_unittest(self, helper, qcheck.gen_string(qcheck.gen_range(0, 20)))
 
     def test_modes(self):
-        self.db.gridfs.files.remove({})
-        self.db.gridfs.chunks.remove({})
+        self.db.fs.files.remove({})
+        self.db.fs.chunks.remove({})
 
         file = GridFile({"filename": "test"}, self.db, "w")
         self.assertRaises(ValueError, file.read)
@@ -291,8 +291,8 @@ class TestGridFile(unittest.TestCase):
         self.assertRaises(ValueError, file.write, "hello")
 
     def test_multiple_reads(self):
-        self.db.gridfs.files.remove({})
-        self.db.gridfs.chunks.remove({})
+        self.db.fs.files.remove({})
+        self.db.fs.chunks.remove({})
 
         file = GridFile({"filename": "test"}, self.db, "w")
         file.write("hello world")

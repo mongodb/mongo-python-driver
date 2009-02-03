@@ -40,7 +40,7 @@ class GridFS(object):
 
         self.__database = database
 
-    def open(self, filename, mode="r", collection="gridfs"):
+    def open(self, filename, mode="r", collection="fs"):
         """Open a GridFile for reading or writing.
 
         Shorthand method for creating / opening a GridFile from a filename. mode
@@ -53,7 +53,7 @@ class GridFS(object):
         """
         return GridFile({"filename": filename}, self.__database, mode, collection)
 
-    def remove(self, filename_or_spec, collection="gridfs"):
+    def remove(self, filename_or_spec, collection="fs"):
         """Remove one or more GridFile(s).
 
         Can remove by filename, or by an entire file spec (see
@@ -84,7 +84,7 @@ class GridFS(object):
 
         self.__database[collection].files.remove(spec)
 
-    def list(self, collection="gridfs"):
+    def list(self, collection="fs"):
         """List the names of all GridFiles stored in this instance of GridFS.
 
         Raises TypeError if collection is not an instance of (str, unicode).

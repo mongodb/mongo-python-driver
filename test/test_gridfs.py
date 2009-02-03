@@ -25,8 +25,8 @@ from test_connection import get_connection
 class TestGridfs(unittest.TestCase):
     def setUp(self):
         self.db = get_connection().pymongo_test
-        self.db.drop_collection("gridfs.files")
-        self.db.drop_collection("gridfs.chunks")
+        self.db.drop_collection("fs.files")
+        self.db.drop_collection("fs.chunks")
         self.db.drop_collection("pymongo_test.files")
         self.db.drop_collection("pymongo_test.chunks")
         self.fs = gridfs.GridFS(self.db)
@@ -70,14 +70,14 @@ class TestGridfs(unittest.TestCase):
         f.write("fly")
         f.close()
         self.assertEqual(["mike", "test", "hello world"], self.fs.list())
-        self.assertEqual(self.db.gridfs.files.find().count(), 3)
-        self.assertEqual(self.db.gridfs.chunks.find().count(), 3)
+        self.assertEqual(self.db.fs.files.find().count(), 3)
+        self.assertEqual(self.db.fs.chunks.find().count(), 3)
 
         self.fs.remove("test")
 
         self.assertEqual(["mike", "hello world"], self.fs.list())
-        self.assertEqual(self.db.gridfs.files.find().count(), 2)
-        self.assertEqual(self.db.gridfs.chunks.find().count(), 2)
+        self.assertEqual(self.db.fs.files.find().count(), 2)
+        self.assertEqual(self.db.fs.chunks.find().count(), 2)
         self.assertEqual(self.fs.open("mike").read(), "hi")
         self.assertEqual(self.fs.open("hello world").read(), "fly")
         self.assertRaises(IOError, self.fs.open, "test")
@@ -85,8 +85,8 @@ class TestGridfs(unittest.TestCase):
         self.fs.remove({})
 
         self.assertEqual([], self.fs.list())
-        self.assertEqual(self.db.gridfs.files.find().count(), 0)
-        self.assertEqual(self.db.gridfs.chunks.find().count(), 0)
+        self.assertEqual(self.db.fs.files.find().count(), 0)
+        self.assertEqual(self.db.fs.chunks.find().count(), 0)
         self.assertRaises(IOError, self.fs.open, "test")
         self.assertRaises(IOError, self.fs.open, "mike")
         self.assertRaises(IOError, self.fs.open, "hello world")
