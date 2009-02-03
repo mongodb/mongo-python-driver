@@ -67,7 +67,6 @@ class TestDatabase(unittest.TestCase):
         self.assertRaises(TypeError, db.create_collection, None)
         self.assertRaises(InvalidName, db.create_collection, "coll..ection")
         self.assertRaises(TypeError, db.create_collection, "test", 5)
-        self.assertRaises(TypeError, db.create_collection, "test", None)
 
         test = db.create_collection("test")
         test.save({"hello": u"world"})
@@ -76,9 +75,9 @@ class TestDatabase(unittest.TestCase):
 
         db.drop_collection("test.foo")
         db.create_collection("test.foo")
-        self.assertFalse(u"test.foo" in db.collection_names())
-        db.create_collection("test.foo", {"capped": True})
         self.assertTrue(u"test.foo" in db.collection_names())
+        self.assertEqual(db.test.foo.options(), {})
+        self.assertRaises(CollectionInvalid, db.create_collection, "test.foo")
 
     def test_collection_names(self):
         db = Database(self.connection, "pymongo_test")

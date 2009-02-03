@@ -28,7 +28,7 @@ _ONE = "\x01\x00\x00\x00"
 class Collection(object):
     """A Mongo collection.
     """
-    def __init__(self, database, name, options={}):
+    def __init__(self, database, name, options=None):
         """Get / create a Mongo collection.
 
         Raises TypeError if name is not an instance of (str, unicode). Raises
@@ -46,7 +46,7 @@ class Collection(object):
         if not isinstance(name, types.StringTypes):
             raise TypeError("name must be an instance of (str, unicode)")
 
-        if not isinstance(options, types.DictType):
+        if not isinstance(options, (types.DictType, types.NoneType)):
             raise TypeError("options must be an instance of dict")
 
         if not name or ".." in name:
@@ -58,7 +58,7 @@ class Collection(object):
 
         self.__database = database
         self.__collection_name = unicode(name)
-        if options:
+        if options is not None:
             self.__create(options)
 
     def __create(self, options):
