@@ -24,7 +24,7 @@ from pymongo.objectid import ObjectId
 from pymongo.dbref import DBRef
 from pymongo.binary import Binary
 from errors import CorruptGridFile
-from pymongo import DESCENDING
+from pymongo import ASCENDING
 
 class GridFile(object):
     """A "file" stored in GridFS.
@@ -80,6 +80,7 @@ class GridFile(object):
             raise ValueError("mode must be one of ('r', 'w')")
 
         self.__collection = database[collection]
+        self.__collection.chunks.create_index([("files_id", ASCENDING), ("n", ASCENDING)])
 
         file = self.__collection.files.find_one(file_spec)
         if file:
@@ -97,6 +98,7 @@ class GridFile(object):
             self.__erase()
         self.__buffer = ""
         self.__position = 0
+        self.__chunk_number = 0
         self.__closed = False
 
     def __erase(self):
@@ -150,11 +152,7 @@ class GridFile(object):
         self.__collection.files.save(file)
 
     def __max_chunk(self):
-        chunk = None
-        for c in self.__collection.chunks.find({"files_id": self.__id}).sort("n", DESCENDING):
-            chunk = c
-            break
-        return chunk
+        return self.__collection.chunks.find_one({"files_id": self.__id, "n": self.__chunk_number})
 
     def __new_chunk(self, n):
         chunk = {"files_id": self.__id,
@@ -169,10 +167,11 @@ class GridFile(object):
         while len(self.__buffer):
             max = self.__max_chunk()
             if not max:
-                max = self.__new_chunk(0)
-            space = (max["n"] + 1) * self.chunk_size - self.__position
+                max = self.__new_chunk(self.__chunk_number)
+            space = (self.__chunk_number + 1) * self.chunk_size - self.__position
             if not space:
-                max = self.__new_chunk(max["n"] + 1)
+                self.__chunk_number += 1
+                max = self.__new_chunk(self.__chunk_number)
                 space = self.chunk_size
             to_write = len(self.__buffer) > space and space or len(self.__buffer)
 
@@ -225,7 +224,7 @@ class GridFile(object):
         if size == 0:
             return ""
 
-        remainder = self.length - self.__position
+        remainder = int(self.length) - self.__position
         if size < 0 or size > remainder:
             size = remainder
 
