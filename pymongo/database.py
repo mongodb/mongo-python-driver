@@ -222,7 +222,7 @@ class Database(object):
         """Set the database's profiling level.
 
         Raises ValueError if level is not one of (`pymongo.OFF`,
-        pymongo.SLOW_ONLY`, `pymongo.ALL`).
+        `pymongo.SLOW_ONLY`, `pymongo.ALL`).
 
         :Parameters:
           - `level`: the profiling level to use
