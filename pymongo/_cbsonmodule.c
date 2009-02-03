@@ -27,13 +27,13 @@ static PyObject* CBSONError;
 
 static char* shuffle_oid(char* oid) {
   char* shuffled = (char*) malloc(12);
-  int i;
 
   if (!shuffled) {
     PyErr_NoMemory();
     return NULL;
   }
 
+  int i;
   for (i = 0; i < 8; i++) {
     shuffled[i] = oid[7 - i];
   }
@@ -45,11 +45,8 @@ static char* shuffle_oid(char* oid) {
 }
 
 static PyObject* _cbson_shuffle_oid(PyObject* self, PyObject* args) {
-  PyObject* result;
   char* data;
-  char* shuffled;
   int length;
-
   if (!PyArg_ParseTuple(args, "s#", &data, &length)) {
     return NULL;
   }
@@ -58,54 +55,55 @@ static PyObject* _cbson_shuffle_oid(PyObject* self, PyObject* args) {
     PyErr_SetString(PyExc_ValueError, "oid must be of length 12");
   }
 
-  shuffled = shuffle_oid(data);
+  char* shuffled = shuffle_oid(data);
   if (!shuffled) {
     return NULL;
   }
 
-  result = Py_BuildValue("s#", shuffled, 12);
+  PyObject* result = Py_BuildValue("s#", shuffled, 12);
   free(shuffled);
+  return result;
+}
+
+static PyObject* build_string(const char* string, const char* name) {
+  int name_length = strlen(name) + 1;
+  int string_length = strlen(string) + 1;
+  int built_length = 5 + name_length + string_length;
+  char* built = (char*)malloc(built_length);
+  if (!built) {
+    PyErr_NoMemory();
+    return NULL;
+  }
+
+  built[0] = 0x02;
+  memcpy(built + 1, name, name_length);
+  memcpy(built + 1 + name_length, &string_length, 4);
+  memcpy(built + 5 + name_length, string, string_length);
+
+  PyObject* result = Py_BuildValue("s#", built, built_length);
+  free(built);
   return result;
 }
 
 /* TODO our platform better be little-endian w/ 4-byte ints! */
 static PyObject* _cbson_element_to_bson(PyObject* self, PyObject* args) {
   const char* name;
-  const char* type;
-  int name_length;
   PyObject* value;
-
   if (!PyArg_ParseTuple(args, "etO", "utf-8", &name, &value)) {
     return NULL;
   }
-  name_length = strlen(name) + 1;
+
+  const char* type = value->ob_type->tp_name;
 
   /* TODO this isn't quite the same as the Python version:
    * here we check for type equivalence, not isinstance. */
-  type = value->ob_type->tp_name;
-
   if (PyString_CheckExact(value)) {
     const char* encoded_bytes = PyString_AsString(value);
     if (!encoded_bytes) {
       return NULL;
     }
-    int bytes_length = strlen(encoded_bytes) + 1;
-    int return_value_length = 5 + name_length + bytes_length;
-    char* to_return = (char*)malloc(return_value_length);
-    if (!to_return) {
-      PyErr_NoMemory();
-      return NULL;
-    }
-
-    to_return[0] = 0x02;
-    memcpy(to_return + 1, name, name_length);
-    memcpy(to_return + 1 + name_length, &bytes_length, 4);
-    memcpy(to_return + 5 + name_length, encoded_bytes, bytes_length);
-
-    PyObject* result = Py_BuildValue("s#", to_return, return_value_length);
-    free(to_return);
-    return result;
-  } else if (PyUnicode_Check(value)) {
+    return build_string(encoded_bytes, name);
+  } else if (PyUnicode_CheckExact(value)) {
     PyObject* encoded = PyUnicode_AsUTF8String(value);
     if (!encoded) {
       return NULL;
@@ -114,22 +112,7 @@ static PyObject* _cbson_element_to_bson(PyObject* self, PyObject* args) {
     if (!encoded_bytes) {
       return NULL;
     }
-    int bytes_length = strlen(encoded_bytes) + 1;
-    int return_value_length = 5 + name_length + bytes_length;
-    char* to_return = (char*)malloc(return_value_length);
-    if (!to_return) {
-      PyErr_NoMemory();
-      return NULL;
-    }
-
-    to_return[0] = 0x02;
-    memcpy(to_return + 1, name, name_length);
-    memcpy(to_return + 1 + name_length, &bytes_length, 4);
-    memcpy(to_return + 5 + name_length, encoded_bytes, bytes_length);
-
-    PyObject* result = Py_BuildValue("s#", to_return, return_value_length);
-    free(to_return);
-    return result;
+    return build_string(encoded_bytes, name);
   }
   PyErr_SetString(CBSONError, "no c encoder for this type yet");
   return NULL;

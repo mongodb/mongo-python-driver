@@ -40,11 +40,13 @@ def run(case, function):
 def main():
     test_cases = [{},
                   {"hello": "world"},
+                  {"hello": "world",
+                   "mike": u"something",
+                   "here's": u"an\u8744other"},
                   {"this": 5,
                    "is": {"a": True},
                    "big": [True, 5.5],
                    "object": None}]
-
 
     for case in test_cases:
         print "case: %r" % case
