@@ -242,5 +242,7 @@ class TestCollection(unittest.TestCase):
 
         self.assertRaises(OperationFailure, db.test.update, {}, {"$inc": {"x": 1}}, safe=True)
 
+    # TODO test safe save?
+
 if __name__ == "__main__":
     unittest.main()

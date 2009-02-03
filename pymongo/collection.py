@@ -117,7 +117,7 @@ class Collection(object):
         """
         return self.__database
 
-    def save(self, to_save, manipulate=True):
+    def save(self, to_save, manipulate=True, safe=False):
         """Save a SON object in this collection.
 
         Raises TypeError if to_save is not an instance of (dict, SON).
@@ -130,10 +130,10 @@ class Collection(object):
             raise TypeError("cannot save object of type %s" % type(to_save))
 
         if "_id" not in to_save:
-            result = self.insert(to_save, manipulate)
+            result = self.insert(to_save, manipulate, safe)
             return result.get("_id", None)
         else:
-            self.update({"_id": to_save["_id"]}, to_save, True, manipulate)
+            self.update({"_id": to_save["_id"]}, to_save, True, manipulate, safe)
             return to_save.get("_id", None)
 
     def insert(self, doc_or_docs, manipulate=True, safe=False):
