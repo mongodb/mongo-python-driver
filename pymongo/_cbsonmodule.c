@@ -75,15 +75,37 @@ static PyObject* _cbson_element_to_bson(PyObject* self, PyObject* args) {
   int name_length;
   PyObject* value;
 
-  if (!PyArg_ParseTuple(args, "s#O", &name, &name_length, &value)) {
+  if (!PyArg_ParseTuple(args, "etO", "utf-8", &name, &value)) {
     return NULL;
   }
+  name_length = strlen(name) + 1;
 
   /* TODO this isn't quite the same as the Python version:
    * here we check for type equivalence, not isinstance. */
   type = value->ob_type->tp_name;
 
-  if (PyUnicode_Check(value)) {
+  if (PyString_CheckExact(value)) {
+    const char* encoded_bytes = PyString_AsString(value);
+    if (!encoded_bytes) {
+      return NULL;
+    }
+    int bytes_length = strlen(encoded_bytes) + 1;
+    int return_value_length = 5 + name_length + bytes_length;
+    char* to_return = (char*)malloc(return_value_length);
+    if (!to_return) {
+      PyErr_NoMemory();
+      return NULL;
+    }
+
+    to_return[0] = 0x02;
+    memcpy(to_return + 1, name, name_length);
+    memcpy(to_return + 1 + name_length, &bytes_length, 4);
+    memcpy(to_return + 5 + name_length, encoded_bytes, bytes_length);
+
+    PyObject* result = Py_BuildValue("s#", to_return, return_value_length);
+    free(to_return);
+    return result;
+  } else if (PyUnicode_Check(value)) {
     PyObject* encoded = PyUnicode_AsUTF8String(value);
     if (!encoded) {
       return NULL;
