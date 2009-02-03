@@ -23,6 +23,8 @@
 #include <Python.h>
 #include <string.h>
 
+static PyObject* CBSONError;
+
 static char* shuffle_oid(char* oid) {
   char* shuffled = (char*) malloc(12);
   int i;
@@ -66,8 +68,10 @@ static PyObject* _cbson_shuffle_oid(PyObject* self, PyObject* args) {
   return result;
 }
 
+/* TODO our platform better be little-endian w/ 4-byte ints! */
 static PyObject* _cbson_element_to_bson(PyObject* self, PyObject* args) {
   const char* name;
+  const char* type;
   int name_length;
   PyObject* value;
 
@@ -75,9 +79,38 @@ static PyObject* _cbson_element_to_bson(PyObject* self, PyObject* args) {
     return NULL;
   }
 
-  printf(value->ob_type->tp_name);
-  printf("\n");
-  return Py_BuildValue("s#", name, name_length);
+  /* TODO this isn't quite the same as the Python version:
+   * here we check for type equivalence, not isinstance. */
+  type = value->ob_type->tp_name;
+
+  if (PyUnicode_Check(value)) {
+    PyObject* encoded = PyUnicode_AsUTF8String(value);
+    if (!encoded) {
+      return NULL;
+    }
+    const char* encoded_bytes = PyString_AsString(encoded);
+    if (!encoded_bytes) {
+      return NULL;
+    }
+    int bytes_length = strlen(encoded_bytes) + 1;
+    int return_value_length = 5 + name_length + bytes_length;
+    char* to_return = (char*)malloc(return_value_length);
+    if (!to_return) {
+      PyErr_NoMemory();
+      return NULL;
+    }
+
+    to_return[0] = 0x02;
+    memcpy(to_return + 1, name, name_length);
+    memcpy(to_return + 1 + name_length, &bytes_length, 4);
+    memcpy(to_return + 5 + name_length, encoded_bytes, bytes_length);
+
+    PyObject* result = Py_BuildValue("s#", to_return, return_value_length);
+    free(to_return);
+    return result;
+  }
+  PyErr_SetString(CBSONError, "no c encoder for this type yet");
+  return NULL;
 }
 
 static PyMethodDef _CBSONMethods[] = {
@@ -89,5 +122,13 @@ static PyMethodDef _CBSONMethods[] = {
 };
 
 PyMODINIT_FUNC init_cbson(void) {
-  (void) Py_InitModule("_cbson", _CBSONMethods);
+  PyObject *m;
+  m = Py_InitModule("_cbson", _CBSONMethods);
+  if (m == NULL) {
+    return;
+  }
+
+  CBSONError = PyErr_NewException("_cbson.error", NULL, NULL);
+  Py_INCREF(CBSONError);
+  PyModule_AddObject(m, "error", CBSONError);
 }
