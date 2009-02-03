@@ -229,5 +229,18 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(db.test.find_one(id1)["x"], 7)
         self.assertEqual(db.test.find_one(id2)["x"], 1)
 
+    def test_safe_update(self):
+        db = self.db
+        db.drop_collection("test")
+        db.test.create_index("x", ASCENDING)
+
+        a = {"x": 5}
+        db.test.insert(a)
+
+        db.test.update({}, {"$inc": {"x": 1}})
+        self.assertEqual(db.error()["err"], "can't $inc/$set an indexed field")
+
+        self.assertRaises(OperationFailure, db.test.update, {}, {"$inc": {"x": 1}}, safe=True)
+
 if __name__ == "__main__":
     unittest.main()
