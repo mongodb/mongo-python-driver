@@ -22,6 +22,8 @@ import datetime
 
 sys.path[0:0] = [os.path.join(os.getcwd(), "..")]
 from pymongo.connection import Connection
+from pymongo.errors import CollectionInvalid
+from pymongo import OFF, SLOW_ONLY, ALL
 
 def test1(db, out):
     for i in range(100):
@@ -33,11 +35,6 @@ def remove(db, out):
 
 def find(db, out):
     db.test.insert({"a": 2})
-
-def circular(db, out):
-    # TODO skipping this test for now because as it's written it *sort of*
-    # depends on auto-ref and auto-deref
-    pass
 
 def capped(db, out):
     collection = db.create_collection("capped1", {"capped": True, "size": 500})
@@ -58,9 +55,49 @@ def count1(db, out):
     print >>out, db.test3.find({"i": 3}).count()
     print >>out, db.test3.find({"i": {"$gte": 67}}).count()
 
+def admin(db, out):
+    tester = db.tester
+    tester.insert({"test": 1})
+    try:
+        db.validate_collection(tester)
+        print >>out, "true"
+    except:
+        print >>out, "false"
+
+    try:
+        db.validate_collection("system.users")
+        print >>out, "true"
+    except:
+        print >>out, "false"
+
+    try:
+        db.validate_collection("$")
+        print >>out, "true"
+    except:
+        print >>out, "false"
+
+    levels = {OFF: "off",
+              SLOW_ONLY: "slowOnly",
+              ALL: "all"}
+    print >>out, levels[db.profiling_level()]
+    db.set_profiling_level(OFF)
+    print >>out, levels[db.profiling_level()]
+
+def dbs(db, out):
+    db.dbs_1.save({"foo": "bar"})
+    db.dbs_2.save({"psi": "phi"})
+    print >>out, db.name()
+    print >>out, sorted(db.collection_names())
+    db.drop_collection(db.dbs_1)
+    db.create_collection("dbs_3")
+    print >>out, sorted(db.collection_names())
+
 def main(test, out_file):
     db = Connection().driver_test_framework
-    test_function = globals()[test]
+    try:
+        test_function = globals()[test]
+    except KeyError:
+        return
 
     f = open(out_file, "w")
     try:
