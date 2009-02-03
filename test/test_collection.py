@@ -22,7 +22,7 @@ import qcheck
 from test_connection import get_connection
 from pymongo.objectid import ObjectId
 from pymongo.collection import Collection
-from pymongo.errors import InvalidName
+from pymongo.errors import InvalidName, OperationFailure
 from pymongo import ASCENDING, DESCENDING
 from pymongo.son import SON
 
@@ -203,6 +203,31 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(db.test.find().count(), 2)
         self.assertEqual(doc1, db.test.find_one({"hello": u"world"}))
         self.assertEqual(doc2, db.test.find_one({"hello": u"mike"}))
+
+    def test_safe_insert(self):
+        db = self.db
+        db.drop_collection("test")
+        db.test.create_index("_id", ASCENDING)
+
+        a = {"hello": "world"}
+        db.test.insert(a)
+        db.test.insert(a)
+        self.assertEqual(db.error()["err"], "duplicate key error")
+
+        self.assertRaises(OperationFailure, db.test.insert, a, safe=True)
+
+    def test_update(self):
+        db = self.db
+        db.drop_collection("test")
+
+        id1 = db.test.save({"x": 5})
+        db.test.update({}, {"$inc": {"x": 1}})
+        self.assertEqual(db.test.find_one(id1)["x"], 6)
+
+        id2 = db.test.save({"x": 1})
+        db.test.update({"x": 6}, {"$inc": {"x": 1}})
+        self.assertEqual(db.test.find_one(id1)["x"], 7)
+        self.assertEqual(db.test.find_one(id2)["x"], 1)
 
 if __name__ == "__main__":
     unittest.main()

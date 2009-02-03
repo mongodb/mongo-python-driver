@@ -136,7 +136,7 @@ class Collection(object):
             self.update({"_id": to_save["_id"]}, to_save, True, manipulate)
             return to_save.get("_id", None)
 
-    def insert(self, doc_or_docs, manipulate=True):
+    def insert(self, doc_or_docs, manipulate=True, safe=False):
         """Insert a document(s) into this collection.
 
         If manipulate is set the document(s) are manipulated using any
@@ -159,6 +159,11 @@ class Collection(object):
 
         data = [bson.BSON.from_dict(doc) for doc in docs]
         self._send_message(2002, "".join(data))
+
+        if safe:
+            error = self.__database.error()
+            if error:
+                raise OperationFailure("insert failed: " + error["err"])
 
         return len(docs) == 1 and docs[0] or docs
 
@@ -184,7 +189,7 @@ class Collection(object):
         if not isinstance(upsert, types.BooleanType):
             raise TypeError("upsert must be an instance of bool")
 
-        if manipulate:
+        if upsert and manipulate:
             document = self.__database._fix_incoming(document, self)
 
         message = upsert and _ONE or _ZERO
