@@ -65,23 +65,38 @@ static PyObject* _cbson_shuffle_oid(PyObject* self, PyObject* args) {
     return result;
 }
 
-static PyObject* build_string(const char* string, const char* name) {
+static PyObject* build_element(const char type, const char* name, const int length, const char* data) {
     int name_length = strlen(name) + 1;
-    int string_length = strlen(string) + 1;
-    int built_length = 5 + name_length + string_length;
+    int built_length = 1 + name_length + length;
     char* built = (char*)malloc(built_length);
     if (!built) {
         PyErr_NoMemory();
         return NULL;
     }
 
-    built[0] = 0x02;
+    built[0] = type;
     memcpy(built + 1, name, name_length);
-    memcpy(built + 1 + name_length, &string_length, 4);
-    memcpy(built + 5 + name_length, string, string_length);
+    memcpy(built + 1 + name_length, data, length);
 
     PyObject* result = Py_BuildValue("s#", built, built_length);
     free(built);
+    return result;
+}
+
+static PyObject* build_string(const char* string, const char* name) {
+    int string_length = strlen(string) + 1;
+    int data_length = 4 + string_length;
+
+    char* data = (char*)malloc(data_length);
+    if (!data) {
+        PyErr_NoMemory();
+        return NULL;
+    }
+    memcpy(data, &string_length, 4);
+    memcpy(data + 4, string, string_length);
+
+    PyObject* result = build_element(0x02, name, data_length, data);
+    free(data);
     return result;
 }
 
@@ -93,7 +108,7 @@ static PyObject* _cbson_element_to_bson(PyObject* self, PyObject* args) {
         return NULL;
     }
 
-    const char* type = value->ob_type->tp_name;
+    /*    const char* type = value->ob_type->tp_name;*/
 
     /* TODO this isn't quite the same as the Python version:
      * here we check for type equivalence, not isinstance. */
@@ -113,6 +128,9 @@ static PyObject* _cbson_element_to_bson(PyObject* self, PyObject* args) {
             return NULL;
         }
         return build_string(encoded_bytes, name);
+    } else if (PyInt_CheckExact(value)) {
+        int int_value = (int)PyInt_AsLong(value);
+        return build_element(0x10, name, 4, (char*)&int_value);
     }
     PyErr_SetString(CBSONError, "no c encoder for this type yet");
     return NULL;
