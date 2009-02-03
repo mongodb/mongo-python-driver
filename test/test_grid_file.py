@@ -57,7 +57,6 @@ class TestGridFile(unittest.TestCase):
         self.assertEqual(self.db.gridfs.chunks.find().count(), 0)
 
         file = GridFile({"filename": "test"}, self.db)
-        self.assertEqual(file.next, None)
         self.assertEqual(file.read(), "")
         file.close()
 
@@ -90,7 +89,6 @@ class TestGridFile(unittest.TestCase):
         self.assertEqual(self.db.pymongo_test.chunks.find().count(), 0)
 
         file = GridFile({"filename": "test"}, self.db, collection="pymongo_test")
-        self.assertEqual(file.next, None)
         self.assertEqual(file.read(), "")
         file.close()
 
@@ -151,7 +149,6 @@ class TestGridFile(unittest.TestCase):
         self.assertTrue(isinstance(a.upload_date, datetime.datetime))
         self.assertEqual(a.aliases, None)
         self.assertEqual(a.metadata, None)
-        self.assertEqual(a.next, None)
 
         a.content_type = "something"
         self.assertEqual(a.content_type, "something")
@@ -173,10 +170,6 @@ class TestGridFile(unittest.TestCase):
 
         a.metadata = {"something": "else"}
         self.assertEqual(a.metadata, {"something": "else"})
-
-        def set_next():
-            a.next = None
-        self.assertRaises(AttributeError, set_next)
 
         def set_name():
             a.name = "hello"

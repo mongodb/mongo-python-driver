@@ -24,6 +24,7 @@ from pymongo.objectid import ObjectId
 from pymongo.dbref import DBRef
 from pymongo.binary import Binary
 from errors import CorruptGridFile
+from pymongo import DESCENDING
 
 class GridFile(object):
     """A "file" stored in GridFS.
@@ -94,37 +95,19 @@ class GridFile(object):
         self.__mode = mode
         if mode == "w":
             self.__erase()
-            self.__current_chunk = None
-        elif mode == "r":
-            self.__position = 0
-            self.__current_chunk = file["next"]
-            self.__read_buffer = ""
+        self.__buffer = ""
+        self.__position = 0
         self.__closed = False
 
     def __erase(self):
         """Erase all of the data stored in this GridFile.
         """
         file = self.__collection.files.find_one(self.__id)
-
-        next = file.get("next", None)
-        chunk_number = 0
-
-        while next:
-            chunk = self.__collection.files.database().dereference(next)
-            if not chunk:
-                raise CorruptGridFile("could not dereference: %r" % next)
-            if chunk["cn"] != chunk_number:
-                raise CorruptGridFile("incorrect chunk number: %r, should be: %r" %
-                                      (chunk["cn"], chunk_number))
-
-            self.__collection.database()[next.collection()].remove({"_id": next.id()})
-
-            chunk_number += 1
-            next = chunk["next"]
-
         file["next"] = None
         file["length"] = 0
         self.__collection.files.save(file)
+
+        self.__collection.chunks.remove({"files_id": self.__id})
 
     @property
     def closed(self):
@@ -152,7 +135,6 @@ class GridFile(object):
     upload_date = __create_property("uploadDate", True)
     aliases = __create_property("aliases")
     metadata = __create_property("metadata")
-    next = __create_property("next", True)
 
     def rename(self, filename):
         """Rename this GridFile.
@@ -167,24 +149,50 @@ class GridFile(object):
         file["filename"] = filename
         self.__collection.files.save(file)
 
-    def __write_current_chunk(self):
-        self.__current_chunk["data"] = Binary(self.__current_chunk["data"])
-        self.__collection.chunks.save(self.__current_chunk)
+    def __max_chunk(self):
+        chunk = None
+        for c in self.__collection.chunks.find({"files_id": self.__id}).sort("n", DESCENDING):
+            chunk = c
+            break
+        return chunk
+
+    def __new_chunk(self, n):
+        chunk = {"files_id": self.__id,
+                 "n": n,
+                 "data": ""}
+        self.__collection.chunks.insert(chunk)
+        return chunk
+
+    def __write_buffer_to_chunks(self):
+        """Write the buffer contents out to chunks.
+        """
+        while len(self.__buffer):
+            max = self.__max_chunk()
+            if not max:
+                max = self.__new_chunk(0)
+            space = (max["n"] + 1) * self.chunk_size - self.__position
+            if not space:
+                max = self.__new_chunk(max["n"] + 1)
+                space = self.chunk_size
+            to_write = len(self.__buffer) > space and space or len(self.__buffer)
+
+            max["data"] = Binary(max["data"] + self.__buffer[:to_write])
+            self.__collection.chunks.save(max)
+            self.__buffer = self.__buffer[to_write:]
+            self.__position += to_write
 
     def flush(self):
         """Flush the GridFile to the database.
         """
         self.__assert_open()
-        if self.mode != "w" or not self.__current_chunk:
+        if self.mode != "w":
             return
 
         file = self.__collection.files.find_one(self.__id)
-
-        length = file["chunkSize"] * self.__current_chunk["cn"] + len(self.__current_chunk["data"])
-        file["length"] = length
-
-        self.__write_current_chunk()
+        file["length"] = self.__position + len(self.__buffer)
         self.__collection.files.save(file)
+
+        self.__write_buffer_to_chunks()
 
     def close(self):
         """Close the GridFile.
@@ -221,26 +229,19 @@ class GridFile(object):
         if size < 0 or size > remainder:
             size = remainder
 
-        bytes = self.__read_buffer
+        bytes = self.__buffer
         chunk_number = math.floor(self.__position / self.chunk_size)
+
         while len(bytes) < size:
-            if not self.__current_chunk:
-                raise CorruptGridFile("incorrect length for file: %r" % self)
-            chunk = self.__collection.database().dereference(self.__current_chunk)
+            chunk = self.__collection.chunks.find_one({"files_id": self.__id, "n": chunk_number})
             if not chunk:
-                raise CorruptGridFile("could not dereference: %r" % self.__current_chunk)
-            if chunk["cn"] != chunk_number:
-                raise CorruptGridFile("incorrect chunk number: %r, should be: %r" %
-                                      (chunk["cn"], chunk_number))
-
+                raise CorruptGridFile("no chunk for n = " + chunk_number)
             bytes += chunk["data"]
-
             chunk_number += 1
-            self.__current_chunk = chunk["next"]
 
         self.__position += size
         to_return = bytes[:size]
-        self.__read_buffer = bytes[size:]
+        self.__buffer = bytes[size:]
         return to_return
 
     # TODO should support writing unicode to a file. this means that files will
@@ -264,35 +265,7 @@ class GridFile(object):
         if not len(str):
             return
 
-        def initialize_chunk(number):
-            id = ObjectId()
-            new_chunk = SON([("_id", id),
-                             ("cn", number),
-                             ("data", ""),
-                             ("next", None)])
-            return new_chunk
-
-        if not self.__current_chunk:
-            self.__current_chunk = initialize_chunk(0)
-            ref = DBRef(self.__collection.chunks.name(), self.__current_chunk["_id"])
-            file = self.__collection.files.find_one(self.__id)
-            file["next"] = ref
-            self.__collection.files.save(file)
-
-        data = self.__current_chunk["data"]
-        data += str
-
-        while len(data) > self.chunk_size:
-            self.__current_chunk["data"] = data[:self.chunk_size]
-            data = data[self.chunk_size:]
-
-            new_chunk = initialize_chunk(self.__current_chunk["cn"] + 1)
-
-            self.__current_chunk["next"] = DBRef(self.__collection.chunks.name(), new_chunk["_id"])
-            self.__write_current_chunk()
-            self.__current_chunk = new_chunk
-
-        self.__current_chunk["data"] = data
+        self.__buffer += str
 
     def writelines(self, sequence):
         """Write a sequence of strings to the file.

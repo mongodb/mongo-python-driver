@@ -25,10 +25,10 @@ from test_connection import get_connection
 class TestGridfs(unittest.TestCase):
     def setUp(self):
         self.db = get_connection().pymongo_test
-        self.db.gridfs.files.remove({})
-        self.db.gridfs.chunks.remove({})
-        self.db.pymongo_test.files.remove({})
-        self.db.pymongo_test.chunks.remove({})
+        self.db.drop_collection("gridfs.files")
+        self.db.drop_collection("gridfs.chunks")
+        self.db.drop_collection("pymongo_test.files")
+        self.db.drop_collection("pymongo_test.chunks")
         self.fs = gridfs.GridFS(self.db)
 
     def test_open(self):
