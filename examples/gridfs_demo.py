@@ -38,8 +38,8 @@ except ConnectionFailure:
     sys.exit(1)
 
 # We need a database for GridFS to use, but first make sure it's clean.
-connection.drop_database("test")
-db = connection["test"]
+connection.drop_database("pymongo_examples")
+db = connection["pymongo_examples"]
 
 # Create our GridFS instance
 fs = gridfs.GridFS(db)

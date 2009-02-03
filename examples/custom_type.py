@@ -44,8 +44,8 @@ except ConnectionFailure:
     sys.exit(1)
 
 # Make sure our database is clean
-connection.drop_database("test")
-db = connection["test"]
+connection.drop_database("pymongo_examples")
+db = connection["pymongo_examples"]
 
 
 # Here is our custom class that we want to be able to use seamlessly with Mongo.
@@ -148,7 +148,7 @@ class TransformToBinary(SONManipulator):
 
 # We'll need to get a new instance of Database to clear the SONManipulator
 # we already added
-db = connection["test"]
+db = connection["pymongo_examples"]
 db.test.remove({})
 db.add_son_manipulator(Transform(db))
 document = {"custom": Custom(5)}

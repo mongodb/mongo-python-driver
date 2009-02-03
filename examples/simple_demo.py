@@ -38,8 +38,8 @@ except ConnectionFailure:
     print "couldn't connect: be sure that Mongo is running on localhost:27017"
     sys.exit(1)
 
-# Get the database "test".
-db = connection["test"]
+# Get the database "pymongo_examples".
+db = connection["pymongo_examples"]
 
 # Drop the collection just to be sure we are starting from a clean state.
 db.drop_collection("pymongo")
