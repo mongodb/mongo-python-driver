@@ -135,6 +135,11 @@ static PyObject* _cbson_element_to_bson(PyObject* self, PyObject* args) {
         long bool = PyInt_AsLong(value);
         char c = bool ? 0x01 : 0x00;
         return build_element(0x08, name, 1, &c);
+    } else if (PyFloat_CheckExact(value)) {
+        double d = PyFloat_AsDouble(value);
+        return build_element(0x01, name, 8, (char*)&d);
+    } else if (value == Py_None) {
+        return build_element(0x0A, name, 0, 0);
     }
     PyErr_SetString(CBSONError, "no c encoder for this type yet");
     return NULL;
