@@ -112,6 +112,15 @@ static PyObject* _cbson_element_to_bson(PyObject* self, PyObject* args) {
         return NULL;
     }
 
+    PyObject* son_module = PyImport_ImportModule("pymongo.son");
+    if (!son_module) {
+        return NULL;
+    }
+    PyObject* SON = PyObject_GetAttrString(son_module, "SON");
+    if (!SON) {
+        return NULL;
+    }
+
     PyObject* binary_module = PyImport_ImportModule("pymongo.binary");
     if (!binary_module) {
         return NULL;
@@ -179,11 +188,37 @@ static PyObject* _cbson_element_to_bson(PyObject* self, PyObject* args) {
         return build_element(0x01, name, 8, (char*)&d);
     } else if (value == Py_None) {
         return build_element(0x0A, name, 0, 0);
-    } else if (PyDict_CheckExact(value)) { // TODO need to handle SON separately to maintain ordering
+    } else if (PyDict_CheckExact(value)) {
         PyObject* object = _cbson_dict_to_bson(self, value);
         if (!object) {
             return NULL;
         }
+        return build_element(0x03, name, PyString_Size(object), PyString_AsString(object));
+    } else if (PyObject_IsInstance(value, SON)) {
+        PyObject* string = PyString_FromString("");
+        if (!string) {
+            return NULL;
+        }
+        PyObject* keys = PyObject_CallMethod(value, "keys", NULL);
+        if (!keys) {
+            return NULL;
+        }
+        int items = PyList_Size(keys);
+        int i;
+        for(i = 0; i < items; i++) {
+            PyObject* name = PyList_GetItem(keys, i);
+            if (!name) {
+                return NULL;
+            }
+            PyObject* element = _cbson_element_to_bson(self,
+                                                       Py_BuildValue("OO", name,
+                                                                     PyDict_GetItem(value, name)));
+            if (!element) {
+                return NULL;
+            }
+            PyString_ConcatAndDel(&string, element);
+        }
+        PyObject* object = _wrap_py_string_as_object(string);
         return build_element(0x03, name, PyString_Size(object), PyString_AsString(object));
     } else if (PyList_CheckExact(value)) {
         PyObject* string = PyString_FromString("");
