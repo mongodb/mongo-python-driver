@@ -111,10 +111,18 @@ static PyObject* _cbson_element_to_bson(PyObject* self, PyObject* args) {
         return NULL;
     }
 
-    /*    const char* type = value->ob_type->tp_name;*/
+    PyObject* binary_module = PyImport_ImportModule("pymongo.binary");
+    if (!binary_module) {
+        return NULL;
+    }
+    PyObject* Binary = PyObject_GetAttrString(binary_module, "Binary");
+    if (!Binary) {
+        return NULL;
+    }
 
     /* TODO this isn't quite the same as the Python version:
-     * here we check for type equivalence, not isinstance. */
+     * here we check for type equivalence, not isinstance in some
+     * places. */
     if (PyString_CheckExact(value)) {
         const char* encoded_bytes = PyString_AsString(value);
         if (!encoded_bytes) {
@@ -171,6 +179,36 @@ static PyObject* _cbson_element_to_bson(PyObject* self, PyObject* args) {
         }
         PyObject* object = _wrap_py_string_as_object(string);
         return build_element(0x04, name, PyString_Size(object), PyString_AsString(object));
+    } else if (PyObject_IsInstance(value, Binary)) {
+        PyObject* subtype_object = PyObject_CallMethod(value, "subtype", NULL);
+        if (!subtype_object) {
+            return NULL;
+        }
+        long subtype = PyInt_AsLong(subtype_object);
+        PyObject* string;
+        int length = PyString_Size(value);
+        if (subtype == 2) {
+            string = PyString_FromStringAndSize((char*)&length, 4);
+            PyString_Concat(&string, value);
+            length += 4;
+        } else {
+            string = value;
+        }
+        char* data = malloc(5 + length);
+        if (!data) {
+            PyErr_NoMemory();
+            return NULL;
+        }
+        const char* string_data = PyString_AsString(string);
+        if (!string_data) {
+            return NULL;
+        }
+        memcpy(data, &length, 4);
+        data[4] = (char)subtype;
+        memcpy(data + 5, string_data, length);
+        PyObject* result = build_element(0x05, name, length + 5, data);
+        free(data);
+        return result;
     }
     PyErr_SetString(CBSONError, "no c encoder for this type yet");
     return NULL;
