@@ -94,7 +94,7 @@ class Transform(SONManipulator):
         for (key, value) in son.items():
             if isinstance(value, Custom):
                 son[key] = encode_custom(value)
-            elif isinstance(value, (dict, SON)): # Make sure we recurse into sub-docs
+            elif isinstance(value, dict): # Make sure we recurse into sub-docs
                 son[key] = self.transform_incoming(value, collection)
         return son
 
@@ -102,7 +102,7 @@ class Transform(SONManipulator):
         """Find anything that looks like we encoded it, and decode.
         """
         for (key, value) in son.items():
-            if isinstance(value, (dict, SON)):
+            if isinstance(value, dict):
                 if "_type" in value and value["_type"] == "custom":
                     son[key] = decode_custom(value)
                 else: # Again, make sure to recurse into sub-docs
@@ -134,7 +134,7 @@ class TransformToBinary(SONManipulator):
         for (key, value) in son.items():
             if isinstance(value, Custom):
                 son[key] = to_binary(custom)
-            elif isinstance(value, (dict, SON)):
+            elif isinstance(value, dict):
                 son[key] = self.transform_incoming(value, collection)
         return son
 
@@ -142,7 +142,7 @@ class TransformToBinary(SONManipulator):
         for (key, value) in son.items():
             if isinstance(value, Binary) and value.subtype() == 128:
                 son[key] = from_binary(value)
-            elif isinstance(value, (dict, SON)):
+            elif isinstance(value, dict):
                 son[key] = self.transform_outgoing(value, collection)
         return son
 

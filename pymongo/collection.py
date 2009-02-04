@@ -120,7 +120,7 @@ class Collection(object):
     def save(self, to_save, manipulate=True, safe=False):
         """Save a SON object in this collection.
 
-        Raises TypeError if to_save is not an instance of (dict, SON). If `safe`
+        Raises TypeError if to_save is not an instance of dict. If `safe`
         is True then the save will be checked for errors, raising
         OperationFailure if one occurred. Checking for safety requires an extra
         round-trip to the database.
@@ -130,7 +130,7 @@ class Collection(object):
           - `manipulate` (optional): manipulate the son object before saving it
           - `safe` (optional): check that the save succeeded?
         """
-        if not isinstance(to_save, (types.DictType, SON)):
+        if not isinstance(to_save, types.DictType):
             raise TypeError("cannot save object of type %s" % type(to_save))
 
         if "_id" not in to_save:
@@ -156,7 +156,7 @@ class Collection(object):
           - `safe` (optional): check that the insert succeeded?
         """
         docs = doc_or_docs
-        if isinstance(docs, (types.DictType, SON)):
+        if isinstance(docs, types.DictType):
             docs = [docs]
 
         if not isinstance(docs, types.ListType):
@@ -179,7 +179,7 @@ class Collection(object):
         """Update an object(s) in this collection.
 
         Raises TypeError if either spec or document isn't an instance of
-        (dict, SON) or upsert isn't an instance of bool. If `safe` is True then
+        dict or upsert isn't an instance of bool. If `safe` is True then
         the update will be checked for errors, raising OperationFailure if one
         occurred. Checking for safety requires an extra round-trip to the
         database.
@@ -194,10 +194,10 @@ class Collection(object):
           - `manipulate` (optional): monipulate the document before updating?
           - `safe` (optional): check that the update succeeded?
         """
-        if not isinstance(spec, (types.DictType, SON)):
-            raise TypeError("spec must be an instance of (dict, SON)")
-        if not isinstance(document, (types.DictType, SON)):
-            raise TypeError("document must be an instance of (dict, SON)")
+        if not isinstance(spec, types.DictType):
+            raise TypeError("spec must be an instance of dict")
+        if not isinstance(document, types.DictType):
+            raise TypeError("document must be an instance of dict")
         if not isinstance(upsert, types.BooleanType):
             raise TypeError("upsert must be an instance of bool")
 
@@ -219,7 +219,7 @@ class Collection(object):
         """Remove an object(s) from this collection.
 
         Raises TypeEror if the argument is not an instance of
-        (dict, SON, ObjectId).
+        (dict, ObjectId).
 
         :Parameters:
           - `spec_or_object_id` (optional): a SON object specifying elements
@@ -230,8 +230,8 @@ class Collection(object):
         if isinstance(spec, ObjectId):
             spec = SON({"_id": spec})
 
-        if not isinstance(spec, (types.DictType, SON)):
-            raise TypeError("spec must be an instance of (dict, SON), not %s" % type(spec))
+        if not isinstance(spec, types.DictType):
+            raise TypeError("spec must be an instance of dict, not %s" % type(spec))
 
         self._send_message(2006, _ZERO + bson.BSON.from_dict(spec))
 
@@ -273,8 +273,8 @@ class Collection(object):
         """
         if spec is None:
             spec = SON()
-        if not isinstance(spec, (types.DictType, SON)):
-            raise TypeError("spec must be an instance of (dict, SON)")
+        if not isinstance(spec, types.DictType):
+            raise TypeError("spec must be an instance of dict")
         if not isinstance(fields, types.ListType):
             raise TypeError("fields must be an instance of list")
         if not isinstance(skip, types.IntType):

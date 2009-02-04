@@ -92,7 +92,7 @@ class Mongo(database.Database):
                 if deref is None:
                     return value
                 return self._fix_outgoing(deref, collection)
-            elif isinstance(value, (SON, types.DictType)):
+            elif isinstance(value, types.DictType):
                 return self._fix_outgoing(value, collection)
             elif isinstance(value, types.ListType):
                 return [fix_value(v) for v in value]
@@ -123,7 +123,7 @@ class Mongo(database.Database):
         to_save = SON(to_save)
 
         def fix_value(value):
-            if isinstance(value, (SON, types.DictType)):
+            if isinstance(value, types.DictType):
                 if "_id" in value and "_ns" in value:
                     return DBRef(value["_ns"], value["_id"])
             return value

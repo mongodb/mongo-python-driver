@@ -37,10 +37,9 @@ class GridFile(object):
         Application developers should generally not need to instantiate this
         class directly.
 
-        Raises TypeError if file_spec is not an instance of (dict,
-        `pymongo.son.SON`), database is not an instance of
-        `pymongo.database.Database`, or collection is not an instance of (str,
-        unicode).
+        Raises TypeError if file_spec is not an instance of dict, database is
+        not an instance of `pymongo.database.Database`, or collection is not an
+        instance of (str, unicode).
 
         The file_spec argument must be a SON query specifier for the file to
         open. The *first* file matching the specifier will be opened. If no such
@@ -68,7 +67,7 @@ class GridFile(object):
           - `collection` (optional): the collection in which to store/retrieve
             this file
         """
-        if not isinstance(file_spec, (types.DictType, SON)):
+        if not isinstance(file_spec, types.DictType):
             raise TypeError("file_spec must be an instance of (dict, SON)")
         if not isinstance(database, Database):
             raise TypeError("database must be an instance of database")
