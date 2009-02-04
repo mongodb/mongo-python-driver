@@ -87,10 +87,12 @@ def dbs(db, out):
     db.dbs_1.save({"foo": "bar"})
     db.dbs_2.save({"psi": "phi"})
     print >>out, db.name()
-    print >>out, sorted(db.collection_names())
+    for name in sorted(db.collection_names()):
+        print >>out, name
     db.drop_collection(db.dbs_1)
     db.create_collection("dbs_3")
-    print >>out, sorted(db.collection_names())
+    for name in sorted(db.collection_names()):
+        print >>out, name
 
 def main(test, out_file):
     db = Connection().driver_test_framework
