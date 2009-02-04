@@ -28,7 +28,7 @@ static PyObject* CBSONError;
 static PyObject* _cbson_dict_to_bson(PyObject* self, PyObject* dict);
 static PyObject* _wrap_py_string_as_object(PyObject* string);
 
-static char* shuffle_oid(char* oid) {
+static char* shuffle_oid(const char* oid) {
     char* shuffled = (char*) malloc(12);
 
     if (!shuffled) {
@@ -127,6 +127,24 @@ static PyObject* _cbson_element_to_bson(PyObject* self, PyObject* args) {
     }
     PyObject* Code = PyObject_GetAttrString(code_module, "Code");
     if (!Code) {
+        return NULL;
+    }
+
+    PyObject* objectid_module = PyImport_ImportModule("pymongo.objectid");
+    if (!objectid_module) {
+        return NULL;
+    }
+    PyObject* ObjectId = PyObject_GetAttrString(objectid_module, "ObjectId");
+    if (!ObjectId) {
+        return NULL;
+    }
+
+    PyObject* dbref_module = PyImport_ImportModule("pymongo.dbref");
+    if (!dbref_module) {
+        return NULL;
+    }
+    PyObject* DBRef = PyObject_GetAttrString(dbref_module, "DBRef");
+    if (!DBRef) {
         return NULL;
     }
 
@@ -239,6 +257,53 @@ static PyObject* _cbson_element_to_bson(PyObject* self, PyObject* args) {
         time_since_epoch = time_since_epoch * 1000;
         time_since_epoch += PyDateTime_DATE_GET_MICROSECOND(value) / 1000;
         return build_element(0x09, name, 8, (char*)&time_since_epoch);
+    } else if (PyObject_IsInstance(value, ObjectId)) {
+        const char* pre_shuffle = PyString_AsString(PyObject_Str(value));
+        if (!pre_shuffle) {
+            return NULL;
+        }
+        char* shuffled = shuffle_oid(pre_shuffle);
+        PyObject* result = build_element(0x07, name, 12, shuffled);
+        free(shuffled);
+        return result;
+    } else if (PyObject_IsInstance(value, DBRef)) {
+        PyObject* collection_object = PyObject_CallMethod(value, "collection", NULL);
+        if (!collection_object) {
+            return NULL;
+        }
+        PyObject* encoded_collection = PyUnicode_AsUTF8String(collection_object);
+        if (!encoded_collection) {
+            return NULL;
+        }
+        const char* collection = PyString_AsString(encoded_collection);
+        if (!collection) {
+            return NULL;
+        }
+        PyObject* id_object = PyObject_CallMethod(value, "id", NULL);
+        if (!id_object) {
+            return NULL;
+        }
+        const char* id = PyString_AsString(PyObject_Str(id_object));
+        if (!id) {
+            return NULL;
+        }
+        char* shuffled = shuffle_oid(id);
+
+        int collection_length = strlen(collection) + 1;
+        char* data = (char*)malloc(4 + collection_length + 12);
+        if (!data) {
+            free(shuffled);
+            PyErr_NoMemory();
+            return NULL;
+        }
+        memcpy(data, &collection_length, 4);
+        memcpy(data + 4, collection, collection_length);
+        memcpy(data + 4 + collection_length, shuffled, 12);
+        free(shuffled);
+
+        PyObject* result = build_element(0x0C, name, 16 + collection_length, data);
+        free(data);
+        return result;
     }
     PyErr_SetString(CBSONError, "no c encoder for this type yet");
     return NULL;
