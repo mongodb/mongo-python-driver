@@ -369,6 +369,8 @@ def _dict_to_bson(dict):
 
     length = len(elements) + 5
     return struct.pack("<i", length) + elements + "\x00"
+# if _use_c:
+#     _dict_to_bson = _cbson._dict_to_bson
 
 def is_valid(bson):
     """Validate that the given string represents valid BSON data.

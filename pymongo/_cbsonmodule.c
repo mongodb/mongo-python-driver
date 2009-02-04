@@ -24,6 +24,8 @@
 #include <string.h>
 
 static PyObject* CBSONError;
+static PyObject* _cbson_dict_to_bson(PyObject* self, PyObject* dict);
+static PyObject* _wrap_py_string_as_object(PyObject* string);
 
 static char* shuffle_oid(char* oid) {
     char* shuffled = (char*) malloc(12);
@@ -53,6 +55,7 @@ static PyObject* _cbson_shuffle_oid(PyObject* self, PyObject* args) {
 
     if (length != 12) {
         PyErr_SetString(PyExc_ValueError, "oid must be of length 12");
+        return NULL;
     }
 
     char* shuffled = shuffle_oid(data);
@@ -140,9 +143,74 @@ static PyObject* _cbson_element_to_bson(PyObject* self, PyObject* args) {
         return build_element(0x01, name, 8, (char*)&d);
     } else if (value == Py_None) {
         return build_element(0x0A, name, 0, 0);
+    } else if (PyDict_CheckExact(value)) { // TODO need to handle SON separately to maintain ordering
+        PyObject* object = _cbson_dict_to_bson(self, value);
+        if (!object) {
+            return NULL;
+        }
+        return build_element(0x03, name, PyString_Size(object), PyString_AsString(object));
+    } else if (PyList_CheckExact(value)) {
+        PyObject* string = PyString_FromString("");
+        int items = PyList_Size(value);
+        int i;
+        for(i = 0; i < items; i++) {
+            char* name;
+            asprintf(&name, "%d", i);
+            if (!name) {
+                PyErr_NoMemory();
+                return NULL;
+            }
+            PyObject* element = _cbson_element_to_bson(self,
+                                                       Py_BuildValue("sO", name,
+                                                                     PyList_GetItem(value, i)));
+            free(name);
+            if (!element) {
+                return NULL;
+            }
+            PyString_ConcatAndDel(&string, element);
+        }
+        PyObject* object = _wrap_py_string_as_object(string);
+        return build_element(0x04, name, PyString_Size(object), PyString_AsString(object));
     }
     PyErr_SetString(CBSONError, "no c encoder for this type yet");
     return NULL;
+}
+
+static PyObject* _wrap_py_string_as_object(PyObject* string) {
+    int length = PyString_Size(string) + 5;
+    char* data = (char*)malloc(length);
+    if (!data) {
+        PyErr_NoMemory();
+        return NULL;
+    }
+    const char* elements = PyString_AsString(string);
+    memcpy(data, &length, 4);
+    memcpy(data + 4, elements, length - 5);
+    data[length - 1] = 0x00;
+
+    PyObject* result = Py_BuildValue("s#", data, length);
+    free(data);
+    return result;
+}
+
+static PyObject* _cbson_dict_to_bson(PyObject* self, PyObject* dict) {
+    if (!PyDict_Check(dict)) {
+        PyErr_SetString(PyExc_TypeError, "argument to from_dict must be a mapping type");
+        return NULL;
+    }
+    PyObject* key;
+    PyObject* value;
+    Py_ssize_t pos = 0;
+    PyObject* string = PyString_FromString("");
+    while (PyDict_Next(dict, &pos, &key, &value)) {
+        PyObject* element = _cbson_element_to_bson(self,
+                                                   Py_BuildValue("OO", key, value));
+        if (!element) {
+            return NULL;
+        }
+        PyString_ConcatAndDel(&string, element);
+    }
+    return _wrap_py_string_as_object(string);
 }
 
 static PyMethodDef _CBSONMethods[] = {
@@ -150,6 +218,8 @@ static PyMethodDef _CBSONMethods[] = {
      "shuffle an ObjectId into proper byte order."},
     {"_element_to_bson", _cbson_element_to_bson, METH_VARARGS,
      "convert a key and value to its bson representation."},
+    {"_dict_to_bson", _cbson_dict_to_bson, METH_O,
+     "convert a dictionary to a string containing it's BSON representation."},
     {NULL, NULL, 0, NULL}
 };
 
