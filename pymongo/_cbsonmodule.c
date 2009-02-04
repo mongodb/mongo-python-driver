@@ -21,7 +21,8 @@
  */
 
 #include <Python.h>
-#include <string.h>
+#include <datetime.h>
+#include <time.h>
 
 static PyObject* CBSONError;
 static PyObject* _cbson_dict_to_bson(PyObject* self, PyObject* dict);
@@ -86,7 +87,7 @@ static PyObject* build_element(const char type, const char* name, const int leng
     return result;
 }
 
-static PyObject* build_string(const char* string, const char* name) {
+static PyObject* build_string(int type, const char* string, const char* name) {
     int string_length = strlen(string) + 1;
     int data_length = 4 + string_length;
 
@@ -98,7 +99,7 @@ static PyObject* build_string(const char* string, const char* name) {
     memcpy(data, &string_length, 4);
     memcpy(data + 4, string, string_length);
 
-    PyObject* result = build_element(0x02, name, data_length, data);
+    PyObject* result = build_element(type, name, data_length, data);
     free(data);
     return result;
 }
@@ -120,6 +121,15 @@ static PyObject* _cbson_element_to_bson(PyObject* self, PyObject* args) {
         return NULL;
     }
 
+    PyObject* code_module = PyImport_ImportModule("pymongo.code");
+    if (!code_module) {
+        return NULL;
+    }
+    PyObject* Code = PyObject_GetAttrString(code_module, "Code");
+    if (!Code) {
+        return NULL;
+    }
+
     /* TODO this isn't quite the same as the Python version:
      * here we check for type equivalence, not isinstance in some
      * places. */
@@ -128,7 +138,7 @@ static PyObject* _cbson_element_to_bson(PyObject* self, PyObject* args) {
         if (!encoded_bytes) {
             return NULL;
         }
-        return build_string(encoded_bytes, name);
+        return build_string(0x02, encoded_bytes, name);
     } else if (PyUnicode_CheckExact(value)) {
         PyObject* encoded = PyUnicode_AsUTF8String(value);
         if (!encoded) {
@@ -138,7 +148,7 @@ static PyObject* _cbson_element_to_bson(PyObject* self, PyObject* args) {
         if (!encoded_bytes) {
             return NULL;
         }
-        return build_string(encoded_bytes, name);
+        return build_string(0x02, encoded_bytes, name);
     } else if (PyInt_CheckExact(value)) {
         int int_value = (int)PyInt_AsLong(value);
         return build_element(0x10, name, 4, (char*)&int_value);
@@ -209,6 +219,26 @@ static PyObject* _cbson_element_to_bson(PyObject* self, PyObject* args) {
         PyObject* result = build_element(0x05, name, length + 5, data);
         free(data);
         return result;
+    } else if (PyObject_IsInstance(value, Code)) {
+        const char* encoded_bytes = PyString_AsString(value);
+        if (!encoded_bytes) {
+            return NULL;
+        }
+        return build_string(0x0D, encoded_bytes, name);
+    } else if (PyDateTime_CheckExact(value)) {
+        time_t rawtime;
+        time(&rawtime);
+        struct tm* timeinfo = localtime(&rawtime);
+        timeinfo->tm_year = PyDateTime_GET_YEAR(value) - 1900;
+        timeinfo->tm_mon = PyDateTime_GET_MONTH(value) - 1;
+        timeinfo->tm_mday = PyDateTime_GET_DAY(value);
+        timeinfo->tm_hour = PyDateTime_DATE_GET_HOUR(value);
+        timeinfo->tm_min = PyDateTime_DATE_GET_MINUTE(value);
+        timeinfo->tm_sec = PyDateTime_DATE_GET_SECOND(value);
+        long long time_since_epoch = timegm(timeinfo);
+        time_since_epoch = time_since_epoch * 1000;
+        time_since_epoch += PyDateTime_DATE_GET_MICROSECOND(value) / 1000;
+        return build_element(0x09, name, 8, (char*)&time_since_epoch);
     }
     PyErr_SetString(CBSONError, "no c encoder for this type yet");
     return NULL;
@@ -262,6 +292,7 @@ static PyMethodDef _CBSONMethods[] = {
 };
 
 PyMODINIT_FUNC init_cbson(void) {
+    PyDateTime_IMPORT;
     PyObject *m;
     m = Py_InitModule("_cbson", _CBSONMethods);
     if (m == NULL) {
