@@ -314,7 +314,7 @@ def _element_to_bson(key, value):
         cstring = _make_c_string(value)
         length = struct.pack("<i", len(cstring))
         return "\x02" + name + length + cstring
-    if isinstance(value, (dict, SON)):
+    if isinstance(value, dict):
         return "\x03" + name + _dict_to_bson(value)
     if isinstance(value, (list, tuple)):
         as_dict = SON(zip([str(i) for i in range(len(value))], value))
