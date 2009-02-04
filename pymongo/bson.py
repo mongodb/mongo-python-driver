@@ -315,10 +315,10 @@ def _element_to_bson(key, value):
         length = struct.pack("<i", len(cstring))
         return "\x02" + name + length + cstring
     if isinstance(value, (dict, SON)):
-        return "\x03" + name + BSON.from_dict(value)
+        return "\x03" + name + _dict_to_bson(value)
     if isinstance(value, (list, tuple)):
         as_dict = SON(zip([str(i) for i in range(len(value))], value))
-        return "\x04" + name + BSON.from_dict(as_dict)
+        return "\x04" + name + _dict_to_bson(as_dict)
     if isinstance(value, ObjectId):
         return "\x07" + name + _shuffle_oid(str(value))
     if value is True:
@@ -360,6 +360,15 @@ if _use_c:
             return _c_element_to_bson(name, value)
         except _cbson.error:
             return _py_element_to_bson(name, value)
+
+def _dict_to_bson(dict):
+    try:
+        elements = "".join([_element_to_bson(key, value) for (key, value) in dict.iteritems()])
+    except AttributeError:
+        raise TypeError("argument to from_dict must be a mapping type")
+
+    length = len(elements) + 5
+    return struct.pack("<i", length) + elements + "\x00"
 
 def is_valid(bson):
     """Validate that the given string represents valid BSON data.
@@ -419,14 +428,7 @@ class BSON(str):
         :Parameters:
           - `dict`: mapping type representing a Mongo document
         """
-        try:
-            elements = "".join([_element_to_bson(key, value) for (key, value) in dict.iteritems()])
-        except AttributeError:
-            raise TypeError("argument to from_dict must be a mapping type")
-
-        length = len(elements) + 5
-        bson = struct.pack("<i", length) + elements + "\x00"
-        return cls(bson)
+        return cls(_dict_to_bson(dict))
 
     def to_dict(self):
         """Get the dictionary representation of this data."""
