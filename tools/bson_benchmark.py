@@ -59,9 +59,9 @@ def main():
         print "enc json",
         enc_json = run(case, json.dumps)
         print "dec bson",
-        run(enc_bson, bson.to_dicts)
+        assert case == run(enc_bson, bson.to_dicts)[0]
         print "dec json",
-        run(enc_json, json.loads)
+        assert case == run(enc_json, json.loads)
 
 if __name__ == "__main__":
     cProfile.run("main()")
