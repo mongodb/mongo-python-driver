@@ -286,6 +286,8 @@ def _bson_to_dict(data):
     obj_size = struct.unpack("<i", data[:4])[0]
     elements = data[4:obj_size - 1]
     return (_elements_to_dict(elements), data[obj_size:])
+# if _use_c:
+#     _bson_to_dict = _cbson._bson_to_dict
 
 def _shuffle_oid(data):
     return data[7::-1] + data[:7:-1]

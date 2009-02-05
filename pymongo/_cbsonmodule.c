@@ -358,9 +358,113 @@ static PyObject* _cbson_dict_to_bson(PyObject* self, PyObject* dict) {
     return NULL;
 }
 
+static PyObject* _elements_to_dict(PyObject* elements) {
+    PyObject* list = PyList_New(0);
+    while (PyString_Size(elements)) {
+        const char* string = PyString_AsString(elements);
+        int type = (int)string[0];
+        int name_length = strlen(string + 1);
+        PyObject* name_encoded = PySequence_GetSlice(elements, 1, name_length + 1);
+        if (!name_encoded) {
+            return NULL;
+        }
+        PyObject* name = PyString_AsDecodedObject(name_encoded, "utf-8", "strict");
+        if (!name) {
+            return NULL;
+        }
+        elements = PySequence_GetSlice(elements, name_length + 2, PyString_Size(elements));
+        if (!elements) {
+            return NULL;
+        }
+        string = PyString_AsString(elements);
+        PyObject* value;
+        switch (type) {
+        case 1:
+            {
+                double d;
+                memcpy(&d, string, 8);
+                value = PyFloat_FromDouble(d);
+                if (!value) {
+                    return NULL;
+                }
+                elements = PySequence_GetSlice(elements, 8, PyString_Size(elements));
+                break;
+            }
+        case 2:
+        case 13:
+        case 14:
+            {
+                int length = strlen(string + 4);
+                PyObject* value_encoded = PySequence_GetSlice(elements, 4, length + 4);
+                if (!value_encoded) {
+                    return NULL;
+                }
+                value = PyString_AsDecodedObject(value_encoded, "utf-8", "strict");
+                if (!value) {
+                    return NULL;
+                }
+                elements = PySequence_GetSlice(elements, length + 5, PyString_Size(elements));
+                break;
+            }
+        case 8:
+            {
+                value = string[0] ? Py_True : Py_False;
+                elements = PySequence_GetSlice(elements, 1, PyString_Size(elements));
+                break;
+            }
+        case 16:
+            {
+                int i;
+                memcpy(&i, string, 4);
+                value = PyInt_FromLong(i);
+                if (!value) {
+                    return NULL;
+                }
+                elements = PySequence_GetSlice(elements, 4, PyString_Size(elements));
+                break;
+            }
+        default:
+            printf("type: %d\n", type);
+            PyErr_SetString(CBSONError, "no c decoder for this type yet");
+            return NULL;
+        }
+        PyList_Append(list, Py_BuildValue("OO", name, value));
+    }
+    return PyObject_CallFunctionObjArgs(SON, list, NULL);
+}
+
+static PyObject* _cbson_bson_to_dict(PyObject* self, PyObject* bson) {
+    if (!PyString_Check(bson)) {
+        PyErr_SetString(PyExc_TypeError, "argument to _bson_to_dict must be a string");
+        return NULL;
+    }
+    int size;
+    const char* string = PyString_AsString(bson);
+    if (!string) {
+        return NULL;
+    }
+    memcpy(&size, string, 4);
+
+    PyObject* elements = PySequence_GetSlice(bson, 4, size - 1);
+    if (!elements) {
+        return NULL;
+    }
+    PyObject* son = _elements_to_dict(elements);
+    if (!son) {
+        return NULL;
+    }
+    PyObject* remainder = PySequence_GetSlice(bson, size, PyString_Size(bson));
+    if (!remainder) {
+        return NULL;
+    }
+    return Py_BuildValue("OO", son, remainder);
+}
+
 static PyMethodDef _CBSONMethods[] = {
     {"_dict_to_bson", _cbson_dict_to_bson, METH_O,
      "convert a dictionary to a string containing it's BSON representation."},
+    {"_bson_to_dict", _cbson_bson_to_dict, METH_O,
+     "convert a BSON string to a SON object."},
     {NULL, NULL, 0, NULL}
 };
 
