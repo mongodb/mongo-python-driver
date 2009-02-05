@@ -148,37 +148,11 @@ static PyObject* _cbson_element_to_bson(PyObject* self, PyObject* args) {
         return build_element(0x01, name, 8, (char*)&d);
     } else if (value == Py_None) {
         return build_element(0x0A, name, 0, 0);
-    } else if (PyDict_CheckExact(value)) {
+    } else if (PyDict_Check(value)) {
         PyObject* object = _cbson_dict_to_bson(self, value);
         if (!object) {
             return NULL;
         }
-        return build_element(0x03, name, PyString_Size(object), PyString_AsString(object));
-    } else if (PyObject_IsInstance(value, SON)) {
-        PyObject* string = PyString_FromString("");
-        if (!string) {
-            return NULL;
-        }
-        PyObject* keys = PyObject_CallMethod(value, "keys", NULL);
-        if (!keys) {
-            return NULL;
-        }
-        int items = PyList_Size(keys);
-        int i;
-        for(i = 0; i < items; i++) {
-            PyObject* name = PyList_GetItem(keys, i);
-            if (!name) {
-                return NULL;
-            }
-            PyObject* element = _cbson_element_to_bson(self,
-                                                       Py_BuildValue("OO", name,
-                                                                     PyDict_GetItem(value, name)));
-            if (!element) {
-                return NULL;
-            }
-            PyString_ConcatAndDel(&string, element);
-        }
-        PyObject* object = _wrap_py_string_as_object(string);
         return build_element(0x03, name, PyString_Size(object), PyString_AsString(object));
     } else if (PyList_CheckExact(value)) {
         PyObject* string = PyString_FromString("");
@@ -299,6 +273,43 @@ static PyObject* _cbson_element_to_bson(PyObject* self, PyObject* args) {
         PyObject* result = build_element(0x0C, name, 16 + collection_length, data);
         free(data);
         return result;
+    } else if (PyObject_HasAttrString(value, "pattern") &&
+               PyObject_HasAttrString(value, "flags")) { // TODO just a proxy for checking if it is a compiled re
+        const char* pattern =  PyString_AsString(PyObject_GetAttrString(value, "pattern"));
+        long int_flags = PyInt_AsLong(PyObject_GetAttrString(value, "flags"));
+        char flags[10];
+        flags[0] = 0;
+        // TODO don't hardcode these
+        if (int_flags & 2) {
+            strcat(flags, "i");
+        }
+        if (int_flags & 4) {
+            strcat(flags, "l");
+        }
+        if (int_flags & 8) {
+            strcat(flags, "m");
+        }
+        if (int_flags & 16) {
+            strcat(flags, "s");
+        }
+        if (int_flags & 32) {
+            strcat(flags, "u");
+        }
+        if (int_flags & 64) {
+            strcat(flags, "x");
+        }
+        int pattern_length = strlen(pattern) + 1;
+        int flags_length = strlen(flags) + 1;
+        char* data = malloc(pattern_length + flags_length);
+        if (!data) {
+            PyErr_NoMemory();
+            return NULL;
+        }
+        memcpy(data, pattern, pattern_length);
+        memcpy(data + pattern_length, flags, flags_length);
+        PyObject* result = build_element(0x0B, name, pattern_length + flags_length, data);
+        free(data);
+        return result;
     }
     PyErr_SetString(CBSONError, "no c encoder for this type yet");
     return NULL;
@@ -322,23 +333,51 @@ static PyObject* _wrap_py_string_as_object(PyObject* string) {
 }
 
 static PyObject* _cbson_dict_to_bson(PyObject* self, PyObject* dict) {
-    if (!PyDict_Check(dict)) {
-        PyErr_SetString(PyExc_TypeError, "argument to from_dict must be a mapping type");
-        return NULL;
-    }
-    PyObject* key;
-    PyObject* value;
-    Py_ssize_t pos = 0;
-    PyObject* string = PyString_FromString("");
-    while (PyDict_Next(dict, &pos, &key, &value)) {
-        PyObject* element = _cbson_element_to_bson(self,
-                                                   Py_BuildValue("OO", key, value));
-        if (!element) {
+    if (PyDict_CheckExact(dict)) {
+        PyObject* key;
+        PyObject* value;
+        Py_ssize_t pos = 0;
+        PyObject* string = PyString_FromString("");
+        if (!string) {
             return NULL;
         }
-        PyString_ConcatAndDel(&string, element);
+        while (PyDict_Next(dict, &pos, &key, &value)) {
+            PyObject* element = _cbson_element_to_bson(self,
+                                                       Py_BuildValue("OO", key, value));
+            if (!element) {
+                return NULL;
+            }
+            PyString_ConcatAndDel(&string, element);
+        }
+        return _wrap_py_string_as_object(string);
+    } else if (PyObject_IsInstance(dict, SON)) {
+        PyObject* string = PyString_FromString("");
+        if (!string) {
+            return NULL;
+        }
+        PyObject* keys = PyObject_CallMethod(dict, "keys", NULL);
+        if (!keys) {
+            return NULL;
+        }
+        int items = PyList_Size(keys);
+        int i;
+        for(i = 0; i < items; i++) {
+            PyObject* name = PyList_GetItem(keys, i);
+            if (!name) {
+                return NULL;
+            }
+            PyObject* element = _cbson_element_to_bson(self,
+                                                       Py_BuildValue("OO", name,
+                                                                     PyDict_GetItem(dict, name)));
+            if (!element) {
+                return NULL;
+            }
+            PyString_ConcatAndDel(&string, element);
+        }
+        return _wrap_py_string_as_object(string);
     }
-    return _wrap_py_string_as_object(string);
+    PyErr_SetString(PyExc_TypeError, "argument to from_dict must be a mapping type");
+    return NULL;
 }
 
 static PyMethodDef _CBSONMethods[] = {
