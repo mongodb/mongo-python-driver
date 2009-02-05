@@ -130,10 +130,11 @@ class TestCollection(unittest.TestCase):
                          {"hello_1": [("hello", ASCENDING)]})
 
         db.test.create_index([("hello", DESCENDING), ("world", ASCENDING)])
-        self.assertEqual(db.test.index_information(),
-                         {"hello_1": [("hello", ASCENDING)],
-                          "hello_-1_world_1": [("hello", DESCENDING),
-                                               ("world", ASCENDING)]})
+        self.assertEqual(db.test.index_information()["hello_1"], [("hello", ASCENDING)])
+        self.assertEqual(len(db.test.index_information()), 2)
+        self.assertTrue(("hello", DESCENDING) in db.test.index_information()["hello_-1_world_1"])
+        self.assertTrue(("world", ASCENDING) in db.test.index_information()["hello_-1_world_1"])
+        self.assertTrue(len(db.test.index_information()["hello_-1_world_1"]) == 2)
 
     def test_options(self):
         db = self.db
