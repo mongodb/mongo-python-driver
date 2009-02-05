@@ -19,7 +19,7 @@ this should be updated to use that if it exists an `simplejson` otherwise.
 """
 
 import datetime
-import cProfile
+import cProfile as profile
 import sys
 sys.path[0:0] = [""]
 
@@ -64,4 +64,4 @@ def main():
         assert case == run(enc_json, json.loads)
 
 if __name__ == "__main__":
-    cProfile.run("main()")
+    profile.run("main()")
