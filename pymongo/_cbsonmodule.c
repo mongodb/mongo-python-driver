@@ -475,9 +475,57 @@ static PyObject* _elements_to_dict(PyObject* elements) {
                 value = Py_None;
                 break;
             }
+        case 7:
+            {
+                char* shuffled = shuffle_oid(string + position);
+                value = PyObject_CallFunction(ObjectId, "s#", shuffled, 12);
+                free(shuffled);
+                if (!value) {
+                    return NULL;
+                }
+                position += 12;
+                break;
+            }
         case 8:
             {
                 value = string[position++] ? Py_True : Py_False;
+                break;
+            }
+        case 9:
+            {
+                long long millis;
+                memcpy(&millis, string + position, 8);
+                int microseconds = (millis % 1000) * 1000;
+                time_t seconds = millis / 1000;
+                struct tm* timeinfo = gmtime(&seconds);
+
+                value = PyDateTime_FromDateAndTime(timeinfo->tm_year + 1900,
+                                                   timeinfo->tm_mon + 1,
+                                                   timeinfo->tm_mday,
+                                                   timeinfo->tm_hour,
+                                                   timeinfo->tm_min,
+                                                   timeinfo->tm_sec,
+                                                   microseconds);
+                position += 8;
+                break;
+            }
+        case 12:
+            {
+                position += 4;
+                int collection_length = strlen(string + position);
+                PyObject* collection = PyUnicode_DecodeUTF8(string + position, collection_length, "strict");
+                if (!collection) {
+                    return NULL;
+                }
+                position += collection_length + 1;
+                char* shuffled = shuffle_oid(string + position);
+                PyObject* id = PyObject_CallFunction(ObjectId, "s#", shuffled, 12);
+                free(shuffled);
+                if (!id) {
+                    return NULL;
+                }
+                position += 12;
+                value = PyObject_CallFunction(DBRef, "OO", collection, id);
                 break;
             }
         case 16:
