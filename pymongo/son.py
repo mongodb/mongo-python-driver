@@ -72,6 +72,13 @@ class SON(dict):
         self.update(data)
         self.update(kwargs)
 
+    @classmethod
+    def _from_keys_and_dict(cls, keys, data):
+        self = SON()
+        self.__keys = keys
+        dict.__init__(self, data)
+        return self
+
     def __repr__(self):
         result = []
         for key in self.__keys:
