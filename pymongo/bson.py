@@ -188,7 +188,7 @@ def _get_string(data):
     return _get_c_string(data[4:])
 
 def _get_object(data):
-    return _document_to_dict(data)
+    return _bson_to_dict(data)
 
 def _get_array(data):
     (obj, data) = _get_object(data)
@@ -282,7 +282,7 @@ def _elements_to_dict(data):
         result[key] = value
     return result
 
-def _document_to_dict(data):
+def _bson_to_dict(data):
     obj_size = struct.unpack("<i", data[:4])[0]
     elements = data[4:obj_size - 1]
     return (_elements_to_dict(elements), data[obj_size:])
@@ -390,7 +390,7 @@ def to_dicts(data):
     """
     dicts = []
     while len(data):
-        (son, data) = _document_to_dict(data)
+        (son, data) = _bson_to_dict(data)
         dicts.append(son)
     return dicts
 
@@ -424,5 +424,5 @@ class BSON(str):
 
     def to_dict(self):
         """Get the dictionary representation of this data."""
-        (son, _) = _document_to_dict(self)
+        (son, _) = _bson_to_dict(self)
         return son
