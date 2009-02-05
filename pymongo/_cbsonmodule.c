@@ -27,6 +27,11 @@
 static PyObject* CBSONError;
 static PyObject* _cbson_dict_to_bson(PyObject* self, PyObject* dict);
 static PyObject* _wrap_py_string_as_object(PyObject* string);
+static PyObject* SON;
+static PyObject* Binary;
+static PyObject* Code;
+static PyObject* ObjectId;
+static PyObject* DBRef;
 
 static char* shuffle_oid(const char* oid) {
     char* shuffled = (char*) malloc(12);
@@ -109,51 +114,6 @@ static PyObject* _cbson_element_to_bson(PyObject* self, PyObject* args) {
     const char* name;
     PyObject* value;
     if (!PyArg_ParseTuple(args, "etO", "utf-8", &name, &value)) {
-        return NULL;
-    }
-
-    PyObject* son_module = PyImport_ImportModule("pymongo.son");
-    if (!son_module) {
-        return NULL;
-    }
-    PyObject* SON = PyObject_GetAttrString(son_module, "SON");
-    if (!SON) {
-        return NULL;
-    }
-
-    PyObject* binary_module = PyImport_ImportModule("pymongo.binary");
-    if (!binary_module) {
-        return NULL;
-    }
-    PyObject* Binary = PyObject_GetAttrString(binary_module, "Binary");
-    if (!Binary) {
-        return NULL;
-    }
-
-    PyObject* code_module = PyImport_ImportModule("pymongo.code");
-    if (!code_module) {
-        return NULL;
-    }
-    PyObject* Code = PyObject_GetAttrString(code_module, "Code");
-    if (!Code) {
-        return NULL;
-    }
-
-    PyObject* objectid_module = PyImport_ImportModule("pymongo.objectid");
-    if (!objectid_module) {
-        return NULL;
-    }
-    PyObject* ObjectId = PyObject_GetAttrString(objectid_module, "ObjectId");
-    if (!ObjectId) {
-        return NULL;
-    }
-
-    PyObject* dbref_module = PyImport_ImportModule("pymongo.dbref");
-    if (!dbref_module) {
-        return NULL;
-    }
-    PyObject* DBRef = PyObject_GetAttrString(dbref_module, "DBRef");
-    if (!DBRef) {
         return NULL;
     }
 
@@ -402,4 +362,19 @@ PyMODINIT_FUNC init_cbson(void) {
     CBSONError = PyErr_NewException("_cbson.error", NULL, NULL);
     Py_INCREF(CBSONError);
     PyModule_AddObject(m, "error", CBSONError);
+
+    PyObject* son_module = PyImport_ImportModule("pymongo.son");
+    SON = PyObject_GetAttrString(son_module, "SON");
+
+    PyObject* binary_module = PyImport_ImportModule("pymongo.binary");
+    Binary = PyObject_GetAttrString(binary_module, "Binary");
+
+    PyObject* code_module = PyImport_ImportModule("pymongo.code");
+    Code = PyObject_GetAttrString(code_module, "Code");
+
+    PyObject* objectid_module = PyImport_ImportModule("pymongo.objectid");
+    ObjectId = PyObject_GetAttrString(objectid_module, "ObjectId");
+
+    PyObject* dbref_module = PyImport_ImportModule("pymongo.dbref");
+    DBRef = PyObject_GetAttrString(dbref_module, "DBRef");
 }
