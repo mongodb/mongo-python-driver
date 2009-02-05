@@ -364,6 +364,24 @@ def _dict_to_bson(dict):
 if _use_c:
     _dict_to_bson = _cbson._dict_to_bson
 
+def _to_dicts(data):
+    """Convert binary data to sequence of SON objects.
+
+    Data must be concatenated strings of valid BSON data.
+
+    :Parameters:
+      - `data`: bson data
+    """
+    dicts = []
+    while len(data):
+        (son, data) = _bson_to_dict(data)
+        dicts.append(son)
+    return dicts
+
+def _to_dict(data):
+    (son, _) = _bson_to_dict(data)
+    return son
+
 def is_valid(bson):
     """Validate that the given string represents valid BSON data.
 
@@ -381,20 +399,6 @@ def is_valid(bson):
         return remainder == ""
     except (AssertionError, InvalidBSON):
         return False
-
-def _to_dicts(data):
-    """Convert binary data to sequence of SON objects.
-
-    Data must be concatenated strings of valid BSON data.
-
-    :Parameters:
-      - `data`: bson data
-    """
-    dicts = []
-    while len(data):
-        (son, data) = _bson_to_dict(data)
-        dicts.append(son)
-    return dicts
 
 class BSON(str):
     """BSON data.
