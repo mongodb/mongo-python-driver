@@ -361,6 +361,6 @@ class Database(object):
         if not isinstance(code, types.StringTypes):
             raise TypeError("code must be an instance of (str, unicode)")
 
-        command = SON([("$eval", Code(code)), ("args", args)])
+        command = SON([("$eval", Code(code)), ("args", list(args))])
         result = self._command(command)
         return result.get("retval", None)
