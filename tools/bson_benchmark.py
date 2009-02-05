@@ -59,7 +59,7 @@ def main():
         print "enc json",
         enc_json = run(case, json.dumps)
         print "dec bson",
-        assert case == run(enc_bson, bson.to_dicts)[0]
+        assert case == run(enc_bson, bson._to_dicts)[0]
         print "dec json",
         assert case == run(enc_json, json.loads)
 

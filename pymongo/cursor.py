@@ -270,7 +270,7 @@ class Cursor(object):
 
             number_returned = struct.unpack("<i", response[16:20])[0]
             self.__retrieved += number_returned
-            self.__data = bson.to_dicts(response[20:])
+            self.__data = bson._to_dicts(response[20:])
             assert len(self.__data) == number_returned
 
         if self.__id is None:

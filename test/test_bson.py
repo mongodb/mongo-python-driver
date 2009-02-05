@@ -29,7 +29,7 @@ from pymongo.code import Code
 from pymongo.objectid import ObjectId
 from pymongo.dbref import DBRef
 from pymongo.son import SON
-from pymongo.bson import BSON, is_valid, to_dicts
+from pymongo.bson import BSON, is_valid, _to_dicts
 from pymongo.errors import UnsupportedTag
 
 class TestBSON(unittest.TestCase):
@@ -58,7 +58,7 @@ class TestBSON(unittest.TestCase):
         self.assertEqual({"test": u"hello world"},
                          BSON("\x1B\x00\x00\x00\x0E\x74\x65\x73\x74\x00\x0C\x00\x00\x00\x68\x65\x6C\x6C\x6F\x20\x77\x6F\x72\x6C\x64\x00\x00").to_dict())
         self.assertEqual([{"test": u"hello world"}, {}],
-                         to_dicts("\x1B\x00\x00\x00\x0E\x74\x65\x73\x74\x00\x0C\x00\x00\x00\x68\x65\x6C\x6C\x6F\x20\x77\x6F\x72\x6C\x64\x00\x00\x05\x00\x00\x00\x00"))
+                         _to_dicts("\x1B\x00\x00\x00\x0E\x74\x65\x73\x74\x00\x0C\x00\x00\x00\x68\x65\x6C\x6C\x6F\x20\x77\x6F\x72\x6C\x64\x00\x00\x05\x00\x00\x00\x00"))
 
     def test_basic_from_dict(self):
         self.assertRaises(TypeError, BSON.from_dict, 100)

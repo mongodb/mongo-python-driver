@@ -382,7 +382,7 @@ def is_valid(bson):
     except (AssertionError, InvalidBSON):
         return False
 
-def to_dicts(data):
+def _to_dicts(data):
     """Convert binary data to sequence of SON objects.
 
     Data must be concatenated strings of valid BSON data.
