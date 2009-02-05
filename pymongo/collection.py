@@ -145,8 +145,8 @@ class Collection(object):
 
         If manipulate is set the document(s) are manipulated using any
         SONManipulators that have been added to this database. Returns the
-        inserted object or a list of inserted objects. If `safe`is True then the
-        insert will be checked for errors, raising OperationFailure if one
+        inserted object or a list of inserted objects. If `safe` is True then
+        the insert will be checked for errors, raising OperationFailure if one
         occurred. Checking for safety requires an extra round-trip to the
         database.
 
