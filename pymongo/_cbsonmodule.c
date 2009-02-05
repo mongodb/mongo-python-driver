@@ -448,14 +448,15 @@ static PyObject* _elements_to_dict(PyObject* elements) {
                 }
                 break;
             }
-        case 8:
-            {
-                value = string[position++] ? Py_True : Py_False;
-                break;
-            }
+        case 6:
         case 10:
             {
                 value = Py_None;
+                break;
+            }
+        case 8:
+            {
+                value = string[position++] ? Py_True : Py_False;
                 break;
             }
         case 16:
