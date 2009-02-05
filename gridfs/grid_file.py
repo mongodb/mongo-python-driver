@@ -186,11 +186,11 @@ class GridFile(object):
         if self.mode != "w":
             return
 
+        self.__write_buffer_to_chunks()
+
         file = self.__collection.files.find_one(self.__id)
         file["length"] = self.__position + len(self.__buffer)
         self.__collection.files.save(file)
-
-        self.__write_buffer_to_chunks()
 
     def close(self):
         """Close the GridFile.
