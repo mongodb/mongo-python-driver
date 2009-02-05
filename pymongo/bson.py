@@ -289,8 +289,6 @@ def _document_to_dict(data):
 
 def _shuffle_oid(data):
     return data[7::-1] + data[:7:-1]
-if _use_c:
-    _shuffle_oid = _cbson._shuffle_oid
 
 _RE_TYPE = type(_valid_array_name)
 def _element_to_bson(key, value):
@@ -352,14 +350,6 @@ def _element_to_bson(key, value):
         ns = _make_c_string(value.collection())
         return "\x0C" + name + struct.pack("<i", len(ns)) + ns + _shuffle_oid(str(value.id()))
     raise InvalidDocument("cannot convert value of type %s to bson" % type(value))
-if _use_c:
-    _py_element_to_bson = _element_to_bson
-    _c_element_to_bson = _cbson._element_to_bson
-    def _element_to_bson(name, value):
-        try:
-            return _c_element_to_bson(name, value)
-        except _cbson.error:
-            return _py_element_to_bson(name, value)
 
 def _dict_to_bson(dict):
     try:

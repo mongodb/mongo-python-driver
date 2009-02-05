@@ -52,28 +52,6 @@ static char* shuffle_oid(const char* oid) {
     return shuffled;
 }
 
-static PyObject* _cbson_shuffle_oid(PyObject* self, PyObject* args) {
-    char* data;
-    int length;
-    if (!PyArg_ParseTuple(args, "s#", &data, &length)) {
-        return NULL;
-    }
-
-    if (length != 12) {
-        PyErr_SetString(PyExc_ValueError, "oid must be of length 12");
-        return NULL;
-    }
-
-    char* shuffled = shuffle_oid(data);
-    if (!shuffled) {
-        return NULL;
-    }
-
-    PyObject* result = Py_BuildValue("s#", shuffled, 12);
-    free(shuffled);
-    return result;
-}
-
 static PyObject* build_element(const char type, const char* name, const int length, const char* data) {
     int name_length = strlen(name) + 1;
     int built_length = 1 + name_length + length;
@@ -381,10 +359,6 @@ static PyObject* _cbson_dict_to_bson(PyObject* self, PyObject* dict) {
 }
 
 static PyMethodDef _CBSONMethods[] = {
-    {"_shuffle_oid", _cbson_shuffle_oid, METH_VARARGS,
-     "shuffle an ObjectId into proper byte order."},
-    {"_element_to_bson", _cbson_element_to_bson, METH_VARARGS,
-     "convert a key and value to its bson representation."},
     {"_dict_to_bson", _cbson_dict_to_bson, METH_O,
      "convert a dictionary to a string containing it's BSON representation."},
     {NULL, NULL, 0, NULL}
