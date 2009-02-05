@@ -400,9 +400,62 @@ static PyObject* _elements_to_dict(PyObject* elements) {
                 position += value_length + 1;
                 break;
             }
+        case 3:
+            {
+                int size;
+                memcpy(&size, string + position, 4);
+                PyObject* array_elements = PyString_FromStringAndSize(string + position + 4, size - 5);
+                if (!array_elements) {
+                    return NULL;
+                }
+                value = _elements_to_dict(array_elements);
+                if (!value) {
+                    return NULL;
+                }
+                position += size;
+                break;
+            }
+        case 4:
+            {
+                int size;
+                memcpy(&size, string + position, 4);
+                PyObject* array_elements = PyString_FromStringAndSize(string + position + 4, size - 5);
+                if (!array_elements) {
+                    return NULL;
+                }
+                PyObject* array_dict = _elements_to_dict(array_elements);
+                if (!array_dict) {
+                    return NULL;
+                }
+                position += size;
+
+                value = PyList_New(0);
+                int length = PyDict_Size(array_dict);
+                int i;
+                for (i = 0; i < length; i++) {
+                    char* key;
+                    asprintf(&key, "%d", i);
+                    if (!key) {
+                        PyErr_NoMemory();
+                        return NULL;
+                    }
+                    PyObject* to_append = PyDict_GetItemString(array_dict, key);
+                    free(key);
+                    if (!to_append) {
+                        return NULL;
+                    }
+                    PyList_Append(value, to_append);
+                }
+                break;
+            }
         case 8:
             {
                 value = string[position++] ? Py_True : Py_False;
+                break;
+            }
+        case 10:
+            {
+                value = Py_None;
                 break;
             }
         case 16:
@@ -442,15 +495,15 @@ static PyObject* _cbson_bson_to_dict(PyObject* self, PyObject* bson) {
     if (!elements) {
         return NULL;
     }
-    PyObject* son = _elements_to_dict(elements);
-    if (!son) {
+    PyObject* dict = _elements_to_dict(elements);
+    if (!dict) {
         return NULL;
     }
     PyObject* remainder = PySequence_GetSlice(bson, size, PyString_Size(bson));
     if (!remainder) {
         return NULL;
     }
-    return Py_BuildValue("OO", son, remainder);
+    return Py_BuildValue("OO", dict, remainder);
 }
 
 static PyMethodDef _CBSONMethods[] = {
