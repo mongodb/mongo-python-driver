@@ -39,10 +39,6 @@ class TestSON(unittest.TestCase):
         self.assertEqual(b["hello"], "world")
         self.assertRaises(KeyError, lambda: b["goodbye"])
 
-    def test_from_keys_and_dict(self):
-        a = SON._from_keys_and_dict(["mike", "world", "hello"], {"hello": 1, "world": 2, "mike": 3})
-        self.assertEqual(a.items(), [("mike", 3), ("world", 2), ("hello", 1)])
-
     def test_from_xml(self):
         smorgasbord = """
 <twonk>
