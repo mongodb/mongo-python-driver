@@ -343,22 +343,28 @@ class Collection(object):
         """
         self.drop_index(u"*")
 
-    def drop_index(self, index):
+    def drop_index(self, index_or_name):
         """Drops the specified index on this collection.
 
         Can be used on non-existant collections or collections with no indexes.
-        Raises OperationFailure on an error. Raises TypeError if index is not an
-        instance of (str, unicode).
+        Raises OperationFailure on an error. `index_or_name` can be either an
+        index name (as returned by `create_index`), or an index specifier (as
+        passed to `create_index`). Raises TypeError if index is not an
+        instance of (str, unicode, list).
 
         :Parameters:
-          - `index`: the name of the index to drop
+          - `index_or_name`: index (or name of index) to drop
         """
-        if not isinstance(index, types.StringTypes):
-            raise TypeError("index must be an instance of (str, unicode)")
+        name = index_or_name
+        if isinstance(index_or_name, types.ListType):
+            name = self._gen_index_name(index_or_name)
+
+        if not isinstance(name, types.StringTypes):
+            raise TypeError("index_or_name must be an index name or list")
 
         self.__database._command(SON([("deleteIndexes",
                                        self.__collection_name),
-                                      ("index", unicode(index))]),
+                                      ("index", name)]),
                                  ["ns not found"])
 
     def index_information(self):
