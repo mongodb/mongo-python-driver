@@ -202,7 +202,7 @@ class Cursor(object):
         applied to this cursor takes precedence over all others.
 
         :Parameters:
-          - `index_or_name`: index (or name of the index) to hint on
+          - `index_or_name`: index (or name of index) to hint on
         """
         self.__check_okay_to_chain()
         if index_or_name is None:
