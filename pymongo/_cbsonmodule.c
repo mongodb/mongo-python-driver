@@ -32,6 +32,7 @@ static PyObject* Binary;
 static PyObject* Code;
 static PyObject* ObjectId;
 static PyObject* DBRef;
+static PyObject* RECompile;
 
 static char* shuffle_oid(const char* oid) {
     char* shuffled = (char*) malloc(12);
@@ -509,6 +510,36 @@ static PyObject* _elements_to_dict(PyObject* elements) {
                 position += 8;
                 break;
             }
+        case 11:
+            {
+                int pattern_length = strlen(string + position);
+                PyObject* pattern = PyUnicode_DecodeUTF8(string + position, pattern_length, "strict");
+                if (!pattern) {
+                    return NULL;
+                }
+                position += pattern_length + 1;
+                int flags_length = strlen(string + position);
+                int flags = 0;
+                int i;
+                for (i = 0; i < flags_length; i++) {
+                    if (string[position + i] == 'i') {
+                        flags |= 2;
+                    } else if (string[position + i] == 'l') {
+                        flags |= 4;
+                    } else if (string[position + i] == 'm') {
+                        flags |= 8;
+                    } else if (string[position + i] == 's') {
+                        flags |= 16;
+                    } else if (string[position + i] == 'u') {
+                        flags |= 32;
+                    } else if (string[position + i] == 'x') {
+                        flags |= 64;
+                    }
+                }
+                position += flags_length + 1;
+                value = PyObject_CallFunction(RECompile, "Oi", pattern, flags);
+                break;
+            }
         case 12:
             {
                 position += 4;
@@ -525,7 +556,7 @@ static PyObject* _elements_to_dict(PyObject* elements) {
                     return NULL;
                 }
                 position += 12;
-                value = PyObject_CallFunction(DBRef, "OO", collection, id);
+                value = PyObject_CallFunctionObjArgs(DBRef, collection, id, NULL);
                 break;
             }
         case 16:
@@ -610,4 +641,7 @@ PyMODINIT_FUNC init_cbson(void) {
 
     PyObject* dbref_module = PyImport_ImportModule("pymongo.dbref");
     DBRef = PyObject_GetAttrString(dbref_module, "DBRef");
+
+    PyObject* re_module = PyImport_ImportModule("re");
+    RECompile = PyObject_GetAttrString(re_module, "compile");
 }
