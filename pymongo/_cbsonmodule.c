@@ -145,10 +145,14 @@ static PyObject* _cbson_element_to_bson(PyObject* self, PyObject* args) {
                 PyErr_NoMemory();
                 return NULL;
             }
-            PyObject* element = _cbson_element_to_bson(self,
-                                                       Py_BuildValue("sO", name,
-                                                                     PyList_GetItem(value, i)));
+            PyObject* args = Py_BuildValue("sO", name, PyList_GetItem(value, i));
             free(name);
+            if (!args) {
+                Py_DECREF(string);
+                return NULL;
+            }
+            PyObject* element = _cbson_element_to_bson(self, args);
+            Py_DECREF(args);
             if (!element) {
                 Py_DECREF(string);
                 return NULL;
@@ -156,13 +160,16 @@ static PyObject* _cbson_element_to_bson(PyObject* self, PyObject* args) {
             PyString_ConcatAndDel(&string, element);
         }
         PyObject* object = _wrap_py_string_as_object(string);
-        return build_element(0x04, name, PyString_Size(object), PyString_AsString(object));
+        PyObject* result = build_element(0x04, name, PyString_Size(object), PyString_AsString(object));
+        Py_DECREF(object);
+        return result;
     } else if (PyObject_IsInstance(value, Binary)) {
         PyObject* subtype_object = PyObject_CallMethod(value, "subtype", NULL);
         if (!subtype_object) {
             return NULL;
         }
         long subtype = PyInt_AsLong(subtype_object);
+        Py_DECREF(subtype_object);
         PyObject* string;
         int length = PyString_Size(value);
         if (subtype == 2) {
@@ -171,20 +178,24 @@ static PyObject* _cbson_element_to_bson(PyObject* self, PyObject* args) {
             length += 4;
         } else {
             string = value;
+            Py_INCREF(string);
         }
         char* data = malloc(5 + length);
         if (!data) {
+            Py_DECREF(string);
             PyErr_NoMemory();
             return NULL;
         }
         const char* string_data = PyString_AsString(string);
         if (!string_data) {
+            Py_DECREF(string);
             free(data);
             return NULL;
         }
         memcpy(data, &length, 4);
         data[4] = (char)subtype;
         memcpy(data + 5, string_data, length);
+        Py_DECREF(string);
         PyObject* result = build_element(0x05, name, length + 5, data);
         free(data);
         return result;
@@ -219,6 +230,7 @@ static PyObject* _cbson_element_to_bson(PyObject* self, PyObject* args) {
             return NULL;
         }
         PyObject* encoded_collection = PyUnicode_AsUTF8String(collection_object);
+        Py_DECREF(collection_object);
         if (!encoded_collection) {
             return NULL;
         }
@@ -228,23 +240,29 @@ static PyObject* _cbson_element_to_bson(PyObject* self, PyObject* args) {
         }
         PyObject* id_object = PyObject_CallMethod(value, "id", NULL);
         if (!id_object) {
+            Py_DECREF(encoded_collection);
             return NULL;
         }
         const char* id = PyString_AsString(PyObject_Str(id_object));
         if (!id) {
+            Py_DECREF(encoded_collection);
+            Py_DECREF(id_object);
             return NULL;
         }
         char* shuffled = shuffle_oid(id);
+        Py_DECREF(id_object);
 
         int collection_length = strlen(collection) + 1;
         char* data = (char*)malloc(4 + collection_length + 12);
         if (!data) {
+            Py_DECREF(encoded_collection);
             free(shuffled);
             PyErr_NoMemory();
             return NULL;
         }
         memcpy(data, &collection_length, 4);
         memcpy(data + 4, collection, collection_length);
+        Py_DECREF(encoded_collection);
         memcpy(data + 4 + collection_length, shuffled, 12);
         free(shuffled);
 
