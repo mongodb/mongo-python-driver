@@ -17,7 +17,7 @@
 These tests are skipped by nose by default (since they depend on having a
 paired setup. To run the tests just run this file manually.
 
-Left and right nodes will be $db_ip:$db_port and $db_ip2:$db_port2 or
+Left and right nodes will be $DB_IP:$DB_PORT and $DB_IP2:$DB_PORT2 or
 localhost:27017 and localhost:27018 by default.
 """
 
@@ -35,11 +35,11 @@ skip_tests = True
 class TestPaired(unittest.TestCase):
     def setUp(self):
 #        logging.getLogger("pymongo.connection").setLevel(logging.DEBUG)
-        left_host = os.environ.get("db_ip", "localhost")
-        left_port = int(os.environ.get("db_port", 27017))
+        left_host = os.environ.get("DB_IP", "localhost")
+        left_port = int(os.environ.get("DB_PORT", 27017))
         self.left = (left_host, left_port)
-        right_host = os.environ.get("db_ip2", "localhost")
-        right_port = int(os.environ.get("db_port2", 27018))
+        right_host = os.environ.get("DB_IP2", "localhost")
+        right_port = int(os.environ.get("DB_PORT2", 27018))
         self.right = (right_host, right_port)
         self.bad = ("somedomainthatdoesntexist.org", 12345)
 

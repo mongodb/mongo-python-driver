@@ -30,8 +30,8 @@ from pymongo import ASCENDING, DESCENDING
 
 class TestMongo(unittest.TestCase):
     def setUp(self):
-        self.host = os.environ.get("db_ip", "localhost")
-        self.port = int(os.environ.get("db_port", 27017))
+        self.host = os.environ.get("DB_IP", "localhost")
+        self.port = int(os.environ.get("DB_PORT", 27017))
 
     def test_connection(self):
         self.assertRaises(TypeError, Mongo, 1)

@@ -24,14 +24,14 @@ from pymongo.database import Database
 from pymongo.connection import Connection
 
 def get_connection():
-    host = os.environ.get("db_ip", "localhost")
-    port = int(os.environ.get("db_port", 27017))
+    host = os.environ.get("DB_IP", "localhost")
+    port = int(os.environ.get("DB_PORT", 27017))
     return Connection(host, port)
 
 class TestConnection(unittest.TestCase):
     def setUp(self):
-        self.host = os.environ.get("db_ip", "localhost")
-        self.port = int(os.environ.get("db_port", 27017))
+        self.host = os.environ.get("DB_IP", "localhost")
+        self.port = int(os.environ.get("DB_PORT", 27017))
 
     def test_types(self):
         self.assertRaises(TypeError, Connection, 1)
