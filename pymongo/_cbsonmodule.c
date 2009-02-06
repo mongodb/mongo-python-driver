@@ -216,11 +216,17 @@ static PyObject* _cbson_element_to_bson(PyObject* self, PyObject* args) {
         time_since_epoch += PyDateTime_DATE_GET_MICROSECOND(value) / 1000;
         return build_element(0x09, name, 8, (char*)&time_since_epoch);
     } else if (PyObject_IsInstance(value, ObjectId)) {
-        const char* pre_shuffle = PyString_AsString(PyObject_Str(value));
+        PyObject* pystring = PyObject_Str(value);
+        if (!pystring) {
+            return NULL;
+        }
+        const char* pre_shuffle = PyString_AsString(pystring);
         if (!pre_shuffle) {
+            Py_DECREF(pystring);
             return NULL;
         }
         char* shuffled = shuffle_oid(pre_shuffle);
+        Py_DECREF(pystring);
         PyObject* result = build_element(0x07, name, 12, shuffled);
         free(shuffled);
         return result;
@@ -236,6 +242,7 @@ static PyObject* _cbson_element_to_bson(PyObject* self, PyObject* args) {
         }
         const char* collection = PyString_AsString(encoded_collection);
         if (!collection) {
+            Py_DECREF(encoded_collection);
             return NULL;
         }
         PyObject* id_object = PyObject_CallMethod(value, "id", NULL);
@@ -243,14 +250,20 @@ static PyObject* _cbson_element_to_bson(PyObject* self, PyObject* args) {
             Py_DECREF(encoded_collection);
             return NULL;
         }
-        const char* id = PyString_AsString(PyObject_Str(id_object));
+        PyObject* id_str = PyObject_Str(id_object);
+        Py_DECREF(id_object);
+        if (!id_str) {
+            Py_DECREF(encoded_collection);
+            return NULL;
+        }
+        const char* id = PyString_AsString(id_str);
         if (!id) {
             Py_DECREF(encoded_collection);
-            Py_DECREF(id_object);
+            Py_DECREF(id_str);
             return NULL;
         }
         char* shuffled = shuffle_oid(id);
-        Py_DECREF(id_object);
+        Py_DECREF(id_str);
 
         int collection_length = strlen(collection) + 1;
         char* data = (char*)malloc(4 + collection_length + 12);
