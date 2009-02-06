@@ -502,7 +502,13 @@ static PyObject* _elements_to_dict(PyObject* elements) {
                 if (!data) {
                     return NULL;
                 }
-                value = PyObject_CallFunctionObjArgs(Binary, data, PyInt_FromLong(subtype), NULL);
+                PyObject* st = PyInt_FromLong(subtype);
+                if (!st) {
+                    Py_DECREF(data);
+                    return NULL;
+                }
+                value = PyObject_CallFunctionObjArgs(Binary, data, st, NULL);
+                Py_DECREF(st);
                 Py_DECREF(data);
                 if (!value) {
                     return NULL;
