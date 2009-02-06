@@ -177,6 +177,7 @@ static PyObject* _cbson_element_to_bson(PyObject* self, PyObject* args) {
         }
         const char* string_data = PyString_AsString(string);
         if (!string_data) {
+            free(data);
             return NULL;
         }
         memcpy(data, &length, 4);
