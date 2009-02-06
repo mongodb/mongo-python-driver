@@ -299,6 +299,7 @@ static PyObject* _wrap_py_string_as_object(PyObject* string) {
     int length = PyString_Size(string) + 5;
     char* data = (char*)malloc(length);
     if (!data) {
+        Py_DECREF(string);
         PyErr_NoMemory();
         return NULL;
     }
@@ -306,6 +307,7 @@ static PyObject* _wrap_py_string_as_object(PyObject* string) {
     memcpy(data, &length, 4);
     memcpy(data + 4, elements, length - 5);
     data[length - 1] = 0x00;
+    Py_DECREF(string);
 
     PyObject* result = Py_BuildValue("s#", data, length);
     free(data);
@@ -598,14 +600,19 @@ static PyObject* _cbson_bson_to_dict(PyObject* self, PyObject* bson) {
         return NULL;
     }
     PyObject* dict = _elements_to_dict(elements);
+    Py_DECREF(elements);
     if (!dict) {
         return NULL;
     }
     PyObject* remainder = PySequence_GetSlice(bson, size, PyString_Size(bson));
     if (!remainder) {
+        Py_DECREF(dict);
         return NULL;
     }
-    return Py_BuildValue("OO", dict, remainder);
+    PyObject* result = Py_BuildValue("OO", dict, remainder);
+    Py_DECREF(dict);
+    Py_DECREF(remainder);
+    return result;
 }
 
 static PyMethodDef _CBSONMethods[] = {
