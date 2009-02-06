@@ -444,6 +444,7 @@ static PyObject* _elements_to_dict(PyObject* elements) {
                     return NULL;
                 }
                 value = _elements_to_dict(array_elements);
+                Py_DECREF(array_elements);
                 if (!value) {
                     return NULL;
                 }
@@ -459,6 +460,7 @@ static PyObject* _elements_to_dict(PyObject* elements) {
                     return NULL;
                 }
                 PyObject* array_dict = _elements_to_dict(array_elements);
+                Py_DECREF(array_elements);
                 if (!array_dict) {
                     return NULL;
                 }
@@ -471,16 +473,19 @@ static PyObject* _elements_to_dict(PyObject* elements) {
                     char* key;
                     asprintf(&key, "%d", i);
                     if (!key) {
+                        Py_DECREF(array_dict);
                         PyErr_NoMemory();
                         return NULL;
                     }
                     PyObject* to_append = PyDict_GetItemString(array_dict, key);
                     free(key);
                     if (!to_append) {
+                        Py_DECREF(array_dict);
                         return NULL;
                     }
                     PyList_Append(value, to_append);
                 }
+                Py_DECREF(array_dict);
                 break;
             }
         case 5:
@@ -498,6 +503,7 @@ static PyObject* _elements_to_dict(PyObject* elements) {
                     return NULL;
                 }
                 value = PyObject_CallFunctionObjArgs(Binary, data, PyInt_FromLong(subtype), NULL);
+                Py_DECREF(data);
                 if (!value) {
                     return NULL;
                 }
@@ -574,6 +580,7 @@ static PyObject* _elements_to_dict(PyObject* elements) {
                 }
                 position += flags_length + 1;
                 value = PyObject_CallFunction(RECompile, "Oi", pattern, flags);
+                Py_DECREF(pattern);
                 break;
             }
         case 12:
@@ -589,10 +596,13 @@ static PyObject* _elements_to_dict(PyObject* elements) {
                 PyObject* id = PyObject_CallFunction(ObjectId, "s#", shuffled, 12);
                 free(shuffled);
                 if (!id) {
+                    Py_DECREF(collection);
                     return NULL;
                 }
                 position += 12;
                 value = PyObject_CallFunctionObjArgs(DBRef, collection, id, NULL);
+                Py_DECREF(collection);
+                Py_DECREF(id);
                 break;
             }
         case 16:
@@ -607,7 +617,6 @@ static PyObject* _elements_to_dict(PyObject* elements) {
                 break;
             }
         default:
-            printf("type: %d\n", type);
             PyErr_SetString(CBSONError, "no c decoder for this type yet");
             return NULL;
         }
