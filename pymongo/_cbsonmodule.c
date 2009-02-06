@@ -516,7 +516,7 @@ static PyObject* _elements_to_dict(PyObject* elements) {
             {
                 int length;
                 memcpy(&length, string + position, 4);
-                int subtype = (int)string[position + 4];
+                int subtype = (unsigned char)string[position + 4];
                 PyObject* data;
                 if (subtype == 2) {
                     data = PyString_FromStringAndSize(string + position + 9, length - 4);

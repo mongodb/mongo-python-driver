@@ -114,6 +114,7 @@ class TestBSON(unittest.TestCase):
         helper({"an object": {"test": u"something"}})
         helper({"a binary": Binary("test", 100)})
         helper({"a binary": Binary("test", 128)})
+        helper({"a binary": Binary("test", 254)})
         helper({"another binary": Binary("test")})
         helper(SON([(u'test dst', datetime.datetime(1993, 4, 4, 2))]))
 
