@@ -271,8 +271,17 @@ static PyObject* _cbson_element_to_bson(PyObject* self, PyObject* args) {
         return result;
     } else if (PyObject_HasAttrString(value, "pattern") &&
                PyObject_HasAttrString(value, "flags")) { // TODO just a proxy for checking if it is a compiled re
-        const char* pattern =  PyString_AsString(PyObject_GetAttrString(value, "pattern"));
-        long int_flags = PyInt_AsLong(PyObject_GetAttrString(value, "flags"));
+        PyObject* py_flags = PyObject_GetAttrString(value, "flags");
+        if (!py_flags) {
+            return NULL;
+        }
+        long int_flags = PyInt_AsLong(py_flags);
+        Py_DECREF(py_flags);
+        PyObject* py_pattern = PyObject_GetAttrString(value, "pattern");
+        if (!py_pattern) {
+            return NULL;
+        }
+        const char* pattern =  PyString_AsString(py_pattern);
         char flags[10];
         flags[0] = 0;
         // TODO don't hardcode these
@@ -298,10 +307,12 @@ static PyObject* _cbson_element_to_bson(PyObject* self, PyObject* args) {
         int flags_length = strlen(flags) + 1;
         char* data = malloc(pattern_length + flags_length);
         if (!data) {
+            Py_DECREF(py_pattern);
             PyErr_NoMemory();
             return NULL;
         }
         memcpy(data, pattern, pattern_length);
+        Py_DECREF(py_pattern);
         memcpy(data + pattern_length, flags, flags_length);
         PyObject* result = build_element(0x0B, name, pattern_length + flags_length, data);
         free(data);
