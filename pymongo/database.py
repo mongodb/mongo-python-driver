@@ -15,7 +15,7 @@
 """Database level operations."""
 
 import types
-import md5
+import hashlib
 
 from son import SON
 from dbref import DBRef
@@ -285,7 +285,7 @@ class Database(object):
         if not isinstance(username, types.StringTypes):
             raise TypeError("username must be an instance of (str, unicode)")
 
-        return unicode(md5.new(username + ":mongo:" + password).hexdigest())
+        return unicode(hashlib.md5(username + ":mongo:" + password).hexdigest())
 
     def authenticate(self, name, password):
         """Authenticate to use this database.
@@ -311,7 +311,7 @@ class Database(object):
         result = self._command({"getnonce": 1})
         nonce = result["nonce"]
         digest = self._password_digest(name, password)
-        key = unicode(md5.new("%s%s%s" % (nonce, unicode(name), digest)
+        key = unicode(hashlib.md5("%s%s%s" % (nonce, unicode(name), digest)
                               ).hexdigest())
         try:
             result = self._command(SON([("authenticate", 1),
