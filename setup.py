@@ -1,8 +1,11 @@
 #!/usr/bin/env python
 
-from ez_setup import use_setuptools
-use_setuptools()
-from setuptools import setup
+try:
+    from setuptools import setup
+except ImportError:
+    from ez_setup import use_setuptools
+    use_setuptools()
+    from setuptools import setup
 from distutils.core import Extension
 
 f = open("README.rst")
@@ -15,7 +18,7 @@ finally:
 
 setup(
     name="pymongo",
-    version="0.5pre",
+    version="0.5.1pre",
     description="Driver for the Mongo database <http://www.mongodb.org>",
     long_description=readme_content,
     author="10gen",
