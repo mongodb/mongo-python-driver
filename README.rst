@@ -17,8 +17,11 @@ If you have `setuptools <http://peak.telecommunity.com/DevCenter/setuptools>`_ i
 
 Dependencies
 ============
+The PyMongo distribution has been tested on both Python 2.5 and Python 2.6. Additional dependencies are:
+
 - `ElementTree <http://effbot.org/zone/element-index.htm>`_
 - (to generate documentation) `epydoc <http://epydoc.sourceforge.net/>`_
+- (to auto-discover tests) `nose <http://somethingaboutorange.com/mrl/projects/nose/>`_
 
 Examples
 ========
