@@ -71,7 +71,11 @@ static PyObject* build_element(const char type, const char* name, const int leng
     return result;
 }
 
-static PyObject* build_string(int type, const char* string, const char* name) {
+static PyObject* build_string(int type, PyObject* py_string, const char* name) {
+    const char* string = PyString_AsString(py_string);
+    if (!string) {
+        return NULL;
+    }
     int string_length = strlen(string) + 1;
     int data_length = 4 + string_length;
 
@@ -100,21 +104,15 @@ static PyObject* _cbson_element_to_bson(PyObject* self, PyObject* args) {
      * here we check for type equivalence, not isinstance in some
      * places. */
     if (PyString_CheckExact(value)) {
-        const char* encoded_bytes = PyString_AsString(value);
-        if (!encoded_bytes) {
-            return NULL;
-        }
-        return build_string(0x02, encoded_bytes, name);
+        return build_string(0x02, value, name);
     } else if (PyUnicode_CheckExact(value)) {
         PyObject* encoded = PyUnicode_AsUTF8String(value);
         if (!encoded) {
             return NULL;
         }
-        const char* encoded_bytes = PyString_AsString(encoded);
-        if (!encoded_bytes) {
-            return NULL;
-        }
-        return build_string(0x02, encoded_bytes, name);
+        PyObject* result = build_string(0x02, encoded, name);
+        Py_DECREF(encoded);
+        return result;
     } else if (PyInt_CheckExact(value)) {
         int int_value = (int)PyInt_AsLong(value);
         return build_element(0x10, name, 4, (char*)&int_value);
@@ -132,7 +130,9 @@ static PyObject* _cbson_element_to_bson(PyObject* self, PyObject* args) {
         if (!object) {
             return NULL;
         }
-        return build_element(0x03, name, PyString_Size(object), PyString_AsString(object));
+        PyObject* result = build_element(0x03, name, PyString_Size(object), PyString_AsString(object));
+        Py_DECREF(object);
+        return result;
     } else if (PyList_CheckExact(value)) {
         PyObject* string = PyString_FromString("");
         int items = PyList_Size(value);
@@ -141,6 +141,7 @@ static PyObject* _cbson_element_to_bson(PyObject* self, PyObject* args) {
             char* name;
             asprintf(&name, "%d", i);
             if (!name) {
+                Py_DECREF(string);
                 PyErr_NoMemory();
                 return NULL;
             }
@@ -149,6 +150,7 @@ static PyObject* _cbson_element_to_bson(PyObject* self, PyObject* args) {
                                                                      PyList_GetItem(value, i)));
             free(name);
             if (!element) {
+                Py_DECREF(string);
                 return NULL;
             }
             PyString_ConcatAndDel(&string, element);
@@ -187,11 +189,7 @@ static PyObject* _cbson_element_to_bson(PyObject* self, PyObject* args) {
         free(data);
         return result;
     } else if (PyObject_IsInstance(value, Code)) {
-        const char* encoded_bytes = PyString_AsString(value);
-        if (!encoded_bytes) {
-            return NULL;
-        }
-        return build_string(0x0D, encoded_bytes, name);
+        return build_string(0x0D, value, name);
     } else if (PyDateTime_CheckExact(value)) {
         time_t rawtime;
         time(&rawtime);
@@ -324,12 +322,16 @@ static PyObject* _cbson_dict_to_bson(PyObject* self, PyObject* dict) {
             return NULL;
         }
         while (PyDict_Next(dict, &pos, &key, &value)) {
-            PyObject* element = _cbson_element_to_bson(self,
-                                                       Py_BuildValue("OO", key, value));
+            PyObject* args = Py_BuildValue("OO", key, value);
+            if (!args) {
+                return NULL;
+            }
+            PyObject* element = _cbson_element_to_bson(self, args);
             if (!element) {
                 return NULL;
             }
             PyString_ConcatAndDel(&string, element);
+            Py_DECREF(args);
         }
         return _wrap_py_string_as_object(string);
     } else if (PyObject_IsInstance(dict, SON)) {
@@ -339,6 +341,7 @@ static PyObject* _cbson_dict_to_bson(PyObject* self, PyObject* dict) {
         }
         PyObject* keys = PyObject_CallMethod(dict, "keys", NULL);
         if (!keys) {
+            Py_DECREF(string);
             return NULL;
         }
         int items = PyList_Size(keys);
@@ -346,16 +349,26 @@ static PyObject* _cbson_dict_to_bson(PyObject* self, PyObject* dict) {
         for(i = 0; i < items; i++) {
             PyObject* name = PyList_GetItem(keys, i);
             if (!name) {
+                Py_DECREF(string);
+                Py_DECREF(keys);
                 return NULL;
             }
-            PyObject* element = _cbson_element_to_bson(self,
-                                                       Py_BuildValue("OO", name,
-                                                                     PyDict_GetItem(dict, name)));
+            PyObject* args = Py_BuildValue("OO", name, PyDict_GetItem(dict, name));
+            if (!args) {
+                Py_DECREF(string);
+                Py_DECREF(keys);
+                return NULL;
+            }
+            PyObject* element = _cbson_element_to_bson(self, args);
+            Py_DECREF(args);
             if (!element) {
+                Py_DECREF(string);
+                Py_DECREF(keys);
                 return NULL;
             }
             PyString_ConcatAndDel(&string, element);
         }
+        Py_DECREF(keys);
         return _wrap_py_string_as_object(string);
     }
     PyErr_SetString(PyExc_TypeError, "argument to from_dict must be a mapping type");
@@ -477,6 +490,7 @@ static PyObject* _elements_to_dict(PyObject* elements) {
         case 10:
             {
                 value = Py_None;
+                Py_INCREF(value);
                 break;
             }
         case 7:
@@ -493,6 +507,7 @@ static PyObject* _elements_to_dict(PyObject* elements) {
         case 8:
             {
                 value = string[position++] ? Py_True : Py_False;
+                Py_INCREF(value);
                 break;
             }
         case 9:
@@ -579,6 +594,8 @@ static PyObject* _elements_to_dict(PyObject* elements) {
             return NULL;
         }
         PyDict_SetItem(dict, name, value);
+        Py_DECREF(name);
+        Py_DECREF(value);
     }
     return dict;
 }
