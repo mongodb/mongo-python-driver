@@ -195,15 +195,10 @@ class Connection(object):
         to_send += data
 
         total_sent = 0
-        retry = True
         while total_sent < len(to_send):
             sent = self.__socket.send(to_send[total_sent:])
             if sent == 0:
-                if retry:
-                    retry = False
-                    self.__connect()
-                else:
-                    raise ConnectionFailure("connection closed")
+                raise ConnectionFailure("connection closed")
             total_sent += sent
 
         return self.__id - 1
@@ -222,15 +217,10 @@ class Connection(object):
         """
         def receive(length):
             message = ""
-            retry = True
             while len(message) < length:
                 chunk = self.__socket.recv(length - len(message))
                 if chunk == "":
-                    if retry:
-                        retry = False
-                        self.__connect()
-                    else:
-                        raise ConnectionFailure("connection closed")
+                    raise ConnectionFailure("connection closed")
                 message += chunk
             return message
 
