@@ -276,7 +276,7 @@ def _element_to_dict(data):
     return (element_name, value, data)
 
 def _elements_to_dict(data):
-    result = SON()
+    result = {}
     while data:
         (key, value, data) = _element_to_dict(data)
         result[key] = value
