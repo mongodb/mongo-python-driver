@@ -15,4 +15,7 @@
 """Clean up script for build artifacts."""
 
 import os
-os.remove("pymongo/_cbson.so")
+try:
+    os.remove("pymongo/_cbson.so")
+except:
+    pass
