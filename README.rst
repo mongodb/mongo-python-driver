@@ -33,17 +33,15 @@ Here's a basic example (for more see the *examples/* directory):
 >>> db.name()
 u'test'
 >>> db.my_collection
-Collection(Database(Connection('localhost', 27017), u'test'),
-u'my_collection')
+Collection(Database(Connection('localhost', 27017), u'test'), u'my_collection')
 >>> db.my_collection.save({"x": 10})
-ObjectId('\x03\x1c\x06\x8d|\x9d}O\x8b\xaf!\xa0')
+ObjectId('D\x87\xdd\xe8\xd6\x0f\x89\xfc\xab\x06\xac\x8e')
 >>> db.my_collection.save({"x": 8})
-ObjectId('\x18\x1f\xa4lOV&\x0bH\xf9%A')
+ObjectId('\xde\x0b\xec^\xdc\x11`\x12\xf8\xeb/\xcf')
 >>> db.my_collection.save({"x": 11})
-ObjectId('R\xa3\x85p\xc3m=\xe5\x0e*\x1d\xa7')
+ObjectId('\t6\xc6\x07\xb3\xfc\x87\xc4\x82\x04\x0f\\')
 >>> db.my_collection.find_one()
-SON([(u'x', 10), (u'_id',
-ObjectId('\x03\x1c\x06\x8d|\x9d}O\x8b\xaf!\xa0'))])
+{u'x': 10, u'_id': ObjectId('D\x87\xdd\xe8\xd6\x0f\x89\xfc\xab\x06\xac\x8e')}
 >>> for item in db.my_collection.find():
 ...     print item["x"]
 ...
@@ -52,6 +50,7 @@ ObjectId('\x03\x1c\x06\x8d|\x9d}O\x8b\xaf!\xa0'))])
 11
 >>> from pymongo import ASCENDING
 >>> db.my_collection.create_index("x", ASCENDING)
+u'x_1'
 >>> for item in db.my_collection.find().sort("x", ASCENDING):
 ...     print item["x"]
 ...
