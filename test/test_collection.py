@@ -259,5 +259,14 @@ class TestCollection(unittest.TestCase):
 
     # TODO test safe save?
 
+    def test_count(self):
+        db = self.db
+        db.drop_collection("test")
+
+        self.assertEqual(db.test.count(), 0)
+        db.test.save({})
+        db.test.save({})
+        self.assertEqual(db.test.count(), 2)
+
 if __name__ == "__main__":
     unittest.main()

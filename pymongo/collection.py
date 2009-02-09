@@ -290,6 +290,9 @@ class Collection(object):
 
         return Cursor(self, spec, return_fields, skip, limit)
 
+    def count(self):
+        return self.find().count()
+
     def _gen_index_name(self, keys):
         """Generate an index name from the set of fields it is over.
         """
