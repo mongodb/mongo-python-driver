@@ -6,6 +6,8 @@ except ImportError:
     from ez_setup import use_setuptools
     use_setuptools()
     from setuptools import setup
+from distutils.command.build_ext import build_ext
+from distutils.errors import CCompilerError
 from distutils.core import Extension
 
 f = open("README.rst")
@@ -15,6 +17,24 @@ except:
     readme_content = ""
 finally:
     f.close()
+
+class custom_build_ext(build_ext):
+    """Allow C extension building to fail.
+
+    The C extension speeds up BSON encoding, but is not essential.
+    """
+    def build_extension(self, ext):
+        try:
+            build_ext.build_extension(self, ext)
+        except CCompilerError:
+            print ""
+            print ("*" * 62)
+            print """WARNING: The %s extension module could not
+be compiled. No C extensions are essential for PyMongo to run,
+although they do result in significant speed improvements.
+
+Above is the ouput showing how the compilation failed.""" % ext.name
+            print ("*" * 62 + "\n")
 
 setup(
     name="pymongo",
@@ -37,4 +57,5 @@ setup(
         "Operating System :: Microsoft :: Windows",
         "Operating System :: POSIX",
         "Programming Language :: Python",
-        "Topic :: Database"])
+        "Topic :: Database"],
+    cmdclass={"build_ext": custom_build_ext})
