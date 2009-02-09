@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Clean up script for build artifacts."""
+"""Clean up script for build artifacts.
+
+Only really intended to be used by internal build scripts.
+"""
 
 import os
 try:
