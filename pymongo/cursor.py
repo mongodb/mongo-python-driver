@@ -16,15 +16,12 @@
 
 import types
 import struct
-from threading import Lock
 
 import pymongo
 import bson
 from son import SON
 from code import Code
 from errors import InvalidOperation, OperationFailure
-
-_query_lock = Lock()
 
 class Cursor(object):
     """A cursor / iterator over Mongo query results.
@@ -233,10 +230,10 @@ class Cursor(object):
             return len(self.__data)
 
         def send_message(operation, message):
-            _query_lock.acquire(1)
-            request_id = self.__collection._send_message(operation, message)
-            response = self.__collection.database().connection()._receive_message(1, request_id)
-            _query_lock.release()
+            socket_number = self.__collection.database().connection()._acquire_socket()
+            request_id = self.__collection._send_message(operation, message, socket=socket_number)
+            response = self.__collection.database().connection()._receive_message(socket_number, 1, request_id)
+            self.__collection.database().connection()._release_socket(socket_number)
 
             response_flag = struct.unpack("<i", response[:4])[0]
             if response_flag == 1:

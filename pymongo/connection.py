@@ -19,6 +19,7 @@ import struct
 import types
 import traceback
 import logging
+import threading
 
 from errors import ConnectionFailure, InvalidName, OperationFailure, ConfigurationError
 from database import Database
@@ -55,6 +56,7 @@ class Connection(object):
         self.__id = 1
         self.__cursor_manager = CursorManager(self)
 
+        self.__lock = threading.Lock()
         self.__socket = None
         if _connect:
             self.__connect()
@@ -175,15 +177,17 @@ class Connection(object):
 
         self.__cursor_manager = manager
 
-    def _send_message(self, operation, data):
+    def _send_message(self, operation, data, socket=None):
         """Say something to Mongo.
 
         Raises ConnectionFailure if the message cannot be sent. Returns the
         request id of the sent message.
 
         :Parameters:
-          - `operation`: the opcode of the message
-          - `data`: the data to send
+          - `operation`: opcode of the message
+          - `data`: data to send
+          - `socket`: socket on which to send the message (as returned by
+            `_acquire_socket`, or None
         """
         # header
         to_send = struct.pack("<i", 16 + len(data))
@@ -203,7 +207,7 @@ class Connection(object):
 
         return self.__id - 1
 
-    def _receive_message(self, operation, request_id):
+    def _receive_message(self, socket, operation, request_id):
         """Receive a message from Mongo.
 
         Returns the message body. Asserts that the message uses the given opcode
@@ -211,9 +215,10 @@ class Connection(object):
         synchronously.
 
         :Parameters:
-          - `operation`: the opcode of the message
-          - `request_id`: the request id that the message should be in response
-            to
+          - `socket`: socket on which to receive the message (as returned by
+            `acquire_socket`.
+          - `operation`: opcode of the message
+          - `request_id`: request id that the message should be in response to
         """
         def receive(length):
             message = ""
@@ -330,3 +335,15 @@ class Connection(object):
 
     def next(self):
         raise TypeError("'Connection' object is not iterable")
+
+    def _acquire_socket(self):
+        """Acquire a socket to use for synchronous send and receive operations.
+        """
+        self.__lock.acquire(1)
+        return 1
+
+    def _release_socket(self, socket_number):
+        """Release a socket that was acquired using `_acquire_socket`.
+        """
+        assert socket_number == 1
+        self.__lock.release()

@@ -104,14 +104,14 @@ class Collection(object):
         """
         return self.__collection_name
 
-    def _send_message(self, operation, data):
+    def _send_message(self, operation, data, socket=None):
         """Wrap up a message and send it.
         """
         # reserved int, full collection name, message data
         message = _ZERO
         message += bson._make_c_string(self.full_name())
         message += data
-        return self.__database.connection()._send_message(operation, message)
+        return self.__database.connection()._send_message(operation, message, socket=socket)
 
     def database(self):
         """Get the database that this collection is a part of.
