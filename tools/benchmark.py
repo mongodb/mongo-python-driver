@@ -27,7 +27,7 @@ N = 30000
 def timed(function, db):
     before = datetime.datetime.now()
     function(db)
-    print datetime.datetime.now() - before
+    print "%s%s" % (function.__name__.ljust(15), datetime.datetime.now() - before)
 
 def insert(db):
     for i in range(N):
@@ -46,13 +46,10 @@ def find(db):
         for _ in db.test.find({"i": 9876}):
             pass
 
-def find2(db):
+def find_range(db):
     for _ in range(N):
         for _ in db.test.find({"i": {"$gt": 200, "$lt": 200}}):
             pass
-
-def remove(db):
-    db.test.remove({})
 
 def main():
     db = Connection().benchmark
@@ -62,8 +59,7 @@ def main():
     timed(insert, db)
     timed(find_one, db)
     timed(find, db)
-    timed(find2, db)
-    timed(remove, db)
+    timed(find_range, db)
 
 if __name__ == "__main__":
     main()
