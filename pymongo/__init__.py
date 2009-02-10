@@ -14,6 +14,10 @@
 
 """A Mongo driver for Python."""
 
+import types
+
+from pymongo.son import SON
+
 ASCENDING = 1
 """Ascending sort order."""
 DESCENDING = -1
@@ -25,4 +29,35 @@ SLOW_ONLY = 1
 """Only profile slow operations."""
 ALL = 2
 """Profile all operations."""
+
+def _index_list(key_or_list, direction):
+    """Helper to generate a list of (key, direction) pairs.
+
+    Takes such a list, or a single key and direction.
+    """
+    if direction is not None:
+        return [(key_or_list, direction)]
+    else:
+        return key_or_list
+
+def _index_document(index_list):
+    """Helper to generate an index specifying document.
+
+    Takes a list of (key, direction) pairs.
+    """
+    if not isinstance(index_list, types.ListType):
+        raise TypeError("if no direction is specified, key_or_list must be an"
+                        "instance of list")
+    if not len(index_list):
+        raise ValueError("key_or_list must not be the empty list")
+
+    index = SON()
+    for (key, value) in index_list:
+        if not isinstance(key, types.StringTypes):
+            raise TypeError("first item in each key pair must be a string")
+        if not isinstance(value, types.IntType):
+            raise TypeError("second item in each key pair must be ASCENDING or"
+                            "DESCENDING")
+        index[key] = value
+    return index
 

@@ -16,6 +16,7 @@
 
 import types
 
+import pymongo
 import bson
 from objectid import ObjectId
 from cursor import Cursor
@@ -312,28 +313,11 @@ class Collection(object):
           - `direction` (optional): must be included if key_or_list is a single
             key, otherwise must be None
         """
-        if direction:
-            keys = [(key_or_list, direction)]
-        else:
-            keys = key_or_list
-
-        if not isinstance(keys, types.ListType):
-            raise TypeError("if no direction is specified, key_or_list must be an instance of list")
-        if not len(keys):
-            raise ValueError("key_or_list must not be the empty list")
-
         to_save = SON()
+        keys = pymongo._index_list(key_or_list, direction)
         to_save["name"] = self._gen_index_name(keys)
         to_save["ns"] = self.full_name()
-
-        key_object = SON()
-        for (key, value) in keys:
-            if not isinstance(key, types.StringTypes):
-                raise TypeError("first item in each key pair must be a string")
-            if not isinstance(value, types.IntType):
-                raise TypeError("second item in each key pair must be ASCENDING or DESCENDING")
-            key_object[key] = value
-        to_save["key"] = key_object
+        to_save["key"] = pymongo._index_document(keys)
 
         self.__database.system.indexes.save(to_save, False)
         return to_save["name"]

@@ -18,6 +18,7 @@ import types
 import struct
 from threading import Lock
 
+import pymongo
 import bson
 from son import SON
 from code import Code
@@ -140,27 +141,8 @@ class Cursor(object):
             key, otherwise must be None
         """
         self.__check_okay_to_chain()
-
-        # TODO a lot of this logic could be shared with create_index()
-        if direction:
-            keys = [(key_or_list, direction)]
-        else:
-            keys = key_or_list
-
-        if not isinstance(keys, types.ListType):
-            raise TypeError("if no direction is specified, key_or_list must be an instance of list")
-        if not len(keys):
-            raise ValueError("key_or_list must not be the empty list")
-
-        orderby = SON()
-        for (key, value) in keys:
-            if not isinstance(key, types.StringTypes):
-                raise TypeError("first item in each key pair must be a string")
-            if not isinstance(value, types.IntType):
-                raise TypeError("second item in each key pair must be ASCENDING or DESCENDING")
-            orderby[key] = value
-
-        self.__ordering = orderby
+        keys = pymongo._index_list(key_or_list, direction)
+        self.__ordering = pymongo._index_document(keys)
         return self
 
     def count(self):
