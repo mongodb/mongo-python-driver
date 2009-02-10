@@ -165,6 +165,22 @@ class TestCollection(unittest.TestCase):
 
         qcheck.check_unittest(self, remove_insert_find_one, qcheck.gen_mongo_dict(3))
 
+    def test_find_w_fields(self):
+        db = self.db
+        db.test.remove({})
+
+        db.test.insert({"x": 1, "mike": "awesome", "extra thing": "abcdefghijklmnopqrstuvwxyz"})
+        self.assertEqual(1, db.test.count())
+        self.assertTrue("x" in db.test.find({}).next())
+        self.assertTrue("mike" in db.test.find({}).next())
+        self.assertTrue("extra thing" in db.test.find({}).next())
+        self.assertTrue("x" in db.test.find({}, ["x", "mike"]).next())
+        self.assertTrue("mike" in db.test.find({}, ["x", "mike"]).next())
+        self.assertFalse("extra thing" in db.test.find({}, ["x", "mike"]).next())
+        self.assertFalse("x" in db.test.find({}, ["mike"]).next())
+        self.assertTrue("mike" in db.test.find({}, ["mike"]).next())
+        self.assertFalse("extra thing" in db.test.find({}, ["mike"]).next())
+
     def test_find_w_regex(self):
         db = self.db
         db.test.remove({})

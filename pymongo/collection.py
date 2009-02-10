@@ -256,7 +256,7 @@ class Collection(object):
             return result
         return None
 
-    def find(self, spec=None, fields=[], skip=0, limit=0):
+    def find(self, spec=None, fields=None, skip=0, limit=0):
         """Query the database.
 
         Raises TypeError if any of the arguments are of improper type. Returns
@@ -276,18 +276,20 @@ class Collection(object):
             spec = SON()
         if not isinstance(spec, types.DictType):
             raise TypeError("spec must be an instance of dict")
-        if not isinstance(fields, types.ListType):
+        if not isinstance(fields, (types.ListType, types.NoneType)):
             raise TypeError("fields must be an instance of list")
         if not isinstance(skip, types.IntType):
             raise TypeError("skip must be an instance of int")
         if not isinstance(limit, types.IntType):
             raise TypeError("limit must be an instance of int")
 
-        return_fields = len(fields) and SON() or None
-        for field in fields:
-            if not isinstance(field, types.StringTypes):
-                raise TypeError("fields must be a list of key names as (string, unicode)")
-            return_fields[field] = 1
+        return_fields = None
+        if fields is not None:
+            return_fields = {}
+            for field in fields:
+                if not isinstance(field, types.StringTypes):
+                    raise TypeError("fields must be a list of key names as (string, unicode)")
+                return_fields[field] = 1
 
         return Cursor(self, spec, return_fields, skip, limit)
 
