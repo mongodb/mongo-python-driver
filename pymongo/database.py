@@ -47,7 +47,7 @@ class Database(object):
         self.__manipulators = [ObjectIdInjector(self), ObjectIdShuffler(self)]
 
     def __check_name(self, name):
-        for invalid_char in " .$/\\":
+        for invalid_char in [" ", ".", "$", "/", "\\"]:
             if invalid_char in name:
                 raise InvalidName("database names cannot contain the character %r" % name)
         if not name:
@@ -160,7 +160,7 @@ class Database(object):
     def collection_names(self):
         """Get a list of all the collection names in this database.
         """
-        results = self.system.namespaces.find()
+        results = self["system.namespaces"].find()
         names = [r["name"] for r in results]
         names = [n[len(self.__name) + 1:] for n in names
                  if n.startswith(self.__name + ".")]
@@ -237,7 +237,7 @@ class Database(object):
     def profiling_info(self):
         """Returns a list containing current profiling information.
         """
-        return list(self.system.profile.find())
+        return list(self["system.profile"].find())
 
     def error(self):
         """Get a database error if one occured on the last operation.

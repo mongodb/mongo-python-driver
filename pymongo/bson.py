@@ -22,7 +22,6 @@ import random
 import re
 import datetime
 import calendar
-import logging
 
 from binary import Binary
 from code import Code
@@ -36,10 +35,6 @@ try:
     _use_c = True
 except ImportError:
     _use_c = False
-
-_logger = logging.getLogger("pymongo.bson")
-# _logger.setLevel(logging.DEBUG)
-# _logger.addHandler(logging.StreamHandler())
 
 def _get_int(data):
     try:

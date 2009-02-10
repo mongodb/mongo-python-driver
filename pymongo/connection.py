@@ -101,7 +101,7 @@ class Connection(object):
         Return a tuple (host, port). Return True if this connection is
         the master.
         """
-        result = self.admin._command({"ismaster": 1})
+        result = self["admin"]._command({"ismaster": 1})
 
         if result["ismaster"] == 1:
             return True
@@ -140,7 +140,7 @@ class Connection(object):
                 self.__socket.settimeout(_TIMEOUT)
                 self.__socket.connect((host, port))
                 master = self._master()
-                if master == True:
+                if master is True:
                     _logger.debug("success")
                     self.__host = host
                     self.__port = port
@@ -300,7 +300,7 @@ class Connection(object):
     def __database_info(self):
         """Get a dictionary of (database_name: size_on_disk).
         """
-        result = self.admin._command({"listDatabases": 1})
+        result = self["admin"]._command({"listDatabases": 1})
         info = result["databases"]
         return dict([(db["name"], db["sizeOnDisk"]) for db in info])
 

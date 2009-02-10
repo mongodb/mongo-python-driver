@@ -81,9 +81,9 @@ class GridFile(object):
         self.__collection = database[collection]
         self.__collection.chunks.create_index([("files_id", ASCENDING), ("n", ASCENDING)])
 
-        file = self.__collection.files.find_one(file_spec)
-        if file:
-            self.__id = file["_id"]
+        grid_file = self.__collection.files.find_one(file_spec)
+        if grid_file:
+            self.__id = grid_file["_id"]
         else:
             if mode == "r":
                 raise IOError("No such file: %r" % file_spec)
@@ -103,10 +103,10 @@ class GridFile(object):
     def __erase(self):
         """Erase all of the data stored in this GridFile.
         """
-        file = self.__collection.files.find_one(self.__id)
-        file["next"] = None
-        file["length"] = 0
-        self.__collection.files.save(file)
+        grid_file = self.__collection.files.find_one(self.__id)
+        grid_file["next"] = None
+        grid_file["length"] = 0
+        self.__collection.files.save(grid_file)
 
         self.__collection.chunks.remove({"files_id": self.__id})
 
@@ -119,15 +119,15 @@ class GridFile(object):
         return self.__mode
 
     def __create_property(field_name, read_only=False):
-        def get(self):
+        def getter(self):
             return self.__collection.files.find_one(self.__id).get(field_name, None)
-        def set(self, value):
-            file = self.__collection.files.find_one(self.__id)
-            file[field_name] = value
-            self.__collection.files.save(file)
+        def setter(self, value):
+            grid_file = self.__collection.files.find_one(self.__id)
+            grid_file[field_name] = value
+            self.__collection.files.save(grid_file)
         if not read_only:
-            return property(get, set)
-        return property(get)
+            return property(getter, setter)
+        return property(getter)
 
     name = __create_property("filename", True)
     content_type = __create_property("contentType")
@@ -146,9 +146,9 @@ class GridFile(object):
         :Parameters:
           - `filename`: the new name for this GridFile
         """
-        file = self.__collection.files.find_one(self.__id)
-        file["filename"] = filename
-        self.__collection.files.save(file)
+        grid_file = self.__collection.files.find_one(self.__id)
+        grid_file["filename"] = filename
+        self.__collection.files.save(grid_file)
 
     def __max_chunk(self):
         return self.__collection.chunks.find_one({"files_id": self.__id, "n": self.__chunk_number})
@@ -164,18 +164,18 @@ class GridFile(object):
         """Write the buffer contents out to chunks.
         """
         while len(self.__buffer):
-            max = self.__max_chunk()
-            if not max:
-                max = self.__new_chunk(self.__chunk_number)
+            max_chunk = self.__max_chunk()
+            if not max_chunk:
+                max_chunk = self.__new_chunk(self.__chunk_number)
             space = (self.__chunk_number + 1) * self.chunk_size - self.__position
             if not space:
                 self.__chunk_number += 1
-                max = self.__new_chunk(self.__chunk_number)
+                max_chunk = self.__new_chunk(self.__chunk_number)
                 space = self.chunk_size
             to_write = len(self.__buffer) > space and space or len(self.__buffer)
 
-            max["data"] = Binary(max["data"] + self.__buffer[:to_write])
-            self.__collection.chunks.save(max)
+            max_chunk["data"] = Binary(max_chunk["data"] + self.__buffer[:to_write])
+            self.__collection.chunks.save(max_chunk)
             self.__buffer = self.__buffer[to_write:]
             self.__position += to_write
 
@@ -188,9 +188,9 @@ class GridFile(object):
 
         self.__write_buffer_to_chunks()
 
-        file = self.__collection.files.find_one(self.__id)
-        file["length"] = self.__position + len(self.__buffer)
-        self.__collection.files.save(file)
+        grid_file = self.__collection.files.find_one(self.__id)
+        grid_file["length"] = self.__position + len(self.__buffer)
+        self.__collection.files.save(grid_file)
 
     def close(self):
         """Close the GridFile.

@@ -102,11 +102,7 @@ class SON(dict):
             yield k
 
     def has_key(self, key):
-        try:
-            value = self[key]
-        except KeyError:
-            return False
-        return True
+        return key in self.keys()
 
     def __contains__(self, key):
         return self.has_key(key)

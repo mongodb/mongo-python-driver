@@ -67,7 +67,7 @@ class Collection(object):
         command = SON({"create": self.__collection_name})
         command.update(options)
 
-        response = self.__database._command(command)
+        self.__database._command(command)
 
     def __getattr__(self, name):
         """Get a sub-collection of this collection by name.

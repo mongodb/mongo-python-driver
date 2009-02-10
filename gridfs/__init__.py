@@ -74,12 +74,12 @@ class GridFS(object):
 
         # convert to _id's so we can uniquely create GridFile instances
         ids = []
-        for file in self.__database[collection].files.find(spec):
-            ids.append(file["_id"])
+        for grid_file in self.__database[collection].files.find(spec):
+            ids.append(grid_file["_id"])
 
         # open for writing to remove the chunks for these files
-        for id in ids:
-            f = GridFile({"_id": id}, self.__database, "w", collection)
+        for file_id in ids:
+            f = GridFile({"_id": file_id}, self.__database, "w", collection)
             f.close()
 
         self.__database[collection].files.remove(spec)
@@ -95,6 +95,6 @@ class GridFS(object):
         if not isinstance(collection, types.StringTypes):
             raise TypeError("collection must be an instance of (str, unicode)")
         names = []
-        for file in self.__database[collection].files.find():
-            names.append(file["filename"])
+        for grid_file in self.__database[collection].files.find():
+            names.append(grid_file["filename"])
         return names
