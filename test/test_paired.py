@@ -95,6 +95,17 @@ class TestPaired(unittest.TestCase):
                           self.right[0],
                           self.right[1]))
 
+    def test_basic(self):
+        self.skip()
+        connection = Connection.paired(self.left, self.right)
+
+        db = connection.pymongo_test
+
+        db.drop_collection("test")
+        a = {"x": 1}
+        db.test.save(a)
+        self.assertEqual(a, db.test.find_one())
+
 if __name__ == "__main__":
     skip_tests = False
     unittest.main()
