@@ -111,10 +111,5 @@ class TestConnection(unittest.TestCase):
 
         self.assertRaises(TypeError, iterate)
 
-    def test_master(self):
-        connection = Connection(self.host, self.port)
-        # NOTE: this test assumes that we're connecting to master...
-        self.assertEqual(connection._master(), True)
-
 if __name__ == "__main__":
     unittest.main()

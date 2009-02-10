@@ -147,10 +147,10 @@ class Database(object):
             son = manipulator.transform_outgoing(son, collection)
         return son
 
-    def _command(self, command, allowable_errors=[], check=True):
+    def _command(self, command, allowable_errors=[], check=True, sock=None):
         """Issue a DB command.
         """
-        result = self["$cmd"].find_one(command)
+        result = self["$cmd"].find_one(command, _sock=sock)
         if check and result["ok"] != 1:
             if result["errmsg"] in allowable_errors:
                 return result

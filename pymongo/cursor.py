@@ -16,6 +16,7 @@
 
 import types
 import struct
+from threading import Lock
 
 import pymongo
 import bson
@@ -23,10 +24,12 @@ from son import SON
 from code import Code
 from errors import InvalidOperation, OperationFailure
 
+_query_lock = Lock()
+
 class Cursor(object):
     """A cursor / iterator over Mongo query results.
     """
-    def __init__(self, collection, spec, fields, skip, limit):
+    def __init__(self, collection, spec, fields, skip, limit, _sock=None):
         """Create a new cursor.
 
         Should not be called directly by application developers.
@@ -39,6 +42,7 @@ class Cursor(object):
         self.__ordering = None
         self.__explain = False
         self.__hint = None
+        self.__socket = _sock
 
         self.__data = []
         self.__id = None
@@ -230,10 +234,16 @@ class Cursor(object):
             return len(self.__data)
 
         def send_message(operation, message):
-            socket_number = self.__collection.database().connection()._acquire_socket()
-            request_id = self.__collection._send_message(operation, message, socket=socket_number)
-            response = self.__collection.database().connection()._receive_message(socket_number, 1, request_id)
-            self.__collection.database().connection()._release_socket(socket_number)
+            if self.__socket is None:
+                socket_number = self.__collection.database().connection()._acquire_socket()
+                request_id = self.__collection._send_message(operation, message, sock=socket_number)
+                response = self.__collection.database().connection()._receive_message(socket_number, 1, request_id)
+                self.__collection.database().connection()._release_socket(socket_number)
+            else:
+                _query_lock.acquire(1)
+                request_id = self.__collection._send_message(operation, message, sock=self.__socket)
+                response = self.__collection.database().connection()._receive_message(self.__socket, 1, request_id)
+                _query_lock.release()
 
             response_flag = struct.unpack("<i", response[:4])[0]
             if response_flag == 1:

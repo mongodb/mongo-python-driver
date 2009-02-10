@@ -104,14 +104,14 @@ class Collection(object):
         """
         return self.__collection_name
 
-    def _send_message(self, operation, data, socket=None):
+    def _send_message(self, operation, data, sock=None):
         """Wrap up a message and send it.
         """
         # reserved int, full collection name, message data
         message = _ZERO
         message += bson._make_c_string(self.full_name())
         message += data
-        return self.__database.connection()._send_message(operation, message, socket=socket)
+        return self.__database.connection()._send_message(operation, message, sock=sock)
 
     def database(self):
         """Get the database that this collection is a part of.
@@ -236,7 +236,7 @@ class Collection(object):
 
         self._send_message(2006, _ZERO + bson.BSON.from_dict(spec))
 
-    def find_one(self, spec_or_object_id=SON()):
+    def find_one(self, spec_or_object_id=SON(), _sock=None):
         """Get a single object from the database.
 
         Raises TypeError if the argument is of an improper type. Returns a
@@ -252,11 +252,11 @@ class Collection(object):
         if isinstance(spec, ObjectId):
             spec = SON({"_id": spec})
 
-        for result in self.find(spec, limit=1):
+        for result in self.find(spec, limit=1, _sock=_sock):
             return result
         return None
 
-    def find(self, spec=None, fields=None, skip=0, limit=0):
+    def find(self, spec=None, fields=None, skip=0, limit=0, _sock=None):
         """Query the database.
 
         Raises TypeError if any of the arguments are of improper type. Returns
@@ -291,7 +291,7 @@ class Collection(object):
                     raise TypeError("fields must be a list of key names as (string, unicode)")
                 return_fields[field] = 1
 
-        return Cursor(self, spec, return_fields, skip, limit)
+        return Cursor(self, spec, return_fields, skip, limit, _sock=_sock)
 
     def count(self):
         return self.find().count()

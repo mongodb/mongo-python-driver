@@ -20,6 +20,7 @@ import types
 import traceback
 import logging
 import threading
+import random
 
 from errors import ConnectionFailure, InvalidName, OperationFailure, ConfigurationError
 from database import Database
@@ -34,32 +35,48 @@ _TIMEOUT = 20.0
 class Connection(object):
     """A connection to Mongo.
     """
-    def __init__(self, host="localhost", port=27017, _connect=True):
+    def __init__(self, host="localhost", port=27017, pool_size=20, _connect=True):
         """Open a new connection to a Mongo instance at host:port.
+
+        The resultant connection object has connection-pooling built in. The
+        maximum size of the pool is given by `pool_size`.
 
         Raises TypeError if host is not an instance of string or port is not an
         instance of int. Raises ConnectionFailure if the connection cannot be
-        made.
+        made. Raises TypeError if `pool_size` is not an instance of int. Raises
+        ValueError if `pool_size` is less than or equal to zero.
 
         :Parameters:
-          - `host` (optional): the hostname or IPv4 address of the instance to
+          - `host` (optional): hostname or IPv4 address of the instance to
             connect to
-          - `port` (optional): the port number on which to connect
+          - `port` (optional): port number on which to connect
+          - `pool_size` (optional): maximum size of built in connection pool
         """
         if not isinstance(host, types.StringType):
             raise TypeError("host must be an instance of str")
         if not isinstance(port, types.IntType):
             raise TypeError("port must be an instance of int")
-        self.__host = host
-        self.__port = port
+        if not isinstance(pool_size, types.IntType):
+            raise TypeError("pool_size must be an instance of int")
+        if pool_size <= 0:
+            raise ValueError("pool_size must be positive")
+
+        # host and port for the master
+        self.__host = None
+        self.__port = None
+
         self.__nodes = [(host, port)]
         self.__id = 1
+        self.__id_lock = threading.Lock()
         self.__cursor_manager = CursorManager(self)
 
-        self.__lock = threading.Lock()
-        self.__socket = None
+        self.__thread_map = {}
+        self.__pool_size = pool_size
+        self.__locks = [threading.Lock() for _ in range(pool_size)]
+        self.__sockets = [None for _ in range(pool_size)]
+
         if _connect:
-            self.__connect()
+            self.__find_master()
 
     def __pair_with(self, host, port):
         """Pair this connection with a Mongo instance running on host:port.
@@ -78,7 +95,8 @@ class Connection(object):
         if not isinstance(port, types.IntType):
             raise TypeError("port must be an instance of int")
         self.__nodes.append((host, port))
-        self.__connect()
+
+        self.__find_master()
 
     @classmethod
     def paired(cls, left, right=("localhost", 27017)):
@@ -97,13 +115,19 @@ class Connection(object):
         connection.__pair_with(*right)
         return connection
 
-    def _master(self):
+    def __increment_id(self):
+        self.__id_lock.acquire(1)
+        result = self.__id
+        self.__id += 1
+        self.__id_lock.release()
+        return result
+
+    def _master(self, sock):
         """Get the hostname and port of the master Mongo instance.
 
-        Return a tuple (host, port). Return True if this connection is
-        the master.
+        Return a tuple (host, port).
         """
-        result = self["admin"]._command({"ismaster": 1})
+        result = self["admin"]._command({"ismaster": 1}, sock=sock)
 
         if result["ismaster"] == 1:
             return True
@@ -125,40 +149,58 @@ class Connection(object):
         """
         return self.__port
 
-    def __connect(self):
-        """(Re-)connect to Mongo.
+    def __find_master(self):
+        """Create a new socket and use it to figure out who the master is.
 
-        Connect to the master if this is a paired connection.
+        Sets __host and __port so that `host()` and `port()` will return the
+        address of the master.
         """
-        _logger.debug("connecting...")
-        if self.__socket:
-            _logger.debug("closing previous connection")
-            self.__socket.close()
-
+        _logger.debug("finding master")
+        sock = socket.socket()
+        sock.settimeout(_TIMEOUT)
         for (host, port) in self.__nodes:
             _logger.debug("trying %r:%r" % (host, port))
             try:
-                self.__socket = socket.socket()
-                self.__socket.settimeout(_TIMEOUT)
-                self.__socket.connect((host, port))
-                master = self._master()
+                sock.connect((host, port))
+                master = self._master(sock)
                 if master is True:
-                    _logger.debug("success")
                     self.__host = host
                     self.__port = port
+                    _logger.debug("success, master is %r" % master)
                     return
-                _logger.debug("not master, master is (%r, %r)" % master)
                 if master not in self.__nodes:
                     raise ConfigurationError(
                         "%r claims master is %r, but that's not configured" %
                         ((host, port), master))
+                _logger.debug("not master, master is %r" % master)
             except socket.error:
-                self.__socket.close()
+                sock.close()
                 _logger.debug("could not connect, got: %s" %
                               traceback.format_exc())
                 continue
-        raise ConnectionFailure("could not connect or could not find master. tried: %r" %
-                                self.__nodes)
+        raise ConnectionFailure("could not find master")
+
+    def __connect(self, socket_number):
+        """(Re-)connect to Mongo.
+
+        Connect to the master if this is a paired connection.
+        """
+        _logger.debug("connecting socket %s..." % socket_number)
+        if self.__sockets[socket_number]:
+            _logger.debug("closing previous connection")
+            self.__sockets[socket_number].close()
+
+        try:
+            self.__sockets[socket_number] = socket.socket()
+            sock = self.__sockets[socket_number]
+            sock.settimeout(_TIMEOUT)
+            sock.connect((self.host(), self.port()))
+            _logger.debug("connected")
+            return
+        except socket.error:
+            self.__sockets[socket_number].close()
+            self.__sockets[socket_number] = None
+            raise ConnectionFailure("could not connect to %r" % self.__nodes)
 
     def set_cursor_manager(self, manager_class):
         """Set this connections cursor manager.
@@ -177,7 +219,7 @@ class Connection(object):
 
         self.__cursor_manager = manager
 
-    def _send_message(self, operation, data, socket=None):
+    def _send_message(self, operation, data, sock=None):
         """Say something to Mongo.
 
         Raises ConnectionFailure if the message cannot be sent. Returns the
@@ -186,13 +228,27 @@ class Connection(object):
         :Parameters:
           - `operation`: opcode of the message
           - `data`: data to send
-          - `socket`: socket on which to send the message (as returned by
+          - `sock`: socket on which to send the message (as returned by
             `_acquire_socket`, or None
         """
+        if sock is None:
+            thread = threading.current_thread()
+            if thread in self.__thread_map:
+                sock = self.__thread_map[thread]
+            else:
+                sock = random.randint(0, self.__pool_size - 1)
+
+        if isinstance(sock, types.IntType):
+            if self.__sockets[sock] is None:
+                self.__connect(sock)
+            sock = self.__sockets[sock]
+        elif not isinstance(sock, socket.socket):
+            raise TypeError("sock must be a socket id or instance")
+
         # header
+        request_id = self.__increment_id()
         to_send = struct.pack("<i", 16 + len(data))
-        to_send += struct.pack("<i", self.__id)
-        self.__id += 1
+        to_send += struct.pack("<i", request_id)
         to_send += struct.pack("<i", 0) # responseTo
         to_send += struct.pack("<i", operation)
 
@@ -200,14 +256,14 @@ class Connection(object):
 
         total_sent = 0
         while total_sent < len(to_send):
-            sent = self.__socket.send(to_send[total_sent:])
+            sent = sock.send(to_send[total_sent:])
             if sent == 0:
                 raise ConnectionFailure("connection closed")
             total_sent += sent
 
-        return self.__id - 1
+        return request_id
 
-    def _receive_message(self, socket, operation, request_id):
+    def _receive_message(self, sock, operation, request_id):
         """Receive a message from Mongo.
 
         Returns the message body. Asserts that the message uses the given opcode
@@ -215,15 +271,20 @@ class Connection(object):
         synchronously.
 
         :Parameters:
-          - `socket`: socket on which to receive the message (as returned by
+          - `sock`: socket on which to receive the message (as returned by
             `acquire_socket`.
           - `operation`: opcode of the message
           - `request_id`: request id that the message should be in response to
         """
+        if isinstance(sock, types.IntType):
+            sock = self.__sockets[sock]
+        elif not isinstance(sock, socket.socket):
+            raise TypeError("sock must be a socket id or instance")
+
         def receive(length):
             message = ""
             while len(message) < length:
-                chunk = self.__socket.recv(length - len(message))
+                chunk = sock.recv(length - len(message))
                 if chunk == "":
                     raise ConnectionFailure("connection closed")
                 message += chunk
@@ -339,11 +400,17 @@ class Connection(object):
     def _acquire_socket(self):
         """Acquire a socket to use for synchronous send and receive operations.
         """
-        self.__lock.acquire(1)
-        return 1
+        thread = threading.current_thread()
+        if thread in self.__thread_map:
+            sock = self.__thread_map[thread]
+        else:
+            sock = random.randint(0, self.__pool_size - 1)
+            self.__thread_map[thread] = sock
+
+        self.__locks[sock].acquire(1)
+        return sock
 
     def _release_socket(self, socket_number):
         """Release a socket that was acquired using `_acquire_socket`.
         """
-        assert socket_number == 1
-        self.__lock.release()
+        self.__locks[socket_number].release()
