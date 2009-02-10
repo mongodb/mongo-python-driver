@@ -40,7 +40,6 @@ class ObjectId(object):
     def __generate(self):
         """Generate a new value for this ObjectId.
         """
-        # TODO for now, just generate 12 random bytes. this will change when we decide on an _id algorithm...
         oid = ""
         for _ in range(12):
             oid += chr(random.randint(0, 255))
