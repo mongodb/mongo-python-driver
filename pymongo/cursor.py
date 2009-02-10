@@ -258,7 +258,7 @@ class Cursor(object):
         if self.__id is None:
             # Query
             message = struct.pack("<i", self.__skip)
-            message += struct.pack("<i", self.__limit)
+            message += struct.pack("<i", -self.__limit)
             message += bson.BSON.from_dict(self.__query_spec())
             if self.__fields:
                 message += bson.BSON.from_dict(self.__fields)
@@ -276,7 +276,7 @@ class Cursor(object):
                     self.__killed = True
                     return 0
 
-            message = struct.pack("<i", limit)
+            message = struct.pack("<i", -limit)
             message += struct.pack("<q", self.__id)
 
             send_message(2005, message)
