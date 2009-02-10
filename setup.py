@@ -38,7 +38,7 @@ Above is the ouput showing how the compilation failed.""" % ext.name
 
 setup(
     name="pymongo",
-    version="0.5.3pre",
+    version="0.6",
     description="Driver for the Mongo database <http://www.mongodb.org>",
     long_description=readme_content,
     author="10gen",
@@ -50,7 +50,7 @@ setup(
     license="Apache License, Version 2.0",
     test_suite="nose.collector",
     classifiers=[
-        "Development Status :: 2 - Pre-Alpha",
+        "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: Apache Software License",
         "Operating System :: MacOS :: MacOS X",
