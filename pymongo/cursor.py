@@ -25,6 +25,7 @@ from code import Code
 from errors import InvalidOperation, OperationFailure
 
 _query_lock = Lock()
+_ZERO = "\x00\x00\x00\x00"
 
 class Cursor(object):
     """A cursor / iterator over Mongo query results.
@@ -234,16 +235,7 @@ class Cursor(object):
             return len(self.__data)
 
         def send_message(operation, message):
-            if self.__socket is None:
-                socket_number = self.__collection.database().connection()._acquire_socket()
-                request_id = self.__collection._send_message(operation, message, sock=socket_number)
-                response = self.__collection.database().connection()._receive_message(socket_number, 1, request_id)
-                self.__collection.database().connection()._release_socket(socket_number)
-            else:
-                _query_lock.acquire(1)
-                request_id = self.__collection._send_message(operation, message, sock=self.__socket)
-                response = self.__collection.database().connection()._receive_message(self.__socket, 1, request_id)
-                _query_lock.release()
+            response = self.__collection.database().connection()._receive_message(operation, message, _sock=self.__socket)
 
             response_flag = struct.unpack("<i", response[:4])[0]
             if response_flag == 1:
@@ -262,9 +254,11 @@ class Cursor(object):
             self.__data = bson._to_dicts(response[20:])
             assert len(self.__data) == number_returned
 
+        message = _ZERO
+        message += bson._make_c_string(self.__collection.full_name())
         if self.__id is None:
             # Query
-            message = struct.pack("<i", self.__skip)
+            message += struct.pack("<i", self.__skip)
             message += struct.pack("<i", -self.__limit)
             message += bson.BSON.from_dict(self.__query_spec())
             if self.__fields:
@@ -283,7 +277,7 @@ class Cursor(object):
                     self.__killed = True
                     return 0
 
-            message = struct.pack("<i", -limit)
+            message += struct.pack("<i", -limit)
             message += struct.pack("<q", self.__id)
 
             send_message(2005, message)

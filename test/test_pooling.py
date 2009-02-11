@@ -25,16 +25,21 @@ class TestPooling(unittest.TestCase):
         self.host = os.environ.get("DB_IP", "localhost")
         self.port = int(os.environ.get("DB_PORT", 27017))
         default_connection = Connection(self.host, self.port)
-        pooled_connection = Connection(self.host, self.port, 10)
+        pooled_connection = Connection(self.host, self.port, {"pool_size": 10})
         self.default_db = default_connection["pymongo_test"]
         self.pooled_db = pooled_connection["pymongo_test"]
 
     def test_exceptions(self):
-        self.assertRaises(TypeError, Connection, self.host, self.port, None)
-        self.assertRaises(TypeError, Connection, self.host, self.port, "one")
-        self.assertRaises(TypeError, Connection, self.host, self.port, [])
-        self.assertRaises(ValueError, Connection, self.host, self.port, -10)
-        self.assertRaises(ValueError, Connection, self.host, self.port, 0)
+        self.assertRaises(TypeError, Connection, self.host, self.port,
+                          {"pool_size": None})
+        self.assertRaises(TypeError, Connection, self.host, self.port,
+                          {"pool_size": "one"})
+        self.assertRaises(TypeError, Connection, self.host, self.port,
+                          {"pool_size": []})
+        self.assertRaises(ValueError, Connection, self.host, self.port,
+                          {"pool_size": -10})
+        self.assertRaises(ValueError, Connection, self.host, self.port,
+                          {"pool_size": 0})
 
 # TODO more tests for this!
 # test auth support
