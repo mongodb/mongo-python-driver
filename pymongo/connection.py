@@ -35,7 +35,7 @@ _TIMEOUT = 20.0
 class Connection(object):
     """A connection to Mongo.
     """
-    def __init__(self, host="localhost", port=27017, pool_size=20, _connect=True):
+    def __init__(self, host="localhost", port=27017, pool_size=1, _connect=True):
         """Open a new connection to a Mongo instance at host:port.
 
         The resultant connection object has connection-pooling built in. The
