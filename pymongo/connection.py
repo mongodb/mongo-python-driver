@@ -247,6 +247,7 @@ class Connection(object):
         """Acquire a socket to use for synchronous send and receive operations.
         """
         choices = range(self.__pool_size)
+        random.shuffle(choices)
         choices = sorted(choices, lambda x, y: cmp(self.__thread_count[x],
                                                    self.__thread_count[y]))
 
