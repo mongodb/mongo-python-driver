@@ -27,11 +27,11 @@ class TestPooling(unittest.TestCase):
         self.port = int(os.environ.get("DB_PORT", 27017))
         default_connection = Connection(self.host, self.port)
         no_auto_connection = Connection(self.host, self.port,
-                                              {"auto_start_request": False})
-        pooled_connection = Connection(self.host, self.port, {"pool_size": 10})
+                                        auto_start_request=False)
+        pooled_connection = Connection(self.host, self.port, pool_size=10)
         no_auto_pooled_connection = Connection(self.host, self.port,
-                                               {"pool_size": 10,
-                                                "auto_start_request": False})
+                                               pool_size=10,
+                                               auto_start_request=False)
         self.default_db = default_connection["pymongo_test"]
         self.pooled_db = pooled_connection["pymongo_test"]
         self.no_auto_db = no_auto_connection["pymongo_test"]
@@ -39,15 +39,15 @@ class TestPooling(unittest.TestCase):
 
     def test_exceptions(self):
         self.assertRaises(TypeError, Connection, self.host, self.port,
-                          {"pool_size": None})
+                          pool_size=None)
         self.assertRaises(TypeError, Connection, self.host, self.port,
-                          {"pool_size": "one"})
+                          pool_size="one")
         self.assertRaises(TypeError, Connection, self.host, self.port,
-                          {"pool_size": []})
+                          pool_size=[])
         self.assertRaises(ValueError, Connection, self.host, self.port,
-                          {"pool_size": -10})
+                          pool_size=-10)
         self.assertRaises(ValueError, Connection, self.host, self.port,
-                          {"pool_size": 0})
+                          pool_size=0)
 
     # NOTE this test is non-deterministic
     def test_end_request(self):

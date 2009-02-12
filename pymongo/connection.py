@@ -36,22 +36,16 @@ _TIMEOUT = 20.0
 class Connection(object):
     """A connection to Mongo.
     """
-    def __init__(self, host="localhost", port=27017, options={}, _connect=True):
+    def __init__(self, host="localhost", port=27017,
+                 pool_size=1, auto_start_request=True, _connect=True):
         """Open a new connection to a Mongo instance at host:port.
 
         The resultant connection object has connection-pooling built in.
 
         Raises TypeError if host is not an instance of string or port is not an
         instance of int. Raises ConnectionFailure if the connection cannot be
-        made.
-
-        The keyword argument `options` is a dictionary used for specifying
-        additional connection level options. Valid options are:
-
-          - pool_size (default=1): maximum size of the connection's built in
-            connection pool - must be greater than or equal to one.
-          - auto_start_request (default=True): automatically start a request
-            on every operation - see documentation for `start_request`.
+        made. Raises TypeError if `pool_size` is not an instance of int. Raises
+        ValueError if `pool_size` is not greater than or equal to one.
 
         NOTE: Connection pooling is not compatible with auth (yet). Please do
         not set the "pool_size" to anything other than 1 if auth is in use.
@@ -61,13 +55,18 @@ class Connection(object):
             connect to
           - `port` (optional): port number on which to connect
           - `options` (optional): dictionary of connection options
+          - `pool_size` (optional): maximum size of the built in connection-pool
+          - auto_start_request (optional): automatically start a request
+            on every operation - see documentation for `start_request`.
         """
         if not isinstance(host, types.StringType):
             raise TypeError("host must be an instance of str")
         if not isinstance(port, types.IntType):
             raise TypeError("port must be an instance of int")
-        if not isinstance(options, types.DictType):
-            raise TypeError("options must be an instance of dict")
+        if not isinstance(pool_size, types.IntType):
+            raise TypeError("pool_size must be an instance of int")
+        if pool_size <= 0:
+            raise ValueError("pool_size must be positive")
 
         # host and port for the master
         self.__host = None
@@ -81,12 +80,8 @@ class Connection(object):
 
         self.__cursor_manager = CursorManager(self)
 
-        self.__pool_size = options.get("pool_size", 1)
-        if not isinstance(self.__pool_size, types.IntType):
-            raise TypeError("pool_size must be an instance of int")
-        if self.__pool_size <= 0:
-            raise ValueError("pool_size must be positive")
-        self.__auto_start_request = options.get("auto_start_request", True)
+        self.__pool_size = pool_size
+        self.__auto_start_request = auto_start_request
 
         # map from threads to sockets
         self.__thread_map = {}
@@ -124,7 +119,8 @@ class Connection(object):
         self.__find_master()
 
     @classmethod
-    def paired(cls, left, right=("localhost", 27017), **kwargs):
+    def paired(cls, left, right=("localhost", 27017),
+               pool_size=1, auto_start_request=True):
         """Open a new paired connection to Mongo.
 
         Raises TypeError if either `left` or `right` is not a tuple of the form
@@ -133,13 +129,11 @@ class Connection(object):
         :Parameters:
           - `left`: (host, port) pair for the left Mongo instance
           - `right` (optional): (host, port) pair for the right Mongo instance
-          - `options` (optional): dictionary of connection options - see
-            `__init__` documentation for information on what options are
-            available
+          - `pool_size` (optional): same as argument to `__init__`
+          - `auto_start_request` (optional): same as argument to `__init__`
         """
-        left = list(left)
-        kwargs["_connect"] = False
-        connection = cls(*left, **kwargs)
+        connection = cls(left[0], left[1], pool_size, auto_start_request,
+                         _connect=False)
         connection.__pair_with(*right)
         return connection
 
