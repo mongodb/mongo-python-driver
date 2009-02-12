@@ -248,6 +248,8 @@ class Database(object):
         error = self._command({"getlasterror": 1})
         if error.get("err", 0) is None:
             return None
+        if error["err"] == "not master":
+            self.__connection._reset()
         return error
 
     def previous_error(self):
