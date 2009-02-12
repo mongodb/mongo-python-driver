@@ -32,6 +32,7 @@ _logger.addHandler(logging.StreamHandler())
 
 _TIMEOUT = 20.0
 
+# TODO support auth for pooling
 class Connection(object):
     """A connection to Mongo.
     """
@@ -51,6 +52,9 @@ class Connection(object):
             connection pool - must be greater than or equal to one.
           - auto_start_request (default=True): automatically start a request
             on every operation - see documentation for `start_request`.
+
+        NOTE: Connection pooling is not compatible with auth (yet). Please do
+        not set the "pool_size" to anything other than 1 if auth is in use.
 
         :Parameters:
           - `host` (optional): hostname or IPv4 address of the instance to
@@ -351,6 +355,7 @@ class Connection(object):
         self.__locks[sock_number].release()
         return result
 
+    # TODO document this
     def start_request(self):
         """Start a "request".
 
@@ -375,6 +380,7 @@ class Connection(object):
             self.end_request()
             self.__thread_map[threading.current_thread()] = -1
 
+    # TODO document this
     def end_request(self):
         """End the current "request", if this thread is in one.
 

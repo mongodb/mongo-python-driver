@@ -122,10 +122,8 @@ class TestPooling(unittest.TestCase):
             self.no_auto_pooled_db.connection().end_request()
         self.assertEqual(0, count)
 
-
 # TODO more tests for this!
 # test auth support
-# test multithreaded stuff
 
 if __name__ == "__main__":
     unittest.main()
