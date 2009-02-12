@@ -207,9 +207,8 @@ class Connection(object):
         if self.host() is None or self.port() is None:
             self.__find_master()
         _logger.debug("connecting socket %s..." % socket_number)
-        if self.__sockets[socket_number]:
-            _logger.debug("closing previous connection")
-            self.__sockets[socket_number].close()
+
+        assert self.__sockets[socket_number] is None
 
         try:
             self.__sockets[socket_number] = socket.socket()
@@ -219,8 +218,6 @@ class Connection(object):
             _logger.debug("connected")
             return
         except socket.error:
-            self.__sockets[socket_number].close()
-            self.__sockets[socket_number] = None
             raise ConnectionFailure("could not connect to %r" % self.__nodes)
 
     def __reset(self):
@@ -295,8 +292,9 @@ class Connection(object):
         try:
             if not self.__sockets[sock]:
                 self.__connect(sock)
-        except:
+        except ConnectionFailure:
             self.__locks[sock].release()
+            self.__reset()
             raise
         return sock
 
