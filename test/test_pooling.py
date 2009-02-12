@@ -17,6 +17,7 @@
 import unittest
 import threading
 import os
+import random
 
 from pymongo.connection import Connection
 
@@ -122,8 +123,23 @@ class TestPooling(unittest.TestCase):
             self.no_auto_pooled_db.connection().end_request()
         self.assertEqual(0, count)
 
-# TODO more tests for this!
-# test auth support
+    def test_multithread(self):
+        self.pooled_db.mt_test.remove({})
+        for _ in range(20):
+            t = SaveAndFind(self.pooled_db)
+            t.start()
+
+class SaveAndFind(threading.Thread):
+    def __init__(self, database):
+        threading.Thread.__init__(self)
+        self.database = database
+
+    def run(self):
+        for _ in xrange(100):
+            rand = random.randint(0, 100)
+            id = self.database.mt_test.save({"x": rand})
+            assert self.database.mt_test.find_one(id)["x"] == rand
+            self.database.connection().end_request()
 
 if __name__ == "__main__":
     unittest.main()
