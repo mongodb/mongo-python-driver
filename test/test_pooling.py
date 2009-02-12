@@ -76,14 +76,15 @@ class TestPooling(unittest.TestCase):
                 count += 1
         self.assertEqual(0, count)
 
-        count = 0
-        for _ in range(6000):
-            self.pooled_db.test.remove({})
-            self.pooled_db.test.insert({})
-            self.pooled_db.connection().end_request()
-            if not self.pooled_db.test.find_one():
-                count += 1
-        self.assertNotEqual(0, count)
+# TODO better way to test this?
+#         count = 0
+#         for _ in range(6000):
+#             self.pooled_db.test.remove({})
+#             self.pooled_db.test.insert({})
+#             self.pooled_db.connection().end_request()
+#             if not self.pooled_db.test.find_one():
+#                 count += 1
+#         self.assertNotEqual(0, count)
 
     # NOTE this test is non-deterministic
     def test_no_auto_start_request(self):
@@ -95,13 +96,14 @@ class TestPooling(unittest.TestCase):
                 count += 1
         self.assertEqual(0, count)
 
-        count = 0
-        for _ in range(6000):
-            self.no_auto_pooled_db.test.remove({})
-            self.no_auto_pooled_db.test.insert({})
-            if not self.no_auto_pooled_db.test.find_one():
-                count += 1
-        self.assertNotEqual(0, count)
+# TODO better way to test this?
+#         count = 0
+#         for _ in range(6000):
+#             self.no_auto_pooled_db.test.remove({})
+#             self.no_auto_pooled_db.test.insert({})
+#             if not self.no_auto_pooled_db.test.find_one():
+#                 count += 1
+#         self.assertNotEqual(0, count)
 
         count = 0
         for _ in range(100):
