@@ -294,8 +294,4 @@ class Cursor(object):
             next = self.__collection.database()._fix_outgoing(self.__data.pop(0), self.__collection)
         else:
             raise StopIteration
-        # TODO should this be a SONManipulator? probably not...
-        # TODO check for not master and do something special in that case
-        if next.get("$err", False):
-            raise OperationFailure("db error: %s" % next["$err"])
         return next
