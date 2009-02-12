@@ -108,7 +108,7 @@ class TestPaired(unittest.TestCase):
     def test_pooling(self):
         self.skip()
         connection = Connection.paired(self.left, self.right,
-                                       {"pool_size": 3,
+                                       options={"pool_size": 3,
                                         "auto_start_request": False})
         db = connection.pymongo_test
 

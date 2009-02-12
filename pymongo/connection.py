@@ -124,7 +124,7 @@ class Connection(object):
         self.__find_master()
 
     @classmethod
-    def paired(cls, left, right=("localhost", 27017), options={}):
+    def paired(cls, left, right=("localhost", 27017), **kwargs):
         """Open a new paired connection to Mongo.
 
         Raises TypeError if either `left` or `right` is not a tuple of the form
@@ -138,7 +138,8 @@ class Connection(object):
             available
         """
         left = list(left)
-        connection = cls(*left, options=options, _connect=False)
+        kwargs["_connect"] = False
+        connection = cls(*left, **kwargs)
         connection.__pair_with(*right)
         return connection
 
@@ -263,7 +264,7 @@ class Connection(object):
         return choices[0]
 
     def __get_socket(self):
-        thread = threading.current_thread()
+        thread = threading.currentThread()
         if self.__thread_map.get(thread, -1) >= 0:
             sock = self.__thread_map[thread]
             self.__locks[sock].acquire()
@@ -377,7 +378,7 @@ class Connection(object):
         """
         if not self.__auto_start_request:
             self.end_request()
-            self.__thread_map[threading.current_thread()] = -1
+            self.__thread_map[threading.currentThread()] = -1
 
     def end_request(self):
         """End the current "request", if this thread is in one.
@@ -397,7 +398,7 @@ class Connection(object):
         See the documentation for `start_request` for more information on what
         a "request" is and when one should be used.
         """
-        thread = threading.current_thread()
+        thread = threading.currentThread()
         if self.__thread_map.get(thread, -1) >= 0:
             sock_number = self.__thread_map.pop(thread)
             self.__thread_count[sock_number] -= 1
