@@ -40,7 +40,12 @@ class Connection(object):
                  pool_size=1, auto_start_request=True, _connect=True):
         """Open a new connection to a Mongo instance at host:port.
 
-        The resultant connection object has connection-pooling built in.
+        The resultant connection object has connection-pooling built in. It also
+        performs auto-reconnection when necessary. If an operation fails because
+        of a connection error, `pymongo.errors.ConnectionFailure` is raised. Auto-
+        reconnection is also performed. Application code should handle this
+        exception (recognizing that the operation failed) and then continue to
+        execute.
 
         Raises TypeError if host is not an instance of string or port is not an
         instance of int. Raises ConnectionFailure if the connection cannot be
