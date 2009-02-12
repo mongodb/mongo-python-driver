@@ -138,8 +138,7 @@ class Connection(object):
             available
         """
         left = list(left)
-        left.append(False) # _connect
-        connection = cls(*left, options=options)
+        connection = cls(*left, options=options, _connect=False)
         connection.__pair_with(*right)
         return connection
 
@@ -184,28 +183,29 @@ class Connection(object):
         address of the master.
         """
         _logger.debug("finding master")
-        sock = socket.socket()
-        sock.settimeout(_TIMEOUT)
         for (host, port) in self.__nodes:
             _logger.debug("trying %r:%r" % (host, port))
             try:
+                sock = socket.socket()
+                sock.settimeout(_TIMEOUT)
                 sock.connect((host, port))
                 master = self.__master(sock)
                 if master is True:
                     self.__host = host
                     self.__port = port
-                    _logger.debug("success, master is %r" % master)
+                    _logger.debug("found master")
                     return
                 if master not in self.__nodes:
                     raise ConfigurationError(
                         "%r claims master is %r, but that's not configured" %
                         ((host, port), master))
-                _logger.debug("not master, master is %r" % master)
+                _logger.debug("not master, master is (%r, %r)" % master)
             except socket.error:
-                sock.close()
                 _logger.debug("could not connect, got: %s" %
                               traceback.format_exc())
                 continue
+            finally:
+                sock.close()
         raise ConnectionFailure("could not find master")
 
     def __connect(self, socket_number):

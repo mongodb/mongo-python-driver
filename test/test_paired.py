@@ -80,7 +80,6 @@ class TestPaired(unittest.TestCase):
         self.assertEqual(port, connection.port())
 
         slave = self.left == (host, port) and self.right or self.left
-
         self.assertRaises(ConfigurationError, Connection.paired, slave, self.bad)
         self.assertRaises(ConfigurationError, Connection.paired, self.bad, slave)
 
@@ -105,6 +104,20 @@ class TestPaired(unittest.TestCase):
         a = {"x": 1}
         db.test.save(a)
         self.assertEqual(a, db.test.find_one())
+
+    def test_pooling(self):
+        self.skip()
+        connection = Connection.paired(self.left, self.right,
+                                       {"pool_size": 3,
+                                        "auto_start_request": False})
+        db = connection.pymongo_test
+
+        for _ in range(100):
+            connection.start_request()
+            db.test.remove({})
+            db.test.insert({})
+            self.assertTrue(db.test.find_one())
+            connection.end_request()
 
 if __name__ == "__main__":
     skip_tests = False
