@@ -55,18 +55,16 @@ class TestCursor(unittest.TestCase):
 
         index = db.test.create_index("num", ASCENDING)
 
-        self.assertEqual(db.test.find({"num": 17}).explain()["nscanned"], 1)
-        self.assertEqual(db.test.find({"num": 17, "foo": 17}
-                                      ).explain()["nscanned"], 100)
-        self.assertEqual(db.test.find({"num": 17, "foo": 17}
-                                      ).hint(index).explain()["nscanned"], 1)
-        self.assertEqual(db.test.find({"num": 17, "foo": 17}
-                                      ).hint(index
-                                             ).hint(None
-                                                    ).explain()["nscanned"], 100)
-        self.assertEqual(db.test.find({"num": 17, "foo": 17}
-                                      ).hint([("num", ASCENDING)]
-                                             ).explain()["nscanned"], 1)
+        self.assertEqual(db.test.find({}).explain()["cursor"], "BasicCursor")
+        self.assertEqual(db.test.find({}).hint(index).explain()["cursor"],
+                         "BtreeCursor %s" % index)
+        self.assertEqual(db.test.find({}).hint(index
+                                                ).hint(None
+                                                       ).explain()["cursor"],
+                         "BasicCursor")
+        self.assertEqual(db.test.find({}).hint([("num", ASCENDING)]
+                                               ).explain()["cursor"],
+                         "BtreeCursor %s" % index)
         self.assertRaises(OperationFailure,
                           db.test.find({"num": 17, "foo": 17}
                                        ).hint([("foo", ASCENDING)]).explain)
