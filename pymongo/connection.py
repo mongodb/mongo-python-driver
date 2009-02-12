@@ -355,7 +355,6 @@ class Connection(object):
         self.__locks[sock_number].release()
         return result
 
-    # TODO document this
     def start_request(self):
         """Start a "request".
 
@@ -380,7 +379,6 @@ class Connection(object):
             self.end_request()
             self.__thread_map[threading.current_thread()] = -1
 
-    # TODO document this
     def end_request(self):
         """End the current "request", if this thread is in one.
 
