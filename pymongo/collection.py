@@ -236,7 +236,7 @@ class Collection(object):
 
         self._send_message(2006, _ZERO + bson.BSON.from_dict(spec))
 
-    def find_one(self, spec_or_object_id=SON(), _sock=None):
+    def find_one(self, spec_or_object_id=None, _sock=None):
         """Get a single object from the database.
 
         Raises TypeError if the argument is of an improper type. Returns a
@@ -249,6 +249,8 @@ class Collection(object):
             query
         """
         spec = spec_or_object_id
+        if spec is None:
+            spec = SON()
         if isinstance(spec, ObjectId):
             spec = SON({"_id": spec})
 
