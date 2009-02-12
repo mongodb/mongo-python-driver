@@ -352,11 +352,47 @@ class Connection(object):
         return result
 
     def start_request(self):
+        """Start a "request".
+
+        A "request" is a group of operations in which order matters. Examples
+        include inserting a document and then performing a query which expects
+        that document to have been inserted, or performing an operation and
+        then using `database.Database.error()` to perform error-checking on
+        that operation. When a thread performs operations in a "request", the
+        connection will perform all operations on the same socket, so Mongo will
+        order them correctly.
+
+        This method is only relevant when the current Connection has a
+        "pool_size" greater than one. Otherwise only a single socket will be
+        used for *all* operations, so there is no need to group operations into
+        requests.
+
+        This method only needs to be used if the "auto_start_request" option
+        is set to False. If "auto_start_request" is True, a request will be
+        started (if necessary) on every operation.
+        """
         if not self.__auto_start_request:
             self.end_request()
             self.__thread_map[threading.current_thread()] = -1
 
     def end_request(self):
+        """End the current "request", if this thread is in one.
+
+        Judicious use of this method can lead to performance gains when
+        connection-pooling is being used. By ending a request when it is safe
+        to do so the connection is allowed to pick a new socket from the pool
+        for that thread on the next operation. This could prevent an imbalance
+        of threads trying to connect on the same socket. Care should be taken,
+        however, to make sure that `end_request` isn't called in the middle
+        of a sequence of operations in which ordering is important. This could
+        lead to unexpected results.
+
+        `end_request` is useful even (especially) if "auto_start_request" is
+        True.
+
+        See the documentation for `start_request` for more information on what
+        a "request" is and when one should be used.
+        """
         thread = threading.current_thread()
         if self.__thread_map.get(thread, -1) >= 0:
             sock_number = self.__thread_map.pop(thread)
