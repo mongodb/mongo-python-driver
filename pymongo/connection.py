@@ -225,7 +225,7 @@ class Connection(object):
         except socket.error:
             raise ConnectionFailure("could not connect to %r" % self.__nodes)
 
-    def __reset(self):
+    def _reset(self):
         """Reset everything and start connecting again.
 
         Closes all open sockets and resets them to None. Re-finds the master.
@@ -299,7 +299,7 @@ class Connection(object):
                 self.__connect(sock)
         except ConnectionFailure:
             self.__locks[sock].release()
-            self.__reset()
+            self._reset()
             raise
         return sock
 
@@ -342,7 +342,7 @@ class Connection(object):
             self.__locks[sock_number].release()
         except ConnectionFailure:
             self.__locks[sock_number].release()
-            self.__reset()
+            self._reset()
             raise
 
     def __receive_message_on_socket(self, operation, request_id, sock):
@@ -394,7 +394,7 @@ class Connection(object):
             return result
         except ConnectionFailure:
             self.__locks[sock_number].release()
-            self.__reset()
+            self._reset()
             raise
 
     def start_request(self):

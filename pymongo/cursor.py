@@ -22,7 +22,7 @@ import pymongo
 import bson
 from son import SON
 from code import Code
-from errors import InvalidOperation, OperationFailure
+from errors import InvalidOperation, OperationFailure, ConnectionFailure
 
 _query_lock = Lock()
 _ZERO = "\x00\x00\x00\x00"
@@ -242,6 +242,9 @@ class Cursor(object):
                 raise OperationFailure("cursor id '%s' not valid at server" % self.__id)
             elif response_flag == 2:
                 error_object = bson.BSON(response[20:]).to_dict()
+                if error_object["$err"] == "not master":
+                    self.__collection.database().connection()._reset()
+                    raise ConnectionFailure("master has changed")
                 raise OperationFailure("database error: %s" % error_object["$err"])
             else:
                 assert response_flag == 0
