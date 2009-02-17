@@ -104,7 +104,14 @@ static PyObject* _cbson_element_to_bson(PyObject* self, PyObject* args) {
      * here we check for type equivalence, not isinstance in some
      * places. */
     if (PyString_CheckExact(value)) {
-        return build_string(0x02, value, name);
+        // we have to do the encoding so we can fail fast if they give us non utf-8
+        PyObject* encoded = PyString_AsEncodedObject(value, "utf-8", "strict");
+        if (!encoded) {
+            return NULL;
+        }
+        PyObject* result = build_string(0x02, encoded, name);
+        Py_DECREF(encoded);
+        return result;
     } else if (PyUnicode_CheckExact(value)) {
         PyObject* encoded = PyUnicode_AsUTF8String(value);
         if (!encoded) {

@@ -156,5 +156,9 @@ class TestBSON(unittest.TestCase):
                     f.write(bson)
                     f.close()
 
+    def test_bad_encode(self):
+        self.assertRaises(UnicodeDecodeError, BSON.from_dict,
+                          {"lalala": '\xf4\xe0\xf0\xe1\xc0 Color Touch'})
+
 if __name__ == "__main__":
     unittest.main()

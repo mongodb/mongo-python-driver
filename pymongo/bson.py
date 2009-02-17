@@ -52,10 +52,8 @@ def _get_c_string(data):
 
     return (unicode(data[:end], "utf-8"), data[end + 1:])
 
-def _make_c_string(string, encode=True):
-    if encode and isinstance(string, unicode):
-        return string.encode("utf-8") + "\x00"
-    return string + "\x00"
+def _make_c_string(string):
+    return string.encode("utf-8") + "\x00"
 
 def _validate_number(data):
     assert len(data) >= 8
@@ -298,11 +296,11 @@ def _element_to_bson(key, value):
             value = struct.pack("<i", len(value)) + value
         return "\x05" + name + struct.pack("<i", len(value)) + chr(subtype) + value
     if isinstance(value, Code):
-        cstring = _make_c_string(value, False)
+        cstring = _make_c_string(value)
         length = struct.pack("<i", len(cstring))
         return "\x0D" + name + length + cstring
     if isinstance(value, str):
-        cstring = _make_c_string(value, False)
+        cstring = _make_c_string(value)
         length = struct.pack("<i", len(cstring))
         return "\x02" + name + length + cstring
     if isinstance(value, unicode):
@@ -342,7 +340,7 @@ def _element_to_bson(key, value):
             flags += "u"
         if value.flags & re.VERBOSE:
             flags += "x"
-        return "\x0B" + name + _make_c_string(pattern) + _make_c_string(flags, False)
+        return "\x0B" + name + _make_c_string(pattern) + _make_c_string(flags)
     if isinstance(value, DBRef):
         ns = _make_c_string(value.collection())
         return "\x0C" + name + struct.pack("<i", len(ns)) + ns + _shuffle_oid(str(value.id()))
