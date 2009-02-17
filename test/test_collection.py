@@ -21,6 +21,7 @@ sys.path[0:0] = [""]
 import qcheck
 from test_connection import get_connection
 from pymongo.objectid import ObjectId
+from pymongo.binary import Binary
 from pymongo.collection import Collection
 from pymongo.errors import InvalidName, OperationFailure
 from pymongo import ASCENDING, DESCENDING
@@ -90,6 +91,18 @@ class TestCollection(unittest.TestCase):
                               (u"ns", u"pymongo_test.test"),
                               (u"key", SON([(u"hello", -1),
                                             (u"world", 1)]))]))
+
+    def test_index_on_binary(self):
+        db = self.db
+        db.drop_collection("test")
+        db.test.save({"bin": Binary("def")})
+        db.test.save({"bin": Binary("abc")})
+        db.test.save({"bin": Binary("ghi")})
+
+        self.assertEqual(db.test.find({"bin": Binary("abc")}).explain()["nscanned"], 3)
+
+        db.test.create_index("bin", ASCENDING)
+        self.assertEqual(db.test.find({"bin": Binary("abc")}).explain()["nscanned"], 1)
 
     def test_drop_index(self):
         db = self.db
