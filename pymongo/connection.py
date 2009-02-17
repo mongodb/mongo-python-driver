@@ -59,9 +59,8 @@ class Connection(object):
           - `host` (optional): hostname or IPv4 address of the instance to
             connect to
           - `port` (optional): port number on which to connect
-          - `options` (optional): dictionary of connection options
           - `pool_size` (optional): maximum size of the built in connection-pool
-          - auto_start_request (optional): automatically start a request
+          - `auto_start_request` (optional): automatically start a request
             on every operation - see documentation for `start_request`.
         """
         if not isinstance(host, types.StringType):
