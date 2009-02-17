@@ -38,7 +38,7 @@ Above is the ouput showing how the compilation failed.""" % ext.name
 
 setup(
     name="pymongo",
-    version="0.6",
+    version="0.7",
     description="Driver for the Mongo database <http://www.mongodb.org>",
     long_description=readme_content,
     author="10gen",
