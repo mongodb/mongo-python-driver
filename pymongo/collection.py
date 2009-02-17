@@ -261,6 +261,17 @@ class Collection(object):
     def find(self, spec=None, fields=None, skip=0, limit=0, _sock=None):
         """Query the database.
 
+        The `spec` argument is a prototype document that all results must
+        match. For example:
+
+        >>> db.test.find({"hello": "world"})
+
+        only matches documents that have a key "hello" with value "world".
+        Matches can have other keys *in addition* to "hello". The `fields`
+        argument is used to specify a subset of fields that should be included
+        in the result documents. By limiting results to a certain subset of
+        fields we cut down on network traffic and decoding time.
+
         Raises TypeError if any of the arguments are of improper type. Returns
         an instance of Cursor corresponding to this query.
 
