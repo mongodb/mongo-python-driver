@@ -24,6 +24,7 @@ sys.path[0:0] = [os.path.join(os.getcwd(), "..")]
 from pymongo.connection import Connection
 from pymongo.errors import CollectionInvalid
 from pymongo import OFF, SLOW_ONLY, ALL, ASCENDING
+import gridfs
 
 def admin(db, out):
     tester = db.tester
@@ -147,17 +148,38 @@ def update(db, out):
     db.foo.update({"x": 2}, {"x": 1, "y": 7})
     db.foo.update({"x": 3}, {"x": 4, "y": 1}, upsert=True)
 
-def main(test, out_file):
+def gridfs_in(db, time, input):
+    name = input.name
+    print name
+    fs = gridfs.GridFS(db)
+    f = fs.open(name, "w")
+    f.write(input.read())
+    f.close()
+
+def gridfs_out(db, time, input, output):
+    fs = gridfs.GridFS(db)
+    f = fs.open(input.name)
+    output.write(f.read())
+    f.close()
+
+def main(test, time_file, in_file=None, out_file=None):
     db = Connection().driver_test_framework
     try:
         test_function = globals()[test]
     except KeyError:
         return
 
-    f = open(out_file, "w")
+    time_file = open(time_file, "w")
+    args = [db, time_file]
+    if in_file:
+        in_file = open(in_file, "r")
+        args.append(in_file)
+    if out_file:
+        out_file = open(out_file, "w")
+        args.append(out_file)
     try:
         begin = datetime.datetime.now()
-        test_function(db, f)
+        test_function(*args)
         end = datetime.datetime.now()
         exit_status = 0
     except:
@@ -166,12 +188,16 @@ def main(test, out_file):
         exit_status = 1
 
     if begin and end:
-        f.write("begintime:%s\n" % begin)
-        f.write("endtime:%s\n" % end)
-        f.write("totaltime:%s\n" % (end - begin))
-    f.write("exit_code:%s\n" % exit_status)
-    f.close()
+        time_file.write("begintime:%s\n" % begin)
+        time_file.write("endtime:%s\n" % end)
+        time_file.write("totaltime:%s\n" % (end - begin))
+    time_file.write("exit_code:%s\n" % exit_status)
+    time_file.close()
+    if in_file and hasattr(in_file, "close"):
+        in_file.close()
+    if out_file:
+        out_file.close()
 
 if __name__ == "__main__":
-    main(sys.argv[1], sys.argv[2])
+    main(*sys.argv[1:])
 
