@@ -87,8 +87,7 @@ class TestGridFile(unittest.TestCase):
         file.close()
 
         # test that md5 still works...
-        # TODO enable this test once the db is fixed
-        # self.assertEqual(file.md5, "5eb63bbbe01eeed093cb22bb8f5acdc3")
+        self.assertEqual(file.md5, "5eb63bbbe01eeed093cb22bb8f5acdc3")
 
         # make sure it's still there...
         file = GridFile({"filename": "test"}, self.db, collection="pymongo_test")
