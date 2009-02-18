@@ -150,7 +150,6 @@ def update(db, out):
 
 def gridfs_in(db, time, input):
     name = input.name
-    print name
     fs = gridfs.GridFS(db)
     f = fs.open(name, "w")
     f.write(input.read())
