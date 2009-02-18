@@ -65,6 +65,25 @@ class ObjectId(object):
         else:
             raise TypeError("id must be an instance of (str, ObjectId), not %s" % type(oid))
 
+    def url_encode(self):
+        """Get a string representation of this ObjectId safe for use in a url.
+
+        The reverse can be achieved using `url_decode()`.
+        """
+        return self.__id.encode("hex")
+
+    @classmethod
+    def url_decode(cls, encoded_oid):
+        """Create an ObjectId from an encoded hex string.
+
+        The reverse can be achieved using `url_encode()`.
+
+        :Parameters:
+        - `encoded_oid`: string encoding of an ObjectId (as created
+          by `url_encode()`)
+        """
+        return cls(encoded_oid.decode("hex"))
+
     def __str__(self):
         return self.__id
 

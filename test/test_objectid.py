@@ -50,5 +50,14 @@ class TestObjectId(unittest.TestCase):
         self.assertNotEqual(ObjectId(), ObjectId())
         self.assertNotEqual(ObjectId("123456789012"), "123456789012")
 
+    def test_url(self):
+        a = ObjectId("123456789012")
+        self.assertEqual(a.url_encode(), "313233343536373839303132")
+        self.assertEqual(a, ObjectId.url_decode("313233343536373839303132"))
+
+        b = ObjectId()
+        encoded = b.url_encode()
+        self.assertEqual(b, ObjectId.url_decode(encoded))
+
 if __name__ == "__main__":
     unittest.main()
