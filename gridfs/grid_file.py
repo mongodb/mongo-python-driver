@@ -136,6 +136,7 @@ class GridFile(object):
     upload_date = __create_property("uploadDate", True)
     aliases = __create_property("aliases")
     metadata = __create_property("metadata")
+    md5 = __create_property("md5", True)
 
     def rename(self, filename):
         """Rename this GridFile.
@@ -188,7 +189,11 @@ class GridFile(object):
 
         self.__write_buffer_to_chunks()
 
+        md5 = self.__collection.database()._command(SON([("filemd5", self.__id),
+                                                         ("root", self.__collection.name())]))["md5"]
+
         grid_file = self.__collection.files.find_one(self.__id)
+        grid_file["md5"] = md5
         grid_file["length"] = self.__position + len(self.__buffer)
         self.__collection.files.save(grid_file)
 

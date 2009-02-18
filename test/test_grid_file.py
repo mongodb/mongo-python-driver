@@ -60,6 +60,15 @@ class TestGridFile(unittest.TestCase):
         self.assertEqual(file.read(), "")
         file.close()
 
+    def test_md5(self):
+        file = GridFile({"filename": "test"}, self.db, "w")
+        file.write("hello world\n")
+        file.close()
+
+        file = GridFile({"filename": "test"}, self.db)
+        self.assertEqual(file.md5, "6f5902ac237024bdd0c176cb93063dc4")
+        file.close()
+
     def test_alternate_collection(self):
         self.db.pymongo_test.files.remove({})
         self.db.pymongo_test.chunks.remove({})
@@ -76,6 +85,10 @@ class TestGridFile(unittest.TestCase):
         file = GridFile({"filename": "test"}, self.db, collection="pymongo_test")
         self.assertEqual(file.read(), "hello world")
         file.close()
+
+        # test that md5 still works...
+        # TODO enable this test once the db is fixed
+        # self.assertEqual(file.md5, "5eb63bbbe01eeed093cb22bb8f5acdc3")
 
         # make sure it's still there...
         file = GridFile({"filename": "test"}, self.db, collection="pymongo_test")
@@ -149,6 +162,7 @@ class TestGridFile(unittest.TestCase):
         self.assertTrue(isinstance(a.upload_date, datetime.datetime))
         self.assertEqual(a.aliases, None)
         self.assertEqual(a.metadata, None)
+        self.assertEqual(a.md5, "d41d8cd98f00b204e9800998ecf8427e")
 
         a.content_type = "something"
         self.assertEqual(a.content_type, "something")
@@ -174,6 +188,10 @@ class TestGridFile(unittest.TestCase):
         def set_name():
             a.name = "hello"
         self.assertRaises(AttributeError, set_name)
+
+        def set_md5():
+            a.md5 = "what"
+        self.assertRaises(AttributeError, set_md5)
 
     def test_rename(self):
         self.db.fs.files.remove({})
