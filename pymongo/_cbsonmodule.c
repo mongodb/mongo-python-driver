@@ -123,6 +123,9 @@ static PyObject* _cbson_element_to_bson(PyObject* self, PyObject* args) {
     } else if (PyInt_CheckExact(value)) {
         int int_value = (int)PyInt_AsLong(value);
         return build_element(0x10, name, 4, (char*)&int_value);
+    } else if (PyLong_CheckExact(value)) {
+        int int_value = (int)PyLong_AsLong(value); // TODO handle overflow here
+        return build_element(0x10, name, 4, (char*)&int_value);
     } else if (PyBool_Check(value)) {
         long bool = PyInt_AsLong(value);
         char c = bool ? 0x01 : 0x00;

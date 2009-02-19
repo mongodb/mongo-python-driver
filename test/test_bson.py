@@ -107,6 +107,7 @@ class TestBSON(unittest.TestCase):
         self.assertTrue(isinstance(BSON.from_dict({"hello": "world"}).to_dict()["hello"],
                                    types.UnicodeType))
         helper({"mike": -10120})
+        helper({"long": long(10)})
         helper({u"hello": 0.0013109})
         helper({"something": True})
         helper({"false": False})
