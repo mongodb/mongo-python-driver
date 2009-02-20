@@ -19,7 +19,10 @@ this should be updated to use that if it exists an `simplejson` otherwise.
 """
 
 import datetime
-import cProfile as profile
+try:
+    import cProfile as profile
+except:
+    import profile
 import sys
 sys.path[0:0] = [""]
 

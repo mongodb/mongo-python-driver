@@ -12,9 +12,10 @@ from distutils.core import Extension
 
 f = open("README.rst")
 try:
-    readme_content = f.read()
-except:
-    readme_content = ""
+    try:
+        readme_content = f.read()
+    except:
+        readme_content = ""
 finally:
     f.close()
 

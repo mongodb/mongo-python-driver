@@ -181,24 +181,25 @@ class Connection(object):
         for (host, port) in self.__nodes:
             _logger.debug("trying %r:%r" % (host, port))
             try:
-                sock = socket.socket()
-                sock.settimeout(_TIMEOUT)
-                sock.connect((host, port))
-                master = self.__master(sock)
-                if master is True:
-                    self.__host = host
-                    self.__port = port
-                    _logger.debug("found master")
-                    return
-                if master not in self.__nodes:
-                    raise ConfigurationError(
-                        "%r claims master is %r, but that's not configured" %
-                        ((host, port), master))
-                _logger.debug("not master, master is (%r, %r)" % master)
-            except socket.error:
-                _logger.debug("could not connect, got: %s" %
-                              traceback.format_exc())
-                continue
+                try:
+                    sock = socket.socket()
+                    sock.settimeout(_TIMEOUT)
+                    sock.connect((host, port))
+                    master = self.__master(sock)
+                    if master is True:
+                        self.__host = host
+                        self.__port = port
+                        _logger.debug("found master")
+                        return
+                    if master not in self.__nodes:
+                        raise ConfigurationError(
+                            "%r claims master is %r, but that's not configured" %
+                            ((host, port), master))
+                    _logger.debug("not master, master is (%r, %r)" % master)
+                except socket.error:
+                    _logger.debug("could not connect, got: %s" %
+                                  traceback.format_exc())
+                    continue
             finally:
                 sock.close()
         raise ConnectionFailure("could not find master")

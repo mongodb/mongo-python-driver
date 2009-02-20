@@ -129,7 +129,7 @@ class TestBSON(unittest.TestCase):
         data_files = "../mongo-qa/modules/bson_tests/tests/*/*.xson"
         generate = True
 
-        for file_name in glob.iglob(data_files):
+        for file_name in glob.glob(data_files):
             f = open(file_name, "r")
             xml = f.read()
             f.close()

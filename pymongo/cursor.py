@@ -24,7 +24,6 @@ from son import SON
 from code import Code
 from errors import InvalidOperation, OperationFailure, ConnectionFailure
 
-_query_lock = Lock()
 _ZERO = "\x00\x00\x00\x00"
 
 class Cursor(object):
