@@ -23,7 +23,10 @@ import re
 import binascii
 import base64
 
-import elementtree.ElementTree as ET
+try:
+    import xml.etree.ElementTree as ET
+except:
+    import elementtree.ElementTree as ET
 
 from code import Code
 from binary import Binary
