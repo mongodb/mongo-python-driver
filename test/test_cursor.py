@@ -31,11 +31,14 @@ class TestCursor(unittest.TestCase):
 
     def test_explain(self):
         a = self.db.test.find()
-        explanation = a.explain()
+        b = a.explain()
         for _ in a:
             break
-        self.assertEqual(a.explain(), explanation)
-        self.assertTrue("cursor" in explanation)
+        c = a.explain()
+        del b["millis"]
+        del c["millis"]
+        self.assertEqual(b, c)
+        self.assertTrue("cursor" in b)
 
     def test_hint(self):
         db = self.db
