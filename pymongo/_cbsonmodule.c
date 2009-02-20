@@ -109,24 +109,7 @@ static PyObject* _cbson_element_to_bson(PyObject* self, PyObject* args) {
     /* TODO this isn't quite the same as the Python version:
      * here we check for type equivalence, not isinstance in some
      * places. */
-    if (PyString_CheckExact(value)) {
-        // we have to do the encoding so we can fail fast if they give us non utf-8
-        PyObject* encoded = PyString_AsEncodedObject(value, "utf-8", "strict");
-        if (!encoded) {
-            return NULL;
-        }
-        PyObject* result = build_string(0x02, encoded, name);
-        Py_DECREF(encoded);
-        return result;
-    } else if (PyUnicode_CheckExact(value)) {
-        PyObject* encoded = PyUnicode_AsUTF8String(value);
-        if (!encoded) {
-            return NULL;
-        }
-        PyObject* result = build_string(0x02, encoded, name);
-        Py_DECREF(encoded);
-        return result;
-    } else if (PyInt_CheckExact(value)) {
+    if (PyInt_CheckExact(value)) {
         int int_value = (int)PyInt_AsLong(value);
         return build_element(0x10, name, 4, (char*)&int_value);
     } else if (PyLong_CheckExact(value)) {
@@ -217,6 +200,23 @@ static PyObject* _cbson_element_to_bson(PyObject* self, PyObject* args) {
         return result;
     } else if (PyObject_IsInstance(value, Code)) {
         return build_string(0x0D, value, name);
+    } else if (PyString_Check(value)) {
+        // we have to do the encoding so we can fail fast if they give us non utf-8
+        PyObject* encoded = PyString_AsEncodedObject(value, "utf-8", "strict");
+        if (!encoded) {
+            return NULL;
+        }
+        PyObject* result = build_string(0x02, encoded, name);
+        Py_DECREF(encoded);
+        return result;
+    } else if (PyUnicode_Check(value)) {
+        PyObject* encoded = PyUnicode_AsUTF8String(value);
+        if (!encoded) {
+            return NULL;
+        }
+        PyObject* result = build_string(0x02, encoded, name);
+        Py_DECREF(encoded);
+        return result;
     } else if (PyDateTime_CheckExact(value)) {
         time_t rawtime;
         time(&rawtime);
@@ -347,6 +347,8 @@ static PyObject* _cbson_element_to_bson(PyObject* self, PyObject* args) {
         free(data);
         return result;
     }
+    printf(PyString_AsString(PyObject_Repr(value)));
+    printf("blah\n");
     PyErr_SetString(CBSONError, "no c encoder for this type yet");
     return NULL;
 }
