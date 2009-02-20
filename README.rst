@@ -19,7 +19,7 @@ Dependencies
 ============
 The PyMongo distribution has been tested on both Python 2.5 and Python 2.6. Additional dependencies are:
 
-- `ElementTree <http://effbot.org/zone/element-index.htm>`_
+- `ElementTree <http://effbot.org/zone/element-index.htm>`_ (this is included with Python >= 2.5)
 - (to generate documentation) `epydoc <http://epydoc.sourceforge.net/>`_
 - (to auto-discover tests) `nose <http://somethingaboutorange.com/mrl/projects/nose/>`_
 
