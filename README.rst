@@ -17,7 +17,10 @@ If you have `setuptools <http://peak.telecommunity.com/DevCenter/setuptools>`_ i
 
 Dependencies
 ============
-The PyMongo distribution has been tested on Python 2.x, where x >= 4. Additional dependencies are:
+The PyMongo distribution has been tested on Python 2.x, where x >= 3. On Python 2.3 the optional
+C extension will not be built. This will negatively affect performance, but everything should still work.
+
+Additional dependencies are:
 
 - `ElementTree <http://effbot.org/zone/element-index.htm>`_ (this is included with Python >= 2.5)
 - (to generate documentation) `epydoc <http://epydoc.sourceforge.net/>`_
