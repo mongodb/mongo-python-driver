@@ -25,7 +25,7 @@ import base64
 
 try:
     import xml.etree.ElementTree as ET
-except:
+except ImportError:
     import elementtree.ElementTree as ET
 
 from code import Code

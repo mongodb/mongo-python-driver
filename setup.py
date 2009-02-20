@@ -10,6 +10,12 @@ from distutils.command.build_ext import build_ext
 from distutils.errors import CCompilerError
 from distutils.core import Extension
 
+requirements = []
+try:
+    import xml.etree.ElementTree
+except ImportError:
+    requirements.append("elementtree")
+
 f = open("README.rst")
 try:
     try:
@@ -47,7 +53,7 @@ setup(
     url="http://github.com/mongodb/mongo-python-driver",
     packages=["pymongo", "gridfs"],
     ext_modules=[Extension('pymongo._cbson', ['pymongo/_cbsonmodule.c'])],
-    install_requires=["elementtree"],
+    install_requires=requirements,
     license="Apache License, Version 2.0",
     test_suite="nose.collector",
     classifiers=[
