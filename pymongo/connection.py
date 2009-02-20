@@ -14,10 +14,10 @@
 
 """Low level connection to Mongo."""
 
+import sys
 import socket
 import struct
 import types
-import traceback
 import logging
 import threading
 import random
@@ -116,7 +116,6 @@ class Connection(object):
 
         self.__find_master()
 
-    @classmethod
     def paired(cls, left, right=("localhost", 27017),
                pool_size=1, auto_start_request=True):
         """Open a new paired connection to Mongo.
@@ -134,6 +133,7 @@ class Connection(object):
                          _connect=False)
         connection.__pair_with(*right)
         return connection
+    paired = classmethod(paired)
 
     def __increment_id(self):
         self.__id_lock.acquire()
@@ -152,7 +152,7 @@ class Connection(object):
         if result["ismaster"] == 1:
             return True
         else:
-            strings = result["remote"].rsplit(":", 1)
+            strings = result["remote"].split(":", 1)
             if len(strings) == 1:
                 port = 27017
             else:
@@ -197,8 +197,9 @@ class Connection(object):
                             ((host, port), master))
                     _logger.debug("not master, master is (%r, %r)" % master)
                 except socket.error:
-                    _logger.debug("could not connect, got: %s" %
-                                  traceback.format_exc())
+                    exctype, value = sys.exc_info()[:2]
+                    _logger.debug("could not connect, got: %s %s" %
+                                  (exctype, value))
                     continue
             finally:
                 sock.close()
@@ -273,8 +274,8 @@ class Connection(object):
         """
         choices = range(self.__pool_size)
         random.shuffle(choices)
-        choices = sorted(choices, lambda x, y: cmp(self.__thread_count[x],
-                                                   self.__thread_count[y]))
+        choices.sort(lambda x, y: cmp(self.__thread_count[x],
+                                      self.__thread_count[y]))
 
         for choice in choices:
             if self.__locks[choice].acquire(False):

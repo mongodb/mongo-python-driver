@@ -36,8 +36,8 @@ class TestDBRef(unittest.TestCase):
         self.assertRaises(TypeError, DBRef, 1.5, a)
         self.assertRaises(TypeError, DBRef, a, a)
         self.assertRaises(TypeError, DBRef, None, a)
-        self.assertTrue(DBRef("coll", a))
-        self.assertTrue(DBRef(u"coll", a))
+        self.assert_(DBRef("coll", a))
+        self.assert_(DBRef(u"coll", a))
 
     def test_repr(self):
         self.assertEqual(repr(DBRef("coll", ObjectId("123456789012"))), "DBRef(u'coll', ObjectId('123456789012'))")

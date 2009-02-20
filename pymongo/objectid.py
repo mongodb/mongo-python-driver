@@ -72,7 +72,6 @@ class ObjectId(object):
         """
         return self.__id.encode("hex")
 
-    @classmethod
     def url_decode(cls, encoded_oid):
         """Create an ObjectId from an encoded hex string.
 
@@ -83,6 +82,7 @@ class ObjectId(object):
           by `url_encode()`)
         """
         return cls(encoded_oid.decode("hex"))
+    url_decode = classmethod(url_decode)
 
     def __str__(self):
         return self.__id

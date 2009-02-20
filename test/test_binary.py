@@ -27,10 +27,10 @@ class TestBinary(unittest.TestCase):
     def test_binary(self):
         a_string = "hello world"
         a_binary = Binary("hello world")
-        self.assertTrue(a_binary.startswith("hello"))
-        self.assertTrue(a_binary.endswith("world"))
-        self.assertTrue(isinstance(a_binary, Binary))
-        self.assertFalse(isinstance(a_string, Binary))
+        self.assert_(a_binary.startswith("hello"))
+        self.assert_(a_binary.endswith("world"))
+        self.assert_(isinstance(a_binary, Binary))
+        self.failIf(isinstance(a_string, Binary))
 
     def test_exceptions(self):
         self.assertRaises(TypeError, Binary, None)
@@ -41,8 +41,8 @@ class TestBinary(unittest.TestCase):
         self.assertRaises(TypeError, Binary, "hello", "100")
         self.assertRaises(ValueError, Binary, "hello", -1)
         self.assertRaises(ValueError, Binary, "hello", 256)
-        self.assertTrue(Binary("hello", 0))
-        self.assertTrue(Binary("hello", 255))
+        self.assert_(Binary("hello", 0))
+        self.assert_(Binary("hello", 255))
 
     def test_subtype(self):
         b = Binary("hello")

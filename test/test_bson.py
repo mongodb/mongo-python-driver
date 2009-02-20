@@ -41,15 +41,15 @@ class TestBSON(unittest.TestCase):
         self.assertRaises(TypeError, is_valid, u"test")
         self.assertRaises(TypeError, is_valid, 10.4)
 
-        self.assertFalse(is_valid("test"))
+        self.failIf(is_valid("test"))
 
         # the simplest valid BSON document
-        self.assertTrue(is_valid("\x05\x00\x00\x00\x00"))
-        self.assertTrue(is_valid(BSON("\x05\x00\x00\x00\x00")))
-        self.assertFalse(is_valid("\x04\x00\x00\x00\x00"))
-        self.assertFalse(is_valid("\x05\x00\x00\x00\x01"))
-        self.assertFalse(is_valid("\x05\x00\x00\x00"))
-        self.assertFalse(is_valid("\x05\x00\x00\x00\x00\x00"))
+        self.assert_(is_valid("\x05\x00\x00\x00\x00"))
+        self.assert_(is_valid(BSON("\x05\x00\x00\x00\x00")))
+        self.failIf(is_valid("\x04\x00\x00\x00\x00"))
+        self.failIf(is_valid("\x05\x00\x00\x00\x01"))
+        self.failIf(is_valid("\x05\x00\x00\x00"))
+        self.failIf(is_valid("\x05\x00\x00\x00\x00\x00"))
 
     def test_random_data_is_not_bson(self):
         qcheck.check_unittest(self, qcheck.isnt(is_valid), qcheck.gen_string(qcheck.gen_range(0, 40)))
@@ -104,7 +104,7 @@ class TestBSON(unittest.TestCase):
             self.assertEqual(dict, (BSON.from_dict(dict)).to_dict())
         helper({})
         helper({"test": u"hello"})
-        self.assertTrue(isinstance(BSON.from_dict({"hello": "world"}).to_dict()["hello"],
+        self.assert_(isinstance(BSON.from_dict({"hello": "world"}).to_dict()["hello"],
                                    types.UnicodeType))
         helper({"mike": -10120})
         helper({"long": long(10)})

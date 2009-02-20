@@ -27,10 +27,10 @@ class TestCode(unittest.TestCase):
     def test_code(self):
         a_string = "hello world"
         a_code = Code("hello world")
-        self.assertTrue(a_code.startswith("hello"))
-        self.assertTrue(a_code.endswith("world"))
-        self.assertTrue(isinstance(a_code, Code))
-        self.assertFalse(isinstance(a_string, Code))
+        self.assert_(a_code.startswith("hello"))
+        self.assert_(a_code.endswith("world"))
+        self.assert_(isinstance(a_code, Code))
+        self.failIf(isinstance(a_string, Code))
 
     def test_repr(self):
         c = Code("hello world")

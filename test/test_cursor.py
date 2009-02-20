@@ -38,7 +38,7 @@ class TestCursor(unittest.TestCase):
         del b["millis"]
         del c["millis"]
         self.assertEqual(b, c)
-        self.assertTrue("cursor" in b)
+        self.assert_("cursor" in b)
 
     def test_hint(self):
         db = self.db
@@ -230,7 +230,7 @@ class TestCursor(unittest.TestCase):
             db.test.save({"x": i})
 
         self.assertEqual(10, db.test.find().count())
-        self.assertTrue(isinstance(db.test.find().count(), types.IntType))
+        self.assert_(isinstance(db.test.find().count(), types.IntType))
         self.assertEqual(10, db.test.find().limit(5).count())
         self.assertEqual(10, db.test.find().skip(5).count())
 

@@ -48,7 +48,7 @@ class TestCollection(unittest.TestCase):
         self.assertRaises(InvalidName, make_col, self.db.test, "test.")
         self.assertRaises(InvalidName, make_col, self.db.test, "tes..t")
 
-        self.assertTrue(isinstance(self.db.test, Collection))
+        self.assert_(isinstance(self.db.test, Collection))
         self.assertEqual(self.db.test, self.db["test"])
         self.assertEqual(self.db.test, Collection(self.db, "test"))
         self.assertEqual(self.db.test.mike, self.db["test.mike"])
@@ -65,7 +65,7 @@ class TestCollection(unittest.TestCase):
         self.assertRaises(TypeError, db.test.create_index, "hello", "world")
 
         db.test.drop_indexes()
-        self.assertFalse(db.system.indexes.find_one({"ns": u"pymongo_test.test"}))
+        self.failIf(db.system.indexes.find_one({"ns": u"pymongo_test.test"}))
 
         db.test.create_index("hello", ASCENDING)
         db.test.create_index([("hello", DESCENDING), ("world", ASCENDING)])
@@ -76,7 +76,7 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(count, 2)
 
         db.test.drop_indexes()
-        self.assertFalse(db.system.indexes.find_one({"ns": u"pymongo_test.test"}))
+        self.failIf(db.system.indexes.find_one({"ns": u"pymongo_test.test"}))
         db.test.create_index("hello", ASCENDING)
         self.assertEqual(db.system.indexes.find_one({"ns": u"pymongo_test.test"}),
                          SON([(u"name", u"hello_1"),
@@ -84,7 +84,7 @@ class TestCollection(unittest.TestCase):
                               (u"key", SON([(u"hello", 1)]))]))
 
         db.test.drop_indexes()
-        self.assertFalse(db.system.indexes.find_one({"ns": u"pymongo_test.test"}))
+        self.failIf(db.system.indexes.find_one({"ns": u"pymongo_test.test"}))
         db.test.create_index([("hello", DESCENDING), ("world", ASCENDING)])
         self.assertEqual(db.system.indexes.find_one({"ns": u"pymongo_test.test"}),
                          SON([(u"name", u"hello_-1_world_1"),
@@ -145,9 +145,9 @@ class TestCollection(unittest.TestCase):
         db.test.create_index([("hello", DESCENDING), ("world", ASCENDING)])
         self.assertEqual(db.test.index_information()["hello_1"], [("hello", ASCENDING)])
         self.assertEqual(len(db.test.index_information()), 2)
-        self.assertTrue(("hello", DESCENDING) in db.test.index_information()["hello_-1_world_1"])
-        self.assertTrue(("world", ASCENDING) in db.test.index_information()["hello_-1_world_1"])
-        self.assertTrue(len(db.test.index_information()["hello_-1_world_1"]) == 2)
+        self.assert_(("hello", DESCENDING) in db.test.index_information()["hello_-1_world_1"])
+        self.assert_(("world", ASCENDING) in db.test.index_information()["hello_-1_world_1"])
+        self.assert_(len(db.test.index_information()["hello_-1_world_1"]) == 2)
 
     def test_options(self):
         db = self.db
@@ -184,15 +184,15 @@ class TestCollection(unittest.TestCase):
 
         db.test.insert({"x": 1, "mike": "awesome", "extra thing": "abcdefghijklmnopqrstuvwxyz"})
         self.assertEqual(1, db.test.count())
-        self.assertTrue("x" in db.test.find({}).next())
-        self.assertTrue("mike" in db.test.find({}).next())
-        self.assertTrue("extra thing" in db.test.find({}).next())
-        self.assertTrue("x" in db.test.find({}, ["x", "mike"]).next())
-        self.assertTrue("mike" in db.test.find({}, ["x", "mike"]).next())
-        self.assertFalse("extra thing" in db.test.find({}, ["x", "mike"]).next())
-        self.assertFalse("x" in db.test.find({}, ["mike"]).next())
-        self.assertTrue("mike" in db.test.find({}, ["mike"]).next())
-        self.assertFalse("extra thing" in db.test.find({}, ["mike"]).next())
+        self.assert_("x" in db.test.find({}).next())
+        self.assert_("mike" in db.test.find({}).next())
+        self.assert_("extra thing" in db.test.find({}).next())
+        self.assert_("x" in db.test.find({}, ["x", "mike"]).next())
+        self.assert_("mike" in db.test.find({}, ["x", "mike"]).next())
+        self.failIf("extra thing" in db.test.find({}, ["x", "mike"]).next())
+        self.failIf("x" in db.test.find({}, ["mike"]).next())
+        self.assert_("mike" in db.test.find({}, ["mike"]).next())
+        self.failIf("extra thing" in db.test.find({}, ["mike"]).next())
 
     def test_find_w_regex(self):
         db = self.db
@@ -215,7 +215,7 @@ class TestCollection(unittest.TestCase):
         db.test.remove({})
         auto_id = {"hello": "world"}
         db.test.insert(auto_id)
-        self.assertTrue(isinstance(auto_id["_id"], ObjectId))
+        self.assert_(isinstance(auto_id["_id"], ObjectId))
 
         numeric = {"_id": 240, "hello": "world"}
         db.test.insert(numeric)
@@ -227,7 +227,7 @@ class TestCollection(unittest.TestCase):
 
         for x in db.test.find():
             self.assertEqual(x["hello"], u"world")
-            self.assertTrue("_id" in x)
+            self.assert_("_id" in x)
 
     def test_iteration(self):
         db = self.db

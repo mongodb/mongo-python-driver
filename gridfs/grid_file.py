@@ -110,13 +110,13 @@ class GridFile(object):
 
         self.__collection.chunks.remove({"files_id": self.__id})
 
-    @property
     def closed(self):
         return self.__closed
+    closed = property(closed)
 
-    @property
     def mode(self):
         return self.__mode
+    mode = property(mode)
 
     def __create_property(field_name, read_only=False):
         def getter(self):

@@ -408,7 +408,6 @@ class BSON(str):
         """
         return str.__new__(cls, bson)
 
-    @classmethod
     def from_dict(cls, dict):
         """Create a new BSON object from a python mapping type (like dict).
 
@@ -420,6 +419,7 @@ class BSON(str):
           - `dict`: mapping type representing a Mongo document
         """
         return cls(_dict_to_bson(dict))
+    from_dict = classmethod(from_dict)
 
     def to_dict(self):
         """Get the dictionary representation of this data."""

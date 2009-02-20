@@ -47,7 +47,7 @@ class TestConnection(unittest.TestCase):
         self.assertRaises(ConnectionFailure, Connection, "somedomainthatdoesntexist.org")
         self.assertRaises(ConnectionFailure, Connection, self.host, 123456789)
 
-        self.assertTrue(Connection(self.host, self.port))
+        self.assert_(Connection(self.host, self.port))
 
     def test_repr(self):
         self.assertEqual(repr(Connection(self.host, self.port)),
@@ -69,7 +69,7 @@ class TestConnection(unittest.TestCase):
         self.assertRaises(InvalidName, make_db, connection, "te/t")
         self.assertRaises(InvalidName, make_db, connection, "te st")
 
-        self.assertTrue(isinstance(connection.test, Database))
+        self.assert_(isinstance(connection.test, Database))
         self.assertEqual(connection.test, connection["test"])
         self.assertEqual(connection.test, Database(connection, "test"))
 
@@ -80,8 +80,8 @@ class TestConnection(unittest.TestCase):
         connection.pymongo_test_mike.test.save({"dummy": u"object"})
 
         dbs = connection.database_names()
-        self.assertTrue("pymongo_test" in dbs)
-        self.assertTrue("pymongo_test_mike" in dbs)
+        self.assert_("pymongo_test" in dbs)
+        self.assert_("pymongo_test_mike" in dbs)
 
     def test_drop_database(self):
         connection = Connection(self.host, self.port)
@@ -91,17 +91,17 @@ class TestConnection(unittest.TestCase):
 
         connection.pymongo_test.test.save({"dummy": u"object"})
         dbs = connection.database_names()
-        self.assertTrue("pymongo_test" in dbs)
+        self.assert_("pymongo_test" in dbs)
         connection.drop_database("pymongo_test")
         dbs = connection.database_names()
-        self.assertTrue("pymongo_test" not in dbs)
+        self.assert_("pymongo_test" not in dbs)
 
         connection.pymongo_test.test.save({"dummy": u"object"})
         dbs = connection.database_names()
-        self.assertTrue("pymongo_test" in dbs)
+        self.assert_("pymongo_test" in dbs)
         connection.drop_database(connection.pymongo_test)
         dbs = connection.database_names()
-        self.assertTrue("pymongo_test" not in dbs)
+        self.assert_("pymongo_test" not in dbs)
 
     def test_iteration(self):
         connection = Connection(self.host, self.port)

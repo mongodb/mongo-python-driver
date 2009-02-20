@@ -73,10 +73,10 @@ class TestSONManipulator(unittest.TestCase):
                 break
             return son_in == son
 
-        self.assertTrue(incoming_moves_id({}))
-        self.assertTrue(incoming_moves_id({"_id": 12}))
-        self.assertTrue(incoming_moves_id({"hello": "world", "_id": 12}))
-        self.assertTrue(incoming_moves_id(SON([("hello", "world"),
+        self.assert_(incoming_moves_id({}))
+        self.assert_(incoming_moves_id({"_id": 12}))
+        self.assert_(incoming_moves_id({"hello": "world", "_id": 12}))
+        self.assert_(incoming_moves_id(SON([("hello", "world"),
                                                ("_id", 12)])))
 
         def outgoing_is_identity(son):

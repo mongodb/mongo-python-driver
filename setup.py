@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+import sys
+
 try:
     from setuptools import setup
 except ImportError:
@@ -31,16 +33,27 @@ class custom_build_ext(build_ext):
     The C extension speeds up BSON encoding, but is not essential.
     """
     def build_extension(self, ext):
-        try:
-            build_ext.build_extension(self, ext)
-        except CCompilerError:
-            print ""
-            print ("*" * 62)
-            print """WARNING: The %s extension module could not
+        if sys.version_info[:3] >= (2, 4, 0):
+            try:
+                build_ext.build_extension(self, ext)
+            except CCompilerError:
+                print ""
+                print ("*" * 62)
+                print """WARNING: The %s extension module could not
 be compiled. No C extensions are essential for PyMongo to run,
 although they do result in significant speed improvements.
 
 Above is the ouput showing how the compilation failed.""" % ext.name
+                print ("*" * 62 + "\n")
+        else:
+            print ""
+            print ("*" * 62)
+            print """WARNING: The %s extension module is not supported
+for this version of Python. No C extensions are essential
+for PyMongo to run, although they do result in significant
+speed improvements.
+
+Please use Python >= 2.4 to take advantage of the extension.""" % ext.name
             print ("*" * 62 + "\n")
 
 setup(

@@ -191,7 +191,6 @@ class SON(dict):
     def __len__(self):
         return len(self.keys())
 
-    @classmethod
     def from_xml(cls, xml):
         """Create an instance of SON from an xml document.
         """
@@ -215,7 +214,7 @@ class SON(dict):
             return code.text is not None and Code(code.text) or Code("")
 
         def make_binary(binary):
-            return binary.text is not None and Binary(base64.b64decode(binary.text)) or Binary("")
+            return binary.text is not None and Binary(base64.decodestring(binary.text)) or Binary("")
 
         def make_boolean(bool):
             return bool.text == "true"
@@ -291,3 +290,4 @@ class SON(dict):
         doc = tree[1]
 
         return make_doc(doc)
+    from_xml = classmethod(from_xml)

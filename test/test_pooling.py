@@ -18,6 +18,8 @@ import unittest
 import threading
 import os
 import random
+import sys
+sys.path[0:0] = [""]
 
 from pymongo.connection import Connection
 

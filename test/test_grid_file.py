@@ -119,24 +119,24 @@ class TestGridFile(unittest.TestCase):
         self.assertRaises(TypeError, GridFile, {}, "hello")
         self.assertRaises(TypeError, GridFile, {}, None)
         self.assertRaises(TypeError, GridFile, {}, 5)
-        self.assertTrue(GridFile({}, self.db))
+        self.assert_(GridFile({}, self.db))
 
         self.assertRaises(TypeError, GridFile, {}, self.db, None)
         self.assertRaises(TypeError, GridFile, {}, self.db, 5)
         self.assertRaises(TypeError, GridFile, {}, self.db, [])
         self.assertRaises(ValueError, GridFile, {}, self.db, "m")
         self.assertRaises(ValueError, GridFile, {}, self.db, u"m")
-        self.assertTrue(GridFile({}, self.db, "r"))
-        self.assertTrue(GridFile({}, self.db, u"r"))
-        self.assertTrue(GridFile({}, self.db, "w"))
-        self.assertTrue(GridFile({}, self.db, u"w"))
+        self.assert_(GridFile({}, self.db, "r"))
+        self.assert_(GridFile({}, self.db, u"r"))
+        self.assert_(GridFile({}, self.db, "w"))
+        self.assert_(GridFile({}, self.db, u"w"))
 
         self.assertRaises(TypeError, GridFile, {}, self.db, "r", None)
         self.assertRaises(TypeError, GridFile, {}, self.db, "r", 5)
         self.assertRaises(TypeError, GridFile, {}, self.db, "r", [])
 
         self.assertRaises(IOError, GridFile, {"filename": "mike"}, self.db)
-        self.assertTrue(GridFile({"filename": "test"}, self.db))
+        self.assert_(GridFile({"filename": "test"}, self.db))
 
     def test_properties(self):
         self.db.fs.files.remove({})
@@ -144,21 +144,21 @@ class TestGridFile(unittest.TestCase):
 
         file = GridFile({"filename": "test"}, self.db, "w")
         self.assertEqual(file.mode, "w")
-        self.assertFalse(file.closed)
+        self.failIf(file.closed)
         file.close()
-        self.assertTrue(file.closed)
+        self.assert_(file.closed)
 
         self.assertRaises(IOError, GridFile, {"filename": "mike"}, self.db)
         a = GridFile({"filename": "test"}, self.db)
 
         self.assertEqual(a.mode, "r")
-        self.assertFalse(a.closed)
+        self.failIf(a.closed)
 
         self.assertEqual(a.length, 0)
         self.assertEqual(a.content_type, None)
         self.assertEqual(a.name, "test")
         self.assertEqual(a.chunk_size, 256000)
-        self.assertTrue(isinstance(a.upload_date, datetime.datetime))
+        self.assert_(isinstance(a.upload_date, datetime.datetime))
         self.assertEqual(a.aliases, None)
         self.assertEqual(a.metadata, None)
         self.assertEqual(a.md5, "d41d8cd98f00b204e9800998ecf8427e")

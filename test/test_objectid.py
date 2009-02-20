@@ -34,10 +34,10 @@ class TestObjectId(unittest.TestCase):
         self.assertRaises(InvalidId, ObjectId, "")
         self.assertRaises(InvalidId, ObjectId, "12345678901")
         self.assertRaises(InvalidId, ObjectId, "1234567890123")
-        self.assertTrue(ObjectId())
-        self.assertTrue(ObjectId("123456789012"))
+        self.assert_(ObjectId())
+        self.assert_(ObjectId("123456789012"))
         a = ObjectId()
-        self.assertTrue(ObjectId(a))
+        self.assert_(ObjectId(a))
 
     def test_repr_str(self):
         self.assertEqual(repr(ObjectId("123456789012")), "ObjectId('123456789012')")
