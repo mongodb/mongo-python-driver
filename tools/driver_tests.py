@@ -185,6 +185,7 @@ def main(test, time_file, in_file=None, out_file=None):
         begin = None
         begin = None
         exit_status = 1
+        raise
 
     if begin and end:
         time_file.write("begintime:%s\n" % begin)
