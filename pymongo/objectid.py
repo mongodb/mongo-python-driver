@@ -78,8 +78,8 @@ class ObjectId(object):
         The reverse can be achieved using `url_encode()`.
 
         :Parameters:
-        - `encoded_oid`: string encoding of an ObjectId (as created
-          by `url_encode()`)
+          - `encoded_oid`: string encoding of an ObjectId (as created
+            by `url_encode()`)
         """
         return cls(encoded_oid.decode("hex"))
     url_decode = classmethod(url_decode)

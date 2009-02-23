@@ -54,7 +54,7 @@ class SON(dict):
     unicode                      string         both
     list                         array          both
     dict / `SON`                 object         both
-    datetime.datetime            date           both
+    datetime.datetime [#dt]_     date           both
     compiled re                  regex          both
     `pymongo.binary.Binary`      binary         both
     `pymongo.objectid.ObjectId`  oid            both
@@ -68,6 +68,9 @@ class SON(dict):
     Note that to save binary data it must be wrapped as an instance of
     `pymongo.binary.Binary`. Otherwise it will be saved as a Mongo string and
     retrieved as unicode.
+
+    .. [#dt] datetime.datetime instances will be rounded to the nearest
+       millisecond when saved
     """
     def __init__(self, data=None, **kwargs):
         self.__keys = []
