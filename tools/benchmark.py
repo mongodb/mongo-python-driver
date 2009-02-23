@@ -12,17 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Jim's benchmarking suite
+"""Python implementation of the MongoDB benchmarking suite.
 """
 
-import datetime
+import timeit
 import sys
 sys.path[0:0] = [""]
 
 from pymongo.connection import Connection
 from pymongo import ASCENDING
 
-N = 30000
+N = 1000000
 
 def timed(function, db):
     before = datetime.datetime.now()
