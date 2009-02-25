@@ -175,7 +175,7 @@ class TestGridFile(unittest.TestCase):
         self.assertRaises(AttributeError, set_chunk_size)
 
         def set_upload_date():
-            a.upload_date = datetime.datetime.now()
+            a.upload_date = datetime.datetime.utcnow()
         self.assertRaises(AttributeError, set_upload_date)
 
         a.aliases = ["hello", "world"]

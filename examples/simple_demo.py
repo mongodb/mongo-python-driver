@@ -54,7 +54,7 @@ db.pymongo.insert({"x": 20, "y": 100})
 db.pymongo.insert({"greeting": True, "hello": u"world"})
 
 # floats and dates.
-db.pymongo.insert({"name": u"mike", "account balance": 0.01, "time": datetime.datetime.now()})
+db.pymongo.insert({"name": u"mike", "account balance": 0.01, "time": datetime.datetime.utcnow()})
 
 # The find_one method returns a single document, or None.
 doc = db.pymongo.find_one({"x": 20})

@@ -123,7 +123,7 @@ def remove(db, out):
 def stress1(db, out):
     for i in range(50000):
         db.stress1.save({"name": "asdf" + str(i),
-                         "date": datetime.datetime.now(),
+                         "date": datetime.datetime.utcnow(),
                          "id": i,
                          "blah": "lksjhasoh1298a1shasoidiohaskjasiouashoasasiugoas" +
                          "lksjhasoh1298a1shasoidiohaskjasiouashoasasiugoas" +

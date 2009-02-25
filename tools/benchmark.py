@@ -36,7 +36,7 @@ medium = {"integer": 5,
 # this is similar to the benchmark data posted to the user list
 large = {"base_url": "http://www.example.com/test-me",
          "total_word_count": 6743,
-         "access_time": datetime.datetime.now(),
+         "access_time": datetime.datetime.utcnow(),
          "meta_tags": {"description": "i am a long description string",
                        "author": "Holly Man",
                        "dynamically_created_meta_tag": "who know\n what"
