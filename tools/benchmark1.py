@@ -81,7 +81,7 @@ def timed(name, function, args=[], setup=None):
         function(*args)
         times.append(time.time() - start)
     best_time = min(times)
-    print "%s%f" % (name + (60 - len(name)) * ".", best_time)
+    print "%s%d" % (name + (60 - len(name)) * ".", per_trial / best_time)
     return best_time
 
 def main():
@@ -129,11 +129,11 @@ def main():
 #           [db, 'large_none', {"$gt": per_trial / 4, "$lt": 3 * per_trial / 4}])
 
     timed("find range (small, indexed)", find,
-          [db, 'small_index', {"$gt": per_trial / 2, "$lt": per_trial / 4 + batch_size}])
+          [db, 'small_index', {"$gt": per_trial / 2, "$lt": per_trial / 2 + batch_size}])
     timed("find range (medium, indexed)", find,
-          [db, 'medium_index', {"$gt": per_trial / 2, "$lt": per_trial / 4 + batch_size}])
+          [db, 'medium_index', {"$gt": per_trial / 2, "$lt": per_trial / 2 + batch_size}])
     timed("find range (large, indexed)", find,
-          [db, 'large_index', {"$gt": per_trial / 2, "$lt": per_trial / 4 + batch_size}])
+          [db, 'large_index', {"$gt": per_trial / 2, "$lt": per_trial / 2 + batch_size}])
 
 if __name__ == "__main__":
 #    cProfile.run("main()")
