@@ -43,27 +43,27 @@ class SON(dict):
 
     The mapping from Python types to Mongo types is as follows:
 
-    ===========================  =============  ===================
-    Python Type                  Mongo Type     Supported Direction
-    ===========================  =============  ===================
-    None                         null           both
-    bool                         boolean        both
-    int                          number (int)   both
-    float                        number (real)  both
-    string                       string         py -> mongo
-    unicode                      string         both
-    list                         array          both
-    dict / `SON`                 object         both
-    datetime.datetime [#dt]_     date           both
-    compiled re                  regex          both
-    `pymongo.binary.Binary`      binary         both
-    `pymongo.objectid.ObjectId`  oid            both
-    `pymongo.dbref.DBRef`        dbref          both
-    None                         undefined      mongo -> py
-    unicode                      code           mongo -> py
-    `pymongo.code.Code`          code           py -> mongo
-    unicode                      symbol         mongo -> py
-    ===========================  =============  ===================
+    ===================================  =============  ===================
+    Python Type                          Mongo Type     Supported Direction
+    ===================================  =============  ===================
+    None                                 null           both
+    bool                                 boolean        both
+    int                                  number (int)   both
+    float                                number (real)  both
+    string                               string         py -> mongo
+    unicode                              string         both
+    list                                 array          both
+    dict / `SON`                         object         both
+    datetime.datetime [#dt]_ [#dt2]_     date           both
+    compiled re                          regex          both
+    `pymongo.binary.Binary`              binary         both
+    `pymongo.objectid.ObjectId`          oid            both
+    `pymongo.dbref.DBRef`                dbref          both
+    None                                 undefined      mongo -> py
+    unicode                              code           mongo -> py
+    `pymongo.code.Code`                  code           py -> mongo
+    unicode                              symbol         mongo -> py
+    ===================================  =============  ===================
 
     Note that to save binary data it must be wrapped as an instance of
     `pymongo.binary.Binary`. Otherwise it will be saved as a Mongo string and
@@ -71,6 +71,8 @@ class SON(dict):
 
     .. [#dt] datetime.datetime instances will be rounded to the nearest
        millisecond when saved
+    .. [#dt2] all datetime.datetime instances are treated as *naive*. clients
+       should always use UTC.
     """
     def __init__(self, data=None, **kwargs):
         self.__keys = []
