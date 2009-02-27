@@ -49,6 +49,7 @@ typedef struct {
 } bson_buffer;
 
 static int write_dict(bson_buffer* buffer, PyObject* dict);
+static PyObject* elements_to_dict(const char* string, int max);
 
 static bson_buffer* buffer_new(void) {
     bson_buffer* buffer;
@@ -570,7 +571,211 @@ static PyObject* _cbson_dict_to_bson(PyObject* self, PyObject* dict) {
     return result;
 }
 
-static PyObject* _elements_to_dict(const char* string, int max) {
+static PyObject* get_value(const char* buffer, int* position, int type) {
+    PyObject* value;
+    switch (type) {
+    case 1:
+        {
+            double d;
+            memcpy(&d, buffer + *position, 8);
+            value = PyFloat_FromDouble(d);
+            if (!value) {
+                return NULL;
+            }
+            *position += 8;
+            break;
+        }
+    case 2:
+    case 13:
+    case 14:
+        {
+            *position += 4;
+            int value_length = strlen(buffer + *position);
+            value = PyUnicode_DecodeUTF8(buffer + *position, value_length, "strict");
+            if (!value) {
+                return NULL;
+            }
+            *position += value_length + 1;
+            break;
+        }
+    case 3:
+        {
+            int size;
+            memcpy(&size, buffer + *position, 4);
+            value = elements_to_dict(buffer + *position + 4, size - 5);
+            if (!value) {
+                return NULL;
+            }
+            *position += size;
+            break;
+        }
+    case 4:
+        {
+            int size;
+            memcpy(&size, buffer + *position, 4);
+            int end = *position + size - 1;
+            *position += 4;
+
+            value = PyList_New(0);
+            if (!value) {
+                return NULL;
+            }
+            while (*position < end) {
+                int type = (int)buffer[(*position)++];
+                int key_size = strlen(buffer + *position);
+                *position += key_size + 1; // just skip the key, they're in order.
+                PyObject* to_append = get_value(buffer, position, type);
+                if (!to_append) {
+                    return NULL;
+                }
+                PyList_Append(value, to_append);
+                Py_DECREF(to_append);
+            }
+            (*position)++;
+            break;
+        }
+    case 5:
+        {
+            int length;
+            memcpy(&length, buffer + *position, 4);
+            int subtype = (unsigned char)buffer[*position + 4];
+            PyObject* data;
+            if (subtype == 2) {
+                data = PyString_FromStringAndSize(buffer + *position + 9, length - 4);
+            } else {
+                data = PyString_FromStringAndSize(buffer + *position + 5, length);
+            }
+            if (!data) {
+                return NULL;
+            }
+            PyObject* st = PyInt_FromLong(subtype);
+            if (!st) {
+                Py_DECREF(data);
+                return NULL;
+            }
+            value = PyObject_CallFunctionObjArgs(Binary, data, st, NULL);
+            Py_DECREF(st);
+            Py_DECREF(data);
+            if (!value) {
+                return NULL;
+            }
+            *position += length + 5;
+            break;
+        }
+    case 6:
+    case 10:
+        {
+            value = Py_None;
+            Py_INCREF(value);
+            break;
+        }
+    case 7:
+        {
+            char* shuffled = shuffle_oid(buffer + *position);
+            value = PyObject_CallFunction(ObjectId, "s#", shuffled, 12);
+            free(shuffled);
+            if (!value) {
+                return NULL;
+            }
+            *position += 12;
+            break;
+        }
+    case 8:
+        {
+            value = buffer[(*position)++] ? Py_True : Py_False;
+            Py_INCREF(value);
+            break;
+        }
+    case 9:
+        {
+            long long millis;
+            memcpy(&millis, buffer + *position, 8);
+            int microseconds = (millis % 1000) * 1000;
+            time_t seconds = millis / 1000;
+            struct tm* timeinfo = gmtime(&seconds);
+
+            value = PyDateTime_FromDateAndTime(timeinfo->tm_year + 1900,
+                                               timeinfo->tm_mon + 1,
+                                               timeinfo->tm_mday,
+                                               timeinfo->tm_hour,
+                                               timeinfo->tm_min,
+                                               timeinfo->tm_sec,
+                                               microseconds);
+            *position += 8;
+            break;
+        }
+    case 11:
+        {
+            int pattern_length = strlen(buffer + *position);
+            PyObject* pattern = PyUnicode_DecodeUTF8(buffer + *position, pattern_length, "strict");
+            if (!pattern) {
+                return NULL;
+            }
+            *position += pattern_length + 1;
+            int flags_length = strlen(buffer + *position);
+            int flags = 0;
+            int i;
+            for (i = 0; i < flags_length; i++) {
+                if (buffer[*position + i] == 'i') {
+                    flags |= 2;
+                } else if (buffer[*position + i] == 'l') {
+                    flags |= 4;
+                } else if (buffer[*position + i] == 'm') {
+                    flags |= 8;
+                } else if (buffer[*position + i] == 's') {
+                    flags |= 16;
+                } else if (buffer[*position + i] == 'u') {
+                    flags |= 32;
+                } else if (buffer[*position + i] == 'x') {
+                    flags |= 64;
+                }
+            }
+            *position += flags_length + 1;
+            value = PyObject_CallFunction(RECompile, "Oi", pattern, flags);
+            Py_DECREF(pattern);
+            break;
+        }
+    case 12:
+        {
+            *position += 4;
+            int collection_length = strlen(buffer + *position);
+            PyObject* collection = PyUnicode_DecodeUTF8(buffer + *position, collection_length, "strict");
+            if (!collection) {
+                return NULL;
+            }
+            *position += collection_length + 1;
+            char* shuffled = shuffle_oid(buffer + *position);
+            PyObject* id = PyObject_CallFunction(ObjectId, "s#", shuffled, 12);
+            free(shuffled);
+            if (!id) {
+                Py_DECREF(collection);
+                return NULL;
+            }
+            *position += 12;
+            value = PyObject_CallFunctionObjArgs(DBRef, collection, id, NULL);
+            Py_DECREF(collection);
+            Py_DECREF(id);
+            break;
+        }
+    case 16:
+        {
+            int i;
+            memcpy(&i, buffer + *position, 4);
+            value = PyInt_FromLong(i);
+            if (!value) {
+                return NULL;
+            }
+            *position += 4;
+            break;
+        }
+    default:
+        PyErr_SetString(CBSONError, "no c decoder for this type yet");
+        return NULL;
+    }
+    return value;
+}
+
+static PyObject* elements_to_dict(const char* string, int max) {
     PyObject* dict = PyDict_New();
     if (!dict) {
         return NULL;
@@ -584,213 +789,11 @@ static PyObject* _elements_to_dict(const char* string, int max) {
             return NULL;
         }
         position += name_length + 1;
-        PyObject* value;
-        switch (type) {
-        case 1:
-            {
-                double d;
-                memcpy(&d, string + position, 8);
-                value = PyFloat_FromDouble(d);
-                if (!value) {
-                    return NULL;
-                }
-                position += 8;
-                break;
-            }
-        case 2:
-        case 13:
-        case 14:
-            {
-                position += 4;
-                int value_length = strlen(string + position);
-                value = PyUnicode_DecodeUTF8(string + position, value_length, "strict");
-                if (!value) {
-                    return NULL;
-                }
-                position += value_length + 1;
-                break;
-            }
-        case 3:
-            {
-                int size;
-                memcpy(&size, string + position, 4);
-                value = _elements_to_dict(string + position + 4, size - 5);
-                if (!value) {
-                    return NULL;
-                }
-                position += size;
-                break;
-            }
-        case 4:
-            {
-                int size;
-                memcpy(&size, string + position, 4);
-                PyObject* array_dict = _elements_to_dict(string + position + 4, size - 5);
-                if (!array_dict) {
-                    return NULL;
-                }
-                position += size;
-
-                value = PyList_New(0);
-                int length = PyDict_Size(array_dict);
-                int i;
-                for (i = 0; i < length; i++) {
-                    char* key;
-                    asprintf(&key, "%d", i);
-                    if (!key) {
-                        Py_DECREF(array_dict);
-                        PyErr_NoMemory();
-                        return NULL;
-                    }
-                    PyObject* to_append = PyDict_GetItemString(array_dict, key);
-                    free(key);
-                    if (!to_append) {
-                        Py_DECREF(array_dict);
-                        return NULL;
-                    }
-                    PyList_Append(value, to_append);
-                }
-                Py_DECREF(array_dict);
-                break;
-            }
-        case 5:
-            {
-                int length;
-                memcpy(&length, string + position, 4);
-                int subtype = (unsigned char)string[position + 4];
-                PyObject* data;
-                if (subtype == 2) {
-                    data = PyString_FromStringAndSize(string + position + 9, length - 4);
-                } else {
-                    data = PyString_FromStringAndSize(string + position + 5, length);
-                }
-                if (!data) {
-                    return NULL;
-                }
-                PyObject* st = PyInt_FromLong(subtype);
-                if (!st) {
-                    Py_DECREF(data);
-                    return NULL;
-                }
-                value = PyObject_CallFunctionObjArgs(Binary, data, st, NULL);
-                Py_DECREF(st);
-                Py_DECREF(data);
-                if (!value) {
-                    return NULL;
-                }
-                position += length + 5;
-                break;
-            }
-        case 6:
-        case 10:
-            {
-                value = Py_None;
-                Py_INCREF(value);
-                break;
-            }
-        case 7:
-            {
-                char* shuffled = shuffle_oid(string + position);
-                value = PyObject_CallFunction(ObjectId, "s#", shuffled, 12);
-                free(shuffled);
-                if (!value) {
-                    return NULL;
-                }
-                position += 12;
-                break;
-            }
-        case 8:
-            {
-                value = string[position++] ? Py_True : Py_False;
-                Py_INCREF(value);
-                break;
-            }
-        case 9:
-            {
-                long long millis;
-                memcpy(&millis, string + position, 8);
-                int microseconds = (millis % 1000) * 1000;
-                time_t seconds = millis / 1000;
-                struct tm* timeinfo = gmtime(&seconds);
-
-                value = PyDateTime_FromDateAndTime(timeinfo->tm_year + 1900,
-                                                   timeinfo->tm_mon + 1,
-                                                   timeinfo->tm_mday,
-                                                   timeinfo->tm_hour,
-                                                   timeinfo->tm_min,
-                                                   timeinfo->tm_sec,
-                                                   microseconds);
-                position += 8;
-                break;
-            }
-        case 11:
-            {
-                int pattern_length = strlen(string + position);
-                PyObject* pattern = PyUnicode_DecodeUTF8(string + position, pattern_length, "strict");
-                if (!pattern) {
-                    return NULL;
-                }
-                position += pattern_length + 1;
-                int flags_length = strlen(string + position);
-                int flags = 0;
-                int i;
-                for (i = 0; i < flags_length; i++) {
-                    if (string[position + i] == 'i') {
-                        flags |= 2;
-                    } else if (string[position + i] == 'l') {
-                        flags |= 4;
-                    } else if (string[position + i] == 'm') {
-                        flags |= 8;
-                    } else if (string[position + i] == 's') {
-                        flags |= 16;
-                    } else if (string[position + i] == 'u') {
-                        flags |= 32;
-                    } else if (string[position + i] == 'x') {
-                        flags |= 64;
-                    }
-                }
-                position += flags_length + 1;
-                value = PyObject_CallFunction(RECompile, "Oi", pattern, flags);
-                Py_DECREF(pattern);
-                break;
-            }
-        case 12:
-            {
-                position += 4;
-                int collection_length = strlen(string + position);
-                PyObject* collection = PyUnicode_DecodeUTF8(string + position, collection_length, "strict");
-                if (!collection) {
-                    return NULL;
-                }
-                position += collection_length + 1;
-                char* shuffled = shuffle_oid(string + position);
-                PyObject* id = PyObject_CallFunction(ObjectId, "s#", shuffled, 12);
-                free(shuffled);
-                if (!id) {
-                    Py_DECREF(collection);
-                    return NULL;
-                }
-                position += 12;
-                value = PyObject_CallFunctionObjArgs(DBRef, collection, id, NULL);
-                Py_DECREF(collection);
-                Py_DECREF(id);
-                break;
-            }
-        case 16:
-            {
-                int i;
-                memcpy(&i, string + position, 4);
-                value = PyInt_FromLong(i);
-                if (!value) {
-                    return NULL;
-                }
-                position += 4;
-                break;
-            }
-        default:
-            PyErr_SetString(CBSONError, "no c decoder for this type yet");
+        PyObject* value = get_value(string, &position, type);
+        if (!value) {
             return NULL;
         }
+
         PyDict_SetItem(dict, name, value);
         Py_DECREF(name);
         Py_DECREF(value);
@@ -811,7 +814,7 @@ static PyObject* _cbson_bson_to_dict(PyObject* self, PyObject* bson) {
     }
     memcpy(&size, string, 4);
 
-    PyObject* dict = _elements_to_dict(string + 4, size - 5);
+    PyObject* dict = elements_to_dict(string + 4, size - 5);
     if (!dict) {
         return NULL;
     }
