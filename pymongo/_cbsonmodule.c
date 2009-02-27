@@ -570,13 +570,11 @@ static PyObject* _cbson_dict_to_bson(PyObject* self, PyObject* dict) {
     return result;
 }
 
-static PyObject* _elements_to_dict(PyObject* elements) {
+static PyObject* _elements_to_dict(const char* string, int max) {
     PyObject* dict = PyDict_New();
     if (!dict) {
         return NULL;
     }
-    const char* string = PyString_AsString(elements);
-    int max = PyString_Size(elements);
     int position = 0;
     while (position < max) {
         int type = (int)string[position++];
@@ -616,12 +614,7 @@ static PyObject* _elements_to_dict(PyObject* elements) {
             {
                 int size;
                 memcpy(&size, string + position, 4);
-                PyObject* array_elements = PyString_FromStringAndSize(string + position + 4, size - 5);
-                if (!array_elements) {
-                    return NULL;
-                }
-                value = _elements_to_dict(array_elements);
-                Py_DECREF(array_elements);
+                value = _elements_to_dict(string + position + 4, size - 5);
                 if (!value) {
                     return NULL;
                 }
@@ -632,12 +625,7 @@ static PyObject* _elements_to_dict(PyObject* elements) {
             {
                 int size;
                 memcpy(&size, string + position, 4);
-                PyObject* array_elements = PyString_FromStringAndSize(string + position + 4, size - 5);
-                if (!array_elements) {
-                    return NULL;
-                }
-                PyObject* array_dict = _elements_to_dict(array_elements);
-                Py_DECREF(array_elements);
+                PyObject* array_dict = _elements_to_dict(string + position + 4, size - 5);
                 if (!array_dict) {
                     return NULL;
                 }
@@ -815,6 +803,7 @@ static PyObject* _cbson_bson_to_dict(PyObject* self, PyObject* bson) {
         PyErr_SetString(PyExc_TypeError, "argument to _bson_to_dict must be a string");
         return NULL;
     }
+    Py_ssize_t total_size = PyString_Size(bson);
     int size;
     const char* string = PyString_AsString(bson);
     if (!string) {
@@ -822,16 +811,11 @@ static PyObject* _cbson_bson_to_dict(PyObject* self, PyObject* bson) {
     }
     memcpy(&size, string, 4);
 
-    PyObject* elements = PySequence_GetSlice(bson, 4, size - 1);
-    if (!elements) {
-        return NULL;
-    }
-    PyObject* dict = _elements_to_dict(elements);
-    Py_DECREF(elements);
+    PyObject* dict = _elements_to_dict(string + 4, size - 5);
     if (!dict) {
         return NULL;
     }
-    PyObject* remainder = PySequence_GetSlice(bson, size, PyString_Size(bson));
+    PyObject* remainder = PyString_FromStringAndSize(string + size, total_size - size);
     if (!remainder) {
         Py_DECREF(dict);
         return NULL;
