@@ -253,7 +253,7 @@ class Connection(object):
                 self.__locks[i].release()
 
     def set_cursor_manager(self, manager_class):
-        """Set this connections cursor manager.
+        """Set this connection's cursor manager.
 
         Raises TypeError if manager_class is not a subclass of CursorManager. A
         cursor manager handles closing cursors. Different managers can implement
