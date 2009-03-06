@@ -21,6 +21,7 @@ import types
 import logging
 import threading
 import random
+import errno
 
 from errors import ConnectionFailure, InvalidName, OperationFailure, ConfigurationError
 from database import Database
@@ -318,7 +319,9 @@ class Connection(object):
         while total_sent < len(to_send):
             try:
                 sent = sock.send(to_send[total_sent:])
-            except socket.error:
+            except socket.error, e:
+                if e[0] == errno.EAGAIN:
+                    continue
                 raise ConnectionFailure("connection closed, resetting")
             if sent == 0:
                 raise ConnectionFailure("connection closed, resetting")
