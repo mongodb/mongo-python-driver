@@ -154,12 +154,13 @@ class TestMasterSlaveConnection(unittest.TestCase):
         if not self.slaves:
             raise SkipTest()
         count = 0
-        for i in range(5):
-            self.db.test.remove({})
-            self.db.test.insert({"x": i})
-            time.sleep(1)
+
+        self.db.test.remove({})
+        self.db.test.insert({"x": 5586})
+        time.sleep(6)
+        for _ in range(10):
             try:
-                if i != self.db.test.find_one()["x"]:
+                if 5586 != self.db.test.find_one()["x"]:
                     count += 1
             except:
                 count += 1
@@ -182,6 +183,7 @@ class TestMasterSlaveConnection(unittest.TestCase):
 
         for i in range(10000):
             db.test.insert({"i": i})
+        time.sleep(6) # need to sleep to be sure this gets pulled...
 
         self.assertEqual(before, cursor_count())
 
