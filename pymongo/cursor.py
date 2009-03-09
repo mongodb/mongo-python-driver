@@ -46,6 +46,7 @@ class Cursor(object):
 
         self.__data = []
         self.__id = None
+        self.__connection_id = None
         self.__retrieved = 0
         self.__killed = False
 
@@ -234,7 +235,16 @@ class Cursor(object):
             return len(self.__data)
 
         def send_message(operation, message):
-            response = self.__collection.database().connection()._receive_message(operation, message, _sock=self.__socket)
+            kwargs = {"_sock": self.__socket}
+            if self.__connection_id is not None:
+                kwargs["_connection_to_use"] = self.__connection_id
+
+            response = self.__collection.database().connection()._receive_message(operation, message, **kwargs)
+
+            if isinstance(response, types.TupleType):
+                (connection_id, response) = response
+            else:
+                connection_id = None
 
             response_flag = struct.unpack("<i", response[:4])[0]
             if response_flag == 1:
@@ -249,6 +259,7 @@ class Cursor(object):
                 assert response_flag == 0
 
             self.__id = struct.unpack("<q", response[4:12])[0]
+            self.__connection_id = connection_id
             assert struct.unpack("<i", response[12:16])[0] == self.__retrieved
 
             number_returned = struct.unpack("<i", response[16:20])[0]
