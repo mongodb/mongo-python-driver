@@ -66,7 +66,10 @@ class Cursor(object):
         """Closes this cursor.
         """
         if self.__id and not self.__killed:
-            self.__collection.database().connection().close_cursor(self.__id)
+            if self.__connection_id is not None:
+                self.__collection.database().connection().close_cursor(self.__id, self.__connection_id)
+            else:
+                self.__collection.database().connection().close_cursor(self.__id)
         self.__killed = True
 
     def __query_spec(self):

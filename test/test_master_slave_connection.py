@@ -165,6 +165,52 @@ class TestMasterSlaveConnection(unittest.TestCase):
                 count += 1
         self.failIf(count)
 
+    def test_kill_cursors(self):
+        def cursor_count():
+            count = 0
+            res = self.connection.master.test_pymongo._command({"cursorInfo":1})
+            count += res["clientCursors_size"]
+            for slave in self.connection.slaves:
+                res = slave.test_pymongo._command({"cursorInfo":1})
+                count += res["clientCursors_size"]
+            return count
+
+        self.connection.test_pymongo.drop_collection("test")
+        db = self.db
+
+        before = cursor_count()
+
+        for i in range(10000):
+            db.test.insert({"i": i})
+
+        self.assertEqual(before, cursor_count())
+
+        for _ in range(10):
+            db.test.find_one()
+
+        self.assertEqual(before, cursor_count())
+
+        for _ in range(10):
+            for x in db.test.find():
+                break
+
+        self.assertEqual(before, cursor_count())
+
+        a = db.test.find()
+        for x in a:
+            break
+
+        self.assertNotEqual(before, cursor_count())
+
+        del a
+
+        self.assertEqual(before, cursor_count())
+
+        a = db.test.find().limit(10)
+        for x in a:
+            break
+
+        self.assertEqual(before, cursor_count())
 
 if __name__ == "__main__":
     unittest.main()

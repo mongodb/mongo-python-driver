@@ -60,6 +60,14 @@ class MasterSlaveConnection(object):
         self.__master = master
         self.__slaves = slaves
 
+    @property
+    def master(self):
+        return self.__master
+
+    @property
+    def slaves(self):
+        return self.__slaves
+
     def set_cursor_manager(self, manager_class):
         """Set the cursor manager for this connection.
 
