@@ -403,7 +403,7 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
             return 0;
         }
         const char* pattern =  PyString_AsString(py_pattern);
-        char flags[6];
+        char flags[7];
         flags[0] = 0;
         // TODO don't hardcode these
         if (int_flags & 2) {
