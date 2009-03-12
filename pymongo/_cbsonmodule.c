@@ -893,9 +893,8 @@ PyMODINIT_FUNC init_cbson(void) {
         return;
     }
 
-    CBSONError = PyErr_NewException("_cbson.error", NULL, NULL);
-    Py_INCREF(CBSONError);
-    PyModule_AddObject(m, "error", CBSONError);
+    PyObject* errors_module = PyImport_ImportModule("pymongo.errors");
+    CBSONError = PyObject_GetAttrString(errors_module, "InvalidDocument");
 
     PyObject* son_module = PyImport_ImportModule("pymongo.son");
     SON = PyObject_GetAttrString(son_module, "SON");
