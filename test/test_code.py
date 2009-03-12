@@ -34,6 +34,12 @@ class TestCode(unittest.TestCase):
         self.assert_(Code("aoeu", {}))
         self.assert_(Code(u"aoeu", {}))
 
+    def test_read_only(self):
+        c = Code("blah")
+        def set_c():
+            c.scope = 5
+        self.assertRaises(AttributeError, set_c)
+
     def test_code(self):
         a_string = "hello world"
         a_code = Code("hello world")
