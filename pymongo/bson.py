@@ -108,7 +108,6 @@ def _validate_ref(data):
 
 _validate_code = _validate_string
 
-# still not sure what is actually stored here, but i know how big it is...
 def _validate_code_w_scope(data):
     (length, data) = _get_int(data)
     assert len(data) >= length + 1
@@ -258,7 +257,7 @@ _element_getter = {
     "\x0C": _get_ref,
     "\x0D": _get_string, # code
     "\x0E": _get_string, # symbol
-#    "\x0F": _get_code_w_scope
+#     "\x0F": _get_code_w_scope
     "\x10": _get_int, # number_int
 }
 
@@ -297,8 +296,10 @@ def _element_to_bson(key, value):
         return "\x05" + name + struct.pack("<i", len(value)) + chr(subtype) + value
     if isinstance(value, Code):
         cstring = _make_c_string(value)
+        scope = _dict_to_bson(value.scope)
+        full_length = struct.pack("<i", 8 + len(cstring) + len(scope))
         length = struct.pack("<i", len(cstring))
-        return "\x0D" + name + length + cstring
+        return "\x0F" + name + full_length + length + cstring + scope
     if isinstance(value, str):
         cstring = _make_c_string(value)
         length = struct.pack("<i", len(cstring))

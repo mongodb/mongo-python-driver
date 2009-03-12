@@ -29,6 +29,7 @@ from pymongo import ASCENDING, DESCENDING, OFF, SLOW_ONLY, ALL
 from pymongo.connection import Connection
 from pymongo.collection import Collection
 from pymongo.dbref import DBRef
+from pymongo.code import Code
 from test_connection import get_connection
 
 class TestDatabase(unittest.TestCase):
@@ -264,6 +265,11 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(5, db.eval("function (x, y) {return x + y;}", 2, 3))
         self.assertEqual(5, db.eval("function () {return 5;}"))
         self.assertEqual(5, db.eval("2 + 3;"))
+
+        self.assertEqual(5, db.eval(Code("2 + 3;")))
+        self.assertEqual(None, db.eval(Code("return i;")))
+        self.assertEqual(2, db.eval(Code("return i;", {"i": 2})))
+        self.assertEqual(5, db.eval(Code("i + 3;", {"i": 2})))
 
         self.assertRaises(OperationFailure, db.eval, "5 ++ 5;")
 

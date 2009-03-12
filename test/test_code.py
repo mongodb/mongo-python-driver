@@ -24,6 +24,16 @@ class TestCode(unittest.TestCase):
     def setUp(self):
         pass
 
+    def test_types(self):
+        self.assertRaises(TypeError, Code, 5)
+        self.assertRaises(TypeError, Code, None)
+        self.assertRaises(TypeError, Code, "aoeu", 5)
+        self.assertRaises(TypeError, Code, u"aoeu", 5)
+        self.assert_(Code("aoeu"))
+        self.assert_(Code(u"aoeu"))
+        self.assert_(Code("aoeu", {}))
+        self.assert_(Code(u"aoeu", {}))
+
     def test_code(self):
         a_string = "hello world"
         a_code = Code("hello world")
@@ -31,12 +41,19 @@ class TestCode(unittest.TestCase):
         self.assert_(a_code.endswith("world"))
         self.assert_(isinstance(a_code, Code))
         self.failIf(isinstance(a_string, Code))
+        self.assertEqual(a_code.scope, {})
+        a_code.scope["my_var"] = 5
+        self.assertEqual(a_code.scope, {"my_var": 5})
 
     def test_repr(self):
         c = Code("hello world")
-        self.assertEqual(repr(c), "Code('hello world')")
+        self.assertEqual(repr(c), "Code('hello world', {})")
+        c.scope["foo"] = "bar"
+        self.assertEqual(repr(c), "Code('hello world', {'foo': 'bar'})")
+        c = Code("hello world", {"blah": 3})
+        self.assertEqual(repr(c), "Code('hello world', {'blah': 3})")
         c = Code("\x08\xFF")
-        self.assertEqual(repr(c), "Code('\\x08\\xff')")
+        self.assertEqual(repr(c), "Code('\\x08\\xff', {})")
 
 if __name__ == "__main__":
     unittest.main()

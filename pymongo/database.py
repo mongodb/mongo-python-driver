@@ -361,8 +361,8 @@ class Database(object):
         arguments will be passed to that function when it is run on the
         server.
 
-        Raises TypeError if `code` is not an instance of (str, unicode). Raises
-        OperationFailure if the eval fails. Returns the result of the
+        Raises TypeError if `code` is not an instance of (str, unicode, `Code`).
+        Raises OperationFailure if the eval fails. Returns the result of the
         evaluation.
 
         :Parameters:
@@ -370,9 +370,9 @@ class Database(object):
           - `args` (optional): additional positional arguments are passed to
             the `code` being evaluated
         """
-        if not isinstance(code, types.StringTypes):
-            raise TypeError("code must be an instance of (str, unicode)")
+        if not isinstance(code, Code):
+            code = Code(code)
 
-        command = SON([("$eval", Code(code)), ("args", list(args))])
+        command = SON([("$eval", code), ("args", list(args))])
         result = self._command(command)
         return result.get("retval", None)
