@@ -250,7 +250,7 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
         return 1;
     } else if (PyObject_IsInstance(value, Binary)) {
         *(buffer->buffer + type_byte) = 0x05;
-        PyObject* subtype_object = PyObject_CallMethod(value, "subtype", NULL);
+        PyObject* subtype_object = PyObject_GetAttrString(value, "subtype");
         if (!subtype_object) {
             return 0;
         }

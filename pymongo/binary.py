@@ -49,6 +49,7 @@ class Binary(str):
         self.__subtype = subtype
         return self
 
+    @property
     def subtype(self):
         """Get the subtype of this binary data.
         """

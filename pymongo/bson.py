@@ -296,7 +296,7 @@ def _element_to_bson(key, value):
     if isinstance(value, float):
         return "\x01" + name + struct.pack("<d", value)
     if isinstance(value, Binary):
-        subtype = value.subtype()
+        subtype = value.subtype
         if subtype == 2:
             value = struct.pack("<i", len(value)) + value
         return "\x05" + name + struct.pack("<i", len(value)) + chr(subtype) + value

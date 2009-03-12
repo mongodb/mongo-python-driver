@@ -140,7 +140,7 @@ class TransformToBinary(SONManipulator):
 
     def transform_outgoing(self, son, collection):
         for (key, value) in son.items():
-            if isinstance(value, Binary) and value.subtype() == 128:
+            if isinstance(value, Binary) and value.subtype == 128:
                 son[key] = from_binary(value)
             elif isinstance(value, dict):
                 son[key] = self.transform_outgoing(value, collection)

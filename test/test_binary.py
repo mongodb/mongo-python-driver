@@ -46,9 +46,9 @@ class TestBinary(unittest.TestCase):
 
     def test_subtype(self):
         b = Binary("hello")
-        self.assertEqual(b.subtype(), 2)
+        self.assertEqual(b.subtype, 2)
         c = Binary("hello", 100)
-        self.assertEqual(c.subtype(), 100)
+        self.assertEqual(c.subtype, 100)
 
     def test_equality(self):
         b = Binary("hello")
