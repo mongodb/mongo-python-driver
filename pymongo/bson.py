@@ -216,6 +216,12 @@ def _get_date(data):
     seconds = float(struct.unpack("<q", data[:8])[0]) / 1000.0
     return (datetime.datetime.utcfromtimestamp(seconds), data[8:])
 
+def _get_code_w_scope(data):
+    (_, data) = _get_int(data)
+    (code, data) = _get_string(data)
+    (scope, data) = _get_object(data)
+    return (Code(code, scope), data)
+
 def _get_null(data):
     return (None, data)
 
@@ -257,7 +263,7 @@ _element_getter = {
     "\x0C": _get_ref,
     "\x0D": _get_string, # code
     "\x0E": _get_string, # symbol
-#     "\x0F": _get_code_w_scope
+    "\x0F": _get_code_w_scope,
     "\x10": _get_int, # number_int
 }
 

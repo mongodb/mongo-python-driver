@@ -207,11 +207,11 @@ class Cursor(object):
     def where(self, code):
         """Adds a $where clause to this query.
 
-        The `code` argument must be an instance of (str, unicode) containing
-        a JavaScript expression. This expression will be evaluated for each
-        object scanned. Only those objects for which the expression evaluates
-        to *true* will be returned as results. The keyword *this* refers to the
-        object currently being scanned.
+        The `code` argument must be an instance of (str, unicode, Code)
+        containing a JavaScript expression. This expression will be evaluated
+        for each object scanned. Only those objects for which the expression
+        evaluates to *true* will be returned as results. The keyword *this*
+        refers to the object currently being scanned.
 
         Raises TypeError if `code` is not an instance of (str, unicode). Raises
         InvalidOperation if this cursor has already been used. Only the last
@@ -221,10 +221,10 @@ class Cursor(object):
           - `code`: JavaScript expression to use as a filter
         """
         self.__check_okay_to_chain()
-        if not isinstance(code, types.StringTypes):
-            raise TypeError("argument to where must be one of (str, unicode)")
+        if not isinstance(code, Code):
+            code = Code(code)
 
-        self.__spec["$where"] = Code(code.encode('utf-8'))
+        self.__spec["$where"] = code
         return self
 
     def _refresh(self):

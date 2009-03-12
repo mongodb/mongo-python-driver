@@ -22,6 +22,7 @@ sys.path[0:0] = [""]
 from pymongo.errors import InvalidOperation, OperationFailure
 from pymongo.cursor import Cursor
 from pymongo.database import Database
+from pymongo.code import Code
 from pymongo import ASCENDING, DESCENDING
 from test_connection import get_connection
 
@@ -258,6 +259,8 @@ class TestCursor(unittest.TestCase):
             db.test.save({"x": i})
 
         self.assertEqual(3, len(list(db.test.find().where('this.x < 3'))))
+        self.assertEqual(3, len(list(db.test.find().where(Code('this.x < 3')))))
+        self.assertEqual(3, len(list(db.test.find().where(Code('this.x < i', {"i": 3})))))
         self.assertEqual(10, len(list(db.test.find())))
 
         self.assertEqual(3, db.test.find().where('this.x < 3').count())
