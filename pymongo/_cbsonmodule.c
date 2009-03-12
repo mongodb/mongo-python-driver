@@ -284,8 +284,32 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
         }
         return 1;
     } else if (PyObject_IsInstance(value, Code)) {
-        *(buffer->buffer + type_byte) = 0x0D;
-        return write_string(buffer, value);
+        *(buffer->buffer + type_byte) = 0x0F;
+
+        int start_position = buffer->position;
+        // save space for length
+        int length_location = buffer_save_bytes(buffer, 4);
+        if (length_location == -1) {
+            return 0;
+        }
+
+        if (!write_string(buffer, value)) {
+            return 0;
+        }
+
+        PyObject* scope = PyObject_GetAttrString(value, "scope");
+        if (!scope) {
+            return 0;
+        }
+        if (!write_dict(buffer, scope)) {
+            Py_DECREF(scope);
+            return 0;
+        }
+        Py_DECREF(scope);
+
+        int length = buffer->position - start_position;
+        memcpy(buffer->buffer + length_location, &length, 4);
+        return 1;
     } else if (PyString_Check(value)) {
         *(buffer->buffer + type_byte) = 0x02;
         // we have to do the encoding so we can fail fast if they give us non utf-8
@@ -755,6 +779,30 @@ static PyObject* get_value(const char* buffer, int* position, int type) {
             value = PyObject_CallFunctionObjArgs(DBRef, collection, id, NULL);
             Py_DECREF(collection);
             Py_DECREF(id);
+            break;
+        }
+    case 15:
+        {
+            *position += 8;
+            int code_length = strlen(buffer + *position);
+            PyObject* code = PyUnicode_DecodeUTF8(buffer + *position, code_length, "strict");
+            if (!code) {
+                return NULL;
+            }
+            *position += code_length + 1;
+
+            int scope_size;
+            memcpy(&scope_size, buffer + *position, 4);
+            PyObject* scope = elements_to_dict(buffer + *position + 4, scope_size - 5);
+            if (!scope) {
+                Py_DECREF(code);
+                return NULL;
+            }
+            *position += scope_size;
+
+            value = PyObject_CallFunctionObjArgs(Code, code, scope, NULL);
+            Py_DECREF(code);
+            Py_DECREF(scope);
             break;
         }
     case 16:
