@@ -42,20 +42,22 @@ class DBRef(object):
         self.__collection = collection
         self.__id = id
 
+    @property
     def collection(self):
         """Get this DBRef's collection as unicode.
         """
         return self.__collection
 
+    @property
     def id(self):
         """Get this DBRef's _id as an ObjectId.
         """
         return self.__id
 
     def __repr__(self):
-        return "DBRef(" + repr(self.collection()) + ", " + repr(self.id()) + ")"
+        return "DBRef(" + repr(self.__collection) + ", " + repr(self.__id) + ")"
 
     def __cmp__(self, other):
         if isinstance(other, DBRef):
-            return cmp([self.collection(), self.id()], [other.collection(), other.id()])
+            return cmp([self.__collection, self.__id], [other.__collection, other.__id])
         return NotImplemented

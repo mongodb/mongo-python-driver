@@ -39,6 +39,18 @@ class TestDBRef(unittest.TestCase):
         self.assert_(DBRef("coll", a))
         self.assert_(DBRef(u"coll", a))
 
+    def test_read_only(self):
+        a = DBRef("coll", ObjectId())
+        def foo():
+            a.collection = "blah"
+        def bar():
+            a.id = "aoeu"
+
+        a.collection
+        a.id
+        self.assertRaises(AttributeError, foo)
+        self.assertRaises(AttributeError, bar)
+
     def test_repr(self):
         self.assertEqual(repr(DBRef("coll", ObjectId("123456789012"))), "DBRef(u'coll', ObjectId('123456789012'))")
         self.assertEqual(repr(DBRef(u"coll", ObjectId("123456789012"))), "DBRef(u'coll', ObjectId('123456789012'))")

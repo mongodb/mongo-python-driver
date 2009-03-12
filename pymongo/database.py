@@ -350,7 +350,7 @@ class Database(object):
         """
         if not isinstance(dbref, DBRef):
             raise TypeError("cannot dereference a %s" % type(dbref))
-        return self[dbref.collection()].find_one(dbref.id())
+        return self[dbref.collection].find_one(dbref.id)
 
     def eval(self, code, *args):
         """Evaluate a JavaScript expression on the Mongo server.

@@ -349,8 +349,8 @@ def _element_to_bson(key, value):
             flags += "x"
         return "\x0B" + name + _make_c_string(pattern) + _make_c_string(flags)
     if isinstance(value, DBRef):
-        ns = _make_c_string(value.collection())
-        return "\x0C" + name + struct.pack("<i", len(ns)) + ns + _shuffle_oid(str(value.id()))
+        ns = _make_c_string(value.collection)
+        return "\x0C" + name + struct.pack("<i", len(ns)) + ns + _shuffle_oid(str(value.id))
     raise InvalidDocument("cannot convert value of type %s to bson" % type(value))
 
 def _dict_to_bson(dict):

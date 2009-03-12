@@ -363,7 +363,7 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
         *(buffer->buffer + type_byte) = 0x07;
         return 1;
     } else if (PyObject_IsInstance(value, DBRef)) {
-        PyObject* collection_object = PyObject_CallMethod(value, "collection", NULL);
+        PyObject* collection_object = PyObject_GetAttrString(value, "collection");
         if (!collection_object) {
             return 0;
         }
@@ -377,7 +377,7 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
             Py_DECREF(encoded_collection);
             return 0;
         }
-        PyObject* id_object = PyObject_CallMethod(value, "id", NULL);
+        PyObject* id_object = PyObject_GetAttrString(value, "id");
         if (!id_object) {
             Py_DECREF(encoded_collection);
             return 0;
