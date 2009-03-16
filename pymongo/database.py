@@ -24,7 +24,7 @@ except: # for Python < 2.5
 
 from son import SON
 from dbref import DBRef
-from son_manipulator import ObjectIdInjector, ObjectIdShuffler
+from son_manipulator import ObjectIdInjector, ObjectIdShuffler, DBRefTransformer
 from collection import Collection
 from errors import InvalidName, CollectionInvalid, OperationFailure
 from code import Code
@@ -49,7 +49,11 @@ class Database(object):
 
         self.__name = unicode(name)
         self.__connection = connection
-        self.__manipulators = [ObjectIdInjector(self), ObjectIdShuffler(self)]
+        self.__manipulators = []
+        self.__copying_manipulators = []
+        self.add_son_manipulator(ObjectIdInjector(self))
+        self.add_son_manipulator(ObjectIdShuffler(self))
+        self.add_son_manipulator(DBRefTransformer(self))
 
     def __check_name(self, name):
         for invalid_char in [" ", ".", "$", "/", "\\"]:
@@ -58,15 +62,16 @@ class Database(object):
         if not name:
             raise InvalidName("database name cannot be the empty string")
 
-    def add_son_manipulator(self, manipulator, index=-1):
+    def add_son_manipulator(self, manipulator):
         """Add a new son manipulator to this database.
 
         :Parameters:
           - `manipulator`: the manipulator to add
-          - `index` (optional): the index to add the manipulator on the
-            manipulator list
         """
-        self.__manipulators[index:index] = [manipulator]
+        if manipulator.will_copy():
+            self.__copying_manipulators.append(manipulator)
+        else:
+            self.__manipulators.append(manipulator)
 
     def connection(self):
         """Get the database connection.
@@ -139,6 +144,8 @@ class Database(object):
         """
         for manipulator in self.__manipulators:
             son = manipulator.transform_incoming(son, collection)
+        for manipulator in self.__copying_manipulators:
+            son = manipulator.transform_incoming(son, collection)
         return son
 
     def _fix_outgoing(self, son, collection):
@@ -150,7 +157,9 @@ class Database(object):
         """
         for manipulator in self.__manipulators:
             son = manipulator.transform_outgoing(son, collection)
-        return son
+        for manipulator in self.__copying_manipulators:
+            son = manipulator.transform_outgoing(son, collection)
+            return son
 
     def _command(self, command, allowable_errors=[], check=True, sock=None):
         """Issue a DB command.
