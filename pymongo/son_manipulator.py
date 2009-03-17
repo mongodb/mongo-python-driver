@@ -28,14 +28,6 @@ class SONManipulator(object):
 
     This manipulator just saves and restores objects without changing them.
     """
-    def __init__(self, database):
-        """Instantiate the manager.
-
-        :Parameters:
-          - `database`: a Mongo Database
-        """
-        self.__database = database
-
     def will_copy(self):
         """Will this SON manipulator make a copy of the incoming document?
 
@@ -155,6 +147,60 @@ class DBRefTransformer(SONManipulator):
                     return transform_dict(SON(value))
             elif isinstance(value, types.ListType):
                 return [transform_value(v) for v in value]
+            return value
+
+        def transform_dict(object):
+            for (key, value) in object.items():
+                object[key] = transform_value(value)
+            return object
+
+        return transform_dict(SON(son))
+
+class AutoReference(SONManipulator):
+    """Transparently reference and de-reference already saved embedded objects.
+
+    This manipulator should probably only be used when the NamespaceInjector is
+    also being used, otherwise it doesn't make too much sense - documents can
+    only be auto-referenced if they have an *_ns* field.
+    """
+    def __init__(self, db):
+        self.__database = db
+
+    def will_copy(self):
+        """We need to copy so the user's document doesn't get transformed refs.
+        """
+        return True
+
+    def transform_incoming(self, son, collection):
+        """Replace embedded documents with DBRefs.
+        """
+        def transform_value(value):
+            if isinstance(value, types.DictType):
+                if "_id" in value and "_ns" in value:
+                    return DBRef(value["_ns"], transform_value(value["_id"]))
+                else:
+                    return transform_dict(SON(value))
+            elif isinstance(value, types.ListType):
+                return [transform_value(v) for v in value]
+            return value
+
+        def transform_dict(object):
+            for (key, value) in object.items():
+                object[key] = transform_value(value)
+            return object
+
+        return transform_dict(SON(son))
+
+    def transform_outgoing(self, son, collection):
+        """Replace DBRefs with embedded documents.
+        """
+        def transform_value(value):
+            if isinstance(value, DBRef):
+                return self.__database.dereference(value)
+            elif isinstance(value, types.ListType):
+                return [transform_value(v) for v in value]
+            elif isinstance(value, types.DictType):
+                return transform_dict(SON(value))
             return value
 
         def transform_dict(object):

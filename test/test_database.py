@@ -30,6 +30,7 @@ from pymongo.connection import Connection
 from pymongo.collection import Collection
 from pymongo.dbref import DBRef
 from pymongo.code import Code
+from pymongo.son_manipulator import AutoReference, NamespaceInjector
 from test_connection import get_connection
 
 class TestDatabase(unittest.TestCase):
@@ -360,6 +361,34 @@ class TestDatabase(unittest.TestCase):
         for _ in xrange(62):
             for _ in db.test.find():
                 break
+
+    def test_auto_ref_and_deref(self):
+        db = self.connection.pymongo_test
+        db.add_son_manipulator(AutoReference(db))
+        db.add_son_manipulator(NamespaceInjector())
+
+        db.test.a.remove({})
+        db.test.b.remove({})
+        db.test.c.remove({})
+
+        a = {"hello": u"world"}
+        db.test.a.save(a)
+
+        b = {"test": a}
+        db.test.b.save(b)
+
+        c = {"another test": b}
+        db.test.c.save(c)
+
+        a["hello"] = "mike"
+        db.test.a.save(a)
+
+        self.assertEqual(db.test.a.find_one(), a)
+        self.assertEqual(db.test.b.find_one()["test"], a)
+        self.assertEqual(db.test.c.find_one()["another test"]["test"], a)
+        self.assertEqual(db.test.b.find_one(), b)
+        self.assertEqual(db.test.c.find_one()["another test"], b)
+        self.assertEqual(db.test.c.find_one(), c)
 
 if __name__ == "__main__":
     unittest.main()

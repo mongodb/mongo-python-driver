@@ -110,7 +110,7 @@ class Transform(SONManipulator):
         return son
 
 # Now add our manipulator to the db:
-db.add_son_manipulator(Transform(db))
+db.add_son_manipulator(Transform())
 
 # Now we can save and restore Custom instances seamlessly:
 db.test.remove({}) # clear whatever is already there
@@ -150,7 +150,7 @@ class TransformToBinary(SONManipulator):
 # we already added
 db = connection["pymongo_examples"]
 db.test.remove({})
-db.add_son_manipulator(Transform(db))
+db.add_son_manipulator(Transform())
 document = {"custom": Custom(5)}
 db.test.insert(document)
 assert db.test.find_one()["custom"].x() == 5

@@ -51,9 +51,9 @@ class Database(object):
         self.__connection = connection
         self.__manipulators = []
         self.__copying_manipulators = []
-        self.add_son_manipulator(ObjectIdInjector(self))
-        self.add_son_manipulator(ObjectIdShuffler(self))
-        self.add_son_manipulator(DBRefTransformer(self))
+        self.add_son_manipulator(ObjectIdInjector())
+        self.add_son_manipulator(ObjectIdShuffler())
+        self.add_son_manipulator(DBRefTransformer())
 
     def __check_name(self, name):
         for invalid_char in [" ", ".", "$", "/", "\\"]:
@@ -157,9 +157,9 @@ class Database(object):
           - `son`: the son object coming out of the database
           - `collection`: the collection the son object was saved in
         """
-        for manipulator in self.__manipulators:
+        for manipulator in reversed(self.__manipulators):
             son = manipulator.transform_outgoing(son, collection)
-        for manipulator in self.__copying_manipulators:
+        for manipulator in reversed(self.__copying_manipulators):
             son = manipulator.transform_outgoing(son, collection)
         return son
 

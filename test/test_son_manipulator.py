@@ -34,7 +34,7 @@ class TestSONManipulator(unittest.TestCase):
         self.db = Database(get_connection(), "pymongo_test")
 
     def test_basic(self):
-        manip = SONManipulator(self.db)
+        manip = SONManipulator()
         collection = self.db.test
 
         def incoming_is_identity(son):
@@ -48,7 +48,7 @@ class TestSONManipulator(unittest.TestCase):
                               qcheck.gen_mongo_dict(3))
 
     def test_id_injection(self):
-        manip = ObjectIdInjector(self.db)
+        manip = ObjectIdInjector()
         collection = self.db.test
 
         def incoming_adds_id(son):
@@ -64,7 +64,7 @@ class TestSONManipulator(unittest.TestCase):
                               qcheck.gen_mongo_dict(3))
 
     def test_id_shuffling(self):
-        manip = ObjectIdShuffler(self.db)
+        manip = ObjectIdShuffler()
         collection = self.db.test
 
         def incoming_moves_id(son_in):
@@ -88,7 +88,7 @@ class TestSONManipulator(unittest.TestCase):
                               qcheck.gen_mongo_dict(3))
 
     def test_ns_injection(self):
-        manip = NamespaceInjector(self.db)
+        manip = NamespaceInjector()
         collection = self.db.test
 
         def incoming_adds_ns(son):
@@ -104,7 +104,7 @@ class TestSONManipulator(unittest.TestCase):
                               qcheck.gen_mongo_dict(3))
 
     def test_dbref_transformer(self):
-        manip = DBRefTransformer(self.db)
+        manip = DBRefTransformer()
         collection = self.db.test
 
         self.assertEqual({}, manip.transform_incoming({}, collection))
