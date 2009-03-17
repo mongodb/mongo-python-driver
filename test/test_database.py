@@ -243,10 +243,14 @@ class TestDatabase(unittest.TestCase):
         self.assertRaises(TypeError, db.dereference, None)
 
         self.assertEqual(None, db.dereference(DBRef("test", ObjectId())))
-
         obj = {"x": True}
         key = db.test.save(obj)
         self.assertEqual(obj, db.dereference(DBRef("test", key)))
+
+        self.assertEqual(None, db.dereference(DBRef("test", 4)))
+        obj = {"_id": 4}
+        db.test.save(obj)
+        self.assertEqual(obj, db.dereference(DBRef("test", 4)))
 
     def test_eval(self):
         db = self.connection.pymongo_test
