@@ -33,8 +33,6 @@ class DBRef(object):
         """
         if not isinstance(collection, types.StringTypes):
             raise TypeError("collection must be an instance of (str, unicode)")
-        if not isinstance(id, ObjectId):
-            raise TypeError("id must be an instance of ObjectId")
 
         if isinstance(collection, types.StringType):
             collection = unicode(collection, "utf-8")

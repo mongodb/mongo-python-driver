@@ -115,9 +115,9 @@ def gen_objectid():
 
 def gen_dbref():
     collection = gen_unicode(gen_range(0, 20))
-    return lambda: DBRef(collection(), gen_objectid()())
+    return lambda: DBRef(collection(), gen_mongo_value(1, True)())
 
-def gen_mongo_value(depth):
+def gen_mongo_value(depth, ref):
     choices = [gen_unicode(gen_range(0, 50)),
                gen_printable_string(gen_range(0, 50)),
                map(gen_string(gen_range(0, 1000)), Binary),
@@ -126,18 +126,19 @@ def gen_mongo_value(depth):
                gen_boolean(),
                gen_datetime(),
                gen_objectid(),
-               gen_dbref(),
                lift(None),]
+    if ref:
+        choices.append(gen_dbref())
     if depth > 0:
-        choices.append(gen_mongo_list(depth))
-        choices.append(gen_mongo_dict(depth))
+        choices.append(gen_mongo_list(depth, ref))
+        choices.append(gen_mongo_dict(depth, ref))
     return choose(choices)
 
-def gen_mongo_list(depth):
-    return gen_list(gen_mongo_value(depth - 1), gen_range(0, 10))
+def gen_mongo_list(depth, ref):
+    return gen_list(gen_mongo_value(depth - 1, ref), gen_range(0, 10))
 
-def gen_mongo_dict(depth):
-    return map(gen_dict(gen_unicode(gen_range(0, 20)), gen_mongo_value(depth - 1), gen_range(0, 10)), SON)
+def gen_mongo_dict(depth, ref=True):
+    return map(gen_dict(gen_unicode(gen_range(0, 20)), gen_mongo_value(depth - 1, ref), gen_range(0, 10)), SON)
 
 # TODO this is a hack - only really works for mongo_dicts right now...
 def simplify(case):

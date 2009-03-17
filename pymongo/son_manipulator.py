@@ -130,7 +130,7 @@ class DBRefTransformer(SONManipulator):
         def transform_value(value):
             if isinstance(value, DBRef):
                 return {"$ref": value.collection,
-                        "$id": value.id}
+                        "$id": transform_value(value.id)}
             elif isinstance(value, types.ListType):
                 return [transform_value(v) for v in value]
             elif isinstance(value, types.DictType):
@@ -150,7 +150,7 @@ class DBRefTransformer(SONManipulator):
         def transform_value(value):
             if isinstance(value, types.DictType):
                 if "$ref" in value:
-                    return DBRef(value["$ref"], value["$id"])
+                    return DBRef(value["$ref"], transform_value(value["$id"]))
                 else:
                     return transform_dict(SON(value))
             elif isinstance(value, types.ListType):

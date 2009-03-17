@@ -30,14 +30,13 @@ class TestDBRef(unittest.TestCase):
         a = ObjectId()
         self.assertRaises(TypeError, DBRef)
         self.assertRaises(TypeError, DBRef, "coll")
-        self.assertRaises(TypeError, DBRef, "coll", 4)
-        self.assertRaises(TypeError, DBRef, "coll", 175.0)
         self.assertRaises(TypeError, DBRef, 4, a)
         self.assertRaises(TypeError, DBRef, 1.5, a)
         self.assertRaises(TypeError, DBRef, a, a)
         self.assertRaises(TypeError, DBRef, None, a)
         self.assert_(DBRef("coll", a))
         self.assert_(DBRef(u"coll", a))
+        self.assert_(DBRef(u"coll", 5))
 
     def test_read_only(self):
         a = DBRef("coll", ObjectId())
