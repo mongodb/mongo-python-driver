@@ -141,7 +141,7 @@ def gen_mongo_dict(depth):
 
 # TODO this is a hack - only really works for mongo_dicts right now...
 def simplify(case):
-    if isinstance(case, SON):
+    if isinstance(case, SON) and "$ref" not in case:
         simplified = SON(case) # make a copy!
         if random.choice([True, False]):
             # delete

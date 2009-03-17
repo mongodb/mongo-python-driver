@@ -159,7 +159,7 @@ class Database(object):
             son = manipulator.transform_outgoing(son, collection)
         for manipulator in self.__copying_manipulators:
             son = manipulator.transform_outgoing(son, collection)
-            return son
+        return son
 
     def _command(self, command, allowable_errors=[], check=True, sock=None):
         """Issue a DB command.
