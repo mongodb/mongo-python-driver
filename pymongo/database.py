@@ -65,13 +65,15 @@ class Database(object):
     def add_son_manipulator(self, manipulator):
         """Add a new son manipulator to this database.
 
+        Newly added manipulators will be applied before existing ones.
+
         :Parameters:
           - `manipulator`: the manipulator to add
         """
         if manipulator.will_copy():
-            self.__copying_manipulators.append(manipulator)
+            self.__copying_manipulators.insert(0, manipulator)
         else:
-            self.__manipulators.append(manipulator)
+            self.__manipulators.insert(0, manipulator)
 
     def connection(self):
         """Get the database connection.
