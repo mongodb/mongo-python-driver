@@ -25,7 +25,6 @@ from pymongo.dbref import DBRef
 from pymongo.son import SON
 from pymongo.son_manipulator import SONManipulator, ObjectIdInjector
 from pymongo.son_manipulator import NamespaceInjector, ObjectIdShuffler
-from pymongo.son_manipulator import DBRefTransformer
 from pymongo.database import Database
 from test_connection import get_connection
 
@@ -102,18 +101,6 @@ class TestSONManipulator(unittest.TestCase):
             return son == manip.transform_outgoing(son, collection)
         qcheck.check_unittest(self, outgoing_is_identity,
                               qcheck.gen_mongo_dict(3))
-
-    def test_dbref_transformer(self):
-        manip = DBRefTransformer()
-        collection = self.db.test
-
-        self.assertEqual({}, manip.transform_incoming({}, collection))
-        self.assertEqual({"foo": {"$ref": "test", "$id": 5}},
-                         manip.transform_incoming({"foo": DBRef("test", 5)}, collection))
-
-        self.assertEqual({}, manip.transform_outgoing({}, collection))
-        self.assertEqual({"foo": DBRef("test", 5)},
-                         manip.transform_outgoing({"foo": {"$ref": "test", "$id": 5}}, collection))
 
 if __name__ == "__main__":
     unittest.main()

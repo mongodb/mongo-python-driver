@@ -96,66 +96,6 @@ class NamespaceInjector(SONManipulator):
         son["_ns"] = collection.name()
         return son
 
-# NOTE this is probably not the most performant way to handle DBRef's. We could
-# do this sort of transformation on demand w/in the BSON encoder/decoder. That
-# would probably be faster, but this is cleaner. So we'll stick with this until
-# it's a bottleneck.
-class DBRefTransformer(SONManipulator):
-    """A son manipulator for handling DBRefs.
-
-    Transforms a DBRef instance into the appropriate embedded object before a
-    document is saved. Transforms embedded objects that are references to DBRef
-    instances after a document is retrieved.
-
-    See the MongoDB wiki_ for more information.
-
-    .. _wiki: http://www.mongodb.org/display/DOCS/DB+Ref+Specification
-    """
-    def will_copy(self):
-        """We need to copy so the user's document doesn't get transformed refs.
-        """
-        return True
-
-    def transform_incoming(self, son, collection):
-        """Replace DBRef instances with the appropriate embedded objects.
-        """
-        def transform_value(value):
-            if isinstance(value, DBRef):
-                return {"$ref": value.collection,
-                        "$id": transform_value(value.id)}
-            elif isinstance(value, types.ListType):
-                return [transform_value(v) for v in value]
-            elif isinstance(value, types.DictType):
-                return transform_dict(SON(value))
-            return value
-
-        def transform_dict(object):
-            for (key, value) in object.items():
-                object[key] = transform_value(value)
-            return object
-
-        return transform_dict(SON(son)) # make a copy
-
-    def transform_outgoing(self, son, collection):
-        """Replace embedded DBRef objects with DBRef instances.
-        """
-        def transform_value(value):
-            if isinstance(value, types.DictType):
-                if "$ref" in value:
-                    return DBRef(value["$ref"], transform_value(value["$id"]))
-                else:
-                    return transform_dict(SON(value))
-            elif isinstance(value, types.ListType):
-                return [transform_value(v) for v in value]
-            return value
-
-        def transform_dict(object):
-            for (key, value) in object.items():
-                object[key] = transform_value(value)
-            return object
-
-        return transform_dict(SON(son))
-
 class AutoReference(SONManipulator):
     """Transparently reference and de-reference already saved embedded objects.
 

@@ -24,7 +24,7 @@ except: # for Python < 2.5
 
 from son import SON
 from dbref import DBRef
-from son_manipulator import ObjectIdInjector, ObjectIdShuffler, DBRefTransformer
+from son_manipulator import ObjectIdInjector, ObjectIdShuffler
 from collection import Collection
 from errors import InvalidName, CollectionInvalid, OperationFailure
 from code import Code
@@ -53,7 +53,6 @@ class Database(object):
         self.__copying_manipulators = []
         self.add_son_manipulator(ObjectIdInjector())
         self.add_son_manipulator(ObjectIdShuffler())
-        self.add_son_manipulator(DBRefTransformer())
 
     def __check_name(self, name):
         for invalid_char in [" ", ".", "$", "/", "\\"]:
