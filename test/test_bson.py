@@ -122,7 +122,7 @@ class TestBSON(unittest.TestCase):
         def from_then_to_dict(dict):
             return dict == (BSON.from_dict(dict)).to_dict()
 
-        qcheck.check_unittest(self, from_then_to_dict, qcheck.gen_mongo_dict(3, False))
+        qcheck.check_unittest(self, from_then_to_dict, qcheck.gen_mongo_dict(3))
 
     def test_data_files(self):
         # TODO don't hardcode this, actually clone the repo
