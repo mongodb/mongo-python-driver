@@ -39,6 +39,20 @@ class TestSON(unittest.TestCase):
         self.assertEqual(b["hello"], "world")
         self.assertRaises(KeyError, lambda: b["goodbye"])
 
+    def test_to_dict(self):
+        a = SON()
+        b = SON([("blah", SON())])
+        c = SON([("blah", [SON()])])
+        d = SON([("blah", {"foo": SON()})])
+        self.assertEqual({}, a.to_dict())
+        self.assertEqual({"blah": {}}, b.to_dict())
+        self.assertEqual({"blah": [{}]}, c.to_dict())
+        self.assertEqual({"blah": {"foo": {}}}, d.to_dict())
+        self.assertEqual(dict, a.to_dict().__class__)
+        self.assertEqual(dict, b.to_dict()["blah"].__class__)
+        self.assertEqual(dict, c.to_dict()["blah"][0].__class__)
+        self.assertEqual(dict, d.to_dict()["blah"]["foo"].__class__)
+
     def test_from_xml(self):
         smorgasbord = """
 <twonk>

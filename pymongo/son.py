@@ -22,6 +22,7 @@ import datetime
 import re
 import binascii
 import base64
+import types
 
 try:
     import xml.etree.ElementTree as ET
@@ -195,6 +196,24 @@ class SON(dict):
 
     def __len__(self):
         return len(self.keys())
+
+    # Thanks to Jeff Jenkins for the idea and original implementation
+    def to_dict(self):
+        """Convert a SON document to a normal Python dictionary instance.
+
+        This is trickier than just *dict(...)* because it needs to be recursive.
+        """
+        def transform_value(value):
+            if isinstance(value, types.ListType):
+                return [transform_value(v) for v in value]
+            if isinstance(value, SON):
+                value = dict(value)
+            if isinstance(value, types.DictType):
+                for k, v in value.iteritems():
+                    value[k] = transform_value(v)
+            return value
+
+        return transform_value(dict(self))
 
     def from_xml(cls, xml):
         """Create an instance of SON from an xml document.
