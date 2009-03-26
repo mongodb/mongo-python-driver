@@ -58,7 +58,7 @@ Please use Python >= 2.4 to take advantage of the extension.""" % ext.name
 
 setup(
     name="pymongo",
-    version="0.9.1",
+    version="0.9.2",
     description="Driver for the Mongo database <http://www.mongodb.org>",
     long_description=readme_content,
     author="10gen",
