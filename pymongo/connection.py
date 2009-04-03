@@ -31,7 +31,7 @@ _logger = logging.getLogger("pymongo.connection")
 _logger.addHandler(logging.StreamHandler())
 # _logger.setLevel(logging.DEBUG)
 
-_TIMEOUT = 20.0
+_CONNECT_TIMEOUT = 20.0
 
 # TODO support auth for pooling
 class Connection(object):
@@ -184,8 +184,9 @@ class Connection(object):
             try:
                 try:
                     sock = socket.socket()
-                    sock.settimeout(_TIMEOUT)
+                    sock.settimeout(_CONNECT_TIMEOUT)
                     sock.connect((host, port))
+                    sock.settimeout(None)
                     master = self.__master(sock)
                     if master is True:
                         self.__host = host
@@ -220,8 +221,9 @@ class Connection(object):
         try:
             self.__sockets[socket_number] = socket.socket()
             sock = self.__sockets[socket_number]
-            sock.settimeout(_TIMEOUT)
+            sock.settimeout(_CONNECT_TIMEOUT)
             sock.connect((self.host(), self.port()))
+            sock.settimeout(None)
             _logger.debug("connected")
             return
         except socket.error:
