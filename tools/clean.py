@@ -18,7 +18,15 @@ Only really intended to be used by internal build scripts.
 """
 
 import os
+import sys
+
 try:
     os.remove("pymongo/_cbson.so")
 except:
+    pass
+
+try:
+    from pymongo import _cbson
+    sys.exit("could still import _cbson")
+except ImportError:
     pass
