@@ -184,6 +184,7 @@ class Connection(object):
             try:
                 try:
                     sock = socket.socket()
+                    sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
                     sock.settimeout(_CONNECT_TIMEOUT)
                     sock.connect((host, port))
                     sock.settimeout(None)
@@ -220,6 +221,7 @@ class Connection(object):
 
         try:
             self.__sockets[socket_number] = socket.socket()
+            self.__sockets[socket_number].setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             sock = self.__sockets[socket_number]
             sock.settimeout(_CONNECT_TIMEOUT)
             sock.connect((self.host(), self.port()))
