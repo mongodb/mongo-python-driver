@@ -200,12 +200,12 @@ class Connection(object):
                             "%r claims master is %r, but that's not configured" %
                             ((host, port), master))
                     _logger.debug("not master, master is (%r, %r)" % master)
-                except socket.error:
+                except socket.error, e:
                     exctype, value = sys.exc_info()[:2]
                     _logger.debug("could not connect, got: %s %s" %
                                   (exctype, value))
-                    if len( self.__nodes ) == 1:
-                        raise
+                    if len(self.__nodes) == 1:
+                        raise ConnectionFailure(e)
                     continue
             finally:
                 if sock is not None:
