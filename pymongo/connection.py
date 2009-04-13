@@ -179,6 +179,7 @@ class Connection(object):
         _logger.debug("finding master")
         self.__host = None
         self.__port = None
+        sock = None
         for (host, port) in self.__nodes:
             _logger.debug("trying %r:%r" % (host, port))
             try:
@@ -205,7 +206,8 @@ class Connection(object):
                                   (exctype, value))
                     continue
             finally:
-                sock.close()
+                if sock is not None:
+                    sock.close()
         raise ConnectionFailure("could not find master")
 
     def __connect(self, socket_number):
