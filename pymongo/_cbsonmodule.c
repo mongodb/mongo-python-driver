@@ -482,7 +482,11 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
         *(buffer->buffer + type_byte) = 0x0B;
         return 1;
     }
-    PyErr_SetString(CBSONError, "no c encoder for this type yet");
+    PyObject* errmsg = PyString_FromString("Cannot encode object: ");
+    PyObject* repr = PyObject_Repr(value);
+    PyString_ConcatAndDel(&errmsg, repr);
+    PyErr_SetString(CBSONError, PyString_AsString(errmsg));
+    Py_DECREF(errmsg);
     return 0;
 }
 
