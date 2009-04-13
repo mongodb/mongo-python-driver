@@ -267,6 +267,13 @@ class Database(object):
             self.__connection._reset()
         return error
 
+    def last_status(self):
+        """Get status information from the last operation.
+
+        Returns a SON object with status information.
+        """
+        return self._command({"getlasterror": 1})
+
     def previous_error(self):
         """Get the most recent error to have occurred on this database.
 

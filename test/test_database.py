@@ -195,6 +195,18 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(None, db.error())
         self.assertEqual(None, db.previous_error())
 
+    def test_last_status(self):
+        db = self.connection.pymongo_test
+
+        db.test.remove({})
+        db.test.save({"i": 1})
+
+        db.test.update({"i": 1}, {"$set": {"i": 2}})
+        self.assert_(db.last_status()["updatedExisting"])
+
+        db.test.update({"i": 1}, {"$set": {"i": 500}})
+        self.failIf(db.last_status()["updatedExisting"])
+
     def test_password_digest(self):
         db = self.connection.pymongo_test
 
