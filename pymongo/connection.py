@@ -204,6 +204,8 @@ class Connection(object):
                     exctype, value = sys.exc_info()[:2]
                     _logger.debug("could not connect, got: %s %s" %
                                   (exctype, value))
+                    if len( self.__nodes ) == 1:
+                        raise
                     continue
             finally:
                 if sock is not None:
