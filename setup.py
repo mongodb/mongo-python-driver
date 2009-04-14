@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
 import sys
+import os
+import subprocess
 
 try:
     from setuptools import setup
@@ -8,6 +10,7 @@ except ImportError:
     from ez_setup import use_setuptools
     use_setuptools()
     from setuptools import setup
+from distutils.cmd import Command
 from distutils.command.build_ext import build_ext
 from distutils.errors import CCompilerError
 from distutils.core import Extension
@@ -18,6 +21,8 @@ try:
 except ImportError:
     requirements.append("elementtree")
 
+version = "0.9.3"
+
 f = open("README.rst")
 try:
     try:
@@ -26,6 +31,24 @@ try:
         readme_content = ""
 finally:
     f.close()
+
+class GenerateDoc(Command):
+    user_options = []
+
+    def initialize_options(self):
+        pass
+
+    def finalize_options(self):
+        pass
+
+    def run(self):
+        # mkdir if needed
+        try:
+            os.makedirs("doc/%s" % version)
+        except os.error:
+            pass
+
+        subprocess.call(["epydoc", "--config", "epydoc-config", "-o", "doc/%s" % version])
 
 class custom_build_ext(build_ext):
     """Allow C extension building to fail.
@@ -58,7 +81,7 @@ Please use Python >= 2.4 to take advantage of the extension.""" % ext.name
 
 setup(
     name="pymongo",
-    version="0.9.3",
+    version=version,
     description="Driver for the Mongo database <http://www.mongodb.org>",
     long_description=readme_content,
     author="10gen",
@@ -78,4 +101,5 @@ setup(
         "Operating System :: POSIX",
         "Programming Language :: Python",
         "Topic :: Database"],
-    cmdclass={"build_ext": custom_build_ext})
+    cmdclass={"build_ext": custom_build_ext,
+              "doc": GenerateDoc})

@@ -3,7 +3,6 @@
 modules: pymongo, gridfs
 exclude: pymongo._cbson
 output: html
-target: doc/
 verbosity: 1
 debug: 1
 
