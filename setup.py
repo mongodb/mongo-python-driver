@@ -3,6 +3,7 @@
 import sys
 import os
 import subprocess
+import shutil
 
 try:
     from setuptools import setup
@@ -42,13 +43,12 @@ class GenerateDoc(Command):
         pass
 
     def run(self):
-        # mkdir if needed
-        try:
-            os.makedirs("doc/%s" % version)
-        except os.error:
-            pass
+        path = "doc/%s" % version
 
-        subprocess.call(["epydoc", "--config", "epydoc-config", "-o", "doc/%s" % version])
+        shutil.rmtree(path, ignore_errors=True)
+        os.makedirs(path)
+
+        subprocess.call(["epydoc", "--config", "epydoc-config", "-o", path])
 
 class custom_build_ext(build_ext):
     """Allow C extension building to fail.
