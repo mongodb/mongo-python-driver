@@ -45,7 +45,7 @@ class GenerateDoc(Command):
     def run(self):
         path = "doc/%s" % version
 
-        shutil.rmtree(path, ignore_errors=True)
+        shutil.rmtree("doc", ignore_errors=True)
         os.makedirs(path)
 
         subprocess.call(["epydoc", "--config", "epydoc-config", "-o", path])
