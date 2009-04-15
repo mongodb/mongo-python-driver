@@ -22,7 +22,7 @@ try:
 except ImportError:
     requirements.append("elementtree")
 
-version = "0.9.3"
+version = "0.9.4"
 
 f = open("README.rst")
 try:
