@@ -5,12 +5,9 @@ import os
 import subprocess
 import shutil
 
-try:
-    from setuptools import setup
-except ImportError:
-    from ez_setup import use_setuptools
-    use_setuptools()
-    from setuptools import setup
+from ez_setup import use_setuptools
+use_setuptools()
+from setuptools import setup
 from distutils.cmd import Command
 from distutils.command.build_ext import build_ext
 from distutils.errors import CCompilerError
