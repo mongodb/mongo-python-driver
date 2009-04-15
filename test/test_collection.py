@@ -273,6 +273,16 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(db.test.find_one(id1)["x"], 7)
         self.assertEqual(db.test.find_one(id2)["x"], 1)
 
+    def test_upsert(self):
+        db = self.db
+        db.drop_collection("test")
+
+        db.test.update({"page": "/"}, {"$inc": {"count": 1}}, upsert=True)
+        db.test.update({"page": "/"}, {"$inc": {"count": 1}}, upsert=True)
+
+        self.assertEqual(1, db.test.count())
+        self.assertEqual(2, db.test.find_one()["count"])
+
     def test_safe_update(self):
         db = self.db
         db.drop_collection("test")

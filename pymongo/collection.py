@@ -176,7 +176,7 @@ class Collection(object):
 
         return len(docs) == 1 and docs[0] or docs
 
-    def update(self, spec, document, upsert=False, manipulate=True, safe=False):
+    def update(self, spec, document, upsert=False, manipulate=False, safe=False):
         """Update an object(s) in this collection.
 
         Raises TypeError if either spec or document isn't an instance of
