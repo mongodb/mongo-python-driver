@@ -118,6 +118,7 @@ class TestBSON(unittest.TestCase):
         helper({"a binary": Binary("test", 254)})
         helper({"another binary": Binary("test")})
         helper(SON([(u'test dst', datetime.datetime(1993, 4, 4, 2))]))
+        helper({"big float": float(10000000000)})
 
         def from_then_to_dict(dict):
             return dict == (BSON.from_dict(dict)).to_dict()

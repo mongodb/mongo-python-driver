@@ -65,6 +65,12 @@ class Collection(object):
     def __create(self, options):
         """Sends a create command with the given options.
         """
+
+        # Send size as a float, not an int/long. BSON can only handle 32-bit
+        # ints which conflicts w/ max collection size of 10000000000.
+        if "size" in options:
+            options["size"] = float(options["size"])
+
         command = SON({"create": self.__collection_name})
         command.update(options)
 
