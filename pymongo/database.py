@@ -199,10 +199,6 @@ class Database(object):
         if name not in self.collection_names():
             return
 
-        # TODO must manually drop indexes for now, but this is a bug that will
-        # be fixed on the database side at some point
-        self[name].drop_indexes()
-
         self._command({"drop": unicode(name)})
 
     def validate_collection(self, name_or_collection):
