@@ -16,125 +16,154 @@
 
 import time
 import sys
-sys.path[0:0] = [""]
-
+import os
 import datetime
-import cProfile
+import subprocess
 
-from pymongo import connection
+from pymongo.connection import Connection
+from pymongo.bson import BSON
+from pymongo.binary import Binary
 from pymongo import ASCENDING
 
-trials = 2
-per_trial = 5000
-batch_size = 100
-small = {}
-medium = {"integer": 5,
-          "number": 5.05,
-          "boolean": False,
-          "array": ["test", "benchmark"]
+from mongodb_benchmark_tools import post_data
+
+small = {"integer": 5,
+         "number": 5.05,
+         "boolean": False,
+         "array": ["test", "benchmark"]
+         }
+medium = {"base_url": "http://www.example.com/test-me",
+          "total_word_count": 6743,
+          "access_time": datetime.datetime.utcnow(),
+          "sub_object": small,
+          "data": Binary("hello" * 40),
+          "big_array": ["mongodb"] * 20
           }
-# this is similar to the benchmark data posted to the user list
-large = {"base_url": "http://www.example.com/test-me",
-         "total_word_count": 6743,
-         "access_time": datetime.datetime.utcnow(),
-         "meta_tags": {"description": "i am a long description string",
-                       "author": "Holly Man",
-                       "dynamically_created_meta_tag": "who know\n what"
-                       },
-         "page_structure": {"counted_tags": 3450,
-                            "no_of_js_attached": 10,
-                            "no_of_images": 6
-                            },
-         "harvested_words": ["10gen","web","open","source","application","paas",
-                             "platform-as-a-service","technology","helps",
-                             "developers","focus","building","mongodb","mongo"] * 20
+large = {"bigger_array": [medium] * 5,
+         "data": Binary("hello" * 500)
          }
 
-def setup_insert(db, collection, object):
-    db.drop_collection(collection)
 
-def insert(db, collection, object):
-    for i in range(per_trial):
-        to_insert = object.copy()
-        to_insert["x"] = i
-        db[collection].insert(to_insert)
+class Benchmark(object):
+    name = "benchmark"
+    description = "a benchmark"
+    categories = []
 
-def insert_batch(db, collection, object):
-    for i in range(per_trial / batch_size):
-        db[collection].insert([object] * batch_size)
+    def setup(self):
+        pass
 
-def find_one(db, collection, x):
-    for _ in range(per_trial):
-        db[collection].find_one({"x": x})
+    def run(self, iterations):
+        pass
 
-def find(db, collection, x):
-    for _ in range(per_trial):
-        for _ in db[collection].find({"x": x}):
-            pass
+    def teardown(self):
+        pass
 
-def timed(name, function, args=[], setup=None):
-    times = []
-    for _ in range(trials):
-        if setup:
-            setup(*args)
+
+class Encode(Benchmark):
+    def __init__(self, document, size):
+        self.name = "encode %s" % size
+        self.description = "test encoding 10000 %s documents" % size
+        self.categories = ["encode", size]
+        self.__doc = document
+
+    def run(self, iterations):
+        for _ in range(iterations):
+            BSON.from_dict(self.__doc)
+
+
+class Decode(Benchmark):
+    def __init__(self, bson, size):
+        self.name = "decode %s" % size
+        self.description = "test decoding 10000 %s documents" % size
+        self.categories = ["decode", size]
+        self.__bson = bson
+
+    def run(self, iterations):
+        for _ in range(iterations):
+            self.__bson.to_dict()
+
+
+class Insert(Benchmark):
+    def __init__(self, db, document, size):
+        self.__db = db
+        self.__collection_name = "%s_no_index" % size
+        self.__document = document
+        self.name = "insert %s" % size
+        self.description = "test inserting 10000 %s sized documents into a single collection"
+        self.categories = ["insert", size, "no index"]
+
+    def setup(self):
+        self.__db.drop_collection(self.__collection_name)
+        self.__collection = self.__db[self.__collection_name]
+
+    def run(self, iterations):
+        for i in range(iterations):
+            doc = self.__document.copy()
+            doc["x"] = i
+            self.__collection.insert(doc)
+
+
+class FindOne(Benchmark):
+    def __init__(self, collection, query, size):
+        self.__collection = collection
+        self.__query = query
+        self.name = "find one %s" % size
+        self.description = "test doing 10000 find one queries on a collection containing %s sized documents" % size
+        self. categories = ["query", size, "find one", "no index"]
+
+    def run(self, iterations):
+        for _ in range(iterations):
+            self.__collection.find_one(self.__query)
+
+
+class BenchmarkRunner(object):
+    def __init__(self, iterations, server_hash):
+        self.__iterations = iterations
+        self.__server_hash = server_hash
+        self.__client_hash = self.get_client_hash()
+
+    def get_client_hash(self):
+        git_rev_parse = subprocess.Popen(["git", "rev-parse", "HEAD"],
+                                         stdout=subprocess.PIPE)
+        (hash, _) = git_rev_parse.communicate()
+        return hash.strip()
+
+    def report(self, benchmark, result):
+        data = {"benchmark": {"project": "http://github.com/mongodb/mongo-python-driver",
+                              "name": benchmark.name,
+                              "description": benchmark.description,
+                              "tags": benchmark.categories},
+                "trial": {"server_hash": self.__server_hash,
+                          "client_hash": self.__client_hash,
+                          "result": result,
+                          "extra_info": ""}}
+        post_data(data, post_url="http://localhost:8080/benchmark")
+        print "%s: %s" % (benchmark.name, result)
+
+    def run_benchmark(self, benchmark):
+        benchmark.setup()
         start = time.time()
-        function(*args)
-        times.append(time.time() - start)
-    best_time = min(times)
-    print "%s%d" % (name + (60 - len(name)) * ".", per_trial / best_time)
-    return best_time
+        benchmark.run(self.__iterations)
+        stop = time.time()
+        benchmark.teardown()
+        self.report(benchmark, stop - start)
+
 
 def main():
-    connection._TIMEOUT=60 # jack up the timeout
-    c = connection.Connection()
-    c.drop_database("benchmark")
-    db = c.benchmark
+    connection = Connection()
+    runner = BenchmarkRunner(10000, connection.server_info()["gitVersion"])
 
-    timed("insert (small, no index)", insert, [db, 'small_none', small], setup_insert)
-    timed("insert (medium, no index)", insert, [db, 'medium_none', medium], setup_insert)
-    timed("insert (large, no index)", insert, [db, 'large_none', large], setup_insert)
+    runner.run_benchmark(Encode(small, "small"))
+    runner.run_benchmark(Encode(medium, "medium"))
+    runner.run_benchmark(Encode(large, "large"))
 
-    db.small_index.create_index("x", ASCENDING)
-    timed("insert (small, indexed)", insert, [db, 'small_index', small])
-    db.medium_index.create_index("x", ASCENDING)
-    timed("insert (medium, indexed)", insert, [db, 'medium_index', medium])
-    db.large_index.create_index("x", ASCENDING)
-    timed("insert (large, indexed)", insert, [db, 'large_index', large])
+    runner.run_benchmark(Decode(BSON.from_dict(small), "small"))
+    runner.run_benchmark(Decode(BSON.from_dict(medium), "medium"))
+    runner.run_benchmark(Decode(BSON.from_dict(large), "large"))
 
-    timed("batch insert (small, no index)", insert_batch, [db, 'small_bulk', small], setup_insert)
-    timed("batch insert (medium, no index)", insert_batch, [db, 'medium_bulk', medium], setup_insert)
-    timed("batch insert (large, no index)", insert_batch, [db, 'large_bulk', large], setup_insert)
+    runner.run_benchmark(Insert(connection.benchmark, medium, "medium"))
 
-    timed("find_one (small, no index)", find_one, [db, 'small_none', per_trial / 2])
-    timed("find_one (medium, no index)", find_one, [db, 'medium_none', per_trial / 2])
-    timed("find_one (large, no index)", find_one, [db, 'large_none', per_trial / 2])
-
-    timed("find_one (small, indexed)", find_one, [db, 'small_index', per_trial / 2])
-    timed("find_one (medium, indexed)", find_one, [db, 'medium_index', per_trial / 2])
-    timed("find_one (large, indexed)", find_one, [db, 'large_index', per_trial / 2])
-
-    timed("find (small, no index)", find, [db, 'small_none', per_trial / 2])
-    timed("find (medium, no index)", find, [db, 'medium_none', per_trial / 2])
-    timed("find (large, no index)", find, [db, 'large_none', per_trial / 2])
-
-    timed("find (small, indexed)", find, [db, 'small_index', per_trial / 2])
-    timed("find (medium, indexed)", find, [db, 'medium_index', per_trial / 2])
-    timed("find (large, indexed)", find, [db, 'large_index', per_trial / 2])
-
-#     timed("find range (small, no index)", find,
-#           [db, 'small_none', {"$gt": per_trial / 4, "$lt": 3 * per_trial / 4}])
-#     timed("find range (medium, no index)", find,
-#           [db, 'medium_none', {"$gt": per_trial / 4, "$lt": 3 * per_trial / 4}])
-#     timed("find range (large, no index)", find,
-#           [db, 'large_none', {"$gt": per_trial / 4, "$lt": 3 * per_trial / 4}])
-
-    timed("find range (small, indexed)", find,
-          [db, 'small_index', {"$gt": per_trial / 2, "$lt": per_trial / 2 + batch_size}])
-    timed("find range (medium, indexed)", find,
-          [db, 'medium_index', {"$gt": per_trial / 2, "$lt": per_trial / 2 + batch_size}])
-    timed("find range (large, indexed)", find,
-          [db, 'large_index', {"$gt": per_trial / 2, "$lt": per_trial / 2 + batch_size}])
+    runner.run_benchmark(FindOne(connection.benchmark.medium_no_index, {"x": 5000}, "medium"))
 
 if __name__ == "__main__":
-#    cProfile.run("main()")
     main()
