@@ -529,6 +529,11 @@ class Connection(object):
         info = result["databases"]
         return dict([(db["name"], db["sizeOnDisk"]) for db in info])
 
+    def server_info(self):
+        """Get information about the MongoDB server we're connected to.
+        """
+        return self["admin"]._command({"buildinfo": 1})
+
     def database_names(self):
         """Get a list of all database names.
         """
