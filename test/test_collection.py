@@ -80,6 +80,7 @@ class TestCollection(unittest.TestCase):
         db.test.create_index("hello", ASCENDING)
         self.assertEqual(db.system.indexes.find_one({"ns": u"pymongo_test.test"}),
                          SON([(u"name", u"hello_1"),
+                              (u"unique", False),
                               (u"ns", u"pymongo_test.test"),
                               (u"key", SON([(u"hello", 1)]))]))
 
@@ -88,6 +89,7 @@ class TestCollection(unittest.TestCase):
         db.test.create_index([("hello", DESCENDING), ("world", ASCENDING)])
         self.assertEqual(db.system.indexes.find_one({"ns": u"pymongo_test.test"}),
                          SON([(u"name", u"hello_-1_world_1"),
+                              (u"unique", False),
                               (u"ns", u"pymongo_test.test"),
                               (u"key", SON([(u"hello", -1),
                                             (u"world", 1)]))]))
@@ -116,6 +118,7 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(db.system.indexes.find({"ns": u"pymongo_test.test"}).count(), 1)
         self.assertEqual(db.system.indexes.find_one({"ns": u"pymongo_test.test"}),
                          SON([(u"name", u"hello_1"),
+                              (u"unique", False),
                               (u"ns", u"pymongo_test.test"),
                               (u"key", SON([(u"hello", 1)]))]))
 
@@ -129,6 +132,7 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(db.system.indexes.find({"ns": u"pymongo_test.test"}).count(), 1)
         self.assertEqual(db.system.indexes.find_one({"ns": u"pymongo_test.test"}),
                          SON([(u"name", u"hello_1"),
+                              (u"unique", False),
                               (u"ns", u"pymongo_test.test"),
                               (u"key", SON([(u"hello", 1)]))]))
 
@@ -247,6 +251,27 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(db.test.find().count(), 2)
         self.assertEqual(doc1, db.test.find_one({"hello": u"world"}))
         self.assertEqual(doc2, db.test.find_one({"hello": u"mike"}))
+
+    def test_unique_index(self):
+        db = self.db
+
+        db.drop_collection("test")
+        db.test.create_index("hello", ASCENDING)
+
+        db.test.save({"hello": "world"})
+        db.test.save({"hello": "mike"})
+        db.test.save({"hello": "world"})
+        self.failIf(db.error())
+
+        db.drop_collection("test")
+        db.test.create_index("hello", ASCENDING, unique=True)
+
+        db.test.save({"hello": "world"})
+        db.test.save({"hello": "mike"})
+        db.test.save({"hello": "world"})
+        self.assert_(db.error())
+
+        db.drop_collection("test")
 
     def test_safe_insert(self):
         db = self.db

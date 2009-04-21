@@ -320,7 +320,7 @@ class Collection(object):
         """
         return u"_".join([u"%s_%s" % item for item in keys])
 
-    def create_index(self, key_or_list, direction=None):
+    def create_index(self, key_or_list, direction=None, unique=False):
         """Creates an index on this collection.
 
         Takes either a single key and a direction, or a list of (key, direction)
@@ -333,12 +333,14 @@ class Collection(object):
             specifying the index to ensure
           - `direction` (optional): must be included if key_or_list is a single
             key, otherwise must be None
+          - `unique` (optional): should this index guarantee uniqueness?
         """
         to_save = SON()
         keys = pymongo._index_list(key_or_list, direction)
         to_save["name"] = self._gen_index_name(keys)
         to_save["ns"] = self.full_name()
         to_save["key"] = pymongo._index_document(keys)
+        to_save["unique"] = unique
 
         self.__database.system.indexes.save(to_save, False)
         return to_save["name"]
