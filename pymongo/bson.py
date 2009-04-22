@@ -119,6 +119,10 @@ def _validate_number_int(data):
     assert len(data) >= 4
     return data[4:]
 
+def _validate_timestamp(data):
+    assert len(data) >= 8
+    return data[8:]
+
 _element_validator = {
     "\x01": _validate_number,
     "\x02": _validate_string,
@@ -136,6 +140,7 @@ _element_validator = {
     "\x0E": _validate_symbol,
     "\x0F": _validate_code_w_scope,
     "\x10": _validate_number_int,
+    "\x11": _validate_timestamp
 }
 
 def _validate_element_data(type, data):
@@ -251,6 +256,11 @@ def _get_ref(data):
     (oid, data) = _get_oid(data)
     return (DBRef(collection, oid), data)
 
+def _get_timestamp(data):
+    (timestamp, data) = _get_int(data)
+    (inc, data) = _get_int(data)
+    return ((timestamp, inc), data)
+
 _element_getter = {
     "\x01": _get_number,
     "\x02": _get_string,
@@ -268,6 +278,7 @@ _element_getter = {
     "\x0E": _get_string, # symbol
     "\x0F": _get_code_w_scope,
     "\x10": _get_int, # number_int
+    "\x11": _get_timestamp,
 }
 
 def _element_to_dict(data):

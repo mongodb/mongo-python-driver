@@ -860,6 +860,19 @@ static PyObject* get_value(const char* buffer, int* position, int type) {
             *position += 4;
             break;
         }
+    case 17:
+        {
+            int i;
+            int j;
+            memcpy(&i, buffer + *position, 4);
+            memcpy(&j, buffer + *position + 4, 4);
+            value = Py_BuildValue("(ii)", i, j);
+            if (!value) {
+                return NULL;
+            }
+            *position += 8;
+            break;
+        }
     default:
         PyErr_SetString(CBSONError, "no c decoder for this type yet");
         return NULL;
