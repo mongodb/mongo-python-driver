@@ -418,8 +418,8 @@ class Collection(object):
 
         :Parameters:
           - `keys`: list of fields to group by
-          - `condition`: specification of rows to be considered as a `find`
-            query specification
+          - `condition`: specification of rows to be considered (as a `find`
+            query specification)
           - `initial`: initial value of the aggregation counter object
           - `reduce`: aggregation function as a JavaScript string
         """
