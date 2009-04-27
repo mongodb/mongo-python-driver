@@ -22,6 +22,7 @@ from objectid import ObjectId
 from cursor import Cursor
 from son import SON
 from errors import InvalidName, OperationFailure
+from code import Code
 
 _ZERO = "\x00\x00\x00\x00"
 _ONE = "\x01\x00\x00\x00"
@@ -409,6 +410,44 @@ class Collection(object):
             del options["create"]
 
         return options
+
+    def group(self, keys, condition, initial, reduce):
+        """Perform a query similar to an SQL group by operation.
+
+        Returns an array of grouped items.
+
+        :Parameters:
+          - `keys`: list of fields to group by
+          - `condition`: specification of rows to be considered as a `find`
+            query specification
+          - `initial`: initial value of the aggregation counter object
+          - `reduce`: aggregation function as a JavaScript string
+        """
+        group_function = """function () {
+    var c = db[ns].find(condition);
+    var map = new Map();
+    var reduce_function = %s;
+    while (c.hasNext()) {
+        var obj = c.next();
+
+        var key = {};
+        for (var i in keys) {
+            key[keys[i]] = obj[keys[i]];
+        }
+
+        var aggObj = map[key];
+        if (aggObj == null) {
+            var newObj = Object.extend({}, key);
+            aggObj = map[key] = Object.extend(newObj, initial);
+        }
+        reduce_function(obj, aggObj);
+    }
+    return {"result": map.values()};
+}""" % reduce
+        return self.__database.eval(Code(group_function, {"ns": self.__collection_name,
+                                                          "keys": keys,
+                                                          "condition": condition,
+                                                          "initial": initial}))["result"]
 
     def __iter__(self):
         return self

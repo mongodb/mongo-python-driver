@@ -331,5 +331,18 @@ class TestCollection(unittest.TestCase):
         db.test.save({})
         self.assertEqual(db.test.count(), 2)
 
+    def test_group(self):
+        db = self.db
+        db.drop_collection("test")
+
+        self.assertEqual([], db.test.group([], {}, {"count": 0}, "function (obj, prev) { prev.count++; }"))
+
+        db.test.save({"a": 2})
+        db.test.save({"b": 5})
+        db.test.save({"a": 1})
+
+        self.assertEqual(3, db.test.group([], {}, {"count": 0}, "function (obj, prev) { prev.count++; }")[0]["count"])
+        self.assertEqual(1, db.test.group([], {"a": {"$gt": 1}}, {"count": 0}, "function (obj, prev) { prev.count++; }")[0]["count"])
+
 if __name__ == "__main__":
     unittest.main()
