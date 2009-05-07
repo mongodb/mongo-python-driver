@@ -41,8 +41,6 @@ class TestPooling(unittest.TestCase):
 
     def test_exceptions(self):
         self.assertRaises(TypeError, Connection, self.host, self.port,
-                          pool_size=None)
-        self.assertRaises(TypeError, Connection, self.host, self.port,
                           pool_size="one")
         self.assertRaises(TypeError, Connection, self.host, self.port,
                           pool_size=[])
@@ -50,6 +48,14 @@ class TestPooling(unittest.TestCase):
                           pool_size=-10)
         self.assertRaises(ValueError, Connection, self.host, self.port,
                           pool_size=0)
+
+    def test_constants(self):
+        Connection.POOL_SIZE = -1
+        self.assertRaises(ValueError, Connection, self.host, self.port)
+
+        Connection.POOL_SIZE = 1
+        self.assert_(Connection(self.host, self.port))
+
 
     # NOTE this test is non-deterministic
     def test_end_request(self):

@@ -37,8 +37,13 @@ _CONNECT_TIMEOUT = 20.0
 class Connection(object):
     """A connection to Mongo.
     """
-    def __init__(self, host="localhost", port=27017,
-                 pool_size=1, auto_start_request=True, _connect=True):
+    HOST = "localhost"
+    PORT = 27017
+    POOL_SIZE = 1
+    AUTO_START_REQUEST = True
+
+    def __init__(self, host=None, port=None, pool_size=None,
+                 auto_start_request=None, _connect=True):
         """Open a new connection to a Mongo instance at host:port.
 
         The resultant connection object has connection-pooling built in. It also
@@ -64,6 +69,15 @@ class Connection(object):
           - `auto_start_request` (optional): automatically start a request
             on every operation - see documentation for `start_request`.
         """
+        if host is None:
+            host = self.HOST
+        if port is None:
+            port = self.PORT
+        if pool_size is None:
+            pool_size = self.POOL_SIZE
+        if auto_start_request is None:
+            auto_start_request = self.AUTO_START_REQUEST
+
         if not isinstance(host, types.StringType):
             raise TypeError("host must be an instance of str")
         if not isinstance(port, types.IntType):
@@ -117,8 +131,8 @@ class Connection(object):
 
         self.__find_master()
 
-    def paired(cls, left, right=("localhost", 27017),
-               pool_size=1, auto_start_request=True):
+    def paired(cls, left, right=None,
+               pool_size=None, auto_start_request=None):
         """Open a new paired connection to Mongo.
 
         Raises TypeError if either `left` or `right` is not a tuple of the form
@@ -130,6 +144,13 @@ class Connection(object):
           - `pool_size` (optional): same as argument to `__init__`
           - `auto_start_request` (optional): same as argument to `__init__`
         """
+        if right is None:
+            right = (self.HOST, self.PORT)
+        if pool_size is None:
+            pool_size = self.POOL_SIZE
+        if auto_start_request is None:
+            auto_start_request = self.AUTO_START_REQUEST
+
         connection = cls(left[0], left[1], pool_size, auto_start_request,
                          _connect=False)
         connection.__pair_with(*right)
@@ -155,7 +176,7 @@ class Connection(object):
         else:
             strings = result["remote"].split(":", 1)
             if len(strings) == 1:
-                port = 27017
+                port = self.PORT
             else:
                 port = int(strings[1])
             return (strings[0], port)
