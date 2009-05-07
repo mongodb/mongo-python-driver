@@ -490,6 +490,62 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
     return 0;
 }
 
+static int write_son(bson_buffer* buffer, PyObject* dict, int start_position, int length_location) {
+    PyObject* keys = PyObject_CallMethod(dict, "keys", NULL);
+    if (!keys) {
+        return 0;
+    }
+    int items = PyList_Size(keys);
+    int i;
+    for(i = 0; i < items; i++) {
+        PyObject* key = PyList_GetItem(keys, i);
+        if (!key) {
+            Py_DECREF(keys);
+            return 0;
+        }
+        PyObject* value = PyDict_GetItem(dict, key);
+        if (!value) {
+            Py_DECREF(keys);
+            return 0;
+        }
+        int type_byte = buffer_save_bytes(buffer, 1);
+        if (type_byte == -1) {
+            Py_DECREF(keys);
+            return 0;
+        }
+        PyObject* encoded;
+        if (PyUnicode_CheckExact(key)) {
+            encoded = PyUnicode_AsUTF8String(key);
+            if (!encoded) {
+                Py_DECREF(keys);
+                return 0;
+            }
+        } else {
+            encoded = key;
+            Py_INCREF(encoded);
+        }
+        Py_ssize_t name_length = PyString_Size(encoded);
+        const char* name = PyString_AsString(encoded);
+        if (!name) {
+            Py_DECREF(keys);
+            Py_DECREF(encoded);
+            return 0;
+        }
+        if (!buffer_write_bytes(buffer, name, name_length + 1)) {
+            Py_DECREF(keys);
+            Py_DECREF(encoded);
+            return 0;
+        }
+        Py_DECREF(encoded);
+        if (!write_element_to_buffer(buffer, type_byte, value)) {
+            Py_DECREF(keys);
+            return 0;
+        }
+    }
+    Py_DECREF(keys);
+    return 1;
+}
+
 /* returns 0 on failure */
 static int write_dict(bson_buffer* buffer, PyObject* dict) {
     int start_position = buffer->position;
@@ -535,61 +591,28 @@ static int write_dict(bson_buffer* buffer, PyObject* dict) {
             }
         }
     } else if (PyObject_IsInstance(dict, SON)) {
-        PyObject* keys = PyObject_CallMethod(dict, "keys", NULL);
-        if (!keys) {
+        if (!write_son(buffer, dict, start_position, length_location)) {
             return 0;
         }
-        int items = PyList_Size(keys);
-        int i;
-        for(i = 0; i < items; i++) {
-            PyObject* key = PyList_GetItem(keys, i);
-            if (!key) {
-                Py_DECREF(keys);
-                return 0;
-            }
-            PyObject* value = PyDict_GetItem(dict, key);
-            if (!value) {
-                Py_DECREF(keys);
-                return 0;
-            }
-            int type_byte = buffer_save_bytes(buffer, 1);
-            if (type_byte == -1) {
-                Py_DECREF(keys);
-                return 0;
-            }
-            PyObject* encoded;
-            if (PyUnicode_CheckExact(key)) {
-                encoded = PyUnicode_AsUTF8String(key);
-                if (!encoded) {
-                Py_DECREF(keys);
-                    return 0;
-                }
-            } else {
-                encoded = key;
-                Py_INCREF(encoded);
-            }
-            Py_ssize_t name_length = PyString_Size(encoded);
-            const char* name = PyString_AsString(encoded);
-            if (!name) {
-                Py_DECREF(keys);
-                Py_DECREF(encoded);
-                return 0;
-            }
-            if (!buffer_write_bytes(buffer, name, name_length + 1)) {
-                Py_DECREF(keys);
-                Py_DECREF(encoded);
-                return 0;
-            }
-            Py_DECREF(encoded);
-            if (!write_element_to_buffer(buffer, type_byte, value)) {
-                Py_DECREF(keys);
-                return 0;
-            }
-        }
-        Py_DECREF(keys);
     } else {
-        PyErr_SetString(PyExc_TypeError, "argument to from_dict must be a mapping type");
-        return 0;
+        // Try getting the SON class again
+        // This can be necessary if pymongo.son has been reloaded, since
+        // reloading the module breaks IsInstance.
+        PyObject* son_module = PyImport_ImportModule("pymongo.son");
+        SON = PyObject_GetAttrString(son_module, "SON");
+        Py_DECREF(son_module);
+        if (PyObject_IsInstance(dict, SON)) {
+            if (!write_son(buffer, dict, start_position, length_location)) {
+                return 0;
+            }
+        } else {
+            PyObject* errmsg = PyString_FromString("encoder expected a mapping type but got: ");
+            PyObject* repr = PyObject_Repr(dict);
+            PyString_ConcatAndDel(&errmsg, repr);
+            PyErr_SetString(PyExc_TypeError, PyString_AsString(errmsg));
+            Py_DECREF(errmsg);
+            return 0;
+        }
     }
 
     // write null byte and fill in length
@@ -952,22 +975,29 @@ PyMODINIT_FUNC init_cbson(void) {
 
     PyObject* errors_module = PyImport_ImportModule("pymongo.errors");
     CBSONError = PyObject_GetAttrString(errors_module, "InvalidDocument");
+    Py_DECREF(errors_module);
 
     PyObject* son_module = PyImport_ImportModule("pymongo.son");
     SON = PyObject_GetAttrString(son_module, "SON");
+    Py_DECREF(son_module);
 
     PyObject* binary_module = PyImport_ImportModule("pymongo.binary");
     Binary = PyObject_GetAttrString(binary_module, "Binary");
+    Py_DECREF(binary_module);
 
     PyObject* code_module = PyImport_ImportModule("pymongo.code");
     Code = PyObject_GetAttrString(code_module, "Code");
+    Py_DECREF(code_module);
 
     PyObject* objectid_module = PyImport_ImportModule("pymongo.objectid");
     ObjectId = PyObject_GetAttrString(objectid_module, "ObjectId");
+    Py_DECREF(objectid_module);
 
     PyObject* dbref_module = PyImport_ImportModule("pymongo.dbref");
     DBRef = PyObject_GetAttrString(dbref_module, "DBRef");
+    Py_DECREF(dbref_module);
 
     PyObject* re_module = PyImport_ImportModule("re");
     RECompile = PyObject_GetAttrString(re_module, "compile");
+    Py_DECREF(re_module);
 }

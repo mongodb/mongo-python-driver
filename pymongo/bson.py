@@ -370,7 +370,7 @@ def _dict_to_bson(dict):
     try:
         elements = "".join([_element_to_bson(key, value) for (key, value) in dict.iteritems()])
     except AttributeError:
-        raise TypeError("argument to from_dict must be a mapping type")
+        raise TypeError("encoder expected a mapping type but got: %r" % dict)
 
     length = len(elements) + 5
     return struct.pack("<i", length) + elements + "\x00"
