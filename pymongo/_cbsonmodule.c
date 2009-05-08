@@ -177,7 +177,7 @@ static int write_string(bson_buffer* buffer, PyObject* py_string) {
 
 /* TODO our platform better be little-endian w/ 4-byte ints! */
 /* returns 0 on failure */
-static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject* value) {
+static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject* value, int try_reload) {
     /* TODO this isn't quite the same as the Python version:
      * here we check for type equivalence, not isinstance in some
      * places. */
@@ -235,7 +235,7 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
             free(name);
 
             PyObject* item_value = PyList_GetItem(value, i);
-            if (!write_element_to_buffer(buffer, list_type_byte, item_value)) {
+            if (!write_element_to_buffer(buffer, list_type_byte, item_value, 1)) {
                 return 0;
             }
         }
@@ -419,7 +419,7 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
             Py_DECREF(id_object);
             return 0;
         }
-        if (!write_element_to_buffer(buffer, type_pos, id_object)) {
+        if (!write_element_to_buffer(buffer, type_pos, id_object, 1)) {
             Py_DECREF(id_object);
             return 0;
         }
@@ -481,7 +481,28 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
         }
         *(buffer->buffer + type_byte) = 0x0B;
         return 1;
+    } else if (try_reload) {
+        // reload
+        PyObject* binary_module = PyImport_ImportModule("pymongo.binary");
+        Binary = PyObject_GetAttrString(binary_module, "Binary");
+        Py_DECREF(binary_module);
+
+        PyObject* code_module = PyImport_ImportModule("pymongo.code");
+        Code = PyObject_GetAttrString(code_module, "Code");
+        Py_DECREF(code_module);
+
+        PyObject* objectid_module = PyImport_ImportModule("pymongo.objectid");
+        ObjectId = PyObject_GetAttrString(objectid_module, "ObjectId");
+        Py_DECREF(objectid_module);
+
+        PyObject* dbref_module = PyImport_ImportModule("pymongo.dbref");
+        DBRef = PyObject_GetAttrString(dbref_module, "DBRef");
+        Py_DECREF(dbref_module);
+
+        // try again, but just one more time
+        return write_element_to_buffer(buffer, type_byte, value, 0);
     }
+
     PyObject* errmsg = PyString_FromString("Cannot encode object: ");
     PyObject* repr = PyObject_Repr(value);
     PyString_ConcatAndDel(&errmsg, repr);
@@ -537,7 +558,7 @@ static int write_son(bson_buffer* buffer, PyObject* dict, int start_position, in
             return 0;
         }
         Py_DECREF(encoded);
-        if (!write_element_to_buffer(buffer, type_byte, value)) {
+        if (!write_element_to_buffer(buffer, type_byte, value, 1)) {
             Py_DECREF(keys);
             return 0;
         }
@@ -586,7 +607,7 @@ static int write_dict(bson_buffer* buffer, PyObject* dict) {
                 return 0;
             }
             Py_DECREF(encoded);
-            if (!write_element_to_buffer(buffer, type_byte, value)) {
+            if (!write_element_to_buffer(buffer, type_byte, value, 1)) {
                 return 0;
             }
         }
