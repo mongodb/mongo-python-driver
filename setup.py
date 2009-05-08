@@ -8,6 +8,7 @@ import shutil
 from ez_setup import use_setuptools
 use_setuptools()
 from setuptools import setup
+from setuptools import Feature
 from distutils.cmd import Command
 from distutils.command.build_ext import build_ext
 from distutils.errors import CCompilerError
@@ -76,6 +77,17 @@ speed improvements.
 Please use Python >= 2.4 to take advantage of the extension.""" % ext.name
             print ("*" * 62 + "\n")
 
+c_ext = Feature(
+    "optional C extension",
+    standard=True,
+    ext_modules=[Extension('pymongo._cbson', ['pymongo/_cbsonmodule.c'])])
+
+if "--no_ext" in sys.argv:
+    sys.argv = [x for x in sys.argv if x != "--no_ext"]
+    features = {}
+else:
+    features = {"c-ext": c_ext}
+
 setup(
     name="pymongo",
     version=version,
@@ -85,8 +97,8 @@ setup(
     author_email="mongodb-user@googlegroups.com",
     url="http://github.com/mongodb/mongo-python-driver",
     packages=["pymongo", "gridfs"],
-    ext_modules=[Extension('pymongo._cbson', ['pymongo/_cbsonmodule.c'])],
     install_requires=requirements,
+    features=features,
     license="Apache License, Version 2.0",
     test_suite="nose.collector",
     classifiers=[
