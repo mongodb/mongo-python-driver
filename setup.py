@@ -93,7 +93,7 @@ else:
 setup(
     name="pymongo",
     version=version,
-    description="Driver for the Mongo database <http://www.mongodb.org>",
+    description="Python driver for MongoDB <http://www.mongodb.org>",
     long_description=readme_content,
     author="10gen",
     author_email="mongodb-user@googlegroups.com",
