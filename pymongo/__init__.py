@@ -30,7 +30,7 @@ SLOW_ONLY = 1
 ALL = 2
 """Profile all operations."""
 
-version = "0.9.6"
+version = "0.9.7"
 """Current version of PyMongo."""
 
 def _index_list(key_or_list, direction):
