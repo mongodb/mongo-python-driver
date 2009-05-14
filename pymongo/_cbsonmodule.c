@@ -187,7 +187,10 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
         return buffer_write_bytes(buffer, (const char*)&int_value, 4);
     } else if (PyLong_CheckExact(value)) {
         *(buffer->buffer + type_byte) = 0x10;
-        const int int_value = (int)PyLong_AsLong(value); // TODO handle overflow here
+        const int int_value = (int)PyLong_AsLong(value);
+        if (PyErr_Occurred()) { // Overflow
+            return 0;
+        }
         return buffer_write_bytes(buffer, (const char*)&int_value, 4);
     } else if (PyBool_Check(value)) {
         *(buffer->buffer + type_byte) = 0x08;
@@ -213,7 +216,6 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
         if (length_location == -1) {
             return 0;
         }
-
 
         int items = PyList_Size(value);
         int i;

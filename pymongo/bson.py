@@ -340,6 +340,9 @@ def _element_to_bson(key, value):
     if value is False:
         return "\x08" + name + "\x00"
     if isinstance(value, (int, long)):
+        # TODO this is a really ugly way to check for this...
+        if value > 2**32 / 2 - 1 or value < -2**32 / 2:
+            raise OverflowError("MongoDB can only handle 4-byte ints - try converting to a float before saving")
         return "\x10" + name + struct.pack("<i", value)
     if isinstance(value, datetime.datetime):
         millis = int(calendar.timegm(value.timetuple()) * 1000 + value.microsecond / 1000)

@@ -166,5 +166,9 @@ class TestBSON(unittest.TestCase):
         self.assertRaises(UnicodeDecodeError, BSON.from_dict,
                           {"lalala": '\xf4\xe0\xf0\xe1\xc0 Color Touch'})
 
+    def test_overflow(self):
+        self.assert_(BSON.from_dict({"x": 2147483647}))
+        self.assertRaises(OverflowError, BSON.from_dict, {"x": 2147483648})
+
 if __name__ == "__main__":
     unittest.main()
