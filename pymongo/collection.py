@@ -321,7 +321,7 @@ class Collection(object):
         """
         return u"_".join([u"%s_%s" % item for item in keys])
 
-    def create_index(self, key_or_list, direction=None, unique=False):
+    def create_index(self, key_or_list, direction=None, unique=False, ttl=300):
         """Creates an index on this collection.
 
         Takes either a single key and a direction, or a list of (key, direction)
@@ -331,20 +331,68 @@ class Collection(object):
 
         :Parameters:
           - `key_or_list`: a single key or a list of (key, direction) pairs
-            specifying the index to ensure
+            specifying the index to create
           - `direction` (optional): must be included if key_or_list is a single
             key, otherwise must be None
           - `unique` (optional): should this index guarantee uniqueness?
+          - `ttl` (optional): time window (in seconds) during which this index
+            will be recognized by subsequent calls to `ensure_index` - see
+            documentation for `ensure_index` for details
         """
         to_save = SON()
         keys = pymongo._index_list(key_or_list, direction)
-        to_save["name"] = self._gen_index_name(keys)
+        name = self._gen_index_name(keys)
+        to_save["name"] = name
         to_save["ns"] = self.full_name()
         to_save["key"] = pymongo._index_document(keys)
         to_save["unique"] = unique
 
-        self.__database.system.indexes.save(to_save, False)
+        self.database().connection()._cache_index(self.__database.name(),
+                                                  self.name(),
+                                                  name, ttl)
+
+        self.database().system.indexes.save(to_save, False)
         return to_save["name"]
+
+    def ensure_index(self, key_or_list, direction=None, unique=False, ttl=300):
+        """Ensures that an index exists on this collection.
+
+        Takes either a single key and a direction, or a list of (key, direction)
+        pairs. The key(s) must be an instance of (str, unicode), and the
+        direction(s) must be one of (`pymongo.ASCENDING`, `pymongo.DESCENDING`).
+
+        Unlike `create_index`, which attempts to create an index
+        unconditionally, `ensure_index` takes advantage of some caching within
+        the driver such that it only attempts to create indexes that might
+        not already exist. When an index is created (or ensured) by PyMongo
+        it is "remembered" for `ttl` seconds. Repeated calls to `ensure_index`
+        within that time limit will be lightweight - they will not attempt to
+        actually create the index.
+
+        Care must be taken when the database is being accessed through multiple
+        connections at once. If an index is created using PyMongo and then
+        deleted using another connection any call to `ensure_index` within the
+        cache window will fail to re-create the missing index.
+
+        Returns the name of the created index if an index is actually created.
+        Returns None if the index already exists.
+
+        :Parameters:
+          - `key_or_list`: a single key or a list of (key, direction) pairs
+            specifying the index to ensure
+          - `direction` (optional): must be included if key_or_list is a single
+            key, otherwise must be None
+          - `unique` (optional): should this index guarantee uniqueness?
+          - `ttl` (optional): time window (in seconds) during which this index
+            will be recognized by subsequent calls to `ensure_index`
+        """
+        keys = pymongo._index_list(key_or_list, direction)
+        name = self._gen_index_name(keys)
+        if self.database().connection()._cache_index(self.__database.name(),
+                                                     self.name(),
+                                                     name, ttl):
+            return self.create_index(key_or_list, direction, unique, ttl)
+        return None
 
     def drop_indexes(self):
         """Drops all indexes on this collection.
@@ -352,6 +400,7 @@ class Collection(object):
         Can be used on non-existant collections or collections with no indexes.
         Raises OperationFailure on an error.
         """
+        self.database().connection()._purge_index(self.database().name(), self.name())
         self.drop_index(u"*")
 
     def drop_index(self, index_or_name):
@@ -373,6 +422,7 @@ class Collection(object):
         if not isinstance(name, types.StringTypes):
             raise TypeError("index_or_name must be an index name or list")
 
+        self.database().connection()._purge_index(self.database().name(), self.name(), name)
         self.__database._command(SON([("deleteIndexes",
                                        self.__collection_name),
                                       ("index", name)]),

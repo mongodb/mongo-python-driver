@@ -196,6 +196,8 @@ class Database(object):
         if not isinstance(name, types.StringTypes):
             raise TypeError("name_or_collection must be an instance of (Collection, str, unicode)")
 
+        self.connection()._purge_index(self.name(), name)
+
         if name not in self.collection_names():
             return
 

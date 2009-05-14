@@ -15,6 +15,7 @@
 """Test the collection module."""
 import unittest
 import re
+import time
 import sys
 sys.path[0:0] = [""]
 
@@ -29,7 +30,8 @@ from pymongo.son import SON
 
 class TestCollection(unittest.TestCase):
     def setUp(self):
-        self.db = get_connection().pymongo_test
+        self.connection = get_connection()
+        self.db = self.connection.pymongo_test
 
     def test_collection(self):
         self.assertRaises(TypeError, Collection, self.db, 5)
@@ -91,6 +93,49 @@ class TestCollection(unittest.TestCase):
                           (u"ns", u"pymongo_test.test"),
                           (u"key", SON([(u"hello", -1),
                                         (u"world", 1)]))]) in list(db.system.indexes.find({"ns": u"pymongo_test.test"})))
+
+    def test_ensure_index(self):
+        db = self.db
+
+        db.test.drop_indexes()
+        self.assertEqual("hello_1", db.test.create_index("hello", ASCENDING))
+        self.assertEqual("hello_1", db.test.create_index("hello", ASCENDING))
+
+        self.assertEqual("goodbye_1", db.test.ensure_index("goodbye", ASCENDING))
+        self.assertEqual(None, db.test.ensure_index("goodbye", ASCENDING))
+
+        db.test.drop_indexes()
+        self.assertEqual("goodbye_1", db.test.ensure_index("goodbye", ASCENDING))
+        self.assertEqual(None, db.test.ensure_index("goodbye", ASCENDING))
+
+        db.test.drop_index("goodbye_1")
+        self.assertEqual("goodbye_1", db.test.ensure_index("goodbye", ASCENDING))
+        self.assertEqual(None, db.test.ensure_index("goodbye", ASCENDING))
+
+        db.drop_collection("test")
+        self.assertEqual("goodbye_1", db.test.ensure_index("goodbye", ASCENDING))
+        self.assertEqual(None, db.test.ensure_index("goodbye", ASCENDING))
+
+        db_name = self.db.name()
+        self.connection.drop_database(self.db.name())
+        self.assertEqual("goodbye_1", db.test.ensure_index("goodbye", ASCENDING))
+        self.assertEqual(None, db.test.ensure_index("goodbye", ASCENDING))
+
+        db.test.drop_index("goodbye_1")
+        self.assertEqual("goodbye_1", db.test.create_index("goodbye", ASCENDING))
+        self.assertEqual(None, db.test.ensure_index("goodbye", ASCENDING))
+
+        db.test.drop_index("goodbye_1")
+        self.assertEqual("goodbye_1", db.test.ensure_index("goodbye", ASCENDING,
+                                                           ttl=1))
+        time.sleep(1.1)
+        self.assertEqual("goodbye_1", db.test.ensure_index("goodbye", ASCENDING))
+
+        db.test.drop_index("goodbye_1")
+        self.assertEqual("goodbye_1", db.test.create_index("goodbye", ASCENDING,
+                                                           ttl=1))
+        time.sleep(1.1)
+        self.assertEqual("goodbye_1", db.test.ensure_index("goodbye", ASCENDING))
 
     def test_index_on_binary(self):
         db = self.db

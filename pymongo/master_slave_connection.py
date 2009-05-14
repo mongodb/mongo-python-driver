@@ -207,3 +207,9 @@ class MasterSlaveConnection(object):
 
     def next(self):
         raise TypeError("'MasterSlaveConnection' object is not iterable")
+
+    def _cache_index(self, database_name, collection_name, index_name, ttl):
+        return self.__master._cache_index(database_name, collection_name, index_name, ttl)
+
+    def _purge_index(self, database_name, collection_name=None, index_name=None):
+        return self.__master._purge_index(database_name, collection_name, index_name)

@@ -22,6 +22,7 @@ import logging
 import threading
 import random
 import errno
+import datetime
 
 from errors import ConnectionFailure, InvalidName, OperationFailure, ConfigurationError
 from database import Database
@@ -108,6 +109,9 @@ class Connection(object):
         self.__sockets = [None for _ in range(self.__pool_size)]
         self.__currently_resetting = False
 
+        # cache of existing indexes used by ensure_index ops
+        self.__index_cache = {}
+
         if _connect:
             self.__find_master()
 
@@ -180,6 +184,59 @@ class Connection(object):
             else:
                 port = int(strings[1])
             return (strings[0], port)
+
+    def _cache_index(self, database_name, collection_name, index_name, ttl):
+        """Add an index to the index cache for ensure_index operations.
+
+        Return True if the index has been newly cached or if the index had
+        expired and is being re-cached.
+
+        Return False if the index exists and is valid.
+        """
+        now = datetime.datetime.utcnow()
+        expire = datetime.timedelta(seconds=ttl) + now
+
+        if database_name not in self.__index_cache:
+            self.__index_cache[database_name] = {}
+            self.__index_cache[database_name][collection_name] = {}
+            self.__index_cache[database_name][collection_name][index_name] = expire
+            return True
+
+        if collection_name not in self.__index_cache[database_name]:
+            self.__index_cache[database_name][collection_name] = {}
+            self.__index_cache[database_name][collection_name][index_name] = expire
+            return True
+
+        if index_name in self.__index_cache[database_name][collection_name]:
+            if now < self.__index_cache[database_name][collection_name][index_name]:
+                return False
+
+        self.__index_cache[database_name][collection_name][index_name] = expire
+        return True
+
+    def _purge_index(self, database_name, collection_name=None, index_name=None):
+        """Purge an index from the index cache.
+
+        If `index_name` is None purge an entire collection.
+
+        If `collection_name` is None purge an entire database.
+        """
+        if not database_name in self.__index_cache:
+            return
+
+        if collection_name is None:
+            del self.__index_cache[database_name]
+            return
+
+        if not collection_name in self.__index_cache[database_name]:
+            return
+
+        if index_name is None:
+            del self.__index_cache[database_name][collection_name]
+            return
+
+        if index_name in self.__index_cache[database_name][collection_name]:
+            del self.__index_cache[database_name][collection_name][index_name]
 
     def host(self):
         """Get the connection's current host.
@@ -574,6 +631,7 @@ class Connection(object):
         if not isinstance(name, types.StringTypes):
             raise TypeError("name_or_database must be an instance of (Database, str, unicode)")
 
+        self._purge_index(name)
         self[name]._command({"dropDatabase": 1})
 
     def __iter__(self):
