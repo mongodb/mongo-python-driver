@@ -16,6 +16,7 @@
 
 import types
 
+from pymongo.connection import Connection as PyMongo_Connection
 from pymongo.son import SON
 
 ASCENDING = 1
@@ -32,6 +33,9 @@ ALL = 2
 
 version = "0.10"
 """Current version of PyMongo."""
+
+Connection = PyMongo_Connection
+"""Alias for pymongo.connection.Connection."""
 
 def _index_list(key_or_list, direction):
     """Helper to generate a list of (key, direction) pairs.
