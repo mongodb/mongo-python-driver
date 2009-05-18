@@ -149,11 +149,11 @@ class Connection(object):
           - `auto_start_request` (optional): same as argument to `__init__`
         """
         if right is None:
-            right = (self.HOST, self.PORT)
+            right = (cls.HOST, cls.PORT)
         if pool_size is None:
-            pool_size = self.POOL_SIZE
+            pool_size = cls.POOL_SIZE
         if auto_start_request is None:
-            auto_start_request = self.AUTO_START_REQUEST
+            auto_start_request = cls.AUTO_START_REQUEST
 
         connection = cls(left[0], left[1], pool_size, auto_start_request,
                          _connect=False)
