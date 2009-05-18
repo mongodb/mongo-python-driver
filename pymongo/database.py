@@ -121,9 +121,9 @@ class Database(object):
 
         Options should be a dictionary, with any of the following options:
 
-          - "size": desired initial size for the collection. must be less than
-            or equal to 10000000000. For capped collections this size is the max
-            size of the collection.
+          - "size": desired initial size for the collection (in bytes). must be
+            less than or equal to 10000000000. For capped collections this size
+            is the max size of the collection.
           - "capped": if True, this is a capped collection
           - "max": maximum number of objects if capped (optional)
 
