@@ -579,7 +579,11 @@ static int write_dict(bson_buffer* buffer, PyObject* dict) {
         return 0;
     }
 
-    if (PyDict_CheckExact(dict)) {
+    if (PyObject_IsInstance(dict, SON)) {
+        if (!write_son(buffer, dict, start_position, length_location)) {
+            return 0;
+        }
+    } else if (PyDict_Check(dict)) {
         PyObject* key;
         PyObject* value;
         Py_ssize_t pos = 0;
@@ -612,10 +616,6 @@ static int write_dict(bson_buffer* buffer, PyObject* dict) {
             if (!write_element_to_buffer(buffer, type_byte, value, 1)) {
                 return 0;
             }
-        }
-    } else if (PyObject_IsInstance(dict, SON)) {
-        if (!write_son(buffer, dict, start_position, length_location)) {
-            return 0;
         }
     } else {
         // Try getting the SON class again
