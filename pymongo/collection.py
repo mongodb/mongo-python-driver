@@ -504,3 +504,16 @@ class Collection(object):
 
     def next(self):
         raise TypeError("'Collection' object is not iterable")
+
+    def __call__(self):
+        """This is only here so that some API misusages are easier to debug.
+        """
+        if "." not in self.__collection_name:
+            raise TypeError("'Collection' object is not callable. If you meant "
+                            "to call the '%s' method on a 'Database' object it "
+                            "is failing because no such method exists." %
+                            self.__collection_name)
+        raise TypeError("'Collection' object is not callable. If you meant to "
+                        "call the '%s' method on a 'Collection' object it is "
+                        "failing because no such method exists." %
+                        self.__collection_name.split(".")[-1])
