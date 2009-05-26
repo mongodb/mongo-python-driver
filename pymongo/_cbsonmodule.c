@@ -177,7 +177,7 @@ static int write_string(bson_buffer* buffer, PyObject* py_string) {
 
 /* TODO our platform better be little-endian w/ 4-byte ints! */
 /* returns 0 on failure */
-static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject* value, int try_reload) {
+static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject* value) {
     /* TODO this isn't quite the same as the Python version:
      * here we check for type equivalence, not isinstance in some
      * places. */
@@ -237,7 +237,7 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
             free(name);
 
             PyObject* item_value = PyList_GetItem(value, i);
-            if (!write_element_to_buffer(buffer, list_type_byte, item_value, 1)) {
+            if (!write_element_to_buffer(buffer, list_type_byte, item_value)) {
                 return 0;
             }
         }
@@ -421,7 +421,7 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
             Py_DECREF(id_object);
             return 0;
         }
-        if (!write_element_to_buffer(buffer, type_pos, id_object, 1)) {
+        if (!write_element_to_buffer(buffer, type_pos, id_object)) {
             Py_DECREF(id_object);
             return 0;
         }
@@ -483,8 +483,12 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
         }
         *(buffer->buffer + type_byte) = 0x0B;
         return 1;
-    } else if (try_reload) {
-        // reload
+    } else {
+        // Try reloading these modules and see if it works.
+        // This is just to be able to raise a more informative
+        // exception in the weird case that one of these modules was reloaded
+        // without the c extension being reloaded.
+
         PyObject* binary_module = PyImport_ImportModule("pymongo.binary");
         Binary = PyObject_GetAttrString(binary_module, "Binary");
         Py_DECREF(binary_module);
@@ -501,8 +505,18 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
         DBRef = PyObject_GetAttrString(dbref_module, "DBRef");
         Py_DECREF(dbref_module);
 
-        // try again, but just one more time
-        return write_element_to_buffer(buffer, type_byte, value, 0);
+        if (PyObject_IsInstance(value, Binary) ||
+            PyObject_IsInstance(value, Code) ||
+            PyObject_IsInstance(value, ObjectId) ||
+            PyObject_IsInstance(value, DBRef)) {
+
+            PyErr_SetString(PyExc_RuntimeError,
+                            "A pymongo module was reloaded without the C extension being reloaded.\n"
+                            "\n"
+                            "See http://www.mongodb.org/display/DOCS/PyMongo+and+mod_wsgi for"
+                            "a possible explanation / fix.");
+            return 0;
+        }
     }
 
     PyObject* errmsg = PyString_FromString("Cannot encode object: ");
@@ -560,7 +574,7 @@ static int write_son(bson_buffer* buffer, PyObject* dict, int start_position, in
             return 0;
         }
         Py_DECREF(encoded);
-        if (!write_element_to_buffer(buffer, type_byte, value, 1)) {
+        if (!write_element_to_buffer(buffer, type_byte, value)) {
             Py_DECREF(keys);
             return 0;
         }
@@ -613,7 +627,7 @@ static int write_dict(bson_buffer* buffer, PyObject* dict) {
                 return 0;
             }
             Py_DECREF(encoded);
-            if (!write_element_to_buffer(buffer, type_byte, value, 1)) {
+            if (!write_element_to_buffer(buffer, type_byte, value)) {
                 return 0;
             }
         }
@@ -621,13 +635,18 @@ static int write_dict(bson_buffer* buffer, PyObject* dict) {
         // Try getting the SON class again
         // This can be necessary if pymongo.son has been reloaded, since
         // reloading the module breaks IsInstance.
+        // The main reason we even try this is to raise an informative exception
+        // about it.
         PyObject* son_module = PyImport_ImportModule("pymongo.son");
         SON = PyObject_GetAttrString(son_module, "SON");
         Py_DECREF(son_module);
         if (PyObject_IsInstance(dict, SON)) {
-            if (!write_son(buffer, dict, start_position, length_location)) {
-                return 0;
-            }
+            PyErr_SetString(PyExc_RuntimeError,
+                            "pymongo.son was reloaded without the C extension being reloaded.\n"
+                            "\n"
+                            "See http://www.mongodb.org/display/DOCS/PyMongo+and+mod_wsgi for"
+                            "a possible explanation / fix.");
+            return 0;
         } else {
             PyObject* errmsg = PyString_FromString("encoder expected a mapping type but got: ");
             PyObject* repr = PyObject_Repr(dict);
