@@ -389,5 +389,20 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(3, db.test.group([], {}, {"count": 0}, "function (obj, prev) { prev.count++; }")[0]["count"])
         self.assertEqual(1, db.test.group([], {"a": {"$gt": 1}}, {"count": 0}, "function (obj, prev) { prev.count++; }")[0]["count"])
 
+    def test_large_limit(self):
+        db = self.db
+        db.drop_collection("test")
+
+        for i in range(2000):
+            db.test.insert({"x": i, "y": "mongomongo" * 1000})
+
+        self.assertEqual(2000, db.test.count())
+
+        i = 0
+        for _ in db.test.find(limit=1900):
+            i += 1
+
+        self.assertEqual(1900, i)
+
 if __name__ == "__main__":
     unittest.main()

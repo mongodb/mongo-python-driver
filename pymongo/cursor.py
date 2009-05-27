@@ -267,6 +267,10 @@ class Cursor(object):
 
             number_returned = struct.unpack("<i", response[16:20])[0]
             self.__retrieved += number_returned
+
+            if self.__limit and self.__id and self.__limit <= self.__retrieved:
+                self.__die()
+
             self.__data = bson._to_dicts(response[20:])
             assert len(self.__data) == number_returned
 
@@ -275,7 +279,7 @@ class Cursor(object):
         if self.__id is None:
             # Query
             message += struct.pack("<i", self.__skip)
-            message += struct.pack("<i", -self.__limit)
+            message += struct.pack("<i", self.__limit)
             message += bson.BSON.from_dict(self.__query_spec())
             if self.__fields:
                 message += bson.BSON.from_dict(self.__fields)
@@ -293,7 +297,7 @@ class Cursor(object):
                     self.__killed = True
                     return 0
 
-            message += struct.pack("<i", -limit)
+            message += struct.pack("<i", limit)
             message += struct.pack("<q", self.__id)
 
             send_message(2005, message)
