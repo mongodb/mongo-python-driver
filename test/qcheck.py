@@ -70,7 +70,7 @@ def gen_unichar():
     return lambda: unichr(random.randint(1, 0xFFF))
 
 def gen_unicode(gen_length):
-    return lambda: u"".join(gen_list(gen_unichar(), gen_length)())
+    return lambda: u"".join([x for x in gen_list(gen_unichar(), gen_length)() if x not in ".$"])
 
 def gen_list(generator, gen_length):
     return lambda: [generator() for _ in range(gen_length())]

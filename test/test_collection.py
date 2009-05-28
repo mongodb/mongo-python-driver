@@ -285,6 +285,28 @@ class TestCollection(unittest.TestCase):
 
         self.assertRaises(TypeError, iterate)
 
+    def test_invalid_key_names(self):
+        db = self.db
+        db.test.remove({})
+
+        db.test.insert({"hello": "world"})
+        db.test.insert({"hello": {"hello": "world"}})
+
+        self.assertRaises(InvalidName, db.test.insert, {"$hello": "world"})
+        self.assertRaises(InvalidName, db.test.insert, {"hello": {"$hello": "world"}})
+
+        db.test.insert({"he$llo": "world"})
+        db.test.insert({"hello": {"hello$": "world"}})
+
+        self.assertRaises(InvalidName, db.test.insert, {".hello": "world"})
+        self.assertRaises(InvalidName, db.test.insert, {"hello": {".hello": "world"}})
+        self.assertRaises(InvalidName, db.test.insert, {"hello.": "world"})
+        self.assertRaises(InvalidName, db.test.insert, {"hello": {"hello.": "world"}})
+        self.assertRaises(InvalidName, db.test.insert, {"hel.lo": "world"})
+        self.assertRaises(InvalidName, db.test.insert, {"hello": {"hel.lo": "world"}})
+
+        db.test.update({"hello": "world"}, {"$inc": "hello"})
+
     def test_insert_multiple(self):
         db = self.db
         db.drop_collection("test")

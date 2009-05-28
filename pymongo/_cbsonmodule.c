@@ -25,7 +25,7 @@
 #include <time.h>
 
 static PyObject* CBSONError;
-static PyObject* _cbson_dict_to_bson(PyObject* self, PyObject* dict);
+static PyObject* InvalidName;
 static PyObject* SON;
 static PyObject* Binary;
 static PyObject* Code;
@@ -48,7 +48,7 @@ typedef struct {
     int position;
 } bson_buffer;
 
-static int write_dict(bson_buffer* buffer, PyObject* dict);
+static int write_dict(bson_buffer* buffer, PyObject* dict, unsigned char no_dollar_sign);
 static PyObject* elements_to_dict(const char* string, int max);
 
 static bson_buffer* buffer_new(void) {
@@ -177,7 +177,7 @@ static int write_string(bson_buffer* buffer, PyObject* py_string) {
 
 /* TODO our platform better be little-endian w/ 4-byte ints! */
 /* returns 0 on failure */
-static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject* value) {
+static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject* value, unsigned char no_dollar_sign) {
     /* TODO this isn't quite the same as the Python version:
      * here we check for type equivalence, not isinstance in some
      * places. */
@@ -206,7 +206,7 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
         return 1;
     } else if (PyDict_Check(value)) {
         *(buffer->buffer + type_byte) = 0x03;
-        return write_dict(buffer, value);
+        return write_dict(buffer, value, no_dollar_sign);
     } else if (PyList_CheckExact(value)) {
         *(buffer->buffer + type_byte) = 0x04;
         int start_position = buffer->position;
@@ -237,7 +237,7 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
             free(name);
 
             PyObject* item_value = PyList_GetItem(value, i);
-            if (!write_element_to_buffer(buffer, list_type_byte, item_value)) {
+            if (!write_element_to_buffer(buffer, list_type_byte, item_value, no_dollar_sign)) {
                 return 0;
             }
         }
@@ -303,7 +303,7 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
         if (!scope) {
             return 0;
         }
-        if (!write_dict(buffer, scope)) {
+        if (!write_dict(buffer, scope, 0)) {
             Py_DECREF(scope);
             return 0;
         }
@@ -421,7 +421,7 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
             Py_DECREF(id_object);
             return 0;
         }
-        if (!write_element_to_buffer(buffer, type_pos, id_object)) {
+        if (!write_element_to_buffer(buffer, type_pos, id_object, no_dollar_sign)) {
             Py_DECREF(id_object);
             return 0;
         }
@@ -527,7 +527,25 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
     return 0;
 }
 
-static int write_son(bson_buffer* buffer, PyObject* dict, int start_position, int length_location) {
+static int check_key_name(const unsigned char no_dollar_sign,
+                          const char* name,
+                          const Py_ssize_t name_length) {
+    if (no_dollar_sign && name_length > 0 && name[0] == '$') {
+        PyErr_SetString(InvalidName, "key must not contain '$'");
+        return 0;
+    }
+    int i;
+    for (i = 0; i < name_length; i++) {
+        if (name[i] == '.') {
+            PyErr_SetString(InvalidName, "key must not contain '.'");
+            return 0;
+        }
+    }
+    return 1;
+}
+
+static int write_son(bson_buffer* buffer, PyObject* dict, int start_position,
+                     int length_location, unsigned char no_dollar_sign) {
     PyObject* keys = PyObject_CallMethod(dict, "keys", NULL);
     if (!keys) {
         return 0;
@@ -568,13 +586,18 @@ static int write_son(bson_buffer* buffer, PyObject* dict, int start_position, in
             Py_DECREF(encoded);
             return 0;
         }
+        if (!check_key_name(no_dollar_sign, name, name_length)) {
+            Py_DECREF(keys);
+            Py_DECREF(encoded);
+            return 0;
+        }
         if (!buffer_write_bytes(buffer, name, name_length + 1)) {
             Py_DECREF(keys);
             Py_DECREF(encoded);
             return 0;
         }
         Py_DECREF(encoded);
-        if (!write_element_to_buffer(buffer, type_byte, value)) {
+        if (!write_element_to_buffer(buffer, type_byte, value, no_dollar_sign)) {
             Py_DECREF(keys);
             return 0;
         }
@@ -584,7 +607,7 @@ static int write_son(bson_buffer* buffer, PyObject* dict, int start_position, in
 }
 
 /* returns 0 on failure */
-static int write_dict(bson_buffer* buffer, PyObject* dict) {
+static int write_dict(bson_buffer* buffer, PyObject* dict, unsigned char no_dollar_sign) {
     int start_position = buffer->position;
 
     // save space for length
@@ -594,7 +617,7 @@ static int write_dict(bson_buffer* buffer, PyObject* dict) {
     }
 
     if (PyObject_IsInstance(dict, SON)) {
-        if (!write_son(buffer, dict, start_position, length_location)) {
+        if (!write_son(buffer, dict, start_position, length_location, no_dollar_sign)) {
             return 0;
         }
     } else if (PyDict_Check(dict)) {
@@ -622,12 +645,16 @@ static int write_dict(bson_buffer* buffer, PyObject* dict) {
                 Py_DECREF(encoded);
                 return 0;
             }
+            if (!check_key_name(no_dollar_sign, name, name_length)) {
+                Py_DECREF(encoded);
+                return 0;
+            }
             if (!buffer_write_bytes(buffer, name, name_length + 1)) {
                 Py_DECREF(encoded);
                 return 0;
             }
             Py_DECREF(encoded);
-            if (!write_element_to_buffer(buffer, type_byte, value)) {
+            if (!write_element_to_buffer(buffer, type_byte, value, no_dollar_sign)) {
                 return 0;
             }
         }
@@ -667,13 +694,19 @@ static int write_dict(bson_buffer* buffer, PyObject* dict) {
     return 1;
 }
 
-static PyObject* _cbson_dict_to_bson(PyObject* self, PyObject* dict) {
+static PyObject* _cbson_dict_to_bson(PyObject* self, PyObject* args) {
+    PyObject* dict;
+    unsigned char no_dollar_sign;
+    if (!PyArg_ParseTuple(args, "Ob", &dict, &no_dollar_sign)) {
+        return NULL;
+    }
+
     bson_buffer* buffer = buffer_new();
     if (!buffer) {
         return NULL;
     }
 
-    if (!write_dict(buffer, dict)) {
+    if (!write_dict(buffer, dict, no_dollar_sign)) {
         buffer_free(buffer);
         return NULL;
     }
@@ -1000,7 +1033,7 @@ static PyObject* _cbson_bson_to_dict(PyObject* self, PyObject* bson) {
 }
 
 static PyMethodDef _CBSONMethods[] = {
-    {"_dict_to_bson", _cbson_dict_to_bson, METH_O,
+    {"_dict_to_bson", _cbson_dict_to_bson, METH_VARARGS,
      "convert a dictionary to a string containing it's BSON representation."},
     {"_bson_to_dict", _cbson_bson_to_dict, METH_O,
      "convert a BSON string to a SON object."},
@@ -1017,6 +1050,7 @@ PyMODINIT_FUNC init_cbson(void) {
 
     PyObject* errors_module = PyImport_ImportModule("pymongo.errors");
     CBSONError = PyObject_GetAttrString(errors_module, "InvalidDocument");
+    InvalidName = PyObject_GetAttrString(errors_module, "InvalidName");
     Py_DECREF(errors_module);
 
     PyObject* son_module = PyImport_ImportModule("pymongo.son");

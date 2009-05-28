@@ -28,7 +28,7 @@ from code import Code
 from objectid import ObjectId
 from dbref import DBRef
 from son import SON
-from errors import InvalidBSON, InvalidDocument, UnsupportedTag
+from errors import InvalidBSON, InvalidDocument, UnsupportedTag, InvalidName
 
 try:
     import _cbson
@@ -305,7 +305,12 @@ def _shuffle_oid(data):
     return data[7::-1] + data[:7:-1]
 
 _RE_TYPE = type(_valid_array_name)
-def _element_to_bson(key, value):
+def _element_to_bson(key, value, check_key_names):
+    if check_key_names and key.startswith("$"):
+        raise InvalidName("key %r must not start with '$'" % key)
+    if "." in key:
+        raise InvalidName("key %r must not contain '.'" % key)
+
     name = _make_c_string(key)
     if isinstance(value, float):
         return "\x01" + name + struct.pack("<d", value)
@@ -316,7 +321,7 @@ def _element_to_bson(key, value):
         return "\x05" + name + struct.pack("<i", len(value)) + chr(subtype) + value
     if isinstance(value, Code):
         cstring = _make_c_string(value)
-        scope = _dict_to_bson(value.scope)
+        scope = _dict_to_bson(value.scope, False)
         full_length = struct.pack("<i", 8 + len(cstring) + len(scope))
         length = struct.pack("<i", len(cstring))
         return "\x0F" + name + full_length + length + cstring + scope
@@ -329,10 +334,10 @@ def _element_to_bson(key, value):
         length = struct.pack("<i", len(cstring))
         return "\x02" + name + length + cstring
     if isinstance(value, dict):
-        return "\x03" + name + _dict_to_bson(value)
+        return "\x03" + name + _dict_to_bson(value, check_key_names)
     if isinstance(value, (list, tuple)):
         as_dict = SON(zip([str(i) for i in range(len(value))], value))
-        return "\x04" + name + _dict_to_bson(as_dict)
+        return "\x04" + name + _dict_to_bson(as_dict, check_key_names)
     if isinstance(value, ObjectId):
         return "\x07" + name + _shuffle_oid(str(value))
     if value is True:
@@ -366,12 +371,12 @@ def _element_to_bson(key, value):
             flags += "x"
         return "\x0B" + name + _make_c_string(pattern) + _make_c_string(flags)
     if isinstance(value, DBRef):
-        return _element_to_bson(key, SON([("$ref", value.collection), ("$id", value.id)]))
+        return _element_to_bson(key, SON([("$ref", value.collection), ("$id", value.id)]), False)
     raise InvalidDocument("cannot convert value of type %s to bson" % type(value))
 
-def _dict_to_bson(dict):
+def _dict_to_bson(dict, check_key_names):
     try:
-        elements = "".join([_element_to_bson(key, value) for (key, value) in dict.iteritems()])
+        elements = "".join([_element_to_bson(key, value, check_key_names) for (key, value) in dict.iteritems()])
     except AttributeError:
         raise TypeError("encoder expected a mapping type but got: %r" % dict)
 
@@ -431,7 +436,7 @@ class BSON(str):
         """
         return str.__new__(cls, bson)
 
-    def from_dict(cls, dict):
+    def from_dict(cls, dict, check_key_names=False):
         """Create a new BSON object from a python mapping type (like dict).
 
         Raises TypeError if the argument is not a mapping type, or contains keys
@@ -441,7 +446,7 @@ class BSON(str):
         :Parameters:
           - `dict`: mapping type representing a Mongo document
         """
-        return cls(_dict_to_bson(dict))
+        return cls(_dict_to_bson(dict, check_key_names))
     from_dict = classmethod(from_dict)
 
     def to_dict(self):

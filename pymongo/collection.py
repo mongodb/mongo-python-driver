@@ -173,7 +173,7 @@ class Collection(object):
         if manipulate:
             docs = [self.__database._fix_incoming(doc, self) for doc in docs]
 
-        data = [bson.BSON.from_dict(doc) for doc in docs]
+        data = [bson.BSON.from_dict(doc, True) for doc in docs]
         self._send_message(2002, "".join(data))
 
         if safe:
