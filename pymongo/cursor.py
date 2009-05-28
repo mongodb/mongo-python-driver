@@ -16,7 +16,6 @@
 
 import types
 import struct
-from threading import Lock
 
 import pymongo
 import bson
