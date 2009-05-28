@@ -27,6 +27,7 @@ import datetime
 from errors import ConnectionFailure, InvalidName, OperationFailure, ConfigurationError
 from database import Database
 from cursor_manager import CursorManager
+from thread_util import TimeoutableLock
 
 _logger = logging.getLogger("pymongo.connection")
 _logger.addHandler(logging.StreamHandler())
@@ -42,9 +43,10 @@ class Connection(object):
     PORT = 27017
     POOL_SIZE = 1
     AUTO_START_REQUEST = True
+    TIMEOUT = 1.0
 
     def __init__(self, host=None, port=None, pool_size=None,
-                 auto_start_request=None, _connect=True):
+                 auto_start_request=None, timeout=None, _connect=True):
         """Open a new connection to a Mongo instance at host:port.
 
         The resultant connection object has connection-pooling built in. It also
@@ -68,7 +70,10 @@ class Connection(object):
           - `port` (optional): port number on which to connect
           - `pool_size` (optional): maximum size of the built in connection-pool
           - `auto_start_request` (optional): automatically start a request
-            on every operation - see documentation for `start_request`.
+            on every operation - see documentation for `start_request`
+          - `timeout` (optional): max time to wait when attempting to acquire a
+            connection from the connection pool before raising an exception -
+            can be set to -1 to wait indefinitely
         """
         if host is None:
             host = self.HOST
@@ -78,6 +83,10 @@ class Connection(object):
             pool_size = self.POOL_SIZE
         if auto_start_request is None:
             auto_start_request = self.AUTO_START_REQUEST
+        if timeout is None:
+            timeout = self.TIMEOUT
+        if timeout == -1:
+            timeout = None
 
         if not isinstance(host, types.StringType):
             raise TypeError("host must be an instance of str")
@@ -105,7 +114,8 @@ class Connection(object):
         self.__thread_map = {}
         # count of how many threads are mapped to each socket
         self.__thread_count = [0 for _ in range(self.__pool_size)]
-        self.__locks = [threading.Lock() for _ in range(self.__pool_size)]
+        self.__acquire_timeout = timeout
+        self.__locks = [TimeoutableLock() for _ in range(self.__pool_size)]
         self.__sockets = [None for _ in range(self.__pool_size)]
         self.__currently_resetting = False
 
@@ -327,7 +337,8 @@ class Connection(object):
 
         for i in range(self.__pool_size):
             # prevent all operations during the reset
-            self.__locks[i].acquire()
+            if not self.__locks[i].acquire(timeout=self.__acquire_timeout):
+                raise ConnectionFailure("timed out before acquiring a connection from the pool")
             if self.__sockets[i] is not None:
                 self.__sockets[i].close()
                 self.__sockets[i] = None
@@ -368,14 +379,16 @@ class Connection(object):
             if self.__locks[choice].acquire(False):
                 return choice
 
-        self.__locks[choices[0]].acquire()
+        if not self.__locks[choices[0]].acquire(timeout=self.__acquire_timeout):
+            raise ConnectionFailure("timed out before acquiring a connection from the pool")
         return choices[0]
 
     def __get_socket(self):
         thread = threading.currentThread()
         if self.__thread_map.get(thread, -1) >= 0:
             sock = self.__thread_map[thread]
-            self.__locks[sock].acquire()
+            if not self.__locks[sock].acquire(timeout=self.__acquire_timeout):
+                raise ConnectionFailure("timed out before acquiring a connection from the pool")
         else:
             sock = self.__pick_and_acquire_socket()
             if self.__auto_start_request or thread in self.__thread_map:
