@@ -531,7 +531,7 @@ static int check_key_name(const unsigned char no_dollar_sign,
                           const char* name,
                           const Py_ssize_t name_length) {
     if (no_dollar_sign && name_length > 0 && name[0] == '$') {
-        PyErr_SetString(InvalidName, "key must not contain '$'");
+        PyErr_SetString(InvalidName, "key must not start with '$'");
         return 0;
     }
     int i;
