@@ -335,7 +335,6 @@ class Collection(object):
         if fields is not None:
             fields = self._fields_list_to_dict(fields)
 
-        print fields
         return Cursor(self, spec, fields, skip, limit, _sock=_sock)
 
     def count(self):
