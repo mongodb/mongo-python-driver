@@ -195,6 +195,37 @@ class TestCollection(unittest.TestCase):
         self.assert_(("world", ASCENDING) in db.test.index_information()["hello_-1_world_1"])
         self.assert_(len(db.test.index_information()["hello_-1_world_1"]) == 2)
 
+    def test_fields_list_to_dict(self):
+        f = self.db.test._fields_list_to_dict
+
+        self.assertEqual(f(["a", "b"]), {"a": 1, "b": 1})
+        self.assertEqual(f(["a.b.c", "d", "a.c"]), {"a": {"b": {"c": 1}, "c": 1}, "d": 1})
+        self.assertEqual(f(["a.c", "d", "a.b.c"]), {"a": {"b": {"c": 1}, "c": 1}, "d": 1})
+        self.assertEqual(f(["a.b.c", "d", "a.b.d"]), {"a": {"b": {"c": 1, "d": 1}}, "d": 1})
+
+    def test_field_selection(self):
+        db = self.db
+        db.drop_collection("test")
+
+        doc = {"a": 1, "b": 5, "c": {"d": 5, "e": 10}}
+        db.test.insert(doc)
+
+        self.assertEqual(db.test.find({}, ["_id"]).next().keys(), ["_id"])
+        self.assertEqual(set(db.test.find({}, ["a"]).next().keys()), set(["a", "_id"]))
+        self.assertEqual(set(db.test.find({}, ["b"]).next().keys()), set(["b", "_id"]))
+        self.assertEqual(set(db.test.find({}, ["c"]).next().keys()), set(["c", "_id"]))
+        self.assertEqual(db.test.find({}, ["a"]).next()["a"], 1)
+        self.assertEqual(db.test.find({}, ["b"]).next()["b"], 5)
+        self.assertEqual(db.test.find({}, ["c"]).next()["c"], {"d": 5, "e": 10})
+
+        # TODO some commented out tests due to what appears to be a bug in the server
+#         self.assertEqual(db.test.find({}, ["c.d"]).next()["c"], {"d": 5})
+#         self.assertEqual(db.test.find({}, ["c.e"]).next()["c"], {"e": 10})
+
+        self.assertEqual(set(db.test.find({}, ["b", "c.e"]).next().keys()), set(["b", "c", "_id"]))
+        self.assertEqual(db.test.find({}, ["b", "c.e"]).next()["b"], 5)
+#         self.assertEqual(db.test.find({}, ["b", "c.e"]).next()["c"], {"e": 10})
+
     def test_options(self):
         db = self.db
         db.drop_collection("test")

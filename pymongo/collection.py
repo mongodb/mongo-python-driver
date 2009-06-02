@@ -267,6 +267,33 @@ class Collection(object):
             return result
         return None
 
+    def _fields_list_to_dict(self, fields):
+        """Takes a list of field names and returns a matching dictionary.
+
+        ["a", "b"] becomes {"a": 1, "b": 1}
+
+        and
+
+        ["a.b.c", "d", "a.c"] becomes {"a": {"b": {"c": 1}, "c": 1}, "d": 1}
+        """
+        as_dict = {}
+        for field in fields:
+            if not isinstance(field, types.StringTypes):
+                raise TypeError("fields must be a list of key names as (string, unicode)")
+            keys = field.split(".")
+
+            base = as_dict
+            while len(keys):
+                key = keys.pop(0)
+                if key not in base:
+                    if len(keys):
+                        base[key] = {}
+                    else:
+                        base[key] = 1
+                base = base[key]
+        return as_dict
+
+
     def find(self, spec=None, fields=None, skip=0, limit=0, _sock=None):
         """Query the database.
 
@@ -288,7 +315,7 @@ class Collection(object):
           - `spec` (optional): a SON object specifying elements which must be
             present for a document to be included in the result set
           - `fields` (optional): a list of field names that should be returned
-            in the result set
+            in the result set ("_id" will always be included)
           - `skip` (optional): the number of documents to omit (from the start
             of the result set) when returning the results
           - `limit` (optional): the maximum number of results to return in the
@@ -305,15 +332,11 @@ class Collection(object):
         if not isinstance(limit, types.IntType):
             raise TypeError("limit must be an instance of int")
 
-        return_fields = None
         if fields is not None:
-            return_fields = {}
-            for field in fields:
-                if not isinstance(field, types.StringTypes):
-                    raise TypeError("fields must be a list of key names as (string, unicode)")
-                return_fields[field] = 1
+            fields = self._fields_list_to_dict(fields)
 
-        return Cursor(self, spec, return_fields, skip, limit, _sock=_sock)
+        print fields
+        return Cursor(self, spec, fields, skip, limit, _sock=_sock)
 
     def count(self):
         return self.find().count()
