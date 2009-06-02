@@ -177,8 +177,6 @@ class TestCollection(unittest.TestCase):
                           (u"ns", u"pymongo_test.test"),
                           (u"key", SON([(u"hello", 1)]))]) in list(db.system.indexes.find({"ns": u"pymongo_test.test"})))
 
-
-
     def test_index_info(self):
         db = self.db
         db.test.drop_indexes()
