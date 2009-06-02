@@ -305,11 +305,12 @@ def _shuffle_oid(data):
     return data[7::-1] + data[:7:-1]
 
 _RE_TYPE = type(_valid_array_name)
-def _element_to_bson(key, value, check_key_names):
-    if check_key_names and key.startswith("$"):
-        raise InvalidName("key %r must not start with '$'" % key)
-    if "." in key:
-        raise InvalidName("key %r must not contain '.'" % key)
+def _element_to_bson(key, value, check_keys):
+    if check_keys:
+        if key.startswith("$"):
+            raise InvalidName("key %r must not start with '$'" % key)
+        if "." in key:
+            raise InvalidName("key %r must not contain '.'" % key)
 
     name = _make_c_string(key)
     if isinstance(value, float):
@@ -334,10 +335,10 @@ def _element_to_bson(key, value, check_key_names):
         length = struct.pack("<i", len(cstring))
         return "\x02" + name + length + cstring
     if isinstance(value, dict):
-        return "\x03" + name + _dict_to_bson(value, check_key_names)
+        return "\x03" + name + _dict_to_bson(value, check_keys)
     if isinstance(value, (list, tuple)):
         as_dict = SON(zip([str(i) for i in range(len(value))], value))
-        return "\x04" + name + _dict_to_bson(as_dict, check_key_names)
+        return "\x04" + name + _dict_to_bson(as_dict, check_keys)
     if isinstance(value, ObjectId):
         return "\x07" + name + _shuffle_oid(str(value))
     if value is True:
@@ -374,9 +375,9 @@ def _element_to_bson(key, value, check_key_names):
         return _element_to_bson(key, SON([("$ref", value.collection), ("$id", value.id)]), False)
     raise InvalidDocument("cannot convert value of type %s to bson" % type(value))
 
-def _dict_to_bson(dict, check_key_names):
+def _dict_to_bson(dict, check_keys):
     try:
-        elements = "".join([_element_to_bson(key, value, check_key_names) for (key, value) in dict.iteritems()])
+        elements = "".join([_element_to_bson(key, value, check_keys) for (key, value) in dict.iteritems()])
     except AttributeError:
         raise TypeError("encoder expected a mapping type but got: %r" % dict)
 
@@ -436,7 +437,7 @@ class BSON(str):
         """
         return str.__new__(cls, bson)
 
-    def from_dict(cls, dict, check_key_names=False):
+    def from_dict(cls, dict, check_keys=False):
         """Create a new BSON object from a python mapping type (like dict).
 
         Raises TypeError if the argument is not a mapping type, or contains keys
@@ -445,8 +446,10 @@ class BSON(str):
 
         :Parameters:
           - `dict`: mapping type representing a Mongo document
+          - `check_keys`: check if keys start with '$' or contain '.',
+            raising `pymongo.errors.InvalidName` in either case
         """
-        return cls(_dict_to_bson(dict, check_key_names))
+        return cls(_dict_to_bson(dict, check_keys))
     from_dict = classmethod(from_dict)
 
     def to_dict(self):

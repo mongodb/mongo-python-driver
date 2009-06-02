@@ -148,7 +148,7 @@ class Collection(object):
             self.update({"_id": to_save["_id"]}, to_save, True, manipulate, safe)
             return to_save.get("_id", None)
 
-    def insert(self, doc_or_docs, manipulate=True, safe=False):
+    def insert(self, doc_or_docs, manipulate=True, safe=False, check_keys=True):
         """Insert a document(s) into this collection.
 
         If manipulate is set the document(s) are manipulated using any
@@ -162,6 +162,8 @@ class Collection(object):
           - `doc_or_docs`: a SON object or list of SON objects to be inserted
           - `manipulate` (optional): monipulate the objects before inserting?
           - `safe` (optional): check that the insert succeeded?
+          - `check_keys` (optional): check if keys start with '$' or contain '.',
+            raising `pymongo.errors.InvalidName` in either case
         """
         docs = doc_or_docs
         if isinstance(docs, types.DictType):
@@ -173,7 +175,7 @@ class Collection(object):
         if manipulate:
             docs = [self.__database._fix_incoming(doc, self) for doc in docs]
 
-        data = [bson.BSON.from_dict(doc, True) for doc in docs]
+        data = [bson.BSON.from_dict(doc, check_keys) for doc in docs]
         self._send_message(2002, "".join(data))
 
         if safe:
@@ -351,7 +353,8 @@ class Collection(object):
                                                   self.name(),
                                                   name, ttl)
 
-        self.database().system.indexes.save(to_save, False)
+        self.database().system.indexes.insert(to_save, manipulate=False,
+                                              check_keys=False)
         return to_save["name"]
 
     def ensure_index(self, key_or_list, direction=None, unique=False, ttl=300):
