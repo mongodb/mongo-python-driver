@@ -337,7 +337,22 @@ class TestCollection(unittest.TestCase):
         db.test.save({"hello": "world"})
         self.assert_(db.error())
 
+    def test_index_on_subfield(self):
+        db = self.db
         db.drop_collection("test")
+
+        db.test.insert({"hello": {"a": 4, "b": 5}})
+        db.test.insert({"hello": {"a": 7, "b": 2}})
+        db.test.insert({"hello": {"a": 4, "b": 10}})
+        self.failIf(db.error())
+
+        db.drop_collection("test")
+        db.test.create_index("hello.a", ASCENDING, unique=True)
+
+        db.test.insert({"hello": {"a": 4, "b": 5}})
+        db.test.insert({"hello": {"a": 7, "b": 2}})
+        db.test.insert({"hello": {"a": 4, "b": 10}})
+        self.assert_(db.error())
 
     def test_safe_insert(self):
         db = self.db
