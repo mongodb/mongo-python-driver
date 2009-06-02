@@ -17,9 +17,11 @@
 
 import types
 
+
 class Code(str):
     """JavaScript code to be evaluated by MongoDB.
     """
+
     def __new__(cls, code, scope=None):
         """Initialize a new code object.
 
@@ -34,7 +36,8 @@ class Code(str):
 
         :Parameters:
           - `code`: JavaScript code to be evaluated
-          - `scope` (optional): dictionary representing the scope for evaluation
+          - `scope` (optional): dictionary representing the scope for
+            evaluation
         """
         if not isinstance(code, types.StringTypes):
             raise TypeError("code must be an instance of (str, unicode)")

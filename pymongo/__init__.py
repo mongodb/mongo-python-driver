@@ -37,6 +37,7 @@ version = "0.10.3"
 Connection = PyMongo_Connection
 """Alias for pymongo.connection.Connection."""
 
+
 def _index_list(key_or_list, direction):
     """Helper to generate a list of (key, direction) pairs.
 
@@ -46,6 +47,7 @@ def _index_list(key_or_list, direction):
         return [(key_or_list, direction)]
     else:
         return key_or_list
+
 
 def _index_document(index_list):
     """Helper to generate an index specifying document.
@@ -67,4 +69,3 @@ def _index_document(index_list):
                             "DESCENDING")
         index[key] = value
     return index
-

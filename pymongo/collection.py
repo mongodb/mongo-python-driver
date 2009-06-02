@@ -27,9 +27,11 @@ from code import Code
 _ZERO = "\x00\x00\x00\x00"
 _ONE = "\x01\x00\x00\x00"
 
+
 class Collection(object):
     """A Mongo collection.
     """
+
     def __init__(self, database, name, options=None):
         """Get / create a Mongo collection.
 
@@ -85,7 +87,8 @@ class Collection(object):
         :Parameters:
           - `name`: the name of the collection to get
         """
-        return Collection(self.__database, u"%s.%s" % (self.__collection_name, name))
+        return Collection(self.__database, u"%s.%s" % (self.__collection_name,
+                                                       name))
 
     def __getitem__(self, name):
         return self.__getattr__(name)
@@ -145,10 +148,12 @@ class Collection(object):
             result = self.insert(to_save, manipulate, safe)
             return result.get("_id", None)
         else:
-            self.update({"_id": to_save["_id"]}, to_save, True, manipulate, safe)
+            self.update({"_id": to_save["_id"]}, to_save, True,
+                        manipulate, safe)
             return to_save.get("_id", None)
 
-    def insert(self, doc_or_docs, manipulate=True, safe=False, check_keys=True):
+    def insert(self, doc_or_docs,
+               manipulate=True, safe=False, check_keys=True):
         """Insert a document(s) into this collection.
 
         If manipulate is set the document(s) are manipulated using any
@@ -162,8 +167,8 @@ class Collection(object):
           - `doc_or_docs`: a SON object or list of SON objects to be inserted
           - `manipulate` (optional): monipulate the objects before inserting?
           - `safe` (optional): check that the insert succeeded?
-          - `check_keys` (optional): check if keys start with '$' or contain '.',
-            raising `pymongo.errors.InvalidName` in either case
+          - `check_keys` (optional): check if keys start with '$' or
+            contain '.', raising `pymongo.errors.InvalidName` in either case
         """
         docs = doc_or_docs
         if isinstance(docs, types.DictType):
@@ -185,7 +190,8 @@ class Collection(object):
 
         return len(docs) == 1 and docs[0] or docs
 
-    def update(self, spec, document, upsert=False, manipulate=False, safe=False):
+    def update(self, spec, document,
+               upsert=False, manipulate=False, safe=False):
         """Update an object(s) in this collection.
 
         Raises TypeError if either spec or document isn't an instance of
@@ -195,8 +201,8 @@ class Collection(object):
         database.
 
         :Parameters:
-          - `spec`: a SON object specifying elements which must be present for a
-            document to be updated
+          - `spec`: a SON object specifying elements which must be present for
+            a document to be updated
           - `document`: a SON object specifying the fields to be changed in the
             selected document(s), or (in the case of an upsert) the document to
             be inserted.
@@ -233,15 +239,16 @@ class Collection(object):
 
         :Parameters:
           - `spec_or_object_id` (optional): a SON object specifying elements
-            which must be present for a document to be removed OR an instance of
-            ObjectId to be used as the value for an _id element
+            which must be present for a document to be removed OR an instance
+            of ObjectId to be used as the value for an _id element
         """
         spec = spec_or_object_id
         if isinstance(spec, ObjectId):
             spec = SON({"_id": spec})
 
         if not isinstance(spec, types.DictType):
-            raise TypeError("spec must be an instance of dict, not %s" % type(spec))
+            raise TypeError("spec must be an instance of dict, not %s" %
+                            type(spec))
 
         self._send_message(2006, _ZERO + bson.BSON.from_dict(spec))
 
@@ -279,7 +286,8 @@ class Collection(object):
         as_dict = {}
         for field in fields:
             if not isinstance(field, types.StringTypes):
-                raise TypeError("fields must be a list of key names as (string, unicode)")
+                raise TypeError("fields must be a list of key names as "
+                                "(string, unicode)")
             keys = field.split(".")
 
             base = as_dict
@@ -292,7 +300,6 @@ class Collection(object):
                         base[key] = 1
                 base = base[key]
         return as_dict
-
 
     def find(self, spec=None, fields=None, skip=0, limit=0, _sock=None):
         """Query the database.
@@ -348,10 +355,10 @@ class Collection(object):
     def create_index(self, key_or_list, direction=None, unique=False, ttl=300):
         """Creates an index on this collection.
 
-        Takes either a single key and a direction, or a list of (key, direction)
-        pairs. The key(s) must be an instance of (str, unicode), and the
-        direction(s) must be one of (`pymongo.ASCENDING`, `pymongo.DESCENDING`).
-        Returns the name of the created index.
+        Takes either a single key and a direction, or a list of (key,
+        direction) pairs. The key(s) must be an instance of (str, unicode),
+        and the direction(s) must be one of (`pymongo.ASCENDING`,
+        `pymongo.DESCENDING`). Returns the name of the created index.
 
         :Parameters:
           - `key_or_list`: a single key or a list of (key, direction) pairs
@@ -382,9 +389,10 @@ class Collection(object):
     def ensure_index(self, key_or_list, direction=None, unique=False, ttl=300):
         """Ensures that an index exists on this collection.
 
-        Takes either a single key and a direction, or a list of (key, direction)
-        pairs. The key(s) must be an instance of (str, unicode), and the
-        direction(s) must be one of (`pymongo.ASCENDING`, `pymongo.DESCENDING`).
+        Takes either a single key and a direction, or a list of (key,
+        direction) pairs. The key(s) must be an instance of (str, unicode),
+        and the direction(s) must be one of (`pymongo.ASCENDING`,
+        `pymongo.DESCENDING`).
 
         Unlike `create_index`, which attempts to create an index
         unconditionally, `ensure_index` takes advantage of some caching within
@@ -425,7 +433,8 @@ class Collection(object):
         Can be used on non-existant collections or collections with no indexes.
         Raises OperationFailure on an error.
         """
-        self.database().connection()._purge_index(self.database().name(), self.name())
+        self.database().connection()._purge_index(self.database().name(),
+                                                  self.name())
         self.drop_index(u"*")
 
     def drop_index(self, index_or_name):
@@ -447,7 +456,8 @@ class Collection(object):
         if not isinstance(name, types.StringTypes):
             raise TypeError("index_or_name must be an index name or list")
 
-        self.database().connection()._purge_index(self.database().name(), self.name(), name)
+        self.database().connection()._purge_index(self.database().name(),
+                                                  self.name(), name)
         self.__database._command(SON([("deleteIndexes",
                                        self.__collection_name),
                                       ("index", name)]),
@@ -519,10 +529,11 @@ class Collection(object):
     }
     return {"result": map.values()};
 }""" % reduce
-        return self.__database.eval(Code(group_function, {"ns": self.__collection_name,
-                                                          "keys": keys,
-                                                          "condition": condition,
-                                                          "initial": initial}))["result"]
+        return self.__database.eval(Code(group_function,
+                                         {"ns": self.__collection_name,
+                                          "keys": keys,
+                                          "condition": condition,
+                                          "initial": initial}))["result"]
 
     def __iter__(self):
         return self
@@ -534,9 +545,10 @@ class Collection(object):
         """This is only here so that some API misusages are easier to debug.
         """
         if "." not in self.__collection_name:
-            raise TypeError("'Collection' object is not callable. If you meant "
-                            "to call the '%s' method on a 'Database' object it "
-                            "is failing because no such method exists." %
+            raise TypeError("'Collection' object is not callable. If you "
+                            "meant to call the '%s' method on a 'Database' "
+                            "object it is failing because no such method "
+                            "exists." %
                             self.__collection_name)
         raise TypeError("'Collection' object is not callable. If you meant to "
                         "call the '%s' method on a 'Collection' object it is "

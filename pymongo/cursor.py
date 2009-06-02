@@ -25,9 +25,11 @@ from errors import InvalidOperation, OperationFailure, ConnectionFailure
 
 _ZERO = "\x00\x00\x00\x00"
 
+
 class Cursor(object):
     """A cursor / iterator over Mongo query results.
     """
+
     def __init__(self, collection, spec, fields, skip, limit, _sock=None):
         """Create a new cursor.
 
@@ -65,10 +67,11 @@ class Cursor(object):
         """Closes this cursor.
         """
         if self.__id and not self.__killed:
+            connection = self.__collection.database().connection()
             if self.__connection_id is not None:
-                self.__collection.database().connection().close_cursor(self.__id, self.__connection_id)
+                connection.close_cursor(self.__id, self.__connection_id)
             else:
-                self.__collection.database().connection().close_cursor(self.__id)
+                connection.close_cursor(self.__id)
         self.__killed = True
 
     def __query_spec(self):
@@ -132,11 +135,12 @@ class Cursor(object):
     def sort(self, key_or_list, direction=None):
         """Sorts this cursors results.
 
-        Takes either a single key and a direction, or a list of (key, direction)
-        pairs. The key(s) must be an instance of (str, unicode), and the
-        direction(s) must be one of (`pymongo.ASCENDING`, `pymongo.DESCENDING`).
-        Raises InvalidOperation if this cursor has already been used. Only the
-        last `sort` applied to this cursor has any effect.
+        Takes either a single key and a direction, or a list of (key,
+        direction) pairs. The key(s) must be an instance of (str, unicode), and
+        the direction(s) must be one of (`pymongo.ASCENDING`,
+        `pymongo.DESCENDING`). Raises InvalidOperation if this cursor has
+        already been used. Only the last `sort` applied to this cursor has any
+        effect.
 
         :Parameters:
           - `key_or_list`: a single key or a list of (key, direction) pairs
@@ -161,7 +165,8 @@ class Cursor(object):
 
         command = SON([("count", self.__collection.name()),
                        ("query", self.__spec)])
-        response = self.__collection.database()._command(command, ["ns missing"])
+        response = self.__collection.database()._command(command,
+                                                         ["ns missing"])
         if response.get("errmsg", "") == "ns missing":
             return 0
         return int(response["n"])
@@ -176,11 +181,11 @@ class Cursor(object):
     def hint(self, index_or_name):
         """Adds a 'hint', telling Mongo the proper index to use for the query.
 
-        Judicious use of hints can greatly improve query performance. When doing
-        a query on multiple fields (at least one of which is indexed) pass the
-        indexed field as a hint to the query. Hinting will not do anything if
-        the corresponding index does not exist. Raises InvalidOperation if this
-        cursor has already been used.
+        Judicious use of hints can greatly improve query performance. When
+        doing a query on multiple fields (at least one of which is indexed)
+        pass the indexed field as a hint to the query. Hinting will not do
+        anything if the corresponding index does not exist. Raises
+        InvalidOperation if this cursor has already been used.
 
         `index_or_name` can be either an index name (as returned by
         create_index) or an index (as passed to create_index). If index_or_name
@@ -196,7 +201,8 @@ class Cursor(object):
             return self
 
         if not isinstance(index_or_name, (types.StringTypes, types.ListType)):
-            raise TypeError("hint takes an index name or a list specifying an index")
+            raise TypeError("hint takes an index name or "
+                            "a list specifying an index")
         name = index_or_name
         if isinstance(name, types.ListType):
             name = self.__collection._gen_index_name(name)
@@ -237,11 +243,13 @@ class Cursor(object):
             return len(self.__data)
 
         def send_message(operation, message):
+            db = self.__collection.database()
             kwargs = {"_sock": self.__socket}
             if self.__connection_id is not None:
                 kwargs["_connection_to_use"] = self.__connection_id
 
-            response = self.__collection.database().connection()._receive_message(operation, message, **kwargs)
+            response = db.connection()._receive_message(operation, message,
+                                                        **kwargs)
 
             if isinstance(response, types.TupleType):
                 (connection_id, response) = response
@@ -250,13 +258,15 @@ class Cursor(object):
 
             response_flag = struct.unpack("<i", response[:4])[0]
             if response_flag == 1:
-                raise OperationFailure("cursor id '%s' not valid at server" % self.__id)
+                raise OperationFailure("cursor id '%s' not valid at server" %
+                                       self.__id)
             elif response_flag == 2:
                 error_object = bson.BSON(response[20:]).to_dict()
                 if error_object["$err"] == "not master":
-                    self.__collection.database().connection()._reset()
+                    db.connection()._reset()
                     raise ConnectionFailure("master has changed")
-                raise OperationFailure("database error: %s" % error_object["$err"])
+                raise OperationFailure("database error: %s" %
+                                       error_object["$err"])
             else:
                 assert response_flag == 0
 
@@ -307,10 +317,11 @@ class Cursor(object):
         return self
 
     def next(self):
+        db = self.__collection.database()
         if len(self.__data):
-            next = self.__collection.database()._fix_outgoing(self.__data.pop(0), self.__collection)
+            next = db._fix_outgoing(self.__data.pop(0), self.__collection)
         elif self._refresh():
-            next = self.__collection.database()._fix_outgoing(self.__data.pop(0), self.__collection)
+            next = db._fix_outgoing(self.__data.pop(0), self.__collection)
         else:
             raise StopIteration
         return next

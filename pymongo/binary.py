@@ -21,9 +21,11 @@ be considered binary and what should be considered a string.
 
 import types
 
+
 class Binary(str):
     """Binary data stored in or retrieved from Mongo.
     """
+
     def __new__(cls, data, subtype=2):
         """Initialize a new binary object.
 

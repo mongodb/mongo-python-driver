@@ -24,7 +24,8 @@ import random
 import errno
 import datetime
 
-from errors import ConnectionFailure, InvalidName, OperationFailure, ConfigurationError
+from errors import ConnectionFailure, InvalidName
+from errors import OperationFailure, ConfigurationError
 from database import Database
 from cursor_manager import CursorManager
 from thread_util import TimeoutableLock
@@ -35,8 +36,8 @@ _logger.addHandler(logging.StreamHandler())
 
 _CONNECT_TIMEOUT = 20.0
 
-# TODO support auth for pooling
-class Connection(object):
+
+class Connection(object): # TODO support auth for pooling
     """A connection to Mongo.
     """
     HOST = "localhost"
@@ -49,12 +50,12 @@ class Connection(object):
                  auto_start_request=None, timeout=None, _connect=True):
         """Open a new connection to a Mongo instance at host:port.
 
-        The resultant connection object has connection-pooling built in. It also
-        performs auto-reconnection when necessary. If an operation fails because
-        of a connection error, `pymongo.errors.ConnectionFailure` is raised. Auto-
-        reconnection is also performed. Application code should handle this
-        exception (recognizing that the operation failed) and then continue to
-        execute.
+        The resultant connection object has connection-pooling built in. It
+        also performs auto-reconnection when necessary. If an operation fails
+        because of a connection error, `pymongo.errors.ConnectionFailure` is
+        raised. Auto-reconnection is also performed. Application code should
+        handle this exception (recognizing that the operation failed) and then
+        continue to execute.
 
         Raises TypeError if host is not an instance of string or port is not an
         instance of int. Raises ConnectionFailure if the connection cannot be
@@ -68,7 +69,8 @@ class Connection(object):
           - `host` (optional): hostname or IPv4 address of the instance to
             connect to
           - `port` (optional): port number on which to connect
-          - `pool_size` (optional): maximum size of the built in connection-pool
+          - `pool_size` (optional): maximum size of the built in
+            connection-pool
           - `auto_start_request` (optional): automatically start a request
             on every operation - see documentation for `start_request`
           - `timeout` (optional): max time to wait when attempting to acquire a
@@ -150,7 +152,8 @@ class Connection(object):
         """Open a new paired connection to Mongo.
 
         Raises TypeError if either `left` or `right` is not a tuple of the form
-        (host, port). Raises ConnectionFailure if the connection cannot be made.
+        (host, port). Raises ConnectionFailure if the connection cannot be
+        made.
 
         :Parameters:
           - `left`: (host, port) pair for the left Mongo instance
@@ -195,7 +198,7 @@ class Connection(object):
                 port = int(strings[1])
             return (strings[0], port)
 
-    def _cache_index(self, database_name, collection_name, index_name, ttl):
+    def _cache_index(self, database, collection, index, ttl):
         """Add an index to the index cache for ensure_index operations.
 
         Return True if the index has been newly cached or if the index had
@@ -206,25 +209,26 @@ class Connection(object):
         now = datetime.datetime.utcnow()
         expire = datetime.timedelta(seconds=ttl) + now
 
-        if database_name not in self.__index_cache:
-            self.__index_cache[database_name] = {}
-            self.__index_cache[database_name][collection_name] = {}
-            self.__index_cache[database_name][collection_name][index_name] = expire
+        if database not in self.__index_cache:
+            self.__index_cache[database] = {}
+            self.__index_cache[database][collection] = {}
+            self.__index_cache[database][collection][index] = expire
             return True
 
-        if collection_name not in self.__index_cache[database_name]:
-            self.__index_cache[database_name][collection_name] = {}
-            self.__index_cache[database_name][collection_name][index_name] = expire
+        if collection not in self.__index_cache[database]:
+            self.__index_cache[database][collection] = {}
+            self.__index_cache[database][collection][index] = expire
             return True
 
-        if index_name in self.__index_cache[database_name][collection_name]:
-            if now < self.__index_cache[database_name][collection_name][index_name]:
+        if index in self.__index_cache[database][collection]:
+            if now < self.__index_cache[database][collection][index]:
                 return False
 
-        self.__index_cache[database_name][collection_name][index_name] = expire
+        self.__index_cache[database][collection][index] = expire
         return True
 
-    def _purge_index(self, database_name, collection_name=None, index_name=None):
+    def _purge_index(self, database_name,
+                     collection_name=None, index_name=None):
         """Purge an index from the index cache.
 
         If `index_name` is None purge an entire collection.
@@ -285,7 +289,8 @@ class Connection(object):
                         return
                     if master not in self.__nodes:
                         raise ConfigurationError(
-                            "%r claims master is %r, but that's not configured" %
+                            "%r claims master is %r, "
+                            "but that's not configured" %
                             ((host, port), master))
                     _logger.debug("not master, master is (%r, %r)" % master)
                 except socket.error, e:
@@ -313,7 +318,8 @@ class Connection(object):
 
         try:
             self.__sockets[socket_number] = socket.socket()
-            self.__sockets[socket_number].setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+            self.__sockets[socket_number].setsockopt(socket.IPPROTO_TCP,
+                                                     socket.TCP_NODELAY, 1)
             sock = self.__sockets[socket_number]
             sock.settimeout(_CONNECT_TIMEOUT)
             sock.connect((self.host(), self.port()))
@@ -338,7 +344,8 @@ class Connection(object):
         for i in range(self.__pool_size):
             # prevent all operations during the reset
             if not self.__locks[i].acquire(timeout=self.__acquire_timeout):
-                raise ConnectionFailure("timed out before acquiring a connection from the pool")
+                raise ConnectionFailure("timed out before acquiring "
+                                        "a connection from the pool")
             if self.__sockets[i] is not None:
                 self.__sockets[i].close()
                 self.__sockets[i] = None
@@ -354,16 +361,17 @@ class Connection(object):
         """Set this connection's cursor manager.
 
         Raises TypeError if manager_class is not a subclass of CursorManager. A
-        cursor manager handles closing cursors. Different managers can implement
-        different policies in terms of when to actually kill a cursor that has
-        been closed.
+        cursor manager handles closing cursors. Different managers can
+        implement different policies in terms of when to actually kill a cursor
+        that has been closed.
 
         :Parameters:
           - `manager_class`: cursor manager to use
         """
         manager = manager_class(self)
         if not isinstance(manager, CursorManager):
-            raise TypeError("manager_class must be a subclass of CursorManager")
+            raise TypeError("manager_class must be a subclass of "
+                            "CursorManager")
 
         self.__cursor_manager = manager
 
@@ -379,8 +387,10 @@ class Connection(object):
             if self.__locks[choice].acquire(False):
                 return choice
 
-        if not self.__locks[choices[0]].acquire(timeout=self.__acquire_timeout):
-            raise ConnectionFailure("timed out before acquiring a connection from the pool")
+        if not self.__locks[choices[0]].acquire(timeout=
+                                                self.__acquire_timeout):
+            raise ConnectionFailure("timed out before acquiring "
+                                    "a connection from the pool")
         return choices[0]
 
     def __get_socket(self):
@@ -388,7 +398,8 @@ class Connection(object):
         if self.__thread_map.get(thread, -1) >= 0:
             sock = self.__thread_map[thread]
             if not self.__locks[sock].acquire(timeout=self.__acquire_timeout):
-                raise ConnectionFailure("timed out before acquiring a connection from the pool")
+                raise ConnectionFailure("timed out before acquiring "
+                                        "a connection from the pool")
         else:
             sock = self.__pick_and_acquire_socket()
             if self.__auto_start_request or thread in self.__thread_map:
@@ -449,6 +460,7 @@ class Connection(object):
             raise
 
     def __receive_message_on_socket(self, operation, request_id, sock):
+
         def receive(length):
             message = ""
             while len(message) < length:
@@ -469,6 +481,7 @@ class Connection(object):
         return receive(length - 16)
 
     __hack_socket_lock = threading.Lock()
+
     def _receive_message(self, operation, data, _sock=None):
         """Receive a message from Mongo.
 
@@ -482,7 +495,8 @@ class Connection(object):
         if _sock:
             self.__hack_socket_lock.acquire()
             try:
-                request_id = self.__send_message_on_socket(operation, data, _sock)
+                request_id = self.__send_message_on_socket(operation,
+                                                           data, _sock)
                 result = self.__receive_message_on_socket(1, request_id, _sock)
                 return result
             finally:
@@ -508,8 +522,8 @@ class Connection(object):
         that document to have been inserted, or performing an operation and
         then using `database.Database.error()` to perform error-checking on
         that operation. When a thread performs operations in a "request", the
-        connection will perform all operations on the same socket, so Mongo will
-        order them correctly.
+        connection will perform all operations on the same socket, so Mongo
+        will order them correctly.
 
         This method is only relevant when the current Connection has a
         "pool_size" greater than one. Otherwise only a single socket will be
@@ -549,7 +563,8 @@ class Connection(object):
 
     def __cmp__(self, other):
         if isinstance(other, Connection):
-            return cmp((self.__host, self.__port), (other.__host, other.__port))
+            return cmp((self.__host, self.__port),
+                       (other.__host, other.__port))
         return NotImplemented
 
     def __repr__(self):
@@ -642,7 +657,8 @@ class Connection(object):
             name = name.name()
 
         if not isinstance(name, types.StringTypes):
-            raise TypeError("name_or_database must be an instance of (Database, str, unicode)")
+            raise TypeError("name_or_database must be an instance of "
+                            "(Database, str, unicode)")
 
         self._purge_index(name)
         self[name]._command({"dropDatabase": 1})

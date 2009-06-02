@@ -36,6 +36,7 @@ try:
 except ImportError:
     _use_c = False
 
+
 def _get_int(data):
     try:
         value = struct.unpack("<i", data[:4])[0]
@@ -43,6 +44,7 @@ def _get_int(data):
         raise InvalidBSON()
 
     return (value, data[4:])
+
 
 def _get_c_string(data):
     try:
@@ -52,12 +54,15 @@ def _get_c_string(data):
 
     return (unicode(data[:end], "utf-8"), data[end + 1:])
 
+
 def _make_c_string(string):
     return string.encode("utf-8") + "\x00"
+
 
 def _validate_number(data):
     assert len(data) >= 8
     return data[8:]
+
 
 def _validate_string(data):
     (length, data) = _get_int(data)
@@ -65,12 +70,17 @@ def _validate_string(data):
     assert data[length - 1] == "\x00"
     return data[length:]
 
+
 def _validate_object(data):
     return _validate_document(data, None)
 
+
 _valid_array_name = re.compile("^\d+$")
+
+
 def _validate_array(data):
     return _validate_document(data, _valid_array_name)
+
 
 def _validate_binary(data):
     (length, data) = _get_int(data)
@@ -78,50 +88,67 @@ def _validate_binary(data):
     assert len(data) >= length + 1
     return data[length + 1:]
 
+
 def _validate_undefined(data):
     return data
 
+
 _OID_SIZE = 12
+
+
 def _validate_oid(data):
     assert len(data) >= _OID_SIZE
     return data[_OID_SIZE:]
+
 
 def _validate_boolean(data):
     assert len(data) >= 1
     return data[1:]
 
+
 _DATE_SIZE = 8
+
+
 def _validate_date(data):
     assert len(data) >= _DATE_SIZE
     return data[_DATE_SIZE:]
 
+
 _validate_null = _validate_undefined
+
 
 def _validate_regex(data):
     (regex, data) = _get_c_string(data)
     (options, data) = _get_c_string(data)
     return data
 
+
 def _validate_ref(data):
     data = _validate_string(data)
     return _validate_oid(data)
 
+
 _validate_code = _validate_string
+
 
 def _validate_code_w_scope(data):
     (length, data) = _get_int(data)
     assert len(data) >= length + 1
     return data[length + 1:]
 
+
 _validate_symbol = _validate_string
+
 
 def _validate_number_int(data):
     assert len(data) >= 4
     return data[4:]
 
+
 def _validate_timestamp(data):
     assert len(data) >= 8
     return data[8:]
+
 
 _element_validator = {
     "\x01": _validate_number,
@@ -140,8 +167,8 @@ _element_validator = {
     "\x0E": _validate_symbol,
     "\x0F": _validate_code_w_scope,
     "\x10": _validate_number_int,
-    "\x11": _validate_timestamp
-}
+    "\x11": _validate_timestamp}
+
 
 def _validate_element_data(type, data):
     try:
@@ -149,16 +176,19 @@ def _validate_element_data(type, data):
     except KeyError:
         raise InvalidBSON("unrecognized type: %s" % type)
 
+
 def _validate_element(data, valid_name):
     element_type = data[0]
     (element_name, data) = _get_c_string(data[1:])
     if valid_name:
-        assert valid_name.match(element_name), "%r doesn't match %s" % (element_name, valid_name.pattern)
+        assert valid_name.match(element_name), "name is invalid"
     return _validate_element_data(element_type, data)
+
 
 def _validate_elements(data, valid_name):
     while data:
         data = _validate_element(data, valid_name)
+
 
 def _validate_document(data, valid_name=None):
     try:
@@ -178,17 +208,21 @@ def _validate_document(data, valid_name=None):
 
     return data[obj_size:]
 
+
 def _get_number(data):
     return (struct.unpack("<d", data[:8])[0], data[8:])
 
+
 def _get_string(data):
     return _get_c_string(data[4:])
+
 
 def _get_object(data):
     (object, data) = _bson_to_dict(data)
     if "$ref" in object:
         return (DBRef(object["$ref"], object["$id"]), data)
     return (object, data)
+
 
 def _get_array(data):
     (obj, data) = _get_object(data)
@@ -202,6 +236,7 @@ def _get_array(data):
             break
     return (result, data)
 
+
 def _get_binary(data):
     (length, data) = _get_int(data)
     subtype = ord(data[0])
@@ -213,16 +248,20 @@ def _get_binary(data):
         length = length2
     return (Binary(data[:length], subtype), data[length:])
 
+
 def _get_oid(data):
     oid = _shuffle_oid(data[:12])
     return (ObjectId(oid), data[12:])
 
+
 def _get_boolean(data):
     return (data[0] == "\x01", data[1:])
+
 
 def _get_date(data):
     seconds = float(struct.unpack("<q", data[:8])[0]) / 1000.0
     return (datetime.datetime.utcfromtimestamp(seconds), data[8:])
+
 
 def _get_code_w_scope(data):
     (_, data) = _get_int(data)
@@ -230,8 +269,10 @@ def _get_code_w_scope(data):
     (scope, data) = _get_object(data)
     return (Code(code, scope), data)
 
+
 def _get_null(data):
     return (None, data)
+
 
 def _get_regex(data):
     (pattern, data) = _get_c_string(data)
@@ -251,10 +292,12 @@ def _get_regex(data):
         flags |= re.VERBOSE
     return (re.compile(pattern, flags), data)
 
+
 def _get_ref(data):
     (collection, data) = _get_c_string(data[4:])
     (oid, data) = _get_oid(data)
     return (DBRef(collection, oid), data)
+
 
 def _get_timestamp(data):
     (timestamp, data) = _get_int(data)
@@ -281,11 +324,13 @@ _element_getter = {
     "\x11": _get_timestamp,
 }
 
+
 def _element_to_dict(data):
     element_type = data[0]
     (element_name, data) = _get_c_string(data[1:])
     (value, data) = _element_getter[element_type](data)
     return (element_name, value, data)
+
 
 def _elements_to_dict(data):
     result = {}
@@ -294,6 +339,7 @@ def _elements_to_dict(data):
         result[key] = value
     return result
 
+
 def _bson_to_dict(data):
     obj_size = struct.unpack("<i", data[:4])[0]
     elements = data[4:obj_size - 1]
@@ -301,10 +347,14 @@ def _bson_to_dict(data):
 if _use_c:
     _bson_to_dict = _cbson._bson_to_dict
 
+
 def _shuffle_oid(data):
     return data[7::-1] + data[:7:-1]
 
+
 _RE_TYPE = type(_valid_array_name)
+
+
 def _element_to_bson(key, value, check_keys):
     if check_keys:
         if key.startswith("$"):
@@ -319,7 +369,8 @@ def _element_to_bson(key, value, check_keys):
         subtype = value.subtype
         if subtype == 2:
             value = struct.pack("<i", len(value)) + value
-        return "\x05" + name + struct.pack("<i", len(value)) + chr(subtype) + value
+        return "\x05%s%s%s%s" % (name, struct.pack("<i", len(value)),
+                                 chr(subtype), value)
     if isinstance(value, Code):
         cstring = _make_c_string(value)
         scope = _dict_to_bson(value.scope, False)
@@ -348,10 +399,12 @@ def _element_to_bson(key, value, check_keys):
     if isinstance(value, (int, long)):
         # TODO this is a really ugly way to check for this...
         if value > 2**32 / 2 - 1 or value < -2**32 / 2:
-            raise OverflowError("MongoDB can only handle 4-byte ints - try converting to a float before saving")
+            raise OverflowError("MongoDB can only handle 4-byte ints"
+                                " - try converting to a float before saving")
         return "\x10" + name + struct.pack("<i", value)
     if isinstance(value, datetime.datetime):
-        millis = int(calendar.timegm(value.timetuple()) * 1000 + value.microsecond / 1000)
+        millis = int(calendar.timegm(value.timetuple()) * 1000 +
+                     value.microsecond / 1000)
         return "\x09" + name + struct.pack("<q", millis)
     if value is None:
         return "\x0A" + name
@@ -372,12 +425,19 @@ def _element_to_bson(key, value, check_keys):
             flags += "x"
         return "\x0B" + name + _make_c_string(pattern) + _make_c_string(flags)
     if isinstance(value, DBRef):
-        return _element_to_bson(key, SON([("$ref", value.collection), ("$id", value.id)]), False)
-    raise InvalidDocument("cannot convert value of type %s to bson" % type(value))
+        return _element_to_bson(key,
+                                SON([("$ref", value.collection),
+                                     ("$id", value.id)]),
+                                False)
+    raise InvalidDocument("cannot convert value of type %s to bson" %
+                          type(value))
+
 
 def _dict_to_bson(dict, check_keys):
     try:
-        elements = "".join([_element_to_bson(key, value, check_keys) for (key, value) in dict.iteritems()])
+        elements = ""
+        for (key, value) in dict.iteritems():
+            elements += _element_to_bson(key, value, check_keys)
     except AttributeError:
         raise TypeError("encoder expected a mapping type but got: %r" % dict)
 
@@ -385,6 +445,7 @@ def _dict_to_bson(dict, check_keys):
     return struct.pack("<i", length) + elements + "\x00"
 if _use_c:
     _dict_to_bson = _cbson._dict_to_bson
+
 
 def _to_dicts(data):
     """Convert binary data to sequence of SON objects.
@@ -400,9 +461,11 @@ def _to_dicts(data):
         dicts.append(son)
     return dicts
 
+
 def _to_dict(data):
     (son, _) = _bson_to_dict(data)
     return son
+
 
 def is_valid(bson):
     """Validate that the given string represents valid BSON data.
@@ -422,11 +485,13 @@ def is_valid(bson):
     except (AssertionError, InvalidBSON):
         return False
 
+
 class BSON(str):
     """BSON data.
 
     Represents binary data storable in and retrievable from Mongo.
     """
+
     def __new__(cls, bson):
         """Initialize a new BSON object with some data.
 
@@ -440,9 +505,9 @@ class BSON(str):
     def from_dict(cls, dict, check_keys=False):
         """Create a new BSON object from a python mapping type (like dict).
 
-        Raises TypeError if the argument is not a mapping type, or contains keys
-        that are not instance of (str, unicode). Raises InvalidDocument if the
-        dictionary cannot be converted to BSON.
+        Raises TypeError if the argument is not a mapping type, or contains
+        keys that are not instance of (str, unicode). Raises InvalidDocument
+        if the dictionary cannot be converted to BSON.
 
         :Parameters:
           - `dict`: mapping type representing a Mongo document
