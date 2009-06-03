@@ -391,7 +391,7 @@ class TestCollection(unittest.TestCase):
         a = {"hello": "world"}
         db.test.insert(a)
         db.test.insert(a)
-        self.assertEqual(db.error()["err"], "E11000 duplicate key error")
+        self.assert_("E11000" in db.error()["err"])
 
         self.assertRaises(OperationFailure, db.test.insert, a, safe=True)
 
