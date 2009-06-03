@@ -270,7 +270,7 @@ class Collection(object):
         if isinstance(spec, ObjectId):
             spec = SON({"_id": spec})
 
-        for result in self.find(spec, limit=1, _sock=_sock):
+        for result in self.find(spec, limit=-1, _sock=_sock):
             return result
         return None
 
