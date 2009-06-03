@@ -12,6 +12,7 @@ from setuptools import Feature
 from distutils.cmd import Command
 from distutils.command.build_ext import build_ext
 from distutils.errors import CCompilerError
+from distutils.errors import DistutilsPlatformError, DistutilsExecError
 from distutils.core import Extension
 
 import pymongo
@@ -33,6 +34,7 @@ try:
 finally:
     f.close()
 
+
 class GenerateDoc(Command):
     user_options = []
 
@@ -50,34 +52,53 @@ class GenerateDoc(Command):
 
         subprocess.call(["epydoc", "--config", "epydoc-config", "-o", path])
 
+
+if sys.platform == 'win32' and sys.version_info > (2, 6):
+   # 2.6's distutils.msvc9compiler can raise an IOError when failing to
+   # find the compiler
+   build_errors = (CCompilerError, DistutilsExecError, DistutilsPlatformError,
+                 IOError)
+else:
+   build_errors = (CCompilerError, DistutilsExecError, DistutilsPlatformError)
+
+
 class custom_build_ext(build_ext):
     """Allow C extension building to fail.
 
     The C extension speeds up BSON encoding, but is not essential.
     """
+
+    warning_message = """
+**************************************************************
+WARNING: %s could not
+be compiled. No C extensions are essential for PyMongo to run,
+although they do result in significant speed improvements.
+
+%s
+**************************************************************
+"""
+
+    def run(self):
+        try:
+            build_ext.run(self)
+        except DistutilsPlatformError, e:
+            print e
+            print self.warning_message % ("Extension modules",
+                                          "There was an issue with your "
+                                          "platform configuration - see above.")
+
     def build_extension(self, ext):
         if sys.version_info[:3] >= (2, 4, 0):
             try:
                 build_ext.build_extension(self, ext)
-            except CCompilerError:
-                print ""
-                print ("*" * 62)
-                print """WARNING: The %s extension module could not
-be compiled. No C extensions are essential for PyMongo to run,
-although they do result in significant speed improvements.
-
-Above is the ouput showing how the compilation failed.""" % ext.name
-                print ("*" * 62 + "\n")
+            except build_errors:
+                print self.warning_message % ("The %s extension module" % ext.name,
+                                              "Above is the ouput showing how "
+                                              "the compilation failed.")
         else:
-            print ""
-            print ("*" * 62)
-            print """WARNING: The %s extension module is not supported
-for this version of Python. No C extensions are essential
-for PyMongo to run, although they do result in significant
-speed improvements.
-
-Please use Python >= 2.4 to take advantage of the extension.""" % ext.name
-            print ("*" * 62 + "\n")
+            print self.warning_message % ("The %s extension module" % ext.name,
+                                          "Please use Python >= 2.4 to take "
+                                          "advantage of the extension.")
 
 c_ext = Feature(
     "optional C extension",
