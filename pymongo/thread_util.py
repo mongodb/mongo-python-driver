@@ -51,7 +51,7 @@ class TimeoutableLock(object):
 
         self.__lock.acquire()
 
-        if self.__unlocked.is_set():
+        if self.__unlocked.isSet():
             self.__unlocked.clear()
             did_acquire = True
         elif blocking:
@@ -67,7 +67,7 @@ class TimeoutableLock(object):
 
                 self.__lock.acquire()
 
-                if self.__unlocked.is_set():
+                if self.__unlocked.isSet():
                     self.__unlocked.clear()
                     did_acquire = True
                     break
@@ -90,7 +90,7 @@ class TimeoutableLock(object):
         There is no return value.
         """
         self.__lock.acquire()
-        if self.__unlocked.is_set():
+        if self.__unlocked.isSet():
             self.__lock.release()
             raise RuntimeError("trying to release an unlocked TimeoutableLock")
 
