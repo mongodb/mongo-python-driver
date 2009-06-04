@@ -470,5 +470,20 @@ class TestCollection(unittest.TestCase):
 
         self.assertEqual(1900, i)
 
+    def test_find_kwargs(self):
+        db = self.db
+        db.drop_collection("test")
+
+        for i in range(10):
+            db.test.insert({"x": i})
+
+        self.assertEqual(10, db.test.count())
+
+        sum = 0
+        for x in db.test.find({}, skip=4, limit=2):
+            sum += x["x"]
+
+        self.assertEqual(9, sum)
+
 if __name__ == "__main__":
     unittest.main()
