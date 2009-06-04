@@ -32,7 +32,7 @@ from thread_util import TimeoutableLock
 
 _logger = logging.getLogger("pymongo.connection")
 _logger.addHandler(logging.StreamHandler())
-# _logger.setLevel(logging.DEBUG)
+_logger.setLevel(logging.INFO)
 
 _CONNECT_TIMEOUT = 20.0
 
