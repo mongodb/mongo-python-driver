@@ -20,7 +20,9 @@ sys.path[0:0] = [""]
 
 from pymongo.code import Code
 
+
 class TestCode(unittest.TestCase):
+
     def setUp(self):
         pass
 
@@ -36,6 +38,7 @@ class TestCode(unittest.TestCase):
 
     def test_read_only(self):
         c = Code("blah")
+
         def set_c():
             c.scope = 5
         self.assertRaises(AttributeError, set_c)

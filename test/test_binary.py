@@ -20,7 +20,9 @@ sys.path[0:0] = [""]
 
 from pymongo.binary import Binary
 
+
 class TestBinary(unittest.TestCase):
+
     def setUp(self):
         pass
 

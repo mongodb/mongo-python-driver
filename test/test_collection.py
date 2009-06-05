@@ -28,7 +28,9 @@ from pymongo.errors import InvalidName, OperationFailure
 from pymongo import ASCENDING, DESCENDING
 from pymongo.son import SON
 
+
 class TestCollection(unittest.TestCase):
+
     def setUp(self):
         self.connection = get_connection()
         self.db = self.connection.pymongo_test
@@ -63,11 +65,13 @@ class TestCollection(unittest.TestCase):
         self.assertRaises(TypeError, db.test.create_index, "hello")
         self.assertRaises(ValueError, db.test.create_index, [])
         self.assertRaises(TypeError, db.test.create_index, [], ASCENDING)
-        self.assertRaises(TypeError, db.test.create_index, [("hello", DESCENDING)], DESCENDING)
+        self.assertRaises(TypeError, db.test.create_index,
+                          [("hello", DESCENDING)], DESCENDING)
         self.assertRaises(TypeError, db.test.create_index, "hello", "world")
 
         db.test.drop_indexes()
-        self.assertEqual(db.system.indexes.find({"ns": u"pymongo_test.test"}).count(), 1)
+        self.assertEqual(db.system.indexes.find({"ns": u"pymongo_test.test"})
+                         .count(), 1)
 
         db.test.create_index("hello", ASCENDING)
         db.test.create_index([("hello", DESCENDING), ("world", ASCENDING)])
@@ -78,21 +82,27 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(count, 3)
 
         db.test.drop_indexes()
-        self.assertEqual(db.system.indexes.find({"ns": u"pymongo_test.test"}).count(), 1)
+        self.assertEqual(db.system.indexes.find({"ns": u"pymongo_test.test"})
+                         .count(), 1)
         db.test.create_index("hello", ASCENDING)
         self.assert_(SON([(u"name", u"hello_1"),
                           (u"unique", False),
                           (u"ns", u"pymongo_test.test"),
-                          (u"key", SON([(u"hello", 1)]))]) in list(db.system.indexes.find({"ns": u"pymongo_test.test"})))
+                          (u"key", SON([(u"hello", 1)]))]) in
+                     list(db.system.indexes
+                          .find({"ns": u"pymongo_test.test"})))
 
         db.test.drop_indexes()
-        self.assertEqual(db.system.indexes.find({"ns": u"pymongo_test.test"}).count(), 1)
+        self.assertEqual(db.system.indexes.find({"ns": u"pymongo_test.test"})
+                         .count(), 1)
         db.test.create_index([("hello", DESCENDING), ("world", ASCENDING)])
         self.assert_(SON([(u"name", u"hello_-1_world_1"),
                           (u"unique", False),
                           (u"ns", u"pymongo_test.test"),
                           (u"key", SON([(u"hello", -1),
-                                        (u"world", 1)]))]) in list(db.system.indexes.find({"ns": u"pymongo_test.test"})))
+                                        (u"world", 1)]))]) in
+                     list(db.system.indexes
+                          .find({"ns": u"pymongo_test.test"})))
 
     def test_ensure_index(self):
         db = self.db
@@ -101,41 +111,51 @@ class TestCollection(unittest.TestCase):
         self.assertEqual("hello_1", db.test.create_index("hello", ASCENDING))
         self.assertEqual("hello_1", db.test.create_index("hello", ASCENDING))
 
-        self.assertEqual("goodbye_1", db.test.ensure_index("goodbye", ASCENDING))
+        self.assertEqual("goodbye_1",
+                         db.test.ensure_index("goodbye", ASCENDING))
         self.assertEqual(None, db.test.ensure_index("goodbye", ASCENDING))
 
         db.test.drop_indexes()
-        self.assertEqual("goodbye_1", db.test.ensure_index("goodbye", ASCENDING))
+        self.assertEqual("goodbye_1",
+                         db.test.ensure_index("goodbye", ASCENDING))
         self.assertEqual(None, db.test.ensure_index("goodbye", ASCENDING))
 
         db.test.drop_index("goodbye_1")
-        self.assertEqual("goodbye_1", db.test.ensure_index("goodbye", ASCENDING))
+        self.assertEqual("goodbye_1",
+                         db.test.ensure_index("goodbye", ASCENDING))
         self.assertEqual(None, db.test.ensure_index("goodbye", ASCENDING))
 
         db.drop_collection("test")
-        self.assertEqual("goodbye_1", db.test.ensure_index("goodbye", ASCENDING))
+        self.assertEqual("goodbye_1",
+                         db.test.ensure_index("goodbye", ASCENDING))
         self.assertEqual(None, db.test.ensure_index("goodbye", ASCENDING))
 
         db_name = self.db.name()
         self.connection.drop_database(self.db.name())
-        self.assertEqual("goodbye_1", db.test.ensure_index("goodbye", ASCENDING))
+        self.assertEqual("goodbye_1",
+                         db.test.ensure_index("goodbye", ASCENDING))
         self.assertEqual(None, db.test.ensure_index("goodbye", ASCENDING))
 
         db.test.drop_index("goodbye_1")
-        self.assertEqual("goodbye_1", db.test.create_index("goodbye", ASCENDING))
+        self.assertEqual("goodbye_1",
+                         db.test.create_index("goodbye", ASCENDING))
         self.assertEqual(None, db.test.ensure_index("goodbye", ASCENDING))
 
         db.test.drop_index("goodbye_1")
-        self.assertEqual("goodbye_1", db.test.ensure_index("goodbye", ASCENDING,
-                                                           ttl=1))
+        self.assertEqual("goodbye_1",
+                         db.test.ensure_index("goodbye", ASCENDING,
+                                              ttl=1))
         time.sleep(1.1)
-        self.assertEqual("goodbye_1", db.test.ensure_index("goodbye", ASCENDING))
+        self.assertEqual("goodbye_1",
+                         db.test.ensure_index("goodbye", ASCENDING))
 
         db.test.drop_index("goodbye_1")
-        self.assertEqual("goodbye_1", db.test.create_index("goodbye", ASCENDING,
-                                                           ttl=1))
+        self.assertEqual("goodbye_1",
+                         db.test.create_index("goodbye", ASCENDING,
+                                              ttl=1))
         time.sleep(1.1)
-        self.assertEqual("goodbye_1", db.test.ensure_index("goodbye", ASCENDING))
+        self.assertEqual("goodbye_1",
+                         db.test.ensure_index("goodbye", ASCENDING))
 
     def test_index_on_binary(self):
         db = self.db
@@ -144,10 +164,12 @@ class TestCollection(unittest.TestCase):
         db.test.save({"bin": Binary("abc")})
         db.test.save({"bin": Binary("ghi")})
 
-        self.assertEqual(db.test.find({"bin": Binary("abc")}).explain()["nscanned"], 3)
+        self.assertEqual(db.test.find({"bin": Binary("abc")})
+                         .explain()["nscanned"], 3)
 
         db.test.create_index("bin", ASCENDING)
-        self.assertEqual(db.test.find({"bin": Binary("abc")}).explain()["nscanned"], 1)
+        self.assertEqual(db.test.find({"bin": Binary("abc")})
+                         .explain()["nscanned"], 1)
 
     def test_drop_index(self):
         db = self.db
@@ -155,27 +177,35 @@ class TestCollection(unittest.TestCase):
         db.test.create_index("hello", ASCENDING)
         name = db.test.create_index("goodbye", DESCENDING)
 
-        self.assertEqual(db.system.indexes.find({"ns": u"pymongo_test.test"}).count(), 3)
+        self.assertEqual(db.system.indexes.find({"ns": u"pymongo_test.test"})
+                         .count(), 3)
         self.assertEqual(name, "goodbye_-1")
         db.test.drop_index(name)
-        self.assertEqual(db.system.indexes.find({"ns": u"pymongo_test.test"}).count(), 2)
+        self.assertEqual(db.system.indexes.find({"ns": u"pymongo_test.test"})
+                         .count(), 2)
         self.assert_(SON([(u"name", u"hello_1"),
                           (u"unique", False),
                           (u"ns", u"pymongo_test.test"),
-                          (u"key", SON([(u"hello", 1)]))]) in list(db.system.indexes.find({"ns": u"pymongo_test.test"})))
+                          (u"key", SON([(u"hello", 1)]))]) in
+                     list(db.system.indexes
+                          .find({"ns": u"pymongo_test.test"})))
 
         db.test.drop_indexes()
         db.test.create_index("hello", ASCENDING)
         name = db.test.create_index("goodbye", DESCENDING)
 
-        self.assertEqual(db.system.indexes.find({"ns": u"pymongo_test.test"}).count(), 3)
+        self.assertEqual(db.system.indexes.find({"ns": u"pymongo_test.test"})
+                         .count(), 3)
         self.assertEqual(name, "goodbye_-1")
         db.test.drop_index([("goodbye", DESCENDING)])
-        self.assertEqual(db.system.indexes.find({"ns": u"pymongo_test.test"}).count(), 2)
+        self.assertEqual(db.system.indexes.find({"ns": u"pymongo_test.test"})
+                         .count(), 2)
         self.assert_(SON([(u"name", u"hello_1"),
                           (u"unique", False),
                           (u"ns", u"pymongo_test.test"),
-                          (u"key", SON([(u"hello", 1)]))]) in list(db.system.indexes.find({"ns": u"pymongo_test.test"})))
+                          (u"key", SON([(u"hello", 1)]))]) in
+                     list(db.system.indexes
+                          .find({"ns": u"pymongo_test.test"})))
 
     def test_index_info(self):
         db = self.db
@@ -189,19 +219,25 @@ class TestCollection(unittest.TestCase):
                          [("hello", ASCENDING)])
 
         db.test.create_index([("hello", DESCENDING), ("world", ASCENDING)])
-        self.assertEqual(db.test.index_information()["hello_1"], [("hello", ASCENDING)])
+        self.assertEqual(db.test.index_information()["hello_1"],
+                         [("hello", ASCENDING)])
         self.assertEqual(len(db.test.index_information()), 3)
-        self.assert_(("hello", DESCENDING) in db.test.index_information()["hello_-1_world_1"])
-        self.assert_(("world", ASCENDING) in db.test.index_information()["hello_-1_world_1"])
+        self.assert_(("hello", DESCENDING) in
+                     db.test.index_information()["hello_-1_world_1"])
+        self.assert_(("world", ASCENDING) in
+                     db.test.index_information()["hello_-1_world_1"])
         self.assert_(len(db.test.index_information()["hello_-1_world_1"]) == 2)
 
     def test_fields_list_to_dict(self):
         f = self.db.test._fields_list_to_dict
 
         self.assertEqual(f(["a", "b"]), {"a": 1, "b": 1})
-        self.assertEqual(f(["a.b.c", "d", "a.c"]), {"a": {"b": {"c": 1}, "c": 1}, "d": 1})
-        self.assertEqual(f(["a.c", "d", "a.b.c"]), {"a": {"b": {"c": 1}, "c": 1}, "d": 1})
-        self.assertEqual(f(["a.b.c", "d", "a.b.d"]), {"a": {"b": {"c": 1, "d": 1}}, "d": 1})
+        self.assertEqual(f(["a.b.c", "d", "a.c"]),
+                         {"a": {"b": {"c": 1}, "c": 1}, "d": 1})
+        self.assertEqual(f(["a.c", "d", "a.b.c"]),
+                         {"a": {"b": {"c": 1}, "c": 1}, "d": 1})
+        self.assertEqual(f(["a.b.c", "d", "a.b.d"]),
+                         {"a": {"b": {"c": 1, "d": 1}}, "d": 1})
 
     def test_field_selection(self):
         db = self.db
@@ -211,20 +247,26 @@ class TestCollection(unittest.TestCase):
         db.test.insert(doc)
 
         self.assertEqual(db.test.find({}, ["_id"]).next().keys(), ["_id"])
-        self.assertEqual(set(db.test.find({}, ["a"]).next().keys()), set(["a", "_id"]))
-        self.assertEqual(set(db.test.find({}, ["b"]).next().keys()), set(["b", "_id"]))
-        self.assertEqual(set(db.test.find({}, ["c"]).next().keys()), set(["c", "_id"]))
+        self.assertEqual(set(db.test.find({}, ["a"]).next().keys()),
+                         set(["a", "_id"]))
+        self.assertEqual(set(db.test.find({}, ["b"]).next().keys()),
+                         set(["b", "_id"]))
+        self.assertEqual(set(db.test.find({}, ["c"]).next().keys()),
+                         set(["c", "_id"]))
         self.assertEqual(db.test.find({}, ["a"]).next()["a"], 1)
         self.assertEqual(db.test.find({}, ["b"]).next()["b"], 5)
-        self.assertEqual(db.test.find({}, ["c"]).next()["c"], {"d": 5, "e": 10})
+        self.assertEqual(db.test.find({}, ["c"]).next()["c"],
+                         {"d": 5, "e": 10})
 
-        # TODO some commented out tests due to what appears to be a bug in the server
+        # TODO some commented out tests due to a bug in the server
 #         self.assertEqual(db.test.find({}, ["c.d"]).next()["c"], {"d": 5})
 #         self.assertEqual(db.test.find({}, ["c.e"]).next()["c"], {"e": 10})
+#         self.assertEqual(db.test.find({}, ["b", "c.e"]).next()["c"],
+#                          {"e": 10})
 
-        self.assertEqual(set(db.test.find({}, ["b", "c.e"]).next().keys()), set(["b", "c", "_id"]))
+        self.assertEqual(set(db.test.find({}, ["b", "c.e"]).next().keys()),
+                         set(["b", "c", "_id"]))
         self.assertEqual(db.test.find({}, ["b", "c.e"]).next()["b"], 5)
-#         self.assertEqual(db.test.find({}, ["b", "c.e"]).next()["c"], {"e": 10})
 
     def test_options(self):
         db = self.db
