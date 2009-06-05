@@ -541,7 +541,7 @@ class Collection(object):
     def next(self):
         raise TypeError("'Collection' object is not iterable")
 
-    def __call__(self):
+    def __call__(self, *args, **kwargs):
         """This is only here so that some API misusages are easier to debug.
         """
         if "." not in self.__collection_name:

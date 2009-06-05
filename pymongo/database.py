@@ -392,7 +392,7 @@ class Database(object):
         result = self._command(command)
         return result.get("retval", None)
 
-    def __call__(self):
+    def __call__(self, *args, **kwargs):
         """This is only here so that some API misusages are easier to debug.
         """
         raise TypeError("'Database' object is not callable. If you meant to "
