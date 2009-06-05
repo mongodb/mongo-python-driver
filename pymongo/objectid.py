@@ -18,9 +18,11 @@ import random
 import types
 from errors import InvalidId
 
+
 class ObjectId(object):
     """A Mongo ObjectId.
     """
+
     def __init__(self, id=None):
         """Initialize a new ObjectId.
 
@@ -63,7 +65,8 @@ class ObjectId(object):
             else:
                 raise InvalidId("%s is not a valid ObjectId" % oid)
         else:
-            raise TypeError("id must be an instance of (str, ObjectId), not %s" % type(oid))
+            raise TypeError("id must be an instance of (str, ObjectId), "
+                            "not %s" % type(oid))
 
     def url_encode(self):
         """Get a string representation of this ObjectId safe for use in a url.

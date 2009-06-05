@@ -32,7 +32,7 @@ class Binary(str):
         `subtype` is a binary subtype for this data. For more information on
         subtypes, see the Mongo wiki_.
 
-        .. _wiki: http://www.mongodb.org/display/DOCS/BSON#BSON-noteondatabinary
+        .. _wiki: %s
 
         Raises TypeError if `data` is not an instance of str or `subtype` is
         not an instance of int. Raises ValueError if `subtype` not in [0, 256).
@@ -40,7 +40,7 @@ class Binary(str):
         :Parameters:
           - `data`: the binary data to represent
           - `subtype` (optional): the binary subtype to use
-        """
+        """ % "http://www.mongodb.org/display/DOCS/BSON#BSON-noteondatabinary"
         if not isinstance(data, types.StringType):
             raise TypeError("data must be an instance of str")
         if not isinstance(subtype, types.IntType):

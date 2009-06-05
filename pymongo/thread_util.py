@@ -17,9 +17,11 @@
 import threading
 import time
 
+
 class TimeoutableLock(object):
     """Lock implementation that allows blocking acquires to timeout.
     """
+
     def __init__(self):
         self.__unlocked = threading.Event()
         self.__unlocked.set()
@@ -31,17 +33,18 @@ class TimeoutableLock(object):
         When invoked without arguments, block until the lock is unlocked, then
         set it to locked, and return True.
 
-        When invoked with the `blocking` argument set to True, do the same thing
-        as when called without arguments, and return True.
+        When invoked with the `blocking` argument set to True, do the same
+        thing as when called without arguments, and return True.
 
-        When invoked with the `blocking` argument set to False, do not block. If
-        a call without an argument would block, return False immediately;
-        otherwise do the same thing as when called without arguments, and return
-        True.
+        When invoked with the `blocking` argument set to False, do not block.
+        If a call without an argument would block, return False immediately;
+        otherwise do the same thing as when called without arguments, and
+        return True.
 
-        If `blocking` is True and `timeout` is not None then `timeout` specifies
-        a timeout in seconds. If the lock cannot be acquired within the time
-        limit return False. If `blocking` is False then `timeout` is ignored.
+        If `blocking` is True and `timeout` is not None then `timeout`
+        specifies a timeout in seconds. If the lock cannot be acquired within
+        the time limit return False. If `blocking` is False then `timeout` is
+        ignored.
 
         :Parameters:
           - `blocking` (optional): perform a blocking acquire
@@ -61,7 +64,8 @@ class TimeoutableLock(object):
                 self.__lock.release()
 
                 if timeout is not None:
-                    self.__unlocked.wait(start_blocking + timeout - time.time())
+                    self.__unlocked.wait(start_blocking + timeout - \
+                                             time.time())
                 else:
                     self.__unlocked.wait()
 
@@ -71,7 +75,8 @@ class TimeoutableLock(object):
                     self.__unlocked.clear()
                     did_acquire = True
                     break
-                elif timeout is not None and time.time() > start_blocking + timeout:
+                elif timeout is not None and \
+                        time.time() > start_blocking + timeout:
                     break
 
         self.__lock.release()

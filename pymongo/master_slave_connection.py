@@ -23,9 +23,11 @@ import random
 from database import Database
 from connection import Connection
 
+
 class MasterSlaveConnection(object):
     """A master-slave connection to Mongo.
     """
+
     def __init__(self, master, slaves=[]):
         """Create a new Master-Slave connection.
 
@@ -54,7 +56,8 @@ class MasterSlaveConnection(object):
 
         for slave in slaves:
             if not isinstance(slave, Connection):
-                raise TypeError("slave %r is not an instance of Connection" % slave)
+                raise TypeError("slave %r is not an instance of Connection" %
+                                slave)
 
         self.__in_request = False
         self.__master = master
@@ -101,7 +104,8 @@ class MasterSlaveConnection(object):
     # _connection_to_use is a hack that we need to include to make sure
     # that getmore operations can be sent to the same instance on which
     # the cursor actually resides...
-    def _receive_message(self, operation, data, _sock=None, _connection_to_use=None):
+    def _receive_message(self, operation, data,
+                         _sock=None, _connection_to_use=None):
         """Receive a message from Mongo.
 
         Sends the given message and returns a (connection_id, response) pair.
@@ -112,10 +116,12 @@ class MasterSlaveConnection(object):
         """
         if _connection_to_use is not None:
             if _connection_to_use == -1:
-                return (-1, self.__master._receive_message(operation, data, _sock))
+                return (-1, self.__master._receive_message(operation,
+                                                           data, _sock))
             else:
                 return (_connection_to_use,
-                        self.__slaves[_connection_to_use]._receive_message(operation, data, _sock))
+                        self.__slaves[_connection_to_use]
+                        ._receive_message(operation, data, _sock))
 
         # for now just load-balance randomly...
         connection_id = random.randrange(-1, len(self.__slaves))
@@ -124,7 +130,8 @@ class MasterSlaveConnection(object):
             return (-1, self.__master._receive_message(operation, data, _sock))
 
         return (connection_id,
-                self.__slaves[connection_id]._receive_message(operation, data, _sock))
+                self.__slaves[connection_id]._receive_message(operation,
+                                                              data, _sock))
 
     def start_request(self):
         """Start a "request".
@@ -146,7 +153,8 @@ class MasterSlaveConnection(object):
 
     def __cmp__(self, other):
         if isinstance(other, MasterSlaveConnection):
-            return cmp((self.__master, self.__slaves), (other.__master, other.__slaves))
+            return cmp((self.__master, self.__slaves),
+                       (other.__master, other.__slaves))
         return NotImplemented
 
     def __repr__(self):
@@ -209,7 +217,11 @@ class MasterSlaveConnection(object):
         raise TypeError("'MasterSlaveConnection' object is not iterable")
 
     def _cache_index(self, database_name, collection_name, index_name, ttl):
-        return self.__master._cache_index(database_name, collection_name, index_name, ttl)
+        return self.__master._cache_index(database_name, collection_name,
+                                          index_name, ttl)
 
-    def _purge_index(self, database_name, collection_name=None, index_name=None):
-        return self.__master._purge_index(database_name, collection_name, index_name)
+    def _purge_index(self, database_name,
+                     collection_name=None, index_name=None):
+        return self.__master._purge_index(database_name,
+                                          collection_name,
+                                          index_name)

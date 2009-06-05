@@ -35,6 +35,7 @@ from objectid import ObjectId
 from dbref import DBRef
 from errors import UnsupportedTag
 
+
 class SON(dict):
     """SON data.
 
@@ -75,6 +76,7 @@ class SON(dict):
     .. [#dt2] all datetime.datetime instances are treated as *naive*. clients
        should always use UTC.
     """
+
     def __init__(self, data=None, **kwargs):
         self.__keys = []
         dict.__init__(self)
@@ -104,7 +106,8 @@ class SON(dict):
         other.update(self)
         return other
 
-    # TODO this is all from UserDict.DictMixin. it could probably be made more efficient.
+    # TODO this is all from UserDict.DictMixin. it could probably be made more
+    # efficient.
     # second level definitions support higher levels
     def __iter__(self):
         for k in self.keys():
@@ -114,7 +117,7 @@ class SON(dict):
         return key in self.keys()
 
     def __contains__(self, key):
-        return self.has_key(key)
+        return key in self.keys()
 
     # third level takes advantage of second level definitions
     def iteritems(self):
@@ -148,8 +151,8 @@ class SON(dict):
 
     def pop(self, key, *args):
         if len(args) > 1:
-            raise TypeError, "pop expected at most 2 arguments, got "\
-                              + repr(1 + len(args))
+            raise TypeError("pop expected at most 2 arguments, got "\
+                                + repr(1 + len(args)))
         try:
             value = self[key]
         except KeyError:
@@ -163,7 +166,7 @@ class SON(dict):
         try:
             k, v = self.iteritems().next()
         except StopIteration:
-            raise KeyError, 'container is empty'
+            raise KeyError('container is empty')
         del self[k]
         return (k, v)
 
@@ -191,7 +194,8 @@ class SON(dict):
 
     def __cmp__(self, other):
         if isinstance(other, SON):
-            return cmp((dict(self.iteritems()), self.keys()), (dict(other.iteritems()), other.keys()))
+            return cmp((dict(self.iteritems()), self.keys()),
+                       (dict(other.iteritems()), other.keys()))
         return cmp(dict(self.iteritems()), other)
 
     def __len__(self):
@@ -201,8 +205,10 @@ class SON(dict):
     def to_dict(self):
         """Convert a SON document to a normal Python dictionary instance.
 
-        This is trickier than just *dict(...)* because it needs to be recursive.
+        This is trickier than just *dict(...)* because it needs to be
+        recursive.
         """
+
         def transform_value(value):
             if isinstance(value, types.ListType):
                 return [transform_value(v) for v in value]
@@ -218,6 +224,7 @@ class SON(dict):
     def from_xml(cls, xml):
         """Create an instance of SON from an xml document.
         """
+
         def pad(list, index):
             while index >= len(list):
                 list.append(None)
@@ -238,13 +245,16 @@ class SON(dict):
             return code.text is not None and Code(code.text) or Code("")
 
         def make_binary(binary):
-            return binary.text is not None and Binary(base64.decodestring(binary.text)) or Binary("")
+            if binary.text is not None:
+                return Binary(base64.decodestring(binary.text))
+            return Binary("")
 
         def make_boolean(bool):
             return bool.text == "true"
 
         def make_date(date):
-            return datetime.datetime.utcfromtimestamp(float(date.text) / 1000.0)
+            return datetime.datetime.utcfromtimestamp(float(date.text) /
+                                                      1000.0)
 
         def make_ref(dbref):
             return DBRef(make_elem(dbref[0]), make_elem(dbref[1]))

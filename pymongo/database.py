@@ -29,9 +29,11 @@ from collection import Collection
 from errors import InvalidName, CollectionInvalid, OperationFailure
 from code import Code
 
+
 class Database(object):
     """A Mongo database.
     """
+
     def __init__(self, connection, name):
         """Get a database by connection and name.
 
@@ -57,7 +59,8 @@ class Database(object):
     def __check_name(self, name):
         for invalid_char in [" ", ".", "$", "/", "\\"]:
             if invalid_char in name:
-                raise InvalidName("database names cannot contain the character %r" % name)
+                raise InvalidName("database names cannot contain the "
+                                  "character %r" % invalid_char)
         if not name:
             raise InvalidName("database name cannot be the empty string")
 
@@ -86,7 +89,8 @@ class Database(object):
 
     def __cmp__(self, other):
         if isinstance(other, Database):
-            return cmp((self.__connection, self.__name), (other.__connection, other.__name))
+            return cmp((self.__connection, self.__name),
+                       (other.__connection, other.__name))
         return NotImplemented
 
     def __repr__(self):
@@ -115,9 +119,9 @@ class Database(object):
     def create_collection(self, name, options={}):
         """Create a new collection in this database.
 
-        Normally collection creation is automatic. This method should only if you
-        want to specify options on creation. CollectionInvalid is raised if the
-        collection already exists.
+        Normally collection creation is automatic. This method should only if
+        you want to specify options on creation. CollectionInvalid is raised
+        if the collection already exists.
 
         Options should be a dictionary, with any of the following options:
 
@@ -169,7 +173,8 @@ class Database(object):
         if check and result["ok"] != 1:
             if result["errmsg"] in allowable_errors:
                 return result
-            raise OperationFailure("command %r failed: %s" % (command, result["errmsg"]))
+            raise OperationFailure("command %r failed: %s" %
+                                   (command, result["errmsg"]))
         return result
 
     def collection_names(self):
@@ -194,7 +199,8 @@ class Database(object):
             name = name.name()
 
         if not isinstance(name, types.StringTypes):
-            raise TypeError("name_or_collection must be an instance of (Collection, str, unicode)")
+            raise TypeError("name_or_collection must be an instance of "
+                            "(Collection, str, unicode)")
 
         self.connection()._purge_index(self.name(), name)
 
@@ -214,7 +220,8 @@ class Database(object):
             name = name.name()
 
         if not isinstance(name, types.StringTypes):
-            raise TypeError("name_or_collection must be an instance of (Collection, str, unicode)")
+            raise TypeError("name_or_collection must be an instance of "
+                            "(Collection, str, unicode)")
 
         result = self._command({"validate": unicode(name)})
 
@@ -298,7 +305,6 @@ class Database(object):
     def next(self):
         raise TypeError("'Database' object is not iterable")
 
-    # TODO this should probably be private, but I'm using it for some tests right now...
     def _password_digest(self, username, password):
         """Get a password digest to use for authentication.
         """
@@ -315,13 +321,13 @@ class Database(object):
         """Authenticate to use this database.
 
         Once authenticated, the user has full read and write access to this
-        database. Raises TypeError if either name or password is not an instance
-        of (str, unicode). Authentication lasts for the life of the database
-        connection, or until `Database.logout` is called.
+        database. Raises TypeError if either name or password is not an
+        instance of (str, unicode). Authentication lasts for the life of the
+        database connection, or until `Database.logout` is called.
 
         The "admin" database is special. Authenticating on "admin" gives access
-        to *all* databases. Effectively, "admin" access means root access to the
-        database.
+        to *all* databases. Effectively, "admin" access means root access to
+        the database.
 
         :Parameters:
           - `name`: the name of the user to authenticate
@@ -376,9 +382,9 @@ class Database(object):
         arguments will be passed to that function when it is run on the
         server.
 
-        Raises TypeError if `code` is not an instance of (str, unicode, `Code`).
-        Raises OperationFailure if the eval fails. Returns the result of the
-        evaluation.
+        Raises TypeError if `code` is not an instance of (str, unicode,
+        `Code`). Raises OperationFailure if the eval fails. Returns the result
+        of the evaluation.
 
         :Parameters:
           - `code`: string representation of JavaScript code to be evaluated

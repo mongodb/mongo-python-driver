@@ -18,9 +18,11 @@ import types
 
 from objectid import ObjectId
 
+
 class DBRef(object):
     """A reference to an object stored in a Mongo database.
     """
+
     def __init__(self, collection, id):
         """Initialize a new DBRef.
 
@@ -53,9 +55,10 @@ class DBRef(object):
         return self.__id
 
     def __repr__(self):
-        return "DBRef(" + repr(self.__collection) + ", " + repr(self.__id) + ")"
+        return "DBRef(" + repr(self.collection) + ", " + repr(self.id) + ")"
 
     def __cmp__(self, other):
         if isinstance(other, DBRef):
-            return cmp([self.__collection, self.__id], [other.__collection, other.__id])
+            return cmp([self.__collection, self.__id],
+                       [other.__collection, other.__id])
         return NotImplemented

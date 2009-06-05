@@ -15,15 +15,18 @@
 """Different managers to handle when cursors are killed after they are closed.
 
 New cursor managers should be defined as subclasses of CursorManager and can be
-installed on a connection by calling `pymongo.connection.Connection.set_cursor_manager`."""
+installed on a connection by calling
+`pymongo.connection.Connection.set_cursor_manager`."""
 
 import types
+
 
 class CursorManager(object):
     """The default cursor manager.
 
     This manager will kill cursors one at a time as they are closed.
     """
+
     def __init__(self, connection):
         """Instantiate the manager.
 
@@ -45,9 +48,11 @@ class CursorManager(object):
 
         self.__connection.kill_cursors([cursor_id])
 
+
 class BatchCursorManager(CursorManager):
     """A cursor manager that kills cursors in batches.
     """
+
     def __init__(self, connection):
         """Instantiate the manager.
 
