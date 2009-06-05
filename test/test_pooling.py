@@ -23,7 +23,9 @@ sys.path[0:0] = [""]
 
 from pymongo.connection import Connection
 
+
 class TestPooling(unittest.TestCase):
+
     def setUp(self):
         self.host = os.environ.get("DB_IP", "localhost")
         self.port = int(os.environ.get("DB_PORT", 27017))
@@ -139,7 +141,9 @@ class TestPooling(unittest.TestCase):
             t = SaveAndFind(self.pooled_db)
             t.start()
 
+
 class SaveAndFind(threading.Thread):
+
     def __init__(self, database):
         threading.Thread.__init__(self)
         self.database = database

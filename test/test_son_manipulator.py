@@ -28,7 +28,9 @@ from pymongo.son_manipulator import NamespaceInjector, ObjectIdShuffler
 from pymongo.database import Database
 from test_connection import get_connection
 
+
 class TestSONManipulator(unittest.TestCase):
+
     def setUp(self):
         self.db = Database(get_connection(), "pymongo_test")
 

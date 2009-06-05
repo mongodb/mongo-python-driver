@@ -23,12 +23,15 @@ from pymongo.errors import ConnectionFailure, InvalidName
 from pymongo.database import Database
 from pymongo.connection import Connection
 
+
 def get_connection():
     host = os.environ.get("DB_IP", "localhost")
     port = int(os.environ.get("DB_PORT", 27017))
     return Connection(host, port)
 
+
 class TestConnection(unittest.TestCase):
+
     def setUp(self):
         self.host = os.environ.get("DB_IP", "localhost")
         self.port = int(os.environ.get("DB_PORT", 27017))
@@ -55,7 +58,8 @@ class TestConnection(unittest.TestCase):
         self.assert_(Connection())
 
     def test_connect(self):
-        self.assertRaises(ConnectionFailure, Connection, "somedomainthatdoesntexist.org")
+        self.assertRaises(ConnectionFailure, Connection,
+                          "somedomainthatdoesntexist.org")
         self.assertRaises(ConnectionFailure, Connection, self.host, 123456789)
 
         self.assert_(Connection(self.host, self.port))
@@ -63,6 +67,7 @@ class TestConnection(unittest.TestCase):
     def test_repr(self):
         self.assertEqual(repr(Connection(self.host, self.port)),
                          "Connection('%s', %s)" % (self.host, self.port))
+
     def test_getters(self):
         self.assertEqual(Connection(self.host, self.port).host(), self.host)
         self.assertEqual(Connection(self.host, self.port).port(), self.port)

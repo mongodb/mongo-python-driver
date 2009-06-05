@@ -20,7 +20,9 @@ import time
 
 from pymongo.thread_util import TimeoutableLock
 
+
 class AcquireWithTimeout(threading.Thread):
+
     def __init__(self, lock, timeout):
         threading.Thread.__init__(self)
         self.__lock = lock
@@ -29,7 +31,9 @@ class AcquireWithTimeout(threading.Thread):
     def run(self):
         assert self.__lock.acquire(timeout=self.__timeout)
 
+
 class AcquireHoldRelease(threading.Thread):
+
     def __init__(self, lock, hold_time, timeout, counter):
         threading.Thread.__init__(self)
         self.__lock = lock
@@ -44,7 +48,9 @@ class AcquireHoldRelease(threading.Thread):
         time.sleep(self.__hold_time)
         self.__lock.release()
 
+
 class TestTimeoutableLock(unittest.TestCase):
+
     def test_basic(self):
         lock = TimeoutableLock()
 
@@ -94,7 +100,8 @@ class TestTimeoutableLock(unittest.TestCase):
         counter.assert_count = 0
 
         def start_and_join(thread_count):
-            threads = [AcquireHoldRelease(lock, 0.1, 0.3, counter) for _ in range(thread_count)]
+            threads = [AcquireHoldRelease(lock, 0.1, 0.3, counter)
+                       for _ in range(thread_count)]
             for thread in threads:
                 thread.start()
             for thread in threads:

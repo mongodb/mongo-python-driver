@@ -32,9 +32,10 @@ from pymongo.connection import Connection
 
 skip_tests = True
 
+
 class TestPaired(unittest.TestCase):
+
     def setUp(self):
-#        logging.getLogger("pymongo.connection").setLevel(logging.DEBUG)
         left_host = os.environ.get("DB_IP", "localhost")
         left_port = int(os.environ.get("DB_PORT", 27017))
         self.left = (left_host, left_port)
@@ -45,7 +46,6 @@ class TestPaired(unittest.TestCase):
 
     def tearDown(self):
         pass
-#        logging.getLogger("pymongo.connection").setLevel(logging.NOTSET)
 
     def skip(self):
         if skip_tests:
@@ -58,7 +58,8 @@ class TestPaired(unittest.TestCase):
         self.assertRaises(TypeError, Connection.paired, "localhost")
         self.assertRaises(TypeError, Connection.paired, None)
         self.assertRaises(TypeError, Connection.paired, 5, self.right)
-        self.assertRaises(TypeError, Connection.paired, "localhost", self.right)
+        self.assertRaises(TypeError, Connection.paired,
+                          "localhost", self.right)
         self.assertRaises(TypeError, Connection.paired, None, self.right)
         self.assertRaises(TypeError, Connection.paired, self.left, 5)
         self.assertRaises(TypeError, Connection.paired, self.left, "localhost")
@@ -66,7 +67,8 @@ class TestPaired(unittest.TestCase):
 
     def test_connect(self):
         self.skip()
-        self.assertRaises(ConnectionFailure, Connection.paired, self.bad, self.bad)
+        self.assertRaises(ConnectionFailure, Connection.paired,
+                          self.bad, self.bad)
 
         connection = Connection.paired(self.left, self.right)
         self.assert_(connection)
@@ -80,8 +82,10 @@ class TestPaired(unittest.TestCase):
         self.assertEqual(port, connection.port())
 
         slave = self.left == (host, port) and self.right or self.left
-        self.assertRaises(ConfigurationError, Connection.paired, slave, self.bad)
-        self.assertRaises(ConfigurationError, Connection.paired, self.bad, slave)
+        self.assertRaises(ConfigurationError, Connection.paired,
+                          slave, self.bad)
+        self.assertRaises(ConfigurationError, Connection.paired,
+                          self.bad, slave)
 
     def test_repr(self):
         self.skip()

@@ -22,7 +22,9 @@ sys.path[0:0] = [""]
 import gridfs
 from test_connection import get_connection
 
+
 class TestGridfs(unittest.TestCase):
+
     def setUp(self):
         self.db = get_connection().pymongo_test
         self.db.drop_collection("fs.files")
@@ -112,7 +114,8 @@ class TestGridfs(unittest.TestCase):
         f.close()
 
         self.assertEqual([], self.fs.list())
-        self.assertEqual(["mike", "test", "hello world"], self.fs.list("pymongo_test"))
+        self.assertEqual(["mike", "test", "hello world"],
+                         self.fs.list("pymongo_test"))
 
     def test_remove_alt_coll(self):
         f = self.fs.open("mike", "w", "pymongo_test")
@@ -126,12 +129,17 @@ class TestGridfs(unittest.TestCase):
         f.close()
 
         self.fs.remove("test")
-        self.assertEqual(["mike", "test", "hello world"], self.fs.list("pymongo_test"))
+        self.assertEqual(["mike", "test", "hello world"],
+                         self.fs.list("pymongo_test"))
         self.fs.remove("test", "pymongo_test")
         self.assertEqual(["mike", "hello world"], self.fs.list("pymongo_test"))
 
-        self.assertEqual(self.fs.open("mike", collection="pymongo_test").read(), "hi")
-        self.assertEqual(self.fs.open("hello world", collection="pymongo_test").read(), "fly")
+        self.assertEqual(self.fs.open("mike",
+                                      collection="pymongo_test").read(),
+                         "hi")
+        self.assertEqual(self.fs.open("hello world",
+                                      collection="pymongo_test").read(),
+                         "fly")
 
         self.fs.remove({}, "pymongo_test")
 

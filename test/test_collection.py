@@ -253,13 +253,15 @@ class TestCollection(unittest.TestCase):
             db.test.insert(dict)
             return db.test.find_one() == dict
 
-        qcheck.check_unittest(self, remove_insert_find_one, qcheck.gen_mongo_dict(3))
+        qcheck.check_unittest(self, remove_insert_find_one,
+                              qcheck.gen_mongo_dict(3))
 
     def test_find_w_fields(self):
         db = self.db
         db.test.remove({})
 
-        db.test.insert({"x": 1, "mike": "awesome", "extra thing": "abcdefghijklmnopqrstuvwxyz"})
+        db.test.insert({"x": 1, "mike": "awesome",
+                        "extra thing": "abcdefghijklmnopqrstuvwxyz"})
         self.assertEqual(1, db.test.count())
         self.assert_("x" in db.test.find({}).next())
         self.assert_("mike" in db.test.find({}).next())
@@ -281,10 +283,14 @@ class TestCollection(unittest.TestCase):
         db.test.insert({"x": "hello_test"})
 
         self.assertEqual(db.test.find().count(), 4)
-        self.assertEqual(db.test.find({"x": re.compile("^hello.*")}).count(), 4)
-        self.assertEqual(db.test.find({"x": re.compile("ello")}).count(), 4)
-        self.assertEqual(db.test.find({"x": re.compile("^hello$")}).count(), 0)
-        self.assertEqual(db.test.find({"x": re.compile("^hello_mi.*$")}).count(), 2)
+        self.assertEqual(db.test.find({"x":
+                                       re.compile("^hello.*")}).count(), 4)
+        self.assertEqual(db.test.find({"x":
+                                       re.compile("ello")}).count(), 4)
+        self.assertEqual(db.test.find({"x":
+                                       re.compile("^hello$")}).count(), 0)
+        self.assertEqual(db.test.find({"x":
+                                       re.compile("^hello_mi.*$")}).count(), 2)
 
     def test_id_can_be_anything(self):
         db = self.db
@@ -322,17 +328,24 @@ class TestCollection(unittest.TestCase):
         db.test.insert({"hello": {"hello": "world"}})
 
         self.assertRaises(InvalidName, db.test.insert, {"$hello": "world"})
-        self.assertRaises(InvalidName, db.test.insert, {"hello": {"$hello": "world"}})
+        self.assertRaises(InvalidName, db.test.insert,
+                          {"hello": {"$hello": "world"}})
 
         db.test.insert({"he$llo": "world"})
         db.test.insert({"hello": {"hello$": "world"}})
 
-        self.assertRaises(InvalidName, db.test.insert, {".hello": "world"})
-        self.assertRaises(InvalidName, db.test.insert, {"hello": {".hello": "world"}})
-        self.assertRaises(InvalidName, db.test.insert, {"hello.": "world"})
-        self.assertRaises(InvalidName, db.test.insert, {"hello": {"hello.": "world"}})
-        self.assertRaises(InvalidName, db.test.insert, {"hel.lo": "world"})
-        self.assertRaises(InvalidName, db.test.insert, {"hello": {"hel.lo": "world"}})
+        self.assertRaises(InvalidName, db.test.insert,
+                          {".hello": "world"})
+        self.assertRaises(InvalidName, db.test.insert,
+                          {"hello": {".hello": "world"}})
+        self.assertRaises(InvalidName, db.test.insert,
+                          {"hello.": "world"})
+        self.assertRaises(InvalidName, db.test.insert,
+                          {"hello": {"hello.": "world"}})
+        self.assertRaises(InvalidName, db.test.insert,
+                          {"hel.lo": "world"})
+        self.assertRaises(InvalidName, db.test.insert,
+                          {"hello": {"hel.lo": "world"}})
 
         db.test.update({"hello": "world"}, {"$inc": "hello"})
 
@@ -429,10 +442,10 @@ class TestCollection(unittest.TestCase):
         db.test.update({}, {"$inc": {"x": 1}})
         self.assertEqual(db.error()["err"], "can't $inc/$set an indexed field")
 
-        self.assertRaises(OperationFailure, db.test.update, {}, {"$inc": {"x": 1}}, safe=True)
+        self.assertRaises(OperationFailure, db.test.update,
+                          {}, {"$inc": {"x": 1}}, safe=True)
 
     # TODO test safe save?
-
     def test_count(self):
         db = self.db
         db.drop_collection("test")
@@ -446,14 +459,24 @@ class TestCollection(unittest.TestCase):
         db = self.db
         db.drop_collection("test")
 
-        self.assertEqual([], db.test.group([], {}, {"count": 0}, "function (obj, prev) { prev.count++; }"))
+        self.assertEqual([], db.test.group([], {},
+                                           {"count": 0},
+                                           "function (obj, prev) { "
+                                           "prev.count++; }"))
 
         db.test.save({"a": 2})
         db.test.save({"b": 5})
         db.test.save({"a": 1})
 
-        self.assertEqual(3, db.test.group([], {}, {"count": 0}, "function (obj, prev) { prev.count++; }")[0]["count"])
-        self.assertEqual(1, db.test.group([], {"a": {"$gt": 1}}, {"count": 0}, "function (obj, prev) { prev.count++; }")[0]["count"])
+        self.assertEqual(3, db.test.group([], {},
+                                          {"count": 0},
+                                          "function (obj, prev) { "
+                                          "prev.count++; }")[0]["count"])
+        self.assertEqual(1, db.test.group([],
+                                          {"a": {"$gt": 1}},
+                                          {"count": 0},
+                                          "function (obj, prev) { "
+                                          "prev.count++; }")[0]["count"])
 
     def test_large_limit(self):
         db = self.db

@@ -26,7 +26,9 @@ from pymongo.code import Code
 from pymongo import ASCENDING, DESCENDING
 from test_connection import get_connection
 
+
 class TestCursor(unittest.TestCase):
+
     def setUp(self):
         self.db = Database(get_connection(), "pymongo_test")
 
@@ -51,27 +53,26 @@ class TestCursor(unittest.TestCase):
             db.test.insert({"num": i, "foo": i})
 
         self.assertRaises(OperationFailure,
-                          db.test.find({"num": 17, "foo": 17}
-                                       ).hint([("num", ASCENDING)]).explain)
+                          db.test.find({"num": 17, "foo": 17})
+                          .hint([("num", ASCENDING)]).explain)
         self.assertRaises(OperationFailure,
-                          db.test.find({"num": 17, "foo": 17}
-                                       ).hint([("foo", ASCENDING)]).explain)
+                          db.test.find({"num": 17, "foo": 17})
+                          .hint([("foo", ASCENDING)]).explain)
 
         index = db.test.create_index("num", ASCENDING)
 
         self.assertEqual(db.test.find({}).explain()["cursor"], "BasicCursor")
         self.assertEqual(db.test.find({}).hint(index).explain()["cursor"],
                          "BtreeCursor %s" % index)
-        self.assertEqual(db.test.find({}).hint(index
-                                                ).hint(None
-                                                       ).explain()["cursor"],
+        self.assertEqual(db.test.find({}).hint(index).hint(None)
+                         .explain()["cursor"],
                          "BasicCursor")
-        self.assertEqual(db.test.find({}).hint([("num", ASCENDING)]
-                                               ).explain()["cursor"],
+        self.assertEqual(db.test.find({}).hint([("num", ASCENDING)])
+                         .explain()["cursor"],
                          "BtreeCursor %s" % index)
         self.assertRaises(OperationFailure,
-                          db.test.find({"num": 17, "foo": 17}
-                                       ).hint([("foo", ASCENDING)]).explain)
+                          db.test.find({"num": 17, "foo": 17})
+                          .hint([("foo", ASCENDING)]).explain)
 
         a = db.test.find({"num": 17})
         a.hint(index)
@@ -178,7 +179,8 @@ class TestCursor(unittest.TestCase):
         self.assertRaises(TypeError, db.test.find().sort, "hello")
         self.assertRaises(ValueError, db.test.find().sort, [])
         self.assertRaises(TypeError, db.test.find().sort, [], ASCENDING)
-        self.assertRaises(TypeError, db.test.find().sort, [("hello", DESCENDING)], DESCENDING)
+        self.assertRaises(TypeError, db.test.find().sort,
+                          [("hello", DESCENDING)], DESCENDING)
         self.assertRaises(TypeError, db.test.find().sort, "hello", "world")
 
         db.test.remove({})
@@ -200,7 +202,8 @@ class TestCursor(unittest.TestCase):
         self.assertEqual(desc, expect)
         desc = [i["x"] for i in db.test.find().sort([("x", DESCENDING)])]
         self.assertEqual(desc, expect)
-        desc = [i["x"] for i in db.test.find().sort("x", ASCENDING).sort("x", DESCENDING)]
+        desc = [i["x"] for i in
+                db.test.find().sort("x", ASCENDING).sort("x", DESCENDING)]
         self.assertEqual(desc, expect)
 
         expected = [(1, 5), (2, 5), (0, 3), (7, 3), (9, 2), (2, 1), (3, 1)]
@@ -211,8 +214,9 @@ class TestCursor(unittest.TestCase):
         for (a, b) in shuffled:
             db.test.save({"a": a, "b": b})
 
-        result = [(i["a"], i["b"]) for i in db.test.find().sort([("b", DESCENDING),
-                                                                 ("a", ASCENDING)])]
+        result = [(i["a"], i["b"]) for i in
+                  db.test.find().sort([("b", DESCENDING),
+                                       ("a", ASCENDING)])]
         self.assertEqual(result, expected)
 
         a = db.test.find()
@@ -259,19 +263,24 @@ class TestCursor(unittest.TestCase):
             db.test.save({"x": i})
 
         self.assertEqual(3, len(list(db.test.find().where('this.x < 3'))))
-        self.assertEqual(3, len(list(db.test.find().where(Code('this.x < 3')))))
-        self.assertEqual(3, len(list(db.test.find().where(Code('this.x < i', {"i": 3})))))
+        self.assertEqual(3,
+                         len(list(db.test.find().where(Code('this.x < 3')))))
+        self.assertEqual(3, len(list(db.test.find().where(Code('this.x < i',
+                                                               {"i": 3})))))
         self.assertEqual(10, len(list(db.test.find())))
 
         self.assertEqual(3, db.test.find().where('this.x < 3').count())
         self.assertEqual(10, db.test.find().count())
         self.assertEqual(3, db.test.find().where(u'this.x < 3').count())
         self.assertEqual([0, 1, 2],
-                         [a["x"] for a in db.test.find().where('this.x < 3')])
+                         [a["x"] for a in
+                          db.test.find().where('this.x < 3')])
         self.assertEqual([],
-                         [a["x"] for a in db.test.find({"x": 5}).where('this.x < 3')])
+                         [a["x"] for a in
+                          db.test.find({"x": 5}).where('this.x < 3')])
         self.assertEqual([5],
-                         [a["x"] for a in db.test.find({"x": 5}).where('this.x > 3')])
+                         [a["x"] for a in
+                          db.test.find({"x": 5}).where('this.x > 3')])
 
         cursor = db.test.find().where('this.x < 3').where('this.x > 7')
         self.assertEqual([8, 9], [a["x"] for a in cursor])
@@ -292,40 +301,53 @@ class TestCursor(unittest.TestCase):
         for i in range(10000):
             db.test.insert({"i": i})
 
-        self.assertEqual(client_cursors, db._command({"cursorInfo": 1})["clientCursors_size"])
-        self.assertEqual(by_location, db._command({"cursorInfo": 1})["byLocation_size"])
+        self.assertEqual(client_cursors,
+                         db._command({"cursorInfo": 1})["clientCursors_size"])
+        self.assertEqual(by_location,
+                         db._command({"cursorInfo": 1})["byLocation_size"])
 
         for _ in range(10):
             db.test.find_one()
 
-        self.assertEqual(client_cursors, db._command({"cursorInfo": 1})["clientCursors_size"])
-        self.assertEqual(by_location, db._command({"cursorInfo": 1})["byLocation_size"])
+        self.assertEqual(client_cursors,
+                         db._command({"cursorInfo": 1})["clientCursors_size"])
+        self.assertEqual(by_location,
+                         db._command({"cursorInfo": 1})["byLocation_size"])
 
         for _ in range(10):
             for x in db.test.find():
                 break
 
-        self.assertEqual(client_cursors, db._command({"cursorInfo": 1})["clientCursors_size"])
-        self.assertEqual(by_location, db._command({"cursorInfo": 1})["byLocation_size"])
+        self.assertEqual(client_cursors,
+                         db._command({"cursorInfo": 1})["clientCursors_size"])
+        self.assertEqual(by_location,
+                         db._command({"cursorInfo": 1})["byLocation_size"])
 
         a = db.test.find()
         for x in a:
             break
 
-        self.assertNotEqual(client_cursors, db._command({"cursorInfo": 1})["clientCursors_size"])
-        self.assertNotEqual(by_location, db._command({"cursorInfo": 1})["byLocation_size"])
+        self.assertNotEqual(
+            client_cursors,
+            db._command({"cursorInfo": 1})["clientCursors_size"])
+        self.assertNotEqual(by_location,
+                            db._command({"cursorInfo": 1})["byLocation_size"])
 
         del a
 
-        self.assertEqual(client_cursors, db._command({"cursorInfo": 1})["clientCursors_size"])
-        self.assertEqual(by_location, db._command({"cursorInfo": 1})["byLocation_size"])
+        self.assertEqual(client_cursors,
+                         db._command({"cursorInfo": 1})["clientCursors_size"])
+        self.assertEqual(by_location,
+                         db._command({"cursorInfo": 1})["byLocation_size"])
 
         a = db.test.find().limit(10)
         for x in a:
             break
 
-        self.assertEqual(client_cursors, db._command({"cursorInfo": 1})["clientCursors_size"])
-        self.assertEqual(by_location, db._command({"cursorInfo": 1})["byLocation_size"])
+        self.assertEqual(client_cursors,
+                         db._command({"cursorInfo": 1})["clientCursors_size"])
+        self.assertEqual(by_location,
+                         db._command({"cursorInfo": 1})["byLocation_size"])
 
 if __name__ == "__main__":
     unittest.main()

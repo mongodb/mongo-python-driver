@@ -22,7 +22,9 @@ sys.path[0:0] = [""]
 from pymongo.objectid import ObjectId
 from pymongo.dbref import DBRef
 
+
 class TestDBRef(unittest.TestCase):
+
     def setUp(self):
         pass
 
@@ -40,8 +42,10 @@ class TestDBRef(unittest.TestCase):
 
     def test_read_only(self):
         a = DBRef("coll", ObjectId())
+
         def foo():
             a.collection = "blah"
+
         def bar():
             a.id = "aoeu"
 
@@ -51,13 +55,18 @@ class TestDBRef(unittest.TestCase):
         self.assertRaises(AttributeError, bar)
 
     def test_repr(self):
-        self.assertEqual(repr(DBRef("coll", ObjectId("123456789012"))), "DBRef(u'coll', ObjectId('123456789012'))")
-        self.assertEqual(repr(DBRef(u"coll", ObjectId("123456789012"))), "DBRef(u'coll', ObjectId('123456789012'))")
+        self.assertEqual(repr(DBRef("coll", ObjectId("123456789012"))),
+                         "DBRef(u'coll', ObjectId('123456789012'))")
+        self.assertEqual(repr(DBRef(u"coll", ObjectId("123456789012"))),
+                         "DBRef(u'coll', ObjectId('123456789012'))")
 
     def test_cmp(self):
-        self.assertEqual(DBRef("coll", ObjectId("123456789012")), DBRef(u"coll", ObjectId("123456789012")))
-        self.assertNotEqual(DBRef("coll", ObjectId("123456789012")), DBRef("col", ObjectId("123456789012")))
-        self.assertNotEqual(DBRef("coll", ObjectId("123456789012")), DBRef("coll", ObjectId("123456789011")))
+        self.assertEqual(DBRef("coll", ObjectId("123456789012")),
+                         DBRef(u"coll", ObjectId("123456789012")))
+        self.assertNotEqual(DBRef("coll", ObjectId("123456789012")),
+                            DBRef("col", ObjectId("123456789012")))
+        self.assertNotEqual(DBRef("coll", ObjectId("123456789012")),
+                            DBRef("coll", ObjectId("123456789011")))
         self.assertNotEqual(DBRef("coll", ObjectId("123456789012")), 4)
 
 if __name__ == "__main__":

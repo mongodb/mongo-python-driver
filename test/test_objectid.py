@@ -21,7 +21,9 @@ sys.path[0:0] = [""]
 from pymongo.objectid import ObjectId
 from pymongo.errors import InvalidId
 
+
 class TestObjectId(unittest.TestCase):
+
     def setUp(self):
         pass
 
@@ -40,7 +42,8 @@ class TestObjectId(unittest.TestCase):
         self.assert_(ObjectId(a))
 
     def test_repr_str(self):
-        self.assertEqual(repr(ObjectId("123456789012")), "ObjectId('123456789012')")
+        self.assertEqual(repr(ObjectId("123456789012")),
+                         "ObjectId('123456789012')")
         self.assertEqual(str(ObjectId("123456789012")), "123456789012")
 
     def test_cmp(self):

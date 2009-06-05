@@ -24,7 +24,9 @@ from pymongo.objectid import ObjectId
 from pymongo.dbref import DBRef
 from pymongo.son import SON
 
+
 class TestSON(unittest.TestCase):
+
     def setUp(self):
         pass
 
@@ -33,7 +35,9 @@ class TestSON(unittest.TestCase):
         a["hello"] = "world"
         a["mike"] = "awesome"
         a["hello_"] = "mike"
-        self.assertEqual(a.items(), [("hello", "world"), ("mike", "awesome"), ("hello_", "mike")])
+        self.assertEqual(a.items(), [("hello", "world"),
+                                     ("mike", "awesome"),
+                                     ("hello_", "mike")])
 
         b = SON({"hello": "world"})
         self.assertEqual(b["hello"], "world")
@@ -86,16 +90,20 @@ class TestSON(unittest.TestCase):
 </twonk>
 """
         self.assertEqual(SON.from_xml(smorgasbord),
-                         SON([(u"_id", ObjectId("\x28\x5A\x66\x49\x23\xB5\xFC\xD8\xEC\x00\x00\x00")),
+                         SON([(u"_id", ObjectId("\x28\x5A\x66\x49\x23\xB5\xFC"
+                                                "\xD8\xEC\x00\x00\x00")),
                               (u"the_answer", 42),
                               (u"b", u"foo"),
                               (u"c", True),
                               (u"pi", 3.14159265358979),
-                              (u"an_array", [u"x", u"y", u"z", SON([(u"subobject", u"yup")])]),
-                              (u"now", datetime.datetime(1973, 11, 26, 6, 47, 32, 57000)),
+                              (u"an_array", [u"x", u"y", u"z",
+                                             SON([(u"subobject", u"yup")])]),
+                              (u"now", datetime.datetime(1973, 11, 26, 6,
+                                                         47, 32, 57000)),
                               (u"dbref",
                                DBRef("namespace",
-                                     ObjectId("\xCA\x5C\x67\x49\x6C\x01\xD8\x96\xF7\x01\x00\x00"))),
+                                     ObjectId("\xCA\x5C\x67\x49\x6C\x01"
+                                              "\xD8\x96\xF7\x01\x00\x00"))),
                               (u"regex", re.compile(u"foobar", re.IGNORECASE)),
                               (u"$where", "this is code"),
                               (u"mynull", None),

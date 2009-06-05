@@ -27,7 +27,9 @@ from pymongo.database import Database
 from pymongo.connection import Connection
 from pymongo.master_slave_connection import MasterSlaveConnection
 
+
 class TestMasterSlaveConnection(unittest.TestCase):
+
     def setUp(self):
         host = os.environ.get("DB_IP", "localhost")
         self.master = Connection(host, int(os.environ.get("DB_PORT", 27017)))
@@ -35,13 +37,15 @@ class TestMasterSlaveConnection(unittest.TestCase):
         self.slaves = []
         try:
             self.slaves.append(Connection(os.environ.get("DB_IP2", host),
-                                          int(os.environ.get("DB_PORT2", 27018))))
+                                          int(os.environ.get("DB_PORT2",
+                                                             27018))))
         except ConnectionFailure:
             pass
 
         try:
             self.slaves.append(Connection(os.environ.get("DB_IP3", host),
-                                          int(os.environ.get("DB_PORT3", 27019))))
+                                          int(os.environ.get("DB_PORT3",
+                                                             27019))))
         except ConnectionFailure:
             pass
 
@@ -55,9 +59,11 @@ class TestMasterSlaveConnection(unittest.TestCase):
 
     def test_repr(self):
         self.assertEqual(repr(self.connection),
-                         "MasterSlaveConnection(%r, %r)" % (self.master, self.slaves))
+                         "MasterSlaveConnection(%r, %r)" %
+                         (self.master, self.slaves))
 
     def test_get_db(self):
+
         def make_db(base, name):
             return base[name]
 
@@ -70,7 +76,8 @@ class TestMasterSlaveConnection(unittest.TestCase):
 
         self.assert_(isinstance(self.connection.test, Database))
         self.assertEqual(self.connection.test, self.connection["test"])
-        self.assertEqual(self.connection.test, Database(self.connection, "test"))
+        self.assertEqual(self.connection.test, Database(self.connection,
+                                                        "test"))
 
     def test_database_names(self):
         self.connection.pymongo_test.test.save({"dummy": u"object"})
@@ -99,6 +106,7 @@ class TestMasterSlaveConnection(unittest.TestCase):
         self.assert_("pymongo_test" not in dbs)
 
     def test_iteration(self):
+
         def iterate():
             [a for a in self.connection]
 
@@ -167,12 +175,14 @@ class TestMasterSlaveConnection(unittest.TestCase):
         self.failIf(count)
 
     def test_kill_cursors(self):
+
         def cursor_count():
             count = 0
-            res = self.connection.master.test_pymongo._command({"cursorInfo":1})
+            res = self.connection.master.test_pymongo._command({
+                    "cursorInfo": 1})
             count += res["clientCursors_size"]
             for slave in self.connection.slaves:
-                res = slave.test_pymongo._command({"cursorInfo":1})
+                res = slave.test_pymongo._command({"cursorInfo": 1})
                 count += res["clientCursors_size"]
             return count
 

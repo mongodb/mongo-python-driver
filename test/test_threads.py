@@ -19,7 +19,9 @@ import threading
 
 from test_connection import get_connection
 
+
 class SaveAndFind(threading.Thread):
+
     def __init__(self, collection):
         threading.Thread.__init__(self)
         self.collection = collection
@@ -30,7 +32,9 @@ class SaveAndFind(threading.Thread):
             sum += document["x"]
         assert sum == 499500
 
+
 class TestThreads(unittest.TestCase):
+
     def setUp(self):
         self.db = get_connection().pymongo_test
 

@@ -21,7 +21,8 @@ import datetime
 import sys
 sys.path[0:0] = [""]
 
-from pymongo.errors import InvalidName, InvalidOperation, CollectionInvalid, OperationFailure
+from pymongo.errors import InvalidName, InvalidOperation
+from pymongo.errors import CollectionInvalid, OperationFailure
 from pymongo.son import SON
 from pymongo.objectid import ObjectId
 from pymongo.database import Database
@@ -33,7 +34,9 @@ from pymongo.code import Code
 from pymongo.son_manipulator import AutoReference, NamespaceInjector
 from test_connection import get_connection
 
+
 class TestDatabase(unittest.TestCase):
+
     def setUp(self):
         self.connection = get_connection()
 
@@ -43,8 +46,10 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual("name", Database(self.connection, "name").name())
 
     def test_cmp(self):
-        self.assertNotEqual(Database(self.connection, "test"), Database(self.connection, "mike"))
-        self.assertEqual(Database(self.connection, "test"), Database(self.connection, "test"))
+        self.assertNotEqual(Database(self.connection, "test"),
+                            Database(self.connection, "mike"))
+        self.assertEqual(Database(self.connection, "test"),
+                         Database(self.connection, "test"))
 
     def test_repr(self):
         self.assertEqual(repr(Database(self.connection, "pymongo_test")),
@@ -123,8 +128,10 @@ class TestDatabase(unittest.TestCase):
 
         db.test.save({"dummy": u"object"})
 
-        self.assertRaises(OperationFailure, db.validate_collection, "test.doesnotexist")
-        self.assertRaises(OperationFailure, db.validate_collection, db.test.doesnotexist)
+        self.assertRaises(OperationFailure, db.validate_collection,
+                          "test.doesnotexist")
+        self.assertRaises(OperationFailure, db.validate_collection,
+                          db.test.doesnotexist)
 
         self.assert_(db.validate_collection("test"))
         self.assert_(db.validate_collection(db.test))
@@ -214,14 +221,19 @@ class TestDatabase(unittest.TestCase):
         self.assertRaises(TypeError, db._password_digest, True)
         self.assertRaises(TypeError, db._password_digest, None)
 
-        self.assert_(isinstance(db._password_digest("mike", "password"), types.UnicodeType))
-        self.assertEqual(db._password_digest("mike", "password"), u"cd7e45b3b2767dc2fa9b6b548457ed00")
-        self.assertEqual(db._password_digest("mike", "password"), db._password_digest(u"mike", u"password"))
+        self.assert_(isinstance(db._password_digest("mike", "password"),
+                                types.UnicodeType))
+        self.assertEqual(db._password_digest("mike", "password"),
+                         u"cd7e45b3b2767dc2fa9b6b548457ed00")
+        self.assertEqual(db._password_digest("mike", "password"),
+                         db._password_digest(u"mike", u"password"))
 
     def test_authenticate(self):
         db = self.connection.pymongo_test
         db.system.users.remove({})
-        db.system.users.insert({"user": u"mike", "pwd": db._password_digest("mike", "password")})
+        db.system.users.insert({"user": u"mike",
+                                "pwd": db._password_digest("mike",
+                                                           "password")})
 
         self.assertRaises(TypeError, db.authenticate, 5, "password")
         self.assertRaises(TypeError, db.authenticate, "mike", 5)
@@ -276,7 +288,8 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(3, db.eval("function (x) {return x;}", 3))
         self.assertEqual(3, db.eval(u"function (x) {return x;}", 3))
 
-        self.assertEqual(None, db.eval("function (x) {db.test.save({y:x});}", 5))
+        self.assertEqual(None,
+                         db.eval("function (x) {db.test.save({y:x});}", 5))
         self.assertEqual(db.test.find_one()["y"], 5)
 
         self.assertEqual(5, db.eval("function (x, y) {return x + y;}", 2, 3))
@@ -284,7 +297,8 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(5, db.eval("2 + 3;"))
 
         self.assertEqual(5, db.eval(Code("2 + 3;")))
-        #self.assertRaises( OperationFailure , db.eval , (Code("return i;")) ) TODO: turn this back on when SM is the default
+        # TODO turn this back on when SM is the default
+        #self.assertRaises( OperationFailure , db.eval , (Code("return i;")) )
         self.assertEqual(2, db.eval(Code("return i;", {"i": 2})))
         self.assertEqual(5, db.eval(Code("i + 3;", {"i": 2})))
 

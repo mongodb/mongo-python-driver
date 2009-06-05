@@ -24,7 +24,9 @@ import qcheck
 from test_connection import get_connection
 from gridfs.grid_file import GridFile
 
+
 class TestGridFile(unittest.TestCase):
+
     def setUp(self):
         self.db = get_connection().pymongo_test
 
@@ -75,14 +77,16 @@ class TestGridFile(unittest.TestCase):
 
         self.assertEqual(self.db.pymongo_test.files.find().count(), 0)
         self.assertEqual(self.db.pymongo_test.chunks.find().count(), 0)
-        file = GridFile({"filename": "test"}, self.db, "w", collection="pymongo_test")
+        file = GridFile({"filename": "test"}, self.db, "w",
+                        collection="pymongo_test")
         file.write("hello world")
         file.close()
 
         self.assertEqual(self.db.pymongo_test.files.find().count(), 1)
         self.assertEqual(self.db.pymongo_test.chunks.find().count(), 1)
 
-        file = GridFile({"filename": "test"}, self.db, collection="pymongo_test")
+        file = GridFile({"filename": "test"}, self.db,
+                        collection="pymongo_test")
         self.assertEqual(file.read(), "hello world")
         file.close()
 
@@ -90,17 +94,20 @@ class TestGridFile(unittest.TestCase):
         self.assertEqual(file.md5, "5eb63bbbe01eeed093cb22bb8f5acdc3")
 
         # make sure it's still there...
-        file = GridFile({"filename": "test"}, self.db, collection="pymongo_test")
+        file = GridFile({"filename": "test"}, self.db,
+                        collection="pymongo_test")
         self.assertEqual(file.read(), "hello world")
         file.close()
 
-        file = GridFile({"filename": "test"}, self.db, "w", collection="pymongo_test")
+        file = GridFile({"filename": "test"}, self.db, "w",
+                        collection="pymongo_test")
         file.close()
 
         self.assertEqual(self.db.pymongo_test.files.find().count(), 1)
         self.assertEqual(self.db.pymongo_test.chunks.find().count(), 0)
 
-        file = GridFile({"filename": "test"}, self.db, collection="pymongo_test")
+        file = GridFile({"filename": "test"}, self.db,
+                        collection="pymongo_test")
         self.assertEqual(file.read(), "")
         file.close()
 
@@ -281,13 +288,15 @@ class TestGridFile(unittest.TestCase):
             self.assertEqual(self.db.fs.files.find().count(), self.files)
             self.assertEqual(self.db.fs.chunks.find().count(), self.chunks)
 
-            self.assertEqual(GridFile({"filename": filename}, self.db).read(), data)
+            self.assertEqual(GridFile({"filename": filename}, self.db).read(),
+                             data)
 
             f = GridFile({"filename": filename}, self.db)
             self.assertEqual(f.read(10) + f.read(10), data)
             return True
 
-        qcheck.check_unittest(self, helper, qcheck.gen_string(qcheck.gen_range(0, 20)))
+        qcheck.check_unittest(self, helper,
+                              qcheck.gen_string(qcheck.gen_range(0, 20)))
 
     def test_modes(self):
         self.db.fs.files.remove({})
