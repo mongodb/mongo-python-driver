@@ -26,6 +26,11 @@ except:
     pass
 
 try:
+    os.remove("pymongo/_cbson.pyd")
+except:
+    pass
+
+try:
     from pymongo import _cbson
     sys.exit("could still import _cbson")
 except ImportError:

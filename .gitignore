@@ -4,6 +4,7 @@
 *.cm
 *.class
 *.pyc
+*.pyd
 doc/
 build/
 dist/
