@@ -41,6 +41,19 @@ typedef int Py_ssize_t;
 
 #define INITIAL_BUFFER_SIZE 256
 
+#ifdef _MSC_VER
+#define GMTIME_INVERSE _mkgmtime64
+#define INT2STRING(buffer, i) \
+  { \
+  int vslength = _scprintf("%d", i) + 1; \
+  *buffer = malloc(vslength); \
+  _snprintf(*buffer, vslength, "%d", i); \
+  }
+#else
+#define GMTIME_INVERSE timegm
+#define INT2STRING(buffer, i) asprintf(&buffer, "%d", i);
+#endif
+
 /* A buffer representing some data being encoded to BSON. */
 typedef struct {
     char* buffer;
@@ -238,7 +251,7 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
             if (type_byte == -1) {
                 return 0;
             }
-            asprintf(&name, "%d", i);
+            INT2STRING(&name, i);
             if (!name) {
                 PyErr_NoMemory();
                 return 0;
@@ -374,7 +387,7 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
         timeinfo->tm_hour = PyDateTime_DATE_GET_HOUR(value);
         timeinfo->tm_min = PyDateTime_DATE_GET_MINUTE(value);
         timeinfo->tm_sec = PyDateTime_DATE_GET_SECOND(value);
-        time_since_epoch = timegm(timeinfo);
+        time_since_epoch = GMTIME_INVERSE(timeinfo);
         time_since_epoch = time_since_epoch * 1000;
         time_since_epoch += PyDateTime_DATE_GET_MICROSECOND(value) / 1000;
 
