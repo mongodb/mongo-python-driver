@@ -43,15 +43,15 @@ typedef int Py_ssize_t;
 
 #ifdef _MSC_VER
 #define GMTIME_INVERSE _mkgmtime64
-#define INT2STRING(buffer, i) \
-  { \
-  int vslength = _scprintf("%d", i) + 1; \
-  *buffer = malloc(vslength); \
-  _snprintf(*buffer, vslength, "%d", i); \
-  }
+#define INT2STRING(buffer, i)                   \
+    {                                           \
+        int vslength = _scprintf("%d", i) + 1;  \
+        *buffer = malloc(vslength);             \
+        _snprintf(*buffer, vslength, "%d", i);  \
+    }
 #else
 #define GMTIME_INVERSE timegm
-#define INT2STRING(buffer, i) asprintf(&buffer, "%d", i);
+#define INT2STRING(buffer, i) asprintf(buffer, "%d", i);
 #endif
 
 /* A buffer representing some data being encoded to BSON. */
