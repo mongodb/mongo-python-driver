@@ -46,6 +46,8 @@ def _index_list(key_or_list, direction):
     if direction is not None:
         return [(key_or_list, direction)]
     else:
+        if isinstance(key_or_list, types.StringTypes):
+            raise TypeError("must specify a direction if using a string key")
         return key_or_list
 
 
