@@ -30,7 +30,7 @@ from pymongo.objectid import ObjectId
 from pymongo.dbref import DBRef
 from pymongo.son import SON
 from pymongo.bson import BSON, is_valid, _to_dicts
-from pymongo.errors import UnsupportedTag
+from pymongo.errors import UnsupportedTag, InvalidDocument
 
 
 class TestBSON(unittest.TestCase):
@@ -130,6 +130,10 @@ class TestBSON(unittest.TestCase):
                          "\x2F\x00\x00\x00\x03ref\x00\x25\x00\x00\x00\x02$ref"
                          "\x00\x05\x00\x00\x00coll\x00\x07$id\x00\x07\x06\x05"
                          "\x04\x03\x02\x01\x00\x0B\x0A\x09\x08\x00\x00")
+
+    def test_null_character_encoding(self):
+        self.assertRaises(InvalidDocument, BSON.from_dict, {"with zero": "hello\x00world"})
+        self.assertRaises(InvalidDocument, BSON.from_dict, {"with zero": u"hello\x00world"})
 
     def test_from_then_to_dict(self):
 

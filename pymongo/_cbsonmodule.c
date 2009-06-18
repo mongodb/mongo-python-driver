@@ -26,6 +26,7 @@
 
 static PyObject* CBSONError;
 static PyObject* InvalidName;
+static PyObject* InvalidDocument;
 static PyObject* SON;
 static PyObject* Binary;
 static PyObject* Code;
@@ -177,12 +178,20 @@ static int write_shuffled_oid(bson_buffer* buffer, const char* oid) {
 
 /* returns 0 on failure */
 static int write_string(bson_buffer* buffer, PyObject* py_string) {
-    int string_length;
+    int i;
+    Py_ssize_t string_length;
     const char* string = PyString_AsString(py_string);
     if (!string) {
         return 1;
     }
-    string_length = strlen(string) + 1;
+    string_length = PyString_Size(py_string) + 1;
+
+    for (i = 0; i < string_length - 1; i++) {
+        if (string[i] == 0) {
+            PyErr_SetString(InvalidDocument, "BSON strings must not contain a NULL character");
+            return 0;
+        }
+    }
 
     if (!buffer_write_bytes(buffer, (const char*)&string_length, 4)) {
         return 0;
@@ -1189,6 +1198,7 @@ PyMODINIT_FUNC init_cbson(void) {
     }
     CBSONError = PyObject_GetAttrString(module, "InvalidDocument");
     InvalidName = PyObject_GetAttrString(module, "InvalidName");
+    InvalidDocument = PyObject_GetAttrString(module, "InvalidDocument");
     Py_DECREF(module);
 
     module = PyImport_ImportModule("pymongo.son");

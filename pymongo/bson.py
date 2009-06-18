@@ -56,6 +56,8 @@ def _get_c_string(data):
 
 
 def _make_c_string(string):
+    if "\x00" in string:
+        raise InvalidDocument("BSON strings must not contain a NULL character")
     return string.encode("utf-8") + "\x00"
 
 
