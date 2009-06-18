@@ -42,6 +42,9 @@ typedef int Py_ssize_t;
 
 #define INITIAL_BUFFER_SIZE 256
 
+
+/* TODO we ought to check that the malloc or asprintf was successful
+ * and raise an exception if not. */
 #ifdef _MSC_VER
 #define GMTIME_INVERSE _mkgmtime64
 #define INT2STRING(buffer, i)                   \
