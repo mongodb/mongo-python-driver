@@ -15,6 +15,7 @@
 """A Mongo driver for Python."""
 
 import types
+import sys
 
 from pymongo.connection import Connection as PyMongo_Connection
 from pymongo.son import SON
@@ -71,3 +72,14 @@ def _index_document(index_list):
                             "DESCENDING")
         index[key] = value
     return index
+
+def _reversed(l):
+    """A version of the `reversed()` built-in for Python 2.3.
+    """
+    i = len(l)
+    while i > 0:
+        i -= 1
+        yield l[i]
+
+if sys.version_info[:3] >= (2, 4, 0):
+    _reversed = reversed

@@ -42,17 +42,17 @@ class DBRef(object):
         self.__collection = collection
         self.__id = id
 
-    @property
     def collection(self):
         """Get this DBRef's collection as unicode.
         """
         return self.__collection
+    collection = property(collection)
 
-    @property
     def id(self):
         """Get this DBRef's _id as an ObjectId.
         """
         return self.__id
+    id = property(id)
 
     def __repr__(self):
         return "DBRef(" + repr(self.collection) + ", " + repr(self.id) + ")"

@@ -2,7 +2,11 @@
 
 import sys
 import os
-import subprocess
+try:
+    import subprocess
+    has_subprocess = True
+except:
+    has_subprocess = False
 import shutil
 
 from ez_setup import use_setuptools
@@ -50,8 +54,14 @@ class GenerateDoc(Command):
         shutil.rmtree("doc", ignore_errors=True)
         os.makedirs(path)
 
-        subprocess.call(["epydoc", "--config", "epydoc-config", "-o", path])
+        if has_subprocess:
+            subprocess.call(["epydoc", "--config", "epydoc-config", "-o", path])
+        else:
+            print """
+`setup.py doc` is not supported for this version of Python.
 
+Please ask in the user forums for help.
+"""
 
 if sys.platform == 'win32' and sys.version_info > (2, 6):
    # 2.6's distutils.msvc9compiler can raise an IOError when failing to

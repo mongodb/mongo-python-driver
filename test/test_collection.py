@@ -247,12 +247,15 @@ class TestCollection(unittest.TestCase):
         db.test.insert(doc)
 
         self.assertEqual(db.test.find({}, ["_id"]).next().keys(), ["_id"])
-        self.assertEqual(set(db.test.find({}, ["a"]).next().keys()),
-                         set(["a", "_id"]))
-        self.assertEqual(set(db.test.find({}, ["b"]).next().keys()),
-                         set(["b", "_id"]))
-        self.assertEqual(set(db.test.find({}, ["c"]).next().keys()),
-                         set(["c", "_id"]))
+        l = db.test.find({}, ["a"]).next().keys()
+        l.sort()
+        self.assertEqual(l, ["_id", "a"])
+        l = db.test.find({}, ["b"]).next().keys()
+        l.sort()
+        self.assertEqual(l, ["_id", "b"])
+        l = db.test.find({}, ["c"]).next().keys()
+        l.sort()
+        self.assertEqual(l, ["_id", "c"])
         self.assertEqual(db.test.find({}, ["a"]).next()["a"], 1)
         self.assertEqual(db.test.find({}, ["b"]).next()["b"], 5)
         self.assertEqual(db.test.find({}, ["c"]).next()["c"],
@@ -264,8 +267,9 @@ class TestCollection(unittest.TestCase):
 #         self.assertEqual(db.test.find({}, ["b", "c.e"]).next()["c"],
 #                          {"e": 10})
 
-        self.assertEqual(set(db.test.find({}, ["b", "c.e"]).next().keys()),
-                         set(["b", "c", "_id"]))
+        l = db.test.find({}, ["b", "c.e"]).next().keys()
+        l.sort()
+        self.assertEqual(l, ["_id", "b", "c"])
         self.assertEqual(db.test.find({}, ["b", "c.e"]).next()["b"], 5)
 
     def test_options(self):

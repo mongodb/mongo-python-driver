@@ -51,11 +51,11 @@ class Code(str):
         self.__scope = scope
         return self
 
-    @property
     def scope(self):
         """Get the scope dictionary.
         """
         return self.__scope
+    scope = property(scope)
 
     def __repr__(self):
         return "Code(%s, %r)" % (str.__repr__(self), self.__scope)

@@ -28,6 +28,7 @@ from son_manipulator import ObjectIdInjector, ObjectIdShuffler
 from collection import Collection
 from errors import InvalidName, CollectionInvalid, OperationFailure
 from code import Code
+import pymongo
 
 
 class Database(object):
@@ -160,9 +161,9 @@ class Database(object):
           - `son`: the son object coming out of the database
           - `collection`: the collection the son object was saved in
         """
-        for manipulator in reversed(self.__manipulators):
+        for manipulator in pymongo._reversed(self.__manipulators):
             son = manipulator.transform_outgoing(son, collection)
-        for manipulator in reversed(self.__copying_manipulators):
+        for manipulator in pymongo._reversed(self.__copying_manipulators):
             son = manipulator.transform_outgoing(son, collection)
         return son
 
