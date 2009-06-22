@@ -90,8 +90,8 @@ class Connection(object): # TODO support auth for pooling
         if timeout == -1:
             timeout = None
 
-        if not isinstance(host, types.StringType):
-            raise TypeError("host must be an instance of str")
+        if not isinstance(host, types.StringTypes):
+            raise TypeError("host must be an instance of (str, unicode)")
         if not isinstance(port, types.IntType):
             raise TypeError("port must be an instance of int")
         if not isinstance(pool_size, types.IntType):
