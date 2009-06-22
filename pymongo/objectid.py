@@ -16,12 +16,25 @@
 
 import random
 import types
+import time
+import socket
+import os
+import struct
+try:
+    import hashlib
+    _md5func = hashlib.md5
+except: # for Python < 2.5
+    import md5
+    _md5func = md5.new
+
 from errors import InvalidId
 
 
 class ObjectId(object):
     """A Mongo ObjectId.
     """
+
+    _inc = 0
 
     def __init__(self, id=None):
         """Initialize a new ObjectId.
@@ -43,8 +56,21 @@ class ObjectId(object):
         """Generate a new value for this ObjectId.
         """
         oid = ""
-        for _ in range(12):
-            oid += chr(random.randint(0, 255))
+
+        # 4 bytes current time
+        oid += struct.pack("<i", int(time.time()))
+
+        # 3 bytes machine
+        machine_hash = _md5func()
+        machine_hash.update(socket.gethostname())
+        oid += machine_hash.digest()[0:3]
+
+        # 2 bytes pid
+        oid += struct.pack("<H", os.getpid())
+
+        # 3 bytes inc
+        oid += struct.pack("<i", ObjectId._inc)[0:3]
+        ObjectId._inc = (ObjectId._inc + 1) % 0xFFFFFF
 
         self.__id = oid
 
