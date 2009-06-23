@@ -14,6 +14,7 @@
 
 """Representation of an ObjectId for Mongo."""
 
+import threading
 import random
 import types
 import time
@@ -35,6 +36,7 @@ class ObjectId(object):
     """
 
     _inc = 0
+    _inc_lock = threading.Lock()
 
     def __init__(self, id=None):
         """Initialize a new ObjectId.
@@ -69,8 +71,10 @@ class ObjectId(object):
         oid += struct.pack("<H", os.getpid())
 
         # 3 bytes inc
+        ObjectId._inc_lock.acquire()
         oid += struct.pack("<i", ObjectId._inc)[0:3]
         ObjectId._inc = (ObjectId._inc + 1) % 0xFFFFFF
+        ObjectId._inc_lock.release()
 
         self.__id = oid
 
