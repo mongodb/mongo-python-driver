@@ -32,9 +32,10 @@ class TestPooling(unittest.TestCase):
         default_connection = Connection(self.host, self.port)
         no_auto_connection = Connection(self.host, self.port,
                                         auto_start_request=False)
-        pooled_connection = Connection(self.host, self.port, pool_size=10)
+        pooled_connection = Connection(self.host, self.port, 
+                                       pool_size=10, timeout=-1)
         no_auto_pooled_connection = Connection(self.host, self.port,
-                                               pool_size=10,
+                                               pool_size=10, timeout=-1,
                                                auto_start_request=False)
         self.default_db = default_connection["pymongo_test"]
         self.pooled_db = pooled_connection["pymongo_test"]
