@@ -281,24 +281,14 @@ class Collection(object):
 
         and
 
-        ["a.b.c", "d", "a.c"] becomes {"a": {"b": {"c": 1}, "c": 1}, "d": 1}
+        ["a.b.c", "d", "a.c"] becomes {"a.b.c": 1, "d": 1, "a.c": 1}
         """
         as_dict = {}
         for field in fields:
             if not isinstance(field, types.StringTypes):
                 raise TypeError("fields must be a list of key names as "
                                 "(string, unicode)")
-            keys = field.split(".")
-
-            base = as_dict
-            while len(keys):
-                key = keys.pop(0)
-                if key not in base:
-                    if len(keys):
-                        base[key] = {}
-                    else:
-                        base[key] = 1
-                base = base[key]
+            as_dict[field] = 1
         return as_dict
 
     def find(self, spec=None, fields=None, skip=0, limit=0, _sock=None):

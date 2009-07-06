@@ -233,11 +233,7 @@ class TestCollection(unittest.TestCase):
 
         self.assertEqual(f(["a", "b"]), {"a": 1, "b": 1})
         self.assertEqual(f(["a.b.c", "d", "a.c"]),
-                         {"a": {"b": {"c": 1}, "c": 1}, "d": 1})
-        self.assertEqual(f(["a.c", "d", "a.b.c"]),
-                         {"a": {"b": {"c": 1}, "c": 1}, "d": 1})
-        self.assertEqual(f(["a.b.c", "d", "a.b.d"]),
-                         {"a": {"b": {"c": 1, "d": 1}}, "d": 1})
+                         {"a.b.c": 1, "d": 1, "a.c": 1})
 
     def test_field_selection(self):
         db = self.db
@@ -261,11 +257,10 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(db.test.find({}, ["c"]).next()["c"],
                          {"d": 5, "e": 10})
 
-        # TODO some commented out tests due to a bug in the server
-#         self.assertEqual(db.test.find({}, ["c.d"]).next()["c"], {"d": 5})
-#         self.assertEqual(db.test.find({}, ["c.e"]).next()["c"], {"e": 10})
-#         self.assertEqual(db.test.find({}, ["b", "c.e"]).next()["c"],
-#                          {"e": 10})
+        self.assertEqual(db.test.find({}, ["c.d"]).next()["c"], {"d": 5})
+        self.assertEqual(db.test.find({}, ["c.e"]).next()["c"], {"e": 10})
+        self.assertEqual(db.test.find({}, ["b", "c.e"]).next()["c"],
+                         {"e": 10})
 
         l = db.test.find({}, ["b", "c.e"]).next().keys()
         l.sort()
