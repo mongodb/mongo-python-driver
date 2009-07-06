@@ -88,8 +88,7 @@ class GridFile(object):
             raise ValueError("mode must be one of ('r', 'w')")
 
         self.__collection = database[collection]
-        # TODO change this to ensure_index
-        self.__collection.chunks.create_index([("files_id", ASCENDING), ("n", ASCENDING)])
+        self.__collection.chunks.ensure_index([("files_id", ASCENDING), ("n", ASCENDING)])
 
         _files_lock.acquire()
 
