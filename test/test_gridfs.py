@@ -16,11 +16,25 @@
 """
 
 import unittest
+import threading
 import sys
 sys.path[0:0] = [""]
 
 import gridfs
 from test_connection import get_connection
+
+
+class JustWrite(threading.Thread):
+
+    def __init__(self, fs):
+        threading.Thread.__init__(self)
+        self.fs = fs
+
+    def run(self):
+        for _ in range(100):
+            file = self.fs.open("test", "w")
+            file.write("hello")
+            file.close()
 
 
 class TestGridfs(unittest.TestCase):
@@ -146,6 +160,11 @@ class TestGridfs(unittest.TestCase):
         self.assertEqual([], self.fs.list("pymongo_test"))
         self.assertEqual(self.db.pymongo_test.files.find().count(), 0)
         self.assertEqual(self.db.pymongo_test.chunks.find().count(), 0)
+
+    def test_threading(self):
+        for i in range(10):
+            t = JustWrite(self.fs)
+            t.start()
 
 if __name__ == "__main__":
     unittest.main()
