@@ -26,6 +26,7 @@ import datetime
 
 from errors import ConnectionFailure, InvalidName
 from errors import OperationFailure, ConfigurationError
+from errors import AutoReconnect
 from database import Database
 from cursor_manager import CursorManager
 from thread_util import TimeoutableLock
@@ -53,7 +54,8 @@ class Connection(object): # TODO support auth for pooling
         The resultant connection object has connection-pooling built in. It
         also performs auto-reconnection when necessary. If an operation fails
         because of a connection error, `pymongo.errors.ConnectionFailure` is
-        raised. Auto-reconnection is also performed. Application code should
+        raised. If auto-reconnection will be performed,
+        `pymongo.errors.AutoReconnect` will be raised. Application code should
         handle this exception (recognizing that the operation failed) and then
         continue to execute.
 
@@ -409,10 +411,10 @@ class Connection(object): # TODO support auth for pooling
         try:
             if not self.__sockets[sock]:
                 self.__connect(sock)
-        except ConnectionFailure:
+        except ConnectionFailure, e:
             self.__locks[sock].release()
             self._reset()
-            raise
+            raise AutoReconnect(str(e))
         return sock
 
     def __send_message_on_socket(self, operation, data, sock):
@@ -454,10 +456,10 @@ class Connection(object): # TODO support auth for pooling
         try:
             self.__send_message_on_socket(operation, data, sock)
             self.__locks[sock_number].release()
-        except ConnectionFailure:
+        except ConnectionFailure, e:
             self.__locks[sock_number].release()
             self._reset()
-            raise
+            raise AutoReconnect(str(e))
 
     def __receive_message_on_socket(self, operation, request_id, sock):
 
@@ -509,10 +511,10 @@ class Connection(object): # TODO support auth for pooling
             result = self.__receive_message_on_socket(1, request_id, sock)
             self.__locks[sock_number].release()
             return result
-        except ConnectionFailure:
+        except ConnectionFailure, e:
             self.__locks[sock_number].release()
             self._reset()
-            raise
+            raise AutoReconnect(str(e))
 
     def start_request(self):
         """Start a "request".

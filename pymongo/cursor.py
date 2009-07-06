@@ -21,7 +21,7 @@ import pymongo
 import bson
 from son import SON
 from code import Code
-from errors import InvalidOperation, OperationFailure, ConnectionFailure
+from errors import InvalidOperation, OperationFailure, AutoReconnect
 
 _ZERO = "\x00\x00\x00\x00"
 
@@ -264,7 +264,7 @@ class Cursor(object):
                 error_object = bson.BSON(response[20:]).to_dict()
                 if error_object["$err"] == "not master":
                     db.connection()._reset()
-                    raise ConnectionFailure("master has changed")
+                    raise AutoReconnect("master has changed")
                 raise OperationFailure("database error: %s" %
                                        error_object["$err"])
             else:

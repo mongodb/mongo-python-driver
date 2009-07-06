@@ -20,6 +20,12 @@ class ConnectionFailure(IOError):
     """
 
 
+class AutoReconnect(ConnectionFailure):
+    """Raised when a connection to the database is lost and an attempt to
+    auto-reconnect will be made.
+    """
+
+
 class ConfigurationError(Exception):
     """Raised when something is incorrectly configured.
     """
