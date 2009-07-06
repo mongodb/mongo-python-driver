@@ -17,6 +17,7 @@
 import types
 import datetime
 import math
+from threading import Condition
 
 from pymongo.son import SON
 from pymongo.database import Database
@@ -26,11 +27,19 @@ from pymongo.binary import Binary
 from errors import CorruptGridFile
 from pymongo import ASCENDING
 
+# TODO we should use per-file reader-writer locks here instead,
+# for performance. Unfortunately they aren't in the Python standard library.
+_files_lock = Condition()
+_open_files = {}
+
+
 class GridFile(object):
     """A "file" stored in GridFS.
     """
     # TODO should be able to create a GridFile given a Collection object instead
     # of a database and collection name?
+    # TODO this whole file_spec thing is over-engineered. ought to be just
+    # filename.
     def __init__(self, file_spec, database, mode="r", collection="fs"):
         """Open a "file" in GridFS.
 
@@ -79,18 +88,29 @@ class GridFile(object):
             raise ValueError("mode must be one of ('r', 'w')")
 
         self.__collection = database[collection]
+        # TODO change this to ensure_index
         self.__collection.chunks.create_index([("files_id", ASCENDING), ("n", ASCENDING)])
+
+        _files_lock.acquire()
 
         grid_file = self.__collection.files.find_one(file_spec)
         if grid_file:
             self.__id = grid_file["_id"]
         else:
             if mode == "r":
+                _files_lock.release()
                 raise IOError("No such file: %r" % file_spec)
             file_spec["length"] = 0
             file_spec["uploadDate"] = datetime.datetime.utcnow()
             file_spec.setdefault("chunkSize", 256000)
             self.__id = self.__collection.files.insert(file_spec)["_id"]
+
+        # we use repr(self.__id) here because we need it to be string and
+        # filename gets tricky with renaming. this is a hack.
+        while repr(self.__id) in _open_files:
+            _files_lock.wait()
+        _open_files[repr(self.__id)] = True
+        _files_lock.release()
 
         self.__mode = mode
         if mode == "w":
@@ -206,6 +226,12 @@ class GridFile(object):
         if not self.__closed:
             self.flush()
         self.__closed = True
+
+        _files_lock.acquire()
+        if repr(self.__id) in _open_files:
+            del _open_files[repr(self.__id)]
+            _files_lock.notifyAll()
+        _files_lock.release()
 
     def __assert_open(self, mode=None):
         if mode and self.mode != mode:

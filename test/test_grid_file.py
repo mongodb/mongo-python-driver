@@ -126,24 +126,24 @@ class TestGridFile(unittest.TestCase):
         self.assertRaises(TypeError, GridFile, {}, "hello")
         self.assertRaises(TypeError, GridFile, {}, None)
         self.assertRaises(TypeError, GridFile, {}, 5)
-        self.assert_(GridFile({}, self.db))
+        GridFile({}, self.db).close()
 
         self.assertRaises(TypeError, GridFile, {}, self.db, None)
         self.assertRaises(TypeError, GridFile, {}, self.db, 5)
         self.assertRaises(TypeError, GridFile, {}, self.db, [])
         self.assertRaises(ValueError, GridFile, {}, self.db, "m")
         self.assertRaises(ValueError, GridFile, {}, self.db, u"m")
-        self.assert_(GridFile({}, self.db, "r"))
-        self.assert_(GridFile({}, self.db, u"r"))
-        self.assert_(GridFile({}, self.db, "w"))
-        self.assert_(GridFile({}, self.db, u"w"))
+        GridFile({}, self.db, "r").close()
+        GridFile({}, self.db, u"r").close()
+        GridFile({}, self.db, "w").close()
+        GridFile({}, self.db, u"w").close()
 
         self.assertRaises(TypeError, GridFile, {}, self.db, "r", None)
         self.assertRaises(TypeError, GridFile, {}, self.db, "r", 5)
         self.assertRaises(TypeError, GridFile, {}, self.db, "r", [])
 
         self.assertRaises(IOError, GridFile, {"filename": "mike"}, self.db)
-        self.assert_(GridFile({"filename": "test"}, self.db))
+        GridFile({"filename": "test"}, self.db).close()
 
     def test_properties(self):
         self.db.fs.files.remove({})
@@ -199,6 +199,8 @@ class TestGridFile(unittest.TestCase):
             a.md5 = "what"
         self.assertRaises(AttributeError, set_md5)
 
+        a.close()
+
     def test_rename(self):
         self.db.fs.files.remove({})
         self.db.fs.chunks.remove({})
@@ -211,9 +213,10 @@ class TestGridFile(unittest.TestCase):
 
         a.rename("mike")
         self.assertEqual("mike", a.name)
+        a.close()
 
         self.assertRaises(IOError, GridFile, {"filename": "test"}, self.db)
-        a = GridFile({"filename": "mike"}, self.db)
+        GridFile({"filename": "mike"}, self.db).close()
 
     def test_flush_close(self):
         self.db.fs.files.remove({})
@@ -224,7 +227,10 @@ class TestGridFile(unittest.TestCase):
         file.close()
         file.close()
         self.assertRaises(ValueError, file.write, "test")
-        self.assertEqual(GridFile({}, self.db).read(), "")
+
+        file = GridFile({}, self.db)
+        self.assertEqual(file.read(), "")
+        file.close()
 
         file = GridFile({"filename": "test"}, self.db, "w")
         file.write("mike")
@@ -237,7 +243,9 @@ class TestGridFile(unittest.TestCase):
         file.close()
         file.close()
         self.assertRaises(ValueError, file.write, "test")
-        self.assertEqual(GridFile({}, self.db).read(), "miketesthuh")
+        file = GridFile({}, self.db)
+        self.assertEqual(file.read(), "miketesthuh")
+        file.close()
 
     def test_overwrite(self):
         self.db.fs.files.remove({})
@@ -251,7 +259,9 @@ class TestGridFile(unittest.TestCase):
         file.write("mike")
         file.close()
 
-        self.assertEqual(GridFile({}, self.db).read(), "mike")
+        f = GridFile({}, self.db)
+        self.assertEqual(f.read(), "mike")
+        f.close()
 
     def test_multi_chunk_file(self):
         self.db.fs.files.remove({})
@@ -266,7 +276,9 @@ class TestGridFile(unittest.TestCase):
         self.assertEqual(self.db.fs.files.find().count(), 1)
         self.assertEqual(self.db.fs.chunks.find().count(), 2)
 
-        self.assertEqual(GridFile({}, self.db).read(), random_string)
+        f = GridFile({}, self.db)
+        self.assertEqual(f.read(), random_string)
+        f.close()
 
     def test_small_chunks(self):
         self.db.fs.files.remove({})
@@ -288,11 +300,13 @@ class TestGridFile(unittest.TestCase):
             self.assertEqual(self.db.fs.files.find().count(), self.files)
             self.assertEqual(self.db.fs.chunks.find().count(), self.chunks)
 
-            self.assertEqual(GridFile({"filename": filename}, self.db).read(),
-                             data)
+            f = GridFile({"filename": filename}, self.db)
+            self.assertEqual(f.read(), data)
+            f.close()
 
             f = GridFile({"filename": filename}, self.db)
             self.assertEqual(f.read(10) + f.read(10), data)
+            f.close()
             return True
 
         qcheck.check_unittest(self, helper,
@@ -332,6 +346,7 @@ class TestGridFile(unittest.TestCase):
         self.assertEqual(file.read(2), "rl")
         self.assertEqual(file.read(2), "d")
         self.assertEqual(file.read(2), "")
+        file.close()
 
 if __name__ == "__main__":
     unittest.main()

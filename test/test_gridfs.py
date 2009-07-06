@@ -31,9 +31,22 @@ class JustWrite(threading.Thread):
         self.fs = fs
 
     def run(self):
-        for _ in range(100):
+        for _ in range(10):
             file = self.fs.open("test", "w")
             file.write("hello")
+            file.close()
+
+
+class JustRead(threading.Thread):
+
+    def __init__(self, fs):
+        threading.Thread.__init__(self)
+        self.fs = fs
+
+    def run(self):
+        for _ in range(10):
+            file = self.fs.open("test")
+            assert file.read() == "hello"
             file.close()
 
 
@@ -94,8 +107,12 @@ class TestGridfs(unittest.TestCase):
         self.assertEqual(["mike", "hello world"], self.fs.list())
         self.assertEqual(self.db.fs.files.find().count(), 2)
         self.assertEqual(self.db.fs.chunks.find().count(), 2)
-        self.assertEqual(self.fs.open("mike").read(), "hi")
-        self.assertEqual(self.fs.open("hello world").read(), "fly")
+        f = self.fs.open("mike")
+        self.assertEqual(f.read(), "hi")
+        f.close()
+        f = self.fs.open("hello world")
+        self.assertEqual(f.read(), "fly")
+        f.close()
         self.assertRaises(IOError, self.fs.open, "test")
 
         self.fs.remove({})
@@ -148,12 +165,12 @@ class TestGridfs(unittest.TestCase):
         self.fs.remove("test", "pymongo_test")
         self.assertEqual(["mike", "hello world"], self.fs.list("pymongo_test"))
 
-        self.assertEqual(self.fs.open("mike",
-                                      collection="pymongo_test").read(),
-                         "hi")
-        self.assertEqual(self.fs.open("hello world",
-                                      collection="pymongo_test").read(),
-                         "fly")
+        f = self.fs.open("mike", collection="pymongo_test")
+        self.assertEqual(f.read(), "hi")
+        f.close()
+        f = self.fs.open("hello world", collection="pymongo_test")
+        self.assertEqual(f.read(), "fly")
+        f.close()
 
         self.fs.remove({}, "pymongo_test")
 
@@ -161,10 +178,31 @@ class TestGridfs(unittest.TestCase):
         self.assertEqual(self.db.pymongo_test.files.find().count(), 0)
         self.assertEqual(self.db.pymongo_test.chunks.find().count(), 0)
 
-    def test_threading(self):
+    def test_threaded_reads(self):
+        f = self.fs.open("test", "w")
+        f.write("hello")
+        f.close()
+
+        threads = []
         for i in range(10):
-            t = JustWrite(self.fs)
-            t.start()
+            threads.append(JustRead(self.fs))
+            threads[i].start()
+
+        for i in range(10):
+            threads[i].join()
+
+    def test_threaded_writes(self):
+        threads = []
+        for i in range(10):
+            threads.append(JustWrite(self.fs))
+            threads[i].start()
+
+        for i in range(10):
+            threads[i].join()
+
+        f = self.fs.open("test")
+        self.assertEqual(f.read(), "hello")
+        f.close()
 
 if __name__ == "__main__":
     unittest.main()
