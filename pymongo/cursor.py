@@ -23,8 +23,6 @@ from son import SON
 from code import Code
 from errors import InvalidOperation, OperationFailure, AutoReconnect
 
-_ZERO = "\x00\x00\x00\x00"
-
 
 class Cursor(object):
     """A cursor / iterator over Mongo query results.
@@ -91,6 +89,16 @@ class Cursor(object):
         if self.__hint:
             spec["$hint"] = self.__hint
         return spec
+
+    def __query_options(self):
+        """Get the 4 byte query options string to use for this query.
+
+        None = 0
+        CursorTailable = 2
+        SlaveOk = 4
+        OplogReplay = 8
+        """
+        return struct.pack("<I", 0)
 
     def __check_okay_to_chain(self):
         """Check if it is okay to chain more options onto this cursor.
@@ -283,7 +291,7 @@ class Cursor(object):
             self.__data = bson._to_dicts(response[20:])
             assert len(self.__data) == number_returned
 
-        message = _ZERO
+        message = self.__query_options()
         message += bson._make_c_string(self.__collection.full_name())
         if self.__id is None:
             # Query
