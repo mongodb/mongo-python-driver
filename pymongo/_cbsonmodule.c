@@ -626,12 +626,16 @@ static int check_key_name(const unsigned char check_keys,
     if (check_keys) {
         int i;
         if (name_length > 0 && name[0] == '$') {
-            PyErr_SetString(InvalidName, "key must not start with '$'");
+            PyObject* errmsg = PyString_FromFormat("key '%s' must not start with '$'", name);
+            PyErr_SetString(InvalidName, PyString_AsString(errmsg));
+            Py_DECREF(errmsg);
             return 0;
         }
         for (i = 0; i < name_length; i++) {
             if (name[i] == '.') {
-                PyErr_SetString(InvalidName, "key must not contain '.'");
+                PyObject* errmsg = PyString_FromFormat("key '%s' must not contain '.'", name);
+                PyErr_SetString(InvalidName, PyString_AsString(errmsg));
+                Py_DECREF(errmsg);
                 return 0;
             }
         }
