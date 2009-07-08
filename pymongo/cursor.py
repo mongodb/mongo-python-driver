@@ -196,9 +196,10 @@ class Cursor(object):
         InvalidOperation if this cursor has already been used.
 
         `index_or_name` can be either an index name (as returned by
-        create_index) or an index (as passed to create_index). If index_or_name
-        is None any existing hints for this query are cleared. The last hint
-        applied to this cursor takes precedence over all others.
+        create_index, e.g. 'field_1') or an index (as passed to create_index,
+        e.g. [('field', ASCENDING)]). If index_or_name is None any existing
+        hints for this query are cleared. The last hint applied to this cursor
+        takes precedence over all others.
 
         :Parameters:
           - `index_or_name`: index (or name of index) to hint on
