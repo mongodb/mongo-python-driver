@@ -48,7 +48,8 @@ class GridFile(object):
 
         Only a single opened GridFile instance may exist for a file in gridfs
         at any time. Care must be taken to close GridFile instances when done
-        using them.
+        using them. GridFiles support the context manager protocol (the "with"
+        statement).
 
         Raises TypeError if file_spec is not an instance of dict, database is
         not an instance of `pymongo.database.Database`, or collection is not an
@@ -306,3 +307,16 @@ class GridFile(object):
         """
         for line in sequence:
             self.write(line)
+
+    def __enter__(self):
+        """Support for the context manager protocol.
+        """
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Support for the context manager protocol.
+
+        Close the file and allow exceptions to propogate.
+        """
+        self.close()
+        return False # propogate exceptions

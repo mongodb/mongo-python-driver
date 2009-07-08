@@ -48,7 +48,8 @@ class GridFS(object):
 
         Only a single opened GridFile instance may exist for a file in gridfs
         at any time. Care must be taken to close GridFile instances when done
-        using them.
+        using them. GridFiles support the context manager protocol (the "with"
+        statement).
 
         :Parameters:
           - `filename`: name of the GridFile to open

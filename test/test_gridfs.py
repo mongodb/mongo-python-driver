@@ -204,5 +204,16 @@ class TestGridfs(unittest.TestCase):
         self.assertEqual(f.read(), "hello")
         f.close()
 
+    # NOTE I do recognize how gross this is. There is no good way to test the
+    # with statement because it is a syntax error in older python versions.
+    # One option would be to use eval and skip the test if it is a syntax
+    # error.
+    if sys.version_info[:2] == (2, 5):
+        import gridfs15
+        test_with_statement = gridfs15.test_with_statement
+    elif sys.version_info[:3] >= (2, 6, 0):
+        import gridfs16
+        test_with_statement = gridfs16.test_with_statement
+
 if __name__ == "__main__":
     unittest.main()
