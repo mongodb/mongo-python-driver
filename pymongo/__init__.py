@@ -32,7 +32,7 @@ SLOW_ONLY = 1
 ALL = 2
 """Profile all operations."""
 
-version = "0.11.3"
+version = "0.12"
 """Current version of PyMongo."""
 
 Connection = PyMongo_Connection
