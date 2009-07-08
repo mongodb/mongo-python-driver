@@ -122,7 +122,7 @@ class GridFile(object):
     def __erase(self):
         """Erase all of the data stored in this GridFile.
         """
-        grid_file = self.__collection.files.find_one(self.__id)
+        grid_file = self.__collection.files.find_one({"_id": self.__id})
         grid_file["next"] = None
         grid_file["length"] = 0
         self.__collection.files.save(grid_file)
@@ -139,9 +139,9 @@ class GridFile(object):
 
     def __create_property(field_name, read_only=False):
         def getter(self):
-            return self.__collection.files.find_one(self.__id).get(field_name, None)
+            return self.__collection.files.find_one({"_id": self.__id}).get(field_name, None)
         def setter(self, value):
-            grid_file = self.__collection.files.find_one(self.__id)
+            grid_file = self.__collection.files.find_one({"_id": self.__id})
             grid_file[field_name] = value
             self.__collection.files.save(grid_file)
         if not read_only:
@@ -166,7 +166,7 @@ class GridFile(object):
         :Parameters:
           - `filename`: the new name for this GridFile
         """
-        grid_file = self.__collection.files.find_one(self.__id)
+        grid_file = self.__collection.files.find_one({"_id": self.__id})
         grid_file["filename"] = filename
         self.__collection.files.save(grid_file)
 
@@ -211,7 +211,7 @@ class GridFile(object):
         md5 = self.__collection.database()._command(SON([("filemd5", self.__id),
                                                          ("root", self.__collection.name())]))["md5"]
 
-        grid_file = self.__collection.files.find_one(self.__id)
+        grid_file = self.__collection.files.find_one({"_id": self.__id})
         grid_file["md5"] = md5
         grid_file["length"] = self.__position + len(self.__buffer)
         self.__collection.files.save(grid_file)

@@ -348,5 +348,10 @@ class TestGridFile(unittest.TestCase):
         self.assertEqual(file.read(2), "")
         file.close()
 
+    def test_spec_with_id(self):
+        # This was raising a TypeError at one point - make sure it doesn't
+        file = GridFile({"_id": "foobar", "filename": "foobar"}, self.db, "w")
+        file.close()
+
 if __name__ == "__main__":
     unittest.main()
