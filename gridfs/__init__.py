@@ -44,7 +44,11 @@ class GridFS(object):
         """Open a GridFile for reading or writing.
 
         Shorthand method for creating / opening a GridFile from a filename. mode
-        must be a mode supported by `gridfs.grid_file.GridFile`
+        must be a mode supported by `gridfs.grid_file.GridFile`.
+
+        Only a single opened GridFile instance may exist for a file in gridfs
+        at any time. Care must be taken to close GridFile instances when done
+        using them.
 
         :Parameters:
           - `filename`: name of the GridFile to open

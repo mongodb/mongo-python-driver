@@ -44,7 +44,11 @@ class GridFile(object):
         """Open a "file" in GridFS.
 
         Application developers should generally not need to instantiate this
-        class directly.
+        class directly - instead see the `gridfs.open` method.
+
+        Only a single opened GridFile instance may exist for a file in gridfs
+        at any time. Care must be taken to close GridFile instances when done
+        using them.
 
         Raises TypeError if file_spec is not an instance of dict, database is
         not an instance of `pymongo.database.Database`, or collection is not an
