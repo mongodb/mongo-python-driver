@@ -80,6 +80,22 @@ class TestCursor(unittest.TestCase):
             break
         self.assertRaises(InvalidOperation, a.hint, index)
 
+    # TODO right now this doesn't actually test anything useful, just that the
+    # call doesn't blow up in the normal case.
+    def test_slave_okay(self):
+        db = self.db
+        db.drop_collection("test")
+
+        a = db.test.find()
+        for _ in a:
+            break
+        self.assertRaises(InvalidOperation, a.slave_okay)
+
+        db.test.save({"x": 1})
+        self.assertEqual(1, db.test.find().slave_okay().next()["x"])
+        self.assertEqual(1, db.test.find().slave_okay(False).next()["x"])
+        self.assertEqual(1, db.test.find().slave_okay(True).next()["x"])
+
     def test_limit(self):
         db = self.db
 

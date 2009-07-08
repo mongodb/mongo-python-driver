@@ -23,6 +23,12 @@ from son import SON
 from code import Code
 from errors import InvalidOperation, OperationFailure, AutoReconnect
 
+_QUERY_OPTIONS = {
+    "tailable_cursor": 2,
+    "slave_okay": 4,
+    "oplog_replay": 8
+}
+
 
 class Cursor(object):
     """A cursor / iterator over Mongo query results.
@@ -36,6 +42,7 @@ class Cursor(object):
         self.__collection = collection
         self.__spec = spec
         self.__fields = fields
+        self.__slave_okay = False # TODO allow a connection-wide setting for this
         self.__skip = skip
         self.__limit = limit
         self.__ordering = None
@@ -92,19 +99,40 @@ class Cursor(object):
 
     def __query_options(self):
         """Get the 4 byte query options string to use for this query.
-
-        None = 0
-        CursorTailable = 2
-        SlaveOk = 4
-        OplogReplay = 8
         """
-        return struct.pack("<I", 0)
+        options = 0
+        if self.__slave_okay:
+            options |= _QUERY_OPTIONS["slave_okay"]
+        return struct.pack("<I", options)
 
     def __check_okay_to_chain(self):
         """Check if it is okay to chain more options onto this cursor.
         """
         if self.__retrieved or self.__id is not None:
             raise InvalidOperation("cannot set options after executing query")
+
+    def slave_okay(self, slave_okay=True):
+        """Specify whether this query should be allowed to execute on a slave.
+
+        By default, certain queries are not allowed to execute on mongod
+        instances running in slave mode. If `slave_okay` is True then this
+        query will be allowed to execute on slave instances. If False, the
+        default behavior applies.
+
+        Settings made through calls to this method take precedence over any
+        settings made elsewhere. The last `slave_okay` applied to this cursor
+        takes precedence.
+
+        Raises InvalidOperation if this cursor has already been used.
+
+        :Parameters:
+          - `slave_okay` (optional): should this query be allowed to execute on
+            slave instances
+        """
+        self.__check_okay_to_chain()
+
+        self.__slave_okay = slave_okay
+        return self
 
     def limit(self, limit):
         """Limits the number of results to be returned by this cursor.
