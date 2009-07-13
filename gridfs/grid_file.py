@@ -44,7 +44,7 @@ class GridFile(object):
         """Open a "file" in GridFS.
 
         Application developers should generally not need to instantiate this
-        class directly - instead see the `gridfs.open` method.
+        class directly - instead see the `gridfs.GridFS.open` method.
 
         Only a single opened GridFile instance may exist for a file in gridfs
         at any time. Care must be taken to close GridFile instances when done
