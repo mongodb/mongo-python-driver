@@ -365,5 +365,77 @@ class TestCursor(unittest.TestCase):
         self.assertEqual(by_location,
                          db._command({"cursorInfo": 1})["byLocation_size"])
 
+    def test_rewind(self):
+        self.db.test.save({"x": 1})
+        self.db.test.save({"x": 2})
+        self.db.test.save({"x": 3})
+
+        cursor = self.db.test.find().limit(2)
+
+        count = 0
+        for _ in cursor:
+            count += 1
+        self.assertEqual(2, count)
+
+        count = 0
+        for _ in cursor:
+            count += 1
+        self.assertEqual(0, count)
+
+        cursor.rewind()
+        count = 0
+        for _ in cursor:
+            count += 1
+        self.assertEqual(2, count)
+
+        cursor.rewind()
+        count = 0
+        for _ in cursor:
+            break
+        cursor.rewind()
+        for _ in cursor:
+            count += 1
+        self.assertEqual(2, count)
+
+        self.assertEqual(cursor, cursor.rewind())
+
+    def test_clone(self):
+        self.db.test.save({"x": 1})
+        self.db.test.save({"x": 2})
+        self.db.test.save({"x": 3})
+
+        cursor = self.db.test.find().limit(2)
+
+        count = 0
+        for _ in cursor:
+            count += 1
+        self.assertEqual(2, count)
+
+        count = 0
+        for _ in cursor:
+            count += 1
+        self.assertEqual(0, count)
+
+        cursor = cursor.clone()
+        cursor2 = cursor.clone()
+        count = 0
+        for _ in cursor:
+            count += 1
+        self.assertEqual(2, count)
+        for _ in cursor2:
+            count += 1
+        self.assertEqual(4, count)
+
+        cursor.rewind()
+        count = 0
+        for _ in cursor:
+            break
+        cursor = cursor.clone()
+        for _ in cursor:
+            count += 1
+        self.assertEqual(2, count)
+
+        self.assertNotEqual(cursor, cursor.clone())
+
 if __name__ == "__main__":
     unittest.main()

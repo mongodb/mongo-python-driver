@@ -42,9 +42,9 @@ class Cursor(object):
         self.__collection = collection
         self.__spec = spec
         self.__fields = fields
-        self.__slave_okay = False # TODO allow a connection-wide setting for this
         self.__skip = skip
         self.__limit = limit
+        self.__slave_okay = False # TODO allow a connection-wide setting for this
         self.__ordering = None
         self.__explain = False
         self.__hint = None
@@ -60,12 +60,38 @@ class Cursor(object):
         if self.__id and not self.__killed:
             self.__die()
 
-    def __copy(self):
+    def rewind(self):
+        """Rewind this cursor to it's unevaluated state.
+
+        Reset this cursor if it has been partially or completely evaluated.
+        Any options that are present on the cursor will remain in effect.
+        Future iterating performed on this cursor will cause new queries to
+        be sent to the server, even if the resultant data has already been
+        retrieved by this cursor.
+        """
+        self.__data = []
+        self.__id = None
+        self.__connection_id = None
+        self.__retrieved = 0
+        self.__killed = False
+
+        return self
+
+    def clone(self):
+        """Get a clone of this cursor.
+
+        Returns a new Cursor instance with options matching those that have
+        been set on the current instance. The clone will be completely
+        unevaluated, even if the current instance has been partially or
+        completely evaluated.
+        """
         copy = Cursor(self.__collection, self.__spec, self.__fields,
                       self.__skip, self.__limit)
+        copy.__slave_okay = self.__slave_okay
         copy.__ordering = self.__ordering
         copy.__explain = self.__explain
         copy.__hint = self.__hint
+        copy.__socket = self.__socket
         return copy
 
     def __die(self):
@@ -210,7 +236,7 @@ class Cursor(object):
     def explain(self):
         """Returns an explain plan record for this cursor.
         """
-        c = self.__copy()
+        c = self.clone()
         c.__explain = True
         return c.next()
 
