@@ -240,6 +240,17 @@ class Cursor(object):
         c.__explain = True
         return c.next()
 
+    def __index_name_to_list(self, index_name):
+        """Convert an index specified by name to an index spec list.
+        """
+        # NOTE this is broken for indexes on key names containing '_'
+        index_list = []
+        tokens = index_name.split("_")
+        for key, direction in zip(tokens[::2], tokens[1::2]):
+            index_list.append((key, int(direction)))
+        return index_list
+
+    # TODO deprecate use of index_name
     def hint(self, index_or_name):
         """Adds a 'hint', telling Mongo the proper index to use for the query.
 
@@ -266,10 +277,10 @@ class Cursor(object):
         if not isinstance(index_or_name, (types.StringTypes, types.ListType)):
             raise TypeError("hint takes an index name or "
                             "a list specifying an index")
-        name = index_or_name
-        if isinstance(name, types.ListType):
-            name = self.__collection._gen_index_name(name)
-        self.__hint = name
+        index_list = index_or_name
+        if isinstance(index_list, types.StringTypes):
+            index_list = self.__index_name_to_list(index_list)
+        self.__hint = pymongo._index_document(index_list)
         return self
 
     def where(self, code):
