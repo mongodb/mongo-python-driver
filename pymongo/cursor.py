@@ -16,6 +16,7 @@
 
 import types
 import struct
+import warnings
 
 import pymongo
 import bson
@@ -250,8 +251,8 @@ class Cursor(object):
             index_list.append((key, int(direction)))
         return index_list
 
-    # TODO deprecate use of index_name
-    def hint(self, index_or_name):
+    # TODO at some point fully deprecate index name - it could be buggy
+    def hint(self, index):
         """Adds a 'hint', telling Mongo the proper index to use for the query.
 
         Judicious use of hints can greatly improve query performance. When
@@ -260,27 +261,28 @@ class Cursor(object):
         anything if the corresponding index does not exist. Raises
         InvalidOperation if this cursor has already been used.
 
-        `index_or_name` can be either an index name (as returned by
-        create_index, e.g. 'field_1') or an index (as passed to create_index,
-        e.g. [('field', ASCENDING)]). If index_or_name is None any existing
+        `index` should be an index as passed to create_index
+        (e.g. [('field', ASCENDING)]). If `index` is None any existing
         hints for this query are cleared. The last hint applied to this cursor
         takes precedence over all others.
 
         :Parameters:
-          - `index_or_name`: index (or name of index) to hint on
+          - `index`: index to hint on (as an index specifier)
         """
         self.__check_okay_to_chain()
-        if index_or_name is None:
+        if index is None:
             self.__hint = None
             return self
 
-        if not isinstance(index_or_name, (types.StringTypes, types.ListType)):
+        if not isinstance(index, (types.StringTypes, types.ListType)):
             raise TypeError("hint takes an index name or "
                             "a list specifying an index")
-        index_list = index_or_name
-        if isinstance(index_list, types.StringTypes):
-            index_list = self.__index_name_to_list(index_list)
-        self.__hint = pymongo._index_document(index_list)
+        if isinstance(index, types.StringTypes):
+            warnings.warn("hinting using an index name is deprecated and will"
+                          " be removed - use a regular index spec instead",
+                          DeprecationWarning)
+            index = self.__index_name_to_list(index)
+        self.__hint = pymongo._index_document(index)
         return self
 
     def where(self, code):

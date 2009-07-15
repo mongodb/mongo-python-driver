@@ -16,6 +16,7 @@
 import unittest
 import types
 import random
+import warnings
 import sys
 sys.path[0:0] = [""]
 
@@ -62,8 +63,16 @@ class TestCursor(unittest.TestCase):
         index = db.test.create_index("num", ASCENDING)
 
         self.assertEqual(db.test.find({}).explain()["cursor"], "BasicCursor")
-        self.assertEqual(db.test.find({}).hint(index).explain()["cursor"],
-                         "BtreeCursor %s" % index)
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("module")
+
+            self.assertEqual(db.test.find({}).hint(index).explain()["cursor"],
+                             "BtreeCursor %s" % index)
+
+            self.assertEqual(1, len(w))
+            self.assertEqual(DeprecationWarning, w[-1].category)
+            self.assert_("index name" in str(w[-1].message))
+
         self.assertEqual(db.test.find({}).hint(index).hint(None)
                          .explain()["cursor"],
                          "BasicCursor")
