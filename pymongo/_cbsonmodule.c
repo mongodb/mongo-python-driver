@@ -211,16 +211,19 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
     /* TODO this isn't quite the same as the Python version:
      * here we check for type equivalence, not isinstance in some
      * places. */
-    if (PyInt_CheckExact(value)) {
-        const int int_value = (int)PyInt_AsLong(value);
-        *(buffer->buffer + type_byte) = 0x10;
-        return buffer_write_bytes(buffer, (const char*)&int_value, 4);
-    } else if (PyLong_CheckExact(value)) {
-        const int int_value = (int)PyLong_AsLong(value);
-        *(buffer->buffer + type_byte) = 0x10;
+    if (PyInt_CheckExact(value) || PyLong_CheckExact(value)) {
+        const long long_value = PyInt_AsLong(value);
+        const int int_value = (int)long_value;
         if (PyErr_Occurred()) { /* Overflow */
             return 0;
         }
+        if (long_value != int_value) {
+            PyErr_SetString(PyExc_OverflowError,
+                            "MongoDB can only handle 4-byte ints"
+                            " - try converting to a float before saving");
+            return 0;
+        }
+        *(buffer->buffer + type_byte) = 0x10;
         return buffer_write_bytes(buffer, (const char*)&int_value, 4);
     } else if (PyBool_Check(value)) {
         const long bool = PyInt_AsLong(value);
