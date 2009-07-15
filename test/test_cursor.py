@@ -62,32 +62,25 @@ class TestCursor(unittest.TestCase):
 
         index = db.test.create_index("num", ASCENDING)
 
+        spec = [("num", ASCENDING)]
         self.assertEqual(db.test.find({}).explain()["cursor"], "BasicCursor")
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("module")
-
-            self.assertEqual(db.test.find({}).hint(index).explain()["cursor"],
-                             "BtreeCursor %s" % index)
-
-            self.assertEqual(1, len(w))
-            self.assertEqual(DeprecationWarning, w[-1].category)
-            self.assert_("index name" in str(w[-1].message))
-
-        self.assertEqual(db.test.find({}).hint(index).hint(None)
+        self.assertEqual(db.test.find({}).hint(spec).explain()["cursor"],
+                         "BtreeCursor %s" % index)
+        self.assertEqual(db.test.find({}).hint(spec).hint(None)
                          .explain()["cursor"],
                          "BasicCursor")
-        self.assertEqual(db.test.find({}).hint([("num", ASCENDING)])
-                         .explain()["cursor"],
-                         "BtreeCursor %s" % index)
         self.assertRaises(OperationFailure,
                           db.test.find({"num": 17, "foo": 17})
                           .hint([("foo", ASCENDING)]).explain)
 
         a = db.test.find({"num": 17})
-        a.hint(index)
+        a.hint(spec)
         for _ in a:
             break
-        self.assertRaises(InvalidOperation, a.hint, index)
+        self.assertRaises(InvalidOperation, a.hint, spec)
+
+        warnings.simplefilter("error")
+        self.assertRaises(DeprecationWarning, db.test.find().hint, index)
 
     # TODO right now this doesn't actually test anything useful, just that the
     # call doesn't blow up in the normal case.
