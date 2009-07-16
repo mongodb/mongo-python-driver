@@ -3,5 +3,7 @@ include LICENSE
 include ez_setup.py
 include epydoc-config
 recursive-include examples *.py
-recursive-include tools *.py README.rst validate
+recursive-include tools *.py
+include tools/README.rst
+include tools/validate
 recursive-include test *.py
