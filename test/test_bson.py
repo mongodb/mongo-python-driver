@@ -182,7 +182,7 @@ class TestBSON(unittest.TestCase):
                 continue
 
             try:
-                f = open(file_name.replace(".xson", ".bson"), "r")
+                f = open(file_name.replace(".xson", ".bson"), "rb")
                 expected = f.read()
                 f.close()
 
