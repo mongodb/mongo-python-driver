@@ -41,6 +41,9 @@ _CONNECT_TIMEOUT = 20.0
 class Connection(object): # TODO support auth for pooling
     """A connection to Mongo.
     """
+
+    # TODO consider deprecating these. or at least find a way for
+    # the default args to __init__ and paired to be properly documented.
     HOST = "localhost"
     PORT = 27017
     POOL_SIZE = 1

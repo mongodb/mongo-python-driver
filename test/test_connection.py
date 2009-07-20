@@ -52,6 +52,7 @@ class TestConnection(unittest.TestCase):
         Connection.HOST = "somedomainthatdoesntexist.org"
         Connection.PORT = 123456789
         self.assertRaises(ConnectionFailure, Connection)
+        self.assert_(Connection(self.host, self.port))
 
         Connection.HOST = self.host
         Connection.PORT = self.port
