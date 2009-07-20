@@ -196,6 +196,9 @@ class Connection(object): # TODO support auth for pooling
         if result["ismaster"] == 1:
             return True
         else:
+            if "remote" not in result:
+                return False
+
             strings = result["remote"].split(":", 1)
             if len(strings) == 1:
                 port = self.PORT
@@ -292,6 +295,11 @@ class Connection(object): # TODO support auth for pooling
                         self.__port = port
                         _logger.debug("found master")
                         return
+                    if not master:
+                        raise ConfigurationError("trying to connect directly to"
+                                                 " slave %s:%r - must specify "
+                                                 "slave_okay to connect to "
+                                                 "slaves" % (host, port))
                     if master not in self.__nodes:
                         raise ConfigurationError(
                             "%r claims master is %r, "
