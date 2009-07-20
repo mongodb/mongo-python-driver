@@ -34,7 +34,8 @@ class MasterSlaveConnection(object):
         The resultant connection should be interacted with using the same
         mechanisms as a regular `Connection`. The `Connection` instances used
         to create this `MasterSlaveConnection` can themselves make use of
-        connection pooling, etc.
+        connection pooling, etc. 'Connection' instances used as slaves should
+        be created with the slave_okay option set to True.
 
         If connection pooling is being used the connections should be created
         with "auto_start_request" mode set to False. All request functionality

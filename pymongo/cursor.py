@@ -45,7 +45,7 @@ class Cursor(object):
         self.__fields = fields
         self.__skip = skip
         self.__limit = limit
-        self.__slave_okay = False # TODO allow a connection-wide setting for this
+        self.__slave_okay = collection.database().connection().slave_okay
         self.__ordering = None
         self.__explain = False
         self.__hint = None
@@ -147,7 +147,8 @@ class Cursor(object):
         default behavior applies.
 
         Settings made through calls to this method take precedence over any
-        settings made elsewhere. The last `slave_okay` applied to this cursor
+        settings made elsewhere (like the slave_okay option when creating a
+        Connection). The last `slave_okay` applied to this cursor
         takes precedence.
 
         Raises InvalidOperation if this cursor has already been used.

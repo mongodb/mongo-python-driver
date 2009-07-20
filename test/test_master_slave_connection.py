@@ -38,14 +38,16 @@ class TestMasterSlaveConnection(unittest.TestCase):
         try:
             self.slaves.append(Connection(os.environ.get("DB_IP2", host),
                                           int(os.environ.get("DB_PORT2",
-                                                             27018))))
+                                                             27018)),
+                                          slave_okay=True))
         except ConnectionFailure:
             pass
 
         try:
             self.slaves.append(Connection(os.environ.get("DB_IP3", host),
                                           int(os.environ.get("DB_PORT3",
-                                                             27019))))
+                                                             27019)),
+                                          slave_okay=True))
         except ConnectionFailure:
             pass
 

@@ -51,7 +51,8 @@ class Connection(object): # TODO support auth for pooling
     TIMEOUT = 1.0
 
     def __init__(self, host=None, port=None, pool_size=None,
-                 auto_start_request=None, timeout=None, _connect=True):
+                 auto_start_request=None, timeout=None, slave_okay=False,
+                 _connect=True):
         """Open a new connection to a Mongo instance at host:port.
 
         The resultant connection object has connection-pooling built in. It
@@ -78,6 +79,8 @@ class Connection(object): # TODO support auth for pooling
             connection-pool
           - `auto_start_request` (optional): automatically start a request
             on every operation - see documentation for `start_request`
+          - `slave_okay` (optional): is it okay to connect directly to and
+            perform queries on a slave instance
           - `timeout` (optional): max time to wait when attempting to acquire a
             connection from the connection pool before raising an exception -
             can be set to -1 to wait indefinitely
@@ -108,6 +111,7 @@ class Connection(object): # TODO support auth for pooling
         self.__port = None
 
         self.__nodes = [(host, port)]
+        self.__slave_okay = slave_okay
 
         # current request_id
         self.__id = 1
@@ -270,6 +274,12 @@ class Connection(object): # TODO support auth for pooling
         """
         return self.__port
 
+    def slave_okay(self):
+        """Is it okay for this connection to connect directly to a slave?
+        """
+        return self.__slave_okay
+    slave_okay = property(slave_okay)
+
     def __find_master(self):
         """Create a new socket and use it to figure out who the master is.
 
@@ -296,6 +306,12 @@ class Connection(object): # TODO support auth for pooling
                         _logger.debug("found master")
                         return
                     if not master:
+                        if self.__slave_okay:
+                            self.__host = host
+                            self.__port = port
+                            _logger.debug("connecting to slave (slave_okay mode)")
+                            return
+
                         raise ConfigurationError("trying to connect directly to"
                                                  " slave %s:%r - must specify "
                                                  "slave_okay to connect to "
