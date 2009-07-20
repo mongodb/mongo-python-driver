@@ -43,7 +43,7 @@ class MasterSlaveConnection(object):
         `MasterSlaveConnection` instance.
 
         Raises TypeError if `master` is not an instance of `Connection` or
-        slaves is not a list of `Connection` instances.
+        slaves is not a list of at least one `Connection` instances.
 
         :Parameters:
           - `master`: `Connection` instance for the writable Master
@@ -52,8 +52,8 @@ class MasterSlaveConnection(object):
         """
         if not isinstance(master, Connection):
             raise TypeError("master must be a Connection instance")
-        if not isinstance(slaves, types.ListType):
-            raise TypeError("slaves must be a list")
+        if not isinstance(slaves, types.ListType) or len(slaves) == 0:
+            raise TypeError("slaves must be a list of length >= 1")
 
         for slave in slaves:
             if not isinstance(slave, Connection):
@@ -124,8 +124,8 @@ class MasterSlaveConnection(object):
                         self.__slaves[_connection_to_use]
                         ._receive_message(operation, data, _sock))
 
-        # for now just load-balance randomly...
-        connection_id = random.randrange(-1, len(self.__slaves))
+        # for now just load-balance randomly among slaves only...
+        connection_id = random.randrange(0, len(self.__slaves))
 
         if self.__in_request or connection_id == -1:
             return (-1, self.__master._receive_message(operation, data, _sock))
