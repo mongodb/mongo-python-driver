@@ -129,24 +129,23 @@ class Collection(object):
         return self.__database
 
     def save(self, to_save, manipulate=True, safe=False):
-        """Save a SON object in this collection.
+        """Save a document in this collection.
 
         Raises TypeError if to_save is not an instance of dict. If `safe`
         is True then the save will be checked for errors, raising
         OperationFailure if one occurred. Checking for safety requires an extra
-        round-trip to the database.
+        round-trip to the database. Returns the _id of the saved document.
 
         :Parameters:
           - `to_save`: the SON object to be saved
-          - `manipulate` (optional): manipulate the son object before saving it
+          - `manipulate` (optional): manipulate the SON object before saving it
           - `safe` (optional): check that the save succeeded?
         """
         if not isinstance(to_save, types.DictType):
             raise TypeError("cannot save object of type %s" % type(to_save))
 
         if "_id" not in to_save:
-            result = self.insert(to_save, manipulate, safe)
-            return result.get("_id", None)
+            return self.insert(to_save, manipulate, safe)
         else:
             self.update({"_id": to_save["_id"]}, to_save, True,
                         manipulate, safe)
@@ -157,15 +156,15 @@ class Collection(object):
         """Insert a document(s) into this collection.
 
         If manipulate is set the document(s) are manipulated using any
-        SONManipulators that have been added to this database. Returns the
-        inserted object or a list of inserted objects. If `safe` is True then
-        the insert will be checked for errors, raising OperationFailure if one
-        occurred. Checking for safety requires an extra round-trip to the
-        database.
+        SONManipulators that have been added to this database. Returns the _id
+        of the inserted document or a list of _ids of the inserted documents.
+        If `safe` is True then the insert will be checked for errors, raising
+        OperationFailure if one occurred. Checking for safety requires an extra
+        round-trip to the database.
 
         :Parameters:
           - `doc_or_docs`: a SON object or list of SON objects to be inserted
-          - `manipulate` (optional): monipulate the objects before inserting?
+          - `manipulate` (optional): monipulate the documents before inserting?
           - `safe` (optional): check that the insert succeeded?
           - `check_keys` (optional): check if keys start with '$' or
             contain '.', raising `pymongo.errors.InvalidName` in either case
@@ -188,7 +187,8 @@ class Collection(object):
             if error:
                 raise OperationFailure("insert failed: " + error["err"])
 
-        return len(docs) == 1 and docs[0] or docs
+        ids = [doc.get("_id", None) for doc in docs]
+        return len(ids) == 1 and ids[0] or ids
 
     def update(self, spec, document,
                upsert=False, manipulate=False, safe=False):

@@ -107,7 +107,7 @@ class GridFile(object):
             file_spec["length"] = 0
             file_spec["uploadDate"] = datetime.datetime.utcnow()
             file_spec.setdefault("chunkSize", 256000)
-            self.__id = self.__collection.files.insert(file_spec)["_id"]
+            self.__id = self.__collection.files.insert(file_spec)
 
         # we use repr(self.__id) here because we need it to be string and
         # filename gets tricky with renaming. this is a hack.

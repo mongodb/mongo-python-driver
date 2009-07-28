@@ -285,9 +285,11 @@ class TestCollection(unittest.TestCase):
         db.test.remove({})
         self.assertEqual(db.test.find().count(), 0)
         doc = {"hello": u"world"}
-        db.test.insert(doc)
+        id = db.test.insert(doc)
         self.assertEqual(db.test.find().count(), 1)
         self.assertEqual(doc, db.test.find_one())
+        self.assertEqual(doc["_id"], id)
+        self.assert_(isinstance(id, ObjectId))
 
         def remove_insert_find_one(dict):
             db.test.remove({})
@@ -396,10 +398,20 @@ class TestCollection(unittest.TestCase):
         doc1 = {"hello": u"world"}
         doc2 = {"hello": u"mike"}
         self.assertEqual(db.test.find().count(), 0)
-        db.test.insert([doc1, doc2])
+        ids = db.test.insert([doc1, doc2])
         self.assertEqual(db.test.find().count(), 2)
         self.assertEqual(doc1, db.test.find_one({"hello": u"world"}))
         self.assertEqual(doc2, db.test.find_one({"hello": u"mike"}))
+
+        self.assertEqual(2, len(ids))
+        self.assertEqual(doc1["_id"], ids[0])
+        self.assertEqual(doc2["_id"], ids[1])
+
+    def test_save(self):
+        self.db.drop_collection("test")
+        id = self.db.test.save({"hello": "world"})
+        self.assertEqual(self.db.test.find_one()["_id"], id)
+        self.assert_(isinstance(id, ObjectId))
 
     def test_unique_index(self):
         db = self.db
