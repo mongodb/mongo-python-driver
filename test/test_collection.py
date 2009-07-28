@@ -481,7 +481,7 @@ class TestCollection(unittest.TestCase):
         db.test.insert(a)
 
         db.test.update({}, {"$inc": {"x": 1}})
-        self.assertEqual(db.error()["err"], "can't $inc/$set an indexed field")
+        self.assert_(db.error()["err"].startswith("E12011"))
 
         self.assertRaises(OperationFailure, db.test.update,
                           {}, {"$inc": {"x": 1}}, safe=True)

@@ -51,6 +51,9 @@ class TestMasterSlaveConnection(unittest.TestCase):
         except ConnectionFailure:
             pass
 
+        if not self.slaves:
+            raise SkipTest()
+
         self.connection = MasterSlaveConnection(self.master, self.slaves)
         self.db = self.connection.pymongo_test
 
