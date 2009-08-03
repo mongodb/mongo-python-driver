@@ -151,6 +151,10 @@ def _validate_timestamp(data):
     assert len(data) >= 8
     return data[8:]
 
+def _validate_number_long(data):
+    assert len(data) >= 8
+    return data[8:]
+
 
 _element_validator = {
     "\x01": _validate_number,
@@ -169,7 +173,8 @@ _element_validator = {
     "\x0E": _validate_symbol,
     "\x0F": _validate_code_w_scope,
     "\x10": _validate_number_int,
-    "\x11": _validate_timestamp}
+    "\x11": _validate_timestamp,
+    "\x12": _validate_number_long}
 
 
 def _validate_element_data(type, data):
@@ -306,6 +311,9 @@ def _get_timestamp(data):
     (inc, data) = _get_int(data)
     return ((timestamp, inc), data)
 
+def _get_long(data):
+    return (struct.unpack("<q", data[:8])[0], data[8:])
+
 _element_getter = {
     "\x01": _get_number,
     "\x02": _get_string,
@@ -324,6 +332,7 @@ _element_getter = {
     "\x0F": _get_code_w_scope,
     "\x10": _get_int, # number_int
     "\x11": _get_timestamp,
+    "\x12": _get_long,
 }
 
 
@@ -400,9 +409,10 @@ def _element_to_bson(key, value, check_keys):
         return "\x08" + name + "\x00"
     if isinstance(value, (int, long)):
         # TODO this is a really ugly way to check for this...
+        if value > 2**64 / 2 - 1 or value < -2**64 / 2:
+            raise OverflowError("MongoDB can only handle up to 8-byte ints")
         if value > 2**32 / 2 - 1 or value < -2**32 / 2:
-            raise OverflowError("MongoDB can only handle 4-byte ints"
-                                " - try converting to a float before saving")
+            return "\x12" + name + struct.pack("<q", value)
         return "\x10" + name + struct.pack("<i", value)
     if isinstance(value, datetime.datetime):
         millis = int(calendar.timegm(value.timetuple()) * 1000 +

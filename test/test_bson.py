@@ -146,6 +146,7 @@ class TestBSON(unittest.TestCase):
                                    types.UnicodeType))
         helper({"mike": -10120})
         helper({"long": long(10)})
+        helper({"really big long": 2147483648})
         helper({u"hello": 0.0013109})
         helper({"something": True})
         helper({"false": False})
@@ -202,8 +203,11 @@ class TestBSON(unittest.TestCase):
                           {"lalala": '\xf4\xe0\xf0\xe1\xc0 Color Touch'})
 
     def test_overflow(self):
-        self.assert_(BSON.from_dict({"x": 2147483647}))
-        self.assertRaises(OverflowError, BSON.from_dict, {"x": 2147483648})
+        self.assert_(BSON.from_dict({"x": 9223372036854775807L}))
+        self.assertRaises(OverflowError, BSON.from_dict, {"x": 9223372036854775808L})
+
+        self.assert_(BSON.from_dict({"x": -9223372036854775808L}))
+        self.assertRaises(OverflowError, BSON.from_dict, {"x": -9223372036854775809L})
 
 if __name__ == "__main__":
     unittest.main()

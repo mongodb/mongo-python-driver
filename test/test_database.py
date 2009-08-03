@@ -332,6 +332,12 @@ class TestDatabase(unittest.TestCase):
             count += 1
         self.assertEqual(count, 1)
 
+    def test_long(self):
+        db = self.connection.pymongo_test
+        db.test.remove({})
+        db.test.save({"x": 9223372036854775807L})
+        self.assertEqual(9223372036854775807L, db.test.find_one()["x"])
+
     def test_remove(self):
         db = self.connection.pymongo_test
         db.test.remove({})
