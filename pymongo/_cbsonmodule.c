@@ -214,14 +214,17 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
     if (PyInt_CheckExact(value) || PyLong_CheckExact(value)) {
         const long long_value = PyInt_AsLong(value);
         const int int_value = (int)long_value;
-        if (PyErr_Occurred()) { /* Overflow */
-            return 0;
-        }
-        if (long_value != int_value) {
-            PyErr_SetString(PyExc_OverflowError,
-                            "MongoDB can only handle 4-byte ints"
-                            " - try converting to a float before saving");
-            return 0;
+        if (PyErr_Occurred() || long_value != int_value) { /* Overflow */
+            long long long_long_value;
+            PyErr_Clear();
+            long_long_value = PyLong_AsLongLong(value);
+            if (PyErr_Occurred()) { /* Overflow AGAIN */
+                PyErr_SetString(PyExc_OverflowError,
+                                "MongoDB can only handle up to 8-byte ints");
+                return 0;
+            }
+            *(buffer->buffer + type_byte) = 0x12;
+            return buffer_write_bytes(buffer, (const char*)&long_long_value, 8);
         }
         *(buffer->buffer + type_byte) = 0x10;
         return buffer_write_bytes(buffer, (const char*)&int_value, 4);
@@ -1110,6 +1113,17 @@ static PyObject* get_value(const char* buffer, int* position, int type) {
             memcpy(&i, buffer + *position, 4);
             memcpy(&j, buffer + *position + 4, 4);
             value = Py_BuildValue("(ii)", i, j);
+            if (!value) {
+                return NULL;
+            }
+            *position += 8;
+            break;
+        }
+    case 18:
+        {
+            long long ll;
+            memcpy(&ll, buffer + *position, 8);
+            value = PyLong_FromLongLong(ll);
             if (!value) {
                 return NULL;
             }
