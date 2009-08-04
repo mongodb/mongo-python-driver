@@ -547,8 +547,11 @@ class Collection(object):
         if new_name[0] == "." or new_name[-1] == ".":
             raise InvalidName("collecion names must not start or end with '.'")
 
-        self.__database.connection().admin._command(SON([("renameCollection", self.full_name()),
-                                                         ("to", "%s.%s" % (self.__database.name(), new_name))]))
+        rename_command = SON([("renameCollection", self.full_name()),
+                              ("to", "%s.%s" % (self.__database.name(),
+                                                new_name))])
+
+        self.__database.connection().admin._command(rename_command)
 
     def __iter__(self):
         return self
