@@ -561,5 +561,35 @@ class TestCollection(unittest.TestCase):
 
         self.assertEqual(9, sum)
 
+    def test_rename(self):
+        db = self.db
+        db.drop_collection("test")
+        db.drop_collection("foo")
+
+        self.assertRaises(TypeError, db.test.rename, 5)
+        self.assertRaises(InvalidName, db.test.rename, "")
+        self.assertRaises(InvalidName, db.test.rename, "te$t")
+        self.assertRaises(InvalidName, db.test.rename, ".test")
+        self.assertRaises(InvalidName, db.test.rename, "test.")
+        self.assertRaises(InvalidName, db.test.rename, "tes..t")
+
+        self.assertEqual(0, db.test.count())
+        self.assertEqual(0, db.foo.count())
+
+        for i in range(10):
+            db.test.insert({"x": i})
+
+        self.assertEqual(10, db.test.count())
+
+        db.test.rename("foo")
+
+        self.assertEqual(0, db.test.count())
+        self.assertEqual(10, db.foo.count())
+
+        x = 0
+        for doc in db.foo.find():
+            self.assertEqual(x, doc["x"])
+            x += 1
+
 if __name__ == "__main__":
     unittest.main()

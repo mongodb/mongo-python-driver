@@ -526,6 +526,30 @@ class Collection(object):
                                           "condition": condition,
                                           "initial": initial}))["result"]
 
+    def rename(self, new_name):
+        """Rename this collection.
+
+        If operating in auth mode, client must be authorized as an admin to
+        perform this operation. Raises TypeError if new_name is not an instance
+        of (str, unicode). Raises InvalidName if new_name is not a valid
+        collection name.
+
+        :Parameters:
+          - `new_name`: new name for this collection
+        """
+        if not isinstance(new_name, types.StringTypes):
+            raise TypeError("new_name must be an instance of (str, unicode)")
+
+        if not new_name or ".." in new_name:
+            raise InvalidName("collection names cannot be empty")
+        if "$" in new_name:
+            raise InvalidName("collection names must not contain '$'")
+        if new_name[0] == "." or new_name[-1] == ".":
+            raise InvalidName("collecion names must not start or end with '.'")
+
+        self.__database.connection().admin._command(SON([("renameCollection", self.full_name()),
+                                                         ("to", "%s.%s" % (self.__database.name(), new_name))]))
+
     def __iter__(self):
         return self
 
