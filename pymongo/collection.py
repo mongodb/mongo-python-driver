@@ -164,7 +164,7 @@ class Collection(object):
 
         :Parameters:
           - `doc_or_docs`: a SON object or list of SON objects to be inserted
-          - `manipulate` (optional): monipulate the documents before inserting?
+          - `manipulate` (optional): manipulate the documents before inserting?
           - `safe` (optional): check that the insert succeeded?
           - `check_keys` (optional): check if keys start with '$' or
             contain '.', raising `pymongo.errors.InvalidName` in either case
