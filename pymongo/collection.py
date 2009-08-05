@@ -207,7 +207,7 @@ class Collection(object):
             selected document(s), or (in the case of an upsert) the document to
             be inserted.
           - `upsert` (optional): perform an upsert operation
-          - `manipulate` (optional): monipulate the document before updating?
+          - `manipulate` (optional): manipulate the document before updating?
           - `safe` (optional): check that the update succeeded?
         """
         if not isinstance(spec, types.DictType):
