@@ -88,15 +88,13 @@ class TestCursor(unittest.TestCase):
         db = self.db
         db.drop_collection("test")
 
-        a = db.test.find()
+        a = db.test.find(slave_okay=True)
         for _ in a:
             break
-        self.assertRaises(InvalidOperation, a.slave_okay)
 
         db.test.save({"x": 1})
-        self.assertEqual(1, db.test.find().slave_okay().next()["x"])
-        self.assertEqual(1, db.test.find().slave_okay(False).next()["x"])
-        self.assertEqual(1, db.test.find().slave_okay(True).next()["x"])
+        self.assertEqual(1, db.test.find(slave_okay=True).next()["x"])
+        self.assertEqual(1, db.test.find(slave_okay=False).next()["x"])
 
     def test_limit(self):
         db = self.db

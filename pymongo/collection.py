@@ -291,7 +291,8 @@ class Collection(object):
             as_dict[field] = 1
         return as_dict
 
-    def find(self, spec=None, fields=None, skip=0, limit=0, _sock=None):
+    def find(self, spec=None, fields=None, skip=0, limit=0,
+             slave_okay=None, _sock=None):
         """Query the database.
 
         The `spec` argument is a prototype document that all results must
@@ -317,9 +318,16 @@ class Collection(object):
             of the result set) when returning the results
           - `limit` (optional): the maximum number of results to return in the
             first reply message, or 0 for the default return size
+          - `slave_okay` (optional): if True, this query should be allowed to
+            execute on a slave (by default, certain queries are not allowed to
+            execute on mongod instances running in slave mode). If slave_okay
+            is set to None the Connection level default will be used - see the
+            slave_okay parameter to `pymongo.Connection.__init__`.
         """
         if spec is None:
             spec = SON()
+        if slave_okay is None:
+            slave_okay = self.__database.connection().slave_okay
         if not isinstance(spec, types.DictType):
             raise TypeError("spec must be an instance of dict")
         if not isinstance(fields, (types.ListType, types.NoneType)):
@@ -328,11 +336,13 @@ class Collection(object):
             raise TypeError("skip must be an instance of int")
         if not isinstance(limit, types.IntType):
             raise TypeError("limit must be an instance of int")
+        if not isinstance(slave_okay, types.BooleanType):
+            raise TypeError("slave_okay must be an instance of bool")
 
         if fields is not None:
             fields = self._fields_list_to_dict(fields)
 
-        return Cursor(self, spec, fields, skip, limit, _sock=_sock)
+        return Cursor(self, spec, fields, skip, limit, slave_okay, _sock=_sock)
 
     def count(self):
         return self.find().count()

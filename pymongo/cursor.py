@@ -35,7 +35,8 @@ class Cursor(object):
     """A cursor / iterator over Mongo query results.
     """
 
-    def __init__(self, collection, spec, fields, skip, limit, _sock=None):
+    def __init__(self, collection, spec, fields, skip, limit, slave_okay,
+                 _sock=None):
         """Create a new cursor.
 
         Should not be called directly by application developers.
@@ -45,7 +46,7 @@ class Cursor(object):
         self.__fields = fields
         self.__skip = skip
         self.__limit = limit
-        self.__slave_okay = collection.database().connection().slave_okay
+        self.__slave_okay = slave_okay
         self.__ordering = None
         self.__explain = False
         self.__hint = None
@@ -87,8 +88,7 @@ class Cursor(object):
         completely evaluated.
         """
         copy = Cursor(self.__collection, self.__spec, self.__fields,
-                      self.__skip, self.__limit)
-        copy.__slave_okay = self.__slave_okay
+                      self.__skip, self.__limit, self.__slave_okay)
         copy.__ordering = self.__ordering
         copy.__explain = self.__explain
         copy.__hint = self.__hint
@@ -138,8 +138,12 @@ class Cursor(object):
         if self.__retrieved or self.__id is not None:
             raise InvalidOperation("cannot set options after executing query")
 
+    # TODO complete deprecation by removing this method
     def slave_okay(self, slave_okay=True):
-        """Specify whether this query should be allowed to execute on a slave.
+        """(DEPRECATED) Specify whether this query should be allowed to execute on a slave.
+
+        This method is deprecated and will be removed. Use the slave_okay
+        parameter to `pymongo.collection.Collection.find` instead.
 
         By default, certain queries are not allowed to execute on mongod
         instances running in slave mode. If `slave_okay` is True then this
@@ -157,6 +161,9 @@ class Cursor(object):
           - `slave_okay` (optional): should this query be allowed to execute on
             slave instances
         """
+        warnings.warn("the slave_okay method is deprecated and will"
+                      " be removed - use the slave_okay paramater to find()"
+                      " instead", DeprecationWarning)
         self.__check_okay_to_chain()
 
         self.__slave_okay = slave_okay
