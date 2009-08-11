@@ -36,7 +36,7 @@ class Cursor(object):
     """
 
     def __init__(self, collection, spec, fields, skip, limit, slave_okay,
-                 _sock=None):
+                 snapshot=False, _sock=None):
         """Create a new cursor.
 
         Should not be called directly by application developers.
@@ -47,6 +47,7 @@ class Cursor(object):
         self.__skip = skip
         self.__limit = limit
         self.__slave_okay = slave_okay
+        self.__snapshot = snapshot
         self.__ordering = None
         self.__explain = False
         self.__hint = None
@@ -88,7 +89,8 @@ class Cursor(object):
         completely evaluated.
         """
         copy = Cursor(self.__collection, self.__spec, self.__fields,
-                      self.__skip, self.__limit, self.__slave_okay)
+                      self.__skip, self.__limit, self.__slave_okay,
+                      self.__snapshot)
         copy.__ordering = self.__ordering
         copy.__explain = self.__explain
         copy.__hint = self.__hint
@@ -122,6 +124,8 @@ class Cursor(object):
             spec["$explain"] = True
         if self.__hint:
             spec["$hint"] = self.__hint
+        if self.__snapshot:
+            spec["$snapshot"] = True
         return spec
 
     def __query_options(self):

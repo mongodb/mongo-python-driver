@@ -292,7 +292,7 @@ class Collection(object):
         return as_dict
 
     def find(self, spec=None, fields=None, skip=0, limit=0,
-             slave_okay=None, _sock=None):
+             slave_okay=None, snapshot=False, _sock=None):
         """Query the database.
 
         The `spec` argument is a prototype document that all results must
@@ -323,6 +323,12 @@ class Collection(object):
             execute on mongod instances running in slave mode). If slave_okay
             is set to None the Connection level default will be used - see the
             slave_okay parameter to `pymongo.Connection.__init__`.
+          - `snapshot` (optional): if True, snapshot mode will be used for this
+            query. Snapshot mode assures no duplicates are returned, or objects
+            missed, which were present at both the start and end of the query's
+            execution. For details, see the wiki_
+
+        .. _wiki: http://www.mongodb.org/display/DOCS/How+to+do+Snapshotting+in+the+Mongo+Database
         """
         if spec is None:
             spec = SON()
@@ -338,11 +344,14 @@ class Collection(object):
             raise TypeError("limit must be an instance of int")
         if not isinstance(slave_okay, types.BooleanType):
             raise TypeError("slave_okay must be an instance of bool")
+        if not isinstance(snapshot, types.BooleanType):
+            raise TypeError("snapshot must be an instance of bool")
 
         if fields is not None:
             fields = self._fields_list_to_dict(fields)
 
-        return Cursor(self, spec, fields, skip, limit, slave_okay, _sock=_sock)
+        return Cursor(self, spec, fields, skip, limit, slave_okay, snapshot,
+                      _sock=_sock)
 
     def count(self):
         return self.find().count()

@@ -591,5 +591,14 @@ class TestCollection(unittest.TestCase):
             self.assertEqual(x, doc["x"])
             x += 1
 
+    # doesn't really test functionality, just that the option is set correctly
+    def test_snapshot(self):
+        db = self.db
+
+        self.assertRaises(TypeError, db.test.find, snapshot=5)
+
+        list(db.test.find(snapshot=True))
+        self.assertRaises(OperationFailure, list, db.test.find(snapshot=True).sort("foo", 1))
+
 if __name__ == "__main__":
     unittest.main()
