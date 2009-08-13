@@ -192,7 +192,7 @@ class Collection(object):
 
     def update(self, spec, document,
                upsert=False, manipulate=False, safe=False):
-        """Update an object(s) in this collection.
+        """Update a document(s) in this collection.
 
         Raises TypeError if either spec or document isn't an instance of
         dict or upsert isn't an instance of bool. If `safe` is True then
@@ -205,7 +205,7 @@ class Collection(object):
             a document to be updated
           - `document`: a SON object specifying the fields to be changed in the
             selected document(s), or (in the case of an upsert) the document to
-            be inserted.
+            be inserted
           - `upsert` (optional): perform an upsert operation
           - `manipulate` (optional): manipulate the document before updating?
           - `safe` (optional): check that the update succeeded?

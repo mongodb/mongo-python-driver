@@ -24,7 +24,7 @@ import random
 import errno
 import datetime
 
-from errors import ConnectionFailure, InvalidName
+from errors import ConnectionFailure
 from errors import OperationFailure, ConfigurationError
 from errors import AutoReconnect
 from database import Database
