@@ -131,6 +131,10 @@ class Collection(object):
     def save(self, to_save, manipulate=True, safe=False):
         """Save a document in this collection.
 
+        If `to_save` already has an '_id' then an update (upsert) operation
+        is performed and any existing document with that _id is overwritten.
+        Otherwise an insert operation is performed.
+
         Raises TypeError if to_save is not an instance of dict. If `safe`
         is True then the save will be checked for errors, raising
         OperationFailure if one occurred. Checking for safety requires an extra
