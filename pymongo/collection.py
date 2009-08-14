@@ -133,7 +133,8 @@ class Collection(object):
 
         If `to_save` already has an '_id' then an update (upsert) operation
         is performed and any existing document with that _id is overwritten.
-        Otherwise an insert operation is performed.
+        Otherwise an insert operation is performed. Returns the _id of the
+        saved document.
 
         Raises TypeError if to_save is not an instance of dict. If `safe`
         is True then the save will be checked for errors, raising
@@ -256,7 +257,8 @@ class Collection(object):
 
         self._send_message(2006, _ZERO + bson.BSON.from_dict(spec))
 
-    def find_one(self, spec_or_object_id=None, _sock=None):
+    def find_one(self, spec_or_object_id=None, fields=None, slave_okay=None,
+                 _sock=None):
         """Get a single object from the database.
 
         Raises TypeError if the argument is of an improper type. Returns a
@@ -264,9 +266,15 @@ class Collection(object):
 
         :Parameters:
           - `spec_or_object_id` (optional): a SON object specifying elements
-            which must be present for a document to be included in the result
-            set OR an instance of ObjectId to be used as the value for an _id
-            query
+            which must be present for a document to be returned OR an instance
+            of ObjectId to be used as the value for an _id query
+          - `fields` (optional): a list of field names that should be included
+            in the returned document ("_id" will always be included)
+          - `slave_okay` (optional): if True, this query should be allowed to
+            execute on a slave (by default, certain queries are not allowed to
+            execute on mongod instances running in slave mode). If slave_okay
+            is set to None the Connection level default will be used - see the
+            slave_okay parameter to `pymongo.Connection.__init__`.
         """
         spec = spec_or_object_id
         if spec is None:
@@ -274,7 +282,8 @@ class Collection(object):
         if isinstance(spec, ObjectId):
             spec = SON({"_id": spec})
 
-        for result in self.find(spec, limit=-1, _sock=_sock):
+        for result in self.find(spec, limit=-1, fields=fields,
+                                slave_okay=slave_okay, _sock=_sock):
             return result
         return None
 

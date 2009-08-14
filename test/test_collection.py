@@ -609,5 +609,25 @@ class TestCollection(unittest.TestCase):
         list(db.test.find(snapshot=True))
         self.assertRaises(OperationFailure, list, db.test.find(snapshot=True).sort("foo", 1))
 
+    def test_find_one(self):
+        db = self.db
+        db.drop_collection("test")
+
+        id = db.test.save({"hello": "world", "foo": "bar"})
+
+        self.assertEqual("world", db.test.find_one()["hello"])
+        self.assertEqual(db.test.find_one(id), db.test.find_one())
+        self.assertEqual(db.test.find_one(None), db.test.find_one())
+        self.assertEqual(db.test.find_one({}), db.test.find_one())
+        self.assertEqual(db.test.find_one({"hello": "world"}), db.test.find_one())
+
+        self.assert_("hello" in db.test.find_one(fields=["hello"]))
+        self.assert_("hello" not in db.test.find_one(fields=["foo"]))
+
+        self.assertEqual(None, db.test.find_one({"hello": "foo"}))
+        self.assertEqual(None, db.test.find_one(ObjectId()))
+
+        self.assertRaises(TypeError, db.test.find_one, 6)
+
 if __name__ == "__main__":
     unittest.main()
