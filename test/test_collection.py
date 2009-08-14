@@ -629,5 +629,21 @@ class TestCollection(unittest.TestCase):
 
         self.assertRaises(TypeError, db.test.find_one, 6)
 
+    def test_insert_adds_id(self):
+        doc = {"hello": "world"}
+        self.db.test.insert(doc)
+        self.assert_("_id" in doc)
+
+        docs = [{"hello": "world"}, {"hello": "world"}]
+        self.db.test.insert(docs)
+        for doc in docs:
+            self.assert_("_id" in doc)
+
+    def test_save_adds_id(self):
+        doc = {"hello": "world"}
+        self.db.test.save(doc)
+        self.assert_("_id" in doc)
+
+
 if __name__ == "__main__":
     unittest.main()
