@@ -452,7 +452,6 @@ class TestCollection(unittest.TestCase):
     def test_safe_insert(self):
         db = self.db
         db.drop_collection("test")
-        db.test.create_index("_id", ASCENDING)
 
         a = {"hello": "world"}
         db.test.insert(a)
@@ -498,7 +497,17 @@ class TestCollection(unittest.TestCase):
         self.assertRaises(OperationFailure, db.test.update,
                           {}, {"$inc": {"x": 1}}, safe=True)
 
-    # TODO test safe save?
+    def test_safe_save(self):
+        db = self.db
+        db.drop_collection("test")
+        db.test.create_index("hello", ASCENDING, unique=True)
+
+        db.test.save({"hello": "world"})
+        db.test.save({"hello": "world"})
+        self.assert_("E11000" in db.error()["err"])
+
+        self.assertRaises(OperationFailure, db.test.save, {"hello": "world"}, safe=True)
+
     def test_count(self):
         db = self.db
         db.drop_collection("test")
