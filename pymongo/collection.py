@@ -367,6 +367,8 @@ class Collection(object):
                       _sock=_sock)
 
     def count(self):
+        """Get the number of documents in this collection.
+        """
         return self.find().count()
 
     def _gen_index_name(self, keys):
