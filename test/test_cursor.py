@@ -259,10 +259,10 @@ class TestCursor(unittest.TestCase):
         self.assertEqual(5, db.test.find({"x": {"$lt": 5}}).count())
 
         a = db.test.find()
-        a.count() # no exception here
+        b = a.count()
         for _ in a:
             break
-        self.assertRaises(InvalidOperation, a.count)
+        self.assertEqual(b, a.count())
 
         self.assertEqual(0, db.test.acollectionthatdoesntexist.find().count())
 

@@ -232,12 +232,9 @@ class Cursor(object):
         """Get the size of the results set for this query.
 
         Returns the number of objects in the results set for this query. Does
-        not take limit and skip into account. Raises InvalidOperation if this
-        cursor has already been used. Raises OperationFailure on a database
-        error.
+        not take limit and skip into account. Raises OperationFailure on a
+        database error.
         """
-        self.__check_okay_to_chain()
-
         command = SON([("count", self.__collection.name()),
                        ("query", self.__spec)])
         response = self.__collection.database()._command(command,
