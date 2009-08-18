@@ -259,7 +259,7 @@ class TestCursor(unittest.TestCase):
         self.assertEqual(5, db.test.find({"x": {"$lt": 5}}).count())
 
         a = db.test.find()
-        b = a.count()
+        a.count() # no exception here
         for _ in a:
             break
         self.assertRaises(InvalidOperation, a.count)
