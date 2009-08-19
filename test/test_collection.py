@@ -525,6 +525,10 @@ class TestCollection(unittest.TestCase):
                                            {"count": 0},
                                            "function (obj, prev) { "
                                            "prev.count++; }"))
+        self.assertEqual([], db.test.group([], {},
+                                           {"count": 0},
+                                           "function (obj, prev) { "
+                                           "prev.count++; }", command=True))
 
         db.test.save({"a": 2})
         db.test.save({"b": 5})
@@ -534,11 +538,38 @@ class TestCollection(unittest.TestCase):
                                           {"count": 0},
                                           "function (obj, prev) { "
                                           "prev.count++; }")[0]["count"])
+        self.assertEqual(3, db.test.group([], {},
+                                          {"count": 0},
+                                          "function (obj, prev) { "
+                                          "prev.count++; }",
+                                          command=True)[0]["count"])
         self.assertEqual(1, db.test.group([],
                                           {"a": {"$gt": 1}},
                                           {"count": 0},
                                           "function (obj, prev) { "
                                           "prev.count++; }")[0]["count"])
+        self.assertEqual(1, db.test.group([],
+                                          {"a": {"$gt": 1}},
+                                          {"count": 0},
+                                          "function (obj, prev) { "
+                                          "prev.count++; }",
+                                          command=True)[0]["count"])
+
+        db.test.save({"a": 2, "b": 3})
+
+        # NOTE maybe we can't count on this ordering being right
+        expected = [{"a": 2, "count": 2},
+                    {"a": None, "count": 1},
+                    {"a": 1, "count": 1}]
+        self.assertEqual(expected, db.test.group(["a"], {},
+                                                 {"count": 0},
+                                                 "function (obj, prev) { "
+                                                 "prev.count++; }",
+                                                 command=True))
+        self.assertEqual(expected, db.test.group(["a"], {},
+                                                 {"count": 0},
+                                                 "function (obj, prev) { "
+                                                 "prev.count++; }"))
 
     def test_large_limit(self):
         db = self.db

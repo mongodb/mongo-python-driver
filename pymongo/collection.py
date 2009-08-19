@@ -317,7 +317,7 @@ class Collection(object):
         Matches can have other keys *in addition* to "hello". The `fields`
         argument is used to specify a subset of fields that should be included
         in the result documents. By limiting results to a certain subset of
-        fields we cut down on network traffic and decoding time.
+        fields you can cut down on network traffic and decoding time.
 
         Raises TypeError if any of the arguments are of improper type. Returns
         an instance of Cursor corresponding to this query.
@@ -522,7 +522,7 @@ class Collection(object):
 
         return options
 
-    def group(self, keys, condition, initial, reduce):
+    def group(self, keys, condition, initial, reduce, command=False):
         """Perform a query similar to an SQL group by operation.
 
         Returns an array of grouped items.
@@ -533,7 +533,18 @@ class Collection(object):
             query specification)
           - `initial`: initial value of the aggregation counter object
           - `reduce`: aggregation function as a JavaScript string
+          - `command` (optional): run the group as a command instead of in an
+            eval - it is likely that this option will eventually be deprecated
+            and all groups will be run as commands
         """
+        if command:
+            return self.__database._command({"group":
+                                                 {"ns": self.__collection_name,
+                                                  "$reduce": Code(reduce),
+                                                  "key": self._fields_list_to_dict(keys),
+                                                  "cond": condition,
+                                                  "initial": initial}})["retval"]
+
         group_function = """function () {
     var c = db[ns].find(condition);
     var map = new Map();
@@ -542,8 +553,9 @@ class Collection(object):
         var obj = c.next();
 
         var key = {};
-        for (var i in keys) {
-            key[keys[i]] = obj[keys[i]];
+        for (var i = 0; i < keys.length; i++) {
+            var k = keys[i];
+            key[k] = obj[k];
         }
 
         var aggObj = map.get(key);
