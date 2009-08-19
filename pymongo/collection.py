@@ -361,6 +361,8 @@ class Collection(object):
             raise TypeError("snapshot must be an instance of bool")
 
         if fields is not None:
+            if not fields:
+                fields = ["_id"]
             fields = self._fields_list_to_dict(fields)
 
         return Cursor(self, spec, fields, skip, limit, slave_okay, snapshot,

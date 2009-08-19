@@ -623,6 +623,7 @@ class TestCollection(unittest.TestCase):
 
         self.assert_("hello" in db.test.find_one(fields=["hello"]))
         self.assert_("hello" not in db.test.find_one(fields=["foo"]))
+        self.assertEqual(["_id"], db.test.find_one(fields=[]).keys())
 
         self.assertEqual(None, db.test.find_one({"hello": "foo"}))
         self.assertEqual(None, db.test.find_one(ObjectId()))
