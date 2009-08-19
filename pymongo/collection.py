@@ -533,9 +533,9 @@ class Collection(object):
             query specification)
           - `initial`: initial value of the aggregation counter object
           - `reduce`: aggregation function as a JavaScript string
-          - `command` (optional): run the group as a command instead of in an
-            eval - it is likely that this option will eventually be deprecated
-            and all groups will be run as commands
+          - `command` (optional): if True, run the group as a command instead
+            of in an eval - it is likely that this option will eventually be
+            deprecated and all groups will be run as commands
         """
         if command:
             return self.__database._command({"group":

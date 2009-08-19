@@ -571,6 +571,9 @@ class TestCollection(unittest.TestCase):
                                                  "function (obj, prev) { "
                                                  "prev.count++; }"))
 
+        self.assertRaises(OperationFailure, db.test.group, [], {}, {}, "5 ++ 5")
+        self.assertRaises(OperationFailure, db.test.group, [], {}, {}, "5 ++ 5", command=True)
+
     def test_large_limit(self):
         db = self.db
         db.drop_collection("test")
