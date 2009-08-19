@@ -17,6 +17,7 @@
 
 import unittest
 import datetime
+import os
 import sys
 sys.path[0:0] = [""]
 
@@ -311,6 +312,58 @@ class TestGridFile(unittest.TestCase):
 
         qcheck.check_unittest(self, helper,
                               qcheck.gen_string(qcheck.gen_range(0, 20)))
+
+    def test_seek(self):
+        self.db.fs.files.remove({})
+        self.db.fs.chunks.remove({})
+
+        file = GridFile({"filename": "test", "chunkSize": 3}, self.db, "w")
+        file.write("hello world")
+        self.assertRaises(ValueError, file.seek, 0)
+        file.close()
+
+        file = GridFile({"filename": "test"}, self.db, "r")
+        self.assertEqual(file.read(), "hello world")
+        file.seek(0)
+        self.assertEqual(file.read(), "hello world")
+        file.seek(1)
+        self.assertEqual(file.read(), "ello world")
+        self.assertRaises(IOError, file.seek, -1)
+
+        file.seek(-3, os.SEEK_END)
+        self.assertEqual(file.read(), "rld")
+        file.seek(0, os.SEEK_END)
+        self.assertEqual(file.read(), "")
+        self.assertRaises(IOError, file.seek, -100, os.SEEK_END)
+
+        file.seek(3)
+        file.seek(3, os.SEEK_CUR)
+        self.assertEqual(file.read(), "world")
+        self.assertRaises(IOError, file.seek, -100, os.SEEK_CUR)
+
+        file.close()
+
+    def test_tell(self):
+        self.db.fs.files.remove({})
+        self.db.fs.chunks.remove({})
+
+        file = GridFile({"filename": "test", "chunkSize": 3}, self.db, "w")
+        file.write("hello world")
+        self.assertRaises(ValueError, file.tell)
+        file.close()
+
+        file = GridFile({"filename": "test"}, self.db, "r")
+        self.assertEqual(file.tell(), 0)
+        file.read(0)
+        self.assertEqual(file.tell(), 0)
+        file.read(1)
+        self.assertEqual(file.tell(), 1)
+        file.read(2)
+        self.assertEqual(file.tell(), 3)
+        file.read()
+        self.assertEqual(file.tell(), file.length)
+
+        file.close()
 
     def test_modes(self):
         self.db.fs.files.remove({})

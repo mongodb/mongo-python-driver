@@ -17,6 +17,7 @@
 import types
 import datetime
 import math
+import os
 from threading import Condition
 
 from pymongo.son import SON
@@ -269,7 +270,12 @@ class GridFile(object):
             chunk = self.__collection.chunks.find_one({"files_id": self.__id, "n": chunk_number})
             if not chunk:
                 raise CorruptGridFile("no chunk for n = " + chunk_number)
-            bytes += chunk["data"]
+
+            if not bytes:
+                bytes += chunk["data"][self.__position % self.chunk_size:]
+            else:
+                bytes += chunk["data"]
+
             chunk_number += 1
 
         self.__position += size
@@ -299,6 +305,37 @@ class GridFile(object):
             return
 
         self.__buffer += str
+
+    def tell(self):
+        """Return the GridFile's current position (read-mode files only).
+        """
+        self.__assert_open("r")
+        return self.__position
+
+    def seek(self, pos, whence=os.SEEK_SET):
+        """Set the current position of the GridFile (read-mode files only).
+
+        :Parameters:
+         - `pos`: the position (or offset if using relative positioning) to seek to
+         - `whence` (optional): where to seek from. os.SEEK_SET (0) for absolute
+           file positioning, os.SEEK_CUR (1) to seek relative to the current
+           position,  os.SEEK_END (2) to seek relative to the file's end.
+        """
+        self.__assert_open("r")
+        if whence == os.SEEK_SET:
+            new_pos = pos
+        elif whence == os.SEEK_CUR:
+            new_pos = self.__position + pos
+        elif whence == os.SEEK_END:
+            new_pos = int(self.length) + pos
+        else:
+            raise IOError(22, "Invalid argument")
+
+        if new_pos < 0:
+            raise IOError(22, "Invalid argument")
+
+        self.__position = new_pos
+        self.__buffer = ""
 
     def writelines(self, sequence):
         """Write a sequence of strings to the file.
