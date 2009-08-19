@@ -403,9 +403,7 @@ class Cursor(object):
 
     def next(self):
         db = self.__collection.database()
-        if len(self.__data):
-            next = db._fix_outgoing(self.__data.pop(0), self.__collection)
-        elif self._refresh():
+        if len(self.__data) or self._refresh():
             next = db._fix_outgoing(self.__data.pop(0), self.__collection)
         else:
             raise StopIteration
