@@ -70,3 +70,10 @@ You will need `epydoc <http://epydoc.sourceforge.net/>`_ installed to generate t
 Testing
 =======
 The easiest way to run the tests is to install `nose <http://somethingaboutorange.com/mrl/projects/nose/>`_ (**easy_install nose**) and run **nosetests** or **python setup.py test** in the root of the distribution. Tests are located in the *test/* directory.
+
+Credits
+=======
+Thanks to (in no particular order) (if you belong here and are missing please let us know):
+
+- moe at mbox dot bz: turn off nagle
+- Michael Stephens (mikejs): seek and tell for read mode GridFile
