@@ -332,7 +332,7 @@ class Connection(object): # TODO support auth for pooling
             finally:
                 if sock is not None:
                     sock.close()
-        raise ConnectionFailure("could not find master")
+        raise AutoReconnect("could not find master")
 
     def __connect(self, socket_number):
         """(Re-)connect to Mongo.
