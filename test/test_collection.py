@@ -679,6 +679,11 @@ class TestCollection(unittest.TestCase):
         self.db.test.save(doc)
         self.assert_("_id" in doc)
 
+    # TODO doesn't actually test functionality, just that it doesn't blow up
+    def test_cursor_timeout(self):
+        list(self.db.test.find(timeout=False))
+        list(self.db.test.find(timeout=True))
+
 
 if __name__ == "__main__":
     unittest.main()

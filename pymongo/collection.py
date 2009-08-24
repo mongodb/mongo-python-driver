@@ -305,7 +305,8 @@ class Collection(object):
         return as_dict
 
     def find(self, spec=None, fields=None, skip=0, limit=0,
-             slave_okay=None, snapshot=False, _sock=None):
+             slave_okay=None, timeout=True, snapshot=False,
+             _sock=None):
         """Query the database.
 
         The `spec` argument is a prototype document that all results must
@@ -336,6 +337,11 @@ class Collection(object):
             execute on mongod instances running in slave mode). If slave_okay
             is set to None the Connection level default will be used - see the
             slave_okay parameter to `pymongo.Connection.__init__`.
+          - `timeout` (optional): if True, any returned cursor will be subject
+            to the normal timeout behavior of the mongod process. Otherwise,
+            the returned cursor will never timeout at the server. Care should
+            be taken to ensure that cursors with timeout turned off are
+            properly closed.
           - `snapshot` (optional): if True, snapshot mode will be used for this
             query. Snapshot mode assures no duplicates are returned, or objects
             missed, which were present at both the start and end of the query's
@@ -357,6 +363,8 @@ class Collection(object):
             raise TypeError("limit must be an instance of int")
         if not isinstance(slave_okay, types.BooleanType):
             raise TypeError("slave_okay must be an instance of bool")
+        if not isinstance(timeout, types.BooleanType):
+            raise TypeError("timeout must be an instance of bool")
         if not isinstance(snapshot, types.BooleanType):
             raise TypeError("snapshot must be an instance of bool")
 
@@ -365,7 +373,7 @@ class Collection(object):
                 fields = ["_id"]
             fields = self._fields_list_to_dict(fields)
 
-        return Cursor(self, spec, fields, skip, limit, slave_okay, snapshot,
+        return Cursor(self, spec, fields, skip, limit, slave_okay, timeout, snapshot,
                       _sock=_sock)
 
     def count(self):
