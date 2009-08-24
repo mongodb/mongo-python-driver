@@ -68,7 +68,7 @@ class ObjectId(object):
         oid += machine_hash.digest()[0:3]
 
         # 2 bytes pid
-        oid += struct.pack("<H", os.getpid() % 65535)
+        oid += struct.pack("<H", os.getpid() % 0xFFFF)
 
         # 3 bytes inc
         ObjectId._inc_lock.acquire()
