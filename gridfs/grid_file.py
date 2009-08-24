@@ -20,6 +20,9 @@ import math
 import os
 from threading import Condition
 
+from pymongo import _SEEK_SET
+from pymongo import _SEEK_CUR
+from pymongo import _SEEK_END
 from pymongo.son import SON
 from pymongo.database import Database
 from pymongo.objectid import ObjectId
@@ -312,7 +315,7 @@ class GridFile(object):
         self.__assert_open("r")
         return self.__position
 
-    def seek(self, pos, whence=os.SEEK_SET):
+    def seek(self, pos, whence=_SEEK_SET):
         """Set the current position of the GridFile (read-mode files only).
 
         :Parameters:
@@ -322,11 +325,11 @@ class GridFile(object):
            position,  os.SEEK_END (2) to seek relative to the file's end.
         """
         self.__assert_open("r")
-        if whence == os.SEEK_SET:
+        if whence == _SEEK_SET:
             new_pos = pos
-        elif whence == os.SEEK_CUR:
+        elif whence == _SEEK_CUR:
             new_pos = self.__position + pos
-        elif whence == os.SEEK_END:
+        elif whence == _SEEK_END:
             new_pos = int(self.length) + pos
         else:
             raise IOError(22, "Invalid argument")

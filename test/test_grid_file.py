@@ -24,6 +24,7 @@ sys.path[0:0] = [""]
 import qcheck
 from test_connection import get_connection
 from gridfs.grid_file import GridFile
+from pymongo import _SEEK_END, _SEEK_CUR
 
 
 class TestGridFile(unittest.TestCase):
@@ -330,16 +331,16 @@ class TestGridFile(unittest.TestCase):
         self.assertEqual(file.read(), "ello world")
         self.assertRaises(IOError, file.seek, -1)
 
-        file.seek(-3, os.SEEK_END)
+        file.seek(-3, _SEEK_END)
         self.assertEqual(file.read(), "rld")
-        file.seek(0, os.SEEK_END)
+        file.seek(0, _SEEK_END)
         self.assertEqual(file.read(), "")
-        self.assertRaises(IOError, file.seek, -100, os.SEEK_END)
+        self.assertRaises(IOError, file.seek, -100, _SEEK_END)
 
         file.seek(3)
-        file.seek(3, os.SEEK_CUR)
+        file.seek(3, _SEEK_CUR)
         self.assertEqual(file.read(), "world")
-        self.assertRaises(IOError, file.seek, -100, os.SEEK_CUR)
+        self.assertRaises(IOError, file.seek, -100, _SEEK_CUR)
 
         file.close()
 

@@ -16,6 +16,7 @@
 
 import types
 import sys
+import os
 
 from pymongo.connection import Connection as PyMongo_Connection
 from pymongo.son import SON
@@ -38,6 +39,14 @@ version = "0.14.1"
 Connection = PyMongo_Connection
 """Alias for pymongo.connection.Connection."""
 
+try:
+    _SEEK_SET = os.SEEK_SET
+    _SEEK_CUR = os.SEEK_CUR
+    _SEEK_END = os.SEEK_END
+except AttributeError: # before 2.5
+    _SEEK_SET = 0
+    _SEEK_CUR = 1
+    _SEEK_END = 2
 
 def _index_list(key_or_list, direction):
     """Helper to generate a list of (key, direction) pairs.
