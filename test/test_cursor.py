@@ -437,5 +437,14 @@ class TestCursor(unittest.TestCase):
 
         self.assertNotEqual(cursor, cursor.clone())
 
+    def test_count_with_fields(self):
+        self.db.test.remove({})
+        self.db.test.save({"x": 1})
+
+        for _ in self.db.test.find({}, ["a"]):
+            self.fail()
+
+        self.assertEqual(0, self.db.test.find({}, ["a"]).count())
+
 if __name__ == "__main__":
     unittest.main()

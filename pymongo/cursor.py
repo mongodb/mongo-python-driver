@@ -236,7 +236,8 @@ class Cursor(object):
         database error.
         """
         command = SON([("count", self.__collection.name()),
-                       ("query", self.__spec)])
+                       ("query", self.__spec),
+                       ("fields", self.__fields)])
         response = self.__collection.database()._command(command,
                                                          ["ns missing"])
         if response.get("errmsg", "") == "ns missing":
