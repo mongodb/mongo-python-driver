@@ -257,8 +257,7 @@ def _get_binary(data):
 
 
 def _get_oid(data):
-    oid = _shuffle_oid(data[:12])
-    return (ObjectId(oid), data[12:])
+    return (ObjectId(data[:12]), data[12:])
 
 
 def _get_boolean(data):
@@ -359,10 +358,6 @@ if _use_c:
     _bson_to_dict = _cbson._bson_to_dict
 
 
-def _shuffle_oid(data):
-    return data[7::-1] + data[:7:-1]
-
-
 _RE_TYPE = type(_valid_array_name)
 
 
@@ -402,7 +397,7 @@ def _element_to_bson(key, value, check_keys):
         as_dict = SON(zip([str(i) for i in range(len(value))], value))
         return "\x04" + name + _dict_to_bson(as_dict, check_keys)
     if isinstance(value, ObjectId):
-        return "\x07" + name + _shuffle_oid(str(value))
+        return "\x07" + name + str(value)
     if value is True:
         return "\x08" + name + "\x01"
     if value is False:

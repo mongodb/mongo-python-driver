@@ -141,44 +141,6 @@ static int buffer_write_bytes(bson_buffer* buffer, const char* bytes, int size) 
     return 1;
 }
 
-static char* shuffle_oid(const char* oid) {
-    char* shuffled = (char*) malloc(12);
-    int i;
-
-    if (!shuffled) {
-        PyErr_NoMemory();
-        return NULL;
-    }
-
-    for (i = 0; i < 8; i++) {
-        shuffled[i] = oid[7 - i];
-    }
-    for (i = 0; i < 4; i++) {
-        shuffled[i + 8] = oid[11 - i];
-    }
-
-    return shuffled;
-}
-
-/* returns 0 on failure */
-static int write_shuffled_oid(bson_buffer* buffer, const char* oid) {
-    int offset = buffer_save_bytes(buffer, 12);
-    char* position;
-    int i;
-
-    if (offset == -1) {
-        return 0;
-    }
-    position = buffer->buffer + offset;
-    for (i = 0; i < 8; i++) {
-        position[i] = oid[7 - i];
-    }
-    for (i = 0; i < 4; i++) {
-        position[i + 8] = oid[11 - i];
-    }
-    return 1;
-}
-
 /* returns 0 on failure */
 static int write_string(bson_buffer* buffer, PyObject* py_string) {
     int i;
@@ -417,12 +379,12 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
             return 0;
         }
         {
-            const char* pre_shuffle = PyString_AsString(pystring);
-            if (!pre_shuffle) {
+            const char* as_string = PyString_AsString(pystring);
+            if (!as_string) {
                 Py_DECREF(pystring);
                 return 0;
             }
-            if (!write_shuffled_oid(buffer, pre_shuffle)) {
+            if (!buffer_write_bytes(buffer, as_string, 12)) {
                 Py_DECREF(pystring);
                 return 0;
             }
@@ -969,9 +931,7 @@ static PyObject* get_value(const char* buffer, int* position, int type) {
         }
     case 7:
         {
-            char* shuffled = shuffle_oid(buffer + *position);
-            value = PyObject_CallFunction(ObjectId, "s#", shuffled, 12);
-            free(shuffled);
+            value = PyObject_CallFunction(ObjectId, "s#", buffer + *position, 12);
             if (!value) {
                 return NULL;
             }
@@ -1045,7 +1005,6 @@ static PyObject* get_value(const char* buffer, int* position, int type) {
             int collection_length;
             PyObject* collection;
             PyObject* id;
-            char* shuffled;
 
             *position += 4;
             collection_length = strlen(buffer + *position);
@@ -1054,9 +1013,7 @@ static PyObject* get_value(const char* buffer, int* position, int type) {
                 return NULL;
             }
             *position += collection_length + 1;
-            shuffled = shuffle_oid(buffer + *position);
-            id = PyObject_CallFunction(ObjectId, "s#", shuffled, 12);
-            free(shuffled);
+            id = PyObject_CallFunction(ObjectId, "s#", buffer + *position, 12);
             if (!id) {
                 Py_DECREF(collection);
                 return NULL;
