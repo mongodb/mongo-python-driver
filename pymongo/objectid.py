@@ -60,7 +60,7 @@ class ObjectId(object):
         oid = ""
 
         # 4 bytes current time
-        oid += struct.pack("<i", int(time.time()))
+        oid += struct.pack(">i", int(time.time()))
 
         # 3 bytes machine
         machine_hash = _md5func()
@@ -68,11 +68,11 @@ class ObjectId(object):
         oid += machine_hash.digest()[0:3]
 
         # 2 bytes pid
-        oid += struct.pack("<H", os.getpid() % 0xFFFF)
+        oid += struct.pack(">H", os.getpid() % 0xFFFF)
 
         # 3 bytes inc
         ObjectId._inc_lock.acquire()
-        oid += struct.pack("<i", ObjectId._inc)[0:3]
+        oid += struct.pack(">i", ObjectId._inc)[1:4]
         ObjectId._inc = (ObjectId._inc + 1) % 0xFFFFFF
         ObjectId._inc_lock.release()
 
