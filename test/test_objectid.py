@@ -62,5 +62,19 @@ class TestObjectId(unittest.TestCase):
         encoded = b.url_encode()
         self.assertEqual(b, ObjectId.url_decode(encoded))
 
+    def test_url_legacy(self):
+        a = ObjectId()
+        self.assertNotEqual(a.url_encode(), a.url_encode(legacy=True))
+        self.assertEqual(a, ObjectId.url_decode(a.url_encode(legacy=True), legacy=True))
+
+    def test_legacy_string(self):
+        a = ObjectId()
+
+        self.assertEqual(a.url_encode(legacy=True), a.legacy_str().encode("hex"))
+
+        self.assertNotEqual(str(a), a.legacy_str())
+        self.assertEqual(a, ObjectId.from_legacy_str(a.legacy_str()))
+
+
 if __name__ == "__main__":
     unittest.main()
