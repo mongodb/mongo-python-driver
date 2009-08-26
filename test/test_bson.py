@@ -209,5 +209,9 @@ class TestBSON(unittest.TestCase):
         self.assert_(BSON.from_dict({"x": -9223372036854775808L}))
         self.assertRaises(OverflowError, BSON.from_dict, {"x": -9223372036854775809L})
 
+    def test_tuple(self):
+        self.assertEqual({"tuple": [1, 2]},
+                          BSON.from_dict({"tuple": (1, 2)}).to_dict())
+
 if __name__ == "__main__":
     unittest.main()

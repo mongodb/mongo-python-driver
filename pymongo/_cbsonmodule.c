@@ -205,13 +205,19 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
     } else if (PyDict_Check(value)) {
         *(buffer->buffer + type_byte) = 0x03;
         return write_dict(buffer, value, check_keys);
-    } else if (PyList_CheckExact(value)) {
+    } else if (PyList_Check(value) || PyTuple_Check(value)) {
         int start_position,
             length_location,
             items,
             length,
             i;
         char zero = 0;
+
+        if (PyTuple_Check(value)) { // just convert to list: slow, but easy
+            PyObject* tuple = value;
+            value = PySequence_List(tuple);
+            Py_DECREF(tuple);
+        }
 
         *(buffer->buffer + type_byte) = 0x04;
         start_position = buffer->position;
