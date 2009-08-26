@@ -546,12 +546,22 @@ class Collection(object):
             deprecated and all groups will be run as commands
         """
         if command:
+            if not isinstance(reduce, Code):
+                reduce = Code(reduce)
             return self.__database._command({"group":
                                                  {"ns": self.__collection_name,
-                                                  "$reduce": Code(reduce),
+                                                  "$reduce": reduce,
                                                   "key": self._fields_list_to_dict(keys),
                                                   "cond": condition,
                                                   "initial": initial}})["retval"]
+
+        scope = {}
+        if isinstance(reduce, Code):
+            scope = reduce.scope
+        scope.update({"ns": self.__collection_name,
+                      "keys": keys,
+                      "condition": condition,
+                      "initial": initial})
 
         group_function = """function () {
     var c = db[ns].find(condition);
@@ -576,11 +586,7 @@ class Collection(object):
     }
     return {"result": map.values()};
 }""" % reduce
-        return self.__database.eval(Code(group_function,
-                                         {"ns": self.__collection_name,
-                                          "keys": keys,
-                                          "condition": condition,
-                                          "initial": initial}))["result"]
+        return self.__database.eval(Code(group_function, scope))["result"]
 
     def rename(self, new_name):
         """Rename this collection.

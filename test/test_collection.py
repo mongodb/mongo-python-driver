@@ -22,6 +22,7 @@ sys.path[0:0] = [""]
 import qcheck
 from test_connection import get_connection
 from pymongo.objectid import ObjectId
+from pymongo.code import Code
 from pymongo.binary import Binary
 from pymongo.collection import Collection
 from pymongo.errors import InvalidName, OperationFailure
@@ -573,6 +574,42 @@ class TestCollection(unittest.TestCase):
 
         self.assertRaises(OperationFailure, db.test.group, [], {}, {}, "5 ++ 5")
         self.assertRaises(OperationFailure, db.test.group, [], {}, {}, "5 ++ 5", command=True)
+
+    def test_group_with_scope(self):
+        db = self.db
+        db.drop_collection("test")
+        db.test.save({"a": 1})
+        db.test.save({"b": 1})
+
+        reduce_function = "function (obj, prev) { prev.count += inc_value; }"
+
+        self.assertEqual(2, db.test.group([], {}, {"count": 0},
+                                          Code(reduce_function,
+                                               {"inc_value": 1}))[0]['count'])
+
+# TODO uncomment these tests when SERVER-262 is fixed
+
+#         self.assertEqual(2, db.test.group([], {}, {"count": 0},
+#                                           Code(reduce_function,
+#                                                {"inc_value": 1}),
+#                                           command=True)[0]['count'])
+
+        self.assertEqual(4, db.test.group([], {}, {"count": 0},
+                                          Code(reduce_function,
+                                               {"inc_value": 2}))[0]['count'])
+#         self.assertEqual(4, db.test.group([], {}, {"count": 0},
+#                                           Code(reduce_function,
+#                                                {"inc_value": 2}),
+#                                           command=True)[0]['count'])
+
+        self.assertEqual(1, db.test.group([], {}, {"count": 0},
+                                          Code(reduce_function,
+                                               {"inc_value": 0.5}))[0]['count'])
+#         self.assertEqual(1, db.test.group([], {}, {"count": 0},
+#                                           Code(reduce_function,
+#                                                {"inc_value": 0.5}),
+#                                           command=True)[0]['count'])
+
 
     def test_large_limit(self):
         db = self.db
