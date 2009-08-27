@@ -51,3 +51,4 @@ def post_data(data, machine_extra_info="", post_url="http://mongo-db.appspot.com
     """
     data["machine"] = machine_info(machine_extra_info)
     urllib2.urlopen(post_url, urllib.urlencode({"payload": json.dumps(data)}))
+    return data
