@@ -60,6 +60,7 @@ class TestObjectId(unittest.TestCase):
         a = ObjectId("123456789012")
         self.assertEqual(a.url_encode(), "313233343536373839303132")
         self.assertEqual(a, ObjectId.url_decode("313233343536373839303132"))
+        self.assertEqual(a.url_encode(), str(a))
 
         b = ObjectId()
         encoded = b.url_encode()

@@ -150,6 +150,8 @@ class ObjectId(object):
 
     @property
     def binary(self):
+        """Get the binary representation of this ObjectId.
+        """
         return self.__id
 
     def __str__(self):
