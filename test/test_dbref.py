@@ -55,19 +55,19 @@ class TestDBRef(unittest.TestCase):
         self.assertRaises(AttributeError, bar)
 
     def test_repr(self):
-        self.assertEqual(repr(DBRef("coll", ObjectId("123456789012"))),
-                         "DBRef(u'coll', ObjectId('123456789012'))")
-        self.assertEqual(repr(DBRef(u"coll", ObjectId("123456789012"))),
-                         "DBRef(u'coll', ObjectId('123456789012'))")
+        self.assertEqual(repr(DBRef("coll", ObjectId("1234567890abcdef12345678"))),
+                         "DBRef(u'coll', ObjectId('1234567890abcdef12345678'))")
+        self.assertEqual(repr(DBRef(u"coll", ObjectId("1234567890abcdef12345678"))),
+                         "DBRef(u'coll', ObjectId('1234567890abcdef12345678'))")
 
     def test_cmp(self):
-        self.assertEqual(DBRef("coll", ObjectId("123456789012")),
-                         DBRef(u"coll", ObjectId("123456789012")))
-        self.assertNotEqual(DBRef("coll", ObjectId("123456789012")),
-                            DBRef("col", ObjectId("123456789012")))
-        self.assertNotEqual(DBRef("coll", ObjectId("123456789012")),
+        self.assertEqual(DBRef("coll", ObjectId("1234567890abcdef12345678")),
+                         DBRef(u"coll", ObjectId("1234567890abcdef12345678")))
+        self.assertNotEqual(DBRef("coll", ObjectId("1234567890abcdef12345678")),
+                            DBRef("col", ObjectId("1234567890abcdef12345678")))
+        self.assertNotEqual(DBRef("coll", ObjectId("1234567890abcdef12345678")),
                             DBRef("coll", ObjectId("123456789011")))
-        self.assertNotEqual(DBRef("coll", ObjectId("123456789012")), 4)
+        self.assertNotEqual(DBRef("coll", ObjectId("1234567890abcdef12345678")), 4)
 
 if __name__ == "__main__":
     unittest.main()

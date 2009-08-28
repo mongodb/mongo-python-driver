@@ -397,7 +397,7 @@ def _element_to_bson(key, value, check_keys):
         as_dict = SON(zip([str(i) for i in range(len(value))], value))
         return "\x04" + name + _dict_to_bson(as_dict, check_keys)
     if isinstance(value, ObjectId):
-        return "\x07" + name + str(value)
+        return "\x07" + name + value.binary
     if value is True:
         return "\x08" + name + "\x01"
     if value is False:

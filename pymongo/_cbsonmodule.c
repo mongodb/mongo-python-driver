@@ -374,7 +374,7 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
         *(buffer->buffer + type_byte) = 0x09;
         return buffer_write_bytes(buffer, (const char*)&time_since_epoch, 8);
     } else if (PyObject_IsInstance(value, ObjectId)) {
-        PyObject* pystring = PyObject_Str(value);
+        PyObject* pystring = PyObject_GetAttrString(value, "_ObjectId__id");
         if (!pystring) {
             return 0;
         }

@@ -47,7 +47,8 @@ class ObjectId(object):
         raised.
 
         :Parameters:
-          - `id` (optional): a valid ObjectId
+        - `id` (optional): a valid ObjectId (12 byte binary or 24 character
+        hex string)
         """
         if id is None:
             self.__generate()
@@ -92,6 +93,8 @@ class ObjectId(object):
         elif isinstance(oid, types.StringType):
             if len(oid) == 12:
                 self.__id = oid
+            elif len(oid) == 24:
+                self.__id = oid.decode("hex")
             else:
                 raise InvalidId("%s is not a valid ObjectId" % oid)
         else:
@@ -145,13 +148,19 @@ class ObjectId(object):
         return cls(legacy_str[7::-1] + legacy_str[:7:-1])
     from_legacy_str = classmethod(from_legacy_str)
 
-    def __str__(self):
+    @property
+    def binary(self):
         return self.__id
 
+    def __str__(self):
+        return self.__id.encode("hex")
+
     def __repr__(self):
-        return "ObjectId(%r)" % self.__id
+        return "ObjectId('%s')" % self.__id.encode("hex")
 
     def __cmp__(self, other):
         if isinstance(other, ObjectId):
             return cmp(self.__id, other.__id)
         return NotImplemented
+
+

@@ -42,9 +42,12 @@ class TestObjectId(unittest.TestCase):
         self.assert_(ObjectId(a))
 
     def test_repr_str(self):
-        self.assertEqual(repr(ObjectId("123456789012")),
-                         "ObjectId('123456789012')")
-        self.assertEqual(str(ObjectId("123456789012")), "123456789012")
+        self.assertEqual(repr(ObjectId("1234567890abcdef12345678")),
+                         "ObjectId('1234567890abcdef12345678')")
+        self.assertEqual(str(ObjectId("1234567890abcdef12345678")), "1234567890abcdef12345678")
+        self.assertEqual(str(ObjectId("123456789012")), "313233343536373839303132")
+        self.assertEqual(ObjectId("1234567890abcdef12345678").binary, '\x124Vx\x90\xab\xcd\xef\x124Vx')
+        self.assertEqual(str(ObjectId('\x124Vx\x90\xab\xcd\xef\x124Vx')), "1234567890abcdef12345678")
 
     def test_cmp(self):
         a = ObjectId()
