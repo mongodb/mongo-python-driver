@@ -43,9 +43,14 @@ class TestThreads(unittest.TestCase):
         for i in xrange(1000):
             self.db.test.save({"x": i})
 
+        threads = []
         for i in range(10):
             t = SaveAndFind(self.db.test)
             t.start()
+            threads.append(t)
+
+        for t in threads:
+            t.join()
 
 if __name__ == "__main__":
     unittest.main()
