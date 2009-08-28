@@ -213,10 +213,13 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
             i;
         char zero = 0;
 
+        /* if we're converting from a tuple we need to manually DECREF
+         * value since we own it. */
+        char was_tuple = 0;
+
         if (PyTuple_Check(value)) { // just convert to list: slow, but easy
-            PyObject* tuple = value;
-            value = PySequence_List(tuple);
-            Py_DECREF(tuple);
+            was_tuple = 1;
+            value = PySequence_List(value);
         }
 
         *(buffer->buffer + type_byte) = 0x04;
@@ -225,6 +228,9 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
         /* save space for length */
         length_location = buffer_save_bytes(buffer, 4);
         if (length_location == -1) {
+            if (was_tuple) {
+                Py_DECREF(value);
+            }
             return 0;
         }
 
@@ -235,23 +241,38 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
             PyObject* item_value;
 
             if (type_byte == -1) {
+                if (was_tuple) {
+                    Py_DECREF(value);
+                }
                 return 0;
             }
             INT2STRING(&name, i);
             if (!name) {
                 PyErr_NoMemory();
+                if (was_tuple) {
+                    Py_DECREF(value);
+                }
                 return 0;
             }
             if (!buffer_write_bytes(buffer, name, strlen(name) + 1)) {
                 free(name);
+                if (was_tuple) {
+                    Py_DECREF(value);
+                }
                 return 0;
             }
             free(name);
 
             item_value = PyList_GetItem(value, i);
             if (!write_element_to_buffer(buffer, list_type_byte, item_value, check_keys)) {
+                if (was_tuple) {
+                    Py_DECREF(value);
+                }
                 return 0;
             }
+        }
+        if (was_tuple) {
+            Py_DECREF(value);
         }
 
         /* write null byte and fill in length */
