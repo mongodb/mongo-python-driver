@@ -28,7 +28,8 @@ from code import Code
 from objectid import ObjectId
 from dbref import DBRef
 from son import SON
-from errors import InvalidBSON, InvalidDocument, UnsupportedTag, InvalidName
+from errors import InvalidBSON, InvalidDocument, UnsupportedTag
+from errors import InvalidName, InvalidStringData
 
 try:
     import _cbson
@@ -57,8 +58,11 @@ def _get_c_string(data):
 
 def _make_c_string(string):
     if "\x00" in string:
-        raise InvalidDocument("BSON strings must not contain a NULL character")
-    return string.encode("utf-8") + "\x00"
+        raise InvalidStringData("BSON strings must not contain a NULL character")
+    try:
+        return string.encode("utf-8") + "\x00"
+    except:
+        raise InvalidStringData("strings in documents must be ASCII only")
 
 
 def _validate_number(data):

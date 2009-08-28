@@ -27,6 +27,7 @@
 static PyObject* CBSONError;
 static PyObject* InvalidName;
 static PyObject* InvalidDocument;
+static PyObject* InvalidStringData;
 static PyObject* SON;
 static PyObject* Binary;
 static PyObject* Code;
@@ -153,7 +154,7 @@ static int write_string(bson_buffer* buffer, PyObject* py_string) {
 
     for (i = 0; i < string_length - 1; i++) {
         if (string[i] == 0) {
-            PyErr_SetString(InvalidDocument, "BSON strings must not contain a NULL character");
+            PyErr_SetString(InvalidStringData, "BSON strings must not contain a NULL character");
             return 0;
         }
     }
@@ -163,6 +164,17 @@ static int write_string(bson_buffer* buffer, PyObject* py_string) {
     }
     if (!buffer_write_bytes(buffer, string, string_length)) {
         return 0;
+    }
+    return 1;
+}
+
+/* returns 0 on invalid ascii */
+static int validate_ascii(const char* data, int length) {
+    int i;
+    for (i = 0; i < length; i++) {
+        if (data[i] & 0x80) {
+            return 0;
+        }
     }
     return 1;
 }
@@ -330,17 +342,14 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
         memcpy(buffer->buffer + length_location, &length, 4);
         return 1;
     } else if (PyString_Check(value)) {
-        PyObject* encoded;
         int result;
 
         *(buffer->buffer + type_byte) = 0x02;
-        /* we have to do the encoding so we can fail fast if they give us non utf-8 */
-        encoded = PyString_AsEncodedObject(value, "utf-8", "strict");
-        if (!encoded) {
+        if (!validate_ascii(PyString_AsString(value), PyString_Size(value))) {
+            PyErr_SetString(InvalidStringData, "strings in documents must be ASCII only");
             return 0;
         }
-        result = write_string(buffer, encoded);
-        Py_DECREF(encoded);
+        result = write_string(buffer, value);
         return result;
     } else if (PyUnicode_Check(value)) {
         PyObject* encoded;
@@ -1180,6 +1189,7 @@ PyMODINIT_FUNC init_cbson(void) {
     CBSONError = PyObject_GetAttrString(module, "InvalidDocument");
     InvalidName = PyObject_GetAttrString(module, "InvalidName");
     InvalidDocument = PyObject_GetAttrString(module, "InvalidDocument");
+    InvalidStringData = PyObject_GetAttrString(module, "InvalidStringData");
     Py_DECREF(module);
 
     module = PyImport_ImportModule("pymongo.son");
