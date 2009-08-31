@@ -404,6 +404,9 @@ class Collection(object):
             will be recognized by subsequent calls to `ensure_index` - see
             documentation for `ensure_index` for details
         """
+        if not isinstance(key_or_list, (str, unicode, list)):
+            raise TypeError("key_or_list must either be a single key or a list of (key, direction) pairs")
+
         to_save = SON()
         keys = pymongo._index_list(key_or_list, direction)
         name = self._gen_index_name(keys)
@@ -453,6 +456,9 @@ class Collection(object):
           - `ttl` (optional): time window (in seconds) during which this index
             will be recognized by subsequent calls to `ensure_index`
         """
+        if not isinstance(key_or_list, (str, unicode, list)):
+            raise TypeError("key_or_list must either be a single key or a list of (key, direction) pairs")
+
         keys = pymongo._index_list(key_or_list, direction)
         name = self._gen_index_name(keys)
         if self.database().connection()._cache_index(self.__database.name(),
