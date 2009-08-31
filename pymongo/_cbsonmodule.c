@@ -256,8 +256,10 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
 
             item_value = PySequence_GetItem(value, i);
             if (!write_element_to_buffer(buffer, list_type_byte, item_value, check_keys)) {
+                Py_DECREF(item_value);
                 return 0;
             }
+            Py_DECREF(item_value);
         }
 
         /* write null byte and fill in length */
