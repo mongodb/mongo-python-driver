@@ -78,3 +78,4 @@ Thanks to (in no particular order) (if you belong here and are missing please le
 - moe at mbox dot bz: turn off nagle
 - Michael Stephens (mikejs): seek and tell for read mode GridFile
 - Joakim Sernbrant (serbaut): fix decref bug in tuple encoder, hex __repr__ and __str__ for ObjectId
+- Alexander Artemenko (svetlyak40wt): fix spurious errors in thread test

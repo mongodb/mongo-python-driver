@@ -55,6 +55,10 @@ class InvalidBSON(ValueError):
     """Raised when trying to create a BSON object from invalid data.
     """
 
+class InvalidStringData(ValueError):
+    """Raised when trying to encode a string containing non-ASCII data.
+    """
+
 
 class InvalidDocument(ValueError):
     """Raised when trying to create a BSON object from an invalid document.
