@@ -52,8 +52,10 @@ class Database(object):
 
         self.__name = unicode(name)
         self.__connection = connection
-        self.__manipulators = []
-        self.__copying_manipulators = []
+        self.__incoming_manipulators = []
+        self.__incoming_copying_manipulators = []
+        self.__outgoing_manipulators = []
+        self.__outgoing_copying_manipulators = []
         self.add_son_manipulator(ObjectIdInjector())
         self.add_son_manipulator(ObjectIdShuffler())
 
@@ -73,10 +75,20 @@ class Database(object):
         :Parameters:
           - `manipulator`: the manipulator to add
         """
+        def method_overwritten(instance, method):
+            return getattr(instance, method) != getattr(super(instance.__class__, instance), method)
+
+
         if manipulator.will_copy():
-            self.__copying_manipulators.insert(0, manipulator)
+            if method_overwritten(manipulator, "transform_incoming"):
+                self.__incoming_copying_manipulators.insert(0, manipulator)
+            if method_overwritten(manipulator, "transform_outgoing"):
+                self.__outgoing_manipulators.insert(0, manipulator)
         else:
-            self.__manipulators.insert(0, manipulator)
+            if method_overwritten(manipulator, "transform_incoming"):
+                self.__incoming_manipulators.insert(0, manipulator)
+            if method_overwritten(manipulator, "transform_outgoing"):
+                self.__outgoing_manipulators.insert(0, manipulator)
 
     def connection(self):
         """Get the database connection.
@@ -148,9 +160,9 @@ class Database(object):
           - `son`: the son object going into the database
           - `collection`: the collection the son object is being saved in
         """
-        for manipulator in self.__manipulators:
+        for manipulator in self.__incoming_manipulators:
             son = manipulator.transform_incoming(son, collection)
-        for manipulator in self.__copying_manipulators:
+        for manipulator in self.__incoming_copying_manipulators:
             son = manipulator.transform_incoming(son, collection)
         return son
 
@@ -161,9 +173,9 @@ class Database(object):
           - `son`: the son object coming out of the database
           - `collection`: the collection the son object was saved in
         """
-        for manipulator in pymongo._reversed(self.__manipulators):
+        for manipulator in pymongo._reversed(self.__outgoing_manipulators):
             son = manipulator.transform_outgoing(son, collection)
-        for manipulator in pymongo._reversed(self.__copying_manipulators):
+        for manipulator in pymongo._reversed(self.__outgoing_copying_manipulators):
             son = manipulator.transform_outgoing(son, collection)
         return son
 
