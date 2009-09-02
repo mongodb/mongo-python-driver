@@ -991,9 +991,8 @@ static PyObject* get_value(const char* buffer, int* position, int type) {
     case 13:
     case 14:
         {
-            int value_length;
+            int value_length = ((int*)(buffer + *position))[0] - 1;
             *position += 4;
-            value_length = strlen(buffer + *position);
             value = PyUnicode_DecodeUTF8(buffer + *position, value_length, "strict");
             if (!value) {
                 return NULL;
