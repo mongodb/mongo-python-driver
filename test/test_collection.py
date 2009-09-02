@@ -64,18 +64,13 @@ class TestCollection(unittest.TestCase):
 
         self.assertRaises(TypeError, db.test.create_index, 5)
         self.assertRaises(TypeError, db.test.create_index, {"hello": 1})
-        self.assertRaises(TypeError, db.test.create_index, "hello")
         self.assertRaises(ValueError, db.test.create_index, [])
-        self.assertRaises(TypeError, db.test.create_index, [], ASCENDING)
-        self.assertRaises(TypeError, db.test.create_index,
-                          [("hello", DESCENDING)], DESCENDING)
-        self.assertRaises(TypeError, db.test.create_index, "hello", "world")
 
         db.test.drop_indexes()
         self.assertEqual(db.system.indexes.find({"ns": u"pymongo_test.test"})
                          .count(), 1)
 
-        db.test.create_index("hello", ASCENDING)
+        db.test.create_index("hello")
         db.test.create_index([("hello", DESCENDING), ("world", ASCENDING)])
 
         count = 0
@@ -86,7 +81,7 @@ class TestCollection(unittest.TestCase):
         db.test.drop_indexes()
         self.assertEqual(db.system.indexes.find({"ns": u"pymongo_test.test"})
                          .count(), 1)
-        db.test.create_index("hello", ASCENDING)
+        db.test.create_index("hello")
         self.assert_(SON([(u"name", u"hello_1"),
                           (u"unique", False),
                           (u"ns", u"pymongo_test.test"),
@@ -112,54 +107,52 @@ class TestCollection(unittest.TestCase):
         self.assertRaises(TypeError, db.test.ensure_index, {"hello": 1})
 
         db.test.drop_indexes()
-        self.assertEqual("hello_1", db.test.create_index("hello", ASCENDING))
-        self.assertEqual("hello_1", db.test.create_index("hello", ASCENDING))
+        self.assertEqual("hello_1", db.test.create_index("hello"))
+        self.assertEqual("hello_1", db.test.create_index("hello"))
 
         self.assertEqual("goodbye_1",
-                         db.test.ensure_index("goodbye", ASCENDING))
-        self.assertEqual(None, db.test.ensure_index("goodbye", ASCENDING))
+                         db.test.ensure_index("goodbye"))
+        self.assertEqual(None, db.test.ensure_index("goodbye"))
 
         db.test.drop_indexes()
         self.assertEqual("goodbye_1",
-                         db.test.ensure_index("goodbye", ASCENDING))
-        self.assertEqual(None, db.test.ensure_index("goodbye", ASCENDING))
+                         db.test.ensure_index("goodbye"))
+        self.assertEqual(None, db.test.ensure_index("goodbye"))
 
         db.test.drop_index("goodbye_1")
         self.assertEqual("goodbye_1",
-                         db.test.ensure_index("goodbye", ASCENDING))
-        self.assertEqual(None, db.test.ensure_index("goodbye", ASCENDING))
+                         db.test.ensure_index("goodbye"))
+        self.assertEqual(None, db.test.ensure_index("goodbye"))
 
         db.drop_collection("test")
         self.assertEqual("goodbye_1",
-                         db.test.ensure_index("goodbye", ASCENDING))
-        self.assertEqual(None, db.test.ensure_index("goodbye", ASCENDING))
+                         db.test.ensure_index("goodbye"))
+        self.assertEqual(None, db.test.ensure_index("goodbye"))
 
         db_name = self.db.name()
         self.connection.drop_database(self.db.name())
         self.assertEqual("goodbye_1",
-                         db.test.ensure_index("goodbye", ASCENDING))
-        self.assertEqual(None, db.test.ensure_index("goodbye", ASCENDING))
+                         db.test.ensure_index("goodbye"))
+        self.assertEqual(None, db.test.ensure_index("goodbye"))
 
         db.test.drop_index("goodbye_1")
         self.assertEqual("goodbye_1",
-                         db.test.create_index("goodbye", ASCENDING))
-        self.assertEqual(None, db.test.ensure_index("goodbye", ASCENDING))
+                         db.test.create_index("goodbye"))
+        self.assertEqual(None, db.test.ensure_index("goodbye"))
 
         db.test.drop_index("goodbye_1")
         self.assertEqual("goodbye_1",
-                         db.test.ensure_index("goodbye", ASCENDING,
-                                              ttl=1))
+                         db.test.ensure_index("goodbye", ttl=1))
         time.sleep(1.1)
         self.assertEqual("goodbye_1",
-                         db.test.ensure_index("goodbye", ASCENDING))
+                         db.test.ensure_index("goodbye"))
 
         db.test.drop_index("goodbye_1")
         self.assertEqual("goodbye_1",
-                         db.test.create_index("goodbye", ASCENDING,
-                                              ttl=1))
+                         db.test.create_index("goodbye", ttl=1))
         time.sleep(1.1)
         self.assertEqual("goodbye_1",
-                         db.test.ensure_index("goodbye", ASCENDING))
+                         db.test.ensure_index("goodbye"))
 
     def test_index_on_binary(self):
         db = self.db
@@ -171,19 +164,19 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(db.test.find({"bin": Binary("abc")})
                          .explain()["nscanned"], 3)
 
-        db.test.create_index("bin", ASCENDING)
+        db.test.create_index("bin")
         self.assertEqual(db.test.find({"bin": Binary("abc")})
                          .explain()["nscanned"], 1)
 
     def test_drop_index(self):
         db = self.db
         db.test.drop_indexes()
-        db.test.create_index("hello", ASCENDING)
-        name = db.test.create_index("goodbye", DESCENDING)
+        db.test.create_index("hello")
+        name = db.test.create_index("goodbye")
 
         self.assertEqual(db.system.indexes.find({"ns": u"pymongo_test.test"})
                          .count(), 3)
-        self.assertEqual(name, "goodbye_-1")
+        self.assertEqual(name, "goodbye_1")
         db.test.drop_index(name)
         self.assertEqual(db.system.indexes.find({"ns": u"pymongo_test.test"})
                          .count(), 2)
@@ -195,13 +188,13 @@ class TestCollection(unittest.TestCase):
                           .find({"ns": u"pymongo_test.test"})))
 
         db.test.drop_indexes()
-        db.test.create_index("hello", ASCENDING)
-        name = db.test.create_index("goodbye", DESCENDING)
+        db.test.create_index("hello")
+        name = db.test.create_index("goodbye")
 
         self.assertEqual(db.system.indexes.find({"ns": u"pymongo_test.test"})
                          .count(), 3)
-        self.assertEqual(name, "goodbye_-1")
-        db.test.drop_index([("goodbye", DESCENDING)])
+        self.assertEqual(name, "goodbye_1")
+        db.test.drop_index([("goodbye", ASCENDING)])
         self.assertEqual(db.system.indexes.find({"ns": u"pymongo_test.test"})
                          .count(), 2)
         self.assert_(SON([(u"name", u"hello_1"),
@@ -217,7 +210,7 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(len(db.test.index_information()), 1)
         self.assert_("_id_" in db.test.index_information())
 
-        db.test.create_index("hello", ASCENDING)
+        db.test.create_index("hello")
         self.assertEqual(len(db.test.index_information()), 2)
         self.assertEqual(db.test.index_information()["hello_1"],
                          [("hello", ASCENDING)])
@@ -421,7 +414,7 @@ class TestCollection(unittest.TestCase):
         db = self.db
 
         db.drop_collection("test")
-        db.test.create_index("hello", ASCENDING)
+        db.test.create_index("hello")
 
         db.test.save({"hello": "world"})
         db.test.save({"hello": "mike"})
@@ -429,7 +422,7 @@ class TestCollection(unittest.TestCase):
         self.failIf(db.error())
 
         db.drop_collection("test")
-        db.test.create_index("hello", ASCENDING, unique=True)
+        db.test.create_index("hello", unique=True)
 
         db.test.save({"hello": "world"})
         db.test.save({"hello": "mike"})
@@ -446,7 +439,7 @@ class TestCollection(unittest.TestCase):
         self.failIf(db.error())
 
         db.drop_collection("test")
-        db.test.create_index("hello.a", ASCENDING, unique=True)
+        db.test.create_index("hello.a", unique=True)
 
         db.test.insert({"hello": {"a": 4, "b": 5}})
         db.test.insert({"hello": {"a": 7, "b": 2}})
@@ -490,7 +483,7 @@ class TestCollection(unittest.TestCase):
     def test_safe_update(self):
         db = self.db
         db.drop_collection("test")
-        db.test.create_index("x", ASCENDING)
+        db.test.create_index("x")
 
         a = {"x": 5}
         db.test.insert(a)
@@ -504,7 +497,7 @@ class TestCollection(unittest.TestCase):
     def test_safe_save(self):
         db = self.db
         db.drop_collection("test")
-        db.test.create_index("hello", ASCENDING, unique=True)
+        db.test.create_index("hello", unique=True)
 
         db.test.save({"hello": "world"})
         db.test.save({"hello": "world"})

@@ -48,16 +48,16 @@ except AttributeError: # before 2.5
     _SEEK_CUR = 1
     _SEEK_END = 2
 
-def _index_list(key_or_list, direction):
+def _index_list(key_or_list, direction=None):
     """Helper to generate a list of (key, direction) pairs.
 
-    Takes such a list, or a single key and direction.
+    Takes such a list, or a single key, or a single key and direction.
     """
     if direction is not None:
         return [(key_or_list, direction)]
     else:
         if isinstance(key_or_list, types.StringTypes):
-            raise TypeError("must specify a direction if using a string key")
+            return [(key_or_list, ASCENDING)]
         return key_or_list
 
 
@@ -67,7 +67,7 @@ def _index_document(index_list):
     Takes a list of (key, direction) pairs.
     """
     if not isinstance(index_list, types.ListType):
-        raise TypeError("if no direction is specified, key_or_list must be an"
+        raise TypeError("if no direction is specified, key_or_list must be an "
                         "instance of list")
     if not len(index_list):
         raise ValueError("key_or_list must not be the empty list")
@@ -77,7 +77,7 @@ def _index_document(index_list):
         if not isinstance(key, types.StringTypes):
             raise TypeError("first item in each key pair must be a string")
         if not isinstance(value, types.IntType):
-            raise TypeError("second item in each key pair must be ASCENDING or"
+            raise TypeError("second item in each key pair must be ASCENDING or "
                             "DESCENDING")
         index[key] = value
     return index

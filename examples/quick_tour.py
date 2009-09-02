@@ -82,8 +82,7 @@ for d in collection.find({"i": {"$gt": 50}}):
 for d in collection.find({"i": {"$gt": 20, "$lte": 30}}):
     print d
 
-# Finally, we can create an ascending index on i, and print out the collection's
+# Finally, we can create an index on i, and print out the collection's
 # dictionary of indexes.
-from pymongo import ASCENDING
-collection.create_index("i", ASCENDING)
+collection.create_index("i")
 print collection.index_information()

@@ -51,9 +51,9 @@ ObjectId('\t6\xc6\x07\xb3\xfc\x87\xc4\x82\x04\x0f\\')
 10
 8
 11
->>> from pymongo import ASCENDING
->>> db.my_collection.create_index("x", ASCENDING)
+>>> db.my_collection.create_index("x")
 u'x_1'
+>>> from pymongo import ASCENDING
 >>> for item in db.my_collection.find().sort("x", ASCENDING):
 ...     print item["x"]
 ...

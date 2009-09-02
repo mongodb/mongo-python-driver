@@ -224,8 +224,8 @@ class Cursor(object):
         :Parameters:
           - `key_or_list`: a single key or a list of (key, direction) pairs
             specifying the keys to sort on
-          - `direction` (optional): must be included if key_or_list is a single
-            key, otherwise must be None
+          - `direction` (optional): only used if key_or_list is a single
+            key, if not given ASCENDING is assumed
         """
         self.__check_okay_to_chain()
         keys = pymongo._index_list(key_or_list, direction)

@@ -60,7 +60,7 @@ class TestCursor(unittest.TestCase):
                           db.test.find({"num": 17, "foo": 17})
                           .hint([("foo", ASCENDING)]).explain)
 
-        index = db.test.create_index("num", ASCENDING)
+        index = db.test.create_index("num")
 
         spec = [("num", ASCENDING)]
         self.assertEqual(db.test.find({}).explain()["cursor"], "BasicCursor")
@@ -192,7 +192,6 @@ class TestCursor(unittest.TestCase):
         db = self.db
 
         self.assertRaises(TypeError, db.test.find().sort, 5)
-        self.assertRaises(TypeError, db.test.find().sort, "hello")
         self.assertRaises(ValueError, db.test.find().sort, [])
         self.assertRaises(TypeError, db.test.find().sort, [], ASCENDING)
         self.assertRaises(TypeError, db.test.find().sort,
@@ -208,6 +207,8 @@ class TestCursor(unittest.TestCase):
             db.test.save({"x": i})
 
         asc = [i["x"] for i in db.test.find().sort("x", ASCENDING)]
+        self.assertEqual(asc, range(10))
+        asc = [i["x"] for i in db.test.find().sort("x")]
         self.assertEqual(asc, range(10))
         asc = [i["x"] for i in db.test.find().sort([("x", ASCENDING)])]
         self.assertEqual(asc, range(10))

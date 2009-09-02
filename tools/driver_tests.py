@@ -112,7 +112,7 @@ def indices(db, out):
     db.y.create_index([("a", ASCENDING),
                        ("b", ASCENDING),
                        ("c", ASCENDING)])
-    db.y.create_index("d", ASCENDING)
+    db.y.create_index("d")
     for name in sorted(db.y.index_information().keys()):
         print >>out, name
 
@@ -137,7 +137,7 @@ def stress1(db, out):
         x["subarray"] = "foo" + str(i)
         db.stress1.save(x)
 
-    db.stress1.create_index("date", ASCENDING)
+    db.stress1.create_index("date")
 
 def test1(db, out):
     for i in range(100):

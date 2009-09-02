@@ -15,6 +15,7 @@
 """Collection level utilities for Mongo."""
 
 import types
+import warnings
 
 import pymongo
 import bson
@@ -389,16 +390,15 @@ class Collection(object):
     def create_index(self, key_or_list, direction=None, unique=False, ttl=300):
         """Creates an index on this collection.
 
-        Takes either a single key and a direction, or a list of (key,
-        direction) pairs. The key(s) must be an instance of (str, unicode),
-        and the direction(s) must be one of (`pymongo.ASCENDING`,
+        Takes either a single key or a list of (key, direction) pairs.
+        The key(s) must be an instance of (str, unicode),
+        and the directions must be one of (`pymongo.ASCENDING`,
         `pymongo.DESCENDING`). Returns the name of the created index.
 
         :Parameters:
           - `key_or_list`: a single key or a list of (key, direction) pairs
             specifying the index to create
-          - `direction` (optional): must be included if key_or_list is a single
-            key, otherwise must be None
+          - `direction` (optional): DEPRECATED this option will be removed
           - `unique` (optional): should this index guarantee uniqueness?
           - `ttl` (optional): time window (in seconds) during which this index
             will be recognized by subsequent calls to `ensure_index` - see
@@ -407,8 +407,14 @@ class Collection(object):
         if not isinstance(key_or_list, (str, unicode, list)):
             raise TypeError("key_or_list must either be a single key or a list of (key, direction) pairs")
 
+        if direction is not None:
+            warnings.warn("specifying a direction for a single key index is "
+                          "deprecated and will be removed. there is no need "
+                          "for a direction on a single key index",
+                          DeprecationWarning)
+
         to_save = SON()
-        keys = pymongo._index_list(key_or_list, direction)
+        keys = pymongo._index_list(key_or_list)
         name = self._gen_index_name(keys)
         to_save["name"] = name
         to_save["ns"] = self.full_name()
@@ -426,8 +432,8 @@ class Collection(object):
     def ensure_index(self, key_or_list, direction=None, unique=False, ttl=300):
         """Ensures that an index exists on this collection.
 
-        Takes either a single key and a direction, or a list of (key,
-        direction) pairs. The key(s) must be an instance of (str, unicode),
+        Takes either a single key or a list of (key, direction) pairs.
+        The key(s) must be an instance of (str, unicode),
         and the direction(s) must be one of (`pymongo.ASCENDING`,
         `pymongo.DESCENDING`).
 
@@ -450,8 +456,7 @@ class Collection(object):
         :Parameters:
           - `key_or_list`: a single key or a list of (key, direction) pairs
             specifying the index to ensure
-          - `direction` (optional): must be included if key_or_list is a single
-            key, otherwise must be None
+          - `direction` (optional): DEPRECATED this option will be removed
           - `unique` (optional): should this index guarantee uniqueness?
           - `ttl` (optional): time window (in seconds) during which this index
             will be recognized by subsequent calls to `ensure_index`
@@ -459,12 +464,18 @@ class Collection(object):
         if not isinstance(key_or_list, (str, unicode, list)):
             raise TypeError("key_or_list must either be a single key or a list of (key, direction) pairs")
 
-        keys = pymongo._index_list(key_or_list, direction)
+        if direction is not None:
+            warnings.warn("specifying a direction for a single key index is "
+                          "deprecated and will be removed. there is no need "
+                          "for a direction on a single key index",
+                          DeprecationWarning)
+
+        keys = pymongo._index_list(key_or_list)
         name = self._gen_index_name(keys)
         if self.database().connection()._cache_index(self.__database.name(),
                                                      self.name(),
                                                      name, ttl):
-            return self.create_index(key_or_list, direction, unique, ttl)
+            return self.create_index(key_or_list, unique=unique, ttl=ttl)
         return None
 
     def drop_indexes(self):
@@ -483,8 +494,9 @@ class Collection(object):
         Can be used on non-existant collections or collections with no indexes.
         Raises OperationFailure on an error. `index_or_name` can be either an
         index name (as returned by `create_index`), or an index specifier (as
-        passed to `create_index`). Raises TypeError if index is not an
-        instance of (str, unicode, list).
+        passed to `create_index`). An index specifier should be a list of (key,
+        direction) pairs. Raises TypeError if index is not an instance of (str,
+        unicode, list).
 
         :Parameters:
           - `index_or_name`: index (or name of index) to drop
