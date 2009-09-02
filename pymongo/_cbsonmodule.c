@@ -1328,11 +1328,48 @@ static PyObject* _cbson_bson_to_dict(PyObject* self, PyObject* bson) {
     return result;
 }
 
+static PyObject* _cbson_to_dicts(PyObject* self, PyObject* bson) {
+    int size;
+    Py_ssize_t total_size;
+    const char* string;
+    PyObject* dict;
+    PyObject* result;
+
+    if (!PyString_Check(bson)) {
+        PyErr_SetString(PyExc_TypeError, "argument to _to_dicts must be a string");
+        return NULL;
+    }
+    total_size = PyString_Size(bson);
+    string = PyString_AsString(bson);
+    if (!string) {
+        return NULL;
+    }
+
+    result = PyList_New(0);
+
+    while (total_size > 0) {
+        memcpy(&size, string, 4);
+
+        dict = elements_to_dict(string + 4, size - 5);
+        if (!dict) {
+            return NULL;
+        }
+        PyList_Append(result, dict);
+        Py_DECREF(dict);
+        string += size;
+        total_size -= size;
+    }
+
+    return result;
+}
+
 static PyMethodDef _CBSONMethods[] = {
     {"_dict_to_bson", _cbson_dict_to_bson, METH_VARARGS,
      "convert a dictionary to a string containing it's BSON representation."},
     {"_bson_to_dict", _cbson_bson_to_dict, METH_O,
      "convert a BSON string to a SON object."},
+    {"_to_dicts", _cbson_to_dicts, METH_O,
+     "convert binary data to a sequence of SON objects."},
     {NULL, NULL, 0, NULL}
 };
 

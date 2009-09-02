@@ -471,6 +471,8 @@ def _to_dicts(data):
         (son, data) = _bson_to_dict(data)
         dicts.append(son)
     return dicts
+if _use_c:
+    _to_dicts = _cbson._to_dicts
 
 
 def _to_dict(data):
