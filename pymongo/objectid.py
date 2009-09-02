@@ -47,8 +47,8 @@ class ObjectId(object):
         raised.
 
         :Parameters:
-        - `id` (optional): a valid ObjectId (12 byte binary or 24 character
-        hex string)
+          - `id` (optional): a valid ObjectId (12 byte binary or 24 character
+            hex string)
         """
         if id is None:
             self.__generate()
