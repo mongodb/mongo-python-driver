@@ -18,7 +18,6 @@ Generally not needed to be used by application developers."""
 
 import types
 import struct
-import random
 import re
 import datetime
 import calendar
@@ -28,7 +27,7 @@ from code import Code
 from objectid import ObjectId
 from dbref import DBRef
 from son import SON
-from errors import InvalidBSON, InvalidDocument, UnsupportedTag
+from errors import InvalidBSON, InvalidDocument
 from errors import InvalidName, InvalidStringData
 
 try:

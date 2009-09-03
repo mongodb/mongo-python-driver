@@ -15,7 +15,6 @@
 """Representation of an ObjectId for Mongo."""
 
 import threading
-import random
 import types
 import time
 import socket

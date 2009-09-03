@@ -16,8 +16,6 @@
 
 import types
 
-from objectid import ObjectId
-
 
 class DBRef(object):
     """A reference to an object stored in a Mongo database.
@@ -26,8 +24,7 @@ class DBRef(object):
     def __init__(self, collection, id):
         """Initialize a new DBRef.
 
-        Raises TypeError if collection is not an instance of (str, unicode) or
-        id is not an instance of ObjectId.
+        Raises TypeError if collection is not an instance of (str, unicode).
 
         :Parameters:
           - `collection`: the collection the object is stored in
@@ -49,7 +46,7 @@ class DBRef(object):
     collection = property(collection)
 
     def id(self):
-        """Get this DBRef's _id as an ObjectId.
+        """Get this DBRef's _id.
         """
         return self.__id
     id = property(id)

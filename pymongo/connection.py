@@ -24,9 +24,7 @@ import random
 import errno
 import datetime
 
-from errors import ConnectionFailure
-from errors import OperationFailure, ConfigurationError
-from errors import AutoReconnect
+from errors import ConnectionFailure, ConfigurationError, AutoReconnect
 from database import Database
 from cursor_manager import CursorManager
 from thread_util import TimeoutableLock
