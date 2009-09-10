@@ -21,6 +21,14 @@ import glob
 import sys
 import types
 
+try:
+    import uuid
+    should_test_uuid = True
+except ImportError:
+    should_test_uuid = False
+
+from nose.plugins.skip import SkipTest
+
 sys.path[0:0] = [""]
 
 import qcheck
@@ -212,6 +220,18 @@ class TestBSON(unittest.TestCase):
     def test_tuple(self):
         self.assertEqual({"tuple": [1, 2]},
                           BSON.from_dict({"tuple": (1, 2)}).to_dict())
+
+    def test_uuid(self):
+        if not should_test_uuid:
+            raise SkipTest()
+
+        id = uuid.uuid4()
+        transformed_id = (BSON.from_dict({"id": id})).to_dict()["id"]
+
+        self.assert_(isinstance(transformed_id, uuid.UUID))
+        self.assertEqual(id, transformed_id)
+        self.assertNotEqual(uuid.uuid4(), transformed_id)
+
 
 if __name__ == "__main__":
     unittest.main()

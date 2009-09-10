@@ -256,6 +256,12 @@ def _get_binary(data):
         if length2 != length - 4:
             raise InvalidBSON("invalid binary (st 2) - lengths don't match!")
         length = length2
+    if subtype == 3:
+        try:
+            import uuid
+            return (uuid.UUID(bytes=data[:length]), data[length:])
+        except ImportError:
+            pass
     return (Binary(data[:length], subtype), data[length:])
 
 
@@ -374,6 +380,16 @@ def _element_to_bson(key, value, check_keys):
     name = _make_c_string(key)
     if isinstance(value, float):
         return "\x01" + name + struct.pack("<d", value)
+
+    # Use Binary w/ subtype 3 for UUID instances
+    try:
+        import uuid
+
+        if isinstance(value, uuid.UUID):
+            value = Binary(value.bytes, subtype=3)
+    except ImportError:
+        pass
+
     if isinstance(value, Binary):
         subtype = value.subtype
         if subtype == 2:

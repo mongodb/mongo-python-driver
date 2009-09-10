@@ -20,9 +20,14 @@
  * BSON encoding and decoding.
  */
 
+
+#define _GNU_SOURCE
+#include <stdio.h>
+#include <time.h>
+#undef _GNU_SOURCE // avoid multiple define from Python.h
+
 #include <Python.h>
 #include <datetime.h>
-#include <time.h>
 
 static PyObject* CBSONError;
 static PyObject* InvalidName;
@@ -34,6 +39,7 @@ static PyObject* Code;
 static PyObject* ObjectId;
 static PyObject* DBRef;
 static PyObject* RECompile;
+static PyObject* UUID;
 
 #if PY_VERSION_HEX < 0x02050000 && !defined(PY_SSIZE_T_MIN)
 typedef int Py_ssize_t;
@@ -472,6 +478,33 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
                 }
             }
         }
+        return 1;
+    } else if (UUID && PyObject_IsInstance(value, UUID)) {
+        // Just a special case of Binary above, but simpler to do as a separate case
+
+        // UUID is always 16 bytes, subtype 3
+        int length = 16;
+        const char subtype = 3;
+
+        PyObject* bytes;
+
+        *(buffer->buffer + type_byte) = 0x05;
+        if (!buffer_write_bytes(buffer, (const char*)&length, 4)) {
+            return 0;
+        }
+        if (!buffer_write_bytes(buffer, &subtype, 1)) {
+            return 0;
+        }
+
+        bytes = PyObject_GetAttrString(value, "bytes");
+        if (!bytes) {
+            return 0;
+        }
+        if (!buffer_write_bytes(buffer, PyString_AsString(bytes), length)) {
+            Py_DECREF(bytes);
+            return 0;
+        }
+        Py_DECREF(bytes);
         return 1;
     } else if (PyObject_IsInstance(value, Code)) {
         int start_position,
@@ -1072,6 +1105,7 @@ static PyObject* get_value(const char* buffer, int* position, int type) {
 
             memcpy(&length, buffer + *position, 4);
             subtype = (unsigned char)buffer[*position + 4];
+
             if (subtype == 2) {
                 data = PyString_FromStringAndSize(buffer + *position + 9, length - 4);
             } else {
@@ -1080,6 +1114,35 @@ static PyObject* get_value(const char* buffer, int* position, int type) {
             if (!data) {
                 return NULL;
             }
+
+            if (subtype == 3 && UUID) { // Encode as UUID, not Binary
+                PyObject* kwargs;
+                PyObject* args = PyTuple_New(0);
+                if (!args) {
+                    return NULL;
+                }
+                kwargs = PyDict_New();
+                if (!kwargs) {
+                    Py_DECREF(args);
+                    return NULL;
+                }
+
+                assert(length == 16); // UUID should always be 16 bytes
+
+                PyDict_SetItemString(kwargs, "bytes", data);
+                value = PyObject_Call(UUID, args, kwargs);
+
+                Py_DECREF(args);
+                Py_DECREF(kwargs);
+                Py_DECREF(data);
+                if (!value) {
+                    return NULL;
+                }
+
+                *position += length + 5;
+                break;
+            }
+
             st = PyInt_FromLong(subtype);
             if (!st) {
                 Py_DECREF(data);
@@ -1433,4 +1496,13 @@ PyMODINIT_FUNC init_cbson(void) {
     }
     RECompile = PyObject_GetAttrString(module, "compile");
     Py_DECREF(module);
+
+    module = PyImport_ImportModule("uuid");
+    if (!module) {
+        UUID = NULL;
+        PyErr_Clear();
+    } else {
+        UUID = PyObject_GetAttrString(module, "UUID");
+        Py_DECREF(module);
+    }
 }
