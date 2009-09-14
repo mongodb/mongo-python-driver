@@ -209,12 +209,14 @@ class Collection(object):
         :Parameters:
           - `spec`: a SON object specifying elements which must be present for
             a document to be updated
-          - `document`: a SON object specifying the fields to be changed in the
-            selected document, or (in the case of an upsert) the document to
-            be inserted
+          - `document`: a SON object specifying the document to be used for the
+            update or (in the case of an upsert) insert. For more information
+            on update syntax / modifiers see the MongoDB wiki_.
           - `upsert` (optional): perform an upsert operation
           - `manipulate` (optional): manipulate the document before updating?
           - `safe` (optional): check that the update succeeded?
+
+        .. _wiki: http://www.mongodb.org/display/DOCS/Updating
         """
         if not isinstance(spec, types.DictType):
             raise TypeError("spec must be an instance of dict")
