@@ -36,6 +36,12 @@ try:
 except ImportError:
     _use_c = False
 
+try:
+    import uuid
+    _use_uuid = True
+except ImportError:
+    _use_uuid = False
+
 
 def _get_int(data):
     try:
@@ -256,12 +262,8 @@ def _get_binary(data):
         if length2 != length - 4:
             raise InvalidBSON("invalid binary (st 2) - lengths don't match!")
         length = length2
-    if subtype == 3:
-        try:
-            import uuid
-            return (uuid.UUID(bytes=data[:length]), data[length:])
-        except ImportError:
-            pass
+    if subtype == 3 and _use_uuid:
+        return (uuid.UUID(bytes=data[:length]), data[length:])
     return (Binary(data[:length], subtype), data[length:])
 
 
