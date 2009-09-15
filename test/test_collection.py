@@ -21,6 +21,7 @@ sys.path[0:0] = [""]
 
 import qcheck
 from test_connection import get_connection
+import version
 from pymongo.objectid import ObjectId
 from pymongo.code import Code
 from pymongo.binary import Binary
@@ -582,29 +583,29 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(2, db.test.group([], {}, {"count": 0},
                                           Code(reduce_function,
                                                {"inc_value": 1}))[0]['count'])
-
-
-        self.assertEqual(2, db.test.group([], {}, {"count": 0},
-                                          Code(reduce_function,
-                                               {"inc_value": 1}),
-                                          command=True)[0]['count'])
-
         self.assertEqual(4, db.test.group([], {}, {"count": 0},
                                           Code(reduce_function,
                                                {"inc_value": 2}))[0]['count'])
-        self.assertEqual(4, db.test.group([], {}, {"count": 0},
-                                          Code(reduce_function,
-                                               {"inc_value": 2}),
-                                          command=True)[0]['count'])
 
         self.assertEqual(1, db.test.group([], {}, {"count": 0},
                                           Code(reduce_function,
                                                {"inc_value": 0.5}))[0]['count'])
-        self.assertEqual(1, db.test.group([], {}, {"count": 0},
-                                          Code(reduce_function,
-                                               {"inc_value": 0.5}),
-                                          command=True)[0]['count'])
 
+        if version.at_least(db.connection(), (1, 1)):
+            self.assertEqual(2, db.test.group([], {}, {"count": 0},
+                                              Code(reduce_function,
+                                                   {"inc_value": 1}),
+                                              command=True)[0]['count'])
+
+            self.assertEqual(4, db.test.group([], {}, {"count": 0},
+                                              Code(reduce_function,
+                                                   {"inc_value": 2}),
+                                              command=True)[0]['count'])
+
+            self.assertEqual(1, db.test.group([], {}, {"count": 0},
+                                              Code(reduce_function,
+                                                   {"inc_value": 0.5}),
+                                              command=True)[0]['count'])
 
     def test_large_limit(self):
         db = self.db
