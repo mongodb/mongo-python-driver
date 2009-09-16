@@ -181,6 +181,64 @@ class Cursor(object):
         self.__skip = skip
         return self
 
+    def __getitem__(self, index):
+        """Get a single document or a slice of documents from this cursor.
+
+        Raises InvalidOperation if this cursor has already been used.
+
+        To get a single document use an integral index, e.g.:
+
+        >>> db.test.find()[50]
+
+        An IndexError will be raised if the index is negative or greater than
+        the amount of documents in this cursor.
+
+        To get a slice of documents use a slice index, e.g.:
+
+        >>> db.test.find()[20:25]
+
+        This will return this cursor with a limit of 5 and skip of 20 applied.
+        Using a slice index will override any prior limits or skips applied to
+        this cursor (including those applied through previous calls to this
+        method). Raises IndexError when the slice has a step, a negative start
+        value, or a stop value less than or equal to the start value.
+
+        :Parameters:
+          - `index`: An integer or slice index to be applied to this cursor
+        """
+        self.__check_okay_to_chain()
+        if isinstance(index, types.SliceType):
+            if index.step is not None:
+                raise IndexError("Cursor instances do not support slice steps")
+
+            skip = 0
+            if index.start is not None:
+                if index.start < 0:
+                    raise IndexError("Cursor instances do not support negative indices")
+                skip = index.start
+
+            if index.stop is not None:
+                limit = index.stop - skip
+                if limit <= 0:
+                    raise IndexError("stop index must be greater than start index for slice %r" % index)
+            else:
+                limit = 0
+
+            self.__skip = skip
+            self.__limit = limit
+            return self
+
+        if isinstance(index, types.IntType):
+            if index < 0:
+                raise IndexError("Cursor instances do not support negative indices")
+            clone = self.clone()
+            clone.skip(index)
+            clone.limit(-1) # use a hard limit
+            for doc in clone:
+                return doc
+            raise IndexError("no such item for Cursor instance")
+        raise TypeError("index %r cannot be applied to Cursor instances" % index)
+
     def sort(self, key_or_list, direction=None):
         """Sorts this cursor's results.
 

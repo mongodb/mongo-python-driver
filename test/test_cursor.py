@@ -18,6 +18,7 @@ import types
 import random
 import warnings
 import sys
+import itertools
 sys.path[0:0] = [""]
 
 from pymongo.errors import InvalidOperation, OperationFailure
@@ -445,6 +446,78 @@ class TestCursor(unittest.TestCase):
             self.fail()
 
         self.assertEqual(0, self.db.test.find({}, ["a"]).count())
+
+    def test_bad_getitem(self):
+        self.assertRaises(TypeError, lambda x: self.db.test.find()[x], "hello")
+        self.assertRaises(TypeError, lambda x: self.db.test.find()[x], 5.5)
+        self.assertRaises(TypeError, lambda x: self.db.test.find()[x], None)
+
+    def test_getitem_slice_index(self):
+        self.db.drop_collection("test")
+        for i in range(100):
+            self.db.test.save({"i": i})
+
+        izip = itertools.izip
+        count = itertools.count
+
+        self.assertRaises(IndexError, lambda: self.db.test.find()[-1:])
+        self.assertRaises(IndexError, lambda: self.db.test.find()[1:2:2])
+
+        for a, b in izip(count(0), self.db.test.find()):
+            self.assertEqual(a, b['i'])
+
+        self.assertEqual(100, len(list(self.db.test.find()[0:])))
+        for a, b in izip(count(0), self.db.test.find()[0:]):
+            self.assertEqual(a, b['i'])
+
+        self.assertEqual(80, len(list(self.db.test.find()[20:])))
+        for a, b in izip(count(20), self.db.test.find()[20:]):
+            self.assertEqual(a, b['i'])
+
+        for a, b in izip(count(99), self.db.test.find()[99:]):
+            self.assertEqual(a, b['i'])
+
+        for i in self.db.test.find()[1000:]:
+            self.fail()
+
+        self.assertEqual(5, len(list(self.db.test.find()[20:25])))
+        for a, b in izip(count(20), self.db.test.find()[20:25]):
+            self.assertEqual(a, b['i'])
+
+        self.assertEqual(80, len(list(self.db.test.find()[40:45][20:])))
+        for a, b in izip(count(20), self.db.test.find()[40:45][20:]):
+            self.assertEqual(a, b['i'])
+
+        self.assertEqual(80, len(list(self.db.test.find()[40:45].limit(0).skip(20))))
+        for a, b in izip(count(20), self.db.test.find()[40:45].limit(0).skip(20)):
+            self.assertEqual(a, b['i'])
+
+        self.assertEqual(80, len(list(self.db.test.find().limit(10).skip(40)[20:])))
+        for a, b in izip(count(20), self.db.test.find().limit(10).skip(40)[20:]):
+            self.assertEqual(a, b['i'])
+
+        self.assertEqual(1, len(list(self.db.test.find()[:1])))
+        self.assertEqual(5, len(list(self.db.test.find()[:5])))
+
+        self.assertEqual(1, len(list(self.db.test.find()[99:100])))
+        self.assertEqual(1, len(list(self.db.test.find()[99:1000])))
+
+        self.assertRaises(IndexError, lambda: self.db.test.find()[10:8])
+        self.assertRaises(IndexError, lambda: self.db.test.find()[10:10])
+        self.assertRaises(IndexError, lambda: self.db.test.find()[:0])
+
+    def test_getitem_numeric_index(self):
+        self.db.drop_collection("test")
+        for i in range(100):
+            self.db.test.save({"i": i})
+
+        self.assertEqual(0, self.db.test.find()[0]['i'])
+        self.assertEqual(50, self.db.test.find()[50]['i'])
+        self.assertEqual(99, self.db.test.find()[99]['i'])
+
+        self.assertRaises(IndexError, lambda x: self.db.test.find()[x], -1)
+        self.assertRaises(IndexError, lambda x: self.db.test.find()[x], 100)
+
 
 if __name__ == "__main__":
     unittest.main()
