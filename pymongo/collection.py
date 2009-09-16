@@ -550,6 +550,10 @@ class Collection(object):
 
         return options
 
+    # TODO send all groups as commands once 1.2 is out
+    #
+    # Waiting on this because group command support for CodeWScope
+    # wasn't added until 1.1
     def group(self, keys, condition, initial, reduce, command=False):
         """Perform a query similar to an SQL group by operation.
 
