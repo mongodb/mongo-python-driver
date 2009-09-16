@@ -297,8 +297,7 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(5, db.eval("2 + 3;"))
 
         self.assertEqual(5, db.eval(Code("2 + 3;")))
-        # TODO turn this back on when SM is the default
-        #self.assertRaises( OperationFailure , db.eval , (Code("return i;")) )
+        self.assertRaises(OperationFailure, db.eval, Code("return i;"))
         self.assertEqual(2, db.eval(Code("return i;", {"i": 2})))
         self.assertEqual(5, db.eval(Code("i + 3;", {"i": 2})))
 

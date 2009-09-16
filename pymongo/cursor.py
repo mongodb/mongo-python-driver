@@ -146,37 +146,6 @@ class Cursor(object):
         if self.__retrieved or self.__id is not None:
             raise InvalidOperation("cannot set options after executing query")
 
-    # TODO complete deprecation by removing this method
-    def slave_okay(self, slave_okay=True):
-        """(DEPRECATED) Specify whether this query should be allowed to execute on a slave.
-
-        This method is deprecated and will be removed. Use the slave_okay
-        parameter to `pymongo.collection.Collection.find` instead.
-
-        By default, certain queries are not allowed to execute on mongod
-        instances running in slave mode. If `slave_okay` is True then this
-        query will be allowed to execute on slave instances. If False, the
-        default behavior applies.
-
-        Settings made through calls to this method take precedence over any
-        settings made elsewhere (like the slave_okay option when creating a
-        Connection). The last `slave_okay` applied to this cursor
-        takes precedence.
-
-        Raises InvalidOperation if this cursor has already been used.
-
-        :Parameters:
-          - `slave_okay` (optional): should this query be allowed to execute on
-            slave instances
-        """
-        warnings.warn("the slave_okay method is deprecated and will"
-                      " be removed - use the slave_okay paramater to find()"
-                      " instead", DeprecationWarning)
-        self.__check_okay_to_chain()
-
-        self.__slave_okay = slave_okay
-        return self
-
     def limit(self, limit):
         """Limits the number of results to be returned by this cursor.
 
@@ -259,17 +228,6 @@ class Cursor(object):
             c.__limit = -abs(c.__limit)
         return c.next()
 
-    def __index_name_to_list(self, index_name):
-        """Convert an index specified by name to an index spec list.
-        """
-        # NOTE this is broken for indexes on key names containing '_'
-        index_list = []
-        tokens = index_name.split("_")
-        for key, direction in zip(tokens[::2], tokens[1::2]):
-            index_list.append((key, int(direction)))
-        return index_list
-
-    # TODO at some point fully deprecate index name - it could be buggy
     def hint(self, index):
         """Adds a 'hint', telling Mongo the proper index to use for the query.
 
@@ -292,14 +250,8 @@ class Cursor(object):
             self.__hint = None
             return self
 
-        if not isinstance(index, (types.StringTypes, types.ListType)):
-            raise TypeError("hint takes an index name or "
-                            "a list specifying an index")
-        if isinstance(index, types.StringTypes):
-            warnings.warn("hinting using an index name is deprecated and will"
-                          " be removed - use a regular index spec instead",
-                          DeprecationWarning)
-            index = self.__index_name_to_list(index)
+        if not isinstance(index, (types.ListType)):
+            raise TypeError("hint takes a list specifying an index")
         self.__hint = pymongo._index_document(index)
         return self
 

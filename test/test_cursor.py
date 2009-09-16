@@ -79,8 +79,7 @@ class TestCursor(unittest.TestCase):
             break
         self.assertRaises(InvalidOperation, a.hint, spec)
 
-        warnings.simplefilter("error")
-        self.assertRaises(DeprecationWarning, db.test.find().hint, index)
+        self.assertRaises(TypeError, db.test.find().hint, index)
 
     # TODO right now this doesn't actually test anything useful, just that the
     # call doesn't blow up in the normal case.
