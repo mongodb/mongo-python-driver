@@ -253,6 +253,10 @@ class Cursor(object):
         """
         c = self.clone()
         c.__explain = True
+
+        # always use a hard limit for explains
+        if c.__limit:
+            c.__limit = -abs(c.__limit)
         return c.next()
 
     def __index_name_to_list(self, index_name):
