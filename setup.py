@@ -129,7 +129,7 @@ setup(
     author="Mike Dirolf",
     author_email="mongodb-user@googlegroups.com",
     url="http://github.com/mongodb/mongo-python-driver",
-    keywords=["mongo", "mongodb", "pymongo", "gridfs"]
+    keywords=["mongo", "mongodb", "pymongo", "gridfs"],
     packages=["pymongo", "gridfs"],
     install_requires=requirements,
     features=features,
