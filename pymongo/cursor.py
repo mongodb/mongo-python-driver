@@ -181,7 +181,7 @@ class Cursor(object):
         return self
 
     def sort(self, key_or_list, direction=None):
-        """Sorts this cursors results.
+        """Sorts this cursor's results.
 
         Takes either a single key and a direction, or a list of (key,
         direction) pairs. The key(s) must be an instance of (str, unicode), and
