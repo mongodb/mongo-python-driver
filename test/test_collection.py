@@ -519,55 +519,48 @@ class TestCollection(unittest.TestCase):
         db = self.db
         db.drop_collection("test")
 
-        self.assertEqual([], db.test.group([], {},
-                                           {"count": 0},
-                                           "function (obj, prev) { "
-                                           "prev.count++; }"))
-        self.assertEqual([], db.test.group([], {},
-                                           {"count": 0},
-                                           "function (obj, prev) { "
-                                           "prev.count++; }", command=True))
+        def group_checker(args, expected):
+            eval = db.test.group(*args)
+            cmd = db.test.group(*args, command=True)
+            self.assertEqual(eval, expected)
+            self.assertEqual(cmd, expected)
+            self.assertEqual(eval, cmd)
+            #last one is not strictly necessary but there for completeness
+
+
+        args = [[], {},
+                {"count": 0},
+                "function (obj, prev) { prev.count++; }"]
+        expected = []
+        group_checker(args, expected)
 
         db.test.save({"a": 2})
         db.test.save({"b": 5})
         db.test.save({"a": 1})
 
-        self.assertEqual(3, db.test.group([], {},
-                                          {"count": 0},
-                                          "function (obj, prev) { "
-                                          "prev.count++; }")[0]["count"])
-        self.assertEqual(3, db.test.group([], {},
-                                          {"count": 0},
-                                          "function (obj, prev) { "
-                                          "prev.count++; }",
-                                          command=True)[0]["count"])
-        self.assertEqual(1, db.test.group([],
-                                          {"a": {"$gt": 1}},
-                                          {"count": 0},
-                                          "function (obj, prev) { "
-                                          "prev.count++; }")[0]["count"])
-        self.assertEqual(1, db.test.group([],
-                                          {"a": {"$gt": 1}},
-                                          {"count": 0},
-                                          "function (obj, prev) { "
-                                          "prev.count++; }",
-                                          command=True)[0]["count"])
+        args = [[], {},
+                {"count": 0},
+                "function (obj, prev) { prev.count++; }"]
+        expected = [{'count': 3}]
+        group_checker(args, expected)
+
+        args = [[],
+                {"a": {"$gt": 1}},
+                {"count": 0},
+                "function (obj, prev) { prev.count++; }"]
+        expected = [{'count': 1}]
+        group_checker(args, expected)
 
         db.test.save({"a": 2, "b": 3})
 
+        args = [["a"], {},
+                {"count": 0},
+                "function (obj, prev) { prev.count++; }"]
         # NOTE maybe we can't count on this ordering being right
         expected = [{"a": 2, "count": 2},
                     {"a": None, "count": 1},
                     {"a": 1, "count": 1}]
-        self.assertEqual(expected, db.test.group(["a"], {},
-                                                 {"count": 0},
-                                                 "function (obj, prev) { "
-                                                 "prev.count++; }",
-                                                 command=True))
-        self.assertEqual(expected, db.test.group(["a"], {},
-                                                 {"count": 0},
-                                                 "function (obj, prev) { "
-                                                 "prev.count++; }"))
+        group_checker(args, expected)
 
         # modifying finalize
         args = [["a"], {},
@@ -577,8 +570,7 @@ class TestCollection(unittest.TestCase):
         expected = [{"a": 2, "count": 3},
                     {"a": None, "count": 2},
                     {"a": 1, "count": 2}]
-        self.assertEqual(expected, db.test.group(*args, command=True))
-        self.assertEqual(expected, db.test.group(*args))
+        group_checker(args, expected)
 
         # returning finalize
         args = [["a"], {},
@@ -588,9 +580,7 @@ class TestCollection(unittest.TestCase):
         expected = [2, # a:2
                     1, # a:None
                     1] # a:1
-        self.assertEqual(expected, db.test.group(*args, command=True))
-        self.assertEqual(expected, db.test.group(*args))
-
+        group_checker(args, expected)
 
         self.assertRaises(OperationFailure, db.test.group, [], {}, {}, "5 ++ 5")
         self.assertRaises(OperationFailure, db.test.group, [], {}, {}, "5 ++ 5", command=True)
