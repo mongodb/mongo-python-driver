@@ -554,7 +554,8 @@ class Collection(object):
     #
     # Waiting on this because group command support for CodeWScope
     # wasn't added until 1.1
-    def group(self, keys, condition, initial, reduce, command=False):
+    def group(self, keys, condition, initial, reduce, finalize=None,
+              command=False):
         """Perform a query similar to an SQL group by operation.
 
         Returns an array of grouped items.
@@ -565,19 +566,33 @@ class Collection(object):
             query specification)
           - `initial`: initial value of the aggregation counter object
           - `reduce`: aggregation function as a JavaScript string
+          - `finalize`: function to be called on each object in output list.
           - `command` (optional): if True, run the group as a command instead
             of in an eval - it is likely that this option will eventually be
-            deprecated and all groups will be run as commands
+            deprecated and all groups will be run as commands. Please only use
+            as a keyword argument, not as a positional argument.
         """
+
+        #for now support people passing command in its old position
+        if finalize in (True, False):
+            command = finalize
+            finalize = None
+            warnings.warn("Please only pass 'command' as a keyword argument."
+                         ,DeprecationWarning)
+
         if command:
             if not isinstance(reduce, Code):
                 reduce = Code(reduce)
-            return self.__database._command({"group":
-                                                 {"ns": self.__collection_name,
-                                                  "$reduce": reduce,
-                                                  "key": self._fields_list_to_dict(keys),
-                                                  "cond": condition,
-                                                  "initial": initial}})["retval"]
+            group = {"ns": self.__collection_name,
+                    "$reduce": reduce,
+                    "key": self._fields_list_to_dict(keys),
+                    "cond": condition,
+                    "initial": initial}
+            if finalize is not None:
+                if not isinstance(finalize, Code):
+                    finalize = Code(finalize)
+                group["finalize"] = finalize
+            return self.__database._command({"group":group})["retval"]
 
         scope = {}
         if isinstance(reduce, Code):
@@ -591,6 +606,7 @@ class Collection(object):
     var c = db[ns].find(condition);
     var map = new Map();
     var reduce_function = %s;
+    var finalize_function = %s; //function or null
     while (c.hasNext()) {
         var obj = c.next();
 
@@ -608,8 +624,18 @@ class Collection(object):
         }
         reduce_function(obj, aggObj);
     }
-    return {"result": map.values()};
-}""" % reduce
+
+    out = map.values();
+    if (finalize_function !== null){
+        for (var i=0; i < out.length; i++){
+            var ret = finalize_function(out[i]);
+            if (ret !== undefined)
+                out[i] = ret;
+        }
+    }
+
+    return {"result": out};
+}""" % (reduce, (finalize or 'null'));
         return self.__database.eval(Code(group_function, scope))["result"]
 
     def rename(self, new_name):

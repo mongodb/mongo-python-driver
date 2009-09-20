@@ -569,6 +569,29 @@ class TestCollection(unittest.TestCase):
                                                  "function (obj, prev) { "
                                                  "prev.count++; }"))
 
+        # modifying finalize
+        args = [["a"], {},
+                {"count": 0},
+                "function (obj, prev) { prev.count++; }",
+                "function(obj){obj.count++;}"]
+        expected = [{"a": 2, "count": 3},
+                    {"a": None, "count": 2},
+                    {"a": 1, "count": 2}]
+        self.assertEqual(expected, db.test.group(*args, command=True))
+        self.assertEqual(expected, db.test.group(*args))
+
+        # returning finalize
+        args = [["a"], {},
+                {"count": 0},
+                "function (obj, prev) { prev.count++; }",
+                "function(obj){ return obj.count;}"]
+        expected = [2, # a:2
+                    1, # a:None
+                    1] # a:1
+        self.assertEqual(expected, db.test.group(*args, command=True))
+        self.assertEqual(expected, db.test.group(*args))
+
+
         self.assertRaises(OperationFailure, db.test.group, [], {}, {}, "5 ++ 5")
         self.assertRaises(OperationFailure, db.test.group, [], {}, {}, "5 ++ 5", command=True)
 
