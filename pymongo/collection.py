@@ -333,8 +333,7 @@ class Collection(object):
             in the result set ("_id" will always be included)
           - `skip` (optional): the number of documents to omit (from the start
             of the result set) when returning the results
-          - `limit` (optional): the maximum number of results to return in the
-            first reply message, or 0 for the default return size
+          - `limit` (optional): the maximum number of results to return
           - `slave_okay` (optional): if True, this query should be allowed to
             execute on a slave (by default, certain queries are not allowed to
             execute on mongod instances running in slave mode). If slave_okay
