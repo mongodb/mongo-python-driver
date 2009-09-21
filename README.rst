@@ -79,3 +79,4 @@ Thanks to (in no particular order) (if you belong here and are missing please le
 - Michael Stephens (mikejs): seek and tell for read mode GridFile
 - Joakim Sernbrant (serbaut): fix decref bug in tuple encoder, hex __repr__ and __str__ for ObjectId
 - Alexander Artemenko (svetlyak40wt): fix spurious errors in thread test
+- Mathias Stearn (RedBeard0531): add support for finalize in group()
