@@ -519,11 +519,13 @@ class TestCollection(unittest.TestCase):
         db = self.db
         db.drop_collection("test")
 
-        def group_checker(args, expected):
+        def group_checker(args, expected, with_command=True):
             eval = db.test.group(*args)
-            cmd = db.test.group(*args, **{"command": True})
             self.assertEqual(eval, expected)
-            self.assertEqual(cmd, expected)
+
+            if with_command:
+                cmd = db.test.group(*args, **{"command": True})
+                self.assertEqual(cmd, expected)
 
 
         args = [[], {},
@@ -568,7 +570,7 @@ class TestCollection(unittest.TestCase):
         expected = [{"a": 2, "count": 3},
                     {"a": None, "count": 2},
                     {"a": 1, "count": 2}]
-        group_checker(args, expected)
+        group_checker(args, expected, with_command=version.at_least(db.connection(), (1, 1)))
 
         # returning finalize
         args = [["a"], {},
@@ -578,7 +580,7 @@ class TestCollection(unittest.TestCase):
         expected = [2, # a:2
                     1, # a:None
                     1] # a:1
-        group_checker(args, expected)
+        group_checker(args, expected, with_command=version.at_least(db.connection(), (1, 1)))
 
         self.assertRaises(OperationFailure, db.test.group, [], {}, {}, "5 ++ 5")
         self.assertRaises(OperationFailure, db.test.group, [], {}, {}, "5 ++ 5", command=True)
