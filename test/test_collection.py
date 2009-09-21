@@ -521,11 +521,9 @@ class TestCollection(unittest.TestCase):
 
         def group_checker(args, expected):
             eval = db.test.group(*args)
-            cmd = db.test.group(*args, command=True)
+            cmd = db.test.group(*args, **{"command": True})
             self.assertEqual(eval, expected)
             self.assertEqual(cmd, expected)
-            self.assertEqual(eval, cmd)
-            #last one is not strictly necessary but there for completeness
 
 
         args = [[], {},
