@@ -188,7 +188,6 @@ class GridFile(object):
 
     def __flush_write_buffer(self):
         """Flush the write buffer contents out to a chunk.
-
         """
         data = self.__write_buffer.getvalue()
 
@@ -214,10 +213,6 @@ class GridFile(object):
 
     def flush(self):
         """Flush the GridFile to the database.
-
-        Updates md5 and length to reflect the currently written chunks
-        (there may still be buffered data to be written to the next
-        chunk).
         """
         self.__assert_open()
         if self.mode != "w":
