@@ -447,7 +447,7 @@ class Connection(object): # TODO support auth for pooling
         request_id = self.__increment_id()
         to_send = struct.pack("<i", 16 + len(data))
         to_send += struct.pack("<i", request_id)
-        to_send += struct.pack("<i", 0) # responseTo
+        to_send += "\x00\x00\x00\x00" # responseTo
         to_send += struct.pack("<i", operation)
 
         to_send += data
