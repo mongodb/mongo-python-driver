@@ -178,8 +178,7 @@ class Collection(object):
         docs = doc_or_docs
         if isinstance(docs, types.DictType):
             docs = [docs]
-
-        if not isinstance(docs, types.ListType):
+        elif not isinstance(docs, types.ListType):
             raise TypeError("insert takes a document or list of documents")
 
         if manipulate:
