@@ -464,8 +464,11 @@ def _element_to_bson(key, value, check_keys):
 def _dict_to_bson(dict, check_keys):
     try:
         elements = ""
+        if "_id" in dict:
+            elements += _element_to_bson("_id", dict["_id"], False)
         for (key, value) in dict.iteritems():
-            elements += _element_to_bson(key, value, check_keys)
+            if key != "_id":
+                elements += _element_to_bson(key, value, check_keys)
     except AttributeError:
         raise TypeError("encoder expected a mapping type but got: %r" % dict)
 

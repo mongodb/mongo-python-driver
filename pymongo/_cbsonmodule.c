@@ -348,7 +348,10 @@ static int validate_ascii(const char* data, int length) {
 }
 
 /* TODO our platform better be little-endian w/ 4-byte ints! */
-/* returns 0 on failure */
+/* Write a single value to the buffer (also write it's type_byte, for which
+ * space has already been reserved.
+ *
+ * returns 0 on failure */
 static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject* value, unsigned char check_keys) {
     /* TODO this isn't quite the same as the Python version:
      * here we check for type equivalence, not isinstance in some
@@ -771,13 +774,23 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
         DBRef = PyObject_GetAttrString(module, "DBRef");
         Py_DECREF(module);
 
+        module = PyImport_ImportModule("uuid");
+        if (!module) {
+            UUID = NULL;
+            PyErr_Clear();
+        } else {
+            UUID = PyObject_GetAttrString(module, "UUID");
+            Py_DECREF(module);
+        }
+
         if (PyObject_IsInstance(value, Binary) ||
             PyObject_IsInstance(value, Code) ||
             PyObject_IsInstance(value, ObjectId) ||
-            PyObject_IsInstance(value, DBRef)) {
+            PyObject_IsInstance(value, DBRef) ||
+            (UUID && PyObject_IsInstance(value, UUID))) {
 
             PyErr_SetString(PyExc_RuntimeError,
-                            "A pymongo module was reloaded without the C extension being reloaded.\n"
+                            "A python module was reloaded without the C extension being reloaded.\n"
                             "\n"
                             "See http://www.mongodb.org/display/DOCS/PyMongo+and+mod_wsgi for"
                             "a possible explanation / fix.");
@@ -794,25 +807,51 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
     }
 }
 
-static int check_key_name(const unsigned char check_keys,
-                          const char* name,
+static int check_key_name(const char* name,
                           const Py_ssize_t name_length) {
-    if (check_keys) {
-        int i;
-        if (name_length > 0 && name[0] == '$') {
-            PyObject* errmsg = PyString_FromFormat("key '%s' must not start with '$'", name);
+    int i;
+    if (name_length > 0 && name[0] == '$') {
+        PyObject* errmsg = PyString_FromFormat("key '%s' must not start with '$'", name);
+        PyErr_SetString(InvalidName, PyString_AsString(errmsg));
+        Py_DECREF(errmsg);
+        return 0;
+    }
+    for (i = 0; i < name_length; i++) {
+        if (name[i] == '.') {
+            PyObject* errmsg = PyString_FromFormat("key '%s' must not contain '.'", name);
             PyErr_SetString(InvalidName, PyString_AsString(errmsg));
             Py_DECREF(errmsg);
             return 0;
         }
-        for (i = 0; i < name_length; i++) {
-            if (name[i] == '.') {
-                PyObject* errmsg = PyString_FromFormat("key '%s' must not contain '.'", name);
-                PyErr_SetString(InvalidName, PyString_AsString(errmsg));
-                Py_DECREF(errmsg);
-                return 0;
-            }
-        }
+    }
+    return 1;
+}
+
+/* Write a (key, value) pair to the buffer.
+ *
+ * Returns 0 on failure */
+static int write_pair(bson_buffer* buffer, const char* name, Py_ssize_t name_length, PyObject* value, unsigned char check_keys, unsigned char allow_id) {
+    int type_byte;
+
+    /* Don't write any _id elements unless we're explicitly told to -
+     * _id has to be written first so we write do so, but don't bother
+     * deleting it from the dictionary being written. */
+    if (!allow_id && strcmp(name, "_id") == 0) {
+        return 1;
+    }
+
+    type_byte = buffer_save_bytes(buffer, 1);
+    if (type_byte == -1) {
+        return 0;
+    }
+    if (check_keys && !check_key_name(name, name_length)) {
+        return 0;
+    }
+    if (!buffer_write_bytes(buffer, name, name_length + 1)) {
+        return 0;
+    }
+    if (!write_element_to_buffer(buffer, type_byte, value, check_keys)) {
+        return 0;
     }
     return 1;
 }
@@ -830,8 +869,6 @@ static int write_son(bson_buffer* buffer, PyObject* dict, int start_position,
         PyObject* key;
         PyObject* value;
         PyObject* encoded;
-        int type_byte;
-        Py_ssize_t name_length;
 
         key = PyList_GetItem(keys, i);
         if (!key) {
@@ -840,11 +877,6 @@ static int write_son(bson_buffer* buffer, PyObject* dict, int start_position,
         }
         value = PyDict_GetItem(dict, key);
         if (!value) {
-            Py_DECREF(keys);
-            return 0;
-        }
-        type_byte = buffer_save_bytes(buffer, 1);
-        if (type_byte == -1) {
             Py_DECREF(keys);
             return 0;
         }
@@ -858,28 +890,11 @@ static int write_son(bson_buffer* buffer, PyObject* dict, int start_position,
             encoded = key;
             Py_INCREF(encoded);
         }
-        name_length = PyString_Size(encoded);
-        {
-            const char* name = PyString_AsString(encoded);
-            if (!name) {
-                Py_DECREF(keys);
-                Py_DECREF(encoded);
-                return 0;
-            }
-            if (!check_key_name(check_keys, name, name_length)) {
-                Py_DECREF(keys);
-                Py_DECREF(encoded);
-                return 0;
-            }
-            if (!buffer_write_bytes(buffer, name, name_length + 1)) {
-                Py_DECREF(keys);
-                Py_DECREF(encoded);
-                return 0;
-            }
-        }
-        Py_DECREF(encoded);
-        if (!write_element_to_buffer(buffer, type_byte, value, check_keys)) {
+        /* Don't allow writing _id here - it was written above. */
+        if (!write_pair(buffer, PyString_AsString(encoded),
+                        PyString_Size(encoded), value, check_keys, 0)) {
             Py_DECREF(keys);
+            Py_DECREF(encoded);
             return 0;
         }
     }
@@ -893,28 +908,37 @@ static int write_dict(bson_buffer* buffer, PyObject* dict, unsigned char check_k
     char zero = 0;
     int length;
 
+    int is_dict = PyDict_Check(dict);
+
     /* save space for length */
     int length_location = buffer_save_bytes(buffer, 4);
     if (length_location == -1) {
         return 0;
     }
 
+    /* Write _id first if we have one, whether or not we're SON. */
+    if (is_dict) {
+        PyObject* _id = PyDict_GetItemString(dict, "_id");
+        if (_id) {
+            /* Don't bother checking keys, but do make sure we're allowed to
+             * write _id */
+            if (!write_pair(buffer, "_id", 3, _id, 0, 1)) {
+                return 0;
+            }
+        }
+    }
+
     if (PyObject_IsInstance(dict, SON)) {
         if (!write_son(buffer, dict, start_position, length_location, check_keys)) {
             return 0;
         }
-    } else if (PyDict_Check(dict)) {
+    } else if (is_dict) {
         PyObject* key;
         PyObject* value;
         Py_ssize_t pos = 0;
+
         while (PyDict_Next(dict, &pos, &key, &value)) {
             PyObject* encoded;
-            Py_ssize_t name_length;
-
-            int type_byte = buffer_save_bytes(buffer, 1);
-            if (type_byte == -1) {
-                return 0;
-            }
             if (PyUnicode_CheckExact(key)) {
                 encoded = PyUnicode_AsUTF8String(key);
                 if (!encoded) {
@@ -924,51 +948,20 @@ static int write_dict(bson_buffer* buffer, PyObject* dict, unsigned char check_k
                 encoded = key;
                 Py_INCREF(encoded);
             }
-            name_length = PyString_Size(encoded);
-            {
-                const char* name = PyString_AsString(encoded);
-                if (!name) {
-                    Py_DECREF(encoded);
-                    return 0;
-                }
-                if (!check_key_name(check_keys, name, name_length)) {
-                    Py_DECREF(encoded);
-                    return 0;
-                }
-                if (!buffer_write_bytes(buffer, name, name_length + 1)) {
-                    Py_DECREF(encoded);
-                    return 0;
-                }
-            }
-            Py_DECREF(encoded);
-            if (!write_element_to_buffer(buffer, type_byte, value, check_keys)) {
+            /* Don't allow writing _id here - it was written above. */
+            if (!write_pair(buffer, PyString_AsString(encoded),
+                            PyString_Size(encoded), value, check_keys, 0)) {
+                Py_DECREF(encoded);
                 return 0;
             }
         }
     } else {
-        /* Try getting the SON class again
-         * This can be necessary if pymongo.son has been reloaded, since
-         * reloading the module breaks IsInstance.
-         * The main reason we even try this is to raise an informative exception
-         * about it. */
-        PyObject* son_module = PyImport_ImportModule("pymongo.son");
-        SON = PyObject_GetAttrString(son_module, "SON");
-        Py_DECREF(son_module);
-        if (PyObject_IsInstance(dict, SON)) {
-            PyErr_SetString(PyExc_RuntimeError,
-                            "pymongo.son was reloaded without the C extension being reloaded.\n"
-                            "\n"
-                            "See http://www.mongodb.org/display/DOCS/PyMongo+and+mod_wsgi for"
-                            "a possible explanation / fix.");
-            return 0;
-        } else {
-            PyObject* errmsg = PyString_FromString("encoder expected a mapping type but got: ");
-            PyObject* repr = PyObject_Repr(dict);
-            PyString_ConcatAndDel(&errmsg, repr);
-            PyErr_SetString(PyExc_TypeError, PyString_AsString(errmsg));
-            Py_DECREF(errmsg);
-            return 0;
-        }
+        PyObject* errmsg = PyString_FromString("encoder expected a mapping type but got: ");
+        PyObject* repr = PyObject_Repr(dict);
+        PyString_ConcatAndDel(&errmsg, repr);
+        PyErr_SetString(PyExc_TypeError, PyString_AsString(errmsg));
+        Py_DECREF(errmsg);
+        return 0;
     }
 
     /* write null byte and fill in length */

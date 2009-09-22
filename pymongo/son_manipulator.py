@@ -76,6 +76,9 @@ class ObjectIdInjector(SONManipulator):
         return son
 
 
+# This is now handled during BSON encoding (for performance reasons),
+# but I'm keeping this here as a reference for those implementing new
+# SONManipulators.
 class ObjectIdShuffler(SONManipulator):
     """A son manipulator that moves _id to the first position.
     """

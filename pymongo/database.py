@@ -57,7 +57,6 @@ class Database(object):
         self.__outgoing_manipulators = []
         self.__outgoing_copying_manipulators = []
         self.add_son_manipulator(ObjectIdInjector())
-        self.add_son_manipulator(ObjectIdShuffler())
 
     def __check_name(self, name):
         for invalid_char in [" ", ".", "$", "/", "\\"]:
