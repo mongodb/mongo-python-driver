@@ -509,7 +509,9 @@ class Connection(object): # TODO support auth for pooling
 
     __hack_socket_lock = threading.Lock()
 
-    def _receive_message(self, operation, data, _sock=None):
+    # we just ignore _must_use_master here: it's only relavant for
+    # MasterSlaveConnection instances.
+    def _receive_message(self, operation, data, _sock=None, _must_use_master=False):
         """Receive a message from Mongo.
 
         Sends the given message and returns the response.

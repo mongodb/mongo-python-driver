@@ -37,7 +37,7 @@ class Cursor(object):
     """
 
     def __init__(self, collection, spec, fields, skip, limit, slave_okay,
-                 timeout, snapshot=False, _sock=None):
+                 timeout, snapshot=False, _sock=None, _must_use_master=False):
         """Create a new cursor.
 
         Should not be called directly by application developers.
@@ -54,6 +54,7 @@ class Cursor(object):
         self.__explain = False
         self.__hint = None
         self.__socket = _sock
+        self.__must_use_master = _must_use_master
 
         self.__data = []
         self.__id = None
@@ -290,7 +291,8 @@ class Cursor(object):
 
         def send_message(operation, message):
             db = self.__collection.database()
-            kwargs = {"_sock": self.__socket}
+            kwargs = {"_sock": self.__socket,
+                      "_must_use_master": self.__must_use_master}
             if self.__connection_id is not None:
                 kwargs["_connection_to_use"] = self.__connection_id
 

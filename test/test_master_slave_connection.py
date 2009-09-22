@@ -23,8 +23,10 @@ sys.path[0:0] = [""]
 from nose.plugins.skip import SkipTest
 
 from pymongo.errors import ConnectionFailure, InvalidName
+from pymongo.errors import CollectionInvalid, OperationFailure
 from pymongo.database import Database
 from pymongo.connection import Connection
+from pymongo.collection import Collection
 from pymongo.master_slave_connection import MasterSlaveConnection
 
 
@@ -145,6 +147,23 @@ class TestMasterSlaveConnection(unittest.TestCase):
                 count += 1
         self.failIf(count)
 
+    # This was failing because commands were being sent to the slaves
+    def test_create_collection(self):
+        self.connection.drop_database('pymongo_test')
+
+        collection = self.db.create_collection('test')
+        self.assert_(isinstance(collection, Collection))
+
+        self.assertRaises(CollectionInvalid, self.db.create_collection, 'test')
+
+    # Believe this was failing for the same reason...
+    def test_unique_index(self):
+        self.connection.drop_database('pymongo_test')
+        self.db.test.create_index('username', unique=True)
+
+        self.db.test.save({'username': 'mike'}, safe=True)
+        self.assertRaises(OperationFailure, self.db.test.save, {'username': 'mike'}, safe=True)
+
     # NOTE this test is non-deterministic, but I expect
     # some failures unless the db is pulling instantaneously...
     def test_insert_find_one_with_slaves(self):
@@ -170,7 +189,7 @@ class TestMasterSlaveConnection(unittest.TestCase):
 
         self.db.test.remove({})
         self.db.test.insert({"x": 5586})
-        time.sleep(6)
+        time.sleep(7)
         for _ in range(10):
             try:
                 if 5586 != self.db.test.find_one()["x"]:

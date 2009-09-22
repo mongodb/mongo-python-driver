@@ -114,7 +114,7 @@ class MasterSlaveConnection(object):
     # that getmore operations can be sent to the same instance on which
     # the cursor actually resides...
     def _receive_message(self, operation, data,
-                         _sock=None, _connection_to_use=None):
+                         _sock=None, _connection_to_use=None, _must_use_master=False):
         """Receive a message from Mongo.
 
         Sends the given message and returns a (connection_id, response) pair.
@@ -135,7 +135,10 @@ class MasterSlaveConnection(object):
         # for now just load-balance randomly among slaves only...
         connection_id = random.randrange(0, len(self.__slaves))
 
-        if self.__in_request or connection_id == -1:
+        # _must_use_master is set for commands, which must be sent to the
+        # master instance. any queries in a request must be sent to the
+        # master since that is where writes go.
+        if _must_use_master or self.__in_request or connection_id == -1:
             return (-1, self.__master._receive_message(operation, data, _sock))
 
         return (connection_id,

@@ -182,7 +182,9 @@ class Database(object):
     def _command(self, command, allowable_errors=[], check=True, sock=None):
         """Issue a DB command.
         """
-        result = self["$cmd"].find_one(command, _sock=sock)
+        result = self["$cmd"].find_one(command, _sock=sock,
+                                       _must_use_master=True)
+
         if check and result["ok"] != 1:
             if result["errmsg"] in allowable_errors:
                 return result
@@ -193,7 +195,7 @@ class Database(object):
     def collection_names(self):
         """Get a list of all the collection names in this database.
         """
-        results = self["system.namespaces"].find()
+        results = self["system.namespaces"].find(_must_use_master=True)
         names = [r["name"] for r in results]
         names = [n[len(self.__name) + 1:] for n in names
                  if n.startswith(self.__name + ".")]
