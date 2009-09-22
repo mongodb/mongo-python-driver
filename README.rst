@@ -75,8 +75,24 @@ Credits
 =======
 Thanks to (in no particular order) (if you belong here and are missing please let us know):
 
-- moe at mbox dot bz: turn off nagle
-- Michael Stephens (mikejs): seek and tell for read mode GridFile
-- Joakim Sernbrant (serbaut): fix decref bug in tuple encoder, hex __repr__ and __str__ for ObjectId
-- Alexander Artemenko (svetlyak40wt): fix spurious errors in thread test
-- Mathias Stearn (RedBeard0531): add support for finalize in group()
+- moe at mbox dot bz:
+
+  - Turn off nagle
+
+- Michael Stephens (mikejs):
+
+  - Seek and tell for read mode GridFile
+
+- Joakim Sernbrant (serbaut):
+
+  - Fix decref bug in tuple encoder
+  - Hex __repr__ and __str__ for ObjectId
+  - Performance optimizations for writing large files to GridFS
+
+- Alexander Artemenko (svetlyak40wt):
+
+  - Fix spurious errors in thread test
+
+- Mathias Stearn (RedBeard0531):
+
+  - Add support for finalize in group()
