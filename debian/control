@@ -2,8 +2,7 @@ Source: pymongo
 Section: python
 Priority: optional
 Maintainer: Fajran Iman Rusadi <fajran@ubuntu.com>
-Build-Depends-Indep: python-celementtree | python-elementtree
-Build-Depends: debhelper (>= 5.0.38), cdbs (>= 0.4.43), python-central (>= 0.5.8), python-all-dev (>= 2.3.5-11), python-epydoc, python-setuptools (>= 0.6b3-1)
+Build-Depends: debhelper (>= 5.0.38), cdbs (>= 0.4.43), python-central (>= 0.5.8), python-all-dev (>= 2.3.5-11), python-epydoc, python-setuptools (>= 0.6b3-1), python-celementtree | python-elementtree
 Standards-Version: 3.7.2
 
 Package: python-mongodb

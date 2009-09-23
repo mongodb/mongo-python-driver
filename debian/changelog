@@ -1,4 +1,4 @@
-pymongo (0.16-2) hardy; urgency=low
+pymongo (0.16-2.2) hardy; urgency=low
 
   * Use CDBS.
   * Create python-mongodb-doc that contains PyMongo documentation.
