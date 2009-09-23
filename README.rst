@@ -96,3 +96,7 @@ Thanks to (in no particular order) (if you belong here and are missing please le
 - Mathias Stearn (RedBeard0531):
 
   - Add support for finalize in group()
+
+- Fajran Iman Rusadi (fajran):
+
+  - Add Debian control files
