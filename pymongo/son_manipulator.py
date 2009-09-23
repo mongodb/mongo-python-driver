@@ -115,6 +115,8 @@ class AutoReference(SONManipulator):
     This manipulator should probably only be used when the NamespaceInjector is
     also being used, otherwise it doesn't make too much sense - documents can
     only be auto-referenced if they have an *_ns* field.
+
+    NOTE: this will behave poorly if you have a circular reference.
     """
 
     def __init__(self, db):
