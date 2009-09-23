@@ -30,21 +30,21 @@ Examples
 ========
 Here's a basic example (for more see the *examples/* directory):
 
->>> from pymongo.connection import Connection
->>> connection = Connection("localhost", 27017)
+>>> import pymongo
+>>> connection = pymongo.Connection("localhost", 27017)
 >>> db = connection.test
 >>> db.name()
 u'test'
 >>> db.my_collection
 Collection(Database(Connection('localhost', 27017), u'test'), u'my_collection')
 >>> db.my_collection.save({"x": 10})
-ObjectId('D\x87\xdd\xe8\xd6\x0f\x89\xfc\xab\x06\xac\x8e')
+ObjectId('4aba15ebe23f6b53b0000000')
 >>> db.my_collection.save({"x": 8})
-ObjectId('\xde\x0b\xec^\xdc\x11`\x12\xf8\xeb/\xcf')
+ObjectId('4aba160ee23f6b543e000000')
 >>> db.my_collection.save({"x": 11})
-ObjectId('\t6\xc6\x07\xb3\xfc\x87\xc4\x82\x04\x0f\\')
+ObjectId('4aba160ee23f6b543e000002')
 >>> db.my_collection.find_one()
-{u'x': 10, u'_id': ObjectId('D\x87\xdd\xe8\xd6\x0f\x89\xfc\xab\x06\xac\x8e')}
+{u'x': 10, u'_id': ObjectId('4aba160ee23f6b543e000002')}
 >>> for item in db.my_collection.find():
 ...     print item["x"]
 ...
@@ -53,8 +53,7 @@ ObjectId('\t6\xc6\x07\xb3\xfc\x87\xc4\x82\x04\x0f\\')
 11
 >>> db.my_collection.create_index("x")
 u'x_1'
->>> from pymongo import ASCENDING
->>> for item in db.my_collection.find().sort("x", ASCENDING):
+>>> for item in db.my_collection.find().sort("x", pymongo.ASCENDING):
 ...     print item["x"]
 ...
 8
