@@ -1,6 +1,7 @@
 pymongo (0.16-3) hardy; urgency=low
 
   * Update copyright information.
+  * Copy README.rst to /usr/share/doc/python-mongo*/
 
  -- Fajran Iman Rusadi <fajran@ubuntu.com>  Wed, 23 Sep 2009 17:22:08 +0200
 
