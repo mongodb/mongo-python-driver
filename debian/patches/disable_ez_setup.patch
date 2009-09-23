@@ -1,0 +1,13 @@
+--- pymongo-0.16.orig/setup.py	2009-09-16 17:30:15.000000000 +0200
++++ pymongo-0.16/setup.py	2009-09-23 04:54:08.000000000 +0200
+@@ -9,8 +9,8 @@
+     has_subprocess = False
+ import shutil
+ 
+-from ez_setup import use_setuptools
+-use_setuptools()
++#from ez_setup import use_setuptools
++#use_setuptools()
+ from setuptools import setup
+ from setuptools import Feature
+ from distutils.cmd import Command

@@ -1,0 +1,15 @@
+Document: python-mongodb
+Title: PyMongo Manual
+Author: Mike Dirolf
+Abstract: Python driver for MongoDB
+ The PyMongo distribution contains tools for interacting
+ with the Mongo database from Python. The pymongo package is
+ a native Python driver for the Mongo database. The gridfs
+ package is a gridfs implementation on top of pymongo.
+Section: Apps/Programming
+
+Format: HTML
+Index: /usr/share/doc/python-mongodb-doc/html/index.html
+Files: /usr/share/doc/python-mongodb-doc/html/*.html
+
+  

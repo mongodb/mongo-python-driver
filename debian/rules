@@ -1,0 +1,19 @@
+#!/usr/bin/make -f
+
+DEB_PYTHON_SYSTEM=pysupport
+
+include /usr/share/cdbs/1/rules/debhelper.mk
+include /usr/share/cdbs/1/class/python-distutils.mk
+include /usr/share/cdbs/1/rules/simple-patchsys.mk
+
+# Install egg-info directories
+DEB_PYTHON_INSTALL_ARGS_ALL += --single-version-externally-managed
+DEB_DESTDIR=debian/python-mongodb
+
+clean::
+	-rm -rf build
+	-rm -rf html
+
+build/python-mongodb-doc::
+	epydoc pymongo
+
