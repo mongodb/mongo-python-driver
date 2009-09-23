@@ -87,6 +87,7 @@ Thanks to (in no particular order) (if you belong here and are missing please le
   - Fix decref bug in tuple encoder
   - Hex __repr__ and __str__ for ObjectId
   - Performance optimizations for writing large files to GridFS
+  - Some updates to the README
 
 - Alexander Artemenko (svetlyak40wt):
 
