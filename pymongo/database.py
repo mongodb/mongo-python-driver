@@ -82,7 +82,7 @@ class Database(object):
             if method_overwritten(manipulator, "transform_incoming"):
                 self.__incoming_copying_manipulators.insert(0, manipulator)
             if method_overwritten(manipulator, "transform_outgoing"):
-                self.__outgoing_manipulators.insert(0, manipulator)
+                self.__outgoing_copying_manipulators.insert(0, manipulator)
         else:
             if method_overwritten(manipulator, "transform_incoming"):
                 self.__incoming_manipulators.insert(0, manipulator)
