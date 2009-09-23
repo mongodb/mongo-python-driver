@@ -1,3 +1,9 @@
+pymongo (0.16-3) hardy; urgency=low
+
+  * Update copyright information.
+
+ -- Fajran Iman Rusadi <fajran@ubuntu.com>  Wed, 23 Sep 2009 17:22:08 +0200
+
 pymongo (0.16-2.2) hardy; urgency=low
 
   * Use CDBS.
