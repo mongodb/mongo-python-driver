@@ -100,3 +100,7 @@ Thanks to (in no particular order) (if you belong here and are missing please le
 - Fajran Iman Rusadi (fajran):
 
   - Add Debian control files
+
+- Brad Clements (bkc):
+
+  - A fix for Python 2.3 compatability
