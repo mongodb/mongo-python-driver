@@ -157,11 +157,12 @@ class ObjectId(object):
         return cls(legacy_str[7::-1] + legacy_str[:7:-1])
     from_legacy_str = classmethod(from_legacy_str)
 
-    @property
-    def binary(self):
+    def get_binary(self):
         """Get the binary representation of this ObjectId.
         """
         return self.__id
+    
+    binary = property(get_binary)
 
     def __str__(self):
         return self.__id.encode("hex")
