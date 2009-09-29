@@ -276,6 +276,23 @@ class Cursor(object):
             return 0
         return int(response["n"])
 
+    def __len__(self):
+        """Get the number of documents in this cursor.
+
+        This method relies on count() as well as any limit or skip that has
+        been applied to this cursor to return the number of documents that will
+        actually be returned by the cursor. Changes to this cursor's limit or
+        skip values, as well as changes to the data in the database itself, can
+        cause this value to be different from the actual number of documents
+        that will be iterated by the cursor.
+        """
+        count = self.count() - self.__skip
+        if count < 0:
+            return 0
+        if self.__limit:
+            return min(count, self.__limit)
+        return count
+
     def explain(self):
         """Returns an explain plan record for this cursor.
         """
