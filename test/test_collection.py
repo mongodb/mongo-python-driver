@@ -630,10 +630,13 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(2000, db.test.count())
 
         i = 0
-        for _ in db.test.find(limit=1900):
+        y = 0
+        for doc in db.test.find(limit=1900):
             i += 1
+            y += doc["x"]
 
         self.assertEqual(1900, i)
+        self.assertEqual(1804050, y)
 
     def test_find_kwargs(self):
         db = self.db
