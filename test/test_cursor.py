@@ -481,6 +481,7 @@ class TestCursor(unittest.TestCase):
             self.fail()
 
         self.assertEqual(5, len(list(self.db.test.find()[20:25])))
+        self.assertEqual(5, len(list(self.db.test.find()[20L:25L])))
         for a, b in izip(count(20), self.db.test.find()[20:25]):
             self.assertEqual(a, b['i'])
 
@@ -513,6 +514,7 @@ class TestCursor(unittest.TestCase):
 
         self.assertEqual(0, self.db.test.find()[0]['i'])
         self.assertEqual(50, self.db.test.find()[50]['i'])
+        self.assertEqual(50, self.db.test.find()[50L]['i'])
         self.assertEqual(99, self.db.test.find()[99]['i'])
 
         self.assertRaises(IndexError, lambda x: self.db.test.find()[x], -1)

@@ -174,7 +174,7 @@ class Cursor(object):
         :Parameters:
           - `skip`: the number of results to skip
         """
-        if not isinstance(skip, types.IntType):
+        if not isinstance(skip, (types.IntType, types.LongType)):
             raise TypeError("skip must be an int")
         self.__check_okay_to_chain()
 
@@ -228,7 +228,7 @@ class Cursor(object):
             self.__limit = limit
             return self
 
-        if isinstance(index, types.IntType):
+        if isinstance(index, (types.IntType, types.LongType)):
             if index < 0:
                 raise IndexError("Cursor instances do not support negative indices")
             clone = self.clone()
