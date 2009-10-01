@@ -134,8 +134,8 @@ class Collection(object):
 
         If `to_save` already has an '_id' then an update (upsert) operation
         is performed and any existing document with that _id is overwritten.
-        Otherwise an insert operation is performed. Returns the _id of the
-        saved document.
+        Otherwise an '_id' will be added to `to_save` and an insert operation
+        is performed. Returns the _id of the saved document.
 
         Raises TypeError if to_save is not an instance of dict. If `safe`
         is True then the save will be checked for errors, raising
@@ -164,6 +164,7 @@ class Collection(object):
         If manipulate is set the document(s) are manipulated using any
         SONManipulators that have been added to this database. Returns the _id
         of the inserted document or a list of _ids of the inserted documents.
+        If the document(s) does not already contain an '_id' one will be added.
         If `safe` is True then the insert will be checked for errors, raising
         OperationFailure if one occurred. Checking for safety requires an extra
         round-trip to the database.
