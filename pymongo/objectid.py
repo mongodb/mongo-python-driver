@@ -174,5 +174,8 @@ class ObjectId(object):
         if isinstance(other, ObjectId):
             return cmp(self.__id, other.__id)
         return NotImplemented
+    
+    def __hash__(self):
+        return hash(self.__id)
 
 

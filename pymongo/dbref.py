@@ -59,3 +59,6 @@ class DBRef(object):
             return cmp([self.__collection, self.__id],
                        [other.__collection, other.__id])
         return NotImplemented
+        
+    def __hash__(self):
+        return hash((self.__collection, self.__id))
