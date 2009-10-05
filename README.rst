@@ -104,3 +104,7 @@ Thanks to (in no particular order) (if you belong here and are missing please le
 - Brad Clements (bkc):
 
   - A fix for Python 2.3 compatability
+
+- Andrey Fedorov (andreyf)
+
+  - Added __hash__ methods to DBRef and ObjectId
