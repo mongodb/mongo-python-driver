@@ -179,8 +179,6 @@ class Collection(object):
         docs = doc_or_docs
         if isinstance(docs, types.DictType):
             docs = [docs]
-        elif not isinstance(docs, types.ListType):
-            raise TypeError("insert takes a document or list of documents")
 
         if manipulate:
             docs = [self.__database._fix_incoming(doc, self) for doc in docs]

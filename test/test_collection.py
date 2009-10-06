@@ -15,6 +15,7 @@
 """Test the collection module."""
 import unittest
 import re
+import itertools
 import time
 import sys
 sys.path[0:0] = [""]
@@ -404,6 +405,23 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(2, len(ids))
         self.assertEqual(doc1["_id"], ids[0])
         self.assertEqual(doc2["_id"], ids[1])
+
+    def test_insert_iterables(self):
+        db = self.db
+
+        self.assertRaises(TypeError, db.test.insert, 4)
+        self.assertRaises(TypeError, db.test.insert, None)
+        self.assertRaises(TypeError, db.test.insert, True)
+
+        db.drop_collection("test")
+        self.assertEqual(db.test.find().count(), 0)
+        ids = db.test.insert(({"hello": u"world"}, {"hello": u"world"}))
+        self.assertEqual(db.test.find().count(), 2)
+
+        db.drop_collection("test")
+        self.assertEqual(db.test.find().count(), 0)
+        ids = db.test.insert(itertools.imap(lambda x: {"hello": "world"}, itertools.repeat(None, 10)))
+        self.assertEqual(db.test.find().count(), 10)
 
     def test_save(self):
         self.db.drop_collection("test")
