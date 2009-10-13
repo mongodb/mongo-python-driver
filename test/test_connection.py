@@ -128,5 +128,30 @@ class TestConnection(unittest.TestCase):
 
         self.assertRaises(TypeError, iterate)
 
+    def test_socket_timeout(self):
+        no_timeout = Connection(self.host, self.port)
+        timeout = Connection(self.host, self.port, network_timeout=0.25)
+
+        no_timeout.pymongo_test.drop_collection("test")
+
+        no_timeout.pymongo_test.test.save({"x": 1})
+
+        where_func = """function (doc) {
+  var d = new Date().getTime() + 500;
+  var x = new Date().getTime();
+  while (x < d) {
+    x = new Date().getTime();
+  }
+  return true;
+}"""
+
+        def get_x(db):
+            return db.test.find().where(where_func).next()["x"]
+
+        self.assertEqual(1, get_x(no_timeout.pymongo_test))
+        self.assertRaises(ConnectionFailure, get_x, timeout.pymongo_test)
+        self.assertEqual(1, no_timeout.pymongo_test.test.find().next()["x"])
+
+
 if __name__ == "__main__":
     unittest.main()

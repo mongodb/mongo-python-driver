@@ -50,7 +50,7 @@ class Connection(object): # TODO support auth for pooling
 
     def __init__(self, host=None, port=None, pool_size=None,
                  auto_start_request=None, timeout=None, slave_okay=False,
-                 _connect=True):
+                 network_timeout=None, _connect=True):
         """Open a new connection to a Mongo instance at host:port.
 
         The resultant connection object has connection-pooling built in. It
@@ -82,6 +82,8 @@ class Connection(object): # TODO support auth for pooling
           - `timeout` (optional): max time to wait when attempting to acquire a
             connection from the connection pool before raising an exception -
             can be set to -1 to wait indefinitely
+          - `network_timeout` (optional): timeout (in seconds) to use for socket
+            operations - default is no timeout
         """
         if host is None:
             host = self.HOST
@@ -127,6 +129,8 @@ class Connection(object): # TODO support auth for pooling
         self.__locks = [TimeoutableLock() for _ in range(self.__pool_size)]
         self.__sockets = [None for _ in range(self.__pool_size)]
         self.__currently_resetting = False
+
+        self.__network_timeout = network_timeout
 
         # cache of existing indexes used by ensure_index ops
         self.__index_cache = {}
@@ -296,7 +300,7 @@ class Connection(object): # TODO support auth for pooling
                     sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
                     sock.settimeout(_CONNECT_TIMEOUT)
                     sock.connect((host, port))
-                    sock.settimeout(None)
+                    sock.settimeout(self.__network_timeout)
                     master = self.__master(sock)
                     if master is True:
                         self.__host = host
@@ -350,7 +354,7 @@ class Connection(object): # TODO support auth for pooling
             sock = self.__sockets[socket_number]
             sock.settimeout(_CONNECT_TIMEOUT)
             sock.connect((self.host(), self.port()))
-            sock.settimeout(None)
+            sock.settimeout(self.__network_timeout)
             _logger.debug("connected")
             return
         except socket.error:
@@ -493,8 +497,8 @@ class Connection(object): # TODO support auth for pooling
             while len(message) < length:
                 try:
                     chunk = sock.recv(length - len(message))
-                except socket.error:
-                    raise ConnectionFailure("connection closed")
+                except socket.error, e:
+                    raise ConnectionFailure(e)
                 if chunk == "":
                     raise ConnectionFailure("connection closed")
                 message += chunk
