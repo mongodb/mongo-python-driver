@@ -18,8 +18,14 @@ import unittest
 import sys
 sys.path[0:0] = [""]
 
+from nose.plugins.skip import SkipTest
+
 from pymongo.objectid import ObjectId
 from pymongo.errors import InvalidId
+
+
+def oid(x):
+    return ObjectId()
 
 
 class TestObjectId(unittest.TestCase):
@@ -78,6 +84,20 @@ class TestObjectId(unittest.TestCase):
 
         self.assertNotEqual(str(a), a.legacy_str())
         self.assertEqual(a, ObjectId.from_legacy_str(a.legacy_str()))
+
+    def test_multiprocessing(self):
+        try:
+            import multiprocessing
+        except ImportError:
+            raise SkipTest()
+
+        pool = multiprocessing.Pool(2)
+        ids = pool.map(oid, range(20))
+        map = {}
+
+        for id in ids:
+            self.assert_(id not in map)
+            map[id] = True
 
 
 if __name__ == "__main__":
