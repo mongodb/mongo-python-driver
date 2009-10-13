@@ -88,6 +88,7 @@ Thanks to (in no particular order) (if you belong here and are missing please le
   - Hex __repr__ and __str__ for ObjectId
   - Performance optimizations for writing large files to GridFS
   - Some updates to the README
+  - Fix for ObjectId + multiprocessing
 
 - Alexander Artemenko (svetlyak40wt):
 

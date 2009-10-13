@@ -30,17 +30,12 @@ except: # for Python < 2.5
 from errors import InvalidId
 
 
-def _machine_and_pid_bytes():
-    """Get the machine and pid portion of an ObjectId.
+def _machine_bytes():
+    """Get the machine portion of an ObjectId.
     """
-    # 3 bytes machine
     machine_hash = _md5func()
     machine_hash.update(socket.gethostname())
-    bytes = machine_hash.digest()[0:3]
-
-    # 2 bytes pid
-    bytes += struct.pack(">H", os.getpid() % 0xFFFF)
-    return bytes
+    return machine_hash.digest()[0:3]
 
 
 class ObjectId(object):
@@ -50,7 +45,7 @@ class ObjectId(object):
     _inc = 0
     _inc_lock = threading.Lock()
 
-    _machine_and_pid_bytes = _machine_and_pid_bytes()
+    _machine_bytes = _machine_bytes()
 
     def __init__(self, id=None):
         """Initialize a new ObjectId.
@@ -77,8 +72,11 @@ class ObjectId(object):
         # 4 bytes current time
         oid += struct.pack(">i", int(time.time()))
 
-        # 3 bytes machine + 2 bytes pid
-        oid += ObjectId._machine_and_pid_bytes
+        # 3 bytes machine
+        oid += ObjectId._machine_bytes
+
+        # 2 bytes pid
+        oid += struct.pack(">H", os.getpid() % 0xFFFF)
 
         # 3 bytes inc
         ObjectId._inc_lock.acquire()
@@ -161,7 +159,7 @@ class ObjectId(object):
         """Get the binary representation of this ObjectId.
         """
         return self.__id
-    
+
     binary = property(get_binary)
 
     def __str__(self):
@@ -174,7 +172,7 @@ class ObjectId(object):
         if isinstance(other, ObjectId):
             return cmp(self.__id, other.__id)
         return NotImplemented
-    
+
     def __hash__(self):
         return hash(self.__id)
 
