@@ -542,6 +542,14 @@ class TestCursor(unittest.TestCase):
         check_len(self.db.test.find().limit(10).skip(95), 5)
         check_len(self.db.test.find()[95:105], 5)
 
+    def test_properties(self):
+        self.assertEqual(self.db.test, self.db.test.find().collection)
+
+        def set_coll():
+            self.db.test.find().collection = "hello"
+
+        self.assertRaises(AttributeError, set_coll)
+
 
 if __name__ == "__main__":
     unittest.main()

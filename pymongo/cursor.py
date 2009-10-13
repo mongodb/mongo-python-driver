@@ -62,6 +62,12 @@ class Cursor(object):
         self.__retrieved = 0
         self.__killed = False
 
+    def collection(self):
+        """Get the collection for this cursor.
+        """
+        return self.__collection
+    collection = property(collection)
+
     def __del__(self):
         if self.__id and not self.__killed:
             self.__die()
