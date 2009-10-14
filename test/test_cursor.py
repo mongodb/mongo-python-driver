@@ -82,19 +82,20 @@ class TestCursor(unittest.TestCase):
 
         self.assertRaises(TypeError, db.test.find().hint, index)
 
-    # TODO right now this doesn't actually test anything useful, just that the
-    # call doesn't blow up in the normal case.
+
+    # This is deprecated - test that a warning is actually raised
     def test_slave_okay(self):
         db = self.db
         db.drop_collection("test")
-
-        a = db.test.find(slave_okay=True)
-        for _ in a:
-            break
-
         db.test.save({"x": 1})
-        self.assertEqual(1, db.test.find(slave_okay=True).next()["x"])
-        self.assertEqual(1, db.test.find(slave_okay=False).next()["x"])
+
+        warnings.simplefilter("error")
+
+        self.assertEqual(1, db.test.find().next()["x"])
+        self.assertRaises(DeprecationWarning, db.test.find, slave_okay=True)
+        self.assertRaises(DeprecationWarning, db.test.find, slave_okay=False)
+
+        warnings.simplefilter("default")
 
     def test_limit(self):
         db = self.db

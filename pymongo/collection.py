@@ -271,11 +271,9 @@ class Collection(object):
             of ObjectId to be used as the value for an _id query
           - `fields` (optional): a list of field names that should be included
             in the returned document ("_id" will always be included)
-          - `slave_okay` (optional): if True, this query should be allowed to
-            execute on a slave (by default, certain queries are not allowed to
-            execute on mongod instances running in slave mode). If slave_okay
-            is set to None the Connection level default will be used - see the
-            slave_okay parameter to `pymongo.Connection.__init__`.
+          - `slave_okay` (optional): DEPRECATED this option is deprecated and
+            will be removed - see the slave_okay parameter to
+            `pymongo.Connection.__init__`.
         """
         spec = spec_or_object_id
         if spec is None:
@@ -333,11 +331,9 @@ class Collection(object):
           - `skip` (optional): the number of documents to omit (from the start
             of the result set) when returning the results
           - `limit` (optional): the maximum number of results to return
-          - `slave_okay` (optional): if True, this query should be allowed to
-            execute on a slave (by default, certain queries are not allowed to
-            execute on mongod instances running in slave mode). If slave_okay
-            is set to None the Connection level default will be used - see the
-            slave_okay parameter to `pymongo.Connection.__init__`.
+          - `slave_okay` (optional): DEPRECATED this option is deprecated and
+            will be removed - see the slave_okay parameter to
+            `pymongo.Connection.__init__`.
           - `timeout` (optional): if True, any returned cursor will be subject
             to the normal timeout behavior of the mongod process. Otherwise,
             the returned cursor will never timeout at the server. Care should
@@ -354,6 +350,12 @@ class Collection(object):
             spec = SON()
         if slave_okay is None:
             slave_okay = self.__database.connection().slave_okay
+        else:
+            warnings.warn("The slave_okay option to find and find_one is "
+                          "deprecated. Please set slave_okay on the Connection "
+                          "itself.",
+                          DeprecationWarning)
+
         if not isinstance(spec, types.DictType):
             raise TypeError("spec must be an instance of dict")
         if not isinstance(fields, (types.ListType, types.NoneType)):
