@@ -130,7 +130,7 @@ class TestConnection(unittest.TestCase):
 
     def test_socket_timeout(self):
         no_timeout = Connection(self.host, self.port)
-        timeout = Connection(self.host, self.port, network_timeout=0.25)
+        timeout = Connection(self.host, self.port, network_timeout=0.1)
 
         no_timeout.pymongo_test.drop_collection("test")
 
