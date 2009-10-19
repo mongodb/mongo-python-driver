@@ -33,6 +33,52 @@ class SaveAndFind(threading.Thread):
         assert sum == 499500
 
 
+class Insert(threading.Thread):
+
+    def __init__(self, collection, n, expect_exception):
+        threading.Thread.__init__(self)
+        self.collection = collection
+        self.n = n
+        self.expect_exception = expect_exception
+
+    def run(self):
+        for _ in xrange(self.n):
+            error = True
+
+            try:
+                self.collection.insert({"test": "insert"}, safe=True)
+                error = False
+            except:
+                if not self.expect_exception:
+                    raise
+
+            if self.expect_exception:
+                assert error
+
+
+class Update(threading.Thread):
+
+    def __init__(self, collection, n, expect_exception):
+        threading.Thread.__init__(self)
+        self.collection = collection
+        self.n = n
+        self.expect_exception = expect_exception
+
+    def run(self):
+        for _ in xrange(self.n):
+            error = True
+
+            try:
+                self.collection.update({"test": "update"}, {"$set": {"test": "update"}}, safe=True)
+                error = False
+            except:
+                if not self.expect_exception:
+                    raise
+
+            if self.expect_exception:
+                assert error
+
+
 class TestThreads(unittest.TestCase):
 
     def setUp(self):
@@ -51,6 +97,41 @@ class TestThreads(unittest.TestCase):
 
         for t in threads:
             t.join()
+
+    def test_safe_insert(self):
+        self.db.drop_collection("test1")
+        self.db.test1.insert({"test": "insert"})
+        self.db.drop_collection("test2")
+        self.db.test2.insert({"test": "insert"})
+
+        self.db.test2.create_index("test", unique=True)
+
+        okay = Insert(self.db.test1, 2000, False)
+        error = Insert(self.db.test2, 2000, True)
+
+        error.start()
+        okay.start()
+
+        error.join()
+        okay.join()
+
+    def test_safe_update(self):
+        self.db.drop_collection("test1")
+        self.db.test1.insert({"test": "update"})
+        self.db.drop_collection("test2")
+        self.db.test2.insert({"test": "update"})
+
+        self.db.test2.create_index("test")
+
+        okay = Update(self.db.test1, 2000, False)
+        error = Update(self.db.test2, 2000, True)
+
+        error.start()
+        okay.start()
+
+        error.join()
+        okay.join()
+
 
 if __name__ == "__main__":
     unittest.main()
