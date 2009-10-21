@@ -25,9 +25,11 @@ import errno
 import datetime
 
 from errors import ConnectionFailure, ConfigurationError, AutoReconnect
+from errors import OperationFailure
 from database import Database
 from cursor_manager import CursorManager
 from thread_util import TimeoutableLock
+import bson
 
 _logger = logging.getLogger("pymongo.connection")
 _logger.addHandler(logging.StreamHandler())
@@ -35,6 +37,18 @@ _logger.setLevel(logging.INFO)
 
 _CONNECT_TIMEOUT = 20.0
 
+
+_LAST_ERROR_MESSAGE = (2004, # OP_QUERY
+                       "\x00\x00\x00\x00" # query options
+                       "admin.$cmd\x00" # collection name
+                       "\x00\x00\x00\x00" # skip
+                       "\xff\xff\xff\xff" + # limit (-1)
+                       bson.BSON.from_dict({"getlasterror": 1}))
+"""Data to send to do a lastError.
+
+This is a bit of a hack but we use it to do implement "safe" mode at a low
+level.
+"""
 
 class Connection(object): # TODO support auth for pooling
     """A connection to Mongo.
@@ -460,6 +474,7 @@ class Connection(object): # TODO support auth for pooling
 
         return (to_send + data, request_id)
 
+    # TODO use static methods for a bunch of these
     def __send_data_on_socket(self, data, sock):
         """Lowest level send operation.
 
@@ -478,6 +493,16 @@ class Connection(object): # TODO support auth for pooling
                 raise ConnectionFailure("connection closed, resetting")
             total_sent += sent
 
+    def __send_messages_on_socket(self, messages, sock):
+        """Pack and send a series of messages on the given socket.
+
+        `messages` should be a list of (operation, data) pairs. Returns the
+        request_id of the last message in the list.
+        """
+        packed = [self.__pack_message(op, data) for (op, data) in messages]
+        self.__send_data_on_socket("".join([d for (d, _) in packed]), sock)
+        return packed[-1][1]
+
     def __send_message_on_socket(self, operation, data, sock):
         """Pack and send a single message on the given socket.
 
@@ -486,6 +511,64 @@ class Connection(object): # TODO support auth for pooling
         (data, request_id) = self.__pack_message(operation, data)
         self.__send_data_on_socket(data, sock)
         return request_id
+
+    # TODO does this really belong here?
+    def _unpack_response(response, cursor_id=None):
+        """Unpack a response from the database.
+
+        Check the response for errors and unpack, returning a dictionary
+        containing the response data.
+
+        :Parameters:
+          - `response`: byte string as returned from the database
+          - `cursor_id` (optional): cursor_id we sent to get this response -
+            used for raising an informative exception when we get cursor id not
+            valid at server response
+        """
+        response_flag = struct.unpack("<i", response[:4])[0]
+        if response_flag == 1:
+            # Shouldn't get this response if we aren't doing a getMore
+            assert cursor_id is not None
+
+            raise OperationFailure("cursor id '%s' not valid at server" %
+                                   cursor_id)
+        elif response_flag == 2:
+            error_object = bson.BSON(response[20:]).to_dict()
+            if error_object["$err"] == "not master":
+                db.connection()._reset()
+                raise AutoReconnect("master has changed")
+            raise OperationFailure("database error: %s" %
+                                   error_object["$err"])
+        else:
+            assert response_flag == 0
+
+        result = {}
+        result["cursor_id"] = struct.unpack("<q", response[4:12])[0]
+        result["starting_from"] = struct.unpack("<i", response[12:16])[0]
+        result["number_returned"] = struct.unpack("<i", response[16:20])[0]
+        result["data"] = bson._to_dicts(response[20:])
+        assert len(result["data"]) == result["number_returned"]
+        return result
+
+    _unpack_response = staticmethod(_unpack_response)
+
+    def __check_response_to_last_error(self, response):
+        """Check a response to a lastError message for errors.
+
+        `response` is a byte string representing a response to the message.
+        If it represents an error response we raise OperationFailure.
+        """
+        response = Connection._unpack_response(response)
+
+        assert response["number_returned"] == 1
+        error = response["data"][0]
+
+        # TODO unify logic with database.error method
+        if error.get("err", 0) is None:
+            return
+        if error["err"] == "not master":
+            self._reset()
+        raise OperationFailure(error["err"])
 
     def _send_message(self, operation, data, safe=False):
         """Say something to Mongo.
@@ -502,10 +585,16 @@ class Connection(object): # TODO support auth for pooling
         sock_number = self.__get_socket()
         sock = self.__sockets[sock_number]
         try:
-            self.__send_message_on_socket(operation, data, sock)
-            if safe:
-                pass
-#                res = self.__send_and_receive(
+            if not safe:
+                return self.__send_message_on_socket(operation, data, sock)
+
+            # Safe mode. We pack the message together with a lastError message
+            # and send both. We then get the response (to the lastError) and
+            # raise OperationFailure if it is an error response.
+            messages = [(operation, data), _LAST_ERROR_MESSAGE]
+            request_id = self.__send_messages_on_socket(messages, sock)
+            response = self.__receive_message_on_socket(1, request_id, sock)
+            self.__check_response_to_last_error(response)
         except ConnectionFailure, e:
             self._reset()
             raise AutoReconnect(str(e))
@@ -577,7 +666,6 @@ class Connection(object): # TODO support auth for pooling
             raise AutoReconnect(str(e))
         finally:
             self.__locks[sock_number].release()
-
 
     def start_request(self):
         """Start a "request".

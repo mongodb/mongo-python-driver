@@ -385,32 +385,16 @@ class Cursor(object):
             else:
                 connection_id = None
 
-            response_flag = struct.unpack("<i", response[:4])[0]
-            if response_flag == 1:
-                raise OperationFailure("cursor id '%s' not valid at server" %
-                                       self.__id)
-            elif response_flag == 2:
-                error_object = bson.BSON(response[20:]).to_dict()
-                if error_object["$err"] == "not master":
-                    db.connection()._reset()
-                    raise AutoReconnect("master has changed")
-                raise OperationFailure("database error: %s" %
-                                       error_object["$err"])
-            else:
-                assert response_flag == 0
-
-            self.__id = struct.unpack("<q", response[4:12])[0]
             self.__connection_id = connection_id
-            assert struct.unpack("<i", response[12:16])[0] == self.__retrieved
 
-            number_returned = struct.unpack("<i", response[16:20])[0]
-            self.__retrieved += number_returned
+            response = pymongo.Connection._unpack_response(response, self.__id)
+            self.__id = response["cursor_id"]
+            assert response["starting_from"] == self.__retrieved
+            self.__retrieved += response["number_returned"]
+            self.__data = response["data"]
 
             if self.__limit and self.__id and self.__limit <= self.__retrieved:
                 self.__die()
-
-            self.__data = bson._to_dicts(response[20:])
-            assert len(self.__data) == number_returned
 
         message = self.__query_options()
         message += bson._make_c_string(self.__collection.full_name())
