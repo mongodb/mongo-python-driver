@@ -559,7 +559,6 @@ class TestCursor(unittest.TestCase):
         db = self.db
         db.drop_collection("test")
 
-
         cursor = db.test.find(tailable=True)
 
         db.test.insert({"x": 1})
