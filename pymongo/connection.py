@@ -585,19 +585,21 @@ class Connection(object): # TODO support auth for pooling
         sock_number = self.__get_socket()
         sock = self.__sockets[sock_number]
         try:
-            if not safe:
-                return self.__send_message_on_socket(operation, data, sock)
+            try:
+                if not safe:
+                    return self.__send_message_on_socket(operation, data, sock)
 
-            # Safe mode. We pack the message together with a lastError message
-            # and send both. We then get the response (to the lastError) and
-            # raise OperationFailure if it is an error response.
-            messages = [(operation, data), _LAST_ERROR_MESSAGE]
-            request_id = self.__send_messages_on_socket(messages, sock)
-            response = self.__receive_message_on_socket(1, request_id, sock)
-            self.__check_response_to_last_error(response)
-        except ConnectionFailure, e:
-            self._reset()
-            raise AutoReconnect(str(e))
+                # Safe mode. We pack the message together with a lastError
+                # message and send both. We then get the response (to the
+                # lastError) and raise OperationFailure if it is an error
+                # response.
+                messages = [(operation, data), _LAST_ERROR_MESSAGE]
+                request_id = self.__send_messages_on_socket(messages, sock)
+                response = self.__receive_message_on_socket(1, request_id, sock)
+                self.__check_response_to_last_error(response)
+            except ConnectionFailure, e:
+                self._reset()
+                raise AutoReconnect(str(e))
         finally:
             self.__locks[sock_number].release()
 
@@ -660,10 +662,11 @@ class Connection(object): # TODO support auth for pooling
         sock_number = self.__get_socket()
         sock = self.__sockets[sock_number]
         try:
-            return self.__send_and_receive(operation, data, sock)
-        except ConnectionFailure, e:
-            self._reset()
-            raise AutoReconnect(str(e))
+            try:
+                return self.__send_and_receive(operation, data, sock)
+            except ConnectionFailure, e:
+                self._reset()
+                raise AutoReconnect(str(e))
         finally:
             self.__locks[sock_number].release()
 
