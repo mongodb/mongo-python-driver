@@ -555,6 +555,36 @@ class TestCursor(unittest.TestCase):
 
         self.assertRaises(AttributeError, set_coll)
 
+    def test_tailable(self):
+        db = self.db
+        db.drop_collection("test")
+
+
+        cursor = db.test.find(tailable=True)
+
+        db.test.insert({"x": 1})
+        count = 0
+        for doc in cursor:
+            count += 1
+            self.assertEqual(1, doc["x"])
+        self.assertEqual(1, count)
+
+        db.test.insert({"x": 2})
+        count = 0
+        for doc in cursor:
+            count += 1
+            self.assertEqual(2, doc["x"])
+        self.assertEqual(1, count)
+
+        db.test.insert({"x": 3})
+        count = 0
+        for doc in cursor:
+            count += 1
+            self.assertEqual(3, doc["x"])
+        self.assertEqual(1, count)
+
+        self.assertEqual(3, db.test.count())
+
 
 if __name__ == "__main__":
     unittest.main()

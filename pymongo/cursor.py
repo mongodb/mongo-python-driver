@@ -37,7 +37,8 @@ class Cursor(object):
     """
 
     def __init__(self, collection, spec, fields, skip, limit, slave_okay,
-                 timeout, snapshot=False, _sock=None, _must_use_master=False):
+                 timeout, tailable, snapshot=False,
+                 _sock=None, _must_use_master=False):
         """Create a new cursor.
 
         Should not be called directly by application developers.
@@ -49,6 +50,7 @@ class Cursor(object):
         self.__limit = limit
         self.__slave_okay = slave_okay
         self.__timeout = timeout
+        self.__tailable = tailable
         self.__snapshot = snapshot
         self.__ordering = None
         self.__explain = False
@@ -99,7 +101,7 @@ class Cursor(object):
         """
         copy = Cursor(self.__collection, self.__spec, self.__fields,
                       self.__skip, self.__limit, self.__slave_okay,
-                      self.__timeout, self.__snapshot)
+                      self.__timeout, self.__tailable, self.__snapshot)
         copy.__ordering = self.__ordering
         copy.__explain = self.__explain
         copy.__hint = self.__hint
@@ -141,6 +143,8 @@ class Cursor(object):
         """Get the 4 byte query options string to use for this query.
         """
         options = 0
+        if self.__tailable:
+            options |= _QUERY_OPTIONS["tailable_cursor"]
         if self.__slave_okay:
             options |= _QUERY_OPTIONS["slave_okay"]
         if not self.__timeout:
@@ -381,7 +385,11 @@ class Cursor(object):
 
         response = pymongo.Connection._unpack_response(response, self.__id)
         self.__id = response["cursor_id"]
-        assert response["starting_from"] == self.__retrieved
+
+        # starting from doesn't get set on getmore's for tailable cursors
+        if not self.__tailable:
+            assert response["starting_from"] == self.__retrieved
+
         self.__retrieved += response["number_returned"]
         self.__data = response["data"]
 

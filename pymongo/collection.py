@@ -305,7 +305,7 @@ class Collection(object):
         return as_dict
 
     def find(self, spec=None, fields=None, skip=0, limit=0,
-             slave_okay=None, timeout=True, snapshot=False,
+             slave_okay=None, timeout=True, snapshot=False, tailable=False,
              _sock=None, _must_use_master=False):
         """Query the database.
 
@@ -342,9 +342,15 @@ class Collection(object):
           - `snapshot` (optional): if True, snapshot mode will be used for this
             query. Snapshot mode assures no duplicates are returned, or objects
             missed, which were present at both the start and end of the query's
-            execution. For details, see the wiki_
-
-        .. _wiki: http://www.mongodb.org/display/DOCS/How+to+do+Snapshotting+in+the+Mongo+Database
+            execution. For details, see the `wiki
+            <http://www.mongodb.org/display/DOCS/How+to+do+Snapshotting+in+the+Mongo+Database>`_.
+          - `tailable` (optional): the result of this find call will be a
+            tailable cursor - tailable cursors aren't closed when the last data
+            is retrieved but are kept open and the cursors location marks the
+            final document's position. if more data is received iteration of
+            the cursor will continue from the last document received. For
+            details, see the `wiki
+            <http://www.mongodb.org/display/DOCS/Tailable+Cursors>`_.
         """
         if spec is None:
             spec = SON()
@@ -370,14 +376,17 @@ class Collection(object):
             raise TypeError("timeout must be an instance of bool")
         if not isinstance(snapshot, types.BooleanType):
             raise TypeError("snapshot must be an instance of bool")
+        if not isinstance(tailable, types.BooleanType):
+            raise TypeError("tailable must be an instance of bool")
 
         if fields is not None:
             if not fields:
                 fields = ["_id"]
             fields = self._fields_list_to_dict(fields)
 
-        return Cursor(self, spec, fields, skip, limit, slave_okay, timeout, snapshot,
-                      _sock=_sock, _must_use_master=_must_use_master)
+        return Cursor(self, spec, fields, skip, limit, slave_okay, timeout,
+                      tailable, snapshot, _sock=_sock,
+                      _must_use_master=_must_use_master)
 
     def count(self):
         """Get the number of documents in this collection.
