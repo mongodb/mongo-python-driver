@@ -541,12 +541,13 @@ class Connection(object): # TODO support auth for pooling
 
         return self.__receive_data_on_socket(length - 16, sock)
 
-    __hack_socket_lock = threading.Lock()
-
     def __send_and_receive(self, operation, data, sock):
+        """Send a message on the given socket and return the response data.
+        """
         request_id = self.__send_message_on_socket(operation, data, sock)
         return self.__receive_message_on_socket(1, request_id, sock)
 
+    __hack_socket_lock = threading.Lock()
     # we just ignore _must_use_master here: it's only relavant for
     # MasterSlaveConnection instances.
     def _send_message_with_response(self, operation, data,
