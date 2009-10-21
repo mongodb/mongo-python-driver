@@ -233,16 +233,20 @@ class Collection(object):
 
         self._send_message(2001, message, safe)
 
-    def remove(self, spec_or_object_id):
+    def remove(self, spec_or_object_id, safe=False):
         """Remove an object(s) from this collection.
 
         Raises TypeEror if the argument is not an instance of
-        (dict, ObjectId).
+        (dict, ObjectId). If `safe` is True then the remove will be checked for
+        errors, raising OperationFailure if one occurred. Safe removes wait for
+        a response from the database, while normal removes do not.
+
 
         :Parameters:
           - `spec_or_object_id` (optional): a SON object specifying elements
             which must be present for a document to be removed OR an instance
             of ObjectId to be used as the value for an _id element
+          - `safe` (optional): check that the remove succeeded?
         """
         spec = spec_or_object_id
         if isinstance(spec, ObjectId):
@@ -252,7 +256,7 @@ class Collection(object):
             raise TypeError("spec must be an instance of dict, not %s" %
                             type(spec))
 
-        self._send_message(2006, _ZERO + bson.BSON.from_dict(spec))
+        self._send_message(2006, _ZERO + bson.BSON.from_dict(spec), safe)
 
     def find_one(self, spec_or_object_id=None, fields=None, slave_okay=None,
                  _sock=None, _must_use_master=False):

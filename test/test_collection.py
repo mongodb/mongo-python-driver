@@ -529,6 +529,20 @@ class TestCollection(unittest.TestCase):
 
         self.assertRaises(OperationFailure, db.test.save, {"hello": "world"}, safe=True)
 
+    def test_safe_remove(self):
+        db = self.db
+        db.drop_collection("test")
+        db.create_collection("test", {"capped": True, "size": 1000})
+
+        db.test.insert({"x": 1})
+        self.assertEqual(1, db.test.count())
+
+        db.test.remove({"x": 1})
+        self.assertEqual(1, db.test.count())
+
+        # TODO test this raises an exception (waiting on db support for reporting this)
+        db.test.remove({"x": 1}, safe=True)
+
     def test_count(self):
         db = self.db
         db.drop_collection("test")
