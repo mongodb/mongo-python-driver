@@ -360,6 +360,34 @@ class Cursor(object):
         self.__spec["$where"] = code
         return self
 
+    def __send_message(self, operation, message):
+        """Send a query or getmore message and handles the response.
+        """
+        db = self.__collection.database()
+        kwargs = {"_sock": self.__socket,
+                  "_must_use_master": self.__must_use_master}
+        if self.__connection_id is not None:
+            kwargs["_connection_to_use"] = self.__connection_id
+
+        response = db.connection()._send_message_with_response(operation, message,
+                                                               **kwargs)
+
+        if isinstance(response, types.TupleType):
+            (connection_id, response) = response
+        else:
+            connection_id = None
+
+        self.__connection_id = connection_id
+
+        response = pymongo.Connection._unpack_response(response, self.__id)
+        self.__id = response["cursor_id"]
+        assert response["starting_from"] == self.__retrieved
+        self.__retrieved += response["number_returned"]
+        self.__data = response["data"]
+
+        if self.__limit and self.__id and self.__limit <= self.__retrieved:
+            self.__die()
+
     def _refresh(self):
         """Refreshes the cursor with more data from Mongo.
 
@@ -369,32 +397,6 @@ class Cursor(object):
         """
         if len(self.__data) or self.__killed:
             return len(self.__data)
-
-        def send_message(operation, message):
-            db = self.__collection.database()
-            kwargs = {"_sock": self.__socket,
-                      "_must_use_master": self.__must_use_master}
-            if self.__connection_id is not None:
-                kwargs["_connection_to_use"] = self.__connection_id
-
-            response = db.connection()._send_message_with_response(operation, message,
-                                                                   **kwargs)
-
-            if isinstance(response, types.TupleType):
-                (connection_id, response) = response
-            else:
-                connection_id = None
-
-            self.__connection_id = connection_id
-
-            response = pymongo.Connection._unpack_response(response, self.__id)
-            self.__id = response["cursor_id"]
-            assert response["starting_from"] == self.__retrieved
-            self.__retrieved += response["number_returned"]
-            self.__data = response["data"]
-
-            if self.__limit and self.__id and self.__limit <= self.__retrieved:
-                self.__die()
 
         message = self.__query_options()
         message += bson._make_c_string(self.__collection.full_name())
@@ -406,7 +408,7 @@ class Cursor(object):
             if self.__fields:
                 message += bson.BSON.from_dict(self.__fields)
 
-            send_message(2004, message)
+            self.__send_message(2004, message)
             if not self.__id:
                 self.__killed = True
         elif self.__id:
@@ -422,7 +424,7 @@ class Cursor(object):
             message += struct.pack("<i", limit)
             message += struct.pack("<q", self.__id)
 
-            send_message(2005, message)
+            self.__send_message(2005, message)
 
         return len(self.__data)
 
