@@ -24,10 +24,10 @@ from pymongo.database import Database
 from pymongo.connection import Connection
 
 
-def get_connection():
+def get_connection(*args, **kwargs):
     host = os.environ.get("DB_IP", "localhost")
     port = int(os.environ.get("DB_PORT", 27017))
-    return Connection(host, port)
+    return Connection(host, port, *args, **kwargs)
 
 
 class TestConnection(unittest.TestCase):

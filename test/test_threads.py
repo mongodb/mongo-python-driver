@@ -82,7 +82,7 @@ class Update(threading.Thread):
 class TestThreads(unittest.TestCase):
 
     def setUp(self):
-        self.db = get_connection().pymongo_test
+        self.db = get_connection(timeout=-1).pymongo_test
 
     def test_threading(self):
         self.db.test.remove({})
