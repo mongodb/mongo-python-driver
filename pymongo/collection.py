@@ -115,14 +115,19 @@ class Collection(object):
         """
         return self.__collection_name
 
-    def _send_message(self, operation, data):
+    def _send_message(self, operation, data, safe=False):
         """Wrap up a message and send it.
+
+        If safe is true then piggyback a lasterror message on the send,
+        raising an OperationFailure exception when the insert/update
+        failed.
         """
         # reserved int, full collection name, message data
         message = _ZERO
         message += bson._make_c_string(self.full_name())
         message += data
-        return self.__database.connection()._send_message(operation, message)
+
+        return self.__database.connection()._send_message(operation, message, safe)
 
     def database(self):
         """Get the database that this collection is a part of.
@@ -139,8 +144,9 @@ class Collection(object):
 
         Raises TypeError if to_save is not an instance of dict. If `safe`
         is True then the save will be checked for errors, raising
-        OperationFailure if one occurred. Checking for safety requires an extra
-        round-trip to the database. Returns the _id of the saved document.
+        OperationFailure if one occurred. Safe inserts wait for a
+        response from the database, while normal inserts do not. Returns the
+        _id of the saved document.
 
         :Parameters:
           - `to_save`: the SON object to be saved
@@ -166,8 +172,8 @@ class Collection(object):
         of the inserted document or a list of _ids of the inserted documents.
         If the document(s) does not already contain an '_id' one will be added.
         If `safe` is True then the insert will be checked for errors, raising
-        OperationFailure if one occurred. Checking for safety requires an extra
-        round-trip to the database.
+        OperationFailure if one occurred. Safe inserts wait for a response from
+        the database, while normal inserts do not.
 
         :Parameters:
           - `doc_or_docs`: a SON object or list of SON objects to be inserted
@@ -184,12 +190,7 @@ class Collection(object):
             docs = [self.__database._fix_incoming(doc, self) for doc in docs]
 
         data = [bson.BSON.from_dict(doc, check_keys) for doc in docs]
-        self._send_message(2002, "".join(data))
-
-        if safe:
-            error = self.__database.error()
-            if error:
-                raise OperationFailure("insert failed: " + error["err"])
+        self._send_message(2002, "".join(data), safe)
 
         ids = [doc.get("_id", None) for doc in docs]
         return len(ids) == 1 and ids[0] or ids
@@ -201,8 +202,8 @@ class Collection(object):
         Raises TypeError if either spec or document isn't an instance of
         dict or upsert isn't an instance of bool. If `safe` is True then
         the update will be checked for errors, raising OperationFailure if one
-        occurred. Checking for safety requires an extra round-trip to the
-        database.
+        occurred. Safe inserts wait for a response from the database, while
+        normal inserts do not.
 
         :Parameters:
           - `spec`: a SON object specifying elements which must be present for
@@ -230,12 +231,7 @@ class Collection(object):
         message += bson.BSON.from_dict(spec)
         message += bson.BSON.from_dict(document)
 
-        self._send_message(2001, message)
-
-        if safe:
-            error = self.__database.error()
-            if error:
-                raise OperationFailure("update failed: " + error["err"])
+        self._send_message(2001, message, safe)
 
     def remove(self, spec_or_object_id):
         """Remove an object(s) from this collection.

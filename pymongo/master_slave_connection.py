@@ -93,7 +93,7 @@ class MasterSlaveConnection(object):
     # _connection_to_use is a hack that we need to include to make sure
     # that killcursor operations can be sent to the same instance on which
     # the cursor actually resides...
-    def _send_message(self, operation, data, _connection_to_use=None):
+    def _send_message(self, operation, data, safe=False, _connection_to_use=None):
         """Say something to Mongo.
 
         Sends a message on the Master connection. This is used for inserts,
@@ -105,16 +105,18 @@ class MasterSlaveConnection(object):
         :Parameters:
           - `operation`: opcode of the message
           - `data`: data to send
+          - `safe`: perform a getLastError after sending the message
         """
         if _connection_to_use is None or _connection_to_use == -1:
-            return self.__master._send_message(operation, data)
-        return self.__slaves[_connection_to_use]._send_message(operation, data)
+            return self.__master._send_message(operation, data, safe)
+        return self.__slaves[_connection_to_use]._send_message(operation, data, safe)
 
     # _connection_to_use is a hack that we need to include to make sure
     # that getmore operations can be sent to the same instance on which
     # the cursor actually resides...
-    def _receive_message(self, operation, data,
-                         _sock=None, _connection_to_use=None, _must_use_master=False):
+    def _send_message_with_response(self, operation, data,
+                                    _sock=None, _connection_to_use=None,
+                                    _must_use_master=False):
         """Receive a message from Mongo.
 
         Sends the given message and returns a (connection_id, response) pair.
@@ -125,12 +127,13 @@ class MasterSlaveConnection(object):
         """
         if _connection_to_use is not None:
             if _connection_to_use == -1:
-                return (-1, self.__master._receive_message(operation,
-                                                           data, _sock))
+                return (-1, self.__master._send_message_with_response(operation,
+                                                                      data,
+                                                                      _sock))
             else:
                 return (_connection_to_use,
                         self.__slaves[_connection_to_use]
-                        ._receive_message(operation, data, _sock))
+                        ._send_message_with_response(operation, data, _sock))
 
         # for now just load-balance randomly among slaves only...
         connection_id = random.randrange(0, len(self.__slaves))
@@ -139,11 +142,13 @@ class MasterSlaveConnection(object):
         # master instance. any queries in a request must be sent to the
         # master since that is where writes go.
         if _must_use_master or self.__in_request or connection_id == -1:
-            return (-1, self.__master._receive_message(operation, data, _sock))
+            return (-1, self.__master._send_message_with_response(operation,
+                                                                  data, _sock))
 
         return (connection_id,
-                self.__slaves[connection_id]._receive_message(operation,
-                                                              data, _sock))
+                self.__slaves[connection_id]._send_message_with_response(operation,
+                                                                         data,
+                                                                         _sock))
 
     def start_request(self):
         """Start a "request".

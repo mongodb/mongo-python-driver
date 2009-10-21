@@ -377,8 +377,8 @@ class Cursor(object):
             if self.__connection_id is not None:
                 kwargs["_connection_to_use"] = self.__connection_id
 
-            response = db.connection()._receive_message(operation, message,
-                                                        **kwargs)
+            response = db.connection()._send_message_with_response(operation, message,
+                                                                   **kwargs)
 
             if isinstance(response, types.TupleType):
                 (connection_id, response) = response

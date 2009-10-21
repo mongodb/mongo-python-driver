@@ -446,7 +446,11 @@ class Connection(object): # TODO support auth for pooling
             raise AutoReconnect(str(e))
         return sock
 
-    def __send_message_on_socket(self, operation, data, sock):
+    def __pack_message(self, operation, data):
+        """Takes message data and adds a message header based on the operation.
+
+        Returns the resultant (message, request_id) pair.
+        """
         # header
         request_id = self.__increment_id()
         to_send = struct.pack("<i", 16 + len(data))
@@ -454,12 +458,18 @@ class Connection(object): # TODO support auth for pooling
         to_send += "\x00\x00\x00\x00" # responseTo
         to_send += struct.pack("<i", operation)
 
-        to_send += data
+        return (to_send + data, request_id)
 
+    def __send_data_on_socket(self, data, sock):
+        """Lowest level send operation.
+
+        Takes data to send as a byte string and a socket instance and
+        sends all of the data, raising ConnectionFailure on error.
+        """
         total_sent = 0
-        while total_sent < len(to_send):
+        while total_sent < len(data):
             try:
-                sent = sock.send(to_send[total_sent:])
+                sent = sock.send(data[total_sent:])
             except socket.error, e:
                 if e[0] == errno.EAGAIN:
                     continue
@@ -468,55 +478,80 @@ class Connection(object): # TODO support auth for pooling
                 raise ConnectionFailure("connection closed, resetting")
             total_sent += sent
 
+    def __send_message_on_socket(self, operation, data, sock):
+        """Pack and send a single message on the given socket.
+
+        Returns the resultant request_id.
+        """
+        (data, request_id) = self.__pack_message(operation, data)
+        self.__send_data_on_socket(data, sock)
         return request_id
 
-    def _send_message(self, operation, data):
+    def _send_message(self, operation, data, safe=False):
         """Say something to Mongo.
 
-        Raises ConnectionFailure if the message cannot be sent. Returns the
-        request id of the sent message.
+        Raises ConnectionFailure if the message cannot be sent. Raises
+        OperationFailure if safe is True and the ensuing getLastError call
+        returns an error. Returns the request id of the sent message.
 
         :Parameters:
           - `operation`: opcode of the message
           - `data`: data to send
+          - `safe`: perform a getLastError after sending the message
         """
         sock_number = self.__get_socket()
         sock = self.__sockets[sock_number]
         try:
             self.__send_message_on_socket(operation, data, sock)
-            self.__locks[sock_number].release()
+            if safe:
+                pass
+#                res = self.__send_and_receive(
         except ConnectionFailure, e:
-            self.__locks[sock_number].release()
             self._reset()
             raise AutoReconnect(str(e))
+        finally:
+            self.__locks[sock_number].release()
+
+    def __receive_data_on_socket(self, length, sock):
+        """Lowest level receive operation.
+
+        Takes length to receive and repeatedly calls recv until able to
+        return a buffer of that length, raising ConnectionFailure on error.
+        """
+        message = ""
+        while len(message) < length:
+            try:
+                chunk = sock.recv(length - len(message))
+            except socket.error, e:
+                raise ConnectionFailure(e)
+            if chunk == "":
+                raise ConnectionFailure("connection closed")
+            message += chunk
+        return message
 
     def __receive_message_on_socket(self, operation, request_id, sock):
+        """Receive a message in response to `request_id` on `sock`.
 
-        def receive(length):
-            message = ""
-            while len(message) < length:
-                try:
-                    chunk = sock.recv(length - len(message))
-                except socket.error, e:
-                    raise ConnectionFailure(e)
-                if chunk == "":
-                    raise ConnectionFailure("connection closed")
-                message += chunk
-            return message
-
-        header = receive(16)
+        Returns the response data with the header removed.
+        """
+        header = self.__receive_data_on_socket(16, sock)
         length = struct.unpack("<i", header[:4])[0]
         assert request_id == struct.unpack("<i", header[8:12])[0]
         assert operation == struct.unpack("<i", header[12:])[0]
 
-        return receive(length - 16)
+        return self.__receive_data_on_socket(length - 16, sock)
 
     __hack_socket_lock = threading.Lock()
 
+    def __send_and_receive(self, operation, data, sock):
+        request_id = self.__send_message_on_socket(operation, data, sock)
+        return self.__receive_message_on_socket(1, request_id, sock)
+
     # we just ignore _must_use_master here: it's only relavant for
     # MasterSlaveConnection instances.
-    def _receive_message(self, operation, data, _sock=None, _must_use_master=False):
-        """Receive a message from Mongo.
+    def _send_message_with_response(self, operation, data,
+                                    _sock=None, _must_use_master=False):
+        """Send a message to Mongo and return the response.
 
         Sends the given message and returns the response.
 
@@ -528,24 +563,20 @@ class Connection(object): # TODO support auth for pooling
         if _sock:
             self.__hack_socket_lock.acquire()
             try:
-                request_id = self.__send_message_on_socket(operation,
-                                                           data, _sock)
-                result = self.__receive_message_on_socket(1, request_id, _sock)
-                return result
+                return self.__send_and_receive(operation, data, _sock)
             finally:
                 self.__hack_socket_lock.release()
 
         sock_number = self.__get_socket()
         sock = self.__sockets[sock_number]
         try:
-            request_id = self.__send_message_on_socket(operation, data, sock)
-            result = self.__receive_message_on_socket(1, request_id, sock)
-            self.__locks[sock_number].release()
-            return result
+            return self.__send_and_receive(operation, data, sock)
         except ConnectionFailure, e:
-            self.__locks[sock_number].release()
             self._reset()
             raise AutoReconnect(str(e))
+        finally:
+            self.__locks[sock_number].release()
+
 
     def start_request(self):
         """Start a "request".
