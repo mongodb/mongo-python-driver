@@ -27,6 +27,7 @@ from pymongo.database import Database
 from pymongo.code import Code
 from pymongo import ASCENDING, DESCENDING
 from test_connection import get_connection
+import version
 
 
 class TestCursor(unittest.TestCase):
@@ -443,10 +444,13 @@ class TestCursor(unittest.TestCase):
         self.db.test.remove({})
         self.db.test.save({"x": 1})
 
-        for _ in self.db.test.find({}, ["a"]):
-            self.fail()
+        if not version.at_least(self.db.connection(), (1, 1)):
+            for _ in self.db.test.find({}, ["a"]):
+                self.fail()
 
-        self.assertEqual(0, self.db.test.find({}, ["a"]).count())
+            self.assertEqual(0, self.db.test.find({}, ["a"]).count())
+        else:
+            self.assertEqual(1, self.db.test.find({}, ["a"]).count())
 
     def test_bad_getitem(self):
         self.assertRaises(TypeError, lambda x: self.db.test.find()[x], "hello")
