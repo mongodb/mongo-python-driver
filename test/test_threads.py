@@ -69,7 +69,7 @@ class Update(threading.Thread):
             error = True
 
             try:
-                self.collection.update({"test": "update"}, {"$set": {"test": "update"}}, safe=True)
+                self.collection.update({"test": "unique"}, {"$set": {"test": "update"}}, safe=True)
                 error = False
             except:
                 if not self.expect_exception:
@@ -118,10 +118,12 @@ class TestThreads(unittest.TestCase):
     def test_safe_update(self):
         self.db.drop_collection("test1")
         self.db.test1.insert({"test": "update"})
+        self.db.test1.insert({"test": "unique"})
         self.db.drop_collection("test2")
         self.db.test2.insert({"test": "update"})
+        self.db.test2.insert({"test": "unique"})
 
-        self.db.test2.create_index("test")
+        self.db.test2.create_index("test", unique=True)
 
         okay = Update(self.db.test1, 2000, False)
         error = Update(self.db.test2, 2000, True)

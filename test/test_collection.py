@@ -501,17 +501,22 @@ class TestCollection(unittest.TestCase):
 
     def test_safe_update(self):
         db = self.db
+        v11 = version.at_least(db.connection(), (1, 1))
+
         db.drop_collection("test")
-        db.test.create_index("x")
+        db.test.create_index("x", unique=True)
 
-        a = {"x": 5}
-        db.test.insert(a)
+        db.test.insert({"x": 5})
+        id = db.test.insert({"x": 4})
 
-        db.test.update({}, {"$inc": {"x": 1}})
-        self.assert_(db.error()["err"].startswith("E12011"))
+        db.test.update({"_id": id}, {"$inc": {"x": 1}})
+        if v11:
+            self.assert_(db.error()["err"].startswith("E11001"))
+        else:
+            self.assert_(db.error()["err"].startswith("E12011"))
 
         self.assertRaises(OperationFailure, db.test.update,
-                          {}, {"$inc": {"x": 1}}, safe=True)
+                          {"_id": id}, {"$inc": {"x": 1}}, safe=True)
 
     def test_safe_save(self):
         db = self.db
