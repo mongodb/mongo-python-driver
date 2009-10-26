@@ -501,7 +501,7 @@ class TestCollection(unittest.TestCase):
 
     def test_safe_update(self):
         db = self.db
-        v11 = version.at_least(db.connection(), (1, 1))
+        v113minus = version.at_least(db.connection(), (1, 1, 3, -1))
 
         db.drop_collection("test")
         db.test.create_index("x", unique=True)
@@ -510,7 +510,7 @@ class TestCollection(unittest.TestCase):
         id = db.test.insert({"x": 4})
 
         db.test.update({"_id": id}, {"$inc": {"x": 1}})
-        if v11:
+        if v113minus:
             self.assert_(db.error()["err"].startswith("E11001"))
         else:
             self.assert_(db.error()["err"].startswith("E12011"))
@@ -540,8 +540,10 @@ class TestCollection(unittest.TestCase):
         db.test.remove({"x": 1})
         self.assertEqual(1, db.test.count())
 
-        # TODO test this raises an exception (waiting on db support for reporting this)
-        db.test.remove({"x": 1}, safe=True)
+        if version.at_least(db.connection(), (1, 1, 3, -1)):
+            self.assertRaises(OperationFailure, db.test.remove, {"x": 1}, safe=True)
+        else: # Just test that it doesn't blow up
+            db.test.remove({"x": 1}, safe=True)
 
     def test_count(self):
         db = self.db

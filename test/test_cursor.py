@@ -444,7 +444,7 @@ class TestCursor(unittest.TestCase):
         self.db.test.remove({})
         self.db.test.save({"x": 1})
 
-        if not version.at_least(self.db.connection(), (1, 1)):
+        if not version.at_least(self.db.connection(), (1, 1, 3, -1)):
             for _ in self.db.test.find({}, ["a"]):
                 self.fail()
 
