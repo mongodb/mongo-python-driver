@@ -20,6 +20,8 @@ import time
 import sys
 sys.path[0:0] = [""]
 
+from nose.plugins.skip import SkipTest
+
 import qcheck
 from test_connection import get_connection
 import version
@@ -488,6 +490,23 @@ class TestCollection(unittest.TestCase):
         db.test.update({"x": 6}, {"$inc": {"x": 1}})
         self.assertEqual(db.test.find_one(id1)["x"], 7)
         self.assertEqual(db.test.find_one(id2)["x"], 1)
+
+    def test_multi_update(self):
+        db = self.db
+        if not version.at_least(db.connection(), (1, 1, 3, -1)):
+            raise SkipTest()
+
+        db.drop_collection("test")
+
+        db.test.save({"x": 4, "y": 3})
+        db.test.save({"x": 5, "y": 5})
+        db.test.save({"x": 4, "y": 4})
+
+        db.test.update({"x": 4}, {"$set": {"y": 5}}, multi=True)
+
+        self.assertEqual(3, db.test.count())
+        for doc in db.test.find():
+            self.assertEqual(5, doc["y"])
 
     def test_upsert(self):
         db = self.db

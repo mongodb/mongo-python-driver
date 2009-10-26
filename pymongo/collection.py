@@ -16,6 +16,7 @@
 
 import types
 import warnings
+import struct
 
 import pymongo
 import bson
@@ -26,7 +27,6 @@ from errors import InvalidName, OperationFailure
 from code import Code
 
 _ZERO = "\x00\x00\x00\x00"
-_ONE = "\x01\x00\x00\x00"
 
 
 class Collection(object):
@@ -196,7 +196,7 @@ class Collection(object):
         return len(ids) == 1 and ids[0] or ids
 
     def update(self, spec, document,
-               upsert=False, manipulate=False, safe=False):
+               upsert=False, manipulate=False, safe=False, multi=False):
         """Update a single document in this collection.
 
         Raises TypeError if either spec or document isn't an instance of
@@ -210,10 +210,16 @@ class Collection(object):
             a document to be updated
           - `document`: a SON object specifying the document to be used for the
             update or (in the case of an upsert) insert. For more information
-            on update syntax / modifiers see the MongoDB wiki_.
+            on update syntax / modifiers see the MongoDB wiki_
           - `upsert` (optional): perform an upsert operation
           - `manipulate` (optional): manipulate the document before updating?
           - `safe` (optional): check that the update succeeded?
+          - `multi` (optional): update all documents that match `spec`, rather
+            than just the first matching document. The default value for
+            `multi` is currently False, but this might eventually change to
+            True. It is recommended that you specify this argument explicitly
+            for all update operations in order to prepare your code for that
+            change.
 
         .. _wiki: http://www.mongodb.org/display/DOCS/Updating
         """
@@ -227,7 +233,13 @@ class Collection(object):
         if upsert and manipulate:
             document = self.__database._fix_incoming(document, self)
 
-        message = upsert and _ONE or _ZERO
+        options = 0
+        if upsert:
+            options += 1
+        if multi:
+            options += 2
+
+        message = struct.pack("<i", options)
         message += bson.BSON.from_dict(spec)
         message += bson.BSON.from_dict(document)
 
