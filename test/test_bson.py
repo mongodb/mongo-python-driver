@@ -232,6 +232,12 @@ class TestBSON(unittest.TestCase):
         self.assertEqual(id, transformed_id)
         self.assertNotEqual(uuid.uuid4(), transformed_id)
 
+    # The C extension was segfaulting on unicode RegExs, so we have this test
+    # that doesn't really test anything but the lack of a segfault.
+    def test_unicode_regex(self):
+        regex = re.compile(u'revisi\xf3n')
+        BSON.from_dict({"regex": regex}).to_dict()
+
 # TODO this test doesn't pass w/ C extension
 #
 # timegm doesn't handle years < 1900 (negative), at least on OS X

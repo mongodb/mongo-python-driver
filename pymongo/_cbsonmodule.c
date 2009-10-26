@@ -688,6 +688,7 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
              PyObject_HasAttrString(value, "flags")) { /* TODO just a proxy for checking if it is a compiled re */
         PyObject* py_flags = PyObject_GetAttrString(value, "flags");
         PyObject* py_pattern;
+        PyObject* encoded_pattern;
         long int_flags;
         char flags[7];
         int pattern_length,
@@ -702,16 +703,27 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
         if (!py_pattern) {
             return 0;
         }
+
+        if (PyUnicode_Check(py_pattern)) {
+            encoded_pattern = PyUnicode_AsUTF8String(py_pattern);
+            Py_DECREF(py_pattern);
+            if (!encoded_pattern) {
+                return 0;
+            }
+        } else {
+            encoded_pattern = py_pattern;
+        }
+
         {
-            const char* pattern =  PyString_AsString(py_pattern);
+            const char* pattern =  PyString_AsString(encoded_pattern);
             pattern_length = strlen(pattern) + 1;
 
             if (!buffer_write_bytes(buffer, pattern, pattern_length)) {
-                Py_DECREF(py_pattern);
+                Py_DECREF(encoded_pattern);
                 return 0;
             }
         }
-        Py_DECREF(py_pattern);
+        Py_DECREF(encoded_pattern);
 
         flags[0] = 0;
         /* TODO don't hardcode these */
