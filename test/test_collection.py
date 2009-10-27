@@ -792,6 +792,9 @@ class TestCollection(unittest.TestCase):
         list(self.db.test.find(timeout=True))
 
     def test_distinct(self):
+        if not version.at_least(self.db.connection(), (1, 1)):
+            raise SkipTest()
+
         self.db.drop_collection("test")
 
         self.db.test.save({"a": 1})
