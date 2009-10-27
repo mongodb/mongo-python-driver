@@ -686,6 +686,19 @@ class Collection(object):
 
         self.__database.connection().admin._command(rename_command)
 
+    def distinct(self, key):
+        """Get a list of distinct values for `key` among all documents in this
+        collection.
+
+        :Parameters:
+          - `key`: name of key for which we want to get the distinct values
+        """
+        if not isinstance(key, types.StringTypes):
+            raise TypeError("key must be an instance of (str, unicode)")
+
+        command = SON([("distinct", self.__collection_name), ("key", key)])
+        return self.__database._command(command)["values"]
+
     def __iter__(self):
         return self
 

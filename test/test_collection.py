@@ -791,6 +791,32 @@ class TestCollection(unittest.TestCase):
         list(self.db.test.find(timeout=False))
         list(self.db.test.find(timeout=True))
 
+    def test_distinct(self):
+        self.db.drop_collection("test")
+
+        self.db.test.save({"a": 1})
+        self.db.test.save({"a": 2})
+        self.db.test.save({"a": 2})
+        self.db.test.save({"a": 2})
+        self.db.test.save({"a": 3})
+
+        distinct = self.db.test.distinct("a")
+        distinct.sort()
+
+        self.assertEqual([1, 2, 3], distinct)
+
+        self.db.drop_collection("test")
+
+        self.db.test.save({"a": {"b": "a"}, "c": 12})
+        self.db.test.save({"a": {"b": "b"}, "c": 12})
+        self.db.test.save({"a": {"b": "c"}, "c": 12})
+        self.db.test.save({"a": {"b": "c"}, "c": 12})
+
+        distinct = self.db.test.distinct("a.b")
+        distinct.sort()
+
+        self.assertEqual(["a", "b", "c"], distinct)
+
 
 if __name__ == "__main__":
     unittest.main()
