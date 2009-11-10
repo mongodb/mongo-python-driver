@@ -238,6 +238,9 @@ class TestBSON(unittest.TestCase):
         regex = re.compile(u'revisi\xf3n')
         BSON.from_dict({"regex": regex}).to_dict()
 
+    def test_non_string_keys(self):
+        self.assertRaises(InvalidDocument, BSON.from_dict, {8.9: "test"})
+
 # TODO this test doesn't pass w/ C extension
 #
 # timegm doesn't handle years < 1900 (negative), at least on OS X

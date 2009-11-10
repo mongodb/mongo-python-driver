@@ -373,6 +373,9 @@ _RE_TYPE = type(_valid_array_name)
 
 
 def _element_to_bson(key, value, check_keys):
+    if not isinstance(key, (str, unicode)):
+        raise InvalidDocument("documents must have only string keys, key was %r" % key)
+
     if check_keys:
         if key.startswith("$"):
             raise InvalidName("key %r must not start with '$'" % key)

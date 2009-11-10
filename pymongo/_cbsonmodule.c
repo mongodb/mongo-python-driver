@@ -846,7 +846,7 @@ static int write_pair(bson_buffer* buffer, const char* name, Py_ssize_t name_len
     int type_byte;
 
     /* Don't write any _id elements unless we're explicitly told to -
-     * _id has to be written first so we write do so, but don't bother
+     * _id has to be written first so we do so, but don't bother
      * deleting it from the dictionary being written. */
     if (!allow_id && strcmp(name, "_id") == 0) {
         return 1;
@@ -868,6 +868,37 @@ static int write_pair(bson_buffer* buffer, const char* name, Py_ssize_t name_len
     return 1;
 }
 
+static int decode_and_write_pair(bson_buffer* buffer, PyObject* key,
+                                 PyObject* value, unsigned char check_keys) {
+    PyObject* encoded;
+    if (PyUnicode_Check(key)) {
+        encoded = PyUnicode_AsUTF8String(key);
+        if (!encoded) {
+            return 0;
+        }
+    } else if (PyString_Check(key)) {
+        encoded = key;
+        Py_INCREF(encoded);
+    } else {
+        PyObject* errmsg = PyString_FromString("documents must have only string keys, key was ");
+        PyObject* repr = PyObject_Repr(key);
+        PyString_ConcatAndDel(&errmsg, repr);
+        PyErr_SetString(InvalidDocument, PyString_AsString(errmsg));
+        Py_DECREF(errmsg);
+        return 0;
+    }
+
+    /* Don't allow writing _id here - it was already written. */
+    if (!write_pair(buffer, PyString_AsString(encoded),
+                    PyString_Size(encoded), value, check_keys, 0)) {
+        Py_DECREF(encoded);
+        return 0;
+    }
+
+    Py_DECREF(encoded);
+    return 1;
+}
+
 static int write_son(bson_buffer* buffer, PyObject* dict, int start_position,
                      int length_location, unsigned char check_keys) {
     PyObject* keys = PyObject_CallMethod(dict, "keys", NULL);
@@ -880,7 +911,6 @@ static int write_son(bson_buffer* buffer, PyObject* dict, int start_position,
     for(i = 0; i < items; i++) {
         PyObject* key;
         PyObject* value;
-        PyObject* encoded;
 
         key = PyList_GetItem(keys, i);
         if (!key) {
@@ -888,25 +918,9 @@ static int write_son(bson_buffer* buffer, PyObject* dict, int start_position,
             return 0;
         }
         value = PyDict_GetItem(dict, key);
-        if (!value) {
+        if (!value ||
+            !decode_and_write_pair(buffer, key, value, check_keys)) {
             Py_DECREF(keys);
-            return 0;
-        }
-        if (PyUnicode_CheckExact(key)) {
-            encoded = PyUnicode_AsUTF8String(key);
-            if (!encoded) {
-                Py_DECREF(keys);
-                return 0;
-            }
-        } else {
-            encoded = key;
-            Py_INCREF(encoded);
-        }
-        /* Don't allow writing _id here - it was written above. */
-        if (!write_pair(buffer, PyString_AsString(encoded),
-                        PyString_Size(encoded), value, check_keys, 0)) {
-            Py_DECREF(keys);
-            Py_DECREF(encoded);
             return 0;
         }
     }
@@ -950,20 +964,7 @@ static int write_dict(bson_buffer* buffer, PyObject* dict, unsigned char check_k
         Py_ssize_t pos = 0;
 
         while (PyDict_Next(dict, &pos, &key, &value)) {
-            PyObject* encoded;
-            if (PyUnicode_CheckExact(key)) {
-                encoded = PyUnicode_AsUTF8String(key);
-                if (!encoded) {
-                    return 0;
-                }
-            } else {
-                encoded = key;
-                Py_INCREF(encoded);
-            }
-            /* Don't allow writing _id here - it was written above. */
-            if (!write_pair(buffer, PyString_AsString(encoded),
-                            PyString_Size(encoded), value, check_keys, 0)) {
-                Py_DECREF(encoded);
+            if (!decode_and_write_pair(buffer, key, value, check_keys)) {
                 return 0;
             }
         }
