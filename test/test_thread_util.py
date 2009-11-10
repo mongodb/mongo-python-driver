@@ -17,6 +17,9 @@
 import unittest
 import threading
 import time
+import sys
+
+sys.path[0:0] = [""]
 
 from pymongo.thread_util import TimeoutableLock
 
