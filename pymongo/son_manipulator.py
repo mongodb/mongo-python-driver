@@ -117,6 +117,10 @@ class AutoReference(SONManipulator):
     only be auto-referenced if they have an *_ns* field.
 
     NOTE: this will behave poorly if you have a circular reference.
+
+    TODO: this only works for documents that are in the same database. To fix
+    this we'll need to add a DatabaseInjector that adds *_db* and then make
+    use of the optional *database* support for DBRefs.
     """
 
     def __init__(self, db):

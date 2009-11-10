@@ -36,9 +36,11 @@ class TestDBRef(unittest.TestCase):
         self.assertRaises(TypeError, DBRef, 1.5, a)
         self.assertRaises(TypeError, DBRef, a, a)
         self.assertRaises(TypeError, DBRef, None, a)
+        self.assertRaises(TypeError, DBRef, "coll", a, 5)
         self.assert_(DBRef("coll", a))
         self.assert_(DBRef(u"coll", a))
         self.assert_(DBRef(u"coll", 5))
+        self.assert_(DBRef(u"coll", 5, "database"))
 
     def test_read_only(self):
         a = DBRef("coll", ObjectId())
@@ -49,25 +51,35 @@ class TestDBRef(unittest.TestCase):
         def bar():
             a.id = "aoeu"
 
-        a.collection
+        self.assertEqual("coll", a.collection)
         a.id
+        self.assertEqual(None, a.database)
         self.assertRaises(AttributeError, foo)
         self.assertRaises(AttributeError, bar)
 
     def test_repr(self):
         self.assertEqual(repr(DBRef("coll", ObjectId("1234567890abcdef12345678"))),
-                         "DBRef(u'coll', ObjectId('1234567890abcdef12345678'))")
+                         "DBRef('coll', ObjectId('1234567890abcdef12345678'))")
         self.assertEqual(repr(DBRef(u"coll", ObjectId("1234567890abcdef12345678"))),
                          "DBRef(u'coll', ObjectId('1234567890abcdef12345678'))")
+        self.assertEqual(repr(DBRef("coll", ObjectId("1234567890abcdef12345678"), "foo")),
+                         "DBRef('coll', ObjectId('1234567890abcdef12345678'), 'foo')")
 
     def test_cmp(self):
         self.assertEqual(DBRef("coll", ObjectId("1234567890abcdef12345678")),
                          DBRef(u"coll", ObjectId("1234567890abcdef12345678")))
         self.assertNotEqual(DBRef("coll", ObjectId("1234567890abcdef12345678")),
+                            DBRef(u"coll", ObjectId("1234567890abcdef12345678"), "foo"))
+        self.assertNotEqual(DBRef("coll", ObjectId("1234567890abcdef12345678")),
                             DBRef("col", ObjectId("1234567890abcdef12345678")))
         self.assertNotEqual(DBRef("coll", ObjectId("1234567890abcdef12345678")),
                             DBRef("coll", ObjectId("123456789011")))
         self.assertNotEqual(DBRef("coll", ObjectId("1234567890abcdef12345678")), 4)
+        self.assertEqual(DBRef("coll", ObjectId("1234567890abcdef12345678"), "foo"),
+                         DBRef(u"coll", ObjectId("1234567890abcdef12345678"), "foo"))
+        self.assertNotEqual(DBRef("coll", ObjectId("1234567890abcdef12345678"), "foo"),
+                            DBRef(u"coll", ObjectId("1234567890abcdef12345678"), "bar"))
+
 
 if __name__ == "__main__":
     unittest.main()

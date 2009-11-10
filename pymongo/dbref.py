@@ -12,35 +12,40 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tools for manipulating DBRefs (references to Mongo objects)."""
+"""Tools for manipulating DBRefs (references to MongoDB documents)."""
 
 import types
 
+from son import SON
+
 
 class DBRef(object):
-    """A reference to an object stored in a Mongo database.
+    """A reference to a document stored in a Mongo database.
     """
 
-    def __init__(self, collection, id):
+    def __init__(self, collection, id, database=None):
         """Initialize a new DBRef.
 
-        Raises TypeError if collection is not an instance of (str, unicode).
+        Raises TypeError if collection or database is not an instance of
+        (str, unicode). `database` is optional and allows references to
+        documents to work across databases.
 
         :Parameters:
-          - `collection`: the collection the object is stored in
-          - `id`: the value of the object's _id field
+          - `collection`: name of the collection the document is stored in
+          - `id`: the value of the document's _id field
+          - `database` (optional): name of the database to reference
         """
         if not isinstance(collection, types.StringTypes):
             raise TypeError("collection must be an instance of (str, unicode)")
-
-        if isinstance(collection, types.StringType):
-            collection = unicode(collection, "utf-8")
+        if not isinstance(database, (types.StringTypes, types.NoneType)):
+            raise TypeError("database must be an instance of (str, unicode)")
 
         self.__collection = collection
         self.__id = id
+        self.__database = database
 
     def collection(self):
-        """Get this DBRef's collection as unicode.
+        """Get the name of this DBRef's collection as unicode.
         """
         return self.__collection
     collection = property(collection)
@@ -51,14 +56,35 @@ class DBRef(object):
         return self.__id
     id = property(id)
 
+    def database(self):
+        """Get the name of this DBRef's database.
+
+        Returns None if this DBRef doesn't specify a database.
+        """
+        return self.__database
+    database = property(database)
+
+    def as_doc(self):
+        """Get the SON document representation of this DBRef.
+
+        Generally not needed by application developers
+        """
+        doc = SON([("$ref", self.collection),
+                         ("$id", self.id)])
+        if self.database is not None:
+            doc["$db"] = self.database
+        return doc
+
     def __repr__(self):
-        return "DBRef(" + repr(self.collection) + ", " + repr(self.id) + ")"
+        if self.database is None:
+            return "DBRef(%r, %r)" % (self.collection, self.id)
+        return "DBRef(%r, %r, %r)" % (self.collection, self.id, self.database)
 
     def __cmp__(self, other):
         if isinstance(other, DBRef):
-            return cmp([self.__collection, self.__id],
-                       [other.__collection, other.__id])
+            return cmp([self.__database, self.__collection, self.__id],
+                       [other.__database, other.__collection, other.__id])
         return NotImplemented
-        
+
     def __hash__(self):
-        return hash((self.__collection, self.__id))
+        return hash((self.__collection, self.__id, self.__database))

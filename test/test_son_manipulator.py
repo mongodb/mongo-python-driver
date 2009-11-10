@@ -21,7 +21,6 @@ sys.path[0:0] = [""]
 
 import qcheck
 from pymongo.objectid import ObjectId
-from pymongo.dbref import DBRef
 from pymongo.son import SON
 from pymongo.son_manipulator import SONManipulator, ObjectIdInjector
 from pymongo.son_manipulator import NamespaceInjector, ObjectIdShuffler

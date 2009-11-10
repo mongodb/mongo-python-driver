@@ -271,6 +271,8 @@ class TestDatabase(unittest.TestCase):
         obj = {"x": True}
         key = db.test.save(obj)
         self.assertEqual(obj, db.dereference(DBRef("test", key)))
+        self.assertEqual(obj, db.dereference(DBRef("test", key, "pymongo_test")))
+        self.assertRaises(ValueError, db.dereference, DBRef("test", key, "foo"))
 
         self.assertEqual(None, db.dereference(DBRef("test", 4)))
         obj = {"_id": 4}

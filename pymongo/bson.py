@@ -236,7 +236,7 @@ def _get_string(data):
 def _get_object(data):
     (object, data) = _bson_to_dict(data)
     if "$ref" in object:
-        return (DBRef(object["$ref"], object["$id"]), data)
+        return (DBRef(object["$ref"], object["$id"], object.get("$db", None)), data)
     return (object, data)
 
 
@@ -456,10 +456,8 @@ def _element_to_bson(key, value, check_keys):
             flags += "x"
         return "\x0B" + name + _make_c_string(pattern) + _make_c_string(flags)
     if isinstance(value, DBRef):
-        return _element_to_bson(key,
-                                SON([("$ref", value.collection),
-                                     ("$id", value.id)]),
-                                False)
+        return _element_to_bson(key, value.as_doc(), False)
+
     raise InvalidDocument("cannot convert value of type %s to bson" %
                           type(value))
 

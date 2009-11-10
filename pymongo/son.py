@@ -24,17 +24,6 @@ import binascii
 import base64
 import types
 
-try:
-    import xml.etree.ElementTree as ET
-except ImportError:
-    import elementtree.ElementTree as ET
-
-from code import Code
-from binary import Binary
-from objectid import ObjectId
-from dbref import DBRef
-from errors import UnsupportedTag
-
 
 class SON(dict):
     """SON data.
@@ -223,7 +212,19 @@ class SON(dict):
 
     def from_xml(cls, xml):
         """Create an instance of SON from an xml document.
+
+        This is really only used for testing, and is probably unnecessary.
         """
+        try:
+            import xml.etree.ElementTree as ET
+        except ImportError:
+            import elementtree.ElementTree as ET
+
+        from code import Code
+        from binary import Binary
+        from objectid import ObjectId
+        from dbref import DBRef
+        from errors import UnsupportedTag
 
         def pad(list, index):
             while index >= len(list):

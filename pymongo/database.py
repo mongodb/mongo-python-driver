@@ -377,14 +377,20 @@ class Database(object):
     def dereference(self, dbref):
         """Dereference a DBRef, getting the SON object it points to.
 
-        Raises TypeError if dbref is not an instance of DBRef. Returns a SON
-        object or None if the reference does not point to a valid object.
+        Raises TypeError if `dbref` is not an instance of DBRef. Returns a SON
+        object or None if the reference does not point to a valid object. Raises
+        ValueError if `dbref` has a database specified that is different from
+        the current database.
 
         :Parameters:
           - `dbref`: the reference
         """
         if not isinstance(dbref, DBRef):
             raise TypeError("cannot dereference a %s" % type(dbref))
+        if dbref.database is not None and dbref.database != self.__name:
+            raise ValueError("trying to dereference a DBRef that points to "
+                             "another database (%r not %r)" % (dbref.database,
+                                                               self.__name))
         return self[dbref.collection].find_one({"_id": dbref.id})
 
     def eval(self, code, *args):

@@ -602,86 +602,16 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
         }
         return 1;
     } else if (PyObject_IsInstance(value, DBRef)) {
-        int start_position,
-            length_location,
-            collection_length,
-            type_pos,
-            length;
-        PyObject* collection_object;
-        PyObject* encoded_collection;
-        PyObject* id_object;
-        char zero = 0;
-
+        PyObject* as_doc = PyObject_CallMethod(value, "as_doc", NULL);
+        if (!as_doc) {
+            return 0;
+        }
+        if (!write_dict(buffer, as_doc, 0)) {
+            Py_DECREF(as_doc);
+            return 0;
+        }
+        Py_DECREF(as_doc);
         *(buffer->buffer + type_byte) = 0x03;
-        start_position = buffer->position;
-
-        /* save space for length */
-        length_location = buffer_save_bytes(buffer, 4);
-        if (length_location == -1) {
-            return 0;
-        }
-
-        collection_object = PyObject_GetAttrString(value, "collection");
-        if (!collection_object) {
-            return 0;
-        }
-        encoded_collection = PyUnicode_AsUTF8String(collection_object);
-        Py_DECREF(collection_object);
-        if (!encoded_collection) {
-            return 0;
-        }
-        {
-            const char* collection = PyString_AsString(encoded_collection);
-            if (!collection) {
-                Py_DECREF(encoded_collection);
-                return 0;
-            }
-            id_object = PyObject_GetAttrString(value, "id");
-            if (!id_object) {
-                Py_DECREF(encoded_collection);
-                return 0;
-            }
-
-            if (!buffer_write_bytes(buffer, "\x02$ref\x00", 6)) {
-                Py_DECREF(encoded_collection);
-                Py_DECREF(id_object);
-                return 0;
-            }
-            collection_length = strlen(collection) + 1;
-            if (!buffer_write_bytes(buffer, (const char*)&collection_length, 4)) {
-                Py_DECREF(encoded_collection);
-                Py_DECREF(id_object);
-                return 0;
-            }
-            if (!buffer_write_bytes(buffer, collection, collection_length)) {
-                Py_DECREF(encoded_collection);
-                Py_DECREF(id_object);
-                return 0;
-            }
-        }
-        Py_DECREF(encoded_collection);
-
-        type_pos = buffer_save_bytes(buffer, 1);
-        if (type_pos == -1) {
-            Py_DECREF(id_object);
-            return 0;
-        }
-        if (!buffer_write_bytes(buffer, "$id\x00", 4)) {
-            Py_DECREF(id_object);
-            return 0;
-        }
-        if (!write_element_to_buffer(buffer, type_pos, id_object, check_keys)) {
-            Py_DECREF(id_object);
-            return 0;
-        }
-        Py_DECREF(id_object);
-
-        /* write null byte and fill in length */
-        if (!buffer_write_bytes(buffer, &zero, 1)) {
-            return 0;
-        }
-        length = buffer->position - start_position;
-        memcpy(buffer->buffer + length_location, &length, 4);
         return 1;
     }
     else if (PyObject_HasAttrString(value, "pattern") &&
@@ -1043,33 +973,22 @@ static PyObject* get_value(const char* buffer, int* position, int type) {
         {
             int size;
             memcpy(&size, buffer + *position, 4);
-            if (strcmp(buffer + *position + 5, "$ref") == 0) { /* DBRef */
-                char id_type;
-                PyObject* id;
-
-                int offset = *position + 14;
-                int collection_length = strlen(buffer + offset);
-                PyObject* collection = PyUnicode_DecodeUTF8(buffer + offset, collection_length, "strict");
-                if (!collection) {
-                    return NULL;
-                }
-                offset += collection_length + 1;
-                id_type = buffer[offset];
-                offset += 5;
-                id = get_value(buffer, &offset, (int)id_type);
-                if (!id) {
-                    Py_DECREF(collection);
-                    return NULL;
-                }
-                value = PyObject_CallFunctionObjArgs(DBRef, collection, id, NULL);
-                Py_DECREF(collection);
-                Py_DECREF(id);
-            } else {
-                value = elements_to_dict(buffer + *position + 4, size - 5);
-                if (!value) {
-                    return NULL;
-                }
+            value = elements_to_dict(buffer + *position + 4, size - 5);
+            if (!value) {
+                return NULL;
             }
+
+            /* Decoding for DBRefs */
+            if (strcmp(buffer + *position + 5, "$ref") == 0) { /* DBRef */
+                PyObject* id = PyDict_GetItemString(value, "$id");
+                PyObject* collection = PyDict_GetItemString(value, "$ref");
+                PyObject* database = PyDict_GetItemString(value, "$db");
+
+                /* This works even if there is no $db since database will be NULL and
+                   the call will be as if there were only two arguments specified. */
+                value = PyObject_CallFunctionObjArgs(DBRef, collection, id, database, NULL);
+            }
+
             *position += size;
             break;
         }
