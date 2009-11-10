@@ -59,6 +59,7 @@ class TestBinary(unittest.TestCase):
         self.assertEqual(c, Binary("hello", 100))
         self.assertEqual(b, Binary("hello"))
         self.assertNotEqual(b, Binary("hello "))
+        self.assertNotEqual("hello", Binary("hello"))
 
     def test_repr(self):
         b = Binary("hello world")
