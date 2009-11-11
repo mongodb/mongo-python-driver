@@ -32,8 +32,6 @@ Currently this only handles special encoding and decoding for ObjectId and
 DBRef instancs.
 """
 
-import base64
-
 from objectid import ObjectId
 from dbref import DBRef
 
