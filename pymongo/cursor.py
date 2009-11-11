@@ -286,7 +286,7 @@ class Cursor(object):
             return 0
         return int(response["n"])
 
-    def __len__(self):
+    def size(self):
         """Get the number of documents in this cursor.
 
         This method relies on count() as well as any limit or skip that has
@@ -302,6 +302,21 @@ class Cursor(object):
         if self.__limit:
             return min(count, self.__limit)
         return count
+
+    # __len__ is deprecated (replaced with size()) and will be removed.
+    #
+    # The reason for this deprecation is a bit complex:
+    # list(...) calls _PyObject_LengthHint to guess how much space will be
+    # required for the returned list. That method in turn calls __len__.
+    # Therefore, calling list(...) on a Cursor instance would require at least
+    # two round trips to the database if we keep __len__ - this makes it about
+    # twice as slow as [x for x in Cursor], which isn't obvious to users.
+    # Not defining __len__ here makes performance more consistent
+    def __len__(self):
+        """DEPRECATED use `size` instead.
+        """
+        raise TypeError("Cursor.__len__ is deprecated, please use Cursor.size "
+                        "instead")
 
     def explain(self):
         """Returns an explain plan record for this cursor.

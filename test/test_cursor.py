@@ -525,10 +525,10 @@ class TestCursor(unittest.TestCase):
         self.assertRaises(IndexError, lambda x: self.db.test.find()[x], -1)
         self.assertRaises(IndexError, lambda x: self.db.test.find()[x], 100)
 
-    def test_len(self):
+    def test_size(self):
         def check_len(cursor, length):
-            self.assertEqual(len(list(cursor)), len(cursor))
-            self.assertEqual(length, len(cursor))
+            self.assertEqual(len(list(cursor)), cursor.size())
+            self.assertEqual(length, cursor.size())
 
         self.db.drop_collection("test")
         for i in range(100):
@@ -546,6 +546,9 @@ class TestCursor(unittest.TestCase):
         check_len(self.db.test.find()[10:20], 10)
         check_len(self.db.test.find().limit(10).skip(95), 5)
         check_len(self.db.test.find()[95:105], 5)
+
+    def test_len(self):
+        self.assertRaises(TypeError, len, self.db.test.find())
 
     def test_properties(self):
         self.assertEqual(self.db.test, self.db.test.find().collection)
