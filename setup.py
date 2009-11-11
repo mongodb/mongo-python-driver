@@ -49,13 +49,19 @@ class GenerateDoc(Command):
         pass
 
     def run(self):
-        path = "doc/%s" % version
+        path = "doc/_build/%s" % version
 
-        shutil.rmtree("doc", ignore_errors=True)
-        os.makedirs(path)
+        # shutil.rmtree("doc/_build", ignore_errors=True)
+        try:
+            os.makedirs(path)
+        except:
+            pass
 
         if has_subprocess:
-            subprocess.call(["epydoc", "--config", "epydoc-config", "-o", path])
+            subprocess.call(["sphinx-build", "-b", "html", "doc", path])
+            print ""
+            print "Documentation generated:"
+            print "   %s/index.html" % path
         else:
             print """
 `setup.py doc` is not supported for this version of Python.

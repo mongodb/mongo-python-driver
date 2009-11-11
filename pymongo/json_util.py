@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tools for using the json (or simplejson) module with MongoDB documents.
+"""Tools for using Python's :mod:`json` module with MongoDB documents.
 
 This module provides two methods: `object_hook` and `default`. These names are
 pretty terrible, but match the names used in Python's `json library
@@ -22,10 +22,12 @@ encoding and decoding of MongoDB documents into `Mongo Extended JSON
 This lets you encode / decode MongoDB documents to JSON even when they use
 special PyMongo types.
 
-Example usage (serialization):
+Example usage (serialization)::
+
 >>> json.dumps(..., default=json_util.default)
 
-Example usage (deserialization):
+Example usage (deserialization)::
+
 >>> json.loads(..., object_hook=json_util.object_hook)
 
 Currently this only handles special encoding and decoding for ObjectId and
