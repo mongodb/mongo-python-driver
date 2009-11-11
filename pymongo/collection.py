@@ -209,8 +209,8 @@ class Collection(object):
           - `spec`: a SON object specifying elements which must be present for
             a document to be updated
           - `document`: a SON object specifying the document to be used for the
-            update or (in the case of an upsert) insert. For more information
-            on update syntax / modifiers see the MongoDB wiki_
+            update or (in the case of an upsert) insert. See docs on MongoDB
+            `update modifiers <http://www.mongodb.org/display/DOCS/Updating>`_
           - `upsert` (optional): perform an upsert operation
           - `manipulate` (optional): manipulate the document before updating?
           - `safe` (optional): check that the update succeeded?
@@ -220,8 +220,6 @@ class Collection(object):
             True. It is recommended that you specify this argument explicitly
             for all update operations in order to prepare your code for that
             change.
-
-        .. _wiki: http://www.mongodb.org/display/DOCS/Updating
         """
         if not isinstance(spec, types.DictType):
             raise TypeError("spec must be an instance of dict")
@@ -354,14 +352,14 @@ class Collection(object):
           - `snapshot` (optional): if True, snapshot mode will be used for this
             query. Snapshot mode assures no duplicates are returned, or objects
             missed, which were present at both the start and end of the query's
-            execution. For details, see the `wiki
+            execution. For details, see the `snapshot documentation
             <http://www.mongodb.org/display/DOCS/How+to+do+Snapshotting+in+the+Mongo+Database>`_.
           - `tailable` (optional): the result of this find call will be a
             tailable cursor - tailable cursors aren't closed when the last data
             is retrieved but are kept open and the cursors location marks the
             final document's position. if more data is received iteration of
             the cursor will continue from the last document received. For
-            details, see the `wiki
+            details, see the `tailable cursor documentation
             <http://www.mongodb.org/display/DOCS/Tailable+Cursors>`_.
         """
         if spec is None:

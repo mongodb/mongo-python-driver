@@ -12,35 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Representation of binary data to be stored in or retrieved from Mongo.
-
-This is necessary because we want to store normal strings as the Mongo string
-type. We need to wrap binary so we can tell the difference between what should
-be considered binary and what should be considered a string.
+"""Tools for representing binary data to be stored in MongoDB.
 """
 
 import types
 
 
 class Binary(str):
-    """Binary data stored in or retrieved from Mongo.
+    """Representation of binary data to be stored in or retrieved from MongoDB.
+
+    This is necessary because we want to store Python strings as the BSON
+    string type. We need to wrap binary data so we can tell the difference
+    between what should be considered binary data and what should be considered
+    a string when we encode to BSON.
+
+    Raises TypeError if `data` is not an instance of str or `subtype` is
+    not an instance of int. Raises ValueError if `subtype` is not in [0, 256).
+
+    :Parameters:
+      - `data`: the binary data to represent
+      - `subtype` (optional): the `binary subtype
+        <http://www.mongodb.org/display/DOCS/BSON#BSON-noteondatabinary>`_
+        to use
     """
 
     def __new__(cls, data, subtype=2):
-        """Initialize a new binary object.
-
-        `subtype` is a binary subtype for this data. For more information on
-        subtypes, see the Mongo wiki_.
-
-        .. _wiki: %s
-
-        Raises TypeError if `data` is not an instance of str or `subtype` is
-        not an instance of int. Raises ValueError if `subtype` not in [0, 256).
-
-        :Parameters:
-          - `data`: the binary data to represent
-          - `subtype` (optional): the binary subtype to use
-        """ % "http://www.mongodb.org/display/DOCS/BSON#BSON-noteondatabinary"
         if not isinstance(data, types.StringType):
             raise TypeError("data must be an instance of str")
         if not isinstance(subtype, types.IntType):
@@ -52,7 +48,7 @@ class Binary(str):
         return self
 
     def subtype(self):
-        """Get the subtype of this binary data.
+        """Subtype of this binary data.
         """
         return self.__subtype
     subtype = property(subtype)

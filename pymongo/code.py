@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Representation of JavaScript code to be evaluated by MongoDB.
+"""Tools for representing JavaScript code to be evaluated by MongoDB.
 """
 
 import types
@@ -20,25 +20,18 @@ import types
 
 class Code(str):
     """JavaScript code to be evaluated by MongoDB.
+
+    Raises TypeError if `code` is not an instance of (str, unicode) or
+    `scope` is not an instance of dict.
+
+    :Parameters:
+      - `code`: string containing JavaScript code to be evaluated
+      - `scope` (optional): dictionary representing the scope in which
+        `code` should be evaluated - a mapping from identifiers (as
+        strings) to values
     """
 
     def __new__(cls, code, scope=None):
-        """Initialize a new code object.
-
-        `code` is a string containing JavaScript code.
-
-        `scope` is a dictionary representing the scope in which `code` should
-        be evaluated. It should be a mapping from identifiers (as strings) to
-        values.
-
-        Raises TypeError if `code` is not an instance of (str, unicode) or
-        `scope` is not an instance of dict.
-
-        :Parameters:
-          - `code`: JavaScript code to be evaluated
-          - `scope` (optional): dictionary representing the scope for
-            evaluation
-        """
         if not isinstance(code, types.StringTypes):
             raise TypeError("code must be an instance of (str, unicode)")
 
@@ -52,7 +45,7 @@ class Code(str):
         return self
 
     def scope(self):
-        """Get the scope dictionary.
+        """Scope dictionary for this instance.
         """
         return self.__scope
     scope = property(scope)

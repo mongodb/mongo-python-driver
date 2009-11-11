@@ -5,8 +5,8 @@
 *.class
 *.pyc
 *.pyd
-doc/
 build/
+doc/_build/
 dist/
 tools/settings.py
 pymongo.egg-info/
