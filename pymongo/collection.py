@@ -220,6 +220,9 @@ class Collection(object):
             True. It is recommended that you specify this argument explicitly
             for all update operations in order to prepare your code for that
             change.
+
+        .. versionadded:: 1.1.1
+           The `multi` parameter.
         """
         if not isinstance(spec, types.DictType):
             raise TypeError("spec must be an instance of dict")
@@ -690,6 +693,8 @@ class Collection(object):
 
         :Parameters:
           - `key`: name of key for which we want to get the distinct values
+
+        .. versionadded:: 1.1.1
         """
         if not isinstance(key, types.StringTypes):
             raise TypeError("key must be an instance of (str, unicode)")

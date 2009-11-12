@@ -295,6 +295,8 @@ class Cursor(object):
         skip values, as well as changes to the data in the database itself, can
         cause this value to be different from the actual number of documents
         that will be iterated by the cursor.
+
+        .. versionadded:: 1.1.1
         """
         count = self.count() - self.__skip
         if count < 0:
