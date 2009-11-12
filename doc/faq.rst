@@ -104,11 +104,44 @@ conversion should be performed in your client code.
 
 How can I use PyMongo from a web framework like Django?
 -------------------------------------------------------
-.. todo:: move django docs here
+`Django <http://www.djangoproject.com/>`_ is a popular Python web
+framework. Django includes an ORM, :mod:`django.db`. Currently,
+MongoDB is not supported as a back-end for :mod:`django.db`. There has
+been `some discussion
+<http://simonwillison.net/2009/Jun/30/mongodb/#c46834>`_ over whether
+or not work should be done towards writing a MongoDB back-end, and
+`some work <http://bitbucket.org/kpot/django-mongodb/>`_ has already
+started towards that goal.
 
-We've written a `short guide
-<http://www.mongodb.org/display/DOCS/Django+and+MongoDB>`_ on using
-Django and MongoDB.
+That being said, it's easy to use MongoDB (and PyMongo) from Django
+without using such a project. Certain features of Django that require
+:mod:`django.db` (admin, authentication and sessions) will not work
+using just MongoDB, but most of what Django provides can still be
+used. This is similar to using Django on top of the `App Engine
+datastore <http://code.google.com/appengine/articles/django.html>`_.
+
+We have written a demo `Django + MongoDB project
+<http://github.com/mdirolf/DjanMon/tree/master>`_. The README for that
+project describes some of what you need to do to use MongoDB from
+Django. The main point is that your persistence code will go directly
+into your views, rather than being defined in separate models. The
+README also gives instructions for how to change settings.py to
+disable the features that won't work with MongoDB.
+
+Does PyMongo work with **mod_wsgi**?
+------------------------------------
+`mod_wsgi <http://code.google.com/p/modwsgi/>`_ is a popular Apache
+module used for hosting Python applications conforming to the `wsgi
+<http://www.wsgi.org/>`_ specification. There is a potential issue
+when deploying PyMongo applications with mod_wsgi involving PyMongo's
+C extension and mod_wsgi's multiple sub interpreters.
+
+One tricky issue that we've seen when deploying PyMongo applications
+with mod_wsgi is documented `here <http://code.google.com/p/modwsgi/wiki/ApplicationIssues>`_, in the **Multiple Python Sub Interpreters** section. When running PyMongo with the C extension enabled it is possible to see strange failures when encoding due to the way mod_wsgi handles module reloading with multiple sub interpreters. There are several possible ways to work around this issue:
+
+1. Force all WSGI applications to run in the same application group.
+2. Run mod_wsgi in daemon mode with different WSGI applications assigned to their own daemon processes.
+3. Install PyMongo :ref:`without the C extension <install-no-c>` (this will carry a performance penalty, but is the most immediate solution to this problem).
 
 How can I use something like Python's :mod:`json` module to encode my documents to JSON?
 ----------------------------------------------------------------------------------------

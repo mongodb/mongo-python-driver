@@ -297,6 +297,8 @@ class Cursor(object):
         that will be iterated by the cursor.
 
         .. versionadded:: 1.1.1
+           :meth:`~pymongo.cursor.Cursor.__len__` was deprecated in favor of
+           this method.
         """
         count = self.count() - self.__skip
         if count < 0:

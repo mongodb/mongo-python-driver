@@ -20,6 +20,8 @@ the driver from the resulting tree::
   $ cd pymongo/
   $ python setup.py install
 
+.. _install-no-c:
+
 Installing Without the C Extension
 ----------------------------------
 By default, the driver attempts to build and install an optional C
