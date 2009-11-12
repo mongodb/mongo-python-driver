@@ -1,37 +1,54 @@
 PyMongo |release| Documentation
 ===============================
 
-About
------
+Overview
+--------
 **PyMongo** is a Python distribution containing tools for working with
 `MongoDB <http://www.mongodb.org>`_.
+
+:doc:`installation`
+  Instructions on how to get the distribution.
+
+:doc:`tutorial`
+  Start here for a quick overview.
+
+:doc:`faq`
+  Some questions that come up often.
+
+:doc:`api/index`
+  The complete API documentation, organized by module.
 
 About This Documentation
 ------------------------
 This documentation is generated using the `Sphinx
 <http://sphinx.pocoo.org/>`_ documentation generator. The source files
 for the documentation are located in the *doc/* directory of the
-**PyMongo** distribution. To generate the docs locally do:
+**PyMongo** distribution. To generate the docs locally run the
+following command from the root directory of the **PyMongo** source:
 
 .. code-block:: bash
 
   $ python setup.py doc
 
-In the root directory of the **PyMongo** source.
+Contributing
+------------
+**PyMongo** has a large :doc:`community <contributors>` and
+contributions are always encouraged. Contributions can be as simple as
+minor tweaks to this documentation. To contribute, fork the project on
+`github <http://github.com/mongodb/mongo-python-driver/>`_ and send a
+pull request.
 
-Contributions (or fixes) to the documentation are highly encouraged!
-To contribute, fork the project on `github
-<http://github.com/mongodb/mongo-python-driver/>`_ and send a pull
-request.
-
-Contents
---------
+Full Contents Tree
+------------------
 
 .. toctree::
    :maxdepth: 3
 
+   installation
    tutorial
+   faq
    api/index
+   contributors
 
 Indices and tables
 ==================

@@ -213,7 +213,56 @@ collection::
   >>> posts.count()
   3
 
-or just of those posts that match a specific query::
+or just of those documents that match a specific query::
 
   >>> posts.find({"author": "Mike"}).count()
   2
+
+Range Queries
+-------------
+MongoDB supports many different types of `advanced queries
+<http://www.mongodb.org/display/DOCS/Advanced+Queries>`_. As an
+example, lets perform a query where we limit results to posts older
+than a certain date, but also sort the results by author::
+
+  >>> d = datetime.datetime(2009, 11, 12, 12)
+  >>> for post in posts.find({"date": {"$lt": d}}).sort("author"):
+  ...   post
+  ...
+  {u'date': datetime.datetime(2009, 11, 10, 10, 45), u'text': u'and pretty easy too!', u'_id': ObjectId('4afc34dee6fb1b16f2000002'), u'author': u'Eliot', u'title': u'MongoDB is fun'}
+  {u'date': datetime.datetime(2009, 11, 12, 11, 14), u'text': u'Another post!', u'_id': ObjectId('4afc34dee6fb1b16f2000001'), u'author': u'Mike', u'tags': [u'bulk', u'insert']}
+
+Here we use the special ``"$lt"`` operator to do a range query, and
+also call :meth:`~pymongo.cursor.Cursor.sort` to sort the results
+by author.
+
+Indexing
+--------
+To make the above query fast we can add a compound index on
+``"date"`` and ``"author"``. To start, lets use the
+:meth:`~pymongo.cursor.Cursor.explain` method to get some information
+about how the query is being performed without the index::
+
+  >>> posts.find({"date": {"$lt": d}}).sort("author").explain()["cursor"]
+  u'BasicCursor'
+  >>> posts.find({"date": {"$lt": d}}).sort("author").explain()["nscanned"]
+  3.0
+
+We can see that the query is using the *BasicCursor* and scanning over
+all 3 documents in the collection. Now let's add a compound index and
+look at the same information::
+
+  >>> from pymongo import ASCENDING, DESCENDING
+  >>> posts.create_index([("date", DESCENDING), ("author", ASCENDING)])
+  u'date_-1_author_1'
+  >>> posts.find({"date": {"$lt": d}}).sort("author").explain()["cursor"]
+  u'BtreeCursor date_-1_author_1'
+  >>> posts.find({"date": {"$lt": d}}).sort("author").explain()["nscanned"]
+  2.0
+
+Now the query is using a *BtreeCursor* (the index) and only scanning
+over the 2 matching documents.
+
+.. seealso::
+  `Indexes <http://www.mongodb.org/display/DOCS/Indexes>`_
+     MongoDB documentation on indexes.

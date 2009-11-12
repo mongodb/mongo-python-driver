@@ -70,44 +70,4 @@ Testing
 =======
 The easiest way to run the tests is to install `nose <http://somethingaboutorange.com/mrl/projects/nose/>`_ (**easy_install nose**) and run **nosetests** or **python setup.py test** in the root of the distribution. Tests are located in the *test/* directory.
 
-Credits
-=======
-Thanks to (in no particular order) (if you belong here and are missing please let us know):
-
-- moe at mbox dot bz:
-
-  - Turn off nagle
-
-- Michael Stephens (mikejs):
-
-  - Seek and tell for read mode GridFile
-
-- Joakim Sernbrant (serbaut):
-
-  - Fix decref bug in tuple encoder
-  - Hex __repr__ and __str__ for ObjectId
-  - Performance optimizations for writing large files to GridFS
-  - Some updates to the README
-  - Fix for ObjectId + multiprocessing
-
-- Alexander Artemenko (svetlyak40wt):
-
-  - Fix spurious errors in thread test
-
-- Mathias Stearn (RedBeard0531):
-
-  - Add support for finalize in group()
-
-- Fajran Iman Rusadi (fajran):
-
-  - Add Debian control files
-
-- Brad Clements (bkc):
-
-  - A fix for Python 2.3 compatability
-
-- Andrey Fedorov (andreyf)
-
-  - Added __hash__ methods to DBRef and ObjectId
-
 .. _sphinx http://sphinx.pocoo.org/
