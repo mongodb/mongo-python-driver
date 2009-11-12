@@ -18,6 +18,9 @@ Overview
 :doc:`api/index`
   The complete API documentation, organized by module.
 
+:doc:`tools`
+  A listing of Python tools and libraries that have been written for MongoDB.
+
 About This Documentation
 ------------------------
 This documentation is generated using the `Sphinx
@@ -48,6 +51,7 @@ Full Contents Tree
    tutorial
    faq
    api/index
+   tools
    contributors
 
 Indices and tables
