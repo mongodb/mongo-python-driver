@@ -22,8 +22,9 @@ can start it like so:
 
 Making a Connection
 -------------------
-The first step when working with **PyMongo** is to make a connection
-to the running **mongod** instance. Doing so is easy::
+The first step when working with **PyMongo** is to create a
+:class:`~pymongo.connection.Connection` to the running **mongod**
+instance. Doing so is easy::
 
   >>> from pymongo import Connection
   >>> connection = Connection()
@@ -38,12 +39,12 @@ Getting a Database
 A single instance of MongoDB can support multiple independent
 `databases <http://www.mongodb.org/display/DOCS/Databases>`_. When
 working with PyMongo you access databases using attribute style access
-to a Connection instance::
+on :class:`~pymongo.connection.Connection` instances::
 
   >>> db = connection.test_database
 
-If your database name is such that you attribute style access won't
-work (like ``test-database``) you can use dictionary style access
+If your database name is such that using attribute style access won't
+work (like ``test-database``), you can use dictionary style access
 instead::
 
   >>> db = connection['test-database']
@@ -130,7 +131,7 @@ document from the posts collection::
 
 The result is a dictionary matching the one that we inserted previously.
 
-.. note:: The returned document contains an ``"_id"`` which was
+.. note:: The returned document contains an ``"_id"``, which was
    automatically added on insert.
 
 :meth:`~pymongo.collection.Collection.find_one` also supports querying
@@ -148,7 +149,7 @@ Bulk Inserts
 ------------
 In order to make querying a little more interesting, let's insert a
 few more documents. In addition to inserting a single document, we can
-also perform *bulk* insert operations, by passing an iterable as the
+also perform *bulk insert* operations, by passing an iterable as the
 first argument to :meth:`~pymongo.collection.Collection.insert`. This
 will insert each document in the iterable, sending only a single
 command to the server::
