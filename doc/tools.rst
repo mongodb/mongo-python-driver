@@ -6,6 +6,18 @@ list it here.
 
 ORM-like Layers
 ---------------
+Some people have found that they prefer to work with a layer that
+has more features than PyMongo provides. Often, things like models and
+validation are desired. To that end, several different ORM-like layers
+have been written by various authors.
+
+It is our recommendation that new users begin by working directly with
+PyMongo, as described in the rest of this documentation. Many people
+have found that the features of PyMongo are enough for their
+needs. Even if you eventually come to the decision to use one of these
+layers, the time spent working directly with the driver will have
+increased your understanding of how MongoDB actually works.
+
 MongoKit
   The `MongoKit <http://bitbucket.org/namlook/mongokit/>`_ framework
   is an ORM-like layer on top of PyMongo. There is also a MongoKit
