@@ -128,6 +128,8 @@ into your views, rather than being defined in separate models. The
 README also gives instructions for how to change settings.py to
 disable the features that won't work with MongoDB.
 
+.. _using-with-mod-wsgi:
+
 Does PyMongo work with **mod_wsgi**?
 ------------------------------------
 `mod_wsgi <http://code.google.com/p/modwsgi/>`_ is a popular Apache

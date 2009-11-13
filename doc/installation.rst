@@ -29,10 +29,7 @@ extension (used for increasing performance) when it is installed. If
 the extension fails to build the driver will be installed anyway but a
 warning will be printed.
 
-.. todo:: move mod_wsgi docs here
-
-In `certain cases
-<http://www.mongodb.org/display/DOCS/PyMongo+and+mod_wsgi>`_, you
+In :ref:`certain cases <using-with-mod-wsgi>`, you
 might wish to install the driver without the C extension, even if the
 extension builds properly. This can be done using a command line
 option to *setup.py*::

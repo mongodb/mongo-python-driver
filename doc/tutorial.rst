@@ -5,10 +5,8 @@ This tutorial is intended as an introduction to working with
 
 Prerequisites
 -------------
-.. todo:: link to installation instructions
-
 Before we start, make sure that you have the **PyMongo** distribution
-installed. In the Python shell, the following should run without
+:doc:`installed <installation>`. In the Python shell, the following should run without
 raising an exception::
 
   >>> import pymongo
