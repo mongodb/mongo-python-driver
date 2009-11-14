@@ -4,7 +4,9 @@ PyMongo |release| Documentation
 Overview
 --------
 **PyMongo** is a Python distribution containing tools for working with
-`MongoDB <http://www.mongodb.org>`_.
+`MongoDB <http://www.mongodb.org>`_, and is the recommended way to work with MongoDB from Python. This documentation attempts to explain everything you need to know to use **PyMongo**.
+
+.. todo:: a list of PyMongo's features
 
 :doc:`installation`
   Instructions on how to get the distribution.
