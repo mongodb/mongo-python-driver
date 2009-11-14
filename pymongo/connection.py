@@ -17,7 +17,18 @@
 To connect to a single instance of MongoDB use :class:`Connection`. To connect
 to a replica pair use :meth:`~Connection.paired`.
 
-.. seealso:: Module :mod:`~pymongo.master_slave_connection`
+.. seealso:: Module :mod:`~pymongo.master_slave_connection` for connecting to
+   master-slave clusters.
+
+To get a :class:`~pymongo.database.Database` instance from a
+:class:`Connection` use either dictionary-style or attribute-style access::
+
+  >>> from pymongo import Connection
+  >>> c = Connection()
+  >>> c.test_database
+  Database(Connection('localhost', 27017), u'test_database')
+  >>> c['test-database']
+  Database(Connection('localhost', 27017), u'test-database')
 """
 
 import sys
