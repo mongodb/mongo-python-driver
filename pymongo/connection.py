@@ -12,7 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Low level connection to Mongo."""
+"""Tools for connecting to MongoDB.
+
+To connect to a single instance of MongoDB use :class:`Connection`. To connect
+to a replica pair use :meth:`~Connection.paired`.
+
+.. seealso:: Module :mod:`~pymongo.master_slave_connection`
+"""
 
 import sys
 import socket
@@ -51,7 +57,7 @@ level.
 """
 
 class Connection(object): # TODO support auth for pooling
-    """A connection to Mongo.
+    """Connection to MongoDB.
     """
 
     # TODO consider deprecating these. or at least find a way for
@@ -65,23 +71,27 @@ class Connection(object): # TODO support auth for pooling
     def __init__(self, host=None, port=None, pool_size=None,
                  auto_start_request=None, timeout=None, slave_okay=False,
                  network_timeout=None, _connect=True):
-        """Open a new connection to a Mongo instance at host:port.
+        """Create a new connection to a single MongoDB instance at *host:port*.
 
         The resultant connection object has connection-pooling built in. It
         also performs auto-reconnection when necessary. If an operation fails
-        because of a connection error, `pymongo.errors.ConnectionFailure` is
-        raised. If auto-reconnection will be performed,
-        `pymongo.errors.AutoReconnect` will be raised. Application code should
-        handle this exception (recognizing that the operation failed) and then
-        continue to execute.
+        because of a connection error,
+        :class:`~pymongo.errors.ConnectionFailure` is raised. If
+        auto-reconnection will be performed,
+        :class:`~pymongo.errors.AutoReconnect` will be raised. Application code
+        should handle this exception (recognizing that the operation failed)
+        and then continue to execute.
 
-        Raises TypeError if host is not an instance of string or port is not an
-        instance of int. Raises ConnectionFailure if the connection cannot be
-        made. Raises TypeError if `pool_size` is not an instance of int. Raises
-        ValueError if `pool_size` is not greater than or equal to one.
+        Raises :class:`TypeError` if host is not an instance of string or port
+        is not an instance of ``int``. Raises
+        :class:`~pymongo.errors.ConnectionFailure` if the connection cannot be
+        made. Raises :class:`TypeError` if `pool_size` is not an instance of
+        ``int``. Raises :class:`ValueError` if `pool_size` is not greater than
+        or equal to one.
 
-        NOTE: Connection pooling is not compatible with auth (yet). Please do
-        not set the "pool_size" to anything other than 1 if auth is in use.
+        .. warning:: Connection pooling is not compatible with auth (yet).
+           Please do not set the `pool_size` parameter to anything other than 1
+           if auth is in use.
 
         :Parameters:
           - `host` (optional): hostname or IPv4 address of the instance to
@@ -90,7 +100,7 @@ class Connection(object): # TODO support auth for pooling
           - `pool_size` (optional): maximum size of the built in
             connection-pool
           - `auto_start_request` (optional): automatically start a request
-            on every operation - see documentation for `start_request`
+            on every operation - see :meth:`start_request`
           - `slave_okay` (optional): is it okay to connect directly to and
             perform queries on a slave instance
           - `timeout` (optional): max time to wait when attempting to acquire a
@@ -176,15 +186,17 @@ class Connection(object): # TODO support auth for pooling
                pool_size=None, auto_start_request=None):
         """Open a new paired connection to Mongo.
 
-        Raises TypeError if either `left` or `right` is not a tuple of the form
-        (host, port). Raises ConnectionFailure if the connection cannot be
-        made.
+        Raises :class:`TypeError` if either `left` or `right` is not a tuple of
+        the form ``(host, port)``. Raises :class:`~pymongo.ConnectionFailure`
+        if the connection cannot be made.
 
         :Parameters:
-          - `left`: (host, port) pair for the left Mongo instance
-          - `right` (optional): (host, port) pair for the right Mongo instance
-          - `pool_size` (optional): same as argument to `__init__`
-          - `auto_start_request` (optional): same as argument to `__init__`
+          - `left`: ``(host, port)`` pair for the left MongoDB instance
+          - `right` (optional): ``(host, port)`` pair for the right MongoDB
+            instance
+          - `pool_size` (optional): same as argument to :class:`Connection`
+          - `auto_start_request` (optional): same as argument to
+            :class:`Connection`
         """
         if right is None:
             right = (cls.HOST, cls.PORT)
@@ -229,10 +241,10 @@ class Connection(object): # TODO support auth for pooling
     def _cache_index(self, database, collection, index, ttl):
         """Add an index to the index cache for ensure_index operations.
 
-        Return True if the index has been newly cached or if the index had
+        Return ``True`` if the index has been newly cached or if the index had
         expired and is being re-cached.
 
-        Return False if the index exists and is valid.
+        Return ``False`` if the index exists and is valid.
         """
         now = datetime.datetime.utcnow()
         expire = datetime.timedelta(seconds=ttl) + now
@@ -280,6 +292,8 @@ class Connection(object): # TODO support auth for pooling
         if index_name in self.__index_cache[database_name][collection_name]:
             del self.__index_cache[database_name][collection_name][index_name]
 
+    # TODO these really should be properties... Could be ugly to make that
+    # backwards compatible though...
     def host(self):
         """Get the connection's current host.
         """
@@ -405,10 +419,10 @@ class Connection(object): # TODO support auth for pooling
     def set_cursor_manager(self, manager_class):
         """Set this connection's cursor manager.
 
-        Raises TypeError if manager_class is not a subclass of CursorManager. A
-        cursor manager handles closing cursors. Different managers can
-        implement different policies in terms of when to actually kill a cursor
-        that has been closed.
+        Raises :class:`TypeError` if `manager_class` is not a subclass of
+        :class:`~pymongo.cursor_manager.CursorManager`. A cursor manager handles
+        closing cursors. Different managers can implement different policies in
+        terms of when to actually kill a cursor that has been closed.
 
         :Parameters:
           - `manager_class`: cursor manager to use
@@ -574,7 +588,7 @@ class Connection(object): # TODO support auth for pooling
         """Say something to Mongo.
 
         Raises ConnectionFailure if the message cannot be sent. Raises
-        OperationFailure if safe is True and the ensuing getLastError call
+        OperationFailure if safe is ``True`` and the ensuing getLastError call
         returns an error. Returns the request id of the sent message.
 
         :Parameters:
@@ -676,19 +690,19 @@ class Connection(object): # TODO support auth for pooling
         A "request" is a group of operations in which order matters. Examples
         include inserting a document and then performing a query which expects
         that document to have been inserted, or performing an operation and
-        then using `database.Database.error()` to perform error-checking on
-        that operation. When a thread performs operations in a "request", the
+        then using :meth:`database.Database.error()` to perform error-checking
+        on that operation. When a thread performs operations in a "request", the
         connection will perform all operations on the same socket, so Mongo
         will order them correctly.
 
-        This method is only relevant when the current Connection has a
-        "pool_size" greater than one. Otherwise only a single socket will be
+        This method is only relevant when the current :class:`Connection` has a
+        ``pool_size`` greater than one. Otherwise only a single socket will be
         used for *all* operations, so there is no need to group operations into
         requests.
 
-        This method only needs to be used if the "auto_start_request" option
-        is set to False. If "auto_start_request" is True, a request will be
-        started (if necessary) on every operation.
+        This method only needs to be used if the ``auto_start_request`` option
+        is set to ``False``. If ``auto_start_request`` is ``True``, a request
+        will be started (if necessary) on every operation.
         """
         if not self.__auto_start_request:
             self.end_request()
@@ -702,15 +716,15 @@ class Connection(object): # TODO support auth for pooling
         to do so the connection is allowed to pick a new socket from the pool
         for that thread on the next operation. This could prevent an imbalance
         of threads trying to connect on the same socket. Care should be taken,
-        however, to make sure that `end_request` isn't called in the middle
-        of a sequence of operations in which ordering is important. This could
-        lead to unexpected results.
+        however, to make sure that :meth:`end_request` isn't called in the
+        middle of a sequence of operations in which ordering is important. This
+        could lead to unexpected results.
 
-        `end_request` is useful even (especially) if "auto_start_request" is
-        True.
+        :meth:`end_request` is useful even (especially) if
+        ``auto_start_request`` is ``True``.
 
-        See the documentation for `start_request` for more information on what
-        a "request" is and when one should be used.
+        .. seealso:: :meth:`start_request` for more information on what
+           a "request" is and when one should be used.
         """
         thread = threading.currentThread()
         if self.__thread_map.get(thread, -1) >= 0:
@@ -756,12 +770,13 @@ class Connection(object): # TODO support auth for pooling
     def close_cursor(self, cursor_id):
         """Close a single database cursor.
 
-        Raises TypeError if cursor_id is not an instance of (int, long). What
-        closing the cursor actually means depends on this connection's cursor
-        manager.
+        Raises :class:`TypeError` if `cursor_id` is not an instance of ``(int, long)``. What closing the cursor actually means depends on this connection's cursor manager.
 
         :Parameters:
-          - `cursor_id`: cursor id to close
+          - `cursor_id`: id of cursor to close
+
+        .. seealso:: :meth:`set_cursor_manager` and
+           the :mod:`~pymongo.cursor_manager` module
         """
         if not isinstance(cursor_id, (types.IntType, types.LongType)):
             raise TypeError("cursor_id must be an instance of (int, long)")
@@ -769,9 +784,10 @@ class Connection(object): # TODO support auth for pooling
         self.__cursor_manager.close(cursor_id)
 
     def kill_cursors(self, cursor_ids):
-        """Kill database cursors with the given ids.
+        """Send a kill cursors message with the given ids.
 
-        Raises TypeError if cursor_ids is not an instance of list.
+        Raises :class:`TypeError` if `cursor_ids` is not an instance of
+        ``list``.
 
         :Parameters:
           - `cursor_ids`: list of cursor ids to kill
@@ -797,16 +813,20 @@ class Connection(object): # TODO support auth for pooling
         return self["admin"]._command({"buildinfo": 1})
 
     def database_names(self):
-        """Get a list of all database names.
+        """Get a list of the names of all databases on the connected server.
         """
         return self.__database_info().keys()
 
     def drop_database(self, name_or_database):
         """Drop a database.
 
+        Raises :class:`TypeError` if `name_or_database` is not an instance of
+        ``(str, unicode, Database)``
+
         :Parameters:
-          - `name_or_database`: the name of a database to drop or the object
-            itself
+          - `name_or_database`: the name of a database to drop, or a
+            :class:`~pymongo.database.Database` instance representing the
+            database to drop
         """
         name = name_or_database
         if isinstance(name, Database):

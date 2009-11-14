@@ -262,6 +262,4 @@ look at the same information::
 Now the query is using a *BtreeCursor* (the index) and only scanning
 over the 2 matching documents.
 
-.. seealso::
-  `Indexes <http://www.mongodb.org/display/DOCS/Indexes>`_
-     MongoDB documentation on indexes.
+.. seealso:: The MongoDB documentation on `indexes <http://www.mongodb.org/display/DOCS/Indexes>`_

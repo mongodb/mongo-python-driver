@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""A Mongo driver for Python."""
+"""Python driver for MongoDB."""
 
 import types
 import sys

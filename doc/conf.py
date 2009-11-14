@@ -63,7 +63,7 @@ pygments_style = 'sphinx'
 #modindex_common_prefix = []
 
 # -- Options for extensions ----------------------------------------------------
-autoclass_content = 'both'
+autoclass_content = 'init'
 
 # -- Options for HTML output ---------------------------------------------------
 
