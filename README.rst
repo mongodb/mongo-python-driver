@@ -70,4 +70,4 @@ Testing
 =======
 The easiest way to run the tests is to install `nose <http://somethingaboutorange.com/mrl/projects/nose/>`_ (**easy_install nose**) and run **nosetests** or **python setup.py test** in the root of the distribution. Tests are located in the *test/* directory.
 
-.. _sphinx http://sphinx.pocoo.org/
+.. _sphinx: http://sphinx.pocoo.org/
