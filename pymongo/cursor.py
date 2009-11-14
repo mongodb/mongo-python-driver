@@ -270,44 +270,44 @@ class Cursor(object):
         self.__ordering = pymongo._index_document(keys)
         return self
 
-    def count(self):
+    def count(self, with_limit_and_skip=False):
         """Get the size of the results set for this query.
 
-        Returns the number of objects in the results set for this query. Does
-        not take limit and skip into account. Raises OperationFailure on a
-        database error.
+        Returns the number of documents in the results set for this query. Does
+        not take :meth:`limit` and :meth:`skip` into account by default - set
+        `with_limit_and_skip` to ``True`` if that is the desired behavior.
+        Raises :class:`~pymongo.errors.OperationFailure` on a database error.
+
+        :Parameters:
+          - `with_limit_and_skip` (optional): take any :meth:`limit` or
+            :meth:`skip` that has been applied to this cursor into account when
+            getting the count
+
+        .. note:: The `with_limit_and_skip` parameter requires server
+           version **>= 1.1.4-**
+
+        .. versionadded:: 1.1.1
+           The `with_limit_and_skip` parameter.
+           :meth:`~pymongo.cursor.Cursor.__len__` was deprecated in favor of
+           calling :meth:`count` with `with_limit_and_skip` set to ``True``.
         """
         command = SON([("count", self.__collection.name()),
                        ("query", self.__spec),
                        ("fields", self.__fields)])
+
+        if with_limit_and_skip:
+            if self.__limit:
+                command["limit"] = self.__limit
+            if self.__skip:
+                command["skip"] = self.__skip
+
         response = self.__collection.database()._command(command,
                                                          ["ns missing"])
         if response.get("errmsg", "") == "ns missing":
             return 0
         return int(response["n"])
 
-    def size(self):
-        """Get the number of documents in this cursor.
-
-        This method relies on count() as well as any limit or skip that has
-        been applied to this cursor to return the number of documents that will
-        actually be returned by the cursor. Changes to this cursor's limit or
-        skip values, as well as changes to the data in the database itself, can
-        cause this value to be different from the actual number of documents
-        that will be iterated by the cursor.
-
-        .. versionadded:: 1.1.1
-           :meth:`~pymongo.cursor.Cursor.__len__` was deprecated in favor of
-           this method.
-        """
-        count = self.count() - self.__skip
-        if count < 0:
-            return 0
-        if self.__limit:
-            return min(count, self.__limit)
-        return count
-
-    # __len__ is deprecated (replaced with size()) and will be removed.
+    # __len__ is deprecated (replaced with count(True)) and will be removed.
     #
     # The reason for this deprecation is a bit complex:
     # list(...) calls _PyObject_LengthHint to guess how much space will be
@@ -317,10 +317,10 @@ class Cursor(object):
     # twice as slow as [x for x in Cursor], which isn't obvious to users.
     # Not defining __len__ here makes performance more consistent
     def __len__(self):
-        """DEPRECATED use `size` instead.
+        """DEPRECATED use :meth:`count` instead.
         """
-        raise TypeError("Cursor.__len__ is deprecated, please use Cursor.size "
-                        "instead")
+        raise TypeError("Cursor.__len__ is deprecated, please use "
+                        "Cursor.count(with_limit_and_skip=True) instead")
 
     def explain(self):
         """Returns an explain plan record for this cursor.

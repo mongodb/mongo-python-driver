@@ -21,6 +21,8 @@ import sys
 import itertools
 sys.path[0:0] = [""]
 
+from nose.plugins.skip import SkipTest
+
 from pymongo.errors import InvalidOperation, OperationFailure
 from pymongo.cursor import Cursor
 from pymongo.database import Database
@@ -525,10 +527,13 @@ class TestCursor(unittest.TestCase):
         self.assertRaises(IndexError, lambda x: self.db.test.find()[x], -1)
         self.assertRaises(IndexError, lambda x: self.db.test.find()[x], 100)
 
-    def test_size(self):
+    def test_count_with_limit_and_skip(self):
+        if not version.at_least(self.db.connection(), (1, 1, 4, -1)):
+            raise SkipTest()
+
         def check_len(cursor, length):
-            self.assertEqual(len(list(cursor)), cursor.size())
-            self.assertEqual(length, cursor.size())
+            self.assertEqual(len(list(cursor)), cursor.count(True))
+            self.assertEqual(length, cursor.count(True))
 
         self.db.drop_collection("test")
         for i in range(100):
