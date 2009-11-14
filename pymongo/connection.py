@@ -60,8 +60,6 @@ class Connection(object): # TODO support auth for pooling
     """Connection to MongoDB.
     """
 
-    # TODO consider deprecating these. or at least find a way for
-    # the default args to __init__ and paired to be properly documented.
     HOST = "localhost"
     PORT = 27017
     POOL_SIZE = 1
