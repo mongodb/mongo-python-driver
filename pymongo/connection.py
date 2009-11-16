@@ -47,6 +47,7 @@ from database import Database
 from cursor_manager import CursorManager
 from thread_util import TimeoutableLock
 import bson
+import message
 
 _logger = logging.getLogger("pymongo.connection")
 _logger.addHandler(logging.StreamHandler())
@@ -54,18 +55,6 @@ _logger.setLevel(logging.INFO)
 
 _CONNECT_TIMEOUT = 20.0
 
-
-_LAST_ERROR_MESSAGE = (2004, # OP_QUERY
-                       "\x00\x00\x00\x00" # query options
-                       "admin.$cmd\x00" # collection name
-                       "\x00\x00\x00\x00" # skip
-                       "\xff\xff\xff\xff" + # limit (-1)
-                       bson.BSON.from_dict({"getlasterror": 1}))
-"""Data to send to do a lastError.
-
-This is a bit of a hack but we use it to do implement "safe" mode at a low
-level.
-"""
 
 class Connection(object): # TODO support auth for pooling
     """Connection to MongoDB.
@@ -146,10 +135,6 @@ class Connection(object): # TODO support auth for pooling
         self.__nodes = [(host, port)]
         self.__slave_okay = slave_okay
 
-        # current request_id
-        self.__id = 1
-        self.__id_lock = threading.Lock()
-
         self.__cursor_manager = CursorManager(self)
 
         self.__pool_size = pool_size
@@ -219,13 +204,6 @@ class Connection(object): # TODO support auth for pooling
         connection.__pair_with(*right)
         return connection
     paired = classmethod(paired)
-
-    def __increment_id(self):
-        self.__id_lock.acquire()
-        result = self.__id
-        self.__id += 1
-        self.__id_lock.release()
-        return result
 
     def __master(self, sock):
         """Get the hostname and port of the master Mongo instance.
@@ -483,20 +461,6 @@ class Connection(object): # TODO support auth for pooling
             raise AutoReconnect(str(e))
         return sock
 
-    def __pack_message(self, operation, data):
-        """Takes message data and adds a message header based on the operation.
-
-        Returns the resultant (message, request_id) pair.
-        """
-        # header
-        request_id = self.__increment_id()
-        to_send = struct.pack("<i", 16 + len(data))
-        to_send += struct.pack("<i", request_id)
-        to_send += "\x00\x00\x00\x00" # responseTo
-        to_send += struct.pack("<i", operation)
-
-        return (to_send + data, request_id)
-
     # TODO use static methods for a bunch of these
     def __send_data_on_socket(self, data, sock):
         """Lowest level send operation.
@@ -515,25 +479,6 @@ class Connection(object): # TODO support auth for pooling
             if sent == 0:
                 raise ConnectionFailure("connection closed, resetting")
             total_sent += sent
-
-    def __send_messages_on_socket(self, messages, sock):
-        """Pack and send a series of messages on the given socket.
-
-        `messages` should be a list of (operation, data) pairs. Returns the
-        request_id of the last message in the list.
-        """
-        packed = [self.__pack_message(op, data) for (op, data) in messages]
-        self.__send_data_on_socket("".join([d for (d, _) in packed]), sock)
-        return packed[-1][1]
-
-    def __send_message_on_socket(self, operation, data, sock):
-        """Pack and send a single message on the given socket.
-
-        Returns the resultant request_id.
-        """
-        (data, request_id) = self.__pack_message(operation, data)
-        self.__send_data_on_socket(data, sock)
-        return request_id
 
     # TODO does this really belong here?
     def _unpack_response(response, cursor_id=None):
@@ -593,33 +538,31 @@ class Connection(object): # TODO support auth for pooling
             self._reset()
         raise OperationFailure(error["err"])
 
-    def _send_message(self, operation, data, safe=False):
+    def _send_message(self, message, with_last_error=False):
         """Say something to Mongo.
 
         Raises ConnectionFailure if the message cannot be sent. Raises
-        OperationFailure if safe is ``True`` and the ensuing getLastError call
-        returns an error. Returns the request id of the sent message.
+        OperationFailure if `with_last_error` is ``True`` and the response to
+        the getLastError call returns an error.
 
         :Parameters:
-          - `operation`: opcode of the message
-          - `data`: data to send
-          - `safe`: perform a getLastError after sending the message
+          - `message`: message to send
+          - `with_last_error`: check getLastError status after sending the
+            message
         """
         sock_number = self.__get_socket()
         sock = self.__sockets[sock_number]
         try:
             try:
-                if not safe:
-                    return self.__send_message_on_socket(operation, data, sock)
-
+                (request_id, data) = message
+                self.__send_data_on_socket(data, sock)
                 # Safe mode. We pack the message together with a lastError
                 # message and send both. We then get the response (to the
                 # lastError) and raise OperationFailure if it is an error
                 # response.
-                messages = [(operation, data), _LAST_ERROR_MESSAGE]
-                request_id = self.__send_messages_on_socket(messages, sock)
-                response = self.__receive_message_on_socket(1, request_id, sock)
-                self.__check_response_to_last_error(response)
+                if with_last_error:
+                    response = self.__receive_message_on_socket(1, request_id, sock)
+                    self.__check_response_to_last_error(response)
             except ConnectionFailure, e:
                 self._reset()
                 raise AutoReconnect(str(e))
@@ -655,30 +598,30 @@ class Connection(object): # TODO support auth for pooling
 
         return self.__receive_data_on_socket(length - 16, sock)
 
-    def __send_and_receive(self, operation, data, sock):
+    def __send_and_receive(self, message, sock):
         """Send a message on the given socket and return the response data.
         """
-        request_id = self.__send_message_on_socket(operation, data, sock)
+        (request_id, data) = message
+        self.__send_data_on_socket(data, sock)
         return self.__receive_message_on_socket(1, request_id, sock)
 
     __hack_socket_lock = threading.Lock()
     # we just ignore _must_use_master here: it's only relavant for
     # MasterSlaveConnection instances.
-    def _send_message_with_response(self, operation, data,
+    def _send_message_with_response(self, message,
                                     _sock=None, _must_use_master=False):
         """Send a message to Mongo and return the response.
 
         Sends the given message and returns the response.
 
         :Parameters:
-          - `operation`: opcode of the message to send
-          - `data`: data to send
+          - `message`: (request_id, data) pair making up the message to send
         """
         # hack so we can do find_master on a specific socket...
         if _sock:
             self.__hack_socket_lock.acquire()
             try:
-                return self.__send_and_receive(operation, data, _sock)
+                return self.__send_and_receive(message, _sock)
             finally:
                 self.__hack_socket_lock.release()
 
@@ -686,7 +629,7 @@ class Connection(object): # TODO support auth for pooling
         sock = self.__sockets[sock_number]
         try:
             try:
-                return self.__send_and_receive(operation, data, sock)
+                return self.__send_and_receive(message, sock)
             except ConnectionFailure, e:
                 self._reset()
                 raise AutoReconnect(str(e))
@@ -803,11 +746,7 @@ class Connection(object): # TODO support auth for pooling
         """
         if not isinstance(cursor_ids, types.ListType):
             raise TypeError("cursor_ids must be a list")
-        message = "\x00\x00\x00\x00"
-        message += struct.pack("<i", len(cursor_ids))
-        for cursor_id in cursor_ids:
-            message += struct.pack("<q", cursor_id)
-        self._send_message(2007, message)
+        return self._send_message(message.kill_cursors(cursor_ids))
 
     def __database_info(self):
         """Get a dictionary of (database_name: size_on_disk).

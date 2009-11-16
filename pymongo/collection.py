@@ -19,7 +19,7 @@ import warnings
 import struct
 
 import pymongo
-import bson
+import message
 from objectid import ObjectId
 from cursor import Cursor
 from son import SON
@@ -115,20 +115,6 @@ class Collection(object):
         """
         return self.__collection_name
 
-    def _send_message(self, operation, data, safe=False):
-        """Wrap up a message and send it.
-
-        If safe is true then piggyback a lasterror message on the send,
-        raising an OperationFailure exception when the insert/update
-        failed.
-        """
-        # reserved int, full collection name, message data
-        message = _ZERO
-        message += bson._make_c_string(self.full_name())
-        message += data
-
-        return self.__database.connection()._send_message(operation, message, safe)
-
     def database(self):
         """Get the database that this collection is a part of.
         """
@@ -189,8 +175,7 @@ class Collection(object):
         if manipulate:
             docs = [self.__database._fix_incoming(doc, self) for doc in docs]
 
-        data = [bson.BSON.from_dict(doc, check_keys) for doc in docs]
-        self._send_message(2002, "".join(data), safe)
+        self.__database.connection()._send_message(message.insert(self.full_name(), docs, check_keys, safe), safe)
 
         ids = [doc.get("_id", None) for doc in docs]
         return len(ids) == 1 and ids[0] or ids
@@ -234,17 +219,7 @@ class Collection(object):
         if upsert and manipulate:
             document = self.__database._fix_incoming(document, self)
 
-        options = 0
-        if upsert:
-            options += 1
-        if multi:
-            options += 2
-
-        message = struct.pack("<i", options)
-        message += bson.BSON.from_dict(spec)
-        message += bson.BSON.from_dict(document)
-
-        self._send_message(2001, message, safe)
+        self.__database.connection()._send_message(message.update(self.full_name(), upsert, multi, spec, document, safe), safe)
 
     def remove(self, spec_or_object_id, safe=False):
         """Remove an object(s) from this collection.
@@ -269,7 +244,7 @@ class Collection(object):
             raise TypeError("spec must be an instance of dict, not %s" %
                             type(spec))
 
-        self._send_message(2006, _ZERO + bson.BSON.from_dict(spec), safe)
+        self.__database.connection()._send_message(message.delete(self.full_name(), spec, safe), safe)
 
     def find_one(self, spec_or_object_id=None, fields=None, slave_okay=None,
                  _sock=None, _must_use_master=False):

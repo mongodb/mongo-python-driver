@@ -19,7 +19,7 @@ import struct
 import warnings
 
 import pymongo
-import bson
+import message
 from son import SON
 from code import Code
 from errors import InvalidOperation, OperationFailure, AutoReconnect
@@ -140,7 +140,7 @@ class Cursor(object):
         return spec
 
     def __query_options(self):
-        """Get the 4 byte query options string to use for this query.
+        """Get the query options string to use for this query.
         """
         options = 0
         if self.__tailable:
@@ -149,7 +149,7 @@ class Cursor(object):
             options |= _QUERY_OPTIONS["slave_okay"]
         if not self.__timeout:
             options |= _QUERY_OPTIONS["no_timeout"]
-        return struct.pack("<I", options)
+        return options
 
     def __check_okay_to_chain(self):
         """Check if it is okay to chain more options onto this cursor.
@@ -383,7 +383,7 @@ class Cursor(object):
         self.__spec["$where"] = code
         return self
 
-    def __send_message(self, operation, message):
+    def __send_message(self, message):
         """Send a query or getmore message and handles the response.
         """
         db = self.__collection.database()
@@ -392,7 +392,7 @@ class Cursor(object):
         if self.__connection_id is not None:
             kwargs["_connection_to_use"] = self.__connection_id
 
-        response = db.connection()._send_message_with_response(operation, message,
+        response = db.connection()._send_message_with_response(message,
                                                                **kwargs)
 
         if isinstance(response, types.TupleType):
@@ -425,17 +425,9 @@ class Cursor(object):
         if len(self.__data) or self.__killed:
             return len(self.__data)
 
-        message = self.__query_options()
-        message += bson._make_c_string(self.__collection.full_name())
         if self.__id is None:
             # Query
-            message += struct.pack("<i", self.__skip)
-            message += struct.pack("<i", self.__limit)
-            message += bson.BSON.from_dict(self.__query_spec())
-            if self.__fields:
-                message += bson.BSON.from_dict(self.__fields)
-
-            self.__send_message(2004, message)
+            self.__send_message(message.query(self.__query_options(), self.__collection.full_name(), self.__skip, self.__limit, self.__query_spec(), self.__fields))
             if not self.__id:
                 self.__killed = True
         elif self.__id:
@@ -448,10 +440,7 @@ class Cursor(object):
                     self.__killed = True
                     return 0
 
-            message += struct.pack("<i", limit)
-            message += struct.pack("<q", self.__id)
-
-            self.__send_message(2005, message)
+            self.__send_message(message.get_more(self.__collection.full_name(), limit, self.__id))
 
         return len(self.__data)
 
