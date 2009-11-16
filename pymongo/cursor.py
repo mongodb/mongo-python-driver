@@ -427,7 +427,11 @@ class Cursor(object):
 
         if self.__id is None:
             # Query
-            self.__send_message(message.query(self.__query_options(), self.__collection.full_name(), self.__skip, self.__limit, self.__query_spec(), self.__fields))
+            self.__send_message(
+                message.query(self.__query_options(),
+                              self.__collection.full_name(),
+                              self.__skip, self.__limit,
+                              self.__query_spec(), self.__fields))
             if not self.__id:
                 self.__killed = True
         elif self.__id:
@@ -440,7 +444,9 @@ class Cursor(object):
                     self.__killed = True
                     return 0
 
-            self.__send_message(message.get_more(self.__collection.full_name(), limit, self.__id))
+            self.__send_message(
+                message.get_more(self.__collection.full_name(),
+                                 limit, self.__id))
 
         return len(self.__data)
 

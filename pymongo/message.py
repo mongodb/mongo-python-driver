@@ -21,6 +21,12 @@ import struct
 
 import bson
 
+try:
+    import _cbson
+    _use_c = True
+except ImportError:
+    _use_c = False
+
 
 __ZERO = "\x00\x00\x00\x00"
 
@@ -70,6 +76,8 @@ def insert(collection_name, docs, check_keys, safe):
         return (request_id, insert_message + error_message)
     else:
         return __pack_message(2002, data)
+if _use_c:
+    insert = _cbson._insert_message
 
 
 def update(collection_name, upsert, multi, spec, doc, safe):

@@ -175,7 +175,8 @@ class Collection(object):
         if manipulate:
             docs = [self.__database._fix_incoming(doc, self) for doc in docs]
 
-        self.__database.connection()._send_message(message.insert(self.full_name(), docs, check_keys, safe), safe)
+        self.__database.connection()._send_message(
+            message.insert(self.full_name(), docs, check_keys, safe), safe)
 
         ids = [doc.get("_id", None) for doc in docs]
         return len(ids) == 1 and ids[0] or ids
@@ -219,7 +220,9 @@ class Collection(object):
         if upsert and manipulate:
             document = self.__database._fix_incoming(document, self)
 
-        self.__database.connection()._send_message(message.update(self.full_name(), upsert, multi, spec, document, safe), safe)
+        self.__database.connection()._send_message(
+            message.update(self.full_name(), upsert, multi,
+                           spec, document, safe), safe)
 
     def remove(self, spec_or_object_id, safe=False):
         """Remove an object(s) from this collection.
@@ -244,7 +247,8 @@ class Collection(object):
             raise TypeError("spec must be an instance of dict, not %s" %
                             type(spec))
 
-        self.__database.connection()._send_message(message.delete(self.full_name(), spec, safe), safe)
+        self.__database.connection()._send_message(
+            message.delete(self.full_name(), spec, safe), safe)
 
     def find_one(self, spec_or_object_id=None, fields=None, slave_okay=None,
                  _sock=None, _must_use_master=False):
