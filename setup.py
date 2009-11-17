@@ -19,15 +19,13 @@ from distutils.errors import CCompilerError
 from distutils.errors import DistutilsPlatformError, DistutilsExecError
 from distutils.core import Extension
 
-import pymongo
+from pymongo import version
 
 requirements = []
 try:
     import xml.etree.ElementTree
 except ImportError:
     requirements.append("elementtree")
-
-version = pymongo.version
 
 f = open("README.rst")
 try:
