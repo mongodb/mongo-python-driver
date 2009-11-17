@@ -18,6 +18,8 @@ Generally not needed to be used by application developers."""
 
 import threading
 import struct
+import random
+import sys
 
 import bson
 
@@ -31,22 +33,6 @@ except ImportError:
 __ZERO = "\x00\x00\x00\x00"
 
 
-# current request_id
-__id = 1
-__id_lock = threading.Lock()
-
-def __increment_id():
-    """Get a request_id to use for a message.
-    """
-    global __id
-    global __id_lock
-    __id_lock.acquire()
-    result = __id
-    __id += 1
-    __id_lock.release()
-    return result
-
-
 def __last_error():
     """Data to send to do a lastError.
     """
@@ -58,7 +44,7 @@ def __pack_message(operation, data):
 
     Returns the resultant message string.
     """
-    request_id = __increment_id()
+    request_id = random.randint(-2**31 - 1, 2**31)
     message = struct.pack("<i", 16 + len(data))
     message += struct.pack("<i", request_id)
     message += __ZERO # responseTo
