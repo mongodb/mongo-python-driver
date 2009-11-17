@@ -21,6 +21,7 @@ Sub-modules:
    binary
    objectid
    bson
+   message
    son
    son_manipulator
    json_util

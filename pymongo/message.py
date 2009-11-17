@@ -12,9 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tools for creating messages to be sent to MongoDB.
+"""Tools for creating `messages
+<http://www.mongodb.org/display/DOCS/Mongo+Wire+Protocol>`_ to be sent to
+MongoDB.
 
-Generally not needed to be used by application developers."""
+.. note:: This module is for internal use and is generally not needed by
+   application developers.
+
+.. versionadded:: 1.1.1+
+"""
 
 import threading
 import struct
@@ -53,6 +59,8 @@ def __pack_message(operation, data):
 
 
 def insert(collection_name, docs, check_keys, safe):
+    """Get an **insert** message.
+    """
     data = __ZERO
     data += bson._make_c_string(collection_name)
     data += "".join([bson.BSON.from_dict(doc, check_keys) for doc in docs])
@@ -67,6 +75,8 @@ if _use_c:
 
 
 def update(collection_name, upsert, multi, spec, doc, safe):
+    """Get an **update** message.
+    """
     options = 0
     if upsert:
         options += 1
@@ -88,6 +98,8 @@ def update(collection_name, upsert, multi, spec, doc, safe):
 
 def query(options, collection_name,
           num_to_skip, num_to_return, query, field_selector=None):
+    """Get a **query** message.
+    """
     data = struct.pack("<I", options)
     data += bson._make_c_string(collection_name)
     data += struct.pack("<i", num_to_skip)
@@ -99,6 +111,8 @@ def query(options, collection_name,
 
 
 def get_more(collection_name, num_to_return, cursor_id):
+    """Get a **getMore** message.
+    """
     data = __ZERO
     data += bson._make_c_string(collection_name)
     data += struct.pack("<i", num_to_return)
@@ -107,6 +121,8 @@ def get_more(collection_name, num_to_return, cursor_id):
 
 
 def delete(collection_name, spec, safe):
+    """Get a **delete** message.
+    """
     data = __ZERO
     data += bson._make_c_string(collection_name)
     data += __ZERO
@@ -120,9 +136,10 @@ def delete(collection_name, spec, safe):
 
 
 def kill_cursors(cursor_ids):
+    """Get a **killCursors** message.
+    """
     data = __ZERO
     data += struct.pack("<i", len(cursor_ids))
     for cursor_id in cursor_ids:
         data += struct.pack("<q", cursor_id)
     return __pack_message(2007, data)
-

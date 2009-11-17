@@ -18,6 +18,9 @@
  * This file contains C implementations of some of the functions needed by the
  * bson module. If possible, these implementations should be used to speed up
  * BSON encoding and decoding.
+ *
+ * TODO The filename is a bit of a misnomer now - probably should be something
+ * like _cspeedupsmodule - we do more than just BSON stuff in this C module.
  */
 
 
