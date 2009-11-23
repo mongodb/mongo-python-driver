@@ -593,7 +593,7 @@ class Connection(object): # TODO support auth for pooling
         """
         header = self.__receive_data_on_socket(16, sock)
         length = struct.unpack("<i", header[:4])[0]
-        assert request_id == struct.unpack("<i", header[8:12])[0] , "ids don't match %r %r" % ( request_id , struct.unpack("<i", header[8:12])[0] )
+        assert request_id == struct.unpack("<i", header[8:12])[0], "ids don't match %r %r" % (request_id, struct.unpack("<i", header[8:12])[0])
         assert operation == struct.unpack("<i", header[12:])[0]
 
         return self.__receive_data_on_socket(length - 16, sock)
