@@ -19,7 +19,7 @@ import os
 import sys
 sys.path[0:0] = [""]
 
-from pymongo.errors import ConnectionFailure, InvalidName
+from pymongo.errors import ConnectionFailure, InvalidName, AutoReconnect
 from pymongo.database import Database
 from pymongo.connection import Connection
 
@@ -127,6 +127,25 @@ class TestConnection(unittest.TestCase):
             [a for a in connection]
 
         self.assertRaises(TypeError, iterate)
+
+    # TODO this test is probably very dependent on the machine its running on
+    # due to timing issues, but I want to get something in here.
+    def test_low_network_timeout(self):
+        c = None
+        while c is None:
+            try:
+                c = Connection(self.host, self.port, network_timeout=0.0001)
+            except AutoReconnect:
+                pass
+        coll = c.pymongo_test.test
+
+        for _ in range(1000):
+            try:
+                coll.find_one()
+            except AutoReconnect:
+                pass
+            except AssertionError:
+                self.fail()
 
     def test_socket_timeout(self):
         no_timeout = Connection(self.host, self.port)

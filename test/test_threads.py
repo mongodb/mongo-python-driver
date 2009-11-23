@@ -18,6 +18,7 @@ import unittest
 import threading
 
 from test_connection import get_connection
+from pymongo.errors import AutoReconnect
 
 
 class SaveAndFind(threading.Thread):
@@ -79,6 +80,21 @@ class Update(threading.Thread):
                 assert error
 
 
+class IgnoreAutoReconnect(threading.Thread):
+
+    def __init__(self, collection, n):
+        threading.Thread.__init__(self)
+        self.c = collection
+        self.n = n
+
+    def run(self):
+        for _ in range(self.n):
+            try:
+                self.c.find_one()
+            except AutoReconnect:
+                pass
+
+
 class TestThreads(unittest.TestCase):
 
     def setUp(self):
@@ -133,6 +149,23 @@ class TestThreads(unittest.TestCase):
 
         error.join()
         okay.join()
+
+    def test_low_network_timeout(self):
+        db = None
+        while db is None:
+            try:
+                db = get_connection(network_timeout=0.0001, timeout=-1).pymongo_test
+            except AutoReconnect:
+                pass
+
+        threads = []
+        for _ in range(4):
+            t = IgnoreAutoReconnect(db.test, 100)
+            t.start()
+            threads.append(t)
+
+        for t in threads:
+            t.join()
 
 
 if __name__ == "__main__":

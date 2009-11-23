@@ -316,7 +316,10 @@ class Connection(object): # TODO support auth for pooling
                     sock.settimeout(_CONNECT_TIMEOUT)
                     sock.connect((host, port))
                     sock.settimeout(self.__network_timeout)
-                    master = self.__master(sock)
+                    try:
+                        master = self.__master(sock)
+                    except ConnectionFailure, e:
+                        raise AutoReconnect(str(e))
                     if master is True:
                         self.__host = host
                         self.__port = port
@@ -456,8 +459,8 @@ class Connection(object): # TODO support auth for pooling
             if not self.__sockets[sock]:
                 self.__connect(sock)
         except ConnectionFailure, e:
-            self.__locks[sock].release()
-            self._reset()
+            self.__sockets[sock].close()
+            self.__sockets[sock] = None
             raise AutoReconnect(str(e))
         return sock
 
@@ -564,7 +567,8 @@ class Connection(object): # TODO support auth for pooling
                     response = self.__receive_message_on_socket(1, request_id, sock)
                     self.__check_response_to_last_error(response)
             except ConnectionFailure, e:
-                self._reset()
+                self.__sockets[sock_number].close()
+                self.__sockets[sock_number] = None
                 raise AutoReconnect(str(e))
         finally:
             self.__locks[sock_number].release()
@@ -593,7 +597,9 @@ class Connection(object): # TODO support auth for pooling
         """
         header = self.__receive_data_on_socket(16, sock)
         length = struct.unpack("<i", header[:4])[0]
-        assert request_id == struct.unpack("<i", header[8:12])[0], "ids don't match %r %r" % (request_id, struct.unpack("<i", header[8:12])[0])
+        assert request_id == struct.unpack("<i", header[8:12])[0], \
+            "ids don't match %r %r" % (request_id,
+                                       struct.unpack("<i", header[8:12])[0])
         assert operation == struct.unpack("<i", header[12:])[0]
 
         return self.__receive_data_on_socket(length - 16, sock)
@@ -631,7 +637,8 @@ class Connection(object): # TODO support auth for pooling
             try:
                 return self.__send_and_receive(message, sock)
             except ConnectionFailure, e:
-                self._reset()
+                self.__sockets[sock_number].close()
+                self.__sockets[sock_number] = None
                 raise AutoReconnect(str(e))
         finally:
             self.__locks[sock_number].release()
