@@ -183,32 +183,46 @@ class Collection(object):
 
     def update(self, spec, document,
                upsert=False, manipulate=False, safe=False, multi=False):
-        """Update a single document in this collection.
+        """Update a document(s) in this collection.
 
-        Raises TypeError if either spec or document isn't an instance of
-        dict or upsert isn't an instance of bool. If `safe` is True then
-        the update will be checked for errors, raising OperationFailure if one
-        occurred. Safe inserts wait for a response from the database, while
-        normal inserts do not.
+        Raises :class:`TypeError` if either `spec` or `document` is not an
+        instance of ``dict`` or `upsert` is not an instance of ``bool``. If
+        `safe` is ``True`` then the update will be checked for errors, raising
+        :class:`~pymongo.errors.OperationFailure` if one occurred. Safe inserts
+        wait for a response from the database, while normal inserts do not.
+
+        There are many useful `update modifiers`_ which can be used when
+        performing updates. For example, here we use the ``"$set"`` modifier to
+        modify some fields in a matching document::
+
+          >>> db.test.insert({"x": "y", "a": "b"})
+          ObjectId('...')
+          >>> list(db.test.find())
+          [{u'a': u'b', u'x': u'y', u'_id': ObjectId('...')}]
+          >>> db.test.update({"x": "y"}, {"$set": {"a": "c"}})
+          >>> list(db.test.find())
+          [{u'a': u'c', u'x': u'y', u'_id': ObjectId('...')}]
 
         :Parameters:
-          - `spec`: a SON object specifying elements which must be present for
-            a document to be updated
-          - `document`: a SON object specifying the document to be used for the
-            update or (in the case of an upsert) insert. See docs on MongoDB
-            `update modifiers <http://www.mongodb.org/display/DOCS/Updating>`_
+          - `spec`: a ``dict`` or :class:`~pymongo.son.SON` instance specifying
+            elements which must be present for a document to be updated
+          - `document`: a ``dict`` or :class:`~pymongo.son.SON` instance
+            specifying the document to be used for the update or (in the case
+            of an upsert) insert - see docs on MongoDB `update modifiers`_
           - `upsert` (optional): perform an upsert operation
           - `manipulate` (optional): manipulate the document before updating?
           - `safe` (optional): check that the update succeeded?
           - `multi` (optional): update all documents that match `spec`, rather
             than just the first matching document. The default value for
-            `multi` is currently False, but this might eventually change to
-            True. It is recommended that you specify this argument explicitly
-            for all update operations in order to prepare your code for that
-            change.
+            `multi` is currently ``False``, but this might eventually change to
+            ``True``. It is recommended that you specify this argument
+            explicitly for all update operations in order to prepare your code
+            for that change.
 
         .. versionadded:: 1.1.1
            The `multi` parameter.
+
+        .. _update modifiers: http://www.mongodb.org/display/DOCS/Updating
         """
         if not isinstance(spec, types.DictType):
             raise TypeError("spec must be an instance of dict")
