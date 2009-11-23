@@ -23,6 +23,12 @@ class ConnectionFailure(IOError):
 class AutoReconnect(ConnectionFailure):
     """Raised when a connection to the database is lost and an attempt to
     auto-reconnect will be made.
+
+    In order to auto-reconnect you must handle this exception, recognizing that
+    the operation which caused it has not necessarily succeeded. Future
+    operations will attempt to open a new connection to the database (and
+    will continue to raise this exception until the first successful
+    connection is made).
     """
 
 
