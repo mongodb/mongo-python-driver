@@ -155,12 +155,13 @@ class TestThreads(unittest.TestCase):
     def test_low_network_timeout(self):
         db = None
         i = 0
-        while db is None and i < 10:
+        n = 10
+        while db is None and i < n:
             try:
                 db = get_connection(network_timeout=0.0001, timeout=-1).pymongo_test
             except AutoReconnect:
                 i += 1
-        if i == 1000:
+        if i == n:
             raise SkipTest()
 
         threads = []

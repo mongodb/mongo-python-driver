@@ -135,12 +135,13 @@ class TestConnection(unittest.TestCase):
     def test_low_network_timeout(self):
         c = None
         i = 0
-        while c is None and i < 10:
+        n = 10
+        while c is None and i < n:
             try:
                 c = Connection(self.host, self.port, network_timeout=0.0001)
             except AutoReconnect:
                 i += 1
-        if i == 1000:
+        if i == n:
             raise SkipTest()
 
         coll = c.pymongo_test.test
