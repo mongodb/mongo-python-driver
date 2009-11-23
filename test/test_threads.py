@@ -17,6 +17,8 @@
 import unittest
 import threading
 
+from nose.plugins.skip import SkipTest
+
 from test_connection import get_connection
 from pymongo.errors import AutoReconnect
 
@@ -152,11 +154,14 @@ class TestThreads(unittest.TestCase):
 
     def test_low_network_timeout(self):
         db = None
-        while db is None:
+        i = 0
+        while db is None and i < 1000:
             try:
                 db = get_connection(network_timeout=0.0001, timeout=-1).pymongo_test
             except AutoReconnect:
-                pass
+                i += 1
+        if i == 1000:
+            raise SkipTest()
 
         threads = []
         for _ in range(4):

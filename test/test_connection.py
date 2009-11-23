@@ -19,6 +19,8 @@ import os
 import sys
 sys.path[0:0] = [""]
 
+from nose.plugins.skip import SkipTest
+
 from pymongo.errors import ConnectionFailure, InvalidName, AutoReconnect
 from pymongo.database import Database
 from pymongo.connection import Connection
@@ -132,11 +134,15 @@ class TestConnection(unittest.TestCase):
     # due to timing issues, but I want to get something in here.
     def test_low_network_timeout(self):
         c = None
-        while c is None:
+        i = 0
+        while c is None and i < 1000:
             try:
                 c = Connection(self.host, self.port, network_timeout=0.0001)
             except AutoReconnect:
-                pass
+                i += 1
+        if i == 1000:
+            raise SkipTest()
+
         coll = c.pymongo_test.test
 
         for _ in range(1000):
