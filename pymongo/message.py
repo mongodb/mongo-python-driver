@@ -19,7 +19,7 @@ MongoDB.
 .. note:: This module is for internal use and is generally not needed by
    application developers.
 
-.. versionadded:: 1.1.1+
+.. versionadded:: 1.1.2
 """
 
 import threading
