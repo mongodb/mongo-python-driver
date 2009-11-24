@@ -80,10 +80,6 @@ class TestSON(unittest.TestCase):
       <ns>namespace</ns>
       <oid>ca5c67496c01d896f7010000</oid>
     </ref>
-    <regex name="regex">
-      <pattern>foobar</pattern>
-      <options>i</options>
-    </regex>
     <code name="$where">this is code</code>
     <null name="mynull"/>
   </doc>
@@ -104,7 +100,6 @@ class TestSON(unittest.TestCase):
                                DBRef("namespace",
                                      ObjectId("\xCA\x5C\x67\x49\x6C\x01"
                                               "\xD8\x96\xF7\x01\x00\x00"))),
-                              (u"regex", re.compile(u"foobar", re.IGNORECASE)),
                               (u"$where", "this is code"),
                               (u"mynull", None),
                               ]))
