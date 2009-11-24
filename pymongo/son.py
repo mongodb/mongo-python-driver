@@ -308,7 +308,6 @@ class SON(dict):
                         "int": make_int,
                         "null": make_null,
                         "number": make_number,
-                        "regex": make_regex,
                         "pattern": make_string,
                         "options": make_options,
                         }[elem.tag](elem)
