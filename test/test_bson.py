@@ -197,8 +197,12 @@ class TestBSON(unittest.TestCase):
                 expected = f.read()
                 f.close()
 
-                self.assertEqual(bson, expected, file_name)
-                self.assertEqual(doc, bson.to_dict(), file_name)
+                self.assertEqual(bson, expected,
+                                 "(in %s) %r != %r" % (file_name, bson,
+                                                       expected))
+                self.assertEqual(doc, bson.to_dict(),
+                                 "(in %s) %r != %r" % (file_name, doc,
+                                                       bson.to_dict()))
 
             except IOError:
                 if generate:
