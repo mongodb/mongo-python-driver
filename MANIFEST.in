@@ -1,7 +1,8 @@
 include README.rst
 include LICENSE
 include ez_setup.py
-include epydoc-config
+recursive-include doc *.rst
+recursive-include doc *.py
 recursive-include examples *.py
 recursive-include tools *.py
 include tools/README.rst
