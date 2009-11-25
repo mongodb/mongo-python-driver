@@ -103,7 +103,7 @@ class TestTimeoutableLock(unittest.TestCase):
         counter.assert_count = 0
 
         def start_and_join(thread_count):
-            threads = [AcquireHoldRelease(lock, 0.1, 0.3, counter)
+            threads = [AcquireHoldRelease(lock, 0.1, 0.31, counter)
                        for _ in range(thread_count)]
             for thread in threads:
                 thread.start()
