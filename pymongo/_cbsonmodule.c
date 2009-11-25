@@ -24,10 +24,8 @@
  */
 
 
-#define _GNU_SOURCE
 #include <stdio.h>
 #include <time.h>
-#undef _GNU_SOURCE // avoid multiple define from Python.h
 
 #include <Python.h>
 #include <datetime.h>
@@ -51,6 +49,9 @@ typedef int Py_ssize_t;
 #endif
 
 #define INITIAL_BUFFER_SIZE 256
+
+/* Maximum number of regex flags */
+#define FLAGS_SIZE 7
 
 
 /* TODO we ought to check that the malloc or asprintf was successful
@@ -216,18 +217,32 @@ struct tm * const tmp;
     t += saved_seconds;
     return t;
 }
-#define GMTIME_INVERSE(time_struct) mkgmtime(time_struct)
+#define GMTIME_INVERSE(time_struct) mkgmtime((time_struct))
 #endif
-
-#define INT2STRING(buffer, i)                   \
-    {                                           \
-        int vslength = _scprintf("%d", i) + 1;  \
-        *buffer = malloc(vslength);             \
-        _snprintf(*buffer, vslength, "%d", i);  \
-    }
+/* This macro is basically an implementation of asprintf for win32
+ * We get the length of the int as string and malloc a buffer for it,
+ * returning -1 if that malloc fails. We then actually print to the
+ * buffer to get the string value as an int. Like asprintf, the result
+ * must be explicitly free'd when done being used.
+ */
+#define INT2STRING(buffer, i)                                           \
+    *(buffer) = malloc(_scprintf("%d", (i)) + 1),                       \
+        (!(buffer) ?                                                    \
+         -1 :                                                           \
+         _snprintf_s(*(buffer),                                         \
+                     _scprintf("%d", (i)) + 1,                          \
+                     _scprintf("%d", (i)) + 1,                          \
+                     "%d",                                              \
+                     (i)))
+#define STRCAT(dest, n, src) strcat_s((dest), (n), (src))
+#define GMTIME(timeinfo, seconds) gmtime_s((timeinfo), (seconds))
+#define LOCALTIME(timeinfo, seconds) localtime_s((timeinfo), (seconds))
 #else
-#define GMTIME_INVERSE(time_struct) timegm(time_struct)
-#define INT2STRING(buffer, i) asprintf(buffer, "%d", i);
+#define GMTIME_INVERSE(time_struct) timegm((time_struct))
+#define INT2STRING(buffer, i) asprintf((buffer), "%d", (i))
+#define STRCAT(dest, n, src) strcat((dest), (src))
+#define GMTIME(timeinfo, seconds) gmtime_r((seconds), (timeinfo)), 0
+#define LOCALTIME(timeinfo, seconds) localtime_r((seconds), (timeinfo)), 0
 #endif
 
 /* A buffer representing some data being encoded to BSON. */
@@ -417,8 +432,7 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
             if (type_byte == -1) {
                 return 0;
             }
-            INT2STRING(&name, i);
-            if (!name) {
+            if (INT2STRING(&name, i) < 0 || !name) {
                 PyErr_NoMemory();
                 return 0;
             }
@@ -568,18 +582,20 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
         return result;
     } else if (PyDateTime_CheckExact(value)) {
         time_t rawtime;
-        struct tm* timeinfo;
+        struct tm timeinfo;
         long long time_since_epoch;
 
         time(&rawtime);
-        timeinfo = localtime(&rawtime);
-        timeinfo->tm_year = PyDateTime_GET_YEAR(value) - 1900;
-        timeinfo->tm_mon = PyDateTime_GET_MONTH(value) - 1;
-        timeinfo->tm_mday = PyDateTime_GET_DAY(value);
-        timeinfo->tm_hour = PyDateTime_DATE_GET_HOUR(value);
-        timeinfo->tm_min = PyDateTime_DATE_GET_MINUTE(value);
-        timeinfo->tm_sec = PyDateTime_DATE_GET_SECOND(value);
-        time_since_epoch = GMTIME_INVERSE(timeinfo);
+        if (LOCALTIME(&timeinfo, &rawtime)) {
+            return 0;
+        }
+        timeinfo.tm_year = PyDateTime_GET_YEAR(value) - 1900;
+        timeinfo.tm_mon = PyDateTime_GET_MONTH(value) - 1;
+        timeinfo.tm_mday = PyDateTime_GET_DAY(value);
+        timeinfo.tm_hour = PyDateTime_DATE_GET_HOUR(value);
+        timeinfo.tm_min = PyDateTime_DATE_GET_MINUTE(value);
+        timeinfo.tm_sec = PyDateTime_DATE_GET_SECOND(value);
+        time_since_epoch = GMTIME_INVERSE(&timeinfo);
         time_since_epoch = time_since_epoch * 1000;
         time_since_epoch += PyDateTime_DATE_GET_MICROSECOND(value) / 1000;
 
@@ -623,7 +639,7 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
         PyObject* py_pattern;
         PyObject* encoded_pattern;
         long int_flags;
-        char flags[7];
+        char flags[FLAGS_SIZE];
         int pattern_length,
             flags_length;
 
@@ -661,22 +677,22 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
         flags[0] = 0;
         /* TODO don't hardcode these */
         if (int_flags & 2) {
-            strcat(flags, "i");
+            STRCAT(flags, FLAGS_SIZE, "i");
         }
         if (int_flags & 4) {
-            strcat(flags, "l");
+            STRCAT(flags, FLAGS_SIZE, "l");
         }
         if (int_flags & 8) {
-            strcat(flags, "m");
+            STRCAT(flags, FLAGS_SIZE, "m");
         }
         if (int_flags & 16) {
-            strcat(flags, "s");
+            STRCAT(flags, FLAGS_SIZE, "s");
         }
         if (int_flags & 32) {
-            strcat(flags, "u");
+            STRCAT(flags, FLAGS_SIZE, "u");
         }
         if (int_flags & 64) {
-            strcat(flags, "x");
+            STRCAT(flags, FLAGS_SIZE, "x");
         }
         flags_length = strlen(flags) + 1;
         if (!buffer_write_bytes(buffer, flags, flags_length)) {
@@ -1200,19 +1216,21 @@ static PyObject* get_value(const char* buffer, int* position, int type) {
             long long millis;
             int microseconds;
             time_t seconds;
-            struct tm* timeinfo;
+            struct tm timeinfo;
 
             memcpy(&millis, buffer + *position, 8);
             microseconds = (millis % 1000) * 1000;
             seconds = millis / 1000;
-            timeinfo = gmtime(&seconds);
+            if (GMTIME(&timeinfo, &seconds)) {
+                return NULL;
+            }
 
-            value = PyDateTime_FromDateAndTime(timeinfo->tm_year + 1900,
-                                               timeinfo->tm_mon + 1,
-                                               timeinfo->tm_mday,
-                                               timeinfo->tm_hour,
-                                               timeinfo->tm_min,
-                                               timeinfo->tm_sec,
+            value = PyDateTime_FromDateAndTime(timeinfo.tm_year + 1900,
+                                               timeinfo.tm_mon + 1,
+                                               timeinfo.tm_mday,
+                                               timeinfo.tm_hour,
+                                               timeinfo.tm_min,
+                                               timeinfo.tm_sec,
                                                microseconds);
             *position += 8;
             break;
