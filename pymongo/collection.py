@@ -238,7 +238,7 @@ class Collection(object):
             message.update(self.full_name(), upsert, multi,
                            spec, document, safe), safe)
 
-    def remove(self, spec_or_object_id, safe=False):
+    def remove(self, spec_or_object_id=None, safe=False):
         """Remove an object(s) from this collection.
 
         Raises TypeEror if the argument is not an instance of
@@ -254,6 +254,8 @@ class Collection(object):
           - `safe` (optional): check that the remove succeeded?
         """
         spec = spec_or_object_id
+        if spec is None:
+            spec = SON()
         if isinstance(spec, ObjectId):
             spec = SON({"_id": spec})
 
