@@ -831,6 +831,14 @@ class TestCollection(unittest.TestCase):
 
         self.assertEqual(["a", "b", "c"], distinct)
 
+    def test_query_on_query_field(self):
+        self.db.drop_collection("test")
+        self.db.test.save({"query": "foo"})
+        self.db.test.save({"bar": "foo"})
+
+        self.assertEqual(1, self.db.test.find({"query": {"$ne": None}}).count())
+        self.assertEqual(1, len(list(self.db.test.find({"query": {"$ne": None}}))))
+
 
 if __name__ == "__main__":
     unittest.main()

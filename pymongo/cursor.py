@@ -121,13 +121,7 @@ class Cursor(object):
 
     def __query_spec(self):
         """Get the spec to use for a query.
-
-        Just `self.__spec`, unless this cursor needs special query fields, like
-        orderby.
         """
-        if not self.__ordering and not self.__explain and not self.__hint:
-            return self.__spec
-
         spec = SON({"query": self.__spec})
         if self.__ordering:
             spec["orderby"] = self.__ordering
