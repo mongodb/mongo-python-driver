@@ -14,6 +14,9 @@ Overview
 :doc:`tutorial`
   Start here for a quick overview.
 
+:doc:`examples/index`
+  Examples of how to perform specific tasks.
+
 :doc:`faq`
   Some questions that come up often.
 
@@ -51,6 +54,7 @@ Full Contents Tree
 
    installation
    tutorial
+   examples/index
    faq
    api/index
    tools
