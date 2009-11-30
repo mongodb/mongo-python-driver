@@ -735,6 +735,8 @@ class Collection(object):
 
         .. note:: Requires server version **>= 1.1.1**
 
+        .. seealso:: :doc:`/examples/map_reduce`
+
         .. versionadded:: 1.1.2+
 
         .. _map reduce command: http://www.mongodb.org/display/DOCS/MapReduce

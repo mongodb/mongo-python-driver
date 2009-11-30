@@ -1,5 +1,5 @@
-Map/Reduce
-==========
+Map/Reduce Example
+==================
 
 This example shows how to use the
 :meth:`~pymongo.collection.Collection.map_reduce` method to perform
