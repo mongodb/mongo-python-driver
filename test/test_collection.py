@@ -848,6 +848,9 @@ class TestCollection(unittest.TestCase):
                              {"foo": "x" * 2 * 1024 * 1024}])
 
     def test_map_reduce(self):
+        if not version.at_least(self.db.connection(), (1, 1, 1)):
+            raise SkipTest()
+
         db = self.db
         db.drop_collection("test")
 
