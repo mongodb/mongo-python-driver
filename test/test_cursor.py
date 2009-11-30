@@ -44,7 +44,9 @@ class TestCursor(unittest.TestCase):
             break
         c = a.explain()
         del b["millis"]
+        b.pop("oldPlan", None)
         del c["millis"]
+        c.pop("oldPlan", None)
         self.assertEqual(b, c)
         self.assert_("cursor" in b)
 
@@ -591,6 +593,35 @@ class TestCursor(unittest.TestCase):
         self.assertEqual(1, count)
 
         self.assertEqual(3, db.test.count())
+
+    def test_distinct(self):
+        if not version.at_least(self.db.connection(), (1, 1, 3, 1)):
+            raise SkipTest()
+
+        self.db.drop_collection("test")
+
+        self.db.test.save({"a": 1})
+        self.db.test.save({"a": 2})
+        self.db.test.save({"a": 2})
+        self.db.test.save({"a": 2})
+        self.db.test.save({"a": 3})
+
+        distinct = self.db.test.find({"a": {"$lt": 3}}).distinct("a")
+        distinct.sort()
+
+        self.assertEqual([1, 2], distinct)
+
+        self.db.drop_collection("test")
+
+        self.db.test.save({"a": {"b": "a"}, "c": 12})
+        self.db.test.save({"a": {"b": "b"}, "c": 8})
+        self.db.test.save({"a": {"b": "c"}, "c": 12})
+        self.db.test.save({"a": {"b": "c"}, "c": 8})
+
+        distinct = self.db.test.find({"c": 8}).distinct("a.b")
+        distinct.sort()
+
+        self.assertEqual(["b", "c"], distinct)
 
 
 if __name__ == "__main__":

@@ -301,6 +301,32 @@ class Cursor(object):
             return 0
         return int(response["n"])
 
+    def distinct(self, key):
+        """Get a list of distinct values for `key` among all documents in the
+        result set of this query.
+
+        Raises :class:`TypeError` if `key` is not an instance of
+        ``(str, unicode)``.
+
+        :Parameters:
+          - `key`: name of key for which we want to get the distinct values
+
+        .. note:: Requires server version **>= 1.1.3+**
+
+        .. seealso:: :meth:`pymongo.collection.Collection.distinct`
+
+        .. versionadded:: 1.1.2+
+        """
+        if not isinstance(key, types.StringTypes):
+            raise TypeError("key must be an instance of (str, unicode)")
+
+        command = SON([("distinct", self.__collection.name()), ("key", key)])
+
+        if self.__spec:
+            command["query"] = self.__spec
+
+        return self.__collection.database()._command(command)["values"]
+
     # __len__ is deprecated (replaced with count(True)) and will be removed.
     #
     # The reason for this deprecation is a bit complex:

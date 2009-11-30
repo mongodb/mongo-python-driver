@@ -415,6 +415,9 @@ class Collection(object):
 
     def count(self):
         """Get the number of documents in this collection.
+
+        To get the number of documents matching a specific query use
+        :meth:`pymongo.cursor.Cursor.count`.
         """
         return self.find().count()
 
@@ -703,16 +706,20 @@ class Collection(object):
         """Get a list of distinct values for `key` among all documents in this
         collection.
 
+        Raises :class:`TypeError` if `key` is not an instance of
+        ``(str, unicode)``.
+
+        To get the distinct values for a key in the result set of a query
+        use :meth:`pymongo.cursor.Cursor.distinct`.
+
         :Parameters:
           - `key`: name of key for which we want to get the distinct values
 
+        .. note:: Requires server version **>= 1.1.0**
+
         .. versionadded:: 1.1.1
         """
-        if not isinstance(key, types.StringTypes):
-            raise TypeError("key must be an instance of (str, unicode)")
-
-        command = SON([("distinct", self.__collection_name), ("key", key)])
-        return self.__database._command(command)["values"]
+        return self.find().distinct(key)
 
     def map_reduce(self, map, reduce, full_response=False, **kwargs):
         """Perform a map/reduce operation on this collection.
