@@ -523,11 +523,14 @@ class TestCursor(unittest.TestCase):
 
         self.assertEqual(0, self.db.test.find()[0]['i'])
         self.assertEqual(50, self.db.test.find()[50]['i'])
+        self.assertEqual(50, self.db.test.find().skip(50)[0]['i'])
+        self.assertEqual(50, self.db.test.find().skip(49)[1]['i'])
         self.assertEqual(50, self.db.test.find()[50L]['i'])
         self.assertEqual(99, self.db.test.find()[99]['i'])
 
         self.assertRaises(IndexError, lambda x: self.db.test.find()[x], -1)
         self.assertRaises(IndexError, lambda x: self.db.test.find()[x], 100)
+        self.assertRaises(IndexError, lambda x: self.db.test.find().skip(50)[x], 50)
 
     def test_count_with_limit_and_skip(self):
         if not version.at_least(self.db.connection(), (1, 1, 4, -1)):

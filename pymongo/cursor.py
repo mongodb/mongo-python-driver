@@ -188,24 +188,28 @@ class Cursor(object):
     def __getitem__(self, index):
         """Get a single document or a slice of documents from this cursor.
 
-        Raises InvalidOperation if this cursor has already been used.
+        Raises :class:`~pymongo.errors.InvalidOperation` if this
+        cursor has already been used.
 
-        To get a single document use an integral index, e.g.:
+        To get a single document use an integral index, e.g.::
 
-        >>> db.test.find()[50]
+          >>> db.test.find()[50]
 
-        An IndexError will be raised if the index is negative or greater than
-        the amount of documents in this cursor.
+        An :class:`IndexError` will be raised if the index is negative
+        or greater than the amount of documents in this cursor. Any
+        limit applied to this cursor will be ignored.
 
-        To get a slice of documents use a slice index, e.g.:
+        To get a slice of documents use a slice index, e.g.::
 
-        >>> db.test.find()[20:25]
+          >>> db.test.find()[20:25]
 
-        This will return this cursor with a limit of 5 and skip of 20 applied.
-        Using a slice index will override any prior limits or skips applied to
-        this cursor (including those applied through previous calls to this
-        method). Raises IndexError when the slice has a step, a negative start
-        value, or a stop value less than or equal to the start value.
+        This will return this cursor with a limit of ``5`` and skip of
+        ``20`` applied.  Using a slice index will override any prior
+        limits or skips applied to this cursor (including those
+        applied through previous calls to this method). Raises
+        :class:`IndexError` when the slice has a step, a negative
+        start value, or a stop value less than or equal to the start
+        value.
 
         :Parameters:
           - `index`: An integer or slice index to be applied to this cursor
@@ -236,7 +240,7 @@ class Cursor(object):
             if index < 0:
                 raise IndexError("Cursor instances do not support negative indices")
             clone = self.clone()
-            clone.skip(index)
+            clone.skip(index + self.__skip)
             clone.limit(-1) # use a hard limit
             for doc in clone:
                 return doc
