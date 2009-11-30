@@ -847,6 +847,40 @@ class TestCollection(unittest.TestCase):
         self.db.test.insert([{"foo": "x" * 2 * 1024 * 1024},
                              {"foo": "x" * 2 * 1024 * 1024}])
 
+    def test_map_reduce(self):
+        db = self.db
+        db.drop_collection("test")
+
+        db.test.insert({"id": 1, "tags": ["dog", "cat"]})
+        db.test.insert({"id": 2, "tags": ["cat"]})
+        db.test.insert({"id": 3, "tags": ["mouse", "cat", "dog"]})
+        db.test.insert({"id": 4, "tags": []})
+
+        map = Code("function () {"
+                   "  this.tags.forEach(function(z) {"
+                   "    emit(z, 1);"
+                   "  });"
+                   "}")
+        reduce = Code("function (key, values) {"
+                      "  var total = 0;"
+                      "  for (var i = 0; i < values.length; i++) {"
+                      "    total += values[i];"
+                      "  }"
+                      "  return total;"
+                      "}")
+        result = db.test.map_reduce(map, reduce)
+        self.assertEqual(3, result.find_one({"_id": "cat"})["value"])
+        self.assertEqual(2, result.find_one({"_id": "dog"})["value"])
+        self.assertEqual(1, result.find_one({"_id": "mouse"})["value"])
+
+        full_result = db.test.map_reduce(map, reduce, full_response=True)
+        self.assertEqual(6, full_result["counts"]["emit"])
+
+        result = db.test.map_reduce(map, reduce, limit=2)
+        self.assertEqual(2, result.find_one({"_id": "cat"})["value"])
+        self.assertEqual(1, result.find_one({"_id": "dog"})["value"])
+        self.assertEqual(None, result.find_one({"_id": "mouse"}))
+
 
 if __name__ == "__main__":
     unittest.main()

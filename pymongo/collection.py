@@ -714,6 +714,40 @@ class Collection(object):
         command = SON([("distinct", self.__collection_name), ("key", key)])
         return self.__database._command(command)["values"]
 
+    def map_reduce(self, map, reduce, full_response=False, **kwargs):
+        """Perform a map/reduce operation on this collection.
+
+        If `full_response` is ``False`` (default) returns a
+        :class:`~pymongo.collection.Collection` instance containing
+        the results of the operation. Otherwise, returns the full
+        response from the server to the `map reduce command`_.
+
+        :Parameters:
+          - `map`: map function (as a JavaScript string)
+          - `reduce`: reduce function (as a JavaScript string)
+          - `full_response` (optional): if ``True``, return full response to
+            this command - otherwise just return the result collection
+          - `**kwargs` (optional): additional arguments to the
+            `map reduce command`_ may be passed as keyword arguments to this
+            helper method, e.g.::
+
+            >>> db.test.map_reduce(map, reduce, limit=2)
+
+        .. note:: Requires server version **>= 1.1.1**
+
+        .. versionadded:: 1.1.2+
+
+        .. _map reduce command: http://www.mongodb.org/display/DOCS/MapReduce
+        """
+        command = SON([("mapreduce", self.__collection_name),
+                       ("map", map), ("reduce", reduce)])
+        command.update(**kwargs)
+
+        response = self.__database._command(command)
+        if full_response:
+            return response
+        return self.__database[response["result"]]
+
     def __iter__(self):
         return self
 
