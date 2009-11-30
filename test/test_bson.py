@@ -247,6 +247,9 @@ class TestBSON(unittest.TestCase):
     def test_non_string_keys(self):
         self.assertRaises(InvalidDocument, BSON.from_dict, {8.9: "test"})
 
+    def test_large_document(self):
+        self.assertRaises(InvalidDocument, BSON.from_dict, {"key": "x"*4*1024*1024})
+
 # TODO this test doesn't pass w/ C extension
 #
 # timegm doesn't handle years < 1900 (negative), at least on OS X

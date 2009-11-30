@@ -30,7 +30,6 @@
 #include <Python.h>
 #include <datetime.h>
 
-static PyObject* CBSONError;
 static PyObject* InvalidName;
 static PyObject* InvalidDocument;
 static PyObject* InvalidStringData;
@@ -762,7 +761,7 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
         PyObject* errmsg = PyString_FromString("Cannot encode object: ");
         PyObject* repr = PyObject_Repr(value);
         PyString_ConcatAndDel(&errmsg, repr);
-        PyErr_SetString(CBSONError, PyString_AsString(errmsg));
+        PyErr_SetString(InvalidDocument, PyString_AsString(errmsg));
         Py_DECREF(errmsg);
         return 0;
     }
@@ -931,6 +930,11 @@ static int write_dict(bson_buffer* buffer, PyObject* dict, unsigned char check_k
         return 0;
     }
     length = buffer->position - start_position;
+    if (length > 4 * 1024 * 1024) {
+        PyErr_SetString(InvalidDocument, "document too large - "
+                        "BSON documents are limited to 4 MB");
+        return NULL;
+    }
     memcpy(buffer->buffer + length_location, &length, 4);
     return 1;
 }
@@ -1357,7 +1361,7 @@ static PyObject* get_value(const char* buffer, int* position, int type) {
             break;
         }
     default:
-        PyErr_SetString(CBSONError, "no c decoder for this type yet");
+        PyErr_SetString(InvalidDocument, "no c decoder for this type yet");
         return NULL;
     }
     return value;
@@ -1485,7 +1489,6 @@ PyMODINIT_FUNC init_cbson(void) {
     if (!module) {
         return;
     }
-    CBSONError = PyObject_GetAttrString(module, "InvalidDocument");
     InvalidName = PyObject_GetAttrString(module, "InvalidName");
     InvalidDocument = PyObject_GetAttrString(module, "InvalidDocument");
     InvalidStringData = PyObject_GetAttrString(module, "InvalidStringData");

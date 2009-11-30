@@ -29,7 +29,7 @@ from pymongo.objectid import ObjectId
 from pymongo.code import Code
 from pymongo.binary import Binary
 from pymongo.collection import Collection
-from pymongo.errors import InvalidName, OperationFailure
+from pymongo.errors import InvalidName, OperationFailure, InvalidDocument
 from pymongo import ASCENDING, DESCENDING
 from pymongo.son import SON
 
@@ -838,6 +838,14 @@ class TestCollection(unittest.TestCase):
 
         self.assertEqual(1, self.db.test.find({"query": {"$ne": None}}).count())
         self.assertEqual(1, len(list(self.db.test.find({"query": {"$ne": None}}))))
+
+    def test_insert_large_document(self):
+        self.assertRaises(InvalidDocument, self.db.test.insert,
+                          {"foo": "x" * 4 * 1024 * 1024})
+        self.assertRaises(InvalidDocument, self.db.test.insert,
+                          [{"x": 1}, {"foo": "x" * 4 * 1024 * 1024}])
+        self.db.test.insert([{"foo": "x" * 2 * 1024 * 1024},
+                             {"foo": "x" * 2 * 1024 * 1024}])
 
 
 if __name__ == "__main__":
