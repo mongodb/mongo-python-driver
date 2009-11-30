@@ -74,6 +74,9 @@ class GridFS(object):
         spec = filename_or_spec
         if isinstance(filename_or_spec, types.StringTypes):
             spec = {"filename": filename_or_spec}
+        if not isinstance(spec, dict):
+            raise TypeError("filename_or_spec must be an "
+                            "instance of (str, dict, SON)")
         if not isinstance(collection, types.StringTypes):
             raise TypeError("collection must be an instance of (str, unicode)")
 

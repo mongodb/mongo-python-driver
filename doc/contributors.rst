@@ -14,3 +14,4 @@ The following is a list of people who have contributed to
 - Fajran Iman Rusadi (fajran)
 - Brad Clements (bkc)
 - Andrey Fedorov (andreyf)
+- Joshua Roesslein (joshthecoder)

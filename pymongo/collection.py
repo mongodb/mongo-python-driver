@@ -239,25 +239,42 @@ class Collection(object):
                            spec, document, safe), safe)
 
     def remove(self, spec_or_object_id=None, safe=False):
-        """Remove an object(s) from this collection.
+        """Remove a document(s) from this collection.
 
-        Raises TypeEror if the argument is not an instance of
-        (dict, ObjectId). If `safe` is True then the remove will be checked for
-        errors, raising OperationFailure if one occurred. Safe removes wait for
-        a response from the database, while normal removes do not.
+        .. warning:: Calls to :meth:`remove` should be performed with
+           care, as removed data cannot be restored.
 
+        Raises :class:`~pymongo.errors.TypeError` if
+        `spec_or_object_id` is not an instance of (``dict``,
+        :class:`~pymongo.objectid.ObjectId`). If `safe` is ``True``
+        then the remove operation will be checked for errors, raising
+        :class:`~pymongo.errors.OperationFailure` if one
+        occurred. Safe removes wait for a response from the database,
+        while normal removes do not.
+
+        If no `spec_or_object_id` is given all documents in this
+        collection will be removed. This is not equivalent to calling
+        :meth:`~pymongo.database.Database.drop_collection`, however, as
+        indexes will not be removed.
 
         :Parameters:
-          - `spec_or_object_id` (optional): a SON object specifying elements
-            which must be present for a document to be removed OR an instance
-            of ObjectId to be used as the value for an _id element
+          - `spec_or_object_id` (optional): a ``dict`` or
+            :class:`~pymongo.son.SON` instance specifying which documents
+            should be removed; or an instance of
+            :class:`~pymongo.objectid.ObjectId` specifying the value of the
+            ``_id`` field for the document to be removed
           - `safe` (optional): check that the remove succeeded?
+
+        .. versionchanged:: 1.1.2+
+           The `spec_or_object_id` parameter is now optional. If it is
+           not specified *all* documents in the collection will be
+           removed.
         """
         spec = spec_or_object_id
         if spec is None:
-            spec = SON()
+            spec = {}
         if isinstance(spec, ObjectId):
-            spec = SON({"_id": spec})
+            spec = {"_id": spec}
 
         if not isinstance(spec, types.DictType):
             raise TypeError("spec must be an instance of dict, not %s" %

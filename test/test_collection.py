@@ -300,6 +300,17 @@ class TestCollection(unittest.TestCase):
         qcheck.check_unittest(self, remove_insert_find_one,
                               qcheck.gen_mongo_dict(3))
 
+    def test_remove_all(self):
+        self.db.test.remove()
+        self.assertEqual(0, self.db.test.count())
+
+        self.db.test.insert({"x": 1})
+        self.db.test.insert({"y": 1})
+        self.assertEqual(2, self.db.test.count())
+
+        self.db.test.remove()
+        self.assertEqual(0, self.db.test.count())
+
     def test_find_w_fields(self):
         db = self.db
         db.test.remove({})
