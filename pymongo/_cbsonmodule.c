@@ -31,6 +31,7 @@
 #include <datetime.h>
 
 #include "time_helpers.h"
+#include "encoding_helpers.h"
 
 static PyObject* InvalidName;
 static PyObject* InvalidDocument;
@@ -181,17 +182,6 @@ static int write_string(bson_buffer* buffer, PyObject* py_string) {
     }
     if (!buffer_write_bytes(buffer, string, string_length)) {
         return 0;
-    }
-    return 1;
-}
-
-/* returns 0 on invalid ascii */
-static int validate_ascii(const char* data, int length) {
-    int i;
-    for (i = 0; i < length; i++) {
-        if (data[i] & 0x80) {
-            return 0;
-        }
     }
     return 1;
 }
@@ -393,8 +383,10 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
         int result;
 
         *(buffer->buffer + type_byte) = 0x02;
-        if (!validate_ascii(PyString_AsString(value), PyString_Size(value))) {
-            PyErr_SetString(InvalidStringData, "strings in documents must be ASCII only");
+        if (!is_legal_utf8_string((const unsigned char*)PyString_AsString(value),
+                                  PyString_Size(value))) {
+            PyErr_SetString(InvalidStringData,
+                            "strings in documents must be valid UTF-8");
             return 0;
         }
         result = write_string(buffer, value);
@@ -659,6 +651,13 @@ static int decode_and_write_pair(bson_buffer* buffer, PyObject* key,
     } else if (PyString_Check(key)) {
         encoded = key;
         Py_INCREF(encoded);
+
+        if (!is_legal_utf8_string((const unsigned char*)PyString_AsString(encoded),
+                                  PyString_Size(encoded))) {
+            PyErr_SetString(InvalidStringData,
+                            "strings in documents must be valid UTF-8");
+            return 0;
+        }
     } else {
         PyObject* errmsg = PyString_FromString("documents must have only string keys, key was ");
         PyObject* repr = PyObject_Repr(key);

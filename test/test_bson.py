@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+#
 # Copyright 2009 10gen, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -249,6 +251,19 @@ class TestBSON(unittest.TestCase):
 
     def test_large_document(self):
         self.assertRaises(InvalidDocument, BSON.from_dict, {"key": "x"*4*1024*1024})
+
+    def test_utf8(self):
+        w = {u"aéあ": u"aéあ"}
+        self.assertEqual(w, BSON.from_dict(w).to_dict())
+
+        x = {u"aéあ".encode("utf-8"): u"aéあ".encode("utf-8")}
+        self.assertEqual(w, BSON.from_dict(x).to_dict())
+
+        y = {"hello": u"aé".encode("iso-8859-1")}
+        self.assertRaises(InvalidStringData, BSON.from_dict, y)
+
+        z = {u"aé".encode("iso-8859-1"): "hello"}
+        self.assertRaises(InvalidStringData, BSON.from_dict, z)
 
 # TODO this test doesn't pass w/ C extension
 #

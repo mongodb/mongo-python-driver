@@ -64,10 +64,15 @@ def _get_c_string(data):
 def _make_c_string(string):
     if "\x00" in string:
         raise InvalidStringData("BSON strings must not contain a NULL character")
-    try:
+    if isinstance(string, unicode):
         return string.encode("utf-8") + "\x00"
-    except:
-        raise InvalidStringData("strings in documents must be ASCII only")
+    else:
+        try:
+            string.decode("utf-8")
+            return string + "\x00"
+        except:
+            raise InvalidStringData("strings in documents must be valid "
+                                    "UTF-8: %r" % string)
 
 
 def _validate_number(data):

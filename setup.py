@@ -120,7 +120,8 @@ c_ext = Feature(
     ext_modules=[Extension('pymongo._cbson',
                            include_dirs=['pymongo'],
                            sources=['pymongo/_cbsonmodule.c',
-                                    'pymongo/time_helpers.c'])])
+                                    'pymongo/time_helpers.c',
+                                    'pymongo/encoding_helpers.c'])])
 
 if "--no_ext" in sys.argv:
     sys.argv = [x for x in sys.argv if x != "--no_ext"]
