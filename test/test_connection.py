@@ -156,14 +156,14 @@ class TestConnection(unittest.TestCase):
 
     def test_socket_timeout(self):
         no_timeout = Connection(self.host, self.port)
-        timeout = Connection(self.host, self.port, network_timeout=0.01)
+        timeout = Connection(self.host, self.port, network_timeout=0.1)
 
         no_timeout.pymongo_test.drop_collection("test")
 
         no_timeout.pymongo_test.test.save({"x": 1})
 
         where_func = """function (doc) {
-  var d = new Date().getTime() + 500;
+  var d = new Date().getTime() + 1000;
   var x = new Date().getTime();
   while (x < d) {
     x = new Date().getTime();
