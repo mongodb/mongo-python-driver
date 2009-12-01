@@ -84,6 +84,7 @@ typedef int Py_ssize_t;
                      (i)))
 #define STRCAT(dest, n, src) strcat_s((dest), (src))
 #endif
+#else
 #define INT2STRING(buffer, i) asprintf((buffer), "%d", (i))
 #define STRCAT(dest, n, src) strcat((dest), (src))
 #endif
