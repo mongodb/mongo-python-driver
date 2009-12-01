@@ -5,6 +5,10 @@ This example shows how to use the
 :meth:`~pymongo.collection.Collection.map_reduce` method to perform
 map/reduce style aggregations on your data.
 
+.. note:: Map/Reduce requires server version **>= 1.1.1**. The PyMongo
+   :meth:`~pymongo.collection.Collection.map_reduce` helper requires
+   PyMongo version **>= 1.1.2+**.
+
 Setup
 -----
 To start, we'll insert some example data which we can perform
