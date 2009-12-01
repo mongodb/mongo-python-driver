@@ -765,7 +765,7 @@ static int write_dict(bson_buffer* buffer, PyObject* dict, unsigned char check_k
     if (length > 4 * 1024 * 1024) {
         PyErr_SetString(InvalidDocument, "document too large - "
                         "BSON documents are limited to 4 MB");
-        return NULL;
+        return 0;
     }
     memcpy(buffer->buffer + length_location, &length, 4);
     return 1;
