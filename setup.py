@@ -117,7 +117,10 @@ although they do result in significant speed improvements.
 c_ext = Feature(
     "optional C extension",
     standard=True,
-    ext_modules=[Extension('pymongo._cbson', ['pymongo/_cbsonmodule.c'])])
+    ext_modules=[Extension('pymongo._cbson',
+                           include_dirs=['pymongo'],
+                           sources=['pymongo/_cbsonmodule.c',
+                                    'pymongo/time_helpers.c'])])
 
 if "--no_ext" in sys.argv:
     sys.argv = [x for x in sys.argv if x != "--no_ext"]
