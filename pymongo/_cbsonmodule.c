@@ -78,11 +78,11 @@ typedef int Py_ssize_t;
     *(buffer) = malloc(_scprintf("%d", (i)) + 1),                       \
         (!(buffer) ?                                                    \
          -1 :                                                           \
-         _snprintf_s(*(buffer),                                         \
+         _snprintf(*(buffer),                                           \
                      _scprintf("%d", (i)) + 1,                          \
                      "%d",                                              \
                      (i)))
-#define STRCAT(dest, n, src) strcat_s((dest), (src))
+#define STRCAT(dest, n, src) strcat((dest), (src))
 #endif
 #else
 #define INT2STRING(buffer, i) asprintf((buffer), "%d", (i))
