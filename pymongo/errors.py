@@ -62,7 +62,7 @@ class InvalidBSON(ValueError):
     """
 
 class InvalidStringData(ValueError):
-    """Raised when trying to encode a string containing non-ASCII data.
+    """Raised when trying to encode a string containing non-UTF8 data.
     """
 
 
