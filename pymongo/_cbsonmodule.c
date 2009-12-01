@@ -62,6 +62,7 @@ typedef int Py_ssize_t;
  * buffer to get the string value as an int. Like asprintf, the result
  * must be explicitly free'd when done being used.
  */
+#if defined(_MSC_VER) && (_MSC_VER >= 1400)
 #define INT2STRING(buffer, i)                                           \
     *(buffer) = malloc(_scprintf("%d", (i)) + 1),                       \
         (!(buffer) ?                                                    \
@@ -73,6 +74,16 @@ typedef int Py_ssize_t;
                      (i)))
 #define STRCAT(dest, n, src) strcat_s((dest), (n), (src))
 #else
+#define INT2STRING(buffer, i)                                           \
+    *(buffer) = malloc(_scprintf("%d", (i)) + 1),                       \
+        (!(buffer) ?                                                    \
+         -1 :                                                           \
+         _snprintf_s(*(buffer),                                         \
+                     _scprintf("%d", (i)) + 1,                          \
+                     "%d",                                              \
+                     (i)))
+#define STRCAT(dest, n, src) strcat_s((dest), (src))
+#endif
 #define INT2STRING(buffer, i) asprintf((buffer), "%d", (i))
 #define STRCAT(dest, n, src) strcat((dest), (src))
 #endif

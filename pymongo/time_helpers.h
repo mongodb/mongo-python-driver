@@ -23,15 +23,18 @@
  * Some helpers for dealing with time stuff in a cross platform way.
  */
 #if defined(WIN32) || defined(_MSC_VER)
-/* No mkgmtime on MSVC before VS 2005.
- * This is terribly gross (see time_helpers.c). */
 #if defined(_MSC_VER) && (_MSC_VER >= 1400)
 #define GMTIME_INVERSE(time_struct) _mkgmtime64(time_struct)
-#else
-#define GMTIME_INVERSE(time_struct) mkgmtime((time_struct))
-#endif
 #define GMTIME(timeinfo, seconds) gmtime_s((timeinfo), (seconds))
 #define LOCALTIME(timeinfo, seconds) localtime_s((timeinfo), (seconds))
+#else
+/* No mkgmtime on MSVC before VS 2005.
+ * This is terribly gross (see time_helpers.c). */
+time_t mkgmtime(const struct tm* tmp);
+#define GMTIME_INVERSE(time_struct) mkgmtime((time_struct))
+#define GMTIME(timeinfo, seconds) *(timeinfo) = *(gmtime((seconds))), 0
+#define LOCALTIME(timeinfo, seconds) *(timeinfo) = *(localtime((seconds))), 0
+#endif
 #else
 #define GMTIME_INVERSE(time_struct) timegm((time_struct))
 #define GMTIME(timeinfo, seconds) gmtime_r((seconds), (timeinfo)), 0
