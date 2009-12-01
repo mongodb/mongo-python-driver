@@ -845,7 +845,7 @@ class TestCollection(unittest.TestCase):
         self.assertRaises(InvalidDocument, self.db.test.insert,
                           [{"x": 1}, {"foo": "x" * 4 * 1024 * 1024}])
         self.db.test.insert([{"foo": "x" * 2 * 1024 * 1024},
-                             {"foo": "x" * 2 * 1024 * 1024}])
+                             {"foo": "x" * 2 * 1024 * 1024}], safe=True)
 
     def test_map_reduce(self):
         if not version.at_least(self.db.connection(), (1, 1, 1)):
