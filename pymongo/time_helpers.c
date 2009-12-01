@@ -101,7 +101,8 @@
 */
 
 /* This hack is just for MSVC before VS 2005. */
-#if defined(_MSC_VER) && (_MSC_VER >= 1400)
+#if defined(WIN32) || defined(_MSC_VER)
+#if !defined(_MSC_VER) || (_MSC_VER < 1400)
 
 #include <time.h>
 
@@ -177,4 +178,5 @@ struct tm * const tmp;
     return t;
 }
 
+#endif
 #endif
