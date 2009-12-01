@@ -29,9 +29,10 @@
 #define GMTIME_INVERSE(time_struct) _mkgmtime64(time_struct)
 #else
 #define GMTIME_INVERSE(time_struct) mkgmtime((time_struct))
+#endif
 #define GMTIME(timeinfo, seconds) gmtime_s((timeinfo), (seconds))
 #define LOCALTIME(timeinfo, seconds) localtime_s((timeinfo), (seconds))
-#endif
+#else
 #define GMTIME_INVERSE(time_struct) timegm((time_struct))
 #define GMTIME(timeinfo, seconds) gmtime_r((seconds), (timeinfo)), 0
 #define LOCALTIME(timeinfo, seconds) localtime_r((seconds), (timeinfo)), 0
