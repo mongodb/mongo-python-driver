@@ -14,6 +14,7 @@
 
 """Representation of an ObjectId for Mongo."""
 
+import datetime
 import threading
 import types
 import time
@@ -159,8 +160,20 @@ class ObjectId(object):
         """Get the binary representation of this ObjectId.
         """
         return self.__id
-
     binary = property(get_binary)
+
+    def generation_time(self):
+        """A :class:`datetime.datetime` instance representing the time of
+        generation for this :class:`ObjectId`.
+
+        The :class:`datetime.datetime` is always naive and represents the
+        generation time in UTC. It is precise to the second.
+
+        .. versionadded:: 1.1.2+
+        """
+        t = struct.unpack(">i", self.__id[0:4])[0]
+        return datetime.datetime.utcfromtimestamp(t)
+    generation_time = property(generation_time)
 
     def __str__(self):
         return self.__id.encode("hex")

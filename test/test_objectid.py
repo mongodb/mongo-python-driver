@@ -14,6 +14,7 @@
 
 """Tests for the objectid module."""
 
+import datetime
 import unittest
 import sys
 sys.path[0:0] = [""]
@@ -104,6 +105,11 @@ class TestObjectId(unittest.TestCase):
             self.assert_(id not in map)
             map[id] = True
 
+    def test_generation_time(self):
+        d1 = datetime.datetime.utcnow()
+        d2 = ObjectId().generation_time
+
+        self.assert_(d2 - d1 < datetime.timedelta(seconds = 2))
 
 if __name__ == "__main__":
     unittest.main()
