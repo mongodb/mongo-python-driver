@@ -247,7 +247,8 @@ class Database(object):
     def profiling_level(self):
         """Get the database's current profiling level.
 
-        Returns one of (`pymongo.OFF`, `pymongo.SLOW_ONLY`, `pymongo.ALL`).
+        Returns one of (:data:`~pymongo.OFF`,
+        :data:`~pymongo.SLOW_ONLY`, :data:`~pymongo.ALL`).
         """
         result = self._command({"profile": -1})
 
@@ -257,8 +258,9 @@ class Database(object):
     def set_profiling_level(self, level):
         """Set the database's profiling level.
 
-        Raises ValueError if level is not one of (`pymongo.OFF`,
-        `pymongo.SLOW_ONLY`, `pymongo.ALL`).
+        Raises :class:`ValueError` if level is not one of
+        (:data:`~pymongo.OFF`, :data:`~pymongo.SLOW_ONLY`,
+        :data:`~pymongo.ALL`).
 
         :Parameters:
           - `level`: the profiling level to use

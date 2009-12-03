@@ -251,17 +251,19 @@ class Cursor(object):
         """Sorts this cursor's results.
 
         Takes either a single key and a direction, or a list of (key,
-        direction) pairs. The key(s) must be an instance of (str, unicode), and
-        the direction(s) must be one of (`pymongo.ASCENDING`,
-        `pymongo.DESCENDING`). Raises InvalidOperation if this cursor has
-        already been used. Only the last `sort` applied to this cursor has any
-        effect.
+        direction) pairs. The key(s) must be an instance of ``(str,
+        unicode)``, and the direction(s) must be one of
+        (:data:`~pymongo.ASCENDING`,
+        :data:`~pymongo.DESCENDING`). Raises
+        :class:`~pymongo.errors.InvalidOperation` if this cursor has
+        already been used. Only the last :meth:`sort` applied to this
+        cursor has any effect.
 
         :Parameters:
-          - `key_or_list`: a single key or a list of (key, direction) pairs
-            specifying the keys to sort on
-          - `direction` (optional): only used if key_or_list is a single
-            key, if not given ASCENDING is assumed
+          - `key_or_list`: a single key or a list of (key, direction)
+            pairs specifying the keys to sort on
+          - `direction` (optional): only used if `key_or_list` is a single
+            key, if not given :data:`~pymongo.ASCENDING` is assumed
         """
         self.__check_okay_to_chain()
         keys = pymongo._index_list(key_or_list, direction)
@@ -360,16 +362,20 @@ class Cursor(object):
     def hint(self, index):
         """Adds a 'hint', telling Mongo the proper index to use for the query.
 
-        Judicious use of hints can greatly improve query performance. When
-        doing a query on multiple fields (at least one of which is indexed)
-        pass the indexed field as a hint to the query. Hinting will not do
-        anything if the corresponding index does not exist. Raises
-        InvalidOperation if this cursor has already been used.
+        Judicious use of hints can greatly improve query
+        performance. When doing a query on multiple fields (at least
+        one of which is indexed) pass the indexed field as a hint to
+        the query. Hinting will not do anything if the corresponding
+        index does not exist. Raises
+        :class:`~pymongo.errors.InvalidOperation` if this cursor has
+        already been used.
 
-        `index` should be an index as passed to create_index
-        (e.g. [('field', ASCENDING)]). If `index` is None any existing
-        hints for this query are cleared. The last hint applied to this cursor
-        takes precedence over all others.
+        `index` should be an index as passed to
+        :meth:`~pymongo.collection.Collection.create_index`
+        (e.g. ``[('field', ASCENDING)]``). If `index`
+        is ``None`` any existing hints for this query are cleared. The
+        last hint applied to this cursor takes precedence over all
+        others.
 
         :Parameters:
           - `index`: index to hint on (as an index specifier)

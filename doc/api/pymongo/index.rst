@@ -3,7 +3,11 @@
 
 .. automodule:: pymongo
    :synopsis: Python driver for MongoDB
-   :members:
+
+   .. autodata:: version
+   .. data:: Connection
+
+      Alias for :class:`pymongo.connection.Connection`.
 
 Sub-modules:
 

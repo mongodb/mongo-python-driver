@@ -27,7 +27,7 @@ DESCENDING = -1
 """Descending sort order."""
 
 OFF = 0
-"""Turn off database profiling."""
+"""No database profiling."""
 SLOW_ONLY = 1
 """Only profile slow operations."""
 ALL = 2
@@ -37,7 +37,7 @@ version = "1.1.2+"
 """Current version of PyMongo."""
 
 Connection = PyMongo_Connection
-"""Alias for pymongo.connection.Connection."""
+"""Alias for :class:`pymongo.connection.Connection`."""
 
 try:
     _SEEK_SET = os.SEEK_SET

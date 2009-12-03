@@ -430,9 +430,10 @@ class Collection(object):
         """Creates an index on this collection.
 
         Takes either a single key or a list of (key, direction) pairs.
-        The key(s) must be an instance of (str, unicode),
-        and the directions must be one of (`pymongo.ASCENDING`,
-        `pymongo.DESCENDING`). Returns the name of the created index.
+        The key(s) must be an instance of ``(str, unicode)``, and the
+        directions must be one of (:data:`~pymongo.ASCENDING`,
+        :data:`~pymongo.DESCENDING`). Returns the name of the created
+        index.
 
         :Parameters:
           - `key_or_list`: a single key or a list of (key, direction) pairs
@@ -440,8 +441,8 @@ class Collection(object):
           - `direction` (optional): DEPRECATED this option will be removed
           - `unique` (optional): should this index guarantee uniqueness?
           - `ttl` (optional): time window (in seconds) during which this index
-            will be recognized by subsequent calls to `ensure_index` - see
-            documentation for `ensure_index` for details
+            will be recognized by subsequent calls to :meth:`ensure_index` -
+            see documentation for :meth:`ensure_index` for details
         """
         if not isinstance(key_or_list, (str, unicode, list)):
             raise TypeError("key_or_list must either be a single key or a list of (key, direction) pairs")
@@ -471,26 +472,28 @@ class Collection(object):
     def ensure_index(self, key_or_list, direction=None, unique=False, ttl=300):
         """Ensures that an index exists on this collection.
 
-        Takes either a single key or a list of (key, direction) pairs.
-        The key(s) must be an instance of (str, unicode),
-        and the direction(s) must be one of (`pymongo.ASCENDING`,
-        `pymongo.DESCENDING`).
+        Takes either a single key or a list of (key, direction)
+        pairs.  The key(s) must be an instance of ``(str, unicode)``,
+        and the direction(s) must be one of
+        (:data:`~pymongo.ASCENDING`, :data:`~pymongo.DESCENDING`).
 
-        Unlike `create_index`, which attempts to create an index
-        unconditionally, `ensure_index` takes advantage of some caching within
-        the driver such that it only attempts to create indexes that might
-        not already exist. When an index is created (or ensured) by PyMongo
-        it is "remembered" for `ttl` seconds. Repeated calls to `ensure_index`
-        within that time limit will be lightweight - they will not attempt to
+        Unlike :meth:`create_index`, which attempts to create an index
+        unconditionally, :meth:`ensure_index` takes advantage of some
+        caching within the driver such that it only attempts to create
+        indexes that might not already exist. When an index is created
+        (or ensured) by PyMongo it is "remembered" for `ttl`
+        seconds. Repeated calls to :meth:`ensure_index` within that
+        time limit will be lightweight - they will not attempt to
         actually create the index.
 
-        Care must be taken when the database is being accessed through multiple
-        connections at once. If an index is created using PyMongo and then
-        deleted using another connection any call to `ensure_index` within the
-        cache window will fail to re-create the missing index.
+        Care must be taken when the database is being accessed through
+        multiple connections at once. If an index is created using
+        PyMongo and then deleted using another connection any call to
+        :meth:`ensure_index` within the cache window will fail to
+        re-create the missing index.
 
-        Returns the name of the created index if an index is actually created.
-        Returns None if the index already exists.
+        Returns the name of the created index if an index is actually
+        created. Returns ``None`` if the index already exists.
 
         :Parameters:
           - `key_or_list`: a single key or a list of (key, direction) pairs
@@ -498,7 +501,7 @@ class Collection(object):
           - `direction` (optional): DEPRECATED this option will be removed
           - `unique` (optional): should this index guarantee uniqueness?
           - `ttl` (optional): time window (in seconds) during which this index
-            will be recognized by subsequent calls to `ensure_index`
+            will be recognized by subsequent calls to :meth:`ensure_index`
         """
         if not isinstance(key_or_list, (str, unicode, list)):
             raise TypeError("key_or_list must either be a single key or a list of (key, direction) pairs")
