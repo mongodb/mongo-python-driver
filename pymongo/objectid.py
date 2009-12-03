@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Representation of an ObjectId for Mongo."""
+"""Tools for working with MongoDB `ObjectIds
+<http://www.mongodb.org/display/DOCS/Object+IDs>`_.
+"""
 
 import datetime
 import threading
@@ -48,22 +50,25 @@ class ObjectId(object):
 
     _machine_bytes = _machine_bytes()
 
-    def __init__(self, id=None):
-        """Initialize a new ObjectId.
+    def __init__(self, oid=None):
+        """Initialize a new ObjectId_.
 
-        If no value of id is given, create a new (unique) ObjectId. If given id
-        is an instance of (string, ObjectId) validate it and use that.
-        Otherwise, a TypeError is raised. If given an invalid id, InvalidId is
-        raised.
+        If `oid` is ``None``, create a new (unique)
+        ObjectId_. If `oid` is an instance of (``string``,
+        :class:`ObjectId`) validate it and use that.  Otherwise, a
+        :class:`TypeError` is raised. If `oid` is invalid,
+        :class:`~pymongo.errors.InvalidId` is raised.
 
         :Parameters:
-          - `id` (optional): a valid ObjectId (12 byte binary or 24 character
+          - `oid` (optional): a valid ObjectId_ (12 byte binary or 24 character
             hex string)
+
+        .. _ObjectId: http://www.mongodb.org/display/DOCS/Object+IDs
         """
-        if id is None:
+        if oid is None:
             self.__generate()
         else:
-            self.__validate(id)
+            self.__validate(oid)
 
     def __generate(self):
         """Generate a new value for this ObjectId.
@@ -156,11 +161,11 @@ class ObjectId(object):
         return cls(legacy_str[7::-1] + legacy_str[:7:-1])
     from_legacy_str = classmethod(from_legacy_str)
 
-    def get_binary(self):
-        """Get the binary representation of this ObjectId.
+    def binary(self):
+        """12-byte binary representation of this ObjectId.
         """
         return self.__id
-    binary = property(get_binary)
+    binary = property(binary)
 
     def generation_time(self):
         """A :class:`datetime.datetime` instance representing the time of
