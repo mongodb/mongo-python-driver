@@ -18,7 +18,7 @@ import types
 import struct
 import warnings
 
-import pymongo
+import helpers
 import message
 from son import SON
 from code import Code
@@ -266,8 +266,8 @@ class Cursor(object):
             key, if not given :data:`~pymongo.ASCENDING` is assumed
         """
         self.__check_okay_to_chain()
-        keys = pymongo._index_list(key_or_list, direction)
-        self.__ordering = pymongo._index_document(keys)
+        keys = helpers._index_list(key_or_list, direction)
+        self.__ordering = helpers._index_document(keys)
         return self
 
     def count(self, with_limit_and_skip=False):
@@ -387,7 +387,7 @@ class Cursor(object):
 
         if not isinstance(index, (types.ListType)):
             raise TypeError("hint takes a list specifying an index")
-        self.__hint = pymongo._index_document(index)
+        self.__hint = helpers._index_document(index)
         return self
 
     def where(self, code):
@@ -432,7 +432,11 @@ class Cursor(object):
 
         self.__connection_id = connection_id
 
-        response = pymongo.Connection._unpack_response(response, self.__id)
+        try:
+            response = helpers._unpack_response(response, self.__id)
+        except AutoReconnect:
+            db.connection()._reset()
+            raise
         self.__id = response["cursor_id"]
 
         # starting from doesn't get set on getmore's for tailable cursors

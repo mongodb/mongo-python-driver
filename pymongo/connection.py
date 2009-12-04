@@ -48,6 +48,7 @@ from cursor_manager import CursorManager
 from thread_util import TimeoutableLock
 import bson
 import message
+import helpers
 
 _logger = logging.getLogger("pymongo.connection")
 _logger.addHandler(logging.StreamHandler())
@@ -483,53 +484,13 @@ class Connection(object): # TODO support auth for pooling
                 raise ConnectionFailure("connection closed, resetting")
             total_sent += sent
 
-    # TODO does this really belong here?
-    def _unpack_response(response, cursor_id=None):
-        """Unpack a response from the database.
-
-        Check the response for errors and unpack, returning a dictionary
-        containing the response data.
-
-        :Parameters:
-          - `response`: byte string as returned from the database
-          - `cursor_id` (optional): cursor_id we sent to get this response -
-            used for raising an informative exception when we get cursor id not
-            valid at server response
-        """
-        response_flag = struct.unpack("<i", response[:4])[0]
-        if response_flag == 1:
-            # Shouldn't get this response if we aren't doing a getMore
-            assert cursor_id is not None
-
-            raise OperationFailure("cursor id '%s' not valid at server" %
-                                   cursor_id)
-        elif response_flag == 2:
-            error_object = bson.BSON(response[20:]).to_dict()
-            if error_object["$err"] == "not master":
-                db.connection()._reset()
-                raise AutoReconnect("master has changed")
-            raise OperationFailure("database error: %s" %
-                                   error_object["$err"])
-        else:
-            assert response_flag == 0
-
-        result = {}
-        result["cursor_id"] = struct.unpack("<q", response[4:12])[0]
-        result["starting_from"] = struct.unpack("<i", response[12:16])[0]
-        result["number_returned"] = struct.unpack("<i", response[16:20])[0]
-        result["data"] = bson._to_dicts(response[20:])
-        assert len(result["data"]) == result["number_returned"]
-        return result
-
-    _unpack_response = staticmethod(_unpack_response)
-
     def __check_response_to_last_error(self, response):
         """Check a response to a lastError message for errors.
 
         `response` is a byte string representing a response to the message.
         If it represents an error response we raise OperationFailure.
         """
-        response = Connection._unpack_response(response)
+        response = helpers._unpack_response(response)
 
         assert response["number_returned"] == 1
         error = response["data"][0]

@@ -18,7 +18,7 @@ import types
 import warnings
 import struct
 
-import pymongo
+import helpers
 import message
 from objectid import ObjectId
 from cursor import Cursor
@@ -454,11 +454,11 @@ class Collection(object):
                           DeprecationWarning)
 
         to_save = SON()
-        keys = pymongo._index_list(key_or_list)
+        keys = helpers._index_list(key_or_list)
         name = self._gen_index_name(keys)
         to_save["name"] = name
         to_save["ns"] = self.full_name()
-        to_save["key"] = pymongo._index_document(keys)
+        to_save["key"] = helpers._index_document(keys)
         to_save["unique"] = unique
 
         self.database().connection()._cache_index(self.__database.name(),
@@ -512,7 +512,7 @@ class Collection(object):
                           "for a direction on a single key index",
                           DeprecationWarning)
 
-        keys = pymongo._index_list(key_or_list)
+        keys = helpers._index_list(key_or_list)
         name = self._gen_index_name(keys)
         if self.database().connection()._cache_index(self.__database.name(),
                                                      self.name(),
