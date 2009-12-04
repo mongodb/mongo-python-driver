@@ -24,9 +24,6 @@ try:
 except:
     from StringIO import StringIO
 
-from pymongo import _SEEK_SET
-from pymongo import _SEEK_CUR
-from pymongo import _SEEK_END
 from pymongo.son import SON
 from pymongo.database import Database
 from pymongo.objectid import ObjectId
@@ -34,6 +31,15 @@ from pymongo.dbref import DBRef
 from pymongo.binary import Binary
 from errors import CorruptGridFile
 from pymongo import ASCENDING
+
+try:
+    _SEEK_SET = os.SEEK_SET
+    _SEEK_CUR = os.SEEK_CUR
+    _SEEK_END = os.SEEK_END
+except AttributeError: # before 2.5
+    _SEEK_SET = 0
+    _SEEK_CUR = 1
+    _SEEK_END = 2
 
 # TODO we should use per-file reader-writer locks here instead,
 # for performance. Unfortunately they aren't in the Python standard library.

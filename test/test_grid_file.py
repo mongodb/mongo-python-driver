@@ -23,8 +23,7 @@ sys.path[0:0] = [""]
 
 import qcheck
 from test_connection import get_connection
-from gridfs.grid_file import GridFile
-from pymongo import _SEEK_END, _SEEK_CUR
+from gridfs.grid_file import GridFile, _SEEK_END, _SEEK_CUR
 
 
 class TestGridFile(unittest.TestCase):
