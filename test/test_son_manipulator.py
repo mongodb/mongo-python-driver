@@ -94,7 +94,7 @@ class TestSONManipulator(unittest.TestCase):
         def incoming_adds_ns(son):
             son = manip.transform_incoming(son, collection)
             assert "_ns" in son
-            return son["_ns"] == collection.name()
+            return son["_ns"] == collection.name
         qcheck.check_unittest(self, incoming_adds_ns,
                               qcheck.gen_mongo_dict(3))
 

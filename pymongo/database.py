@@ -52,6 +52,10 @@ class Database(object):
 
         self.__name = unicode(name)
         self.__connection = connection
+        # TODO remove the callable_value wrappers after deprecation is complete
+        self.__name_w = helpers.callable_value(self.__name, "Database.name")
+        self.__connection_w = helpers.callable_value(self.__connection, "Database.connection")
+
         self.__incoming_manipulators = []
         self.__incoming_copying_manipulators = []
         self.__outgoing_manipulators = []
@@ -90,14 +94,25 @@ class Database(object):
                 self.__outgoing_manipulators.insert(0, manipulator)
 
     def connection(self):
-        """Get the database connection.
+        """The :class:`~pymongo.connection.Connection` instance for this
+        :class:`Database`.
+
+        .. versionchanged:: 1.1.2+
+           ``connection`` is now a property rather than a method. The
+           ``connection()`` method is deprecated.
         """
-        return self.__connection
+        return self.__connection_w
+    connection = property(connection)
 
     def name(self):
-        """Get the database name.
+        """The name of this :class:`Database`.
+
+        .. versionchanged:: 1.1.2+
+           ``name`` is now a property rather than a method. The
+           ``name()`` method is deprecated.
         """
-        return self.__name
+        return self.__name_w
+    name = property(name)
 
     def __cmp__(self, other):
         if isinstance(other, Database):
@@ -210,13 +225,13 @@ class Database(object):
         """
         name = name_or_collection
         if isinstance(name, Collection):
-            name = name.name()
+            name = name.name
 
         if not isinstance(name, types.StringTypes):
             raise TypeError("name_or_collection must be an instance of "
                             "(Collection, str, unicode)")
 
-        self.connection()._purge_index(self.name(), name)
+        self.__connection._purge_index(self.__name, name)
 
         if name not in self.collection_names():
             return
@@ -231,7 +246,7 @@ class Database(object):
         """
         name = name_or_collection
         if isinstance(name, Collection):
-            name = name.name()
+            name = name.name
 
         if not isinstance(name, types.StringTypes):
             raise TypeError("name_or_collection must be an instance of "

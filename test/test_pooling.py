@@ -32,7 +32,7 @@ class TestPooling(unittest.TestCase):
         default_connection = Connection(self.host, self.port)
         no_auto_connection = Connection(self.host, self.port,
                                         auto_start_request=False)
-        pooled_connection = Connection(self.host, self.port, 
+        pooled_connection = Connection(self.host, self.port,
                                        pool_size=10, timeout=-1)
         no_auto_pooled_connection = Connection(self.host, self.port,
                                                pool_size=10, timeout=-1,
@@ -74,7 +74,7 @@ class TestPooling(unittest.TestCase):
         for _ in range(100):
             self.default_db.test.remove({})
             self.default_db.test.insert({})
-            self.default_db.connection().end_request()
+            self.default_db.connection.end_request()
             if not self.default_db.test.find_one():
                 count += 1
         self.assertEqual(0, count)
@@ -92,7 +92,7 @@ class TestPooling(unittest.TestCase):
 #         for _ in range(6000):
 #             self.pooled_db.test.remove({})
 #             self.pooled_db.test.insert({})
-#             self.pooled_db.connection().end_request()
+#             self.pooled_db.connection.end_request()
 #             if not self.pooled_db.test.find_one():
 #                 count += 1
 #         self.assertNotEqual(0, count)
@@ -118,22 +118,22 @@ class TestPooling(unittest.TestCase):
 
         count = 0
         for _ in range(100):
-            self.no_auto_db.connection().start_request()
+            self.no_auto_db.connection.start_request()
             self.no_auto_db.test.remove({})
             self.no_auto_db.test.insert({})
             if not self.no_auto_db.test.find_one():
                 count += 1
-            self.no_auto_db.connection().end_request()
+            self.no_auto_db.connection.end_request()
         self.assertEqual(0, count)
 
         count = 0
         for _ in range(100):
-            self.no_auto_pooled_db.connection().start_request()
+            self.no_auto_pooled_db.connection.start_request()
             self.no_auto_pooled_db.test.remove({})
             self.no_auto_pooled_db.test.insert({})
             if not self.no_auto_pooled_db.test.find_one():
                 count += 1
-            self.no_auto_pooled_db.connection().end_request()
+            self.no_auto_pooled_db.connection.end_request()
         self.assertEqual(0, count)
 
     def test_multithread(self):
@@ -154,7 +154,7 @@ class SaveAndFind(threading.Thread):
             rand = random.randint(0, 100)
             id = self.database.mt_test.save({"x": rand})
             assert self.database.mt_test.find_one(id)["x"] == rand
-            self.database.connection().end_request()
+            self.database.connection.end_request()
 
 if __name__ == "__main__":
     unittest.main()

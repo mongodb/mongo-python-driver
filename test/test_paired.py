@@ -73,13 +73,13 @@ class TestPaired(unittest.TestCase):
         connection = Connection.paired(self.left, self.right)
         self.assert_(connection)
 
-        host = connection.host()
-        port = connection.port()
+        host = connection.host
+        port = connection.port
 
         connection = Connection.paired(self.right, self.left)
         self.assert_(connection)
-        self.assertEqual(host, connection.host())
-        self.assertEqual(port, connection.port())
+        self.assertEqual(host, connection.host)
+        self.assertEqual(port, connection.port)
 
         slave = self.left == (host, port) and self.right or self.left
         self.assertRaises(ConfigurationError, Connection.paired,

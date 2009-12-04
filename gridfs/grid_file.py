@@ -107,7 +107,8 @@ class GridFile(object):
             raise ValueError("mode must be one of ('r', 'w')")
 
         self.__collection = database[collection]
-        self.__collection.chunks.ensure_index([("files_id", ASCENDING), ("n", ASCENDING)], unique=True)
+        self.__collection.chunks.ensure_index([("files_id", ASCENDING),
+                                               ("n", ASCENDING)], unique=True)
 
         _files_lock.acquire()
 
@@ -226,8 +227,8 @@ class GridFile(object):
 
         self.__flush_write_buffer()
 
-        md5 = self.__collection.database()._command(SON([("filemd5", self.__id),
-                                                         ("root", self.__collection.name())]))["md5"]
+        md5 = self.__collection.database._command(SON([("filemd5", self.__id),
+                                                       ("root", self.__collection.name)]))["md5"]
 
         grid_file = self.__collection.files.find_one({"_id": self.__id})
         grid_file["md5"] = md5

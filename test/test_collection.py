@@ -134,8 +134,8 @@ class TestCollection(unittest.TestCase):
                          db.test.ensure_index("goodbye"))
         self.assertEqual(None, db.test.ensure_index("goodbye"))
 
-        db_name = self.db.name()
-        self.connection.drop_database(self.db.name())
+        db_name = self.db.name
+        self.connection.drop_database(self.db.name)
         self.assertEqual("goodbye_1",
                          db.test.ensure_index("goodbye"))
         self.assertEqual(None, db.test.ensure_index("goodbye"))
@@ -505,7 +505,7 @@ class TestCollection(unittest.TestCase):
 
     def test_multi_update(self):
         db = self.db
-        if not version.at_least(db.connection(), (1, 1, 3, -1)):
+        if not version.at_least(db.connection, (1, 1, 3, -1)):
             raise SkipTest()
 
         db.drop_collection("test")
@@ -532,7 +532,7 @@ class TestCollection(unittest.TestCase):
 
     def test_safe_update(self):
         db = self.db
-        v113minus = version.at_least(db.connection(), (1, 1, 3, -1))
+        v113minus = version.at_least(db.connection, (1, 1, 3, -1))
 
         db.drop_collection("test")
         db.test.create_index("x", unique=True)
@@ -571,7 +571,7 @@ class TestCollection(unittest.TestCase):
         db.test.remove({"x": 1})
         self.assertEqual(1, db.test.count())
 
-        if version.at_least(db.connection(), (1, 1, 3, -1)):
+        if version.at_least(db.connection, (1, 1, 3, -1)):
             self.assertRaises(OperationFailure, db.test.remove, {"x": 1}, safe=True)
         else: # Just test that it doesn't blow up
             db.test.remove({"x": 1}, safe=True)
@@ -676,7 +676,7 @@ class TestCollection(unittest.TestCase):
                                           Code(reduce_function,
                                                {"inc_value": 0.5}))[0]['count'])
 
-        if version.at_least(db.connection(), (1, 1)):
+        if version.at_least(db.connection, (1, 1)):
             self.assertEqual(2, db.test.group([], {}, {"count": 0},
                                               Code(reduce_function,
                                                    {"inc_value": 1}),
@@ -806,7 +806,7 @@ class TestCollection(unittest.TestCase):
         list(self.db.test.find(timeout=True))
 
     def test_distinct(self):
-        if not version.at_least(self.db.connection(), (1, 1)):
+        if not version.at_least(self.db.connection, (1, 1)):
             raise SkipTest()
 
         self.db.drop_collection("test")
@@ -851,7 +851,7 @@ class TestCollection(unittest.TestCase):
                              {"foo": "x" * 2 * 1024 * 1024}], safe=True)
 
     def test_map_reduce(self):
-        if not version.at_least(self.db.connection(), (1, 1, 1)):
+        if not version.at_least(self.db.connection, (1, 1, 1)):
             raise SkipTest()
 
         db = self.db

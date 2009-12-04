@@ -16,6 +16,7 @@
 
 import unittest
 import os
+import warnings
 import sys
 sys.path[0:0] = [""]
 
@@ -72,8 +73,8 @@ class TestConnection(unittest.TestCase):
                          "Connection('%s', %s)" % (self.host, self.port))
 
     def test_getters(self):
-        self.assertEqual(Connection(self.host, self.port).host(), self.host)
-        self.assertEqual(Connection(self.host, self.port).port(), self.port)
+        self.assertEqual(Connection(self.host, self.port).host, self.host)
+        self.assertEqual(Connection(self.host, self.port).port, self.port)
 
     def test_get_db(self):
         connection = Connection(self.host, self.port)
@@ -153,6 +154,45 @@ class TestConnection(unittest.TestCase):
                 pass
             except AssertionError:
                 self.fail()
+
+    # NOTE this probably doesn't all belong in this file, but it's easier in
+    # one place
+    def test_deprecated_method_for_attr(self):
+        c = Connection(self.host, self.port)
+        db = c.foo
+        coll = db.bar
+
+        warnings.simplefilter("error")
+
+        self.assertRaises(DeprecationWarning, c.host)
+        self.assertRaises(DeprecationWarning, c.port)
+        self.assertRaises(DeprecationWarning, db.connection)
+        self.assertRaises(DeprecationWarning, db.name)
+        self.assertRaises(DeprecationWarning, coll.full_name)
+        self.assertRaises(DeprecationWarning, coll.name)
+        self.assertRaises(DeprecationWarning, coll.database)
+
+        warnings.resetwarnings()
+        warnings.simplefilter("ignore")
+
+        self.assertEqual(c.host, c.host())
+        self.assertEqual(c.port, c.port())
+        self.assertEqual(db.connection, db.connection())
+        self.assertEqual(db.name, db.name())
+        self.assertEqual(coll.full_name, coll.full_name())
+        self.assertEqual(coll.name, coll.name())
+        self.assertEqual(coll.database, coll.database())
+
+        warnings.resetwarnings()
+        warnings.simplefilter("default")
+
+        self.assertEqual(self.host, c.host)
+        self.assertEqual(self.port, c.port)
+        self.assertEqual(c, db.connection)
+        self.assertEqual("foo", db.name)
+        self.assertEqual("foo.bar", coll.full_name)
+        self.assertEqual("bar", coll.name)
+        self.assertEqual(db, coll.database)
 
 # TODO come up with a different way to test `network_timeout`. This is just
 # too sketchy.

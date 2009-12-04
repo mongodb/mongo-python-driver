@@ -65,7 +65,8 @@ class Cursor(object):
         self.__killed = False
 
     def collection(self):
-        """Get the collection for this cursor.
+        """The :class:`~pymongo.collection.Collection` that this
+        :class:`Cursor` is iterating.
 
         .. versionadded:: 1.1
         """
@@ -114,7 +115,7 @@ class Cursor(object):
         """Closes this cursor.
         """
         if self.__id and not self.__killed:
-            connection = self.__collection.database().connection()
+            connection = self.__collection.database.connection
             if self.__connection_id is not None:
                 connection.close_cursor(self.__id, self.__connection_id)
             else:
@@ -293,7 +294,7 @@ class Cursor(object):
            :meth:`~pymongo.cursor.Cursor.__len__` was deprecated in favor of
            calling :meth:`count` with `with_limit_and_skip` set to ``True``.
         """
-        command = SON([("count", self.__collection.name()),
+        command = SON([("count", self.__collection.name),
                        ("query", self.__spec),
                        ("fields", self.__fields)])
 
@@ -303,8 +304,8 @@ class Cursor(object):
             if self.__skip:
                 command["skip"] = self.__skip
 
-        response = self.__collection.database()._command(command,
-                                                         ["ns missing"])
+        response = self.__collection.database._command(command,
+                                                       ["ns missing"])
         if response.get("errmsg", "") == "ns missing":
             return 0
         return int(response["n"])
@@ -328,12 +329,12 @@ class Cursor(object):
         if not isinstance(key, types.StringTypes):
             raise TypeError("key must be an instance of (str, unicode)")
 
-        command = SON([("distinct", self.__collection.name()), ("key", key)])
+        command = SON([("distinct", self.__collection.name), ("key", key)])
 
         if self.__spec:
             command["query"] = self.__spec
 
-        return self.__collection.database()._command(command)["values"]
+        return self.__collection.database._command(command)["values"]
 
     def explain(self):
         """Returns an explain plan record for this cursor.
@@ -403,14 +404,14 @@ class Cursor(object):
     def __send_message(self, message):
         """Send a query or getmore message and handles the response.
         """
-        db = self.__collection.database()
+        db = self.__collection.database
         kwargs = {"_sock": self.__socket,
                   "_must_use_master": self.__must_use_master}
         if self.__connection_id is not None:
             kwargs["_connection_to_use"] = self.__connection_id
 
-        response = db.connection()._send_message_with_response(message,
-                                                               **kwargs)
+        response = db.connection._send_message_with_response(message,
+                                                             **kwargs)
 
         if isinstance(response, types.TupleType):
             (connection_id, response) = response
@@ -422,7 +423,7 @@ class Cursor(object):
         try:
             response = helpers._unpack_response(response, self.__id)
         except AutoReconnect:
-            db.connection()._reset()
+            db.connection._reset()
             raise
         self.__id = response["cursor_id"]
 
@@ -450,7 +451,7 @@ class Cursor(object):
             # Query
             self.__send_message(
                 message.query(self.__query_options(),
-                              self.__collection.full_name(),
+                              self.__collection.full_name,
                               self.__skip, self.__limit,
                               self.__query_spec(), self.__fields))
             if not self.__id:
@@ -466,7 +467,7 @@ class Cursor(object):
                     return 0
 
             self.__send_message(
-                message.get_more(self.__collection.full_name(),
+                message.get_more(self.__collection.full_name,
                                  limit, self.__id))
 
         return len(self.__data)
@@ -475,7 +476,7 @@ class Cursor(object):
         return self
 
     def next(self):
-        db = self.__collection.database()
+        db = self.__collection.database
         if len(self.__data) or self._refresh():
             next = db._fix_outgoing(self.__data.pop(0), self.__collection)
         else:

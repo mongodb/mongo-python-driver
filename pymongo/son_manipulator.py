@@ -105,7 +105,7 @@ class NamespaceInjector(SONManipulator):
     def transform_incoming(self, son, collection):
         """Add the _ns field to the incoming object
         """
-        son["_ns"] = collection.name()
+        son["_ns"] = collection.name
         return son
 
 

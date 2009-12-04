@@ -321,8 +321,9 @@ class TestCursor(unittest.TestCase):
         client_cursors = db._command({"cursorInfo": 1})["clientCursors_size"]
         by_location = db._command({"cursorInfo": 1})["byLocation_size"]
 
+        test = db.test
         for i in range(10000):
-            db.test.insert({"i": i})
+            test.insert({"i": i})
 
         self.assertEqual(client_cursors,
                          db._command({"cursorInfo": 1})["clientCursors_size"])
@@ -448,7 +449,7 @@ class TestCursor(unittest.TestCase):
         self.db.test.remove({})
         self.db.test.save({"x": 1})
 
-        if not version.at_least(self.db.connection(), (1, 1, 3, -1)):
+        if not version.at_least(self.db.connection, (1, 1, 3, -1)):
             for _ in self.db.test.find({}, ["a"]):
                 self.fail()
 
@@ -533,7 +534,7 @@ class TestCursor(unittest.TestCase):
         self.assertRaises(IndexError, lambda x: self.db.test.find().skip(50)[x], 50)
 
     def test_count_with_limit_and_skip(self):
-        if not version.at_least(self.db.connection(), (1, 1, 4, -1)):
+        if not version.at_least(self.db.connection, (1, 1, 4, -1)):
             raise SkipTest()
 
         def check_len(cursor, length):
@@ -598,7 +599,7 @@ class TestCursor(unittest.TestCase):
         self.assertEqual(3, db.test.count())
 
     def test_distinct(self):
-        if not version.at_least(self.db.connection(), (1, 1, 3, 1)):
+        if not version.at_least(self.db.connection, (1, 1, 3, 1)):
             raise SkipTest()
 
         self.db.drop_collection("test")

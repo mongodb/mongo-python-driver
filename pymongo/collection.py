@@ -65,7 +65,15 @@ class Collection(object):
                               "or end with '.': %r" % name)
 
         self.__database = database
-        self.__collection_name = unicode(name)
+        self.__name = unicode(name)
+        self.__full_name = u"%s.%s" % (self.__database.name, self.__name)
+        # TODO remove the callable_value wrappers after deprecation is complete
+        self.__database_w = helpers.callable_value(self.__database,
+                                                   "Collection.database")
+        self.__name_w = helpers.callable_value(self.__name,
+                                               "Collection.name")
+        self.__full_name_w = helpers.callable_value(self.__full_name,
+                                                    "Collection.full_name")
         if options is not None:
             self.__create(options)
 
@@ -78,7 +86,7 @@ class Collection(object):
         if "size" in options:
             options["size"] = float(options["size"])
 
-        command = SON({"create": self.__collection_name})
+        command = SON({"create": self.__name})
         command.update(options)
 
         self.__database._command(command)
@@ -91,37 +99,52 @@ class Collection(object):
         :Parameters:
           - `name`: the name of the collection to get
         """
-        return Collection(self.__database, u"%s.%s" % (self.__collection_name,
-                                                       name))
+        return Collection(self.__database, u"%s.%s" % (self.__name, name))
 
     def __getitem__(self, name):
         return self.__getattr__(name)
 
     def __repr__(self):
-        return "Collection(%r, %r)" % (self.__database, self.__collection_name)
+        return "Collection(%r, %r)" % (self.__database, self.__name)
 
     def __cmp__(self, other):
         if isinstance(other, Collection):
-            return cmp((self.__database, self.__collection_name),
-                       (other.__database, other.__collection_name))
+            return cmp((self.__database, self.__name),
+                       (other.__database, other.__name))
         return NotImplemented
 
     def full_name(self):
-        """Get the full name of this collection.
+        """The full name of this :class:`Collection`.
 
-        The full name is of the form database_name.collection_name.
+        The full name is of the form `database_name.collection_name`.
+
+        .. versionchanged:: 1.1.2+
+           ``full_name`` is now a property rather than a method. The
+           ``full_name()`` method is deprecated.
         """
-        return u"%s.%s" % (self.__database.name(), self.__collection_name)
+        return self.__full_name_w
+    full_name = property(full_name)
 
     def name(self):
-        """Get the name of this collection.
+        """The name of this :class:`Collection`.
+
+        .. versionchanged:: 1.1.2+
+           ``name`` is now a property rather than a method. The
+           ``name()`` method is deprecated.
         """
-        return self.__collection_name
+        return self.__name_w
+    name = property(name)
 
     def database(self):
-        """Get the database that this collection is a part of.
+        """The :class:`~pymongo.database.Database` that this
+        :class:`Collection` is a part of.
+
+        .. versionchanged:: 1.1.2+
+           ``database`` is now a property rather than a method. The
+           ``database()`` method is deprecated.
         """
-        return self.__database
+        return self.__database_w
+    database = property(database)
 
     def save(self, to_save, manipulate=True, safe=False):
         """Save a document in this collection.
@@ -181,8 +204,8 @@ class Collection(object):
         if manipulate:
             docs = [self.__database._fix_incoming(doc, self) for doc in docs]
 
-        self.__database.connection()._send_message(
-            message.insert(self.full_name(), docs, check_keys, safe), safe)
+        self.__database.connection._send_message(
+            message.insert(self.__full_name, docs, check_keys, safe), safe)
 
         ids = [doc.get("_id", None) for doc in docs]
         return len(ids) == 1 and ids[0] or ids
@@ -242,8 +265,8 @@ class Collection(object):
         if upsert and manipulate:
             document = self.__database._fix_incoming(document, self)
 
-        self.__database.connection()._send_message(
-            message.update(self.full_name(), upsert, multi,
+        self.__database.connection._send_message(
+            message.update(self.__full_name, upsert, multi,
                            spec, document, safe), safe)
 
     def remove(self, spec_or_object_id=None, safe=False):
@@ -291,8 +314,8 @@ class Collection(object):
             raise TypeError("spec must be an instance of dict, not %s" %
                             type(spec))
 
-        self.__database.connection()._send_message(
-            message.delete(self.full_name(), spec, safe), safe)
+        self.__database.connection._send_message(
+            message.delete(self.__full_name, spec, safe), safe)
 
     def find_one(self, spec_or_object_id=None, fields=None, slave_okay=None,
                  _sock=None, _must_use_master=False):
@@ -394,7 +417,7 @@ class Collection(object):
         if spec is None:
             spec = SON()
         if slave_okay is None:
-            slave_okay = self.__database.connection().slave_okay
+            slave_okay = self.__database.connection.slave_okay
         else:
             warnings.warn("The slave_okay option to find and find_one is "
                           "deprecated. Please set slave_okay on the Connection "
@@ -471,15 +494,14 @@ class Collection(object):
         keys = helpers._index_list(key_or_list)
         name = self._gen_index_name(keys)
         to_save["name"] = name
-        to_save["ns"] = self.full_name()
+        to_save["ns"] = self.__full_name
         to_save["key"] = helpers._index_document(keys)
         to_save["unique"] = unique
 
-        self.database().connection()._cache_index(self.__database.name(),
-                                                  self.name(),
-                                                  name, ttl)
+        self.__database.connection._cache_index(self.__database.name,
+                                                self.__name, name, ttl)
 
-        self.database().system.indexes.insert(to_save, manipulate=False,
+        self.__database.system.indexes.insert(to_save, manipulate=False,
                                               check_keys=False)
         return to_save["name"]
 
@@ -528,9 +550,8 @@ class Collection(object):
 
         keys = helpers._index_list(key_or_list)
         name = self._gen_index_name(keys)
-        if self.database().connection()._cache_index(self.__database.name(),
-                                                     self.name(),
-                                                     name, ttl):
+        if self.__database.connection._cache_index(self.__database.name,
+                                                   self.__name, name, ttl):
             return self.create_index(key_or_list, unique=unique, ttl=ttl)
         return None
 
@@ -540,8 +561,8 @@ class Collection(object):
         Can be used on non-existant collections or collections with no indexes.
         Raises OperationFailure on an error.
         """
-        self.database().connection()._purge_index(self.database().name(),
-                                                  self.name())
+        self.__database.connection._purge_index(self.__database.name,
+                                                self.__name)
         self.drop_index(u"*")
 
     def drop_index(self, index_or_name):
@@ -564,10 +585,10 @@ class Collection(object):
         if not isinstance(name, types.StringTypes):
             raise TypeError("index_or_name must be an index name or list")
 
-        self.database().connection()._purge_index(self.database().name(),
-                                                  self.name(), name)
+        self.__database.connection._purge_index(self.__database.name,
+                                                self.__name, name)
         self.__database._command(SON([("deleteIndexes",
-                                       self.__collection_name),
+                                       self.__name),
                                       ("index", name)]),
                                  ["ns not found"])
 
@@ -578,7 +599,7 @@ class Collection(object):
         create_index()) and the values are lists of (key, direction) pairs
         specifying the index (as passed to create_index()).
         """
-        raw = self.__database.system.indexes.find({"ns": self.full_name()})
+        raw = self.__database.system.indexes.find({"ns": self.__full_name})
         info = {}
         for index in raw:
             info[index["name"]] = index["key"].items()
@@ -593,7 +614,7 @@ class Collection(object):
         has not been created yet.
         """
         result = self.__database.system.namespaces.find_one(
-            {"name": self.full_name()})
+            {"name": self.__full_name})
 
         if not result:
             return {}
@@ -639,7 +660,7 @@ class Collection(object):
         if command:
             if not isinstance(reduce, Code):
                 reduce = Code(reduce)
-            group = {"ns": self.__collection_name,
+            group = {"ns": self.__name,
                     "$reduce": reduce,
                     "key": self._fields_list_to_dict(keys),
                     "cond": condition,
@@ -656,7 +677,7 @@ class Collection(object):
         scope = {}
         if isinstance(reduce, Code):
             scope = reduce.scope
-        scope.update({"ns": self.__collection_name,
+        scope.update({"ns": self.__name,
                       "keys": keys,
                       "condition": condition,
                       "initial": initial})
@@ -718,11 +739,11 @@ class Collection(object):
         if new_name[0] == "." or new_name[-1] == ".":
             raise InvalidName("collecion names must not start or end with '.'")
 
-        rename_command = SON([("renameCollection", self.full_name()),
-                              ("to", "%s.%s" % (self.__database.name(),
+        rename_command = SON([("renameCollection", self.__full_name),
+                              ("to", "%s.%s" % (self.__database.name,
                                                 new_name))])
 
-        self.__database.connection().admin._command(rename_command)
+        self.__database.connection.admin._command(rename_command)
 
     def distinct(self, key):
         """Get a list of distinct values for `key` among all documents in this
@@ -770,7 +791,7 @@ class Collection(object):
 
         .. _map reduce command: http://www.mongodb.org/display/DOCS/MapReduce
         """
-        command = SON([("mapreduce", self.__collection_name),
+        command = SON([("mapreduce", self.__name),
                        ("map", map), ("reduce", reduce)])
         command.update(**kwargs)
 
@@ -788,13 +809,13 @@ class Collection(object):
     def __call__(self, *args, **kwargs):
         """This is only here so that some API misusages are easier to debug.
         """
-        if "." not in self.__collection_name:
+        if "." not in self.__name:
             raise TypeError("'Collection' object is not callable. If you "
                             "meant to call the '%s' method on a 'Database' "
                             "object it is failing because no such method "
                             "exists." %
-                            self.__collection_name)
+                            self.__name)
         raise TypeError("'Collection' object is not callable. If you meant to "
                         "call the '%s' method on a 'Collection' object it is "
                         "failing because no such method exists." %
-                        self.__collection_name.split(".")[-1])
+                        self.__name.split(".")[-1])

@@ -285,17 +285,25 @@ class Connection(object): # TODO support auth for pooling
         if index_name in self.__index_cache[database_name][collection_name]:
             del self.__index_cache[database_name][collection_name][index_name]
 
-    # TODO these really should be properties... Could be ugly to make that
-    # backwards compatible though...
     def host(self):
-        """Get the connection's current host.
+        """Current connected host.
+
+        .. versionchanged:: 1.1.2+
+           ``host`` is now a property rather than a method. The ``host()``
+           method is deprecated.
         """
-        return self.__host
+        return helpers.callable_value(self.__host, "Connection.host")
+    host = property(host)
 
     def port(self):
-        """Get the connection's current port.
+        """Current connected port.
+
+        .. versionchanged:: 1.1.2+
+           ``port`` is now a property rather than a method. The ``port()``
+           method is deprecated.
         """
-        return self.__port
+        return helpers.callable_value(self.__port, "Connection.port")
+    port = property(port)
 
     def slave_okay(self):
         """Is it okay for this connection to connect directly to a slave?
@@ -306,7 +314,7 @@ class Connection(object): # TODO support auth for pooling
     def __find_master(self):
         """Create a new socket and use it to figure out who the master is.
 
-        Sets __host and __port so that `host()` and `port()` will return the
+        Sets __host and __port so that :attr:`host` and :attr:`port` will return the
         address of the master.
         """
         _logger.debug("finding master")
@@ -365,7 +373,7 @@ class Connection(object): # TODO support auth for pooling
 
         Connect to the master if this is a paired connection.
         """
-        if self.host() is None or self.port() is None:
+        if self.__host is None or self.__port is None:
             self.__find_master()
         _logger.debug("connecting socket %s..." % socket_number)
 
@@ -377,7 +385,7 @@ class Connection(object): # TODO support auth for pooling
                                                      socket.TCP_NODELAY, 1)
             sock = self.__sockets[socket_number]
             sock.settimeout(_CONNECT_TIMEOUT)
-            sock.connect((self.host(), self.port()))
+            sock.connect((self.__host, self.__port))
             sock.settimeout(self.__network_timeout)
             _logger.debug("connected")
             return
@@ -751,7 +759,7 @@ class Connection(object): # TODO support auth for pooling
         """
         name = name_or_database
         if isinstance(name, Database):
-            name = name.name()
+            name = name.name
 
         if not isinstance(name, types.StringTypes):
             raise TypeError("name_or_database must be an instance of "

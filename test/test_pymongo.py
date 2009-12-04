@@ -31,8 +31,8 @@ class TestPyMongo(unittest.TestCase):
     def test_connection_alias(self):
         c = pymongo.Connection(self.host, self.port)
         self.assert_(c)
-        self.assertEqual(c.host(), self.host)
-        self.assertEqual(c.port(), self.port)
+        self.assertEqual(c.host, self.host)
+        self.assertEqual(c.port, self.port)
 
 if __name__ == "__main__":
     unittest.main()

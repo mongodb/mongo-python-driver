@@ -16,6 +16,7 @@
 
 import sys
 import struct
+import warnings
 
 from son import SON
 from errors import OperationFailure, AutoReconnect
@@ -56,6 +57,7 @@ def _index_document(index_list):
         index[key] = value
     return index
 
+
 def _reversed(l):
     """A version of the `reversed()` built-in for Python 2.3.
     """
@@ -65,6 +67,7 @@ def _reversed(l):
         yield l[i]
 if sys.version_info[:3] >= (2, 4, 0):
     _reversed = reversed
+
 
 def _unpack_response(response, cursor_id=None):
     """Unpack a response from the database.
@@ -101,3 +104,38 @@ def _unpack_response(response, cursor_id=None):
     result["data"] = bson._to_dicts(response[20:])
     assert len(result["data"]) == result["number_returned"]
     return result
+
+
+# These two functions are some magic to get values we can use for deprecating
+# method style access in favor of property style access while remaining
+# backwards compatible.
+def __prop_call(self, *args, **kwargs):
+    warnings.warn("'%s()' has been deprecated and will be removed. "
+                  "Please use '%s' instead." %
+                  (self.__prop_name, self.__prop_name),
+                  DeprecationWarning)
+    return self
+
+__class_cache = {}
+
+def callable_value(value, prop_name):
+    t = type(value)
+
+    if "CallableVal" in str(t):
+        return value
+
+    if t in __class_cache:
+        cls = __class_cache[t]
+    else:
+        cls = type.__new__(type, "CallableVal", (t,),
+                           {"__call__": __prop_call,
+                            "__prop_name": prop_name})
+        __class_cache[t] = cls
+
+    try:
+        # This works for regular classes
+        value.__class__ = cls
+        return value
+    except:
+        # This works for builtins
+        return cls(value)

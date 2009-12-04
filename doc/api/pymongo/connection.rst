@@ -14,8 +14,8 @@
 
          Raises :class:`~pymongo.errors.InvalidName` if an invalid database name is used.
 
-      .. automethod:: host
-      .. automethod:: port
+      .. autoattribute:: host
+      .. autoattribute:: port
       .. autoattribute:: slave_okay
       .. automethod:: database_names
       .. automethod:: drop_database
