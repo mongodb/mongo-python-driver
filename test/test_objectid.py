@@ -15,6 +15,7 @@
 """Tests for the objectid module."""
 
 import datetime
+import warnings
 import unittest
 import sys
 sys.path[0:0] = [""]
@@ -63,28 +64,18 @@ class TestObjectId(unittest.TestCase):
         self.assertNotEqual(ObjectId(), ObjectId())
         self.assertNotEqual(ObjectId("123456789012"), "123456789012")
 
+    def test_binary_str_equivalence(self):
+        a = ObjectId()
+        self.assertEqual(a, ObjectId(a.binary))
+        self.assertEqual(a, ObjectId(str(a)))
+
     def test_url(self):
         a = ObjectId("123456789012")
-        self.assertEqual(a.url_encode(), "313233343536373839303132")
-        self.assertEqual(a, ObjectId.url_decode("313233343536373839303132"))
-        self.assertEqual(a.url_encode(), str(a))
 
-        b = ObjectId()
-        encoded = b.url_encode()
-        self.assertEqual(b, ObjectId.url_decode(encoded))
-
-    def test_url_legacy(self):
-        a = ObjectId()
-        self.assertNotEqual(a.url_encode(), a.url_encode(legacy=True))
-        self.assertEqual(a, ObjectId.url_decode(a.url_encode(legacy=True), legacy=True))
-
-    def test_legacy_string(self):
-        a = ObjectId()
-
-        self.assertEqual(a.url_encode(legacy=True), a.legacy_str().encode("hex"))
-
-        self.assertNotEqual(str(a), a.legacy_str())
-        self.assertEqual(a, ObjectId.from_legacy_str(a.legacy_str()))
+        warnings.simplefilter("error")
+        self.assertRaises(DeprecationWarning, a.url_encode)
+        self.assertRaises(DeprecationWarning, ObjectId.url_decode, "313233343536373839303132")
+        warnings.simplefilter("default")
 
     def test_multiprocessing(self):
         # multiprocessing on windows is weird and I don't feel like figuring it

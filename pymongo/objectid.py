@@ -16,6 +16,7 @@
 <http://www.mongodb.org/display/DOCS/Object+IDs>`_.
 """
 
+import warnings
 import datetime
 import threading
 import types
@@ -114,52 +115,19 @@ class ObjectId(object):
             raise TypeError("id must be an instance of (str, ObjectId), "
                             "not %s" % type(oid))
 
-    def url_encode(self, legacy=False):
-        """Get a string representation of this ObjectId safe for use in a url.
+    # DEPRECATED - use str(oid) instead, which returns a hex encoded string
+    def url_encode(self):
+        warnings.warn("oid.url_encode is deprecated and will be removed. "
+                      "Please use str(oid) instead.", DeprecationWarning)
+        return self.__id.encode("hex")
 
-        The `legacy` parameter is for backwards compatibility only and should
-        almost always be kept False. It might eventually be removed.
-
-        The reverse can be achieved using `url_decode()`.
-
-        :Parameters:
-          - `legacy` (optional): use the legacy byte ordering to represent the
-            ObjectId. if you aren't positive you need this it is probably best
-            left as False.
-        """
-        if legacy:
-            return self.legacy_str().encode("hex")
-        else:
-            return self.__id.encode("hex")
-
-    def url_decode(cls, encoded_oid, legacy=False):
-        """Create an ObjectId from an encoded hex string.
-
-        The `legacy` parameter is for backwards compatibility only and should
-        almost always be kept False. It might eventually be removed.
-
-        The reverse can be achieved using `url_encode()`.
-
-        :Parameters:
-          - `encoded_oid`: string encoding of an ObjectId (as created
-            by `url_encode()`)
-          - `legacy` (optional): use the legacy byte ordering to represent the
-            ObjectId. if you aren't positive you need this it is probably best
-            left as False.
-        """
-        if legacy:
-            oid = encoded_oid.decode("hex")
-            return cls.from_legacy_str(oid)
-        else:
-            return cls(encoded_oid.decode("hex"))
+    # DEPRECATED - use ObjectId(encoded_oid) instead,
+    # which takes a hex encoded string
+    def url_decode(cls, encoded_oid):
+        warnings.warn("ObjectId.url_decode is deprecated and will be removed. "
+                      "Please use ObjectId(...) instead.", DeprecationWarning)
+        return cls(encoded_oid.decode("hex"))
     url_decode = classmethod(url_decode)
-
-    def legacy_str(self):
-        return self.__id[7::-1] + self.__id[:7:-1]
-
-    def from_legacy_str(cls, legacy_str):
-        return cls(legacy_str[7::-1] + legacy_str[:7:-1])
-    from_legacy_str = classmethod(from_legacy_str)
 
     def binary(self):
         """12-byte binary representation of this ObjectId.
