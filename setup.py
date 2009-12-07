@@ -25,7 +25,10 @@ requirements = []
 try:
     import xml.etree.ElementTree
 except ImportError:
-    requirements.append("elementtree")
+    try:
+        import elementtree
+    except ImportError:
+        requirements.append("elementtree")
 
 f = open("README.rst")
 try:
