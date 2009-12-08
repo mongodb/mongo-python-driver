@@ -8,5 +8,4 @@ recursive-include tools *.py
 include tools/README.rst
 include tools/validate
 recursive-include test *.py
-include pymongo/time_helpers.h
-include pymongo/encoding_helpers.h
+recursive-include pymongo *.h
