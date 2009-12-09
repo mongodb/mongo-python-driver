@@ -104,7 +104,7 @@ class Connection(object): # TODO support auth for pooling
             perform queries on a slave instance
           - `timeout` (optional): max time to wait when attempting to acquire a
             connection from the connection pool before raising an exception -
-            can be set to -1 to wait indefinitely
+            can be set to ``-1`` to wait indefinitely
           - `network_timeout` (optional): timeout (in seconds) to use for socket
             operations - default is no timeout
 
