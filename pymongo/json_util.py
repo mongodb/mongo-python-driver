@@ -30,8 +30,9 @@ Example usage (deserialization)::
 
 >>> json.loads(..., object_hook=json_util.object_hook)
 
-Currently this only handles special encoding and decoding for ObjectId and
-DBRef instancs.
+Currently this only handles special encoding and decoding for
+:class:`~pymongo.objectid.ObjectId` and :class:`~pymongo.dbref.DBRef`
+instances.
 """
 
 from objectid import ObjectId
