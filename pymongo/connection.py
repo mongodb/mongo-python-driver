@@ -107,6 +107,9 @@ class Connection(object): # TODO support auth for pooling
             can be set to -1 to wait indefinitely
           - `network_timeout` (optional): timeout (in seconds) to use for socket
             operations - default is no timeout
+
+        .. versionadded:: 1.1
+           The `network_timeout` parameter.
         """
         if host is None:
             host = self.HOST

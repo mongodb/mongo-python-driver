@@ -170,6 +170,9 @@ class Collection(object):
           - `safe` (optional): check that the insert succeeded?
           - `check_keys` (optional): check if keys start with '$' or
             contain '.', raising `pymongo.errors.InvalidName` in either case
+
+        .. versionchanged:: 1.1
+           Bulk insert works with any iterable
         """
         docs = doc_or_docs
         if isinstance(docs, types.DictType):
@@ -272,6 +275,9 @@ class Collection(object):
            The `spec_or_object_id` parameter is now optional. If it is
            not specified *all* documents in the collection will be
            removed.
+
+        .. versionadded:: 1.1
+           The `safe` parameter.
         """
         spec = spec_or_object_id
         if spec is None:
@@ -379,6 +385,9 @@ class Collection(object):
             the cursor will continue from the last document received. For
             details, see the `tailable cursor documentation
             <http://www.mongodb.org/display/DOCS/Tailable+Cursors>`_.
+
+        .. versionadded:: 1.1
+           The `tailable` parameter.
         """
         if spec is None:
             spec = SON()

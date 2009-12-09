@@ -160,6 +160,10 @@ class ObjectId(object):
         return NotImplemented
 
     def __hash__(self):
+        """Get a hash value for this :class:`ObjectId`.
+
+        .. versionadded:: 1.1
+        """
         return hash(self.__id)
 
 

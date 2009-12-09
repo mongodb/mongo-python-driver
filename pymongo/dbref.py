@@ -34,6 +34,9 @@ class DBRef(object):
           - `collection`: name of the collection the document is stored in
           - `id`: the value of the document's _id field
           - `database` (optional): name of the database to reference
+
+        .. versionadded:: 1.1.1
+           The `database` parameter.
         """
         if not isinstance(collection, types.StringTypes):
             raise TypeError("collection must be an instance of (str, unicode)")
@@ -60,6 +63,8 @@ class DBRef(object):
         """Get the name of this DBRef's database.
 
         Returns None if this DBRef doesn't specify a database.
+
+        .. versionadded:: 1.1.1
         """
         return self.__database
     database = property(database)
@@ -87,4 +92,8 @@ class DBRef(object):
         return NotImplemented
 
     def __hash__(self):
+        """Get a hash value for this :class:`DBRef`.
+
+        .. versionadded:: 1.1
+        """
         return hash((self.__collection, self.__id, self.__database))

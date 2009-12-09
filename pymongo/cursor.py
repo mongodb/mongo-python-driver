@@ -66,6 +66,8 @@ class Cursor(object):
 
     def collection(self):
         """Get the collection for this cursor.
+
+        .. versionadded:: 1.1
         """
         return self.__collection
     collection = property(collection)
