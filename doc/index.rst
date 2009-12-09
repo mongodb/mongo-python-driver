@@ -48,13 +48,17 @@ pull request.
 
 Changes
 -------
-See the :doc:`changelog` list for a full list of changes to PyMongo.
+See the :doc:`changelog` for a full list of changes to PyMongo.
 
-Full Contents Tree
+Indices and tables
 ------------------
 
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`
+
 .. toctree::
-   :maxdepth: 3
+   :hidden:
 
    installation
    tutorial
@@ -64,11 +68,4 @@ Full Contents Tree
    tools
    contributors
    changelog
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
 

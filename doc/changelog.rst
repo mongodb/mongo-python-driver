@@ -1,5 +1,5 @@
-Changes
-=======
+Changelog
+=========
 
 Changes in Version 1.2
 ----------------------
