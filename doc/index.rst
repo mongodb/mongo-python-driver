@@ -26,18 +26,6 @@ Overview
 :doc:`tools`
   A listing of Python tools and libraries that have been written for MongoDB.
 
-About This Documentation
-------------------------
-This documentation is generated using the `Sphinx
-<http://sphinx.pocoo.org/>`_ documentation generator. The source files
-for the documentation are located in the *doc/* directory of the
-**PyMongo** distribution. To generate the docs locally run the
-following command from the root directory of the **PyMongo** source:
-
-.. code-block:: bash
-
-  $ python setup.py doc
-
 Contributing
 ------------
 **PyMongo** has a large :doc:`community <contributors>` and
@@ -49,6 +37,18 @@ pull request.
 Changes
 -------
 See the :doc:`changelog` for a full list of changes to PyMongo.
+
+About This Documentation
+------------------------
+This documentation is generated using the `Sphinx
+<http://sphinx.pocoo.org/>`_ documentation generator. The source files
+for the documentation are located in the *doc/* directory of the
+**PyMongo** distribution. To generate the docs locally run the
+following command from the root directory of the **PyMongo** source:
+
+.. code-block:: bash
+
+  $ python setup.py doc
 
 Indices and tables
 ------------------
