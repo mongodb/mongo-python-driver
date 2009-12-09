@@ -89,7 +89,7 @@ PyMongo's API supports all of the features of MongoDB's map/reduce engine. One i
 .. doctest::
 
   >>> db.things.map_reduce(map, reduce, full_response=True)
-  {u'counts': {u'input': 4L, u'emit': 6L, u'output': 3L}, u'timeMillis': ..., u'ok': 1.0, u'result': u'...'}
+  {u'counts': {u'input': 4, u'emit': 6, u'output': 3}, u'timeMillis': ..., u'ok': 1.0, u'result': u'...'}
 
 All of the optional map/reduce parameters are also supported, simply pass them as keyword arguments. In this example we use the `query` parameter to limit the documents that will be mapped over:
 
