@@ -40,35 +40,51 @@ finally:
     f.close()
 
 
-class GenerateDoc(Command):
-    user_options = []
+class doc(Command):
+
+    description = "generate or test documentation"
+
+    user_options = [("test", "t",
+                     "run doctests instead of generating documentation")]
+
+    boolean_options = ["test"]
 
     def initialize_options(self):
-        pass
+        self.test = False
 
     def finalize_options(self):
         pass
 
     def run(self):
-        path = "doc/_build/%s" % version
+        if self.test:
+            path = "doc/_build/doctest"
+            mode = "doctest"
+        else:
+            path = "doc/_build/%s" % version
+            mode = "html"
 
-        # shutil.rmtree("doc/_build", ignore_errors=True)
-        try:
-            os.makedirs(path)
-        except:
-            pass
+            # shutil.rmtree("doc/_build", ignore_errors=True)
+            try:
+                os.makedirs(path)
+            except:
+                pass
 
         if has_subprocess:
-            subprocess.call(["sphinx-build", "-b", "html", "doc", path])
+            status = subprocess.call(["sphinx-build", "-b", mode, "doc", path])
+
+            if status:
+                raise RuntimeError("documentation step '%s' failed" % mode)
+
             print ""
-            print "Documentation generated:"
-            print "   %s/index.html" % path
+            print "Documentation step '%s' performed, results here:" % mode
+            print "   %s/" % path
         else:
             print """
 `setup.py doc` is not supported for this version of Python.
 
 Please ask in the user forums for help.
 """
+
 
 if sys.platform == 'win32' and sys.version_info > (2, 6):
    # 2.6's distutils.msvc9compiler can raise an IOError when failing to
@@ -156,4 +172,4 @@ setup(
         "Programming Language :: Python",
         "Topic :: Database"],
     cmdclass={"build_ext": custom_build_ext,
-              "doc": GenerateDoc})
+              "doc": doc})
