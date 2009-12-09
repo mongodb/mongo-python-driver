@@ -18,3 +18,4 @@ MongoDB, you can start it like so:
 
    gridfs
    map_reduce
+   custom_type
