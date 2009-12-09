@@ -15,6 +15,8 @@
 """Test some utilities for working with JSON and PyMongo."""
 
 import unittest
+import datetime
+import re
 import sys
 json_lib = True
 try:
@@ -39,12 +41,12 @@ class TestJsonUtil(unittest.TestCase):
         if not json_lib:
             raise SkipTest()
 
-    def round_trip(self, doc):
-        def round_tripped(doc):
-            return json.loads(json.dumps(doc, default=default),
-                              object_hook=object_hook)
+    def round_tripped(self, doc):
+        return json.loads(json.dumps(doc, default=default),
+                          object_hook=object_hook)
 
-        self.assertEqual(doc, round_tripped(doc))
+    def round_trip(self, doc):
+        self.assertEqual(doc, self.round_tripped(doc))
 
     def test_basic(self):
         self.round_trip({"hello": "world"})
@@ -55,6 +57,16 @@ class TestJsonUtil(unittest.TestCase):
     def test_dbref(self):
         self.round_trip({"ref": DBRef("foo", 5)})
         self.round_trip({"ref": DBRef("foo", 5, "db")})
+
+    def test_datetime(self):
+        # only millis, not micros
+        self.round_trip({"date": datetime.datetime(2009, 12, 9, 15,
+                                                   49, 45, 191000)})
+
+    def test_regex(self):
+        res = self.round_tripped({"r": re.compile("a*b", re.IGNORECASE)})["r"]
+        self.assertEqual("a*b", res.pattern)
+        self.assertEqual(re.IGNORECASE, res.flags)
 
 
 if __name__ == "__main__":

@@ -30,23 +30,45 @@ Example usage (deserialization)::
 
 >>> json.loads(..., object_hook=json_util.object_hook)
 
-Currently this only handles special encoding and decoding for
-:class:`~pymongo.objectid.ObjectId` and :class:`~pymongo.dbref.DBRef`
+Currently this does not handle special encoding and decoding for
+:class:`~pymongo.binary.Binary` and :class:`~pymongo.code.Code`
 instances.
+
+.. versionchanged:: 1.1.2+
+   Added support for encoding/decoding datetimes and regular expressions.
 """
+
+import datetime
+import calendar
+import re
 
 from objectid import ObjectId
 from dbref import DBRef
 
-# TODO support other types, like Binary, Code, datetime & regex
+# TODO support Binary and Code
 # Binary and Code are tricky because they subclass str so json thinks it can
 # handle them. Not sure what the proper way to get around this is...
+#
+# One option is to just add some other method that users need to call _before_
+# calling json.dumps or json.loads. That is pretty terrible though...
+
+# TODO share this with bson.py?
+_RE_TYPE = type(re.compile("foo"))
 
 def object_hook(dct):
     if "$oid" in dct:
         return ObjectId(str(dct["$oid"]))
     if "$ref" in dct:
         return DBRef(dct["$ref"], dct["$id"], dct.get("$db", None))
+    if "$date" in dct:
+        return datetime.datetime.utcfromtimestamp(float(dct["$date"]) / 1000.0)
+    if "$regex" in dct:
+        flags = 0
+        if "i" in dct["$options"]:
+            flags |= re.IGNORECASE
+        if "m" in dct["$options"]:
+            flags |= re.MULTILINE
+        return re.compile(dct["$regex"], flags)
     return dct
 
 def default(obj):
@@ -54,4 +76,17 @@ def default(obj):
         return {"$oid": str(obj)}
     if isinstance(obj, DBRef):
         return obj.as_doc()
+    if isinstance(obj, datetime.datetime):
+        # TODO share this code w/ bson.py?
+        millis = int(calendar.timegm(obj.timetuple()) * 1000 +
+                     obj.microsecond / 1000)
+        return {"$date": str(millis)}
+    if isinstance(obj, _RE_TYPE):
+        flags = ""
+        if obj.flags & re.IGNORECASE:
+            flags += "i"
+        if obj.flags & re.MULTILINE:
+            flags += "m"
+        return {"$regex": obj.pattern,
+                "$options": flags}
     raise TypeError("%r is not JSON serializable" % obj)
