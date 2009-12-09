@@ -1,6 +1,12 @@
 Map/Reduce Example
 ==================
 
+.. testsetup::
+
+  from pymongo import Connection
+  connection = Connection()
+  connection.drop_database('map_reduce_example')
+
 This example shows how to use the
 :meth:`~pymongo.collection.Collection.map_reduce` method to perform
 map/reduce style aggregations on your data.
@@ -12,7 +18,9 @@ map/reduce style aggregations on your data.
 Setup
 -----
 To start, we'll insert some example data which we can perform
-map/reduce queries on::
+map/reduce queries on:
+
+.. doctest::
 
   >>> from pymongo import Connection
   >>> db = Connection().map_reduce_example
@@ -34,7 +42,9 @@ counting the number of occurrences for each tag in the ``tags`` array,
 across the entire collection.
 
 Our **map** function just emits a single `(key, 1)` pair for each tag in
-the array::
+the array:
+
+.. doctest::
 
   >>> from pymongo.code import Code
   >>> map = Code("function () {"
@@ -43,7 +53,9 @@ the array::
   ...            "  });"
   ...            "}")
 
-The **reduce** function sums over all of the emitted values for a given key::
+The **reduce** function sums over all of the emitted values for a given key:
+
+.. doctest::
 
   >>> reduce = Code("function (key, values) {"
   ...               "  var total = 0;"
@@ -57,7 +69,9 @@ The **reduce** function sums over all of the emitted values for a given key::
    might be called iteratively on the results of other reduce steps.
 
 Finally, we call :meth:`~pymongo.collection.Collection.map_reduce` and
-iterate over the result collection::
+iterate over the result collection:
+
+.. doctest::
 
   >>> result = db.things.map_reduce(map, reduce)
   >>> for doc in result.find():
@@ -70,12 +84,16 @@ iterate over the result collection::
 Advanced Map/Reduce
 -------------------
 
-PyMongo's API supports all of the features of MongoDB's map/reduce engine. One interesting feature is the ability to get more detailed results when desired, by passing `full_response=True` to :meth:`~pymongo.collection.Collection.map_reduce`. This returns the full response to the map/reduce command, rather than just the result collection::
+PyMongo's API supports all of the features of MongoDB's map/reduce engine. One interesting feature is the ability to get more detailed results when desired, by passing `full_response=True` to :meth:`~pymongo.collection.Collection.map_reduce`. This returns the full response to the map/reduce command, rather than just the result collection:
+
+.. doctest::
 
   >>> db.things.map_reduce(map, reduce, full_response=True)
   {u'counts': {u'input': 4L, u'emit': 6L, u'output': 3L}, u'timeMillis': ..., u'ok': 1.0, u'result': u'...'}
 
-All of the optional map/reduce parameters are also supported, simply pass them as keyword arguments. In this example we use the `query` parameter to limit the documents that will be mapped over::
+All of the optional map/reduce parameters are also supported, simply pass them as keyword arguments. In this example we use the `query` parameter to limit the documents that will be mapped over:
+
+.. doctest::
 
   >>> result = db.things.map_reduce(map, reduce, query={"x": {"$lt": 3}})
   >>> for doc in result.find():

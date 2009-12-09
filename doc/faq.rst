@@ -51,7 +51,9 @@ The database representation is ``9.99`` as an IEEE floating point (which
 is common to MongoDB and Python as well as most other modern
 languages). The problem is that ``9.99`` cannot be represented exactly
 with a double precision floating point - this is true in Python as
-well::
+well:
+
+.. doctest::
 
   >>> 9.99
   9.9900000000000002

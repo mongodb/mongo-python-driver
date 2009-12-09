@@ -21,7 +21,9 @@ to a replica pair use :meth:`~Connection.paired`.
    master-slave clusters.
 
 To get a :class:`~pymongo.database.Database` instance from a
-:class:`Connection` use either dictionary-style or attribute-style access::
+:class:`Connection` use either dictionary-style or attribute-style access:
+
+.. doctest::
 
   >>> from pymongo import Connection
   >>> c = Connection()

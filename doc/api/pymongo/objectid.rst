@@ -11,7 +11,13 @@
 
          Get a hex encoded version of :class:`ObjectId` `o`.
 
-         The following property always holds::
+         The following property always holds:
+
+         .. testsetup::
+
+           from pymongo.objectid import ObjectId
+
+         .. doctest::
 
            >>> o = ObjectId()
            >>> o == ObjectId(str(o))

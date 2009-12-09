@@ -199,7 +199,9 @@ class Collection(object):
 
         There are many useful `update modifiers`_ which can be used when
         performing updates. For example, here we use the ``"$set"`` modifier to
-        modify some fields in a matching document::
+        modify some fields in a matching document:
+
+        .. doctest::
 
           >>> db.test.insert({"x": "y", "a": "b"})
           ObjectId('...')
