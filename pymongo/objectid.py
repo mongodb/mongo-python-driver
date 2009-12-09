@@ -142,7 +142,7 @@ class ObjectId(object):
         The :class:`datetime.datetime` is always naive and represents the
         generation time in UTC. It is precise to the second.
 
-        .. versionadded:: 1.1.2+
+        .. versionadded:: 1.2
         """
         t = struct.unpack(">i", self.__id[0:4])[0]
         return datetime.datetime.utcfromtimestamp(t)

@@ -34,7 +34,7 @@ Currently this does not handle special encoding and decoding for
 :class:`~pymongo.binary.Binary` and :class:`~pymongo.code.Code`
 instances.
 
-.. versionchanged:: 1.1.2+
+.. versionchanged:: 1.2
    Added support for encoding/decoding datetimes and regular expressions.
 """
 

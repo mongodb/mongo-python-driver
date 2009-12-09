@@ -7,7 +7,7 @@ map/reduce style aggregations on your data.
 
 .. note:: Map/Reduce requires server version **>= 1.1.1**. The PyMongo
    :meth:`~pymongo.collection.Collection.map_reduce` helper requires
-   PyMongo version **>= 1.1.2+**.
+   PyMongo version **>= 1.2**.
 
 Setup
 -----

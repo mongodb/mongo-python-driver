@@ -321,7 +321,7 @@ class Cursor(object):
 
         .. seealso:: :meth:`pymongo.collection.Collection.distinct`
 
-        .. versionadded:: 1.1.2+
+        .. versionadded:: 1.2
         """
         if not isinstance(key, types.StringTypes):
             raise TypeError("key must be an instance of (str, unicode)")

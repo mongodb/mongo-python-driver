@@ -268,7 +268,7 @@ class Collection(object):
             ``_id`` field for the document to be removed
           - `safe` (optional): check that the remove succeeded?
 
-        .. versionchanged:: 1.1.2+
+        .. versionchanged:: 1.2
            The `spec_or_object_id` parameter is now optional. If it is
            not specified *all* documents in the collection will be
            removed.
@@ -750,7 +750,7 @@ class Collection(object):
 
         .. seealso:: :doc:`/examples/map_reduce`
 
-        .. versionadded:: 1.1.2+
+        .. versionadded:: 1.2
 
         .. _map reduce command: http://www.mongodb.org/display/DOCS/MapReduce
         """
