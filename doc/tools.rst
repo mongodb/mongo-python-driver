@@ -23,6 +23,15 @@ MongoKit
   is an ORM-like layer on top of PyMongo. There is also a MongoKit
   `google group <http://groups.google.com/group/mongokit>`_.
 
+Ming
+  `Ming <http://merciless.sourceforge.net/>`_ (the Merciless) is a
+  library that allows you to enforce schemas on a MongoDB database in
+  your Python application. It was developed by `SourceForge
+  <http://sourceforge.net/>`_ in the course of their migration to
+  MongoDB. See the `introductory blog post
+  <http://blog.pythonisito.com/2009/12/ming-01-released-python-library-for.html>`_
+  for more details.
+
 pymongo-bongo
   `pymongo-bongo <http://pypi.python.org/pypi/pymongo-bongo/>`_ is a
   project to add some syntactic sugar on top of PyMongo. It is open
@@ -36,11 +45,6 @@ mongodb-object
   notation". It features some interesting notation for document
   traversal and querying, see the README for more info.
 
-django-mongodb
-  `django-mongodb <http://bitbucket.org/kpot/django-mongodb/>`_ is a
-  project working towards creating a MongoDB backend for
-  :mod:`django.db`.
-
 mongo-mapper
   `mongo-mapper
   <http://github.com/jeffjenkins/mongo-mapper/tree/master>`_ is
@@ -51,6 +55,11 @@ MongoMagic
   is another project to provide an ORM-like layer for PyMongo. Its
   first feature is a :class:`Document` class that provides attribute style
   access (similar to JavaScript).
+
+django-mongodb
+  `django-mongodb <http://bitbucket.org/kpot/django-mongodb/>`_ is a
+  project working towards creating a MongoDB backend for
+  :mod:`django.db`.
 
 Other Tools
 -----------
@@ -76,6 +85,10 @@ MongoLog
   `MongoLog <http://github.com/andreisavu/mongodb-log/tree/master>`_
   is a Python logging handler that stores logs in MongoDB using a
   capped collection.
+
+c5t
+  `c5t <http://bitbucket.org/percious/c5t/>`_ is a
+  content-management system using TurboGears and MongoDB.
 
 Alternative Drivers
 -------------------
