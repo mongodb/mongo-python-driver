@@ -335,6 +335,9 @@ class Cursor(object):
 
         return self.__collection.database()._command(command)["values"]
 
+    # TODO need to remove this method as it causes problems with django
+    # templates for tags.
+    #
     # __len__ is deprecated (replaced with count(True)) and will be removed.
     #
     # The reason for this deprecation is a bit complex:
