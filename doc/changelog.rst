@@ -1,6 +1,18 @@
 Changelog
 =========
 
+Changes in Version 1.2.1
+------------------------
+- add :doc:`changelog` to docs
+- add ``setup.py doc --test`` to run doctests for tutorial, examples
+- move most examples to Sphinx docs (and remove from *examples/*
+  directory)
+- raise :class:`~pymongo.errors.InvalidId` instead of
+  :class:`TypeError` when passing a 24 character string to
+  :class:`~pymongo.objectid.ObjectId` that contains non-hexadecimal
+  characters
+- allow :class:`unicode` instances for :class:`~pymongo.objectid.ObjectId` init
+
 Changes in Version 1.2
 ----------------------
 - `spec` parameter for :meth:`~pymongo.collection.Collection.remove` is
