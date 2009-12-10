@@ -19,7 +19,6 @@
 import warnings
 import datetime
 import threading
-import types
 import time
 import socket
 import os
@@ -55,7 +54,7 @@ class ObjectId(object):
         """Initialize a new ObjectId_.
 
         If `oid` is ``None``, create a new (unique)
-        ObjectId_. If `oid` is an instance of (``string``,
+        ObjectId_. If `oid` is an instance of (``basestring``,
         :class:`ObjectId`) validate it and use that.  Otherwise, a
         :class:`TypeError` is raised. If `oid` is invalid,
         :class:`~pymongo.errors.InvalidId` is raised.
@@ -63,6 +62,10 @@ class ObjectId(object):
         :Parameters:
           - `oid` (optional): a valid ObjectId_ (12 byte binary or 24 character
             hex string)
+
+        .. versionadded:: 1.2.1
+           The `oid` parameter can be a ``unicode`` instance (that contains only
+           hexadecimal digits).
 
         .. _ObjectId: http://www.mongodb.org/display/DOCS/Object+IDs
         """
@@ -104,11 +107,14 @@ class ObjectId(object):
         """
         if isinstance(oid, ObjectId):
             self.__id = oid.__id
-        elif isinstance(oid, types.StringType):
+        elif isinstance(oid, basestring):
             if len(oid) == 12:
                 self.__id = oid
             elif len(oid) == 24:
-                self.__id = oid.decode("hex")
+                try:
+                    self.__id = oid.decode("hex")
+                except TypeError:
+                    raise InvalidId("%s is not a valid ObjectId" % oid)
             else:
                 raise InvalidId("%s is not a valid ObjectId" % oid)
         else:

@@ -37,7 +37,6 @@ class TestObjectId(unittest.TestCase):
 
     def test_creation(self):
         self.assertRaises(TypeError, ObjectId, 4)
-        self.assertRaises(TypeError, ObjectId, u"hello")
         self.assertRaises(TypeError, ObjectId, 175.0)
         self.assertRaises(TypeError, ObjectId, {"test": 4})
         self.assertRaises(TypeError, ObjectId, ["something"])
@@ -48,6 +47,18 @@ class TestObjectId(unittest.TestCase):
         self.assert_(ObjectId("123456789012"))
         a = ObjectId()
         self.assert_(ObjectId(a))
+
+    def test_unicode(self):
+        a = ObjectId()
+        self.assertEqual(a, ObjectId(unicode(a)))
+        self.assertEqual(ObjectId("123456789012123456789012"),
+                         ObjectId(u"123456789012123456789012"))
+        self.assertRaises(InvalidId, ObjectId, u"hello")
+
+    def test_from_hex(self):
+        ObjectId("123456789012123456789012")
+        self.assertRaises(InvalidId, ObjectId, "123456789012123456789G12")
+        self.assertRaises(InvalidId, ObjectId, u"123456789012123456789G12")
 
     def test_repr_str(self):
         self.assertEqual(repr(ObjectId("1234567890abcdef12345678")),
