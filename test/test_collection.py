@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Test the collection module."""
+import warnings
 import unittest
 import re
 import itertools
@@ -588,13 +589,9 @@ class TestCollection(unittest.TestCase):
         db = self.db
         db.drop_collection("test")
 
-        def group_checker(args, expected, with_command=True):
+        def group_checker(args, expected):
             eval = db.test.group(*args)
             self.assertEqual(eval, expected)
-
-            if with_command:
-                cmd = db.test.group(*args, **{"command": True})
-                self.assertEqual(cmd, expected)
 
 
         args = [[], {},
@@ -639,7 +636,7 @@ class TestCollection(unittest.TestCase):
         expected = [{"a": 2, "count": 3},
                     {"a": None, "count": 2},
                     {"a": 1, "count": 2}]
-        group_checker(args, expected, with_command=version.at_least(db.connection(), (1, 1)))
+        group_checker(args, expected)
 
         # returning finalize
         args = [["a"], {},
@@ -649,10 +646,16 @@ class TestCollection(unittest.TestCase):
         expected = [2, # a:2
                     1, # a:None
                     1] # a:1
-        group_checker(args, expected, with_command=version.at_least(db.connection(), (1, 1)))
+        group_checker(args, expected)
+
+        warnings.simplefilter("error")
+        self.assertRaises(DeprecationWarning,
+                          db.test.group, [], {}, {"count": 0},
+                          "function (obj, prev) { prev.count++; }",
+                          command=False)
+        warnings.simplefilter("default")
 
         self.assertRaises(OperationFailure, db.test.group, [], {}, {}, "5 ++ 5")
-        self.assertRaises(OperationFailure, db.test.group, [], {}, {}, "5 ++ 5", command=True)
 
     def test_group_with_scope(self):
         db = self.db

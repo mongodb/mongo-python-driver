@@ -609,7 +609,7 @@ class Collection(object):
     # Waiting on this because group command support for CodeWScope
     # wasn't added until 1.1
     def group(self, keys, condition, initial, reduce, finalize=None,
-              command=False):
+              command=True):
         """Perform a query similar to an SQL group by operation.
 
         Returns an array of grouped items.
@@ -621,18 +621,20 @@ class Collection(object):
           - `initial`: initial value of the aggregation counter object
           - `reduce`: aggregation function as a JavaScript string
           - `finalize`: function to be called on each object in output list.
-          - `command` (optional): if True, run the group as a command instead
-            of in an eval - it is likely that this option will eventually be
-            deprecated and all groups will be run as commands. Please only use
-            as a keyword argument, not as a positional argument.
+          - `command` (optional): DEPRECATED if ``True``, run the group as a
+            command instead of in an eval - this option is deprecated and
+            will be removed in favor of running all groups as commands
+
+        .. versionchanged:: 1.2.1+
+           The `command` argument now defaults to ``True`` and is deprecated.
         """
 
         #for now support people passing command in its old position
         if finalize in (True, False):
             command = finalize
             finalize = None
-            warnings.warn("Please only pass 'command' as a keyword argument."
-                         ,DeprecationWarning)
+            warnings.warn("Please only pass 'command' as a keyword argument.",
+                          DeprecationWarning)
 
         if command:
             if not isinstance(reduce, Code):
@@ -647,6 +649,9 @@ class Collection(object):
                     finalize = Code(finalize)
                 group["finalize"] = finalize
             return self.__database._command({"group":group})["retval"]
+
+        warnings.warn("eval-based groups are deprecated. please use command=True.",
+                      DeprecationWarning)
 
         scope = {}
         if isinstance(reduce, Code):
