@@ -124,13 +124,13 @@ def callable_value(value, prop_name):
     if "CallableVal" in str(t):
         return value
 
-    if t in __class_cache:
-        cls = __class_cache[t]
+    if (t, prop_name) in __class_cache:
+        cls = __class_cache[(t, prop_name)]
     else:
         cls = type.__new__(type, "CallableVal", (t,),
                            {"__call__": __prop_call,
                             "__prop_name": prop_name})
-        __class_cache[t] = cls
+        __class_cache[(t, prop_name)] = cls
 
     try:
         # This works for regular classes
