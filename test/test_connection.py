@@ -194,6 +194,20 @@ class TestConnection(unittest.TestCase):
         self.assertEqual("bar", coll.name)
         self.assertEqual(db, coll.database)
 
+    def test_disconnect(self):
+        c = Connection(self.host, self.port)
+        coll = c.foo.bar
+
+        c.disconnect()
+        c.disconnect()
+
+        self.assertEqual(0, coll.count())
+
+        c.disconnect()
+        c.disconnect()
+
+        self.assertEqual(0, coll.count())
+
 # TODO come up with a different way to test `network_timeout`. This is just
 # too sketchy.
 #

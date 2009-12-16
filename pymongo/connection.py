@@ -392,18 +392,15 @@ class Connection(object): # TODO support auth for pooling
         except socket.error:
             raise ConnectionFailure("could not connect to %r" % self.__nodes)
 
-    def _reset(self):
-        """Reset everything and start connecting again.
+    def disconnect(self):
+        """Disconnect from MongoDB.
 
-        Closes all open sockets and resets them to None. Re-finds the master.
+        Disconnecting will close all underlying sockets in the
+        connection pool. If the :class:`Connection` is used again it
+        will be automatically re-opened.
 
-        This should be done in case of a connection failure or a "not master"
-        error.
+        .. versionadded:: 1.2.1+
         """
-        if self.__currently_resetting:
-            return
-        self.__currently_resetting = True
-
         for i in range(self.__pool_size):
             # prevent all operations during the reset
             if not self.__locks[i].acquire(timeout=self.__acquire_timeout):
@@ -413,12 +410,19 @@ class Connection(object): # TODO support auth for pooling
                 self.__sockets[i].close()
                 self.__sockets[i] = None
 
-        try:
-            self.__find_master()
-        finally:
-            self.__currently_resetting = False
-            for i in range(self.__pool_size):
-                self.__locks[i].release()
+        for i in range(self.__pool_size):
+            self.__locks[i].release()
+
+    def _reset(self):
+        """Reset everything and start connecting again.
+
+        Closes all open sockets and resets them to None. Re-finds the master.
+
+        This should be done in case of a connection failure or a "not master"
+        error.
+        """
+        self.disconnect()
+        self.__find_master()
 
     def set_cursor_manager(self, manager_class):
         """Set this connection's cursor manager.
