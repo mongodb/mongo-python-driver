@@ -201,12 +201,12 @@ class TestConnection(unittest.TestCase):
         c.disconnect()
         c.disconnect()
 
-        self.assertEqual(0, coll.count())
+        coll.count()
 
         c.disconnect()
         c.disconnect()
 
-        self.assertEqual(0, coll.count())
+        coll.count()
 
 # TODO come up with a different way to test `network_timeout`. This is just
 # too sketchy.
