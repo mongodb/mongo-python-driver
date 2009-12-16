@@ -118,7 +118,7 @@ class Collection(object):
 
         The full name is of the form `database_name.collection_name`.
 
-        .. versionchanged:: 1.1.2+
+        .. versionchanged:: 1.3
            ``full_name`` is now a property rather than a method. The
            ``full_name()`` method is deprecated.
         """
@@ -128,7 +128,7 @@ class Collection(object):
     def name(self):
         """The name of this :class:`Collection`.
 
-        .. versionchanged:: 1.1.2+
+        .. versionchanged:: 1.3
            ``name`` is now a property rather than a method. The
            ``name()`` method is deprecated.
         """
@@ -139,7 +139,7 @@ class Collection(object):
         """The :class:`~pymongo.database.Database` that this
         :class:`Collection` is a part of.
 
-        .. versionchanged:: 1.1.2+
+        .. versionchanged:: 1.3
            ``database`` is now a property rather than a method. The
            ``database()`` method is deprecated.
         """
@@ -646,7 +646,7 @@ class Collection(object):
             command instead of in an eval - this option is deprecated and
             will be removed in favor of running all groups as commands
 
-        .. versionchanged:: 1.2.1+
+        .. versionchanged:: 1.3
            The `command` argument now defaults to ``True`` and is deprecated.
         """
 

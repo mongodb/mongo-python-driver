@@ -97,7 +97,7 @@ class Database(object):
         """The :class:`~pymongo.connection.Connection` instance for this
         :class:`Database`.
 
-        .. versionchanged:: 1.1.2+
+        .. versionchanged:: 1.3
            ``connection`` is now a property rather than a method. The
            ``connection()`` method is deprecated.
         """
@@ -107,7 +107,7 @@ class Database(object):
     def name(self):
         """The name of this :class:`Database`.
 
-        .. versionchanged:: 1.1.2+
+        .. versionchanged:: 1.3
            ``name`` is now a property rather than a method. The
            ``name()`` method is deprecated.
         """

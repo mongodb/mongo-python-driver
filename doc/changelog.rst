@@ -1,11 +1,37 @@
 Changelog
 =========
 
+Changes in Version 1.3
+----------------------
+- DEPRECATED running :meth:`~pymongo.collection.Collection.group` as
+  :meth:`~pymongo.database.Database.eval`, also changed default for
+  :meth:`~pymongo.collection.Collection.group` to running as a command
+- remove :meth:`pymongo.cursor.Cursor.__len__`, which was deprecated
+  in 1.1.1 - needed to do this aggressively due to it's presence
+  breaking **Django** template *for* loops
+- DEPRECATED :meth:`~pymongo.connection.Connection.host`,
+  :meth:`~pymongo.connection.Connection.port`,
+  :meth:`~pymongo.database.Database.connection`,
+  :meth:`~pymongo.database.Database.name`,
+  :meth:`~pymongo.collection.Collection.database`,
+  :meth:`~pymongo.collection.Collection.name` and
+  :meth:`~pymongo.collection.Collection.full_name` in favor of
+  :attr:`~pymongo.connection.Connection.host`,
+  :attr:`~pymongo.connection.Connection.port`,
+  :attr:`~pymongo.database.Database.connection`,
+  :attr:`~pymongo.database.Database.name`,
+  :attr:`~pymongo.collection.Collection.database`,
+  :attr:`~pymongo.collection.Collection.name` and
+  :attr:`~pymongo.collection.Collection.full_name`, respectively. The
+  deprecation schedule for this change will probably be faster than
+  usual, as it carries some performance implications.
+- added :meth:`~pymongo.connection.Connection.disconnect`
+
 Changes in Version 1.2.1
 ------------------------
-- add :doc:`changelog` to docs
-- add ``setup.py doc --test`` to run doctests for tutorial, examples
-- move most examples to Sphinx docs (and remove from *examples/*
+- added :doc:`changelog` to docs
+- added ``setup.py doc --test`` to run doctests for tutorial, examples
+- moved most examples to Sphinx docs (and remove from *examples/*
   directory)
 - raise :class:`~pymongo.errors.InvalidId` instead of
   :class:`TypeError` when passing a 24 character string to
@@ -56,7 +82,7 @@ Changes in Version 1.1.1
 - added `database` support for :class:`~pymongo.dbref.DBRef`
 - added :mod:`~pymongo.json_util` with helpers for encoding / decoding
   special types to JSON
-- DEPRECATED :meth:`~pymongo.cursor.Cursor.__len__` in favor of
+- DEPRECATED :meth:`pymongo.cursor.Cursor.__len__` in favor of
   :meth:`~pymongo.cursor.Cursor.count` with `with_limit_and_skip` set
   to ``True`` due to performance regression
 - switch documentation to Sphinx

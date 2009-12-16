@@ -288,7 +288,7 @@ class Connection(object): # TODO support auth for pooling
     def host(self):
         """Current connected host.
 
-        .. versionchanged:: 1.1.2+
+        .. versionchanged:: 1.3
            ``host`` is now a property rather than a method. The ``host()``
            method is deprecated.
         """
@@ -298,7 +298,7 @@ class Connection(object): # TODO support auth for pooling
     def port(self):
         """Current connected port.
 
-        .. versionchanged:: 1.1.2+
+        .. versionchanged:: 1.3
            ``port`` is now a property rather than a method. The ``port()``
            method is deprecated.
         """
@@ -399,7 +399,7 @@ class Connection(object): # TODO support auth for pooling
         connection pool. If the :class:`Connection` is used again it
         will be automatically re-opened.
 
-        .. versionadded:: 1.2.1+
+        .. versionadded:: 1.3
         """
         for i in range(self.__pool_size):
             # prevent all operations during the reset
