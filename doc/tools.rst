@@ -32,6 +32,14 @@ Ming
   <http://blog.pythonisito.com/2009/12/ming-01-released-python-library-for.html>`_
   for more details.
 
+MongoEngine
+  `MongoEngine <http://hmarr.com/mongoengine/>`_ is another ORM-like 
+  layer on top of PyMongo. It allows you to define schemas for 
+  documents and query collections using syntax inspired by the Django
+  ORM. The code is available on `github 
+  <http://github.com/hmarr/mongoengine>`_; for more information, see 
+  the `tutorial <http://hmarr.com/mongoengine/tutorial.html>`_.
+
 pymongo-bongo
   `pymongo-bongo <http://pypi.python.org/pypi/pymongo-bongo/>`_ is a
   project to add some syntactic sugar on top of PyMongo. It is open
