@@ -52,18 +52,20 @@ def _get_int(data):
     return (value, data[4:])
 
 
-def _get_c_string(data):
-    try:
-        end = data.index("\x00")
-    except ValueError:
-        raise InvalidBSON()
+def _get_c_string(data, length=None):
+    if length is None:
+        try:
+            length = data.index("\x00")
+        except ValueError:
+            raise InvalidBSON()
 
-    return (unicode(data[:end], "utf-8"), data[end + 1:])
+    return (unicode(data[:length], "utf-8"), data[length + 1:])
 
 
-def _make_c_string(string):
-    if "\x00" in string:
-        raise InvalidStringData("BSON strings must not contain a NULL character")
+def _make_c_string(string, check_null=False):
+    if check_null and "\x00" in string:
+        raise InvalidDocument("BSON keys / regex patterns must not "
+                              "contain a NULL character")
     if isinstance(string, unicode):
         return string.encode("utf-8") + "\x00"
     else:
@@ -235,7 +237,7 @@ def _get_number(data):
 
 
 def _get_string(data):
-    return _get_c_string(data[4:])
+    return _get_c_string(data[4:], struct.unpack("<i", data[:4])[0] - 1)
 
 
 def _get_object(data):
@@ -387,7 +389,7 @@ def _element_to_bson(key, value, check_keys):
         if "." in key:
             raise InvalidName("key %r must not contain '.'" % key)
 
-    name = _make_c_string(key)
+    name = _make_c_string(key, True)
     if isinstance(value, float):
         return "\x01" + name + struct.pack("<d", value)
 
@@ -459,7 +461,7 @@ def _element_to_bson(key, value, check_keys):
             flags += "u"
         if value.flags & re.VERBOSE:
             flags += "x"
-        return "\x0B" + name + _make_c_string(pattern) + _make_c_string(flags)
+        return "\x0B" + name + _make_c_string(pattern, True) + _make_c_string(flags)
     if isinstance(value, DBRef):
         return _element_to_bson(key, value.as_doc(), False)
 

@@ -17,6 +17,13 @@
 #ifndef ENCODING_HELPERS_H
 #define ENCODING_HELPERS_H
 
-unsigned char is_legal_utf8_string(const unsigned char* string, const int length);
+typedef enum {
+    VALID,
+    NOT_UTF_8,
+    HAS_NULL
+} result_t;
+
+result_t check_string(const unsigned char* string, const int length,
+                      const char check_utf8, const char check_null);
 
 #endif

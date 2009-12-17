@@ -141,10 +141,6 @@ class TestBSON(unittest.TestCase):
                          "\x00\x05\x00\x00\x00coll\x00\x07$id\x00\x00\x01\x02"
                          "\x03\x04\x05\x06\x07\x08\x09\x0A\x0B\x00\x00")
 
-    def test_null_character_encoding(self):
-        self.assertRaises(InvalidStringData, BSON.from_dict, {"with zero": "hello\x00world"})
-        self.assertRaises(InvalidStringData, BSON.from_dict, {"with zero": u"hello\x00world"})
-
     def test_from_then_to_dict(self):
 
         def helper(dict):
@@ -264,6 +260,19 @@ class TestBSON(unittest.TestCase):
 
         z = {u"aé".encode("iso-8859-1"): "hello"}
         self.assertRaises(InvalidStringData, BSON.from_dict, z)
+
+    def test_null_character(self):
+        doc = {"a": "\x00"}
+        self.assertEqual(doc, BSON.from_dict(doc).to_dict())
+
+        doc = {"a": u"\x00"}
+        self.assertEqual(doc, BSON.from_dict(doc).to_dict())
+
+        self.assertRaises(InvalidDocument, BSON.from_dict, {"\x00": "a"})
+        self.assertRaises(InvalidDocument, BSON.from_dict, {u"\x00": "a"})
+
+        self.assertRaises(InvalidDocument, BSON.from_dict, {"a": re.compile("ab\x00c")})
+        self.assertRaises(InvalidDocument, BSON.from_dict, {"a": re.compile(u"ab\x00c")})
 
 # TODO this test doesn't pass w/ C extension
 #

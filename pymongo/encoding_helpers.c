@@ -14,8 +14,10 @@
  * limitations under the License.
  */
 
+#include "encoding_helpers.h"
+
 /*
- * Copyright 2001 Unicode, Inc.
+ * Portions Copyright 2001 Unicode, Inc.
  *
  * Disclaimer
  *
@@ -85,23 +87,32 @@ static unsigned char isLegalUTF8(const unsigned char* source, int length) {
     return 1;
 }
 
-/* --------------------------------------------------------------------- */
-
-/*
- * Return whether a string containing UTF-8 is legal.
- */
-unsigned char is_legal_utf8_string(const unsigned char* string, const int length) {
+result_t check_string(const unsigned char* string, const int length,
+                      const char check_utf8, const char check_null) {
     int position = 0;
+    /* By default we go character by character. Will be different for checking
+     * UTF-8 */
+    int sequence_length = 1;
+
+    if (!check_utf8 && !check_null) {
+        return VALID;
+    }
 
     while (position < length) {
-        int sequence_length = trailingBytesForUTF8[*(string + position)] + 1;
-        if ((position + sequence_length) > length) {
-            return 0;
+        if (check_null && *(string + position) == 0) {
+            return HAS_NULL;
         }
-        if (!isLegalUTF8(string + position, sequence_length)) {
-            return 0;
+        if (check_utf8) {
+            sequence_length = trailingBytesForUTF8[*(string + position)] + 1;
+            if ((position + sequence_length) > length) {
+                return NOT_UTF_8;
+            }
+            if (!isLegalUTF8(string + position, sequence_length)) {
+                return NOT_UTF_8;
+            }
         }
         position += sequence_length;
     }
-    return 1;
+
+    return VALID;
 }

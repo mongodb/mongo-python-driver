@@ -174,20 +174,12 @@ static int buffer_write_bytes(bson_buffer* buffer, const char* bytes, int size) 
 
 /* returns 0 on failure */
 static int write_string(bson_buffer* buffer, PyObject* py_string) {
-    int i;
     Py_ssize_t string_length;
     const char* string = PyString_AsString(py_string);
     if (!string) {
         return 1;
     }
     string_length = PyString_Size(py_string) + 1;
-
-    for (i = 0; i < string_length - 1; i++) {
-        if (string[i] == 0) {
-            PyErr_SetString(InvalidStringData, "BSON strings must not contain a NULL character");
-            return 0;
-        }
-    }
 
     if (!buffer_write_bytes(buffer, (const char*)&string_length, 4)) {
         return 0;
@@ -393,10 +385,12 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
         return 1;
     } else if (PyString_Check(value)) {
         int result;
+        result_t status;
 
         *(buffer->buffer + type_byte) = 0x02;
-        if (!is_legal_utf8_string((const unsigned char*)PyString_AsString(value),
-                                  PyString_Size(value))) {
+        status = check_string((const unsigned char*)PyString_AsString(value),
+                              PyString_Size(value), 1, 0);
+        if (status == NOT_UTF_8) {
             PyErr_SetString(InvalidStringData,
                             "strings in documents must be valid UTF-8");
             return 0;
@@ -475,8 +469,10 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
         PyObject* encoded_pattern;
         long int_flags;
         char flags[FLAGS_SIZE];
+        char check_utf8 = 0;
         int pattern_length,
             flags_length;
+        result_t status;
 
         if (!py_flags) {
             return 0;
@@ -496,6 +492,19 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
             }
         } else {
             encoded_pattern = py_pattern;
+            check_utf8 = 1;
+        }
+
+        status = check_string((const unsigned char*)PyString_AsString(encoded_pattern),
+                              PyString_Size(encoded_pattern), check_utf8, 1);
+        if (status == NOT_UTF_8) {
+            PyErr_SetString(InvalidStringData,
+                            "regex patterns must be valid UTF-8");
+            return 0;
+        } else if (status == HAS_NULL) {
+            PyErr_SetString(InvalidDocument,
+                            "regex patterns must not contain the NULL byte");
+            return 0;
         }
 
         {
@@ -656,18 +665,34 @@ static int decode_and_write_pair(bson_buffer* buffer, PyObject* key,
                                  PyObject* value, unsigned char check_keys) {
     PyObject* encoded;
     if (PyUnicode_Check(key)) {
+        result_t status;
         encoded = PyUnicode_AsUTF8String(key);
         if (!encoded) {
             return 0;
         }
+        status = check_string((const unsigned char*)PyString_AsString(encoded),
+                              PyString_Size(encoded), 0, 1);
+
+        if (status == HAS_NULL) {
+            PyErr_SetString(InvalidDocument,
+                            "Key names must not contain the NULL byte");
+            return 0;
+        }
     } else if (PyString_Check(key)) {
+        result_t status;
         encoded = key;
         Py_INCREF(encoded);
 
-        if (!is_legal_utf8_string((const unsigned char*)PyString_AsString(encoded),
-                                  PyString_Size(encoded))) {
+        status = check_string((const unsigned char*)PyString_AsString(encoded),
+                                       PyString_Size(encoded), 1, 1);
+
+        if (status == NOT_UTF_8) {
             PyErr_SetString(InvalidStringData,
                             "strings in documents must be valid UTF-8");
+            return 0;
+        } else if (status == HAS_NULL) {
+            PyErr_SetString(InvalidDocument,
+                            "Key names must not contain the NULL byte");
             return 0;
         }
     } else {
