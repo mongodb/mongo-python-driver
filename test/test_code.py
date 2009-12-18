@@ -64,5 +64,26 @@ class TestCode(unittest.TestCase):
         c = Code("\x08\xFF")
         self.assertEqual(repr(c), "Code('\\x08\\xff', {})")
 
+    def test_equality(self):
+        b = Code("hello")
+        c = Code("hello", {"foo": 5})
+        self.assertNotEqual(b, c)
+        self.assertEqual(c, Code("hello", {"foo": 5}))
+        self.assertNotEqual(c, Code("hello", {"foo": 6}))
+        self.assertEqual(b, Code("hello"))
+        self.assertEqual(b, Code("hello", {}))
+        self.assertNotEqual(b, Code("hello "))
+        self.assertNotEqual("hello", Code("hello"))
+
+    def test_scope_preserved(self):
+        a = Code("hello")
+        b = Code("hello", {"foo": 5})
+
+        self.assertEqual(a, Code(a))
+        self.assertEqual(b, Code(b))
+        self.assertNotEqual(a, Code(b))
+        self.assertNotEqual(b, Code(a))
+
+
 if __name__ == "__main__":
     unittest.main()

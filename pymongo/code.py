@@ -36,7 +36,10 @@ class Code(str):
             raise TypeError("code must be an instance of (str, unicode)")
 
         if scope is None:
-            scope = {}
+            try:
+                scope = code.scope
+            except AttributeError:
+                scope = {}
         if not isinstance(scope, types.DictType):
             raise TypeError("scope must be an instance of dict")
 
@@ -52,3 +55,8 @@ class Code(str):
 
     def __repr__(self):
         return "Code(%s, %r)" % (str.__repr__(self), self.__scope)
+
+    def __eq__(self, other):
+        if isinstance(other, Code):
+            return (self.__scope, str(self)) == (other.__scope, str(other))
+        return False
