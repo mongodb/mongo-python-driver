@@ -625,16 +625,26 @@ class Collection(object):
 
         return options
 
-    def group(self, keys, condition, initial, reduce, finalize=None,
+    # TODO key and condition ought to be optional, but deprecation
+    # could be painful as argument order would have to change.
+    def group(self, key, condition, initial, reduce, finalize=None,
               command=True):
-        """Perform a query similar to an SQL group by operation.
+        """Perform a query similar to an SQL *group by* operation.
 
         Returns an array of grouped items.
 
+        The `key` parameter can be:
+
+          - ``None`` to use the entire document as a key.
+          - A :class:`list` of keys (each a :class:`basestring`) to group by.
+          - A :class:`basestring` or :class:`~pymongo.code.Code` instance
+            containing a JavaScript function to be applied to each document,
+            returning the key to group by.
+
         :Parameters:
-          - `keys`: list of fields to group by
-          - `condition`: specification of rows to be considered (as a `find`
-            query specification)
+          - `key`: fields to group by (see above description)
+          - `condition`: specification of rows to be
+            considered (as a :meth:`find` query specification)
           - `initial`: initial value of the aggregation counter object
           - `reduce`: aggregation function as a JavaScript string
           - `finalize`: function to be called on each object in output list.
@@ -644,75 +654,28 @@ class Collection(object):
 
         .. versionchanged:: 1.3
            The `command` argument now defaults to ``True`` and is deprecated.
+        .. versionchanged:: 1.3+
+           The `key` argument can now be ``None`` or a JavaScript function,
+           in addition to a :class:`list` of keys.
         """
-
-        #for now support people passing command in its old position
-        if finalize in (True, False):
-            command = finalize
-            finalize = None
-            warnings.warn("Please only pass 'command' as a keyword argument.",
+        if not command:
+            warnings.warn("eval-based groups are deprecated, and the "
+                          "command option will be removed.",
                           DeprecationWarning)
 
-        if command:
-            if not isinstance(reduce, Code):
-                reduce = Code(reduce)
-            group = {"ns": self.__name,
-                    "$reduce": reduce,
-                    "key": self._fields_list_to_dict(keys),
-                    "cond": condition,
-                    "initial": initial}
-            if finalize is not None:
-                if not isinstance(finalize, Code):
-                    finalize = Code(finalize)
-                group["finalize"] = finalize
-            return self.__database._command({"group":group})["retval"]
+        group = {}
+        if isinstance(key, basestring):
+            group["$keyf"] = Code(key)
+        elif key is not None:
+            group = {"key": self._fields_list_to_dict(key)}
+        group["ns"] = self.__name
+        group["$reduce"] = Code(reduce)
+        group["cond"] = condition
+        group["initial"] = initial
+        if finalize is not None:
+            group["finalize"] = Code(finalize)
 
-        warnings.warn("eval-based groups are deprecated. please use command=True.",
-                      DeprecationWarning)
-
-        scope = {}
-        if isinstance(reduce, Code):
-            scope = reduce.scope
-        scope.update({"ns": self.__name,
-                      "keys": keys,
-                      "condition": condition,
-                      "initial": initial})
-
-        group_function = """function () {
-    var c = db[ns].find(condition);
-    var map = new Map();
-    var reduce_function = %s;
-    var finalize_function = %s; //function or null
-    while (c.hasNext()) {
-        var obj = c.next();
-
-        var key = {};
-        for (var i = 0; i < keys.length; i++) {
-            var k = keys[i];
-            key[k] = obj[k];
-        }
-
-        var aggObj = map.get(key);
-        if (aggObj == null) {
-            var newObj = Object.extend({}, key);
-            aggObj = Object.extend(newObj, initial);
-            map.put(key, aggObj);
-        }
-        reduce_function(obj, aggObj);
-    }
-
-    out = map.values();
-    if (finalize_function !== null){
-        for (var i=0; i < out.length; i++){
-            var ret = finalize_function(out[i]);
-            if (ret !== undefined)
-                out[i] = ret;
-        }
-    }
-
-    return {"result": out};
-}""" % (reduce, (finalize or 'null'));
-        return self.__database.eval(Code(group_function, scope))["result"]
+        return self.__database._command({"group":group})["retval"]
 
     def rename(self, new_name):
         """Rename this collection.

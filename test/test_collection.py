@@ -594,59 +594,54 @@ class TestCollection(unittest.TestCase):
             self.assertEqual(eval, expected)
 
 
-        args = [[], {},
-                {"count": 0},
-                "function (obj, prev) { prev.count++; }"]
-        expected = []
-        group_checker(args, expected)
+        self.assertEqual([], db.test.group([], {}, {"count": 0},
+                                           "function (obj, prev) { prev.count++; }"))
 
         db.test.save({"a": 2})
         db.test.save({"b": 5})
         db.test.save({"a": 1})
 
-        args = [[], {},
-                {"count": 0},
-                "function (obj, prev) { prev.count++; }"]
-        expected = [{'count': 3}]
-        group_checker(args, expected)
+        self.assertEqual([{"count": 3}],
+                         db.test.group([], {}, {"count": 0},
+                                       "function (obj, prev) { prev.count++; }"))
 
-        args = [[],
-                {"a": {"$gt": 1}},
-                {"count": 0},
-                "function (obj, prev) { prev.count++; }"]
-        expected = [{'count': 1}]
-        group_checker(args, expected)
+        self.assertEqual([{"count": 1}],
+                         db.test.group([], {"a": {"$gt": 1}}, {"count": 0},
+                                       "function (obj, prev) { prev.count++; }"))
 
         db.test.save({"a": 2, "b": 3})
 
-        args = [["a"], {},
-                {"count": 0},
-                "function (obj, prev) { prev.count++; }"]
-        # NOTE maybe we can't count on this ordering being right
-        expected = [{"a": 2, "count": 2},
-                    {"a": None, "count": 1},
-                    {"a": 1, "count": 1}]
-        group_checker(args, expected)
+        self.assertEqual([{"a": 2, "count": 2},
+                          {"a": None, "count": 1},
+                          {"a": 1, "count": 1}],
+                         db.test.group(["a"], {}, {"count": 0},
+                                       "function (obj, prev) { prev.count++; }"))
 
         # modifying finalize
-        args = [["a"], {},
-                {"count": 0},
-                "function (obj, prev) { prev.count++; }",
-                "function(obj){obj.count++;}"]
-        expected = [{"a": 2, "count": 3},
-                    {"a": None, "count": 2},
-                    {"a": 1, "count": 2}]
-        group_checker(args, expected)
+        self.assertEqual([{"a": 2, "count": 3},
+                          {"a": None, "count": 2},
+                          {"a": 1, "count": 2}],
+                         db.test.group(["a"], {}, {"count": 0},
+                                       "function (obj, prev) { prev.count++; }",
+                                       "function (obj) { obj.count++; }"))
 
         # returning finalize
-        args = [["a"], {},
-                {"count": 0},
-                "function (obj, prev) { prev.count++; }",
-                "function(obj){ return obj.count;}"]
-        expected = [2, # a:2
-                    1, # a:None
-                    1] # a:1
-        group_checker(args, expected)
+        self.assertEqual([2, 1, 1],
+                         db.test.group(["a"], {}, {"count": 0},
+                                       "function (obj, prev) { prev.count++; }",
+                                       "function (obj) { return obj.count; }"))
+
+        # keyf
+        self.assertEqual([2, 2],
+                         db.test.group("function (obj) { if (obj.a == 2) { return {a: true} }; "
+                                       "return {b: true}; }", {}, {"count": 0},
+                                       "function (obj, prev) { prev.count++; }",
+                                       "function (obj) { return obj.count; }"))
+
+        # no key
+        self.assertEqual([{"count": 4}],
+                         db.test.group(None, {}, {"count": 0},
+                                       "function (obj, prev) { prev.count++; }"))
 
         warnings.simplefilter("error")
         self.assertRaises(DeprecationWarning,
