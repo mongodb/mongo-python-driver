@@ -23,6 +23,7 @@ sys.path[0:0] = [""]
 from pymongo.objectid import ObjectId
 from pymongo.dbref import DBRef
 from pymongo.son import SON
+from pymongo.code import Code
 
 
 class TestSON(unittest.TestCase):
@@ -100,7 +101,7 @@ class TestSON(unittest.TestCase):
                                DBRef("namespace",
                                      ObjectId("\xCA\x5C\x67\x49\x6C\x01"
                                               "\xD8\x96\xF7\x01\x00\x00"))),
-                              (u"$where", "this is code"),
+                              (u"$where", Code("this is code")),
                               (u"mynull", None),
                               ]))
 
