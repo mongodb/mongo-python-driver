@@ -15,9 +15,6 @@
 """Tools for representing JavaScript code to be evaluated by MongoDB.
 """
 
-import types
-
-
 class Code(str):
     """JavaScript code to be evaluated by MongoDB.
 
@@ -32,15 +29,15 @@ class Code(str):
     """
 
     def __new__(cls, code, scope=None):
-        if not isinstance(code, types.StringTypes):
-            raise TypeError("code must be an instance of (str, unicode)")
+        if not isinstance(code, basestring):
+            raise TypeError("code must be an instance of basestring")
 
         if scope is None:
             try:
                 scope = code.scope
             except AttributeError:
                 scope = {}
-        if not isinstance(scope, types.DictType):
+        if not isinstance(scope, dict):
             raise TypeError("scope must be an instance of dict")
 
         self = str.__new__(cls, code)
