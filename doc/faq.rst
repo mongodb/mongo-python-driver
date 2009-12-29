@@ -108,12 +108,7 @@ How can I use PyMongo from a web framework like Django?
 -------------------------------------------------------
 `Django <http://www.djangoproject.com/>`_ is a popular Python web
 framework. Django includes an ORM, :mod:`django.db`. Currently,
-MongoDB is not supported as a back-end for :mod:`django.db`. There has
-been `some discussion
-<http://simonwillison.net/2009/Jun/30/mongodb/#c46834>`_ over whether
-or not work should be done towards writing a MongoDB back-end, and
-`some work <http://bitbucket.org/kpot/django-mongodb/>`_ has already
-started towards that goal.
+MongoDB is not supported as a back-end for :mod:`django.db`.
 
 That being said, it's easy to use MongoDB (and PyMongo) from Django
 without using such a project. Certain features of Django that require
@@ -129,6 +124,11 @@ Django. The main point is that your persistence code will go directly
 into your views, rather than being defined in separate models. The
 README also gives instructions for how to change settings.py to
 disable the features that won't work with MongoDB.
+
+One project which should make working with MongoDB and Django easier
+is `mango <http://github.com/vpulim/mango>`_. Mango is a set of
+MongoDB backends for Django sessions and authentication (bypassing
+:mod:`django.db` entirely).
 
 .. _using-with-mod-wsgi:
 
