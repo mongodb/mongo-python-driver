@@ -197,7 +197,8 @@ class Database(object):
         """Issue a DB command.
         """
         result = self["$cmd"].find_one(command, _sock=sock,
-                                       _must_use_master=True)
+                                       _must_use_master=True,
+                                       _is_command=True)
 
         if check and result["ok"] != 1:
             if result["errmsg"] in allowable_errors:

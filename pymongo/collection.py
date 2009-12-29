@@ -318,7 +318,7 @@ class Collection(object):
             message.delete(self.__full_name, spec, safe), safe)
 
     def find_one(self, spec_or_object_id=None, fields=None, slave_okay=None,
-                 _sock=None, _must_use_master=False):
+                 _sock=None, _must_use_master=False, _is_command=False):
         """Get a single object from the database.
 
         Raises TypeError if the argument is of an improper type. Returns a
@@ -342,7 +342,8 @@ class Collection(object):
 
         for result in self.find(spec, limit=-1, fields=fields,
                                 slave_okay=slave_okay, _sock=_sock,
-                                _must_use_master=_must_use_master):
+                                _must_use_master=_must_use_master,
+                                _is_command=_is_command):
             return result
         return None
 
@@ -365,7 +366,7 @@ class Collection(object):
 
     def find(self, spec=None, fields=None, skip=0, limit=0,
              slave_okay=None, timeout=True, snapshot=False, tailable=False,
-             _sock=None, _must_use_master=False):
+             _sock=None, _must_use_master=False, _is_command=False):
         """Query the database.
 
         The `spec` argument is a prototype document that all results must
@@ -448,7 +449,8 @@ class Collection(object):
 
         return Cursor(self, spec, fields, skip, limit, slave_okay, timeout,
                       tailable, snapshot, _sock=_sock,
-                      _must_use_master=_must_use_master)
+                      _must_use_master=_must_use_master,
+                      _is_command=_is_command)
 
     def count(self):
         """Get the number of documents in this collection.
