@@ -227,8 +227,8 @@ class GridFile(object):
 
         self.__flush_write_buffer()
 
-        md5 = self.__collection.database._command(SON([("filemd5", self.__id),
-                                                       ("root", self.__collection.name)]))["md5"]
+        md5 = self.__collection.database.command(SON([("filemd5", self.__id),
+                                                      ("root", self.__collection.name)]))["md5"]
 
         grid_file = self.__collection.files.find_one({"_id": self.__id})
         grid_file["md5"] = md5

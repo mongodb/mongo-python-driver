@@ -318,34 +318,34 @@ class TestCursor(unittest.TestCase):
         db = self.db
         db.drop_collection("test")
 
-        client_cursors = db._command({"cursorInfo": 1})["clientCursors_size"]
-        by_location = db._command({"cursorInfo": 1})["byLocation_size"]
+        client_cursors = db.command({"cursorInfo": 1})["clientCursors_size"]
+        by_location = db.command({"cursorInfo": 1})["byLocation_size"]
 
         test = db.test
         for i in range(10000):
             test.insert({"i": i})
 
         self.assertEqual(client_cursors,
-                         db._command({"cursorInfo": 1})["clientCursors_size"])
+                         db.command({"cursorInfo": 1})["clientCursors_size"])
         self.assertEqual(by_location,
-                         db._command({"cursorInfo": 1})["byLocation_size"])
+                         db.command({"cursorInfo": 1})["byLocation_size"])
 
         for _ in range(10):
             db.test.find_one()
 
         self.assertEqual(client_cursors,
-                         db._command({"cursorInfo": 1})["clientCursors_size"])
+                         db.command({"cursorInfo": 1})["clientCursors_size"])
         self.assertEqual(by_location,
-                         db._command({"cursorInfo": 1})["byLocation_size"])
+                         db.command({"cursorInfo": 1})["byLocation_size"])
 
         for _ in range(10):
             for x in db.test.find():
                 break
 
         self.assertEqual(client_cursors,
-                         db._command({"cursorInfo": 1})["clientCursors_size"])
+                         db.command({"cursorInfo": 1})["clientCursors_size"])
         self.assertEqual(by_location,
-                         db._command({"cursorInfo": 1})["byLocation_size"])
+                         db.command({"cursorInfo": 1})["byLocation_size"])
 
         a = db.test.find()
         for x in a:
@@ -353,25 +353,25 @@ class TestCursor(unittest.TestCase):
 
         self.assertNotEqual(
             client_cursors,
-            db._command({"cursorInfo": 1})["clientCursors_size"])
+            db.command({"cursorInfo": 1})["clientCursors_size"])
         self.assertNotEqual(by_location,
-                            db._command({"cursorInfo": 1})["byLocation_size"])
+                            db.command({"cursorInfo": 1})["byLocation_size"])
 
         del a
 
         self.assertEqual(client_cursors,
-                         db._command({"cursorInfo": 1})["clientCursors_size"])
+                         db.command({"cursorInfo": 1})["clientCursors_size"])
         self.assertEqual(by_location,
-                         db._command({"cursorInfo": 1})["byLocation_size"])
+                         db.command({"cursorInfo": 1})["byLocation_size"])
 
         a = db.test.find().limit(10)
         for x in a:
             break
 
         self.assertEqual(client_cursors,
-                         db._command({"cursorInfo": 1})["clientCursors_size"])
+                         db.command({"cursorInfo": 1})["clientCursors_size"])
         self.assertEqual(by_location,
-                         db._command({"cursorInfo": 1})["byLocation_size"])
+                         db.command({"cursorInfo": 1})["byLocation_size"])
 
     def test_rewind(self):
         self.db.test.save({"x": 1})

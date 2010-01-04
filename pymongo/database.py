@@ -15,6 +15,7 @@
 """Database level operations."""
 
 import types
+import warnings
 try:
     import hashlib
     _md5func = hashlib.md5
@@ -194,9 +195,23 @@ class Database(object):
         return son
 
     def _command(self, command, allowable_errors=[], check=True, sock=None):
-        """Issue a DB command.
+        warnings.warn("The '_command' method is deprecated. "
+                      "Please use 'command' instead.", DeprecationWarning)
+        return self.command(command, check, allowable_errors, sock)
+
+    def command(self, command, check=True, allowable_errors=[], _sock=None):
+        """Issue a MongoDB command.
+
+        Send a command to the database and return the response.
+
+        :Parameters:
+          - `command`: document representing the command to be issued
+          - `check` (optional): check the response for errors, raising
+            :class:`~pymongo.errors.OperationFailure` if there are any
+          - `allowable_errors`: if `check` is ``True``, error messages in this
+            list will be ignored by error-checking
         """
-        result = self["$cmd"].find_one(command, _sock=sock,
+        result = self["$cmd"].find_one(command, _sock=_sock,
                                        _must_use_master=True,
                                        _is_command=True)
 
@@ -237,7 +252,7 @@ class Database(object):
         if name not in self.collection_names():
             return
 
-        self._command({"drop": unicode(name)})
+        self.command({"drop": unicode(name)})
 
     def validate_collection(self, name_or_collection):
         """Validate a collection.
@@ -253,7 +268,7 @@ class Database(object):
             raise TypeError("name_or_collection must be an instance of "
                             "(Collection, str, unicode)")
 
-        result = self._command({"validate": unicode(name)})
+        result = self.command({"validate": unicode(name)})
 
         info = result["result"]
         if info.find("exception") != -1 or info.find("corrupt") != -1:
@@ -266,7 +281,7 @@ class Database(object):
         Returns one of (:data:`~pymongo.OFF`,
         :data:`~pymongo.SLOW_ONLY`, :data:`~pymongo.ALL`).
         """
-        result = self._command({"profile": -1})
+        result = self.command({"profile": -1})
 
         assert result["was"] >= 0 and result["was"] <= 2
         return result["was"]
@@ -284,7 +299,7 @@ class Database(object):
         if not isinstance(level, types.IntType) or level < 0 or level > 2:
             raise ValueError("level must be one of (OFF, SLOW_ONLY, ALL)")
 
-        self._command({"profile": level})
+        self.command({"profile": level})
 
     def profiling_info(self):
         """Returns a list containing current profiling information.
@@ -297,7 +312,7 @@ class Database(object):
         Return None if the last operation was error-free. Otherwise return the
         error that occurred.
         """
-        error = self._command({"getlasterror": 1})
+        error = self.command({"getlasterror": 1})
         if error.get("err", 0) is None:
             return None
         if error["err"] == "not master":
@@ -309,7 +324,7 @@ class Database(object):
 
         Returns a SON object with status information.
         """
-        return self._command({"getlasterror": 1})
+        return self.command({"getlasterror": 1})
 
     def previous_error(self):
         """Get the most recent error to have occurred on this database.
@@ -318,7 +333,7 @@ class Database(object):
         `Database.reset_error_history`. Returns None if no such errors have
         occurred.
         """
-        error = self._command({"getpreverror": 1})
+        error = self.command({"getpreverror": 1})
         if error.get("err", 0) is None:
             return None
         return error
@@ -329,7 +344,7 @@ class Database(object):
         Calls to `Database.previous_error` will only return errors that have
         occurred since the most recent call to this method.
         """
-        self._command({"reseterror": 1})
+        self.command({"reseterror": 1})
 
     def __iter__(self):
         return self
@@ -370,17 +385,17 @@ class Database(object):
         if not isinstance(password, types.StringTypes):
             raise TypeError("password must be an instance of (str, unicode)")
 
-        result = self._command({"getnonce": 1})
+        result = self.command({"getnonce": 1})
         nonce = result["nonce"]
         digest = self._password_digest(name, password)
         md5hash = _md5func()
         md5hash.update("%s%s%s" % (nonce, unicode(name), digest))
         key = unicode(md5hash.hexdigest())
         try:
-            result = self._command(SON([("authenticate", 1),
-                                        ("user", unicode(name)),
-                                        ("nonce", nonce),
-                                        ("key", key)]))
+            result = self.command(SON([("authenticate", 1),
+                                       ("user", unicode(name)),
+                                       ("nonce", nonce),
+                                       ("key", key)]))
             return True
         except OperationFailure:
             return False
@@ -390,7 +405,7 @@ class Database(object):
 
         Note that other databases may still be authorized.
         """
-        self._command({"logout": 1})
+        self.command({"logout": 1})
 
     def dereference(self, dbref):
         """Dereference a DBRef, getting the SON object it points to.
@@ -433,7 +448,7 @@ class Database(object):
             code = Code(code)
 
         command = SON([("$eval", code), ("args", list(args))])
-        result = self._command(command)
+        result = self.command(command)
         return result.get("retval", None)
 
     def __call__(self, *args, **kwargs):

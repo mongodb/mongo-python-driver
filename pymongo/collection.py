@@ -89,7 +89,7 @@ class Collection(object):
         command = SON({"create": self.__name})
         command.update(options)
 
-        self.__database._command(command)
+        self.__database.command(command)
 
     def __getattr__(self, name):
         """Get a sub-collection of this collection by name.
@@ -589,10 +589,10 @@ class Collection(object):
 
         self.__database.connection._purge_index(self.__database.name,
                                                 self.__name, name)
-        self.__database._command(SON([("deleteIndexes",
-                                       self.__name),
-                                      ("index", name)]),
-                                 ["ns not found"])
+        self.__database.command(SON([("deleteIndexes",
+                                      self.__name),
+                                     ("index", name)]),
+                                ["ns not found"])
 
     def index_information(self):
         """Get information on this collection's indexes.
@@ -677,7 +677,7 @@ class Collection(object):
         if finalize is not None:
             group["finalize"] = Code(finalize)
 
-        return self.__database._command({"group":group})["retval"]
+        return self.__database.command({"group":group})["retval"]
 
     def rename(self, new_name):
         """Rename this collection.
@@ -704,7 +704,7 @@ class Collection(object):
                               ("to", "%s.%s" % (self.__database.name,
                                                 new_name))])
 
-        self.__database.connection.admin._command(rename_command)
+        self.__database.connection.admin.command(rename_command)
 
     def distinct(self, key):
         """Get a list of distinct values for `key` among all documents in this
@@ -756,7 +756,7 @@ class Collection(object):
                        ("map", map), ("reduce", reduce)])
         command.update(**kwargs)
 
-        response = self.__database._command(command)
+        response = self.__database.command(command)
         if full_response:
             return response
         return self.__database[response["result"]]

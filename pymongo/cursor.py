@@ -307,8 +307,7 @@ class Cursor(object):
             if self.__skip:
                 command["skip"] = self.__skip
 
-        response = self.__collection.database._command(command,
-                                                       ["ns missing"])
+        response = self.__collection.database.command(command, ["ns missing"])
         if response.get("errmsg", "") == "ns missing":
             return 0
         return int(response["n"])
@@ -337,7 +336,7 @@ class Cursor(object):
         if self.__spec:
             command["query"] = self.__spec
 
-        return self.__collection.database._command(command)["values"]
+        return self.__collection.database.command(command)["values"]
 
     def explain(self):
         """Returns an explain plan record for this cursor.
