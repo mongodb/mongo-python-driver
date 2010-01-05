@@ -6,6 +6,5 @@ recursive-include doc *.py
 recursive-include examples *.py
 recursive-include tools *.py
 include tools/README.rst
-include tools/validate
 recursive-include test *.py
 recursive-include pymongo *.h
