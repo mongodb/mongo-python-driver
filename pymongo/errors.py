@@ -61,6 +61,7 @@ class InvalidBSON(ValueError):
     """Raised when trying to create a BSON object from invalid data.
     """
 
+
 class InvalidStringData(ValueError):
     """Raised when trying to encode a string containing non-UTF8 data.
     """
@@ -68,11 +69,6 @@ class InvalidStringData(ValueError):
 
 class InvalidDocument(ValueError):
     """Raised when trying to create a BSON object from an invalid document.
-    """
-
-
-class UnsupportedTag(ValueError):
-    """Raised when trying to parse an unsupported tag in an XML document.
     """
 
 

@@ -21,15 +21,6 @@ from distutils.core import Extension
 
 from pymongo import version
 
-requirements = []
-try:
-    import xml.etree.ElementTree
-except ImportError:
-    try:
-        import elementtree
-    except ImportError:
-        requirements.append("elementtree")
-
 f = open("README.rst")
 try:
     try:
@@ -158,7 +149,7 @@ setup(
     url="http://github.com/mongodb/mongo-python-driver",
     keywords=["mongo", "mongodb", "pymongo", "gridfs"],
     packages=["pymongo", "gridfs"],
-    install_requires=requirements,
+    install_requires=[],
     features=features,
     license="Apache License, Version 2.0",
     test_suite="nose.collector",

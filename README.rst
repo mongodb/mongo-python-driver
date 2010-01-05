@@ -22,7 +22,6 @@ C extension will not be built. This will negatively affect performance, but ever
 
 Additional dependencies are:
 
-- `ElementTree <http://effbot.org/zone/element-index.htm>`_ (this is included with Python >= 2.5)
 - (to generate documentation) sphinx_
 - (to auto-discover tests) `nose <http://somethingaboutorange.com/mrl/projects/nose/>`_
 

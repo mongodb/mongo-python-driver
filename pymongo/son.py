@@ -18,12 +18,6 @@ Regular dictionaries can be used instead of SON objects, but not when the order
 of keys is important. A SON object can be used just like a normal Python
 dictionary."""
 
-import datetime
-import re
-import binascii
-import base64
-import types
-
 
 class SON(dict):
     """SON data.
@@ -190,7 +184,6 @@ class SON(dict):
     def __len__(self):
         return len(self.keys())
 
-    # Thanks to Jeff Jenkins for the idea and original implementation
     def to_dict(self):
         """Convert a SON document to a normal Python dictionary instance.
 
@@ -199,129 +192,13 @@ class SON(dict):
         """
 
         def transform_value(value):
-            if isinstance(value, types.ListType):
+            if isinstance(value, list):
                 return [transform_value(v) for v in value]
             if isinstance(value, SON):
                 value = dict(value)
-            if isinstance(value, types.DictType):
+            if isinstance(value, dict):
                 for k, v in value.iteritems():
                     value[k] = transform_value(v)
             return value
 
         return transform_value(dict(self))
-
-    def from_xml(cls, xml):
-        """Create an instance of SON from an xml document.
-
-        This is really only used for testing, and is probably unnecessary.
-        """
-        try:
-            import xml.etree.ElementTree as ET
-        except ImportError:
-            import elementtree.ElementTree as ET
-
-        from code import Code
-        from binary import Binary
-        from objectid import ObjectId
-        from dbref import DBRef
-        from errors import UnsupportedTag
-
-        def pad(list, index):
-            while index >= len(list):
-                list.append(None)
-
-        def make_array(array):
-            doc = make_doc(array)
-            array = []
-            for (key, value) in doc.items():
-                index = int(key)
-                pad(array, index)
-                array[index] = value
-            return array
-
-        def make_string(string):
-            return string.text is not None and unicode(string.text) or u""
-
-        def make_code(code):
-            return code.text is not None and Code(code.text) or Code("")
-
-        def make_binary(binary):
-            if binary.text is not None:
-                return Binary(base64.decodestring(binary.text))
-            return Binary("")
-
-        def make_boolean(bool):
-            return bool.text == "true"
-
-        def make_date(date):
-            return datetime.datetime.utcfromtimestamp(float(date.text) /
-                                                      1000.0)
-
-        def make_ref(dbref):
-            return DBRef(make_elem(dbref[0]), make_elem(dbref[1]))
-
-        def make_oid(oid):
-            return ObjectId(binascii.unhexlify(oid.text))
-
-        def make_int(data):
-            return int(data.text)
-
-        def make_null(null):
-            return None
-
-        def make_number(number):
-            return float(number.text)
-
-        def make_regex(regex):
-            return re.compile(make_elem(regex[0]), make_elem(regex[1]))
-
-        def make_options(data):
-            options = 0
-            if not data.text:
-                return options
-            if "i" in data.text:
-                options |= re.IGNORECASE
-            if "l" in data.text:
-                options |= re.LOCALE
-            if "m" in data.text:
-                options |= re.MULTILINE
-            if "s" in data.text:
-                options |= re.DOTALL
-            if "u" in data.text:
-                options |= re.UNICODE
-            if "x" in data.text:
-                options |= re.VERBOSE
-            return options
-
-        def make_elem(elem):
-            try:
-                return {"array": make_array,
-                        "doc": make_doc,
-                        "string": make_string,
-                        "binary": make_binary,
-                        "boolean": make_boolean,
-                        "code": make_code,
-                        "date": make_date,
-                        "ref": make_ref,
-                        "ns": make_string,
-                        "oid": make_oid,
-                        "int": make_int,
-                        "null": make_null,
-                        "number": make_number,
-                        "pattern": make_string,
-                        "options": make_options,
-                        }[elem.tag](elem)
-            except KeyError:
-                raise UnsupportedTag("cannot parse tag: %s" % elem.tag)
-
-        def make_doc(doc):
-            son = SON()
-            for elem in doc:
-                son[elem.attrib["name"]] = make_elem(elem)
-            return son
-
-        tree = ET.XML(xml)
-        doc = tree[1]
-
-        return make_doc(doc)
-    from_xml = classmethod(from_xml)
