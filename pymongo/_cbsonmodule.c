@@ -921,6 +921,75 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
     return result;
 }
 
+static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
+    /* NOTE just using a random number as the request_id */
+    int request_id = rand();
+    char* collection_name;
+    int collection_name_length;
+    PyObject* doc;
+    PyObject* spec;
+    unsigned char multi;
+    unsigned char upsert;
+    unsigned char safe;
+    int options;
+    bson_buffer* buffer;
+    int length_location;
+    PyObject* result;
+
+    if (!PyArg_ParseTuple(args, "s#bbOOb",
+                          &collection_name,
+                          &collection_name_length,
+                          &upsert, &multi, &spec, &doc, &safe)) {
+        return NULL;
+    }
+
+    options = 0;
+    if (upsert) {
+        options += 1;
+    }
+    if (multi) {
+        options += 2;
+    }
+    buffer = buffer_new();
+    if (!buffer) {
+        return NULL;
+    }
+
+    // save space for message length
+    length_location = buffer_save_bytes(buffer, 4);
+    if (length_location == -1 ||
+        !buffer_write_bytes(buffer, (const char*)&request_id, 4) ||
+        !buffer_write_bytes(buffer,
+                            "\x00\x00\x00\x00"
+                            "\xd1\x07\x00\x00"
+                            "\x00\x00\x00\x00",
+                            12) ||
+        !buffer_write_bytes(buffer,
+                            collection_name,
+                            collection_name_length + 1) ||
+        !buffer_write_bytes(buffer, (const char*)&options, 4) ||
+        !write_dict(buffer, spec, 0) ||
+        !write_dict(buffer, doc, 0)) {
+        buffer_free(buffer);
+        return NULL;
+    }
+
+    memcpy(buffer->buffer + length_location, &buffer->position, 4);
+
+    if (safe) {
+        if (!add_last_error(buffer, request_id)) {
+            buffer_free(buffer);
+            return NULL;
+        }
+    }
+
+    /* objectify buffer */
+    result = Py_BuildValue("is#", request_id,
+                           buffer->buffer, buffer->position);
+    buffer_free(buffer);
+    return result;
+}
+
 static PyObject* get_value(const char* buffer, int* position, int type) {
     PyObject* value;
     switch (type) {
@@ -1340,6 +1409,8 @@ static PyMethodDef _CBSONMethods[] = {
      "convert binary data to a sequence of SON objects."},
     {"_insert_message", _cbson_insert_message, METH_VARARGS,
      "create an insert message to be sent to MongoDB"},
+    {"_update_message", _cbson_update_message, METH_VARARGS,
+     "create an update message to be sent to MongoDB"},
     {NULL, NULL, 0, NULL}
 };
 

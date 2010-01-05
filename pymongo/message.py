@@ -94,6 +94,8 @@ def update(collection_name, upsert, multi, spec, doc, safe):
         return (request_id, update_message + error_message)
     else:
         return __pack_message(2001, data)
+if _use_c:
+    update = _cbson._update_message
 
 
 def query(options, collection_name,
