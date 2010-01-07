@@ -482,25 +482,6 @@ class Connection(object): # TODO support auth for pooling
             raise AutoReconnect(str(e))
         return sock
 
-    # TODO use static methods for a bunch of these
-    def __send_data_on_socket(self, data, sock):
-        """Lowest level send operation.
-
-        Takes data to send as a byte string and a socket instance and
-        sends all of the data, raising ConnectionFailure on error.
-        """
-        total_sent = 0
-        while total_sent < len(data):
-            try:
-                sent = sock.send(data[total_sent:])
-            except socket.error, e:
-                if e[0] == errno.EAGAIN:
-                    continue
-                raise ConnectionFailure("connection closed, resetting")
-            if sent == 0:
-                raise ConnectionFailure("connection closed, resetting")
-            total_sent += sent
-
     def __check_response_to_last_error(self, response):
         """Check a response to a lastError message for errors.
 
@@ -536,7 +517,7 @@ class Connection(object): # TODO support auth for pooling
         try:
             try:
                 (request_id, data) = message
-                self.__send_data_on_socket(data, sock)
+                sock.sendall(data)
                 # Safe mode. We pack the message together with a lastError
                 # message and send both. We then get the response (to the
                 # lastError) and raise OperationFailure if it is an error
@@ -544,7 +525,7 @@ class Connection(object): # TODO support auth for pooling
                 if with_last_error:
                     response = self.__receive_message_on_socket(1, request_id, sock)
                     self.__check_response_to_last_error(response)
-            except ConnectionFailure, e:
+            except (ConnectionFailure, socket.error), e:
                 self.__sockets[sock_number].close()
                 self.__sockets[sock_number] = None
                 raise AutoReconnect(str(e))
@@ -586,7 +567,7 @@ class Connection(object): # TODO support auth for pooling
         """Send a message on the given socket and return the response data.
         """
         (request_id, data) = message
-        self.__send_data_on_socket(data, sock)
+        sock.sendall(data)
         return self.__receive_message_on_socket(1, request_id, sock)
 
     __hack_socket_lock = threading.Lock()
@@ -614,7 +595,7 @@ class Connection(object): # TODO support auth for pooling
         try:
             try:
                 return self.__send_and_receive(message, sock)
-            except ConnectionFailure, e:
+            except (ConnectionFailure, socket.error), e:
                 self.__sockets[sock_number].close()
                 self.__sockets[sock_number] = None
                 raise AutoReconnect(str(e))
