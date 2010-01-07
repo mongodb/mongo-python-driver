@@ -21,140 +21,94 @@ import random
 import sys
 sys.path[0:0] = [""]
 
-from pymongo.connection import Connection
+from test_connection import get_connection
 
+N = 50
+DB = "pymongo-pooling-tests"
+
+class MongoThread(threading.Thread):
+
+    def __init__(self, test_case):
+        threading.Thread.__init__(self)
+        self.connection = test_case.c
+        self.db = self.connection[DB]
+        self.ut = test_case
+
+
+class SaveAndFind(MongoThread):
+
+    def run(self):
+        for _ in xrange(N):
+            rand = random.randint(0, N)
+            id = self.db.sf.save({"x": rand})
+            self.ut.assertEqual(rand, self.db.sf.find_one(id)["x"])
+            self.connection.end_request()
+
+
+class Unique(MongoThread):
+
+    def run(self):
+        for _ in xrange(N):
+            self.db.unique.insert({})
+            self.ut.assertEqual(None, self.db.error())
+            self.connection.end_request()
+
+
+class NonUnique(MongoThread):
+
+    def run(self):
+        for _ in xrange(N):
+            self.db.unique.insert({"_id": "mike"})
+            self.ut.assertNotEqual(None, self.db.error())
+            self.connection.end_request()
+
+
+class Disconnect(MongoThread):
+
+    def run(self):
+        for _ in xrange(N):
+            self.connection.disconnect()
+
+
+class NoRequest(MongoThread):
+
+    def run(self):
+        errors = 0
+        for _ in xrange(N):
+            self.db.unique.insert({"_id": "mike"})
+            if self.db.error() is None:
+                errors += 1
+
+        self.ut.assertEqual(0, errors)
+
+
+def run_cases(ut, cases):
+    threads = []
+    for case in cases:
+        for i in range(10):
+            thread = case(ut)
+            thread.start()
+            threads.append(thread)
+
+    for t in threads:
+        t.join()
 
 class TestPooling(unittest.TestCase):
 
     def setUp(self):
-        self.host = os.environ.get("DB_IP", "localhost")
-        self.port = int(os.environ.get("DB_PORT", 27017))
-        default_connection = Connection(self.host, self.port)
-        no_auto_connection = Connection(self.host, self.port,
-                                        auto_start_request=False)
-        pooled_connection = Connection(self.host, self.port,
-                                       pool_size=10, timeout=-1)
-        no_auto_pooled_connection = Connection(self.host, self.port,
-                                               pool_size=10, timeout=-1,
-                                               auto_start_request=False)
-        self.default_db = default_connection["pymongo_test"]
-        self.pooled_db = pooled_connection["pymongo_test"]
-        self.no_auto_db = no_auto_connection["pymongo_test"]
-        self.no_auto_pooled_db = no_auto_pooled_connection["pymongo_test"]
+        self.c = get_connection()
 
-    def test_exceptions(self):
-        self.assertRaises(TypeError, Connection, self.host, self.port,
-                          pool_size="one")
-        self.assertRaises(TypeError, Connection, self.host, self.port,
-                          pool_size=[])
-        self.assertRaises(ValueError, Connection, self.host, self.port,
-                          pool_size=-10)
-        self.assertRaises(ValueError, Connection, self.host, self.port,
-                          pool_size=0)
+        # reset the db
+        self.c.drop_database(DB)
+        self.c[DB].unique.insert({"_id": "mike"})
+        self.c[DB].unique.find_one()
 
-    def test_constants(self):
-        Connection.POOL_SIZE = -1
-        self.assertRaises(ValueError, Connection, self.host, self.port)
+    def test_no_disconnect(self):
+        run_cases(self, [NoRequest, NonUnique, Unique, SaveAndFind])
 
-        Connection.POOL_SIZE = 1
-        self.assert_(Connection(self.host, self.port))
+    def test_disconnect(self):
+        run_cases(self, [SaveAndFind, Disconnect, Unique])
 
-
-    # NOTE this test is non-deterministic
-    def test_end_request(self):
-        count = 0
-        for _ in range(100):
-            self.default_db.test.remove({})
-            self.default_db.test.insert({})
-            if not self.default_db.test.find_one():
-                count += 1
-        self.assertEqual(0, count)
-
-        count = 0
-        for _ in range(100):
-            self.default_db.test.remove({})
-            self.default_db.test.insert({})
-            self.default_db.connection.end_request()
-            if not self.default_db.test.find_one():
-                count += 1
-        self.assertEqual(0, count)
-
-        count = 0
-        for _ in range(100):
-            self.pooled_db.test.remove({})
-            self.pooled_db.test.insert({})
-            if not self.pooled_db.test.find_one():
-                count += 1
-        self.assertEqual(0, count)
-
-# TODO better way to test this?
-#         count = 0
-#         for _ in range(6000):
-#             self.pooled_db.test.remove({})
-#             self.pooled_db.test.insert({})
-#             self.pooled_db.connection.end_request()
-#             if not self.pooled_db.test.find_one():
-#                 count += 1
-#         self.assertNotEqual(0, count)
-
-    # NOTE this test is non-deterministic
-    def test_no_auto_start_request(self):
-        count = 0
-        for _ in range(100):
-            self.no_auto_db.test.remove({})
-            self.no_auto_db.test.insert({})
-            if not self.no_auto_db.test.find_one():
-                count += 1
-        self.assertEqual(0, count)
-
-# TODO better way to test this?
-#         count = 0
-#         for _ in range(6000):
-#             self.no_auto_pooled_db.test.remove({})
-#             self.no_auto_pooled_db.test.insert({})
-#             if not self.no_auto_pooled_db.test.find_one():
-#                 count += 1
-#         self.assertNotEqual(0, count)
-
-        count = 0
-        for _ in range(100):
-            self.no_auto_db.connection.start_request()
-            self.no_auto_db.test.remove({})
-            self.no_auto_db.test.insert({})
-            if not self.no_auto_db.test.find_one():
-                count += 1
-            self.no_auto_db.connection.end_request()
-        self.assertEqual(0, count)
-
-        count = 0
-        for _ in range(100):
-            self.no_auto_pooled_db.connection.start_request()
-            self.no_auto_pooled_db.test.remove({})
-            self.no_auto_pooled_db.test.insert({})
-            if not self.no_auto_pooled_db.test.find_one():
-                count += 1
-            self.no_auto_pooled_db.connection.end_request()
-        self.assertEqual(0, count)
-
-    def test_multithread(self):
-        self.pooled_db.mt_test.remove({})
-        for _ in range(20):
-            t = SaveAndFind(self.pooled_db)
-            t.start()
-
-
-class SaveAndFind(threading.Thread):
-
-    def __init__(self, database):
-        threading.Thread.__init__(self)
-        self.database = database
-
-    def run(self):
-        for _ in xrange(100):
-            rand = random.randint(0, 100)
-            id = self.database.mt_test.save({"x": rand})
-            assert self.database.mt_test.find_one(id)["x"] == rand
-            self.database.connection.end_request()
 
 if __name__ == "__main__":
     unittest.main()

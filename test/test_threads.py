@@ -100,7 +100,7 @@ class IgnoreAutoReconnect(threading.Thread):
 class TestThreads(unittest.TestCase):
 
     def setUp(self):
-        self.db = get_connection(timeout=-1).pymongo_test
+        self.db = get_connection().pymongo_test
 
     def test_threading(self):
         self.db.test.remove({})
@@ -158,7 +158,7 @@ class TestThreads(unittest.TestCase):
         n = 10
         while db is None and i < n:
             try:
-                db = get_connection(network_timeout=0.0001, timeout=-1).pymongo_test
+                db = get_connection(network_timeout=0.0001).pymongo_test
             except AutoReconnect:
                 i += 1
         if i == n:

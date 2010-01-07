@@ -37,26 +37,56 @@ import sys
 import socket
 import struct
 import types
-import logging
 import threading
 import random
 import errno
 import datetime
+import warnings
 
 from errors import ConnectionFailure, ConfigurationError, AutoReconnect
 from errors import OperationFailure
 from database import Database
 from cursor_manager import CursorManager
-from thread_util import TimeoutableLock
 import bson
 import message
 import helpers
 
-_logger = logging.getLogger("pymongo.connection")
-_logger.addHandler(logging.StreamHandler())
-_logger.setLevel(logging.INFO)
-
 _CONNECT_TIMEOUT = 20.0
+
+
+class Pool(threading.local):
+    """A simple connection pool.
+
+    Uses thread-local socket per thread. By calling return_socket() a thread
+    can return a socket to the pool.
+    """
+
+    # Non thread-locals
+    __slots__ = ["sockets", "socket_factory"]
+    sockets = []
+
+    sock = None
+
+    def __init__(self, socket_factory):
+        self.socket_factory = socket_factory
+
+    def socket(self):
+        if self.sock is not None:
+            return self.sock
+
+        try:
+            self.sock = self.sockets.pop()
+        except IndexError:
+            self.sock = self.socket_factory()
+        return self.sock
+
+    def close(self):
+        self.sock = None
+
+    def return_socket(self):
+        if self.sock is not None:
+            self.sockets.append(self.sock)
+        self.sock = None
 
 
 class Connection(object): # TODO support auth for pooling
@@ -65,9 +95,6 @@ class Connection(object): # TODO support auth for pooling
 
     HOST = "localhost"
     PORT = 27017
-    POOL_SIZE = 1
-    AUTO_START_REQUEST = True
-    TIMEOUT = 1.0
 
     def __init__(self, host=None, port=None, pool_size=None,
                  auto_start_request=None, timeout=None, slave_okay=False,
@@ -86,30 +113,24 @@ class Connection(object): # TODO support auth for pooling
         Raises :class:`TypeError` if host is not an instance of string or port
         is not an instance of ``int``. Raises
         :class:`~pymongo.errors.ConnectionFailure` if the connection cannot be
-        made. Raises :class:`TypeError` if `pool_size` is not an instance of
-        ``int``. Raises :class:`ValueError` if `pool_size` is not greater than
-        or equal to one.
-
-        .. warning:: Connection pooling is not compatible with auth (yet).
-           Please do not set the `pool_size` parameter to anything other than 1
-           if auth is in use.
+        made.
 
         :Parameters:
           - `host` (optional): hostname or IPv4 address of the instance to
             connect to
           - `port` (optional): port number on which to connect
-          - `pool_size` (optional): maximum size of the built in
-            connection-pool
-          - `auto_start_request` (optional): automatically start a request
-            on every operation - see :meth:`start_request`
+          - `pool_size` (optional): DEPRECATED
+          - `auto_start_request` (optional): DEPRECATED
           - `slave_okay` (optional): is it okay to connect directly to and
             perform queries on a slave instance
-          - `timeout` (optional): max time to wait when attempting to acquire a
-            connection from the connection pool before raising an exception -
-            can be set to ``-1`` to wait indefinitely
+          - `timeout` (optional): DEPRECATED
           - `network_timeout` (optional): timeout (in seconds) to use for socket
             operations - default is no timeout
 
+        .. seealso:: :meth:`end_request`
+        .. versionchanged:: 1.3+
+           DEPRECATED The `pool_size`, `auto_start_request`, and `timeout`
+           parameters.
         .. versionadded:: 1.1
            The `network_timeout` parameter.
         """
@@ -117,23 +138,21 @@ class Connection(object): # TODO support auth for pooling
             host = self.HOST
         if port is None:
             port = self.PORT
-        if pool_size is None:
-            pool_size = self.POOL_SIZE
-        if auto_start_request is None:
-            auto_start_request = self.AUTO_START_REQUEST
-        if timeout is None:
-            timeout = self.TIMEOUT
-        if timeout == -1:
-            timeout = None
+
+        if pool_size is not None:
+            warnings.warn("The pool_size parameter to Connection is "
+                          "deprecated", DeprecationWarning)
+        if auto_start_request is not None:
+            warnings.warn("The auto_start_request parameter to Connection "
+                          "is deprecated", DeprecationWarning)
+        if timeout is not None:
+            warnings.warn("The timeout parameter to Connection is deprecated",
+                          DeprecationWarning)
 
         if not isinstance(host, types.StringTypes):
             raise TypeError("host must be an instance of (str, unicode)")
         if not isinstance(port, types.IntType):
             raise TypeError("port must be an instance of int")
-        if not isinstance(pool_size, types.IntType):
-            raise TypeError("pool_size must be an instance of int")
-        if pool_size <= 0:
-            raise ValueError("pool_size must be positive")
 
         self.__host = None
         self.__port = None
@@ -143,16 +162,7 @@ class Connection(object): # TODO support auth for pooling
 
         self.__cursor_manager = CursorManager(self)
 
-        self.__pool_size = pool_size
-        self.__auto_start_request = auto_start_request
-        # map from threads to sockets
-        self.__thread_map = {}
-        # count of how many threads are mapped to each socket
-        self.__thread_count = [0 for _ in range(self.__pool_size)]
-        self.__acquire_timeout = timeout
-        self.__locks = [TimeoutableLock() for _ in range(self.__pool_size)]
-        self.__sockets = [None for _ in range(self.__pool_size)]
-        self.__currently_resetting = False
+        self.__pool = Pool(self.__connect)
 
         self.__network_timeout = network_timeout
 
@@ -194,19 +204,20 @@ class Connection(object): # TODO support auth for pooling
           - `left`: ``(host, port)`` pair for the left MongoDB instance
           - `right` (optional): ``(host, port)`` pair for the right MongoDB
             instance
-          - `pool_size` (optional): same as argument to :class:`Connection`
-          - `auto_start_request` (optional): same as argument to
-            :class:`Connection`
+          - `pool_size` (optional): DEPRECATED
+          - `auto_start_request` (optional): DEPRECATED
         """
         if right is None:
             right = (cls.HOST, cls.PORT)
-        if pool_size is None:
-            pool_size = cls.POOL_SIZE
-        if auto_start_request is None:
-            auto_start_request = cls.AUTO_START_REQUEST
+        if pool_size is not None:
+            warnings.warn("The pool_size parameter to Connection.paired is "
+                          "deprecated", DeprecationWarning)
+        if auto_start_request is not None:
+            warnings.warn("The auto_start_request parameter to "
+                          "Connection.paired is deprecated",
+                          DeprecationWarning)
 
-        connection = cls(left[0], left[1], pool_size, auto_start_request,
-                         _connect=False)
+        connection = cls(left[0], left[1], _connect=False)
         connection.__pair_with(*right)
         return connection
     paired = classmethod(paired)
@@ -317,12 +328,10 @@ class Connection(object): # TODO support auth for pooling
         Sets __host and __port so that :attr:`host` and :attr:`port` will return the
         address of the master.
         """
-        _logger.debug("finding master")
         self.__host = None
         self.__port = None
         sock = None
         for (host, port) in self.__nodes:
-            _logger.debug("trying %r:%r" % (host, port))
             try:
                 try:
                     sock = socket.socket()
@@ -337,13 +346,11 @@ class Connection(object): # TODO support auth for pooling
                     if master is True:
                         self.__host = host
                         self.__port = port
-                        _logger.debug("found master")
                         return
                     if not master:
                         if self.__slave_okay:
                             self.__host = host
                             self.__port = port
-                            _logger.debug("connecting to slave (slave_okay mode)")
                             return
 
                         raise ConfigurationError("trying to connect directly to"
@@ -355,11 +362,8 @@ class Connection(object): # TODO support auth for pooling
                             "%r claims master is %r, "
                             "but that's not configured" %
                             ((host, port), master))
-                    _logger.debug("not master, master is (%r, %r)" % master)
                 except socket.error, e:
                     exctype, value = sys.exc_info()[:2]
-                    _logger.debug("could not connect, got: %s %s" %
-                                  (exctype, value))
                     if len(self.__nodes) == 1:
                         raise ConnectionFailure(e)
                     continue
@@ -368,50 +372,38 @@ class Connection(object): # TODO support auth for pooling
                     sock.close()
         raise AutoReconnect("could not find master")
 
-    def __connect(self, socket_number):
-        """(Re-)connect to Mongo.
+    def __connect(self):
+        """(Re-)connect to Mongo and return a new (connected) socket.
 
         Connect to the master if this is a paired connection.
         """
         if self.__host is None or self.__port is None:
             self.__find_master()
-        _logger.debug("connecting socket %s..." % socket_number)
-
-        assert self.__sockets[socket_number] is None
 
         try:
-            self.__sockets[socket_number] = socket.socket()
-            self.__sockets[socket_number].setsockopt(socket.IPPROTO_TCP,
-                                                     socket.TCP_NODELAY, 1)
-            sock = self.__sockets[socket_number]
+            sock = socket.socket()
+            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             sock.settimeout(_CONNECT_TIMEOUT)
             sock.connect((self.__host, self.__port))
             sock.settimeout(self.__network_timeout)
-            _logger.debug("connected")
-            return
+            return sock
         except socket.error:
-            raise ConnectionFailure("could not connect to %r" % self.__nodes)
+            raise AutoReconnect("could not connect to %r" % self.__nodes)
 
     def disconnect(self):
         """Disconnect from MongoDB.
 
         Disconnecting will close all underlying sockets in the
         connection pool. If the :class:`Connection` is used again it
-        will be automatically re-opened.
+        will be automatically re-opened. Care should be taken to make
+        sure that :meth:`disconnect` is not called in the middle of a
+        sequence of operations in which ordering is important. This
+        could lead to unexpected results.
 
+        .. seealso:: :meth:`end_request`
         .. versionadded:: 1.3
         """
-        for i in range(self.__pool_size):
-            # prevent all operations during the reset
-            if not self.__locks[i].acquire(timeout=self.__acquire_timeout):
-                raise ConnectionFailure("timed out before acquiring "
-                                        "a connection from the pool")
-            if self.__sockets[i] is not None:
-                self.__sockets[i].close()
-                self.__sockets[i] = None
-
-        for i in range(self.__pool_size):
-            self.__locks[i].release()
+        self.__pool = Pool(self.__connect)
 
     def _reset(self):
         """Reset everything and start connecting again.
@@ -441,46 +433,6 @@ class Connection(object): # TODO support auth for pooling
                             "CursorManager")
 
         self.__cursor_manager = manager
-
-    def __pick_and_acquire_socket(self):
-        """Acquire a socket to use for synchronous send and receive operations.
-        """
-        choices = range(self.__pool_size)
-        random.shuffle(choices)
-        choices.sort(lambda x, y: cmp(self.__thread_count[x],
-                                      self.__thread_count[y]))
-
-        for choice in choices:
-            if self.__locks[choice].acquire(False):
-                return choice
-
-        if not self.__locks[choices[0]].acquire(timeout=
-                                                self.__acquire_timeout):
-            raise ConnectionFailure("timed out before acquiring "
-                                    "a connection from the pool")
-        return choices[0]
-
-    def __get_socket(self):
-        thread = threading.currentThread()
-        if self.__thread_map.get(thread, -1) >= 0:
-            sock = self.__thread_map[thread]
-            if not self.__locks[sock].acquire(timeout=self.__acquire_timeout):
-                raise ConnectionFailure("timed out before acquiring "
-                                        "a connection from the pool")
-        else:
-            sock = self.__pick_and_acquire_socket()
-            if self.__auto_start_request or thread in self.__thread_map:
-                self.__thread_map[thread] = sock
-                self.__thread_count[sock] += 1
-
-        try:
-            if not self.__sockets[sock]:
-                self.__connect(sock)
-        except ConnectionFailure, e:
-            self.__sockets[sock].close()
-            self.__sockets[sock] = None
-            raise AutoReconnect(str(e))
-        return sock
 
     def __check_response_to_last_error(self, response):
         """Check a response to a lastError message for errors.
@@ -512,25 +464,20 @@ class Connection(object): # TODO support auth for pooling
           - `with_last_error`: check getLastError status after sending the
             message
         """
-        sock_number = self.__get_socket()
-        sock = self.__sockets[sock_number]
+        sock = self.__pool.socket()
         try:
-            try:
-                (request_id, data) = message
-                sock.sendall(data)
-                # Safe mode. We pack the message together with a lastError
-                # message and send both. We then get the response (to the
-                # lastError) and raise OperationFailure if it is an error
-                # response.
-                if with_last_error:
-                    response = self.__receive_message_on_socket(1, request_id, sock)
-                    self.__check_response_to_last_error(response)
-            except (ConnectionFailure, socket.error), e:
-                self.__sockets[sock_number].close()
-                self.__sockets[sock_number] = None
-                raise AutoReconnect(str(e))
-        finally:
-            self.__locks[sock_number].release()
+            (request_id, data) = message
+            sock.sendall(data)
+            # Safe mode. We pack the message together with a lastError
+            # message and send both. We then get the response (to the
+            # lastError) and raise OperationFailure if it is an error
+            # response.
+            if with_last_error:
+                response = self.__receive_message_on_socket(1, request_id, sock)
+                self.__check_response_to_last_error(response)
+        except (ConnectionFailure, socket.error), e:
+            self.__pool.close()
+            raise AutoReconnect(str(e))
 
     def __receive_data_on_socket(self, length, sock):
         """Lowest level receive operation.
@@ -590,64 +537,37 @@ class Connection(object): # TODO support auth for pooling
             finally:
                 self.__hack_socket_lock.release()
 
-        sock_number = self.__get_socket()
-        sock = self.__sockets[sock_number]
+        sock = self.__pool.socket()
         try:
-            try:
-                return self.__send_and_receive(message, sock)
-            except (ConnectionFailure, socket.error), e:
-                self.__sockets[sock_number].close()
-                self.__sockets[sock_number] = None
-                raise AutoReconnect(str(e))
-        finally:
-            self.__locks[sock_number].release()
+            return self.__send_and_receive(message, sock)
+        except (ConnectionFailure, socket.error), e:
+            self.__pool.close()
+            raise AutoReconnect(str(e))
 
     def start_request(self):
-        """Start a "request".
+        """DEPRECATED all operations will start a request.
 
-        A "request" is a group of operations in which order matters. Examples
-        include inserting a document and then performing a query which expects
-        that document to have been inserted, or performing an operation and
-        then using :meth:`database.Database.error()` to perform error-checking
-        on that operation. When a thread performs operations in a "request", the
-        connection will perform all operations on the same socket, so Mongo
-        will order them correctly.
-
-        This method is only relevant when the current :class:`Connection` has a
-        ``pool_size`` greater than one. Otherwise only a single socket will be
-        used for *all* operations, so there is no need to group operations into
-        requests.
-
-        This method only needs to be used if the ``auto_start_request`` option
-        is set to ``False``. If ``auto_start_request`` is ``True``, a request
-        will be started (if necessary) on every operation.
+        .. versionchanged:: 1.3+
+           DEPRECATED
         """
-        if not self.__auto_start_request:
-            self.end_request()
-            self.__thread_map[threading.currentThread()] = -1
+        warnings.warn("the Connection.start_request method is deprecated",
+                      DeprecationWarning)
 
     def end_request(self):
-        """End the current "request", if this thread is in one.
+        """Allow this thread's connection to return to the pool.
 
-        Judicious use of this method can lead to performance gains when
-        connection-pooling is being used. By ending a request when it is safe
-        to do so the connection is allowed to pick a new socket from the pool
-        for that thread on the next operation. This could prevent an imbalance
-        of threads trying to connect on the same socket. Care should be taken,
-        however, to make sure that :meth:`end_request` isn't called in the
-        middle of a sequence of operations in which ordering is important. This
+        Calling :meth:`end_request` allows the :class:`~socket.socket`
+        that has been reserved for this thread to be returned to the
+        pool. Other threads will then be able to re-use that
+        :class:`~socket.socket`. If your application uses many
+        threads, or has long-running threads that infrequently perform
+        MongoDB operations, then judicious use of this method can lead
+        to performance gains. Care should be taken, however, to make
+        sure that :meth:`end_request` is not called in the middle of a
+        sequence of operations in which ordering is important. This
         could lead to unexpected results.
-
-        :meth:`end_request` is useful even (especially) if
-        ``auto_start_request`` is ``True``.
-
-        .. seealso:: :meth:`start_request` for more information on what
-           a "request" is and when one should be used.
         """
-        thread = threading.currentThread()
-        if self.__thread_map.get(thread, -1) >= 0:
-            sock_number = self.__thread_map.pop(thread)
-            self.__thread_count[sock_number] -= 1
+        self.__pool.return_socket()
 
     def __cmp__(self, other):
         if isinstance(other, Connection):

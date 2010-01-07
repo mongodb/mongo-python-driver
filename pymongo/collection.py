@@ -300,7 +300,6 @@ class Collection(object):
            The `spec_or_object_id` parameter is now optional. If it is
            not specified *all* documents in the collection will be
            removed.
-
         .. versionadded:: 1.1
            The `safe` parameter.
         """
@@ -654,11 +653,11 @@ class Collection(object):
             command instead of in an eval - this option is deprecated and
             will be removed in favor of running all groups as commands
 
-        .. versionchanged:: 1.3
-           The `command` argument now defaults to ``True`` and is deprecated.
         .. versionchanged:: 1.3+
            The `key` argument can now be ``None`` or a JavaScript function,
            in addition to a :class:`list` of keys.
+        .. versionchanged:: 1.3
+           The `command` argument now defaults to ``True`` and is deprecated.
         """
         if not command:
             warnings.warn("eval-based groups are deprecated, and the "

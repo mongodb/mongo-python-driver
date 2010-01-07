@@ -4,9 +4,9 @@
 .. automodule:: pymongo.connection
    :synopsis: Tools for connecting to MongoDB
 
-   .. autoclass:: pymongo.connection.Connection([host='localhost'[, port=27017[, pool_size=1[, auto_start_request=True[, timeout=1.0[, slave_okay=False[, network_timeout=None]]]]]]])
+   .. autoclass:: pymongo.connection.Connection([host='localhost'[, port=27017[, pool_size=None[, auto_start_request=None[, timeout=None[, slave_okay=False[, network_timeout=None]]]]]]])
 
-      .. automethod:: paired(left[, right=('localhost', 27017)[, pool_size=1[, auto_start_request=True]]])
+      .. automethod:: paired(left[, right=('localhost', 27017)[, pool_size=None[, auto_start_request=None]]])
       .. automethod:: disconnect
 
       .. describe:: c[db_name] || c.db_name

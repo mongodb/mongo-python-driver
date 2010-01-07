@@ -210,6 +210,8 @@ class Database(object):
             :class:`~pymongo.errors.OperationFailure` if there are any
           - `allowable_errors`: if `check` is ``True``, error messages in this
             list will be ignored by error-checking
+
+        .. versionadded:: 1.3+
         """
         result = self["$cmd"].find_one(command, _sock=_sock,
                                        _must_use_master=True,

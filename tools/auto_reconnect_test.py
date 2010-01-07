@@ -20,7 +20,7 @@ import time
 from pymongo.errors import ConnectionFailure
 from pymongo.connection import Connection
 
-db = Connection.paired(("localhost", 27018), pool_size=10).test
+db = Connection.paired(("localhost", 27018)).test
 db.test.remove({})
 
 class Something(threading.Thread):

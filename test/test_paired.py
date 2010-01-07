@@ -109,15 +109,12 @@ class TestPaired(unittest.TestCase):
         db.test.save(a)
         self.assertEqual(a, db.test.find_one())
 
-    def test_pooling(self):
+    def test_end_request(self):
         self.skip()
-        connection = Connection.paired(self.left, self.right,
-                                       pool_size=3,
-                                       auto_start_request=False)
+        connection = Connection.paired(self.left, self.right)
         db = connection.pymongo_test
 
         for _ in range(100):
-            connection.start_request()
             db.test.remove({})
             db.test.insert({})
             self.assert_(db.test.find_one())
