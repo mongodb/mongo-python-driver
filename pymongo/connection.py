@@ -80,9 +80,6 @@ class Pool(threading.local):
             self.sock = self.socket_factory()
         return self.sock
 
-    def close(self):
-        self.sock = None
-
     def return_socket(self):
         if self.sock is not None:
             self.sockets.append(self.sock)
@@ -339,10 +336,7 @@ class Connection(object): # TODO support auth for pooling
                     sock.settimeout(_CONNECT_TIMEOUT)
                     sock.connect((host, port))
                     sock.settimeout(self.__network_timeout)
-                    try:
-                        master = self.__master(sock)
-                    except ConnectionFailure, e:
-                        raise AutoReconnect(str(e))
+                    master = self.__master(sock)
                     if master is True:
                         self.__host = host
                         self.__port = port
@@ -363,9 +357,6 @@ class Connection(object): # TODO support auth for pooling
                             "but that's not configured" %
                             ((host, port), master))
                 except socket.error, e:
-                    exctype, value = sys.exc_info()[:2]
-                    if len(self.__nodes) == 1:
-                        raise ConnectionFailure(e)
                     continue
             finally:
                 if sock is not None:
@@ -476,7 +467,7 @@ class Connection(object): # TODO support auth for pooling
                 response = self.__receive_message_on_socket(1, request_id, sock)
                 self.__check_response_to_last_error(response)
         except (ConnectionFailure, socket.error), e:
-            self.__pool.close()
+            self._reset()
             raise AutoReconnect(str(e))
 
     def __receive_data_on_socket(self, length, sock):
@@ -487,10 +478,7 @@ class Connection(object): # TODO support auth for pooling
         """
         message = ""
         while len(message) < length:
-            try:
-                chunk = sock.recv(length - len(message))
-            except socket.error, e:
-                raise ConnectionFailure(e)
+            chunk = sock.recv(length - len(message))
             if chunk == "":
                 raise ConnectionFailure("connection closed")
             message += chunk
@@ -517,7 +505,6 @@ class Connection(object): # TODO support auth for pooling
         sock.sendall(data)
         return self.__receive_message_on_socket(1, request_id, sock)
 
-    __hack_socket_lock = threading.Lock()
     # we just ignore _must_use_master here: it's only relavant for
     # MasterSlaveConnection instances.
     def _send_message_with_response(self, message,
@@ -530,18 +517,16 @@ class Connection(object): # TODO support auth for pooling
           - `message`: (request_id, data) pair making up the message to send
         """
         # hack so we can do find_master on a specific socket...
-        if _sock:
-            self.__hack_socket_lock.acquire()
-            try:
-                return self.__send_and_receive(message, _sock)
-            finally:
-                self.__hack_socket_lock.release()
+        reset = False
+        if _sock is None:
+            reset = True
+            _sock = self.__pool.socket()
 
-        sock = self.__pool.socket()
         try:
-            return self.__send_and_receive(message, sock)
+            return self.__send_and_receive(message, _sock)
         except (ConnectionFailure, socket.error), e:
-            self.__pool.close()
+            if reset:
+                self._reset()
             raise AutoReconnect(str(e))
 
     def start_request(self):
@@ -566,6 +551,11 @@ class Connection(object): # TODO support auth for pooling
         sure that :meth:`end_request` is not called in the middle of a
         sequence of operations in which ordering is important. This
         could lead to unexpected results.
+
+        One important case is when a thread is dying permanently. It
+        is best to call :meth:`end_request` when you know a thread is
+        finished, as otherwise its :class:`~socket.socket` will not be
+        reclaimed.
         """
         self.__pool.return_socket()
 
