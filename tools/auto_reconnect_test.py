@@ -31,7 +31,7 @@ class Something(threading.Thread):
                 id = db.test.save({"x": 1})
                 assert db.test.find_one(id)["x"] == 1
                 db.test.remove(id)
-                db.connection().end_request()
+                db.connection.end_request()
                 print "Y"
             except ConnectionFailure, e:
                 print e
