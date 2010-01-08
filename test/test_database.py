@@ -227,6 +227,8 @@ class TestDatabase(unittest.TestCase):
                          u"cd7e45b3b2767dc2fa9b6b548457ed00")
         self.assertEqual(db._password_digest("mike", "password"),
                          db._password_digest(u"mike", u"password"))
+        self.assertEqual(db._password_digest("Gustave", u"Dor\xe9"),
+                         u"81e0e2364499209f466e75926a162d73")
 
     def test_authenticate(self):
         db = self.connection.pymongo_test

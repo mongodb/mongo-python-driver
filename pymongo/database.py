@@ -363,7 +363,7 @@ class Database(object):
             raise TypeError("username must be an instance of (str, unicode)")
 
         md5hash = _md5func()
-        md5hash.update(username + ":mongo:" + password)
+        md5hash.update(username.encode('utf-8') + ":mongo:" + password.encode('utf-8'))
         return unicode(md5hash.hexdigest())
 
     def authenticate(self, name, password):
