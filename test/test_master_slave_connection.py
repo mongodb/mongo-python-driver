@@ -133,20 +133,6 @@ class TestMasterSlaveConnection(unittest.TestCase):
             self.connection.end_request()
         self.failIf(count)
 
-    def test_insert_find_one_no_slaves(self):
-        if self.slaves:
-            raise SkipTest()
-        count = 0
-        for i in range(100):
-            self.db.test.remove({})
-            self.db.test.insert({"x": i})
-            try:
-                if i != self.db.test.find_one()["x"]:
-                    count += 1
-            except:
-                count += 1
-        self.failIf(count)
-
     # This was failing because commands were being sent to the slaves
     def test_create_collection(self):
         self.connection.drop_database('pymongo_test')
@@ -167,8 +153,6 @@ class TestMasterSlaveConnection(unittest.TestCase):
     # NOTE this test is non-deterministic, but I expect
     # some failures unless the db is pulling instantaneously...
     def test_insert_find_one_with_slaves(self):
-        if not self.slaves:
-            raise SkipTest()
         count = 0
         for i in range(100):
             self.db.test.remove({})
@@ -183,8 +167,6 @@ class TestMasterSlaveConnection(unittest.TestCase):
     # NOTE this test is non-deterministic, but hopefully we pause long enough
     # for the slaves to pull...
     def test_insert_find_one_with_pause(self):
-        if not self.slaves:
-            raise SkipTest()
         count = 0
 
         self.db.test.remove({})
