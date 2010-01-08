@@ -29,5 +29,4 @@ Sub-modules:
    son
    son_manipulator
    json_util
-   thread_util
    cursor_manager
