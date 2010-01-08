@@ -366,6 +366,32 @@ class Database(object):
         md5hash.update(username.encode('utf-8') + ":mongo:" + password.encode('utf-8'))
         return unicode(md5hash.hexdigest())
 
+    def add_user(self,username,password,safe=False):
+        """ creates a user with username, password
+
+        implementation of db.addUser javascript function.
+
+        Note: changes the password if the user exists
+
+        returns the result of the collection save operation
+
+        """
+        c = self['system.users']
+        u = c.find_one({"user": username}) or {'user': username}
+        u['pwd'] = self._password_digest(username,password)
+        return c.save(u, safe=safe)
+
+    def remove_user(self,username,safe=False):
+        """ Remove the username
+
+        implementation of db.removeUser javascript function.
+
+        returns the result of the collection remove operation
+        """
+        c = self['system.users']
+        u = {"user": username}
+        return c.remove(u, safe=safe)
+
     def authenticate(self, name, password):
         """Authenticate to use this database.
 

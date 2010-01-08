@@ -230,6 +230,28 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(db._password_digest("Gustave", u"Dor\xe9"),
                          u"81e0e2364499209f466e75926a162d73")
 
+    def test_add_and_remove_user(self):
+        self.connection.drop_database("pymongo_test_users")
+        db = self.connection.pymongo_test_users
+        sysusers = db['system.users']
+        self.assertEqual(sysusers.count(), 0)
+
+        user_pass_list = [("mike","password"), ("gregg","mypass"), (u"Gustave", u"Dor\xe9")]
+        for (ii,(u,p)) in enumerate(user_pass_list):
+            counter= ii+1
+            db.add_user(u,p)
+            self.assertEqual(sysusers.count(), counter)
+            user = sysusers.find({'user': u}).next()
+            self.assertEqual([user['user'],user['pwd']], [u, db._password_digest(u,p)])
+
+        for (ii,(u,p)) in enumerate(user_pass_list):
+            counter = len(user_pass_list) - ii -1
+            db.remove_user(u)
+            user = sysusers.find_one({'user': u})
+            self.assertEqual(user,None)
+
+        self.connection.drop_database("pymongo_test_users")
+
     def test_authenticate(self):
         db = self.connection.pymongo_test
         db.system.users.remove({})
