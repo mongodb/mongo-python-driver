@@ -396,14 +396,39 @@ class Database(object):
     def authenticate(self, name, password):
         """Authenticate to use this database.
 
-        Once authenticated, the user has full read and write access to this
-        database. Raises TypeError if either name or password is not an
-        instance of (str, unicode). Authentication lasts for the life of the
-        database connection, or until `Database.logout` is called.
+        Once authenticated, the user has full read and write access to
+        this database. Raises :class:`TypeError` if either `name` or
+        `password` is not an instance of ``(str,
+        unicode)``. Authentication lasts for the life of the database
+        connection, or until :meth:`logout` is called.
 
-        The "admin" database is special. Authenticating on "admin" gives access
-        to *all* databases. Effectively, "admin" access means root access to
-        the database.
+        The "admin" database is special. Authenticating on "admin"
+        gives access to *all* databases. Effectively, "admin" access
+        means root access to the database.
+
+        .. note:: Currently, authentication is per
+           :class:`~socket.socket`. This means that there are a couple
+           of situations in which re-authentication is necessary:
+
+           - On failover (when an
+             :class:`~pymongo.errors.AutoReconnect` exception is
+             raised).
+
+           - After a call to
+             :meth:`~pymongo.connection.Connection.disconnect` or
+             :meth:`~pymongo.connection.Connection.end_request`.
+
+           - When sharing a :class:`~pymongo.connection.Connection`
+             between multiple threads, each thread will need to
+             authenticate separately.
+
+        .. warning:: Currently, calls to
+           :meth:`~pymongo.connection.Connection.end_request` will
+           lead to unpredictable behavior in combination with
+           auth. The :class:`~socket.socket` owned by the calling
+           thread will be returned to the pool, so whichever thread
+           uses that :class:`~socket.socket` next will have whatever
+           permissions were granted to the calling thread.
 
         :Parameters:
           - `name`: the name of the user to authenticate
