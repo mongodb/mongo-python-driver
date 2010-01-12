@@ -14,10 +14,13 @@
 
 """Exceptions raised by the Mongo driver."""
 
-class BaseMongoDBException(Exception):
-    """Common base class for all MongoDB exceptions"""
+class PyMongoError(Exception):
+    """Base class for all PyMongo exceptions.
 
-class ConnectionFailure(BaseMongoDBException, IOError):
+    .. versionadded:: 1.3+
+    """
+
+class ConnectionFailure(PyMongoError):
     """Raised when a connection to the database cannot be made or is lost.
     """
 
@@ -34,12 +37,12 @@ class AutoReconnect(ConnectionFailure):
     """
 
 
-class ConfigurationError(BaseMongoDBException):
+class ConfigurationError(PyMongoError):
     """Raised when something is incorrectly configured.
     """
 
 
-class OperationFailure(BaseMongoDBException):
+class OperationFailure(PyMongoError):
     """Raised when a database operation fails.
     """
 
@@ -51,36 +54,36 @@ class DuplicateKeyError(OperationFailure):
     """
 
 
-class InvalidOperation(BaseMongoDBException):
+class InvalidOperation(PyMongoError):
     """Raised when a client attempts to perform an invalid operation.
     """
 
 
-class CollectionInvalid(BaseMongoDBException):
+class CollectionInvalid(PyMongoError):
     """Raised when collection validation fails.
     """
 
 
-class InvalidName(BaseMongoDBException, ValueError):
+class InvalidName(PyMongoError):
     """Raised when an invalid name is used.
     """
 
 
-class InvalidBSON(BaseMongoDBException, ValueError):
+class InvalidBSON(PyMongoError):
     """Raised when trying to create a BSON object from invalid data.
     """
 
 
-class InvalidStringData(BaseMongoDBException, ValueError):
+class InvalidStringData(PyMongoError):
     """Raised when trying to encode a string containing non-UTF8 data.
     """
 
 
-class InvalidDocument(BaseMongoDBException, ValueError):
+class InvalidDocument(PyMongoError):
     """Raised when trying to create a BSON object from an invalid document.
     """
 
 
-class InvalidId(BaseMongoDBException, ValueError):
+class InvalidId(PyMongoError):
     """Raised when trying to create an ObjectId from invalid data.
     """
