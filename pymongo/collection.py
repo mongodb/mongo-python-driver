@@ -23,7 +23,7 @@ import message
 from objectid import ObjectId
 from cursor import Cursor
 from son import SON
-from errors import InvalidName, OperationFailure
+from errors import InvalidName
 from code import Code
 
 _ZERO = "\x00\x00\x00\x00"

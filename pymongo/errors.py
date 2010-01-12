@@ -42,6 +42,11 @@ class OperationFailure(Exception):
     """
 
 
+class DuplicateKeyError(OperationFailure):
+    """Raised when a safe insert or update fails due to a duplicate key error.
+    """
+
+
 class InvalidOperation(Exception):
     """Raised when a client attempts to perform an invalid operation.
     """

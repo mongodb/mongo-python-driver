@@ -22,7 +22,7 @@ import helpers
 import message
 from son import SON
 from code import Code
-from errors import InvalidOperation, OperationFailure, AutoReconnect
+from errors import InvalidOperation, AutoReconnect
 
 _QUERY_OPTIONS = {
     "tailable_cursor": 2,

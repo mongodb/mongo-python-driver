@@ -31,6 +31,7 @@ from pymongo.code import Code
 from pymongo.binary import Binary
 from pymongo.collection import Collection
 from pymongo.errors import InvalidName, OperationFailure, InvalidDocument
+from pymongo.errors import DuplicateKeyError
 from pymongo import ASCENDING, DESCENDING
 from pymongo.son import SON
 
@@ -461,6 +462,26 @@ class TestCollection(unittest.TestCase):
         db.test.save({"hello": "mike"})
         db.test.save({"hello": "world"})
         self.assert_(db.error())
+
+    def test_duplicate_key_error(self):
+        db = self.db
+        db.drop_collection("test")
+
+        db.test.create_index("x", unique=True)
+
+        db.test.insert({"_id": 1, "x": 1}, safe=True)
+        db.test.insert({"_id": 2, "x": 2}, safe=True)
+
+        self.assertRaises(DuplicateKeyError,
+                          db.test.insert, {"_id": 1}, safe=True)
+        self.assertRaises(DuplicateKeyError,
+                          db.test.insert, {"x": 1}, safe=True)
+
+        self.assertRaises(DuplicateKeyError,
+                          db.test.save, {"x": 2}, safe=True)
+        self.assertRaises(DuplicateKeyError,
+                          db.test.update, {"x": 1}, {"$inc": {"x": 1}}, safe=True)
+
 
     def test_index_on_subfield(self):
         db = self.db

@@ -44,7 +44,7 @@ import datetime
 import warnings
 
 from errors import ConnectionFailure, ConfigurationError, AutoReconnect
-from errors import OperationFailure
+from errors import OperationFailure, DuplicateKeyError
 from database import Database
 from cursor_manager import CursorManager
 import bson
@@ -441,7 +441,11 @@ class Connection(object): # TODO support auth for pooling
             return
         if error["err"] == "not master":
             self._reset()
-        raise OperationFailure(error["err"])
+
+        if "code" in error and error["code"] in [11000, 11001]:
+            raise DuplicateKeyError(error["err"])
+        else:
+            raise OperationFailure(error["err"])
 
     def _send_message(self, message, with_last_error=False):
         """Say something to Mongo.
