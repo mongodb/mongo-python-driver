@@ -44,6 +44,8 @@ class OperationFailure(Exception):
 
 class DuplicateKeyError(OperationFailure):
     """Raised when a safe insert or update fails due to a duplicate key error.
+
+    .. versionadded:: 1.3+
     """
 
 
