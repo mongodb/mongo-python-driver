@@ -376,6 +376,8 @@ class Database(object):
         :Parameters:
           - `name`: the name of the user to create
           - `password`: the password of the user to create
+
+        .. versionadded:: 1.3+
         """
         self.system.users.update({"user": name},
                                  {"user": name,
@@ -390,6 +392,8 @@ class Database(object):
 
         :Paramaters:
           - `name`: the name of the user to remove
+
+        .. versionadded:: 1.3+
         """
         self.system.users.remove({"user": name}, safe=True)
 
