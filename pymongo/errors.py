@@ -14,8 +14,10 @@
 
 """Exceptions raised by the Mongo driver."""
 
+class BaseMongoDBException(Exception):
+    """Common base class for all MongoDB exceptions"""
 
-class ConnectionFailure(IOError):
+class ConnectionFailure(BaseMongoDBException, IOError):
     """Raised when a connection to the database cannot be made or is lost.
     """
 
@@ -32,12 +34,12 @@ class AutoReconnect(ConnectionFailure):
     """
 
 
-class ConfigurationError(Exception):
+class ConfigurationError(BaseMongoDBException):
     """Raised when something is incorrectly configured.
     """
 
 
-class OperationFailure(Exception):
+class OperationFailure(BaseMongoDBException):
     """Raised when a database operation fails.
     """
 
@@ -49,36 +51,36 @@ class DuplicateKeyError(OperationFailure):
     """
 
 
-class InvalidOperation(Exception):
+class InvalidOperation(BaseMongoDBException):
     """Raised when a client attempts to perform an invalid operation.
     """
 
 
-class CollectionInvalid(Exception):
+class CollectionInvalid(BaseMongoDBException):
     """Raised when collection validation fails.
     """
 
 
-class InvalidName(ValueError):
+class InvalidName(BaseMongoDBException, ValueError):
     """Raised when an invalid name is used.
     """
 
 
-class InvalidBSON(ValueError):
+class InvalidBSON(BaseMongoDBException, ValueError):
     """Raised when trying to create a BSON object from invalid data.
     """
 
 
-class InvalidStringData(ValueError):
+class InvalidStringData(BaseMongoDBException, ValueError):
     """Raised when trying to encode a string containing non-UTF8 data.
     """
 
 
-class InvalidDocument(ValueError):
+class InvalidDocument(BaseMongoDBException, ValueError):
     """Raised when trying to create a BSON object from an invalid document.
     """
 
 
-class InvalidId(ValueError):
+class InvalidId(BaseMongoDBException, ValueError):
     """Raised when trying to create an ObjectId from invalid data.
     """
