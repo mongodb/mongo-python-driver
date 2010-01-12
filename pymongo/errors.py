@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Exceptions raised by the Mongo driver."""
+"""Exceptions raised by PyMongo."""
 
 class PyMongoError(Exception):
     """Base class for all PyMongo exceptions.
