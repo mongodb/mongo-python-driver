@@ -20,6 +20,7 @@ class PyMongoError(Exception):
     .. versionadded:: 1.3+
     """
 
+
 class ConnectionFailure(PyMongoError):
     """Raised when a connection to the database cannot be made or is lost.
     """
