@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 # Copyright 2009 10gen, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -904,6 +906,14 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(1, result.find_one({"_id": "dog"})["value"])
         self.assertEqual(None, result.find_one({"_id": "mouse"}))
 
+    def test_messages_with_unicode_collection_names(self):
+        db = self.db
+
+        db[u"Employés"].insert({"x": 1})
+        db[u"Employés"].update({"x": 1}, {"x": 2})
+        db[u"Employés"].remove({})
+        db[u"Employés"].find_one()
+        list(db[u"Employés"].find())
 
 if __name__ == "__main__":
     unittest.main()

@@ -859,7 +859,7 @@ static int add_last_error(bson_buffer* buffer, int request_id) {
 static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
     /* NOTE just using a random number as the request_id */
     int request_id = rand();
-    char* collection_name;
+    char* collection_name = NULL;
     int collection_name_length;
     PyObject* docs;
     int i;
@@ -869,7 +869,8 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
     int length_location;
     PyObject* result;
 
-    if (!PyArg_ParseTuple(args, "s#Obb",
+    if (!PyArg_ParseTuple(args, "et#Obb",
+                          "utf-8",
                           &collection_name,
                           &collection_name_length,
                           &docs, &check_keys, &safe)) {
@@ -878,6 +879,7 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
 
     buffer = buffer_new();
     if (!buffer) {
+        PyMem_Free(collection_name);
         return NULL;
     }
 
@@ -893,9 +895,12 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
         !buffer_write_bytes(buffer,
                             collection_name,
                             collection_name_length + 1)) {
+        PyMem_Free(collection_name);
         buffer_free(buffer);
         return NULL;
     }
+
+    PyMem_Free(collection_name);
 
     for (i = 0; i < PyList_Size(docs); i++) {
         PyObject* doc = PyList_GetItem(docs, i);
@@ -924,7 +929,7 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
 static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
     /* NOTE just using a random number as the request_id */
     int request_id = rand();
-    char* collection_name;
+    char* collection_name = NULL;
     int collection_name_length;
     PyObject* doc;
     PyObject* spec;
@@ -936,7 +941,8 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
     int length_location;
     PyObject* result;
 
-    if (!PyArg_ParseTuple(args, "s#bbOOb",
+    if (!PyArg_ParseTuple(args, "et#bbOOb",
+                          "utf-8",
                           &collection_name,
                           &collection_name_length,
                           &upsert, &multi, &spec, &doc, &safe)) {
@@ -952,6 +958,7 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
     }
     buffer = buffer_new();
     if (!buffer) {
+        PyMem_Free(collection_name);
         return NULL;
     }
 
@@ -971,8 +978,11 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
         !write_dict(buffer, spec, 0) ||
         !write_dict(buffer, doc, 0)) {
         buffer_free(buffer);
+        PyMem_Free(collection_name);
         return NULL;
     }
+
+    PyMem_Free(collection_name);
 
     memcpy(buffer->buffer + length_location, &buffer->position, 4);
 
