@@ -63,6 +63,9 @@ class Collection(object):
         if name[0] == "." or name[-1] == ".":
             raise InvalidName("collecion names must not start "
                               "or end with '.': %r" % name)
+        if "\x00" in name:
+            raise InvalidName("collection names must not contain the "
+                              "null character")
 
         self.__database = database
         self.__name = unicode(name)

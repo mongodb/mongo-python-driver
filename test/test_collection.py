@@ -61,6 +61,7 @@ class TestCollection(unittest.TestCase):
         self.assertRaises(InvalidName, make_col, self.db.test, ".test")
         self.assertRaises(InvalidName, make_col, self.db.test, "test.")
         self.assertRaises(InvalidName, make_col, self.db.test, "tes..t")
+        self.assertRaises(InvalidName, make_col, self.db.test, "tes\x00t")
 
         self.assert_(isinstance(self.db.test, Collection))
         self.assertEqual(self.db.test, self.db["test"])
