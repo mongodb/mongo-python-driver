@@ -101,6 +101,9 @@ class TestObjectId(unittest.TestCase):
 
         pool = multiprocessing.Pool(2)
         ids = pool.map(oid, range(20))
+        pool.close()
+        pool.join()
+
         map = {}
 
         for id in ids:
