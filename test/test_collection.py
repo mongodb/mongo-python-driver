@@ -545,6 +545,9 @@ class TestCollection(unittest.TestCase):
         for doc in db.test.find():
             self.assertEqual(5, doc["y"])
 
+        self.assertEqual(2, db.test.update({"x": 4}, {"$set": {"y": 6}},
+                                           multi=True, safe=True))
+
     def test_upsert(self):
         db = self.db
         db.drop_collection("test")
@@ -565,7 +568,7 @@ class TestCollection(unittest.TestCase):
         db.test.insert({"x": 5})
         id = db.test.insert({"x": 4})
 
-        db.test.update({"_id": id}, {"$inc": {"x": 1}})
+        self.assertEqual(None, db.test.update({"_id": id}, {"$inc": {"x": 1}}))
         if v113minus:
             self.assert_(db.error()["err"].startswith("E11001"))
         else:
@@ -573,6 +576,9 @@ class TestCollection(unittest.TestCase):
 
         self.assertRaises(OperationFailure, db.test.update,
                           {"_id": id}, {"$inc": {"x": 1}}, safe=True)
+
+        self.assertEqual(1, db.test.update({"_id": id}, {"$inc": {"x": 2}}, safe=True))
+        self.assertEqual(0, db.test.update({"_id": "foo"}, {"$inc": {"x": 2}}, safe=True))
 
     def test_safe_save(self):
         db = self.db
@@ -593,13 +599,19 @@ class TestCollection(unittest.TestCase):
         db.test.insert({"x": 1})
         self.assertEqual(1, db.test.count())
 
-        db.test.remove({"x": 1})
+        self.assertEqual(None, db.test.remove({"x": 1}))
         self.assertEqual(1, db.test.count())
 
         if version.at_least(db.connection, (1, 1, 3, -1)):
             self.assertRaises(OperationFailure, db.test.remove, {"x": 1}, safe=True)
         else: # Just test that it doesn't blow up
             db.test.remove({"x": 1}, safe=True)
+
+        db.drop_collection("test")
+        db.test.insert({"x": 1})
+        db.test.insert({"x": 1})
+        self.assertEqual(2, db.test.remove({}, safe=True))
+        self.assertEqual(0, db.test.remove({}, safe=True))
 
     def test_count(self):
         db = self.db

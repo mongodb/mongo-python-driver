@@ -237,6 +237,9 @@ class Collection(object):
           >>> list(db.test.find())
           [{u'a': u'c', u'x': u'y', u'_id': ObjectId('...')}]
 
+        If `safe` is ``True`` returns the number of documents affected
+        by the :meth:`update`. Otherwise, returns ``None``.
+
         :Parameters:
           - `spec`: a ``dict`` or :class:`~pymongo.son.SON` instance specifying
             elements which must be present for a document to be updated
@@ -253,6 +256,8 @@ class Collection(object):
             explicitly for all update operations in order to prepare your code
             for that change.
 
+        .. versionchanged:: 1.3+
+           Return the number of updated documents if `safe` is ``True``.
         .. versionadded:: 1.1.1
            The `multi` parameter.
 
@@ -268,7 +273,7 @@ class Collection(object):
         if upsert and manipulate:
             document = self.__database._fix_incoming(document, self)
 
-        self.__database.connection._send_message(
+        return self.__database.connection._send_message(
             message.update(self.__full_name, upsert, multi,
                            spec, document, safe), safe)
 
@@ -291,6 +296,9 @@ class Collection(object):
         :meth:`~pymongo.database.Database.drop_collection`, however, as
         indexes will not be removed.
 
+        If `safe` is ``True`` returns the number of documents affected
+        by the :meth:`remove`. Otherwise, returns ``None``.
+
         :Parameters:
           - `spec_or_object_id` (optional): a ``dict`` or
             :class:`~pymongo.son.SON` instance specifying which documents
@@ -299,6 +307,8 @@ class Collection(object):
             ``_id`` field for the document to be removed
           - `safe` (optional): check that the remove succeeded?
 
+        .. versionchanged:: 1.3+
+           Return the number of removed documents if `safe` is ``True``.
         .. versionchanged:: 1.2
            The `spec_or_object_id` parameter is now optional. If it is
            not specified *all* documents in the collection will be
@@ -316,7 +326,7 @@ class Collection(object):
             raise TypeError("spec must be an instance of dict, not %s" %
                             type(spec))
 
-        self.__database.connection._send_message(
+        return self.__database.connection._send_message(
             message.delete(self.__full_name, spec, safe), safe)
 
     def find_one(self, spec_or_object_id=None, fields=None, slave_okay=None,
