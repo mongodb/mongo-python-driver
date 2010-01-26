@@ -18,8 +18,9 @@
 class Code(str):
     """JavaScript code to be evaluated by MongoDB.
 
-    Raises TypeError if `code` is not an instance of (str, unicode) or
-    `scope` is not an instance of dict.
+    Raises :class:`TypeError` if `code` is not an instance of
+    :class:`basestring` or `scope` is not an instance of
+    :class:`dict`.
 
     :Parameters:
       - `code`: string containing JavaScript code to be evaluated

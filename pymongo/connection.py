@@ -146,7 +146,7 @@ class Connection(object): # TODO support auth for pooling
                           DeprecationWarning)
 
         if not isinstance(host, basestring):
-            raise TypeError("host must be an instance of (str, unicode)")
+            raise TypeError("host must be an instance of basestring")
         if not isinstance(port, int):
             raise TypeError("port must be an instance of int")
 

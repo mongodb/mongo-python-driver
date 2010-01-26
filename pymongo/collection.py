@@ -35,20 +35,23 @@ class Collection(object):
     def __init__(self, database, name, options=None):
         """Get / create a Mongo collection.
 
-        Raises TypeError if name is not an instance of (str, unicode). Raises
-        InvalidName if name is not a valid collection name. Raises TypeError if
-        options is not an instance of dict. If options is non-empty a create
-        command will be sent to the database. Otherwise the collection will be
-        created implicitly on first use.
+        Raises :class:`TypeError` if `name` is not an instance of
+        :class:`basestring`. Raises
+        :class:`~pymongo.errors.InvalidName` if `name` is not a valid
+        collection name. Raises :class:`TypeError` if `options` is not
+        an instance of :class:`dict`. If `options` is non-empty a
+        create command will be sent to the database. Otherwise the
+        collection will be created implicitly on first use.
 
         :Parameters:
           - `database`: the database to get a collection from
           - `name`: the name of the collection to get
-          - `options`: dictionary of collection options.
-            see `pymongo.database.Database.create_collection` for details.
+          - `options`: dictionary of collection options.  see
+            :meth:`~pymongo.database.Database.create_collection` for
+            details.
         """
         if not isinstance(name, basestring):
-            raise TypeError("name must be an instance of (str, unicode)")
+            raise TypeError("name must be an instance of basestring")
 
         if options is not None and not isinstance(options, dict):
             raise TypeError("options must be an instance of dict")
@@ -466,21 +469,24 @@ class Collection(object):
         """Creates an index on this collection.
 
         Takes either a single key or a list of (key, direction) pairs.
-        The key(s) must be an instance of ``(str, unicode)``, and the
+        The key(s) must be an instance of :class:`basestring`, and the
         directions must be one of (:data:`~pymongo.ASCENDING`,
         :data:`~pymongo.DESCENDING`). Returns the name of the created
         index.
 
         :Parameters:
-          - `key_or_list`: a single key or a list of (key, direction) pairs
-            specifying the index to create
-          - `unique` (optional): should this index guarantee uniqueness?
-          - `ttl` (optional): time window (in seconds) during which this index
-            will be recognized by subsequent calls to :meth:`ensure_index` -
-            see documentation for :meth:`ensure_index` for details
+          - `key_or_list`: a single key or a list of (key, direction)
+            pairs specifying the index to create
+          - `unique` (optional): should this index guarantee
+            uniqueness?
+          - `ttl` (optional): time window (in seconds) during which
+            this index will be recognized by subsequent calls to
+            :meth:`ensure_index` - see documentation for
+            :meth:`ensure_index` for details
         """
         if not isinstance(key_or_list, (str, unicode, list)):
-            raise TypeError("key_or_list must either be a single key or a list of (key, direction) pairs")
+            raise TypeError("key_or_list must either be a single key "
+                            "or a list of (key, direction) pairs")
 
         to_save = SON()
         keys = helpers._index_list(key_or_list)
@@ -500,10 +506,10 @@ class Collection(object):
     def ensure_index(self, key_or_list, unique=False, ttl=300):
         """Ensures that an index exists on this collection.
 
-        Takes either a single key or a list of (key, direction)
-        pairs.  The key(s) must be an instance of ``(str, unicode)``,
-        and the direction(s) must be one of
-        (:data:`~pymongo.ASCENDING`, :data:`~pymongo.DESCENDING`).
+        Takes either a single key or a list of (key, direction) pairs.
+        The key(s) must be an instance of :class:`basestring`, and the
+        direction(s) must be one of (:data:`~pymongo.ASCENDING`,
+        :data:`~pymongo.DESCENDING`).
 
         Unlike :meth:`create_index`, which attempts to create an index
         unconditionally, :meth:`ensure_index` takes advantage of some
@@ -524,11 +530,13 @@ class Collection(object):
         created. Returns ``None`` if the index already exists.
 
         :Parameters:
-          - `key_or_list`: a single key or a list of (key, direction) pairs
-            specifying the index to ensure
-          - `unique` (optional): should this index guarantee uniqueness?
-          - `ttl` (optional): time window (in seconds) during which this index
-            will be recognized by subsequent calls to :meth:`ensure_index`
+          - `key_or_list`: a single key or a list of (key, direction)
+            pairs specifying the index to ensure
+          - `unique` (optional): should this index guarantee
+            uniqueness?
+          - `ttl` (optional): time window (in seconds) during which
+            this index will be recognized by subsequent calls to
+            :meth:`ensure_index`
         """
         if not isinstance(key_or_list, (str, unicode, list)):
             raise TypeError("key_or_list must either be a single key or a list of (key, direction) pairs")
@@ -665,16 +673,17 @@ class Collection(object):
     def rename(self, new_name):
         """Rename this collection.
 
-        If operating in auth mode, client must be authorized as an admin to
-        perform this operation. Raises TypeError if new_name is not an instance
-        of (str, unicode). Raises InvalidName if new_name is not a valid
-        collection name.
+        If operating in auth mode, client must be authorized as an
+        admin to perform this operation. Raises :class:`TypeError` if
+        `new_name` is not an instance of :class:`basestring`. Raises
+        :class:`~pymongo.errors.InvalidName` if `new_name` is not a
+        valid collection name.
 
         :Parameters:
           - `new_name`: new name for this collection
         """
         if not isinstance(new_name, basestring):
-            raise TypeError("new_name must be an instance of (str, unicode)")
+            raise TypeError("new_name must be an instance of basestring")
 
         if not new_name or ".." in new_name:
             raise InvalidName("collection names cannot be empty")
@@ -690,14 +699,14 @@ class Collection(object):
         self.__database.connection.admin.command(rename_command)
 
     def distinct(self, key):
-        """Get a list of distinct values for `key` among all documents in this
-        collection.
+        """Get a list of distinct values for `key` among all documents
+        in this collection.
 
         Raises :class:`TypeError` if `key` is not an instance of
-        ``(str, unicode)``.
+        :class:`basestring`.
 
-        To get the distinct values for a key in the result set of a query
-        use :meth:`pymongo.cursor.Cursor.distinct`.
+        To get the distinct values for a key in the result set of a
+        query use :meth:`~pymongo.cursor.Cursor.distinct`.
 
         :Parameters:
           - `key`: name of key for which we want to get the distinct values

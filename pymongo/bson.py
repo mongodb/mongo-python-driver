@@ -380,7 +380,7 @@ _RE_TYPE = type(_valid_array_name)
 
 
 def _element_to_bson(key, value, check_keys):
-    if not isinstance(key, (str, unicode)):
+    if not isinstance(key, basestring):
         raise InvalidDocument("documents must have only string keys, "
                               "key was %r" % key)
 
@@ -559,9 +559,9 @@ class BSON(str):
         (like :class:`dict`).
 
         Raises :class:`TypeError` if `dct` is not a mapping type, or
-        contains keys that are not instances of ``(str,
-        unicode)``. Raises :class:`~pymongo.errors.InvalidDocument` if
-        `dct` cannot be converted to :class:`BSON`.
+        contains keys that are not instances of :class:`basestring`.
+        Raises :class:`~pymongo.errors.InvalidDocument` if `dct`
+        cannot be converted to :class:`BSON`.
 
         :Parameters:
           - `dct`: mapping type representing a document
