@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Exceptions raised by the `gridfs` package"""
+"""Exceptions raised by the :mod:`gridfs` package"""
 
 class CorruptGridFile(Exception):
-    """Raised when a GridFS "file" is malformed.
+    """Raised when a :class:`~gridfs.grid_file.GridFile` instance is
+    malformed.
     """
