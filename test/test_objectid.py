@@ -80,14 +80,6 @@ class TestObjectId(unittest.TestCase):
         self.assertEqual(a, ObjectId(a.binary))
         self.assertEqual(a, ObjectId(str(a)))
 
-    def test_url(self):
-        a = ObjectId("123456789012")
-
-        warnings.simplefilter("error")
-        self.assertRaises(DeprecationWarning, a.url_encode)
-        self.assertRaises(DeprecationWarning, ObjectId.url_decode, "313233343536373839303132")
-        warnings.simplefilter("default")
-
     def test_multiprocessing(self):
         # multiprocessing on windows is weird and I don't feel like figuring it
         # out right now. this should fix buildbot.

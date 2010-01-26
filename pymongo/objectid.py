@@ -121,20 +121,6 @@ class ObjectId(object):
             raise TypeError("id must be an instance of (str, ObjectId), "
                             "not %s" % type(oid))
 
-    # DEPRECATED - use str(oid) instead, which returns a hex encoded string
-    def url_encode(self):
-        warnings.warn("oid.url_encode is deprecated and will be removed. "
-                      "Please use str(oid) instead.", DeprecationWarning)
-        return self.__id.encode("hex")
-
-    # DEPRECATED - use ObjectId(encoded_oid) instead,
-    # which takes a hex encoded string
-    def url_decode(cls, encoded_oid):
-        warnings.warn("ObjectId.url_decode is deprecated and will be removed. "
-                      "Please use ObjectId(...) instead.", DeprecationWarning)
-        return cls(encoded_oid.decode("hex"))
-    url_decode = classmethod(url_decode)
-
     def binary(self):
         """12-byte binary representation of this ObjectId.
         """

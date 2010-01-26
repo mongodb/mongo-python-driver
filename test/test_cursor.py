@@ -88,20 +88,6 @@ class TestCursor(unittest.TestCase):
         self.assertRaises(TypeError, db.test.find().hint, index)
 
 
-    # This is deprecated - test that a warning is actually raised
-    def test_slave_okay(self):
-        db = self.db
-        db.drop_collection("test")
-        db.test.save({"x": 1})
-
-        warnings.simplefilter("error")
-
-        self.assertEqual(1, db.test.find().next()["x"])
-        self.assertRaises(DeprecationWarning, db.test.find, slave_okay=True)
-        self.assertRaises(DeprecationWarning, db.test.find, slave_okay=False)
-
-        warnings.simplefilter("default")
-
     def test_limit(self):
         db = self.db
 

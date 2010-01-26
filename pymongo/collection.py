@@ -329,7 +329,7 @@ class Collection(object):
         return self.__database.connection._send_message(
             message.delete(self.__full_name, spec, safe), safe)
 
-    def find_one(self, spec_or_object_id=None, fields=None, slave_okay=None,
+    def find_one(self, spec_or_object_id=None, fields=None,
                  _sock=None, _must_use_master=False, _is_command=False):
         """Get a single object from the database.
 
@@ -342,9 +342,6 @@ class Collection(object):
             of ObjectId to be used as the value for an _id query
           - `fields` (optional): a list of field names that should be included
             in the returned document ("_id" will always be included)
-          - `slave_okay` (optional): DEPRECATED this option is deprecated and
-            will be removed - see the slave_okay parameter to
-            `pymongo.Connection.__init__`.
         """
         spec = spec_or_object_id
         if spec is None:
@@ -353,8 +350,7 @@ class Collection(object):
             spec = SON({"_id": spec})
 
         for result in self.find(spec, limit=-1, fields=fields,
-                                slave_okay=slave_okay, _sock=_sock,
-                                _must_use_master=_must_use_master,
+                                _sock=_sock, _must_use_master=_must_use_master,
                                 _is_command=_is_command):
             return result
         return None
@@ -377,7 +373,7 @@ class Collection(object):
         return as_dict
 
     def find(self, spec=None, fields=None, skip=0, limit=0,
-             slave_okay=None, timeout=True, snapshot=False, tailable=False,
+             timeout=True, snapshot=False, tailable=False,
              _sock=None, _must_use_master=False, _is_command=False):
         """Query the database.
 
@@ -403,9 +399,6 @@ class Collection(object):
           - `skip` (optional): the number of documents to omit (from the start
             of the result set) when returning the results
           - `limit` (optional): the maximum number of results to return
-          - `slave_okay` (optional): DEPRECATED this option is deprecated and
-            will be removed - see the slave_okay parameter to
-            `pymongo.Connection.__init__`.
           - `timeout` (optional): if True, any returned cursor will be subject
             to the normal timeout behavior of the mongod process. Otherwise,
             the returned cursor will never timeout at the server. Care should
@@ -429,13 +422,8 @@ class Collection(object):
         """
         if spec is None:
             spec = SON()
-        if slave_okay is None:
-            slave_okay = self.__database.connection.slave_okay
-        else:
-            warnings.warn("The slave_okay option to find and find_one is "
-                          "deprecated. Please set slave_okay on the Connection "
-                          "itself.",
-                          DeprecationWarning)
+
+        slave_okay = self.__database.connection.slave_okay
 
         if not isinstance(spec, types.DictType):
             raise TypeError("spec must be an instance of dict")
@@ -445,8 +433,6 @@ class Collection(object):
             raise TypeError("skip must be an instance of int")
         if not isinstance(limit, types.IntType):
             raise TypeError("limit must be an instance of int")
-        if not isinstance(slave_okay, types.BooleanType):
-            raise TypeError("slave_okay must be an instance of bool")
         if not isinstance(timeout, types.BooleanType):
             raise TypeError("timeout must be an instance of bool")
         if not isinstance(snapshot, types.BooleanType):
@@ -477,7 +463,7 @@ class Collection(object):
         """
         return u"_".join([u"%s_%s" % item for item in keys])
 
-    def create_index(self, key_or_list, direction=None, unique=False, ttl=300):
+    def create_index(self, key_or_list, unique=False, ttl=300):
         """Creates an index on this collection.
 
         Takes either a single key or a list of (key, direction) pairs.
@@ -489,7 +475,6 @@ class Collection(object):
         :Parameters:
           - `key_or_list`: a single key or a list of (key, direction) pairs
             specifying the index to create
-          - `direction` (optional): DEPRECATED this option will be removed
           - `unique` (optional): should this index guarantee uniqueness?
           - `ttl` (optional): time window (in seconds) during which this index
             will be recognized by subsequent calls to :meth:`ensure_index` -
@@ -497,12 +482,6 @@ class Collection(object):
         """
         if not isinstance(key_or_list, (str, unicode, list)):
             raise TypeError("key_or_list must either be a single key or a list of (key, direction) pairs")
-
-        if direction is not None:
-            warnings.warn("specifying a direction for a single key index is "
-                          "deprecated and will be removed. there is no need "
-                          "for a direction on a single key index",
-                          DeprecationWarning)
 
         to_save = SON()
         keys = helpers._index_list(key_or_list)
@@ -519,7 +498,7 @@ class Collection(object):
                                               check_keys=False)
         return to_save["name"]
 
-    def ensure_index(self, key_or_list, direction=None, unique=False, ttl=300):
+    def ensure_index(self, key_or_list, unique=False, ttl=300):
         """Ensures that an index exists on this collection.
 
         Takes either a single key or a list of (key, direction)
@@ -548,19 +527,12 @@ class Collection(object):
         :Parameters:
           - `key_or_list`: a single key or a list of (key, direction) pairs
             specifying the index to ensure
-          - `direction` (optional): DEPRECATED this option will be removed
           - `unique` (optional): should this index guarantee uniqueness?
           - `ttl` (optional): time window (in seconds) during which this index
             will be recognized by subsequent calls to :meth:`ensure_index`
         """
         if not isinstance(key_or_list, (str, unicode, list)):
             raise TypeError("key_or_list must either be a single key or a list of (key, direction) pairs")
-
-        if direction is not None:
-            warnings.warn("specifying a direction for a single key index is "
-                          "deprecated and will be removed. there is no need "
-                          "for a direction on a single key index",
-                          DeprecationWarning)
 
         keys = helpers._index_list(key_or_list)
         name = self._gen_index_name(keys)
