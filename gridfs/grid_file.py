@@ -14,7 +14,6 @@
 
 """File-like object used for reading from and writing to GridFS"""
 
-import types
 import datetime
 import math
 import os
@@ -95,13 +94,13 @@ class GridFile(object):
           - `collection` (optional): the collection in which to store/retrieve
             this file
         """
-        if not isinstance(file_spec, types.DictType):
+        if not isinstance(file_spec, dict):
             raise TypeError("file_spec must be an instance of (dict, SON)")
         if not isinstance(database, Database):
             raise TypeError("database must be an instance of database")
-        if not isinstance(collection, types.StringTypes):
+        if not isinstance(collection, basestring):
             raise TypeError("collection must be an instance of (str, unicode)")
-        if not isinstance(mode, types.StringTypes):
+        if not isinstance(mode, basestring):
             raise TypeError("mode must be an instance of (str, unicode)")
         if mode not in ("r", "w"):
             raise ValueError("mode must be one of ('r', 'w')")
@@ -311,7 +310,7 @@ class GridFile(object):
         """
         self.__assert_open("w")
 
-        if not isinstance(str, types.StringType):
+        if not isinstance(str, basestring):
             raise TypeError("can only write strings")
 
         while str:

@@ -18,8 +18,6 @@ New manipulators should be defined as subclasses of SONManipulator and can be
 installed on a database by calling
 `pymongo.database.Database.add_son_manipulator`."""
 
-import types
-
 from objectid import ObjectId
 from dbref import DBRef
 from son import SON
@@ -136,12 +134,12 @@ class AutoReference(SONManipulator):
         """
 
         def transform_value(value):
-            if isinstance(value, types.DictType):
+            if isinstance(value, dict):
                 if "_id" in value and "_ns" in value:
                     return DBRef(value["_ns"], transform_value(value["_id"]))
                 else:
                     return transform_dict(SON(value))
-            elif isinstance(value, types.ListType):
+            elif isinstance(value, list):
                 return [transform_value(v) for v in value]
             return value
 
@@ -159,9 +157,9 @@ class AutoReference(SONManipulator):
         def transform_value(value):
             if isinstance(value, DBRef):
                 return self.__database.dereference(value)
-            elif isinstance(value, types.ListType):
+            elif isinstance(value, list):
                 return [transform_value(v) for v in value]
-            elif isinstance(value, types.DictType):
+            elif isinstance(value, dict):
                 return transform_dict(SON(value))
             return value
 

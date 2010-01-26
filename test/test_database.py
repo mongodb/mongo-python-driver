@@ -15,7 +15,6 @@
 """Test the database module."""
 
 import unittest
-import types
 import random
 import datetime
 import sys
@@ -161,11 +160,11 @@ class TestDatabase(unittest.TestCase):
         db.set_profiling_level(OFF)
 
         info = db.profiling_info()
-        self.assert_(isinstance(info, types.ListType))
+        self.assert_(isinstance(info, list))
         self.assert_(len(info) >= 1)
-        self.assert_(isinstance(info[0]["info"], types.StringTypes))
+        self.assert_(isinstance(info[0]["info"], basestring))
         self.assert_(isinstance(info[0]["ts"], datetime.datetime))
-        self.assert_(isinstance(info[0]["millis"], types.FloatType))
+        self.assert_(isinstance(info[0]["millis"], float))
 
     def test_iteration(self):
         db = self.connection.pymongo_test
@@ -222,7 +221,7 @@ class TestDatabase(unittest.TestCase):
         self.assertRaises(TypeError, db._password_digest, None)
 
         self.assert_(isinstance(db._password_digest("mike", "password"),
-                                types.UnicodeType))
+                                unicode))
         self.assertEqual(db._password_digest("mike", "password"),
                          u"cd7e45b3b2767dc2fa9b6b548457ed00")
         self.assertEqual(db._password_digest("mike", "password"),

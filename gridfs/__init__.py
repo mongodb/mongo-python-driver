@@ -18,8 +18,6 @@ The `gridfs` package is an implementation of GridFS on top of `pymongo`,
 exposing a file-like interface.
 """
 
-import types
-
 from grid_file import GridFile
 from pymongo.database import Database
 
@@ -72,12 +70,12 @@ class GridFS(object):
           - `collection` (optional): root collection where this file is located
         """
         spec = filename_or_spec
-        if isinstance(filename_or_spec, types.StringTypes):
+        if isinstance(filename_or_spec, basestring):
             spec = {"filename": filename_or_spec}
         if not isinstance(spec, dict):
             raise TypeError("filename_or_spec must be an "
                             "instance of (str, dict, SON)")
-        if not isinstance(collection, types.StringTypes):
+        if not isinstance(collection, basestring):
             raise TypeError("collection must be an instance of (str, unicode)")
 
         # convert to _id's so we can uniquely create GridFile instances
@@ -100,7 +98,7 @@ class GridFS(object):
         :Parameters:
           - `collection` (optional): root collection to list files from
         """
-        if not isinstance(collection, types.StringTypes):
+        if not isinstance(collection, basestring):
             raise TypeError("collection must be an instance of (str, unicode)")
         names = []
         for grid_file in self.__database[collection].files.find():

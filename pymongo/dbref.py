@@ -14,8 +14,6 @@
 
 """Tools for manipulating DBRefs (references to MongoDB documents)."""
 
-import types
-
 from son import SON
 
 
@@ -38,9 +36,9 @@ class DBRef(object):
         .. versionadded:: 1.1.1
            The `database` parameter.
         """
-        if not isinstance(collection, types.StringTypes):
+        if not isinstance(collection, basestring):
             raise TypeError("collection must be an instance of (str, unicode)")
-        if not isinstance(database, (types.StringTypes, types.NoneType)):
+        if database is not None and not isinstance(database, basestring):
             raise TypeError("database must be an instance of (str, unicode)")
 
         self.__collection = collection

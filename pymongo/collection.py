@@ -14,7 +14,6 @@
 
 """Collection level utilities for Mongo."""
 
-import types
 import warnings
 import struct
 
@@ -48,10 +47,10 @@ class Collection(object):
           - `options`: dictionary of collection options.
             see `pymongo.database.Database.create_collection` for details.
         """
-        if not isinstance(name, types.StringTypes):
+        if not isinstance(name, basestring):
             raise TypeError("name must be an instance of (str, unicode)")
 
-        if not isinstance(options, (types.DictType, types.NoneType)):
+        if options is not None and not isinstance(options, dict):
             raise TypeError("options must be an instance of dict")
 
         if not name or ".." in name:
@@ -168,7 +167,7 @@ class Collection(object):
           - `manipulate` (optional): manipulate the SON object before saving it
           - `safe` (optional): check that the save succeeded?
         """
-        if not isinstance(to_save, types.DictType):
+        if not isinstance(to_save, dict):
             raise TypeError("cannot save object of type %s" % type(to_save))
 
         if "_id" not in to_save:
@@ -201,7 +200,7 @@ class Collection(object):
            Bulk insert works with any iterable
         """
         docs = doc_or_docs
-        if isinstance(docs, types.DictType):
+        if isinstance(docs, dict):
             docs = [docs]
 
         if manipulate:
@@ -263,11 +262,11 @@ class Collection(object):
 
         .. _update modifiers: http://www.mongodb.org/display/DOCS/Updating
         """
-        if not isinstance(spec, types.DictType):
+        if not isinstance(spec, dict):
             raise TypeError("spec must be an instance of dict")
-        if not isinstance(document, types.DictType):
+        if not isinstance(document, dict):
             raise TypeError("document must be an instance of dict")
-        if not isinstance(upsert, types.BooleanType):
+        if not isinstance(upsert, bool):
             raise TypeError("upsert must be an instance of bool")
 
         if upsert and manipulate:
@@ -322,7 +321,7 @@ class Collection(object):
         if isinstance(spec, ObjectId):
             spec = {"_id": spec}
 
-        if not isinstance(spec, types.DictType):
+        if not isinstance(spec, dict):
             raise TypeError("spec must be an instance of dict, not %s" %
                             type(spec))
 
@@ -366,7 +365,7 @@ class Collection(object):
         """
         as_dict = {}
         for field in fields:
-            if not isinstance(field, types.StringTypes):
+            if not isinstance(field, basestring):
                 raise TypeError("fields must be a list of key names as "
                                 "(string, unicode)")
             as_dict[field] = 1
@@ -425,19 +424,19 @@ class Collection(object):
 
         slave_okay = self.__database.connection.slave_okay
 
-        if not isinstance(spec, types.DictType):
+        if not isinstance(spec, dict):
             raise TypeError("spec must be an instance of dict")
-        if not isinstance(fields, (types.ListType, types.NoneType)):
+        if fields is not None and not isinstance(fields, list):
             raise TypeError("fields must be an instance of list")
-        if not isinstance(skip, types.IntType):
+        if not isinstance(skip, int):
             raise TypeError("skip must be an instance of int")
-        if not isinstance(limit, types.IntType):
+        if not isinstance(limit, int):
             raise TypeError("limit must be an instance of int")
-        if not isinstance(timeout, types.BooleanType):
+        if not isinstance(timeout, bool):
             raise TypeError("timeout must be an instance of bool")
-        if not isinstance(snapshot, types.BooleanType):
+        if not isinstance(snapshot, bool):
             raise TypeError("snapshot must be an instance of bool")
-        if not isinstance(tailable, types.BooleanType):
+        if not isinstance(tailable, bool):
             raise TypeError("tailable must be an instance of bool")
 
         if fields is not None:
@@ -565,10 +564,10 @@ class Collection(object):
           - `index_or_name`: index (or name of index) to drop
         """
         name = index_or_name
-        if isinstance(index_or_name, types.ListType):
+        if isinstance(index_or_name, list):
             name = self._gen_index_name(index_or_name)
 
-        if not isinstance(name, types.StringTypes):
+        if not isinstance(name, basestring):
             raise TypeError("index_or_name must be an index name or list")
 
         self.__database.connection._purge_index(self.__database.name,
@@ -674,7 +673,7 @@ class Collection(object):
         :Parameters:
           - `new_name`: new name for this collection
         """
-        if not isinstance(new_name, types.StringTypes):
+        if not isinstance(new_name, basestring):
             raise TypeError("new_name must be an instance of (str, unicode)")
 
         if not new_name or ".." in new_name:

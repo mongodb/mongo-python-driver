@@ -14,7 +14,6 @@
 
 """Test the cursor module."""
 import unittest
-import types
 import random
 import warnings
 import sys
@@ -244,7 +243,7 @@ class TestCursor(unittest.TestCase):
             db.test.save({"x": i})
 
         self.assertEqual(10, db.test.find().count())
-        self.assert_(isinstance(db.test.find().count(), types.IntType))
+        self.assert_(isinstance(db.test.find().count(), int))
         self.assertEqual(10, db.test.find().limit(5).count())
         self.assertEqual(10, db.test.find().skip(5).count())
 

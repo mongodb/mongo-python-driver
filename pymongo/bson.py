@@ -16,7 +16,6 @@
 
 Generally not needed to be used by application developers."""
 
-import types
 import struct
 import re
 import datetime
@@ -524,7 +523,7 @@ def is_valid(bson):
     :Parameters:
       - `bson`: the data to be validated
     """
-    if not isinstance(bson, types.StringType):
+    if not isinstance(bson, str):
         raise TypeError("BSON data must be an instance of a subclass of str")
 
     # 4 MB limit

@@ -14,7 +14,6 @@
 
 """Database level operations."""
 
-import types
 import warnings
 try:
     import hashlib
@@ -46,7 +45,7 @@ class Database(object):
           - `connection`: a connection to Mongo
           - `name`: database name
         """
-        if not isinstance(name, types.StringTypes):
+        if not isinstance(name, basestring):
             raise TypeError("name must be an instance of (str, unicode)")
 
         self.__check_name(name)
@@ -245,7 +244,7 @@ class Database(object):
         if isinstance(name, Collection):
             name = name.name
 
-        if not isinstance(name, types.StringTypes):
+        if not isinstance(name, basestring):
             raise TypeError("name_or_collection must be an instance of "
                             "(Collection, str, unicode)")
 
@@ -266,7 +265,7 @@ class Database(object):
         if isinstance(name, Collection):
             name = name.name
 
-        if not isinstance(name, types.StringTypes):
+        if not isinstance(name, basestring):
             raise TypeError("name_or_collection must be an instance of "
                             "(Collection, str, unicode)")
 
@@ -298,7 +297,7 @@ class Database(object):
         :Parameters:
           - `level`: the profiling level to use
         """
-        if not isinstance(level, types.IntType) or level < 0 or level > 2:
+        if not isinstance(level, int) or level < 0 or level > 2:
             raise ValueError("level must be one of (OFF, SLOW_ONLY, ALL)")
 
         self.command({"profile": level})
@@ -357,9 +356,9 @@ class Database(object):
     def _password_digest(self, username, password):
         """Get a password digest to use for authentication.
         """
-        if not isinstance(password, types.StringTypes):
+        if not isinstance(password, basestring):
             raise TypeError("password must be an instance of (str, unicode)")
-        if not isinstance(username, types.StringTypes):
+        if not isinstance(username, basestring):
             raise TypeError("username must be an instance of (str, unicode)")
 
         md5hash = _md5func()
@@ -438,9 +437,9 @@ class Database(object):
           - `name`: the name of the user to authenticate
           - `password`: the password of the user to authenticate
         """
-        if not isinstance(name, types.StringTypes):
+        if not isinstance(name, basestring):
             raise TypeError("name must be an instance of (str, unicode)")
-        if not isinstance(password, types.StringTypes):
+        if not isinstance(password, basestring):
             raise TypeError("password must be an instance of (str, unicode)")
 
         result = self.command({"getnonce": 1})

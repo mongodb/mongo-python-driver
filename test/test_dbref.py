@@ -15,7 +15,6 @@
 """Tests for the dbref module."""
 
 import unittest
-import types
 import sys
 sys.path[0:0] = [""]
 

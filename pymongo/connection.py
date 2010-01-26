@@ -36,7 +36,6 @@ To get a :class:`~pymongo.database.Database` instance from a
 import sys
 import socket
 import struct
-import types
 import threading
 import random
 import errno
@@ -146,9 +145,9 @@ class Connection(object): # TODO support auth for pooling
             warnings.warn("The timeout parameter to Connection is deprecated",
                           DeprecationWarning)
 
-        if not isinstance(host, types.StringTypes):
+        if not isinstance(host, basestring):
             raise TypeError("host must be an instance of (str, unicode)")
-        if not isinstance(port, types.IntType):
+        if not isinstance(port, int):
             raise TypeError("port must be an instance of int")
 
         self.__host = None
@@ -181,9 +180,9 @@ class Connection(object): # TODO support auth for pooling
             pair with
           - `port`: the port number on which to connect
         """
-        if not isinstance(host, types.StringType):
+        if not isinstance(host, str):
             raise TypeError("host must be an instance of str")
-        if not isinstance(port, types.IntType):
+        if not isinstance(port, int):
             raise TypeError("port must be an instance of int")
         self.__nodes.append((host, port))
 
@@ -618,7 +617,7 @@ class Connection(object): # TODO support auth for pooling
         .. seealso:: :meth:`set_cursor_manager` and
            the :mod:`~pymongo.cursor_manager` module
         """
-        if not isinstance(cursor_id, (types.IntType, types.LongType)):
+        if not isinstance(cursor_id, (int, long)):
             raise TypeError("cursor_id must be an instance of (int, long)")
 
         self.__cursor_manager.close(cursor_id)
@@ -632,7 +631,7 @@ class Connection(object): # TODO support auth for pooling
         :Parameters:
           - `cursor_ids`: list of cursor ids to kill
         """
-        if not isinstance(cursor_ids, types.ListType):
+        if not isinstance(cursor_ids, list):
             raise TypeError("cursor_ids must be a list")
         return self._send_message(message.kill_cursors(cursor_ids))
 
@@ -668,7 +667,7 @@ class Connection(object): # TODO support auth for pooling
         if isinstance(name, Database):
             name = name.name
 
-        if not isinstance(name, types.StringTypes):
+        if not isinstance(name, basestring):
             raise TypeError("name_or_database must be an instance of "
                             "(Database, str, unicode)")
 

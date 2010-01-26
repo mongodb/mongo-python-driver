@@ -17,7 +17,6 @@
 Performs all writes to Master instance and distributes reads among all
 instances."""
 
-import types
 import random
 
 from database import Database
@@ -47,7 +46,7 @@ class MasterSlaveConnection(object):
         """
         if not isinstance(master, Connection):
             raise TypeError("master must be a Connection instance")
-        if not isinstance(slaves, types.ListType) or len(slaves) == 0:
+        if not isinstance(slaves, list) or len(slaves) == 0:
             raise TypeError("slaves must be a list of length >= 1")
 
         for slave in slaves:

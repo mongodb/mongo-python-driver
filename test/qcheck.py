@@ -16,7 +16,6 @@ import random
 import traceback
 import datetime
 import re
-import types
 import sys
 sys.path[0:0] = [""]
 
@@ -186,7 +185,7 @@ def simplify(case): # TODO this is a hack
             (success, value) = simplify(value)
             simplified[key] = value
             return (success, success and simplified or case)
-    if isinstance(case, types.ListType):
+    if isinstance(case, list):
         simplified = list(case)
         if random.choice([True, False]):
             # delete

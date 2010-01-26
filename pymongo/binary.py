@@ -15,9 +15,6 @@
 """Tools for representing binary data to be stored in MongoDB.
 """
 
-import types
-
-
 class Binary(str):
     """Representation of binary data to be stored in or retrieved from MongoDB.
 
@@ -37,9 +34,9 @@ class Binary(str):
     """
 
     def __new__(cls, data, subtype=2):
-        if not isinstance(data, types.StringType):
+        if not isinstance(data, str):
             raise TypeError("data must be an instance of str")
-        if not isinstance(subtype, types.IntType):
+        if not isinstance(subtype, int):
             raise TypeError("subtype must be an instance of int")
         if subtype >= 256 or subtype < 0:
             raise ValueError("subtype must be contained in [0, 256)")
