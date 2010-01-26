@@ -22,13 +22,13 @@ import re
 import datetime
 import calendar
 
-from binary import Binary
-from code import Code
-from objectid import ObjectId
-from dbref import DBRef
-from son import SON
-from errors import InvalidBSON, InvalidDocument
-from errors import InvalidName, InvalidStringData
+from pymongo.binary import Binary
+from pymongo.code import Code
+from pymongo.objectid import ObjectId
+from pymongo.dbref import DBRef
+from pymongo.son import SON
+from pymongo.errors import InvalidBSON, InvalidDocument
+from pymongo.errors import InvalidName, InvalidStringData
 
 try:
     import _cbson
@@ -243,7 +243,8 @@ def _get_string(data):
 def _get_object(data):
     (object, data) = _bson_to_dict(data)
     if "$ref" in object:
-        return (DBRef(object["$ref"], object["$id"], object.get("$db", None)), data)
+        return (DBRef(object["$ref"], object["$id"],
+                      object.get("$db", None)), data)
     return (object, data)
 
 
@@ -381,7 +382,8 @@ _RE_TYPE = type(_valid_array_name)
 
 def _element_to_bson(key, value, check_keys):
     if not isinstance(key, (str, unicode)):
-        raise InvalidDocument("documents must have only string keys, key was %r" % key)
+        raise InvalidDocument("documents must have only string keys, "
+                              "key was %r" % key)
 
     if check_keys:
         if key.startswith("$"):
@@ -461,7 +463,8 @@ def _element_to_bson(key, value, check_keys):
             flags += "u"
         if value.flags & re.VERBOSE:
             flags += "x"
-        return "\x0B" + name + _make_c_string(pattern, True) + _make_c_string(flags)
+        return "\x0B" + name + _make_c_string(pattern, True) + \
+            _make_c_string(flags)
     if isinstance(value, DBRef):
         return _element_to_bson(key, value.as_doc(), False)
 
@@ -512,10 +515,11 @@ def _to_dict(data):
 
 
 def is_valid(bson):
-    """Validate that the given string represents valid BSON data.
+    """Check that the given string represents valid :class:`BSON` data.
 
-    Raises TypeError if the data is not an instance of a subclass of str.
-    Returns True if the data represents a valid BSON object, False otherwise.
+    Raises :class:`TypeError` if `bson` is not an instance of
+    :class:`str`.  Returns ``True`` if `bson` is valid :class:`BSON`,
+    ``False`` otherwise.
 
     :Parameters:
       - `bson`: the data to be validated
@@ -541,28 +545,34 @@ class BSON(str):
     """
 
     def __new__(cls, bson):
-        """Initialize a new BSON object with some data.
+        """Initialize a new :class:`BSON` instance with some data.
 
-        Raises TypeError if `bson` is not an instance of str.
+        Raises :class:`TypeError` if `bson` is not an instance of
+        :class:`str`.
 
         :Parameters:
           - `bson`: the initial data
         """
         return str.__new__(cls, bson)
 
-    def from_dict(cls, dict, check_keys=False, move_id=False):
-        """Create a new BSON object from a python mapping type (like dict).
+    def from_dict(cls, dct, check_keys=False, move_id=False):
+        """Create a new :class:`BSON` instance from a mapping type
+        (like :class:`dict`).
 
-        Raises TypeError if the argument is not a mapping type, or contains
-        keys that are not instance of (str, unicode). Raises InvalidDocument
-        if the dictionary cannot be converted to BSON.
+        Raises :class:`TypeError` if `dct` is not a mapping type, or
+        contains keys that are not instances of ``(str,
+        unicode)``. Raises :class:`~pymongo.errors.InvalidDocument` if
+        `dct` cannot be converted to :class:`BSON`.
 
         :Parameters:
-          - `dict`: mapping type representing a Mongo document
-          - `check_keys`: check if keys start with '$' or contain '.',
-            raising `pymongo.errors.InvalidName` in either case
+          - `dct`: mapping type representing a document
+          - `check_keys` (optional): check if keys start with '$' or
+            contain '.', raising :class:`~pymongo.errors.InvalidName`
+            in either case
+          - `move_id` (optional): move ``_id`` to the front of the
+            document's :class:`BSON` representation, if it is present.
         """
-        return cls(_dict_to_bson(dict, check_keys, move_id))
+        return cls(_dict_to_bson(dct, check_keys, move_id))
     from_dict = classmethod(from_dict)
 
     def to_dict(self):
