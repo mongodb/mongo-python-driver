@@ -469,13 +469,13 @@ def _element_to_bson(key, value, check_keys):
                           type(value))
 
 
-def _dict_to_bson(dict, check_keys):
+def _dict_to_bson(dict, check_keys, move_id=False):
     try:
         elements = ""
-        if "_id" in dict:
+        if move_id and "_id" in dict:
             elements += _element_to_bson("_id", dict["_id"], False)
         for (key, value) in dict.iteritems():
-            if key != "_id":
+            if not move_id or key != "_id":
                 elements += _element_to_bson(key, value, check_keys)
     except AttributeError:
         raise TypeError("encoder expected a mapping type but got: %r" % dict)
@@ -550,7 +550,7 @@ class BSON(str):
         """
         return str.__new__(cls, bson)
 
-    def from_dict(cls, dict, check_keys=False):
+    def from_dict(cls, dict, check_keys=False, move_id=False):
         """Create a new BSON object from a python mapping type (like dict).
 
         Raises TypeError if the argument is not a mapping type, or contains
@@ -562,7 +562,7 @@ class BSON(str):
           - `check_keys`: check if keys start with '$' or contain '.',
             raising `pymongo.errors.InvalidName` in either case
         """
-        return cls(_dict_to_bson(dict, check_keys))
+        return cls(_dict_to_bson(dict, check_keys, move_id))
     from_dict = classmethod(from_dict)
 
     def to_dict(self):

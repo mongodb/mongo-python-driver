@@ -96,7 +96,8 @@ typedef struct {
     int position;
 } bson_buffer;
 
-static int write_dict(bson_buffer* buffer, PyObject* dict, unsigned char check_keys);
+static int write_dict(bson_buffer* buffer, PyObject* dict,
+                      unsigned char check_keys, unsigned char move_id);
 static PyObject* elements_to_dict(const char* string, int max);
 
 static bson_buffer* buffer_new(void) {
@@ -230,7 +231,7 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
         return 1;
     } else if (PyDict_Check(value)) {
         *(buffer->buffer + type_byte) = 0x03;
-        return write_dict(buffer, value, check_keys);
+        return write_dict(buffer, value, check_keys, 0);
     } else if (PyList_Check(value) || PyTuple_Check(value)) {
         int start_position,
             length_location,
@@ -374,7 +375,7 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
         if (!scope) {
             return 0;
         }
-        if (!write_dict(buffer, scope, 0)) {
+        if (!write_dict(buffer, scope, 0, 0)) {
             Py_DECREF(scope);
             return 0;
         }
@@ -454,7 +455,7 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
         if (!as_doc) {
             return 0;
         }
-        if (!write_dict(buffer, as_doc, 0)) {
+        if (!write_dict(buffer, as_doc, 0, 0)) {
             Py_DECREF(as_doc);
             return 0;
         }
@@ -661,8 +662,9 @@ static int write_pair(bson_buffer* buffer, const char* name, Py_ssize_t name_len
     return 1;
 }
 
-static int decode_and_write_pair(bson_buffer* buffer, PyObject* key,
-                                 PyObject* value, unsigned char check_keys) {
+static int decode_and_write_pair(bson_buffer* buffer,
+                                 PyObject* key, PyObject* value,
+                                 unsigned char check_keys, unsigned char move_id) {
     PyObject* encoded;
     if (PyUnicode_Check(key)) {
         result_t status;
@@ -704,9 +706,9 @@ static int decode_and_write_pair(bson_buffer* buffer, PyObject* key,
         return 0;
     }
 
-    /* Don't allow writing _id here - it was already written. */
+    /* If move_id is True, don't allow writing _id here - it was already written. */
     if (!write_pair(buffer, PyString_AsString(encoded),
-                    PyString_Size(encoded), value, check_keys, 0)) {
+                    PyString_Size(encoded), value, check_keys, !move_id)) {
         Py_DECREF(encoded);
         return 0;
     }
@@ -716,7 +718,8 @@ static int decode_and_write_pair(bson_buffer* buffer, PyObject* key,
 }
 
 static int write_son(bson_buffer* buffer, PyObject* dict, int start_position,
-                     int length_location, unsigned char check_keys) {
+                     int length_location, unsigned char check_keys,
+                     unsigned char move_id) {
     PyObject* keys = PyObject_CallMethod(dict, "keys", NULL);
     int items,
         i;
@@ -735,7 +738,7 @@ static int write_son(bson_buffer* buffer, PyObject* dict, int start_position,
         }
         value = PyDict_GetItem(dict, key);
         if (!value ||
-            !decode_and_write_pair(buffer, key, value, check_keys)) {
+            !decode_and_write_pair(buffer, key, value, check_keys, move_id)) {
             Py_DECREF(keys);
             return 0;
         }
@@ -745,7 +748,7 @@ static int write_son(bson_buffer* buffer, PyObject* dict, int start_position,
 }
 
 /* returns 0 on failure */
-static int write_dict(bson_buffer* buffer, PyObject* dict, unsigned char check_keys) {
+static int write_dict(bson_buffer* buffer, PyObject* dict, unsigned char check_keys, unsigned char move_id) {
     int start_position = buffer->position;
     char zero = 0;
     int length;
@@ -758,8 +761,8 @@ static int write_dict(bson_buffer* buffer, PyObject* dict, unsigned char check_k
         return 0;
     }
 
-    /* Write _id first if we have one, whether or not we're SON. */
-    if (is_dict) {
+    /* Write _id first if we have one and move_id is true, whether or not we're SON. */
+    if (is_dict && move_id) {
         PyObject* _id = PyDict_GetItemString(dict, "_id");
         if (_id) {
             /* Don't bother checking keys, but do make sure we're allowed to
@@ -771,7 +774,7 @@ static int write_dict(bson_buffer* buffer, PyObject* dict, unsigned char check_k
     }
 
     if (PyObject_IsInstance(dict, SON)) {
-        if (!write_son(buffer, dict, start_position, length_location, check_keys)) {
+        if (!write_son(buffer, dict, start_position, length_location, check_keys, move_id)) {
             return 0;
         }
     } else if (is_dict) {
@@ -780,7 +783,7 @@ static int write_dict(bson_buffer* buffer, PyObject* dict, unsigned char check_k
         Py_ssize_t pos = 0;
 
         while (PyDict_Next(dict, &pos, &key, &value)) {
-            if (!decode_and_write_pair(buffer, key, value, check_keys)) {
+            if (!decode_and_write_pair(buffer, key, value, check_keys, move_id)) {
                 return 0;
             }
         }
@@ -811,9 +814,10 @@ static PyObject* _cbson_dict_to_bson(PyObject* self, PyObject* args) {
     PyObject* dict;
     PyObject* result;
     unsigned char check_keys;
+    unsigned char move_id;
     bson_buffer* buffer;
 
-    if (!PyArg_ParseTuple(args, "Ob", &dict, &check_keys)) {
+    if (!PyArg_ParseTuple(args, "Obb", &dict, &check_keys, &move_id)) {
         return NULL;
     }
 
@@ -822,7 +826,7 @@ static PyObject* _cbson_dict_to_bson(PyObject* self, PyObject* args) {
         return NULL;
     }
 
-    if (!write_dict(buffer, dict, check_keys)) {
+    if (!write_dict(buffer, dict, check_keys, move_id)) {
         buffer_free(buffer);
         return NULL;
     }
@@ -904,7 +908,8 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
 
     for (i = 0; i < PyList_Size(docs); i++) {
         PyObject* doc = PyList_GetItem(docs, i);
-        if (!write_dict(buffer, doc, check_keys)) {
+        /* We move_id for all inserts. */
+        if (!write_dict(buffer, doc, check_keys, 1)) {
             buffer_free(buffer);
             return NULL;
         }
@@ -963,6 +968,8 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
     }
 
     // save space for message length
+    /* Note we move_id for the doc part of the update, but not for the spec.
+     * This is to handle the upsert case. */
     length_location = buffer_save_bytes(buffer, 4);
     if (length_location == -1 ||
         !buffer_write_bytes(buffer, (const char*)&request_id, 4) ||
@@ -975,8 +982,8 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
                             collection_name,
                             collection_name_length + 1) ||
         !buffer_write_bytes(buffer, (const char*)&options, 4) ||
-        !write_dict(buffer, spec, 0) ||
-        !write_dict(buffer, doc, 0)) {
+        !write_dict(buffer, spec, 0, 0) ||
+        !write_dict(buffer, doc, 0, 1)) {
         buffer_free(buffer);
         PyMem_Free(collection_name);
         return NULL;

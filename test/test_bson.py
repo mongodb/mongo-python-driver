@@ -233,6 +233,31 @@ class TestBSON(unittest.TestCase):
         self.assertRaises(InvalidDocument, BSON.from_dict, {"a": re.compile("ab\x00c")})
         self.assertRaises(InvalidDocument, BSON.from_dict, {"a": re.compile(u"ab\x00c")})
 
+    def test_move_id(self):
+        self.assertEqual("\x19\x00\x00\x00\x02a\x00\x02\x00\x00\x00a\x00"
+                         "\x02_id\x00\x02\x00\x00\x00a\x00\x00",
+                         BSON.from_dict(SON([("a", "a"), ("_id", "a")])))
+
+        self.assertEqual("\x19\x00\x00\x00\x02_id\x00\x02\x00\x00\x00a\x00"
+                         "\x02a\x00\x02\x00\x00\x00a\x00\x00",
+                         BSON.from_dict(SON([("a", "a"), ("_id", "a")]), move_id=True))
+
+        self.assertEqual("\x2c\x00\x00\x00\x03b\x00"
+                         "\x19\x00\x00\x00\x02a\x00\x02\x00\x00\x00a\x00"
+                         "\x02_id\x00\x02\x00\x00\x00a\x00\x00"
+                         "\x02_id\x00\x02\x00\x00\x00b\x00\x00",
+                         BSON.from_dict(SON([("b", SON([("a", "a"), ("_id", "a")])),
+                                             ("_id", "b")])))
+
+        self.assertEqual("\x2c\x00\x00\x00"
+                         "\x02_id\x00\x02\x00\x00\x00b\x00"
+                         "\x03b\x00"
+                         "\x19\x00\x00\x00\x02a\x00\x02\x00\x00\x00a\x00"
+                         "\x02_id\x00\x02\x00\x00\x00a\x00\x00\x00",
+                         BSON.from_dict(SON([("b", SON([("a", "a"), ("_id", "a")])),
+                                             ("_id", "b")]), move_id=True))
+
+
 # TODO this test doesn't pass w/ C extension
 #
 # timegm doesn't handle years < 1900 (negative), at least on OS X
