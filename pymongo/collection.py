@@ -239,8 +239,8 @@ class Collection(object):
           >>> list(db.test.find())
           [{u'a': u'c', u'x': u'y', u'_id': ObjectId('...')}]
 
-        If `safe` is ``True`` returns the number of documents affected
-        by the :meth:`update`. Otherwise, returns ``None``.
+        If `safe` is ``True`` returns the response to the *lastError*
+        command. Otherwise, returns ``None``.
 
         :Parameters:
           - `spec`: a ``dict`` or :class:`~pymongo.son.SON` instance specifying
@@ -259,7 +259,7 @@ class Collection(object):
             for that change.
 
         .. versionchanged:: 1.3+
-           Return the number of updated documents if `safe` is ``True``.
+           Return the response to *lastError* if `safe` is ``True``.
         .. versionadded:: 1.1.1
            The `multi` parameter.
 
@@ -298,8 +298,8 @@ class Collection(object):
         :meth:`~pymongo.database.Database.drop_collection`, however, as
         indexes will not be removed.
 
-        If `safe` is ``True`` returns the number of documents affected
-        by the :meth:`remove`. Otherwise, returns ``None``.
+        If `safe` is ``True`` returns the response to the *lastError*
+        command. Otherwise, returns ``None``.
 
         :Parameters:
           - `spec_or_object_id` (optional): a ``dict`` or
@@ -310,7 +310,7 @@ class Collection(object):
           - `safe` (optional): check that the remove succeeded?
 
         .. versionchanged:: 1.3+
-           Return the number of removed documents if `safe` is ``True``.
+           Return the response to *lastError* if `safe` is ``True``.
         .. versionchanged:: 1.2
            The `spec_or_object_id` parameter is now optional. If it is
            not specified *all* documents in the collection will be

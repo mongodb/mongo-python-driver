@@ -430,8 +430,7 @@ class Connection(object): # TODO support auth for pooling
         `response` is a byte string representing a response to the message.
         If it represents an error response we raise OperationFailure.
 
-        Return the value of ``'n'`` from the response (the number of
-        documents affected by the command).
+        Return the response as a document.
         """
         response = helpers._unpack_response(response)
 
@@ -440,7 +439,7 @@ class Connection(object): # TODO support auth for pooling
 
         # TODO unify logic with database.error method
         if error.get("err", 0) is None:
-            return error["n"]
+            return error
         if error["err"] == "not master":
             self._reset()
 
@@ -449,7 +448,7 @@ class Connection(object): # TODO support auth for pooling
         else:
             raise OperationFailure(error["err"])
 
-        return error["n"]
+        return error
 
     def _send_message(self, message, with_last_error=False):
         """Say something to Mongo.
@@ -457,7 +456,7 @@ class Connection(object): # TODO support auth for pooling
         Raises ConnectionFailure if the message cannot be sent. Raises
         OperationFailure if `with_last_error` is ``True`` and the
         response to the getLastError call returns an error. Return the
-        number of affected documents, or ``None`` if `with_last_error`
+        response from lastError, or ``None`` if `with_last_error`
         is ``False``.
 
         :Parameters:

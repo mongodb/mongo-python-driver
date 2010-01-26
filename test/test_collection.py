@@ -546,7 +546,7 @@ class TestCollection(unittest.TestCase):
             self.assertEqual(5, doc["y"])
 
         self.assertEqual(2, db.test.update({"x": 4}, {"$set": {"y": 6}},
-                                           multi=True, safe=True))
+                                           multi=True, safe=True)["n"])
 
     def test_upsert(self):
         db = self.db
@@ -577,8 +577,9 @@ class TestCollection(unittest.TestCase):
         self.assertRaises(OperationFailure, db.test.update,
                           {"_id": id}, {"$inc": {"x": 1}}, safe=True)
 
-        self.assertEqual(1, db.test.update({"_id": id}, {"$inc": {"x": 2}}, safe=True))
-        self.assertEqual(0, db.test.update({"_id": "foo"}, {"$inc": {"x": 2}}, safe=True))
+        self.assertEqual(1, db.test.update({"_id": id}, {"$inc": {"x": 2}}, safe=True)["n"])
+
+        self.assertEqual(0, db.test.update({"_id": "foo"}, {"$inc": {"x": 2}}, safe=True)["n"])
 
     def test_safe_save(self):
         db = self.db
@@ -610,8 +611,8 @@ class TestCollection(unittest.TestCase):
         db.drop_collection("test")
         db.test.insert({"x": 1})
         db.test.insert({"x": 1})
-        self.assertEqual(2, db.test.remove({}, safe=True))
-        self.assertEqual(0, db.test.remove({}, safe=True))
+        self.assertEqual(2, db.test.remove({}, safe=True)["n"])
+        self.assertEqual(0, db.test.remove({}, safe=True)["n"])
 
     def test_count(self):
         db = self.db
