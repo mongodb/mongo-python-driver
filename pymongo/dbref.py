@@ -22,24 +22,24 @@ class DBRef(object):
     """
 
     def __init__(self, collection, id, database=None):
-        """Initialize a new DBRef.
+        """Initialize a new :class:`DBRef`.
 
-        Raises TypeError if collection or database is not an instance of
-        (str, unicode). `database` is optional and allows references to
-        documents to work across databases.
+        Raises :class:`TypeError` if `collection` or `database` is not
+        an instance of :class:`basestring`. `database` is optional and
+        allows references to documents to work across databases.
 
         :Parameters:
           - `collection`: name of the collection the document is stored in
-          - `id`: the value of the document's _id field
+          - `id`: the value of the document's ``"_id"`` field
           - `database` (optional): name of the database to reference
 
         .. versionadded:: 1.1.1
            The `database` parameter.
         """
         if not isinstance(collection, basestring):
-            raise TypeError("collection must be an instance of (str, unicode)")
+            raise TypeError("collection must be an instance of basestring")
         if database is not None and not isinstance(database, basestring):
-            raise TypeError("database must be an instance of (str, unicode)")
+            raise TypeError("database must be an instance of basestring")
 
         self.__collection = collection
         self.__id = id

@@ -38,15 +38,18 @@ class Database(object):
     def __init__(self, connection, name):
         """Get a database by connection and name.
 
-        Raises TypeError if name is not an instance of (str, unicode). Raises
-        InvalidName if name is not a valid database name.
+        Raises :class:`TypeError` if `name` is not an instance of
+        :class:`basestring`. Raises
+        :class:`~pymongo.errors.InvalidName` if `name` is not a valid
+        database name.
 
         :Parameters:
-          - `connection`: a connection to Mongo
+          - `connection`: a :class:`~pymongo.connection.Connection`
+            instance
           - `name`: database name
         """
         if not isinstance(name, basestring):
-            raise TypeError("name must be an instance of (str, unicode)")
+            raise TypeError("name must be an instance of basestring")
 
         self.__check_name(name)
 
@@ -357,9 +360,9 @@ class Database(object):
         """Get a password digest to use for authentication.
         """
         if not isinstance(password, basestring):
-            raise TypeError("password must be an instance of (str, unicode)")
+            raise TypeError("password must be an instance of basestring")
         if not isinstance(username, basestring):
-            raise TypeError("username must be an instance of (str, unicode)")
+            raise TypeError("username must be an instance of basestring")
 
         md5hash = _md5func()
         md5hash.update(username.encode('utf-8') + ":mongo:" + password.encode('utf-8'))
@@ -438,9 +441,9 @@ class Database(object):
           - `password`: the password of the user to authenticate
         """
         if not isinstance(name, basestring):
-            raise TypeError("name must be an instance of (str, unicode)")
+            raise TypeError("name must be an instance of basestring")
         if not isinstance(password, basestring):
-            raise TypeError("password must be an instance of (str, unicode)")
+            raise TypeError("password must be an instance of basestring")
 
         result = self.command({"getnonce": 1})
         nonce = result["nonce"]
