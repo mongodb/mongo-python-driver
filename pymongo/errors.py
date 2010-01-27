@@ -17,7 +17,7 @@
 class PyMongoError(Exception):
     """Base class for all PyMongo exceptions.
 
-    .. versionadded:: 1.3+
+    .. versionadded:: 1.4
     """
 
 
@@ -51,7 +51,7 @@ class OperationFailure(PyMongoError):
 class DuplicateKeyError(OperationFailure):
     """Raised when a safe insert or update fails due to a duplicate key error.
 
-    .. versionadded:: 1.3+
+    .. versionadded:: 1.4
     """
 
 

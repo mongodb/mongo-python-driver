@@ -213,7 +213,7 @@ class Database(object):
           - `allowable_errors`: if `check` is ``True``, error messages in this
             list will be ignored by error-checking
 
-        .. versionadded:: 1.3+
+        .. versionadded:: 1.4
         """
         result = self["$cmd"].find_one(command, _sock=_sock,
                                        _must_use_master=True,
@@ -379,7 +379,7 @@ class Database(object):
           - `name`: the name of the user to create
           - `password`: the password of the user to create
 
-        .. versionadded:: 1.3+
+        .. versionadded:: 1.4
         """
         self.system.users.update({"user": name},
                                  {"user": name,
@@ -395,7 +395,7 @@ class Database(object):
         :Paramaters:
           - `name`: the name of the user to remove
 
-        .. versionadded:: 1.3+
+        .. versionadded:: 1.4
         """
         self.system.users.remove({"user": name}, safe=True)
 

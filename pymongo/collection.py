@@ -258,7 +258,7 @@ class Collection(object):
             explicitly for all update operations in order to prepare your code
             for that change.
 
-        .. versionchanged:: 1.3+
+        .. versionchanged:: 1.4
            Return the response to *lastError* if `safe` is ``True``.
         .. versionadded:: 1.1.1
            The `multi` parameter.
@@ -309,7 +309,7 @@ class Collection(object):
             ``_id`` field for the document to be removed
           - `safe` (optional): check that the remove succeeded?
 
-        .. versionchanged:: 1.3+
+        .. versionchanged:: 1.4
            Return the response to *lastError* if `safe` is ``True``.
         .. versionchanged:: 1.2
            The `spec_or_object_id` parameter is now optional. If it is
@@ -645,7 +645,7 @@ class Collection(object):
             command instead of in an eval - this option is deprecated and
             will be removed in favor of running all groups as commands
 
-        .. versionchanged:: 1.3+
+        .. versionchanged:: 1.4
            The `key` argument can now be ``None`` or a JavaScript function,
            in addition to a :class:`list` of keys.
         .. versionchanged:: 1.3

@@ -7,9 +7,9 @@ PyMongo
 About
 =====
 
-The PyMongo distribution contains tools for interacting with the Mongo
+The PyMongo distribution contains tools for interacting with MongoDB
 database from Python.  The ``pymongo`` package is a native Python
-driver for the Mongo database. The ``gridfs`` package is a `gridfs
+driver for MongoDB. The ``gridfs`` package is a `gridfs
 <http://www.mongodb.org/display/DOCS/GridFS+Specification>`_
 implementation on top of ``pymongo``.
 

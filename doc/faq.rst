@@ -9,6 +9,8 @@ Is PyMongo thread-safe?
 PyMongo is thread-safe and even provides built-in connection pooling
 for threaded applications.
 
+.. _connection-pooling:
+
 How does connection pooling work in PyMongo?
 --------------------------------------------
 

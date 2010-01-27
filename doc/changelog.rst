@@ -1,6 +1,68 @@
 Changelog
 =========
 
+Changes in Version 1.4
+----------------------
+
+Perhaps the most important change in version 1.4 is that we have
+decided to **no longer support Python 2.3**. The most immediate reason
+for this is to allow some improvements to connection pooling. This
+will also allow us to use some new (as in Python 2.4 ;) idioms and
+will help begin the path towards supporting Python 3.0. If you need to
+use Python 2.3 you should consider using version 1.3 of this driver,
+although that will no longer be actively supported.
+
+Other changes:
+
+- move ``"_id"`` to front only for top-level documents (fixes some
+  corner cases).
+- :meth:`~pymongo.collection.Collection.update` and
+  :meth:`~pymongo.collection.Collection.remove` return the entire
+  response to the *lastError* command when safe is ``True``.
+- completed removal of things that were deprecated in version 1.2 or
+  earlier.
+- enforce that collection names do not contain the NULL byte.
+- fix to allow using UTF-8 collection names with the C extension.
+- added :class:`~pymongo.errors.PyMongoError` as base exception class
+  for all :mod:`~pymongo.errors`. this changes the exception hierarchy
+  somewhat, and is a BREAKING change if you depend on
+  :class:`~pymongo.errors.ConnectionFailure` being a :class:`IOError`
+  or :class:`~pymongo.errors.InvalidBSON` being a :class:`ValueError`,
+  for example.
+- added :class:`~pymongo.errors.DuplicateKeyError` for calls to
+  :meth:`~pymongo.collection.Collection.insert` or
+  :meth:`~pymongo.collection.Collection.update` with `safe` set to
+  ``True``.
+- removed :mod:`~pymongo.thread_util`
+- added :meth:`~pymongo.database.Database.add_user` and
+  :meth:`~pymongo.database.Database.remove_user` helpers.
+- fix for :meth:`~pymongo.database.Database.authenticate` when using
+  non-UTF-8 names or passwords.
+- minor fixes for
+  :class:`~pymongo.master_slave_connection.MasterSlaveConnection`.
+- clean up all cases where :class:`~pymongo.errors.ConnectionFailure`
+  is raised.
+- simplification of connection pooling - makes driver ~2x faster for
+  simple benchmarks. see :ref:`connection-pooling` for more information.
+- DEPRECATED `pool_size`, `auto_start_request` and `timeout`
+  parameters to :class:`~pymongo.connection.Connection`. DEPRECATED
+  :meth:`~pymongo.connection.Connection.start_request`.
+- use :meth:`socket.sendall`.
+- removed :meth:`~pymongo.son.SON.from_xml` as it was only being used
+  for some internal testing - also eliminates dependency on
+  :mod:`elementtree`.
+- implementation of :meth:`~pymongo.message.update` in C.
+- deprecate :meth:`~pymongo.database.Database._command` in favor of
+  :meth:`~pymongo.database.Database.command`.
+- send all commands without wrapping as ``{"query": ...}``.
+- support string as `key` argument to
+  :meth:`~pymongo.collection.Collection.group` (keyf) and run all
+  groups as commands.
+- support for equality testing for :class:`~pymongo.code.Code`
+  instances.
+- allow the NULL byte in strings and disallow it in key names or regex
+  patterns
+
 Changes in Version 1.3
 ----------------------
 - DEPRECATED running :meth:`~pymongo.collection.Collection.group` as

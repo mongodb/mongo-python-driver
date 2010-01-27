@@ -124,7 +124,7 @@ class Connection(object): # TODO support auth for pooling
             operations - default is no timeout
 
         .. seealso:: :meth:`end_request`
-        .. versionchanged:: 1.3+
+        .. versionchanged:: 1.4
            DEPRECATED The `pool_size`, `auto_start_request`, and `timeout`
            parameters.
         .. versionadded:: 1.1
@@ -542,7 +542,7 @@ class Connection(object): # TODO support auth for pooling
     def start_request(self):
         """DEPRECATED all operations will start a request.
 
-        .. versionchanged:: 1.3+
+        .. versionchanged:: 1.4
            DEPRECATED
         """
         warnings.warn("the Connection.start_request method is deprecated",
