@@ -411,7 +411,7 @@ def _element_to_bson(key, value, check_keys):
                                  chr(subtype), value)
     if isinstance(value, Code):
         cstring = _make_c_string(value)
-        scope = _dict_to_bson(value.scope, False)
+        scope = _dict_to_bson(value.scope, False, False)
         full_length = struct.pack("<i", 8 + len(cstring) + len(scope))
         length = struct.pack("<i", len(cstring))
         return "\x0F" + name + full_length + length + cstring + scope
@@ -424,10 +424,10 @@ def _element_to_bson(key, value, check_keys):
         length = struct.pack("<i", len(cstring))
         return "\x02" + name + length + cstring
     if isinstance(value, dict):
-        return "\x03" + name + _dict_to_bson(value, check_keys)
+        return "\x03" + name + _dict_to_bson(value, check_keys, False)
     if isinstance(value, (list, tuple)):
         as_dict = SON(zip([str(i) for i in range(len(value))], value))
-        return "\x04" + name + _dict_to_bson(as_dict, check_keys)
+        return "\x04" + name + _dict_to_bson(as_dict, check_keys, False)
     if isinstance(value, ObjectId):
         return "\x07" + name + value.binary
     if value is True:
@@ -471,13 +471,13 @@ def _element_to_bson(key, value, check_keys):
                           type(value))
 
 
-def _dict_to_bson(dict, check_keys, move_id=False):
+def _dict_to_bson(dict, check_keys, top_level=True):
     try:
         elements = ""
-        if move_id and "_id" in dict:
+        if top_level and "_id" in dict:
             elements += _element_to_bson("_id", dict["_id"], False)
         for (key, value) in dict.iteritems():
-            if not move_id or key != "_id":
+            if not top_level or key != "_id":
                 elements += _element_to_bson(key, value, check_keys)
     except AttributeError:
         raise TypeError("encoder expected a mapping type but got: %r" % dict)
@@ -554,7 +554,7 @@ class BSON(str):
         """
         return str.__new__(cls, bson)
 
-    def from_dict(cls, dct, check_keys=False, move_id=False):
+    def from_dict(cls, dct, check_keys=False):
         """Create a new :class:`BSON` instance from a mapping type
         (like :class:`dict`).
 
@@ -568,10 +568,8 @@ class BSON(str):
           - `check_keys` (optional): check if keys start with '$' or
             contain '.', raising :class:`~pymongo.errors.InvalidName`
             in either case
-          - `move_id` (optional): move ``_id`` to the front of the
-            document's :class:`BSON` representation, if it is present.
         """
-        return cls(_dict_to_bson(dct, check_keys, move_id))
+        return cls(_dict_to_bson(dct, check_keys))
     from_dict = classmethod(from_dict)
 
     def to_dict(self):

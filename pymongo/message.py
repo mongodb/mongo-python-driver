@@ -63,7 +63,7 @@ def insert(collection_name, docs, check_keys, safe):
     """
     data = __ZERO
     data += bson._make_c_string(collection_name)
-    data += "".join([bson.BSON.from_dict(doc, check_keys, move_id=True)
+    data += "".join([bson.BSON.from_dict(doc, check_keys)
                      for doc in docs])
     if safe:
         (_, insert_message) = __pack_message(2002, data)
@@ -88,7 +88,7 @@ def update(collection_name, upsert, multi, spec, doc, safe):
     data += bson._make_c_string(collection_name)
     data += struct.pack("<i", options)
     data += bson.BSON.from_dict(spec)
-    data += bson.BSON.from_dict(doc, move_id=True)
+    data += bson.BSON.from_dict(doc)
     if safe:
         (_, update_message) = __pack_message(2001, data)
         (request_id, error_message) = __last_error()
