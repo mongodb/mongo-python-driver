@@ -14,7 +14,16 @@
 
 """Exceptions raised by the :mod:`gridfs` package"""
 
-class CorruptGridFile(Exception):
+from pymongo.errors import PyMongoError
+
+
+class GridFSError(PyMongoError):
+    """Base class for all GridFS exceptions.
+
+    .. versionadded:: 1.4+
+    """
+
+class CorruptGridFile(GridFSError):
     """Raised when a :class:`~gridfs.grid_file.GridFile` instance is
     malformed.
     """
