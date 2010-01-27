@@ -45,18 +45,19 @@ class DBRef(object):
         self.__id = id
         self.__database = database
 
+    @property
     def collection(self):
         """Get the name of this DBRef's collection as unicode.
         """
         return self.__collection
-    collection = property(collection)
 
+    @property
     def id(self):
         """Get this DBRef's _id.
         """
         return self.__id
-    id = property(id)
 
+    @property
     def database(self):
         """Get the name of this DBRef's database.
 
@@ -65,7 +66,6 @@ class DBRef(object):
         .. versionadded:: 1.1.1
         """
         return self.__database
-    database = property(database)
 
     def as_doc(self):
         """Get the SON document representation of this DBRef.

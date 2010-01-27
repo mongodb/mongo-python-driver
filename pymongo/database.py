@@ -99,6 +99,7 @@ class Database(object):
             if method_overwritten(manipulator, "transform_outgoing"):
                 self.__outgoing_manipulators.insert(0, manipulator)
 
+    @property
     def connection(self):
         """The :class:`~pymongo.connection.Connection` instance for this
         :class:`Database`.
@@ -108,8 +109,8 @@ class Database(object):
            ``connection()`` method is deprecated.
         """
         return self.__connection_w
-    connection = property(connection)
 
+    @property
     def name(self):
         """The name of this :class:`Database`.
 
@@ -118,7 +119,6 @@ class Database(object):
            ``name()`` method is deprecated.
         """
         return self.__name_w
-    name = property(name)
 
     def __cmp__(self, other):
         if isinstance(other, Database):

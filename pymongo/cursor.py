@@ -65,6 +65,7 @@ class Cursor(object):
         self.__retrieved = 0
         self.__killed = False
 
+    @property
     def collection(self):
         """The :class:`~pymongo.collection.Collection` that this
         :class:`Cursor` is iterating.
@@ -72,7 +73,6 @@ class Cursor(object):
         .. versionadded:: 1.1
         """
         return self.__collection
-    collection = property(collection)
 
     def __del__(self):
         if self.__id and not self.__killed:

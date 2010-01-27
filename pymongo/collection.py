@@ -118,6 +118,7 @@ class Collection(object):
                        (other.__database, other.__name))
         return NotImplemented
 
+    @property
     def full_name(self):
         """The full name of this :class:`Collection`.
 
@@ -128,8 +129,8 @@ class Collection(object):
            ``full_name()`` method is deprecated.
         """
         return self.__full_name_w
-    full_name = property(full_name)
 
+    @property
     def name(self):
         """The name of this :class:`Collection`.
 
@@ -138,8 +139,8 @@ class Collection(object):
            ``name()`` method is deprecated.
         """
         return self.__name_w
-    name = property(name)
 
+    @property
     def database(self):
         """The :class:`~pymongo.database.Database` that this
         :class:`Collection` is a part of.
@@ -149,7 +150,6 @@ class Collection(object):
            ``database()`` method is deprecated.
         """
         return self.__database_w
-    database = property(database)
 
     def save(self, to_save, manipulate=True, safe=False):
         """Save a document in this collection.

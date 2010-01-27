@@ -44,11 +44,11 @@ class Binary(str):
         self.__subtype = subtype
         return self
 
+    @property
     def subtype(self):
         """Subtype of this binary data.
         """
         return self.__subtype
-    subtype = property(subtype)
 
     def __eq__(self, other):
         if isinstance(other, Binary):

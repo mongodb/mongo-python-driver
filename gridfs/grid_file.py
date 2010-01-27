@@ -164,17 +164,17 @@ class GridFile(object):
 
         self.__collection.chunks.remove({"files_id": self.__id})
 
+    @property
     def closed(self):
         """Is this :class:`GridFile` closed?
         """
         return self.__closed
-    closed = property(closed)
 
+    @property
     def mode(self):
         """Mode this :class:`GridFile` was opened with.
         """
         return self.__mode
-    mode = property(mode)
 
     def __create_property(field_name, docstring, read_only=False):
         def getter(self):

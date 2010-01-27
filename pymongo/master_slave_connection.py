@@ -58,21 +58,21 @@ class MasterSlaveConnection(object):
         self.__master = master
         self.__slaves = slaves
 
+    @property
     def master(self):
         return self.__master
-    master = property(master)
 
+    @property
     def slaves(self):
         return self.__slaves
-    slaves = property(slaves)
 
+    @property
     def slave_okay(self):
         """Is it okay for this connection to connect directly to a slave?
 
         This is always True for MasterSlaveConnection instances.
         """
         return True
-    slave_okay = property(slave_okay)
 
     def set_cursor_manager(self, manager_class):
         """Set the cursor manager for this connection.

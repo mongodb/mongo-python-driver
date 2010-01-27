@@ -295,6 +295,7 @@ class Connection(object): # TODO support auth for pooling
         if index_name in self.__index_cache[database_name][collection_name]:
             del self.__index_cache[database_name][collection_name][index_name]
 
+    @property
     def host(self):
         """Current connected host.
 
@@ -303,8 +304,8 @@ class Connection(object): # TODO support auth for pooling
            method is deprecated.
         """
         return helpers.callable_value(self.__host, "Connection.host")
-    host = property(host)
 
+    @property
     def port(self):
         """Current connected port.
 
@@ -313,13 +314,12 @@ class Connection(object): # TODO support auth for pooling
            method is deprecated.
         """
         return helpers.callable_value(self.__port, "Connection.port")
-    port = property(port)
 
+    @property
     def slave_okay(self):
         """Is it okay for this connection to connect directly to a slave?
         """
         return self.__slave_okay
-    slave_okay = property(slave_okay)
 
     def __find_master(self):
         """Create a new socket and use it to figure out who the master is.

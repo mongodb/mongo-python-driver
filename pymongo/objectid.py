@@ -121,12 +121,13 @@ class ObjectId(object):
             raise TypeError("id must be an instance of (str, ObjectId), "
                             "not %s" % type(oid))
 
+    @property
     def binary(self):
         """12-byte binary representation of this ObjectId.
         """
         return self.__id
-    binary = property(binary)
 
+    @property
     def generation_time(self):
         """A :class:`datetime.datetime` instance representing the time of
         generation for this :class:`ObjectId`.
@@ -138,7 +139,6 @@ class ObjectId(object):
         """
         t = struct.unpack(">i", self.__id[0:4])[0]
         return datetime.datetime.utcfromtimestamp(t)
-    generation_time = property(generation_time)
 
     def __str__(self):
         return self.__id.encode("hex")
