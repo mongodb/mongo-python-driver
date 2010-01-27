@@ -5,6 +5,7 @@ The following is a list of people who have contributed to
 (or send a pull request after adding yourself to the list):
 
 - Mike Dirolf (mdirolf)
+- Jeff Jenkins (jeffjenkins)
 - Jim Jones
 - Eliot Horowitz (erh)
 - Michael Stephens (mikejs)
