@@ -19,8 +19,8 @@ instances."""
 
 import random
 
-from database import Database
-from connection import Connection
+from pymongo.connection import Connection
+from pymongo.database import Database
 
 
 class MasterSlaveConnection(object):

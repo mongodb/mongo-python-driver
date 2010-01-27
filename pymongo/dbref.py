@@ -14,7 +14,7 @@
 
 """Tools for manipulating DBRefs (references to MongoDB documents)."""
 
-from son import SON
+from pymongo.son import SON
 
 
 class DBRef(object):

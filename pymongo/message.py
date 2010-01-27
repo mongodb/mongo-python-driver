@@ -22,15 +22,14 @@ MongoDB.
 .. versionadded:: 1.1.2
 """
 
-import threading
-import struct
 import random
+import struct
 import sys
+import threading
 
-import bson
-
+from pymongo import bson
 try:
-    import _cbson
+    from pymongo import _cbson
     _use_c = True
 except ImportError:
     _use_c = False

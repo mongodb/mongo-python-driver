@@ -38,12 +38,12 @@ instances.
    Added support for encoding/decoding datetimes and regular expressions.
 """
 
-import datetime
 import calendar
+import datetime
 import re
 
-from objectid import ObjectId
-from dbref import DBRef
+from pymongo.dbref import DBRef
+from pymongo.objectid import ObjectId
 
 # TODO support Binary and Code
 # Binary and Code are tricky because they subclass str so json thinks it can

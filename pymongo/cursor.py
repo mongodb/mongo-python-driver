@@ -17,11 +17,12 @@
 import struct
 import warnings
 
-import helpers
-import message
-from son import SON
-from code import Code
-from errors import InvalidOperation, AutoReconnect
+from pymongo import (helpers,
+                     message)
+from pymongo.code import Code
+from pymongo.errors import (InvalidOperation,
+                            AutoReconnect)
+from pymongo.son import SON
 
 _QUERY_OPTIONS = {
     "tailable_cursor": 2,

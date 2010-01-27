@@ -16,21 +16,21 @@
 <http://www.mongodb.org/display/DOCS/Object+IDs>`_.
 """
 
-import warnings
 import datetime
-import threading
-import time
-import socket
-import os
-import struct
 try:
     import hashlib
     _md5func = hashlib.md5
 except: # for Python < 2.5
     import md5
     _md5func = md5.new
+import os
+import socket
+import struct
+import threading
+import time
+import warnings
 
-from errors import InvalidId
+from pymongo.errors import InvalidId
 
 
 def _machine_bytes():

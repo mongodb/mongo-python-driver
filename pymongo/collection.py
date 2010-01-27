@@ -17,13 +17,13 @@
 import warnings
 import struct
 
-import helpers
-import message
-from objectid import ObjectId
-from cursor import Cursor
-from son import SON
-from errors import InvalidName
-from code import Code
+from pymongo import (helpers,
+                     message)
+from pymongo.code import Code
+from pymongo.cursor import Cursor
+from pymongo.errors import InvalidName
+from pymongo.objectid import ObjectId
+from pymongo.son import SON
 
 _ZERO = "\x00\x00\x00\x00"
 

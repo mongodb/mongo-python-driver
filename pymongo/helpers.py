@@ -14,14 +14,15 @@
 
 """Little bits and pieces used by the driver that don't really fit elsewhere."""
 
-import sys
 import struct
+import sys
 import warnings
 
-from son import SON
-from errors import OperationFailure, AutoReconnect
-import bson
 import pymongo
+from pymongo import bson
+from pymongo.errors import (OperationFailure,
+                            AutoReconnect)
+from pymongo.son import SON
 
 def _index_list(key_or_list, direction=None):
     """Helper to generate a list of (key, direction) pairs.
@@ -56,17 +57,6 @@ def _index_document(index_list):
                             "DESCENDING")
         index[key] = value
     return index
-
-
-def _reversed(l):
-    """A version of the `reversed()` built-in for Python 2.3.
-    """
-    i = len(l)
-    while i > 0:
-        i -= 1
-        yield l[i]
-if sys.version_info[:3] >= (2, 4, 0):
-    _reversed = reversed
 
 
 def _unpack_response(response, cursor_id=None):

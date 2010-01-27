@@ -17,19 +17,19 @@
 import datetime
 import math
 import os
-from threading import Condition
 try:
     from cStringIO import StringIO
 except:
     from StringIO import StringIO
+from threading import Condition
 
-from pymongo.son import SON
-from pymongo.database import Database
-from pymongo.objectid import ObjectId
-from pymongo.dbref import DBRef
-from pymongo.binary import Binary
 from gridfs.errors import CorruptGridFile
 from pymongo import ASCENDING
+from pymongo.binary import Binary
+from pymongo.database import Database
+from pymongo.dbref import DBRef
+from pymongo.objectid import ObjectId
+from pymongo.son import SON
 
 try:
     _SEEK_SET = os.SEEK_SET

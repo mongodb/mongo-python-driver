@@ -33,22 +33,25 @@ To get a :class:`~pymongo.database.Database` instance from a
   Database(Connection('localhost', 27017), u'test-database')
 """
 
-import sys
+import datetime
+import errno
+import random
 import socket
 import struct
+import sys
 import threading
-import random
-import errno
-import datetime
 import warnings
 
-from errors import ConnectionFailure, ConfigurationError, AutoReconnect
-from errors import OperationFailure, DuplicateKeyError
-from database import Database
-from cursor_manager import CursorManager
-import bson
-import message
-import helpers
+from pymongo import (bson,
+                     helpers,
+                     message)
+from pymongo.cursor_manager import CursorManager
+from pymongo.database import Database
+from pymongo.errors import (ConnectionFailure,
+                            ConfigurationError,
+                            AutoReconnect,
+                            OperationFailure,
+                            DuplicateKeyError)
 
 _CONNECT_TIMEOUT = 20.0
 

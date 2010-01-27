@@ -18,9 +18,9 @@ New manipulators should be defined as subclasses of SONManipulator and can be
 installed on a database by calling
 `pymongo.database.Database.add_son_manipulator`."""
 
-from objectid import ObjectId
-from dbref import DBRef
-from son import SON
+from pymongo.dbref import DBRef
+from pymongo.objectid import ObjectId
+from pymongo.son import SON
 
 
 class SONManipulator(object):

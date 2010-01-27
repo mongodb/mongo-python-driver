@@ -23,11 +23,13 @@ import calendar
 
 from pymongo.binary import Binary
 from pymongo.code import Code
-from pymongo.objectid import ObjectId
 from pymongo.dbref import DBRef
+from pymongo.errors import (InvalidBSON,
+                            InvalidDocument,
+                            InvalidName,
+                            InvalidStringData)
+from pymongo.objectid import ObjectId
 from pymongo.son import SON
-from pymongo.errors import InvalidBSON, InvalidDocument
-from pymongo.errors import InvalidName, InvalidStringData
 
 try:
     import _cbson

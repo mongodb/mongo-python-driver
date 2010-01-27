@@ -14,21 +14,24 @@
 
 """Database level operations."""
 
-import warnings
 try:
     import hashlib
     _md5func = hashlib.md5
 except: # for Python < 2.5
     import md5
     _md5func = md5.new
+import warnings
 
-from son import SON
-from dbref import DBRef
-from son_manipulator import ObjectIdInjector, ObjectIdShuffler
-from collection import Collection
-from errors import InvalidName, CollectionInvalid, OperationFailure
-from code import Code
-import helpers
+from pymongo import helpers
+from pymongo.code import Code
+from pymongo.collection import Collection
+from pymongo.dbref import DBRef
+from pymongo.errors import (CollectionInvalid,
+                            InvalidName,
+                            OperationFailure)
+from pymongo.son import SON
+from pymongo.son_manipulator import (ObjectIdInjector,
+                                     ObjectIdShuffler)
 
 
 class Database(object):
@@ -190,9 +193,9 @@ class Database(object):
           - `son`: the son object coming out of the database
           - `collection`: the collection the son object was saved in
         """
-        for manipulator in helpers._reversed(self.__outgoing_manipulators):
+        for manipulator in reversed(self.__outgoing_manipulators):
             son = manipulator.transform_outgoing(son, collection)
-        for manipulator in helpers._reversed(self.__outgoing_copying_manipulators):
+        for manipulator in reversed(self.__outgoing_copying_manipulators):
             son = manipulator.transform_outgoing(son, collection)
         return son
 

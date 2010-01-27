@@ -18,7 +18,7 @@ The :mod:`gridfs` package is an implementation of GridFS on top of
 :mod:`pymongo`, exposing a file-like interface.
 """
 
-from grid_file import GridFile
+from gridfs.grid_file import GridFile
 from pymongo.database import Database
 
 class GridFS(object):
