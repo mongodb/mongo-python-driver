@@ -421,6 +421,8 @@ class Collection(object):
 
         .. versionadded:: 1.1
            The `tailable` parameter.
+
+        .. mongodoc:: find
         """
         if spec is None:
             spec = SON()
