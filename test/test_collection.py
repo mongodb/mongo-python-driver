@@ -875,6 +875,17 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(1, self.db.test.find({"query": {"$ne": None}}).count())
         self.assertEqual(1, len(list(self.db.test.find({"query": {"$ne": None}}))))
 
+    def test_min_query(self):
+        self.db.drop_collection("test")
+        self.db.test.save({"x": 1})
+        self.db.test.save({"x": 2})
+        self.db.test.create_index("x")
+
+        self.assertEqual(1, len(list(self.db.test.find({"$min": {"x": 2},
+                                                        "$query": {}}))))
+        self.assertEqual(2, self.db.test.find({"$min": {"x": 2},
+                                               "$query": {}})[0]["x"])
+
     def test_insert_large_document(self):
         self.assertRaises(InvalidDocument, self.db.test.insert,
                           {"foo": "x" * 4 * 1024 * 1024})

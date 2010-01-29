@@ -126,7 +126,7 @@ class Cursor(object):
     def __query_spec(self):
         """Get the spec to use for a query.
         """
-        if self.__is_command:
+        if self.__is_command or "$query" in self.__spec:
             return self.__spec
         spec = SON({"$query": self.__spec})
         if self.__ordering:
