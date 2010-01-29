@@ -128,9 +128,9 @@ class Cursor(object):
         """
         if self.__is_command:
             return self.__spec
-        spec = SON({"query": self.__spec})
+        spec = SON({"$query": self.__spec})
         if self.__ordering:
-            spec["orderby"] = self.__ordering
+            spec["$orderby"] = self.__ordering
         if self.__explain:
             spec["$explain"] = True
         if self.__hint:
