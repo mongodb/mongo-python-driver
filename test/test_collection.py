@@ -16,27 +16,30 @@
 
 """Test the collection module."""
 
-import warnings
-import unittest
-import re
 import itertools
-import time
+import re
 import sys
-sys.path[0:0] = [""]
+import time
+import unittest
+import warnings
 
 from nose.plugins.skip import SkipTest
 
+sys.path[0:0] = [""]
+
+from pymongo import ASCENDING, DESCENDING
+from pymongo.binary import Binary
+from pymongo.code import Code
+from pymongo.collection import Collection
+from pymongo.errors import (DuplicateKeyError,
+                            InvalidDocument,
+                            InvalidName,
+                            OperationFailure)
+from pymongo.objectid import ObjectId
+from pymongo.son import SON
 import qcheck
 from test_connection import get_connection
 import version
-from pymongo.objectid import ObjectId
-from pymongo.code import Code
-from pymongo.binary import Binary
-from pymongo.collection import Collection
-from pymongo.errors import InvalidName, OperationFailure, InvalidDocument
-from pymongo.errors import DuplicateKeyError
-from pymongo import ASCENDING, DESCENDING
-from pymongo.son import SON
 
 
 class TestCollection(unittest.TestCase):
@@ -476,14 +479,18 @@ class TestCollection(unittest.TestCase):
         db.test.insert({"_id": 1, "x": 1}, safe=True)
         db.test.insert({"_id": 2, "x": 2}, safe=True)
 
-        self.assertRaises(DuplicateKeyError,
+        expected_error = OperationFailure
+        if version.at_least(db.connection, (1, 3)):
+            expected_error = DuplicateKeyError
+
+        self.assertRaises(expected_error,
                           db.test.insert, {"_id": 1}, safe=True)
-        self.assertRaises(DuplicateKeyError,
+        self.assertRaises(expected_error,
                           db.test.insert, {"x": 1}, safe=True)
 
-        self.assertRaises(DuplicateKeyError,
+        self.assertRaises(expected_error,
                           db.test.save, {"x": 2}, safe=True)
-        self.assertRaises(DuplicateKeyError,
+        self.assertRaises(expected_error,
                           db.test.update, {"x": 1}, {"$inc": {"x": 1}}, safe=True)
 
 

@@ -51,6 +51,8 @@ class OperationFailure(PyMongoError):
 class DuplicateKeyError(OperationFailure):
     """Raised when a safe insert or update fails due to a duplicate key error.
 
+    .. note:: Requires server version **>= 1.3.0**
+
     .. versionadded:: 1.4
     """
 
