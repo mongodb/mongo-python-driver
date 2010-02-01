@@ -71,7 +71,7 @@ def process_mongodoc_nodes(app, doctree, fromdocname):
 
     for node in doctree.traverse(mongodoc):
         for name in node.parent.parent.traverse(addnodes.desc_signature):
-            anchor = "#%s" % name["ids"][0]
+            anchor = name["ids"][0]
             break
         for para in node.traverse(nodes.paragraph):
             tag = str(para.traverse()[1])
