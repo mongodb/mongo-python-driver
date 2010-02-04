@@ -36,7 +36,7 @@ Additional dependencies are:
 
 Examples
 ========
-Here's a basic example (for more see the *examples/* directory):
+Here's a basic example (for more see the *examples* section of the docs):
 
 >>> import pymongo
 >>> connection = pymongo.Connection("localhost", 27017)
