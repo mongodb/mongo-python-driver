@@ -307,7 +307,7 @@ class Cursor(object):
             if self.__skip:
                 command["skip"] = self.__skip
 
-        response = self.__collection.database.command(command, ["ns missing"])
+        response = self.__collection.database.command(command, allowable_errors=["ns missing"])
         if response.get("errmsg", "") == "ns missing":
             return 0
         return int(response["n"])
