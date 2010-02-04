@@ -1003,6 +1003,121 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
     return result;
 }
 
+static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
+    /* NOTE just using a random number as the request_id */
+    int request_id = rand();
+    unsigned int options;
+    char* collection_name = NULL;
+    int collection_name_length;
+    int num_to_skip;
+    int num_to_return;
+    PyObject* query;
+    PyObject* field_selector = Py_None;
+    bson_buffer* buffer;
+    int length_location;
+    PyObject* result;
+
+    if (!PyArg_ParseTuple(args, "Iet#iiO|O",
+                          &options,
+                          "utf-8",
+                          &collection_name,
+                          &collection_name_length,
+                          &num_to_skip, &num_to_return,
+                          &query, &field_selector)) {
+        return NULL;
+    }
+    buffer = buffer_new();
+    if (!buffer) {
+        PyMem_Free(collection_name);
+        return NULL;
+    }
+
+    // save space for message length
+    length_location = buffer_save_bytes(buffer, 4);
+    if (length_location == -1 ||
+        !buffer_write_bytes(buffer, (const char*)&request_id, 4) ||
+        !buffer_write_bytes(buffer,
+                            "\x00\x00\x00\x00"
+                            "\xd4\x07\x00\x00", 8) ||
+        !buffer_write_bytes(buffer, (const char*)&options, 4) ||
+        !buffer_write_bytes(buffer,
+                            collection_name,
+                            collection_name_length + 1) ||
+        !buffer_write_bytes(buffer, (const char*)&num_to_skip, 4) ||
+        !buffer_write_bytes(buffer, (const char*)&num_to_return, 4) ||
+        !write_dict(buffer, query, 0, 1) ||
+        ((field_selector != Py_None) &&
+         !write_dict(buffer, field_selector, 0, 1))) {
+        buffer_free(buffer);
+        PyMem_Free(collection_name);
+        return NULL;
+    }
+
+    PyMem_Free(collection_name);
+
+    memcpy(buffer->buffer + length_location, &buffer->position, 4);
+
+    /* objectify buffer */
+    result = Py_BuildValue("is#", request_id,
+                           buffer->buffer, buffer->position);
+    buffer_free(buffer);
+    return result;
+}
+
+static PyObject* _cbson_get_more_message(PyObject* self, PyObject* args) {
+    /* NOTE just using a random number as the request_id */
+    int request_id = rand();
+    char* collection_name = NULL;
+    int collection_name_length;
+    int num_to_return;
+    long long cursor_id;
+    bson_buffer* buffer;
+    int length_location;
+    PyObject* result;
+
+    if (!PyArg_ParseTuple(args, "et#iL",
+                          "utf-8",
+                          &collection_name,
+                          &collection_name_length,
+                          &num_to_return,
+                          &cursor_id)) {
+        return NULL;
+    }
+    buffer = buffer_new();
+    if (!buffer) {
+        PyMem_Free(collection_name);
+        return NULL;
+    }
+
+    // save space for message length
+    length_location = buffer_save_bytes(buffer, 4);
+    if (length_location == -1 ||
+        !buffer_write_bytes(buffer, (const char*)&request_id, 4) ||
+        !buffer_write_bytes(buffer,
+                            "\x00\x00\x00\x00"
+                            "\xd5\x07\x00\x00"
+                            "\x00\x00\x00\x00", 12) ||
+        !buffer_write_bytes(buffer,
+                            collection_name,
+                            collection_name_length + 1) ||
+        !buffer_write_bytes(buffer, (const char*)&num_to_return, 4) ||
+        !buffer_write_bytes(buffer, (const char*)&cursor_id, 8)) {
+        buffer_free(buffer);
+        PyMem_Free(collection_name);
+        return NULL;
+    }
+
+    PyMem_Free(collection_name);
+
+    memcpy(buffer->buffer + length_location, &buffer->position, 4);
+
+    /* objectify buffer */
+    result = Py_BuildValue("is#", request_id,
+                           buffer->buffer, buffer->position);
+    buffer_free(buffer);
+    return result;
+}
+
 static PyObject* get_value(const char* buffer, int* position, int type) {
     PyObject* value;
     switch (type) {
@@ -1424,6 +1539,10 @@ static PyMethodDef _CBSONMethods[] = {
      "create an insert message to be sent to MongoDB"},
     {"_update_message", _cbson_update_message, METH_VARARGS,
      "create an update message to be sent to MongoDB"},
+    {"_query_message", _cbson_query_message, METH_VARARGS,
+     "create a query message to be sent to MongoDB"},
+    {"_get_more_message", _cbson_get_more_message, METH_VARARGS,
+     "create a get more message to be sent to MongoDB"},
     {NULL, NULL, 0, NULL}
 };
 

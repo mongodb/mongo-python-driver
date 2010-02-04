@@ -110,6 +110,8 @@ def query(options, collection_name,
     if field_selector is not None:
         data += bson.BSON.from_dict(field_selector)
     return __pack_message(2004, data)
+if _use_c:
+    query = _cbson._query_message
 
 
 def get_more(collection_name, num_to_return, cursor_id):
@@ -120,6 +122,8 @@ def get_more(collection_name, num_to_return, cursor_id):
     data += struct.pack("<i", num_to_return)
     data += struct.pack("<q", cursor_id)
     return __pack_message(2005, data)
+if _use_c:
+    get_more = _cbson._get_more_message
 
 
 def delete(collection_name, spec, safe):
