@@ -218,17 +218,27 @@ class Database(object):
     def command(self, command, check=True, allowable_errors=[], _sock=None):
         """Issue a MongoDB command.
 
-        Send a command to the database and return the response.
+        Send command `command` to the database and return the
+        response. If `command` is an instance of :class:`str` then the
+        command ``{command: 1}`` will be sent. Otherwise, `command`
+        must be an instance of :class:`dict` and will be sent as is.
 
         :Parameters:
-          - `command`: document representing the command to be issued
+          - `command`: document representing the command to be issued,
+            or the name of the command (for simple commands only)
           - `check` (optional): check the response for errors, raising
             :class:`~pymongo.errors.OperationFailure` if there are any
           - `allowable_errors`: if `check` is ``True``, error messages in this
             list will be ignored by error-checking
 
+        .. versionchanged:: 1.4+
+           `command` can be a string in addition to a full document.
         .. versionadded:: 1.4
         """
+
+        if isinstance(command, str):
+            command = {command: 1}
+
         result = self["$cmd"].find_one(command, _sock=_sock,
                                        _must_use_master=True,
                                        _is_command=True)
@@ -330,7 +340,7 @@ class Database(object):
         Return None if the last operation was error-free. Otherwise return the
         error that occurred.
         """
-        error = self.command({"getlasterror": 1})
+        error = self.command("getlasterror")
         if error.get("err", 0) is None:
             return None
         if error["err"] == "not master":
@@ -342,7 +352,7 @@ class Database(object):
 
         Returns a SON object with status information.
         """
-        return self.command({"getlasterror": 1})
+        return self.command("getlasterror")
 
     def previous_error(self):
         """Get the most recent error to have occurred on this database.
@@ -351,7 +361,7 @@ class Database(object):
         `Database.reset_error_history`. Returns None if no such errors have
         occurred.
         """
-        error = self.command({"getpreverror": 1})
+        error = self.command("getpreverror")
         if error.get("err", 0) is None:
             return None
         return error
@@ -362,7 +372,7 @@ class Database(object):
         Calls to `Database.previous_error` will only return errors that have
         occurred since the most recent call to this method.
         """
-        self.command({"reseterror": 1})
+        self.command("reseterror")
 
     def __iter__(self):
         return self
@@ -459,7 +469,7 @@ class Database(object):
         if not isinstance(password, basestring):
             raise TypeError("password must be an instance of basestring")
 
-        result = self.command({"getnonce": 1})
+        result = self.command("getnonce")
         nonce = result["nonce"]
         digest = self._password_digest(name, password)
         md5hash = _md5func()
@@ -479,7 +489,7 @@ class Database(object):
 
         Note that other databases may still be authorized.
         """
-        self.command({"logout": 1})
+        self.command("logout")
 
     def dereference(self, dbref):
         """Dereference a DBRef, getting the SON object it points to.

@@ -207,6 +207,11 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(None, db.error())
         self.assertEqual(None, db.previous_error())
 
+    def test_command(self):
+        db = self.connection.admin
+
+        self.assertEqual(db.command("buildinfo"), db.command({"buildinfo": 1}))
+
     def test_last_status(self):
         db = self.connection.pymongo_test
 

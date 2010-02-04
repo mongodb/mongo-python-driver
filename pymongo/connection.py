@@ -226,7 +226,7 @@ class Connection(object): # TODO support auth for pooling
 
         Return a tuple (host, port).
         """
-        result = self["admin"].command({"ismaster": 1}, _sock=sock)
+        result = self["admin"].command("ismaster", _sock=sock)
 
         if result["ismaster"] == 1:
             return True
@@ -640,14 +640,14 @@ class Connection(object): # TODO support auth for pooling
     def __database_info(self):
         """Get a dictionary of (database_name: size_on_disk).
         """
-        result = self["admin"].command({"listDatabases": 1})
+        result = self["admin"].command("listDatabases")
         info = result["databases"]
         return dict([(db["name"], db["sizeOnDisk"]) for db in info])
 
     def server_info(self):
         """Get information about the MongoDB server we're connected to.
         """
-        return self.admin.command({"buildinfo": 1})
+        return self.admin.command("buildinfo")
 
     def database_names(self):
         """Get a list of the names of all databases on the connected server.
@@ -674,7 +674,7 @@ class Connection(object): # TODO support auth for pooling
                             "(Database, str, unicode)")
 
         self._purge_index(name)
-        self[name].command({"dropDatabase": 1})
+        self[name].command("dropDatabase")
 
     def __iter__(self):
         return self
