@@ -487,6 +487,17 @@ class Collection(object):
         :data:`~pymongo.DESCENDING`). Returns the name of the created
         index.
 
+        To create a single key index on the key ``'mike'`` we just use
+        a string argument:
+
+        >>> my_collection.create_index("mike")
+
+        For a `compound index`_ on ``'mike'`` descending and
+        ``'eliot'`` ascending we need to use a list of tuples:
+
+        >>> my_collection.create_index([("mike", pymongo.DESCENDING),
+        ...                             ("eliot", pymongo.ASCENDING)])
+
         :Parameters:
           - `key_or_list`: a single key or a list of (key, direction)
             pairs specifying the index to create
@@ -496,6 +507,10 @@ class Collection(object):
             this index will be recognized by subsequent calls to
             :meth:`ensure_index` - see documentation for
             :meth:`ensure_index` for details
+
+        .. seealso:: :meth:`ensure_index`
+
+        .. _compound index: http://www.mongodb.org/display/DOCS/Indexes#Indexes-CompoundKeysIndexes
         """
         if not isinstance(key_or_list, (str, unicode, list)):
             raise TypeError("key_or_list must either be a single key "
@@ -522,7 +537,8 @@ class Collection(object):
         Takes either a single key or a list of (key, direction) pairs.
         The key(s) must be an instance of :class:`basestring`, and the
         direction(s) must be one of (:data:`~pymongo.ASCENDING`,
-        :data:`~pymongo.DESCENDING`).
+        :data:`~pymongo.DESCENDING`). See :meth:`create_index` for a
+        detailed example.
 
         Unlike :meth:`create_index`, which attempts to create an index
         unconditionally, :meth:`ensure_index` takes advantage of some
@@ -550,6 +566,8 @@ class Collection(object):
           - `ttl` (optional): time window (in seconds) during which
             this index will be recognized by subsequent calls to
             :meth:`ensure_index`
+
+        .. seealso:: :meth:`create_index`
         """
         if not isinstance(key_or_list, (str, unicode, list)):
             raise TypeError("key_or_list must either be a single key or a list of (key, direction) pairs")
