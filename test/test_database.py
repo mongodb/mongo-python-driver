@@ -14,24 +14,30 @@
 
 """Test the database module."""
 
-import unittest
-import random
 import datetime
+import random
 import sys
 sys.path[0:0] = [""]
+import unittest
 
-from pymongo.errors import InvalidName, InvalidOperation
-from pymongo.errors import CollectionInvalid, OperationFailure
-from pymongo.son import SON
-from pymongo.objectid import ObjectId
-from pymongo.database import Database
-from pymongo import ASCENDING, DESCENDING, OFF, SLOW_ONLY, ALL
-from pymongo.connection import Connection
-from pymongo.collection import Collection
-from pymongo.dbref import DBRef
+from pymongo import (ALL,
+                     ASCENDING,
+                     DESCENDING,
+                     OFF,
+                     SLOW_ONLY)
 from pymongo.code import Code
+from pymongo.collection import Collection
+from pymongo.connection import Connection
+from pymongo.database import Database
+from pymongo.dbref import DBRef
+from pymongo.errors import (CollectionInvalid,
+                            InvalidName,
+                            InvalidOperation,
+                            OperationFailure)
+from pymongo.objectid import ObjectId
+from pymongo.son import SON
 from pymongo.son_manipulator import AutoReference, NamespaceInjector
-from test_connection import get_connection
+from test.test_connection import get_connection
 
 
 class TestDatabase(unittest.TestCase):
@@ -457,6 +463,30 @@ class TestDatabase(unittest.TestCase):
 
         self.assertEqual("buzz", db.users.find_one()["messages"][0]["title"])
         self.assertEqual("bar", db.users.find_one()["messages"][1]["title"])
+
+    def test_system_js(self):
+        db = self.connection.pymongo_test
+        db.system.js.remove()
+
+        self.assertEqual(0, db.system.js.count())
+        db.system_js.add = "function(a, b) { return a + b; }"
+        self.assertEqual(1, db.system.js.count())
+        self.assertEqual(6, db.system_js.add(1, 5))
+
+        del db.system_js.add
+        self.assertEqual(0, db.system.js.count())
+        # TODO enable this after SERVER-602 is fixed
+        # self.assertRaises(OperationFailure, db.system_js.add, 1, 5)
+
+        # TODO right now CodeWScope doesn't work w/ system js
+        # db.system_js.scope = Code("return hello;", {"hello": 8})
+        # self.assertEqual(8, db.system_js.scope())
+
+        self.assertRaises(OperationFailure, db.system_js.non_existant)
+
+        db.system_js.no_param = Code("return 5;")
+        self.assertEqual(5, db.system_js.no_param())
+
 
 if __name__ == "__main__":
     unittest.main()

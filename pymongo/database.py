@@ -67,6 +67,7 @@ class Database(object):
         self.__outgoing_manipulators = []
         self.__outgoing_copying_manipulators = []
         self.add_son_manipulator(ObjectIdInjector())
+        self.__system_js = SystemJS(self)
 
     def __check_name(self, name):
         for invalid_char in [" ", ".", "$", "/", "\\"]:
@@ -98,6 +99,16 @@ class Database(object):
                 self.__incoming_manipulators.insert(0, manipulator)
             if method_overwritten(manipulator, "transform_outgoing"):
                 self.__outgoing_manipulators.insert(0, manipulator)
+
+    @property
+    def system_js(self):
+        """A :class:`SystemJS` helper for this :class:`Database`.
+
+        See the documentation for :class:`SystemJS` for more details.
+
+        .. versionadded:: 1.4+
+        """
+        return self.__system_js
 
     @property
     def connection(self):
@@ -520,3 +531,51 @@ class Database(object):
         raise TypeError("'Database' object is not callable. If you meant to "
                         "call the '%s' method on a 'Collection' object it is "
                         "failing because no such method exists." % self.__name)
+
+
+class SystemJS(object):
+    """Helper class for dealing with stored JavaScript.
+    """
+
+    def __init__(self, database):
+        """Get a system js helper for the database `database`.
+
+        An instance of :class:`SystemJS` is automatically created for
+        each :class:`Database` instance as :attr:`Database.system_js`,
+        manual instantiation of this class should not be necessary.
+
+        :class:`SystemJS` instances allow for easy manipulation and
+        access to `server-side JavaScript`_:
+
+        .. doctest::
+
+          >>> db.system_js.add1 = "function (x) { return x + 1; }"
+          >>> db.system.js.find({"_id": "add1"}).count()
+          1
+          >>> db.system_js.add1(5)
+          6.0
+          >>> del db.system_js.add1
+          >>> db.system.js.find({"_id": "add1"}).count()
+          0
+
+        .. note:: Requires server version **>= 1.1.1**
+
+        .. versionadded:: 1.4+
+
+        .. _server-side JavaScript: http://www.mongodb.org/display/DOCS/Server-side+Code+Execution#Server-sideCodeExecution-Storingfunctionsserverside
+        """
+        # can't just assign it since we've overridden __setattr__
+        object.__setattr__(self, "_database", database)
+
+    def __setattr__(self, name, code):
+        self._database.system.js.save({"_id": name, "value": Code(code)},
+                                       safe=True)
+
+    def __delattr__(self, name):
+        self._database.system.js.remove({"_id": name}, safe=True)
+
+    def __getattr__(self, name):
+        return lambda *args: self._database.eval("function() { return %s."
+                                                 "apply(this, "
+                                                 "arguments); }" % name,
+                                                 *args)
