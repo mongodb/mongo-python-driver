@@ -35,6 +35,8 @@ class DBRef(object):
 
         .. versionadded:: 1.1.1
            The `database` parameter.
+
+        .. mongodoc:: dbrefs
         """
         if not isinstance(collection, basestring):
             raise TypeError("collection must be an instance of basestring")

@@ -68,6 +68,8 @@ class ObjectId(object):
            hexadecimal digits).
 
         .. _ObjectId: http://www.mongodb.org/display/DOCS/Object+IDs
+
+        .. mongodoc:: objectids
         """
         if oid is None:
             self.__generate()

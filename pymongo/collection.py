@@ -49,6 +49,8 @@ class Collection(object):
           - `options`: dictionary of collection options.  see
             :meth:`~pymongo.database.Database.create_collection` for
             details.
+
+        .. mongodoc:: collections
         """
         if not isinstance(name, basestring):
             raise TypeError("name must be an instance of basestring")
@@ -169,6 +171,8 @@ class Collection(object):
           - `to_save`: the SON object to be saved
           - `manipulate` (optional): manipulate the SON object before saving it
           - `safe` (optional): check that the save succeeded?
+
+        .. mongodoc:: insert
         """
         if not isinstance(to_save, dict):
             raise TypeError("cannot save object of type %s" % type(to_save))
@@ -201,6 +205,8 @@ class Collection(object):
 
         .. versionchanged:: 1.1
            Bulk insert works with any iterable
+
+        .. mongodoc:: insert
         """
         docs = doc_or_docs
         if isinstance(docs, dict):
@@ -275,6 +281,8 @@ class Collection(object):
 
         .. _update modifiers: http://www.mongodb.org/display/DOCS/Updating
         .. _upsert: http://www.mongodb.org/display/DOCS/Updating#Updating-Upserts
+
+        .. mongodoc:: update
         """
         if not isinstance(spec, dict):
             raise TypeError("spec must be an instance of dict")
@@ -328,6 +336,8 @@ class Collection(object):
            removed.
         .. versionadded:: 1.1
            The `safe` parameter.
+
+        .. mongodoc:: remove
         """
         spec = spec_or_object_id
         if spec is None:
@@ -511,6 +521,8 @@ class Collection(object):
         .. seealso:: :meth:`ensure_index`
 
         .. _compound index: http://www.mongodb.org/display/DOCS/Indexes#Indexes-CompoundKeysIndexes
+
+        .. mongodoc:: indexes
         """
         if not isinstance(key_or_list, (str, unicode, list)):
             raise TypeError("key_or_list must either be a single key "
@@ -774,6 +786,8 @@ class Collection(object):
         .. versionadded:: 1.2
 
         .. _map reduce command: http://www.mongodb.org/display/DOCS/MapReduce
+
+        .. mongodoc:: mapreduce
         """
         command = SON([("mapreduce", self.__name),
                        ("map", map), ("reduce", reduce)])

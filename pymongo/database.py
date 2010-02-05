@@ -50,6 +50,8 @@ class Database(object):
           - `connection`: a :class:`~pymongo.connection.Connection`
             instance
           - `name`: database name
+
+        .. mongodoc:: databases
         """
         if not isinstance(name, basestring):
             raise TypeError("name must be an instance of basestring")
@@ -234,6 +236,8 @@ class Database(object):
         .. versionchanged:: 1.4+
            `command` can be a string in addition to a full document.
         .. versionadded:: 1.4
+
+        .. mongodoc:: commands
         """
 
         if isinstance(command, str):
@@ -308,6 +312,8 @@ class Database(object):
 
         Returns one of (:data:`~pymongo.OFF`,
         :data:`~pymongo.SLOW_ONLY`, :data:`~pymongo.ALL`).
+
+        .. mongodoc:: profiling
         """
         result = self.command({"profile": -1})
 
@@ -323,6 +329,8 @@ class Database(object):
 
         :Parameters:
           - `level`: the profiling level to use
+
+        .. mongodoc:: profiling
         """
         if not isinstance(level, int) or level < 0 or level > 2:
             raise ValueError("level must be one of (OFF, SLOW_ONLY, ALL)")
@@ -331,6 +339,8 @@ class Database(object):
 
     def profiling_info(self):
         """Returns a list containing current profiling information.
+
+        .. mongodoc:: profiling
         """
         return list(self["system.profile"].find())
 
@@ -463,6 +473,8 @@ class Database(object):
         :Parameters:
           - `name`: the name of the user to authenticate
           - `password`: the password of the user to authenticate
+
+        .. mongodoc:: authenticate
         """
         if not isinstance(name, basestring):
             raise TypeError("name must be an instance of basestring")

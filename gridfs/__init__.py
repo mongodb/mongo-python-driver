@@ -16,6 +16,8 @@
 
 The :mod:`gridfs` package is an implementation of GridFS on top of
 :mod:`pymongo`, exposing a file-like interface.
+
+.. mongodoc:: gridfs
 """
 
 from gridfs.grid_file import GridFile
@@ -32,6 +34,8 @@ class GridFS(object):
 
         :Parameters:
           - `database`: database to use
+
+        .. mongodoc:: gridfs
         """
         if not isinstance(database, Database):
             raise TypeError("database must be an instance of Database")

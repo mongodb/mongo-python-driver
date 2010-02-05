@@ -82,7 +82,6 @@ def process_mongodoc_nodes(app, doctree, fromdocname):
             new_para = nodes.paragraph()
             new_para += link
             node.replace(para, new_para)
-        break
 
 
 def setup(app):

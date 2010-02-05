@@ -42,6 +42,8 @@ class Cursor(object):
         """Create a new cursor.
 
         Should not be called directly by application developers.
+
+        .. mongodoc:: cursors
         """
         self.__collection = collection
         self.__spec = spec
@@ -166,6 +168,8 @@ class Cursor(object):
 
         :Parameters:
           - `limit`: the number of results to return
+
+        .. mongodoc:: limit
         """
         if not isinstance(limit, int):
             raise TypeError("limit must be an int")
@@ -340,6 +344,8 @@ class Cursor(object):
 
     def explain(self):
         """Returns an explain plan record for this cursor.
+
+        .. mongodoc:: explain
         """
         c = self.clone()
         c.__explain = True

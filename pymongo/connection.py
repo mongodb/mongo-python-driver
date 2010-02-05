@@ -132,6 +132,8 @@ class Connection(object): # TODO support auth for pooling
            parameters.
         .. versionadded:: 1.1
            The `network_timeout` parameter.
+
+        .. mongodoc:: connections
         """
         if host is None:
             host = self.HOST
