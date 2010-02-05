@@ -406,5 +406,26 @@ class TestGridFile(unittest.TestCase):
         file = GridFile({"_id": "foobar", "filename": "foobar"}, self.db, "w")
         file.close()
 
+    def test_read_chunks_unaligned_buffer_size(self):
+        self.db.fs.files.remove({})
+        self.db.fs.chunks.remove({})
+
+        in_data = "This is a text that doesn't quite fit in a single 16-byte chunk."
+        f = GridFile({"filename":"test", "chunkSize":16}, self.db, "w")
+        f.write(in_data)
+        f.close()
+
+        f = GridFile({"filename":"test"}, self.db)
+        out_data = ''
+        while 1:
+            s = f.read(13)
+            if not s:
+                break
+            out_data += s
+        f.close()
+
+        self.assertEqual(in_data, out_data)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -306,7 +306,7 @@ class GridFile(object):
             size = remainder
 
         bytes = self.__buffer
-        chunk_number = math.floor(self.__position / self.__chunk_size)
+        chunk_number = (len(bytes) + self.__position) / self.__chunk_size
 
         while len(bytes) < size:
             chunk = self.__collection.chunks.find_one({"files_id": self.__id, "n": chunk_number})
