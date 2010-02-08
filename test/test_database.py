@@ -37,6 +37,7 @@ from pymongo.errors import (CollectionInvalid,
 from pymongo.objectid import ObjectId
 from pymongo.son import SON
 from pymongo.son_manipulator import AutoReference, NamespaceInjector
+from test import version
 from test.test_connection import get_connection
 
 
@@ -480,8 +481,8 @@ class TestDatabase(unittest.TestCase):
 
         del db.system_js.add
         self.assertEqual(0, db.system.js.count())
-        # TODO enable this after SERVER-602 is fixed
-        # self.assertRaises(OperationFailure, db.system_js.add, 1, 5)
+        if version.at_least(db.connection, (1, 3, 2, -1)):
+            self.assertRaises(OperationFailure, db.system_js.add, 1, 5)
 
         # TODO right now CodeWScope doesn't work w/ system js
         # db.system_js.scope = Code("return hello;", {"hello": 8})

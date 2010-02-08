@@ -37,9 +37,9 @@ from pymongo.errors import (DuplicateKeyError,
                             OperationFailure)
 from pymongo.objectid import ObjectId
 from pymongo.son import SON
-import qcheck
-from test_connection import get_connection
-import version
+from test.test_connection import get_connection
+from test import (qcheck,
+                  version)
 
 
 class TestCollection(unittest.TestCase):
