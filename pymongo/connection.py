@@ -47,11 +47,12 @@ from pymongo import (bson,
                      message)
 from pymongo.cursor_manager import CursorManager
 from pymongo.database import Database
-from pymongo.errors import (ConnectionFailure,
+from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
-                            AutoReconnect,
-                            OperationFailure,
-                            DuplicateKeyError)
+                            ConnectionFailure,
+                            DuplicateKeyError,
+                            InvalidURI,
+                            OperationFailure)
 
 _CONNECT_TIMEOUT = 20.0
 
@@ -173,6 +174,80 @@ class Connection(object): # TODO support auth for pooling
         if _connect:
             self.__find_master()
 
+    @staticmethod
+    def _parse_uri(uri):
+        info = {}
+
+        if uri.startswith("mongodb://"):
+            uri = uri[len("mongodb://"):]
+        elif "://" in uri:
+            raise InvalidURI("Invalid uri scheme: %s" % uri.partition("://")[0])
+
+        (hosts, _, database) = uri.partition("/")
+
+        if not database:
+            database = None
+
+        username = None
+        password = None
+        if "@" in hosts:
+            (auth, _, hosts) = hosts.partition("@")
+
+            if ":" not in auth:
+                raise InvalidURI("auth must be specified as 'username:password@'")
+            (username, _, password) = auth.partition(":")
+
+        host_list = []
+        for host in hosts.split(","):
+            if not host:
+                raise InvalidURI("empty host (or extra comma in host list)")
+            (hostname, _, port) = host.partition(":")
+            if port:
+                port = int(port)
+            else:
+                port = 27017
+            host_list.append((hostname, port))
+
+        return (host_list, database, username, password)
+
+    @classmethod
+    def from_uri(cls, uri="mongodb://localhost"):
+        """Connect to a MongoDB instance(s) using the mongodb URI
+        scheme.
+
+        The format for a MongoDB URI is documented `here
+        <http://dochub.mongodb.org/core/connections>`_. Raises
+        :class:`~pymongo.errors.InvalidURI` when given an invalid URI.
+
+        :Parameters:
+
+          - `uri`: URI identifying the MongoDB instance(s) to connect
+            to
+
+        .. versionadded:: 1.4+
+        """
+        (nodes, database, username, password) = Connection._parse_uri(uri)
+        if database and username is None:
+            raise InvalidURI("cannot specify database without "
+                             "a username and password")
+
+        if len(nodes) == 1:
+            connection = cls(*nodes[0])
+
+        elif len(nodes) == 2:
+            connection = cls.paired(*nodes)
+
+        else:
+            raise InvalidURI("Connecting to more than 2 nodes "
+                             "is not currently supported")
+
+        if username:
+            database = database or "admin"
+            if not connection[database].authenticate(username, password):
+                raise InvalidURI("authentication failed")
+
+        return connection
+
     def __pair_with(self, host, port):
         """Pair this connection with a Mongo instance running on host:port.
 
@@ -193,6 +268,7 @@ class Connection(object): # TODO support auth for pooling
 
         self.__find_master()
 
+    @classmethod
     def paired(cls, left, right=None,
                pool_size=None, auto_start_request=None):
         """Open a new paired connection to Mongo.
@@ -221,7 +297,6 @@ class Connection(object): # TODO support auth for pooling
         connection = cls(left[0], left[1], _connect=False)
         connection.__pair_with(*right)
         return connection
-    paired = classmethod(paired)
 
     def __master(self, sock):
         """Get the hostname and port of the master Mongo instance.

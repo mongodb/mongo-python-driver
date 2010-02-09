@@ -90,3 +90,10 @@ class InvalidDocument(PyMongoError):
 class InvalidId(PyMongoError):
     """Raised when trying to create an ObjectId from invalid data.
     """
+
+
+class InvalidURI(PyMongoError):
+    """Raised when trying to parse an invalid mongodb URI.
+
+    .. versionadded:: 1.4+
+    """

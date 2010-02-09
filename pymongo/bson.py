@@ -556,6 +556,7 @@ class BSON(str):
         """
         return str.__new__(cls, bson)
 
+    @classmethod
     def from_dict(cls, dct, check_keys=False):
         """Create a new :class:`BSON` instance from a mapping type
         (like :class:`dict`).
@@ -572,7 +573,6 @@ class BSON(str):
             in either case
         """
         return cls(_dict_to_bson(dct, check_keys))
-    from_dict = classmethod(from_dict)
 
     def to_dict(self):
         """Get the dictionary representation of this data."""
