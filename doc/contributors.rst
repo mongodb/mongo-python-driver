@@ -19,3 +19,4 @@ The following is a list of people who have contributed to
 - Gregg Lind (gregglind)
 - Michael Schurter (schmichael)
 - Daniel Lundin
+- Michael Richardson (mtrichardson)
