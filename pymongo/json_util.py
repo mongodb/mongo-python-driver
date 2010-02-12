@@ -80,7 +80,7 @@ def default(obj):
         # TODO share this code w/ bson.py?
         millis = int(calendar.timegm(obj.timetuple()) * 1000 +
                      obj.microsecond / 1000)
-        return {"$date": str(millis)}
+        return {"$date": millis}
     if isinstance(obj, _RE_TYPE):
         flags = ""
         if obj.flags & re.IGNORECASE:
