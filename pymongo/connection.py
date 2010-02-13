@@ -276,8 +276,7 @@ class Connection(object): # TODO support auth for pooling
         self.__find_master()
 
     @classmethod
-    def paired(cls, left, right=None,
-               pool_size=None, auto_start_request=None):
+    def paired(cls, left, right=None, **connection_args):
         """Open a new paired connection to Mongo.
 
         Raises :class:`TypeError` if either `left` or `right` is not a tuple of
@@ -288,20 +287,21 @@ class Connection(object): # TODO support auth for pooling
           - `left`: ``(host, port)`` pair for the left MongoDB instance
           - `right` (optional): ``(host, port)`` pair for the right MongoDB
             instance
-          - `pool_size` (optional): DEPRECATED
-          - `auto_start_request` (optional): DEPRECATED
+
+        The remaining keyword arguments are the same as those accepted by 
+        the Connection class constructor. 
         """
         if right is None:
             right = (cls.HOST, cls.PORT)
-        if pool_size is not None:
-            warnings.warn("The pool_size parameter to Connection.paired is "
-                          "deprecated", DeprecationWarning)
-        if auto_start_request is not None:
-            warnings.warn("The auto_start_request parameter to "
-                          "Connection.paired is deprecated",
-                          DeprecationWarning)
 
-        connection = cls(left[0], left[1], _connect=False)
+        for param in ('pool_size', 'auto_start_request', 'timeout'):
+            if param in connection_args:
+                warnings.warn("The %s parameter to Connection.paired is "
+                              "deprecated" % param, DeprecationWarning)
+
+        connection_args['_connect'] = False
+
+        connection = cls(left[0], left[1], **connection_args)
         connection.__pair_with(*right)
         return connection
 

@@ -25,6 +25,7 @@ import unittest
 import logging
 import os
 import sys
+import warnings
 sys.path[0:0] = [""]
 
 from pymongo.errors import ConnectionFailure, ConfigurationError
@@ -119,6 +120,27 @@ class TestPaired(unittest.TestCase):
             db.test.insert({})
             self.assert_(db.test.find_one())
             connection.end_request()
+
+
+    def test_deprecation_warnings_paired_connections(self):
+        warnings.simplefilter("error")
+        try:
+            self.assertRaises(DeprecationWarning, Connection.paired, 
+                              self.left, self.right, timeout=3)
+            self.assertRaises(DeprecationWarning, Connection.paired, 
+                              self.left, self.right, auto_start_request=True)
+            self.assertRaises(DeprecationWarning, Connection.paired, 
+                              self.left, self.right, pool_size=20)
+        finally:
+            warnings.resetwarnings()
+            warnings.simplefilter('ignore')
+
+
+    def test_paired_connections_pass_individual_connargs(self):
+        c = Connection.paired(self.left, self.right, slave_okay=True)
+        self.assertTrue(c.__slave_okay)
+
+
 
 if __name__ == "__main__":
     skip_tests = False
