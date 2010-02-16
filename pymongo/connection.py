@@ -175,15 +175,22 @@ class Connection(object): # TODO support auth for pooling
             self.__find_master()
 
     @staticmethod
+    def __partition(source, sub):
+        i = source.find(sub)
+        if i == -1:
+            return (source, None)
+        return (source[:i], source[i+len(sub):])
+
+    @staticmethod
     def _parse_uri(uri):
         info = {}
 
         if uri.startswith("mongodb://"):
             uri = uri[len("mongodb://"):]
         elif "://" in uri:
-            raise InvalidURI("Invalid uri scheme: %s" % uri.partition("://")[0])
+            raise InvalidURI("Invalid uri scheme: %s" % Connection.__partition(uri, "://")[0])
 
-        (hosts, _, database) = uri.partition("/")
+        (hosts, database) = Connection.__partition(uri, "/")
 
         if not database:
             database = None
@@ -191,17 +198,17 @@ class Connection(object): # TODO support auth for pooling
         username = None
         password = None
         if "@" in hosts:
-            (auth, _, hosts) = hosts.partition("@")
+            (auth, hosts) = Connection.__partition(hosts, "@")
 
             if ":" not in auth:
                 raise InvalidURI("auth must be specified as 'username:password@'")
-            (username, _, password) = auth.partition(":")
+            (username, password) = Connection.__partition(auth, ":")
 
         host_list = []
         for host in hosts.split(","):
             if not host:
                 raise InvalidURI("empty host (or extra comma in host list)")
-            (hostname, _, port) = host.partition(":")
+            (hostname, port) = Connection.__partition(host, ":")
             if port:
                 port = int(port)
             else:
