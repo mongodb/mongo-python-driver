@@ -209,7 +209,9 @@ class Collection(object):
         .. mongodoc:: insert
         """
         docs = doc_or_docs
+        return_one = False
         if isinstance(docs, dict):
+            return_one = True
             docs = [docs]
 
         if manipulate:
@@ -219,7 +221,7 @@ class Collection(object):
             message.insert(self.__full_name, docs, check_keys, safe), safe)
 
         ids = [doc.get("_id", None) for doc in docs]
-        return len(ids) == 1 and ids[0] or ids
+        return return_one and ids[0] or ids
 
     def update(self, spec, document,
                upsert=False, manipulate=False, safe=False, multi=False):

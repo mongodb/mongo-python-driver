@@ -428,6 +428,10 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(doc1["_id"], ids[0])
         self.assertEqual(doc2["_id"], ids[1])
 
+        id = db.test.insert([{"hello": 1}])
+        self.assert_(isinstance(id, list))
+        self.assertEqual(1, len(id))
+
     def test_insert_iterables(self):
         db = self.db
 
