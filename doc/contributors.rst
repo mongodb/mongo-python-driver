@@ -20,3 +20,4 @@ The following is a list of people who have contributed to
 - Michael Schurter (schmichael)
 - Daniel Lundin
 - Michael Richardson (mtrichardson)
+- Dan McKinley (mcfunley)

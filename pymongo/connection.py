@@ -288,8 +288,8 @@ class Connection(object): # TODO support auth for pooling
           - `right` (optional): ``(host, port)`` pair for the right MongoDB
             instance
 
-        The remaining keyword arguments are the same as those accepted by 
-        the Connection class constructor. 
+        The remaining keyword arguments are the same as those accepted
+        by :meth:`~Connection`.
         """
         if right is None:
             right = (cls.HOST, cls.PORT)
