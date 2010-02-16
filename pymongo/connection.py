@@ -218,7 +218,7 @@ class Connection(object): # TODO support auth for pooling
         return (host_list, database, username, password)
 
     @classmethod
-    def from_uri(cls, uri="mongodb://localhost"):
+    def from_uri(cls, uri="mongodb://localhost", **connection_args):
         """Connect to a MongoDB instance(s) using the mongodb URI
         scheme.
 
@@ -231,6 +231,9 @@ class Connection(object): # TODO support auth for pooling
           - `uri`: URI identifying the MongoDB instance(s) to connect
             to
 
+        The remaining keyword arguments are the same as those accepted
+        by :meth:`~Connection`.
+
         .. versionadded:: 1.4+
         """
         (nodes, database, username, password) = Connection._parse_uri(uri)
@@ -239,10 +242,10 @@ class Connection(object): # TODO support auth for pooling
                              "a username and password")
 
         if len(nodes) == 1:
-            connection = cls(*nodes[0])
+            connection = cls(*nodes[0], **connection_args)
 
         elif len(nodes) == 2:
-            connection = cls.paired(*nodes)
+            connection = cls.paired(*nodes, **connection_args)
 
         else:
             raise InvalidURI("Connecting to more than 2 nodes "

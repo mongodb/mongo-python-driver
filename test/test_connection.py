@@ -269,6 +269,10 @@ class TestConnection(unittest.TestCase):
         Connection.from_uri("mongodb://user:pass@%s:%s/pymongo_test" %
                             (self.host, self.port))
 
+        self.assert_(Connection.from_uri("mongodb://%s:%s" %
+                                         (self.host, self.port),
+                                         slave_okay=True).slave_okay)
+
 # TODO come up with a different way to test `network_timeout`. This is just
 # too sketchy.
 #
