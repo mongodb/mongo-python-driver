@@ -545,17 +545,6 @@ class BSON(str):
     Represents binary data storable in and retrievable from Mongo.
     """
 
-    def __new__(cls, bson):
-        """Initialize a new :class:`BSON` instance with some data.
-
-        Raises :class:`TypeError` if `bson` is not an instance of
-        :class:`str`.
-
-        :Parameters:
-          - `bson`: the initial data
-        """
-        return str.__new__(cls, bson)
-
     @classmethod
     def from_dict(cls, dct, check_keys=False):
         """Create a new :class:`BSON` instance from a mapping type

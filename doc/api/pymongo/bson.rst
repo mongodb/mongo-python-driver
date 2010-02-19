@@ -4,3 +4,4 @@
 .. automodule:: pymongo.bson
    :synopsis: Tools for working with BSON in Python
    :members:
+   :show-inheritance:
