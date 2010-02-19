@@ -18,13 +18,14 @@
 class Binary(str):
     """Representation of binary data to be stored in or retrieved from MongoDB.
 
-    This is necessary because we want to store Python strings as the BSON
-    string type. We need to wrap binary data so we can tell the difference
-    between what should be considered binary data and what should be considered
-    a string when we encode to BSON.
+    This is necessary because we want to store Python strings as the
+    BSON string type. We need to wrap binary data so we can tell the
+    difference between what should be considered binary data and what
+    should be considered a string when we encode to BSON.
 
-    Raises TypeError if `data` is not an instance of str or `subtype` is
-    not an instance of int. Raises ValueError if `subtype` is not in [0, 256).
+    Raises TypeError if `data` is not an instance of str or `subtype`
+    is not an instance of int. Raises ValueError if `subtype` is not
+    in [0, 256).
 
     :Parameters:
       - `data`: the binary data to represent
@@ -54,8 +55,8 @@ class Binary(str):
         if isinstance(other, Binary):
             return (self.__subtype, str(self)) == (other.subtype, str(other))
         # We don't return NotImplemented here because if we did then
-        # Binary("foo") == "foo" would return True, since Binary is a subclass
-        # of str...
+        # Binary("foo") == "foo" would return True, since Binary is a
+        # subclass of str...
         return False
 
     def __repr__(self):
