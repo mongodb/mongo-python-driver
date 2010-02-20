@@ -526,16 +526,13 @@ class Collection(object):
 
         .. mongodoc:: indexes
         """
-        if not isinstance(key_or_list, (str, unicode, list)):
-            raise TypeError("key_or_list must either be a single key "
-                            "or a list of (key, direction) pairs")
-
-        to_save = SON()
         keys = helpers._index_list(key_or_list)
+        index_doc = helpers._index_document(keys)
         name = self._gen_index_name(keys)
+        to_save = SON()
         to_save["name"] = name
         to_save["ns"] = self.__full_name
-        to_save["key"] = helpers._index_document(keys)
+        to_save["key"] = index_doc
         to_save["unique"] = unique
 
         self.__database.connection._cache_index(self.__database.name,

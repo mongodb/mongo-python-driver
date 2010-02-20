@@ -381,8 +381,6 @@ class Cursor(object):
             self.__hint = None
             return self
 
-        if not isinstance(index, (list)):
-            raise TypeError("hint takes a list specifying an index")
         self.__hint = helpers._index_document(index)
         return self
 
