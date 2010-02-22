@@ -75,6 +75,10 @@ class Pool(threading.local):
         self.socket_factory = socket_factory
 
     def socket(self):
+        # we store the pid here to avoid issues with fork /
+        # multiprocessing - see
+        # test.test_connection:TestConnection.test_fork for an example
+        # of what could go wrong otherwise
         pid = os.getpid()
 
         if self.sock is not None and self.sock[0] == pid:
