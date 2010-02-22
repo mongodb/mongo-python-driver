@@ -14,10 +14,11 @@
 
 """Test the connection module."""
 
-import unittest
 import os
-import warnings
 import sys
+import time
+import unittest
+import warnings
 sys.path[0:0] = [""]
 
 from nose.plugins.skip import SkipTest
@@ -272,6 +273,65 @@ class TestConnection(unittest.TestCase):
         self.assert_(Connection.from_uri("mongodb://%s:%s" %
                                          (self.host, self.port),
                                          slave_okay=True).slave_okay)
+
+    def test_fork(self):
+        """Test using a connection before and after a fork.
+        """
+        if sys.platform == "win32":
+            raise SkipTest()
+
+        try:
+            from multiprocessing import Process, Pipe
+        except ImportError:
+            raise SkipTest()
+
+        db = Connection(self.host, self.port).pymongo_test
+
+        # Failure occurs if the connection is used before the fork
+        db.test.find_one()
+
+        def loop(pipe):
+            while True:
+                try:
+                    db.test.insert({"a": "b"}, safe=True)
+                    for _ in db.test.find():
+                        pass
+                except:
+                    pipe.send(True)
+                    os._exit(1)
+
+        cp1, cc1 = Pipe()
+        cp2, cc2 = Pipe()
+
+        p1 = Process(target=loop, args=(cc1,))
+        p2 = Process(target=loop, args=(cc2,))
+
+        p1.start()
+        p2.start()
+
+        p1.join(1)
+        p2.join(1)
+
+        p1.terminate()
+        p2.terminate()
+
+        p1.join()
+        p2.join()
+
+        cc1.close()
+        cc2.close()
+
+        # recv will only have data if the subprocess failed
+        try:
+            cp1.recv()
+            self.fail()
+        except EOFError:
+            pass
+        try:
+            cp2.recv()
+            self.fail()
+        except EOFError:
+            pass
 
 # TODO come up with a different way to test `network_timeout`. This is just
 # too sketchy.

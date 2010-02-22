@@ -35,6 +35,7 @@ To get a :class:`~pymongo.database.Database` instance from a
 
 import datetime
 import errno
+import os
 import random
 import socket
 import struct
@@ -74,18 +75,21 @@ class Pool(threading.local):
         self.socket_factory = socket_factory
 
     def socket(self):
-        if self.sock is not None:
-            return self.sock
+        pid = os.getpid()
+
+        if self.sock is not None and self.sock[0] == pid:
+            return self.sock[1]
 
         try:
-            self.sock = self.sockets.pop()
+            self.sock = (pid, self.sockets.pop())
         except IndexError:
-            self.sock = self.socket_factory()
-        return self.sock
+            self.sock = (pid, self.socket_factory())
+
+        return self.sock[1]
 
     def return_socket(self):
-        if self.sock is not None:
-            self.sockets.append(self.sock)
+        if self.sock is not None and self.sock[0] == os.getpid():
+            self.sockets.append(self.sock[1])
         self.sock = None
 
 
