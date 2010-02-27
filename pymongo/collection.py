@@ -490,7 +490,7 @@ class Collection(object):
         """
         return u"_".join([u"%s_%s" % item for item in keys])
 
-    def create_index(self, key_or_list, unique=False, ttl=300):
+    def create_index(self, key_or_list, unique=False, ttl=300, name=None):
         """Creates an index on this collection.
 
         Takes either a single key or a list of (key, direction) pairs.
@@ -519,6 +519,8 @@ class Collection(object):
             this index will be recognized by subsequent calls to
             :meth:`ensure_index` - see documentation for
             :meth:`ensure_index` for details
+          - `name` (optional): name for the index. If none given, a name
+            will be generated.
 
         .. seealso:: :meth:`ensure_index`
 
@@ -528,7 +530,7 @@ class Collection(object):
         """
         keys = helpers._index_list(key_or_list)
         index_doc = helpers._index_document(keys)
-        name = self._gen_index_name(keys)
+        name = name is not None and name or self._gen_index_name(keys)
         to_save = SON()
         to_save["name"] = name
         to_save["ns"] = self.__full_name
@@ -542,7 +544,7 @@ class Collection(object):
                                               check_keys=False)
         return to_save["name"]
 
-    def ensure_index(self, key_or_list, unique=False, ttl=300):
+    def ensure_index(self, key_or_list, unique=False, ttl=300, name=None):
         """Ensures that an index exists on this collection.
 
         Takes either a single key or a list of (key, direction) pairs.
@@ -577,6 +579,8 @@ class Collection(object):
           - `ttl` (optional): time window (in seconds) during which
             this index will be recognized by subsequent calls to
             :meth:`ensure_index`
+          - `name` (optional): name for the index. If none given, a name
+            will be generated.
 
         .. seealso:: :meth:`create_index`
         """
@@ -584,10 +588,11 @@ class Collection(object):
             raise TypeError("key_or_list must either be a single key or a list of (key, direction) pairs")
 
         keys = helpers._index_list(key_or_list)
-        name = self._gen_index_name(keys)
+        name = name is not None and name or self._gen_index_name(keys)
         if self.__database.connection._cache_index(self.__database.name,
                                                    self.__name, name, ttl):
-            return self.create_index(key_or_list, unique=unique, ttl=ttl)
+            return self.create_index(key_or_list, unique=unique, ttl=ttl,
+                                     name=name)
         return None
 
     def drop_indexes(self):

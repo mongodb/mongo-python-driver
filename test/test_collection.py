@@ -92,6 +92,11 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(count, 3)
 
         db.test.drop_indexes()
+        ix = db.test.create_index([("hello", DESCENDING),
+                                   ("world", ASCENDING)], name="hello_world")
+        self.assertEquals(ix, "hello_world")
+
+        db.test.drop_indexes()
         self.assertEqual(db.system.indexes.find({"ns": u"pymongo_test.test"})
                          .count(), 1)
         db.test.create_index("hello")
@@ -126,6 +131,11 @@ class TestCollection(unittest.TestCase):
         self.assertEqual("goodbye_1",
                          db.test.ensure_index("goodbye"))
         self.assertEqual(None, db.test.ensure_index("goodbye"))
+
+        db.test.drop_indexes()
+        self.assertEqual("foo",
+                         db.test.ensure_index("goodbye", name="foo"))
+        self.assertEqual(None, db.test.ensure_index("goodbye", name="foo"))
 
         db.test.drop_indexes()
         self.assertEqual("goodbye_1",
