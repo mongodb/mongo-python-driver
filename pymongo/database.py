@@ -227,7 +227,10 @@ class Database(object):
 
         :Parameters:
           - `command`: document representing the command to be issued,
-            or the name of the command (for simple commands only)
+            or the name of the command (for simple commands only).
+            Note: the order if items in `command` is significant, so commands
+            which require multiple items (eg, `findandupdate`) should use an
+            instance of :class:`~pymongo.son.SON` instead of a Python `dict`.
           - `check` (optional): check the response for errors, raising
             :class:`~pymongo.errors.OperationFailure` if there are any
           - `allowable_errors`: if `check` is ``True``, error messages in this
