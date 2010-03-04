@@ -522,6 +522,9 @@ class Collection(object):
           - `name` (optional): name for the index. If none given, a name
             will be generated.
 
+        .. versionadded:: 1.4+
+           The `name` parameter.
+
         .. seealso:: :meth:`ensure_index`
 
         .. _compound index: http://www.mongodb.org/display/DOCS/Indexes#Indexes-CompoundKeysIndexes
@@ -582,6 +585,9 @@ class Collection(object):
           - `name` (optional): name for the index. If none given, a name
             will be generated.
 
+        .. versionadded:: 1.4+
+           The `name` parameter.
+
         .. seealso:: :meth:`create_index`
         """
         if not isinstance(key_or_list, (str, unicode, list)):
@@ -608,12 +614,16 @@ class Collection(object):
     def drop_index(self, index_or_name):
         """Drops the specified index on this collection.
 
-        Can be used on non-existant collections or collections with no indexes.
-        Raises OperationFailure on an error. `index_or_name` can be either an
-        index name (as returned by `create_index`), or an index specifier (as
-        passed to `create_index`). An index specifier should be a list of (key,
-        direction) pairs. Raises TypeError if index is not an instance of (str,
-        unicode, list).
+        Can be used on non-existant collections or collections with no
+        indexes.  Raises OperationFailure on an error. `index_or_name`
+        can be either an index name (as returned by `create_index`),
+        or an index specifier (as passed to `create_index`). An index
+        specifier should be a list of (key, direction) pairs. Raises
+        TypeError if index is not an instance of (str, unicode, list).
+
+        .. warning:: if a custom name was used on index creation (by
+          passing the `name` parameter to :meth:`create_index` or
+          :meth:`ensure_index`) the index **must** be dropped by name.
 
         :Parameters:
           - `index_or_name`: index (or name of index) to drop

@@ -21,3 +21,5 @@ The following is a list of people who have contributed to
 - Daniel Lundin
 - Michael Richardson (mtrichardson)
 - Dan McKinley (mcfunley)
+- David Wolever (wolever)
+- Carlos Valiente (carletes)
