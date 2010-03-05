@@ -598,7 +598,7 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
             PyErr_SetString(PyExc_RuntimeError,
                             "A python module was reloaded without the C extension being reloaded.\n"
                             "\n"
-                            "See http://www.mongodb.org/display/DOCS/PyMongo+and+mod_wsgi for"
+                            "See http://api.mongodb.org/python/current/faq.html#does-pymongo-work-with-mod-wsgi for "
                             "a possible explanation / fix.");
             return 0;
         }
