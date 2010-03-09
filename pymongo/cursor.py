@@ -482,6 +482,17 @@ class Cursor(object):
 
         return len(self.__data)
 
+    @property
+    def alive(self):
+        """Does this cursor have the potential to return more data?
+
+        This is mostly useful with `tailable cursors
+        <http://www.mongodb.org/display/DOCS/Tailable+Cursors>`_
+        since they will stop iterating even though they *may* return more
+        results in the future.
+        """
+        return bool(len(self.__data) or (not self.__killed))
+
     def __iter__(self):
         return self
 
