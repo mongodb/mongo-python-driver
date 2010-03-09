@@ -565,7 +565,6 @@ class Connection(object): # TODO support auth for pooling
         sock = self.__pool.socket()
         try:
             (request_id, data) = message
-            print "%r" % data
             sock.sendall(data)
             # Safe mode. We pack the message together with a lastError
             # message and send both. We then get the response (to the
