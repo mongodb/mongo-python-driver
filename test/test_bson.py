@@ -77,8 +77,8 @@ class TestBSON(unittest.TestCase):
 
     def test_data_timestamp(self):
         self.assertEqual({"test": Timestamp(4, 20)},
-                         BSON("\x13\x00\x00\x00\x11\x74\x65\x73\x74\x00\x04"
-                              "\x00\x00\x00\x14\x00\x00\x00\x00").to_dict())
+                         BSON("\x13\x00\x00\x00\x11\x74\x65\x73\x74\x00\x14"
+                              "\x00\x00\x00\x04\x00\x00\x00\x00").to_dict())
 
     def test_basic_from_dict(self):
         self.assertRaises(TypeError, BSON.from_dict, 100)

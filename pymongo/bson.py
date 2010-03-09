@@ -327,8 +327,8 @@ def _get_ref(data):
 
 
 def _get_timestamp(data):
-    (timestamp, data) = _get_int(data)
     (inc, data) = _get_int(data)
+    (timestamp, data) = _get_int(data)
     return (Timestamp(timestamp, inc), data)
 
 def _get_long(data):
@@ -451,7 +451,7 @@ def _element_to_bson(key, value, check_keys):
     if isinstance(value, Timestamp):
         time = struct.pack("<i", value.time)
         inc = struct.pack("<i", value.inc)
-        return "\x11" + name + time + inc
+        return "\x11" + name + inc + time
     if value is None:
         return "\x0A" + name
     if isinstance(value, _RE_TYPE):

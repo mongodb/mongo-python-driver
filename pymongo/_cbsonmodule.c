@@ -467,7 +467,7 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
         PyObject* obj;
         long i;
         
-        obj = PyObject_GetAttrString(value, "time");
+        obj = PyObject_GetAttrString(value, "inc");
         if (!obj) {
             return 0;
         }
@@ -477,7 +477,7 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
             return 0;
         }
 
-        obj = PyObject_GetAttrString(value, "inc");
+        obj = PyObject_GetAttrString(value, "time");
         if (!obj) {
             return 0;
         }
@@ -1438,11 +1438,11 @@ static PyObject* get_value(const char* buffer, int* position, int type) {
         }
     case 17:
         {
-            int i,
-                j;
-            memcpy(&i, buffer + *position, 4);
-            memcpy(&j, buffer + *position + 4, 4);
-            value = PyObject_CallFunction(Timestamp, "ii", i, j);
+            int time,
+                inc;
+            memcpy(&inc, buffer + *position, 4);
+            memcpy(&time, buffer + *position + 4, 4);
+            value = PyObject_CallFunction(Timestamp, "ii", time, inc);
             if (!value) {
                 return NULL;
             }
