@@ -640,7 +640,7 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
     }
     {
         PyObject* errmsg = PyString_FromString("Cannot encode object: ");
-        PyObject* repr = PyObject_Repr(Timestamp);
+        PyObject* repr = PyObject_Repr(value);
         PyString_ConcatAndDel(&errmsg, repr);
         PyErr_SetString(InvalidDocument, PyString_AsString(errmsg));
         Py_DECREF(errmsg);
