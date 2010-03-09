@@ -20,11 +20,13 @@ import datetime
 class Timestamp(object):
     """MongoDB internal timestamps used in the opLog.
 
-    This class is only for use with the MongoDB opLog. If you need to store a
-    regular timestamp, please use a :class:`datetime.datetime`.
+    This class is only for use with the MongoDB opLog. If you need to
+    store a regular timestamp, please use a
+    :class:`datetime.datetime`.
 
-    Raises TypeError if `time` and `inc` are not ints
-    Raises ValueError if `time` or `inc` is not in [0, 2**32).
+    Raises :class:`TypeError` if `time` and `inc` are not instances of
+    :class:`int`. Raises :class:`ValueError` if `time` or `inc` is not
+    in [0, 2**32).
 
     :Parameters:
       - `time`: time in seconds since epoch UTC
@@ -33,9 +35,9 @@ class Timestamp(object):
 
     def __init__(self, time, inc):
         if not isinstance(time, int):
-            raise TypeError("data must be an instance of str")
+            raise TypeError("time must be an instance of int")
         if not isinstance(inc, int):
-            raise TypeError("subtype must be an instance of int")
+            raise TypeError("inc must be an instance of int")
         if not 0 <= time < 2**32:
             raise ValueError("time must be contained in [0, 2**32)")
         if not 0 <= inc < 2**32:

@@ -26,7 +26,7 @@ class TestTimestamp(unittest.TestCase):
     def setUp(self):
         pass
 
-    def test_binary(self):
+    def test_timestamp(self):
         t = Timestamp(123, 456)
         self.assertEqual(t.time, 123)
         self.assertEqual(t.inc, 456)
