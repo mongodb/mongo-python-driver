@@ -44,16 +44,17 @@ import threading
 import warnings
 
 from pymongo import (bson,
+                     database,
                      helpers,
                      message)
 from pymongo.cursor_manager import CursorManager
-from pymongo.database import Database
 from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
                             ConnectionFailure,
                             DuplicateKeyError,
                             InvalidURI,
                             OperationFailure)
+from pymongo.son import SON
 
 _CONNECT_TIMEOUT = 20.0
 
@@ -686,17 +687,19 @@ class Connection(object): # TODO support auth for pooling
     def __getattr__(self, name):
         """Get a database by name.
 
-        Raises InvalidName if an invalid database name is used.
+        Raises :class:`~pymongo.errors.InvalidName` if an invalid
+        database name is used.
 
         :Parameters:
           - `name`: the name of the database to get
         """
-        return Database(self, name)
+        return database.Database(self, name)
 
     def __getitem__(self, name):
         """Get a database by name.
 
-        Raises InvalidName if an invalid database name is used.
+        Raises :class:`~pymongo.errors.InvalidName` if an invalid
+        database name is used.
 
         :Parameters:
           - `name`: the name of the database to get
@@ -706,7 +709,9 @@ class Connection(object): # TODO support auth for pooling
     def close_cursor(self, cursor_id):
         """Close a single database cursor.
 
-        Raises :class:`TypeError` if `cursor_id` is not an instance of ``(int, long)``. What closing the cursor actually means depends on this connection's cursor manager.
+        Raises :class:`TypeError` if `cursor_id` is not an instance of
+        ``(int, long)``. What closing the cursor actually means
+        depends on this connection's cursor manager.
 
         :Parameters:
           - `cursor_id`: id of cursor to close
@@ -761,7 +766,7 @@ class Connection(object): # TODO support auth for pooling
             database to drop
         """
         name = name_or_database
-        if isinstance(name, Database):
+        if isinstance(name, database.Database):
             name = name.name
 
         if not isinstance(name, basestring):
@@ -770,6 +775,51 @@ class Connection(object): # TODO support auth for pooling
 
         self._purge_index(name)
         self[name].command("dropDatabase")
+
+    def copy_database(self, from_name, to_name,
+                      from_host=None, username=None, password=None):
+        """Copy a database, potentially from another host.
+
+        Raises :class:`TypeError` if `from_name` or `to_name` is not
+        an instance of :class:`basestring`. Raises
+        :class:`~pymongo.errors.InvalidName` if `to_name` is not a
+        valid database name.
+
+        If `from_host` is ``None`` the current host is used as the
+        source. Otherwise the database is copied from `from_host`.
+
+        If the source database requires authentication, `username` and
+        `password` must be specified.
+
+        :Parameters:
+          - `from_name`: the name of the source database
+          - `to_name`: the name of the target database
+          - `from_host` (optional): host name to copy from
+          - `username` (optional): username for source database
+          - `password` (optional): password for source database
+
+        .. versionadded:: 1.4+
+        """
+        if not isinstance(from_name, basestring):
+            raise TypeError("from_name must be an instance of basestring")
+        if not isinstance(to_name, basestring):
+            raise TypeError("to_name must be an instance of basestring")
+
+        database._check_name(to_name)
+
+        command = SON([("copydb", 1), ("fromdb", from_name), ("todb", to_name)])
+
+        if from_host is not None:
+            command["fromhost"] = from_host
+
+        if username is not None:
+            nonce = self.admin.command(SON([("copydbgetnonce", 1),
+                                            ("fromhost", from_host)]))["nonce"]
+            command["username"] = username
+            command["nonce"] = nonce
+            command["key"] = helpers._auth_key(nonce, username, password)
+
+        return self.admin.command(command)
 
     def __iter__(self):
         return self

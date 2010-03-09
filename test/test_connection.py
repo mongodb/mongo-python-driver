@@ -127,6 +127,41 @@ class TestConnection(unittest.TestCase):
         dbs = connection.database_names()
         self.assert_("pymongo_test" not in dbs)
 
+    def test_copy_db(self):
+        c = Connection(self.host, self.port)
+
+        self.assertRaises(TypeError, c.copy_database, 4, "foo")
+        self.assertRaises(TypeError, c.copy_database, "foo", 4)
+
+        self.assertRaises(InvalidName, c.copy_database, "foo", "$foo")
+
+        c.drop_database("pymongo_test")
+        c.drop_database("pymongo_test1")
+        c.drop_database("pymongo_test2")
+
+        c.pymongo_test.test.insert({"foo": "bar"})
+
+        self.failIf("pymongo_test1" in c.database_names())
+        self.failIf("pymongo_test2" in c.database_names())
+
+        c.copy_database("pymongo_test", "pymongo_test1")
+
+        self.assert_("pymongo_test1" in c.database_names())
+        self.assertEqual("bar", c.pymongo_test1.test.find_one()["foo"])
+
+        c.copy_database("pymongo_test", "pymongo_test2",
+                        "%s:%s" % (self.host, self.port))
+
+        self.assert_("pymongo_test2" in c.database_names())
+        self.assertEqual("bar", c.pymongo_test2.test.find_one()["foo"])
+
+        c.drop_database("pymongo_test1")
+        c.drop_database("pymongo_test2")
+
+        c.pymongo_test.add_user("mike", "password")
+        print c.copy_database("pymongo_test", "pymongo_test1", username="foo", password="bar")
+        self.failIf("pymongo_test1" in c.database_names())
+
     def test_iteration(self):
         connection = Connection(self.host, self.port)
 

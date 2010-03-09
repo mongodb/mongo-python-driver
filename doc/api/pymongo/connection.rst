@@ -21,6 +21,7 @@
       .. autoattribute:: slave_okay
       .. automethod:: database_names
       .. automethod:: drop_database
+      .. automethod:: copy_database(from_name, to_name[, from_host=None[, username=None[, password=None]]])
       .. automethod:: server_info
       .. automethod:: start_request
       .. automethod:: end_request

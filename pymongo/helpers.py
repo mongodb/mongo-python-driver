@@ -14,6 +14,12 @@
 
 """Little bits and pieces used by the driver that don't really fit elsewhere."""
 
+try:
+    import hashlib
+    _md5func = hashlib.md5
+except: # for Python < 2.5
+    import md5
+    _md5func = md5.new
 import struct
 import sys
 import warnings
@@ -101,6 +107,29 @@ def _unpack_response(response, cursor_id=None):
     result["data"] = bson._to_dicts(response[20:])
     assert len(result["data"]) == result["number_returned"]
     return result
+
+
+def _password_digest(username, password):
+    """Get a password digest to use for authentication.
+    """
+    if not isinstance(password, basestring):
+        raise TypeError("password must be an instance of basestring")
+    if not isinstance(username, basestring):
+        raise TypeError("username must be an instance of basestring")
+
+    md5hash = _md5func()
+    md5hash.update("%s:mongo:%s" % (username.encode('utf-8'),
+                                    password.encode('utf-8')))
+    return unicode(md5hash.hexdigest())
+
+
+def _auth_key(nonce, username, password):
+    """Get an auth key to use for authentication.
+    """
+    digest = _password_digest(username, password)
+    md5hash = _md5func()
+    md5hash.update("%s%s%s" % (nonce, unicode(username), digest))
+    return unicode(md5hash.hexdigest())
 
 
 # These two functions are some magic to get values we can use for deprecating

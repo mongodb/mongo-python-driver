@@ -14,12 +14,6 @@
 
 """Database level operations."""
 
-try:
-    import hashlib
-    _md5func = hashlib.md5
-except: # for Python < 2.5
-    import md5
-    _md5func = md5.new
 import warnings
 
 from pymongo import helpers
@@ -32,6 +26,18 @@ from pymongo.errors import (CollectionInvalid,
 from pymongo.son import SON
 from pymongo.son_manipulator import (ObjectIdInjector,
                                      ObjectIdShuffler)
+
+
+def _check_name(name):
+    """Check if a database name is valid.
+    """
+    if not name:
+        raise InvalidName("database name cannot be the empty string")
+
+    for invalid_char in [" ", ".", "$", "/", "\\"]:
+        if invalid_char in name:
+            raise InvalidName("database names cannot contain the "
+                              "character %r" % invalid_char)
 
 
 class Database(object):
@@ -56,7 +62,7 @@ class Database(object):
         if not isinstance(name, basestring):
             raise TypeError("name must be an instance of basestring")
 
-        self.__check_name(name)
+        _check_name(name)
 
         self.__name = unicode(name)
         self.__connection = connection
@@ -70,14 +76,6 @@ class Database(object):
         self.__outgoing_copying_manipulators = []
         self.add_son_manipulator(ObjectIdInjector())
         self.__system_js = SystemJS(self)
-
-    def __check_name(self, name):
-        for invalid_char in [" ", ".", "$", "/", "\\"]:
-            if invalid_char in name:
-                raise InvalidName("database names cannot contain the "
-                                  "character %r" % invalid_char)
-        if not name:
-            raise InvalidName("database name cannot be the empty string")
 
     def add_son_manipulator(self, manipulator):
         """Add a new son manipulator to this database.
@@ -397,18 +395,6 @@ class Database(object):
     def next(self):
         raise TypeError("'Database' object is not iterable")
 
-    def _password_digest(self, username, password):
-        """Get a password digest to use for authentication.
-        """
-        if not isinstance(password, basestring):
-            raise TypeError("password must be an instance of basestring")
-        if not isinstance(username, basestring):
-            raise TypeError("username must be an instance of basestring")
-
-        md5hash = _md5func()
-        md5hash.update(username.encode('utf-8') + ":mongo:" + password.encode('utf-8'))
-        return unicode(md5hash.hexdigest())
-
     def add_user(self, name, password):
         """Create user `name` with password `password`.
 
@@ -424,7 +410,7 @@ class Database(object):
         """
         self.system.users.update({"user": name},
                                  {"user": name,
-                                  "pwd": self._password_digest(name, password)},
+                                  "pwd": helpers._password_digest(name, password)},
                                  upsert=True, safe=True)
 
     def remove_user(self, name):
@@ -488,17 +474,11 @@ class Database(object):
         if not isinstance(password, basestring):
             raise TypeError("password must be an instance of basestring")
 
-        result = self.command("getnonce")
-        nonce = result["nonce"]
-        digest = self._password_digest(name, password)
-        md5hash = _md5func()
-        md5hash.update("%s%s%s" % (nonce, unicode(name), digest))
-        key = unicode(md5hash.hexdigest())
+        nonce = self.command("getnonce")["nonce"]
+        key = helpers._auth_key(nonce, name, password)
         try:
-            result = self.command(SON([("authenticate", 1),
-                                       ("user", unicode(name)),
-                                       ("nonce", nonce),
-                                       ("key", key)]))
+            self.command(SON([("authenticate", 1), ("user", unicode(name)),
+                              ("nonce", nonce), ("key", key)]))
             return True
         except OperationFailure:
             return False

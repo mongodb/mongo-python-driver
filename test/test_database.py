@@ -23,6 +23,7 @@ import unittest
 from pymongo import (ALL,
                      ASCENDING,
                      DESCENDING,
+                     helpers,
                      OFF,
                      SLOW_ONLY)
 from pymongo.code import Code
@@ -226,19 +227,17 @@ class TestDatabase(unittest.TestCase):
         self.failIf(db.last_status()["updatedExisting"])
 
     def test_password_digest(self):
-        db = self.connection.pymongo_test
+        self.assertRaises(TypeError, helpers._password_digest, 5)
+        self.assertRaises(TypeError, helpers._password_digest, True)
+        self.assertRaises(TypeError, helpers._password_digest, None)
 
-        self.assertRaises(TypeError, db._password_digest, 5)
-        self.assertRaises(TypeError, db._password_digest, True)
-        self.assertRaises(TypeError, db._password_digest, None)
-
-        self.assert_(isinstance(db._password_digest("mike", "password"),
+        self.assert_(isinstance(helpers._password_digest("mike", "password"),
                                 unicode))
-        self.assertEqual(db._password_digest("mike", "password"),
+        self.assertEqual(helpers._password_digest("mike", "password"),
                          u"cd7e45b3b2767dc2fa9b6b548457ed00")
-        self.assertEqual(db._password_digest("mike", "password"),
-                         db._password_digest(u"mike", u"password"))
-        self.assertEqual(db._password_digest("Gustave", u"Dor\xe9"),
+        self.assertEqual(helpers._password_digest("mike", "password"),
+                         helpers._password_digest(u"mike", u"password"))
+        self.assertEqual(helpers._password_digest("Gustave", u"Dor\xe9"),
                          u"81e0e2364499209f466e75926a162d73")
 
     def test_authenticate_add_remove_user(self):
