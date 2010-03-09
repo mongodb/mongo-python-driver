@@ -30,6 +30,7 @@ from pymongo.errors import (InvalidBSON,
                             InvalidStringData)
 from pymongo.objectid import ObjectId
 from pymongo.son import SON
+from timestamp import Timestamp
 
 try:
     import _cbson
@@ -328,7 +329,7 @@ def _get_ref(data):
 def _get_timestamp(data):
     (timestamp, data) = _get_int(data)
     (inc, data) = _get_int(data)
-    return ((timestamp, inc), data)
+    return (Timestamp(timestamp, inc), data)
 
 def _get_long(data):
     return (struct.unpack("<q", data[:8])[0], data[8:])
@@ -447,6 +448,10 @@ def _element_to_bson(key, value, check_keys):
         millis = int(calendar.timegm(value.timetuple()) * 1000 +
                      value.microsecond / 1000)
         return "\x09" + name + struct.pack("<q", millis)
+    if isinstance(value, Timestamp):
+        time = struct.pack("<i", value.time)
+        inc = struct.pack("<i", value.inc)
+        return "\x11" + name + time + inc
     if value is None:
         return "\x0A" + name
     if isinstance(value, _RE_TYPE):

@@ -43,6 +43,7 @@ static PyObject* ObjectId;
 static PyObject* DBRef;
 static PyObject* RECompile;
 static PyObject* UUID;
+static PyObject* Timestamp;
 
 #if PY_VERSION_HEX < 0x02050000 && !defined(PY_SSIZE_T_MIN)
 typedef int Py_ssize_t;
@@ -462,6 +463,32 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
         Py_DECREF(as_doc);
         *(buffer->buffer + type_byte) = 0x03;
         return 1;
+    } else if (PyObject_IsInstance(value, Timestamp)) {
+        PyObject* obj;
+        long i;
+        
+        obj = PyObject_GetAttrString(value, "time");
+        if (!obj) {
+            return 0;
+        }
+        i = PyInt_AsLong(obj);
+        Py_DECREF(obj);
+        if (!buffer_write_bytes(buffer, (const char*)&i, 4)) {
+            return 0;
+        }
+
+        obj = PyObject_GetAttrString(value, "inc");
+        if (!obj) {
+            return 0;
+        }
+        i = PyInt_AsLong(obj);
+        Py_DECREF(obj);
+        if (!buffer_write_bytes(buffer, (const char*)&i, 4)) {
+            return 0;
+        }
+
+        *(buffer->buffer + type_byte) = 0x11;
+        return 1;
     }
     else if (PyObject_HasAttrString(value, "pattern") &&
              PyObject_HasAttrString(value, "flags")) { /* TODO just a proxy for checking if it is a compiled re */
@@ -580,6 +607,13 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
         DBRef = PyObject_GetAttrString(module, "DBRef");
         Py_DECREF(module);
 
+        module = PyImport_ImportModule("pymongo.timestamp");
+        if (!module) {
+            return 0;
+        }
+        Timestamp = PyObject_GetAttrString(module, "Timestamp");
+        Py_DECREF(module);
+
         module = PyImport_ImportModule("uuid");
         if (!module) {
             UUID = NULL;
@@ -593,6 +627,7 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
             PyObject_IsInstance(value, Code) ||
             PyObject_IsInstance(value, ObjectId) ||
             PyObject_IsInstance(value, DBRef) ||
+            PyObject_IsInstance(value, Timestamp) ||
             (UUID && PyObject_IsInstance(value, UUID))) {
 
             PyErr_SetString(PyExc_RuntimeError,
@@ -605,7 +640,7 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
     }
     {
         PyObject* errmsg = PyString_FromString("Cannot encode object: ");
-        PyObject* repr = PyObject_Repr(value);
+        PyObject* repr = PyObject_Repr(Timestamp);
         PyString_ConcatAndDel(&errmsg, repr);
         PyErr_SetString(InvalidDocument, PyString_AsString(errmsg));
         Py_DECREF(errmsg);
@@ -1407,7 +1442,7 @@ static PyObject* get_value(const char* buffer, int* position, int type) {
                 j;
             memcpy(&i, buffer + *position, 4);
             memcpy(&j, buffer + *position + 4, 4);
-            value = Py_BuildValue("(ii)", i, j);
+            value = PyObject_CallFunction(Timestamp, "ii", i, j);
             if (!value) {
                 return NULL;
             }
@@ -1598,6 +1633,13 @@ PyMODINIT_FUNC init_cbson(void) {
         return;
     }
     DBRef = PyObject_GetAttrString(module, "DBRef");
+    Py_DECREF(module);
+
+    module = PyImport_ImportModule("pymongo.timestamp");
+    if (!module) {
+        return;
+    }
+    Timestamp = PyObject_GetAttrString(module, "Timestamp");
     Py_DECREF(module);
 
     module = PyImport_ImportModule("re");

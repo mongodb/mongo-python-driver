@@ -35,6 +35,7 @@ from pymongo.code import Code
 from pymongo.objectid import ObjectId
 from pymongo.dbref import DBRef
 from pymongo.son import SON
+from pymongo.timestamp import Timestamp
 from pymongo.bson import BSON, is_valid, _to_dicts
 from pymongo.errors import InvalidDocument, InvalidStringData
 
@@ -75,7 +76,7 @@ class TestBSON(unittest.TestCase):
                                    "\x00\x00"))
 
     def test_data_timestamp(self):
-        self.assertEqual({"test": (4, 20)},
+        self.assertEqual({"test": Timestamp(4, 20)},
                          BSON("\x13\x00\x00\x00\x11\x74\x65\x73\x74\x00\x04"
                               "\x00\x00\x00\x14\x00\x00\x00\x00").to_dict())
 
@@ -162,6 +163,7 @@ class TestBSON(unittest.TestCase):
         helper({"big float": float(10000000000)})
         helper({"ref": DBRef("coll", 5)})
         helper({"ref": DBRef("coll", 5, "foo")})
+        helper({"ref": Timestamp(1,2)})
 
         def from_then_to_dict(dict):
             return dict == (BSON.from_dict(dict)).to_dict()
