@@ -160,29 +160,46 @@ class Database(object):
         """
         return self.__getattr__(name)
 
-    def create_collection(self, name, options={}):
-        """Create a new collection in this database.
+    def create_collection(self, name, options=None, **kwargs):
+        """Create a new :class:`~pymongo.collection.Collection` in this
+        database.
 
-        Normally collection creation is automatic. This method should only if
-        you want to specify options on creation. CollectionInvalid is raised
-        if the collection already exists.
+        Normally collection creation is automatic. This method should
+        only be used to specify options on
+        creation. :class:`~pymongo.errors.CollectionInvalid` will be
+        raised if the collection already exists.
 
-        Options should be a dictionary, with any of the following options:
+        Options should be passed as keyword arguments to this
+        method. Any of the following options are valid:
 
-          - "size": desired initial size for the collection (in bytes). must be
-            less than or equal to 10000000000. For capped collections this size
-            is the max size of the collection.
+          - "size": desired initial size for the collection (in
+            bytes). must be less than or equal to 10000000000. For
+            capped collections this size is the max size of the
+            collection.
           - "capped": if True, this is a capped collection
           - "max": maximum number of objects if capped (optional)
 
         :Parameters:
           - `name`: the name of the collection to create
-          - `options` (optional): options to use on the new collection
+          - `options`: DEPRECATED options to use on the new collection
+          - `**kwargs` (optional): additional keyword arguments will
+            be passed as options for the create collection command
+
+        .. versionchanged:: 1.4+
+           deprecating `options` in favor of kwargs
         """
+        opts = {"create": True}
+        if options is not None:
+            warnings.warn("the options argument to create_collection is "
+                          "deprecated and will be removed. please use "
+                          "kwargs instead.", DeprecationWarning)
+            opts.update(options)
+        opts.update(kwargs)
+
         if name in self.collection_names():
             raise CollectionInvalid("collection %s already exists" % name)
 
-        return Collection(self, name, options)
+        return Collection(self, name, **opts)
 
     def _fix_incoming(self, son, collection):
         """Apply manipulators to an incoming SON object before it gets stored.

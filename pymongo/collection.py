@@ -32,31 +32,50 @@ class Collection(object):
     """A Mongo collection.
     """
 
-    def __init__(self, database, name, options=None):
+    def __init__(self, database, name, options=None, create=False, **kwargs):
         """Get / create a Mongo collection.
 
         Raises :class:`TypeError` if `name` is not an instance of
         :class:`basestring`. Raises
         :class:`~pymongo.errors.InvalidName` if `name` is not a valid
-        collection name. Raises :class:`TypeError` if `options` is not
-        an instance of :class:`dict`. If `options` is non-empty a
-        create command will be sent to the database. Otherwise the
-        collection will be created implicitly on first use.
+        collection name. Any additional keyword arguments will be used
+        as options passed to the create command. See
+        :meth:`~pymongo.database.Database.create_collection` for valid
+        options.
+
+        If `create` is ``True`` or additional keyword arguments are
+        present a create command will be sent. Otherwise, a create
+        command will not be sent and the collection will be created
+        implicitly on first use.
 
         :Parameters:
           - `database`: the database to get a collection from
           - `name`: the name of the collection to get
-          - `options`: dictionary of collection options.  see
-            :meth:`~pymongo.database.Database.create_collection` for
-            details.
+          - `options`: DEPRECATED dictionary of collection options
+          - `create` (optional): if ``True``, force collection
+            creation even without options being set
+          - `**kwargs` (optional): additional keyword arguments will
+            be passed as options for the create collection command
+
+        .. versionchanged:: 1.4+
+           deprecating `options` in favor of kwargs
+        .. versionadded:: 1.4+
+           the `create` parameter
 
         .. mongodoc:: collections
         """
         if not isinstance(name, basestring):
             raise TypeError("name must be an instance of basestring")
 
-        if options is not None and not isinstance(options, dict):
-            raise TypeError("options must be an instance of dict")
+        if options is not None:
+            warnings.warn("the options argument to Collection is deprecated "
+                          "and will be removed. please use kwargs instead.",
+                          DeprecationWarning)
+            if not isinstance(options, dict):
+                raise TypeError("options must be an instance of dict")
+            options.update(kwargs)
+        elif kwargs:
+            options = kwargs
 
         if not name or ".." in name:
             raise InvalidName("collection names cannot be empty")
@@ -81,7 +100,7 @@ class Collection(object):
                                                "Collection.name")
         self.__full_name_w = helpers.callable_value(self.__full_name,
                                                     "Collection.full_name")
-        if options is not None:
+        if create or options is not None:
             self.__create(options)
 
     def __create(self, options):
@@ -90,7 +109,7 @@ class Collection(object):
 
         # Send size as a float, not an int/long. BSON can only handle 32-bit
         # ints which conflicts w/ max collection size of 10000000000.
-        if "size" in options:
+        if options and "size" in options:
             options["size"] = float(options["size"])
 
         command = SON({"create": self.__name})
@@ -659,9 +678,9 @@ class Collection(object):
         """Get the options set on this collection.
 
         Returns a dictionary of options and their values - see
-        `pymongo.database.Database.create_collection` for more information on
-        the options dictionary. Returns an empty dictionary if the collection
-        has not been created yet.
+        :meth:`~pymongo.database.Database.create_collection` for more
+        information on the possible options. Returns an empty
+        dictionary if the collection has not been created yet.
         """
         result = self.__database.system.namespaces.find_one(
             {"name": self.__full_name})
