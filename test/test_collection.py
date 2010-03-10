@@ -295,9 +295,8 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(db.test.doesnotexist.options(), {})
 
         db.drop_collection("test")
-        options = {"capped": True}
-        db.create_collection("test", options)
-        self.assertEqual(db.test.options(), options)
+        db.create_collection("test", capped=True)
+        self.assertEqual(db.test.options(), {"capped": True})
         db.drop_collection("test")
 
     def test_insert_find_one(self):
@@ -616,7 +615,7 @@ class TestCollection(unittest.TestCase):
     def test_safe_remove(self):
         db = self.db
         db.drop_collection("test")
-        db.create_collection("test", {"capped": True, "size": 1000})
+        db.create_collection("test", capped=True, size=1000)
 
         db.test.insert({"x": 1})
         self.assertEqual(1, db.test.count())

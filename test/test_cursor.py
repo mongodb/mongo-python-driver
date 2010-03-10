@@ -557,7 +557,7 @@ class TestCursor(unittest.TestCase):
     def test_tailable(self):
         db = self.db
         db.drop_collection("test")
-        db.create_collection("test", {"capped": True, "size": 1000})
+        db.create_collection("test", capped=True, size=1000)
 
         cursor = db.test.find(tailable=True)
 

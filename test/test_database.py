@@ -80,7 +80,6 @@ class TestDatabase(unittest.TestCase):
         self.assertRaises(TypeError, db.create_collection, 5)
         self.assertRaises(TypeError, db.create_collection, None)
         self.assertRaises(InvalidName, db.create_collection, "coll..ection")
-        self.assertRaises(TypeError, db.create_collection, "test", 5)
 
         test = db.create_collection("test")
         test.save({"hello": u"world"})
