@@ -9,6 +9,8 @@
 
       Alias for :class:`pymongo.connection.Connection`.
 
+   .. autofunction:: has_c
+
 Sub-modules:
 
 .. toctree::

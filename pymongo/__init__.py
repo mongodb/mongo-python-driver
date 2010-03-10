@@ -33,3 +33,12 @@ version = "1.4+"
 
 Connection = PyMongo_Connection
 """Alias for :class:`pymongo.connection.Connection`."""
+
+def has_c():
+    """Is the C extension installed?
+    """
+    try:
+        from pymongo import _cbson
+        return True
+    except ImportError:
+        return False
