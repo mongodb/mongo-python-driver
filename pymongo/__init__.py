@@ -36,6 +36,8 @@ Connection = PyMongo_Connection
 
 def has_c():
     """Is the C extension installed?
+
+    .. versionadded:: 1.4+
     """
     try:
         from pymongo import _cbson
