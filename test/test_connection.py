@@ -28,7 +28,8 @@ from pymongo.database import Database
 from pymongo.errors import (AutoReconnect,
                             ConnectionFailure,
                             InvalidName,
-                            InvalidURI)
+                            InvalidURI,
+                            OperationFailure)
 
 
 def get_connection(*args, **kwargs):
@@ -159,8 +160,22 @@ class TestConnection(unittest.TestCase):
         c.drop_database("pymongo_test2")
 
         c.pymongo_test.add_user("mike", "password")
-        print c.copy_database("pymongo_test", "pymongo_test1", username="foo", password="bar")
+
+        self.assertRaises(OperationFailure, c.copy_database,
+                          "pymongo_test", "pymongo_test1",
+                          username="foo", password="bar")
         self.failIf("pymongo_test1" in c.database_names())
+
+        self.assertRaises(OperationFailure, c.copy_database,
+                          "pymongo_test", "pymongo_test1",
+                          username="mike", password="bar")
+        self.failIf("pymongo_test1" in c.database_names())
+
+        c.copy_database("pymongo_test", "pymongo_test1", username="mike", password="password")
+        self.assert_("pymongo_test1" in c.database_names())
+        self.assertEqual("bar", c.pymongo_test1.test.find_one()["foo"])
+
+        c.drop_database("pymongo_test1")
 
     def test_iteration(self):
         connection = Connection(self.host, self.port)
