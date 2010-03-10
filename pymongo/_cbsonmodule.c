@@ -33,14 +33,14 @@
 #include "time_helpers.h"
 #include "encoding_helpers.h"
 
-static PyObject* SON;
-static PyObject* Binary;
-static PyObject* Code;
-static PyObject* ObjectId;
-static PyObject* DBRef;
-static PyObject* RECompile;
-static PyObject* UUID;
-static PyObject* Timestamp;
+static PyObject* SON = NULL;
+static PyObject* Binary = NULL;
+static PyObject* Code = NULL;
+static PyObject* ObjectId = NULL;
+static PyObject* DBRef = NULL;
+static PyObject* RECompile = NULL;
+static PyObject* UUID = NULL;
+static PyObject* Timestamp = NULL;
 
 #if PY_VERSION_HEX < 0x02050000 && !defined(PY_SSIZE_T_MIN)
 typedef int Py_ssize_t;
@@ -192,7 +192,7 @@ static int write_string(bson_buffer* buffer, PyObject* py_string) {
 /* Get an error class from the pymongo.errors module.
  *
  * Returns a new ref */
-static PyObject* _error(const char* name) {
+static PyObject* _error(char* name) {
     PyObject* error;
     PyObject* errors = PyImport_ImportModule("pymongo.errors");
     if (!errors) {
@@ -201,6 +201,44 @@ static PyObject* _error(const char* name) {
     error = PyObject_GetAttrString(errors, name);
     Py_DECREF(errors);
     return error;
+}
+
+/* Reload a cached Python object.
+ *
+ * Returns non-zero on failure. */
+static int _reload_object(PyObject** object, char* module_name, char* object_name) {
+    PyObject* module;
+
+    module = PyImport_ImportModule(module_name);
+    if (!module) {
+        return 1;
+    }
+
+    *object = PyObject_GetAttrString(module, object_name);
+    Py_DECREF(module);
+
+    return (*object) ? 0 : 2;
+}
+
+/* Reload all cached Python objects.
+ *
+ * Returns non-zero on failure. */
+static int _reload_python_objects(void) {
+    if (_reload_object(&SON, "pymongo.son", "SON") ||
+        _reload_object(&Binary, "pymongo.binary", "Binary") ||
+        _reload_object(&Code, "pymongo.code", "Code") ||
+        _reload_object(&ObjectId, "pymongo.objectid", "ObjectId") ||
+        _reload_object(&DBRef, "pymongo.dbref", "DBRef") ||
+        _reload_object(&Timestamp, "pymongo.timestamp", "Timestamp") ||
+        _reload_object(&RECompile, "re", "compile")) {
+        return 1;
+    }
+    /* If we couldn't import uuid then we must be on 2.4. Just ignore. */
+    if (_reload_object(&UUID, "uuid", "UUID") == 1) {
+        UUID = NULL;
+        PyErr_Clear();
+    }
+    return 0;
 }
 
 /* TODO our platform better be little-endian w/ 4-byte ints! */
@@ -594,50 +632,8 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
          * This is just to be able to raise a more informative
          * exception in the weird case that one of these modules was reloaded
          * without the c extension being reloaded. */
-        PyObject* module;
-
-        module = PyImport_ImportModule("pymongo.binary");
-        if (!module) {
+        if (_reload_python_objects()) {
             return 0;
-        }
-        Binary = PyObject_GetAttrString(module, "Binary");
-        Py_DECREF(module);
-
-        module = PyImport_ImportModule("pymongo.code");
-        if (!module) {
-            return 0;
-        }
-        Code = PyObject_GetAttrString(module, "Code");
-        Py_DECREF(module);
-
-        module = PyImport_ImportModule("pymongo.objectid");
-        if (!module) {
-            return 0;
-        }
-        ObjectId = PyObject_GetAttrString(module, "ObjectId");
-        Py_DECREF(module);
-
-        module = PyImport_ImportModule("pymongo.dbref");
-        if (!module) {
-            return 0;
-        }
-        DBRef = PyObject_GetAttrString(module, "DBRef");
-        Py_DECREF(module);
-
-        module = PyImport_ImportModule("pymongo.timestamp");
-        if (!module) {
-            return 0;
-        }
-        Timestamp = PyObject_GetAttrString(module, "Timestamp");
-        Py_DECREF(module);
-
-        module = PyImport_ImportModule("uuid");
-        if (!module) {
-            UUID = NULL;
-            PyErr_Clear();
-        } else {
-            UUID = PyObject_GetAttrString(module, "UUID");
-            Py_DECREF(module);
         }
 
         if (PyObject_IsInstance(value, Binary) ||
@@ -1620,7 +1616,6 @@ static PyMethodDef _CBSONMethods[] = {
 
 PyMODINIT_FUNC init_cbson(void) {
     PyObject *m;
-    PyObject* module;
 
     PyDateTime_IMPORT;
     m = Py_InitModule("_cbson", _CBSONMethods);
@@ -1628,61 +1623,6 @@ PyMODINIT_FUNC init_cbson(void) {
         return;
     }
 
-    module = PyImport_ImportModule("pymongo.son");
-    if (!module) {
-        return;
-    }
-    SON = PyObject_GetAttrString(module, "SON");
-    Py_DECREF(module);
-
-    module = PyImport_ImportModule("pymongo.binary");
-    if (!module) {
-        return;
-    }
-    Binary = PyObject_GetAttrString(module, "Binary");
-    Py_DECREF(module);
-
-    module = PyImport_ImportModule("pymongo.code");
-    if (!module) {
-        return;
-    }
-    Code = PyObject_GetAttrString(module, "Code");
-    Py_DECREF(module);
-
-    module = PyImport_ImportModule("pymongo.objectid");
-    if (!module) {
-        return;
-    }
-    ObjectId = PyObject_GetAttrString(module, "ObjectId");
-    Py_DECREF(module);
-
-    module = PyImport_ImportModule("pymongo.dbref");
-    if (!module) {
-        return;
-    }
-    DBRef = PyObject_GetAttrString(module, "DBRef");
-    Py_DECREF(module);
-
-    module = PyImport_ImportModule("pymongo.timestamp");
-    if (!module) {
-        return;
-    }
-    Timestamp = PyObject_GetAttrString(module, "Timestamp");
-    Py_DECREF(module);
-
-    module = PyImport_ImportModule("re");
-    if (!module) {
-        return;
-    }
-    RECompile = PyObject_GetAttrString(module, "compile");
-    Py_DECREF(module);
-
-    module = PyImport_ImportModule("uuid");
-    if (!module) {
-        UUID = NULL;
-        PyErr_Clear();
-    } else {
-        UUID = PyObject_GetAttrString(module, "UUID");
-        Py_DECREF(module);
-    }
+    // TODO we don't do any error checking here, should we be?
+    _reload_python_objects();
 }
