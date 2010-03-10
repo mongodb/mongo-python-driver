@@ -490,6 +490,8 @@ class Cursor(object):
         <http://www.mongodb.org/display/DOCS/Tailable+Cursors>`_
         since they will stop iterating even though they *may* return more
         results in the future.
+
+        .. versionadded:: 1.4+
         """
         return bool(len(self.__data) or (not self.__killed))
 

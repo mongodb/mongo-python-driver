@@ -16,12 +16,17 @@
 """
 
 FUNCTION_SUBTYPE = 1
-"""BSON binary subtype for functions."""
+"""BSON binary subtype for functions.
+
+.. versionadded:: 1.4+
+"""
 
 BINARY_SUBTYPE = 2
 """BSON binary subtype for binary data.
 
 This is the default subtype and is the most commonly used.
+
+.. versionadded:: 1.4+
 """
 
 UUID_SUBTYPE = 3
@@ -29,13 +34,21 @@ UUID_SUBTYPE = 3
 
 :class:`uuid.UUID` instances will automatically be encoded
 by :mod:`~pymongo.bson` using this subtype.
+
+.. versionadded:: 1.4+
 """
 
 MD5_SUBTYPE = 5
-"""BSON binary subtype for an MD5 hash."""
+"""BSON binary subtype for an MD5 hash.
+
+.. versionadded:: 1.4+
+"""
 
 USER_DEFINED_SUBTYPE = 128
-"""BSON binary subtype for any user defined structure."""
+"""BSON binary subtype for any user defined structure.
+
+.. versionadded:: 1.4+
+"""
 
 class Binary(str):
     """Representation of binary data to be stored in or retrieved from MongoDB.
