@@ -246,7 +246,7 @@ static int _reload_python_objects(void) {
  * space has already been reserved.
  *
  * returns 0 on failure */
-static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject* value, unsigned char check_keys) {
+static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject* value, unsigned char check_keys, unsigned char first_attempt) {
     /* TODO this isn't quite the same as the Python version:
      * here we check for type equivalence, not isinstance in some
      * places. */
@@ -319,7 +319,7 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
             free(name);
 
             item_value = PySequence_GetItem(value, i);
-            if (!write_element_to_buffer(buffer, list_type_byte, item_value, check_keys)) {
+            if (!write_element_to_buffer(buffer, list_type_byte, item_value, check_keys, 1)) {
                 Py_DECREF(item_value);
                 return 0;
             }
@@ -627,29 +627,20 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
         }
         *(buffer->buffer + type_byte) = 0x0B;
         return 1;
-    } else {
-        /* Try reloading these modules and see if it works.
-         * This is just to be able to raise a more informative
-         * exception in the weird case that one of these modules was reloaded
-         * without the c extension being reloaded. */
+    } else if (first_attempt) {
+        /* Try reloading the modules and having one more go at it. */
+        if (PyErr_WarnEx(PyExc_RuntimeWarning, "couldn't encode - reloading "
+                         "python modules and trying again. if you see this "
+                         "without getting an InvalidDocument exception "
+                         "please see "
+                         "http://api.mongodb.org/python/current/faq.html#does-pymongo-work-with-mod-wsgi",
+                         1) == -1) {
+            return 0;
+        }
         if (_reload_python_objects()) {
             return 0;
         }
-
-        if (PyObject_IsInstance(value, Binary) ||
-            PyObject_IsInstance(value, Code) ||
-            PyObject_IsInstance(value, ObjectId) ||
-            PyObject_IsInstance(value, DBRef) ||
-            PyObject_IsInstance(value, Timestamp) ||
-            (UUID && PyObject_IsInstance(value, UUID))) {
-
-            PyErr_SetString(PyExc_RuntimeError,
-                            "A python module was reloaded without the C extension being reloaded.\n"
-                            "\n"
-                            "See http://api.mongodb.org/python/current/faq.html#does-pymongo-work-with-mod-wsgi for "
-                            "a possible explanation / fix.");
-            return 0;
-        }
+        return write_element_to_buffer(buffer, type_byte, value, check_keys, 0);
     }
     {
         PyObject* errmsg = PyString_FromString("Cannot encode object: ");
@@ -710,7 +701,7 @@ static int write_pair(bson_buffer* buffer, const char* name, Py_ssize_t name_len
     if (!buffer_write_bytes(buffer, name, name_length + 1)) {
         return 0;
     }
-    if (!write_element_to_buffer(buffer, type_byte, value, check_keys)) {
+    if (!write_element_to_buffer(buffer, type_byte, value, check_keys, 1)) {
         return 0;
     }
     return 1;
