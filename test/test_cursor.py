@@ -557,6 +557,7 @@ class TestCursor(unittest.TestCase):
     def test_tailable(self):
         db = self.db
         db.drop_collection("test")
+        db.create_collection("test", {"capped": True, "size": 1000})
 
         cursor = db.test.find(tailable=True)
 
@@ -582,6 +583,7 @@ class TestCursor(unittest.TestCase):
         self.assertEqual(1, count)
 
         self.assertEqual(3, db.test.count())
+        db.drop_collection("test")
 
     def test_distinct(self):
         if not version.at_least(self.db.connection, (1, 1, 3, 1)):
