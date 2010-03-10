@@ -15,6 +15,28 @@
 """Tools for representing binary data to be stored in MongoDB.
 """
 
+FUNCTION_SUBTYPE = 1
+"""BSON binary subtype for functions."""
+
+BINARY_SUBTYPE = 2
+"""BSON binary subtype for binary data.
+
+This is the default subtype and is the most commonly used.
+"""
+
+UUID_SUBTYPE = 3
+"""BSON binary subtype for a UUID.
+
+:class:`uuid.UUID` instances will automatically be encoded
+by :mod:`~pymongo.bson` using this subtype.
+"""
+
+MD5_SUBTYPE = 5
+"""BSON binary subtype for an MD5 hash."""
+
+USER_DEFINED_SUBTYPE = 128
+"""BSON binary subtype for any user defined structure."""
+
 class Binary(str):
     """Representation of binary data to be stored in or retrieved from MongoDB.
 
@@ -30,7 +52,7 @@ class Binary(str):
     :Parameters:
       - `data`: the binary data to represent
       - `subtype` (optional): the `binary subtype
-        <http://www.mongodb.org/display/DOCS/BSON#BSON-noteondatabinary>`_
+        <http://bsonspec.org/#/specification>`_
         to use
     """
 
