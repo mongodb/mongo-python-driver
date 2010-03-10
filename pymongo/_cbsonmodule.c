@@ -33,9 +33,6 @@
 #include "time_helpers.h"
 #include "encoding_helpers.h"
 
-static PyObject* InvalidName;
-static PyObject* InvalidDocument;
-static PyObject* InvalidStringData;
 static PyObject* SON;
 static PyObject* Binary;
 static PyObject* Code;
@@ -190,6 +187,20 @@ static int write_string(bson_buffer* buffer, PyObject* py_string) {
         return 0;
     }
     return 1;
+}
+
+/* Get an error class from the pymongo.errors module.
+ *
+ * Returns a new ref */
+static PyObject* _error(const char* name) {
+    PyObject* error;
+    PyObject* errors = PyImport_ImportModule("pymongo.errors");
+    if (!errors) {
+        return NULL;
+    }
+    error = PyObject_GetAttrString(errors, name);
+    Py_DECREF(errors);
+    return error;
 }
 
 /* TODO our platform better be little-endian w/ 4-byte ints! */
@@ -393,8 +404,10 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
         status = check_string((const unsigned char*)PyString_AsString(value),
                               PyString_Size(value), 1, 0);
         if (status == NOT_UTF_8) {
+            PyObject* InvalidStringData = _error("InvalidStringData");
             PyErr_SetString(InvalidStringData,
                             "strings in documents must be valid UTF-8");
+            Py_DECREF(InvalidStringData);
             return 0;
         }
         result = write_string(buffer, value);
@@ -466,7 +479,7 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
     } else if (PyObject_IsInstance(value, Timestamp)) {
         PyObject* obj;
         long i;
-        
+
         obj = PyObject_GetAttrString(value, "inc");
         if (!obj) {
             return 0;
@@ -526,12 +539,16 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
         status = check_string((const unsigned char*)PyString_AsString(encoded_pattern),
                               PyString_Size(encoded_pattern), check_utf8, 1);
         if (status == NOT_UTF_8) {
+            PyObject* InvalidStringData = _error("InvalidStringData");
             PyErr_SetString(InvalidStringData,
                             "regex patterns must be valid UTF-8");
+            Py_DECREF(InvalidStringData);
             return 0;
         } else if (status == HAS_NULL) {
+            PyObject* InvalidDocument = _error("InvalidDocument");
             PyErr_SetString(InvalidDocument,
                             "regex patterns must not contain the NULL byte");
+            Py_DECREF(InvalidDocument);
             return 0;
         }
 
@@ -641,9 +658,11 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
     {
         PyObject* errmsg = PyString_FromString("Cannot encode object: ");
         PyObject* repr = PyObject_Repr(value);
+        PyObject* InvalidDocument = _error("InvalidDocument");
         PyString_ConcatAndDel(&errmsg, repr);
         PyErr_SetString(InvalidDocument, PyString_AsString(errmsg));
         Py_DECREF(errmsg);
+        Py_DECREF(InvalidDocument);
         return 0;
     }
 }
@@ -652,16 +671,20 @@ static int check_key_name(const char* name,
                           const Py_ssize_t name_length) {
     int i;
     if (name_length > 0 && name[0] == '$') {
+        PyObject* InvalidName = _error("InvalidName");
         PyObject* errmsg = PyString_FromFormat("key '%s' must not start with '$'", name);
         PyErr_SetString(InvalidName, PyString_AsString(errmsg));
         Py_DECREF(errmsg);
+        Py_DECREF(InvalidName);
         return 0;
     }
     for (i = 0; i < name_length; i++) {
         if (name[i] == '.') {
+            PyObject* InvalidName = _error("InvalidName");
             PyObject* errmsg = PyString_FromFormat("key '%s' must not contain '.'", name);
             PyErr_SetString(InvalidName, PyString_AsString(errmsg));
             Py_DECREF(errmsg);
+            Py_DECREF(InvalidName);
             return 0;
         }
     }
@@ -711,8 +734,10 @@ static int decode_and_write_pair(bson_buffer* buffer,
                               PyString_Size(encoded), 0, 1);
 
         if (status == HAS_NULL) {
+            PyObject* InvalidDocument = _error("InvalidDocument");
             PyErr_SetString(InvalidDocument,
                             "Key names must not contain the NULL byte");
+            Py_DECREF(InvalidDocument);
             return 0;
         }
     } else if (PyString_Check(key)) {
@@ -724,19 +749,25 @@ static int decode_and_write_pair(bson_buffer* buffer,
                                        PyString_Size(encoded), 1, 1);
 
         if (status == NOT_UTF_8) {
+            PyObject* InvalidStringData = _error("InvalidStringData");
             PyErr_SetString(InvalidStringData,
                             "strings in documents must be valid UTF-8");
+            Py_DECREF(InvalidStringData);
             return 0;
         } else if (status == HAS_NULL) {
+            PyObject* InvalidDocument = _error("InvalidDocument");
             PyErr_SetString(InvalidDocument,
                             "Key names must not contain the NULL byte");
+            Py_DECREF(InvalidDocument);
             return 0;
         }
     } else {
+        PyObject* InvalidDocument = _error("InvalidDocument");
         PyObject* errmsg = PyString_FromString("documents must have only string keys, key was ");
         PyObject* repr = PyObject_Repr(key);
         PyString_ConcatAndDel(&errmsg, repr);
         PyErr_SetString(InvalidDocument, PyString_AsString(errmsg));
+        Py_DECREF(InvalidDocument);
         Py_DECREF(errmsg);
         return 0;
     }
@@ -837,8 +868,10 @@ static int write_dict(bson_buffer* buffer, PyObject* dict, unsigned char check_k
     }
     length = buffer->position - start_position;
     if (length > 4 * 1024 * 1024) {
+        PyObject* InvalidDocument = _error("InvalidDocument");
         PyErr_SetString(InvalidDocument, "document too large - "
                         "BSON documents are limited to 4 MB");
+        Py_DECREF(InvalidDocument);
         return 0;
     }
     memcpy(buffer->buffer + length_location, &length, 4);
@@ -1461,8 +1494,12 @@ static PyObject* get_value(const char* buffer, int* position, int type) {
             break;
         }
     default:
-        PyErr_SetString(InvalidDocument, "no c decoder for this type yet");
-        return NULL;
+        {
+            PyObject* InvalidDocument = _error("InvalidDocument");
+            PyErr_SetString(InvalidDocument, "no c decoder for this type yet");
+            Py_DECREF(InvalidDocument);
+            return NULL;
+        }
     }
     return value;
 }
@@ -1590,15 +1627,6 @@ PyMODINIT_FUNC init_cbson(void) {
     if (m == NULL) {
         return;
     }
-
-    module = PyImport_ImportModule("pymongo.errors");
-    if (!module) {
-        return;
-    }
-    InvalidName = PyObject_GetAttrString(module, "InvalidName");
-    InvalidDocument = PyObject_GetAttrString(module, "InvalidDocument");
-    InvalidStringData = PyObject_GetAttrString(module, "InvalidStringData");
-    Py_DECREF(module);
 
     module = PyImport_ImportModule("pymongo.son");
     if (!module) {
