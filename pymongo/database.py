@@ -106,7 +106,7 @@ class Database(object):
 
         See the documentation for :class:`SystemJS` for more details.
 
-        .. versionadded:: 1.4+
+        .. versionadded:: 1.5
         """
         return self.__system_js
 
@@ -185,7 +185,7 @@ class Database(object):
           - `**kwargs` (optional): additional keyword arguments will
             be passed as options for the create collection command
 
-        .. versionchanged:: 1.4+
+        .. versionchanged:: 1.5
            deprecating `options` in favor of kwargs
         """
         opts = {"create": True}
@@ -255,7 +255,7 @@ class Database(object):
           - `allowable_errors`: if `check` is ``True``, error messages in this
             list will be ignored by error-checking
 
-        .. versionchanged:: 1.4+
+        .. versionchanged:: 1.5
            `command` can be a string in addition to a full document.
         .. versionadded:: 1.4
 
@@ -586,7 +586,7 @@ class SystemJS(object):
 
         .. note:: Requires server version **>= 1.1.1**
 
-        .. versionadded:: 1.4+
+        .. versionadded:: 1.5
 
         .. _server-side JavaScript: http://www.mongodb.org/display/DOCS/Server-side+Code+Execution#Server-sideCodeExecution-Storingfunctionsserverside
         """

@@ -1,6 +1,6 @@
 :mod:`timestamp` -- Tools for representing MongoDB internal Timestamps
 ======================================================================
-.. versionadded:: 1.4+
+.. versionadded:: 1.5
 
 .. automodule:: pymongo.timestamp
    :synopsis: Tools for representing MongoDB internal Timestamps

@@ -491,7 +491,7 @@ class Cursor(object):
         since they will stop iterating even though they *may* return more
         results in the future.
 
-        .. versionadded:: 1.4+
+        .. versionadded:: 1.5
         """
         return bool(len(self.__data) or (not self.__killed))
 

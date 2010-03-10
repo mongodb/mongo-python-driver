@@ -95,5 +95,5 @@ class InvalidId(PyMongoError):
 class InvalidURI(PyMongoError):
     """Raised when trying to parse an invalid mongodb URI.
 
-    .. versionadded:: 1.4+
+    .. versionadded:: 1.5
     """

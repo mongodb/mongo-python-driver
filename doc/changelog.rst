@@ -1,6 +1,41 @@
 Changelog
 =========
 
+Changes in Version 1.5
+----------------------
+- added subtype constants to :mod:`~pymongo.binary` module.
+- DEPRECATED `options` argument to
+  :meth:`~pymongo.collection.Collection` and
+  :meth:`~pymongo.database.Database.create_collection` in favor of
+  kwargs.
+- added :meth:`~pymongo.has_c` to check for C extension.
+- added :meth:`~pymongo.connection.Connection.copy_database`.
+- added :data:`~pymongo.cursor.Cursor.alive` to tell when a cursor
+  might have more data to return (useful for tailable cursors).
+- added :class:`~pymongo.timestamp.Timestamp` to better support
+  dealing with internal MongoDB timestamps.
+- added `name` argument for
+  :meth:`~pymongo.collection.Collection.create_index` and
+  :meth:`~pymongo.collection.Collection.ensure_index`.
+- fixed connection pooling w/ fork
+- :meth:`~pymongo.connection.Connection.paired` takes all kwargs that
+  are allowed for :meth:`~pymongo.connection.Connection`.
+- :meth:`~pymongo.collection.Collection.insert` returns list for bulk
+  inserts of size one.
+- fixed handling of :class:`datetime.datetime` instances in
+  :mod:`~pymongo.json_util`.
+- added :meth:`~pymongo.connection.Connection.from_uri` to support
+  MongoDB connection uri scheme.
+- fixed chunk number calculation when unaligned in :mod:`gridfs`.
+- :meth:`~pymongo.database.Database.command` takes a string for simple
+  commands.
+- added :data:`~pymongo.database.Database.system_js` helper for
+  dealing with server-side JS.
+- don't wrap queries containing ``"$query"`` (support manual use of
+  ``"$min"``, etc.).
+- added :class:`~gridfs.errors.GridFSError` as base class for
+  :mod:`gridfs` exceptions.
+
 Changes in Version 1.4
 ----------------------
 
@@ -33,7 +68,7 @@ Other changes:
   :meth:`~pymongo.collection.Collection.insert` or
   :meth:`~pymongo.collection.Collection.update` with `safe` set to
   ``True``.
-- removed :mod:`~pymongo.thread_util`
+- removed :mod:`~pymongo.thread_util`.
 - added :meth:`~pymongo.database.Database.add_user` and
   :meth:`~pymongo.database.Database.remove_user` helpers.
 - fix for :meth:`~pymongo.database.Database.authenticate` when using

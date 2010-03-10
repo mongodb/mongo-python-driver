@@ -28,7 +28,7 @@ SLOW_ONLY = 1
 ALL = 2
 """Profile all operations."""
 
-version = "1.4+"
+version = "1.5"
 """Current version of PyMongo."""
 
 Connection = PyMongo_Connection
@@ -37,7 +37,7 @@ Connection = PyMongo_Connection
 def has_c():
     """Is the C extension installed?
 
-    .. versionadded:: 1.4+
+    .. versionadded:: 1.5
     """
     try:
         from pymongo import _cbson

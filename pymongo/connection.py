@@ -243,7 +243,7 @@ class Connection(object): # TODO support auth for pooling
         The remaining keyword arguments are the same as those accepted
         by :meth:`~Connection`.
 
-        .. versionadded:: 1.4+
+        .. versionadded:: 1.5
         """
         (nodes, database, username, password) = Connection._parse_uri(uri)
         if database and username is None:
@@ -798,7 +798,7 @@ class Connection(object): # TODO support auth for pooling
           - `username` (optional): username for source database
           - `password` (optional): password for source database
 
-        .. versionadded:: 1.4+
+        .. versionadded:: 1.5
         """
         if not isinstance(from_name, basestring):
             raise TypeError("from_name must be an instance of basestring")

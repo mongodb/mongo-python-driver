@@ -20,7 +20,7 @@ from pymongo.errors import PyMongoError
 class GridFSError(PyMongoError):
     """Base class for all GridFS exceptions.
 
-    .. versionadded:: 1.4+
+    .. versionadded:: 1.5
     """
 
 class CorruptGridFile(GridFSError):

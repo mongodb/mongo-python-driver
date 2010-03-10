@@ -57,9 +57,9 @@ class Collection(object):
           - `**kwargs` (optional): additional keyword arguments will
             be passed as options for the create collection command
 
-        .. versionchanged:: 1.4+
+        .. versionchanged:: 1.5
            deprecating `options` in favor of kwargs
-        .. versionadded:: 1.4+
+        .. versionadded:: 1.5
            the `create` parameter
 
         .. mongodoc:: collections
@@ -541,7 +541,7 @@ class Collection(object):
           - `name` (optional): name for the index. If none given, a name
             will be generated.
 
-        .. versionadded:: 1.4+
+        .. versionadded:: 1.5
            The `name` parameter.
 
         .. seealso:: :meth:`ensure_index`
@@ -604,7 +604,7 @@ class Collection(object):
           - `name` (optional): name for the index. If none given, a name
             will be generated.
 
-        .. versionadded:: 1.4+
+        .. versionadded:: 1.5
            The `name` parameter.
 
         .. seealso:: :meth:`create_index`
