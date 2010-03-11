@@ -7,3 +7,4 @@
 
    .. autodata:: pymongo.ASCENDING
    .. autodata:: pymongo.DESCENDING
+   .. autodata:: pymongo.GEO2D

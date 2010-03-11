@@ -65,9 +65,9 @@ def _index_document(index_list):
     for (key, value) in index_list:
         if not isinstance(key, basestring):
             raise TypeError("first item in each key pair must be a string")
-        if not isinstance(value, int):
-            raise TypeError("second item in each key pair must be ASCENDING or "
-                            "DESCENDING")
+        if value not in [pymongo.ASCENDING, pymongo.DESCENDING, pymongo.GEO2D]:
+            raise TypeError("second item in each key pair must be ASCENDING, "
+                            "DESCENDING, or GEO2D")
         index[key] = value
     return index
 

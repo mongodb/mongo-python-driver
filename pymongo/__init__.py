@@ -21,6 +21,16 @@ ASCENDING = 1
 DESCENDING = -1
 """Descending sort order."""
 
+GEO2D = "2d"
+"""Index specifier for a 2-dimensional `geospatial index`_.
+
+.. versionadded:: 1.5+
+
+.. note:: Geo-spatial indexing requires server version **>= 1.3.3+**.
+
+.. _geospatial index: http://www.mongodb.org/display/DOCS/Geospatial+Indexing
+"""
+
 OFF = 0
 """No database profiling."""
 SLOW_ONLY = 1

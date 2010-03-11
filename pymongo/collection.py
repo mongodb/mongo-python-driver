@@ -515,8 +515,8 @@ class Collection(object):
         Takes either a single key or a list of (key, direction) pairs.
         The key(s) must be an instance of :class:`basestring`, and the
         directions must be one of (:data:`~pymongo.ASCENDING`,
-        :data:`~pymongo.DESCENDING`). Returns the name of the created
-        index.
+        :data:`~pymongo.DESCENDING`, :data:`~pymongo.GEO2D`). Returns
+        the name of the created index.
 
         To create a single key index on the key ``'mike'`` we just use
         a string argument:
@@ -572,8 +572,8 @@ class Collection(object):
         Takes either a single key or a list of (key, direction) pairs.
         The key(s) must be an instance of :class:`basestring`, and the
         direction(s) must be one of (:data:`~pymongo.ASCENDING`,
-        :data:`~pymongo.DESCENDING`). See :meth:`create_index` for a
-        detailed example.
+        :data:`~pymongo.DESCENDING`, :data:`~pymongo.GEO2D`). See
+        :meth:`create_index` for a detailed example.
 
         Unlike :meth:`create_index`, which attempts to create an index
         unconditionally, :meth:`ensure_index` takes advantage of some
