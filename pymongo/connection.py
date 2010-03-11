@@ -798,6 +798,9 @@ class Connection(object): # TODO support auth for pooling
           - `username` (optional): username for source database
           - `password` (optional): password for source database
 
+        .. note:: Specifying `username` and `password` requires server
+           version **>= 1.3.3+**.
+
         .. versionadded:: 1.5
         """
         if not isinstance(from_name, basestring):
