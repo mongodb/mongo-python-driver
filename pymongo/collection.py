@@ -28,6 +28,12 @@ from pymongo.son import SON
 _ZERO = "\x00\x00\x00\x00"
 
 
+def _gen_index_name(keys):
+    """Generate an index name from the set of fields it is over.
+    """
+    return u"_".join([u"%s_%s" % item for item in keys])
+
+
 class Collection(object):
     """A Mongo collection.
     """
@@ -504,12 +510,7 @@ class Collection(object):
         """
         return self.find().count()
 
-    def _gen_index_name(self, keys):
-        """Generate an index name from the set of fields it is over.
-        """
-        return u"_".join([u"%s_%s" % item for item in keys])
-
-    def create_index(self, key_or_list, unique=False, ttl=300, name=None):
+    def create_index(self, key_or_list, deprecated_unique=None, ttl=300, **kwargs):
         """Creates an index on this collection.
 
         Takes either a single key or a list of (key, direction) pairs.
@@ -529,17 +530,32 @@ class Collection(object):
         >>> my_collection.create_index([("mike", pymongo.DESCENDING),
         ...                             ("eliot", pymongo.ASCENDING)])
 
+        All optional index creation paramaters should be passed as
+        keyword arguments to this method. Valid options include:
+
+          - `name`: custom name to use for this index - if none is
+            given, a name will be generated
+          - `unique`: should this index guarantee uniqueness?
+          - `dropDups` or `drop_dups`: should we drop duplicates
+            during index creation when creating a unique index?
+          - `min`: minimum value for keys in a :data:`~pymongo.GEO2D`
+            index
+          - `max`: maximum value for keys in a :data:`~pymongo.GEO2D`
+            index
+
         :Parameters:
           - `key_or_list`: a single key or a list of (key, direction)
             pairs specifying the index to create
-          - `unique` (optional): should this index guarantee
-            uniqueness?
+          - `deprecated_unique`: DEPRECATED - use `unique` as a kwarg
           - `ttl` (optional): time window (in seconds) during which
             this index will be recognized by subsequent calls to
             :meth:`ensure_index` - see documentation for
             :meth:`ensure_index` for details
-          - `name` (optional): name for the index. If none given, a name
-            will be generated.
+          - `kwargs` (optional): any additional index creation options
+            (see the above list) should be passed as keyword arguments
+
+        .. versionchanged:: 1.5+
+           Accept kwargs to support all index creation options.
 
         .. versionadded:: 1.5
            The `name` parameter.
@@ -552,21 +568,31 @@ class Collection(object):
         """
         keys = helpers._index_list(key_or_list)
         index_doc = helpers._index_document(keys)
-        name = name is not None and name or self._gen_index_name(keys)
-        to_save = SON()
-        to_save["name"] = name
-        to_save["ns"] = self.__full_name
-        to_save["key"] = index_doc
-        to_save["unique"] = unique
+
+        index = {"key": index_doc, "ns": self.__full_name}
+
+        if deprecated_unique is not None:
+            warnings.warn("using a positional arg to specify unique is "
+                          "deprecated, please use kwargs",
+                          DeprecationWarning)
+            index["unique"] = deprecated_unique
+
+        name = "name" in kwargs and kwargs["name"] or _gen_index_name(keys)
+        index["name"] = name
+
+        if "drop_dups" in kwargs:
+            kwargs["dropDups"] = kwargs.pop("drop_dups")
+
+        index.update(kwargs)
 
         self.__database.connection._cache_index(self.__database.name,
                                                 self.__name, name, ttl)
 
-        self.__database.system.indexes.insert(to_save, manipulate=False,
+        self.__database.system.indexes.insert(index, manipulate=False,
                                               check_keys=False)
-        return to_save["name"]
+        return name
 
-    def ensure_index(self, key_or_list, unique=False, ttl=300, name=None):
+    def ensure_index(self, key_or_list, deprecated_unique=None, ttl=300, **kwargs):
         """Ensures that an index exists on this collection.
 
         Takes either a single key or a list of (key, direction) pairs.
@@ -593,31 +619,46 @@ class Collection(object):
         Returns the name of the created index if an index is actually
         created. Returns ``None`` if the index already exists.
 
+        All optional index creation paramaters should be passed as
+        keyword arguments to this method. Valid options include:
+
+          - `name`: custom name to use for this index - if none is
+            given, a name will be generated
+          - `unique`: should this index guarantee uniqueness?
+          - `dropDups` or `drop_dups`: should we drop duplicates
+            during index creation when creating a unique index?
+          - `min`: minimum value for keys in a :data:`~pymongo.GEO2D`
+            index
+          - `max`: maximum value for keys in a :data:`~pymongo.GEO2D`
+            index
+
         :Parameters:
           - `key_or_list`: a single key or a list of (key, direction)
-            pairs specifying the index to ensure
-          - `unique` (optional): should this index guarantee
-            uniqueness?
+            pairs specifying the index to create
+          - `deprecated_unique`: DEPRECATED - use `unique` as a kwarg
           - `ttl` (optional): time window (in seconds) during which
             this index will be recognized by subsequent calls to
             :meth:`ensure_index`
-          - `name` (optional): name for the index. If none given, a name
-            will be generated.
+          - `kwargs` (optional): any additional index creation options
+            (see the above list) should be passed as keyword arguments
+
+        .. versionchanged:: 1.5+
+           Accept kwargs to support all index creation options.
 
         .. versionadded:: 1.5
            The `name` parameter.
 
         .. seealso:: :meth:`create_index`
         """
-        if not isinstance(key_or_list, (str, unicode, list)):
-            raise TypeError("key_or_list must either be a single key or a list of (key, direction) pairs")
+        if "name" in kwargs:
+            name = kwargs["name"]
+        else:
+            keys = helpers._index_list(key_or_list)
+            name = kwargs["name"] = _gen_index_name(keys)
 
-        keys = helpers._index_list(key_or_list)
-        name = name is not None and name or self._gen_index_name(keys)
         if self.__database.connection._cache_index(self.__database.name,
                                                    self.__name, name, ttl):
-            return self.create_index(key_or_list, unique=unique, ttl=ttl,
-                                     name=name)
+            return self.create_index(key_or_list, deprecated_unique, ttl, **kwargs)
         return None
 
     def drop_indexes(self):
@@ -649,7 +690,7 @@ class Collection(object):
         """
         name = index_or_name
         if isinstance(index_or_name, list):
-            name = self._gen_index_name(index_or_name)
+            name = _gen_index_name(index_or_name)
 
         if not isinstance(name, basestring):
             raise TypeError("index_or_name must be an index name or list")

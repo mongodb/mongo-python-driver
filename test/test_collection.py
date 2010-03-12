@@ -101,7 +101,6 @@ class TestCollection(unittest.TestCase):
                          .count(), 1)
         db.test.create_index("hello")
         self.assert_(SON([(u"name", u"hello_1"),
-                          (u"unique", False),
                           (u"ns", u"pymongo_test.test"),
                           (u"key", SON([(u"hello", 1)]))]) in
                      list(db.system.indexes
@@ -112,7 +111,6 @@ class TestCollection(unittest.TestCase):
                          .count(), 1)
         db.test.create_index([("hello", DESCENDING), ("world", ASCENDING)])
         self.assert_(SON([(u"name", u"hello_-1_world_1"),
-                          (u"unique", False),
                           (u"ns", u"pymongo_test.test"),
                           (u"key", SON([(u"hello", -1),
                                         (u"world", 1)]))]) in
@@ -204,7 +202,6 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(db.system.indexes.find({"ns": u"pymongo_test.test"})
                          .count(), 2)
         self.assert_(SON([(u"name", u"hello_1"),
-                          (u"unique", False),
                           (u"ns", u"pymongo_test.test"),
                           (u"key", SON([(u"hello", 1)]))]) in
                      list(db.system.indexes
@@ -221,7 +218,6 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(db.system.indexes.find({"ns": u"pymongo_test.test"})
                          .count(), 2)
         self.assert_(SON([(u"name", u"hello_1"),
-                          (u"unique", False),
                           (u"ns", u"pymongo_test.test"),
                           (u"key", SON([(u"hello", 1)]))]) in
                      list(db.system.indexes
