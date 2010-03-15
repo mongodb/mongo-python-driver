@@ -420,8 +420,8 @@ class Connection(object): # TODO support auth for pooling
     def __find_master(self):
         """Create a new socket and use it to figure out who the master is.
 
-        Sets __host and __port so that :attr:`host` and :attr:`port` will return the
-        address of the master.
+        Sets __host and __port so that :attr:`host` and :attr:`port`
+        will return the address of the master.
         """
         self.__host = None
         self.__port = None
