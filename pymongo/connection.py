@@ -435,25 +435,19 @@ class Connection(object): # TODO support auth for pooling
                     sock.connect((host, port))
                     sock.settimeout(self.__network_timeout)
                     master = self.__master(sock)
-                    if master is True:
+                    if master is True or self.__slave_okay:
                         self.__host = host
                         self.__port = port
                         return
                     if not master:
-                        if self.__slave_okay:
-                            self.__host = host
-                            self.__port = port
-                            return
-
                         raise ConfigurationError("trying to connect directly to"
                                                  " slave %s:%r - must specify "
                                                  "slave_okay to connect to "
                                                  "slaves" % (host, port))
                     if master not in self.__nodes:
-                        raise ConfigurationError(
-                            "%r claims master is %r, "
-                            "but that's not configured" %
-                            ((host, port), master))
+                        raise ConfigurationError("%r claims master is %r, "
+                                                 "but that's not configured" %
+                                                 ((host, port), master))
                 except socket.error, e:
                     continue
             finally:
