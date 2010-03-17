@@ -165,6 +165,12 @@ class GridFile(object):
         self.__collection.chunks.remove({"files_id": self.__id})
 
     @property
+    def _id(self):
+        """Get the value of ``"_id"`` for this :class:`GridFile`.
+        """
+        return self.__id
+
+    @property
     def closed(self):
         """Is this :class:`GridFile` closed?
         """

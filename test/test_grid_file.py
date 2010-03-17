@@ -426,6 +426,10 @@ class TestGridFile(unittest.TestCase):
 
         self.assertEqual(in_data, out_data)
 
+    def test_id(self):
+        file = GridFile({"_id": "test"}, self.db, "w")
+        self.assertEqual("test", file._id)
+
 
 if __name__ == "__main__":
     unittest.main()
