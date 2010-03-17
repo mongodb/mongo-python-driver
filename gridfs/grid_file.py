@@ -166,7 +166,9 @@ class GridFile(object):
 
     @property
     def _id(self):
-        """Get the value of ``"_id"`` for this :class:`GridFile`.
+        """The ``"_id"`` value for this :class:`GridFile`.
+
+        .. versionadded:: 1.5+
         """
         return self.__id
 

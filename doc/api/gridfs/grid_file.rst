@@ -3,4 +3,8 @@
 
 .. automodule:: gridfs.grid_file
    :synopsis: Tools for representing files stored in GridFS
-   :members:
+
+   .. autoclass:: GridFile(file-spec, database[, mode='r'[, collection='fs']])
+      :members:
+
+      .. autoattribute:: _id
