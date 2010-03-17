@@ -24,7 +24,7 @@ DESCENDING = -1
 GEO2D = "2d"
 """Index specifier for a 2-dimensional `geospatial index`_.
 
-.. versionadded:: 1.5+
+.. versionadded:: 1.5.1
 
 .. note:: Geo-spatial indexing requires server version **>= 1.3.3+**.
 
@@ -38,7 +38,7 @@ SLOW_ONLY = 1
 ALL = 2
 """Profile all operations."""
 
-version = "1.5+"
+version = "1.5.1"
 """Current version of PyMongo."""
 
 Connection = PyMongo_Connection

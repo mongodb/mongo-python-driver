@@ -554,7 +554,7 @@ class Collection(object):
           - `kwargs` (optional): any additional index creation options
             (see the above list) should be passed as keyword arguments
 
-        .. versionchanged:: 1.5+
+        .. versionchanged:: 1.5.1
            Accept kwargs to support all index creation options.
 
         .. versionadded:: 1.5
@@ -642,7 +642,7 @@ class Collection(object):
           - `kwargs` (optional): any additional index creation options
             (see the above list) should be passed as keyword arguments
 
-        .. versionchanged:: 1.5+
+        .. versionchanged:: 1.5.1
            Accept kwargs to support all index creation options.
 
         .. versionadded:: 1.5

@@ -168,7 +168,7 @@ class GridFile(object):
     def _id(self):
         """The ``"_id"`` value for this :class:`GridFile`.
 
-        .. versionadded:: 1.5+
+        .. versionadded:: 1.5.1
         """
         return self.__id
 

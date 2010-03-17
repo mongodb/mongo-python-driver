@@ -1,6 +1,20 @@
 Changelog
 =========
 
+Changes in Version 1.5.1
+------------------------
+- added :data:`~gridfs.grid_file.GridFile._id` property for
+  :class:`~gridfs.grid_file.GridFile` instances.
+- fix for making a :class:`~pymongo.connection.Connection` (with
+  `slave_okay` set) directly to a slave in a replica pair.
+- accept kwargs for
+  :meth:`~pymongo.collection.Collection.create_index` and
+  :meth:`~pymongo.collection.Collection.ensure_index` to support all
+  indexing options.
+- add :data:`pymongo.GEO2D` and support for geo indexing.
+- improvements to Python code caching in C extension - should improve
+  behavior on mod_wsgi.
+
 Changes in Version 1.5
 ----------------------
 - added subtype constants to :mod:`~pymongo.binary` module.
