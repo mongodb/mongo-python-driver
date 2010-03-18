@@ -33,6 +33,7 @@ try:
     _use_c = True
 except ImportError:
     _use_c = False
+from pymongo.errors import InvalidOperation
 
 
 __ZERO = "\x00\x00\x00\x00"
@@ -62,8 +63,11 @@ def insert(collection_name, docs, check_keys, safe):
     """
     data = __ZERO
     data += bson._make_c_string(collection_name)
-    data += "".join([bson.BSON.from_dict(doc, check_keys)
+    bson_data = "".join([bson.BSON.from_dict(doc, check_keys)
                      for doc in docs])
+    if not bson_data:
+        raise InvalidOperation("cannot do an empty bulk insert")
+    data += bson_data
     if safe:
         (_, insert_message) = __pack_message(2002, data)
         (request_id, error_message) = __last_error()

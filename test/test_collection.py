@@ -34,6 +34,7 @@ from pymongo.collection import Collection
 from pymongo.errors import (DuplicateKeyError,
                             InvalidDocument,
                             InvalidName,
+                            InvalidOperation,
                             OperationFailure)
 from pymongo.objectid import ObjectId
 from pymongo.son import SON
@@ -436,6 +437,8 @@ class TestCollection(unittest.TestCase):
         id = db.test.insert([{"hello": 1}])
         self.assert_(isinstance(id, list))
         self.assertEqual(1, len(id))
+
+        self.assertRaises(InvalidOperation, db.test.insert, [])
 
     def test_insert_iterables(self):
         db = self.db

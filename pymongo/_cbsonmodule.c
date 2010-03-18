@@ -920,6 +920,7 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
     char* collection_name = NULL;
     int collection_name_length;
     PyObject* docs;
+    int list_length;
     int i;
     unsigned char check_keys;
     unsigned char safe;
@@ -960,7 +961,15 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
 
     PyMem_Free(collection_name);
 
-    for (i = 0; i < PyList_Size(docs); i++) {
+    list_length = PyList_Size(docs);
+    if (list_length <= 0) {
+        PyObject* InvalidOperation = _error("InvalidOperation");
+        PyErr_SetString(InvalidOperation, "cannot do an empty bulk insert");
+        Py_DECREF(InvalidOperation);
+        buffer_free(buffer);
+        return NULL;
+    }
+    for (i = 0; i < list_length; i++) {
         PyObject* doc = PyList_GetItem(docs, i);
         if (!write_dict(buffer, doc, check_keys, 1)) {
             buffer_free(buffer);
