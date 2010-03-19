@@ -26,6 +26,9 @@ def _parse_version_string(version_string):
     if version_string.endswith("+"):
         version_string = version_string[0:-1]
         mod = 1
+    elif version_string.endswith("-pre-"):
+        version_string = version_string[0:-5]
+        mod = -1
     elif version_string.endswith("-"):
         version_string = version_string[0:-1]
         mod = -1
