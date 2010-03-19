@@ -232,6 +232,8 @@ class Database(object):
                       "Please use 'command' instead.", DeprecationWarning)
         return self.command(command, check, allowable_errors, sock)
 
+    # TODO api could be nicer like take a verb and a subject and then kwargs
+    # for options
     def command(self, command, check=True, allowable_errors=[], _sock=None):
         """Issue a MongoDB command.
 
