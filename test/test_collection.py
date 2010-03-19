@@ -959,5 +959,10 @@ class TestCollection(unittest.TestCase):
         db[u"Employés"].find_one()
         list(db[u"Employés"].find())
 
+    def test_drop_indexes_non_existant(self):
+        self.db.drop_collection("test")
+        self.db.test.drop_indexes()
+
+
 if __name__ == "__main__":
     unittest.main()

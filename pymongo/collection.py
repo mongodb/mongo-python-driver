@@ -700,7 +700,7 @@ class Collection(object):
         self.__database.command(SON([("deleteIndexes",
                                       self.__name),
                                      ("index", name)]),
-                                ["ns not found"])
+                                allowable_errors=["ns not found"])
 
     def index_information(self):
         """Get information on this collection's indexes.
