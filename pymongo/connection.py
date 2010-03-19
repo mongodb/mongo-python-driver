@@ -804,19 +804,19 @@ class Connection(object): # TODO support auth for pooling
 
         database._check_name(to_name)
 
-        command = SON([("copydb", 1), ("fromdb", from_name), ("todb", to_name)])
+        command = {"fromdb": from_name, "todb": to_name}
 
         if from_host is not None:
             command["fromhost"] = from_host
 
         if username is not None:
-            nonce = self.admin.command(SON([("copydbgetnonce", 1),
-                                            ("fromhost", from_host)]))["nonce"]
+            nonce = self.admin.command("copydbgetnonce",
+                                       fromhost=from_host)["nonce"]
             command["username"] = username
             command["nonce"] = nonce
             command["key"] = helpers._auth_key(nonce, username, password)
 
-        return self.admin.command(command)
+        return self.admin.command("copydb", **command)
 
     def __iter__(self):
         return self

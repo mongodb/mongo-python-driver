@@ -230,17 +230,36 @@ class Database(object):
     def _command(self, command, allowable_errors=[], check=True, sock=None):
         warnings.warn("The '_command' method is deprecated. "
                       "Please use 'command' instead.", DeprecationWarning)
-        return self.command(command, check, allowable_errors, sock)
+        return self.command(command, check=check,
+                            allowable_errors=allowable_errors, _sock=sock)
 
-    # TODO api could be nicer like take a verb and a subject and then kwargs
-    # for options
-    def command(self, command, check=True, allowable_errors=[], _sock=None):
+    def command(self, command, value=1,
+                check=True, allowable_errors=[], _sock=None, **kwargs):
         """Issue a MongoDB command.
 
         Send command `command` to the database and return the
-        response. If `command` is an instance of :class:`str` then the
-        command ``{command: 1}`` will be sent. Otherwise, `command`
-        must be an instance of :class:`dict` and will be sent as is.
+        response. If `command` is an instance of :class:`basestring`
+        then the command {`command`: `value`} will be sent. Otherwise,
+        `command` must be an instance of :class:`dict` and will be
+        sent as is.
+
+        Any additional keyword arguments will be added to the final
+        command document before it is sent.
+
+        For example, a command like ``{buildinfo: 1}`` can be sent
+        using:
+
+        >>> db.command("buildinfo")
+
+        For a command where the value matters, like ``{collstats:
+        collection_name}`` we can do:
+
+        >>> db.command("collstats", collection_name)
+
+        For commands that take additional arguments we can use
+        kwargs. So ``{filemd5: object_id, root: file_root}`` becomes:
+
+        >>> db.command("filemd5", object_id, root=file_root)
 
         :Parameters:
           - `command`: document representing the command to be issued,
@@ -248,15 +267,22 @@ class Database(object):
 
             .. note:: the order of keys in the `command` document is
                significant (the "verb" must come first), so commands
-               which require multiple keys (eg, `findandmodify`)
-               should use an instance of :class:`~pymongo.son.SON`
-               instead of a Python `dict`.
+               which require multiple keys (e.g. `findandmodify`)
+               should use an instance of :class:`~pymongo.son.SON` or
+               a string and kwargs instead of a Python `dict`.
 
+          - `value` (optional): value to use for the command verb when
+            `command` is passed as a string
           - `check` (optional): check the response for errors, raising
             :class:`~pymongo.errors.OperationFailure` if there are any
-          - `allowable_errors`: if `check` is ``True``, error messages in this
-            list will be ignored by error-checking
+          - `allowable_errors`: if `check` is ``True``, error messages
+            in this list will be ignored by error-checking
+          - `**kwargs` (optional): additional keyword arguments will
+            be added to the command document before it is sent
 
+        .. versionchanged:: 1.5.1+
+           Added the `value` argument for string commands, and keyword
+           arguments for additional command options.
         .. versionchanged:: 1.5
            `command` can be a string in addition to a full document.
         .. versionadded:: 1.4
@@ -264,8 +290,10 @@ class Database(object):
         .. mongodoc:: commands
         """
 
-        if isinstance(command, str):
-            command = {command: 1}
+        if isinstance(command, basestring):
+            command = SON([(command, value)])
+
+        command.update(kwargs)
 
         result = self["$cmd"].find_one(command, _sock=_sock,
                                        _must_use_master=True,
@@ -308,7 +336,7 @@ class Database(object):
         if name not in self.collection_names():
             return
 
-        self.command({"drop": unicode(name)})
+        self.command("drop", unicode(name))
 
     def validate_collection(self, name_or_collection):
         """Validate a collection.
@@ -324,7 +352,7 @@ class Database(object):
             raise TypeError("name_or_collection must be an instance of "
                             "(Collection, str, unicode)")
 
-        result = self.command({"validate": unicode(name)})
+        result = self.command("validate", unicode(name))
 
         info = result["result"]
         if info.find("exception") != -1 or info.find("corrupt") != -1:
@@ -339,7 +367,7 @@ class Database(object):
 
         .. mongodoc:: profiling
         """
-        result = self.command({"profile": -1})
+        result = self.command("profile", -1)
 
         assert result["was"] >= 0 and result["was"] <= 2
         return result["was"]
@@ -359,7 +387,7 @@ class Database(object):
         if not isinstance(level, int) or level < 0 or level > 2:
             raise ValueError("level must be one of (OFF, SLOW_ONLY, ALL)")
 
-        self.command({"profile": level})
+        self.command("profile", level)
 
     def profiling_info(self):
         """Returns a list containing current profiling information.
@@ -496,8 +524,7 @@ class Database(object):
         nonce = self.command("getnonce")["nonce"]
         key = helpers._auth_key(nonce, name, password)
         try:
-            self.command(SON([("authenticate", 1), ("user", unicode(name)),
-                              ("nonce", nonce), ("key", key)]))
+            self.command("authenticate", user=unicode(name), nonce=nonce, key=key)
             return True
         except OperationFailure:
             return False
@@ -549,8 +576,7 @@ class Database(object):
         if not isinstance(code, Code):
             code = Code(code)
 
-        command = SON([("$eval", code), ("args", list(args))])
-        result = self.command(command)
+        result = self.command("$eval", code, args=args)
         return result.get("retval", None)
 
     def __call__(self, *args, **kwargs):

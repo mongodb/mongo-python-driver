@@ -184,11 +184,10 @@ class TestMasterSlaveConnection(unittest.TestCase):
 
         def cursor_count():
             count = 0
-            res = self.connection.master.test_pymongo.command({
-                    "cursorInfo": 1})
+            res = self.connection.master.test_pymongo.command("cursorInfo")
             count += res["clientCursors_size"]
             for slave in self.connection.slaves:
-                res = slave.test_pymongo.command({"cursorInfo": 1})
+                res = slave.test_pymongo.command("cursorInfo")
                 count += res["clientCursors_size"]
             return count
 

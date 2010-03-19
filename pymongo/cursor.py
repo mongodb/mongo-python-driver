@@ -301,9 +301,7 @@ class Cursor(object):
            :meth:`~pymongo.cursor.Cursor.__len__` was deprecated in favor of
            calling :meth:`count` with `with_limit_and_skip` set to ``True``.
         """
-        command = SON([("count", self.__collection.name),
-                       ("query", self.__spec),
-                       ("fields", self.__fields)])
+        command = {"query": self.__spec, "fields": self.__fields}
 
         if with_limit_and_skip:
             if self.__limit:
@@ -311,10 +309,12 @@ class Cursor(object):
             if self.__skip:
                 command["skip"] = self.__skip
 
-        response = self.__collection.database.command(command, allowable_errors=["ns missing"])
-        if response.get("errmsg", "") == "ns missing":
+        r = self.__collection.database.command("count", self.__collection.name,
+                                               allowable_errors=["ns missing"],
+                                               **command)
+        if r.get("errmsg", "") == "ns missing":
             return 0
-        return int(response["n"])
+        return int(r["n"])
 
     def distinct(self, key):
         """Get a list of distinct values for `key` among all documents
@@ -335,12 +335,13 @@ class Cursor(object):
         if not isinstance(key, basestring):
             raise TypeError("key must be an instance of basestring")
 
-        command = SON([("distinct", self.__collection.name), ("key", key)])
-
+        options = {"key": key}
         if self.__spec:
-            command["query"] = self.__spec
+            options["query"] = self.__spec
 
-        return self.__collection.database.command(command)["values"]
+        return self.__collection.database.command("distinct",
+                                                  self.__collection.name,
+                                                  **options)["values"]
 
     def explain(self):
         """Returns an explain plan record for this cursor.

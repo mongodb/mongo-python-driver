@@ -115,13 +115,12 @@ class Collection(object):
 
         # Send size as a float, not an int/long. BSON can only handle 32-bit
         # ints which conflicts w/ max collection size of 10000000000.
-        if options and "size" in options:
-            options["size"] = float(options["size"])
-
-        command = SON({"create": self.__name})
-        command.update(options)
-
-        self.__database.command(command)
+        if options:
+            if "size" in options:
+                options["size"] = float(options["size"])
+            self.__database.command("create", self.__name, **options)
+        else:
+            self.__database.command("create", self.__name)
 
     def __getattr__(self, name):
         """Get a sub-collection of this collection by name.
@@ -697,9 +696,7 @@ class Collection(object):
 
         self.__database.connection._purge_index(self.__database.name,
                                                 self.__name, name)
-        self.__database.command(SON([("deleteIndexes",
-                                      self.__name),
-                                     ("index", name)]),
+        self.__database.command("deleteIndexes", self.__name, index=name,
                                 allowable_errors=["ns not found"])
 
     def index_information(self):
@@ -785,7 +782,7 @@ class Collection(object):
         if finalize is not None:
             group["finalize"] = Code(finalize)
 
-        return self.__database.command({"group":group})["retval"]
+        return self.__database.command("group", group)["retval"]
 
     def rename(self, new_name):
         """Rename this collection.
@@ -809,11 +806,9 @@ class Collection(object):
         if new_name[0] == "." or new_name[-1] == ".":
             raise InvalidName("collecion names must not start or end with '.'")
 
-        rename_command = SON([("renameCollection", self.__full_name),
-                              ("to", "%s.%s" % (self.__database.name,
-                                                new_name))])
-
-        self.__database.connection.admin.command(rename_command)
+        new_name = "%s.%s" % (self.__database.name, new_name)
+        self.__database.connection.admin.command("renameCollection",
+                                                 self.__full_name, to=new_name)
 
     def distinct(self, key):
         """Get a list of distinct values for `key` among all documents
@@ -863,11 +858,8 @@ class Collection(object):
 
         .. mongodoc:: mapreduce
         """
-        command = SON([("mapreduce", self.__name),
-                       ("map", map), ("reduce", reduce)])
-        command.update(**kwargs)
-
-        response = self.__database.command(command)
+        response = self.__database.command("mapreduce", self.__name,
+                                           map=map, reduce=reduce, **kwargs)
         if full_response:
             return response
         return self.__database[response["result"]]
