@@ -70,9 +70,14 @@ def process_mongodoc_nodes(app, doctree, fromdocname):
     env = app.builder.env
 
     for node in doctree.traverse(mongodoc):
+        anchor = None
         for name in node.parent.parent.traverse(addnodes.desc_signature):
             anchor = name["ids"][0]
             break
+        if not anchor:
+            for name in node.parent.traverse(nodes.section):
+                anchor = name["ids"][0]
+                break
         for para in node.traverse(nodes.paragraph):
             tag = str(para.traverse()[1])
             link = mongoref("", "")
