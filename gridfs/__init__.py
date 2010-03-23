@@ -21,12 +21,14 @@ The :mod:`gridfs` package is an implementation of GridFS on top of
 """
 
 from gridfs.grid_file import GridFile
+from pymongo import (ASCENDING,
+                     DESCENDING)
 from pymongo.database import Database
 
 class GridFS(object):
     """An instance of GridFS on top of a single Database.
     """
-    def __init__(self, database):
+    def __init__(self, database, collection="fs"):
         """Create a new instance of :class:`GridFS`.
 
         Raises :class:`TypeError` if `database` is not an instance of
@@ -34,6 +36,10 @@ class GridFS(object):
 
         :Parameters:
           - `database`: database to use
+          - `collection` (optional): root collection to use
+
+        .. versionadded:: 1.5.1+
+           The `collection` parameter.
 
         .. mongodoc:: gridfs
         """
@@ -41,6 +47,10 @@ class GridFS(object):
             raise TypeError("database must be an instance of Database")
 
         self.__database = database
+        self.__files = database[collection].files
+        self.__chunks = database[collection].chunks
+        self.__chunks.create_index([("files_id", ASCENDING), ("n", ASCENDING)],
+                                   unique=True)
 
     def open(self, filename, mode="r", collection="fs"):
         """Open a :class:`~gridfs.grid_file.GridFile` for reading or
@@ -62,7 +72,8 @@ class GridFS(object):
           - `filename`: name of the :class:`~gridfs.grid_file.GridFile`
             to open
           - `mode` (optional): mode to open the file in
-          - `collection` (optional): root collection to use for this file
+          - `collection` (optional): root collection to use for this
+            file
         """
         return GridFile({"filename": filename}, self.__database, mode, collection)
 
@@ -116,7 +127,4 @@ class GridFS(object):
         """
         if not isinstance(collection, basestring):
             raise TypeError("collection must be an instance of basestring")
-        names = []
-        for grid_file in self.__database[collection].files.find():
-            names.append(grid_file["filename"])
-        return names
+        return self.__database[collection].files.distinct("filename")

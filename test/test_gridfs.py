@@ -82,7 +82,8 @@ class TestGridfs(unittest.TestCase):
         f = self.fs.open("hello world", "w")
         f.close()
 
-        self.assertEqual(["mike", "test", "hello world"], self.fs.list())
+        self.assertEqual(set(["mike", "test", "hello world"]),
+                         set(self.fs.list()))
 
     def test_remove(self):
         self.assertRaises(TypeError, self.fs.remove, 5)
@@ -98,13 +99,14 @@ class TestGridfs(unittest.TestCase):
         f = self.fs.open("hello world", "w")
         f.write("fly")
         f.close()
-        self.assertEqual(["mike", "test", "hello world"], self.fs.list())
+        self.assertEqual(set(["mike", "test", "hello world"]),
+                         set(self.fs.list()))
         self.assertEqual(self.db.fs.files.find().count(), 3)
         self.assertEqual(self.db.fs.chunks.find().count(), 3)
 
         self.fs.remove("test")
 
-        self.assertEqual(["mike", "hello world"], self.fs.list())
+        self.assertEqual(set(["mike", "hello world"]), set(self.fs.list()))
         self.assertEqual(self.db.fs.files.find().count(), 2)
         self.assertEqual(self.db.fs.chunks.find().count(), 2)
         f = self.fs.open("mike")
@@ -145,8 +147,8 @@ class TestGridfs(unittest.TestCase):
         f.close()
 
         self.assertEqual([], self.fs.list())
-        self.assertEqual(["mike", "test", "hello world"],
-                         self.fs.list("pymongo_test"))
+        self.assertEqual(set(["mike", "test", "hello world"]),
+                         set(self.fs.list("pymongo_test")))
 
     def test_remove_alt_coll(self):
         f = self.fs.open("mike", "w", "pymongo_test")
@@ -160,10 +162,11 @@ class TestGridfs(unittest.TestCase):
         f.close()
 
         self.fs.remove("test")
-        self.assertEqual(["mike", "test", "hello world"],
-                         self.fs.list("pymongo_test"))
+        self.assertEqual(set(["mike", "test", "hello world"]),
+                         set(self.fs.list("pymongo_test")))
         self.fs.remove("test", "pymongo_test")
-        self.assertEqual(["mike", "hello world"], self.fs.list("pymongo_test"))
+        self.assertEqual(set(["mike", "hello world"]),
+                         set(self.fs.list("pymongo_test")))
 
         f = self.fs.open("mike", collection="pymongo_test")
         self.assertEqual(f.read(), "hi")
@@ -204,10 +207,10 @@ class TestGridfs(unittest.TestCase):
         self.assertEqual(f.read(), "hello")
         f.close()
 
-    # NOTE I do recognize how gross this is. There is no good way to test the
-    # with statement because it is a syntax error in older python versions.
-    # One option would be to use eval and skip the test if it is a syntax
-    # error.
+    # NOTE I do recognize how gross this is. There is no good way to
+    # test the with statement because it is a syntax error in older
+    # python versions.  One option would be to use eval and skip the
+    # test if it is a syntax error.
     if sys.version_info[:2] == (2, 5):
         import gridfs15
         test_with_statement = gridfs15.test_with_statement
