@@ -103,7 +103,7 @@ class GridFS(object):
         """Get a file from GridFS by ``"_id"``.
 
         Returns an instance of :class:`~gridfs.grid_file.GridOut`,
-        which provides a file-like interface.
+        which provides a file-like interface for reading.
 
         :Parameters:
           - `file_id`: ``"_id"`` of the file to get

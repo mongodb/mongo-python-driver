@@ -40,9 +40,9 @@ class UnsupportedAPI(GridFSError):
 
     In version 1.5.1+ of the PyMongo distribution there were backwards
     incompatible changes to the GridFS API. Upgrading shouldn't be
-    difficult, but the old API is no longer supported (no deprecation
-    period). This exception will be raised when attempting to use
-    unsupported constructs from the old API.
+    difficult, but the old API is no longer supported (with no
+    deprecation period). This exception will be raised when attempting
+    to use unsupported constructs from the old API.
 
     .. versionadded:: 1.5.1+
     """

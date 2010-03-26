@@ -4,7 +4,15 @@
 .. automodule:: gridfs.grid_file
    :synopsis: Tools for representing files stored in GridFS
 
-   .. autoclass:: GridFile(file-spec, database[, mode='r'[, collection='fs']])
+   .. autoclass:: GridIn
       :members:
 
       .. autoattribute:: _id
+
+   .. autoclass:: GridOut
+      :members:
+
+      .. autoattribute:: _id
+
+   .. autoclass:: GridFile(file-spec, database[, mode='r'[, collection='fs']])
+      :members:
