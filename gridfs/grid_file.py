@@ -38,20 +38,24 @@ except AttributeError: # before 2.5
     _SEEK_END = 2
 
 
+"""Default chunk size, in bytes."""
+DEFAULT_CHUNK_SIZE = 256 * 1024
+
+
 def _create_property(field_name, docstring,
                       read_only=False, closed_only=False):
     """Helper for creating properties to read/write to files.
     """
     def getter(self):
-        if closed_only and not self.__closed:
+        if closed_only and not self._closed:
             raise AttributeError("can only get %r on a closed file" %
                                  field_name)
-        return self.__file.get(field_name, None)
+        return self._file.get(field_name, None)
     def setter(self, value):
-        if self.__closed:
+        if self._closed:
             raise AttributeError("cannot set %r on a closed file" %
                                  field_name)
-        self.__file[field_name] = value
+        self._file[field_name] = value
 
     if read_only:
         docstring = docstring + "\n\nThis attribute is read-only."""
@@ -107,32 +111,40 @@ class GridIn(object):
         if not isinstance(root_collection, Collection):
             raise TypeError("root_collection must be an instance of Collection")
 
-        # Convert from kwargs to a file document
+        # Handle alternative naming
         if "content_type" in kwargs:
             kwargs["contentType"] = kwargs.pop("content_type")
         if "chunk_size" in kwargs:
             kwargs["chunkSize"] = kwargs.pop("chunk_size")
+
+        # Move bonus kwargs into metadata
+        to_move = []
         for key in kwargs:
             if key not in ["_id", "filename", "contentType",
                            "chunkSize", "aliases", "metadata"]:
-                kwargs["metadata"] = kwargs.get("metadata", {})
+                to_move.append(key)
+        if to_move:
+            kwargs["metadata"] = kwargs.get("metadata", {})
+            for key in to_move:
                 kwargs["metadata"][key] = kwargs.pop(key)
-        if "_id" not in kwargs:
-            kwargs["_id"] = ObjectId()
+
+        # Defaults
+        kwargs["_id"] = kwargs.get("_id", ObjectId())
+        kwargs["chunkSize"] = kwargs.get("chunkSize", DEFAULT_CHUNK_SIZE)
 
         self.__coll = root_collection
         self.__chunks = root_collection.chunks
-        self.__file = kwargs
+        self._file = kwargs
         self.__buffer = StringIO()
         self.__position = 0
         self.__chunk_number = 0
-        self.__closed = False
+        self._closed = False
 
     @property
     def closed(self):
         """Is this file closed?
         """
-        return self.__closed
+        return self._closed
 
     _id = _create_property("_id", "The ``'_id'`` value for this file.",
                             read_only=True)
@@ -158,7 +170,7 @@ class GridIn(object):
             return
         assert(len(data) <= self.chunk_size)
 
-        chunk = {"files_id": self.__file["_id"],
+        chunk = {"files_id": self._file["_id"],
                  "n": self.__chunk_number,
                  "data": Binary(data)}
 
@@ -181,10 +193,10 @@ class GridIn(object):
         md5 = self.__coll.database.command("filemd5", self._id,
                                            root=self.__coll.name)["md5"]
 
-        self.__file["md5"] = md5
-        self.__file["length"] = self.__position
-        self.__file["uploadDate"] = datetime.datetime.utcnow()
-        return self.__coll.files.insert(self.__file)
+        self._file["md5"] = md5
+        self._file["length"] = self.__position
+        self._file["uploadDate"] = datetime.datetime.utcnow()
+        return self.__coll.files.insert(self._file)
 
     def close(self):
         """Flush the file and close it.
@@ -192,9 +204,9 @@ class GridIn(object):
         A closed file cannot be written any more. Calling
         :meth:`close` more than once is allowed.
         """
-        if not self.__closed:
+        if not self._closed:
             self.__flush()
-        self.__closed = True
+        self._closed = True
 
     # TODO should support writing unicode to a file. this means that files will
     # need to have an encoding attribute.
@@ -210,7 +222,7 @@ class GridIn(object):
         :Parameters:
           - `data`: string of bytes to be written to the file
         """
-        if self.__closed:
+        if self._closed:
             raise ValueError("cannot write to a closed file")
 
         if not isinstance(data, str):
@@ -270,9 +282,9 @@ class GridOut(object):
             raise TypeError("root_collection must be an instance of Collection")
 
         self.__chunks = root_collection.chunks
-        self.__file = root_collection.files.find_one({"_id": file_id})
+        self._file = root_collection.files.find_one({"_id": file_id})
 
-        if not self.__file:
+        if not self._file:
             raise NoFile("no file in gridfs collection %r with _id %r" %
                          (root_collection, file_id))
 
@@ -315,7 +327,7 @@ class GridOut(object):
             size = remainder
 
         data = self.__buffer
-        chunk_number = (len(bytes) + self.__position) / self.chunk_size
+        chunk_number = (len(data) + self.__position) / self.chunk_size
 
         while len(data) < size:
             chunk = self.__chunks.find_one({"files_id": self._id,

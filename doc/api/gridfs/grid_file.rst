@@ -14,5 +14,5 @@
 
       .. autoattribute:: _id
 
-   .. autoclass:: GridFile(file-spec, database[, mode='r'[, collection='fs']])
+   .. autoclass:: GridFile
       :members:
