@@ -15,21 +15,18 @@
 """Tools for representing files stored in GridFS."""
 
 import datetime
-import math
 import os
 try:
     from cStringIO import StringIO
-except:
+except ImportError:
     from StringIO import StringIO
-from threading import Condition
 
-from gridfs.errors import CorruptGridFile
-from pymongo import ASCENDING
+from gridfs.errors import (CorruptGridFile,
+                           NoFile,
+                           UnsupportedAPI)
 from pymongo.binary import Binary
-from pymongo.database import Database
-from pymongo.dbref import DBRef
+from pymongo.collection import Collection
 from pymongo.objectid import ObjectId
-from pymongo.son import SON
 
 try:
     _SEEK_SET = os.SEEK_SET
@@ -40,365 +37,188 @@ except AttributeError: # before 2.5
     _SEEK_CUR = 1
     _SEEK_END = 2
 
-# TODO we should use per-file reader-writer locks here instead,
-# for performance. Unfortunately they aren't in the Python standard library.
-_files_lock = Condition()
-_open_files = {}
 
-
-class GridFile(object):
-    """A "file" stored in GridFS.
+def _create_property(field_name, docstring,
+                      read_only=False, closed_only=False):
+    """Helper for creating properties to read/write to files.
     """
-    # TODO should be able to create a GridFile given a Collection object instead
-    # of a database and collection name?
-    # TODO this whole file_spec thing is over-engineered. ought to be just
-    # filename.
-    def __init__(self, file_spec, database, mode="r", collection="fs"):
-        """Open a "file" in GridFS.
+    def getter(self):
+        if closed_only and not self.__closed:
+            raise AttributeError("can only get %r on a closed file" %
+                                 field_name)
+        return self.__file.get(field_name, None)
+    def setter(self, value):
+        if self.__closed:
+            raise AttributeError("cannot set %r on a closed file" %
+                                 field_name)
+        self.__file[field_name] = value
+
+    if not read_only and not closed_only:
+        return property(getter, setter, doc=docstring)
+    return property(getter, doc=docstring)
+
+
+class GridIn(object):
+    """Class to write data to GridFS.
+    """
+    def __init__(self, root_collection, **kwargs):
+        """Write a file to GridFS
 
         Application developers should generally not need to
-        instantiate this class directly - instead see the
-        :meth:`~gridfs.GridFS.open` method.
+        instantiate this class directly - instead see the methods
+        provided by :class:`~gridfs.GridFS`.
 
-        Only a single opened :class:`GridFile` instance may exist for
-        a file in gridfs at any time. Care must be taken to close
-        :class:`GridFile` instances when done using
-        them. :class:`GridFile` instances support the context manager
-        protocol (the "with" statement).
+        Raises :class:`TypeError` if `root_collection` is not an
+        instance of :class:`~pymongo.collection.Collection`.
 
-        Raises :class:`TypeError` if `file_spec` is not an instance of
-        :class:`dict`, `database` is not an instance of
-        :class:`~pymongo.database.Database`, or `collection` is not an
-        instance of :class:`basestring`.
-
-        The `file_spec` argument must be a query specifying the file
-        to open. The *first* file matching the query will be
-        opened. If no such files exist, a new file is created using
-        the metadata in `file_spec`.  The valid fields in a
-        `file_spec` are as follows:
+        Any of the file level options specified in the `GridFS Spec
+        <http://dochub.mongodb.org/core/gridfsspec>`_ may be passed as
+        keyword arguments. Any additional keyword arguments will be
+        set as fields in the ``"metadata"`` embedded document allowed
+        by the spec (overwriting any existing ``"metadata"`` field
+        with the same name). Valid keyword arguments include:
 
           - ``"_id"``: unique ID for this file (default:
             :class:`~pymongo.objectid.ObjectId`)
 
           - ``"filename"``: human name for the file
 
-          - ``"contentType"``: valid mime-type for the file
+          - ``"contentType"`` or ``"content_type"``: valid mime-type
+            for the file
 
-          - ``"length"``: size of the file, in bytes
-
-            .. note:: only used for querying, automatically set for inserts
-
-          - ``"chunkSize"``: size of each of the chunks, in bytes
-            (default: 256 kb)
-
-          - ``"uploadDate"``: date when the object was first stored
-
-            .. note:: only used for querying, automatically set for inserts
+          - ``"chunkSize"`` or ``"chunk_size"``: size of each of the
+            chunks, in bytes (default: 256 kb)
 
           - ``"aliases"``: array of alias strings
 
           - ``"metadata"``: document containing arbitrary metadata
 
         :Parameters:
-          - `file_spec`: query specifier as described above
-          - `database`: the database to store/retrieve this file in
-          - `mode` (optional): the mode to open this file with, one of
-            (``"r"``, ``"w"``)
-          - `collection` (optional): the collection in which to
-            store/retrieve this file
+          - `root_collection`: root collection to write to
+          - `**kwargs` (optional): file level options (see above)
         """
-        if not isinstance(file_spec, dict):
-            raise TypeError("file_spec must be an instance of (dict, SON)")
-        if not isinstance(database, Database):
-            raise TypeError("database must be an instance of database")
-        if not isinstance(collection, basestring):
-            raise TypeError("collection must be an instance of basestring")
-        if not isinstance(mode, basestring):
-            raise TypeError("mode must be an instance of basestring")
-        if mode not in ("r", "w"):
-            raise ValueError("mode must be one of ('r', 'w')")
+        if not isinstance(root_collection, Collection):
+            raise TypeError("root_collection must be an instance of Collection")
 
-        self.__collection = database[collection]
-        self.__collection.chunks.ensure_index([("files_id", ASCENDING),
-                                               ("n", ASCENDING)], unique=True)
+        # Convert from kwargs to a file document
+        if "content_type" in kwargs:
+            kwargs["contentType"] = kwargs.pop("content_type")
+        if "chunk_size" in kwargs:
+            kwargs["chunkSize"] = kwargs.pop("chunk_size")
+        for key in kwargs:
+            if key not in ["_id", "filename", "contentType",
+                           "chunkSize", "aliases", "metadata"]:
+                kwargs["metadata"] = kwargs.get("metadata", {})
+                kwargs["metadata"][key] = kwargs.pop(key)
+        if "_id" not in kwargs:
+            kwargs["_id"] = ObjectId()
 
-        _files_lock.acquire()
-
-        grid_file = self.__collection.files.find_one(file_spec)
-        if grid_file:
-            self.__id = grid_file["_id"]
-        else:
-            if mode == "r":
-                _files_lock.release()
-                raise IOError("No such file: %r" % file_spec)
-            grid_file = file_spec.copy()
-            grid_file["length"] = 0
-            grid_file["uploadDate"] = datetime.datetime.utcnow()
-            grid_file.setdefault("chunkSize", 256000)
-            self.__id = self.__collection.files.insert(grid_file)
-
-        # we use repr(self.__id) here because we need it to be string and
-        # filename gets tricky with renaming. this is a hack.
-        while repr(self.__id) in _open_files:
-            _files_lock.wait()
-        _open_files[repr(self.__id)] = True
-        _files_lock.release()
-
-        self.__mode = mode
-        if mode == "w":
-            self.__erase()
-        self.__buffer = ""
-        self.__write_buffer = StringIO()
+        self.__coll = root_collection
+        self.__chunks = root_collection.chunks
+        self.__file = kwargs
+        self.__buffer = StringIO()
         self.__position = 0
         self.__chunk_number = 0
-        self.__chunk_size = grid_file["chunkSize"]
         self.__closed = False
-
-    def __erase(self):
-        """Erase all of the data stored in this GridFile.
-        """
-        grid_file = self.__collection.files.find_one({"_id": self.__id})
-        grid_file["next"] = None
-        grid_file["length"] = 0
-        self.__collection.files.save(grid_file)
-
-        self.__collection.chunks.remove({"files_id": self.__id})
-
-    @property
-    def _id(self):
-        """The ``"_id"`` value for this :class:`GridFile`.
-
-        .. versionadded:: 1.5.1
-        """
-        return self.__id
 
     @property
     def closed(self):
-        """Is this :class:`GridFile` closed?
+        """Is this file closed?
         """
         return self.__closed
 
-    @property
-    def mode(self):
-        """Mode this :class:`GridFile` was opened with.
+    _id = _create_property("_id", "The ``'_id'`` value for this file.",
+                            read_only=True)
+    name = _create_property("filename", "Name of this file.")
+    content_type = _create_property("contentType", "Mime-type for this file.")
+    length = _create_property("length", "Length (in bytes) of this file.",
+                               closed_only=True)
+    chunk_size = _create_property("chunkSize", "Chunk size for this file.",
+                                   read_only=True)
+    upload_date = _create_property("uploadDate",
+                                    "Date that this file was uploaded.",
+                                    closed_only=True)
+    aliases = _create_property("aliases", "List of aliases for this file.")
+    metadata = _create_property("metadata", "Metadata attached to this file.")
+    md5 = _create_property("md5", "MD5 of the contents of this file "
+                            "(generated on the server).",
+                            closed_only=True)
+
+    def __flush_data(self, data):
+        """Flush `data` to a chunk.
         """
-        return self.__mode
-
-    def __create_property(field_name, docstring, read_only=False):
-        def getter(self):
-            return self.__collection.files.find_one({"_id": self.__id}).get(field_name, None)
-        def setter(self, value):
-            grid_file = self.__collection.files.find_one({"_id": self.__id})
-            grid_file[field_name] = value
-            self.__collection.files.save(grid_file)
-
-        if not read_only:
-            return property(getter, setter, doc=docstring)
-        return property(getter, doc=docstring)
-
-    name = __create_property("filename", "Name of this :class:`GridFile`.",
-                             True)
-    content_type = __create_property("contentType", "Mime-type for "
-                                     "this :class:`GridFile`.")
-    length = __create_property("length", "Length (in bytes) of this "
-                               ":class:`GridFile`.", True)
-    chunk_size = __create_property("chunkSize", "Chunk size for this "
-                                   ":class:`GridFile`.", True)
-    upload_date = __create_property("uploadDate", "Date that this "
-                                    ":class:`GridFile` was first uploaded.",
-                                    True)
-    aliases = __create_property("aliases", "List of aliases for this "
-                                ":class:`GridFile`.")
-    metadata = __create_property("metadata", "Metadata attached to this "
-                                 ":class:`GridFile`.")
-    md5 = __create_property("md5", "MD5 of the contents of this "
-                            ":class:`GridFile` (generated on the server).",
-                            True)
-
-    def rename(self, filename):
-        """Rename this :class:`GridFile`.
-
-        Due to buffering, the rename might not actually occur until
-        :meth:`flush` or :meth:`close` is called.
-
-        :Parameters:
-          - `filename`: the new name for this :class:`GridFile`
-        """
-        grid_file = self.__collection.files.find_one({"_id": self.__id})
-        grid_file["filename"] = filename
-        self.__collection.files.save(grid_file)
-
-    def __flush_write_buffer(self):
-        """Flush the write buffer contents out to a chunk.
-        """
-        data = self.__write_buffer.getvalue()
-
         if not data:
             return
+        assert(len(data) <= self.chunk_size)
 
-        assert(len(data) <= self.__chunk_size)
-
-        chunk = {"files_id": self.__id,
+        chunk = {"files_id": self.__file["_id"],
                  "n": self.__chunk_number,
-                 "data": Binary(data) }
+                 "data": Binary(data)}
 
-        self.__collection.chunks.update({"files_id": self.__id,
-                                         "n": self.__chunk_number},
-                                        chunk,
-                                        upsert=True)
+        self.__chunks.insert(chunk)
+        self.__chunk_number += 1
+        self.__position += len(data)
 
-        if len(data) == self.__chunk_size:
-            self.__chunk_number += 1
-            self.__position += len(data)
-            self.__write_buffer.close()
-            self.__write_buffer = StringIO()
-
-    def flush(self):
-        """Flush the :class:`GridFile` to the database.
+    def __flush_buffer(self):
+        """Flush the buffer contents out to a chunk.
         """
-        self.__assert_open()
-        if self.mode != "w":
-            return
+        self.__flush_data(self.__buffer.getvalue())
+        self.__buffer.close()
+        self.__buffer = StringIO()
 
-        self.__flush_write_buffer()
+    def __flush(self):
+        """Flush the file to the database.
+        """
+        self.__flush_buffer()
 
-        md5 = self.__collection.database.command("filemd5", self.__id,
-                                                 root=self.__collection.name)["md5"]
+        md5 = self.__coll.database.command("filemd5", self._id,
+                                           root=self.__coll.name)["md5"]
 
-        grid_file = self.__collection.files.find_one({"_id": self.__id})
-        grid_file["md5"] = md5
-        grid_file["length"] = self.__position + self.__write_buffer.tell()
-        self.__collection.files.save(grid_file)
+        self.__file["md5"] = md5
+        self.__file["length"] = self.__position
+        self.__file["uploadDate"] = datetime.datetime.utcnow()
+        return self.__coll.files.insert(self.__file)
 
     def close(self):
-        """Close the :class:`GridFile`.
+        """Flush the file and close it.
 
-        A closed :class:`GridFile` cannot be read or written any
-        more. Calling :meth:`close` more than once is allowed.
+        A closed file cannot be written any more. Calling
+        :meth:`close` more than once is allowed.
         """
         if not self.__closed:
-            self.flush()
+            self.__flush()
         self.__closed = True
-
-        _files_lock.acquire()
-        if repr(self.__id) in _open_files:
-            del _open_files[repr(self.__id)]
-            _files_lock.notifyAll()
-        _files_lock.release()
-
-    def __assert_open(self, mode=None):
-        if mode and self.mode != mode:
-            raise ValueError("file must be open in mode %r" % mode)
-        if self.closed:
-            raise ValueError("operation cannot be performed on a closed GridFile")
-
-    def read(self, size=-1):
-        """Read at most `size` bytes from the file (less if there
-        isn't enough data).
-
-        The bytes are returned as an instance of :class:`str`. If
-        `size` is negative or omitted all data is read. Raises
-        :class:`ValueError` if this :class:`GridFile` is already
-        closed.
-
-        :Parameters:
-          - `size` (optional): the number of bytes to read
-        """
-        self.__assert_open("r")
-
-        if size == 0:
-            return ""
-
-        remainder = int(self.length) - self.__position
-        if size < 0 or size > remainder:
-            size = remainder
-
-        bytes = self.__buffer
-        chunk_number = (len(bytes) + self.__position) / self.__chunk_size
-
-        while len(bytes) < size:
-            chunk = self.__collection.chunks.find_one({"files_id": self.__id, "n": chunk_number})
-            if not chunk:
-                raise CorruptGridFile("no chunk for n = " + chunk_number)
-
-            if not bytes:
-                bytes += chunk["data"][self.__position % self.__chunk_size:]
-            else:
-                bytes += chunk["data"]
-
-            chunk_number += 1
-
-        self.__position += size
-        to_return = bytes[:size]
-        self.__buffer = bytes[size:]
-        return to_return
 
     # TODO should support writing unicode to a file. this means that files will
     # need to have an encoding attribute.
     def write(self, data):
-        """Write a string to the :class:`GridFile`. There is no return
-        value.
+        """Write a string to the file. There is no return value.
 
-        Due to buffering, the string may not actually show up in the
-        database until the :meth:`flush` or :meth:`close` method is
-        called. Raises :class:`ValueError` if this :class:`GridFile`
-        is already closed. Raises :class:`TypeErrer` if `data` is not
-        an instance of :class:`str`.
+        Due to buffering, the string may not actually be written to
+        the database until the :meth:`close` method is called. Raises
+        :class:`ValueError` if this file is already closed. Raises
+        :class:`TypeErrer` if `data` is not an instance of
+        :class:`str`.
 
         :Parameters:
           - `data`: string of bytes to be written to the file
         """
-        self.__assert_open("w")
+        if self.__closed:
+            raise ValueError("cannot write to a closed file")
 
         if not isinstance(data, str):
             raise TypeError("can only write strings")
 
         while data:
-            space = self.__chunk_size - self.__write_buffer.tell()
+            space = self.chunk_size - self.__buffer.tell()
 
             if len(data) <= space:
-                self.__write_buffer.write(data)
+                self.__buffer.write(data)
                 break
             else:
-                self.__write_buffer.write(data[:space])
-                self.__flush_write_buffer()
+                self.__buffer.write(data[:space])
+                self.__flush_buffer()
                 data = data[space:]
-
-    def tell(self):
-        """Return the current position of this :class:`GridFile`
-        (read-mode files only).
-        """
-        self.__assert_open("r")
-        return self.__position
-
-    def seek(self, pos, whence=_SEEK_SET):
-        """Set the current position of this :class:`GridFile`
-        (read-mode files only).
-
-        :Parameters:
-         - `pos`: the position (or offset if using relative
-           positioning) to seek to
-         - `whence` (optional): where to seek
-           from. :attr:`os.SEEK_SET` (``0``) for absolute file
-           positioning, :attr:`os.SEEK_CUR` (``1``) to seek relative
-           to the current position, :attr:`os.SEEK_END` (``2``) to
-           seek relative to the file's end.
-        """
-        self.__assert_open("r")
-        if whence == _SEEK_SET:
-            new_pos = pos
-        elif whence == _SEEK_CUR:
-            new_pos = self.__position + pos
-        elif whence == _SEEK_END:
-            new_pos = int(self.length) + pos
-        else:
-            raise IOError(22, "Invalid argument")
-
-        if new_pos < 0:
-            raise IOError(22, "Invalid argument")
-
-        self.__position = new_pos
-        self.__buffer = ""
 
     def writelines(self, sequence):
         """Write a sequence of strings to the file.
@@ -420,3 +240,133 @@ class GridFile(object):
         """
         self.close()
         return False # propogate exceptions
+
+
+class GridOut(object):
+    """Class to read data out of GridFS.
+    """
+    def __init__(self, root_collection, file_id):
+        """Read a file from GridFS
+
+        Application developers should generally not need to
+        instantiate this class directly - instead see the methods
+        provided by :class:`~gridfs.GridFS`.
+
+        Raises :class:`TypeError` if `root_collection` is not an instance of
+        :class:`~pymongo.collection.Collection`.
+
+        :Parameters:
+          - `root_collection`: root collection to read from
+          - `file_id`: value of ``"_id"`` for the file to read
+        """
+        if not isinstance(root_collection, Collection):
+            raise TypeError("root_collection must be an instance of Collection")
+
+        self.__chunks = root_collection.chunks
+        self.__file = root_collection.files.find_one({"_id": file_id})
+
+        if not self.__file:
+            raise NoFile("no file in gridfs collection %r with _id %r" %
+                         (root_collection, file_id))
+
+        self.__buffer = ""
+        self.__position = 0
+
+    _id = _create_property("_id", "The ``'_id'`` value for this file.", True)
+    name = _create_property("filename", "Name of this file.", True)
+    content_type = _create_property("contentType", "Mime-type for this file.",
+                                     True)
+    length = _create_property("length", "Length (in bytes) of this file.",
+                               True)
+    chunk_size = _create_property("chunkSize", "Chunk size for this file.",
+                                   True)
+    upload_date = _create_property("uploadDate",
+                                    "Date that this file was first uploaded.",
+                                    True)
+    aliases = _create_property("aliases", "List of aliases for this file.",
+                                True)
+    metadata = _create_property("metadata", "Metadata attached to this file.",
+                                 True)
+    md5 = _create_property("md5", "MD5 of the contents of this file "
+                            "(generated on the server).", True)
+
+    def read(self, size=-1):
+        """Read at most `size` bytes from the file (less if there
+        isn't enough data).
+
+        The bytes are returned as an instance of :class:`str`. If
+        `size` is negative or omitted all data is read.
+
+        :Parameters:
+          - `size` (optional): the number of bytes to read
+        """
+        if size == 0:
+            return ""
+
+        remainder = int(self.length) - self.__position
+        if size < 0 or size > remainder:
+            size = remainder
+
+        data = self.__buffer
+        chunk_number = (len(bytes) + self.__position) / self.chunk_size
+
+        while len(data) < size:
+            chunk = self.__chunks.find_one({"files_id": self._id,
+                                            "n": chunk_number})
+            if not chunk:
+                raise CorruptGridFile("no chunk for n = " + chunk_number)
+
+            if not data:
+                data += chunk["data"][self.__position % self.chunk_size:]
+            else:
+                data += chunk["data"]
+
+            chunk_number += 1
+
+        self.__position += size
+        to_return = data[:size]
+        self.__buffer = data[size:]
+        return to_return
+
+    def tell(self):
+        """Return the current position of this file.
+        """
+        return self.__position
+
+    def seek(self, pos, whence=_SEEK_SET):
+        """Set the current position of this file.
+
+        :Parameters:
+         - `pos`: the position (or offset if using relative
+           positioning) to seek to
+         - `whence` (optional): where to seek
+           from. :attr:`os.SEEK_SET` (``0``) for absolute file
+           positioning, :attr:`os.SEEK_CUR` (``1``) to seek relative
+           to the current position, :attr:`os.SEEK_END` (``2``) to
+           seek relative to the file's end.
+        """
+        if whence == _SEEK_SET:
+            new_pos = pos
+        elif whence == _SEEK_CUR:
+            new_pos = self.__position + pos
+        elif whence == _SEEK_END:
+            new_pos = int(self.length) + pos
+        else:
+            raise IOError(22, "Invalid value for `whence`")
+
+        if new_pos < 0:
+            raise IOError(22, "Invalid value for `pos` - must be positive")
+
+        self.__position = new_pos
+        self.__buffer = ""
+
+
+class GridFile(object):
+    """No longer supported.
+
+    .. versionchanged:: 1.5.1+
+       The GridFile class is no longer supported.
+    """
+    def __init__(self, *args, **kwargs):
+        raise UnsupportedAPI("The GridFile class is no longer supported. "
+                             "Please use GridIn or GridOut instead.")

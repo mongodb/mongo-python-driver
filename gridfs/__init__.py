@@ -20,7 +20,9 @@ The :mod:`gridfs` package is an implementation of GridFS on top of
 .. mongodoc:: gridfs
 """
 
-from gridfs.grid_file import GridFile
+from gridfs.errors import UnsupportedAPI
+from gridfs.grid_file import (GridIn,
+                              GridOut)
 from pymongo import (ASCENDING,
                      DESCENDING)
 from pymongo.database import Database
@@ -47,84 +49,137 @@ class GridFS(object):
             raise TypeError("database must be an instance of Database")
 
         self.__database = database
-        self.__files = database[collection].files
-        self.__chunks = database[collection].chunks
+        self.__collection = database[collection]
+        self.__files = self.__collection.files
+        self.__chunks = self.__collection.chunks
         self.__chunks.create_index([("files_id", ASCENDING), ("n", ASCENDING)],
                                    unique=True)
 
-    def open(self, filename, mode="r", collection="fs"):
-        """Open a :class:`~gridfs.grid_file.GridFile` for reading or
-        writing.
+    def new_file(self, **kwargs):
+        """Create a new file in GridFS.
 
-        Shorthand method for creating / opening a
-        :class:`~gridfs.grid_file.GridFile` with name
-        `filename`. `mode` must be a mode supported by
-        :class:`~gridfs.grid_file.GridFile`.
-
-        Only a single opened :class:`~gridfs.grid_file.GridFile`
-        instance may exist for a file in gridfs at any time. Care must
-        be taken to close :class:`~gridfs.grid_file.GridFile`
-        instances when done using
-        them. :class:`~gridfs.grid_file.GridFile` instances support
-        the context manager protocol (the "with" statement).
+        Returns a new :class:`~gridfs.grid_file.GridIn` instance to
+        which data can be written. Any keyword arguments will be
+        passed through to :meth:`~gridfs.grid_file.GridIn`.
 
         :Parameters:
-          - `filename`: name of the :class:`~gridfs.grid_file.GridFile`
-            to open
-          - `mode` (optional): mode to open the file in
-          - `collection` (optional): root collection to use for this
-            file
+          - `**kwargs` (optional): keyword arguments for file creation
+
+        .. versionadded:: 1.5.1+
         """
-        return GridFile({"filename": filename}, self.__database, mode, collection)
+        return GridIn(self.__collection, **kwargs)
 
-    def remove(self, filename_or_spec, collection="fs"):
-        """Remove one or more :class:`~gridfs.grid_file.GridFile`
-        instances.
+    def put(self, data, **kwargs):
+        """Put data in GridFS as a new file.
 
-        Can remove by filename, or by an entire file spec (see
-        :meth:`~gridfs.grid_file.GridFile` for documentation on valid
-        fields. Delete all :class:`~gridfs.grid_file.GridFile`
-        instances that match `filename_or_spec`. Raises
-        :class:`TypeError` if `filename_or_spec` is not an instance of
-        (:class:`basestring`, :class:`dict`,
-        :class:`~pymongo.son.SON`) or collection is not an instance of
-        :class:`basestring`.
+        Equivalent to doing:
+
+        >>> f = new_file(**kwargs)
+        >>> try:
+        >>>     f.write(data)
+        >>> finally:
+        >>>     f.close()
+
+        `data` can be either an instance of :class:`str` or a
+        file-like object providing a :meth:`read` method. Any keyword
+        arguments will be passed through to the created file - see
+        :meth:`~gridfs.grid_file.GridIn` for possible
+        arguments. Returns the ``"_id"`` of the created file.
 
         :Parameters:
-          - `filename_or_spec`: identifier of file(s) to remove
-          - `collection` (optional): root collection where this file is located
+          - `data`: data to be written as a file.
+          - `**kwargs` (optional): keyword arguments for file creation
+
+        .. versionadded:: 1.5.1+
         """
-        spec = filename_or_spec
-        if isinstance(filename_or_spec, basestring):
-            spec = {"filename": filename_or_spec}
-        if not isinstance(spec, dict):
-            raise TypeError("filename_or_spec must be an "
-                            "instance of (basestring, dict, SON)")
-        if not isinstance(collection, basestring):
-            raise TypeError("collection must be an instance of basestring")
+        grid_file = GridIn(self.__collection, **kwargs)
+        try:
+            grid_file.write(data)
+        finally:
+            grid_file.close()
+        return grid_file._id
 
-        # convert to _id's so we can uniquely create GridFile instances
-        ids = []
-        for grid_file in self.__database[collection].files.find(spec):
-            ids.append(grid_file["_id"])
+    def get(self, file_id):
+        """Get a file from GridFS by ``"_id"``.
 
-        # open for writing to remove the chunks for these files
-        for file_id in ids:
-            f = GridFile({"_id": file_id}, self.__database, "w", collection)
-            f.close()
-
-        self.__database[collection].files.remove(spec)
-
-    def list(self, collection="fs"):
-        """List the names of all :class:`~gridfs.grid_file.GridFile`
-        instances stored in this instance of :class:`GridFS`.
-
-        Raises :class:`TypeError` if collection is not an instance of
-        :class:`basestring`.
+        Returns an instance of :class:`~gridfs.grid_file.GridOut`,
+        which provides a file-like interface.
 
         :Parameters:
-          - `collection` (optional): root collection to list files from
+          - `file_id`: ``"_id"`` of the file to get
+
+        .. versionadded:: 1.5.1+
         """
-        if not isinstance(collection, basestring):
-            raise TypeError("collection must be an instance of basestring")
-        return self.__database[collection].files.distinct("filename")
+        return GridOut(self.__collection, file_id)
+
+    def get_last_version(self, filename):
+        """Get a file from GridFS by ``"filename"``.
+
+        Returns the most recently uploaded file in GridFS with the
+        name `filename` as an instance of
+        :class:`~gridfs.grid_file.GridOut`, or ``None`` if no such
+        file exists.
+
+        An index on ``{filename: 1, uploadDate: -1}`` will
+        automatically be created when this method is called the first
+        time.
+
+        :Parameters:
+          - `filename`: ``"filename"`` of the file to get
+
+        .. versionadded:: 1.5.1+
+        """
+        self.__files.ensure_index([("filename", ASCENDING),
+                                   ("uploadDate", DESCENDING)])
+
+        grid_file = self.__files.find({"filename": filename},
+                                      limit=-1).sort("uploadDate", DESCENDING)
+        if grid_file:
+            return GridOut(self.__collection, grid_file["_id"])
+        return None
+
+    # TODO add optional safe mode for chunk removal?
+    def delete(self, file_id):
+        """Delete a file from GridFS by ``"_id"``.
+
+        Removes all data belonging to the file with ``"_id"``:
+        `file_id`.
+
+        .. warning:: Any processes/threads reading from the file while
+           this method is executing will likely see an invalid/corrupt
+           file. Care should be taken to avoid concurrent reads to a file
+           while it is being deleted.
+
+        :Parameters:
+          - `file_id`: ``"_id"`` of the file to delete
+
+        .. versionadded:: 1.5.1+
+        """
+        self.__files.remove({"_id": file_id}, safe=True)
+        self.__chunks.remove({"files_id": file_id})
+
+    def list(self):
+        """List the names of all files stored in this instance of
+        :class:`GridFS`.
+
+        .. versionchanged:: 1.5.1+
+           Removed the `collection` argument.
+        """
+        return self.__files.distinct("filename")
+
+    def open(self, *args, **kwargs):
+        """No longer supported.
+
+        .. versionchanged:: 1.5.1+
+           The open method is no longer supported.
+        """
+        raise UnsupportedAPI("The open method is no longer supported.")
+
+    def remove(self, *args, **kwargs):
+        """No longer supported.
+
+        .. versionchanged:: 1.5.1+
+           The remove method is no longer supported.
+        """
+        raise UnsupportedAPI("The remove method is no longer supported. "
+                             "Please use the delete method instead.")
