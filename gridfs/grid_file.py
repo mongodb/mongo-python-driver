@@ -211,33 +211,48 @@ class GridIn(object):
     # TODO should support writing unicode to a file. this means that files will
     # need to have an encoding attribute.
     def write(self, data):
-        """Write a string to the file. There is no return value.
+        """Write data to the file. There is no return value.
 
-        Due to buffering, the string may not actually be written to
-        the database until the :meth:`close` method is called. Raises
+        `data` can be either a string of bytes or a file-like object
+        (implementing :meth:`read`).
+
+        Due to buffering, the data may not actually be written to the
+        database until the :meth:`close` method is called. Raises
         :class:`ValueError` if this file is already closed. Raises
-        :class:`TypeErrer` if `data` is not an instance of
-        :class:`str`.
+        :class:`TypeError` if `data` is not an instance of
+        :class:`str` or a file-like object.
 
         :Parameters:
-          - `data`: string of bytes to be written to the file
+          - `data`: string of bytes or file-like object to be written
+            to the file
         """
         if self._closed:
             raise ValueError("cannot write to a closed file")
 
-        if not isinstance(data, str):
-            raise TypeError("can only write strings")
-
-        while data:
-            space = self.chunk_size - self.__buffer.tell()
-
-            if len(data) <= space:
-                self.__buffer.write(data)
-                break
-            else:
-                self.__buffer.write(data[:space])
+        try: # file-like
+            if self.__buffer.tell() > 0:
+                space = self.chunk_size - self.__buffer.tell()
+                self.__buffer.write(data.read(space))
                 self.__flush_buffer()
-                data = data[space:]
+            to_write = data.read(self.chunk_size)
+            while to_write and len(to_write) == self.chunk_size:
+                self.__flush_data(to_write)
+                to_write = data.read(self.chunk_size)
+            self.__buffer.write(to_write)
+        except AttributeError: # string
+            if not isinstance(data, str):
+                raise TypeError("can only write strings or file-like objects")
+
+            while data:
+                space = self.chunk_size - self.__buffer.tell()
+
+                if len(data) <= space:
+                    self.__buffer.write(data)
+                    break
+                else:
+                    self.__buffer.write(data[:space])
+                    self.__flush_buffer()
+                    data = data[space:]
 
     def writelines(self, sequence):
         """Write a sequence of strings to the file.

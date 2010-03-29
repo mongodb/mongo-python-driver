@@ -15,6 +15,10 @@
 """Tests for the grid_file module.
 """
 
+try:
+    from cStringIO import StringIO
+except ImportError:
+    from StringIO import StringIO
 import datetime
 import os
 import sys
@@ -231,6 +235,15 @@ class TestGridFile(unittest.TestCase):
 
         d = GridOut(self.db.fs, c._id)
         self.assertEqual("hello world", d.read())
+
+        e = GridIn(self.db.fs, chunk_size=2)
+        e.write("hello")
+        buffer = StringIO(" world")
+        e.write(buffer)
+        e.write(" and mongodb")
+        e.close()
+        self.assertEqual("hello world and mongodb",
+                         GridOut(self.db.fs, e._id).read())
 
     def test_close(self):
         f = GridIn(self.db.fs)
