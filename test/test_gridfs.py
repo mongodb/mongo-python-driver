@@ -15,9 +15,14 @@
 """Tests for the gridfs package.
 """
 
+try:
+    from cStringIO import StringIO
+except ImportError:
+    from StringIO import StringIO
 import datetime
 import unittest
 import threading
+import time
 import sys
 sys.path[0:0] = [""]
 
@@ -34,7 +39,7 @@ class JustWrite(threading.Thread):
 
     def run(self):
         for _ in range(10):
-            file = self.fs.open("test", "w")
+            file = self.fs.new_file(filename="test")
             file.write("hello")
             file.close()
 
@@ -47,9 +52,8 @@ class JustRead(threading.Thread):
 
     def run(self):
         for _ in range(10):
-            file = self.fs.open("test")
+            file = self.fs.get("test")
             assert file.read() == "hello"
-            file.close()
 
 
 class TestGridfs(unittest.TestCase):
@@ -58,10 +62,14 @@ class TestGridfs(unittest.TestCase):
         self.db = get_connection().pymongo_test
         self.db.drop_collection("fs.files")
         self.db.drop_collection("fs.chunks")
-        self.db.drop_collection("pymongo_test.files")
-        self.db.drop_collection("pymongo_test.chunks")
+        self.db.drop_collection("alt.files")
+        self.db.drop_collection("alt.chunks")
         self.fs = gridfs.GridFS(self.db)
-        self.alt = gridfs.GridFS(self.db, "pymongo_test")
+        self.alt = gridfs.GridFS(self.db, "alt")
+
+    def test_gridfs(self):
+        self.assertRaises(TypeError, gridfs.GridFS, "foo")
+        self.assertRaises(TypeError, gridfs.GridFS, self.db, 5)
 
     def test_basic(self):
         oid = self.fs.put("hello world")
@@ -105,139 +113,75 @@ class TestGridfs(unittest.TestCase):
         self.assertEqual(256*1024, raw["chunkSize"])
         self.assert_(isinstance(raw["md5"], basestring))
 
+    def test_alt_collection(self):
+        oid = self.alt.put("hello world")
+        self.assertEqual("hello world", self.alt.get(oid).read())
+        self.assertEqual(1, self.db.alt.files.count())
+        self.assertEqual(1, self.db.alt.chunks.count())
 
-    # def test_remove(self):
-    #     self.assertRaises(TypeError, self.fs.remove, 5)
-    #     self.assertRaises(TypeError, self.fs.remove, None)
-    #     self.assertRaises(TypeError, self.fs.remove, [])
+        self.alt.delete(oid)
+        self.assertRaises(NoFile, self.alt.get, oid)
+        self.assertEqual(0, self.db.alt.files.count())
+        self.assertEqual(0, self.db.alt.chunks.count())
 
-    #     f = self.fs.open("mike", "w")
-    #     f.write("hi")
-    #     f.close()
-    #     f = self.fs.open("test", "w")
-    #     f.write("bye")
-    #     f.close()
-    #     f = self.fs.open("hello world", "w")
-    #     f.write("fly")
-    #     f.close()
-    #     self.assertEqual(set(["mike", "test", "hello world"]),
-    #                      set(self.fs.list()))
-    #     self.assertEqual(self.db.fs.files.find().count(), 3)
-    #     self.assertEqual(self.db.fs.chunks.find().count(), 3)
+        self.assertRaises(NoFile, self.alt.get, "foo")
+        oid = self.alt.put("hello world", _id="foo")
+        self.assertEqual("foo", oid)
+        self.assertEqual("hello world", self.alt.get("foo").read())
 
-    #     self.fs.remove("test")
+        self.alt.put("", filename="mike")
+        self.alt.put("foo", filename="test")
+        self.alt.put("", filename="hello world")
 
-    #     self.assertEqual(set(["mike", "hello world"]), set(self.fs.list()))
-    #     self.assertEqual(self.db.fs.files.find().count(), 2)
-    #     self.assertEqual(self.db.fs.chunks.find().count(), 2)
-    #     f = self.fs.open("mike")
-    #     self.assertEqual(f.read(), "hi")
-    #     f.close()
-    #     f = self.fs.open("hello world")
-    #     self.assertEqual(f.read(), "fly")
-    #     f.close()
-    #     self.assertRaises(IOError, self.fs.open, "test")
+        self.assertEqual(set(["mike", "test", "hello world"]),
+                         set(self.alt.list()))
 
-    #     self.fs.remove({})
+    def test_threaded_reads(self):
+        self.fs.put("hello", _id="test")
 
-    #     self.assertEqual([], self.fs.list())
-    #     self.assertEqual(self.db.fs.files.find().count(), 0)
-    #     self.assertEqual(self.db.fs.chunks.find().count(), 0)
-    #     self.assertRaises(IOError, self.fs.open, "test")
-    #     self.assertRaises(IOError, self.fs.open, "mike")
-    #     self.assertRaises(IOError, self.fs.open, "hello world")
+        threads = []
+        for i in range(10):
+            threads.append(JustRead(self.fs))
+            threads[i].start()
 
-    # def test_open_alt_coll(self):
-    #     f = self.fs.open("my file", "w", "pymongo_test")
-    #     f.write("hello gridfs world!")
-    #     f.close()
+        for i in range(10):
+            threads[i].join()
 
-    #     self.assertRaises(IOError, self.fs.open, "my file", "r")
-    #     g = self.fs.open("my file", "r", "pymongo_test")
-    #     self.assertEqual("hello gridfs world!", g.read())
-    #     g.close()
+    def test_threaded_writes(self):
+        threads = []
+        for i in range(10):
+            threads.append(JustWrite(self.fs))
+            threads[i].start()
 
-    # def test_list_alt_coll(self):
-    #     f = self.fs.open("mike", "w", "pymongo_test")
-    #     f.close()
+        for i in range(10):
+            threads[i].join()
 
-    #     f = self.fs.open("test", "w", "pymongo_test")
-    #     f.close()
+        f = self.fs.get_last_version("test")
+        self.assertEqual(f.read(), "hello")
 
-    #     f = self.fs.open("hello world", "w", "pymongo_test")
-    #     f.close()
+    def test_get_last_version(self):
+        a = self.fs.put("foo", filename="test")
+        time.sleep(0.01)
+        b = self.fs.new_file(filename="test")
+        b.write("bar")
+        b.close()
+        time.sleep(0.01)
+        b = b._id
+        c = self.fs.put("baz", filename="test")
 
-    #     self.assertEqual([], self.fs.list())
-    #     self.assertEqual(set(["mike", "test", "hello world"]),
-    #                      set(self.fs.list("pymongo_test")))
+        self.assertEqual("baz", self.fs.get_last_version("test").read())
+        self.fs.delete(c)
+        self.assertEqual("bar", self.fs.get_last_version("test").read())
+        self.fs.delete(b)
+        self.assertEqual("foo", self.fs.get_last_version("test").read())
+        self.fs.delete(a)
+        self.assertEqual(None, self.fs.get_last_version("test"))
 
-    # def test_remove_alt_coll(self):
-    #     f = self.fs.open("mike", "w", "pymongo_test")
-    #     f.write("hi")
-    #     f.close()
-    #     f = self.fs.open("test", "w", "pymongo_test")
-    #     f.write("bye")
-    #     f.close()
-    #     f = self.fs.open("hello world", "w", "pymongo_test")
-    #     f.write("fly")
-    #     f.close()
+    def test_put_filelike(self):
+        oid = self.fs.put(StringIO("hello world"), chunk_size=1)
+        self.assertEqual(11, self.db.fs.chunks.count())
+        self.assertEqual("hello world", self.fs.get(oid).read())
 
-    #     self.fs.remove("test")
-    #     self.assertEqual(set(["mike", "test", "hello world"]),
-    #                      set(self.fs.list("pymongo_test")))
-    #     self.fs.remove("test", "pymongo_test")
-    #     self.assertEqual(set(["mike", "hello world"]),
-    #                      set(self.fs.list("pymongo_test")))
-
-    #     f = self.fs.open("mike", collection="pymongo_test")
-    #     self.assertEqual(f.read(), "hi")
-    #     f.close()
-    #     f = self.fs.open("hello world", collection="pymongo_test")
-    #     self.assertEqual(f.read(), "fly")
-    #     f.close()
-
-    #     self.fs.remove({}, "pymongo_test")
-
-    #     self.assertEqual([], self.fs.list("pymongo_test"))
-    #     self.assertEqual(self.db.pymongo_test.files.find().count(), 0)
-    #     self.assertEqual(self.db.pymongo_test.chunks.find().count(), 0)
-
-    # def test_threaded_reads(self):
-    #     f = self.fs.open("test", "w")
-    #     f.write("hello")
-    #     f.close()
-
-    #     threads = []
-    #     for i in range(10):
-    #         threads.append(JustRead(self.fs))
-    #         threads[i].start()
-
-    #     for i in range(10):
-    #         threads[i].join()
-
-    # def test_threaded_writes(self):
-    #     threads = []
-    #     for i in range(10):
-    #         threads.append(JustWrite(self.fs))
-    #         threads[i].start()
-
-    #     for i in range(10):
-    #         threads[i].join()
-
-    #     f = self.fs.open("test")
-    #     self.assertEqual(f.read(), "hello")
-    #     f.close()
-
-    # # NOTE I do recognize how gross this is. There is no good way to
-    # # test the with statement because it is a syntax error in older
-    # # python versions.  One option would be to use eval and skip the
-    # # test if it is a syntax error.
-    # if sys.version_info[:2] == (2, 5):
-    #     import gridfs15
-    #     test_with_statement = gridfs15.test_with_statement
-    # elif sys.version_info[:3] >= (2, 6, 0):
-    #     import gridfs16
-    #     test_with_statement = gridfs16.test_with_statement
 
 if __name__ == "__main__":
     unittest.main()

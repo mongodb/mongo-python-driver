@@ -245,6 +245,13 @@ class TestGridFile(unittest.TestCase):
         self.assertEqual("hello world and mongodb",
                          GridOut(self.db.fs, e._id).read())
 
+    def test_write_lines(self):
+        a = GridIn(self.db.fs)
+        a.writelines(["hello ", "world"])
+        a.close()
+
+        self.assertEqual("hello world", GridOut(self.db.fs, a._id).read())
+
     def test_close(self):
         f = GridIn(self.db.fs)
         f.close()

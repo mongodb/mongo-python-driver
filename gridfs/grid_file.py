@@ -58,11 +58,14 @@ def _create_property(field_name, docstring,
         self._file[field_name] = value
 
     if read_only:
-        docstring = docstring + "\n\nThis attribute is read-only."""
+        docstring = docstring + "\n\nThis attribute is read-only."
     elif not closed_only:
-        docstring = docstring + "\n\nThis attribute can only be set before :meth:`close` has been called."""
+        docstring = "%s\n\n%s" % (docstring, "This attribute can only be "
+                                  "set before :meth:`close` has been called.")
     else:
-        docstring = docstring + "\n\nThis attribute is read-only and can only be read after :meth:`close` has been called."""
+        docstring = "%s\n\n%s" % (docstring, "This attribute is read-only and "
+                                  "can only be read after :meth:`close` "
+                                  "has been called.")
 
     if not read_only and not closed_only:
         return property(getter, setter, doc=docstring)

@@ -132,11 +132,13 @@ class GridFS(object):
         self.__files.ensure_index([("filename", ASCENDING),
                                    ("uploadDate", DESCENDING)])
 
-        grid_file = self.__files.find({"filename": filename},
-                                      limit=-1).sort("uploadDate", DESCENDING)
-        if grid_file:
+        cursor = self.__files.find({"filename": filename})
+        cursor.limit(-1).sort("uploadDate", DESCENDING)
+        try:
+            grid_file = cursor.next()
             return GridOut(self.__collection, grid_file["_id"])
-        return None
+        except StopIteration:
+            return None
 
     # TODO add optional safe mode for chunk removal?
     def delete(self, file_id):
