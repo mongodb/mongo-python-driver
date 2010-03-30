@@ -20,7 +20,8 @@ The :mod:`gridfs` package is an implementation of GridFS on top of
 .. mongodoc:: gridfs
 """
 
-from gridfs.errors import UnsupportedAPI
+from gridfs.errors import (NoFile,
+                           UnsupportedAPI)
 from gridfs.grid_file import (GridIn,
                               GridOut)
 from pymongo import (ASCENDING,
@@ -117,8 +118,8 @@ class GridFS(object):
 
         Returns the most recently uploaded file in GridFS with the
         name `filename` as an instance of
-        :class:`~gridfs.grid_file.GridOut`, or ``None`` if no such
-        file exists.
+        :class:`~gridfs.grid_file.GridOut`. Raises
+        :class:`~gridfs.errors.NoFile` if no such file exists.
 
         An index on ``{filename: 1, uploadDate: -1}`` will
         automatically be created when this method is called the first
@@ -138,7 +139,7 @@ class GridFS(object):
             grid_file = cursor.next()
             return GridOut(self.__collection, grid_file["_id"])
         except StopIteration:
-            return None
+            raise NoFile("no file in gridfs with filename %r" % filename)
 
     # TODO add optional safe mode for chunk removal?
     def delete(self, file_id):

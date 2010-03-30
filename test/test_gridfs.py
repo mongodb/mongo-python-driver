@@ -175,7 +175,7 @@ class TestGridfs(unittest.TestCase):
         self.fs.delete(b)
         self.assertEqual("foo", self.fs.get_last_version("test").read())
         self.fs.delete(a)
-        self.assertEqual(None, self.fs.get_last_version("test"))
+        self.assertRaises(NoFile, self.fs.get_last_version, "test")
 
     def test_put_filelike(self):
         oid = self.fs.put(StringIO("hello world"), chunk_size=1)
