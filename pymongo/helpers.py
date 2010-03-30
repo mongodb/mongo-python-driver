@@ -85,20 +85,18 @@ def _unpack_response(response, cursor_id=None):
         valid at server response
     """
     response_flag = struct.unpack("<i", response[:4])[0]
-    if response_flag == 1:
+    if response_flag & 1:
         # Shouldn't get this response if we aren't doing a getMore
         assert cursor_id is not None
 
         raise OperationFailure("cursor id '%s' not valid at server" %
                                cursor_id)
-    elif response_flag == 2:
+    elif response_flag & 2:
         error_object = bson.BSON(response[20:]).to_dict()
         if error_object["$err"] == "not master":
             raise AutoReconnect("master has changed")
         raise OperationFailure("database error: %s" %
                                error_object["$err"])
-    else:
-        assert response_flag == 0
 
     result = {}
     result["cursor_id"] = struct.unpack("<q", response[4:12])[0]
