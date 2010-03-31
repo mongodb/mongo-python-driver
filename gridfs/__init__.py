@@ -41,7 +41,7 @@ class GridFS(object):
           - `database`: database to use
           - `collection` (optional): root collection to use
 
-        .. versionadded:: 1.5.1+
+        .. versionadded:: 1.5.2+
            The `collection` parameter.
 
         .. mongodoc:: gridfs
@@ -66,7 +66,7 @@ class GridFS(object):
         :Parameters:
           - `**kwargs` (optional): keyword arguments for file creation
 
-        .. versionadded:: 1.5.1+
+        .. versionadded:: 1.5.2+
         """
         return GridIn(self.__collection, **kwargs)
 
@@ -91,7 +91,7 @@ class GridFS(object):
           - `data`: data to be written as a file.
           - `**kwargs` (optional): keyword arguments for file creation
 
-        .. versionadded:: 1.5.1+
+        .. versionadded:: 1.5.2+
         """
         grid_file = GridIn(self.__collection, **kwargs)
         try:
@@ -109,7 +109,7 @@ class GridFS(object):
         :Parameters:
           - `file_id`: ``"_id"`` of the file to get
 
-        .. versionadded:: 1.5.1+
+        .. versionadded:: 1.5.2+
         """
         return GridOut(self.__collection, file_id)
 
@@ -128,7 +128,7 @@ class GridFS(object):
         :Parameters:
           - `filename`: ``"filename"`` of the file to get
 
-        .. versionadded:: 1.5.1+
+        .. versionadded:: 1.5.2+
         """
         self.__files.ensure_index([("filename", ASCENDING),
                                    ("uploadDate", DESCENDING)])
@@ -156,7 +156,7 @@ class GridFS(object):
         :Parameters:
           - `file_id`: ``"_id"`` of the file to delete
 
-        .. versionadded:: 1.5.1+
+        .. versionadded:: 1.5.2+
         """
         self.__files.remove({"_id": file_id}, safe=True)
         self.__chunks.remove({"files_id": file_id})
@@ -165,7 +165,7 @@ class GridFS(object):
         """List the names of all files stored in this instance of
         :class:`GridFS`.
 
-        .. versionchanged:: 1.5.1+
+        .. versionchanged:: 1.5.2+
            Removed the `collection` argument.
         """
         return self.__files.distinct("filename")
@@ -173,7 +173,7 @@ class GridFS(object):
     def open(self, *args, **kwargs):
         """No longer supported.
 
-        .. versionchanged:: 1.5.1+
+        .. versionchanged:: 1.5.2+
            The open method is no longer supported.
         """
         raise UnsupportedAPI("The open method is no longer supported.")
@@ -181,7 +181,7 @@ class GridFS(object):
     def remove(self, *args, **kwargs):
         """No longer supported.
 
-        .. versionchanged:: 1.5.1+
+        .. versionchanged:: 1.5.2+
            The remove method is no longer supported.
         """
         raise UnsupportedAPI("The remove method is no longer supported. "
