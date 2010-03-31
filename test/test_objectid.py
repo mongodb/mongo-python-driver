@@ -18,6 +18,7 @@ import datetime
 import warnings
 import unittest
 import sys
+import time
 sys.path[0:0] = [""]
 
 from nose.plugins.skip import SkipTest
@@ -107,6 +108,13 @@ class TestObjectId(unittest.TestCase):
         d2 = ObjectId().generation_time
 
         self.assert_(d2 - d1 < datetime.timedelta(seconds = 2))
+
+    def test_from_datetime(self):
+        d = datetime.datetime.utcnow()
+        d = d - datetime.timedelta(microseconds=d.microsecond)
+        oid = ObjectId.from_datetime(d)
+        self.assertEqual(d, oid.generation_time)
+        self.assertEqual("0" * 16, str(oid)[8:])
 
 if __name__ == "__main__":
     unittest.main()
