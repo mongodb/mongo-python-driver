@@ -841,12 +841,21 @@ static int write_dict(bson_buffer* buffer, PyObject* dict, unsigned char check_k
             }
         }
     } else {
-        PyObject* errmsg = PyString_FromString("encoder expected a mapping type but got: ");
-        PyObject* repr = PyObject_Repr(dict);
-        PyString_ConcatAndDel(&errmsg, repr);
-        PyErr_SetString(PyExc_TypeError, PyString_AsString(errmsg));
-        Py_DECREF(errmsg);
-        return 0;
+        /* Try a reload! */
+        _reload_python_objects();
+        if (PyObject_IsInstance(dict, SON)) {
+            if (!write_son(buffer, dict, start_position, length_location, check_keys, top_level)) {
+                return 0;
+            }
+        }
+        else {
+            PyObject* errmsg = PyString_FromString("encoder expected a mapping type but got: ");
+            PyObject* repr = PyObject_Repr(dict);
+            PyString_ConcatAndDel(&errmsg, repr);
+            PyErr_SetString(PyExc_TypeError, PyString_AsString(errmsg));
+            Py_DECREF(errmsg);
+            return 0;
+        }
     }
 
     /* write null byte and fill in length */
