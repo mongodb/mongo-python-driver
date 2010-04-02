@@ -15,6 +15,7 @@
 """Tools for representing files stored in GridFS."""
 
 import datetime
+import math
 import os
 try:
     from cStringIO import StringIO
@@ -351,7 +352,7 @@ class GridOut(object):
             chunk = self.__chunks.find_one({"files_id": self._id,
                                             "n": chunk_number})
             if not chunk:
-                raise CorruptGridFile("no chunk for n = " + chunk_number)
+                raise CorruptGridFile("no chunk #%d" % chunk_number)
 
             if not data:
                 data += chunk["data"][self.__position % self.chunk_size:]
@@ -396,6 +397,37 @@ class GridOut(object):
 
         self.__position = new_pos
         self.__buffer = ""
+
+    def __iter__(self):
+        """Return an iterator over all of this file's data.
+
+        The iterator will return chunk-sized instances of
+        :class:`str`. This can be useful when serving files using a
+        webserver that handles such an iterator efficiently.
+        """
+        return GridOutIterator(self, self.__chunks)
+
+
+class GridOutIterator(object):
+    def __init__(self, grid_out, chunks):
+        self.__id = grid_out._id
+        self.__chunks = chunks
+        self.__current_chunk = 0
+        self.__max_chunk = math.ceil(float(grid_out.length) /
+                                     grid_out.chunk_size)
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        if self.__current_chunk >= self.__max_chunk:
+            raise StopIteration
+        chunk = self.__chunks.find_one({"files_id": self.__id,
+                                        "n": self.__current_chunk})
+        if not chunk:
+            raise CorruptGridFile("no chunk #%d" % self.__current_chunk)
+        self.__current_chunk += 1
+        return str(chunk["data"])
 
 
 class GridFile(object):

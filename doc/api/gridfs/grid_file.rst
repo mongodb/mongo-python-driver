@@ -13,6 +13,7 @@
       :members:
 
       .. autoattribute:: _id
+      .. automethod:: __iter__
 
    .. autoclass:: GridFile
       :members:

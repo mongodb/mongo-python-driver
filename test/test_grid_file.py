@@ -350,6 +350,27 @@ class TestGridFile(unittest.TestCase):
         self.assertEqual("d", g.read(2))
         self.assertEqual("", g.read(2))
 
+    def test_iterator(self):
+        f = GridIn(self.db.fs)
+        f.close()
+        g = GridOut(self.db.fs, f._id)
+        self.assertEqual([], list(g))
+
+        f = GridIn(self.db.fs)
+        f.write("hello world")
+        f.close()
+        g = GridOut(self.db.fs, f._id)
+        self.assertEqual(["hello world"], list(g))
+        self.assertEqual("hello", g.read(5))
+        self.assertEqual(["hello world"], list(g))
+        self.assertEqual(" worl", g.read(5))
+
+        f = GridIn(self.db.fs, chunk_size=2)
+        f.write("hello world")
+        f.close()
+        g = GridOut(self.db.fs, f._id)
+        self.assertEqual(["he", "ll", "o ", "wo", "rl", "d"], list(g))
+
     def test_read_chunks_unaligned_buffer_size(self):
         in_data = "This is a text that doesn't quite fit in a single 16-byte chunk."
         f = GridIn(self.db.fs, chunkSize=16)
