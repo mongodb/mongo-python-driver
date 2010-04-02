@@ -18,8 +18,8 @@ Every :class:`~pymongo.connection.Connection` instance has built-in
 connection pooling. Each thread gets its own socket reserved on its
 first operation. Those sockets are held until
 :meth:`~pymongo.connection.Connection.end_request` is called by that
-thread, or :meth:`~pymongo.connection.Connection.disconnect` is called
-by any thread, or the thread dies.
+thread or :meth:`~pymongo.connection.Connection.disconnect` is called
+by any thread.
 
 Calling :meth:`~pymongo.connection.Connection.end_request` allows the
 socket to be returned to the pool, and to be used by other threads
