@@ -68,12 +68,12 @@ class Pool(threading.local):
 
     # Non thread-locals
     __slots__ = ["sockets", "socket_factory"]
-    sockets = []
-
     sock = None
 
     def __init__(self, socket_factory):
         self.socket_factory = socket_factory
+        if not hasattr(self, "sockets"):
+            self.sockets = []
 
     def socket(self):
         # we store the pid here to avoid issues with fork /

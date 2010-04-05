@@ -21,6 +21,7 @@ import random
 import sys
 sys.path[0:0] = [""]
 
+from pymongo.connection import Pool
 from test_connection import get_connection
 
 N = 50
@@ -93,6 +94,21 @@ def run_cases(ut, cases):
     for t in threads:
         t.join()
 
+
+class OneOp(threading.Thread):
+
+    def __init__(self, connection):
+        threading.Thread.__init__(self)
+        self.c = connection
+
+    def run(self):
+        assert len(self.c._Connection__pool.sockets) == 1
+        self.c.test.test.find_one()
+        assert len(self.c._Connection__pool.sockets) == 0
+        self.c.end_request()
+        assert len(self.c._Connection__pool.sockets) == 1
+
+
 class TestPooling(unittest.TestCase):
 
     def setUp(self):
@@ -108,6 +124,33 @@ class TestPooling(unittest.TestCase):
 
     def test_disconnect(self):
         run_cases(self, [SaveAndFind, Disconnect, Unique])
+
+    def test_independent_pools(self):
+        p = Pool(None)
+        self.assertEqual([], p.sockets)
+        self.c.end_request()
+        self.assertEqual([], p.sockets)
+
+        # Sensical values aren't really important here
+        p1 = Pool(5)
+        self.assertEqual(None, p.socket_factory)
+        self.assertEqual(5, p1.socket_factory)
+
+    def test_dependent_pools(self):
+        c = get_connection()
+        self.assertEqual(0, len(c._Connection__pool.sockets))
+        c.test.test.find_one()
+        self.assertEqual(0, len(c._Connection__pool.sockets))
+        c.end_request()
+        self.assertEqual(1, len(c._Connection__pool.sockets))
+
+        t = OneOp(c)
+        t.start()
+        t.join()
+
+        self.assertEqual(1, len(c._Connection__pool.sockets))
+        c.test.test.find_one()
+        self.assertEqual(0, len(c._Connection__pool.sockets))
 
 
 if __name__ == "__main__":
