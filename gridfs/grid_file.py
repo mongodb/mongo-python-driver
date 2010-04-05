@@ -89,9 +89,8 @@ class GridIn(object):
         Any of the file level options specified in the `GridFS Spec
         <http://dochub.mongodb.org/core/gridfsspec>`_ may be passed as
         keyword arguments. Any additional keyword arguments will be
-        set as fields in the ``"metadata"`` embedded document allowed
-        by the spec (overwriting any existing ``"metadata"`` field
-        with the same name). Valid keyword arguments include:
+        set as additional fields on the file document. Valid keyword
+        arguments include:
 
           - ``"_id"``: unique ID for this file (default:
             :class:`~pymongo.objectid.ObjectId`)
@@ -121,28 +120,17 @@ class GridIn(object):
         if "chunk_size" in kwargs:
             kwargs["chunkSize"] = kwargs.pop("chunk_size")
 
-        # Move bonus kwargs into metadata
-        to_move = []
-        for key in kwargs:
-            if key not in ["_id", "filename", "contentType",
-                           "chunkSize", "aliases", "metadata"]:
-                to_move.append(key)
-        if to_move:
-            kwargs["metadata"] = kwargs.get("metadata", {})
-            for key in to_move:
-                kwargs["metadata"][key] = kwargs.pop(key)
-
         # Defaults
         kwargs["_id"] = kwargs.get("_id", ObjectId())
         kwargs["chunkSize"] = kwargs.get("chunkSize", DEFAULT_CHUNK_SIZE)
 
-        self.__coll = root_collection
-        self.__chunks = root_collection.chunks
-        self._file = kwargs
-        self.__buffer = StringIO()
-        self.__position = 0
-        self.__chunk_number = 0
-        self._closed = False
+        object.__setattr__(self, "_coll", root_collection)
+        object.__setattr__(self, "_chunks", root_collection.chunks)
+        object.__setattr__(self, "_file", kwargs)
+        object.__setattr__(self, "_buffer", StringIO())
+        object.__setattr__(self, "_position", 0)
+        object.__setattr__(self, "_chunk_number", 0)
+        object.__setattr__(self, "_closed", False)
 
     @property
     def closed(self):
@@ -161,11 +149,19 @@ class GridIn(object):
     upload_date = _create_property("uploadDate",
                                     "Date that this file was uploaded.",
                                     closed_only=True)
-    aliases = _create_property("aliases", "List of aliases for this file.")
-    metadata = _create_property("metadata", "Metadata attached to this file.")
     md5 = _create_property("md5", "MD5 of the contents of this file "
                             "(generated on the server).",
                             closed_only=True)
+
+    def __getattr__(self, name):
+        if name in self._file:
+            return self._file[name]
+        raise AttributeError("GridIn object has no attribute '%s'" % name)
+
+    def __setattr__(self, name, value):
+        if self._closed:
+            raise AttributeError("cannot set %r on a closed file" % name)
+        object.__setattr__(self, name, value)
 
     def __flush_data(self, data):
         """Flush `data` to a chunk.
@@ -175,32 +171,32 @@ class GridIn(object):
         assert(len(data) <= self.chunk_size)
 
         chunk = {"files_id": self._file["_id"],
-                 "n": self.__chunk_number,
+                 "n": self._chunk_number,
                  "data": Binary(data)}
 
-        self.__chunks.insert(chunk)
-        self.__chunk_number += 1
-        self.__position += len(data)
+        self._chunks.insert(chunk)
+        self._chunk_number += 1
+        self._position += len(data)
 
     def __flush_buffer(self):
         """Flush the buffer contents out to a chunk.
         """
-        self.__flush_data(self.__buffer.getvalue())
-        self.__buffer.close()
-        self.__buffer = StringIO()
+        self.__flush_data(self._buffer.getvalue())
+        self._buffer.close()
+        self._buffer = StringIO()
 
     def __flush(self):
         """Flush the file to the database.
         """
         self.__flush_buffer()
 
-        md5 = self.__coll.database.command("filemd5", self._id,
-                                           root=self.__coll.name)["md5"]
+        md5 = self._coll.database.command("filemd5", self._id,
+                                          root=self._coll.name)["md5"]
 
         self._file["md5"] = md5
-        self._file["length"] = self.__position
+        self._file["length"] = self._position
         self._file["uploadDate"] = datetime.datetime.utcnow()
-        return self.__coll.files.insert(self._file)
+        return self._coll.files.insert(self._file)
 
     def close(self):
         """Flush the file and close it.
@@ -210,7 +206,7 @@ class GridIn(object):
         """
         if not self._closed:
             self.__flush()
-        self._closed = True
+            self._closed = True
 
     # TODO should support writing unicode to a file. this means that files will
     # need to have an encoding attribute.
@@ -234,27 +230,27 @@ class GridIn(object):
             raise ValueError("cannot write to a closed file")
 
         try: # file-like
-            if self.__buffer.tell() > 0:
-                space = self.chunk_size - self.__buffer.tell()
-                self.__buffer.write(data.read(space))
+            if self._buffer.tell() > 0:
+                space = self.chunk_size - self._buffer.tell()
+                self._buffer.write(data.read(space))
                 self.__flush_buffer()
             to_write = data.read(self.chunk_size)
             while to_write and len(to_write) == self.chunk_size:
                 self.__flush_data(to_write)
                 to_write = data.read(self.chunk_size)
-            self.__buffer.write(to_write)
+            self._buffer.write(to_write)
         except AttributeError: # string
             if not isinstance(data, str):
                 raise TypeError("can only write strings or file-like objects")
 
             while data:
-                space = self.chunk_size - self.__buffer.tell()
+                space = self.chunk_size - self._buffer.tell()
 
                 if len(data) <= space:
-                    self.__buffer.write(data)
+                    self._buffer.write(data)
                     break
                 else:
-                    self.__buffer.write(data[:space])
+                    self._buffer.write(data[:space])
                     self.__flush_buffer()
                     data = data[space:]
 
@@ -327,6 +323,11 @@ class GridOut(object):
                                  True)
     md5 = _create_property("md5", "MD5 of the contents of this file "
                             "(generated on the server).", True)
+
+    def __getattr__(self, name):
+        if name in self._file:
+            return self._file[name]
+        raise AttributeError("GridIn object has no attribute '%s'" % name)
 
     def read(self, size=-1):
         """Read at most `size` bytes from the file (less if there

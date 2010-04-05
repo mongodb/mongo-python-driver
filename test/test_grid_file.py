@@ -118,11 +118,11 @@ class TestGridFile(unittest.TestCase):
         self.assertRaises(AttributeError, getattr, a, "upload_date")
         self.assertRaises(AttributeError, setattr, a, "upload_date", 5)
 
-        self.assertEqual(None, a.aliases)
+        self.assertRaises(AttributeError, getattr, a, "aliases")
         a.aliases = ["foo"]
         self.assertEqual(["foo"], a.aliases)
 
-        self.assertEqual(None, a.metadata)
+        self.assertRaises(AttributeError, getattr, a, "metadata")
         a.metadata = {"foo": 1}
         self.assertEqual({"foo": 1}, a.metadata)
 
@@ -170,12 +170,15 @@ class TestGridFile(unittest.TestCase):
         self.assertEqual("text/html", a.content_type)
         self.assertEqual(1000, a.chunk_size)
         self.assertEqual(["foo"], a.aliases)
-        self.assertEqual({"foo": 1, "bar": 3, "baz": "hello"}, a.metadata)
+        self.assertEqual({"foo": 1, "bar": 2}, a.metadata)
+        self.assertEqual(3, a.bar)
+        self.assertEqual("hello", a.baz)
+        self.assertRaises(AttributeError, getattr, a, "mike")
 
         b = GridIn(self.db.fs, content_type="text/html", chunk_size=1000, baz=100)
         self.assertEqual("text/html", b.content_type)
         self.assertEqual(1000, b.chunk_size)
-        self.assertEqual({"baz": 100}, b.metadata)
+        self.assertEqual(100, b.baz)
 
     def test_grid_out_default_opts(self):
         self.assertRaises(TypeError, GridOut, "foo")
@@ -215,7 +218,8 @@ class TestGridFile(unittest.TestCase):
         self.assertEqual(1000, b.chunk_size)
         self.assert_(isinstance(b.upload_date, datetime.datetime))
         self.assertEqual(["foo"], b.aliases)
-        self.assertEqual({"foo": 1, "bar": 3, "baz": "hello"}, b.metadata)
+        self.assertEqual({"foo": 1, "bar": 2}, b.metadata)
+        self.assertEqual(3, b.bar)
         self.assertEqual("5eb63bbbe01eeed093cb22bb8f5acdc3", b.md5)
 
         for attr in ["_id", "name", "content_type", "length", "chunk_size",
