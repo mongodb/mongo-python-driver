@@ -333,10 +333,7 @@ class Database(object):
 
         self.__connection._purge_index(self.__name, name)
 
-        if name not in self.collection_names():
-            return
-
-        self.command("drop", unicode(name))
+        self.command("drop", unicode(name), allowable_errors=["ns not found"])
 
     def validate_collection(self, name_or_collection):
         """Validate a collection.
