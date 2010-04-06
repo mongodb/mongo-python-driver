@@ -21,6 +21,8 @@ import random
 import sys
 sys.path[0:0] = [""]
 
+from nose.plugins.skip import SkipTest
+
 from pymongo.connection import Pool
 from test_connection import get_connection
 
@@ -177,6 +179,57 @@ class TestPooling(unittest.TestCase):
         b.test.test.find_one()
         a.test.test.find_one()
         self.assertEqual(b_sock, b._Connection__pool.socket())
+        self.assertEqual(a_sock, a._Connection__pool.socket())
+
+    def test_pool_with_fork(self):
+        if sys.platform == "win32":
+            raise SkipTest()
+
+        try:
+            from multiprocessing import Process, Pipe
+        except ImportError:
+            raise SkipTest()
+
+        a = get_connection()
+        a.test.test.find_one()
+        a.end_request()
+        self.assertEqual(1, len(a._Connection__pool.sockets))
+        a_sock = a._Connection__pool.sockets[0]
+
+        def loop(pipe):
+            c = get_connection()
+            self.assertEqual(0, len(c._Connection__pool.sockets))
+            c.test.test.find_one()
+            c.end_request()
+            self.assertEqual(1, len(c._Connection__pool.sockets))
+            pipe.send(c._Connection__pool.sockets[0].getsockname())
+
+        cp1, cc1 = Pipe()
+        cp2, cc2 = Pipe()
+
+        p1 = Process(target=loop, args=(cc1,))
+        p2 = Process(target=loop, args=(cc2,))
+
+        p1.start()
+        p2.start()
+
+        p1.join(1)
+        p2.join(1)
+
+        p1.terminate()
+        p2.terminate()
+
+        p1.join()
+        p2.join()
+
+        cc1.close()
+        cc2.close()
+
+        b_sock = cp1.recv()
+        c_sock = cp2.recv()
+        self.assert_(a_sock.getsockname() != b_sock)
+        self.assert_(a_sock.getsockname() != c_sock)
+        self.assert_(b_sock != c_sock)
         self.assertEqual(a_sock, a._Connection__pool.socket())
 
 
