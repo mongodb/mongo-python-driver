@@ -152,6 +152,33 @@ class TestPooling(unittest.TestCase):
         c.test.test.find_one()
         self.assertEqual(0, len(c._Connection__pool.sockets))
 
+    def test_multiple_connections(self):
+        a = get_connection()
+        b = get_connection()
+        self.assertEqual(0, len(a._Connection__pool.sockets))
+        self.assertEqual(0, len(b._Connection__pool.sockets))
+
+        a.test.test.find_one()
+        a.end_request()
+        self.assertEqual(1, len(a._Connection__pool.sockets))
+        self.assertEqual(0, len(b._Connection__pool.sockets))
+        a_sock = a._Connection__pool.sockets[0]
+
+        b.end_request()
+        self.assertEqual(1, len(a._Connection__pool.sockets))
+        self.assertEqual(0, len(b._Connection__pool.sockets))
+
+        b.test.test.find_one()
+        self.assertEqual(1, len(a._Connection__pool.sockets))
+        self.assertEqual(0, len(b._Connection__pool.sockets))
+
+        b.end_request()
+        b_sock = b._Connection__pool.sockets[0]
+        b.test.test.find_one()
+        a.test.test.find_one()
+        self.assertEqual(b_sock, b._Connection__pool.socket())
+        self.assertEqual(a_sock, a._Connection__pool.socket())
+
 
 if __name__ == "__main__":
     unittest.main()
