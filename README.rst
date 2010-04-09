@@ -52,7 +52,7 @@ ObjectId('4aba160ee23f6b543e000000')
 >>> db.my_collection.save({"x": 11})
 ObjectId('4aba160ee23f6b543e000002')
 >>> db.my_collection.find_one()
-{u'x': 10, u'_id': ObjectId('4aba160ee23f6b543e000002')}
+{u'x': 10, u'_id': ObjectId('4aba15ebe23f6b53b0000000')}
 >>> for item in db.my_collection.find():
 ...     print item["x"]
 ...
