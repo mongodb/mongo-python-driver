@@ -280,7 +280,7 @@ class Database(object):
           - `**kwargs` (optional): additional keyword arguments will
             be added to the command document before it is sent
 
-        .. versionchanged:: 1.5.2+
+        .. versionchanged:: 1.6
            Added the `value` argument for string commands, and keyword
            arguments for additional command options.
         .. versionchanged:: 1.5

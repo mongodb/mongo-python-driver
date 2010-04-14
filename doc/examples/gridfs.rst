@@ -1,6 +1,14 @@
 GridFS Example
 ==============
 
+.. warning::
+
+   This example is out of date, and documents the API for GridFS in
+   PyMongo versions < 1.6. If you are using a version of PyMongo that
+   is >= 1.6 please see `this blog post
+   <http://dirolf.com/2010/03/29/new-gridfs-implementation-for-pymongo.html>`_
+   for an overview of how the new API works.
+
 .. testsetup::
 
   from pymongo import Connection

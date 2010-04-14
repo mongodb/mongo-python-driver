@@ -105,7 +105,7 @@ class ObjectId(object):
           - `generation_time`: :class:`~datetime.datetime` to be used
             as the generation time for the resulting ObjectId.
 
-        .. versionadded:: 1.5.2+
+        .. versionadded:: 1.6
         """
         ts = calendar.timegm(generation_time.timetuple())
         oid = struct.pack(">i", int(ts)) + "\x00" * 8

@@ -1,6 +1,33 @@
 Changelog
 =========
 
+Changes in Version 1.6
+----------------------
+
+The biggest change in version 1.6 is a complete re-implementation of
+:mod:`gridfs` with a lot of improvements over the old
+implementation. There are many details and examples of using the new
+API in `this blog post
+<http://dirolf.com/2010/03/29/new-gridfs-implementation-for-pymongo.html>`_. The
+old API has been removed in this version, so existing code will need
+to be modified before upgrading to 1.6.
+
+- fixed issue where connection pool was being shared across
+  :class:`~pymongo.connection.Connection` instances.
+- more improvements to Python code caching in C extension - should
+  improve behavior on mod_wsgi.
+- added :meth:`~pymongo.objectid.ObjectId.from_datetime`.
+- complete rewrite of :mod:`gridfs` support.
+- improvements to the :meth:`~pymongo.database.Database.command` API.
+- fixed :meth:`~pymongo.collection.Collection.drop_indexes` behavior
+  on non-existent collections.
+- disallow empty bulk inserts.
+
+Changes in Version 1.5.2
+------------------------
+- fixed response handling to ignore unknown response flags in queries.
+- handle server versions containing '-pre-'.
+
 Changes in Version 1.5.1
 ------------------------
 - added :data:`~gridfs.grid_file.GridFile._id` property for

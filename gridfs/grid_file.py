@@ -434,7 +434,7 @@ class GridOutIterator(object):
 class GridFile(object):
     """No longer supported.
 
-    .. versionchanged:: 1.5.2+
+    .. versionchanged:: 1.6
        The GridFile class is no longer supported.
     """
     def __init__(self, *args, **kwargs):

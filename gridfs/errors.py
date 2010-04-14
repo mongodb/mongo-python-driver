@@ -32,17 +32,17 @@ class CorruptGridFile(GridFSError):
 class NoFile(GridFSError):
     """Raised when trying to read from a non-existent file.
 
-    .. versionadded:: 1.5.2+
+    .. versionadded:: 1.6
     """
 
 class UnsupportedAPI(GridFSError):
     """Raised when trying to use the old GridFS API.
 
-    In version 1.5.2+ of the PyMongo distribution there were backwards
+    In version 1.6 of the PyMongo distribution there were backwards
     incompatible changes to the GridFS API. Upgrading shouldn't be
     difficult, but the old API is no longer supported (with no
     deprecation period). This exception will be raised when attempting
     to use unsupported constructs from the old API.
 
-    .. versionadded:: 1.5.2+
+    .. versionadded:: 1.6
     """
