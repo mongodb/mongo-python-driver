@@ -103,10 +103,6 @@ class GridIn(object):
           - ``"chunkSize"`` or ``"chunk_size"``: size of each of the
             chunks, in bytes (default: 256 kb)
 
-          - ``"aliases"``: array of alias strings
-
-          - ``"metadata"``: document containing arbitrary metadata
-
         :Parameters:
           - `root_collection`: root collection to write to
           - `**kwargs` (optional): file level options (see above)
@@ -140,7 +136,7 @@ class GridIn(object):
 
     _id = _create_property("_id", "The ``'_id'`` value for this file.",
                             read_only=True)
-    name = _create_property("filename", "Name of this file.")
+    filename = _create_property("filename", "Name of this file.")
     content_type = _create_property("contentType", "Mime-type for this file.")
     length = _create_property("length", "Length (in bytes) of this file.",
                                closed_only=True)
