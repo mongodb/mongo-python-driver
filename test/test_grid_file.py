@@ -101,9 +101,9 @@ class TestGridFile(unittest.TestCase):
         self.assert_(isinstance(a._id, ObjectId))
         self.assertRaises(AttributeError, setattr, a, "_id", 5)
 
-        self.assertEqual(None, a.name)
-        a.name = "my_file"
-        self.assertEqual("my_file", a.name)
+        self.assertEqual(None, a.filename)
+        a.filename = "my_file"
+        self.assertEqual("my_file", a.filename)
 
         self.assertEqual(None, a.content_type)
         a.content_type = "text/html"
@@ -134,7 +134,7 @@ class TestGridFile(unittest.TestCase):
         self.assert_(isinstance(a._id, ObjectId))
         self.assertRaises(AttributeError, setattr, a, "_id", 5)
 
-        self.assertEqual("my_file", a.name)
+        self.assertEqual("my_file", a.filename)
         self.assertRaises(AttributeError, setattr, a, "name", "foo")
 
         self.assertEqual("text/html", a.content_type)
@@ -166,7 +166,7 @@ class TestGridFile(unittest.TestCase):
                    metadata={"foo": 1, "bar": 2}, bar=3, baz="hello")
 
         self.assertEqual(5, a._id)
-        self.assertEqual("my_file", a.name)
+        self.assertEqual("my_file", a.filename)
         self.assertEqual("text/html", a.content_type)
         self.assertEqual(1000, a.chunk_size)
         self.assertEqual(["foo"], a.aliases)

@@ -311,6 +311,9 @@ class Connection(object): # TODO support auth for pooling
                 warnings.warn("The %s parameter to Connection.paired is "
                               "deprecated" % param, DeprecationWarning)
 
+        if "slave_okay" in connection_args:
+            raise TypeError("cannot specify slave_okay on paired connections")
+
         connection_args['_connect'] = False
 
         connection = cls(left[0], left[1], **connection_args)

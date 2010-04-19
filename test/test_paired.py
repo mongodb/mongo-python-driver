@@ -125,11 +125,11 @@ class TestPaired(unittest.TestCase):
     def test_deprecation_warnings_paired_connections(self):
         warnings.simplefilter("error")
         try:
-            self.assertRaises(DeprecationWarning, Connection.paired, 
+            self.assertRaises(DeprecationWarning, Connection.paired,
                               self.left, self.right, timeout=3)
-            self.assertRaises(DeprecationWarning, Connection.paired, 
+            self.assertRaises(DeprecationWarning, Connection.paired,
                               self.left, self.right, auto_start_request=True)
-            self.assertRaises(DeprecationWarning, Connection.paired, 
+            self.assertRaises(DeprecationWarning, Connection.paired,
                               self.left, self.right, pool_size=20)
         finally:
             warnings.resetwarnings()
@@ -137,8 +137,8 @@ class TestPaired(unittest.TestCase):
 
 
     def test_paired_connections_pass_individual_connargs(self):
-        c = Connection.paired(self.left, self.right, slave_okay=True)
-        self.assertTrue(c.__slave_okay)
+        c = Connection.paired(self.left, self.right, network_timeout=5)
+        self.assertEqual(5, c._Connection__network_timeout)
 
 
 
