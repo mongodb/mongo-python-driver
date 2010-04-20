@@ -32,6 +32,7 @@ from pymongo.objectid import ObjectId
 from pymongo.son import SON
 from timestamp import Timestamp
 
+
 try:
     import _cbson
     _use_c = True
@@ -43,6 +44,10 @@ try:
     _use_uuid = True
 except ImportError:
     _use_uuid = False
+
+
+# This sort of sucks, but seems to be as good as it gets...
+RE_TYPE = type(re.compile(""))
 
 
 def _get_int(data):
@@ -95,11 +100,8 @@ def _validate_object(data):
     return _validate_document(data, None)
 
 
-_valid_array_name = re.compile("^\d+$")
-
-
 def _validate_array(data):
-    return _validate_document(data, _valid_array_name)
+    return _validate_document(data, re.compile("^\d+$"))
 
 
 def _validate_binary(data):
@@ -379,9 +381,6 @@ if _use_c:
     _bson_to_dict = _cbson._bson_to_dict
 
 
-_RE_TYPE = type(_valid_array_name)
-
-
 def _element_to_bson(key, value, check_keys):
     if not isinstance(key, basestring):
         raise InvalidDocument("documents must have only string keys, "
@@ -454,7 +453,7 @@ def _element_to_bson(key, value, check_keys):
         return "\x11" + name + inc + time
     if value is None:
         return "\x0A" + name
-    if isinstance(value, _RE_TYPE):
+    if isinstance(value, RE_TYPE):
         pattern = value.pattern
         flags = ""
         if value.flags & re.IGNORECASE:

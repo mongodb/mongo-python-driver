@@ -41,6 +41,7 @@ static PyObject* DBRef = NULL;
 static PyObject* RECompile = NULL;
 static PyObject* UUID = NULL;
 static PyObject* Timestamp = NULL;
+static PyTypeObject* REType = NULL;
 
 #if PY_VERSION_HEX < 0x02050000 && !defined(PY_SSIZE_T_MIN)
 typedef int Py_ssize_t;
@@ -238,6 +239,9 @@ static int _reload_python_objects(void) {
         UUID = NULL;
         PyErr_Clear();
     }
+    /* Reload our REType hack too. */
+    REType = PyObject_CallFunction(RECompile, "O",
+                                   PyString_FromString(""))->ob_type;
     return 0;
 }
 
@@ -541,8 +545,7 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
         *(buffer->buffer + type_byte) = 0x11;
         return 1;
     }
-    else if (PyObject_HasAttrString(value, "pattern") &&
-             PyObject_HasAttrString(value, "flags")) { /* TODO just a proxy for checking if it is a compiled re */
+    else if (PyObject_TypeCheck(value, REType)) {
         PyObject* py_flags = PyObject_GetAttrString(value, "flags");
         PyObject* py_pattern;
         PyObject* encoded_pattern;

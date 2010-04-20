@@ -963,6 +963,14 @@ class TestCollection(unittest.TestCase):
         self.db.drop_collection("test")
         self.db.test.drop_indexes()
 
+    # This is really a bson test but easier to just reproduce it here...
+    # (Shame on me)
+    def test_bad_encode(self):
+        c = self.db.test
+        warnings.simplefilter("ignore")
+        self.assertRaises(InvalidDocument, c.save, {"x": c})
+        warnings.simplefilter("default")
+
 
 if __name__ == "__main__":
     unittest.main()
