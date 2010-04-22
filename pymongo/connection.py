@@ -321,24 +321,9 @@ class Connection(object): # TODO support auth for pooling
         return connection
 
     def __master(self, sock):
-        """Get the hostname and port of the master Mongo instance.
-
-        Return a tuple (host, port).
+        """Is this socket connected to a master server?
         """
-        result = self["admin"].command("ismaster", _sock=sock)
-
-        if result["ismaster"] == 1:
-            return True
-        else:
-            if "remote" not in result:
-                return False
-
-            strings = result["remote"].split(":", 1)
-            if len(strings) == 1:
-                port = self.PORT
-            else:
-                port = int(strings[1])
-            return (strings[0], port)
+        return self["admin"].command("ismaster", _sock=sock)["ismaster"] == 1
 
     def _cache_index(self, database, collection, index, ttl):
         """Add an index to the index cache for ensure_index operations.
@@ -429,6 +414,7 @@ class Connection(object): # TODO support auth for pooling
         self.__host = None
         self.__port = None
         sock = None
+        sock_error = False
         for (host, port) in self.__nodes:
             try:
                 try:
@@ -438,25 +424,20 @@ class Connection(object): # TODO support auth for pooling
                     sock.connect((host, port))
                     sock.settimeout(self.__network_timeout)
                     master = self.__master(sock)
-                    if master is True or self.__slave_okay:
+                    if master or self.__slave_okay:
                         self.__host = host
                         self.__port = port
                         return
-                    if not master:
-                        raise ConfigurationError("trying to connect directly to"
-                                                 " slave %s:%r - must specify "
-                                                 "slave_okay to connect to "
-                                                 "slaves" % (host, port))
-                    if master not in self.__nodes:
-                        raise ConfigurationError("%r claims master is %r, "
-                                                 "but that's not configured" %
-                                                 ((host, port), master))
                 except socket.error, e:
-                    continue
+                    sock_error=True
             finally:
                 if sock is not None:
                     sock.close()
-        raise AutoReconnect("could not find master")
+        if sock_error:
+            raise AutoReconnect("could not find master")
+        raise ConfigurationError("No master node in %r. You must specify "
+                                 "slave_okay to connect to "
+                                 "slaves." % self.__nodes)
 
     def __connect(self):
         """(Re-)connect to Mongo and return a new (connected) socket.
