@@ -40,7 +40,7 @@ class Cursor(object):
     """
 
     def __init__(self, collection, spec, fields, skip, limit, slave_okay,
-                 timeout, tailable, snapshot=False, sort=None,
+                 timeout, tailable, snapshot=False, sort=None, max_scan=None,
                  _sock=None, _must_use_master=False, _is_command=False):
         """Create a new cursor.
 
@@ -61,6 +61,7 @@ class Cursor(object):
         self.__tailable = tailable
         self.__snapshot = snapshot
         self.__ordering = sort and helpers._index_document(sort) or None
+        self.__max_scan = max_scan
         self.__explain = False
         self.__hint = None
         self.__socket = _sock
@@ -144,6 +145,8 @@ class Cursor(object):
             spec["$hint"] = self.__hint
         if self.__snapshot:
             spec["$snapshot"] = True
+        if self.__max_scan:
+            spec["$maxScan"] = self.__max_scan
         return spec
 
     def __query_options(self):
@@ -261,6 +264,19 @@ class Cursor(object):
                 return doc
             raise IndexError("no such item for Cursor instance")
         raise TypeError("index %r cannot be applied to Cursor instances" % index)
+
+    def max_scan(self, max_scan):
+        """
+        set $maxScan for limiting how much to scan SERVER-1015
+
+        :Parameters:
+          - `max_scan`: a integer requires server version **>= 1.5.2-**
+        """
+        if not isinstance(max_scan, (int, long)):
+            raise TypeError("skip must be an int")
+        self.__check_okay_to_chain()
+        self.__max_scan = max_scan
+        return self
 
     def sort(self, key_or_list, direction=None):
         """Sorts this cursor's results.

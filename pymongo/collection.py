@@ -423,6 +423,7 @@ class Collection(object):
 
     def find(self, spec=None, fields=None, skip=0, limit=0,
              timeout=True, snapshot=False, tailable=False, sort=None,
+             max_scan=None,
              _sock=None, _must_use_master=False, _is_command=False):
         """Query the database.
 
@@ -476,9 +477,12 @@ class Collection(object):
           - `sort` (optional): a list of (key, direction) pairs
             specifying the sort order for this query. See
             :meth:`~pymongo.cursor.Cursor.sort` for details.
+          - `max_scan` (optional): limit the number of records
+            examined before returning a result - requires MongoDB
+            server version **>=1.5.1**
 
         .. versionadded:: 1.6+
-           The `sort` parameter.
+           The `sort` and `max_scan` parameters.
 
         .. versionchanged:: 1.6+
            The `fields` parameter can now be a dict or any iterable in
@@ -514,7 +518,7 @@ class Collection(object):
                 fields = self._fields_list_to_dict(fields)
 
         return Cursor(self, spec, fields, skip, limit, slave_okay, timeout,
-                      tailable, snapshot, sort, _sock=_sock,
+                      tailable, snapshot, sort, max_scan, _sock=_sock,
                       _must_use_master=_must_use_master,
                       _is_command=_is_command)
 
