@@ -849,7 +849,25 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(None, db.test.find_one({"hello": "foo"}))
         self.assertEqual(None, db.test.find_one(ObjectId()))
 
-        self.assertRaises(TypeError, db.test.find_one, 6)
+    def test_find_one_non_objectid(self):
+        db = self.db
+        db.drop_collection("test")
+
+        db.test.save({"_id": 5})
+
+        self.assert_(db.test.find_one(5))
+        self.failIf(db.test.find_one(6))
+
+    def test_find_one_with_find_args(self):
+        db = self.db
+        db.drop_collection("test")
+
+        db.test.save({"x": 1})
+        db.test.save({"x": 2})
+        db.test.save({"x": 3})
+
+        self.assertEqual(1, db.test.find_one()["x"])
+        self.assertEqual(2, db.test.find_one(skip=1, limit=2)["x"])
 
     def test_insert_adds_id(self):
         doc = {"hello": "world"}

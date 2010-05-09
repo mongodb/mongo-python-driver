@@ -378,30 +378,39 @@ class Collection(object):
         return self.__database.connection._send_message(
             message.delete(self.__full_name, spec, safe), safe)
 
-    def find_one(self, spec_or_object_id=None, fields=None,
-                 _sock=None, _must_use_master=False, _is_command=False):
-        """Get a single object from the database.
+    def find_one(self, spec_or_id=None, *args, **kwargs):
+        """Get a single document from the database.
 
-        Raises TypeError if the argument is of an improper type. Returns a
-        single SON object, or None if no result is found.
+        All arguments to :meth:`find` are also valid arguments for
+        :meth:`find_one`, although any `limit` argument will be
+        ignored. Returns a single document, or ``None`` if no matching
+        document is found.
 
         :Parameters:
-          - `spec_or_object_id` (optional): a SON object specifying elements
-            which must be present for a document to be returned OR an instance
-            of ObjectId to be used as the value for an _id query
-          - `fields` (optional): a list of field names that should be
-            included in the returned document ("_id" will always be
-            included), or a dict specifying the fields to return
-        """
-        spec = spec_or_object_id
-        if spec is None:
-            spec = SON()
-        if isinstance(spec, ObjectId):
-            spec = SON({"_id": spec})
 
-        for result in self.find(spec, limit=-1, fields=fields,
-                                _sock=_sock, _must_use_master=_must_use_master,
-                                _is_command=_is_command):
+          - `spec_or_id` (optional): a dictionary specifying
+            the query to be performed OR any other type to be used as
+            the value for a query for ``"_id"``.
+
+          - `*args` (optional): any additional positional arguments
+            are the same as the arguments to :meth:`find`.
+
+          - `**kwargs` (optional): any additional keyword arguments
+            are the same as the arguments to :meth:`find`.
+
+        .. versionchanged:: 1.6+
+           Allow passing any of the arguments that are valid for
+           :meth:`find`.
+
+        .. versionchanged:: 1.6+
+           Accept any type other than a ``dict`` instance as an
+           ``"_id"`` query, not just
+           :class:`~pymongo.objectid.ObjectId` instances.
+        """
+        if spec_or_id is not None and not isinstance(spec_or_id, dict):
+            spec_or_id = {"_id": spec_or_id}
+
+        for result in self.find(spec_or_id, *args, **kwargs).limit(-1):
             return result
         return None
 
@@ -474,6 +483,10 @@ class Collection(object):
             continue from the last document received. For details, see
             the `tailable cursor documentation
             <http://www.mongodb.org/display/DOCS/Tailable+Cursors>`_.
+
+        .. versionchanged:: 1.6+
+           The `fields` parameter can now be a dict or any iterable in
+           addition to a list.
 
         .. versionadded:: 1.1
            The `tailable` parameter.
