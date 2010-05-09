@@ -37,14 +37,17 @@ class Cursor(object):
     """
 
     def __init__(self, collection, spec, fields, skip, limit, slave_okay,
-                 timeout, tailable, snapshot=False,
+                 timeout, tailable, snapshot=False, sort=None,
                  _sock=None, _must_use_master=False, _is_command=False):
         """Create a new cursor.
 
-        Should not be called directly by application developers.
+        Should not be called directly by application developers - see
+        :meth:`~pymongo.collection.Collection.find` instead.
 
         .. mongodoc:: cursors
         """
+        self.__id = None
+
         self.__collection = collection
         self.__spec = spec
         self.__fields = fields
@@ -54,7 +57,7 @@ class Cursor(object):
         self.__timeout = timeout
         self.__tailable = tailable
         self.__snapshot = snapshot
-        self.__ordering = None
+        self.__ordering = sort and helpers._index_document(sort) or None
         self.__explain = False
         self.__hint = None
         self.__socket = _sock
@@ -62,7 +65,6 @@ class Cursor(object):
         self.__is_command = _is_command
 
         self.__data = []
-        self.__id = None
         self.__connection_id = None
         self.__retrieved = 0
         self.__killed = False

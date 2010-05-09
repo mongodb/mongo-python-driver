@@ -869,6 +869,29 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(1, db.test.find_one()["x"])
         self.assertEqual(2, db.test.find_one(skip=1, limit=2)["x"])
 
+    def test_find_with_sort(self):
+        db = self.db
+        db.drop_collection("test")
+
+        db.test.save({"x": 2})
+        db.test.save({"x": 1})
+        db.test.save({"x": 3})
+
+        self.assertEqual(2, db.test.find_one()["x"])
+        self.assertEqual(1, db.test.find_one(sort=[("x", 1)])["x"])
+        self.assertEqual(3, db.test.find_one(sort=[("x", -1)])["x"])
+
+        def to_list(foo):
+            return [bar["x"] for bar in foo]
+
+        self.assertEqual([2,1,3], to_list(db.test.find()))
+        self.assertEqual([1,2,3], to_list(db.test.find(sort=[("x", 1)])))
+        self.assertEqual([3,2,1], to_list(db.test.find(sort=[("x", -1)])))
+
+        self.assertRaises(TypeError, db.test.find, sort=5)
+        self.assertRaises(TypeError, db.test.find, sort="hello")
+        self.assertRaises(ValueError, db.test.find, sort=["hello", 1])
+
     def test_insert_adds_id(self):
         doc = {"hello": "world"}
         self.db.test.insert(doc)

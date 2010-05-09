@@ -422,7 +422,7 @@ class Collection(object):
         return as_dict
 
     def find(self, spec=None, fields=None, skip=0, limit=0,
-             timeout=True, snapshot=False, tailable=False,
+             timeout=True, snapshot=False, tailable=False, sort=None,
              _sock=None, _must_use_master=False, _is_command=False):
         """Query the database.
 
@@ -473,6 +473,12 @@ class Collection(object):
             continue from the last document received. For details, see
             the `tailable cursor documentation
             <http://www.mongodb.org/display/DOCS/Tailable+Cursors>`_.
+          - `sort` (optional): a list of (key, direction) pairs
+            specifying the sort order for this query. See
+            :meth:`~pymongo.cursor.Cursor.sort` for details.
+
+        .. versionadded:: 1.6+
+           The `sort` parameter.
 
         .. versionchanged:: 1.6+
            The `fields` parameter can now be a dict or any iterable in
@@ -484,7 +490,7 @@ class Collection(object):
         .. mongodoc:: find
         """
         if spec is None:
-            spec = SON()
+            spec = {}
 
         slave_okay = self.__database.connection.slave_okay
 
@@ -508,7 +514,7 @@ class Collection(object):
                 fields = self._fields_list_to_dict(fields)
 
         return Cursor(self, spec, fields, skip, limit, slave_okay, timeout,
-                      tailable, snapshot, _sock=_sock,
+                      tailable, snapshot, sort, _sock=_sock,
                       _must_use_master=_must_use_master,
                       _is_command=_is_command)
 
