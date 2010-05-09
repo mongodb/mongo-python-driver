@@ -389,8 +389,9 @@ class Collection(object):
           - `spec_or_object_id` (optional): a SON object specifying elements
             which must be present for a document to be returned OR an instance
             of ObjectId to be used as the value for an _id query
-          - `fields` (optional): a list of field names that should be included
-            in the returned document ("_id" will always be included)
+          - `fields` (optional): a list of field names that should be
+            included in the returned document ("_id" will always be
+            included), or a dict specifying the fields to return
         """
         spec = spec_or_object_id
         if spec is None:
@@ -426,44 +427,52 @@ class Collection(object):
              _sock=None, _must_use_master=False, _is_command=False):
         """Query the database.
 
-        The `spec` argument is a prototype document that all results must
-        match. For example:
+        The `spec` argument is a prototype document that all results
+        must match. For example:
 
         >>> db.test.find({"hello": "world"})
 
-        only matches documents that have a key "hello" with value "world".
-        Matches can have other keys *in addition* to "hello". The `fields`
-        argument is used to specify a subset of fields that should be included
-        in the result documents. By limiting results to a certain subset of
-        fields you can cut down on network traffic and decoding time.
+        only matches documents that have a key "hello" with value
+        "world".  Matches can have other keys *in addition* to
+        "hello". The `fields` argument is used to specify a subset of
+        fields that should be included in the result documents. By
+        limiting results to a certain subset of fields you can cut
+        down on network traffic and decoding time.
 
-        Raises TypeError if any of the arguments are of improper type. Returns
-        an instance of Cursor corresponding to this query.
+        Raises :class:`TypeError` if any of the arguments are of
+        improper type. Returns an instance of
+        :class:`~pymongo.cursor.Cursor` corresponding to this query.
 
         :Parameters:
-          - `spec` (optional): a SON object specifying elements which must be
-            present for a document to be included in the result set
-          - `fields` (optional): a list of field names that should be returned
-            in the result set ("_id" will always be included)
-          - `skip` (optional): the number of documents to omit (from the start
-            of the result set) when returning the results
-          - `limit` (optional): the maximum number of results to return
-          - `timeout` (optional): if True, any returned cursor will be subject
-            to the normal timeout behavior of the mongod process. Otherwise,
-            the returned cursor will never timeout at the server. Care should
-            be taken to ensure that cursors with timeout turned off are
-            properly closed.
-          - `snapshot` (optional): if True, snapshot mode will be used for this
-            query. Snapshot mode assures no duplicates are returned, or objects
-            missed, which were present at both the start and end of the query's
-            execution. For details, see the `snapshot documentation
+          - `spec` (optional): a SON object specifying elements which
+            must be present for a document to be included in the
+            result set
+          - `fields` (optional): a list of field names that should be
+            returned in the result set ("_id" will always be
+            included), or a dict specifying the `fields to return
+            <http://www.mongodb.org/display/DOCS/Advanced+Queries#AdvancedQueries-RetrievingaSubsetofFields>`_
+          - `skip` (optional): the number of documents to omit (from
+            the start of the result set) when returning the results
+          - `limit` (optional): the maximum number of results to
+            return
+          - `timeout` (optional): if True, any returned cursor will be
+            subject to the normal timeout behavior of the mongod
+            process. Otherwise, the returned cursor will never timeout
+            at the server. Care should be taken to ensure that cursors
+            with timeout turned off are properly closed.
+          - `snapshot` (optional): if True, snapshot mode will be used
+            for this query. Snapshot mode assures no duplicates are
+            returned, or objects missed, which were present at both
+            the start and end of the query's execution. For details,
+            see the `snapshot documentation
             <http://www.mongodb.org/display/DOCS/How+to+do+Snapshotting+in+the+Mongo+Database>`_.
-          - `tailable` (optional): the result of this find call will be a
-            tailable cursor - tailable cursors aren't closed when the last data
-            is retrieved but are kept open and the cursors location marks the
-            final document's position. if more data is received iteration of
-            the cursor will continue from the last document received. For
-            details, see the `tailable cursor documentation
+          - `tailable` (optional): the result of this find call will
+            be a tailable cursor - tailable cursors aren't closed when
+            the last data is retrieved but are kept open and the
+            cursors location marks the final document's position. if
+            more data is received iteration of the cursor will
+            continue from the last document received. For details, see
+            the `tailable cursor documentation
             <http://www.mongodb.org/display/DOCS/Tailable+Cursors>`_.
 
         .. versionadded:: 1.1
@@ -478,8 +487,6 @@ class Collection(object):
 
         if not isinstance(spec, dict):
             raise TypeError("spec must be an instance of dict")
-        if fields is not None and not isinstance(fields, list):
-            raise TypeError("fields must be an instance of list")
         if not isinstance(skip, int):
             raise TypeError("skip must be an instance of int")
         if not isinstance(limit, int):
@@ -493,8 +500,9 @@ class Collection(object):
 
         if fields is not None:
             if not fields:
-                fields = ["_id"]
-            fields = self._fields_list_to_dict(fields)
+                fields = {"_id": 1}
+            if not isinstance(fields, dict):
+                fields = self._fields_list_to_dict(fields)
 
         return Cursor(self, spec, fields, skip, limit, slave_okay, timeout,
                       tailable, snapshot, _sock=_sock,

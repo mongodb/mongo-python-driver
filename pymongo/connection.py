@@ -75,6 +75,9 @@ class Pool(threading.local):
         if not hasattr(self, "sockets"):
             self.sockets = []
 
+    def __del__(self):
+        self.return_socket()
+
     def socket(self):
         # we store the pid here to avoid issues with fork /
         # multiprocessing - see

@@ -343,6 +343,20 @@ class TestCollection(unittest.TestCase):
         self.assert_("mike" in db.test.find({}, ["mike"]).next())
         self.failIf("extra thing" in db.test.find({}, ["mike"]).next())
 
+    def test_fields_specifier_as_dict(self):
+        db = self.db
+        db.test.remove({})
+
+        db.test.insert({"x": [1, 2, 3], "mike": "awesome"})
+
+        self.assertEqual([1,2,3], db.test.find_one()["x"])
+        if version.at_least(db.connection, (1, 5, 1)):
+            self.assertEqual([2,3],
+                             db.test.find_one(fields={"x": {"$slice":
+                                                            -2}})["x"])
+        self.assert_("x" not in db.test.find_one(fields={"x": 0}))
+        self.assert_("mike" in db.test.find_one(fields={"x": 0}))
+
     def test_find_w_regex(self):
         db = self.db
         db.test.remove({})
