@@ -387,20 +387,18 @@ class Connection(object): # TODO support auth for pooling
         """Current connected host.
 
         .. versionchanged:: 1.3
-           ``host`` is now a property rather than a method. The ``host()``
-           method is deprecated.
+           ``host`` is now a property rather than a method.
         """
-        return helpers.callable_value(self.__host, "Connection.host")
+        return self.__host
 
     @property
     def port(self):
         """Current connected port.
 
         .. versionchanged:: 1.3
-           ``port`` is now a property rather than a method. The ``port()``
-           method is deprecated.
+           ``port`` is now a property rather than a method.
         """
-        return helpers.callable_value(self.__port, "Connection.port")
+        return self.__port
 
     @property
     def slave_okay(self):

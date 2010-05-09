@@ -212,45 +212,6 @@ class TestConnection(unittest.TestCase):
             except AssertionError:
                 self.fail()
 
-    # NOTE this probably doesn't all belong in this file, but it's easier in
-    # one place
-    def test_deprecated_method_for_attr(self):
-        c = Connection(self.host, self.port)
-        db = c.foo
-        coll = db.bar
-
-        warnings.simplefilter("error")
-
-        self.assertRaises(DeprecationWarning, c.host)
-        self.assertRaises(DeprecationWarning, c.port)
-        self.assertRaises(DeprecationWarning, db.connection)
-        self.assertRaises(DeprecationWarning, db.name)
-        self.assertRaises(DeprecationWarning, coll.full_name)
-        self.assertRaises(DeprecationWarning, coll.name)
-        self.assertRaises(DeprecationWarning, coll.database)
-
-        warnings.resetwarnings()
-        warnings.simplefilter("ignore")
-
-        self.assertEqual(c.host, c.host())
-        self.assertEqual(c.port, c.port())
-        self.assertEqual(db.connection, db.connection())
-        self.assertEqual(db.name, db.name())
-        self.assertEqual(coll.full_name, coll.full_name())
-        self.assertEqual(coll.name, coll.name())
-        self.assertEqual(coll.database, coll.database())
-
-        warnings.resetwarnings()
-        warnings.simplefilter("default")
-
-        self.assertEqual(self.host, c.host)
-        self.assertEqual(self.port, c.port)
-        self.assertEqual(c, db.connection)
-        self.assertEqual("foo", db.name)
-        self.assertEqual("foo.bar", coll.full_name)
-        self.assertEqual("bar", coll.name)
-        self.assertEqual(db, coll.database)
-
     def test_disconnect(self):
         c = Connection(self.host, self.port)
         coll = c.foo.bar

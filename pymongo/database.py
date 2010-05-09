@@ -66,9 +66,6 @@ class Database(object):
 
         self.__name = unicode(name)
         self.__connection = connection
-        # TODO remove the callable_value wrappers after deprecation is complete
-        self.__name_w = helpers.callable_value(self.__name, "Database.name")
-        self.__connection_w = helpers.callable_value(self.__connection, "Database.connection")
 
         self.__incoming_manipulators = []
         self.__incoming_copying_manipulators = []
@@ -116,20 +113,18 @@ class Database(object):
         :class:`Database`.
 
         .. versionchanged:: 1.3
-           ``connection`` is now a property rather than a method. The
-           ``connection()`` method is deprecated.
+           ``connection`` is now a property rather than a method.
         """
-        return self.__connection_w
+        return self.__connection
 
     @property
     def name(self):
         """The name of this :class:`Database`.
 
         .. versionchanged:: 1.3
-           ``name`` is now a property rather than a method. The
-           ``name()`` method is deprecated.
+           ``name`` is now a property rather than a method.
         """
-        return self.__name_w
+        return self.__name
 
     def __cmp__(self, other):
         if isinstance(other, Database):
@@ -226,12 +221,6 @@ class Database(object):
         for manipulator in reversed(self.__outgoing_copying_manipulators):
             son = manipulator.transform_outgoing(son, collection)
         return son
-
-    def _command(self, command, allowable_errors=[], check=True, sock=None):
-        warnings.warn("The '_command' method is deprecated. "
-                      "Please use 'command' instead.", DeprecationWarning)
-        return self.command(command, check=check,
-                            allowable_errors=allowable_errors, _sock=sock)
 
     def command(self, command, value=1,
                 check=True, allowable_errors=[], _sock=None, **kwargs):

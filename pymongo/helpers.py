@@ -128,38 +128,3 @@ def _auth_key(nonce, username, password):
     md5hash = _md5func()
     md5hash.update("%s%s%s" % (nonce, unicode(username), digest))
     return unicode(md5hash.hexdigest())
-
-
-# These two functions are some magic to get values we can use for deprecating
-# method style access in favor of property style access while remaining
-# backwards compatible.
-def __prop_call(self, *args, **kwargs):
-    warnings.warn("'%s()' has been deprecated and will be removed. "
-                  "Please use '%s' instead." %
-                  (self.__prop_name, self.__prop_name),
-                  DeprecationWarning)
-    return self
-
-__class_cache = {}
-
-def callable_value(value, prop_name):
-    t = type(value)
-
-    if "CallableVal" in str(t):
-        return value
-
-    if (t, prop_name) in __class_cache:
-        cls = __class_cache[(t, prop_name)]
-    else:
-        cls = type.__new__(type, "CallableVal", (t,),
-                           {"__call__": __prop_call,
-                            "__prop_name": prop_name})
-        __class_cache[(t, prop_name)] = cls
-
-    try:
-        # This works for regular classes
-        value.__class__ = cls
-        return value
-    except:
-        # This works for builtins
-        return cls(value)

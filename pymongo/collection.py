@@ -99,13 +99,6 @@ class Collection(object):
         self.__database = database
         self.__name = unicode(name)
         self.__full_name = u"%s.%s" % (self.__database.name, self.__name)
-        # TODO remove the callable_value wrappers after deprecation is complete
-        self.__database_w = helpers.callable_value(self.__database,
-                                                   "Collection.database")
-        self.__name_w = helpers.callable_value(self.__name,
-                                               "Collection.name")
-        self.__full_name_w = helpers.callable_value(self.__full_name,
-                                                    "Collection.full_name")
         if create or options is not None:
             self.__create(options)
 
@@ -151,20 +144,18 @@ class Collection(object):
         The full name is of the form `database_name.collection_name`.
 
         .. versionchanged:: 1.3
-           ``full_name`` is now a property rather than a method. The
-           ``full_name()`` method is deprecated.
+           ``full_name`` is now a property rather than a method.
         """
-        return self.__full_name_w
+        return self.__full_name
 
     @property
     def name(self):
         """The name of this :class:`Collection`.
 
         .. versionchanged:: 1.3
-           ``name`` is now a property rather than a method. The
-           ``name()`` method is deprecated.
+           ``name`` is now a property rather than a method.
         """
-        return self.__name_w
+        return self.__name
 
     @property
     def database(self):
@@ -172,10 +163,9 @@ class Collection(object):
         :class:`Collection` is a part of.
 
         .. versionchanged:: 1.3
-           ``database`` is now a property rather than a method. The
-           ``database()`` method is deprecated.
+           ``database`` is now a property rather than a method.
         """
-        return self.__database_w
+        return self.__database
 
     def save(self, to_save, manipulate=True, safe=False):
         """Save a document in this collection.
