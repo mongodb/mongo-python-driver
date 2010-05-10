@@ -249,14 +249,10 @@ class TestBSON(unittest.TestCase):
                                              ("_id", "b")])))
 
 
-# TODO this test doesn't pass w/ C extension
-#
-# timegm doesn't handle years < 1900 (negative), at least on OS X
-# we probably need to use our own version of timegm
-
-#     def test_date_before_epoch(self):
-#         doc = {"date": datetime.datetime(1600, 5, 5)}
-#         self.assertEqual(doc, BSON.from_dict(doc).to_dict())
+    def test_dates(self):
+        doc = {"early": datetime.datetime(1686, 5, 5),
+               "late": datetime.datetime(2086, 5, 5)}
+        self.assertEqual(doc, BSON.from_dict(doc).to_dict())
 
 
 if __name__ == "__main__":

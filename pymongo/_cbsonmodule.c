@@ -25,12 +25,11 @@
 
 
 #include <stdio.h>
-#include <time.h>
 
 #include <Python.h>
 #include <datetime.h>
 
-#include "time_helpers.h"
+#include "time64.h"
 #include "encoding_helpers.h"
 
 static PyObject* SON = NULL;
@@ -87,6 +86,40 @@ typedef int Py_ssize_t;
 #define INT2STRING(buffer, i) asprintf((buffer), "%d", (i))
 #define STRCAT(dest, n, src) strcat((dest), (src))
 #endif
+
+
+/* Date stuff */
+static PyObject* datetime_from_millis(long long millis) {
+    int microseconds = (millis % 1000) * 1000;
+    Time64_T seconds = millis / 1000;
+    struct TM timeinfo;
+    gmtime64_r(&seconds, &timeinfo);
+
+    return PyDateTime_FromDateAndTime(timeinfo.tm_year + 1900,
+                                      timeinfo.tm_mon + 1,
+                                      timeinfo.tm_mday,
+                                      timeinfo.tm_hour,
+                                      timeinfo.tm_min,
+                                      timeinfo.tm_sec,
+                                      microseconds);
+}
+
+static long long millis_from_datetime(PyObject* datetime) {
+    struct TM timeinfo;
+    long long millis;
+
+    timeinfo.tm_year = PyDateTime_GET_YEAR(datetime) - 1900;
+    timeinfo.tm_mon = PyDateTime_GET_MONTH(datetime) - 1;
+    timeinfo.tm_mday = PyDateTime_GET_DAY(datetime);
+    timeinfo.tm_hour = PyDateTime_DATE_GET_HOUR(datetime);
+    timeinfo.tm_min = PyDateTime_DATE_GET_MINUTE(datetime);
+    timeinfo.tm_sec = PyDateTime_DATE_GET_SECOND(datetime);
+
+    millis = timegm64(&timeinfo) * 1000;
+    millis += PyDateTime_DATE_GET_MICROSECOND(datetime) / 1000;
+    return millis;
+}
+
 
 /* A buffer representing some data being encoded to BSON. */
 typedef struct {
@@ -467,24 +500,7 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
         Py_DECREF(encoded);
         return result;
     } else if (PyDateTime_CheckExact(value)) {
-        time_t rawtime;
-        struct tm timeinfo;
-        long long time_since_epoch;
-
-        time(&rawtime);
-        if (LOCALTIME(&timeinfo, &rawtime)) {
-            return 0;
-        }
-        timeinfo.tm_year = PyDateTime_GET_YEAR(value) - 1900;
-        timeinfo.tm_mon = PyDateTime_GET_MONTH(value) - 1;
-        timeinfo.tm_mday = PyDateTime_GET_DAY(value);
-        timeinfo.tm_hour = PyDateTime_DATE_GET_HOUR(value);
-        timeinfo.tm_min = PyDateTime_DATE_GET_MINUTE(value);
-        timeinfo.tm_sec = PyDateTime_DATE_GET_SECOND(value);
-        time_since_epoch = GMTIME_INVERSE(&timeinfo);
-        time_since_epoch = time_since_epoch * 1000;
-        time_since_epoch += PyDateTime_DATE_GET_MICROSECOND(value) / 1000;
-
+        long long time_since_epoch = millis_from_datetime(value);
         *(buffer->buffer + type_byte) = 0x09;
         return buffer_write_bytes(buffer, (const char*)&time_since_epoch, 8);
     } else if (PyObject_IsInstance(value, ObjectId)) {
@@ -1358,25 +1374,7 @@ static PyObject* get_value(const char* buffer, int* position, int type) {
         }
     case 9:
         {
-            long long millis;
-            int microseconds;
-            time_t seconds;
-            struct tm timeinfo;
-
-            memcpy(&millis, buffer + *position, 8);
-            microseconds = (millis % 1000) * 1000;
-            seconds = millis / 1000;
-            if (GMTIME(&timeinfo, &seconds)) {
-                return NULL;
-            }
-
-            value = PyDateTime_FromDateAndTime(timeinfo.tm_year + 1900,
-                                               timeinfo.tm_mon + 1,
-                                               timeinfo.tm_mday,
-                                               timeinfo.tm_hour,
-                                               timeinfo.tm_min,
-                                               timeinfo.tm_sec,
-                                               microseconds);
+            value = datetime_from_millis(*(long long*)(buffer + *position));
             *position += 8;
             break;
         }
