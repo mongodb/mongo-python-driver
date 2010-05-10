@@ -19,7 +19,8 @@ from distutils.errors import CCompilerError
 from distutils.errors import DistutilsPlatformError, DistutilsExecError
 from distutils.core import Extension
 
-from pymongo import version
+# Remember to change in pymongo/__init__.py as well!
+version = "1.6+"
 
 f = open("README.rst")
 try:

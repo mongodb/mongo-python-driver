@@ -38,6 +38,7 @@ SLOW_ONLY = 1
 ALL = 2
 """Profile all operations."""
 
+# Remember to change in setup.py as well!
 version = "1.6+"
 """Current version of PyMongo."""
 
