@@ -41,8 +41,10 @@
    HAS_TIMEGM
    Define if your system has timegm(), a GNU extension.
 */
+#if !defined(WIN32) && !defined(_MSC_VER)
 #define HAS_GMTIME_R
 #define HAS_LOCALTIME_R
+#endif
 /* #define HAS_TIMEGM */
 
 
