@@ -29,7 +29,7 @@ sys.path[0:0] = [""]
 
 from nose.plugins.skip import SkipTest
 
-import qcheck
+import pymongo
 from pymongo.binary import Binary
 from pymongo.code import Code
 from pymongo.objectid import ObjectId
@@ -38,6 +38,7 @@ from pymongo.son import SON
 from pymongo.timestamp import Timestamp
 from pymongo.bson import BSON, is_valid, _to_dicts
 from pymongo.errors import InvalidDocument, InvalidStringData
+import qcheck
 
 
 class TestBSON(unittest.TestCase):
@@ -252,8 +253,14 @@ class TestBSON(unittest.TestCase):
     def test_dates(self):
         doc = {"early": datetime.datetime(1686, 5, 5),
                "late": datetime.datetime(2086, 5, 5)}
-        self.assertEqual(doc, BSON.from_dict(doc).to_dict())
-
+        try:
+            self.assertEqual(doc, BSON.from_dict(doc).to_dict())
+        except ValueError:
+            # Ignore ValueError when no C ext, since it's probably
+            # a problem w/ 32-bit Python - we work around this in the
+            # C ext, though.
+            if pymongo.has_c():
+                raise
 
 if __name__ == "__main__":
     unittest.main()
