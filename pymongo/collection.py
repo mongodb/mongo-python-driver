@@ -477,9 +477,11 @@ class Collection(object):
           - `sort` (optional): a list of (key, direction) pairs
             specifying the sort order for this query. See
             :meth:`~pymongo.cursor.Cursor.sort` for details.
-          - `max_scan` (optional): limit the number of records
-            examined before returning a result - requires MongoDB
-            server version **>=1.5.1**
+          - `max_scan` (optional): limit the number of documents
+            examined when performing the query
+
+        .. note:: The `max_scan` parameter requires server
+           version **>= 1.5.1**
 
         .. versionadded:: 1.6+
            The `sort` and `max_scan` parameters.

@@ -613,6 +613,19 @@ class TestCursor(unittest.TestCase):
 
         self.assertEqual(["b", "c"], distinct)
 
+    def test_max_scan(self):
+        if not version.at_least(self.db.connection, (1, 5, 1)):
+            raise SkipTest()
+
+        self.db.drop_collection("test")
+        for _ in range(100):
+            self.db.test.insert({})
+
+        self.assertEqual(100, len(list(self.db.test.find())))
+        self.assertEqual(50, len(list(self.db.test.find(max_scan=50))))
+        self.assertEqual(50, len(list(self.db.test.find()
+                                      .max_scan(90).max_scan(50))))
+
 
 if __name__ == "__main__":
     unittest.main()

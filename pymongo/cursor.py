@@ -266,14 +266,19 @@ class Cursor(object):
         raise TypeError("index %r cannot be applied to Cursor instances" % index)
 
     def max_scan(self, max_scan):
-        """
-        set $maxScan for limiting how much to scan SERVER-1015
+        """Limit the number of documents to scan when performing the query.
+
+        Raises :class:`~pymongo.errors.InvalidOperation` if this
+        cursor has already been used. Only the last :meth:`max_scan`
+        applied to this cursor has any effect.
 
         :Parameters:
-          - `max_scan`: a integer requires server version **>= 1.5.2-**
+          - `max_scan`: the maximum number of documents to scan
+
+        .. note:: Requires server version **>= 1.5.1**
+
+        .. versionadded:: 1.6+
         """
-        if not isinstance(max_scan, (int, long)):
-            raise TypeError("skip must be an int")
         self.__check_okay_to_chain()
         self.__max_scan = max_scan
         return self
