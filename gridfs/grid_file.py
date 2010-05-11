@@ -23,10 +23,12 @@ except ImportError:
     from StringIO import StringIO
 
 from gridfs.errors import (CorruptGridFile,
+                           FileExists,
                            NoFile,
                            UnsupportedAPI)
 from pymongo.binary import Binary
 from pymongo.collection import Collection
+from pymongo.errors import DuplicateKeyError
 from pymongo.objectid import ObjectId
 
 try:
@@ -93,7 +95,8 @@ class GridIn(object):
         arguments include:
 
           - ``"_id"``: unique ID for this file (default:
-            :class:`~pymongo.objectid.ObjectId`)
+            :class:`~pymongo.objectid.ObjectId`) - this ``"_id"`` must
+            not have already been used for another file
 
           - ``"filename"``: human name for the file
 
@@ -192,7 +195,12 @@ class GridIn(object):
         self._file["md5"] = md5
         self._file["length"] = self._position
         self._file["uploadDate"] = datetime.datetime.utcnow()
-        return self._coll.files.insert(self._file)
+
+        try:
+            return self._coll.files.insert(self._file, safe=True)
+        except DuplicateKeyError:
+            raise FileExists("file with _id %r already exists" % self._id)
+
 
     def close(self):
         """Flush the file and close it.

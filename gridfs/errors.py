@@ -35,6 +35,12 @@ class NoFile(GridFSError):
     .. versionadded:: 1.6
     """
 
+class FileExists(GridFSError):
+    """Raised when trying to create a file that already exists.
+
+    .. versionadded:: 1.6+
+    """
+
 class UnsupportedAPI(GridFSError):
     """Raised when trying to use the old GridFS API.
 

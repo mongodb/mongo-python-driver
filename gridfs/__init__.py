@@ -63,6 +63,10 @@ class GridFS(object):
         which data can be written. Any keyword arguments will be
         passed through to :meth:`~gridfs.grid_file.GridIn`.
 
+        If the ``"_id"`` of the file is manually specified, it must
+        not already exist in GridFS. Otherwise
+        :class:`~gridfs.errors.FileExists` is raised.
+
         :Parameters:
           - `**kwargs` (optional): keyword arguments for file creation
 
@@ -86,6 +90,10 @@ class GridFS(object):
         arguments will be passed through to the created file - see
         :meth:`~gridfs.grid_file.GridIn` for possible
         arguments. Returns the ``"_id"`` of the created file.
+
+        If the ``"_id"`` of the file is manually specified, it must
+        not already exist in GridFS. Otherwise
+        :class:`~gridfs.errors.FileExists` is raised.
 
         :Parameters:
           - `data`: data to be written as a file.

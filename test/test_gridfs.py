@@ -27,7 +27,8 @@ import sys
 sys.path[0:0] = [""]
 
 import gridfs
-from gridfs.errors import NoFile
+from gridfs.errors import (FileExists,
+                           NoFile)
 from test_connection import get_connection
 
 
@@ -181,6 +182,10 @@ class TestGridfs(unittest.TestCase):
         oid = self.fs.put(StringIO("hello world"), chunk_size=1)
         self.assertEqual(11, self.db.fs.chunks.count())
         self.assertEqual("hello world", self.fs.get(oid).read())
+
+    def test_put_duplicate(self):
+        oid = self.fs.put("hello")
+        self.assertRaises(FileExists, self.fs.put, "world", _id=oid)
 
 
 if __name__ == "__main__":
