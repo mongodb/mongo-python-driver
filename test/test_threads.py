@@ -33,7 +33,7 @@ class SaveAndFind(threading.Thread):
         sum = 0
         for document in self.collection.find():
             sum += document["x"]
-        assert sum == 499500
+        assert sum == 499500, "sum was %d not 499500" % sum
 
 
 class Insert(threading.Thread):
@@ -105,7 +105,7 @@ class TestThreads(unittest.TestCase):
     def test_threading(self):
         self.db.test.remove({})
         for i in xrange(1000):
-            self.db.test.save({"x": i})
+            self.db.test.save({"x": i}, safe=True)
 
         threads = []
         for i in range(10):
