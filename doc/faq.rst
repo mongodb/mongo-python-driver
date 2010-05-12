@@ -107,10 +107,13 @@ about the decision, but here is a brief summary:
 
 What is the correct way to handle time zones with PyMongo?
 ----------------------------------------------------------
-Currently the correct way is to only save naive
+
+Prior to PyMongo version 1.6+, the correct way is to only save naive
 :class:`~datetime.datetime` instances, and to save all dates as
-UTC. Unfortunately, Python time zone handling is less than elegant so
-it is quite difficult for the driver to do anything smarter than this.
+UTC. In versions >= 1.6+, the driver will automatically convert aware
+datetimes to UTC before saving them. All datetimes retrieved from the
+server (no matter what version of the driver you're using) will be
+naive and represent UTC.
 
 Something like :mod:`pytz` can be used to convert dates to localtime
 after retrieving them from the database.

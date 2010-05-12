@@ -500,14 +500,21 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
         Py_DECREF(encoded);
         return result;
     } else if (PyDateTime_CheckExact(value)) {
-        if (PyObject_GetAttr(value, PyString_FromString("tzinfo")) != Py_None) {
-            PyErr_SetString(PyExc_NotImplementedError,
-                            "offset-aware datetimes are not supported");
-            return 0;
+        long long millis;
+        PyObject* utcoffset = PyObject_CallMethod(value, "utcoffset", NULL);
+        if (utcoffset != Py_None) {
+            PyObject* result = PyNumber_Subtract(value, utcoffset);
+            Py_DECREF(utcoffset);
+            if (!result) {
+                return 0;
+            }
+            millis = millis_from_datetime(result);
+            Py_DECREF(result);
+        } else {
+            millis = millis_from_datetime(value);
         }
-        long long time_since_epoch = millis_from_datetime(value);
         *(buffer->buffer + type_byte) = 0x09;
-        return buffer_write_bytes(buffer, (const char*)&time_since_epoch, 8);
+        return buffer_write_bytes(buffer, (const char*)&millis, 8);
     } else if (PyObject_IsInstance(value, ObjectId)) {
         PyObject* pystring = PyObject_GetAttrString(value, "_ObjectId__id");
         if (!pystring) {

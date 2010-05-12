@@ -178,13 +178,13 @@ class TestBSON(unittest.TestCase):
         qcheck.check_unittest(self, from_then_to_dict,
                               qcheck.gen_mongo_dict(3))
 
-    def test_reject_timezone(self):
-        try:
-            BSON.from_dict({u'test zone dst' :
-                            datetime.datetime(1993, 4, 4, 2, tzinfo=SomeZone())})
-        except NotImplementedError:
-            return
-        raise ValueError("datetime with zone didn't error")
+    def test_aware_datetime(self):
+        aware = datetime.datetime(1993, 4, 4, 2, tzinfo=SomeZone())
+        utc_naive = (aware - aware.utcoffset()).replace(tzinfo=None)
+        self.assertEqual(datetime.datetime(1993, 4, 3, 16, 45), utc_naive)
+        after = BSON.from_dict({"date": aware}).to_dict()["date"]
+        self.assertEqual(None, after.tzinfo)
+        self.assertEqual(utc_naive, after)
 
     def test_bad_encode(self):
         self.assertRaises(InvalidStringData, BSON.from_dict,
