@@ -500,6 +500,11 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
         Py_DECREF(encoded);
         return result;
     } else if (PyDateTime_CheckExact(value)) {
+        if (PyObject_GetAttr(value, PyString_FromString("tzinfo")) != Py_None) {
+	  PyErr_SetString(PyExc_NotImplementedError, 
+			  "offset-aware datetimes are not supported");
+	  return 0;
+	}
         long long time_since_epoch = millis_from_datetime(value);
         *(buffer->buffer + type_byte) = 0x09;
         return buffer_write_bytes(buffer, (const char*)&time_since_epoch, 8);

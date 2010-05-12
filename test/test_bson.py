@@ -40,6 +40,12 @@ from pymongo.bson import BSON, is_valid, _to_dicts
 from pymongo.errors import InvalidDocument, InvalidStringData
 import qcheck
 
+class SomeZone(datetime.tzinfo):
+    def utcoffset(self, dt):
+        return datetime.timedelta(minutes=555)
+    def dst(self, dt):
+        # a fixed-offset class:  doesn't account for DST
+        return datetime.timedelta(0)
 
 class TestBSON(unittest.TestCase):
 
@@ -171,6 +177,14 @@ class TestBSON(unittest.TestCase):
 
         qcheck.check_unittest(self, from_then_to_dict,
                               qcheck.gen_mongo_dict(3))
+
+    def test_reject_timezone(self):
+        try:
+            BSON.from_dict({u'test zone dst' :
+                            datetime.datetime(1993, 4, 4, 2, tzinfo=SomeZone())})
+        except NotImplementedError:
+            return
+        raise ValueError("datetime with zone didn't error")
 
     def test_bad_encode(self):
         self.assertRaises(InvalidStringData, BSON.from_dict,

@@ -444,6 +444,8 @@ def _element_to_bson(key, value, check_keys):
             return "\x12" + name + struct.pack("<q", value)
         return "\x10" + name + struct.pack("<i", value)
     if isinstance(value, datetime.datetime):
+        if value.tzinfo is not None:
+            raise NotImplementedError("offset-aware datetimes are not supported")
         millis = int(calendar.timegm(value.timetuple()) * 1000 +
                      value.microsecond / 1000)
         return "\x09" + name + struct.pack("<q", millis)
