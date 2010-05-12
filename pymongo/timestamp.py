@@ -13,8 +13,11 @@
 # limitations under the License.
 
 """Tools for representing MongoDB internal Timestamps.
+
+.. versionadded:: 1.5
 """
 
+import calendar
 import datetime
 
 class Timestamp(object):
@@ -28,14 +31,24 @@ class Timestamp(object):
         to store a regular timestamp, please use a
         :class:`~datetime.datetime`.
 
-        Raises :class:`TypeError` if `time` and `inc` are not
-        instances of :class:`int`. Raises :class:`ValueError` if
+        Raises :class:`TypeError` if `time` is not an instance of
+        :class: `int` or :class:`~datetime.datetime`, or `inc` is not
+        an instance of :class:`int`. Raises :class:`ValueError` if
         `time` or `inc` is not in [0, 2**32).
 
         :Parameters:
-          - `time`: time in seconds since epoch UTC
+          - `time`: time in seconds since epoch UTC, or a naive UTC
+            :class:`~datetime.datetime`, or an aware
+            :class:`~datetime.datetime`
           - `inc`: the incrementing counter
+
+        .. versionchanged:: 1.6+
+           `time` can be a :class:`~datetime.datetime` instance
         """
+        if isinstance(time, datetime.datetime):
+            if time.utcoffset() is not None:
+                time = time - time.utcoffset()
+            time = int(calendar.timegm(time.timetuple()))
         if not isinstance(time, int):
             raise TypeError("time must be an instance of int")
         if not isinstance(inc, int):

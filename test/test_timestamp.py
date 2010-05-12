@@ -14,6 +14,7 @@
 
 """Tests for the Timestamp class."""
 
+import datetime
 import unittest
 import sys
 sys.path[0:0] = [""]
@@ -31,6 +32,12 @@ class TestTimestamp(unittest.TestCase):
         self.assertEqual(t.time, 123)
         self.assertEqual(t.inc, 456)
         self.assert_(isinstance(t, Timestamp))
+
+    def test_datetime(self):
+        d = datetime.datetime(2010, 5, 5)
+        t = Timestamp(d, 0)
+        self.assertEqual(1273017600, t.time)
+        self.assertEqual(d, t.as_datetime())
 
     def test_exceptions(self):
         self.assertRaises(TypeError, Timestamp)
