@@ -573,8 +573,9 @@ class Collection(object):
             this index will be recognized by subsequent calls to
             :meth:`ensure_index` - see documentation for
             :meth:`ensure_index` for details
-          - `kwargs` (optional): any additional index creation options
-            (see the above list) should be passed as keyword arguments
+          - `**kwargs` (optional): any additional index creation
+            options (see the above list) should be passed as keyword
+            arguments
 
         .. versionchanged:: 1.5.1
            Accept kwargs to support all index creation options.
@@ -661,8 +662,9 @@ class Collection(object):
           - `ttl` (optional): time window (in seconds) during which
             this index will be recognized by subsequent calls to
             :meth:`ensure_index`
-          - `kwargs` (optional): any additional index creation options
-            (see the above list) should be passed as keyword arguments
+          - `**kwargs` (optional): any additional index creation
+            options (see the above list) should be passed as keyword
+            arguments
 
         .. versionchanged:: 1.5.1
            Accept kwargs to support all index creation options.
@@ -807,7 +809,7 @@ class Collection(object):
 
         return self.__database.command("group", group)["retval"]
 
-    def rename(self, new_name):
+    def rename(self, new_name, **kwargs):
         """Rename this collection.
 
         If operating in auth mode, client must be authorized as an
@@ -818,20 +820,24 @@ class Collection(object):
 
         :Parameters:
           - `new_name`: new name for this collection
+          - `**kwargs` (optional): any additional rename options
+            should be passed as keyword arguments
+            (i.e. ``dropTarget=True``)
         """
         if not isinstance(new_name, basestring):
             raise TypeError("new_name must be an instance of basestring")
 
         if not new_name or ".." in new_name:
             raise InvalidName("collection names cannot be empty")
-        if "$" in new_name:
-            raise InvalidName("collection names must not contain '$'")
         if new_name[0] == "." or new_name[-1] == ".":
             raise InvalidName("collecion names must not start or end with '.'")
+        if "$" in new_name and not new_name.startswith("oplog.$main"):
+            raise InvalidName("collection names must not contain '$'")
 
         new_name = "%s.%s" % (self.__database.name, new_name)
         self.__database.connection.admin.command("renameCollection",
-                                                 self.__full_name, to=new_name)
+                                                 self.__full_name,
+                                                 to=new_name, **kwargs)
 
     def distinct(self, key):
         """Get a list of distinct values for `key` among all documents

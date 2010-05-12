@@ -821,6 +821,10 @@ class TestCollection(unittest.TestCase):
             self.assertEqual(x, doc["x"])
             x += 1
 
+        db.test.insert({})
+        self.assertRaises(OperationFailure, db.foo.rename, "test")
+        db.foo.rename("test", dropTarget=True)
+
     # doesn't really test functionality, just that the option is set correctly
     def test_snapshot(self):
         db = self.db
