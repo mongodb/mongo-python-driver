@@ -823,6 +823,9 @@ class Collection(object):
           - `**kwargs` (optional): any additional rename options
             should be passed as keyword arguments
             (i.e. ``dropTarget=True``)
+
+        .. versionadded:: 1.6+
+           support for accepting keyword arguments for rename options
         """
         if not isinstance(new_name, basestring):
             raise TypeError("new_name must be an instance of basestring")

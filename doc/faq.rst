@@ -115,6 +115,10 @@ datetimes to UTC before saving them. All datetimes retrieved from the
 server (no matter what version of the driver you're using) will be
 naive and represent UTC.
 
+.. warning:: Be careful not to save naive :class:`~datetime.datetime`
+   instances that are not UTC (i.e. the result of calling
+   :meth:`datetime.datetime.now`).
+
 Something like :mod:`pytz` can be used to convert dates to localtime
 after retrieving them from the database.
 
