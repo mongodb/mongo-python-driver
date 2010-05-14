@@ -181,3 +181,23 @@ from PyMongo as PyMongo supports some special types (like
 that are not supported in JSON. We've added some utilities for working
 with :mod:`json` and :mod:`simplejson` in the
 :mod:`~pymongo.json_util` module.
+
+.. _year-2038-problem:
+
+Why do I get an error for dates on or after 2038?
+-------------------------------------------------
+On Unix systems, dates are represented as seconds from 1 January 1970 and usually stored in the C
+:mod:`time_t` type. On most 32-bit operating systems :mod:`time_t` is a signed 4 byte integer
+which means it can't handle dates after 19 January 2038; this is known as the
+`year 2038 problem <http://en.wikipedia.org/wiki/Year_2038_problem>`_. Neither MongoDB nor
+Python uses :mod:`time_t` to represent dates internally so do not suffer from this problem, but 
+Python's :mod:`datetime.datetime.fromtimestamp()` used by PyMongo's Python implementation of
+:mod:`bson` does, which means it is susceptible. Therefore, on 32-bit systems you may get an
+error retrieving dates after 2038 from MongoDB using PyMongo with the Python version of
+:mod:`bson`.
+
+The C implementation of :mod:`bson` also used to suffer from this problem but it was fixed in
+commit ``566bc9fb7be6f9ab2604`` (10 May 2010).
+
+
+
