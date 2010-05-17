@@ -84,158 +84,6 @@ def _make_c_string(string, check_null=False):
                                     "UTF-8: %r" % string)
 
 
-def _validate_number(data):
-    assert len(data) >= 8
-    return data[8:]
-
-
-def _validate_string(data):
-    (length, data) = _get_int(data)
-    assert len(data) >= length
-    assert data[length - 1] == "\x00"
-    return data[length:]
-
-
-def _validate_object(data):
-    return _validate_document(data, None)
-
-
-def _validate_array(data):
-    return _validate_document(data, re.compile("^\d+$"))
-
-
-def _validate_binary(data):
-    (length, data) = _get_int(data)
-    # + 1 for the subtype byte
-    assert len(data) >= length + 1
-    return data[length + 1:]
-
-
-def _validate_undefined(data):
-    return data
-
-
-_OID_SIZE = 12
-
-
-def _validate_oid(data):
-    assert len(data) >= _OID_SIZE
-    return data[_OID_SIZE:]
-
-
-def _validate_boolean(data):
-    assert len(data) >= 1
-    return data[1:]
-
-
-_DATE_SIZE = 8
-
-
-def _validate_date(data):
-    assert len(data) >= _DATE_SIZE
-    return data[_DATE_SIZE:]
-
-
-_validate_null = _validate_undefined
-
-
-def _validate_regex(data):
-    (regex, data) = _get_c_string(data)
-    (options, data) = _get_c_string(data)
-    return data
-
-
-def _validate_ref(data):
-    data = _validate_string(data)
-    return _validate_oid(data)
-
-
-_validate_code = _validate_string
-
-
-def _validate_code_w_scope(data):
-    (length, data) = _get_int(data)
-    assert len(data) >= length + 1
-    return data[length + 1:]
-
-
-_validate_symbol = _validate_string
-
-
-def _validate_number_int(data):
-    assert len(data) >= 4
-    return data[4:]
-
-
-def _validate_timestamp(data):
-    assert len(data) >= 8
-    return data[8:]
-
-def _validate_number_long(data):
-    assert len(data) >= 8
-    return data[8:]
-
-
-_element_validator = {
-    "\x01": _validate_number,
-    "\x02": _validate_string,
-    "\x03": _validate_object,
-    "\x04": _validate_array,
-    "\x05": _validate_binary,
-    "\x06": _validate_undefined,
-    "\x07": _validate_oid,
-    "\x08": _validate_boolean,
-    "\x09": _validate_date,
-    "\x0A": _validate_null,
-    "\x0B": _validate_regex,
-    "\x0C": _validate_ref,
-    "\x0D": _validate_code,
-    "\x0E": _validate_symbol,
-    "\x0F": _validate_code_w_scope,
-    "\x10": _validate_number_int,
-    "\x11": _validate_timestamp,
-    "\x12": _validate_number_long}
-
-
-def _validate_element_data(type, data):
-    try:
-        return _element_validator[type](data)
-    except KeyError:
-        raise InvalidBSON("unrecognized type: %s" % type)
-
-
-def _validate_element(data, valid_name):
-    element_type = data[0]
-    (element_name, data) = _get_c_string(data[1:])
-    if valid_name:
-        assert valid_name.match(element_name), "name is invalid"
-    return _validate_element_data(element_type, data)
-
-
-def _validate_elements(data, valid_name):
-    while data:
-        data = _validate_element(data, valid_name)
-
-
-def _validate_document(data, valid_name=None):
-    try:
-        obj_size = struct.unpack("<i", data[:4])[0]
-    except struct.error:
-        raise InvalidBSON()
-
-    assert obj_size <= len(data)
-    obj = data[4:obj_size]
-    assert len(obj)
-
-    eoo = obj[-1]
-    assert eoo == "\x00"
-
-    elements = obj[:-1]
-    _validate_elements(elements, valid_name)
-
-    return data[obj_size:]
-
-
 def _get_number(data, as_class):
     return (struct.unpack("<d", data[:8])[0], data[8:])
 
@@ -377,6 +225,10 @@ def _elements_to_dict(data, as_class):
 
 def _bson_to_dict(data, as_class):
     obj_size = struct.unpack("<i", data[:4])[0]
+    if len(data) < obj_size:
+        raise InvalidBSON("objsize too large")
+    if data[obj_size - 1] != "\x00":
+        raise InvalidBSON("bad eoo")
     elements = data[4:obj_size - 1]
     return (_elements_to_dict(elements, as_class), data[obj_size:])
 if _use_c:
@@ -546,9 +398,9 @@ def is_valid(bson):
         raise InvalidBSON("BSON documents are limited to 4MB")
 
     try:
-        remainder = _validate_document(bson)
+        (_, remainder) = _bson_to_dict(bson, dict)
         return remainder == ""
-    except (AssertionError, InvalidBSON):
+    except:
         return False
 
 
