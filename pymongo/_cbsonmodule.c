@@ -130,7 +130,7 @@ typedef struct {
 
 static int write_dict(bson_buffer* buffer, PyObject* dict,
                       unsigned char check_keys, unsigned char top_level);
-static PyObject* elements_to_dict(const char* string, int max);
+static PyObject* elements_to_dict(const char* string, int max, PyObject* as_class);
 
 static bson_buffer* buffer_new(void) {
     bson_buffer* buffer;
@@ -1222,7 +1222,8 @@ static PyObject* _cbson_get_more_message(PyObject* self, PyObject* args) {
     return result;
 }
 
-static PyObject* get_value(const char* buffer, int* position, int type) {
+static PyObject* get_value(const char* buffer, int* position, int type,
+                           PyObject* as_class) {
     PyObject* value;
     switch (type) {
     case 1:
@@ -1253,7 +1254,7 @@ static PyObject* get_value(const char* buffer, int* position, int type) {
         {
             int size;
             memcpy(&size, buffer + *position, 4);
-            value = elements_to_dict(buffer + *position + 4, size - 5);
+            value = elements_to_dict(buffer + *position + 4, size - 5, as_class);
             if (!value) {
                 return NULL;
             }
@@ -1291,7 +1292,7 @@ static PyObject* get_value(const char* buffer, int* position, int type) {
                 int type = (int)buffer[(*position)++];
                 int key_size = strlen(buffer + *position);
                 *position += key_size + 1; /* just skip the key, they're in order. */
-                to_append = get_value(buffer, position, type);
+                to_append = get_value(buffer, position, type, as_class);
                 if (!to_append) {
                     return NULL;
                 }
@@ -1464,7 +1465,7 @@ static PyObject* get_value(const char* buffer, int* position, int type) {
             *position += code_length + 1;
 
             memcpy(&scope_size, buffer + *position, 4);
-            scope = elements_to_dict(buffer + *position + 4, scope_size - 5);
+            scope = elements_to_dict(buffer + *position + 4, scope_size - 5, (PyObject*)&PyDict_Type);
             if (!scope) {
                 Py_DECREF(code);
                 return NULL;
@@ -1522,9 +1523,9 @@ static PyObject* get_value(const char* buffer, int* position, int type) {
     return value;
 }
 
-static PyObject* elements_to_dict(const char* string, int max) {
+static PyObject* elements_to_dict(const char* string, int max, PyObject* as_class) {
     int position = 0;
-    PyObject* dict = PyDict_New();
+    PyObject* dict = PyObject_CallObject(as_class, NULL);
     if (!dict) {
         return NULL;
     }
@@ -1537,7 +1538,7 @@ static PyObject* elements_to_dict(const char* string, int max) {
             return NULL;
         }
         position += name_length + 1;
-        value = get_value(string, &position, type);
+        value = get_value(string, &position, type, as_class);
         if (!value) {
             return NULL;
         }
@@ -1549,26 +1550,56 @@ static PyObject* elements_to_dict(const char* string, int max) {
     return dict;
 }
 
-static PyObject* _cbson_bson_to_dict(PyObject* self, PyObject* bson) {
-    int size;
+static PyObject* _cbson_bson_to_dict(PyObject* self, PyObject* args) {
+    unsigned int size;
     Py_ssize_t total_size;
     const char* string;
+    PyObject* bson;
+    PyObject* as_class;
     PyObject* dict;
     PyObject* remainder;
     PyObject* result;
+
+    if (!PyArg_ParseTuple(args, "OO", &bson, &as_class)) {
+        return NULL;
+    }
 
     if (!PyString_Check(bson)) {
         PyErr_SetString(PyExc_TypeError, "argument to _bson_to_dict must be a string");
         return NULL;
     }
     total_size = PyString_Size(bson);
+    if (total_size < 5) {
+        PyObject* InvalidBSON = _error("InvalidBSON");
+        PyErr_SetString(InvalidBSON,
+                        "not enough data for a BSON document");
+        Py_DECREF(InvalidBSON);
+        return NULL;
+    }
+
     string = PyString_AsString(bson);
     if (!string) {
         return NULL;
     }
     memcpy(&size, string, 4);
 
-    dict = elements_to_dict(string + 4, size - 5);
+    if (total_size < size) {
+        PyObject* InvalidBSON = _error("InvalidBSON");
+        PyErr_SetString(InvalidBSON,
+                        "objsize too large");
+        Py_DECREF(InvalidBSON);
+        return NULL;
+    }
+
+    if (string[size - 1]) {
+        PyObject* InvalidBSON = _error("InvalidBSON");
+        PyErr_SetString(InvalidBSON,
+                        "bad eoo");
+        Py_DECREF(InvalidBSON);
+        return NULL;
+    }
+
+    dict = elements_to_dict(string + 4, size - 5, as_class);
     if (!dict) {
         return NULL;
     }
@@ -1583,12 +1614,18 @@ static PyObject* _cbson_bson_to_dict(PyObject* self, PyObject* bson) {
     return result;
 }
 
-static PyObject* _cbson_to_dicts(PyObject* self, PyObject* bson) {
-    int size;
+static PyObject* _cbson_to_dicts(PyObject* self, PyObject* args) {
+    unsigned int size;
     Py_ssize_t total_size;
     const char* string;
+    PyObject* bson;
     PyObject* dict;
     PyObject* result;
+    PyObject* as_class = (PyObject*)&PyDict_Type;
+
+    if (!PyArg_ParseTuple(args, "O|O", &bson, &as_class)) {
+        return NULL;
+    }
 
     if (!PyString_Check(bson)) {
         PyErr_SetString(PyExc_TypeError, "argument to _to_dicts must be a string");
@@ -1603,9 +1640,33 @@ static PyObject* _cbson_to_dicts(PyObject* self, PyObject* bson) {
     result = PyList_New(0);
 
     while (total_size > 0) {
+        if (total_size < 5) {
+            PyObject* InvalidBSON = _error("InvalidBSON");
+            PyErr_SetString(InvalidBSON,
+                            "not enough data for a BSON document");
+            Py_DECREF(InvalidBSON);
+            return NULL;
+        }
+
         memcpy(&size, string, 4);
 
-        dict = elements_to_dict(string + 4, size - 5);
+        if (total_size < size) {
+            PyObject* InvalidBSON = _error("InvalidBSON");
+            PyErr_SetString(InvalidBSON,
+                            "objsize too large");
+            Py_DECREF(InvalidBSON);
+            return NULL;
+        }
+
+        if (string[size - 1]) {
+            PyObject* InvalidBSON = _error("InvalidBSON");
+            PyErr_SetString(InvalidBSON,
+                            "bad eoo");
+            Py_DECREF(InvalidBSON);
+            return NULL;
+        }
+
+        dict = elements_to_dict(string + 4, size - 5, as_class);
         if (!dict) {
             return NULL;
         }
@@ -1621,9 +1682,9 @@ static PyObject* _cbson_to_dicts(PyObject* self, PyObject* bson) {
 static PyMethodDef _CBSONMethods[] = {
     {"_dict_to_bson", _cbson_dict_to_bson, METH_VARARGS,
      "convert a dictionary to a string containing it's BSON representation."},
-    {"_bson_to_dict", _cbson_bson_to_dict, METH_O,
+    {"_bson_to_dict", _cbson_bson_to_dict, METH_VARARGS,
      "convert a BSON string to a SON object."},
-    {"_to_dicts", _cbson_to_dicts, METH_O,
+    {"_to_dicts", _cbson_to_dicts, METH_VARARGS,
      "convert binary data to a sequence of SON objects."},
     {"_insert_message", _cbson_insert_message, METH_VARARGS,
      "create an insert message to be sent to MongoDB"},
