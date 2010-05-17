@@ -50,7 +50,7 @@ except ImportError:
 RE_TYPE = type(re.compile(""))
 
 
-def _get_int(data):
+def _get_int(data, as_class=None):
     try:
         value = struct.unpack("<i", data[:4])[0]
     except struct.error:
@@ -236,24 +236,24 @@ def _validate_document(data, valid_name=None):
     return data[obj_size:]
 
 
-def _get_number(data):
+def _get_number(data, as_class):
     return (struct.unpack("<d", data[:8])[0], data[8:])
 
 
-def _get_string(data):
+def _get_string(data, as_class):
     return _get_c_string(data[4:], struct.unpack("<i", data[:4])[0] - 1)
 
 
-def _get_object(data):
-    (object, data) = _bson_to_dict(data)
+def _get_object(data, as_class):
+    (object, data) = _bson_to_dict(data, as_class)
     if "$ref" in object:
         return (DBRef(object["$ref"], object["$id"],
                       object.get("$db", None)), data)
     return (object, data)
 
 
-def _get_array(data):
-    (obj, data) = _get_object(data)
+def _get_array(data, as_class):
+    (obj, data) = _get_object(data, dict)
     result = []
     i = 0
     while True:
@@ -265,7 +265,7 @@ def _get_array(data):
     return (result, data)
 
 
-def _get_binary(data):
+def _get_binary(data, as_class):
     (length, data) = _get_int(data)
     subtype = ord(data[0])
     data = data[1:]
@@ -279,31 +279,31 @@ def _get_binary(data):
     return (Binary(data[:length], subtype), data[length:])
 
 
-def _get_oid(data):
+def _get_oid(data, as_class):
     return (ObjectId(data[:12]), data[12:])
 
 
-def _get_boolean(data):
+def _get_boolean(data, as_class):
     return (data[0] == "\x01", data[1:])
 
 
-def _get_date(data):
+def _get_date(data, as_class):
     seconds = float(struct.unpack("<q", data[:8])[0]) / 1000.0
     return (datetime.datetime.utcfromtimestamp(seconds), data[8:])
 
 
-def _get_code_w_scope(data):
+def _get_code_w_scope(data, as_class):
     (_, data) = _get_int(data)
     (code, data) = _get_string(data)
     (scope, data) = _get_object(data)
     return (Code(code, scope), data)
 
 
-def _get_null(data):
+def _get_null(data, as_class):
     return (None, data)
 
 
-def _get_regex(data):
+def _get_regex(data, as_class):
     (pattern, data) = _get_c_string(data)
     (bson_flags, data) = _get_c_string(data)
     flags = 0
@@ -322,19 +322,21 @@ def _get_regex(data):
     return (re.compile(pattern, flags), data)
 
 
-def _get_ref(data):
+def _get_ref(data, as_class):
     (collection, data) = _get_c_string(data[4:])
     (oid, data) = _get_oid(data)
     return (DBRef(collection, oid), data)
 
 
-def _get_timestamp(data):
+def _get_timestamp(data, as_class):
     (inc, data) = _get_int(data)
     (timestamp, data) = _get_int(data)
     return (Timestamp(timestamp, inc), data)
 
-def _get_long(data):
+
+def _get_long(data, as_class):
     return (struct.unpack("<q", data[:8])[0], data[8:])
+
 
 _element_getter = {
     "\x01": _get_number,
@@ -358,25 +360,25 @@ _element_getter = {
 }
 
 
-def _element_to_dict(data):
+def _element_to_dict(data, as_class):
     element_type = data[0]
     (element_name, data) = _get_c_string(data[1:])
-    (value, data) = _element_getter[element_type](data)
+    (value, data) = _element_getter[element_type](data, as_class)
     return (element_name, value, data)
 
 
-def _elements_to_dict(data):
-    result = {}
+def _elements_to_dict(data, as_class):
+    result = as_class()
     while data:
-        (key, value, data) = _element_to_dict(data)
+        (key, value, data) = _element_to_dict(data, as_class)
         result[key] = value
     return result
 
 
-def _bson_to_dict(data):
+def _bson_to_dict(data, as_class):
     obj_size = struct.unpack("<i", data[:4])[0]
     elements = data[4:obj_size - 1]
-    return (_elements_to_dict(elements), data[obj_size:])
+    return (_elements_to_dict(elements, as_class), data[obj_size:])
 if _use_c:
     _bson_to_dict = _cbson._bson_to_dict
 
@@ -499,25 +501,30 @@ if _use_c:
     _dict_to_bson = _cbson._dict_to_bson
 
 
-def _to_dicts(data):
-    """Convert binary data to sequence of SON objects.
+def _to_dicts(data, as_class=dict):
+    """Convert binary data to sequence of documents.
 
     Data must be concatenated strings of valid BSON data.
 
     :Parameters:
       - `data`: bson data
+      - `as_class` (optional): the class to use for the resulting
+        documents
+
+    .. versionadded:: 1.6+
+       the `as_class` parameter
     """
-    dicts = []
+    docs = []
     while len(data):
-        (son, data) = _bson_to_dict(data)
-        dicts.append(son)
-    return dicts
+        (doc, data) = _bson_to_dict(data, as_class)
+        docs.append(doc)
+    return docs
 if _use_c:
     _to_dicts = _cbson._to_dicts
 
 
-def _to_dict(data):
-    (son, _) = _bson_to_dict(data)
+def _to_dict(data, as_class):
+    (son, _) = _bson_to_dict(data, as_class)
     return son
 
 
@@ -569,7 +576,18 @@ class BSON(str):
         """
         return cls(_dict_to_bson(dct, check_keys))
 
-    def to_dict(self):
-        """Get the dictionary representation of this data."""
-        (son, _) = _bson_to_dict(self)
-        return son
+    def to_dict(self, as_class=dict):
+        """Convert this BSON data to a mapping type.
+
+        The default type to use is :class:`dict`. This can be replaced
+        using the `as_class` parameter.
+
+        :Parameters:
+          - `as_class` (optional): the class to use for the resulting
+            document
+
+        .. versionadded:: 1.6+
+           the `as_class` parameter
+        """
+        (document, _) = _bson_to_dict(self, as_class)
+        return document

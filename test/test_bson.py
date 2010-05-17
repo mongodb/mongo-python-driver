@@ -263,7 +263,6 @@ class TestBSON(unittest.TestCase):
                          BSON.from_dict(SON([("b", SON([("a", "a"), ("_id", "a")])),
                                              ("_id", "b")])))
 
-
     def test_dates(self):
         doc = {"early": datetime.datetime(1686, 5, 5),
                "late": datetime.datetime(2086, 5, 5)}
@@ -275,6 +274,12 @@ class TestBSON(unittest.TestCase):
             # C ext, though.
             if pymongo.has_c():
                 raise
+
+    def test_custom_class(self):
+        self.assert_(isinstance(BSON.from_dict({}).to_dict(), dict))
+        self.failIf(isinstance(BSON.from_dict({}).to_dict(), SON))
+        self.assert_(isinstance(BSON.from_dict({}).to_dict(SON), SON))
+
 
 if __name__ == "__main__":
     unittest.main()
