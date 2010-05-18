@@ -683,15 +683,35 @@ class Collection(object):
     def index_information(self):
         """Get information on this collection's indexes.
 
-        Returns a dictionary where the keys are index names (as returned by
-        create_index()) and the values are lists of (key, direction) pairs
-        specifying the index (as passed to create_index()).
+        Returns a dictionary where the keys are index names (as
+        returned by create_index()) and the values are dictionaries
+        containing information about each index. The dictionary is
+        guaranteed to contain at least a single key, ``"key"`` which
+        is a list of (key, direction) pairs specifying the index (as
+        passed to create_index()). It will also contain any other
+        information in `system.indexes`, except for the ``"ns"`` and
+        ``"name"`` keys, which are cleaned. Example output might look
+        like this:
+
+        >>> db.test.ensure_index("x", unique=True)
+        u'x_1'
+        >>> db.test.index_information()
+        {u'_id_': {u'key': [(u'_id', 1)]},
+         u'x_1': {u'unique': True, u'key': [(u'x', 1)]}}
+
+
+        .. versionchanged:: 1.6+
+           The values in the resultant dictionary are now dictionaries
+           themselves, whose ``"key"`` item contains the list that was
+           the value in previous versions of PyMongo.
         """
         raw = self.__database.system.indexes.find({"ns": self.__full_name},
-                                                  as_class=SON)
+                                                  {"ns": 0}, as_class=SON)
         info = {}
         for index in raw:
-            info[index["name"]] = index["key"].items()
+            index["key"] = index["key"].items()
+            index = dict(index)
+            info[index.pop("name")] = index
         return info
 
     def options(self):
