@@ -1550,7 +1550,7 @@ static PyObject* elements_to_dict(const char* string, int max, PyObject* as_clas
             return NULL;
         }
 
-        PyDict_SetItem(dict, name, value);
+        PyObject_SetItem(dict, name, value);
         Py_DECREF(name);
         Py_DECREF(value);
     }
