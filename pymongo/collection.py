@@ -459,12 +459,14 @@ class Collection(object):
             :meth:`~pymongo.cursor.Cursor.sort` for details.
           - `max_scan` (optional): limit the number of documents
             examined when performing the query
+          - `as_class` (optional): class to use for documents in the
+            query result (default is :class:`dict`)
 
         .. note:: The `max_scan` parameter requires server
            version **>= 1.5.1**
 
         .. versionadded:: 1.6+
-           The `sort` and `max_scan` parameters.
+           The `sort`, `max_scan` and `as_class` parameters.
 
         .. versionchanged:: 1.6+
            The `fields` parameter can now be a dict or any iterable in

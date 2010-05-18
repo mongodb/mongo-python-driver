@@ -1023,6 +1023,18 @@ class TestCollection(unittest.TestCase):
         self.assertRaises(InvalidDocument, c.save, {"x": c})
         warnings.simplefilter("default")
 
+    def test_as_class(self):
+        c = self.db.test
+        c.insert({"x": 1})
+
+        self.assert_(isinstance(c.find().next(), dict))
+        self.failIf(isinstance(c.find().next(), SON))
+        self.assert_(isinstance(c.find(as_class=SON).next(), SON))
+
+        self.assert_(isinstance(c.find_one(), dict))
+        self.failIf(isinstance(c.find_one(), SON))
+        self.assert_(isinstance(c.find_one(as_class=SON), SON))
+
 
 if __name__ == "__main__":
     unittest.main()

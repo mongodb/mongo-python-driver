@@ -41,7 +41,7 @@ class Cursor(object):
 
     def __init__(self, collection, spec=None, fields=None, skip=0, limit=0,
                  timeout=True, snapshot=False, tailable=False, sort=None,
-                 max_scan=None,
+                 max_scan=None, as_class=None,
                  _sock=None, _must_use_master=False, _is_command=False):
         """Create a new cursor.
 
@@ -74,6 +74,10 @@ class Cursor(object):
             if not isinstance(fields, dict):
                 fields = helpers._fields_list_to_dict(fields)
 
+        if as_class is None:
+            # TODO add Connection level default for this case
+            as_class = dict
+
         self.__collection = collection
         self.__spec = spec
         self.__fields = fields
@@ -86,6 +90,7 @@ class Cursor(object):
         self.__max_scan = max_scan
         self.__explain = False
         self.__hint = None
+        self.__as_class = as_class
         self.__socket = _sock
         self.__must_use_master = _must_use_master
         self.__is_command = _is_command
@@ -480,7 +485,8 @@ class Cursor(object):
         self.__connection_id = connection_id
 
         try:
-            response = helpers._unpack_response(response, self.__id)
+            response = helpers._unpack_response(response, self.__id,
+                                                self.__as_class)
         except AutoReconnect:
             db.connection._reset()
             raise

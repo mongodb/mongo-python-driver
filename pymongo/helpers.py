@@ -72,7 +72,7 @@ def _index_document(index_list):
     return index
 
 
-def _unpack_response(response, cursor_id=None):
+def _unpack_response(response, cursor_id=None, as_class=dict):
     """Unpack a response from the database.
 
     Check the response for errors and unpack, returning a dictionary
@@ -83,6 +83,7 @@ def _unpack_response(response, cursor_id=None):
       - `cursor_id` (optional): cursor_id we sent to get this response -
         used for raising an informative exception when we get cursor id not
         valid at server response
+      - `as_class` (optional): class to use for resulting documents
     """
     response_flag = struct.unpack("<i", response[:4])[0]
     if response_flag & 1:
@@ -102,7 +103,7 @@ def _unpack_response(response, cursor_id=None):
     result["cursor_id"] = struct.unpack("<q", response[4:12])[0]
     result["starting_from"] = struct.unpack("<i", response[12:16])[0]
     result["number_returned"] = struct.unpack("<i", response[16:20])[0]
-    result["data"] = bson._to_dicts(response[20:])
+    result["data"] = bson._to_dicts(response[20:], as_class=as_class)
     assert len(result["data"]) == result["number_returned"]
     return result
 
