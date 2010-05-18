@@ -48,6 +48,14 @@ typedef int Py_ssize_t;
 #define PY_SSIZE_T_MIN INT_MIN
 #endif
 
+#if PY_VERSION_HEX < 0x02050000
+#define WARN(category, message)                 \
+    PyErr_Warn((category), (message))
+#else
+#define WARN(category, message)                 \
+    PyErr_WarnEx((category), (message), 1)
+#endif
+
 #define INITIAL_BUFFER_SIZE 256
 
 /* Maximum number of regex flags */
@@ -660,12 +668,11 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
         return 1;
     } else if (first_attempt) {
         /* Try reloading the modules and having one more go at it. */
-        if (PyErr_WarnEx(PyExc_RuntimeWarning, "couldn't encode - reloading "
-                         "python modules and trying again. if you see this "
-                         "without getting an InvalidDocument exception "
-                         "please see "
-                         "http://api.mongodb.org/python/current/faq.html#does-pymongo-work-with-mod-wsgi",
-                         1) == -1) {
+        if (WARN(PyExc_RuntimeWarning, "couldn't encode - reloading python "
+                 "modules and trying again. if you see this without getting "
+                 "an InvalidDocument exception please see http://api.mongodb"
+                 ".org/python/current/faq.html#does-pymongo-work-with-mod-"
+                 "wsgi") == -1) {
             return 0;
         }
         if (_reload_python_objects()) {
