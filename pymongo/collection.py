@@ -687,7 +687,8 @@ class Collection(object):
         create_index()) and the values are lists of (key, direction) pairs
         specifying the index (as passed to create_index()).
         """
-        raw = self.__database.system.indexes.find({"ns": self.__full_name})
+        raw = self.__database.system.indexes.find({"ns": self.__full_name},
+                                                  as_class=SON)
         info = {}
         for index in raw:
             info[index["name"]] = index["key"].items()

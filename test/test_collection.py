@@ -226,6 +226,7 @@ class TestCollection(unittest.TestCase):
 
     def test_index_info(self):
         db = self.db
+        db.test.save({}) # create collection
         db.test.drop_indexes()
         self.assertEqual(len(db.test.index_information()), 1)
         self.assert_("_id_" in db.test.index_information())
@@ -239,11 +240,8 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(db.test.index_information()["hello_1"],
                          [("hello", ASCENDING)])
         self.assertEqual(len(db.test.index_information()), 3)
-        self.assert_(("hello", DESCENDING) in
-                     db.test.index_information()["hello_-1_world_1"])
-        self.assert_(("world", ASCENDING) in
-                     db.test.index_information()["hello_-1_world_1"])
-        self.assert_(len(db.test.index_information()["hello_-1_world_1"]) == 2)
+        self.assertEqual([("hello", DESCENDING), ("world", ASCENDING)],
+                         db.test.index_information()["hello_-1_world_1"])
 
     def test_field_selection(self):
         db = self.db
