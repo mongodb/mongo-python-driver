@@ -30,6 +30,7 @@ from pymongo.errors import (AutoReconnect,
                             InvalidName,
                             InvalidURI,
                             OperationFailure)
+from pymongo.son import SON
 from test import version
 
 
@@ -346,6 +347,34 @@ class TestConnection(unittest.TestCase):
             self.fail()
         except EOFError:
             pass
+
+    def test_document_class(self):
+        c = Connection(self.host, self.port)
+        db = c.pymongo_test
+        db.test.insert({"x": 1})
+
+        self.assertEqual(dict, c.document_class)
+        self.assert_(isinstance(db.test.find_one(), dict))
+        self.failIf(isinstance(db.test.find_one(), SON))
+
+        c.document_class = SON
+
+        self.assertEqual(SON, c.document_class)
+        self.assert_(isinstance(db.test.find_one(), SON))
+        self.failIf(isinstance(db.test.find_one(as_class=dict), SON))
+
+        c = Connection(self.host, self.port, document_class=SON)
+        db = c.pymongo_test
+
+        self.assertEqual(SON, c.document_class)
+        self.assert_(isinstance(db.test.find_one(), SON))
+        self.failIf(isinstance(db.test.find_one(as_class=dict), SON))
+
+        c.document_class = dict
+
+        self.assertEqual(dict, c.document_class)
+        self.assert_(isinstance(db.test.find_one(), dict))
+        self.failIf(isinstance(db.test.find_one(), SON))
 
 # TODO come up with a different way to test `network_timeout`. This is just
 # too sketchy.

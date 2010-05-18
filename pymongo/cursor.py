@@ -75,8 +75,7 @@ class Cursor(object):
                 fields = helpers._fields_list_to_dict(fields)
 
         if as_class is None:
-            # TODO add Connection level default for this case
-            as_class = dict
+            as_class = collection.database.connection.document_class
 
         self.__collection = collection
         self.__spec = spec

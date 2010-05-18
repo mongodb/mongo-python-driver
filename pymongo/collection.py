@@ -460,7 +460,8 @@ class Collection(object):
           - `max_scan` (optional): limit the number of documents
             examined when performing the query
           - `as_class` (optional): class to use for documents in the
-            query result (default is :class:`dict`)
+            query result (default is
+            :attr:`~pymongo.connection.Connection.document_class`)
 
         .. note:: The `max_scan` parameter requires server
            version **>= 1.5.1**

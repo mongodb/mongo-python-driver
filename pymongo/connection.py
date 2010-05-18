@@ -108,7 +108,7 @@ class Connection(object): # TODO support auth for pooling
 
     def __init__(self, host=None, port=None, pool_size=None,
                  auto_start_request=None, timeout=None, slave_okay=False,
-                 network_timeout=None, _connect=True):
+                 network_timeout=None, document_class=dict, _connect=True):
         """Create a new connection to a single MongoDB instance at *host:port*.
 
         The resultant connection object has connection-pooling built in. It
@@ -131,13 +131,17 @@ class Connection(object): # TODO support auth for pooling
           - `port` (optional): port number on which to connect
           - `pool_size` (optional): DEPRECATED
           - `auto_start_request` (optional): DEPRECATED
-          - `slave_okay` (optional): is it okay to connect directly to and
-            perform queries on a slave instance
+          - `slave_okay` (optional): is it okay to connect directly to
+            and perform queries on a slave instance
           - `timeout` (optional): DEPRECATED
-          - `network_timeout` (optional): timeout (in seconds) to use for socket
-            operations - default is no timeout
+          - `network_timeout` (optional): timeout (in seconds) to use
+            for socket operations - default is no timeout
+          - `document_class` (optional): default class to use for
+            documents returned from queries on this connection
 
         .. seealso:: :meth:`end_request`
+        .. versionadded:: 1.6+
+           The `document_class` parameter.
         .. versionchanged:: 1.4
            DEPRECATED The `pool_size`, `auto_start_request`, and `timeout`
            parameters.
@@ -177,6 +181,7 @@ class Connection(object): # TODO support auth for pooling
         self.__pool = Pool(self.__connect)
 
         self.__network_timeout = network_timeout
+        self.__document_class = document_class
 
         # cache of existing indexes used by ensure_index ops
         self.__index_cache = {}
@@ -403,6 +408,19 @@ class Connection(object): # TODO support auth for pooling
         """Is it okay for this connection to connect directly to a slave?
         """
         return self.__slave_okay
+
+    def get_document_class(self):
+        return self.__document_class
+
+    def set_document_class(self, klass):
+        self.__document_class = klass
+
+    document_class = property(get_document_class, set_document_class,
+                              doc="""Default class to use for documents
+                              returned from queries on this connection.
+
+                              .. versionadded:: 1.6+
+                              """)
 
     def __find_master(self):
         """Create a new socket and use it to figure out who the master is.
