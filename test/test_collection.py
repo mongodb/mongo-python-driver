@@ -1033,6 +1033,9 @@ class TestCollection(unittest.TestCase):
         self.failIf(isinstance(c.find_one(), SON))
         self.assert_(isinstance(c.find_one(as_class=SON), SON))
 
+        self.assertEqual(1, c.find_one(as_class=SON)["x"])
+        self.assertEqual(1, c.find(as_class=SON).next()["x"])
+
 
 if __name__ == "__main__":
     unittest.main()
