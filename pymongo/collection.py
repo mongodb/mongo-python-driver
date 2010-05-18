@@ -404,27 +404,7 @@ class Collection(object):
             return result
         return None
 
-    def _fields_list_to_dict(self, fields):
-        """Takes a list of field names and returns a matching dictionary.
-
-        ["a", "b"] becomes {"a": 1, "b": 1}
-
-        and
-
-        ["a.b.c", "d", "a.c"] becomes {"a.b.c": 1, "d": 1, "a.c": 1}
-        """
-        as_dict = {}
-        for field in fields:
-            if not isinstance(field, basestring):
-                raise TypeError("fields must be a list of key names as "
-                                "(string, unicode)")
-            as_dict[field] = 1
-        return as_dict
-
-    def find(self, spec=None, fields=None, skip=0, limit=0,
-             timeout=True, snapshot=False, tailable=False, sort=None,
-             max_scan=None,
-             _sock=None, _must_use_master=False, _is_command=False):
+    def find(self, *args, **kwargs):
         """Query the database.
 
         The `spec` argument is a prototype document that all results
@@ -495,32 +475,7 @@ class Collection(object):
 
         .. mongodoc:: find
         """
-        if spec is None:
-            spec = {}
-
-        if not isinstance(spec, dict):
-            raise TypeError("spec must be an instance of dict")
-        if not isinstance(skip, int):
-            raise TypeError("skip must be an instance of int")
-        if not isinstance(limit, int):
-            raise TypeError("limit must be an instance of int")
-        if not isinstance(timeout, bool):
-            raise TypeError("timeout must be an instance of bool")
-        if not isinstance(snapshot, bool):
-            raise TypeError("snapshot must be an instance of bool")
-        if not isinstance(tailable, bool):
-            raise TypeError("tailable must be an instance of bool")
-
-        if fields is not None:
-            if not fields:
-                fields = {"_id": 1}
-            if not isinstance(fields, dict):
-                fields = self._fields_list_to_dict(fields)
-
-        return Cursor(self, spec, fields, skip, limit, timeout,
-                      tailable, snapshot, sort, max_scan, _sock=_sock,
-                      _must_use_master=_must_use_master,
-                      _is_command=_is_command)
+        return Cursor(self, *args, **kwargs)
 
     def count(self):
         """Get the number of documents in this collection.
@@ -797,7 +752,7 @@ class Collection(object):
         if isinstance(key, basestring):
             group["$keyf"] = Code(key)
         elif key is not None:
-            group = {"key": self._fields_list_to_dict(key)}
+            group = {"key": helpers._fields_list_to_dict(key)}
         group["ns"] = self.__name
         group["$reduce"] = Code(reduce)
         group["cond"] = condition

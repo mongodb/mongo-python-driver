@@ -39,8 +39,9 @@ class Cursor(object):
     """A cursor / iterator over Mongo query results.
     """
 
-    def __init__(self, collection, spec, fields, skip, limit, timeout,
-                 tailable, snapshot=False, sort=None, max_scan=None,
+    def __init__(self, collection, spec=None, fields=None, skip=0, limit=0,
+                 timeout=True, snapshot=False, tailable=False, sort=None,
+                 max_scan=None,
                  _sock=None, _must_use_master=False, _is_command=False):
         """Create a new cursor.
 
@@ -50,6 +51,28 @@ class Cursor(object):
         .. mongodoc:: cursors
         """
         self.__id = None
+
+        if spec is None:
+            spec = {}
+
+        if not isinstance(spec, dict):
+            raise TypeError("spec must be an instance of dict")
+        if not isinstance(skip, int):
+            raise TypeError("skip must be an instance of int")
+        if not isinstance(limit, int):
+            raise TypeError("limit must be an instance of int")
+        if not isinstance(timeout, bool):
+            raise TypeError("timeout must be an instance of bool")
+        if not isinstance(snapshot, bool):
+            raise TypeError("snapshot must be an instance of bool")
+        if not isinstance(tailable, bool):
+            raise TypeError("tailable must be an instance of bool")
+
+        if fields is not None:
+            if not fields:
+                fields = {"_id": 1}
+            if not isinstance(fields, dict):
+                fields = helpers._fields_list_to_dict(fields)
 
         self.__collection = collection
         self.__spec = spec

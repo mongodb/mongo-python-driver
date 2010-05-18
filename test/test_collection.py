@@ -245,13 +245,6 @@ class TestCollection(unittest.TestCase):
                      db.test.index_information()["hello_-1_world_1"])
         self.assert_(len(db.test.index_information()["hello_-1_world_1"]) == 2)
 
-    def test_fields_list_to_dict(self):
-        f = self.db.test._fields_list_to_dict
-
-        self.assertEqual(f(["a", "b"]), {"a": 1, "b": 1})
-        self.assertEqual(f(["a.b.c", "d", "a.c"]),
-                         {"a.b.c": 1, "d": 1, "a.c": 1})
-
     def test_field_selection(self):
         db = self.db
         db.drop_collection("test")
