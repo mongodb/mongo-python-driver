@@ -498,8 +498,6 @@ class Collection(object):
         if spec is None:
             spec = {}
 
-        slave_okay = self.__database.connection.slave_okay
-
         if not isinstance(spec, dict):
             raise TypeError("spec must be an instance of dict")
         if not isinstance(skip, int):
@@ -519,7 +517,7 @@ class Collection(object):
             if not isinstance(fields, dict):
                 fields = self._fields_list_to_dict(fields)
 
-        return Cursor(self, spec, fields, skip, limit, slave_okay, timeout,
+        return Cursor(self, spec, fields, skip, limit, timeout,
                       tailable, snapshot, sort, max_scan, _sock=_sock,
                       _must_use_master=_must_use_master,
                       _is_command=_is_command)

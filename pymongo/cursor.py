@@ -39,8 +39,8 @@ class Cursor(object):
     """A cursor / iterator over Mongo query results.
     """
 
-    def __init__(self, collection, spec, fields, skip, limit, slave_okay,
-                 timeout, tailable, snapshot=False, sort=None, max_scan=None,
+    def __init__(self, collection, spec, fields, skip, limit, timeout,
+                 tailable, snapshot=False, sort=None, max_scan=None,
                  _sock=None, _must_use_master=False, _is_command=False):
         """Create a new cursor.
 
@@ -56,7 +56,6 @@ class Cursor(object):
         self.__fields = fields
         self.__skip = skip
         self.__limit = limit
-        self.__slave_okay = slave_okay
         self.__timeout = timeout
         self.__tailable = tailable
         self.__snapshot = snapshot
@@ -112,8 +111,8 @@ class Cursor(object):
         completely evaluated.
         """
         copy = Cursor(self.__collection, self.__spec, self.__fields,
-                      self.__skip, self.__limit, self.__slave_okay,
-                      self.__timeout, self.__tailable, self.__snapshot)
+                      self.__skip, self.__limit, self.__timeout,
+                      self.__tailable, self.__snapshot)
         copy.__ordering = self.__ordering
         copy.__explain = self.__explain
         copy.__hint = self.__hint
@@ -155,7 +154,7 @@ class Cursor(object):
         options = 0
         if self.__tailable:
             options |= _QUERY_OPTIONS["tailable_cursor"]
-        if self.__slave_okay:
+        if self.__collection.database.connection.slave_okay:
             options |= _QUERY_OPTIONS["slave_okay"]
         if not self.__timeout:
             options |= _QUERY_OPTIONS["no_timeout"]
