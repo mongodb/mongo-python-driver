@@ -103,7 +103,7 @@ def _unpack_response(response, cursor_id=None, as_class=dict):
     result["cursor_id"] = struct.unpack("<q", response[4:12])[0]
     result["starting_from"] = struct.unpack("<i", response[12:16])[0]
     result["number_returned"] = struct.unpack("<i", response[16:20])[0]
-    result["data"] = bson._to_dicts(response[20:], as_class=as_class)
+    result["data"] = bson._to_dicts(response[20:], as_class)
     assert len(result["data"]) == result["number_returned"]
     return result
 
