@@ -280,6 +280,8 @@ class TestBSON(unittest.TestCase):
         self.failIf(isinstance(BSON.from_dict({}).to_dict(), SON))
         self.assert_(isinstance(BSON.from_dict({}).to_dict(SON), SON))
 
+        self.assertEqual(1, BSON.from_dict({"x": 1}).to_dict(SON)["x"])
+
 
 if __name__ == "__main__":
     unittest.main()
