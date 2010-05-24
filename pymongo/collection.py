@@ -314,40 +314,40 @@ class Collection(object):
             message.update(self.__full_name, upsert, multi,
                            spec, document, safe), safe)
 
-    def remove(self, spec_or_object_id=None, safe=False):
+    def remove(self, spec_or_id=None, safe=False):
         """Remove a document(s) from this collection.
 
         .. warning:: Calls to :meth:`remove` should be performed with
            care, as removed data cannot be restored.
 
-        Raises :class:`~pymongo.errors.TypeError` if
-        `spec_or_object_id` is not an instance of (``dict``,
-        :class:`~pymongo.objectid.ObjectId`). If `safe` is ``True``
-        then the remove operation will be checked for errors, raising
+        If `safe` is ``True`` then the remove operation will be
+        checked for errors, raising
         :class:`~pymongo.errors.OperationFailure` if one
         occurred. Safe removes wait for a response from the database,
         while normal removes do not.
 
-        If no `spec_or_object_id` is given all documents in this
-        collection will be removed. This is not equivalent to calling
-        :meth:`~pymongo.database.Database.drop_collection`, however, as
-        indexes will not be removed.
+        If `spec_or_id` is ``None``, all documents in this collection
+        will be removed. This is not equivalent to calling
+        :meth:`~pymongo.database.Database.drop_collection`, however,
+        as indexes will not be removed.
 
         If `safe` is ``True`` returns the response to the *lastError*
         command. Otherwise, returns ``None``.
 
         :Parameters:
-          - `spec_or_object_id` (optional): a ``dict`` or
-            :class:`~pymongo.son.SON` instance specifying which documents
-            should be removed; or an instance of
-            :class:`~pymongo.objectid.ObjectId` specifying the value of the
-            ``_id`` field for the document to be removed
+          - `spec_or_id` (optional): a dictionary specifying the
+            documents to be removed OR any other type specifying the
+            value of ``"_id"`` for the document to be removed
           - `safe` (optional): check that the remove succeeded?
 
+        .. versionchanged:: 1.6+
+           Accept any type other than a ``dict`` instance for removal
+           by ``"_id"``, not just :class:`~pymongo.objectid.ObjectId`
+           instances.
         .. versionchanged:: 1.4
            Return the response to *lastError* if `safe` is ``True``.
         .. versionchanged:: 1.2
-           The `spec_or_object_id` parameter is now optional. If it is
+           The `spec_or_id` parameter is now optional. If it is
            not specified *all* documents in the collection will be
            removed.
         .. versionadded:: 1.1
@@ -355,19 +355,13 @@ class Collection(object):
 
         .. mongodoc:: remove
         """
-        #TODO accept anything but dict as an _id
-        spec = spec_or_object_id
-        if spec is None:
-            spec = {}
-        if isinstance(spec, ObjectId):
-            spec = {"_id": spec}
-
-        if not isinstance(spec, dict):
-            raise TypeError("spec must be an instance of dict, not %s" %
-                            type(spec))
+        if spec_or_id is None:
+            spec_or_id = {}
+        if not isinstance(spec_or_id, dict):
+            spec_or_id = {"_id": spec_or_id}
 
         return self.__database.connection._send_message(
-            message.delete(self.__full_name, spec, safe), safe)
+            message.delete(self.__full_name, spec_or_id, safe), safe)
 
     def find_one(self, spec_or_id=None, *args, **kwargs):
         """Get a single document from the database.

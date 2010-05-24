@@ -364,10 +364,6 @@ class TestDatabase(unittest.TestCase):
         db = self.connection.pymongo_test
         db.test.remove({})
 
-        self.assertRaises(TypeError, db.test.remove, 5)
-        self.assertRaises(TypeError, db.test.remove, "test")
-        self.assertRaises(TypeError, db.test.remove, [])
-
         one = db.test.save({"x": 1})
         db.test.save({"x": 2})
         db.test.save({"x": 3})

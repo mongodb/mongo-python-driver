@@ -856,6 +856,16 @@ class TestCollection(unittest.TestCase):
         self.assert_(db.test.find_one(5))
         self.failIf(db.test.find_one(6))
 
+    def test_remove_non_objectid(self):
+        db = self.db
+        db.drop_collection("test")
+
+        db.test.save({"_id": 5})
+
+        self.assertEqual(1, db.test.count())
+        db.test.remove(5)
+        self.assertEqual(0, db.test.count())
+
     def test_find_one_with_find_args(self):
         db = self.db
         db.drop_collection("test")
