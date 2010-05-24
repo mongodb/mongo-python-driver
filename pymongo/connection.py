@@ -732,13 +732,6 @@ class Connection(object): # TODO support auth for pooling
             raise TypeError("cursor_ids must be a list")
         return self._send_message(message.kill_cursors(cursor_ids))
 
-    def __database_info(self):
-        """Get a dictionary of (database_name: size_on_disk).
-        """
-        result = self["admin"].command("listDatabases")
-        info = result["databases"]
-        return dict([(db["name"], db["sizeOnDisk"]) for db in info])
-
     def server_info(self):
         """Get information about the MongoDB server we're connected to.
         """
@@ -747,7 +740,8 @@ class Connection(object): # TODO support auth for pooling
     def database_names(self):
         """Get a list of the names of all databases on the connected server.
         """
-        return self.__database_info().keys()
+        return [db["name"] for db in
+                self.admin.command("listDatabases")["databases"]]
 
     def drop_database(self, name_or_database):
         """Drop a database.
