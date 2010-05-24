@@ -355,6 +355,7 @@ class Collection(object):
 
         .. mongodoc:: remove
         """
+        #TODO accept anything but dict as an _id
         spec = spec_or_object_id
         if spec is None:
             spec = {}
