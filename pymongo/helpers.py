@@ -21,8 +21,6 @@ except: # for Python < 2.5
     import md5
     _md5func = md5.new
 import struct
-import sys
-import warnings
 
 import pymongo
 from pymongo import bson

@@ -24,8 +24,6 @@ MongoDB.
 
 import random
 import struct
-import sys
-import threading
 
 from pymongo import bson
 try:

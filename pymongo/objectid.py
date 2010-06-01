@@ -29,7 +29,6 @@ import socket
 import struct
 import threading
 import time
-import warnings
 
 from pymongo.errors import InvalidId
 

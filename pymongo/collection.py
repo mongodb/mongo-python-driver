@@ -15,14 +15,12 @@
 """Collection level utilities for Mongo."""
 
 import warnings
-import struct
 
 from pymongo import (helpers,
                      message)
 from pymongo.code import Code
 from pymongo.cursor import Cursor
 from pymongo.errors import InvalidName
-from pymongo.objectid import ObjectId
 from pymongo.son import SON
 
 _ZERO = "\x00\x00\x00\x00"

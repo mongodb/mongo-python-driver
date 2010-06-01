@@ -35,17 +35,13 @@ access:
 """
 
 import datetime
-import errno
 import os
-import random
 import socket
 import struct
-import sys
 import threading
 import warnings
 
-from pymongo import (bson,
-                     database,
+from pymongo import (database,
                      helpers,
                      message)
 from pymongo.cursor_manager import CursorManager
@@ -55,7 +51,6 @@ from pymongo.errors import (AutoReconnect,
                             DuplicateKeyError,
                             InvalidURI,
                             OperationFailure)
-from pymongo.son import SON
 
 _CONNECT_TIMEOUT = 20.0
 

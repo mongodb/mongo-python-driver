@@ -24,8 +24,7 @@ from pymongo.errors import (CollectionInvalid,
                             InvalidName,
                             OperationFailure)
 from pymongo.son import SON
-from pymongo.son_manipulator import (ObjectIdInjector,
-                                     ObjectIdShuffler)
+from pymongo.son_manipulator import ObjectIdInjector
 
 
 def _check_name(name):

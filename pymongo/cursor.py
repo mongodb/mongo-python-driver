@@ -14,9 +14,6 @@
 
 """Cursor class to iterate over Mongo query results."""
 
-import struct
-import warnings
-
 from pymongo import (helpers,
                      message)
 from pymongo.code import Code
