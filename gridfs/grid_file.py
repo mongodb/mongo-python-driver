@@ -26,6 +26,7 @@ from gridfs.errors import (CorruptGridFile,
                            FileExists,
                            NoFile,
                            UnsupportedAPI)
+from pymongo import ASCENDING
 from pymongo.binary import Binary
 from pymongo.collection import Collection
 from pymongo.errors import DuplicateKeyError
@@ -123,6 +124,8 @@ class GridIn(object):
         kwargs["_id"] = kwargs.get("_id", ObjectId())
         kwargs["chunkSize"] = kwargs.get("chunkSize", DEFAULT_CHUNK_SIZE)
 
+        root_collection.chunks.ensure_index([("files_id", ASCENDING), ("n", ASCENDING)],
+                                            unique=True)
         object.__setattr__(self, "_coll", root_collection)
         object.__setattr__(self, "_chunks", root_collection.chunks)
         object.__setattr__(self, "_file", kwargs)

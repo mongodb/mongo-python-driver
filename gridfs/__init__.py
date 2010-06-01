@@ -53,7 +53,7 @@ class GridFS(object):
         self.__collection = database[collection]
         self.__files = self.__collection.files
         self.__chunks = self.__collection.chunks
-        self.__chunks.create_index([("files_id", ASCENDING), ("n", ASCENDING)],
+        self.__chunks.ensure_index([("files_id", ASCENDING), ("n", ASCENDING)],
                                    unique=True)
 
     def new_file(self, **kwargs):
