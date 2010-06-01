@@ -28,6 +28,8 @@ from pymongo.errors import (InvalidBSON,
                             InvalidDocument,
                             InvalidName,
                             InvalidStringData)
+from pymongo.max_key import MaxKey
+from pymongo.min_key import MinKey
 from pymongo.objectid import ObjectId
 from pymongo.son import SON
 from timestamp import Timestamp
@@ -206,6 +208,8 @@ _element_getter = {
     "\x10": _get_int, # number_int
     "\x11": _get_timestamp,
     "\x12": _get_long,
+    "\xFF": lambda x, y: (MinKey(), x),
+    "\x7F": lambda x, y: (MaxKey(), x)
 }
 
 
@@ -329,6 +333,10 @@ def _element_to_bson(key, value, check_keys):
             _make_c_string(flags)
     if isinstance(value, DBRef):
         return _element_to_bson(key, value.as_doc(), False)
+    if isinstance(value, MinKey):
+        return "\xFF" + name
+    if isinstance(value, MaxKey):
+        return "\x7F" + name
 
     raise InvalidDocument("cannot convert value of type %s to bson" %
                           type(value))

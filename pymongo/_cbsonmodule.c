@@ -40,6 +40,8 @@ static PyObject* DBRef = NULL;
 static PyObject* RECompile = NULL;
 static PyObject* UUID = NULL;
 static PyObject* Timestamp = NULL;
+static PyObject* MinKey = NULL;
+static PyObject* MaxKey = NULL;
 static PyTypeObject* REType = NULL;
 
 #if PY_VERSION_HEX < 0x02050000 && !defined(PY_SSIZE_T_MIN)
@@ -272,6 +274,8 @@ static int _reload_python_objects(void) {
         _reload_object(&ObjectId, "pymongo.objectid", "ObjectId") ||
         _reload_object(&DBRef, "pymongo.dbref", "DBRef") ||
         _reload_object(&Timestamp, "pymongo.timestamp", "Timestamp") ||
+        _reload_object(&MinKey, "pymongo.min_key", "MinKey") ||
+        _reload_object(&MaxKey, "pymongo.max_key", "MaxKey") ||
         _reload_object(&RECompile, "re", "compile")) {
         return 1;
     }
@@ -665,6 +669,12 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
             return 0;
         }
         *(buffer->buffer + type_byte) = 0x0B;
+        return 1;
+    } else if (PyObject_IsInstance(value, MinKey)) {
+        *(buffer->buffer + type_byte) = 0xFF;
+        return 1;
+    } else if (PyObject_IsInstance(value, MaxKey)) {
+        *(buffer->buffer + type_byte) = 0x7F;
         return 1;
     } else if (first_attempt) {
         /* Try reloading the modules and having one more go at it. */
@@ -1516,6 +1526,16 @@ static PyObject* get_value(const char* buffer, int* position, int type,
                 return NULL;
             }
             *position += 8;
+            break;
+        }
+    case -1:
+        {
+            value = PyObject_CallFunctionObjArgs(MinKey, NULL);
+            break;
+        }
+    case 127:
+        {
+            value = PyObject_CallFunctionObjArgs(MaxKey, NULL);
             break;
         }
     default:

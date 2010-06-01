@@ -38,6 +38,8 @@ from pymongo.son import SON
 from pymongo.timestamp import Timestamp
 from pymongo.bson import BSON, is_valid, _to_dicts
 from pymongo.errors import InvalidDocument, InvalidStringData
+from pymongo.max_key import MaxKey
+from pymongo.min_key import MinKey
 import qcheck
 
 class SomeZone(datetime.tzinfo):
@@ -171,6 +173,8 @@ class TestBSON(unittest.TestCase):
         helper({"ref": DBRef("coll", 5)})
         helper({"ref": DBRef("coll", 5, "foo")})
         helper({"ref": Timestamp(1,2)})
+        helper({"foo": MinKey()})
+        helper({"foo": MaxKey()})
 
         def from_then_to_dict(dict):
             return dict == (BSON.from_dict(dict)).to_dict()
