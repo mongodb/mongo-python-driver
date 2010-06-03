@@ -21,7 +21,7 @@ import datetime
 try:
     import hashlib
     _md5func = hashlib.md5
-except ImportError: # for Python < 2.5
+except ImportError:  # for Python < 2.5
     import md5
     _md5func = md5.new
 import os
@@ -64,8 +64,8 @@ class ObjectId(object):
             hex string)
 
         .. versionadded:: 1.2.1
-           The `oid` parameter can be a ``unicode`` instance (that contains only
-           hexadecimal digits).
+           The `oid` parameter can be a ``unicode`` instance (that contains
+           only hexadecimal digits).
 
         .. mongodoc:: objectids
         """
@@ -193,5 +193,3 @@ class ObjectId(object):
         .. versionadded:: 1.1
         """
         return hash(self.__id)
-
-

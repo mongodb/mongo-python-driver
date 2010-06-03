@@ -45,6 +45,7 @@ version = "1.6+"
 Connection = PyMongo_Connection
 """Alias for :class:`pymongo.connection.Connection`."""
 
+
 def has_c():
     """Is the C extension installed?
 

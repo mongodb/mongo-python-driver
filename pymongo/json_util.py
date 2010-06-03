@@ -55,6 +55,7 @@ from pymongo.objectid import ObjectId
 # TODO share this with bson.py?
 _RE_TYPE = type(re.compile("foo"))
 
+
 def object_hook(dct):
     if "$oid" in dct:
         return ObjectId(str(dct["$oid"]))
@@ -70,6 +71,7 @@ def object_hook(dct):
             flags |= re.MULTILINE
         return re.compile(dct["$regex"], flags)
     return dct
+
 
 def default(obj):
     if isinstance(obj, ObjectId):

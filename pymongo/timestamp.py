@@ -20,6 +20,7 @@
 import calendar
 import datetime
 
+
 class Timestamp(object):
     """MongoDB internal timestamps used in the opLog.
     """
@@ -53,10 +54,10 @@ class Timestamp(object):
             raise TypeError("time must be an instance of int")
         if not isinstance(inc, int):
             raise TypeError("inc must be an instance of int")
-        if not 0 <= time < 2**32:
+        if not 0 <= time < 2 ** 32:
             raise ValueError("time must be contained in [0, 2**32)")
-        if not 0 <= inc < 2**32:
-            raise ValueError("inc must be contained in [0, 2**32), not %r" % inc)
+        if not 0 <= inc < 2 ** 32:
+            raise ValueError("inc must be contained in [0, 2**32)")
 
         self.__time = time
         self.__inc = inc

@@ -15,6 +15,7 @@
 """Tools for representing JavaScript code to be evaluated by MongoDB.
 """
 
+
 class Code(str):
     """JavaScript code to be evaluated by MongoDB.
 

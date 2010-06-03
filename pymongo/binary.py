@@ -50,6 +50,7 @@ USER_DEFINED_SUBTYPE = 128
 .. versionadded:: 1.5
 """
 
+
 class Binary(str):
     """Representation of binary data to be stored in or retrieved from MongoDB.
 

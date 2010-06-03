@@ -94,7 +94,7 @@ class Pool(threading.local):
         self.sock = None
 
 
-class Connection(object): # TODO support auth for pooling
+class Connection(object):  # TODO support auth for pooling
     """Connection to MongoDB.
     """
 
@@ -189,7 +189,8 @@ class Connection(object): # TODO support auth for pooling
         i = source.find(sub)
         if i == -1:
             return (source, None)
-        return (source[:i], source[i+len(sub):])
+
+        return (source[:i], source[i + len(sub):])
 
     @staticmethod
     def _parse_uri(uri):
@@ -198,7 +199,8 @@ class Connection(object): # TODO support auth for pooling
         if uri.startswith("mongodb://"):
             uri = uri[len("mongodb://"):]
         elif "://" in uri:
-            raise InvalidURI("Invalid uri scheme: %s" % Connection.__partition(uri, "://")[0])
+            raise InvalidURI("Invalid uri scheme: %s"
+                             % Connection.__partition(uri, "://")[0])
 
         (hosts, database) = Connection.__partition(uri, "/")
 
@@ -211,7 +213,8 @@ class Connection(object): # TODO support auth for pooling
             (auth, hosts) = Connection.__partition(hosts, "@")
 
             if ":" not in auth:
-                raise InvalidURI("auth must be specified as 'username:password@'")
+                raise InvalidURI("auth must be specified as "
+                                 "'username:password@'")
             (username, password) = Connection.__partition(auth, ":")
 
         host_list = []
@@ -441,7 +444,7 @@ class Connection(object): # TODO support auth for pooling
                         self.__port = port
                         return
                 except socket.error, e:
-                    sock_error=True
+                    sock_error = True
             finally:
                 if sock is not None:
                     sock.close()
@@ -499,9 +502,10 @@ class Connection(object): # TODO support auth for pooling
         """Set this connection's cursor manager.
 
         Raises :class:`TypeError` if `manager_class` is not a subclass of
-        :class:`~pymongo.cursor_manager.CursorManager`. A cursor manager handles
-        closing cursors. Different managers can implement different policies in
-        terms of when to actually kill a cursor that has been closed.
+        :class:`~pymongo.cursor_manager.CursorManager`. A cursor manager
+        handles closing cursors. Different managers can implement different
+        policies in terms of when to actually kill a cursor that has
+        been closed.
 
         :Parameters:
           - `manager_class`: cursor manager to use
@@ -562,7 +566,8 @@ class Connection(object): # TODO support auth for pooling
             # lastError) and raise OperationFailure if it is an error
             # response.
             if with_last_error:
-                response = self.__receive_message_on_socket(1, request_id, sock)
+                response = self.__receive_message_on_socket(1, request_id,
+                                                            sock)
                 return self.__check_response_to_last_error(response)
             return None
         except (ConnectionFailure, socket.error), e:

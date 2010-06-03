@@ -25,8 +25,7 @@ _QUERY_OPTIONS = {
     "tailable_cursor": 2,
     "slave_okay": 4,
     "oplog_replay": 8,
-    "no_timeout": 16
-}
+    "no_timeout": 16}
 
 
 # TODO might be cool to be able to do find().include("foo") or
@@ -263,13 +262,15 @@ class Cursor(object):
             skip = 0
             if index.start is not None:
                 if index.start < 0:
-                    raise IndexError("Cursor instances do not support negative indices")
+                    raise IndexError("Cursor instances do not support"
+                                     "negative indices")
                 skip = index.start
 
             if index.stop is not None:
                 limit = index.stop - skip
                 if limit <= 0:
-                    raise IndexError("stop index must be greater than start index for slice %r" % index)
+                    raise IndexError("stop index must be greater than start"
+                                     "index for slice %r" % index)
             else:
                 limit = 0
 
@@ -279,14 +280,16 @@ class Cursor(object):
 
         if isinstance(index, (int, long)):
             if index < 0:
-                raise IndexError("Cursor instances do not support negative indices")
+                raise IndexError("Cursor instances do not support negative"
+                                 "indices")
             clone = self.clone()
             clone.skip(index + self.__skip)
-            clone.limit(-1) # use a hard limit
+            clone.limit(-1)  # use a hard limit
             for doc in clone:
                 return doc
             raise IndexError("no such item for Cursor instance")
-        raise TypeError("index %r cannot be applied to Cursor instances" % index)
+        raise TypeError("index %r cannot be applied to Cursor "
+                        "instances" % index)
 
     def max_scan(self, max_scan):
         """Limit the number of documents to scan when performing the query.

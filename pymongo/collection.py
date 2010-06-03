@@ -481,7 +481,8 @@ class Collection(object):
         """
         return self.find().count()
 
-    def create_index(self, key_or_list, deprecated_unique=None, ttl=300, **kwargs):
+    def create_index(self, key_or_list, deprecated_unique=None,
+                     ttl=300, **kwargs):
         """Creates an index on this collection.
 
         Takes either a single key or a list of (key, direction) pairs.
@@ -564,7 +565,8 @@ class Collection(object):
                                               check_keys=False)
         return name
 
-    def ensure_index(self, key_or_list, deprecated_unique=None, ttl=300, **kwargs):
+    def ensure_index(self, key_or_list, deprecated_unique=None,
+                     ttl=300, **kwargs):
         """Ensures that an index exists on this collection.
 
         Takes either a single key or a list of (key, direction) pairs.
@@ -631,7 +633,8 @@ class Collection(object):
 
         if self.__database.connection._cache_index(self.__database.name,
                                                    self.__name, name, ttl):
-            return self.create_index(key_or_list, deprecated_unique, ttl, **kwargs)
+            return self.create_index(key_or_list, deprecated_unique,
+                                     ttl, **kwargs)
         return None
 
     def drop_indexes(self):

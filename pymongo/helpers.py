@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Little bits and pieces used by the driver that don't really fit elsewhere."""
+"""Bits and pieces used by the driver that don't really fit elsewhere."""
 
 try:
     import hashlib
     _md5func = hashlib.md5
-except: # for Python < 2.5
+except:  # for Python < 2.5
     import md5
     _md5func = md5.new
 import struct
@@ -27,6 +27,7 @@ from pymongo import bson
 from pymongo.errors import (OperationFailure,
                             AutoReconnect)
 from pymongo.son import SON
+
 
 def _index_list(key_or_list, direction=None):
     """Helper to generate a list of (key, direction) pairs.

@@ -14,6 +14,7 @@
 
 """Exceptions raised by PyMongo."""
 
+
 class PyMongoError(Exception):
     """Base class for all PyMongo exceptions.
 

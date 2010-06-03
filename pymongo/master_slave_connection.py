@@ -138,9 +138,9 @@ class MasterSlaveConnection(object):
             return (-1, self.__master._send_message_with_response(message,
                                                                   _sock))
 
-        return (connection_id,
-                self.__slaves[connection_id]._send_message_with_response(message,
-                                                                         _sock))
+        slaves = self.__slaves[connection_id]
+        return (connection_id, slaves._send_message_with_response(message,
+                                                                  _sock))
 
     def start_request(self):
         """Start a "request".

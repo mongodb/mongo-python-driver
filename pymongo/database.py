@@ -82,8 +82,8 @@ class Database(object):
           - `manipulator`: the manipulator to add
         """
         def method_overwritten(instance, method):
-            return getattr(instance, method) != getattr(super(instance.__class__, instance), method)
-
+            return getattr(instance, method) != \
+                getattr(super(instance.__class__, instance), method)
 
         if manipulator.will_copy():
             if method_overwritten(manipulator, "transform_incoming"):
@@ -440,9 +440,10 @@ class Database(object):
 
         .. versionadded:: 1.4
         """
+        pwd = helpers._password_digest(name, password)
         self.system.users.update({"user": name},
                                  {"user": name,
-                                  "pwd": helpers._password_digest(name, password)},
+                                  "pwd": pwd},
                                  upsert=True, safe=True)
 
     def remove_user(self, name):
@@ -509,7 +510,8 @@ class Database(object):
         nonce = self.command("getnonce")["nonce"]
         key = helpers._auth_key(nonce, name, password)
         try:
-            self.command("authenticate", user=unicode(name), nonce=nonce, key=key)
+            self.command("authenticate", user=unicode(name),
+                         nonce=nonce, key=key)
             return True
         except OperationFailure:
             return False
@@ -525,9 +527,9 @@ class Database(object):
         """Dereference a DBRef, getting the SON object it points to.
 
         Raises TypeError if `dbref` is not an instance of DBRef. Returns a SON
-        object or None if the reference does not point to a valid object. Raises
-        ValueError if `dbref` has a database specified that is different from
-        the current database.
+        object or None if the reference does not point to a valid object.
+        Raises ValueError if `dbref` has a database specified that is different
+        from the current database.
 
         :Parameters:
           - `dbref`: the reference
