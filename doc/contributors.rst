@@ -26,3 +26,4 @@ The following is a list of people who have contributed to
 - Jehiah Czebotar (jehiah)
 - Drew Perttula (drewp)
 - Carl Baatz (c-w-b)
+- Johan Bergstrom (jbergstroem)
