@@ -137,6 +137,15 @@ c_ext = Feature(
 if "--no_ext" in sys.argv:
     sys.argv = [x for x in sys.argv if x != "--no_ext"]
     features = {}
+elif sys.byteorder == "big":
+    print """
+***************************************************
+The optional C extension is currently not supported
+on big endian platforms and will not be built.
+Performance may be degraded.
+***************************************************
+"""
+    features = {}
 else:
     features = {"c-ext": c_ext}
 
