@@ -50,9 +50,10 @@ except ImportError:
 RE_TYPE = type(re.compile(""))
 
 
-def _get_int(data, as_class=None):
+def _get_int(data, as_class=None, unsigned=False):
+    format = unsigned and "I" or "i"
     try:
-        value = struct.unpack("<i", data[:4])[0]
+        value = struct.unpack("<%s" % format, data[:4])[0]
     except struct.error:
         raise InvalidBSON()
 
@@ -177,8 +178,8 @@ def _get_ref(data, as_class):
 
 
 def _get_timestamp(data, as_class):
-    (inc, data) = _get_int(data)
-    (timestamp, data) = _get_int(data)
+    (inc, data) = _get_int(data, unsigned=True)
+    (timestamp, data) = _get_int(data, unsigned=True)
     return (Timestamp(timestamp, inc), data)
 
 
@@ -304,8 +305,8 @@ def _element_to_bson(key, value, check_keys):
                      value.microsecond / 1000)
         return "\x09" + name + struct.pack("<q", millis)
     if isinstance(value, Timestamp):
-        time = struct.pack("<i", value.time)
-        inc = struct.pack("<i", value.inc)
+        time = struct.pack("<I", value.time)
+        inc = struct.pack("<I", value.inc)
         return "\x11" + name + inc + time
     if value is None:
         return "\x0A" + name

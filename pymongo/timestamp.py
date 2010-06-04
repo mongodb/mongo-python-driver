@@ -56,7 +56,7 @@ class Timestamp(object):
         if not 0 <= time < 2**32:
             raise ValueError("time must be contained in [0, 2**32)")
         if not 0 <= inc < 2**32:
-            raise ValueError("inc must be contained in [0, 2**32)")
+            raise ValueError("inc must be contained in [0, 2**32), not %r" % inc)
 
         self.__time = time
         self.__inc = inc

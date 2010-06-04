@@ -1497,11 +1497,10 @@ static PyObject* get_value(const char* buffer, int* position, int type,
         }
     case 17:
         {
-            int time,
-                inc;
+            unsigned int time, inc;
             memcpy(&inc, buffer + *position, 4);
             memcpy(&time, buffer + *position + 4, 4);
-            value = PyObject_CallFunction(Timestamp, "ii", time, inc);
+            value = PyObject_CallFunction(Timestamp, "II", time, inc);
             if (!value) {
                 return NULL;
             }

@@ -198,7 +198,9 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(prev_error["nPrev"], 1)
         del prev_error["nPrev"]
         prev_error.pop("lastOp", None)
-        self.assertEqual(db.error(), prev_error)
+        error = db.error()
+        error.pop("lastOp", None)
+        self.assertEqual(error, prev_error)
 
         db.test.find_one()
         self.assertEqual(None, db.error())

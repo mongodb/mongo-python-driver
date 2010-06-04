@@ -450,7 +450,7 @@ class Connection(object): # TODO support auth for pooling
             finally:
                 if sock is not None:
                     sock.close()
-        if sock_error:
+        if sock_error or self.__host is None:
             raise AutoReconnect("could not find master")
         raise ConfigurationError("No master node in %r. You must specify "
                                  "slave_okay to connect to "
