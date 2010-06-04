@@ -329,7 +329,7 @@ class Connection(object): # TODO support auth for pooling
     def __master(self, sock):
         """Is this socket connected to a master server?
         """
-        return self["admin"].command("ismaster", _sock=sock)["ismaster"] == 1
+        return self["admin"].command("ismaster", _sock=sock)["ismaster"]
 
     def _cache_index(self, database, collection, index, ttl):
         """Add an index to the index cache for ensure_index operations.
