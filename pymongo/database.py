@@ -288,7 +288,7 @@ class Database(object):
                                        _must_use_master=True,
                                        _is_command=True)
 
-        if check and result["ok"] != 1:
+        if check and not result["ok"]:
             if result["errmsg"] in allowable_errors:
                 return result
             raise OperationFailure("command %r failed: %s" %
