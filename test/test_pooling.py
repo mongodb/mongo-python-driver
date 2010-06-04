@@ -43,7 +43,7 @@ class SaveAndFind(MongoThread):
     def run(self):
         for _ in xrange(N):
             rand = random.randint(0, N)
-            id = self.db.sf.save({"x": rand})
+            id = self.db.sf.save({"x": rand}, safe=True)
             self.ut.assertEqual(rand, self.db.sf.find_one(id)["x"])
             self.connection.end_request()
 
