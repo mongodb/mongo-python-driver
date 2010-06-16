@@ -123,6 +123,7 @@ class TestThreads(unittest.TestCase):
         self.db.test2.insert({"test": "insert"})
 
         self.db.test2.create_index("test", unique=True)
+        self.db.test2.find_one()
 
         okay = Insert(self.db.test1, 2000, False)
         error = Insert(self.db.test2, 2000, True)
