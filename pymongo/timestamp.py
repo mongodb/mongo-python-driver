@@ -50,9 +50,9 @@ class Timestamp(object):
             if time.utcoffset() is not None:
                 time = time - time.utcoffset()
             time = int(calendar.timegm(time.timetuple()))
-        if not isinstance(time, int):
+        if not isinstance(time, (int, long)):
             raise TypeError("time must be an instance of int")
-        if not isinstance(inc, int):
+        if not isinstance(inc, (int, long)):
             raise TypeError("inc must be an instance of int")
         if not 0 <= time < 2 ** 32:
             raise ValueError("time must be contained in [0, 2**32)")
