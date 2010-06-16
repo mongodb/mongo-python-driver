@@ -118,6 +118,9 @@ class TestBSON(unittest.TestCase):
                          "\x10\x00\x00\x00\x03\x6E\x6F\x6E\x65\x00\x05\x00\x00"
                          "\x00\x00\x00")
         self.assertEqual(BSON.from_dict({"test": Binary("test")}),
+                         "\x14\x00\x00\x00\x05\x74\x65\x73\x74\x00\x04\x00\x00"
+                         "\x00\x00\x74\x65\x73\x74\x00")
+        self.assertEqual(BSON.from_dict({"test": Binary("test", 2)}),
                          "\x18\x00\x00\x00\x05\x74\x65\x73\x74\x00\x08\x00\x00"
                          "\x00\x02\x04\x00\x00\x00\x74\x65\x73\x74\x00")
         self.assertEqual(BSON.from_dict({"test": Binary("test", 128)}),

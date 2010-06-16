@@ -15,18 +15,27 @@
 """Tools for representing binary data to be stored in MongoDB.
 """
 
+BINARY_SUBTYPE = 0
+"""BSON binary subtype for binary data.
+
+This is the default subtype and is the most commonly used.
+
+.. versionadded:: 1.5
+"""
+
 FUNCTION_SUBTYPE = 1
 """BSON binary subtype for functions.
 
 .. versionadded:: 1.5
 """
 
-BINARY_SUBTYPE = 2
-"""BSON binary subtype for binary data.
+OLD_BINARY_SUBTYPE = 2
+"""Old BSON binary subtype for binary data.
 
-This is the default subtype and is the most commonly used.
+This used to be the default subtype, :data:`BINARY_SUBTYPE` should now
+be used instead.
 
-.. versionadded:: 1.5
+.. versionadded:: 1.6+
 """
 
 UUID_SUBTYPE = 3
@@ -70,7 +79,7 @@ class Binary(str):
         to use
     """
 
-    def __new__(cls, data, subtype=2):
+    def __new__(cls, data, subtype=BINARY_SUBTYPE):
         if not isinstance(data, str):
             raise TypeError("data must be an instance of str")
         if not isinstance(subtype, int):

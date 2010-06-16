@@ -48,7 +48,7 @@ class TestBinary(unittest.TestCase):
 
     def test_subtype(self):
         b = Binary("hello")
-        self.assertEqual(b.subtype, 2)
+        self.assertEqual(b.subtype, 0)
         c = Binary("hello", 100)
         self.assertEqual(c.subtype, 100)
 
@@ -63,9 +63,9 @@ class TestBinary(unittest.TestCase):
 
     def test_repr(self):
         b = Binary("hello world")
-        self.assertEqual(repr(b), "Binary('hello world', 2)")
+        self.assertEqual(repr(b), "Binary('hello world', 0)")
         c = Binary("\x08\xFF")
-        self.assertEqual(repr(c), "Binary('\\x08\\xff', 2)")
+        self.assertEqual(repr(c), "Binary('\\x08\\xff', 0)")
         d = Binary("test", 100)
         self.assertEqual(repr(d), "Binary('test', 100)")
 
