@@ -142,6 +142,7 @@ class TestThreads(unittest.TestCase):
         self.db.test2.insert({"test": "unique"})
 
         self.db.test2.create_index("test", unique=True)
+        self.db.test2.find_one()
 
         okay = Update(self.db.test1, 2000, False)
         error = Update(self.db.test2, 2000, True)
