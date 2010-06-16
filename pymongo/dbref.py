@@ -75,7 +75,7 @@ class DBRef(object):
         Generally not needed by application developers
         """
         doc = SON([("$ref", self.collection),
-                         ("$id", self.id)])
+                   ("$id", self.id)])
         if self.database is not None:
             doc["$db"] = self.database
         return doc

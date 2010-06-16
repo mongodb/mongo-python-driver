@@ -673,7 +673,7 @@ class Collection(object):
 
         self.__database.connection._purge_index(self.__database.name,
                                                 self.__name, name)
-        self.__database.command("deleteIndexes", self.__name, index=name,
+        self.__database.command("dropIndexes", self.__name, index=name,
                                 allowable_errors=["ns not found"])
 
     def index_information(self):
