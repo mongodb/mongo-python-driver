@@ -18,7 +18,7 @@
 BINARY_SUBTYPE = 0
 """BSON binary subtype for binary data.
 
-This is the default subtype and is the most commonly used.
+This is becomming the default subtype and should be the most commonly used.
 
 .. versionadded:: 1.5
 """
@@ -32,8 +32,7 @@ FUNCTION_SUBTYPE = 1
 OLD_BINARY_SUBTYPE = 2
 """Old BSON binary subtype for binary data.
 
-This used to be the default subtype, :data:`BINARY_SUBTYPE` should now
-be used instead.
+This is still the default subtype, but that is changing to :data:`BINARY_SUBTYPE`.
 
 .. versionadded:: 1.6+
 """
@@ -79,7 +78,7 @@ class Binary(str):
         to use
     """
 
-    def __new__(cls, data, subtype=BINARY_SUBTYPE):
+    def __new__(cls, data, subtype=OLD_BINARY_SUBTYPE):
         if not isinstance(data, str):
             raise TypeError("data must be an instance of str")
         if not isinstance(subtype, int):

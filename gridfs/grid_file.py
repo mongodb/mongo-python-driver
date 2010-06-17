@@ -174,7 +174,7 @@ class GridIn(object):
 
         chunk = {"files_id": self._file["_id"],
                  "n": self._chunk_number,
-                 "data": Binary(data, 2)}
+                 "data": Binary(data)}
 
         self._chunks.insert(chunk)
         self._chunk_number += 1
