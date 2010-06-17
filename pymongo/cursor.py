@@ -303,7 +303,7 @@ class Cursor(object):
 
         .. note:: Requires server version **>= 1.5.1**
 
-        .. versionadded:: 1.6+
+        .. versionadded:: 1.7
         """
         self.__check_okay_to_chain()
         self.__max_scan = max_scan

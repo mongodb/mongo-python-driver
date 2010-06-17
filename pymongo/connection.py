@@ -135,7 +135,7 @@ class Connection(object):  # TODO support auth for pooling
             documents returned from queries on this connection
 
         .. seealso:: :meth:`end_request`
-        .. versionadded:: 1.6+
+        .. versionadded:: 1.7
            The `document_class` parameter.
         .. versionchanged:: 1.4
            DEPRECATED The `pool_size`, `auto_start_request`, and `timeout`
@@ -417,7 +417,7 @@ class Connection(object):  # TODO support auth for pooling
                               doc="""Default class to use for documents
                               returned from queries on this connection.
 
-                              .. versionadded:: 1.6+
+                              .. versionadded:: 1.7
                               """)
 
     def __find_master(self):

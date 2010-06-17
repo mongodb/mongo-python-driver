@@ -372,7 +372,7 @@ def _to_dicts(data, as_class=dict):
       - `as_class` (optional): the class to use for the resulting
         documents
 
-    .. versionadded:: 1.6+
+    .. versionadded:: 1.7
        the `as_class` parameter
     """
     docs = []
@@ -447,7 +447,7 @@ class BSON(str):
           - `as_class` (optional): the class to use for the resulting
             document
 
-        .. versionadded:: 1.6+
+        .. versionadded:: 1.7
            the `as_class` parameter
         """
         (document, _) = _bson_to_dict(self, as_class)

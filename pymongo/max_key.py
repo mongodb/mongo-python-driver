@@ -14,7 +14,7 @@
 
 """Representation for the MongoDB internal MaxKey type.
 
-.. versionadded:: 1.6+
+.. versionadded:: 1.7
 """
 
 class MaxKey(object):

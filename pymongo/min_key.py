@@ -14,7 +14,7 @@
 
 """Representation for the MongoDB internal MinKey type.
 
-.. versionadded:: 1.6+
+.. versionadded:: 1.7
 """
 
 class MinKey(object):

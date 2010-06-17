@@ -38,7 +38,7 @@ class NoFile(GridFSError):
 class FileExists(GridFSError):
     """Raised when trying to create a file that already exists.
 
-    .. versionadded:: 1.6+
+    .. versionadded:: 1.7
     """
 
 class UnsupportedAPI(GridFSError):

@@ -34,7 +34,7 @@ OLD_BINARY_SUBTYPE = 2
 
 This is still the default subtype, but that is changing to :data:`BINARY_SUBTYPE`.
 
-.. versionadded:: 1.6+
+.. versionadded:: 1.7
 """
 
 UUID_SUBTYPE = 3

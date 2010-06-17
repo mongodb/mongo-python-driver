@@ -338,7 +338,7 @@ class Collection(object):
             value of ``"_id"`` for the document to be removed
           - `safe` (optional): check that the remove succeeded?
 
-        .. versionchanged:: 1.6+
+        .. versionchanged:: 1.7
            Accept any type other than a ``dict`` instance for removal
            by ``"_id"``, not just :class:`~pymongo.objectid.ObjectId`
            instances.
@@ -381,11 +381,11 @@ class Collection(object):
           - `**kwargs` (optional): any additional keyword arguments
             are the same as the arguments to :meth:`find`.
 
-        .. versionchanged:: 1.6+
+        .. versionchanged:: 1.7
            Allow passing any of the arguments that are valid for
            :meth:`find`.
 
-        .. versionchanged:: 1.6+
+        .. versionchanged:: 1.7
            Accept any type other than a ``dict`` instance as an
            ``"_id"`` query, not just
            :class:`~pymongo.objectid.ObjectId` instances.
@@ -459,10 +459,10 @@ class Collection(object):
         .. note:: The `max_scan` parameter requires server
            version **>= 1.5.1**
 
-        .. versionadded:: 1.6+
+        .. versionadded:: 1.7
            The `sort`, `max_scan` and `as_class` parameters.
 
-        .. versionchanged:: 1.6+
+        .. versionchanged:: 1.7
            The `fields` parameter can now be a dict or any iterable in
            addition to a list.
 
@@ -696,7 +696,7 @@ class Collection(object):
          u'x_1': {u'unique': True, u'key': [(u'x', 1)]}}
 
 
-        .. versionchanged:: 1.6+
+        .. versionchanged:: 1.7
            The values in the resultant dictionary are now dictionaries
            themselves, whose ``"key"`` item contains the list that was
            the value in previous versions of PyMongo.
@@ -797,7 +797,7 @@ class Collection(object):
             should be passed as keyword arguments
             (i.e. ``dropTarget=True``)
 
-        .. versionadded:: 1.6+
+        .. versionadded:: 1.7
            support for accepting keyword arguments for rename options
         """
         if not isinstance(new_name, basestring):

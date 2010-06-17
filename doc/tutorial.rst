@@ -293,7 +293,7 @@ about how the query is being performed without the index:
   >>> posts.find({"date": {"$lt": d}}).sort("author").explain()["cursor"]
   u'BasicCursor'
   >>> posts.find({"date": {"$lt": d}}).sort("author").explain()["nscanned"]
-  3.0
+  3
 
 We can see that the query is using the *BasicCursor* and scanning over
 all 3 documents in the collection. Now let's add a compound index and
@@ -307,7 +307,7 @@ look at the same information:
   >>> posts.find({"date": {"$lt": d}}).sort("author").explain()["cursor"]
   u'BtreeCursor date_-1_author_1'
   >>> posts.find({"date": {"$lt": d}}).sort("author").explain()["nscanned"]
-  2.0
+  2
 
 Now the query is using a *BtreeCursor* (the index) and only scanning
 over the 2 matching documents.

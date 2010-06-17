@@ -1,6 +1,53 @@
 Changelog
 =========
 
+Changes in Version 1.7
+----------------------
+
+Version 1.7 is a recommended upgrade for all PyMongo users. The full release notes are below, and some more in depth discussion of the highlights is `here <http://dirolf.com/2010/06/17/pymongo-1.7-released.html>`_.
+
+- no longer attempt to build the C extension on big-endian systems.
+- added :class:`~pymongo.min_key.MinKey` and
+  :class:`~pymongo.max_key.MaxKey`.
+- use unsigned for :class:`~pymongo.timestamp.Timestamp` in BSON
+  encoder/decoder.
+- support ``True`` as ``"ok"`` in command responses, in addition to
+  ``1.0`` - necessary for server versions **>= 1.5.X**
+- BREAKING change to
+  :meth:`~pymongo.collection.Collection.index_information` to add
+  support for querying unique status and other index information.
+- added :attr:`~pymongo.connection.Connection.document_class`, to
+  specify class for returned documents.
+- added `as_class` argument for
+  :meth:`~pymongo.collection.Collection.find`, and in the BSON decoder.
+- added support for creating :class:`~pymongo.timestamp.Timestamp`
+  instances using a :class:`~datetime.datetime`.
+- allow `dropTarget` argument for
+  :class:`~pymongo.collection.Collection.rename`.
+- handle aware :class:`~datetime.datetime` instances, by converting to
+  UTC.
+- added support for :class:`~pymongo.cursor.Cursor.max_scan`.
+- raise :class:`~gridfs.errors.FileExists` exception when creating a
+  duplicate GridFS file.
+- use `y2038 <http://code.google.com/p/y2038/>`_ for time handling in
+  the C extension - eliminates 2038 problems when extension is
+  installed.
+- added `sort` parameter to
+  :meth:`~pymongo.collection.Collection.find`
+- finalized deprecation of changes from versions **<= 1.4**
+- take any non-:class:`dict` as an ``"_id"`` query for
+  :meth:`~pymongo.collection.Collection.find_one` or
+  :meth:`~pymongo.collection.Collection.remove`
+- added ability to pass a :class:`dict` for `fields` argument to
+  :meth:`~pymongo.collection.Collection.find` (supports ``"$slice"``
+  and field negation)
+- simplified code to find master, since paired setups don't always have
+  a remote
+- fixed bug in C encoder for certain invalid types (like
+  :class:`~pymongo.collection.Collection` instances).
+- don't transparently map ``"filename"`` key to :attr:`name` attribute
+  for GridFS.
+
 Changes in Version 1.6
 ----------------------
 

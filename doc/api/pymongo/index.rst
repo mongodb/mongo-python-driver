@@ -31,5 +31,7 @@ Sub-modules:
    son
    son_manipulator
    timestamp
+   min_key
+   max_key
    json_util
    cursor_manager

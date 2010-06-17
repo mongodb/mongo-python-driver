@@ -43,7 +43,7 @@ class Timestamp(object):
             :class:`~datetime.datetime`
           - `inc`: the incrementing counter
 
-        .. versionchanged:: 1.6+
+        .. versionchanged:: 1.7
            `time` can be a :class:`~datetime.datetime` instance
         """
         if isinstance(time, datetime.datetime):
