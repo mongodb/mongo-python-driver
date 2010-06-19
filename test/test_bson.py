@@ -289,6 +289,24 @@ class TestBSON(unittest.TestCase):
 
         self.assertEqual(1, BSON.from_dict({"x": 1}).to_dict(SON)["x"])
 
+    def test_subclasses(self):
+        # make sure we can serialize subclasses of native Python types.
+        class _myint(int):
+            pass
+        class _myfloat(float):
+            pass
+        class _myunicode(unicode):
+            pass
+        d = {'a' : _myint(42), 'b' : _myfloat(63.9),
+             'c' : _myunicode('hello world')
+            }
+        d2 = BSON.from_dict(d).to_dict()
+        for key, value in d2.iteritems():
+            orig_value = d[key]
+            orig_type = orig_value.__class__.__bases__[0]
+            self.assertEqual(type(value), orig_type)
+            self.assertEqual(value, orig_type(value))
+
 
 if __name__ == "__main__":
     unittest.main()

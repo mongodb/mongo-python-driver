@@ -299,7 +299,13 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
     /* TODO this isn't quite the same as the Python version:
      * here we check for type equivalence, not isinstance in some
      * places. */
-    if (PyInt_CheckExact(value) || PyLong_CheckExact(value)) {
+    if (PyBool_Check(value)) {
+        const long bool = PyInt_AsLong(value);
+        const char c = bool ? 0x01 : 0x00;
+        *(buffer->buffer + type_byte) = 0x08;
+        return buffer_write_bytes(buffer, &c, 1);
+    }
+    else if (PyInt_Check(value) || PyLong_Check(value)) {
         const long long_value = PyInt_AsLong(value);
         const int int_value = (int)long_value;
         if (PyErr_Occurred() || long_value != int_value) { /* Overflow */
@@ -316,12 +322,7 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
         }
         *(buffer->buffer + type_byte) = 0x10;
         return buffer_write_bytes(buffer, (const char*)&int_value, 4);
-    } else if (PyBool_Check(value)) {
-        const long bool = PyInt_AsLong(value);
-        const char c = bool ? 0x01 : 0x00;
-        *(buffer->buffer + type_byte) = 0x08;
-        return buffer_write_bytes(buffer, &c, 1);
-    } else if (PyFloat_CheckExact(value)) {
+    } else if (PyFloat_Check(value)) {
         const double d = PyFloat_AsDouble(value);
         *(buffer->buffer + type_byte) = 0x01;
         return buffer_write_bytes(buffer, (const char*)&d, 8);
@@ -511,7 +512,7 @@ static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject*
         result = write_string(buffer, encoded);
         Py_DECREF(encoded);
         return result;
-    } else if (PyDateTime_CheckExact(value)) {
+    } else if (PyDateTime_Check(value)) {
         long long millis;
         PyObject* utcoffset = PyObject_CallMethod(value, "utcoffset", NULL);
         if (utcoffset != Py_None) {
