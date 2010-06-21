@@ -570,7 +570,7 @@ class Database(object):
         """This is only here so that some API misusages are easier to debug.
         """
         raise TypeError("'Database' object is not callable. If you meant to "
-                        "call the '%s' method on a 'Collection' object it is "
+                        "call the '%s' method on a 'Connection' object it is "
                         "failing because no such method exists." % self.__name)
 
 
