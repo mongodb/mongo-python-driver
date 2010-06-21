@@ -98,8 +98,8 @@ def _get_string(data, as_class):
 def _get_object(data, as_class):
     (object, data) = _bson_to_dict(data, as_class)
     if "$ref" in object:
-        return (DBRef(object["$ref"], object["$id"],
-                      object.get("$db", None)), data)
+        return (DBRef(object.pop("$ref"), object.pop("$id"),
+                      object.pop("$db", None), **object), data)
     return (object, data)
 
 

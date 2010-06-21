@@ -21,18 +21,24 @@ class DBRef(object):
     """A reference to a document stored in a Mongo database.
     """
 
-    def __init__(self, collection, id, database=None):
+    def __init__(self, collection, id, database=None, **kwargs):
         """Initialize a new :class:`DBRef`.
 
         Raises :class:`TypeError` if `collection` or `database` is not
         an instance of :class:`basestring`. `database` is optional and
-        allows references to documents to work across databases.
+        allows references to documents to work across databases. Any
+        additional keyword arguments will create additional fields in
+        the resultant embedded document.
 
         :Parameters:
           - `collection`: name of the collection the document is stored in
           - `id`: the value of the document's ``"_id"`` field
           - `database` (optional): name of the database to reference
+          - `**kwargs` (optional): additional keyword arguments will
+            create additional, custom fields
 
+        .. versionchanged:: 1.7+
+           Now takes keyword arguments to specify additional fields.
         .. versionadded:: 1.1.1
            The `database` parameter.
 
@@ -46,6 +52,7 @@ class DBRef(object):
         self.__collection = collection
         self.__id = id
         self.__database = database
+        self.__kwargs = kwargs
 
     @property
     def collection(self):
@@ -69,6 +76,9 @@ class DBRef(object):
         """
         return self.__database
 
+    def __getattr__(self, key):
+        return self.__kwargs[key]
+
     def as_doc(self):
         """Get the SON document representation of this DBRef.
 
@@ -78,17 +88,20 @@ class DBRef(object):
                    ("$id", self.id)])
         if self.database is not None:
             doc["$db"] = self.database
+        doc.update(self.__kwargs)
         return doc
 
     def __repr__(self):
+        extra = "".join([", %s=%r" % (k,v) for k,v in self.__kwargs.iteritems()])
         if self.database is None:
-            return "DBRef(%r, %r)" % (self.collection, self.id)
-        return "DBRef(%r, %r, %r)" % (self.collection, self.id, self.database)
+            return "DBRef(%r, %r%s)" % (self.collection, self.id, extra)
+        return "DBRef(%r, %r, %r%s)" % (self.collection, self.id, self.database,
+                                        extra)
 
     def __cmp__(self, other):
         if isinstance(other, DBRef):
-            return cmp([self.__database, self.__collection, self.__id],
-                       [other.__database, other.__collection, other.__id])
+            return cmp([self.__database, self.__collection, self.__id, self.__kwargs],
+                       [other.__database, other.__collection, other.__id, other.__kwargs])
         return NotImplemented
 
     def __hash__(self):
@@ -96,4 +109,4 @@ class DBRef(object):
 
         .. versionadded:: 1.1
         """
-        return hash((self.__collection, self.__id, self.__database))
+        return hash((self.__collection, self.__id, self.__database, self.__kwargs))

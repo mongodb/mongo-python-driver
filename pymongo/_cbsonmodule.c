@@ -1279,10 +1279,39 @@ static PyObject* get_value(const char* buffer, int* position, int type,
                 PyObject* id = PyDict_GetItemString(value, "$id");
                 PyObject* collection = PyDict_GetItemString(value, "$ref");
                 PyObject* database = PyDict_GetItemString(value, "$db");
+                PyObject* args;
 
-                /* This works even if there is no $db since database will be NULL and
-                   the call will be as if there were only two arguments specified. */
-                value = PyObject_CallFunctionObjArgs(DBRef, collection, id, database, NULL);
+                Py_INCREF(id);
+                PyDict_DelItemString(value, "$id");
+                Py_INCREF(collection);
+                PyDict_DelItemString(value, "$ref");
+
+                if (database != NULL) {
+                    Py_INCREF(database);
+                    PyDict_DelItemString(value, "$db");
+                    args = Py_BuildValue("(OOO)", collection, id, database);
+                } else {
+                    args = Py_BuildValue("(OO)", collection, id);
+                }
+                if (!args) {
+                    Py_DECREF(id);
+                    Py_DECREF(collection);
+                    if (database != NULL) {
+                        Py_DECREF(database);
+                    }
+                    return NULL;
+                }
+
+                value = PyObject_Call(DBRef, args, value);
+                Py_DECREF(args);
+                Py_DECREF(id);
+                Py_DECREF(collection);
+                if (database != NULL) {
+                    Py_DECREF(database);
+                }
+                if (!value) {
+                    return NULL;
+                }
             }
 
             *position += size;
