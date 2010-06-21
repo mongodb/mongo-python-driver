@@ -27,3 +27,4 @@ The following is a list of people who have contributed to
 - Drew Perttula (drewp)
 - Carl Baatz (c-w-b)
 - Johan Bergstrom (jbergstroem)
+- Jonas Haag (jonashaag)

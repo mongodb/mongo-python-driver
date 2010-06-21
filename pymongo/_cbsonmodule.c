@@ -296,9 +296,6 @@ static int _reload_python_objects(void) {
  *
  * returns 0 on failure */
 static int write_element_to_buffer(bson_buffer* buffer, int type_byte, PyObject* value, unsigned char check_keys, unsigned char first_attempt) {
-    /* TODO this isn't quite the same as the Python version:
-     * here we check for type equivalence, not isinstance in some
-     * places. */
     if (PyBool_Check(value)) {
         const long bool = PyInt_AsLong(value);
         const char c = bool ? 0x01 : 0x00;
