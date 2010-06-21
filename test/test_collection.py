@@ -513,6 +513,14 @@ class TestCollection(unittest.TestCase):
         self.assertRaises(expected_error,
                           db.test.update, {"x": 1}, {"$inc": {"x": 1}}, safe=True)
 
+    def test_error_code(self):
+        try:
+            self.db.test.update({}, {"$thismodifierdoesntexist": 1}, safe=True)
+            self.fail()
+        except OperationFailure, e:
+            if version.at_least(self.db.connection, (1, 3)):
+                self.assertEqual(10147, e.code)
+
 
     def test_index_on_subfield(self):
         db = self.db

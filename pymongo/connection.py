@@ -536,8 +536,11 @@ class Connection(object):  # TODO support auth for pooling
         if error["err"] == "not master":
             self._reset()
 
-        if "code" in error and error["code"] in [11000, 11001]:
-            raise DuplicateKeyError(error["err"])
+        if "code" in error:
+            if error["code"] in [11000, 11001]:
+                raise DuplicateKeyError(error["err"])
+            else:
+                raise OperationFailure(error["err"], error["code"])
         else:
             raise OperationFailure(error["err"])
 

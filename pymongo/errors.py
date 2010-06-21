@@ -46,7 +46,14 @@ class ConfigurationError(PyMongoError):
 
 class OperationFailure(PyMongoError):
     """Raised when a database operation fails.
+
+    .. versionadded:: 1.7+
+       The :attr:`code` attribute.
     """
+
+    def __init__(self, error, code=None):
+        self.code = code
+        PyMongoError.__init__(self, error)
 
 
 class DuplicateKeyError(OperationFailure):
