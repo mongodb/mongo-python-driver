@@ -193,8 +193,9 @@ class Cursor(object):
         """Limits the number of results to be returned by this cursor.
 
         Raises TypeError if limit is not an instance of int. Raises
-        InvalidOperation if this cursor has already been used. The last `limit`
-        applied to this cursor takes precedence.
+        InvalidOperation if this cursor has already been used. The
+        last `limit` applied to this cursor takes precedence. A limit
+        of ``0`` is equivalent to no limit.
 
         :Parameters:
           - `limit`: the number of results to return
