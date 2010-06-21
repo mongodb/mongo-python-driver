@@ -98,7 +98,7 @@ class TestMasterSlaveConnection(unittest.TestCase):
         self.assertRaises(TypeError, self.connection.drop_database, 5)
         self.assertRaises(TypeError, self.connection.drop_database, None)
 
-        self.connection.pymongo_test.test.save({"dummy": u"object"})
+        self.connection.pymongo_test.test.save({"dummy": u"object"}, safe=True)
         dbs = self.connection.database_names()
         self.assert_("pymongo_test" in dbs)
         self.connection.drop_database("pymongo_test")
@@ -171,7 +171,7 @@ class TestMasterSlaveConnection(unittest.TestCase):
 
         self.db.test.remove({})
         self.db.test.insert({"x": 5586})
-        time.sleep(7)
+        time.sleep(11)
         for _ in range(10):
             try:
                 if 5586 != self.db.test.find_one()["x"]:
@@ -198,7 +198,7 @@ class TestMasterSlaveConnection(unittest.TestCase):
 
         for i in range(10000):
             db.test.insert({"i": i})
-        time.sleep(6) # need to sleep to be sure this gets pulled...
+        time.sleep(11) # need to sleep to be sure this gets pulled...
 
         self.assertEqual(before, cursor_count())
 

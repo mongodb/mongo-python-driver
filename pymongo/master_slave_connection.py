@@ -66,6 +66,11 @@ class MasterSlaveConnection(object):
     def slaves(self):
         return self.__slaves
 
+    # TODO this is a temporary hack PYTHON-136 is the right solution for this
+    @property
+    def document_class(self):
+        return dict
+
     @property
     def slave_okay(self):
         """Is it okay for this connection to connect directly to a slave?
