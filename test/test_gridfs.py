@@ -187,6 +187,31 @@ class TestGridfs(unittest.TestCase):
         oid = self.fs.put("hello")
         self.assertRaises(FileExists, self.fs.put, "world", _id=oid)
 
+    def test_exists(self):
+        oid = self.fs.put("hello")
+        self.assert_(self.fs.exists(oid))
+        self.assert_(self.fs.exists({"_id": oid}))
+        self.assert_(self.fs.exists(_id=oid))
+
+        self.failIf(self.fs.exists(filename="mike"))
+        self.failIf(self.fs.exists("mike"))
+
+        oid = self.fs.put("hello", filename="mike", foo=12)
+        self.assert_(self.fs.exists(oid))
+        self.assert_(self.fs.exists({"_id": oid}))
+        self.assert_(self.fs.exists(_id=oid))
+        self.assert_(self.fs.exists(filename="mike"))
+        self.assert_(self.fs.exists({"filename": "mike"}))
+        self.assert_(self.fs.exists(foo=12))
+        self.assert_(self.fs.exists({"foo": 12}))
+        self.assert_(self.fs.exists(foo={"$gt": 11}))
+        self.assert_(self.fs.exists({"foo": {"$gt": 11}}))
+
+        self.failIf(self.fs.exists(foo=13))
+        self.failIf(self.fs.exists({"foo": 13}))
+        self.failIf(self.fs.exists(foo={"$gt": 12}))
+        self.failIf(self.fs.exists({"foo": {"$gt": 12}}))
+
 
 if __name__ == "__main__":
     unittest.main()

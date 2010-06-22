@@ -178,6 +178,43 @@ class GridFS(object):
         """
         return self.__files.distinct("filename")
 
+    def exists(self, document_or_id=None, **kwargs):
+        """Check if a file exists in this instance of :class:`GridFS`.
+
+        The file to check for can be specified by the value of it's
+        ``_id`` key, or by passing in a query document. A query
+        document can be passed in as dictionary, or by using keyword
+        arguments. Thus, the following three calls are equivalent:
+
+        >>> fs.exists(file_id)
+        >>> fs.exists({"_id": file_id})
+        >>> fs.exists(_id=file_id)
+
+        As are the following two calls:
+
+        >>> fs.exists({"filename": "mike.txt"})
+        >>> fs.exists(filename="mike.txt")
+
+        And the following two:
+
+        >>> fs.exists({"foo": {"$gt": 12}})
+        >>> fs.exists(foo={"$gt": 12})
+
+        Returns ``True`` if a matching file exists, ``False``
+        otherwise.
+
+        :Parameters:
+          - `document_or_id` (optional): query document, or _id of the
+            document to check for
+          - `**kwargs` (optional): keyword arguments are used as a
+            query document, if they're present.
+
+        .. versionadded:: 1.7+
+        """
+        if kwargs:
+            return self.__files.find_one(kwargs) is not None
+        return self.__files.find_one(document_or_id) is not None
+
     def open(self, *args, **kwargs):
         """No longer supported.
 
