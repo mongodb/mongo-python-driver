@@ -32,7 +32,8 @@ from pymongo.max_key import MaxKey
 from pymongo.min_key import MinKey
 from pymongo.objectid import ObjectId
 from pymongo.son import SON
-from timestamp import Timestamp
+from pymongo.timestamp import Timestamp
+from pymongo.tz_util import utc
 
 
 try:
@@ -140,7 +141,7 @@ def _get_boolean(data, as_class):
 
 def _get_date(data, as_class):
     seconds = float(struct.unpack("<q", data[:8])[0]) / 1000.0
-    return (datetime.datetime.utcfromtimestamp(seconds), data[8:])
+    return (datetime.datetime.fromtimestamp(seconds, utc), data[8:])
 
 
 def _get_code_w_scope(data, as_class):

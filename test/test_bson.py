@@ -40,6 +40,7 @@ from pymongo.bson import BSON, is_valid, _to_dicts
 from pymongo.errors import InvalidDocument, InvalidStringData
 from pymongo.max_key import MaxKey
 from pymongo.min_key import MinKey
+from pymongo.tz_util import utc
 import qcheck
 
 class SomeZone(datetime.tzinfo):
@@ -171,7 +172,7 @@ class TestBSON(unittest.TestCase):
         helper({"a binary": Binary("test", 128)})
         helper({"a binary": Binary("test", 254)})
         helper({"another binary": Binary("test")})
-        helper(SON([(u'test dst', datetime.datetime(1993, 4, 4, 2))]))
+        helper(SON([(u'test dst', datetime.datetime(1993, 4, 4, 2, tzinfo=utc))]))
         helper({"big float": float(10000000000)})
         helper({"ref": DBRef("coll", 5)})
         helper({"ref": DBRef("coll", 5, foo="bar", bar=4)})
@@ -189,11 +190,11 @@ class TestBSON(unittest.TestCase):
 
     def test_aware_datetime(self):
         aware = datetime.datetime(1993, 4, 4, 2, tzinfo=SomeZone())
-        utc_naive = (aware - aware.utcoffset()).replace(tzinfo=None)
-        self.assertEqual(datetime.datetime(1993, 4, 3, 16, 45), utc_naive)
+        as_utc = (aware - aware.utcoffset()).replace(tzinfo=utc)
+        self.assertEqual(datetime.datetime(1993, 4, 3, 16, 45, tzinfo=utc),as_utc)
         after = BSON.from_dict({"date": aware}).to_dict()["date"]
-        self.assertEqual(None, after.tzinfo)
-        self.assertEqual(utc_naive, after)
+        self.assertEqual(utc, after.tzinfo)
+        self.assertEqual(as_utc, after)
 
     def test_bad_encode(self):
         self.assertRaises(InvalidStringData, BSON.from_dict,
@@ -273,8 +274,8 @@ class TestBSON(unittest.TestCase):
                                              ("_id", "b")])))
 
     def test_dates(self):
-        doc = {"early": datetime.datetime(1686, 5, 5),
-               "late": datetime.datetime(2086, 5, 5)}
+        doc = {"early": datetime.datetime(1686, 5, 5, tzinfo=utc),
+               "late": datetime.datetime(2086, 5, 5, tzinfo=utc)}
         try:
             self.assertEqual(doc, BSON.from_dict(doc).to_dict())
         except ValueError:

@@ -42,6 +42,7 @@ static PyObject* UUID = NULL;
 static PyObject* Timestamp = NULL;
 static PyObject* MinKey = NULL;
 static PyObject* MaxKey = NULL;
+static PyObject* UTC = NULL;
 static PyTypeObject* REType = NULL;
 
 #if PY_VERSION_HEX < 0x02050000 && !defined(PY_SSIZE_T_MIN)
@@ -276,6 +277,7 @@ static int _reload_python_objects(void) {
         _reload_object(&Timestamp, "pymongo.timestamp", "Timestamp") ||
         _reload_object(&MinKey, "pymongo.min_key", "MinKey") ||
         _reload_object(&MaxKey, "pymongo.max_key", "MaxKey") ||
+        _reload_object(&UTC, "pymongo.tz_util", "utc") ||
         _reload_object(&RECompile, "re", "compile")) {
         return 1;
     }
@@ -1420,7 +1422,39 @@ static PyObject* get_value(const char* buffer, int* position, int type,
         }
     case 9:
         {
-            value = datetime_from_millis(*(long long*)(buffer + *position));
+            PyObject* replace;
+            PyObject* args;
+            PyObject* kwargs;
+            PyObject* naive = datetime_from_millis(*(long long*)(buffer + *position));
+            if (!naive) {
+                return NULL;
+            }
+            replace = PyObject_GetAttrString(naive, "replace");
+            Py_DECREF(naive);
+            if (!replace) {
+                return NULL;
+            }
+            args = PyTuple_New(0);
+            if (!args) {
+                Py_DECREF(replace);
+                return NULL;
+            }
+            kwargs = PyDict_New();
+            if (!kwargs) {
+                Py_DECREF(replace);
+                Py_DECREF(args);
+                return NULL;
+            }
+            if (PyDict_SetItemString(kwargs, "tzinfo", UTC) == -1) {
+                Py_DECREF(replace);
+                Py_DECREF(args);
+                Py_DECREF(kwargs);
+                return NULL;
+            }
+            value = PyObject_Call(replace, args, kwargs);
+            Py_DECREF(replace);
+            Py_DECREF(args);
+            Py_DECREF(kwargs);
             *position += 8;
             break;
         }
