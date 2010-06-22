@@ -1276,39 +1276,28 @@ static PyObject* get_value(const char* buffer, int* position, int type,
 
             /* Decoding for DBRefs */
             if (strcmp(buffer + *position + 5, "$ref") == 0) { /* DBRef */
-                PyObject* id = PyDict_GetItemString(value, "$id");
                 PyObject* collection = PyDict_GetItemString(value, "$ref");
+                PyObject* id = PyDict_GetItemString(value, "$id");
                 PyObject* database = PyDict_GetItemString(value, "$db");
-                PyObject* args;
 
-                Py_INCREF(id);
-                PyDict_DelItemString(value, "$id");
                 Py_INCREF(collection);
                 PyDict_DelItemString(value, "$ref");
+                Py_INCREF(id);
+                PyDict_DelItemString(value, "$id");
 
-                if (database != NULL) {
+                if (database == NULL) {
+                    database = Py_None;
+                    Py_INCREF(database);
+                } else {
                     Py_INCREF(database);
                     PyDict_DelItemString(value, "$db");
-                    args = Py_BuildValue("(OOO)", collection, id, database);
-                } else {
-                    args = Py_BuildValue("(OO)", collection, id);
-                }
-                if (!args) {
-                    Py_DECREF(id);
-                    Py_DECREF(collection);
-                    if (database != NULL) {
-                        Py_DECREF(database);
-                    }
-                    return NULL;
                 }
 
-                value = PyObject_Call(DBRef, args, value);
-                Py_DECREF(args);
+                value = PyObject_CallFunctionObjArgs(DBRef, collection, id, database, value, NULL);
+
                 Py_DECREF(id);
                 Py_DECREF(collection);
-                if (database != NULL) {
-                    Py_DECREF(database);
-                }
+                Py_DECREF(database);
                 if (!value) {
                     return NULL;
                 }

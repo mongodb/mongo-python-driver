@@ -21,7 +21,7 @@ class DBRef(object):
     """A reference to a document stored in a Mongo database.
     """
 
-    def __init__(self, collection, id, database=None, **kwargs):
+    def __init__(self, collection, id, database=None, _extra={}, **kwargs):
         """Initialize a new :class:`DBRef`.
 
         Raises :class:`TypeError` if `collection` or `database` is not
@@ -52,6 +52,7 @@ class DBRef(object):
         self.__collection = collection
         self.__id = id
         self.__database = database
+        kwargs.update(_extra)
         self.__kwargs = kwargs
 
     @property
