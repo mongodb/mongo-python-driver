@@ -201,7 +201,9 @@ class GridFS(object):
         >>> fs.exists(foo={"$gt": 12})
 
         Returns ``True`` if a matching file exists, ``False``
-        otherwise.
+        otherwise. Calls to :meth:`exists` will not automatically
+        create appropriate indexes; application developers should be
+        sure to create indexes if needed and as appropriate.
 
         :Parameters:
           - `document_or_id` (optional): query document, or _id of the
