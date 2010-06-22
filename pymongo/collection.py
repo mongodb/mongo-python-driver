@@ -455,9 +455,15 @@ class Collection(object):
           - `as_class` (optional): class to use for documents in the
             query result (default is
             :attr:`~pymongo.connection.Connection.document_class`)
+          - `network_timeout` (optional): specify a timeout to use for
+            this query, which will override the
+            :class:`~pymongo.connection.Connection`-level default
 
         .. note:: The `max_scan` parameter requires server
            version **>= 1.5.1**
+
+        .. versionadded:: 1.7+
+           The `network_timeout` parameter.
 
         .. versionadded:: 1.7
            The `sort`, `max_scan` and `as_class` parameters.

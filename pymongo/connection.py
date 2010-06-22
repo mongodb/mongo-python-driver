@@ -614,8 +614,8 @@ class Connection(object):  # TODO support auth for pooling
 
     # we just ignore _must_use_master here: it's only relavant for
     # MasterSlaveConnection instances.
-    def _send_message_with_response(self, message,
-                                    _sock=None, _must_use_master=False):
+    def _send_message_with_response(self, message, _sock=None,
+                                    _must_use_master=False, **kwargs):
         """Send a message to Mongo and return the response.
 
         Sends the given message and returns the response.
@@ -630,11 +630,17 @@ class Connection(object):  # TODO support auth for pooling
             _sock = self.__pool.socket()
 
         try:
-            return self.__send_and_receive(message, _sock)
-        except (ConnectionFailure, socket.error), e:
-            if reset:
-                self._reset()
-            raise AutoReconnect(str(e))
+            try:
+                if "network_timeout" in kwargs:
+                    _sock.settimeout(kwargs["network_timeout"])
+                return self.__send_and_receive(message, _sock)
+            except (ConnectionFailure, socket.error), e:
+                if reset:
+                    self._reset()
+                raise AutoReconnect(str(e))
+        finally:
+            if "network_timeout" in kwargs:
+                _sock.settimeout(self.__network_timeout)
 
     def start_request(self):
         """DEPRECATED all operations will start a request.

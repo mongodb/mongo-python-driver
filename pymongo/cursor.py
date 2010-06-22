@@ -38,7 +38,8 @@ class Cursor(object):
     def __init__(self, collection, spec=None, fields=None, skip=0, limit=0,
                  timeout=True, snapshot=False, tailable=False, sort=None,
                  max_scan=None, as_class=None,
-                 _sock=None, _must_use_master=False, _is_command=False):
+                 _sock=None, _must_use_master=False, _is_command=False,
+                 **kwargs):
         """Create a new cursor.
 
         Should not be called directly by application developers - see
@@ -94,6 +95,10 @@ class Cursor(object):
         self.__connection_id = None
         self.__retrieved = 0
         self.__killed = False
+
+        # this is for passing network_timeout through if it's specified
+        # need to use kwargs as None is a legit value for network_timeout
+        self.__kwargs = kwargs
 
     @property
     def collection(self):
@@ -473,6 +478,7 @@ class Cursor(object):
                   "_must_use_master": self.__must_use_master}
         if self.__connection_id is not None:
             kwargs["_connection_to_use"] = self.__connection_id
+        kwargs.update(self.__kwargs)
 
         response = db.connection._send_message_with_response(message,
                                                              **kwargs)

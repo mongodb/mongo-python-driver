@@ -115,7 +115,7 @@ class MasterSlaveConnection(object):
     # the cursor actually resides...
     def _send_message_with_response(self, message,
                                     _sock=None, _connection_to_use=None,
-                                    _must_use_master=False):
+                                    _must_use_master=False, **kwargs):
         """Receive a message from Mongo.
 
         Sends the given message and returns a (connection_id, response) pair.
@@ -127,11 +127,12 @@ class MasterSlaveConnection(object):
         if _connection_to_use is not None:
             if _connection_to_use == -1:
                 return (-1, self.__master._send_message_with_response(message,
-                                                                      _sock))
+                                                                      _sock,
+                                                                      **kwargs))
             else:
                 return (_connection_to_use,
                         self.__slaves[_connection_to_use]
-                        ._send_message_with_response(message, _sock))
+                        ._send_message_with_response(message, _sock, **kwargs))
 
         # for now just load-balance randomly among slaves only...
         connection_id = random.randrange(0, len(self.__slaves))
@@ -141,11 +142,13 @@ class MasterSlaveConnection(object):
         # master since that is where writes go.
         if _must_use_master or self.__in_request or connection_id == -1:
             return (-1, self.__master._send_message_with_response(message,
-                                                                  _sock))
+                                                                  _sock,
+                                                                  **kwargs))
 
         slaves = self.__slaves[connection_id]
         return (connection_id, slaves._send_message_with_response(message,
-                                                                  _sock))
+                                                                  _sock,
+                                                                  **kwargs))
 
     def start_request(self):
         """Start a "request".
