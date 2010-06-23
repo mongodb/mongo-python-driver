@@ -141,7 +141,8 @@ typedef struct {
 
 static int write_dict(bson_buffer* buffer, PyObject* dict,
                       unsigned char check_keys, unsigned char top_level);
-static PyObject* elements_to_dict(const char* string, int max, PyObject* as_class);
+static PyObject* elements_to_dict(const char* string, int max,
+                                  PyObject* as_class, unsigned char tz_aware);
 
 static bson_buffer* buffer_new(void) {
     bson_buffer* buffer;
@@ -1240,7 +1241,7 @@ static PyObject* _cbson_get_more_message(PyObject* self, PyObject* args) {
 }
 
 static PyObject* get_value(const char* buffer, int* position, int type,
-                           PyObject* as_class) {
+                           PyObject* as_class, unsigned char tz_aware) {
     PyObject* value;
     switch (type) {
     case 1:
@@ -1271,7 +1272,7 @@ static PyObject* get_value(const char* buffer, int* position, int type,
         {
             int size;
             memcpy(&size, buffer + *position, 4);
-            value = elements_to_dict(buffer + *position + 4, size - 5, as_class);
+            value = elements_to_dict(buffer + *position + 4, size - 5, as_class, tz_aware);
             if (!value) {
                 return NULL;
             }
@@ -1327,7 +1328,7 @@ static PyObject* get_value(const char* buffer, int* position, int type,
                 int type = (int)buffer[(*position)++];
                 int key_size = strlen(buffer + *position);
                 *position += key_size + 1; /* just skip the key, they're in order. */
-                to_append = get_value(buffer, position, type, as_class);
+                to_append = get_value(buffer, position, type, as_class, tz_aware);
                 if (!to_append) {
                     return NULL;
                 }
@@ -1426,6 +1427,12 @@ static PyObject* get_value(const char* buffer, int* position, int type,
             PyObject* args;
             PyObject* kwargs;
             PyObject* naive = datetime_from_millis(*(long long*)(buffer + *position));
+            *position += 8;
+            if (!tz_aware) { /* In the naive case, we're done here. */
+                value = naive;
+                break;
+            }
+
             if (!naive) {
                 return NULL;
             }
@@ -1455,7 +1462,6 @@ static PyObject* get_value(const char* buffer, int* position, int type,
             Py_DECREF(replace);
             Py_DECREF(args);
             Py_DECREF(kwargs);
-            *position += 8;
             break;
         }
     case 11:
@@ -1532,7 +1538,8 @@ static PyObject* get_value(const char* buffer, int* position, int type,
             *position += code_length + 1;
 
             memcpy(&scope_size, buffer + *position, 4);
-            scope = elements_to_dict(buffer + *position + 4, scope_size - 5, (PyObject*)&PyDict_Type);
+            scope = elements_to_dict(buffer + *position + 4, scope_size - 5,
+                                     (PyObject*)&PyDict_Type, tz_aware);
             if (!scope) {
                 Py_DECREF(code);
                 return NULL;
@@ -1599,7 +1606,8 @@ static PyObject* get_value(const char* buffer, int* position, int type,
     return value;
 }
 
-static PyObject* elements_to_dict(const char* string, int max, PyObject* as_class) {
+static PyObject* elements_to_dict(const char* string, int max,
+                                  PyObject* as_class, unsigned char tz_aware) {
     int position = 0;
     PyObject* dict = PyObject_CallObject(as_class, NULL);
     if (!dict) {
@@ -1614,7 +1622,7 @@ static PyObject* elements_to_dict(const char* string, int max, PyObject* as_clas
             return NULL;
         }
         position += name_length + 1;
-        value = get_value(string, &position, type, as_class);
+        value = get_value(string, &position, type, as_class, tz_aware);
         if (!value) {
             return NULL;
         }
@@ -1632,11 +1640,12 @@ static PyObject* _cbson_bson_to_dict(PyObject* self, PyObject* args) {
     const char* string;
     PyObject* bson;
     PyObject* as_class;
+    unsigned char tz_aware;
     PyObject* dict;
     PyObject* remainder;
     PyObject* result;
 
-    if (!PyArg_ParseTuple(args, "OO", &bson, &as_class)) {
+    if (!PyArg_ParseTuple(args, "OOb", &bson, &as_class, &tz_aware)) {
         return NULL;
     }
 
@@ -1675,7 +1684,7 @@ static PyObject* _cbson_bson_to_dict(PyObject* self, PyObject* args) {
         return NULL;
     }
 
-    dict = elements_to_dict(string + 4, size - 5, as_class);
+    dict = elements_to_dict(string + 4, size - 5, as_class, tz_aware);
     if (!dict) {
         return NULL;
     }
@@ -1698,8 +1707,9 @@ static PyObject* _cbson_to_dicts(PyObject* self, PyObject* args) {
     PyObject* dict;
     PyObject* result;
     PyObject* as_class = (PyObject*)&PyDict_Type;
+    unsigned char tz_aware = 1;
 
-    if (!PyArg_ParseTuple(args, "O|O", &bson, &as_class)) {
+    if (!PyArg_ParseTuple(args, "O|Ob", &bson, &as_class, &tz_aware)) {
         return NULL;
     }
 
@@ -1742,7 +1752,7 @@ static PyObject* _cbson_to_dicts(PyObject* self, PyObject* args) {
             return NULL;
         }
 
-        dict = elements_to_dict(string + 4, size - 5, as_class);
+        dict = elements_to_dict(string + 4, size - 5, as_class, tz_aware);
         if (!dict) {
             return NULL;
         }

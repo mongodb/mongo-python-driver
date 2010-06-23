@@ -40,15 +40,9 @@ from pymongo.bson import BSON, is_valid, _to_dicts
 from pymongo.errors import InvalidDocument, InvalidStringData
 from pymongo.max_key import MaxKey
 from pymongo.min_key import MinKey
-from pymongo.tz_util import utc
+from pymongo.tz_util import (FixedOffset,
+                             utc)
 import qcheck
-
-class SomeZone(datetime.tzinfo):
-    def utcoffset(self, dt):
-        return datetime.timedelta(minutes=555)
-    def dst(self, dt):
-        # a fixed-offset class:  doesn't account for DST
-        return datetime.timedelta(0)
 
 class TestBSON(unittest.TestCase):
 
@@ -189,12 +183,24 @@ class TestBSON(unittest.TestCase):
                               qcheck.gen_mongo_dict(3))
 
     def test_aware_datetime(self):
-        aware = datetime.datetime(1993, 4, 4, 2, tzinfo=SomeZone())
+        aware = datetime.datetime(1993, 4, 4, 2, tzinfo=FixedOffset(555, "SomeZone"))
         as_utc = (aware - aware.utcoffset()).replace(tzinfo=utc)
-        self.assertEqual(datetime.datetime(1993, 4, 3, 16, 45, tzinfo=utc),as_utc)
+        self.assertEqual(datetime.datetime(1993, 4, 3, 16, 45, tzinfo=utc), as_utc)
         after = BSON.from_dict({"date": aware}).to_dict()["date"]
         self.assertEqual(utc, after.tzinfo)
         self.assertEqual(as_utc, after)
+
+    def test_naive_decode(self):
+        aware = datetime.datetime(1993, 4, 4, 2, tzinfo=FixedOffset(555, "SomeZone"))
+        naive_utc = (aware - aware.utcoffset()).replace(tzinfo=None)
+        self.assertEqual(datetime.datetime(1993, 4, 3, 16, 45), naive_utc)
+        after = BSON.from_dict({"date": aware}).to_dict(tz_aware=False)["date"]
+        self.assertEqual(None, after.tzinfo)
+        self.assertEqual(naive_utc, after)
+
+    def test_dst(self):
+        d = {"x": datetime.datetime(1993, 4, 4, 2)}
+        self.assertEqual(d, BSON.from_dict(d).to_dict(tz_aware=False))
 
     def test_bad_encode(self):
         self.assertRaises(InvalidStringData, BSON.from_dict,

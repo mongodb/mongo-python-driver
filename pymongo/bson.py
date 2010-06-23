@@ -53,7 +53,7 @@ except ImportError:
 RE_TYPE = type(re.compile(""))
 
 
-def _get_int(data, as_class=None, unsigned=False):
+def _get_int(data, as_class=None, tz_aware=True, unsigned=False):
     format = unsigned and "I" or "i"
     try:
         value = struct.unpack("<%s" % format, data[:4])[0]
@@ -88,24 +88,24 @@ def _make_c_string(string, check_null=False):
                                     "UTF-8: %r" % string)
 
 
-def _get_number(data, as_class):
+def _get_number(data, as_class, tz_aware):
     return (struct.unpack("<d", data[:8])[0], data[8:])
 
 
-def _get_string(data, as_class):
+def _get_string(data, as_class, tz_aware):
     return _get_c_string(data[4:], struct.unpack("<i", data[:4])[0] - 1)
 
 
-def _get_object(data, as_class):
-    (object, data) = _bson_to_dict(data, as_class)
+def _get_object(data, as_class, tz_aware):
+    (object, data) = _bson_to_dict(data, as_class, tz_aware)
     if "$ref" in object:
         return (DBRef(object.pop("$ref"), object.pop("$id"),
                       object.pop("$db", None), object), data)
     return (object, data)
 
 
-def _get_array(data, as_class):
-    (obj, data) = _get_object(data, dict)
+def _get_array(data, as_class, tz_aware):
+    (obj, data) = _get_object(data, dict, tz_aware)
     result = []
     i = 0
     while True:
@@ -117,7 +117,7 @@ def _get_array(data, as_class):
     return (result, data)
 
 
-def _get_binary(data, as_class):
+def _get_binary(data, as_class, tz_aware):
     (length, data) = _get_int(data)
     subtype = ord(data[0])
     data = data[1:]
@@ -131,31 +131,33 @@ def _get_binary(data, as_class):
     return (Binary(data[:length], subtype), data[length:])
 
 
-def _get_oid(data, as_class):
+def _get_oid(data, as_class, tz_aware):
     return (ObjectId(data[:12]), data[12:])
 
 
-def _get_boolean(data, as_class):
+def _get_boolean(data, as_class, tz_aware):
     return (data[0] == "\x01", data[1:])
 
 
-def _get_date(data, as_class):
+def _get_date(data, as_class, tz_aware):
     seconds = float(struct.unpack("<q", data[:8])[0]) / 1000.0
-    return (datetime.datetime.fromtimestamp(seconds, utc), data[8:])
+    if tz_aware:
+        return (datetime.datetime.fromtimestamp(seconds, utc), data[8:])
+    return (datetime.datetime.utcfromtimestamp(seconds), data[8:])
 
 
-def _get_code_w_scope(data, as_class):
+def _get_code_w_scope(data, as_class, tz_aware):
     (_, data) = _get_int(data)
     (code, data) = _get_string(data)
-    (scope, data) = _get_object(data)
+    (scope, data) = _get_object(data, as_class, tz_aware)
     return (Code(code, scope), data)
 
 
-def _get_null(data, as_class):
+def _get_null(data, as_class, tz_aware):
     return (None, data)
 
 
-def _get_regex(data, as_class):
+def _get_regex(data, as_class, tz_aware):
     (pattern, data) = _get_c_string(data)
     (bson_flags, data) = _get_c_string(data)
     flags = 0
@@ -174,19 +176,19 @@ def _get_regex(data, as_class):
     return (re.compile(pattern, flags), data)
 
 
-def _get_ref(data, as_class):
+def _get_ref(data, as_class, tz_aware):
     (collection, data) = _get_c_string(data[4:])
     (oid, data) = _get_oid(data)
     return (DBRef(collection, oid), data)
 
 
-def _get_timestamp(data, as_class):
+def _get_timestamp(data, as_class, tz_aware):
     (inc, data) = _get_int(data, unsigned=True)
     (timestamp, data) = _get_int(data, unsigned=True)
     return (Timestamp(timestamp, inc), data)
 
 
-def _get_long(data, as_class):
+def _get_long(data, as_class, tz_aware):
     return (struct.unpack("<q", data[:8])[0], data[8:])
 
 
@@ -209,34 +211,34 @@ _element_getter = {
     "\x10": _get_int,  # number_int
     "\x11": _get_timestamp,
     "\x12": _get_long,
-    "\xFF": lambda x, y: (MinKey(), x),
-    "\x7F": lambda x, y: (MaxKey(), x)
+    "\xFF": lambda x, y, z: (MinKey(), x),
+    "\x7F": lambda x, y, z: (MaxKey(), x)
 }
 
 
-def _element_to_dict(data, as_class):
+def _element_to_dict(data, as_class, tz_aware):
     element_type = data[0]
     (element_name, data) = _get_c_string(data[1:])
-    (value, data) = _element_getter[element_type](data, as_class)
+    (value, data) = _element_getter[element_type](data, as_class, tz_aware)
     return (element_name, value, data)
 
 
-def _elements_to_dict(data, as_class):
+def _elements_to_dict(data, as_class, tz_aware):
     result = as_class()
     while data:
-        (key, value, data) = _element_to_dict(data, as_class)
+        (key, value, data) = _element_to_dict(data, as_class, tz_aware)
         result[key] = value
     return result
 
 
-def _bson_to_dict(data, as_class):
+def _bson_to_dict(data, as_class, tz_aware):
     obj_size = struct.unpack("<i", data[:4])[0]
     if len(data) < obj_size:
         raise InvalidBSON("objsize too large")
     if data[obj_size - 1] != "\x00":
         raise InvalidBSON("bad eoo")
     elements = data[4:obj_size - 1]
-    return (_elements_to_dict(elements, as_class), data[obj_size:])
+    return (_elements_to_dict(elements, as_class, tz_aware), data[obj_size:])
 if _use_c:
     _bson_to_dict = _cbson._bson_to_dict
 
@@ -363,7 +365,7 @@ if _use_c:
     _dict_to_bson = _cbson._dict_to_bson
 
 
-def _to_dicts(data, as_class=dict):
+def _to_dicts(data, as_class=dict, tz_aware=True):
     """Convert binary data to sequence of documents.
 
     Data must be concatenated strings of valid BSON data.
@@ -378,15 +380,15 @@ def _to_dicts(data, as_class=dict):
     """
     docs = []
     while len(data):
-        (doc, data) = _bson_to_dict(data, as_class)
+        (doc, data) = _bson_to_dict(data, as_class, tz_aware)
         docs.append(doc)
     return docs
 if _use_c:
     _to_dicts = _cbson._to_dicts
 
 
-def _to_dict(data, as_class):
-    (son, _) = _bson_to_dict(data, as_class)
+def _to_dict(data, as_class, tz_aware):
+    (son, _) = _bson_to_dict(data, as_class, tz_aware)
     return son
 
 
@@ -408,7 +410,7 @@ def is_valid(bson):
         raise InvalidBSON("BSON documents are limited to 4MB")
 
     try:
-        (_, remainder) = _bson_to_dict(bson, dict)
+        (_, remainder) = _bson_to_dict(bson, dict, True)
         return remainder == ""
     except:
         return False
@@ -438,18 +440,30 @@ class BSON(str):
         """
         return cls(_dict_to_bson(dct, check_keys))
 
-    def to_dict(self, as_class=dict):
+    def to_dict(self, as_class=dict, tz_aware=True):
         """Convert this BSON data to a mapping type.
 
         The default type to use is :class:`dict`. This can be replaced
         using the `as_class` parameter.
 
+        If `tz_aware` is ``True`` (default), any
+        :class:`~datetime.datetime` instances returned will be
+        timezone-aware, with their timezone set to
+        :attr:`pymongo.tz_util.utc`. Otherwise, all
+        :class:`~datetime.datetime` instances will be naive (but
+        contain UTC) - this was the default behavior in PyMongo
+        versions **<= 1.7**.
+
         :Parameters:
           - `as_class` (optional): the class to use for the resulting
             document
+          - `tz_aware` (optional): if ``True``, return timezone-aware
+            :class:`~datetime.datetime` instances
 
+        .. versionadded:: 1.7+
+           The `tz_aware` parameter.
         .. versionadded:: 1.7
-           the `as_class` parameter
+           The `as_class` parameter.
         """
-        (document, _) = _bson_to_dict(self, as_class)
+        (document, _) = _bson_to_dict(self, as_class, tz_aware)
         return document
