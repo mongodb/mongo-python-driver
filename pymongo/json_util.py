@@ -44,6 +44,9 @@ import re
 
 from pymongo.dbref import DBRef
 from pymongo.objectid import ObjectId
+from pymongo.min_key import MinKey
+from pymongo.max_key import MaxKey
+from pymongo.timestamp import Timestamp
 
 # TODO support Binary and Code
 # Binary and Code are tricky because they subclass str so json thinks it can
@@ -70,6 +73,10 @@ def object_hook(dct):
         if "m" in dct["$options"]:
             flags |= re.MULTILINE
         return re.compile(dct["$regex"], flags)
+    if "$minKey" in dct:
+        return MinKey()
+    if "$maxKey" in dct:
+        return MaxKey()
     return dct
 
 
@@ -91,4 +98,10 @@ def default(obj):
             flags += "m"
         return {"$regex": obj.pattern,
                 "$options": flags}
+    if isinstance(obj, MinKey):
+        return {"$minKey" : 1}
+    if isinstance(obj, MaxKey):
+        return {"$maxKey" : 1}
+    if isinstance(obj, Timestamp):
+        return {"t" : obj.time, "i" : obj.inc}
     raise TypeError("%r is not JSON serializable" % obj)

@@ -34,6 +34,9 @@ sys.path[0:0] = [""]
 from pymongo.json_util import default, object_hook
 from pymongo.objectid import ObjectId
 from pymongo.dbref import DBRef
+from pymongo.min_key import MinKey
+from pymongo.max_key import MaxKey
+from pymongo.timestamp import Timestamp
 
 class TestJsonUtil(unittest.TestCase):
 
@@ -68,6 +71,17 @@ class TestJsonUtil(unittest.TestCase):
         self.assertEqual("a*b", res.pattern)
         self.assertEqual(re.IGNORECASE, res.flags)
 
+    def test_minkey(self):
+        self.round_trip({"m" : MinKey()})
+
+    def test_maxkey(self):
+        self.round_trip({"m" : MinKey()})
+
+    def test_timestamp(self):
+        res = json.dumps({"ts" : Timestamp(4, 13)}, default=default)
+        dct = json.loads(res);
+        self.assertEqual(dct['ts']['t'], 4)
+        self.assertEqual(dct['ts']['i'], 13)
 
 if __name__ == "__main__":
     unittest.main()
