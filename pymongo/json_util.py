@@ -43,9 +43,9 @@ import datetime
 import re
 
 from pymongo.dbref import DBRef
-from pymongo.objectid import ObjectId
-from pymongo.min_key import MinKey
 from pymongo.max_key import MaxKey
+from pymongo.min_key import MinKey
+from pymongo.objectid import ObjectId
 from pymongo.timestamp import Timestamp
 
 # TODO support Binary and Code
@@ -99,9 +99,9 @@ def default(obj):
         return {"$regex": obj.pattern,
                 "$options": flags}
     if isinstance(obj, MinKey):
-        return {"$minKey" : 1}
+        return {"$minKey": 1}
     if isinstance(obj, MaxKey):
-        return {"$maxKey" : 1}
+        return {"$maxKey": 1}
     if isinstance(obj, Timestamp):
-        return {"t" : obj.time, "i" : obj.inc}
+        return {"t": obj.time, "i": obj.inc}
     raise TypeError("%r is not JSON serializable" % obj)
