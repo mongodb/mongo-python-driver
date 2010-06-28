@@ -24,6 +24,7 @@
       .. automethod:: save(to_save[, manipulate=True[, safe=False]])
       .. automethod:: update(spec, document[, upsert=False[, manipulate=False[, safe=False[, multi=False]]]])
       .. automethod:: remove([spec_or_object_id=None[, safe=False]])
+      .. automethod:: drop
       .. automethod:: find([spec=None[, fields=None[, skip=0[, limit=0[, timeout=True[, snapshot=False[, tailable=False[, sort=None[, max_scan=None[, as_class=None[, **kwargs]]]]]]]]]]])
       .. automethod:: find_one([spec_or_id=None[, *args[, **kwargs]]])
       .. automethod:: count

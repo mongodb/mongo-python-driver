@@ -312,6 +312,18 @@ class Collection(object):
             message.update(self.__full_name, upsert, multi,
                            spec, document, safe), safe)
 
+    def drop(self):
+        """Alias for :meth:`~pymongo.database.Database.drop_collection`.
+
+        The following two calls are equivalent:
+
+          >>> db.foo.drop()
+          >>> db.drop_collection("foo")
+
+        .. versionadded:: 1.7+
+        """
+        self.__database.drop_collection(self.__name)
+
     def remove(self, spec_or_id=None, safe=False):
         """Remove a document(s) from this collection.
 

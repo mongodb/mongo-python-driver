@@ -124,6 +124,12 @@ class TestDatabase(unittest.TestCase):
         db.drop_collection(db.test)
         self.failIf("test" in db.collection_names())
 
+        db.test.save({"dummy": u"object"})
+        self.assert_("test" in db.collection_names())
+        db.test.drop()
+        self.failIf("test" in db.collection_names())
+        db.test.drop()
+
         db.drop_collection(db.test.doesnotexist)
 
     def test_validate_collection(self):
