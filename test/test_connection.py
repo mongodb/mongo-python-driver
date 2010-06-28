@@ -14,6 +14,7 @@
 
 """Test the connection module."""
 
+import datetime
 import os
 import sys
 import time
@@ -31,6 +32,7 @@ from pymongo.errors import (AutoReconnect,
                             InvalidURI,
                             OperationFailure)
 from pymongo.son import SON
+from pymongo.tz_util import utc
 from test import version
 
 
@@ -402,6 +404,19 @@ class TestConnection(unittest.TestCase):
         self.assertEqual(1, get_x_timeout(timeout.pymongo_test, None))
         self.assertRaises(ConnectionFailure, get_x_timeout,
                           no_timeout.pymongo_test, 0.1)
+
+    def test_tz_aware(self):
+        aware = Connection(self.host, self.port)
+        naive = Connection(self.host, self.port, tz_aware=False)
+        aware.pymongo_test.drop_collection("test")
+
+        now = datetime.datetime.utcnow()
+        aware.pymongo_test.test.insert({"x": now}, safe=True)
+
+        self.assertEqual(None, naive.pymongo_test.test.find_one()["x"].tzinfo)
+        self.assertEqual(utc, aware.pymongo_test.test.find_one()["x"].tzinfo)
+        self.assertEqual(aware.pymongo_test.test.find_one()["x"].replace(tzinfo=None),
+                         naive.pymongo_test.test.find_one()["x"])
 
 
 if __name__ == "__main__":

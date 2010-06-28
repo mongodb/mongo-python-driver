@@ -87,6 +87,7 @@ class Cursor(object):
         self.__explain = False
         self.__hint = None
         self.__as_class = as_class
+        self.__tz_aware = collection.database.connection.tz_aware
         self.__socket = _sock
         self.__must_use_master = _must_use_master
         self.__is_command = _is_command
@@ -492,7 +493,7 @@ class Cursor(object):
 
         try:
             response = helpers._unpack_response(response, self.__id,
-                                                self.__as_class)
+                                                self.__as_class, self.__tz_aware)
         except AutoReconnect:
             db.connection._reset()
             raise

@@ -71,6 +71,11 @@ class MasterSlaveConnection(object):
     def document_class(self):
         return dict
 
+    # TODO this is a temporary hack PYTHON-136 is the right solution for this
+    @property
+    def tz_aware(self):
+        return True
+
     @property
     def slave_okay(self):
         """Is it okay for this connection to connect directly to a slave?

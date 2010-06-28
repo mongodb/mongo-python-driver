@@ -103,7 +103,8 @@ class Connection(object):  # TODO support auth for pooling
 
     def __init__(self, host=None, port=None, pool_size=None,
                  auto_start_request=None, timeout=None, slave_okay=False,
-                 network_timeout=None, document_class=dict, _connect=True):
+                 network_timeout=None, document_class=dict, tz_aware=True,
+                 _connect=True):
         """Create a new connection to a single MongoDB instance at *host:port*.
 
         The resultant connection object has connection-pooling built in. It
@@ -133,8 +134,14 @@ class Connection(object):  # TODO support auth for pooling
             for socket operations - default is no timeout
           - `document_class` (optional): default class to use for
             documents returned from queries on this connection
+          - `tz_aware` (optional): if ``True`` (default),
+            :class:`~datetime.datetime` instances returned as values
+            in a document by this :class:`Connection` will be timezone
+            aware (otherwise they will be naive)
 
         .. seealso:: :meth:`end_request`
+        .. versionadded:: 1.7+
+           The `tz_aware` parameter.
         .. versionadded:: 1.7
            The `document_class` parameter.
         .. versionchanged:: 1.4
@@ -177,6 +184,7 @@ class Connection(object):  # TODO support auth for pooling
 
         self.__network_timeout = network_timeout
         self.__document_class = document_class
+        self.__tz_aware = tz_aware
 
         # cache of existing indexes used by ensure_index ops
         self.__index_cache = {}
@@ -407,18 +415,27 @@ class Connection(object):  # TODO support auth for pooling
         """
         return self.__slave_okay
 
-    def get_document_class(self):
+    @property
+    def document_class(self):
+        """Default class to use for documents returned on this connection.
+
+        .. versionadded:: 1.7
+        """
         return self.__document_class
 
-    def set_document_class(self, klass):
+    @document_class.setter
+    def document_class(self, klass):
         self.__document_class = klass
 
-    document_class = property(get_document_class, set_document_class,
-                              doc="""Default class to use for documents
-                              returned from queries on this connection.
+    @property
+    def tz_aware(self):
+        """Does this connection return timezone-aware datetimes?
 
-                              .. versionadded:: 1.7
-                              """)
+        See the `tz_aware` parameter to :meth:`Connection`.
+
+        .. versionadded:: 1.7+
+        """
+        return self.__tz_aware
 
     def __find_master(self):
         """Create a new socket and use it to figure out who the master is.
