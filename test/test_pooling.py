@@ -140,7 +140,7 @@ class TestPooling(unittest.TestCase):
 
     def test_dependent_pools(self):
         c = get_connection()
-        self.assertEqual(0, len(c._Connection__pool.sockets))
+        self.assertEqual(1, len(c._Connection__pool.sockets))
         c.test.test.find_one()
         self.assertEqual(0, len(c._Connection__pool.sockets))
         c.end_request()
@@ -157,18 +157,18 @@ class TestPooling(unittest.TestCase):
     def test_multiple_connections(self):
         a = get_connection()
         b = get_connection()
-        self.assertEqual(0, len(a._Connection__pool.sockets))
-        self.assertEqual(0, len(b._Connection__pool.sockets))
+        self.assertEqual(1, len(a._Connection__pool.sockets))
+        self.assertEqual(1, len(b._Connection__pool.sockets))
 
         a.test.test.find_one()
         a.end_request()
         self.assertEqual(1, len(a._Connection__pool.sockets))
-        self.assertEqual(0, len(b._Connection__pool.sockets))
+        self.assertEqual(1, len(b._Connection__pool.sockets))
         a_sock = a._Connection__pool.sockets[0]
 
         b.end_request()
         self.assertEqual(1, len(a._Connection__pool.sockets))
-        self.assertEqual(0, len(b._Connection__pool.sockets))
+        self.assertEqual(1, len(b._Connection__pool.sockets))
 
         b.test.test.find_one()
         self.assertEqual(1, len(a._Connection__pool.sockets))
@@ -198,8 +198,9 @@ class TestPooling(unittest.TestCase):
 
         def loop(pipe):
             c = get_connection()
-            self.assertEqual(0, len(c._Connection__pool.sockets))
+            self.assertEqual(1, len(c._Connection__pool.sockets))
             c.test.test.find_one()
+            self.assertEqual(0, len(c._Connection__pool.sockets))
             c.end_request()
             self.assertEqual(1, len(c._Connection__pool.sockets))
             pipe.send(c._Connection__pool.sockets[0].getsockname())

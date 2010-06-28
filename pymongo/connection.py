@@ -93,6 +93,9 @@ class Pool(threading.local):
             self.sockets.append(self.sock[1])
         self.sock = None
 
+    def return_unowned(self, sock):
+        self.sockets.append(sock)
+
 
 class Connection(object):  # TODO support auth for pooling
     """Connection to MongoDB.
@@ -447,6 +450,7 @@ class Connection(object):  # TODO support auth for pooling
         self.__port = None
         sock = None
         sock_error = False
+        close = True
         for (host, port) in self.__nodes:
             try:
                 try:
@@ -459,11 +463,13 @@ class Connection(object):  # TODO support auth for pooling
                     if master or self.__slave_okay:
                         self.__host = host
                         self.__port = port
+                        self.__pool.return_unowned(sock)
+                        close = False
                         return
                 except socket.error, e:
                     sock_error = True
             finally:
-                if sock is not None:
+                if sock is not None and close:
                     sock.close()
         if sock_error or self.__host is None:
             raise AutoReconnect("could not find master")
