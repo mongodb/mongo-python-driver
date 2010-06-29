@@ -23,9 +23,10 @@ sys.path[0:0] = [""]
 
 from nose.plugins.skip import SkipTest
 
-from pymongo.objectid import ObjectId
 from pymongo.errors import InvalidId
-
+from pymongo.objectid import ObjectId
+from pymongo.tz_util import (FixedOffset,
+                             utc)
 
 def oid(x):
     return ObjectId()
@@ -107,14 +108,21 @@ class TestObjectId(unittest.TestCase):
         d1 = datetime.datetime.utcnow()
         d2 = ObjectId().generation_time
 
+        self.assertEqual(utc, d2.tzinfo)
+        d2 = d2.replace(tzinfo=None)
         self.assert_(d2 - d1 < datetime.timedelta(seconds = 2))
 
     def test_from_datetime(self):
         d = datetime.datetime.utcnow()
         d = d - datetime.timedelta(microseconds=d.microsecond)
         oid = ObjectId.from_datetime(d)
-        self.assertEqual(d, oid.generation_time)
+        self.assertEqual(d, oid.generation_time.replace(tzinfo=None))
         self.assertEqual("0" * 16, str(oid)[8:])
+
+        aware = datetime.datetime(1993, 4, 4, 2, tzinfo=FixedOffset(555, "SomeZone"))
+        as_utc = (aware - aware.utcoffset()).replace(tzinfo=utc)
+        oid = ObjectId.from_datetime(aware)
+        self.assertEqual(as_utc, oid.generation_time)
 
 if __name__ == "__main__":
     unittest.main()

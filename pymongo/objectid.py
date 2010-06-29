@@ -31,6 +31,7 @@ import threading
 import time
 
 from pymongo.errors import InvalidId
+from pymongo.tz_util import utc
 
 
 def _machine_bytes():
@@ -88,10 +89,8 @@ class ObjectId(object):
            generally provide. ObjectIds generated with this method
            should be used exclusively in queries.
 
-        `generation_time` will be converted to a UTC timestamp
-        naively. Pass either a naive :class:`~datetime.datetime`
-        instance containing UTC, or an aware instance that has been
-        converted to UTC.
+        `generation_time` will be converted to UTC. Naive datetime
+        instances will be treated as though they already contain UTC.
 
         An example using this helper to get documents where ``"_id"``
         was generated before January 1, 2010 would be:
@@ -104,8 +103,14 @@ class ObjectId(object):
           - `generation_time`: :class:`~datetime.datetime` to be used
             as the generation time for the resulting ObjectId.
 
+        .. versionchanged:: 1.7+
+           Properly handle timezone aware values for
+           `generation_time`.
+
         .. versionadded:: 1.6
         """
+        if generation_time.utcoffset() is not None:
+            generation_time = generation_time - generation_time.utcoffset()
         ts = calendar.timegm(generation_time.timetuple())
         oid = struct.pack(">i", int(ts)) + "\x00" * 8
         return cls(oid)
@@ -168,13 +173,17 @@ class ObjectId(object):
         """A :class:`datetime.datetime` instance representing the time of
         generation for this :class:`ObjectId`.
 
-        The :class:`datetime.datetime` is always naive and represents the
-        generation time in UTC. It is precise to the second.
+        The :class:`datetime.datetime` is timezone aware, and
+        represents the generation time in UTC. It is precise to the
+        second.
+
+        .. versionchanged:: 1.7+
+           Now return an aware datetime instead of a naive one.
 
         .. versionadded:: 1.2
         """
         t = struct.unpack(">i", self.__id[0:4])[0]
-        return datetime.datetime.utcfromtimestamp(t)
+        return datetime.datetime.fromtimestamp(t, utc)
 
     def __str__(self):
         return self.__id.encode("hex")
