@@ -37,6 +37,7 @@ from pymongo.dbref import DBRef
 from pymongo.min_key import MinKey
 from pymongo.max_key import MaxKey
 from pymongo.timestamp import Timestamp
+from pymongo.tz_util import utc
 
 class TestJsonUtil(unittest.TestCase):
 
@@ -64,7 +65,7 @@ class TestJsonUtil(unittest.TestCase):
     def test_datetime(self):
         # only millis, not micros
         self.round_trip({"date": datetime.datetime(2009, 12, 9, 15,
-                                                   49, 45, 191000)})
+                                                   49, 45, 191000, utc)})
 
     def test_regex(self):
         res = self.round_tripped({"r": re.compile("a*b", re.IGNORECASE)})["r"]

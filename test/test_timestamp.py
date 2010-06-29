@@ -20,6 +20,7 @@ import sys
 sys.path[0:0] = [""]
 
 from pymongo.timestamp import Timestamp
+from pymongo.tz_util import utc
 
 
 class TestTimestamp(unittest.TestCase):
@@ -34,7 +35,7 @@ class TestTimestamp(unittest.TestCase):
         self.assert_(isinstance(t, Timestamp))
 
     def test_datetime(self):
-        d = datetime.datetime(2010, 5, 5)
+        d = datetime.datetime(2010, 5, 5, utc)
         t = Timestamp(d, 0)
         self.assertEqual(1273017600, t.time)
         self.assertEqual(d, t.as_datetime())

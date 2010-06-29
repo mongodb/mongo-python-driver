@@ -35,6 +35,10 @@ Currently this does not handle special encoding and decoding for
 instances.
 
 .. versionchanged:: 1.7+
+   Handle timezone aware datetime instances on encode, decode to
+   timezone aware datetime instances.
+
+.. versionchanged:: 1.7+
    Added support for encoding/decoding
    :class:`~pymongo.max_key.MaxKey` and
    :class:`~pymongo.min_key.MinKey`, and for encoding
@@ -53,6 +57,7 @@ from pymongo.max_key import MaxKey
 from pymongo.min_key import MinKey
 from pymongo.objectid import ObjectId
 from pymongo.timestamp import Timestamp
+from pymongo.tz_util import utc
 
 # TODO support Binary and Code
 # Binary and Code are tricky because they subclass str so json thinks it can
@@ -71,7 +76,8 @@ def object_hook(dct):
     if "$ref" in dct:
         return DBRef(dct["$ref"], dct["$id"], dct.get("$db", None))
     if "$date" in dct:
-        return datetime.datetime.utcfromtimestamp(float(dct["$date"]) / 1000.0)
+        return datetime.datetime.fromtimestamp(float(dct["$date"]) / 1000.0,
+                                               utc)
     if "$regex" in dct:
         flags = 0
         if "i" in dct["$options"]:
@@ -93,6 +99,8 @@ def default(obj):
         return obj.as_doc()
     if isinstance(obj, datetime.datetime):
         # TODO share this code w/ bson.py?
+        if obj.utcoffset() is not None:
+            obj = obj - obj.utcoffset()
         millis = int(calendar.timegm(obj.timetuple()) * 1000 +
                      obj.microsecond / 1000)
         return {"$date": millis}

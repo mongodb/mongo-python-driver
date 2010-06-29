@@ -18,6 +18,8 @@
 import calendar
 import datetime
 
+from pymongo.tz_util import utc
+
 
 class Timestamp(object):
     """MongoDB internal timestamps used in the opLog.
@@ -42,7 +44,7 @@ class Timestamp(object):
           - `inc`: the incrementing counter
 
         .. versionchanged:: 1.7
-           `time` can be a :class:`~datetime.datetime` instance
+           `time` can now be a :class:`~datetime.datetime` instance.
         """
         if isinstance(time, datetime.datetime):
             if time.utcoffset() is not None:
@@ -84,5 +86,8 @@ class Timestamp(object):
     def as_datetime(self):
         """Return a :class:`~datetime.datetime` instance corresponding
         to the time portion of this :class:`Timestamp`.
+
+        .. versionchanged:: 1.7+
+           The returned datetime is now timezone aware.
         """
-        return datetime.datetime.utcfromtimestamp(self.__time)
+        return datetime.datetime.fromtimestamp(self.__time, utc)
