@@ -35,7 +35,7 @@ class TestTimestamp(unittest.TestCase):
         self.assert_(isinstance(t, Timestamp))
 
     def test_datetime(self):
-        d = datetime.datetime(2010, 5, 5, utc)
+        d = datetime.datetime(2010, 5, 5, tzinfo=utc)
         t = Timestamp(d, 0)
         self.assertEqual(1273017600, t.time)
         self.assertEqual(d, t.as_datetime())
