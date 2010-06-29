@@ -13,8 +13,6 @@
 # limitations under the License.
 
 """Representation for the MongoDB internal MaxKey type.
-
-.. versionadded:: 1.7
 """
 
 class MaxKey(object):

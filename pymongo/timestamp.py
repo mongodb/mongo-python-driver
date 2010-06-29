@@ -13,8 +13,6 @@
 # limitations under the License.
 
 """Tools for representing MongoDB internal Timestamps.
-
-.. versionadded:: 1.5
 """
 
 import calendar

@@ -34,6 +34,12 @@ Currently this does not handle special encoding and decoding for
 :class:`~pymongo.binary.Binary` and :class:`~pymongo.code.Code`
 instances.
 
+.. versionchanged:: 1.7+
+   Added support for encoding/decoding
+   :class:`~pymongo.max_key.MaxKey` and
+   :class:`~pymongo.min_key.MinKey`, and for encoding
+   :class:`~pymongo.timestamp.Timestamp`.
+
 .. versionchanged:: 1.2
    Added support for encoding/decoding datetimes and regular expressions.
 """
