@@ -418,17 +418,18 @@ class Connection(object):  # TODO support auth for pooling
         """
         return self.__slave_okay
 
-    @property
-    def document_class(self):
-        """Default class to use for documents returned on this connection.
-
-        .. versionadded:: 1.7
-        """
+    def get_document_class(self):
         return self.__document_class
 
-    @document_class.setter
-    def document_class(self, klass):
+    def set_document_class(self, klass):
         self.__document_class = klass
+
+    document_class = property(get_document_class, set_document_class,
+                              doc="""Default class to use for documents
+                              returned on this connection.
+
+                              .. versionadded:: 1.7
+                              """)
 
     @property
     def tz_aware(self):
