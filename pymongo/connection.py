@@ -457,7 +457,7 @@ class Connection(object):  # TODO support auth for pooling
                 try:
                     sock = socket.socket()
                     sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-                    sock.settimeout(_CONNECT_TIMEOUT)
+                    sock.settimeout(self.__network_timeout or _CONNECT_TIMEOUT)
                     sock.connect((host, port))
                     sock.settimeout(self.__network_timeout)
                     master = self.__master(sock)
@@ -489,7 +489,7 @@ class Connection(object):  # TODO support auth for pooling
         try:
             sock = socket.socket()
             sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-            sock.settimeout(_CONNECT_TIMEOUT)
+            sock.settimeout(self.__network_timeout or _CONNECT_TIMEOUT)
             sock.connect((self.__host, self.__port))
             sock.settimeout(self.__network_timeout)
             return sock
