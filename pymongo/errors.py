@@ -100,7 +100,7 @@ class InvalidId(PyMongoError):
     """
 
 
-class InvalidURI(PyMongoError):
+class InvalidURI(ConfigurationError):
     """Raised when trying to parse an invalid mongodb URI.
 
     .. versionadded:: 1.5

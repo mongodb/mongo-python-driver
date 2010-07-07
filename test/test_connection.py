@@ -27,6 +27,7 @@ from nose.plugins.skip import SkipTest
 from pymongo.connection import Connection
 from pymongo.database import Database
 from pymongo.errors import (AutoReconnect,
+                            ConfigurationError,
                             ConnectionFailure,
                             InvalidName,
                             InvalidURI,
@@ -76,6 +77,11 @@ class TestConnection(unittest.TestCase):
         self.assertRaises(ConnectionFailure, Connection, self.host, 123456789)
 
         self.assert_(Connection(self.host, self.port))
+
+    def test_host_w_port(self):
+        self.assert_(Connection("%s:%d" % (self.host, self.port)))
+        self.assertRaises(ConnectionFailure, Connection,
+                          "%s:1234567" % self.host, self.port)
 
     def test_repr(self):
         self.assertEqual(repr(Connection(self.host, self.port)),
@@ -231,38 +237,49 @@ class TestConnection(unittest.TestCase):
 
     def test_parse_uri(self):
         self.assertEqual(([("localhost", 27017)], None, None, None),
-                         Connection._parse_uri("localhost"))
-        self.assertRaises(InvalidURI, Connection._parse_uri, "http://foobar.com")
-        self.assertRaises(InvalidURI, Connection._parse_uri, "http://foo@foobar.com")
+                         Connection._parse_uri("localhost", 27017))
+        self.assertEqual(([("localhost", 27018)], None, None, None),
+                         Connection._parse_uri("localhost", 27018))
+        self.assertRaises(InvalidURI, Connection._parse_uri,
+                          "http://foobar.com", 27017)
+        self.assertRaises(InvalidURI, Connection._parse_uri,
+                          "http://foo@foobar.com", 27017)
 
         self.assertEqual(([("localhost", 27017)], None, None, None),
-                         Connection._parse_uri("mongodb://localhost"))
+                         Connection._parse_uri("mongodb://localhost", 27017))
         self.assertEqual(([("localhost", 27017)], None, "fred", "foobar"),
-                         Connection._parse_uri("mongodb://fred:foobar@localhost"))
+                         Connection._parse_uri("mongodb://fred:foobar@localhost",
+                                               27017))
         self.assertEqual(([("localhost", 27017)], "baz", "fred", "foobar"),
-                         Connection._parse_uri("mongodb://fred:foobar@localhost/baz"))
+                         Connection._parse_uri("mongodb://fred:foobar@localhost/baz",
+                                               27017))
         self.assertEqual(([("example1.com", 27017), ("example2.com", 27017)],
                           None, None, None),
-                         Connection._parse_uri("mongodb://example1.com:27017,example2.com:27017"))
+                         Connection._parse_uri("mongodb://example1.com:27017,example2.com:27017",
+                                               27018))
         self.assertEqual(([("localhost", 27017),
                            ("localhost", 27018),
                            ("localhost", 27019)], None, None, None),
-                         Connection._parse_uri("mongodb://localhost,localhost:27018,localhost:27019"))
+                         Connection._parse_uri("mongodb://localhost,localhost:27018,localhost:27019",
+                                               27017))
 
         self.assertEqual(([("localhost", 27018)], None, None, None),
-                         Connection._parse_uri("localhost:27018"))
+                         Connection._parse_uri("localhost:27018", 27017))
         self.assertEqual(([("localhost", 27017)], "foo", None, None),
-                         Connection._parse_uri("localhost/foo"))
+                         Connection._parse_uri("localhost/foo", 27017))
         self.assertEqual(([("localhost", 27017)], None, None, None),
-                         Connection._parse_uri("localhost/"))
+                         Connection._parse_uri("localhost/", 27017))
 
     def test_from_uri(self):
         c = Connection(self.host, self.port)
 
         self.assertRaises(InvalidURI, Connection.from_uri, "mongodb://localhost/baz")
+        self.assertRaises(InvalidURI, Connection, "mongodb://localhost/baz")
 
         self.assertEqual(c, Connection.from_uri("mongodb://%s:%s" %
                                                 (self.host, self.port)))
+        self.assertEqual(c, Connection("mongodb://%s:%s" %
+                                       (self.host, self.port)))
 
         c.admin.system.users.remove({})
         c.pymongo_test.system.users.remove({})
@@ -270,26 +287,51 @@ class TestConnection(unittest.TestCase):
         c.admin.add_user("admin", "pass")
         c.pymongo_test.add_user("user", "pass")
 
-        self.assertRaises(InvalidURI, Connection.from_uri,
+        self.assertRaises(ConfigurationError, Connection.from_uri,
                           "mongodb://foo:bar@%s:%s" % (self.host, self.port))
-        self.assertRaises(InvalidURI, Connection.from_uri,
-                          "mongodb://admin:bar@%s:%s" % (self.host, self.port))
-        self.assertRaises(InvalidURI, Connection.from_uri,
-                          "mongodb://user:pass@%s:%s" % (self.host, self.port))
-        Connection.from_uri("mongodb://admin:pass@%s:%s" % (self.host, self.port))
+        self.assertRaises(ConfigurationError, Connection,
+                          "mongodb://foo:bar@%s:%s" % (self.host, self.port))
 
-        self.assertRaises(InvalidURI, Connection.from_uri,
+        self.assertRaises(ConfigurationError, Connection.from_uri,
+                          "mongodb://admin:bar@%s:%s" % (self.host, self.port))
+        self.assertRaises(ConfigurationError, Connection,
+                          "mongodb://admin:bar@%s:%s" % (self.host, self.port))
+
+        self.assertRaises(ConfigurationError, Connection.from_uri,
+                          "mongodb://user:pass@%s:%s" % (self.host, self.port))
+        self.assertRaises(ConfigurationError, Connection,
+                          "mongodb://user:pass@%s:%s" % (self.host, self.port))
+
+        Connection.from_uri("mongodb://admin:pass@%s:%s" % (self.host, self.port))
+        Connection("mongodb://admin:pass@%s:%s" % (self.host, self.port))
+
+
+        self.assertRaises(ConfigurationError, Connection.from_uri,
                           "mongodb://admin:pass@%s:%s/pymongo_test" %
                           (self.host, self.port))
-        self.assertRaises(InvalidURI, Connection.from_uri,
+        self.assertRaises(ConfigurationError, Connection,
+                          "mongodb://admin:pass@%s:%s/pymongo_test" %
+                          (self.host, self.port))
+
+        self.assertRaises(ConfigurationError, Connection.from_uri,
                           "mongodb://user:foo@%s:%s/pymongo_test" %
                           (self.host, self.port))
+        self.assertRaises(ConfigurationError, Connection,
+                          "mongodb://user:foo@%s:%s/pymongo_test" %
+                          (self.host, self.port))
+
         Connection.from_uri("mongodb://user:pass@%s:%s/pymongo_test" %
                             (self.host, self.port))
+        Connection("mongodb://user:pass@%s:%s/pymongo_test" %
+                   (self.host, self.port))
+
 
         self.assert_(Connection.from_uri("mongodb://%s:%s" %
                                          (self.host, self.port),
                                          slave_okay=True).slave_okay)
+        self.assert_(Connection("mongodb://%s:%s" %
+                                (self.host, self.port),
+                                slave_okay=True).slave_okay)
 
     def test_fork(self):
         """Test using a connection before and after a fork.

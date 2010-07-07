@@ -119,10 +119,17 @@ class Connection(object):  # TODO support auth for pooling
         should handle this exception (recognizing that the operation failed)
         and then continue to execute.
 
-        Raises :class:`TypeError` if host is not an instance of string or port
-        is not an instance of ``int``. Raises
-        :class:`~pymongo.errors.ConnectionFailure` if the connection cannot be
-        made.
+        Raises :class:`TypeError` if port is not an instance of
+        ``int``. Raises :class:`~pymongo.errors.ConnectionFailure` if
+        the connection cannot be made.
+
+        The `host` parameter can be a full `mongodb URI
+        <http://dochub.mongodb.org/core/connections>`_, in addition to
+        a simple hostname. It can also be a list of hostnames or
+        URIs. Any port specified in the host string(s) will override
+        the `port` parameter. If multiple mongodb URIs containing
+        database or auth information or passed, the last database,
+        username, and password present will be used.
 
         :Parameters:
           - `host` (optional): hostname or IPv4 address of the instance to
@@ -143,6 +150,11 @@ class Connection(object):  # TODO support auth for pooling
             aware (otherwise they will be naive)
 
         .. seealso:: :meth:`end_request`
+        .. versionchanged:: 1.7+
+           The `host` parameter can now be a full `mongodb URI
+           <http://dochub.mongodb.org/core/connections>`_, in addition
+           to a simple hostname. It can also be a list of hostnames or
+           URIs.
         .. versionadded:: 1.7+
            The `tz_aware` parameter.
         .. versionadded:: 1.7
@@ -157,8 +169,27 @@ class Connection(object):  # TODO support auth for pooling
         """
         if host is None:
             host = self.HOST
+        if isinstance(host, basestring):
+            host = [host]
         if port is None:
             port = self.PORT
+        if not isinstance(port, int):
+            raise TypeError("port must be an instance of int")
+
+        nodes = []
+        database = None
+        username = None
+        password = None
+        for uri in host:
+            (n, db, u, p) = Connection._parse_uri(uri, port)
+            nodes += n
+            database = db or database
+            username = u or username
+            password = p or password
+        self.__nodes = nodes
+        if database and username is None:
+            raise InvalidURI("cannot specify database without "
+                             "a username and password")
 
         if pool_size is not None:
             warnings.warn("The pool_size parameter to Connection is "
@@ -170,15 +201,10 @@ class Connection(object):  # TODO support auth for pooling
             warnings.warn("The timeout parameter to Connection is deprecated",
                           DeprecationWarning)
 
-        if not isinstance(host, basestring):
-            raise TypeError("host must be an instance of basestring")
-        if not isinstance(port, int):
-            raise TypeError("port must be an instance of int")
 
         self.__host = None
         self.__port = None
 
-        self.__nodes = [(host, port)]
         self.__slave_okay = slave_okay
 
         self.__cursor_manager = CursorManager(self)
@@ -195,6 +221,11 @@ class Connection(object):  # TODO support auth for pooling
         if _connect:
             self.__find_master()
 
+        if username:
+            database = database or "admin"
+            if not self[database].authenticate(username, password):
+                raise ConfigurationError("authentication failed")
+
     @staticmethod
     def __partition(source, sub):
         i = source.find(sub)
@@ -204,7 +235,7 @@ class Connection(object):  # TODO support auth for pooling
         return (source[:i], source[i + len(sub):])
 
     @staticmethod
-    def _parse_uri(uri):
+    def _parse_uri(uri, default_port):
         info = {}
 
         if uri.startswith("mongodb://"):
@@ -236,7 +267,7 @@ class Connection(object):  # TODO support auth for pooling
             if port:
                 port = int(port)
             else:
-                port = 27017
+                port = default_port
             host_list.append((hostname, port))
 
         return (host_list, database, username, password)
@@ -260,47 +291,7 @@ class Connection(object):  # TODO support auth for pooling
 
         .. versionadded:: 1.5
         """
-        (nodes, database, username, password) = Connection._parse_uri(uri)
-        if database and username is None:
-            raise InvalidURI("cannot specify database without "
-                             "a username and password")
-
-        if len(nodes) == 1:
-            connection = cls(*nodes[0], **connection_args)
-
-        elif len(nodes) == 2:
-            connection = cls.paired(*nodes, **connection_args)
-
-        else:
-            raise InvalidURI("Connecting to more than 2 nodes "
-                             "is not currently supported")
-
-        if username:
-            database = database or "admin"
-            if not connection[database].authenticate(username, password):
-                raise InvalidURI("authentication failed")
-
-        return connection
-
-    def __pair_with(self, host, port):
-        """Pair this connection with a Mongo instance running on host:port.
-
-        Raises TypeError if host is not an instance of string or port is not an
-        instance of int. Raises ConnectionFailure if the connection cannot be
-        made.
-
-        :Parameters:
-          - `host`: the hostname or IPv4 address of the instance to
-            pair with
-          - `port`: the port number on which to connect
-        """
-        if not isinstance(host, str):
-            raise TypeError("host must be an instance of str")
-        if not isinstance(port, int):
-            raise TypeError("port must be an instance of int")
-        self.__nodes.append((host, port))
-
-        self.__find_master()
+        return cls(uri, **connection_args)
 
     @classmethod
     def paired(cls, left, right=None, **connection_args):
