@@ -311,20 +311,8 @@ class Connection(object):  # TODO support auth for pooling
         """
         if right is None:
             right = (cls.HOST, cls.PORT)
-
-        for param in ('pool_size', 'auto_start_request', 'timeout'):
-            if param in connection_args:
-                warnings.warn("The %s parameter to Connection.paired is "
-                              "deprecated" % param, DeprecationWarning)
-
-        if "slave_okay" in connection_args:
-            raise TypeError("cannot specify slave_okay on paired connections")
-
-        connection_args['_connect'] = False
-
-        connection = cls(left[0], left[1], **connection_args)
-        connection.__pair_with(*right)
-        return connection
+        return cls([":".join(map(str, left)), ":".join(map(str, right))],
+                   **connection_args)
 
     def __master(self, sock):
         """Is this socket connected to a master server?

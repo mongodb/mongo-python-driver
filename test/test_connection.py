@@ -52,7 +52,6 @@ class TestConnection(unittest.TestCase):
     def test_types(self):
         self.assertRaises(TypeError, Connection, 1)
         self.assertRaises(TypeError, Connection, 1.14)
-        self.assertRaises(TypeError, Connection, [])
         self.assertRaises(TypeError, Connection, "localhost", "27017")
         self.assertRaises(TypeError, Connection, "localhost", 1.14)
         self.assertRaises(TypeError, Connection, "localhost", [])
