@@ -176,13 +176,13 @@ class Connection(object):  # TODO support auth for pooling
         if not isinstance(port, int):
             raise TypeError("port must be an instance of int")
 
-        nodes = []
+        nodes = set()
         database = None
         username = None
         password = None
         for uri in host:
             (n, db, u, p) = Connection._parse_uri(uri, port)
-            nodes += n
+            nodes.update(n)
             database = db or database
             username = u or username
             password = p or password
@@ -424,13 +424,16 @@ class Connection(object):  # TODO support auth for pooling
         """Create a new socket and use it to figure out who the master is.
 
         Sets __host and __port so that :attr:`host` and :attr:`port`
-        will return the address of the master.
+        will return the address of the master. Also (possibly) updates
+        any replSet information.
         """
         self.__host = None
         self.__port = None
         sock = None
         sock_error = False
         close = True
+
+        # TODO parallelize these to minimize connect time?
         for (host, port) in self.__nodes:
             try:
                 try:
