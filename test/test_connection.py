@@ -56,6 +56,8 @@ class TestConnection(unittest.TestCase):
         self.assertRaises(TypeError, Connection, "localhost", 1.14)
         self.assertRaises(TypeError, Connection, "localhost", [])
 
+        self.assertRaises(ConfigurationError, Connection, [])
+
     def test_constants(self):
         Connection.HOST = self.host
         Connection.PORT = self.port

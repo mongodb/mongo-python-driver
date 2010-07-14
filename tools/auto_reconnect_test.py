@@ -17,7 +17,7 @@
 import threading
 import time
 
-from pymongo.errors import ConnectionFailure
+from pymongo.errors import AutoReconnect
 from pymongo.connection import Connection
 
 db = Connection.paired(("localhost", 27018)).test
@@ -28,12 +28,12 @@ class Something(threading.Thread):
         while True:
             time.sleep(1)
             try:
-                id = db.test.save({"x": 1})
+                id = db.test.save({"x": 1}, safe=True)
                 assert db.test.find_one(id)["x"] == 1
                 db.test.remove(id)
                 db.connection.end_request()
                 print "Y"
-            except ConnectionFailure, e:
+            except Exception, e:
                 print e
                 print "N"
 

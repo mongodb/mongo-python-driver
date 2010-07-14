@@ -495,7 +495,7 @@ class Cursor(object):
             response = helpers._unpack_response(response, self.__id,
                                                 self.__as_class, self.__tz_aware)
         except AutoReconnect:
-            db.connection._reset()
+            db.connection.disconnect()
             raise
         self.__id = response["cursor_id"]
 

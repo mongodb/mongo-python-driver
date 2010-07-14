@@ -186,6 +186,8 @@ class Connection(object):  # TODO support auth for pooling
             database = db or database
             username = u or username
             password = p or password
+        if not nodes:
+            raise ConfigurationError("need to specify at least one host")
         self.__nodes = nodes
         if database and username is None:
             raise InvalidURI("cannot specify database without "
@@ -206,6 +208,9 @@ class Connection(object):  # TODO support auth for pooling
         self.__port = None
 
         self.__slave_okay = slave_okay
+        if slave_okay and len(self.__nodes) > 1:
+            raise ConfigurationError("cannot specify slave_okay for a paired "
+                                     "or replica set connection")
 
         self.__cursor_manager = CursorManager(self)
 
@@ -309,15 +314,12 @@ class Connection(object):  # TODO support auth for pooling
         The remaining keyword arguments are the same as those accepted
         by :meth:`~Connection`.
         """
+        if isinstance(left, str) or isinstance(right, str):
+            raise TypeError("arguments to paired must be tuples")
         if right is None:
             right = (cls.HOST, cls.PORT)
         return cls([":".join(map(str, left)), ":".join(map(str, right))],
                    **connection_args)
-
-    def __master(self, sock):
-        """Is this socket connected to a master server?
-        """
-        return self["admin"].command("ismaster", _sock=sock)["ismaster"]
 
     def _cache_index(self, database, collection, index, ttl):
         """Add an index to the index cache for ensure_index operations.
@@ -420,6 +422,26 @@ class Connection(object):  # TODO support auth for pooling
         """
         return self.__tz_aware
 
+    def __add_hosts_and_get_primary(self, response):
+        if "hosts" in response:
+            self.__nodes.update([h.split(":") for h in response["hosts"]])
+        return response.get("primary", False)
+
+    def __try_node(self, node):
+        self.disconnect()
+        self.__host, self.__port = node
+        try:
+            response = self.admin.command("isMaster")
+            self.end_request()
+
+            primary = self.__add_hosts_and_get_primary(response)
+            if response["ismaster"]:
+                return True
+            return primary
+        except:
+            self.end_request()
+            return None
+
     def __find_master(self):
         """Create a new socket and use it to figure out who the master is.
 
@@ -427,56 +449,52 @@ class Connection(object):  # TODO support auth for pooling
         will return the address of the master. Also (possibly) updates
         any replSet information.
         """
-        self.__host = None
-        self.__port = None
-        sock = None
-        sock_error = False
-        close = True
+        # Special case the first node to try to get the primary or any
+        # additional hosts from a replSet:
+        first = iter(self.__nodes).next()
 
+        primary = self.__try_node(first)
+        if primary is True:
+            return first
+        if self.__slave_okay and primary is not None: # no network error
+            return first
+
+        # Wasn't the first node, but we got a primary - let's try it:
+        tried = [first]
+        if primary:
+            if self.__try_node(primary) is True:
+                return primary
+            tried.append(primary)
+
+        nodes = self.__nodes - set(tried)
+
+        # Just scan
         # TODO parallelize these to minimize connect time?
-        for (host, port) in self.__nodes:
-            try:
-                try:
-                    sock = socket.socket()
-                    sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-                    sock.settimeout(self.__network_timeout or _CONNECT_TIMEOUT)
-                    sock.connect((host, port))
-                    sock.settimeout(self.__network_timeout)
-                    master = self.__master(sock)
-                    if master or self.__slave_okay:
-                        self.__host = host
-                        self.__port = port
-                        self.__pool.return_unowned(sock)
-                        close = False
-                        return
-                except socket.error, e:
-                    sock_error = True
-            finally:
-                if sock is not None and close:
-                    sock.close()
-        if sock_error or self.__host is None:
-            raise AutoReconnect("could not find master")
-        raise ConfigurationError("No master node in %r. You must specify "
-                                 "slave_okay to connect to "
-                                 "slaves." % self.__nodes)
+        for node in nodes:
+            if self.__try_node(node) is True:
+                return node
+
+        raise AutoReconnect("could not find master/primary")
 
     def __connect(self):
         """(Re-)connect to Mongo and return a new (connected) socket.
 
         Connect to the master if this is a paired connection.
         """
-        if self.__host is None or self.__port is None:
-            self.__find_master()
+        host, port = (self.__host, self.__port)
+        if host is None or port is None:
+            host, port = self.__find_master()
 
         try:
             sock = socket.socket()
             sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             sock.settimeout(self.__network_timeout or _CONNECT_TIMEOUT)
-            sock.connect((self.__host, self.__port))
+            sock.connect((host, port))
             sock.settimeout(self.__network_timeout)
             return sock
         except socket.error:
-            raise AutoReconnect("could not connect to %r" % self.__nodes)
+            self.disconnect()
+            raise AutoReconnect("could not connect to %r" % list(self.__nodes))
 
     def disconnect(self):
         """Disconnect from MongoDB.
@@ -492,17 +510,8 @@ class Connection(object):  # TODO support auth for pooling
         .. versionadded:: 1.3
         """
         self.__pool = Pool(self.__connect)
-
-    def _reset(self):
-        """Reset everything and start connecting again.
-
-        Closes all open sockets and resets them to None. Re-finds the master.
-
-        This should be done in case of a connection failure or a "not master"
-        error.
-        """
-        self.disconnect()
-        self.__find_master()
+        self.__host = None
+        self.__port = None
 
     def set_cursor_manager(self, manager_class):
         """Set this connection's cursor manager.
@@ -540,7 +549,7 @@ class Connection(object):  # TODO support auth for pooling
         if error.get("err", 0) is None:
             return error
         if error["err"] == "not master":
-            self._reset()
+            self.disconnect()
 
         if "code" in error:
             if error["code"] in [11000, 11001]:
@@ -580,7 +589,7 @@ class Connection(object):  # TODO support auth for pooling
                 return self.__check_response_to_last_error(response)
             return None
         except (ConnectionFailure, socket.error), e:
-            self._reset()
+            self.disconnect()
             raise AutoReconnect(str(e))
 
     def __receive_data_on_socket(self, length, sock):
@@ -642,7 +651,7 @@ class Connection(object):  # TODO support auth for pooling
                 return self.__send_and_receive(message, _sock)
             except (ConnectionFailure, socket.error), e:
                 if reset:
-                    self._reset()
+                    self.disconnect()
                 raise AutoReconnect(str(e))
         finally:
             if "network_timeout" in kwargs:
@@ -687,12 +696,8 @@ class Connection(object):  # TODO support auth for pooling
     def __repr__(self):
         if len(self.__nodes) == 1:
             return "Connection(%r, %r)" % (self.__host, self.__port)
-        elif len(self.__nodes) == 2:
-            return ("Connection.paired((%r, %r), (%r, %r))" %
-                    (self.__nodes[0][0],
-                     self.__nodes[0][1],
-                     self.__nodes[1][0],
-                     self.__nodes[1][1]))
+        else:
+            return "Connection(%r)" % ["%s:%d" % n for n in self.__nodes]
 
     def __getattr__(self, name):
         """Get a database by name.
