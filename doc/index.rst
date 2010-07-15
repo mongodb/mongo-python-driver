@@ -29,6 +29,10 @@ everything you need to know to use **PyMongo**.
   A listing of Python tools and libraries that have been written for
   MongoDB.
 
+Getting Help
+------------
+If you're having trouble or have questions about PyMongo, the best place to ask is the `MongoDB user group <http://groups.google.com/group/mongodb-user>`_. Once you get an answer, it'd be great if you could work it back into this documentation and contribute!
+
 Issues
 ------
 All issues should be reported (and can be tracked / voted for /
