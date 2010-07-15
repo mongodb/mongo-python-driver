@@ -274,11 +274,8 @@ class TestConnection(unittest.TestCase):
     def test_from_uri(self):
         c = Connection(self.host, self.port)
 
-        self.assertRaises(InvalidURI, Connection.from_uri, "mongodb://localhost/baz")
         self.assertRaises(InvalidURI, Connection, "mongodb://localhost/baz")
 
-        self.assertEqual(c, Connection.from_uri("mongodb://%s:%s" %
-                                                (self.host, self.port)))
         self.assertEqual(c, Connection("mongodb://%s:%s" %
                                        (self.host, self.port)))
 
@@ -288,48 +285,23 @@ class TestConnection(unittest.TestCase):
         c.admin.add_user("admin", "pass")
         c.pymongo_test.add_user("user", "pass")
 
-        self.assertRaises(ConfigurationError, Connection.from_uri,
-                          "mongodb://foo:bar@%s:%s" % (self.host, self.port))
         self.assertRaises(ConfigurationError, Connection,
                           "mongodb://foo:bar@%s:%s" % (self.host, self.port))
-
-        self.assertRaises(ConfigurationError, Connection.from_uri,
-                          "mongodb://admin:bar@%s:%s" % (self.host, self.port))
         self.assertRaises(ConfigurationError, Connection,
                           "mongodb://admin:bar@%s:%s" % (self.host, self.port))
-
-        self.assertRaises(ConfigurationError, Connection.from_uri,
-                          "mongodb://user:pass@%s:%s" % (self.host, self.port))
         self.assertRaises(ConfigurationError, Connection,
                           "mongodb://user:pass@%s:%s" % (self.host, self.port))
-
-        Connection.from_uri("mongodb://admin:pass@%s:%s" % (self.host, self.port))
         Connection("mongodb://admin:pass@%s:%s" % (self.host, self.port))
 
-
-        self.assertRaises(ConfigurationError, Connection.from_uri,
-                          "mongodb://admin:pass@%s:%s/pymongo_test" %
-                          (self.host, self.port))
         self.assertRaises(ConfigurationError, Connection,
                           "mongodb://admin:pass@%s:%s/pymongo_test" %
-                          (self.host, self.port))
-
-        self.assertRaises(ConfigurationError, Connection.from_uri,
-                          "mongodb://user:foo@%s:%s/pymongo_test" %
                           (self.host, self.port))
         self.assertRaises(ConfigurationError, Connection,
                           "mongodb://user:foo@%s:%s/pymongo_test" %
                           (self.host, self.port))
-
-        Connection.from_uri("mongodb://user:pass@%s:%s/pymongo_test" %
-                            (self.host, self.port))
         Connection("mongodb://user:pass@%s:%s/pymongo_test" %
                    (self.host, self.port))
 
-
-        self.assert_(Connection.from_uri("mongodb://%s:%s" %
-                                         (self.host, self.port),
-                                         slave_okay=True).slave_okay)
         self.assert_(Connection("mongodb://%s:%s" %
                                 (self.host, self.port),
                                 slave_okay=True).slave_okay)

@@ -14,9 +14,6 @@
 
 """Tools for connecting to MongoDB.
 
-To connect to a single instance of MongoDB use :class:`Connection`. To
-connect to a replica pair use :meth:`~Connection.paired`.
-
 .. seealso:: Module :mod:`~pymongo.master_slave_connection` for
    connecting to master-slave clusters.
 
@@ -110,14 +107,15 @@ class Connection(object):  # TODO support auth for pooling
                  _connect=True):
         """Create a new connection to a single MongoDB instance at *host:port*.
 
-        The resultant connection object has connection-pooling built in. It
-        also performs auto-reconnection when necessary. If an operation fails
-        because of a connection error,
+        The resultant connection object has connection-pooling built
+        in. It also performs auto-reconnection when necessary. If an
+        operation fails because of a connection error,
         :class:`~pymongo.errors.ConnectionFailure` is raised. If
         auto-reconnection will be performed,
-        :class:`~pymongo.errors.AutoReconnect` will be raised. Application code
-        should handle this exception (recognizing that the operation failed)
-        and then continue to execute.
+        :class:`~pymongo.errors.AutoReconnect` will be
+        raised. Application code should handle this exception
+        (recognizing that the operation failed) and then continue to
+        execute.
 
         Raises :class:`TypeError` if port is not an instance of
         ``int``. Raises :class:`~pymongo.errors.ConnectionFailure` if
@@ -128,12 +126,13 @@ class Connection(object):  # TODO support auth for pooling
         a simple hostname. It can also be a list of hostnames or
         URIs. Any port specified in the host string(s) will override
         the `port` parameter. If multiple mongodb URIs containing
-        database or auth information or passed, the last database,
+        database or auth information are passed, the last database,
         username, and password present will be used.
 
         :Parameters:
-          - `host` (optional): hostname or IPv4 address of the instance to
-            connect to
+          - `host` (optional): hostname or IPv4 address of the
+            instance to connect to, or a mongodb URI, or a list of
+            hostnames / mongodb URIs
           - `port` (optional): port number on which to connect
           - `pool_size` (optional): DEPRECATED
           - `auto_start_request` (optional): DEPRECATED
@@ -279,41 +278,25 @@ class Connection(object):  # TODO support auth for pooling
 
     @classmethod
     def from_uri(cls, uri="mongodb://localhost", **connection_args):
-        """Connect to a MongoDB instance(s) using the mongodb URI
-        scheme.
+        """DEPRECATED Can pass a mongodb URI directly to Connection() instead.
 
-        The format for a MongoDB URI is documented `here
-        <http://dochub.mongodb.org/core/connections>`_. Raises
-        :class:`~pymongo.errors.InvalidURI` when given an invalid URI.
-
-        :Parameters:
-
-          - `uri`: URI identifying the MongoDB instance(s) to connect
-            to
-
-        The remaining keyword arguments are the same as those accepted
-        by :meth:`~Connection`.
-
+        .. versionchanged:: 1.7+
+           DEPRECATED
         .. versionadded:: 1.5
         """
+        warnings.warn("Connection.from_uri is deprecated - can pass "
+                      "URIs to Connection() now", DeprecationWarning)
         return cls(uri, **connection_args)
 
     @classmethod
     def paired(cls, left, right=None, **connection_args):
-        """Open a new paired connection to Mongo.
+        """DEPRECATED Can pass a list of hostnames to Connection() instead.
 
-        Raises :class:`TypeError` if either `left` or `right` is not a tuple of
-        the form ``(host, port)``. Raises :class:`~pymongo.ConnectionFailure`
-        if the connection cannot be made.
-
-        :Parameters:
-          - `left`: ``(host, port)`` pair for the left MongoDB instance
-          - `right` (optional): ``(host, port)`` pair for the right MongoDB
-            instance
-
-        The remaining keyword arguments are the same as those accepted
-        by :meth:`~Connection`.
+        .. versionchanged:: 1.7+
+           DEPRECATED
         """
+        warnings.warn("Connection.paired is deprecated - can pass multiple "
+                      "hostnames to Connection() now", DeprecationWarning)
         if isinstance(left, str) or isinstance(right, str):
             raise TypeError("arguments to paired must be tuples")
         if right is None:
