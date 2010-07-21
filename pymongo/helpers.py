@@ -71,7 +71,7 @@ def _index_document(index_list):
     return index
 
 
-def _unpack_response(response, cursor_id=None, as_class=dict, tz_aware=True):
+def _unpack_response(response, cursor_id=None, as_class=dict, tz_aware=False):
     """Unpack a response from the database.
 
     Check the response for errors and unpack, returning a dictionary

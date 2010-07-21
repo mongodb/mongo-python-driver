@@ -23,7 +23,6 @@ from pymongo.binary import Binary
 from pymongo.objectid import ObjectId
 from pymongo.dbref import DBRef
 from pymongo.son import SON
-from pymongo.tz_util import utc
 
 gen_target = 100
 reduction_attempts = 10
@@ -100,8 +99,7 @@ def gen_datetime():
                                      random.randint(0, 23),
                                      random.randint(0, 59),
                                      random.randint(0, 59),
-                                     random.randint(0, 999) * 1000,
-                                     utc)
+                                     random.randint(0, 999) * 1000)
 
 
 def gen_dict(gen_key, gen_value, gen_length):

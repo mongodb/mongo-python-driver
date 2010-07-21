@@ -103,7 +103,7 @@ class Connection(object):  # TODO support auth for pooling
 
     def __init__(self, host=None, port=None, pool_size=None,
                  auto_start_request=None, timeout=None, slave_okay=False,
-                 network_timeout=None, document_class=dict, tz_aware=True,
+                 network_timeout=None, document_class=dict, tz_aware=False,
                  _connect=True):
         """Create a new connection to a single MongoDB instance at *host:port*.
 
@@ -143,7 +143,7 @@ class Connection(object):  # TODO support auth for pooling
             for socket operations - default is no timeout
           - `document_class` (optional): default class to use for
             documents returned from queries on this connection
-          - `tz_aware` (optional): if ``True`` (default),
+          - `tz_aware` (optional): if ``True``,
             :class:`~datetime.datetime` instances returned as values
             in a document by this :class:`Connection` will be timezone
             aware (otherwise they will be naive)

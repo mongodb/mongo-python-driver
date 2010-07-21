@@ -53,7 +53,7 @@ except ImportError:
 RE_TYPE = type(re.compile(""))
 
 
-def _get_int(data, as_class=None, tz_aware=True, unsigned=False):
+def _get_int(data, as_class=None, tz_aware=False, unsigned=False):
     format = unsigned and "I" or "i"
     try:
         value = struct.unpack("<%s" % format, data[:4])[0]
@@ -440,7 +440,7 @@ class BSON(str):
         """
         return cls(_dict_to_bson(dct, check_keys))
 
-    def to_dict(self, as_class=dict, tz_aware=True):
+    def to_dict(self, as_class=dict, tz_aware=False):
         """Convert this BSON data to a mapping type.
 
         The default type to use is :class:`dict`. This can be replaced

@@ -421,8 +421,8 @@ class TestConnection(unittest.TestCase):
                           no_timeout.pymongo_test, 0.1)
 
     def test_tz_aware(self):
-        aware = Connection(self.host, self.port)
-        naive = Connection(self.host, self.port, tz_aware=False)
+        aware = Connection(self.host, self.port, tz_aware=True)
+        naive = Connection(self.host, self.port)
         aware.pymongo_test.drop_collection("test")
 
         now = datetime.datetime.utcnow()

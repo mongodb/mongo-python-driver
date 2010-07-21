@@ -166,7 +166,7 @@ class TestBSON(unittest.TestCase):
         helper({"a binary": Binary("test", 128)})
         helper({"a binary": Binary("test", 254)})
         helper({"another binary": Binary("test")})
-        helper(SON([(u'test dst', datetime.datetime(1993, 4, 4, 2, tzinfo=utc))]))
+        helper(SON([(u'test dst', datetime.datetime(1993, 4, 4, 2))]))
         helper({"big float": float(10000000000)})
         helper({"ref": DBRef("coll", 5)})
         helper({"ref": DBRef("coll", 5, foo="bar", bar=4)})
@@ -186,7 +186,7 @@ class TestBSON(unittest.TestCase):
         aware = datetime.datetime(1993, 4, 4, 2, tzinfo=FixedOffset(555, "SomeZone"))
         as_utc = (aware - aware.utcoffset()).replace(tzinfo=utc)
         self.assertEqual(datetime.datetime(1993, 4, 3, 16, 45, tzinfo=utc), as_utc)
-        after = BSON.from_dict({"date": aware}).to_dict()["date"]
+        after = BSON.from_dict({"date": aware}).to_dict(tz_aware=True)["date"]
         self.assertEqual(utc, after.tzinfo)
         self.assertEqual(as_utc, after)
 
@@ -194,13 +194,13 @@ class TestBSON(unittest.TestCase):
         aware = datetime.datetime(1993, 4, 4, 2, tzinfo=FixedOffset(555, "SomeZone"))
         naive_utc = (aware - aware.utcoffset()).replace(tzinfo=None)
         self.assertEqual(datetime.datetime(1993, 4, 3, 16, 45), naive_utc)
-        after = BSON.from_dict({"date": aware}).to_dict(tz_aware=False)["date"]
+        after = BSON.from_dict({"date": aware}).to_dict()["date"]
         self.assertEqual(None, after.tzinfo)
         self.assertEqual(naive_utc, after)
 
     def test_dst(self):
         d = {"x": datetime.datetime(1993, 4, 4, 2)}
-        self.assertEqual(d, BSON.from_dict(d).to_dict(tz_aware=False))
+        self.assertEqual(d, BSON.from_dict(d).to_dict())
 
     def test_bad_encode(self):
         self.assertRaises(InvalidStringData, BSON.from_dict,
@@ -280,8 +280,8 @@ class TestBSON(unittest.TestCase):
                                              ("_id", "b")])))
 
     def test_dates(self):
-        doc = {"early": datetime.datetime(1686, 5, 5, tzinfo=utc),
-               "late": datetime.datetime(2086, 5, 5, tzinfo=utc)}
+        doc = {"early": datetime.datetime(1686, 5, 5),
+               "late": datetime.datetime(2086, 5, 5)}
         try:
             self.assertEqual(doc, BSON.from_dict(doc).to_dict())
         except ValueError:
