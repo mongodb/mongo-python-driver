@@ -414,7 +414,7 @@ class Connection(object):  # TODO support auth for pooling
         self.disconnect()
         self.__host, self.__port = node
         try:
-            response = self.admin.command("isMaster")
+            response = self.admin.command("ismaster")
             self.end_request()
 
             primary = self.__add_hosts_and_get_primary(response)
