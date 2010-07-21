@@ -105,7 +105,7 @@ def _get_object(data, as_class, tz_aware):
 
 
 def _get_array(data, as_class, tz_aware):
-    (obj, data) = _get_object(data, dict, tz_aware)
+    (obj, data) = _get_object(data, as_class, tz_aware)
     result = []
     i = 0
     while True:

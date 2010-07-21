@@ -298,6 +298,9 @@ class TestBSON(unittest.TestCase):
 
         self.assertEqual(1, BSON.from_dict({"x": 1}).to_dict(SON)["x"])
 
+        x = BSON.from_dict({"x": [{"y": 1}]})
+        self.assert_(isinstance(x.to_dict(SON)["x"][0], SON))
+
     def test_subclasses(self):
         # make sure we can serialize subclasses of native Python types.
         class _myint(int):
