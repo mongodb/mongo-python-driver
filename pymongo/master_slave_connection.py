@@ -118,8 +118,7 @@ class MasterSlaveConnection(object):
     # _connection_to_use is a hack that we need to include to make sure
     # that getmore operations can be sent to the same instance on which
     # the cursor actually resides...
-    def _send_message_with_response(self, message,
-                                    _sock=None, _connection_to_use=None,
+    def _send_message_with_response(self, message, _connection_to_use=None,
                                     _must_use_master=False, **kwargs):
         """Receive a message from Mongo.
 
@@ -132,12 +131,11 @@ class MasterSlaveConnection(object):
         if _connection_to_use is not None:
             if _connection_to_use == -1:
                 return (-1, self.__master._send_message_with_response(message,
-                                                                      _sock,
                                                                       **kwargs))
             else:
                 return (_connection_to_use,
                         self.__slaves[_connection_to_use]
-                        ._send_message_with_response(message, _sock, **kwargs))
+                        ._send_message_with_response(message, **kwargs))
 
         # for now just load-balance randomly among slaves only...
         connection_id = random.randrange(0, len(self.__slaves))
@@ -147,12 +145,10 @@ class MasterSlaveConnection(object):
         # master since that is where writes go.
         if _must_use_master or self.__in_request or connection_id == -1:
             return (-1, self.__master._send_message_with_response(message,
-                                                                  _sock,
                                                                   **kwargs))
 
         slaves = self.__slaves[connection_id]
         return (connection_id, slaves._send_message_with_response(message,
-                                                                  _sock,
                                                                   **kwargs))
 
     def start_request(self):

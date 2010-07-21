@@ -38,7 +38,7 @@ class Cursor(object):
     def __init__(self, collection, spec=None, fields=None, skip=0, limit=0,
                  timeout=True, snapshot=False, tailable=False, sort=None,
                  max_scan=None, as_class=None,
-                 _sock=None, _must_use_master=False, _is_command=False,
+                 _must_use_master=False, _is_command=False,
                  **kwargs):
         """Create a new cursor.
 
@@ -88,7 +88,6 @@ class Cursor(object):
         self.__hint = None
         self.__as_class = as_class
         self.__tz_aware = collection.database.connection.tz_aware
-        self.__socket = _sock
         self.__must_use_master = _must_use_master
         self.__is_command = _is_command
 
@@ -145,7 +144,6 @@ class Cursor(object):
         copy.__ordering = self.__ordering
         copy.__explain = self.__explain
         copy.__hint = self.__hint
-        copy.__socket = self.__socket
         return copy
 
     def __die(self):
@@ -475,8 +473,7 @@ class Cursor(object):
         """Send a query or getmore message and handles the response.
         """
         db = self.__collection.database
-        kwargs = {"_sock": self.__socket,
-                  "_must_use_master": self.__must_use_master}
+        kwargs = {"_must_use_master": self.__must_use_master}
         if self.__connection_id is not None:
             kwargs["_connection_to_use"] = self.__connection_id
         kwargs.update(self.__kwargs)

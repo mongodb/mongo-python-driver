@@ -222,7 +222,7 @@ class Database(object):
         return son
 
     def command(self, command, value=1,
-                check=True, allowable_errors=[], _sock=None, **kwargs):
+                check=True, allowable_errors=[], **kwargs):
         """Issue a MongoDB command.
 
         Send command `command` to the database and return the
@@ -283,7 +283,7 @@ class Database(object):
 
         command.update(kwargs)
 
-        result = self["$cmd"].find_one(command, _sock=_sock,
+        result = self["$cmd"].find_one(command,
                                        _must_use_master=True,
                                        _is_command=True)
 

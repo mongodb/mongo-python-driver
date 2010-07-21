@@ -90,9 +90,6 @@ class Pool(threading.local):
             self.sockets.append(self.sock[1])
         self.sock = None
 
-    def return_unowned(self, sock):
-        self.sockets.append(sock)
-
 
 class Connection(object):  # TODO support auth for pooling
     """Connection to MongoDB.
@@ -612,7 +609,7 @@ class Connection(object):  # TODO support auth for pooling
 
     # we just ignore _must_use_master here: it's only relavant for
     # MasterSlaveConnection instances.
-    def _send_message_with_response(self, message, _sock=None,
+    def _send_message_with_response(self, message,
                                     _must_use_master=False, **kwargs):
         """Send a message to Mongo and return the response.
 
@@ -621,24 +618,19 @@ class Connection(object):  # TODO support auth for pooling
         :Parameters:
           - `message`: (request_id, data) pair making up the message to send
         """
-        # hack so we can do find_master on a specific socket...
-        reset = False
-        if _sock is None:
-            reset = True
-            _sock = self.__pool.socket()
+        sock = self.__pool.socket()
 
         try:
             try:
                 if "network_timeout" in kwargs:
-                    _sock.settimeout(kwargs["network_timeout"])
-                return self.__send_and_receive(message, _sock)
+                    sock.settimeout(kwargs["network_timeout"])
+                return self.__send_and_receive(message, sock)
             except (ConnectionFailure, socket.error), e:
-                if reset:
-                    self.disconnect()
+                self.disconnect()
                 raise AutoReconnect(str(e))
         finally:
             if "network_timeout" in kwargs:
-                _sock.settimeout(self.__network_timeout)
+                sock.settimeout(self.__network_timeout)
 
     def start_request(self):
         """DEPRECATED all operations will start a request.
