@@ -55,15 +55,18 @@ _CONNECT_TIMEOUT = 20.0
 class Pool(threading.local):
     """A simple connection pool.
 
-    Uses thread-local socket per thread. By calling return_socket() a thread
-    can return a socket to the pool.
+    Uses thread-local socket per thread. By calling return_socket() a
+    thread can return a socket to the pool. Right now the pool size is
+    capped at 10 sockets - we can expose this as a parameter later, if
+    needed.
     """
 
     # Non thread-locals
-    __slots__ = ["sockets", "socket_factory"]
+    __slots__ = ["sockets", "socket_factory", "pool_size"]
     sock = None
 
     def __init__(self, socket_factory):
+        self.pool_size = 10
         self.socket_factory = socket_factory
         if not hasattr(self, "sockets"):
             self.sockets = []
@@ -87,7 +90,10 @@ class Pool(threading.local):
 
     def return_socket(self):
         if self.sock is not None and self.sock[0] == os.getpid():
-            self.sockets.append(self.sock[1])
+            if len(self.sockets) < self.pool_size:
+                self.sockets.append(self.sock[1])
+            else:
+                self.sock[1].close()
         self.sock = None
 
 

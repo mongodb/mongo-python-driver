@@ -14,11 +14,12 @@
 
 """Test built in connection-pooling."""
 
-import unittest
-import threading
 import os
 import random
 import sys
+import threading
+import time
+import unittest
 sys.path[0:0] = [""]
 
 from nose.plugins.skip import SkipTest
@@ -109,6 +110,18 @@ class OneOp(threading.Thread):
         assert len(self.c._Connection__pool.sockets) == 0
         self.c.end_request()
         assert len(self.c._Connection__pool.sockets) == 1
+
+
+class CreateAndReleaseSocket(threading.Thread):
+
+    def __init__(self, connection):
+        threading.Thread.__init__(self)
+        self.c = connection
+
+    def run(self):
+        self.c.test.test.find_one()
+        time.sleep(1)
+        self.c.end_request()
 
 
 class TestPooling(unittest.TestCase):
@@ -232,6 +245,20 @@ class TestPooling(unittest.TestCase):
         self.assert_(a_sock.getsockname() != c_sock)
         self.assert_(b_sock != c_sock)
         self.assertEqual(a_sock, a._Connection__pool.socket())
+
+    def test_max_pool_size(self):
+        c = get_connection()
+
+        threads = []
+        for i in range(15):
+            t = CreateAndReleaseSocket(c)
+            t.start()
+            threads.append(t)
+
+        for t in threads:
+            t.join()
+
+        self.assertEqual(10, len(c._Connection__pool.sockets))
 
 
 if __name__ == "__main__":
