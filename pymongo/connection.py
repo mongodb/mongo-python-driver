@@ -52,6 +52,16 @@ from pymongo.errors import (AutoReconnect,
 _CONNECT_TIMEOUT = 20.0
 
 
+def _str_to_node(s):
+    """Convert a string to a node tuple.
+
+    "localhost:27017" -> ("localhost", 27017)
+    """
+    node = s.split(":")
+    node[1] = int(node[1])
+    return tuple(node)
+
+
 class Pool(threading.local):
     """A simple connection pool.
 
@@ -410,8 +420,10 @@ class Connection(object):  # TODO support auth for pooling
 
     def __add_hosts_and_get_primary(self, response):
         if "hosts" in response:
-            self.__nodes.update([h.split(":") for h in response["hosts"]])
-        return response.get("primary", False)
+            self.__nodes.update([_str_to_node(h) for h in response["hosts"]])
+        if "primary" in response:
+            return _str_to_node(response["primary"])
+        return False
 
     def __try_node(self, node):
         self.disconnect()
