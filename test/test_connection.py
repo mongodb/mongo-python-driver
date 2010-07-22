@@ -24,7 +24,8 @@ sys.path[0:0] = [""]
 
 from nose.plugins.skip import SkipTest
 
-from pymongo.connection import Connection
+from pymongo.connection import (Connection,
+                                _parse_uri)
 from pymongo.database import Database
 from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
@@ -238,38 +239,38 @@ class TestConnection(unittest.TestCase):
 
     def test_parse_uri(self):
         self.assertEqual(([("localhost", 27017)], None, None, None),
-                         Connection._parse_uri("localhost", 27017))
+                         _parse_uri("localhost", 27017))
         self.assertEqual(([("localhost", 27018)], None, None, None),
-                         Connection._parse_uri("localhost", 27018))
-        self.assertRaises(InvalidURI, Connection._parse_uri,
+                         _parse_uri("localhost", 27018))
+        self.assertRaises(InvalidURI, _parse_uri,
                           "http://foobar.com", 27017)
-        self.assertRaises(InvalidURI, Connection._parse_uri,
+        self.assertRaises(InvalidURI, _parse_uri,
                           "http://foo@foobar.com", 27017)
 
         self.assertEqual(([("localhost", 27017)], None, None, None),
-                         Connection._parse_uri("mongodb://localhost", 27017))
+                         _parse_uri("mongodb://localhost", 27017))
         self.assertEqual(([("localhost", 27017)], None, "fred", "foobar"),
-                         Connection._parse_uri("mongodb://fred:foobar@localhost",
+                         _parse_uri("mongodb://fred:foobar@localhost",
                                                27017))
         self.assertEqual(([("localhost", 27017)], "baz", "fred", "foobar"),
-                         Connection._parse_uri("mongodb://fred:foobar@localhost/baz",
+                         _parse_uri("mongodb://fred:foobar@localhost/baz",
                                                27017))
         self.assertEqual(([("example1.com", 27017), ("example2.com", 27017)],
                           None, None, None),
-                         Connection._parse_uri("mongodb://example1.com:27017,example2.com:27017",
+                         _parse_uri("mongodb://example1.com:27017,example2.com:27017",
                                                27018))
         self.assertEqual(([("localhost", 27017),
                            ("localhost", 27018),
                            ("localhost", 27019)], None, None, None),
-                         Connection._parse_uri("mongodb://localhost,localhost:27018,localhost:27019",
+                         _parse_uri("mongodb://localhost,localhost:27018,localhost:27019",
                                                27017))
 
         self.assertEqual(([("localhost", 27018)], None, None, None),
-                         Connection._parse_uri("localhost:27018", 27017))
+                         _parse_uri("localhost:27018", 27017))
         self.assertEqual(([("localhost", 27017)], "foo", None, None),
-                         Connection._parse_uri("localhost/foo", 27017))
+                         _parse_uri("localhost/foo", 27017))
         self.assertEqual(([("localhost", 27017)], None, None, None),
-                         Connection._parse_uri("localhost/", 27017))
+                         _parse_uri("localhost/", 27017))
 
     def test_from_uri(self):
         c = Connection(self.host, self.port)

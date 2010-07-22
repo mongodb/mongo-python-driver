@@ -49,17 +49,68 @@ from pymongo.errors import (AutoReconnect,
                             InvalidURI,
                             OperationFailure)
 
+
 _CONNECT_TIMEOUT = 20.0
 
 
-def _str_to_node(s):
+def _partition(source, sub):
+    """Our own string partitioning method.
+
+    Splits `source` on `sub`.
+    """
+    i = source.find(sub)
+    if i == -1:
+        return (source, None)
+    return (source[:i], source[i + len(sub):])
+
+
+def _str_to_node(string):
     """Convert a string to a node tuple.
 
     "localhost:27017" -> ("localhost", 27017)
     """
-    node = s.split(":")
+    node = string.split(":")
     node[1] = int(node[1])
     return tuple(node)
+
+
+def _parse_uri(uri, default_port):
+    """MongoDB URI parser.
+    """
+    info = {}
+
+    if uri.startswith("mongodb://"):
+        uri = uri[len("mongodb://"):]
+    elif "://" in uri:
+        raise InvalidURI("Invalid uri scheme: %s" % _partition(uri, "://")[0])
+
+    (hosts, database) = _partition(uri, "/")
+
+    if not database:
+        database = None
+
+    username = None
+    password = None
+    if "@" in hosts:
+        (auth, hosts) = _partition(hosts, "@")
+
+        if ":" not in auth:
+            raise InvalidURI("auth must be specified as "
+                             "'username:password@'")
+        (username, password) = _partition(auth, ":")
+
+    host_list = []
+    for host in hosts.split(","):
+        if not host:
+            raise InvalidURI("empty host (or extra comma in host list)")
+        (hostname, port) = _partition(host, ":")
+        if port:
+            port = int(port)
+        else:
+            port = default_port
+        host_list.append((hostname, port))
+
+    return (host_list, database, username, password)
 
 
 class Pool(threading.local):
@@ -193,7 +244,7 @@ class Connection(object):  # TODO support auth for pooling
         username = None
         password = None
         for uri in host:
-            (n, db, u, p) = Connection._parse_uri(uri, port)
+            (n, db, u, p) = _parse_uri(uri, port)
             nodes.update(n)
             database = db or database
             username = u or username
@@ -242,52 +293,6 @@ class Connection(object):  # TODO support auth for pooling
             database = database or "admin"
             if not self[database].authenticate(username, password):
                 raise ConfigurationError("authentication failed")
-
-    @staticmethod
-    def __partition(source, sub):
-        i = source.find(sub)
-        if i == -1:
-            return (source, None)
-
-        return (source[:i], source[i + len(sub):])
-
-    @staticmethod
-    def _parse_uri(uri, default_port):
-        info = {}
-
-        if uri.startswith("mongodb://"):
-            uri = uri[len("mongodb://"):]
-        elif "://" in uri:
-            raise InvalidURI("Invalid uri scheme: %s"
-                             % Connection.__partition(uri, "://")[0])
-
-        (hosts, database) = Connection.__partition(uri, "/")
-
-        if not database:
-            database = None
-
-        username = None
-        password = None
-        if "@" in hosts:
-            (auth, hosts) = Connection.__partition(hosts, "@")
-
-            if ":" not in auth:
-                raise InvalidURI("auth must be specified as "
-                                 "'username:password@'")
-            (username, password) = Connection.__partition(auth, ":")
-
-        host_list = []
-        for host in hosts.split(","):
-            if not host:
-                raise InvalidURI("empty host (or extra comma in host list)")
-            (hostname, port) = Connection.__partition(host, ":")
-            if port:
-                port = int(port)
-            else:
-                port = default_port
-            host_list.append((hostname, port))
-
-        return (host_list, database, username, password)
 
     @classmethod
     def from_uri(cls, uri="mongodb://localhost", **connection_args):
