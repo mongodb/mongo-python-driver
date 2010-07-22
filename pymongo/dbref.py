@@ -93,16 +93,19 @@ class DBRef(object):
         return doc
 
     def __repr__(self):
-        extra = "".join([", %s=%r" % (k,v) for k,v in self.__kwargs.iteritems()])
+        extra = "".join([", %s=%r" % (k, v)
+                         for k, v in self.__kwargs.iteritems()])
         if self.database is None:
             return "DBRef(%r, %r%s)" % (self.collection, self.id, extra)
-        return "DBRef(%r, %r, %r%s)" % (self.collection, self.id, self.database,
-                                        extra)
+        return "DBRef(%r, %r, %r%s)" % (self.collection, self.id,
+                                        self.database, extra)
 
     def __cmp__(self, other):
         if isinstance(other, DBRef):
-            return cmp([self.__database, self.__collection, self.__id, self.__kwargs],
-                       [other.__database, other.__collection, other.__id, other.__kwargs])
+            return cmp([self.__database, self.__collection,
+                        self.__id, self.__kwargs],
+                       [other.__database, other.__collection,
+                        other.__id, other.__kwargs])
         return NotImplemented
 
     def __hash__(self):
@@ -110,4 +113,5 @@ class DBRef(object):
 
         .. versionadded:: 1.1
         """
-        return hash((self.__collection, self.__id, self.__database, self.__kwargs))
+        return hash((self.__collection, self.__id,
+                     self.__database, self.__kwargs))

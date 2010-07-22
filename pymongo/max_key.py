@@ -15,6 +15,7 @@
 """Representation for the MongoDB internal MaxKey type.
 """
 
+
 class MaxKey(object):
     """MongoDB internal MaxKey type.
     """

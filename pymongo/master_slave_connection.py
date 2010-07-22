@@ -130,8 +130,9 @@ class MasterSlaveConnection(object):
         """
         if _connection_to_use is not None:
             if _connection_to_use == -1:
-                return (-1, self.__master._send_message_with_response(message,
-                                                                      **kwargs))
+                return (-1,
+                         self.__master._send_message_with_response(message,
+                                                                   **kwargs))
             else:
                 return (_connection_to_use,
                         self.__slaves[_connection_to_use]

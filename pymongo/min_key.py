@@ -15,6 +15,7 @@
 """Representation for the MongoDB internal MinKey type.
 """
 
+
 class MinKey(object):
     """MongoDB internal MinKey type.
     """

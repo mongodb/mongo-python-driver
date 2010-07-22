@@ -274,7 +274,7 @@ class Collection(object):
             instance specifying the document to be used for the update
             or (in the case of an upsert) insert - see docs on MongoDB
             `update modifiers`_
-          - `upsert` (optional): perform an `upsert`_ if ``True``
+          - `upsert` (optional): perform an upsert if ``True``
           - `manipulate` (optional): manipulate the document before
             updating? If ``True`` all instances of
             :mod:`~pymongo.son_manipulator.SONManipulator` added to
@@ -294,7 +294,6 @@ class Collection(object):
            The `multi` parameter.
 
         .. _update modifiers: http://www.mongodb.org/display/DOCS/Updating
-        .. _upsert: http://www.mongodb.org/display/DOCS/Updating#Updating-Upserts
 
         .. mongodoc:: update
         """
@@ -434,8 +433,7 @@ class Collection(object):
             result set
           - `fields` (optional): a list of field names that should be
             returned in the result set ("_id" will always be
-            included), or a dict specifying the `fields to return
-            <http://www.mongodb.org/display/DOCS/Advanced+Queries#AdvancedQueries-RetrievingaSubsetofFields>`_
+            included), or a dict specifying the fields to return
           - `skip` (optional): the number of documents to omit (from
             the start of the result set) when returning the results
           - `limit` (optional): the maximum number of results to
@@ -450,7 +448,7 @@ class Collection(object):
             returned, or objects missed, which were present at both
             the start and end of the query's execution. For details,
             see the `snapshot documentation
-            <http://www.mongodb.org/display/DOCS/How+to+do+Snapshotting+in+the+Mongo+Database>`_.
+            <http://dochub.mongodb.org/core/snapshot>`_.
           - `tailable` (optional): the result of this find call will
             be a tailable cursor - tailable cursors aren't closed when
             the last data is retrieved but are kept open and the
@@ -514,8 +512,8 @@ class Collection(object):
 
         >>> my_collection.create_index("mike")
 
-        For a `compound index`_ on ``'mike'`` descending and
-        ``'eliot'`` ascending we need to use a list of tuples:
+        For a compound index on ``'mike'`` descending and ``'eliot'``
+        ascending we need to use a list of tuples:
 
         >>> my_collection.create_index([("mike", pymongo.DESCENDING),
         ...                             ("eliot", pymongo.ASCENDING)])
@@ -552,8 +550,6 @@ class Collection(object):
            The `name` parameter.
 
         .. seealso:: :meth:`ensure_index`
-
-        .. _compound index: http://www.mongodb.org/display/DOCS/Indexes#Indexes-CompoundKeysIndexes
 
         .. mongodoc:: indexes
         """

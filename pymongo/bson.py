@@ -212,8 +212,7 @@ _element_getter = {
     "\x11": _get_timestamp,
     "\x12": _get_long,
     "\xFF": lambda x, y, z: (MinKey(), x),
-    "\x7F": lambda x, y, z: (MaxKey(), x)
-}
+    "\x7F": lambda x, y, z: (MaxKey(), x)}
 
 
 def _element_to_dict(data, as_class, tz_aware):

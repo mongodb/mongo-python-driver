@@ -586,7 +586,7 @@ class SystemJS(object):
         manual instantiation of this class should not be necessary.
 
         :class:`SystemJS` instances allow for easy manipulation and
-        access to `server-side JavaScript`_:
+        access to server-side JavaScript:
 
         .. doctest::
 
@@ -602,8 +602,6 @@ class SystemJS(object):
         .. note:: Requires server version **>= 1.1.1**
 
         .. versionadded:: 1.5
-
-        .. _server-side JavaScript: http://www.mongodb.org/display/DOCS/Server-side+Code+Execution#Server-sideCodeExecution-Storingfunctionsserverside
         """
         # can't just assign it since we've overridden __setattr__
         object.__setattr__(self, "_database", database)

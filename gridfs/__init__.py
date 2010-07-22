@@ -28,6 +28,7 @@ from pymongo import (ASCENDING,
                      DESCENDING)
 from pymongo.database import Database
 
+
 class GridFS(object):
     """An instance of GridFS on top of a single Database.
     """

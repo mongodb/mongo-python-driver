@@ -36,7 +36,8 @@ try:
     _SEEK_SET = os.SEEK_SET
     _SEEK_CUR = os.SEEK_CUR
     _SEEK_END = os.SEEK_END
-except AttributeError: # before 2.5
+# before 2.5
+except AttributeError:
     _SEEK_SET = 0
     _SEEK_CUR = 1
     _SEEK_END = 2
@@ -55,6 +56,7 @@ def _create_property(field_name, docstring,
             raise AttributeError("can only get %r on a closed file" %
                                  field_name)
         return self._file.get(field_name, None)
+
     def setter(self, value):
         if self._closed:
             raise AttributeError("cannot set %r on a closed file" %
@@ -112,7 +114,8 @@ class GridIn(object):
           - `**kwargs` (optional): file level options (see above)
         """
         if not isinstance(root_collection, Collection):
-            raise TypeError("root_collection must be an instance of Collection")
+            raise TypeError("root_collection must be an "
+                            "instance of Collection")
 
         # Handle alternative naming
         if "content_type" in kwargs:
@@ -124,7 +127,8 @@ class GridIn(object):
         kwargs["_id"] = kwargs.get("_id", ObjectId())
         kwargs["chunkSize"] = kwargs.get("chunkSize", DEFAULT_CHUNK_SIZE)
 
-        root_collection.chunks.ensure_index([("files_id", ASCENDING), ("n", ASCENDING)],
+        root_collection.chunks.ensure_index([("files_id", ASCENDING),
+                                             ("n", ASCENDING)],
                                             unique=True)
         object.__setattr__(self, "_coll", root_collection)
         object.__setattr__(self, "_chunks", root_collection.chunks)
@@ -204,7 +208,6 @@ class GridIn(object):
         except DuplicateKeyError:
             raise FileExists("file with _id %r already exists" % self._id)
 
-
     def close(self):
         """Flush the file and close it.
 
@@ -236,7 +239,8 @@ class GridIn(object):
         if self._closed:
             raise ValueError("cannot write to a closed file")
 
-        try: # file-like
+        # file-like
+        try:
             if self._buffer.tell() > 0:
                 space = self.chunk_size - self._buffer.tell()
                 self._buffer.write(data.read(space))
@@ -246,7 +250,8 @@ class GridIn(object):
                 self.__flush_data(to_write)
                 to_write = data.read(self.chunk_size)
             self._buffer.write(to_write)
-        except AttributeError: # string
+        # string
+        except AttributeError:
             if not isinstance(data, str):
                 raise TypeError("can only write strings or file-like objects")
 
@@ -280,7 +285,9 @@ class GridIn(object):
         Close the file and allow exceptions to propogate.
         """
         self.close()
-        return False # propogate exceptions
+
+        # propogate exceptions
+        return False
 
 
 class GridOut(object):
@@ -301,7 +308,8 @@ class GridOut(object):
           - `file_id`: value of ``"_id"`` for the file to read
         """
         if not isinstance(root_collection, Collection):
-            raise TypeError("root_collection must be an instance of Collection")
+            raise TypeError("root_collection must be an "
+                            "instance of Collection")
 
         self.__chunks = root_collection.chunks
         self._file = root_collection.files.find_one({"_id": file_id})

@@ -266,7 +266,6 @@ class Connection(object):  # TODO support auth for pooling
             warnings.warn("The timeout parameter to Connection is deprecated",
                           DeprecationWarning)
 
-
         self.__host = None
         self.__port = None
 
@@ -459,7 +458,9 @@ class Connection(object):  # TODO support auth for pooling
         primary = self.__try_node(first)
         if primary is True:
             return first
-        if self.__slave_okay and primary is not None: # no network error
+
+        # no network error
+        if self.__slave_okay and primary is not None:
             return first
 
         # Wasn't the first node, but we got a primary - let's try it:
