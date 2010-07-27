@@ -113,7 +113,7 @@ def _parse_uri(uri, default_port):
     return (host_list, database, username, password)
 
 
-class Pool(threading.local):
+class _Pool(threading.local):
     """A simple connection pool.
 
     Uses thread-local socket per thread. By calling return_socket() a
@@ -276,7 +276,7 @@ class Connection(object):  # TODO support auth for pooling
 
         self.__cursor_manager = CursorManager(self)
 
-        self.__pool = Pool(self.__connect)
+        self.__pool = _Pool(self.__connect)
 
         self.__network_timeout = network_timeout
         self.__document_class = document_class
@@ -513,7 +513,7 @@ class Connection(object):  # TODO support auth for pooling
         .. seealso:: :meth:`end_request`
         .. versionadded:: 1.3
         """
-        self.__pool = Pool(self.__connect)
+        self.__pool = _Pool(self.__connect)
         self.__host = None
         self.__port = None
 

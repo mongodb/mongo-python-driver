@@ -24,7 +24,7 @@ sys.path[0:0] = [""]
 
 from nose.plugins.skip import SkipTest
 
-from pymongo.connection import Pool
+from pymongo.connection import _Pool
 from test_connection import get_connection
 
 N = 50
@@ -141,13 +141,13 @@ class TestPooling(unittest.TestCase):
         run_cases(self, [SaveAndFind, Disconnect, Unique])
 
     def test_independent_pools(self):
-        p = Pool(None)
+        p = _Pool(None)
         self.assertEqual([], p.sockets)
         self.c.end_request()
         self.assertEqual([], p.sockets)
 
         # Sensical values aren't really important here
-        p1 = Pool(5)
+        p1 = _Pool(5)
         self.assertEqual(None, p.socket_factory)
         self.assertEqual(5, p1.socket_factory)
 
