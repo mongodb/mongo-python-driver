@@ -64,14 +64,17 @@ def _partition(source, sub):
     return (source[:i], source[i + len(sub):])
 
 
-def _str_to_node(string):
+def _str_to_node(string, default_port=27017):
     """Convert a string to a node tuple.
 
     "localhost:27017" -> ("localhost", 27017)
     """
-    node = string.split(":")
-    node[1] = int(node[1])
-    return tuple(node)
+    (host, port) = _partition(string, ":")
+    if port:
+        port = int(port)
+    else:
+        port = default_port
+    return (host, port)
 
 
 def _parse_uri(uri, default_port):
@@ -103,12 +106,7 @@ def _parse_uri(uri, default_port):
     for host in hosts.split(","):
         if not host:
             raise InvalidURI("empty host (or extra comma in host list)")
-        (hostname, port) = _partition(host, ":")
-        if port:
-            port = int(port)
-        else:
-            port = default_port
-        host_list.append((hostname, port))
+        host_list.append(_str_to_node(host, default_port))
 
     return (host_list, database, username, password)
 
