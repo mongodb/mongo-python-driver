@@ -61,6 +61,10 @@ class TestJsonUtil(unittest.TestCase):
     def test_dbref(self):
         self.round_trip({"ref": DBRef("foo", 5)})
         self.round_trip({"ref": DBRef("foo", 5, "db")})
+        self.assertEqual("{\"ref\": {\"$ref\": \"foo\", \"$id\": 5}}",
+                         json.dumps({"ref": DBRef("foo", 5)}, default=default))
+        self.assertEqual("{\"ref\": {\"$ref\": \"foo\", \"$id\": 5, \"$db\": \"bar\"}}",
+                         json.dumps({"ref": DBRef("foo", 5, "bar")}, default=default))
 
     def test_datetime(self):
         # only millis, not micros
