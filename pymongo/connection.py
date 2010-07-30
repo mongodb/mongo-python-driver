@@ -392,6 +392,18 @@ class Connection(object):  # TODO support auth for pooling
         return self.__port
 
     @property
+    def nodes(self):
+        """List of all known nodes.
+
+        Includes both nodes specified when the :class:`Connection` was
+        created, as well as nodes discovered through the replica set
+        discovery mechanism.
+
+        .. versionadded:: 1.7+
+        """
+        return self.__nodes
+
+    @property
     def slave_okay(self):
         """Is it okay for this connection to connect directly to a slave?
         """
