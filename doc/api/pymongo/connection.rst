@@ -18,6 +18,7 @@
 
       .. autoattribute:: host
       .. autoattribute:: port
+      .. autoattribute:: nodes
       .. autoattribute:: slave_okay
       .. autoattribute:: document_class
       .. autoattribute:: tz_aware

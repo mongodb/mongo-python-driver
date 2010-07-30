@@ -92,6 +92,7 @@ class TestConnection(unittest.TestCase):
     def test_getters(self):
         self.assertEqual(Connection(self.host, self.port).host, self.host)
         self.assertEqual(Connection(self.host, self.port).port, self.port)
+        self.assertEqual(set([(self.host, self.port)]), Connection(self.host, self.port).nodes)
 
     def test_get_db(self):
         connection = Connection(self.host, self.port)
