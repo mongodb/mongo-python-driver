@@ -165,24 +165,39 @@ class Collection(object):
         """
         return self.__database
 
-    def save(self, to_save, manipulate=True, safe=False):
+    def save(self, to_save, manipulate=True, safe=False, **kwargs):
         """Save a document in this collection.
 
-        If `to_save` already has an '_id' then an update (upsert) operation
-        is performed and any existing document with that _id is overwritten.
-        Otherwise an '_id' will be added to `to_save` and an insert operation
-        is performed. Returns the _id of the saved document.
+        If `to_save` already has an ``"_id"`` then an :meth:`update`
+        (upsert) operation is performed and any existing document with
+        that ``"_id"`` is overwritten.  Otherwise an ``"_id"`` will be
+        added to `to_save` and an :meth:`insert` operation is
+        performed. Returns the ``"_id"`` of the saved document.
 
-        Raises TypeError if to_save is not an instance of dict. If `safe`
-        is True then the save will be checked for errors, raising
-        OperationFailure if one occurred. Safe inserts wait for a
-        response from the database, while normal inserts do not. Returns the
-        _id of the saved document.
+        Raises :class:`TypeError` if `to_save` is not an instance of
+        :class:`dict`. If `safe` is ``True`` then the save will be
+        checked for errors, raising
+        :class:`~pymongo.errors.OperationFailure` if one
+        occurred. Safe inserts wait for a response from the database,
+        while normal inserts do not.
+
+        Any additional keyword arguments imply ``safe=True``, and will
+        be used as options for the resultant `getLastError`
+        command. For example, to wait for replication to 3 nodes, pass
+        ``w=3``.
 
         :Parameters:
-          - `to_save`: the SON object to be saved
-          - `manipulate` (optional): manipulate the SON object before saving it
+          - `to_save`: the document to be saved
+          - `manipulate` (optional): manipulate the document before
+            saving it?
           - `safe` (optional): check that the save succeeded?
+          - `**kwargs` (optional): any additional arguments imply
+            ``safe=True``, and will be used as options for the
+            `getLastError` command
+
+        .. versionadded:: 1.7+
+           Support for passing `getLastError` options as keyword
+           arguments.
 
         .. mongodoc:: insert
         """
@@ -190,31 +205,50 @@ class Collection(object):
             raise TypeError("cannot save object of type %s" % type(to_save))
 
         if "_id" not in to_save:
-            return self.insert(to_save, manipulate, safe)
+            return self.insert(to_save, manipulate, safe, **kwargs)
         else:
             self.update({"_id": to_save["_id"]}, to_save, True,
-                        manipulate, safe)
+                        manipulate, safe, **kwargs)
             return to_save.get("_id", None)
 
     def insert(self, doc_or_docs,
-               manipulate=True, safe=False, check_keys=True):
+               manipulate=True, safe=False, check_keys=True, **kwargs):
         """Insert a document(s) into this collection.
 
-        If manipulate is set the document(s) are manipulated using any
-        SONManipulators that have been added to this database. Returns the _id
-        of the inserted document or a list of _ids of the inserted documents.
-        If the document(s) does not already contain an '_id' one will be added.
-        If `safe` is True then the insert will be checked for errors, raising
-        OperationFailure if one occurred. Safe inserts wait for a response from
-        the database, while normal inserts do not.
+        If `manipulate` is set, the document(s) are manipulated using
+        any :class:`~pymongo.son_manipulator.SONManipulator` instances
+        that have been added to this
+        :class:`~pymongo.database.Database`. Returns the ``"_id"`` of
+        the inserted document or a list of ``"_id"`` values of the
+        inserted documents.  If the document(s) does not already
+        contain an ``"_id"`` one will be added.
+
+        If `safe` is ``True`` then the insert will be checked for
+        errors, raising :class:`~pymongo.errors.OperationFailure` if
+        one occurred. Safe inserts wait for a response from the
+        database, while normal inserts do not.
+
+        Any additional keyword arguments imply ``safe=True``, and
+        will be used as options for the resultant `getLastError`
+        command. For example, to wait for replication to 3 nodes, pass
+        ``w=3``.
 
         :Parameters:
-          - `doc_or_docs`: a SON object or list of SON objects to be inserted
-          - `manipulate` (optional): manipulate the documents before inserting?
+          - `doc_or_docs`: a document or list of documents to be
+            inserted
+          - `manipulate` (optional): manipulate the documents before
+            inserting?
           - `safe` (optional): check that the insert succeeded?
           - `check_keys` (optional): check if keys start with '$' or
-            contain '.', raising `pymongo.errors.InvalidName` in either case
+            contain '.', raising :class:`~pymongo.errors.InvalidName`
+            in either case
+          - `**kwargs` (optional): any additional arguments imply
+            ``safe=True``, and will be used as options for the
+            `getLastError` command
 
+        .. versionadded:: 1.7+
+           Support for passing `getLastError` options as keyword
+           arguments.
         .. versionchanged:: 1.1
            Bulk insert works with any iterable
 
@@ -235,8 +269,8 @@ class Collection(object):
         ids = [doc.get("_id", None) for doc in docs]
         return return_one and ids[0] or ids
 
-    def update(self, spec, document,
-               upsert=False, manipulate=False, safe=False, multi=False):
+    def update(self, spec, document, upsert=False, manipulate=False,
+               safe=False, multi=False, **kwargs):
         """Update a document(s) in this collection.
 
         Raises :class:`TypeError` if either `spec` or `document` is
@@ -266,6 +300,11 @@ class Collection(object):
         If `safe` is ``True`` returns the response to the *lastError*
         command. Otherwise, returns ``None``.
 
+        Any additional keyword arguments imply ``safe=True``, and will
+        be used as options for the resultant `getLastError`
+        command. For example, to wait for replication to 3 nodes, pass
+        ``w=3``.
+
         :Parameters:
           - `spec`: a ``dict`` or :class:`~pymongo.son.SON` instance
             specifying elements which must be present for a document
@@ -287,7 +326,13 @@ class Collection(object):
             might eventually change to ``True``. It is recommended
             that you specify this argument explicitly for all update
             operations in order to prepare your code for that change.
+          - `**kwargs` (optional): any additional arguments imply
+            ``safe=True``, and will be used as options for the
+            `getLastError` command
 
+        .. versionadded:: 1.7+
+           Support for passing `getLastError` options as keyword
+           arguments.
         .. versionchanged:: 1.4
            Return the response to *lastError* if `safe` is ``True``.
         .. versionadded:: 1.1.1
@@ -323,7 +368,7 @@ class Collection(object):
         """
         self.__database.drop_collection(self.__name)
 
-    def remove(self, spec_or_id=None, safe=False):
+    def remove(self, spec_or_id=None, safe=False, **kwargs):
         """Remove a document(s) from this collection.
 
         .. warning:: Calls to :meth:`remove` should be performed with
@@ -343,12 +388,22 @@ class Collection(object):
         If `safe` is ``True`` returns the response to the *lastError*
         command. Otherwise, returns ``None``.
 
+        Any additional keyword arguments imply ``safe=True``, and will
+        be used as options for the resultant `getLastError`
+        command. For example, to wait for replication to 3 nodes, pass
+        ``w=3``.
+
         :Parameters:
           - `spec_or_id` (optional): a dictionary specifying the
             documents to be removed OR any other type specifying the
             value of ``"_id"`` for the document to be removed
           - `safe` (optional): check that the remove succeeded?
+          - `**kwargs` (optional): any additional arguments imply
+            ``safe=True``, and will be used as options for the
+            `getLastError` command
 
+        .. versionadded:: 1.7+
+           Support for passing `getLastError` options as keyword arguments.
         .. versionchanged:: 1.7
            Accept any type other than a ``dict`` instance for removal
            by ``"_id"``, not just :class:`~pymongo.objectid.ObjectId`
