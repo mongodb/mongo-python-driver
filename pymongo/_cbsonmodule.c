@@ -1349,7 +1349,7 @@ static PyObject* get_value(const char* buffer, int* position, int type,
                 dbref = PyObject_CallFunctionObjArgs(DBRef, collection, id, database, value, NULL);
                 Py_DECREF(value);
                 value = dbref;
-                
+
                 Py_DECREF(id);
                 Py_DECREF(collection);
                 Py_DECREF(database);
