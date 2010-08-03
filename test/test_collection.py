@@ -651,6 +651,9 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(0, db.test.remove({}, safe=True)["n"])
 
     def test_last_error_options(self):
+        if not version.at_least(self.connection, (1, 5, 1)):
+            raise SkipTest()
+
         self.assertRaises(TimeoutError, self.db.test.save, {"x": 1}, w=2, wtimeout=1)
         self.assertRaises(TimeoutError, self.db.test.insert, {"x": 1}, w=2, wtimeout=1)
         self.assertRaises(TimeoutError, self.db.test.update, {"x": 1}, {"y": 2}, w=2, wtimeout=1)
