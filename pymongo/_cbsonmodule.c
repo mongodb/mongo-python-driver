@@ -1328,6 +1328,7 @@ static PyObject* get_value(const char* buffer, int* position, int type,
 
             /* Decoding for DBRefs */
             if (strcmp(buffer + *position + 5, "$ref") == 0) { /* DBRef */
+                PyObject* dbref;
                 PyObject* collection = PyDict_GetItemString(value, "$ref");
                 PyObject* id = PyDict_GetItemString(value, "$id");
                 PyObject* database = PyDict_GetItemString(value, "$db");
@@ -1345,8 +1346,10 @@ static PyObject* get_value(const char* buffer, int* position, int type,
                     PyDict_DelItemString(value, "$db");
                 }
 
-                value = PyObject_CallFunctionObjArgs(DBRef, collection, id, database, value, NULL);
-
+                dbref = PyObject_CallFunctionObjArgs(DBRef, collection, id, database, value, NULL);
+                Py_DECREF(value);
+                value = dbref;
+                
                 Py_DECREF(id);
                 Py_DECREF(collection);
                 Py_DECREF(database);
