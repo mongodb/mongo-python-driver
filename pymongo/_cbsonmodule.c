@@ -951,24 +951,70 @@ static PyObject* _cbson_dict_to_bson(PyObject* self, PyObject* args) {
 
 /* add a lastError message on the end of the buffer.
  * returns 0 on failure */
-static int add_last_error(bson_buffer* buffer, int request_id) {
+static int add_last_error(bson_buffer* buffer, int request_id, PyObject* args) {
                                  /* message length: 62 */
-    if (!buffer_write_bytes(buffer, "\x3E\x00\x00\x00", 4) ||
-        !buffer_write_bytes(buffer, (const char*)&request_id, 4) ||
-        !buffer_write_bytes(buffer,
-                            "\x00\x00\x00\x00" /* responseTo */
-                            "\xd4\x07\x00\x00" /* opcode */
-                            "\x00\x00\x00\x00" /* options */
-                            "admin.$cmd\x00"   /* collection name */
-                            "\x00\x00\x00\x00" /* skip */
-                            "\xFF\xFF\xFF\xFF" /* limit (-1) */
-                            "\x17\x00\x00\x00" /* {getlasterror: 1} */
-                            "\x10getlasterror" /* ... */
-                            "\x00\x01\x00\x00" /* ... */
-                            "\x00\x00",        /* ... */
-                            54)) {
+    int message_start;
+    int document_start;
+    int message_length;
+    int document_length;
+    PyObject* key;
+    PyObject* value;
+    Py_ssize_t pos = 0;
+    PyObject* one;
+
+    message_start = buffer_save_bytes(buffer, 4);
+    if (message_start == -1) {
         return 0;
     }
+    if (!buffer_write_bytes(buffer, (const char*)&request_id, 4) ||
+        !buffer_write_bytes(buffer,
+                            "\x00\x00\x00\x00"  /* responseTo */
+                            "\xd4\x07\x00\x00"  /* opcode */
+                            "\x00\x00\x00\x00"  /* options */
+                            "admin.$cmd\x00"    /* collection name */
+                            "\x00\x00\x00\x00"  /* skip */
+                            "\xFF\xFF\xFF\xFF", /* limit (-1) */
+                            31)) {
+        return 0;
+    }
+
+    /* save space for length */
+    document_start = buffer_save_bytes(buffer, 4);
+    if (document_length == -1) {
+        return 0;
+    }
+
+    /* getlasterror: 1 */
+    one = PyLong_FromLong(1);
+    if (!write_pair(buffer, "getlasterror", 12, one, 0, 1)) {
+        Py_DECREF(one);
+        return 0;
+    }
+    Py_DECREF(one);
+
+    /* getlasterror options */
+    while (PyDict_Next(args, &pos, &key, &value)) {
+        if (!decode_and_write_pair(buffer, key, value, 0, 0)) {
+            return 0;
+        }
+    }
+
+    /* EOD */
+    if (!buffer_write_bytes(buffer, "\x00", 1)) {
+        return 0;
+    }
+
+    message_length = buffer->position - message_start;
+    document_length = buffer->position - document_start;
+    if (document_length > 4 * 1024 * 1024) {
+        PyObject* InvalidDocument = _error("InvalidDocument");
+        PyErr_SetString(InvalidDocument, "document too large - "
+                        "BSON documents are limited to 4 MB");
+        Py_DECREF(InvalidDocument);
+        return 0;
+    }
+    memcpy(buffer->buffer + message_start, &message_length, 4);
+    memcpy(buffer->buffer + document_start, &document_length, 4);
     return 1;
 }
 
@@ -982,15 +1028,16 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
     int i;
     unsigned char check_keys;
     unsigned char safe;
+    PyObject* last_error_args;
     bson_buffer* buffer;
     int length_location;
     PyObject* result;
 
-    if (!PyArg_ParseTuple(args, "et#Obb",
+    if (!PyArg_ParseTuple(args, "et#ObbO",
                           "utf-8",
                           &collection_name,
                           &collection_name_length,
-                          &docs, &check_keys, &safe)) {
+                          &docs, &check_keys, &safe, &last_error_args)) {
         return NULL;
     }
 
@@ -1038,7 +1085,7 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
     memcpy(buffer->buffer + length_location, &buffer->position, 4);
 
     if (safe) {
-        if (!add_last_error(buffer, request_id)) {
+        if (!add_last_error(buffer, request_id, last_error_args)) {
             buffer_free(buffer);
             return NULL;
         }
@@ -1061,16 +1108,18 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
     unsigned char multi;
     unsigned char upsert;
     unsigned char safe;
+    PyObject* last_error_args;
     int options;
     bson_buffer* buffer;
     int length_location;
     PyObject* result;
 
-    if (!PyArg_ParseTuple(args, "et#bbOOb",
+    if (!PyArg_ParseTuple(args, "et#bbOObO",
                           "utf-8",
                           &collection_name,
                           &collection_name_length,
-                          &upsert, &multi, &spec, &doc, &safe)) {
+                          &upsert, &multi, &spec, &doc, &safe,
+                          &last_error_args)) {
         return NULL;
     }
 
@@ -1112,7 +1161,7 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
     memcpy(buffer->buffer + length_location, &buffer->position, 4);
 
     if (safe) {
-        if (!add_last_error(buffer, request_id)) {
+        if (!add_last_error(buffer, request_id, last_error_args)) {
             buffer_free(buffer);
             return NULL;
         }

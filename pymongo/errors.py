@@ -56,6 +56,13 @@ class OperationFailure(PyMongoError):
         PyMongoError.__init__(self, error)
 
 
+class TimeoutError(OperationFailure):
+    """Raised when a database operation times out.
+
+    .. versionadded:: 1.7+
+    """
+
+
 class DuplicateKeyError(OperationFailure):
     """Raised when a safe insert or update fails due to a duplicate key error.
 

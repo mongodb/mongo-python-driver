@@ -263,8 +263,11 @@ class Collection(object):
         if manipulate:
             docs = [self.__database._fix_incoming(doc, self) for doc in docs]
 
+        if kwargs:
+            safe = True
         self.__database.connection._send_message(
-            message.insert(self.__full_name, docs, check_keys, safe), safe)
+            message.insert(self.__full_name, docs,
+                           check_keys, safe, kwargs), safe)
 
         ids = [doc.get("_id", None) for doc in docs]
         return return_one and ids[0] or ids
@@ -352,9 +355,12 @@ class Collection(object):
         if upsert and manipulate:
             document = self.__database._fix_incoming(document, self)
 
+        if kwargs:
+            safe = True
+
         return self.__database.connection._send_message(
             message.update(self.__full_name, upsert, multi,
-                           spec, document, safe), safe)
+                           spec, document, safe, kwargs), safe)
 
     def drop(self):
         """Alias for :meth:`~pymongo.database.Database.drop_collection`.
@@ -424,8 +430,11 @@ class Collection(object):
         if not isinstance(spec_or_id, dict):
             spec_or_id = {"_id": spec_or_id}
 
+        if kwargs:
+            safe = True
+
         return self.__database.connection._send_message(
-            message.delete(self.__full_name, spec_or_id, safe), safe)
+            message.delete(self.__full_name, spec_or_id, safe, kwargs), safe)
 
     def find_one(self, spec_or_id=None, *args, **kwargs):
         """Get a single document from the database.

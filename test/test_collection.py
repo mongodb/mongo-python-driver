@@ -35,7 +35,8 @@ from pymongo.errors import (DuplicateKeyError,
                             InvalidDocument,
                             InvalidName,
                             InvalidOperation,
-                            OperationFailure)
+                            OperationFailure,
+                            TimeoutError)
 from pymongo.objectid import ObjectId
 from pymongo.son import SON
 from test.test_connection import get_connection
@@ -648,6 +649,16 @@ class TestCollection(unittest.TestCase):
         db.test.insert({"x": 1})
         self.assertEqual(2, db.test.remove({}, safe=True)["n"])
         self.assertEqual(0, db.test.remove({}, safe=True)["n"])
+
+    def test_last_error_options(self):
+        self.assertRaises(TimeoutError, self.db.test.save, {"x": 1}, w=2, wtimeout=1)
+        self.assertRaises(TimeoutError, self.db.test.insert, {"x": 1}, w=2, wtimeout=1)
+        self.assertRaises(TimeoutError, self.db.test.update, {"x": 1}, {"y": 2}, w=2, wtimeout=1)
+        self.assertRaises(TimeoutError, self.db.test.remove, {"x": 1}, {"y": 2}, w=2, wtimeout=1)
+        self.db.test.save({"x": 1}, w=1, wtimeout=1)
+        self.db.test.insert({"x": 1}, w=1, wtimeout=1)
+        self.db.test.remove({"x": 1}, w=1, wtimeout=1)
+        self.db.test.update({"x": 1}, {"y": 2}, w=1, wtimeout=1)
 
     def test_count(self):
         db = self.db

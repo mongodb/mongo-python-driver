@@ -26,6 +26,7 @@ import random
 import struct
 
 from pymongo import bson
+from pymongo.son import SON
 try:
     from pymongo import _cbson
     _use_c = True
@@ -37,10 +38,12 @@ from pymongo.errors import InvalidOperation
 __ZERO = "\x00\x00\x00\x00"
 
 
-def __last_error():
+def __last_error(args):
     """Data to send to do a lastError.
     """
-    return query(0, "admin.$cmd", 0, -1, {"getlasterror": 1})
+    cmd = SON([("getlasterror", 1)])
+    cmd.update(args)
+    return query(0, "admin.$cmd", 0, -1, cmd)
 
 
 def __pack_message(operation, data):
@@ -56,7 +59,7 @@ def __pack_message(operation, data):
     return (request_id, message + data)
 
 
-def insert(collection_name, docs, check_keys, safe):
+def insert(collection_name, docs, check_keys, safe, last_error_args):
     """Get an **insert** message.
     """
     data = __ZERO
@@ -68,7 +71,7 @@ def insert(collection_name, docs, check_keys, safe):
     data += bson_data
     if safe:
         (_, insert_message) = __pack_message(2002, data)
-        (request_id, error_message) = __last_error()
+        (request_id, error_message) = __last_error(last_error_args)
         return (request_id, insert_message + error_message)
     else:
         return __pack_message(2002, data)
@@ -76,7 +79,7 @@ if _use_c:
     insert = _cbson._insert_message
 
 
-def update(collection_name, upsert, multi, spec, doc, safe):
+def update(collection_name, upsert, multi, spec, doc, safe, last_error_args):
     """Get an **update** message.
     """
     options = 0
@@ -92,7 +95,7 @@ def update(collection_name, upsert, multi, spec, doc, safe):
     data += bson.BSON.from_dict(doc)
     if safe:
         (_, update_message) = __pack_message(2001, data)
-        (request_id, error_message) = __last_error()
+        (request_id, error_message) = __last_error(last_error_args)
         return (request_id, update_message + error_message)
     else:
         return __pack_message(2001, data)
@@ -128,7 +131,7 @@ if _use_c:
     get_more = _cbson._get_more_message
 
 
-def delete(collection_name, spec, safe):
+def delete(collection_name, spec, safe, last_error_args):
     """Get a **delete** message.
     """
     data = __ZERO
@@ -137,7 +140,7 @@ def delete(collection_name, spec, safe):
     data += bson.BSON.from_dict(spec)
     if safe:
         (_, remove_message) = __pack_message(2006, data)
-        (request_id, error_message) = __last_error()
+        (request_id, error_message) = __last_error(last_error_args)
         return (request_id, remove_message + error_message)
     else:
         return __pack_message(2006, data)
