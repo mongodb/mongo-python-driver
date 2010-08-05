@@ -14,8 +14,10 @@
 
 """Simple script to help test auto-reconnection."""
 
+import sys
 import threading
 import time
+sys.path[0:0] = [""]
 
 from pymongo.errors import AutoReconnect
 from pymongo.connection import Connection
@@ -33,7 +35,7 @@ class Something(threading.Thread):
                 db.test.remove(id)
                 db.connection.end_request()
                 print "Y"
-            except Exception, e:
+            except AutoReconnect, e:
                 print e
                 print "N"
 
