@@ -459,7 +459,7 @@ class BSON(str):
           - `tz_aware` (optional): if ``True``, return timezone-aware
             :class:`~datetime.datetime` instances
 
-        .. versionadded:: 1.7+
+        .. versionadded:: 1.8
            The `tz_aware` parameter.
         .. versionadded:: 1.7
            The `as_class` parameter.

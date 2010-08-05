@@ -195,7 +195,7 @@ class Collection(object):
             ``safe=True``, and will be used as options for the
             `getLastError` command
 
-        .. versionadded:: 1.7+
+        .. versionadded:: 1.8
            Support for passing `getLastError` options as keyword
            arguments.
 
@@ -246,7 +246,7 @@ class Collection(object):
             ``safe=True``, and will be used as options for the
             `getLastError` command
 
-        .. versionadded:: 1.7+
+        .. versionadded:: 1.8
            Support for passing `getLastError` options as keyword
            arguments.
         .. versionchanged:: 1.1
@@ -333,7 +333,7 @@ class Collection(object):
             ``safe=True``, and will be used as options for the
             `getLastError` command
 
-        .. versionadded:: 1.7+
+        .. versionadded:: 1.8
            Support for passing `getLastError` options as keyword
            arguments.
         .. versionchanged:: 1.4
@@ -370,7 +370,7 @@ class Collection(object):
           >>> db.foo.drop()
           >>> db.drop_collection("foo")
 
-        .. versionadded:: 1.7+
+        .. versionadded:: 1.8
         """
         self.__database.drop_collection(self.__name)
 
@@ -408,7 +408,7 @@ class Collection(object):
             ``safe=True``, and will be used as options for the
             `getLastError` command
 
-        .. versionadded:: 1.7+
+        .. versionadded:: 1.8
            Support for passing `getLastError` options as keyword arguments.
         .. versionchanged:: 1.7
            Accept any type other than a ``dict`` instance for removal
@@ -536,7 +536,7 @@ class Collection(object):
         .. note:: The `max_scan` parameter requires server
            version **>= 1.5.1**
 
-        .. versionadded:: 1.7+
+        .. versionadded:: 1.8
            The `network_timeout` parameter.
 
         .. versionadded:: 1.7

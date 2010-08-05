@@ -87,7 +87,7 @@ class Timestamp(object):
         """Return a :class:`~datetime.datetime` instance corresponding
         to the time portion of this :class:`Timestamp`.
 
-        .. versionchanged:: 1.7+
+        .. versionchanged:: 1.8
            The returned datetime is now timezone aware.
         """
         return datetime.datetime.fromtimestamp(self.__time, utc)

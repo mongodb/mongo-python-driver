@@ -103,7 +103,7 @@ class ObjectId(object):
           - `generation_time`: :class:`~datetime.datetime` to be used
             as the generation time for the resulting ObjectId.
 
-        .. versionchanged:: 1.7+
+        .. versionchanged:: 1.8
            Properly handle timezone aware values for
            `generation_time`.
 
@@ -177,7 +177,7 @@ class ObjectId(object):
         represents the generation time in UTC. It is precise to the
         second.
 
-        .. versionchanged:: 1.7+
+        .. versionchanged:: 1.8
            Now return an aware datetime instead of a naive one.
 
         .. versionadded:: 1.2

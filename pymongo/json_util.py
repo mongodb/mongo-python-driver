@@ -34,11 +34,11 @@ Currently this does not handle special encoding and decoding for
 :class:`~pymongo.binary.Binary` and :class:`~pymongo.code.Code`
 instances.
 
-.. versionchanged:: 1.7+
+.. versionchanged:: 1.8
    Handle timezone aware datetime instances on encode, decode to
    timezone aware datetime instances.
 
-.. versionchanged:: 1.7+
+.. versionchanged:: 1.8
    Added support for encoding/decoding
    :class:`~pymongo.max_key.MaxKey` and
    :class:`~pymongo.min_key.MinKey`, and for encoding

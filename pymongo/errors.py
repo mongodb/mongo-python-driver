@@ -47,7 +47,7 @@ class ConfigurationError(PyMongoError):
 class OperationFailure(PyMongoError):
     """Raised when a database operation fails.
 
-    .. versionadded:: 1.7+
+    .. versionadded:: 1.8
        The :attr:`code` attribute.
     """
 
@@ -59,7 +59,7 @@ class OperationFailure(PyMongoError):
 class TimeoutError(OperationFailure):
     """Raised when a database operation times out.
 
-    .. versionadded:: 1.7+
+    .. versionadded:: 1.8
     """
 
 

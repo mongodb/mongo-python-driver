@@ -212,7 +212,7 @@ class GridFS(object):
           - `**kwargs` (optional): keyword arguments are used as a
             query document, if they're present.
 
-        .. versionadded:: 1.7+
+        .. versionadded:: 1.8
         """
         if kwargs:
             return self.__files.find_one(kwargs) is not None

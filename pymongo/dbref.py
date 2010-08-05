@@ -37,7 +37,7 @@ class DBRef(object):
           - `**kwargs` (optional): additional keyword arguments will
             create additional, custom fields
 
-        .. versionchanged:: 1.7+
+        .. versionchanged:: 1.8
            Now takes keyword arguments to specify additional fields.
         .. versionadded:: 1.1.1
            The `database` parameter.

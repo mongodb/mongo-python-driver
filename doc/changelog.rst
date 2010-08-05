@@ -1,10 +1,54 @@
 Changelog
 =========
 
+Changes in Version 1.8
+----------------------
+
+Version 1.8 adds support for connecting to replica sets, specifying
+per-operation values for `w` and `wtimeout`, and decoding to
+timezone-aware datetimes.
+
+- fixed a reference leak in the C extension when decoding a
+  :class:`~pymongo.dbref.DBRef`.
+- added support for `w`, `wtimeout`, and `fsync` (and any other
+  options for `getLastError`) to "safe mode" operations.
+- added :attr:`~pymongo.connection.Connection.nodes` property.
+- added a maximum pool size of 10 sockets.
+- added support for replica sets.
+- DEPRECATED :meth:`~pymongo.connection.Connection.from_uri` and
+  :meth:`~pymongo.connection.Connection.paired`, both are supplanted
+  by extended functionality in :meth:`~pymongo.connection.Connection`.
+- added tz aware support for datetimes in
+  :class:`~pymongo.objectid.ObjectId`,
+  :class:`~pymongo.timestamp.Timestamp` and :mod:`~pymongo.json_util`
+  methods.
+- added :meth:`~pymongo.collection.Collection.drop` helper.
+- reuse the socket used for finding the master when a
+  :class:`~pymongo.connection.Connection` is first created.
+- added support for :class:`~pymongo.min_key.MinKey`,
+  :class:`~pymongo.max_key.MaxKey` and
+  :class:`~pymongo.timestamp.Timestamp` to :mod:`~pymongo.json_util`.
+- added support for decoding datetimes as aware (UTC) - it is highly
+  recommended to enable this by setting the `tz_aware` parameter to
+  :meth:`~pymongo.connection.Connection` to ``True``.
+- added `network_timeout` option for individual calls to
+  :meth:`~pymongo.collection.Collection.find` and
+  :meth:`~pymongo.collection.Collection.find_one`.
+- added :meth:`~gridfs.GridFS.exists` to check if a file exists in
+  GridFS.
+- added support for additional keys in :class:`~pymongo.dbref.DBRef`
+  instances.
+- added :attr:`~pymongo.errors.OperationFailure.code` attribute to
+  :class:`~pymongo.errors.OperationFailure` exceptions.
+- fixed serialization of int and float subclasses in the C extension.
+
 Changes in Version 1.7
 ----------------------
 
-Version 1.7 is a recommended upgrade for all PyMongo users. The full release notes are below, and some more in depth discussion of the highlights is `here <http://dirolf.com/2010/06/17/pymongo-1.7-released.html>`_.
+Version 1.7 is a recommended upgrade for all PyMongo users. The full
+release notes are below, and some more in depth discussion of the
+highlights is `here
+<http://dirolf.com/2010/06/17/pymongo-1.7-released.html>`_.
 
 - no longer attempt to build the C extension on big-endian systems.
 - added :class:`~pymongo.min_key.MinKey` and

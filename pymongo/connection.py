@@ -215,12 +215,12 @@ class Connection(object):  # TODO support auth for pooling
             aware (otherwise they will be naive)
 
         .. seealso:: :meth:`end_request`
-        .. versionchanged:: 1.7+
+        .. versionchanged:: 1.8
            The `host` parameter can now be a full `mongodb URI
            <http://dochub.mongodb.org/core/connections>`_, in addition
            to a simple hostname. It can also be a list of hostnames or
            URIs.
-        .. versionadded:: 1.7+
+        .. versionadded:: 1.8
            The `tz_aware` parameter.
         .. versionadded:: 1.7
            The `document_class` parameter.
@@ -299,7 +299,7 @@ class Connection(object):  # TODO support auth for pooling
     def from_uri(cls, uri="mongodb://localhost", **connection_args):
         """DEPRECATED Can pass a mongodb URI directly to Connection() instead.
 
-        .. versionchanged:: 1.7+
+        .. versionchanged:: 1.8
            DEPRECATED
         .. versionadded:: 1.5
         """
@@ -311,7 +311,7 @@ class Connection(object):  # TODO support auth for pooling
     def paired(cls, left, right=None, **connection_args):
         """DEPRECATED Can pass a list of hostnames to Connection() instead.
 
-        .. versionchanged:: 1.7+
+        .. versionchanged:: 1.8
            DEPRECATED
         """
         warnings.warn("Connection.paired is deprecated - can pass multiple "
@@ -403,7 +403,7 @@ class Connection(object):  # TODO support auth for pooling
         created, as well as nodes discovered through the replica set
         discovery mechanism.
 
-        .. versionadded:: 1.7+
+        .. versionadded:: 1.8
         """
         return self.__nodes
 
@@ -432,7 +432,7 @@ class Connection(object):  # TODO support auth for pooling
 
         See the `tz_aware` parameter to :meth:`Connection`.
 
-        .. versionadded:: 1.7+
+        .. versionadded:: 1.8
         """
         return self.__tz_aware
 
