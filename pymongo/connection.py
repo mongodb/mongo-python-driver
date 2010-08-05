@@ -574,6 +574,7 @@ class Connection(object):  # TODO support auth for pooling
             return error
         if error["err"] == "not master":
             self.disconnect()
+            raise AutoReconnect("not master")
 
         if "code" in error:
             if error["code"] in [11000, 11001]:
@@ -582,8 +583,6 @@ class Connection(object):  # TODO support auth for pooling
                 raise OperationFailure(error["err"], error["code"])
         else:
             raise OperationFailure(error["err"])
-
-        return error
 
     def _send_message(self, message, with_last_error=False):
         """Say something to Mongo.
