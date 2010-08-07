@@ -23,10 +23,9 @@
  * like _cspeedupsmodule - we do more than just BSON stuff in this C module.
  */
 
-
+#include <Python.h>
 #include <stdio.h>
 
-#include <Python.h>
 #include <datetime.h>
 
 #include "time64.h"
