@@ -980,7 +980,7 @@ static int add_last_error(bson_buffer* buffer, int request_id, PyObject* args) {
 
     /* save space for length */
     document_start = buffer_save_bytes(buffer, 4);
-    if (document_length == -1) {
+    if (document_start == -1) {
         return 0;
     }
 
