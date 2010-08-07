@@ -49,7 +49,7 @@ class TestCode(unittest.TestCase):
         self.assert_(a_code.startswith("hello"))
         self.assert_(a_code.endswith("world"))
         self.assert_(isinstance(a_code, Code))
-        self.failIf(isinstance(a_string, Code))
+        self.assertFalse(isinstance(a_string, Code))
         self.assertEqual(a_code.scope, {})
         a_code.scope["my_var"] = 5
         self.assertEqual(a_code.scope, {"my_var": 5})

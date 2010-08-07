@@ -112,22 +112,22 @@ class TestDatabase(unittest.TestCase):
         db.test.save({"dummy": u"object"})
         self.assert_("test" in db.collection_names())
         db.drop_collection("test")
-        self.failIf("test" in db.collection_names())
+        self.assertFalse("test" in db.collection_names())
 
         db.test.save({"dummy": u"object"})
         self.assert_("test" in db.collection_names())
         db.drop_collection(u"test")
-        self.failIf("test" in db.collection_names())
+        self.assertFalse("test" in db.collection_names())
 
         db.test.save({"dummy": u"object"})
         self.assert_("test" in db.collection_names())
         db.drop_collection(db.test)
-        self.failIf("test" in db.collection_names())
+        self.assertFalse("test" in db.collection_names())
 
         db.test.save({"dummy": u"object"})
         self.assert_("test" in db.collection_names())
         db.test.drop()
-        self.failIf("test" in db.collection_names())
+        self.assertFalse("test" in db.collection_names())
         db.test.drop()
 
         db.drop_collection(db.test.doesnotexist)
@@ -232,7 +232,7 @@ class TestDatabase(unittest.TestCase):
         self.assert_(db.last_status()["updatedExisting"])
 
         db.test.update({"i": 1}, {"$set": {"i": 500}})
-        self.failIf(db.last_status()["updatedExisting"])
+        self.assertFalse(db.last_status()["updatedExisting"])
 
     def test_password_digest(self):
         self.assertRaises(TypeError, helpers._password_digest, 5)
@@ -257,20 +257,20 @@ class TestDatabase(unittest.TestCase):
         self.assertRaises(TypeError, db.authenticate, 5, "password")
         self.assertRaises(TypeError, db.authenticate, "mike", 5)
 
-        self.failIf(db.authenticate("mike", "not a real password"))
-        self.failIf(db.authenticate("faker", "password"))
+        self.assertFalse(db.authenticate("mike", "not a real password"))
+        self.assertFalse(db.authenticate("faker", "password"))
         self.assert_(db.authenticate("mike", "password"))
         self.assert_(db.authenticate(u"mike", u"password"))
 
         db.remove_user("mike")
-        self.failIf(db.authenticate("mike", "password"))
+        self.assertFalse(db.authenticate("mike", "password"))
 
-        self.failIf(db.authenticate("Gustave", u"Dor\xe9"))
+        self.assertFalse(db.authenticate("Gustave", u"Dor\xe9"))
         db.add_user("Gustave", u"Dor\xe9")
         self.assert_(db.authenticate("Gustave", u"Dor\xe9"))
 
         db.add_user("Gustave", "password")
-        self.failIf(db.authenticate("Gustave", u"Dor\xe9"))
+        self.assertFalse(db.authenticate("Gustave", u"Dor\xe9"))
         self.assert_(db.authenticate("Gustave", u"password"))
 
         # just make sure there are no exceptions here
@@ -397,11 +397,11 @@ class TestDatabase(unittest.TestCase):
 
         self.assert_(db.test.find_one({"x": 2}))
         db.test.remove({"x": 2})
-        self.failIf(db.test.find_one({"x": 2}))
+        self.assertFalse(db.test.find_one({"x": 2}))
 
         self.assert_(db.test.find_one())
         db.test.remove({})
-        self.failIf(db.test.find_one())
+        self.assertFalse(db.test.find_one())
 
     def test_save_a_bunch(self):
         db = self.connection.pymongo_test

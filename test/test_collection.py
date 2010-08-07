@@ -333,10 +333,10 @@ class TestCollection(unittest.TestCase):
         self.assert_("extra thing" in db.test.find({}).next())
         self.assert_("x" in db.test.find({}, ["x", "mike"]).next())
         self.assert_("mike" in db.test.find({}, ["x", "mike"]).next())
-        self.failIf("extra thing" in db.test.find({}, ["x", "mike"]).next())
-        self.failIf("x" in db.test.find({}, ["mike"]).next())
+        self.assertFalse("extra thing" in db.test.find({}, ["x", "mike"]).next())
+        self.assertFalse("x" in db.test.find({}, ["mike"]).next())
         self.assert_("mike" in db.test.find({}, ["mike"]).next())
-        self.failIf("extra thing" in db.test.find({}, ["mike"]).next())
+        self.assertFalse("extra thing" in db.test.find({}, ["mike"]).next())
 
     def test_fields_specifier_as_dict(self):
         db = self.db
@@ -481,7 +481,7 @@ class TestCollection(unittest.TestCase):
         db.test.save({"hello": "world"})
         db.test.save({"hello": "mike"})
         db.test.save({"hello": "world"})
-        self.failIf(db.error())
+        self.assertFalse(db.error())
 
         db.drop_collection("test")
         db.test.create_index("hello", unique=True)
@@ -530,7 +530,7 @@ class TestCollection(unittest.TestCase):
         db.test.insert({"hello": {"a": 4, "b": 5}})
         db.test.insert({"hello": {"a": 7, "b": 2}})
         db.test.insert({"hello": {"a": 4, "b": 10}})
-        self.failIf(db.error())
+        self.assertFalse(db.error())
 
         db.drop_collection("test")
         db.test.create_index("hello.a", unique=True)
@@ -876,7 +876,7 @@ class TestCollection(unittest.TestCase):
         db.test.save({"_id": 5})
 
         self.assert_(db.test.find_one(5))
-        self.failIf(db.test.find_one(6))
+        self.assertFalse(db.test.find_one(6))
 
     def test_remove_non_objectid(self):
         db = self.db
@@ -1062,11 +1062,11 @@ class TestCollection(unittest.TestCase):
         c.insert({"x": 1})
 
         self.assert_(isinstance(c.find().next(), dict))
-        self.failIf(isinstance(c.find().next(), SON))
+        self.assertFalse(isinstance(c.find().next(), SON))
         self.assert_(isinstance(c.find(as_class=SON).next(), SON))
 
         self.assert_(isinstance(c.find_one(), dict))
-        self.failIf(isinstance(c.find_one(), SON))
+        self.assertFalse(isinstance(c.find_one(), SON))
         self.assert_(isinstance(c.find_one(as_class=SON), SON))
 
         self.assertEqual(1, c.find_one(as_class=SON)["x"])

@@ -32,7 +32,7 @@ class TestBinary(unittest.TestCase):
         self.assert_(a_binary.startswith("hello"))
         self.assert_(a_binary.endswith("world"))
         self.assert_(isinstance(a_binary, Binary))
-        self.failIf(isinstance(a_string, Binary))
+        self.assertFalse(isinstance(a_string, Binary))
 
     def test_exceptions(self):
         self.assertRaises(TypeError, Binary, None)

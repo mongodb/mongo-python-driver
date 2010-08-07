@@ -54,15 +54,15 @@ class TestBSON(unittest.TestCase):
         self.assertRaises(TypeError, is_valid, u"test")
         self.assertRaises(TypeError, is_valid, 10.4)
 
-        self.failIf(is_valid("test"))
+        self.assertFalse(is_valid("test"))
 
         # the simplest valid BSON document
         self.assert_(is_valid("\x05\x00\x00\x00\x00"))
         self.assert_(is_valid(BSON("\x05\x00\x00\x00\x00")))
-        self.failIf(is_valid("\x04\x00\x00\x00\x00"))
-        self.failIf(is_valid("\x05\x00\x00\x00\x01"))
-        self.failIf(is_valid("\x05\x00\x00\x00"))
-        self.failIf(is_valid("\x05\x00\x00\x00\x00\x00"))
+        self.assertFalse(is_valid("\x04\x00\x00\x00\x00"))
+        self.assertFalse(is_valid("\x05\x00\x00\x00\x01"))
+        self.assertFalse(is_valid("\x05\x00\x00\x00"))
+        self.assertFalse(is_valid("\x05\x00\x00\x00\x00\x00"))
 
     def test_random_data_is_not_bson(self):
         qcheck.check_unittest(self, qcheck.isnt(is_valid),
@@ -293,7 +293,7 @@ class TestBSON(unittest.TestCase):
 
     def test_custom_class(self):
         self.assert_(isinstance(BSON.from_dict({}).to_dict(), dict))
-        self.failIf(isinstance(BSON.from_dict({}).to_dict(), SON))
+        self.assertFalse(isinstance(BSON.from_dict({}).to_dict(), SON))
         self.assert_(isinstance(BSON.from_dict({}).to_dict(SON), SON))
 
         self.assertEqual(1, BSON.from_dict({"x": 1}).to_dict(SON)["x"])

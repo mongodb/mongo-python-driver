@@ -131,7 +131,7 @@ class TestMasterSlaveConnection(unittest.TestCase):
             except:
                 count += 1
             self.connection.end_request()
-        self.failIf(count)
+        self.assertFalse(count)
 
     # This was failing because commands were being sent to the slaves
     def test_create_collection(self):
@@ -178,7 +178,7 @@ class TestMasterSlaveConnection(unittest.TestCase):
                     count += 1
             except:
                 count += 1
-        self.failIf(count)
+        self.assertFalse(count)
 
     def test_kill_cursors(self):
 

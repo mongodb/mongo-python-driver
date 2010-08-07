@@ -155,8 +155,8 @@ class TestConnection(unittest.TestCase):
 
         c.pymongo_test.test.insert({"foo": "bar"})
 
-        self.failIf("pymongo_test1" in c.database_names())
-        self.failIf("pymongo_test2" in c.database_names())
+        self.assertFalse("pymongo_test1" in c.database_names())
+        self.assertFalse("pymongo_test2" in c.database_names())
 
         c.copy_database("pymongo_test", "pymongo_test1")
 
@@ -178,12 +178,12 @@ class TestConnection(unittest.TestCase):
             self.assertRaises(OperationFailure, c.copy_database,
                               "pymongo_test", "pymongo_test1",
                               username="foo", password="bar")
-            self.failIf("pymongo_test1" in c.database_names())
+            self.assertFalse("pymongo_test1" in c.database_names())
 
             self.assertRaises(OperationFailure, c.copy_database,
                               "pymongo_test", "pymongo_test1",
                               username="mike", password="bar")
-            self.failIf("pymongo_test1" in c.database_names())
+            self.assertFalse("pymongo_test1" in c.database_names())
 
             c.copy_database("pymongo_test", "pymongo_test1",
                             username="mike", password="password")
@@ -374,26 +374,26 @@ class TestConnection(unittest.TestCase):
 
         self.assertEqual(dict, c.document_class)
         self.assert_(isinstance(db.test.find_one(), dict))
-        self.failIf(isinstance(db.test.find_one(), SON))
+        self.assertFalse(isinstance(db.test.find_one(), SON))
 
         c.document_class = SON
 
         self.assertEqual(SON, c.document_class)
         self.assert_(isinstance(db.test.find_one(), SON))
-        self.failIf(isinstance(db.test.find_one(as_class=dict), SON))
+        self.assertFalse(isinstance(db.test.find_one(as_class=dict), SON))
 
         c = Connection(self.host, self.port, document_class=SON)
         db = c.pymongo_test
 
         self.assertEqual(SON, c.document_class)
         self.assert_(isinstance(db.test.find_one(), SON))
-        self.failIf(isinstance(db.test.find_one(as_class=dict), SON))
+        self.assertFalse(isinstance(db.test.find_one(as_class=dict), SON))
 
         c.document_class = dict
 
         self.assertEqual(dict, c.document_class)
         self.assert_(isinstance(db.test.find_one(), dict))
-        self.failIf(isinstance(db.test.find_one(), SON))
+        self.assertFalse(isinstance(db.test.find_one(), SON))
 
     def test_network_timeout(self):
         no_timeout = Connection(self.host, self.port)
