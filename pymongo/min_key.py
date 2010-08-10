@@ -25,5 +25,8 @@ class MinKey(object):
             return True
         return NotImplemented
 
+    def __ne__(self, other):
+        return not self == other
+
     def __repr__(self):
         return "MinKey()"

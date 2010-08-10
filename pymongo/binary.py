@@ -105,5 +105,8 @@ class Binary(str):
         # subclass of str...
         return False
 
+    def __ne__(self, other):
+        return not self == other
+
     def __repr__(self):
         return "Binary(%s, %s)" % (str.__repr__(self), self.__subtype)

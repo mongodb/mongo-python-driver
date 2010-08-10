@@ -80,6 +80,9 @@ class Timestamp(object):
         else:
             return NotImplemented
 
+    def __ne__(self, other):
+        return not self == other
+
     def __repr__(self):
         return "Timestamp(%s, %s)" % (self.__time, self.__inc)
 
