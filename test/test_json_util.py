@@ -18,6 +18,7 @@ import unittest
 import datetime
 import re
 import sys
+import uuid
 json_lib = True
 try:
     import json
@@ -87,6 +88,9 @@ class TestJsonUtil(unittest.TestCase):
         dct = json.loads(res);
         self.assertEqual(dct['ts']['t'], 4)
         self.assertEqual(dct['ts']['i'], 13)
+
+    def test_uuid(self):
+        self.round_trip({'uuid' : uuid.UUID('f47ac10b-58cc-4372-a567-0e02b2c3d479')})
 
 if __name__ == "__main__":
     unittest.main()
