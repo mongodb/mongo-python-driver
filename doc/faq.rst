@@ -111,9 +111,14 @@ What is the correct way to handle time zones with PyMongo?
 Prior to PyMongo version 1.7, the correct way is to only save naive
 :class:`~datetime.datetime` instances, and to save all dates as
 UTC. In versions >= 1.7, the driver will automatically convert aware
-datetimes to UTC before saving them. All datetimes retrieved from the
-server (no matter what version of the driver you're using) will be
-naive and represent UTC.
+datetimes to UTC before saving them. By default, datetimes retrieved
+from the server (no matter what version of the driver you're using)
+will be naive and represent UTC. In newer versions of the driver you
+can set the :class:`~pymongo.connection.Connection` `tz_aware`
+parameter to ``True``, which will cause all
+:class:`~datetime.datetime` instances returned from that Connection to
+be aware (UTC). This setting is recommended, as it can force
+application code to handle timezones properly.
 
 .. warning:: Be careful not to save naive :class:`~datetime.datetime`
    instances that are not UTC (i.e. the result of calling
