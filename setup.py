@@ -20,7 +20,7 @@ from distutils.errors import DistutilsPlatformError, DistutilsExecError
 from distutils.core import Extension
 
 # Remember to change in pymongo/__init__.py as well!
-version = "1.8.1"
+version = "1.8.1+"
 
 f = open("README.rst")
 try:
