@@ -1,6 +1,15 @@
 Changelog
 =========
 
+Changes in Version 1.8.1
+------------------------
+
+- fixed a typo in the C extension that could cause safe-mode
+  operations to report a failure (:class:`SystemError`) even when none
+  occurred.
+- added a :meth:`__ne__` implementation to any class where we define
+  :meth:`__eq__`.
+
 Changes in Version 1.8
 ----------------------
 
