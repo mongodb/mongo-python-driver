@@ -30,6 +30,9 @@ MongoKit
   is an ORM-like layer on top of PyMongo. There is also a MongoKit
   `google group <http://groups.google.com/group/mongokit>`_.
 
+DjangoMongodbEngine
+  `A MongoDB backend standing outside django.
+
 Ming
   `Ming <http://merciless.sourceforge.net/>`_ (the Merciless) is a
   library that allows you to enforce schemas on a MongoDB database in
