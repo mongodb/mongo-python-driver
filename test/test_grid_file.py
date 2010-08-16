@@ -226,6 +226,19 @@ class TestGridFile(unittest.TestCase):
                      "upload_date", "aliases", "metadata", "md5"]:
             self.assertRaises(AttributeError, setattr, b, attr, 5)
 
+    def test_grid_out_file_document(self):
+        a = GridIn(self.db.fs)
+        a.write("foo bar")
+        a.close()
+
+        b = GridOut(self.db.fs, file_document=self.db.fs.files.find_one())
+        self.assertEqual("foo bar", b.read())
+
+        c = GridOut(self.db.fs, 5, file_document=self.db.fs.files.find_one())
+        self.assertEqual("foo bar", c.read())
+
+        self.assertRaises(NoFile, GridOut, self.db.fs, file_document={})
+
     def test_write_file_like(self):
         a = GridIn(self.db.fs)
         a.write("hello world")

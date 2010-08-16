@@ -293,30 +293,38 @@ class GridIn(object):
 class GridOut(object):
     """Class to read data out of GridFS.
     """
-    def __init__(self, root_collection, file_id):
+    def __init__(self, root_collection, file_id=None, file_document=None):
         """Read a file from GridFS
 
         Application developers should generally not need to
         instantiate this class directly - instead see the methods
         provided by :class:`~gridfs.GridFS`.
 
-        Raises :class:`TypeError` if `root_collection` is not an instance of
+        Either `file_id` or `file_document` must be specified,
+        `file_document` will be given priority if present. Raises
+        :class:`TypeError` if `root_collection` is not an instance of
         :class:`~pymongo.collection.Collection`.
 
         :Parameters:
           - `root_collection`: root collection to read from
           - `file_id`: value of ``"_id"`` for the file to read
+          - `file_document`: file document from `root_collection.files`
+
+        .. versionadded:: 1.8.1+
+           The `file_document` parameter.
         """
         if not isinstance(root_collection, Collection):
             raise TypeError("root_collection must be an "
                             "instance of Collection")
 
         self.__chunks = root_collection.chunks
-        self._file = root_collection.files.find_one({"_id": file_id})
+
+        files = root_collection.files
+        self._file = file_document or files.find_one({"_id": file_id})
 
         if not self._file:
             raise NoFile("no file in gridfs collection %r with _id %r" %
-                         (root_collection, file_id))
+                         (files, file_id))
 
         self.__buffer = ""
         self.__position = 0
