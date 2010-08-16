@@ -30,3 +30,4 @@ The following is a list of people who have contributed to
 - Jonas Haag (jonashaag)
 - Kristina Chodorow (kchodorow)
 - Andrew Sibley (sibsibsib)
+- Flavio Percoco Premoli (FlaPer87)
