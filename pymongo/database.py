@@ -287,11 +287,10 @@ class Database(object):
                                        _must_use_master=True,
                                        _is_command=True)
 
-        if check and not result["ok"]:
-            if result["errmsg"] in allowable_errors:
-                return result
-            raise OperationFailure("command %r failed: %s" %
-                                   (command, result["errmsg"]))
+        if check:
+            msg = "command %r failed: %%s" % command
+            helpers._check_command_response(result, msg, allowable_errors)
+
         return result
 
     def collection_names(self):

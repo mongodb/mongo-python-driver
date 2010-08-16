@@ -49,8 +49,7 @@ from pymongo.errors import (AutoReconnect,
                             ConnectionFailure,
                             DuplicateKeyError,
                             InvalidURI,
-                            OperationFailure,
-                            TimeoutError)
+                            OperationFailure)
 
 
 _CONNECT_TIMEOUT = 20.0
@@ -565,11 +564,7 @@ class Connection(object):  # TODO support auth for pooling
         assert response["number_returned"] == 1
         error = response["data"][0]
 
-        # TODO unify logic with database.command method
-        if not error["ok"]:
-            if error["wtimeout"]:
-                raise TimeoutError(error["errmsg"])
-            raise OperationFailure(error["errmsg"])
+        helpers._check_command_response(error)
 
         # TODO unify logic with database.error method
         if error.get("err", 0) is None:

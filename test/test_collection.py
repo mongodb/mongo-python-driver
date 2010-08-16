@@ -663,6 +663,11 @@ class TestCollection(unittest.TestCase):
         self.db.test.remove({"x": 1}, w=1, wtimeout=1)
         self.db.test.update({"x": 1}, {"y": 2}, w=1, wtimeout=1)
 
+    def test_manual_last_error(self):
+        self.db.test.save({"x": 1})
+        self.assertRaises(TimeoutError, self.db.command, "getlasterror", w=2, wtimeout=1)
+        self.db.command("getlasterror", w=1, wtimeout=1)
+
     def test_count(self):
         db = self.db
         db.drop_collection("test")

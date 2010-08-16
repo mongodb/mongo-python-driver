@@ -24,8 +24,9 @@ import struct
 
 import pymongo
 from pymongo import bson
-from pymongo.errors import (OperationFailure,
-                            AutoReconnect)
+from pymongo.errors import (AutoReconnect,
+                            OperationFailure,
+                            TimeoutError)
 from pymongo.son import SON
 
 
@@ -105,6 +106,14 @@ def _unpack_response(response, cursor_id=None, as_class=dict, tz_aware=False):
     result["data"] = bson._to_dicts(response[20:], as_class, tz_aware)
     assert len(result["data"]) == result["number_returned"]
     return result
+
+
+def _check_command_response(response, msg="%s", allowable_errors=[]):
+    if not response["ok"]:
+        if "wtimeout" in response and response["wtimeout"]:
+            raise TimeoutError(msg % response["errmsg"])
+        if not response["errmsg"] in allowable_errors:
+            raise OperationFailure(msg % response["errmsg"])
 
 
 def _password_digest(username, password):
