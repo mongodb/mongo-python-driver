@@ -30,9 +30,6 @@ MongoKit
   is an ORM-like layer on top of PyMongo. There is also a MongoKit
   `google group <http://groups.google.com/group/mongokit>`_.
 
-DjangoMongodbEngine
-  `A MongoDB backend standing outside django.
-
 Ming
   `Ming <http://merciless.sourceforge.net/>`_ (the Merciless) is a
   library that allows you to enforce schemas on a MongoDB database in
@@ -50,13 +47,10 @@ MongoEngine
   <http://github.com/hmarr/mongoengine>`_; for more information, see
   the `tutorial <http://hmarr.com/mongoengine/tutorial.html>`_.
 
-Django
-  The `Django <http://github.com/FlaPer87/django/>`_ fork adds nosql
-  support to Django and implements a mongodb backend that handles
-  mongodb databases. There are 2 repos being used for this fork, the
-  one in the first link and this `Django
-  <http://github.com/aparo/django>`_.  Both repositories are
-  synchronized and have the same code.
+DjangoMongodbEngine
+  `Django MongoDB Engine
+  <http://github.com/FlaPer87/django-mongodb-engine/>`_ is a mongodb
+  database backend for Django.
 
 pymongo-bongo
   `pymongo-bongo <http://pypi.python.org/pypi/pymongo-bongo/>`_ is a
