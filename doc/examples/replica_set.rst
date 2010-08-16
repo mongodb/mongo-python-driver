@@ -26,7 +26,7 @@ to get a three node replica set setup locally.
    only recommended for testing and development.
 
 We start three ``mongod`` processes, each on a different port and with
-a different dbpath, but all using the same replica set name, "foo". In
+a different dbpath, but all using the same replica set name "foo". In
 the example we use the hostname "morton.local", so replace that with
 your hostname when running:
 
