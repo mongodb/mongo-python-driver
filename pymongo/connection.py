@@ -15,7 +15,9 @@
 """Tools for connecting to MongoDB.
 
 .. seealso:: Module :mod:`~pymongo.master_slave_connection` for
-   connecting to master-slave clusters.
+   connecting to master-slave clusters, and
+   :doc:`/examples/replica_set` for an example of how to connect to a
+   replica set.
 
 To get a :class:`~pymongo.database.Database` instance from a
 :class:`Connection` use either dictionary-style or attribute-style

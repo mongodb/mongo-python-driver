@@ -13,8 +13,8 @@ This tutorial is intended as an introduction to working with
 Prerequisites
 -------------
 Before we start, make sure that you have the **PyMongo** distribution
-:doc:`installed <installation>`. In the Python shell, the following should run without
-raising an exception:
+:doc:`installed <installation>`. In the Python shell, the following
+should run without raising an exception:
 
 .. doctest::
 
