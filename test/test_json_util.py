@@ -18,7 +18,6 @@ import unittest
 import datetime
 import re
 import sys
-import uuid
 json_lib = True
 try:
     import json
@@ -27,6 +26,11 @@ except ImportError:
         import simplejson as json
     except ImportError:
         json_lib = False
+try:
+    import uuid
+    should_test_uuid = True
+except ImportError:
+    should_test_uuid = False
 
 from nose.plugins.skip import SkipTest
 
@@ -90,6 +94,8 @@ class TestJsonUtil(unittest.TestCase):
         self.assertEqual(dct['ts']['i'], 13)
 
     def test_uuid(self):
+        if not should_test_uuid:
+            raise SkipTest()
         self.round_trip({'uuid' : uuid.UUID('f47ac10b-58cc-4372-a567-0e02b2c3d479')})
 
 if __name__ == "__main__":

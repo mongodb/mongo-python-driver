@@ -34,6 +34,9 @@ Currently this does not handle special encoding and decoding for
 :class:`~pymongo.binary.Binary` and :class:`~pymongo.code.Code`
 instances.
 
+.. versionchanged:: 1.8.1+
+   Handle :class:`uuid.UUID` instances, whenever possible.
+
 .. versionchanged:: 1.8
    Handle timezone aware datetime instances on encode, decode to
    timezone aware datetime instances.
@@ -51,7 +54,11 @@ instances.
 import calendar
 import datetime
 import re
-import uuid
+try:
+    import uuid
+    _use_uuid = True
+except ImportError:
+    _use_uuid = False
 
 from pymongo.dbref import DBRef
 from pymongo.max_key import MaxKey
@@ -90,7 +97,7 @@ def object_hook(dct):
         return MinKey()
     if "$maxKey" in dct:
         return MaxKey()
-    if "$uuid" in dct:
+    if _use_uuid and "$uuid" in dct:
         return uuid.UUID(dct["$uuid"])
     return dct
 
@@ -121,6 +128,6 @@ def default(obj):
         return {"$maxKey": 1}
     if isinstance(obj, Timestamp):
         return {"t": obj.time, "i": obj.inc}
-    if isinstance(obj, uuid.UUID):
+    if _use_uuid and isinstance(obj, uuid.UUID):
         return {"$uuid": obj.hex}
     raise TypeError("%r is not JSON serializable" % obj)
