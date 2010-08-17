@@ -215,8 +215,8 @@ class GridFS(object):
         .. versionadded:: 1.8
         """
         if kwargs:
-            return self.__files.find_one(kwargs) is not None
-        return self.__files.find_one(document_or_id) is not None
+            return self.__files.find_one(kwargs, ["_id"]) is not None
+        return self.__files.find_one(document_or_id, ["_id"]) is not None
 
     def open(self, *args, **kwargs):
         """No longer supported.
