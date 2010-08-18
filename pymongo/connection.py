@@ -507,6 +507,8 @@ class Connection(object):  # TODO support auth for pooling
         try:
             sock = socket.socket()
             sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER,
+                            struct.pack("ii", 1, 0)) # l_onoff, l_linger
             sock.settimeout(self.__network_timeout or _CONNECT_TIMEOUT)
             sock.connect((host, port))
             sock.settimeout(self.__network_timeout)
