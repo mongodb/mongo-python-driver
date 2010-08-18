@@ -31,7 +31,6 @@
 #include "time64.h"
 #include "encoding_helpers.h"
 
-static PyObject* SON = NULL;
 static PyObject* Binary = NULL;
 static PyObject* Code = NULL;
 static PyObject* ObjectId = NULL;
@@ -269,8 +268,7 @@ static int _reload_object(PyObject** object, char* module_name, char* object_nam
  *
  * Returns non-zero on failure. */
 static int _reload_python_objects(void) {
-    if (_reload_object(&SON, "pymongo.son", "SON") ||
-        _reload_object(&Binary, "pymongo.binary", "Binary") ||
+    if (_reload_object(&Binary, "pymongo.binary", "Binary") ||
         _reload_object(&Code, "pymongo.code", "Code") ||
         _reload_object(&ObjectId, "pymongo.objectid", "ObjectId") ||
         _reload_object(&DBRef, "pymongo.dbref", "DBRef") ||
@@ -818,52 +816,30 @@ static int decode_and_write_pair(bson_buffer* buffer,
     return 1;
 }
 
-static int write_son(bson_buffer* buffer, PyObject* dict, int start_position,
-                     int length_location, unsigned char check_keys,
-                     unsigned char top_level) {
-    PyObject* keys = PyObject_CallMethod(dict, "keys", NULL);
-    int items,
-        i;
-    if (!keys) {
-        return 0;
-    }
-    items = PyList_Size(keys);
-    for(i = 0; i < items; i++) {
-        PyObject* key;
-        PyObject* value;
-
-        key = PyList_GetItem(keys, i);
-        if (!key) {
-            Py_DECREF(keys);
-            return 0;
-        }
-        value = PyDict_GetItem(dict, key);
-        if (!value ||
-            !decode_and_write_pair(buffer, key, value, check_keys, top_level)) {
-            Py_DECREF(keys);
-            return 0;
-        }
-    }
-    Py_DECREF(keys);
-    return 1;
-}
-
 /* returns 0 on failure */
 static int write_dict(bson_buffer* buffer, PyObject* dict, unsigned char check_keys, unsigned char top_level) {
-    int start_position = buffer->position;
+    PyObject* key;
+    PyObject* iter;
     char zero = 0;
     int length;
+    int length_location;
 
-    int is_dict = PyDict_Check(dict);
+    if (!PyDict_Check(dict)) {
+        PyObject* errmsg = PyString_FromString("encoder expected a mapping type but got: ");
+        PyObject* repr = PyObject_Repr(dict);
+        PyString_ConcatAndDel(&errmsg, repr);
+        PyErr_SetString(PyExc_TypeError, PyString_AsString(errmsg));
+        Py_DECREF(errmsg);
+        return 0;
+    }
 
-    /* save space for length */
-    int length_location = buffer_save_bytes(buffer, 4);
+    length_location = buffer_save_bytes(buffer, 4);
     if (length_location == -1) {
         return 0;
     }
 
     /* Write _id first if this is a top level doc. */
-    if (is_dict && top_level) {
+    if (top_level) {
         PyObject* _id = PyDict_GetItemString(dict, "_id");
         if (_id) {
             /* Don't bother checking keys, but do make sure we're allowed to
@@ -874,43 +850,26 @@ static int write_dict(bson_buffer* buffer, PyObject* dict, unsigned char check_k
         }
     }
 
-    if (PyObject_IsInstance(dict, SON)) {
-        if (!write_son(buffer, dict, start_position, length_location, check_keys, top_level)) {
-            return 0;
-        }
-    } else if (is_dict) {
-        PyObject* key;
-        PyObject* value;
-        Py_ssize_t pos = 0;
-
-        while (PyDict_Next(dict, &pos, &key, &value)) {
-            if (!decode_and_write_pair(buffer, key, value, check_keys, top_level)) {
-                return 0;
-            }
-        }
-    } else {
-        /* Try a reload! */
-        _reload_python_objects();
-        if (PyObject_IsInstance(dict, SON)) {
-            if (!write_son(buffer, dict, start_position, length_location, check_keys, top_level)) {
-                return 0;
-            }
-        }
-        else {
-            PyObject* errmsg = PyString_FromString("encoder expected a mapping type but got: ");
-            PyObject* repr = PyObject_Repr(dict);
-            PyString_ConcatAndDel(&errmsg, repr);
-            PyErr_SetString(PyExc_TypeError, PyString_AsString(errmsg));
-            Py_DECREF(errmsg);
-            return 0;
-        }
+    iter = PyObject_GetIter(dict);
+    if (iter == NULL) {
+        return 0;
     }
+    while ((key = PyIter_Next(iter)) != NULL) {
+        PyObject* value = PyDict_GetItem(dict, key);
+        if (!decode_and_write_pair(buffer, key, value, check_keys, top_level)) {
+            Py_DECREF(key);
+            Py_DECREF(iter);
+            return 0;
+        }
+        Py_DECREF(key);
+    }
+    Py_DECREF(iter);
 
     /* write null byte and fill in length */
     if (!buffer_write_bytes(buffer, &zero, 1)) {
         return 0;
     }
-    length = buffer->position - start_position;
+    length = buffer->position - length_location;
     if (length > 4 * 1024 * 1024) {
         PyObject* InvalidDocument = _error("InvalidDocument");
         PyErr_SetString(InvalidDocument, "document too large - "
