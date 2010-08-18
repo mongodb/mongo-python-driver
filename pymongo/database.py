@@ -603,17 +603,21 @@ class SystemJS(object):
         .. versionadded:: 1.5
         """
         # can't just assign it since we've overridden __setattr__
-        object.__setattr__(self, "_database", database)
+        object.__setattr__(self, "_db", database)
 
     def __setattr__(self, name, code):
-        self._database.system.js.save({"_id": name, "value": Code(code)},
-                                       safe=True)
+        self._db.system.js.save({"_id": name, "value": Code(code)}, safe=True)
 
     def __delattr__(self, name):
-        self._database.system.js.remove({"_id": name}, safe=True)
+        self._db.system.js.remove({"_id": name}, safe=True)
 
     def __getattr__(self, name):
-        return lambda *args: self._database.eval("function() { return %s."
-                                                 "apply(this, "
-                                                 "arguments); }" % name,
-                                                 *args)
+        return lambda *args: self._db.eval("function() { return %s.apply(this,"
+                                           "arguments); }" % name, *args)
+
+    def list(self):
+        """Get a list of the names of the functions stored in this database.
+
+        .. versionadded:: 1.8.1+
+        """
+        return [x["_id"] for x in self._db.system.js.find(fields=["_id"])]

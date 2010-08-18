@@ -496,6 +496,20 @@ class TestDatabase(unittest.TestCase):
         db.system_js.no_param = Code("return 5;")
         self.assertEqual(5, db.system_js.no_param())
 
+    def test_system_js_list(self):
+        db = self.connection.pymongo_test
+        db.system.js.remove()
+        self.assertEqual([], db.system_js.list())
+
+        db.system_js.foo = "blah"
+        self.assertEqual(["foo"], db.system_js.list())
+
+        db.system_js.bar = "baz"
+        self.assertEqual(set(["foo", "bar"]), set(db.system_js.list()))
+
+        del db.system_js.foo
+        self.assertEqual(["bar"], db.system_js.list())
+
 
 if __name__ == "__main__":
     unittest.main()
