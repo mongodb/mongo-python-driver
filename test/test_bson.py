@@ -319,6 +319,14 @@ class TestBSON(unittest.TestCase):
             self.assertEqual(type(value), orig_type)
             self.assertEqual(value, orig_type(value))
 
+    def test_ordered_dict(self):
+        try:
+            from collections import OrderedDict
+        except ImportError:
+            raise SkipTest()
+        d = OrderedDict([("one", 1), ("two", 2), ("three", 3), ("four", 4)])
+        self.assertEqual(d, BSON.from_dict(d).to_dict(as_class=OrderedDict))
+
 
 if __name__ == "__main__":
     unittest.main()
