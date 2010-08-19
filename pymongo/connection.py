@@ -35,9 +35,11 @@ access:
 
 import datetime
 import os
+import select
 import socket
 import struct
 import threading
+import time
 import warnings
 
 from pymongo import (database,
@@ -111,6 +113,16 @@ def _parse_uri(uri, default_port):
         host_list.append(_str_to_node(host, default_port))
 
     return (host_list, database, username, password)
+
+
+def _closed(sock):
+    """Return True if we know socket has been closed, False otherwise.
+    """
+    rd, _, _ = select.select([sock], [], [], 0)
+    try:
+        return len(rd) and sock.recv() == ""
+    except:
+        return True
 
 
 class _Pool(threading.local):
@@ -280,6 +292,7 @@ class Connection(object):  # TODO support auth for pooling
         self.__cursor_manager = CursorManager(self)
 
         self.__pool = _Pool(self.__connect)
+        self.__last_checkout = time.time()
 
         self.__network_timeout = network_timeout
         self.__document_class = document_class
@@ -515,6 +528,26 @@ class Connection(object):  # TODO support auth for pooling
             self.disconnect()
             raise AutoReconnect("could not connect to %r" % list(self.__nodes))
 
+    def __socket(self):
+        """Get a socket from the pool.
+
+        If it's been > 1 second since the last time we checked out a
+        socket, we also check to see if the socket has been closed -
+        this let's us avoid seeing *some*
+        :class:`~pymongo.errors.AutoReconnect` exceptions on server
+        hiccups, etc. We only do this if it's been > 1 second since
+        the last socket checkout, to keep performance reasonable - we
+        can't avoid those completely anyway.
+        """
+        sock = self.__pool.socket()
+        t = time.time()
+        if t - self.__last_checkout > 1:
+            if _closed(sock):
+                self.disconnect()
+                sock = self.__pool.socket()
+        self.__last_checkout = t
+        return sock
+
     def disconnect(self):
         """Disconnect from MongoDB.
 
@@ -595,7 +628,7 @@ class Connection(object):  # TODO support auth for pooling
           - `with_last_error`: check getLastError status after sending the
             message
         """
-        sock = self.__pool.socket()
+        sock = self.__socket()
         try:
             (request_id, data) = message
             sock.sendall(data)
@@ -658,7 +691,7 @@ class Connection(object):  # TODO support auth for pooling
         :Parameters:
           - `message`: (request_id, data) pair making up the message to send
         """
-        sock = self.__pool.socket()
+        sock = self.__socket()
 
         try:
             try:
