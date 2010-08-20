@@ -31,3 +31,4 @@ The following is a list of people who have contributed to
 - Kristina Chodorow (kchodorow)
 - Andrew Sibley (sibsibsib)
 - Flavio Percoco Premoli (FlaPer87)
+- Ken Kurzweil (kurzweil)
