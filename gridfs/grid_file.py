@@ -390,6 +390,22 @@ class GridOut(object):
         self.__buffer = data[size:]
         return to_return
 
+    def readline(self, size=-1):
+        """Read one line or up to `size` bytes from the file.
+
+        :Parameters:
+         - `size` (optional): the maximum number of bytes to read
+
+        .. versionadded:: 1.8.1+
+        """
+        bytes = ""
+        while len(bytes) != size:
+            byte = self.read(1)
+            bytes += byte
+            if byte == "" or byte =="\n":
+                break
+        return bytes
+
     def tell(self):
         """Return the current position of this file.
         """

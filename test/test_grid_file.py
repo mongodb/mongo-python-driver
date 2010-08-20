@@ -367,6 +367,24 @@ class TestGridFile(unittest.TestCase):
         self.assertEqual("d", g.read(2))
         self.assertEqual("", g.read(2))
 
+    def test_readline(self):
+        f = GridIn(self.db.fs, chunkSize=5)
+        f.write("""Hello world,
+How are you?
+Hope all is well.
+Bye""")
+        f.close()
+
+        g = GridOut(self.db.fs, f._id)
+        self.assertEqual("H", g.read(1))
+        self.assertEqual("ello world,\n", g.readline())
+        self.assertEqual("How a", g.readline(5))
+        self.assertEqual("", g.readline(0))
+        self.assertEqual("re you?\n", g.readline())
+        self.assertEqual("Hope all is well.\n", g.readline(1000))
+        self.assertEqual("Bye", g.readline())
+        self.assertEqual("", g.readline())
+
     def test_iterator(self):
         f = GridIn(self.db.fs)
         f.close()
