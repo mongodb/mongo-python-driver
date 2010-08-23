@@ -20,30 +20,44 @@ class Code(str):
     """JavaScript code to be evaluated by MongoDB.
 
     Raises :class:`TypeError` if `code` is not an instance of
-    :class:`basestring` or `scope` is not an instance of
+    :class:`basestring` or `scope` is not ``None`` or an instance of
     :class:`dict`.
+
+    Scope variables can be set by passing a dictionary as the `scope`
+    argument or by using keyword arguments. If a variable is set as a
+    keyword argument it will override any setting for that variable in
+    the `scope` dictionary.
 
     :Parameters:
       - `code`: string containing JavaScript code to be evaluated
       - `scope` (optional): dictionary representing the scope in which
         `code` should be evaluated - a mapping from identifiers (as
         strings) to values
+      - `**kwargs` (optional): scope variables can also be passed as
+        keyword arguments
+
+    .. versionadded:: 1.8.1+
+       Ability to pass scope values using keyword arguments.
     """
 
-    def __new__(cls, code, scope=None):
+    def __new__(cls, code, scope=None, **kwargs):
         if not isinstance(code, basestring):
             raise TypeError("code must be an instance of basestring")
 
-        if scope is None:
-            try:
-                scope = code.scope
-            except AttributeError:
-                scope = {}
-        if not isinstance(scope, dict):
-            raise TypeError("scope must be an instance of dict")
-
         self = str.__new__(cls, code)
-        self.__scope = scope
+
+        try:
+            self.__scope = code.scope
+        except AttributeError:
+            self.__scope = {}
+
+        if scope is not None:
+            if not isinstance(scope, dict):
+                raise TypeError("scope must be an instance of dict")
+            self.__scope.update(scope)
+
+        self.__scope.update(kwargs)
+
         return self
 
     @property

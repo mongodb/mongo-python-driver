@@ -84,6 +84,12 @@ class TestCode(unittest.TestCase):
         self.assertNotEqual(a, Code(b))
         self.assertNotEqual(b, Code(a))
 
+    def test_scope_kwargs(self):
+        self.assertEqual({"a": 1}, Code("", a=1).scope)
+        self.assertEqual({"a": 1}, Code("", {"a": 2}, a=1).scope)
+        self.assertEqual({"a": 1, "b": 2, "c": 3},
+                         Code("", {"b": 2}, a=1, c=3).scope)
+
 
 if __name__ == "__main__":
     unittest.main()
