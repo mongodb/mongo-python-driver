@@ -57,7 +57,7 @@ def _index_document(index_list):
                         "mean %r?" % list(index_list.iteritems()))
     elif not isinstance(index_list, list):
         raise TypeError("must use a list of (key, direction) pairs, "
-                        "not: %r" % index_list)
+                        "not: " + repr(index_list))
     if not len(index_list):
         raise ValueError("key_or_list must not be the empty list")
 
