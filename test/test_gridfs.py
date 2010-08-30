@@ -178,6 +178,25 @@ class TestGridfs(unittest.TestCase):
         self.fs.delete(a)
         self.assertRaises(NoFile, self.fs.get_last_version, "test")
 
+    def test_get_version(self):
+        self.fs.put("foo", filename="test")
+        time.sleep(0.01)
+        self.fs.put("bar", filename="test")
+        time.sleep(0.01)
+        self.fs.put("baz", filename="test")
+        time.sleep(0.01)
+
+        self.assertEqual("foo", self.fs.get_version("test", 0).read())
+        self.assertEqual("bar", self.fs.get_version("test", 1).read())
+        self.assertEqual("baz", self.fs.get_version("test", 2).read())
+
+        self.assertEqual("baz", self.fs.get_version("test", -1).read())
+        self.assertEqual("bar", self.fs.get_version("test", -2).read())
+        self.assertEqual("foo", self.fs.get_version("test", -3).read())
+
+        self.assertRaises(NoFile, self.fs.get_version, "test", 3)
+        self.assertRaises(NoFile, self.fs.get_version, "test", -4)
+
     def test_put_filelike(self):
         oid = self.fs.put(StringIO("hello world"), chunk_size=1)
         self.assertEqual(11, self.db.fs.chunks.count())

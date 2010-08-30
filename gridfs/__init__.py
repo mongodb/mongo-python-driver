@@ -122,13 +122,21 @@ class GridFS(object):
         """
         return GridOut(self.__collection, file_id)
 
-    def get_last_version(self, filename):
+    def get_version(self, filename, version=-1):
         """Get a file from GridFS by ``"filename"``.
 
-        Returns the most recently uploaded file in GridFS with the
-        name `filename` as an instance of
-        :class:`~gridfs.grid_file.GridOut`. Raises
-        :class:`~gridfs.errors.NoFile` if no such file exists.
+        Returns a version of the file in GridFS with the name
+        `filename` as an instance of
+        :class:`~gridfs.grid_file.GridOut`. Version ``-1`` will be the
+        most recently uploaded, ``-2`` the second most recently
+        uploaded, etc. Version ``0`` will be the first version
+        uploaded, ``1`` the second version, etc. So if three versions
+        have been uploaded, then version ``0`` is the same as version
+        ``-3``, version ``1`` is the same as version ``-2``, and
+        version ``2`` is the same as version ``-1``.
+
+        Raises :class:`~gridfs.errors.NoFile` if no such version of
+        that file exists.
 
         An index on ``{filename: 1, uploadDate: -1}`` will
         automatically be created when this method is called the first
@@ -136,19 +144,38 @@ class GridFS(object):
 
         :Parameters:
           - `filename`: ``"filename"`` of the file to get
+          - `version` (optional): version of the file to get (defualts
+            to -1, the most recent version uploaded)
 
-        .. versionadded:: 1.6
+        .. versionadded:: 1.8.1+
         """
         self.__files.ensure_index([("filename", ASCENDING),
                                    ("uploadDate", DESCENDING)])
 
         cursor = self.__files.find({"filename": filename})
-        cursor.limit(-1).sort("uploadDate", DESCENDING)
+        if version < 0:
+            skip = abs(version) - 1
+            cursor.limit(-1).skip(skip).sort("uploadDate", DESCENDING)
+        else:
+            cursor.limit(-1).skip(version).sort("uploadDate", ASCENDING)
         try:
             grid_file = cursor.next()
             return GridOut(self.__collection, grid_file["_id"])
         except StopIteration:
-            raise NoFile("no file in gridfs with filename %r" % filename)
+            raise NoFile("no version %d for filename %r" % (version, filename))
+
+    def get_last_version(self, filename):
+        """Get the most recent version of a file in GridFS by ``"filename"``.
+
+        Equivalent to calling :meth:`get_version` with the default
+        `version` (``-1``).
+
+        :Parameters:
+          - `filename`: ``"filename"`` of the file to get
+
+        .. versionadded:: 1.6
+        """
+        return self.get_version(filename)
 
     # TODO add optional safe mode for chunk removal?
     def delete(self, file_id):
