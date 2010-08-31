@@ -680,7 +680,7 @@ class Connection(object):  # TODO support auth for pooling
         sock.sendall(data)
         return self.__receive_message_on_socket(1, request_id, sock)
 
-    # we just ignore _must_use_master here: it's only relavant for
+    # we just ignore _must_use_master here: it's only relevant for
     # MasterSlaveConnection instances.
     def _send_message_with_response(self, message,
                                     _must_use_master=False, **kwargs):
