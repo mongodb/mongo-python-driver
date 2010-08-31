@@ -87,8 +87,11 @@ class GridFS(object):
         >>>     f.close()
 
         `data` can be either an instance of :class:`str` or a
-        file-like object providing a :meth:`read` method. Any keyword
-        arguments will be passed through to the created file - see
+        file-like object providing a :meth:`read` method. If an
+        `encoding` keyword argument is passed, `data` can also be a
+        :class:`unicode` instance, which will be encoded as `encoding`
+        before being written. Any keyword arguments will be passed
+        through to the created file - see
         :meth:`~gridfs.grid_file.GridIn` for possible
         arguments. Returns the ``"_id"`` of the created file.
 
@@ -99,6 +102,10 @@ class GridFS(object):
         :Parameters:
           - `data`: data to be written as a file.
           - `**kwargs` (optional): keyword arguments for file creation
+
+        .. versionadded:: 1.8.1+
+           The ability to write :class:`unicode`, if an `encoding` has
+           been specified as a keyword argument.
 
         .. versionadded:: 1.6
         """

@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+#
 # Copyright 2009-2010 10gen, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -421,6 +423,25 @@ Bye""")
             out_data += s
 
         self.assertEqual(in_data, out_data)
+
+    def test_write_unicode(self):
+        f = GridIn(self.db.fs)
+        self.assertRaises(TypeError, f.write, u"foo")
+
+        f = GridIn(self.db.fs, encoding="utf-8")
+        f.write(u"foo")
+        f.close()
+
+        g = GridOut(self.db.fs, f._id)
+        self.assertEqual("foo", g.read())
+
+        f = GridIn(self.db.fs, encoding="iso-8859-1")
+        f.write(u"aé")
+        f.close()
+
+        g = GridOut(self.db.fs, f._id)
+        self.assertEqual(u"aé".encode("iso-8859-1"), g.read())
+
 
 if __name__ == "__main__":
     unittest.main()

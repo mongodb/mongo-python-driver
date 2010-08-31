@@ -109,6 +109,10 @@ class GridIn(object):
           - ``"chunkSize"`` or ``"chunk_size"``: size of each of the
             chunks, in bytes (default: 256 kb)
 
+          - ``"encoding"``: encoding used for this file - any
+            :class:`unicode` that is written to the file will be
+            converted to a :class:`str` with this encoding
+
         :Parameters:
           - `root_collection`: root collection to write to
           - `**kwargs` (optional): file level options (see above)
@@ -224,17 +228,26 @@ class GridIn(object):
         """Write data to the file. There is no return value.
 
         `data` can be either a string of bytes or a file-like object
-        (implementing :meth:`read`).
+        (implementing :meth:`read`). If the file has an
+        :attr:`encoding` attribute, `data` can also be a
+        :class:`unicode` instance, which will be encoded as
+        :attr:`encoding` before being written.
 
         Due to buffering, the data may not actually be written to the
         database until the :meth:`close` method is called. Raises
         :class:`ValueError` if this file is already closed. Raises
         :class:`TypeError` if `data` is not an instance of
-        :class:`str` or a file-like object.
+        :class:`str`, a file-like object, or an instance of
+        :class:`unicode` (only allowed if the file has an
+        :attr:`encoding` attribute).
 
         :Parameters:
           - `data`: string of bytes or file-like object to be written
             to the file
+
+        .. versionadded:: 1.8.1+
+           The ability to write :class:`unicode`, if the file has an
+           :attr:`encoding` attribute.
         """
         if self._closed:
             raise ValueError("cannot write to a closed file")
@@ -252,8 +265,15 @@ class GridIn(object):
             self._buffer.write(to_write)
         # string
         except AttributeError:
-            if not isinstance(data, str):
+            if not isinstance(data, basestring):
                 raise TypeError("can only write strings or file-like objects")
+
+            if isinstance(data, unicode):
+                try:
+                    data = data.encode(self.encoding)
+                except AttributeError:
+                    raise TypeError("must specify an encoding for file in "
+                                    "order to write unicode")
 
             while data:
                 space = self.chunk_size - self._buffer.tell()

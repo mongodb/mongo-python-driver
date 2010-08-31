@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+#
 # Copyright 2009-2010 10gen, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -230,6 +232,17 @@ class TestGridfs(unittest.TestCase):
         self.assertFalse(self.fs.exists({"foo": 13}))
         self.assertFalse(self.fs.exists(foo={"$gt": 12}))
         self.assertFalse(self.fs.exists({"foo": {"$gt": 12}}))
+
+    def test_put_unicode(self):
+        self.assertRaises(TypeError, self.fs.put, u"hello")
+
+        oid = self.fs.put(u"hello", encoding="utf-8")
+        self.assertEqual("hello", self.fs.get(oid).read())
+        self.assertEqual("utf-8", self.fs.get(oid).encoding)
+
+        oid = self.fs.put(u"aé", encoding="iso-8859-1")
+        self.assertEqual(u"aé".encode("iso-8859-1"), self.fs.get(oid).read())
+        self.assertEqual("iso-8859-1", self.fs.get(oid).encoding)
 
 
 if __name__ == "__main__":
