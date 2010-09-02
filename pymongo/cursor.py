@@ -79,6 +79,15 @@ class Cursor(object):
         self.__fields = fields
         self.__skip = skip
         self.__limit = limit
+
+        # This is ugly. People want to be able to do cursor[5:5] and
+        # get an empty result set (old behavior was an
+        # exception). It's hard to do that right, though, because the
+        # server uses limit(0) to mean 'no limit'. So we set __empty
+        # in that case and check for it when iterating. We also unset
+        # it anytime we change __limit.
+        self.__empty = False
+
         self.__timeout = timeout
         self.__tailable = tailable
         self.__snapshot = snapshot
@@ -210,6 +219,7 @@ class Cursor(object):
             raise TypeError("limit must be an int")
         self.__check_okay_to_chain()
 
+        self.__empty = False
         self.__limit = limit
         return self
 
@@ -260,6 +270,7 @@ class Cursor(object):
           - `index`: An integer or slice index to be applied to this cursor
         """
         self.__check_okay_to_chain()
+        self.__empty = False
         if isinstance(index, slice):
             if index.step is not None:
                 raise IndexError("Cursor instances do not support slice steps")
@@ -273,9 +284,11 @@ class Cursor(object):
 
             if index.stop is not None:
                 limit = index.stop - skip
-                if limit <= 0:
+                if limit < 0:
                     raise IndexError("stop index must be greater than start"
                                      "index for slice %r" % index)
+                if limit == 0:
+                    self.__empty = True
             else:
                 limit = 0
 
@@ -559,6 +572,8 @@ class Cursor(object):
         return self
 
     def next(self):
+        if self.__empty:
+            raise StopIteration
         db = self.__collection.database
         if len(self.__data) or self._refresh():
             next = db._fix_outgoing(self.__data.pop(0), self.__collection)

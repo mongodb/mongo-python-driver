@@ -471,10 +471,11 @@ class TestCursor(unittest.TestCase):
 
         self.assertEqual(1, len(list(self.db.test.find()[99:100])))
         self.assertEqual(1, len(list(self.db.test.find()[99:1000])))
+        self.assertEqual(0, len(list(self.db.test.find()[10:10])))
+        self.assertEqual(0, len(list(self.db.test.find()[:0])))
+        self.assertEqual(80, len(list(self.db.test.find()[10:10].limit(0).skip(20))))
 
         self.assertRaises(IndexError, lambda: self.db.test.find()[10:8])
-        self.assertRaises(IndexError, lambda: self.db.test.find()[10:10])
-        self.assertRaises(IndexError, lambda: self.db.test.find()[:0])
 
     def test_getitem_numeric_index(self):
         self.db.drop_collection("test")
