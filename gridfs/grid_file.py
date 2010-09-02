@@ -390,21 +390,26 @@ class GridOut(object):
             size = remainder
 
         data = self.__buffer
-        chunk_number = (len(data) + self.__position) / self.chunk_size
+        received = len(data)
+        chunk_number = (received + self.__position) / self.chunk_size
+        chunks = []
 
-        while len(data) < size:
+        while received < size:
             chunk = self.__chunks.find_one({"files_id": self._id,
                                             "n": chunk_number})
             if not chunk:
                 raise CorruptGridFile("no chunk #%d" % chunk_number)
 
-            if not data:
-                data += chunk["data"][self.__position % self.chunk_size:]
+            if received:
+                chunk_data = chunk["data"]
             else:
-                data += chunk["data"]
+                chunk_data = chunk["data"][self.__position % self.chunk_size:]
 
+            received += len(chunk_data)
+            chunks.append(chunk_data)
             chunk_number += 1
 
+        data = "".join([data] + chunks)
         self.__position += size
         to_return = data[:size]
         self.__buffer = data[size:]
