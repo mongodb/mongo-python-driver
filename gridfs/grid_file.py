@@ -389,8 +389,7 @@ class GridOut(object):
         if size < 0 or size > remainder:
             size = remainder
 
-        data = self.__buffer
-        received = len(data)
+        received = len(self.__buffer)
         chunk_number = (received + self.__position) / self.chunk_size
         chunks = []
 
@@ -409,7 +408,7 @@ class GridOut(object):
             chunks.append(chunk_data)
             chunk_number += 1
 
-        data = "".join([data] + chunks)
+        data = "".join([self.__buffer] + chunks)
         self.__position += size
         to_return = data[:size]
         self.__buffer = data[size:]
