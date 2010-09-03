@@ -1,14 +1,6 @@
 GridFS Example
 ==============
 
-.. warning::
-
-   This example is out of date, and documents the API for GridFS in
-   PyMongo versions < 1.6. If you are using a version of PyMongo that
-   is >= 1.6 please see `this blog post
-   <http://dirolf.com/2010/03/29/new-gridfs-implementation-for-pymongo.html>`_
-   for an overview of how the new API works.
-
 .. testsetup::
 
   from pymongo import Connection
@@ -19,6 +11,10 @@ This example shows how to use :mod:`gridfs` to store large binary
 objects (e.g. files) in MongoDB.
 
 .. seealso:: The API docs for :mod:`gridfs`.
+
+.. seealso:: `This blog post
+   <http://dirolf.com/2010/03/29/new-gridfs-implementation-for-pymongo.html>`_
+   for some motivation behind this API.
 
 Setup
 -----
@@ -39,33 +35,49 @@ operate on a specific :class:`~pymongo.database.Database` instance.
 Saving and Retrieving Data
 --------------------------
 
-The :mod:`gridfs` module exposes a file-like interface that should be
-familiar to most Python programmers. We can open a file for writing
-and insert some data:
+The simplest way to work with :mod:`gridfs` is to use its key/value
+interface (the :meth:`~gridfs.GridFS.put` and
+:meth:`~gridfs.GridFS.get` methods). To write data to GridFS, use
+:meth:`~gridfs.GridFS.put`:
 
 .. doctest::
 
-  >>> f = fs.open("hello.txt", "w")
-  >>> f.write("hello ")
-  >>> f.write("world")
-  >>> f.close()
+  >>> a = fs.put("hello world")
 
-We can then read back the data that was just inserted:
+:meth:`~gridfs.GridFS.put` creates a new file in GridFS, and returns
+the value of the file document's ``"_id"`` key. Given that ``"_id"``
+we can use :meth:`~gridfs.GridFS.get` to get back the contents of the
+file:
 
 .. doctest::
 
-  >>> g = fs.open("hello.txt")
-  >>> g.read()
+  >>> fs.get(a).read()
   'hello world'
-  >>> g.close()
 
-It's important that :meth:`~gridfs.grid_file.GridFile.close` gets
-called for every file that gets opened. If you're using a Python
-interpreter that supports the ``with`` statement doing so is easy:
+:meth:`~gridfs.GridFS.get` returns a file-like object, so we get the
+file's contents by calling :meth:`~gridfs.grid_file.GridOut.read`.
+
+In addition to putting a :class:`str` as a GridFS file, we can also
+put any file-like object (an object with a :meth:`read`
+method). GridFS will handle reading the file in chunk-sized segments
+automatically. We can also add additional attributes to the file as
+keyword arguments:
 
 .. doctest::
 
-  >>> with fs.open("hello.txt") as g:
-  ...   g.read()
-  ...
+  >>> b = fs.put(fs.get(a), filename="foo", bar="baz")
+  >>> out = fs.get(b)
+  >>> out.read()
   'hello world'
+  >>> out.filename
+  u'foo'
+  >>> out.bar
+  u'baz'
+  >>> out.upload_date
+  datetime.datetime(...)
+
+The attributes we set in :meth:`~gridfs.GridFS.put` are stored in the
+file document, and retrievable after calling
+:meth:`~gridfs.GridFS.get`. Some attributes (like ``"filename"``) are
+special and are defined in the GridFS specification - see that
+document for more details.
