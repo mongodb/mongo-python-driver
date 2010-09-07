@@ -59,16 +59,13 @@ def _create_property(field_name, docstring,
 
     def setter(self, value):
         if self._closed:
-            raise AttributeError("cannot set %r on a closed file" %
-                                 field_name)
+            self._coll.files.update({"_id": self._file["_id"]},
+                                    {"$set": {field_name: value}}, safe=True)
         self._file[field_name] = value
 
     if read_only:
         docstring = docstring + "\n\nThis attribute is read-only."
-    elif not closed_only:
-        docstring = "%s\n\n%s" % (docstring, "This attribute can only be "
-                                  "set before :meth:`close` has been called.")
-    else:
+    elif closed_only:
         docstring = "%s\n\n%s" % (docstring, "This attribute is read-only and "
                                   "can only be read after :meth:`close` "
                                   "has been called.")
@@ -169,9 +166,10 @@ class GridIn(object):
         raise AttributeError("GridIn object has no attribute '%s'" % name)
 
     def __setattr__(self, name, value):
-        if self._closed:
-            raise AttributeError("cannot set %r on a closed file" % name)
         object.__setattr__(self, name, value)
+        if self._closed:
+            self._coll.files.update({"_id": self._file["_id"]},
+                                    {"$set": {name: value}}, safe=True)
 
     def __flush_data(self, data):
         """Flush `data` to a chunk.

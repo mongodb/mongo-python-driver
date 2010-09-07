@@ -137,10 +137,8 @@ class TestGridFile(unittest.TestCase):
         self.assertRaises(AttributeError, setattr, a, "_id", 5)
 
         self.assertEqual("my_file", a.filename)
-        self.assertRaises(AttributeError, setattr, a, "name", "foo")
 
         self.assertEqual("text/html", a.content_type)
-        self.assertRaises(AttributeError, setattr, a, "content_type", "foo")
 
         self.assertEqual(0, a.length)
         self.assertRaises(AttributeError, setattr, a, "length", 5)
@@ -152,10 +150,8 @@ class TestGridFile(unittest.TestCase):
         self.assertRaises(AttributeError, setattr, a, "upload_date", 5)
 
         self.assertEqual(["foo"], a.aliases)
-        self.assertRaises(AttributeError, setattr, a, "aliases", [])
 
         self.assertEqual({"foo": 1}, a.metadata)
-        self.assertRaises(AttributeError, setattr, a, "metadata", {})
 
         self.assertEqual("d41d8cd98f00b204e9800998ecf8427e", a.md5)
         self.assertRaises(AttributeError, setattr, a, "md5", 5)
@@ -441,6 +437,39 @@ Bye""")
 
         g = GridOut(self.db.fs, f._id)
         self.assertEqual(u"aé".encode("iso-8859-1"), g.read())
+
+    def test_set_after_close(self):
+        f = GridIn(self.db.fs, _id="foo", bar="baz")
+
+        self.assertEqual("foo", f._id)
+        self.assertEqual("baz", f.bar)
+        self.assertRaises(AttributeError, getattr, f, "baz")
+        self.assertRaises(AttributeError, getattr, f, "uploadDate")
+
+        self.assertRaises(AttributeError, setattr, f, "_id", 5)
+        f.bar = "foo"
+        f.baz = 5
+
+        self.assertEqual("foo", f._id)
+        self.assertEqual("foo", f.bar)
+        self.assertEqual(5, f.baz)
+        self.assertRaises(AttributeError, getattr, f, "uploadDate")
+
+        f.close()
+
+        self.assertEqual("foo", f._id)
+        self.assertEqual("foo", f.bar)
+        self.assertEqual(5, f.baz)
+        self.assert_(f.uploadDate)
+
+        self.assertRaises(AttributeError, setattr, f, "_id", 5)
+        f.bar = "a"
+        f.baz = "b"
+        self.assertRaises(AttributeError, setattr, f, "upload_date", 5)
+
+        g = GridOut(self.db.fs, f._id)
+        self.assertEqual("a", f.bar)
+        self.assertEqual("b", f.baz)
 
 
 if __name__ == "__main__":
