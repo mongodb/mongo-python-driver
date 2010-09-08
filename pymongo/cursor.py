@@ -79,6 +79,7 @@ class Cursor(object):
         self.__fields = fields
         self.__skip = skip
         self.__limit = limit
+        self.__batch_size = 0
 
         # This is ugly. People want to be able to do cursor[5:5] and
         # get an empty result set (old behavior was an
@@ -153,6 +154,7 @@ class Cursor(object):
         copy.__ordering = self.__ordering
         copy.__explain = self.__explain
         copy.__hint = self.__hint
+        copy.__batch_size = self.__batch_size
         return copy
 
     def __die(self):
@@ -221,6 +223,30 @@ class Cursor(object):
 
         self.__empty = False
         self.__limit = limit
+        return self
+
+    def batch_size(self, batch_size):
+        """Set the size for batches of results returned by this cursor.
+
+        Raises :class:`TypeError` if `batch_size` is not an instance
+        of :class:`int`. Raises :class:`ValueError` if `batch_size` is
+        less than ``0``. Raises
+        :class:`~pymongo.errors.InvalidOperation` if this
+        :class:`Cursor` has already been used. The last `batch_size`
+        applied to this cursor takes precedence.
+
+        :Parameters:
+          - `batch_size`: The size of each batch of results requested.
+
+        .. versionadded:: 1.8.1+
+        """
+        if not isinstance(batch_size, int):
+            raise TypeError("batch_size must be an int")
+        if batch_size < 0:
+            raise ValueError("batch_size must be >= 0")
+        self.__check_okay_to_chain()
+
+        self.__batch_size = batch_size == 1 and 2 or batch_size
         return self
 
     def skip(self, skip):
@@ -530,8 +556,7 @@ class Cursor(object):
         if len(self.__data) or self.__killed:
             return len(self.__data)
 
-        if self.__id is None:
-            # Query
+        if self.__id is None:  # Query
             self.__send_message(
                 message.query(self.__query_options(),
                               self.__collection.full_name,
@@ -539,15 +564,13 @@ class Cursor(object):
                               self.__query_spec(), self.__fields))
             if not self.__id:
                 self.__killed = True
-        elif self.__id:
-            # Get More
-            limit = 0
+        elif self.__id:  # Get More
             if self.__limit:
-                if self.__limit > self.__retrieved:
-                    limit = self.__limit - self.__retrieved
-                else:
-                    self.__killed = True
-                    return 0
+                limit = self.__limit - self.__retrieved
+                if self.__batch_size:
+                    limit = min(limit, self.__batch_size)
+            else:
+                limit = self.__batch_size
 
             self.__send_message(
                 message.get_more(self.__collection.full_name,

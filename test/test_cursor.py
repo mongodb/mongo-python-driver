@@ -52,8 +52,7 @@ class TestCursor(unittest.TestCase):
     def test_hint(self):
         db = self.db
         self.assertRaises(TypeError, db.test.find().hint, 5.5)
-        db.test.remove({})
-        db.test.drop_indexes()
+        db.test.drop()
 
         for i in range(100):
             db.test.insert({"num": i, "foo": i})
@@ -94,7 +93,7 @@ class TestCursor(unittest.TestCase):
         self.assertRaises(TypeError, db.test.find().limit, "hello")
         self.assertRaises(TypeError, db.test.find().limit, 5.5)
 
-        db.test.remove({})
+        db.test.drop()
         for i in range(100):
             db.test.save({"x": i})
 
@@ -133,6 +132,50 @@ class TestCursor(unittest.TestCase):
         for _ in a:
             break
         self.assertRaises(InvalidOperation, a.limit, 5)
+
+
+    def test_batch_size(self):
+        db = self.db
+        db.test.drop()
+        for x in range(200):
+            db.test.save({"x": x})
+
+        self.assertRaises(TypeError, db.test.find().batch_size, None)
+        self.assertRaises(TypeError, db.test.find().batch_size, "hello")
+        self.assertRaises(TypeError, db.test.find().batch_size, 5.5)
+        self.assertRaises(ValueError, db.test.find().batch_size, -1)
+        a = db.test.find()
+        for _ in a:
+            break
+        self.assertRaises(InvalidOperation, a.batch_size, 5)
+
+        def cursor_count(cursor, expected_count):
+            count = 0
+            for _ in cursor:
+                count += 1
+            self.assertEqual(expected_count, count)
+
+        cursor_count(db.test.find().batch_size(0), 200)
+        cursor_count(db.test.find().batch_size(1), 200)
+        cursor_count(db.test.find().batch_size(2), 200)
+        cursor_count(db.test.find().batch_size(5), 200)
+        cursor_count(db.test.find().batch_size(100), 200)
+        cursor_count(db.test.find().batch_size(500), 200)
+
+        cursor_count(db.test.find().batch_size(0).limit(1), 1)
+        cursor_count(db.test.find().batch_size(1).limit(1), 1)
+        cursor_count(db.test.find().batch_size(2).limit(1), 1)
+        cursor_count(db.test.find().batch_size(5).limit(1), 1)
+        cursor_count(db.test.find().batch_size(100).limit(1), 1)
+        cursor_count(db.test.find().batch_size(500).limit(1), 1)
+
+        cursor_count(db.test.find().batch_size(0).limit(10), 10)
+        cursor_count(db.test.find().batch_size(1).limit(10), 10)
+        cursor_count(db.test.find().batch_size(2).limit(10), 10)
+        cursor_count(db.test.find().batch_size(5).limit(10), 10)
+        cursor_count(db.test.find().batch_size(100).limit(10), 10)
+        cursor_count(db.test.find().batch_size(500).limit(10), 10)
+
 
     def test_skip(self):
         db = self.db
@@ -189,7 +232,7 @@ class TestCursor(unittest.TestCase):
                           [("hello", DESCENDING)], DESCENDING)
         self.assertRaises(TypeError, db.test.find().sort, "hello", "world")
 
-        db.test.remove({})
+        db.test.drop()
 
         unsort = range(10)
         random.shuffle(unsort)
@@ -218,7 +261,7 @@ class TestCursor(unittest.TestCase):
         shuffled = list(expected)
         random.shuffle(shuffled)
 
-        db.test.remove({})
+        db.test.drop()
         for (a, b) in shuffled:
             db.test.save({"a": a, "b": b})
 
@@ -235,7 +278,7 @@ class TestCursor(unittest.TestCase):
 
     def test_count(self):
         db = self.db
-        db.test.remove({})
+        db.test.drop()
 
         self.assertEqual(0, db.test.find().count())
 
@@ -260,7 +303,7 @@ class TestCursor(unittest.TestCase):
 
     def test_where(self):
         db = self.db
-        db.test.remove({})
+        db.test.drop()
 
         a = db.test.find()
         self.assertRaises(TypeError, a.where, 5)
@@ -405,7 +448,7 @@ class TestCursor(unittest.TestCase):
         self.assertNotEqual(cursor, cursor.clone())
 
     def test_count_with_fields(self):
-        self.db.test.remove({})
+        self.db.test.drop()
         self.db.test.save({"x": 1})
 
         if not version.at_least(self.db.connection, (1, 1, 3, -1)):
