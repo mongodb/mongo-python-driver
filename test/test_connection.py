@@ -149,7 +149,7 @@ class TestConnection(unittest.TestCase):
 
         self.assertRaises(InvalidName, c.copy_database, "foo", "$foo")
 
-        c.drop_database("pymongo_test")
+        c.pymongo_test.test.drop()
         c.drop_database("pymongo_test1")
         c.drop_database("pymongo_test2")
 
@@ -169,10 +169,9 @@ class TestConnection(unittest.TestCase):
         self.assert_("pymongo_test2" in c.database_names())
         self.assertEqual("bar", c.pymongo_test2.test.find_one()["foo"])
 
-        c.drop_database("pymongo_test1")
-        c.drop_database("pymongo_test2")
-
         if version.at_least(c, (1, 3, 3, 1)):
+            c.drop_database("pymongo_test1")
+
             c.pymongo_test.add_user("mike", "password")
 
             self.assertRaises(OperationFailure, c.copy_database,
@@ -189,8 +188,6 @@ class TestConnection(unittest.TestCase):
                             username="mike", password="password")
             self.assert_("pymongo_test1" in c.database_names())
             self.assertEqual("bar", c.pymongo_test1.test.find_one()["foo"])
-
-            c.drop_database("pymongo_test1")
 
     def test_iteration(self):
         connection = Connection(self.host, self.port)

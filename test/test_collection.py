@@ -152,12 +152,6 @@ class TestCollection(unittest.TestCase):
                          db.test.ensure_index("goodbye"))
         self.assertEqual(None, db.test.ensure_index("goodbye"))
 
-        db_name = self.db.name
-        self.connection.drop_database(self.db.name)
-        self.assertEqual("goodbye_1",
-                         db.test.ensure_index("goodbye"))
-        self.assertEqual(None, db.test.ensure_index("goodbye"))
-
         db.test.drop_index("goodbye_1")
         self.assertEqual("goodbye_1",
                          db.test.create_index("goodbye"))
@@ -1063,7 +1057,7 @@ class TestCollection(unittest.TestCase):
 
     def test_as_class(self):
         c = self.db.test
-        c.remove()
+        c.drop()
         c.insert({"x": 1})
 
         self.assert_(isinstance(c.find().next(), dict))
