@@ -27,6 +27,7 @@ import sys
 import unittest
 sys.path[0:0] = [""]
 
+from bson.objectid import ObjectId
 from gridfs.grid_file import (_SEEK_CUR,
                               _SEEK_END,
                               GridIn,
@@ -34,7 +35,6 @@ from gridfs.grid_file import (_SEEK_CUR,
                               GridOut)
 from gridfs.errors import (NoFile,
                            UnsupportedAPI)
-from pymongo.objectid import ObjectId
 from test_connection import get_connection
 import qcheck
 

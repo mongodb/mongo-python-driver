@@ -14,6 +14,8 @@
 
 """Exceptions raised by PyMongo."""
 
+from bson.errors import *
+
 
 class PyMongoError(Exception):
     """Base class for all PyMongo exceptions.
@@ -79,31 +81,6 @@ class InvalidOperation(PyMongoError):
 
 class CollectionInvalid(PyMongoError):
     """Raised when collection validation fails.
-    """
-
-
-class InvalidName(PyMongoError):
-    """Raised when an invalid name is used.
-    """
-
-
-class InvalidBSON(PyMongoError):
-    """Raised when trying to create a BSON object from invalid data.
-    """
-
-
-class InvalidStringData(PyMongoError):
-    """Raised when trying to encode a string containing non-UTF8 data.
-    """
-
-
-class InvalidDocument(PyMongoError):
-    """Raised when trying to create a BSON object from an invalid document.
-    """
-
-
-class InvalidId(PyMongoError):
-    """Raised when trying to create an ObjectId from invalid data.
     """
 
 

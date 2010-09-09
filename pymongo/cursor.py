@@ -14,12 +14,12 @@
 
 """Cursor class to iterate over Mongo query results."""
 
+from bson.code import Code
+from bson.son import SON
 from pymongo import (helpers,
                      message)
-from pymongo.code import Code
 from pymongo.errors import (InvalidOperation,
                             AutoReconnect)
-from pymongo.son import SON
 
 _QUERY_OPTIONS = {
     "tailable_cursor": 2,
@@ -485,7 +485,7 @@ class Cursor(object):
         """Adds a $where clause to this query.
 
         The `code` argument must be an instance of :class:`basestring`
-        or :class:`~pymongo.code.Code` containing a JavaScript
+        or :class:`~bson.code.Code` containing a JavaScript
         expression. This expression will be evaluated for each
         document scanned. Only those documents for which the
         expression evaluates to *true* will be returned as

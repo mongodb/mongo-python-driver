@@ -18,8 +18,8 @@ import unittest
 import sys
 sys.path[0:0] = [""]
 
-from pymongo.objectid import ObjectId
-from pymongo.dbref import DBRef
+from bson.objectid import ObjectId
+from bson.dbref import DBRef
 
 
 class TestDBRef(unittest.TestCase):

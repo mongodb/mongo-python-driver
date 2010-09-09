@@ -16,14 +16,14 @@
 
 import warnings
 
+from bson.code import Code
+from bson.dbref import DBRef
+from bson.errors import InvalidName
+from bson.son import SON
 from pymongo import helpers
-from pymongo.code import Code
 from pymongo.collection import Collection
-from pymongo.dbref import DBRef
 from pymongo.errors import (CollectionInvalid,
-                            InvalidName,
                             OperationFailure)
-from pymongo.son import SON
 from pymongo.son_manipulator import ObjectIdInjector
 
 

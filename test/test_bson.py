@@ -29,19 +29,20 @@ sys.path[0:0] = [""]
 
 from nose.plugins.skip import SkipTest
 
+from bson import BSON, is_valid, _to_dicts
+from bson.binary import Binary
+from bson.code import Code
+from bson.objectid import ObjectId
+from bson.dbref import DBRef
+from bson.son import SON
+from bson.timestamp import Timestamp
+from bson.errors import (InvalidDocument,
+                         InvalidStringData)
+from bson.max_key import MaxKey
+from bson.min_key import MinKey
+from bson.tz_util import (FixedOffset,
+                          utc)
 import pymongo
-from pymongo.binary import Binary
-from pymongo.code import Code
-from pymongo.objectid import ObjectId
-from pymongo.dbref import DBRef
-from pymongo.son import SON
-from pymongo.timestamp import Timestamp
-from pymongo.bson import BSON, is_valid, _to_dicts
-from pymongo.errors import InvalidDocument, InvalidStringData
-from pymongo.max_key import MaxKey
-from pymongo.min_key import MinKey
-from pymongo.tz_util import (FixedOffset,
-                             utc)
 import qcheck
 
 class TestBSON(unittest.TestCase):

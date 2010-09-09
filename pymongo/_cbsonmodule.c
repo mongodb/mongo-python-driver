@@ -233,12 +233,12 @@ static int write_string(bson_buffer* buffer, PyObject* py_string) {
     return 1;
 }
 
-/* Get an error class from the pymongo.errors module.
+/* Get an error class from the bson.errors module.
  *
  * Returns a new ref */
 static PyObject* _error(char* name) {
     PyObject* error;
-    PyObject* errors = PyImport_ImportModule("pymongo.errors");
+    PyObject* errors = PyImport_ImportModule("bson.errors");
     if (!errors) {
         return NULL;
     }
@@ -268,14 +268,14 @@ static int _reload_object(PyObject** object, char* module_name, char* object_nam
  *
  * Returns non-zero on failure. */
 static int _reload_python_objects(void) {
-    if (_reload_object(&Binary, "pymongo.binary", "Binary") ||
-        _reload_object(&Code, "pymongo.code", "Code") ||
-        _reload_object(&ObjectId, "pymongo.objectid", "ObjectId") ||
-        _reload_object(&DBRef, "pymongo.dbref", "DBRef") ||
-        _reload_object(&Timestamp, "pymongo.timestamp", "Timestamp") ||
-        _reload_object(&MinKey, "pymongo.min_key", "MinKey") ||
-        _reload_object(&MaxKey, "pymongo.max_key", "MaxKey") ||
-        _reload_object(&UTC, "pymongo.tz_util", "utc") ||
+    if (_reload_object(&Binary, "bson.binary", "Binary") ||
+        _reload_object(&Code, "bson.code", "Code") ||
+        _reload_object(&ObjectId, "bson.objectid", "ObjectId") ||
+        _reload_object(&DBRef, "bson.dbref", "DBRef") ||
+        _reload_object(&Timestamp, "bson.timestamp", "Timestamp") ||
+        _reload_object(&MinKey, "bson.min_key", "MinKey") ||
+        _reload_object(&MaxKey, "bson.max_key", "MaxKey") ||
+        _reload_object(&UTC, "bson.tz_util", "utc") ||
         _reload_object(&RECompile, "re", "compile")) {
         return 1;
     }

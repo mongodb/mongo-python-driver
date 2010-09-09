@@ -1,4 +1,4 @@
-# Copyright 2010 10gen, Inc.
+# Copyright 2009-2010 10gen, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,21 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Representation for the MongoDB internal MaxKey type.
-"""
-
-
-class MaxKey(object):
-    """MongoDB internal MaxKey type.
-    """
-
-    def __eq__(self, other):
-        if isinstance(other, MaxKey):
-            return True
-        return NotImplemented
-
-    def __ne__(self, other):
-        return not self == other
-
-    def __repr__(self):
-        return "MaxKey()"
+from bson.max_key import *

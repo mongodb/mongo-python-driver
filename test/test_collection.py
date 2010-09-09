@@ -27,9 +27,11 @@ from nose.plugins.skip import SkipTest
 
 sys.path[0:0] = [""]
 
+from bson.binary import Binary
+from bson.code import Code
+from bson.objectid import ObjectId
+from bson.son import SON
 from pymongo import ASCENDING, DESCENDING
-from pymongo.binary import Binary
-from pymongo.code import Code
 from pymongo.collection import Collection
 from pymongo.errors import (DuplicateKeyError,
                             InvalidDocument,
@@ -37,8 +39,6 @@ from pymongo.errors import (DuplicateKeyError,
                             InvalidOperation,
                             OperationFailure,
                             TimeoutError)
-from pymongo.objectid import ObjectId
-from pymongo.son import SON
 from test.test_connection import get_connection
 from test import (qcheck,
                   version)

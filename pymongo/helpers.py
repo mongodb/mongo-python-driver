@@ -22,8 +22,8 @@ except:  # for Python < 2.5
     _md5func = md5.new
 import struct
 
+import bson
 import pymongo
-from pymongo import bson
 from pymongo.errors import (AutoReconnect,
                             OperationFailure,
                             TimeoutError)

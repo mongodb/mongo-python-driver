@@ -16,12 +16,12 @@
 
 import warnings
 
+from bson.code import Code
+from bson.errors import InvalidName
+from bson.son import SON
 from pymongo import (helpers,
                      message)
-from pymongo.code import Code
 from pymongo.cursor import Cursor
-from pymongo.errors import InvalidName
-from pymongo.son import SON
 
 _ZERO = "\x00\x00\x00\x00"
 
@@ -410,10 +410,9 @@ class Collection(object):
 
         .. versionadded:: 1.8
            Support for passing `getLastError` options as keyword arguments.
-        .. versionchanged:: 1.7
-           Accept any type other than a ``dict`` instance for removal
-           by ``"_id"``, not just :class:`~pymongo.objectid.ObjectId`
-           instances.
+        .. versionchanged:: 1.7 Accept any type other than a ``dict``
+           instance for removal by ``"_id"``, not just
+           :class:`~bson.objectid.ObjectId` instances.
         .. versionchanged:: 1.4
            Return the response to *lastError* if `safe` is ``True``.
         .. versionchanged:: 1.2
@@ -460,10 +459,9 @@ class Collection(object):
            Allow passing any of the arguments that are valid for
            :meth:`find`.
 
-        .. versionchanged:: 1.7
-           Accept any type other than a ``dict`` instance as an
-           ``"_id"`` query, not just
-           :class:`~pymongo.objectid.ObjectId` instances.
+        .. versionchanged:: 1.7 Accept any type other than a ``dict``
+           instance as an ``"_id"`` query, not just
+           :class:`~bson.objectid.ObjectId` instances.
         """
         if spec_or_id is not None and not isinstance(spec_or_id, dict):
             spec_or_id = {"_id": spec_or_id}
@@ -820,9 +818,9 @@ class Collection(object):
 
           - ``None`` to use the entire document as a key.
           - A :class:`list` of keys (each a :class:`basestring`) to group by.
-          - A :class:`basestring` or :class:`~pymongo.code.Code` instance
-            containing a JavaScript function to be applied to each document,
-            returning the key to group by.
+          - A :class:`basestring` or :class:`~bson.code.Code` instance
+            containing a JavaScript function to be applied to each
+            document, returning the key to group by.
 
         :Parameters:
           - `key`: fields to group by (see above description)

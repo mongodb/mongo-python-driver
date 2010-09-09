@@ -18,7 +18,7 @@ import unittest
 import sys
 sys.path[0:0] = [""]
 
-from pymongo.code import Code
+from bson.code import Code
 
 
 class TestCode(unittest.TestCase):

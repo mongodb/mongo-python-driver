@@ -18,7 +18,7 @@ import unittest
 import sys
 sys.path[0:0] = [""]
 
-from pymongo.binary import Binary
+from bson.binary import Binary
 
 
 class TestBinary(unittest.TestCase):

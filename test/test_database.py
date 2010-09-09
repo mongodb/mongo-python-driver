@@ -20,24 +20,25 @@ import sys
 sys.path[0:0] = [""]
 import unittest
 
+from bson.code import Code
+from bson.dbref import DBRef
+from bson.errors import InvalidName
+from bson.objectid import ObjectId
+from bson.son import SON
 from pymongo import (ALL,
                      ASCENDING,
                      DESCENDING,
                      helpers,
                      OFF,
                      SLOW_ONLY)
-from pymongo.code import Code
 from pymongo.collection import Collection
 from pymongo.connection import Connection
 from pymongo.database import Database
-from pymongo.dbref import DBRef
 from pymongo.errors import (CollectionInvalid,
-                            InvalidName,
                             InvalidOperation,
                             OperationFailure)
-from pymongo.objectid import ObjectId
-from pymongo.son import SON
-from pymongo.son_manipulator import AutoReference, NamespaceInjector
+from pymongo.son_manipulator import (AutoReference,
+                                     NamespaceInjector)
 from test import version
 from test.test_connection import get_connection
 

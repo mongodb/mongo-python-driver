@@ -25,7 +25,7 @@ MongoDB.
 import random
 import struct
 
-from pymongo import bson
+import bson
 from pymongo.son import SON
 try:
     from pymongo import _cbson

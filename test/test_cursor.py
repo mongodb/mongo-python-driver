@@ -22,11 +22,13 @@ sys.path[0:0] = [""]
 
 from nose.plugins.skip import SkipTest
 
-from pymongo.errors import InvalidOperation, OperationFailure
+from bson.code import Code
+from pymongo import (ASCENDING,
+                     DESCENDING)
 from pymongo.cursor import Cursor
 from pymongo.database import Database
-from pymongo.code import Code
-from pymongo import ASCENDING, DESCENDING
+from pymongo.errors import (InvalidOperation,
+                            OperationFailure)
 from test_connection import get_connection
 import version
 

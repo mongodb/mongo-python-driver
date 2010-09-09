@@ -31,8 +31,7 @@ Example usage (deserialization)::
 >>> json.loads(..., object_hook=json_util.object_hook)
 
 Currently this does not handle special encoding and decoding for
-:class:`~pymongo.binary.Binary` and :class:`~pymongo.code.Code`
-instances.
+:class:`~bson.binary.Binary` and :class:`~bson.code.Code` instances.
 
 .. versionchanged:: 1.8.1+
    Handle :class:`uuid.UUID` instances, whenever possible.
@@ -60,12 +59,12 @@ try:
 except ImportError:
     _use_uuid = False
 
-from pymongo.dbref import DBRef
-from pymongo.max_key import MaxKey
-from pymongo.min_key import MinKey
-from pymongo.objectid import ObjectId
-from pymongo.timestamp import Timestamp
-from pymongo.tz_util import utc
+from bson.dbref import DBRef
+from bson.max_key import MaxKey
+from bson.min_key import MinKey
+from bson.objectid import ObjectId
+from bson.timestamp import Timestamp
+from bson.tz_util import utc
 
 # TODO support Binary and Code
 # Binary and Code are tricky because they subclass str so json thinks it can

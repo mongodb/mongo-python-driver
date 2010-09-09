@@ -1,4 +1,4 @@
-# Copyright 2010 10gen, Inc.
+# Copyright 2009-2010 10gen, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,34 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Timezone related utilities for PyMongo."""
-
-from datetime import (timedelta,
-                      tzinfo)
-
-ZERO = timedelta(0)
-
-
-class FixedOffset(tzinfo):
-    """Fixed offset timezone, in minutes east from UTC.
-
-    Implementation from the Python `standard library documentation
-    <http://docs.python.org/library/datetime.html#tzinfo-objects>`_.
-    """
-
-    def __init__(self, offset, name):
-        self.__offset = timedelta(minutes=offset)
-        self.__name = name
-
-    def utcoffset(self, dt):
-        return self.__offset
-
-    def tzname(self, dt):
-        return self.__name
-
-    def dst(self, dt):
-        return ZERO
-
-
-"""UTC"""
-utc = FixedOffset(0, "UTC")
+from bson.tz_util import *

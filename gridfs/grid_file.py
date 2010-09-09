@@ -22,15 +22,15 @@ try:
 except ImportError:
     from StringIO import StringIO
 
+from bson.binary import Binary
+from bson.objectid import ObjectId
 from gridfs.errors import (CorruptGridFile,
                            FileExists,
                            NoFile,
                            UnsupportedAPI)
 from pymongo import ASCENDING
-from pymongo.binary import Binary
 from pymongo.collection import Collection
 from pymongo.errors import DuplicateKeyError
-from pymongo.objectid import ObjectId
 
 try:
     _SEEK_SET = os.SEEK_SET
@@ -95,7 +95,7 @@ class GridIn(object):
         arguments include:
 
           - ``"_id"``: unique ID for this file (default:
-            :class:`~pymongo.objectid.ObjectId`) - this ``"_id"`` must
+            :class:`~bson.objectid.ObjectId`) - this ``"_id"`` must
             not have already been used for another file
 
           - ``"filename"``: human name for the file

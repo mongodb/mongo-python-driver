@@ -23,10 +23,10 @@ sys.path[0:0] = [""]
 
 from nose.plugins.skip import SkipTest
 
-from pymongo.errors import InvalidId
-from pymongo.objectid import ObjectId
-from pymongo.tz_util import (FixedOffset,
-                             utc)
+from bson.errors import InvalidId
+from bson.objectid import ObjectId
+from bson.tz_util import (FixedOffset,
+                          utc)
 
 def oid(x):
     return ObjectId()

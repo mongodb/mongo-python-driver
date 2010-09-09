@@ -36,13 +36,13 @@ from nose.plugins.skip import SkipTest
 
 sys.path[0:0] = [""]
 
+from bson.objectid import ObjectId
+from bson.dbref import DBRef
+from bson.min_key import MinKey
+from bson.max_key import MaxKey
+from bson.timestamp import Timestamp
+from bson.tz_util import utc
 from pymongo.json_util import default, object_hook
-from pymongo.objectid import ObjectId
-from pymongo.dbref import DBRef
-from pymongo.min_key import MinKey
-from pymongo.max_key import MaxKey
-from pymongo.timestamp import Timestamp
-from pymongo.tz_util import utc
 
 class TestJsonUtil(unittest.TestCase):
 

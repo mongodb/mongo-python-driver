@@ -12,28 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tools for dealing with Mongo's BSON data representation.
-
-Generally not needed to be used by application developers."""
+"""BSON (Binary JSON) encoding and decoding.
+"""
 
 import struct
 import re
 import datetime
 import calendar
 
-from pymongo.binary import Binary
-from pymongo.code import Code
-from pymongo.dbref import DBRef
-from pymongo.errors import (InvalidBSON,
-                            InvalidDocument,
-                            InvalidName,
-                            InvalidStringData)
-from pymongo.max_key import MaxKey
-from pymongo.min_key import MinKey
-from pymongo.objectid import ObjectId
-from pymongo.son import SON
-from pymongo.timestamp import Timestamp
-from pymongo.tz_util import utc
+from bson.binary import Binary
+from bson.code import Code
+from bson.dbref import DBRef
+from bson.errors import (InvalidBSON,
+                         InvalidDocument,
+                         InvalidName,
+                         InvalidStringData)
+from bson.max_key import MaxKey
+from bson.min_key import MinKey
+from bson.objectid import ObjectId
+from bson.son import SON
+from bson.timestamp import Timestamp
+from bson.tz_util import utc
 
 
 try:
@@ -300,7 +299,7 @@ def _element_to_bson(key, value, check_keys):
     if isinstance(value, (int, long)):
         # TODO this is a really ugly way to check for this...
         if value > 2 ** 64 / 2 - 1 or value < -2 ** 64 / 2:
-            raise OverflowError("MongoDB can only handle up to 8-byte ints")
+            raise OverflowError("BSON can only handle up to 8-byte ints")
         if value > 2 ** 32 / 2 - 1 or value < -2 ** 32 / 2:
             return "\x12" + name + struct.pack("<q", value)
         return "\x10" + name + struct.pack("<i", value)
@@ -416,9 +415,7 @@ def is_valid(bson):
 
 
 class BSON(str):
-    """BSON data.
-
-    Represents binary data storable in and retrievable from Mongo.
+    """BSON (Binary JSON) data.
     """
 
     @classmethod
@@ -428,14 +425,14 @@ class BSON(str):
 
         Raises :class:`TypeError` if `dct` is not a mapping type, or
         contains keys that are not instances of :class:`basestring`.
-        Raises :class:`~pymongo.errors.InvalidDocument` if `dct`
-        cannot be converted to :class:`BSON`.
+        Raises :class:`~bson.errors.InvalidDocument` if `dct` cannot
+        be converted to :class:`BSON`.
 
         :Parameters:
           - `dct`: mapping type representing a document
           - `check_keys` (optional): check if keys start with '$' or
-            contain '.', raising :class:`~pymongo.errors.InvalidName`
-            in either case
+            contain '.', raising :class:`~bson.errors.InvalidName` in
+            either case
         """
         return cls(_dict_to_bson(dct, check_keys))
 
@@ -448,7 +445,7 @@ class BSON(str):
         If `tz_aware` is ``True`` (default), any
         :class:`~datetime.datetime` instances returned will be
         timezone-aware, with their timezone set to
-        :attr:`pymongo.tz_util.utc`. Otherwise, all
+        :attr:`bson.tz_util.utc`. Otherwise, all
         :class:`~datetime.datetime` instances will be naive (but
         contain UTC) - this was the default behavior in PyMongo
         versions **<= 1.7**.
