@@ -42,7 +42,7 @@ from bson.min_key import MinKey
 from bson.max_key import MaxKey
 from bson.timestamp import Timestamp
 from bson.tz_util import utc
-from pymongo.json_util import default, object_hook
+from bson.json_util import default, object_hook
 
 class TestJsonUtil(unittest.TestCase):
 

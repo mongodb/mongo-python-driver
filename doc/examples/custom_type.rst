@@ -38,7 +38,7 @@ named :class:`Custom` class, which has a single method, :meth:`x`:
   10
 
 When we try to save an instance of :class:`Custom` with PyMongo, we'll
-get an :class:`~pymongo.errors.InvalidDocument` exception:
+get an :class:`~bson.errors.InvalidDocument` exception:
 
 .. doctest::
 
@@ -126,7 +126,9 @@ After doing so we can save and restore :class:`Custom` instances seamlessly:
   >>> db.test.find_one()["custom"].x()
   5
 
-If we get a new :class:`~pymongo.database.Database` instance we'll clear out the :class:`~pymongo.son_manipulator.SONManipulator` instance we added:
+If we get a new :class:`~pymongo.database.Database` instance we'll
+clear out the :class:`~pymongo.son_manipulator.SONManipulator`
+instance we added:
 
 .. doctest::
 
@@ -151,14 +153,14 @@ resorting to tricks like the ``_type`` field used above.
 
 We'll start by defining the methods :meth:`to_binary` and
 :meth:`from_binary`, which convert :class:`Custom` instances to and
-from :class:`~pymongo.binary.Binary` instances:
+from :class:`~bson.binary.Binary` instances:
 
 .. note:: You could just pickle the instance and save that. What we do
    here is a little more lightweight.
 
 .. doctest::
 
-  >>> from pymongo.binary import Binary
+  >>> from bson.binary import Binary
   >>> def to_binary(custom):
   ...   return Binary(str(custom.x()), 128)
   ...
@@ -211,7 +213,7 @@ seamlessly:
   5
 
 We can see what's actually being saved to the database (and verify
-that it is using a :class:`~pymongo.binary.Binary` instance) by
+that it is using a :class:`~bson.binary.Binary` instance) by
 clearing out the manipulators and repeating our
 :meth:`~pymongo.collection.Collection.find_one`:
 

@@ -23,11 +23,11 @@ except:  # for Python < 2.5
 import struct
 
 import bson
+from bson.son import SON
 import pymongo
 from pymongo.errors import (AutoReconnect,
                             OperationFailure,
                             TimeoutError)
-from pymongo.son import SON
 
 
 def _index_list(key_or_list, direction=None):

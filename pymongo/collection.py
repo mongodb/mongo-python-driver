@@ -309,10 +309,10 @@ class Collection(object):
         ``w=3``.
 
         :Parameters:
-          - `spec`: a ``dict`` or :class:`~pymongo.son.SON` instance
+          - `spec`: a ``dict`` or :class:`~bson.son.SON` instance
             specifying elements which must be present for a document
             to be updated
-          - `document`: a ``dict`` or :class:`~pymongo.son.SON`
+          - `document`: a ``dict`` or :class:`~bson.son.SON`
             instance specifying the document to be used for the update
             or (in the case of an upsert) insert - see docs on MongoDB
             `update modifiers`_

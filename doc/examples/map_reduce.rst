@@ -46,7 +46,7 @@ the array:
 
 .. doctest::
 
-  >>> from pymongo.code import Code
+  >>> from bson.code import Code
   >>> map = Code("function () {"
   ...            "  this.tags.forEach(function(z) {"
   ...            "    emit(z, 1);"

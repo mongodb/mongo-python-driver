@@ -256,7 +256,7 @@ class Database(object):
             .. note:: the order of keys in the `command` document is
                significant (the "verb" must come first), so commands
                which require multiple keys (e.g. `findandmodify`)
-               should use an instance of :class:`~pymongo.son.SON` or
+               should use an instance of :class:`~bson.son.SON` or
                a string and kwargs instead of a Python `dict`.
 
           - `value` (optional): value to use for the command verb when

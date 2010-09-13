@@ -19,8 +19,8 @@ import unittest
 import sys
 sys.path[0:0] = [""]
 
-from pymongo.timestamp import Timestamp
-from pymongo.tz_util import utc
+from bson.timestamp import Timestamp
+from bson.tz_util import utc
 
 
 class TestTimestamp(unittest.TestCase):

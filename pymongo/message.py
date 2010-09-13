@@ -26,7 +26,7 @@ import random
 import struct
 
 import bson
-from pymongo.son import SON
+from bson.son import SON
 try:
     from pymongo import _cbson
     _use_c = True

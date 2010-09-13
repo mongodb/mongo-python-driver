@@ -182,10 +182,10 @@ How can I use something like Python's :mod:`json` module to encode my documents 
 ----------------------------------------------------------------------------------------
 The :mod:`json` module won't work out of the box with all documents
 from PyMongo as PyMongo supports some special types (like
-:class:`~pymongo.objectid.ObjectId` and :class:`~pymongo.dbref.DBRef`)
+:class:`~bson.objectid.ObjectId` and :class:`~bson.dbref.DBRef`)
 that are not supported in JSON. We've added some utilities for working
 with :mod:`json` and :mod:`simplejson` in the
-:mod:`~pymongo.json_util` module.
+:mod:`~bson.json_util` module.
 
 .. _year-2038-problem:
 
@@ -195,7 +195,7 @@ On Unix systems, dates are represented as seconds from 1 January 1970 and usuall
 :mod:`time_t` type. On most 32-bit operating systems :mod:`time_t` is a signed 4 byte integer
 which means it can't handle dates after 19 January 2038; this is known as the
 `year 2038 problem <http://en.wikipedia.org/wiki/Year_2038_problem>`_. Neither MongoDB nor
-Python uses :mod:`time_t` to represent dates internally so do not suffer from this problem, but 
+Python uses :mod:`time_t` to represent dates internally so do not suffer from this problem, but
 Python's :mod:`datetime.datetime.fromtimestamp()` used by PyMongo's Python implementation of
 :mod:`bson` does, which means it is susceptible. Therefore, on 32-bit systems you may get an
 error retrieving dates after 2038 from MongoDB using PyMongo with the Python version of

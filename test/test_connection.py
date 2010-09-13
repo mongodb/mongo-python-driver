@@ -24,6 +24,8 @@ sys.path[0:0] = [""]
 
 from nose.plugins.skip import SkipTest
 
+from bson.son import SON
+from bson.tz_util import utc
 from pymongo.connection import (Connection,
                                 _parse_uri)
 from pymongo.database import Database
@@ -33,8 +35,6 @@ from pymongo.errors import (AutoReconnect,
                             InvalidName,
                             InvalidURI,
                             OperationFailure)
-from pymongo.son import SON
-from pymongo.tz_util import utc
 from test import version
 
 

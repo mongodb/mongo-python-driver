@@ -204,7 +204,7 @@ command to the server:
 There are a couple of interesting things to note about this example:
 
   - The call to :meth:`~pymongo.collection.Collection.insert` now
-    returns two :class:`~pymongo.objectid.ObjectId` instances, one for
+    returns two :class:`~bson.objectid.ObjectId` instances, one for
     each inserted document.
   - ``new_posts[1]`` has a different "shape" than the other posts -
     there is no ``"tags"`` field and we've added a new field,
