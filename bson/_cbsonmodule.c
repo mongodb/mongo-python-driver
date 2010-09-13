@@ -15,12 +15,9 @@
  */
 
 /*
- * This file contains C implementations of some of the functions needed by the
- * bson module. If possible, these implementations should be used to speed up
- * BSON encoding and decoding.
- *
- * TODO The filename is a bit of a misnomer now - probably should be something
- * like _cspeedupsmodule - we do more than just BSON stuff in this C module.
+ * This file contains C implementations of some of the functions
+ * needed by the bson module. If possible, these implementations
+ * should be used to speed up BSON encoding and decoding.
  */
 
 #include <Python.h>
@@ -28,6 +25,7 @@
 
 #include <datetime.h>
 
+#include "_cbson.h"
 #include "time64.h"
 #include "encoding_helpers.h"
 
@@ -129,20 +127,7 @@ static long long millis_from_datetime(PyObject* datetime) {
     return millis;
 }
 
-
-/* A buffer representing some data being encoded to BSON. */
-typedef struct {
-    char* buffer;
-    int size;
-    int position;
-} bson_buffer;
-
-static int write_dict(bson_buffer* buffer, PyObject* dict,
-                      unsigned char check_keys, unsigned char top_level);
-static PyObject* elements_to_dict(const char* string, int max,
-                                  PyObject* as_class, unsigned char tz_aware);
-
-static bson_buffer* buffer_new(void) {
+bson_buffer* buffer_new(void) {
     bson_buffer* buffer;
     buffer = (bson_buffer*)malloc(sizeof(bson_buffer));
     if (!buffer) {
@@ -159,7 +144,7 @@ static bson_buffer* buffer_new(void) {
     return buffer;
 }
 
-static void buffer_free(bson_buffer* buffer) {
+void buffer_free(bson_buffer* buffer) {
     if (buffer == NULL) {
         return;
     }
@@ -194,7 +179,7 @@ static int buffer_assure_space(bson_buffer* buffer, int size) {
 }
 
 /* returns offset for writing, or -1 on failure */
-static int buffer_save_bytes(bson_buffer* buffer, int size) {
+int buffer_save_bytes(bson_buffer* buffer, int size) {
     int position;
 
     if (!buffer_assure_space(buffer, size)) {
@@ -206,7 +191,7 @@ static int buffer_save_bytes(bson_buffer* buffer, int size) {
 }
 
 /* returns zero on failure */
-static int buffer_write_bytes(bson_buffer* buffer, const char* bytes, int size) {
+int buffer_write_bytes(bson_buffer* buffer, const char* bytes, int size) {
     if (!buffer_assure_space(buffer, size)) {
         return 0;
     }
@@ -727,7 +712,7 @@ static int check_key_name(const char* name,
 /* Write a (key, value) pair to the buffer.
  *
  * Returns 0 on failure */
-static int write_pair(bson_buffer* buffer, const char* name, Py_ssize_t name_length, PyObject* value, unsigned char check_keys, unsigned char allow_id) {
+int write_pair(bson_buffer* buffer, const char* name, Py_ssize_t name_length, PyObject* value, unsigned char check_keys, unsigned char allow_id) {
     int type_byte;
 
     /* Don't write any _id elements unless we're explicitly told to -
@@ -753,9 +738,9 @@ static int write_pair(bson_buffer* buffer, const char* name, Py_ssize_t name_len
     return 1;
 }
 
-static int decode_and_write_pair(bson_buffer* buffer,
-                                 PyObject* key, PyObject* value,
-                                 unsigned char check_keys, unsigned char top_level) {
+int decode_and_write_pair(bson_buffer* buffer,
+                          PyObject* key, PyObject* value,
+                          unsigned char check_keys, unsigned char top_level) {
     PyObject* encoded;
     if (PyUnicode_Check(key)) {
         result_t status;
@@ -817,7 +802,7 @@ static int decode_and_write_pair(bson_buffer* buffer,
 }
 
 /* returns 0 on failure */
-static int write_dict(bson_buffer* buffer, PyObject* dict, unsigned char check_keys, unsigned char top_level) {
+int write_dict(bson_buffer* buffer, PyObject* dict, unsigned char check_keys, unsigned char top_level) {
     PyObject* key;
     PyObject* iter;
     char zero = 0;
@@ -903,346 +888,6 @@ static PyObject* _cbson_dict_to_bson(PyObject* self, PyObject* args) {
 
     /* objectify buffer */
     result = Py_BuildValue("s#", buffer->buffer, buffer->position);
-    buffer_free(buffer);
-    return result;
-}
-
-/* add a lastError message on the end of the buffer.
- * returns 0 on failure */
-static int add_last_error(bson_buffer* buffer, int request_id, PyObject* args) {
-                                 /* message length: 62 */
-    int message_start;
-    int document_start;
-    int message_length;
-    int document_length;
-    PyObject* key;
-    PyObject* value;
-    Py_ssize_t pos = 0;
-    PyObject* one;
-
-    message_start = buffer_save_bytes(buffer, 4);
-    if (message_start == -1) {
-        return 0;
-    }
-    if (!buffer_write_bytes(buffer, (const char*)&request_id, 4) ||
-        !buffer_write_bytes(buffer,
-                            "\x00\x00\x00\x00"  /* responseTo */
-                            "\xd4\x07\x00\x00"  /* opcode */
-                            "\x00\x00\x00\x00"  /* options */
-                            "admin.$cmd\x00"    /* collection name */
-                            "\x00\x00\x00\x00"  /* skip */
-                            "\xFF\xFF\xFF\xFF", /* limit (-1) */
-                            31)) {
-        return 0;
-    }
-
-    /* save space for length */
-    document_start = buffer_save_bytes(buffer, 4);
-    if (document_start == -1) {
-        return 0;
-    }
-
-    /* getlasterror: 1 */
-    one = PyLong_FromLong(1);
-    if (!write_pair(buffer, "getlasterror", 12, one, 0, 1)) {
-        Py_DECREF(one);
-        return 0;
-    }
-    Py_DECREF(one);
-
-    /* getlasterror options */
-    while (PyDict_Next(args, &pos, &key, &value)) {
-        if (!decode_and_write_pair(buffer, key, value, 0, 0)) {
-            return 0;
-        }
-    }
-
-    /* EOD */
-    if (!buffer_write_bytes(buffer, "\x00", 1)) {
-        return 0;
-    }
-
-    message_length = buffer->position - message_start;
-    document_length = buffer->position - document_start;
-    if (document_length > 4 * 1024 * 1024) {
-        PyObject* InvalidDocument = _error("InvalidDocument");
-        PyErr_SetString(InvalidDocument, "document too large - "
-                        "BSON documents are limited to 4 MB");
-        Py_DECREF(InvalidDocument);
-        return 0;
-    }
-    memcpy(buffer->buffer + message_start, &message_length, 4);
-    memcpy(buffer->buffer + document_start, &document_length, 4);
-    return 1;
-}
-
-static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
-    /* NOTE just using a random number as the request_id */
-    int request_id = rand();
-    char* collection_name = NULL;
-    int collection_name_length;
-    PyObject* docs;
-    int list_length;
-    int i;
-    unsigned char check_keys;
-    unsigned char safe;
-    PyObject* last_error_args;
-    bson_buffer* buffer;
-    int length_location;
-    PyObject* result;
-
-    if (!PyArg_ParseTuple(args, "et#ObbO",
-                          "utf-8",
-                          &collection_name,
-                          &collection_name_length,
-                          &docs, &check_keys, &safe, &last_error_args)) {
-        return NULL;
-    }
-
-    buffer = buffer_new();
-    if (!buffer) {
-        PyMem_Free(collection_name);
-        return NULL;
-    }
-
-    // save space for message length
-    length_location = buffer_save_bytes(buffer, 4);
-    if (length_location == -1 ||
-        !buffer_write_bytes(buffer, (const char*)&request_id, 4) ||
-        !buffer_write_bytes(buffer,
-                            "\x00\x00\x00\x00"
-                            "\xd2\x07\x00\x00"
-                            "\x00\x00\x00\x00",
-                            12) ||
-        !buffer_write_bytes(buffer,
-                            collection_name,
-                            collection_name_length + 1)) {
-        PyMem_Free(collection_name);
-        buffer_free(buffer);
-        return NULL;
-    }
-
-    PyMem_Free(collection_name);
-
-    list_length = PyList_Size(docs);
-    if (list_length <= 0) {
-        PyObject* InvalidOperation = _error("InvalidOperation");
-        PyErr_SetString(InvalidOperation, "cannot do an empty bulk insert");
-        Py_DECREF(InvalidOperation);
-        buffer_free(buffer);
-        return NULL;
-    }
-    for (i = 0; i < list_length; i++) {
-        PyObject* doc = PyList_GetItem(docs, i);
-        if (!write_dict(buffer, doc, check_keys, 1)) {
-            buffer_free(buffer);
-            return NULL;
-        }
-    }
-
-    memcpy(buffer->buffer + length_location, &buffer->position, 4);
-
-    if (safe) {
-        if (!add_last_error(buffer, request_id, last_error_args)) {
-            buffer_free(buffer);
-            return NULL;
-        }
-    }
-
-    /* objectify buffer */
-    result = Py_BuildValue("is#", request_id,
-                           buffer->buffer, buffer->position);
-    buffer_free(buffer);
-    return result;
-}
-
-static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
-    /* NOTE just using a random number as the request_id */
-    int request_id = rand();
-    char* collection_name = NULL;
-    int collection_name_length;
-    PyObject* doc;
-    PyObject* spec;
-    unsigned char multi;
-    unsigned char upsert;
-    unsigned char safe;
-    PyObject* last_error_args;
-    int options;
-    bson_buffer* buffer;
-    int length_location;
-    PyObject* result;
-
-    if (!PyArg_ParseTuple(args, "et#bbOObO",
-                          "utf-8",
-                          &collection_name,
-                          &collection_name_length,
-                          &upsert, &multi, &spec, &doc, &safe,
-                          &last_error_args)) {
-        return NULL;
-    }
-
-    options = 0;
-    if (upsert) {
-        options += 1;
-    }
-    if (multi) {
-        options += 2;
-    }
-    buffer = buffer_new();
-    if (!buffer) {
-        PyMem_Free(collection_name);
-        return NULL;
-    }
-
-    // save space for message length
-    length_location = buffer_save_bytes(buffer, 4);
-    if (length_location == -1 ||
-        !buffer_write_bytes(buffer, (const char*)&request_id, 4) ||
-        !buffer_write_bytes(buffer,
-                            "\x00\x00\x00\x00"
-                            "\xd1\x07\x00\x00"
-                            "\x00\x00\x00\x00",
-                            12) ||
-        !buffer_write_bytes(buffer,
-                            collection_name,
-                            collection_name_length + 1) ||
-        !buffer_write_bytes(buffer, (const char*)&options, 4) ||
-        !write_dict(buffer, spec, 0, 1) ||
-        !write_dict(buffer, doc, 0, 1)) {
-        buffer_free(buffer);
-        PyMem_Free(collection_name);
-        return NULL;
-    }
-
-    PyMem_Free(collection_name);
-
-    memcpy(buffer->buffer + length_location, &buffer->position, 4);
-
-    if (safe) {
-        if (!add_last_error(buffer, request_id, last_error_args)) {
-            buffer_free(buffer);
-            return NULL;
-        }
-    }
-
-    /* objectify buffer */
-    result = Py_BuildValue("is#", request_id,
-                           buffer->buffer, buffer->position);
-    buffer_free(buffer);
-    return result;
-}
-
-static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
-    /* NOTE just using a random number as the request_id */
-    int request_id = rand();
-    unsigned int options;
-    char* collection_name = NULL;
-    int collection_name_length;
-    int num_to_skip;
-    int num_to_return;
-    PyObject* query;
-    PyObject* field_selector = Py_None;
-    bson_buffer* buffer;
-    int length_location;
-    PyObject* result;
-
-    if (!PyArg_ParseTuple(args, "Iet#iiO|O",
-                          &options,
-                          "utf-8",
-                          &collection_name,
-                          &collection_name_length,
-                          &num_to_skip, &num_to_return,
-                          &query, &field_selector)) {
-        return NULL;
-    }
-    buffer = buffer_new();
-    if (!buffer) {
-        PyMem_Free(collection_name);
-        return NULL;
-    }
-
-    // save space for message length
-    length_location = buffer_save_bytes(buffer, 4);
-    if (length_location == -1 ||
-        !buffer_write_bytes(buffer, (const char*)&request_id, 4) ||
-        !buffer_write_bytes(buffer,
-                            "\x00\x00\x00\x00"
-                            "\xd4\x07\x00\x00", 8) ||
-        !buffer_write_bytes(buffer, (const char*)&options, 4) ||
-        !buffer_write_bytes(buffer,
-                            collection_name,
-                            collection_name_length + 1) ||
-        !buffer_write_bytes(buffer, (const char*)&num_to_skip, 4) ||
-        !buffer_write_bytes(buffer, (const char*)&num_to_return, 4) ||
-        !write_dict(buffer, query, 0, 1) ||
-        ((field_selector != Py_None) &&
-         !write_dict(buffer, field_selector, 0, 1))) {
-        buffer_free(buffer);
-        PyMem_Free(collection_name);
-        return NULL;
-    }
-
-    PyMem_Free(collection_name);
-
-    memcpy(buffer->buffer + length_location, &buffer->position, 4);
-
-    /* objectify buffer */
-    result = Py_BuildValue("is#", request_id,
-                           buffer->buffer, buffer->position);
-    buffer_free(buffer);
-    return result;
-}
-
-static PyObject* _cbson_get_more_message(PyObject* self, PyObject* args) {
-    /* NOTE just using a random number as the request_id */
-    int request_id = rand();
-    char* collection_name = NULL;
-    int collection_name_length;
-    int num_to_return;
-    long long cursor_id;
-    bson_buffer* buffer;
-    int length_location;
-    PyObject* result;
-
-    if (!PyArg_ParseTuple(args, "et#iL",
-                          "utf-8",
-                          &collection_name,
-                          &collection_name_length,
-                          &num_to_return,
-                          &cursor_id)) {
-        return NULL;
-    }
-    buffer = buffer_new();
-    if (!buffer) {
-        PyMem_Free(collection_name);
-        return NULL;
-    }
-
-    // save space for message length
-    length_location = buffer_save_bytes(buffer, 4);
-    if (length_location == -1 ||
-        !buffer_write_bytes(buffer, (const char*)&request_id, 4) ||
-        !buffer_write_bytes(buffer,
-                            "\x00\x00\x00\x00"
-                            "\xd5\x07\x00\x00"
-                            "\x00\x00\x00\x00", 12) ||
-        !buffer_write_bytes(buffer,
-                            collection_name,
-                            collection_name_length + 1) ||
-        !buffer_write_bytes(buffer, (const char*)&num_to_return, 4) ||
-        !buffer_write_bytes(buffer, (const char*)&cursor_id, 8)) {
-        buffer_free(buffer);
-        PyMem_Free(collection_name);
-        return NULL;
-    }
-
-    PyMem_Free(collection_name);
-
-    memcpy(buffer->buffer + length_location, &buffer->position, 4);
-
-    /* objectify buffer */
-    result = Py_BuildValue("is#", request_id,
-                           buffer->buffer, buffer->position);
     buffer_free(buffer);
     return result;
 }
@@ -1616,8 +1261,8 @@ static PyObject* get_value(const char* buffer, int* position, int type,
     return value;
 }
 
-static PyObject* elements_to_dict(const char* string, int max,
-                                  PyObject* as_class, unsigned char tz_aware) {
+PyObject* elements_to_dict(const char* string, int max,
+                           PyObject* as_class, unsigned char tz_aware) {
     int position = 0;
     PyObject* dict = PyObject_CallObject(as_class, NULL);
     if (!dict) {
@@ -1782,14 +1427,6 @@ static PyMethodDef _CBSONMethods[] = {
      "convert a BSON string to a SON object."},
     {"decode_all", _cbson_decode_all, METH_VARARGS,
      "convert binary data to a sequence of documents."},
-    {"_insert_message", _cbson_insert_message, METH_VARARGS,
-     "create an insert message to be sent to MongoDB"},
-    {"_update_message", _cbson_update_message, METH_VARARGS,
-     "create an update message to be sent to MongoDB"},
-    {"_query_message", _cbson_query_message, METH_VARARGS,
-     "create a query message to be sent to MongoDB"},
-    {"_get_more_message", _cbson_get_more_message, METH_VARARGS,
-     "create a get more message to be sent to MongoDB"},
     {NULL, NULL, 0, NULL}
 };
 

@@ -290,7 +290,7 @@ class TestBSON(unittest.TestCase):
             # Ignore ValueError when no C ext, since it's probably
             # a problem w/ 32-bit Python - we work around this in the
             # C ext, though.
-            if pymongo.has_c():
+            if bson.has_c():
                 raise
 
     def test_custom_class(self):

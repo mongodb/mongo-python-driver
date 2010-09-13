@@ -500,3 +500,15 @@ class BSON(str):
         """
         (document, _) = _bson_to_dict(self, as_class, tz_aware)
         return document
+
+
+def has_c():
+    """Is the C extension installed?
+
+    .. versionadded:: 1.8.1+
+    """
+    try:
+        from bson import _cbson
+        return True
+    except ImportError:
+        return False

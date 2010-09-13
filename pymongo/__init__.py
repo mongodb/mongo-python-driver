@@ -52,7 +52,7 @@ def has_c():
     .. versionadded:: 1.5
     """
     try:
-        from pymongo import _cbson
+        from pymongo import _cmessage
         return True
     except ImportError:
         return False
