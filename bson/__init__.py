@@ -365,17 +365,32 @@ if _use_c:
 
 
 def _to_dicts(data, as_class=dict, tz_aware=True):
-    """Convert binary data to sequence of documents.
+    """DEPRECATED - `_to_dicts` has been renamed to `decode_all`.
 
-    Data must be concatenated strings of valid BSON data.
+    .. versionchanged:: 1.8.1+
+       Deprecated in favor of :meth:`decode_all`.
+    .. versionadded:: 1.7
+       The `as_class` parameter.
+    """
+    warnings.warn("`_to_dicts` has been renamed to `decode_all`",
+                  DeprecationWarning)
+    return decode_all(data, as_class, tz_aware)
+
+
+def decode_all(data, as_class=dict, tz_aware=True):
+    """Decode BSON data to multiple documents.
+
+    `data` must be a string of concatenated, valid, BSON-encoded
+    documents.
 
     :Parameters:
-      - `data`: bson data
+      - `data`: BSON data
       - `as_class` (optional): the class to use for the resulting
         documents
+      - `tz_aware` (optional): if ``True``, return timezone-aware
+        :class:`~datetime.datetime` instances
 
-    .. versionadded:: 1.7
-       the `as_class` parameter
+    .. versionadded:: 1.8.1+
     """
     docs = []
     while len(data):
@@ -383,12 +398,7 @@ def _to_dicts(data, as_class=dict, tz_aware=True):
         docs.append(doc)
     return docs
 if _use_c:
-    _to_dicts = _cbson._to_dicts
-
-
-def _to_dict(data, as_class, tz_aware):
-    (son, _) = _bson_to_dict(data, as_class, tz_aware)
-    return son
+    decode_all = _cbson.decode_all
 
 
 def is_valid(bson):

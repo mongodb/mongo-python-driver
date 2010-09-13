@@ -1709,7 +1709,7 @@ static PyObject* _cbson_bson_to_dict(PyObject* self, PyObject* args) {
     return result;
 }
 
-static PyObject* _cbson_to_dicts(PyObject* self, PyObject* args) {
+static PyObject* _cbson_decode_all(PyObject* self, PyObject* args) {
     unsigned int size;
     Py_ssize_t total_size;
     const char* string;
@@ -1724,7 +1724,7 @@ static PyObject* _cbson_to_dicts(PyObject* self, PyObject* args) {
     }
 
     if (!PyString_Check(bson)) {
-        PyErr_SetString(PyExc_TypeError, "argument to _to_dicts must be a string");
+        PyErr_SetString(PyExc_TypeError, "argument to decode_all must be a string");
         return NULL;
     }
     total_size = PyString_Size(bson);
@@ -1780,8 +1780,8 @@ static PyMethodDef _CBSONMethods[] = {
      "convert a dictionary to a string containing it's BSON representation."},
     {"_bson_to_dict", _cbson_bson_to_dict, METH_VARARGS,
      "convert a BSON string to a SON object."},
-    {"_to_dicts", _cbson_to_dicts, METH_VARARGS,
-     "convert binary data to a sequence of SON objects."},
+    {"decode_all", _cbson_decode_all, METH_VARARGS,
+     "convert binary data to a sequence of documents."},
     {"_insert_message", _cbson_insert_message, METH_VARARGS,
      "create an insert message to be sent to MongoDB"},
     {"_update_message", _cbson_update_message, METH_VARARGS,
