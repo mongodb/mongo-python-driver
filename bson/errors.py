@@ -20,11 +20,6 @@ class BSONError(Exception):
     """
 
 
-class InvalidName(BSONError):
-    """Raised when an invalid name is used.
-    """
-
-
 class InvalidBSON(BSONError):
     """Raised when trying to create a BSON object from invalid data.
     """

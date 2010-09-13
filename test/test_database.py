@@ -22,7 +22,6 @@ import unittest
 
 from bson.code import Code
 from bson.dbref import DBRef
-from bson.errors import InvalidName
 from bson.objectid import ObjectId
 from bson.son import SON
 from pymongo import (ALL,
@@ -35,6 +34,7 @@ from pymongo.collection import Collection
 from pymongo.connection import Connection
 from pymongo.database import Database
 from pymongo.errors import (CollectionInvalid,
+                            InvalidName,
                             InvalidOperation,
                             OperationFailure)
 from pymongo.son_manipulator import (AutoReference,

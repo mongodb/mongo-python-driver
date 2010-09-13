@@ -400,24 +400,24 @@ class TestCollection(unittest.TestCase):
         db.test.insert({"hello": "world"})
         db.test.insert({"hello": {"hello": "world"}})
 
-        self.assertRaises(InvalidName, db.test.insert, {"$hello": "world"})
-        self.assertRaises(InvalidName, db.test.insert,
+        self.assertRaises(InvalidDocument, db.test.insert, {"$hello": "world"})
+        self.assertRaises(InvalidDocument, db.test.insert,
                           {"hello": {"$hello": "world"}})
 
         db.test.insert({"he$llo": "world"})
         db.test.insert({"hello": {"hello$": "world"}})
 
-        self.assertRaises(InvalidName, db.test.insert,
+        self.assertRaises(InvalidDocument, db.test.insert,
                           {".hello": "world"})
-        self.assertRaises(InvalidName, db.test.insert,
+        self.assertRaises(InvalidDocument, db.test.insert,
                           {"hello": {".hello": "world"}})
-        self.assertRaises(InvalidName, db.test.insert,
+        self.assertRaises(InvalidDocument, db.test.insert,
                           {"hello.": "world"})
-        self.assertRaises(InvalidName, db.test.insert,
+        self.assertRaises(InvalidDocument, db.test.insert,
                           {"hello": {"hello.": "world"}})
-        self.assertRaises(InvalidName, db.test.insert,
+        self.assertRaises(InvalidDocument, db.test.insert,
                           {"hel.lo": "world"})
-        self.assertRaises(InvalidName, db.test.insert,
+        self.assertRaises(InvalidDocument, db.test.insert,
                           {"hello": {"hel.lo": "world"}})
 
         db.test.update({"hello": "world"}, {"$inc": "hello"})

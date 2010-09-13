@@ -26,7 +26,6 @@ from bson.code import Code
 from bson.dbref import DBRef
 from bson.errors import (InvalidBSON,
                          InvalidDocument,
-                         InvalidName,
                          InvalidStringData)
 from bson.max_key import MaxKey
 from bson.min_key import MinKey
@@ -249,9 +248,9 @@ def _element_to_bson(key, value, check_keys):
 
     if check_keys:
         if key.startswith("$"):
-            raise InvalidName("key %r must not start with '$'" % key)
+            raise InvalidDocument("key %r must not start with '$'" % key)
         if "." in key:
-            raise InvalidName("key %r must not contain '.'" % key)
+            raise InvalidDocument("key %r must not contain '.'" % key)
 
     name = _make_c_string(key, True)
     if isinstance(value, float):
@@ -455,7 +454,7 @@ class BSON(str):
         :Parameters:
           - `document`: mapping type representing a document
           - `check_keys` (optional): check if keys start with '$' or
-            contain '.', raising :class:`~bson.errors.InvalidName` in
+            contain '.', raising :class:`~bson.errors.InvalidDocument` in
             either case
 
         .. versionadded:: 1.8.1+

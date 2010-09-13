@@ -704,20 +704,20 @@ static int check_key_name(const char* name,
                           const Py_ssize_t name_length) {
     int i;
     if (name_length > 0 && name[0] == '$') {
-        PyObject* InvalidName = _error("InvalidName");
+        PyObject* InvalidDocument = _error("InvalidDocument");
         PyObject* errmsg = PyString_FromFormat("key '%s' must not start with '$'", name);
-        PyErr_SetString(InvalidName, PyString_AsString(errmsg));
+        PyErr_SetString(InvalidDocument, PyString_AsString(errmsg));
         Py_DECREF(errmsg);
-        Py_DECREF(InvalidName);
+        Py_DECREF(InvalidDocument);
         return 0;
     }
     for (i = 0; i < name_length; i++) {
         if (name[i] == '.') {
-            PyObject* InvalidName = _error("InvalidName");
+            PyObject* InvalidDocument = _error("InvalidDocument");
             PyObject* errmsg = PyString_FromFormat("key '%s' must not contain '.'", name);
-            PyErr_SetString(InvalidName, PyString_AsString(errmsg));
+            PyErr_SetString(InvalidDocument, PyString_AsString(errmsg));
             Py_DECREF(errmsg);
-            Py_DECREF(InvalidName);
+            Py_DECREF(InvalidDocument);
             return 0;
         }
     }

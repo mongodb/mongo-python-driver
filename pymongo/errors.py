@@ -79,6 +79,11 @@ class InvalidOperation(PyMongoError):
     """
 
 
+class InvalidName(PyMongoError):
+    """Raised when an invalid name is used.
+    """
+
+
 class CollectionInvalid(PyMongoError):
     """Raised when collection validation fails.
     """

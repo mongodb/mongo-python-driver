@@ -17,11 +17,11 @@
 import warnings
 
 from bson.code import Code
-from bson.errors import InvalidName
 from bson.son import SON
 from pymongo import (helpers,
                      message)
 from pymongo.cursor import Cursor
+from pymongo.errors import InvalidName
 
 _ZERO = "\x00\x00\x00\x00"
 
