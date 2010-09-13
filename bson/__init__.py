@@ -15,10 +15,11 @@
 """BSON (Binary JSON) encoding and decoding.
 """
 
-import struct
-import re
-import datetime
 import calendar
+import datetime
+import re
+import struct
+import warnings
 
 from bson.binary import Binary
 from bson.code import Code
@@ -420,35 +421,65 @@ class BSON(str):
 
     @classmethod
     def from_dict(cls, dct, check_keys=False):
-        """Create a new :class:`BSON` instance from a mapping type
-        (like :class:`dict`).
+        """DEPRECATED - `from_dict` has been renamed to `encode`.
 
-        Raises :class:`TypeError` if `dct` is not a mapping type, or
-        contains keys that are not instances of :class:`basestring`.
-        Raises :class:`~bson.errors.InvalidDocument` if `dct` cannot
-        be converted to :class:`BSON`.
+        .. versionchanged:: 1.8.1+
+           Deprecated in favor of :meth:`encode`
+        """
+        warnings.warn("`from_dict` has been renamed to `encode`",
+                      DeprecationWarning)
+        return cls.encode(dct, check_keys)
+
+    @classmethod
+    def encode(cls, document, check_keys=False):
+        """Encode a document to a new :class:`BSON` instance.
+
+        A document can be any mapping type (like :class:`dict`).
+
+        Raises :class:`TypeError` if `document` is not a mapping type,
+        or contains keys that are not instances of
+        :class:`basestring`.  Raises
+        :class:`~bson.errors.InvalidDocument` if `document` cannot be
+        converted to :class:`BSON`.
 
         :Parameters:
-          - `dct`: mapping type representing a document
+          - `document`: mapping type representing a document
           - `check_keys` (optional): check if keys start with '$' or
             contain '.', raising :class:`~bson.errors.InvalidName` in
             either case
+
+        .. versionadded:: 1.8.1+
         """
-        return cls(_dict_to_bson(dct, check_keys))
+        return cls(_dict_to_bson(document, check_keys))
 
     def to_dict(self, as_class=dict, tz_aware=False):
-        """Convert this BSON data to a mapping type.
+        """DEPRECATED - `to_dict` has been renamed to `decode`.
 
-        The default type to use is :class:`dict`. This can be replaced
-        using the `as_class` parameter.
+        .. versionchanged:: 1.8.1+
+           Deprecated in favor of :meth:`decode`
+        .. versionadded:: 1.8
+           The `tz_aware` parameter.
+        .. versionadded:: 1.7
+           The `as_class` parameter.
+        """
+        warnings.warn("`to_dict` has been renamed to `decode`",
+                      DeprecationWarning)
+        return self.decode(as_class, tz_aware)
 
-        If `tz_aware` is ``True`` (default), any
+    def decode(self, as_class=dict, tz_aware=False):
+        """Decode this BSON data.
+
+        The default type to use for the resultant document is
+        :class:`dict`. Any other class that supports
+        :meth:`__setitem__` can be used instead by passing it as the
+        `as_class` parameter.
+
+        If `tz_aware` is ``True`` (recommended), any
         :class:`~datetime.datetime` instances returned will be
         timezone-aware, with their timezone set to
-        :attr:`bson.tz_util.utc`. Otherwise, all
+        :attr:`bson.tz_util.utc`. Otherwise (default), all
         :class:`~datetime.datetime` instances will be naive (but
-        contain UTC) - this was the default behavior in PyMongo
-        versions **<= 1.7**.
+        contain UTC).
 
         :Parameters:
           - `as_class` (optional): the class to use for the resulting
@@ -456,10 +487,7 @@ class BSON(str):
           - `tz_aware` (optional): if ``True``, return timezone-aware
             :class:`~datetime.datetime` instances
 
-        .. versionadded:: 1.8
-           The `tz_aware` parameter.
-        .. versionadded:: 1.7
-           The `as_class` parameter.
+        .. versionadded:: 1.8.1+
         """
         (document, _) = _bson_to_dict(self, as_class, tz_aware)
         return document

@@ -64,8 +64,7 @@ def insert(collection_name, docs, check_keys, safe, last_error_args):
     """
     data = __ZERO
     data += bson._make_c_string(collection_name)
-    bson_data = "".join([bson.BSON.from_dict(doc, check_keys)
-                     for doc in docs])
+    bson_data = "".join([bson.BSON.encode(doc, check_keys) for doc in docs])
     if not bson_data:
         raise InvalidOperation("cannot do an empty bulk insert")
     data += bson_data
@@ -91,8 +90,8 @@ def update(collection_name, upsert, multi, spec, doc, safe, last_error_args):
     data = __ZERO
     data += bson._make_c_string(collection_name)
     data += struct.pack("<i", options)
-    data += bson.BSON.from_dict(spec)
-    data += bson.BSON.from_dict(doc)
+    data += bson.BSON.encode(spec)
+    data += bson.BSON.encode(doc)
     if safe:
         (_, update_message) = __pack_message(2001, data)
         (request_id, error_message) = __last_error(last_error_args)
@@ -111,9 +110,9 @@ def query(options, collection_name,
     data += bson._make_c_string(collection_name)
     data += struct.pack("<i", num_to_skip)
     data += struct.pack("<i", num_to_return)
-    data += bson.BSON.from_dict(query)
+    data += bson.BSON.encode(query)
     if field_selector is not None:
-        data += bson.BSON.from_dict(field_selector)
+        data += bson.BSON.encode(field_selector)
     return __pack_message(2004, data)
 if _use_c:
     query = _cbson._query_message
@@ -137,7 +136,7 @@ def delete(collection_name, spec, safe, last_error_args):
     data = __ZERO
     data += bson._make_c_string(collection_name)
     data += __ZERO
-    data += bson.BSON.from_dict(spec)
+    data += bson.BSON.encode(spec)
     if safe:
         (_, remove_message) = __pack_message(2006, data)
         (request_id, error_message) = __last_error(last_error_args)

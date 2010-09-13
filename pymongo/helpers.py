@@ -93,7 +93,7 @@ def _unpack_response(response, cursor_id=None, as_class=dict, tz_aware=False):
         raise OperationFailure("cursor id '%s' not valid at server" %
                                cursor_id)
     elif response_flag & 2:
-        error_object = bson.BSON(response[20:]).to_dict()
+        error_object = bson.BSON(response[20:]).decode()
         if error_object["$err"] == "not master":
             raise AutoReconnect("master has changed")
         raise OperationFailure("database error: %s" %
