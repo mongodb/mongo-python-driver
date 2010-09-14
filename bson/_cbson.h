@@ -14,33 +14,22 @@
  * limitations under the License.
  */
 
+#ifndef _CBSON_H
+#define _CBSON_H
+
 #include <Python.h>
+#include "buffer.h"
 
-/* A buffer representing some data being encoded to BSON. */
-typedef struct {
-    char* buffer;
-    int size;
-    int position;
-} bson_buffer;
-
-bson_buffer* buffer_new(void);
-
-int buffer_save_bytes(bson_buffer* buffer, int size);
-
-int buffer_write_bytes(bson_buffer* buffer, const char* bytes, int size);
-
-void buffer_free(bson_buffer* buffer);
-
-int write_dict(bson_buffer* buffer, PyObject* dict,
+int write_dict(buffer_t buffer, PyObject* dict,
                unsigned char check_keys, unsigned char top_level);
 
-PyObject* elements_to_dict(const char* string, int max,
-                           PyObject* as_class, unsigned char tz_aware);
+PyObject* elements_to_dict(const char* string, int max, PyObject* as_class,
+                           unsigned char tz_aware);
 
-int write_pair(bson_buffer* buffer, const char* name,
-               Py_ssize_t name_length, PyObject* value,
-               unsigned char check_keys, unsigned char allow_id);
+int write_pair(buffer_t buffer, const char* name, Py_ssize_t name_length,
+               PyObject* value, unsigned char check_keys, unsigned char allow_id);
 
-int decode_and_write_pair(bson_buffer* buffer,
-                          PyObject* key, PyObject* value,
+int decode_and_write_pair(buffer_t buffer, PyObject* key, PyObject* value,
                           unsigned char check_keys, unsigned char top_level);
+
+#endif

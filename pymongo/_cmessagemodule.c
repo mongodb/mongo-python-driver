@@ -23,12 +23,22 @@
 #include <Python.h>
 
 #include "_cbson.h"
+#include "buffer.h"
 /*#include <stdio.h>
 
 #include <datetime.h>
 
 #include "time64.h"
 #include "encoding_helpers.h"*/
+
+/* Just make this compatible w/ the old API. */
+static inline int buffer_write_bytes(buffer_t buffer, const char* data, int size) {
+    if (buffer_write(buffer, data, size)) {
+        PyErr_NoMemory();
+        return 0;
+    }
+    return 1;
+}
 
 /* Get an error class from the pymongo.errors module.
  *
@@ -46,7 +56,7 @@ static PyObject* _error(char* name) {
 
 /* add a lastError message on the end of the buffer.
  * returns 0 on failure */
-static int add_last_error(bson_buffer* buffer, int request_id, PyObject* args) {
+static int add_last_error(buffer_t buffer, int request_id, PyObject* args) {
     int message_start;
     int document_start;
     int message_length;
@@ -56,8 +66,9 @@ static int add_last_error(bson_buffer* buffer, int request_id, PyObject* args) {
     Py_ssize_t pos = 0;
     PyObject* one;
 
-    message_start = buffer_save_bytes(buffer, 4);
+    message_start = buffer_save_space(buffer, 4);
     if (message_start == -1) {
+        PyErr_NoMemory();
         return 0;
     }
     if (!buffer_write_bytes(buffer, (const char*)&request_id, 4) ||
@@ -73,8 +84,9 @@ static int add_last_error(bson_buffer* buffer, int request_id, PyObject* args) {
     }
 
     /* save space for length */
-    document_start = buffer_save_bytes(buffer, 4);
+    document_start = buffer_save_space(buffer, 4);
     if (document_start == -1) {
+        PyErr_NoMemory();
         return 0;
     }
 
@@ -98,8 +110,8 @@ static int add_last_error(bson_buffer* buffer, int request_id, PyObject* args) {
         return 0;
     }
 
-    message_length = buffer->position - message_start;
-    document_length = buffer->position - document_start;
+    message_length = buffer_get_position(buffer) - message_start;
+    document_length = buffer_get_position(buffer) - document_start;
     if (document_length > 4 * 1024 * 1024) {
         PyObject* InvalidDocument = _error("InvalidDocument");
         PyErr_SetString(InvalidDocument, "document too large - "
@@ -107,8 +119,8 @@ static int add_last_error(bson_buffer* buffer, int request_id, PyObject* args) {
         Py_DECREF(InvalidDocument);
         return 0;
     }
-    memcpy(buffer->buffer + message_start, &message_length, 4);
-    memcpy(buffer->buffer + document_start, &document_length, 4);
+    memcpy(buffer_get_buffer(buffer) + message_start, &message_length, 4);
+    memcpy(buffer_get_buffer(buffer) + document_start, &document_length, 4);
     return 1;
 }
 
@@ -123,7 +135,7 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
     unsigned char check_keys;
     unsigned char safe;
     PyObject* last_error_args;
-    bson_buffer* buffer;
+    buffer_t buffer;
     int length_location;
     PyObject* result;
 
@@ -137,14 +149,19 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
 
     buffer = buffer_new();
     if (!buffer) {
+        PyErr_NoMemory();
         PyMem_Free(collection_name);
         return NULL;
     }
 
     // save space for message length
-    length_location = buffer_save_bytes(buffer, 4);
-    if (length_location == -1 ||
-        !buffer_write_bytes(buffer, (const char*)&request_id, 4) ||
+    length_location = buffer_save_space(buffer, 4);
+    if (length_location == -1) {
+        PyMem_Free(collection_name);
+        PyErr_NoMemory();
+        return NULL;
+    }
+    if (!buffer_write_bytes(buffer, (const char*)&request_id, 4) ||
         !buffer_write_bytes(buffer,
                             "\x00\x00\x00\x00"
                             "\xd2\x07\x00\x00"
@@ -176,7 +193,8 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
         }
     }
 
-    memcpy(buffer->buffer + length_location, &buffer->position, 4);
+    memcpy(buffer_get_buffer(buffer) + length_location,
+           buffer_get_buffer(buffer) + buffer_get_position(buffer), 4);
 
     if (safe) {
         if (!add_last_error(buffer, request_id, last_error_args)) {
@@ -187,7 +205,8 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
 
     /* objectify buffer */
     result = Py_BuildValue("is#", request_id,
-                           buffer->buffer, buffer->position);
+                           buffer_get_buffer(buffer),
+                           buffer_get_position(buffer));
     buffer_free(buffer);
     return result;
 }
@@ -204,7 +223,7 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
     unsigned char safe;
     PyObject* last_error_args;
     int options;
-    bson_buffer* buffer;
+    buffer_t buffer;
     int length_location;
     PyObject* result;
 
@@ -226,14 +245,19 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
     }
     buffer = buffer_new();
     if (!buffer) {
+        PyErr_NoMemory();
         PyMem_Free(collection_name);
         return NULL;
     }
 
     // save space for message length
-    length_location = buffer_save_bytes(buffer, 4);
-    if (length_location == -1 ||
-        !buffer_write_bytes(buffer, (const char*)&request_id, 4) ||
+    length_location = buffer_save_space(buffer, 4);
+    if (length_location == -1) {
+        PyMem_Free(collection_name);
+        PyErr_NoMemory();
+        return NULL;
+    }
+    if (!buffer_write_bytes(buffer, (const char*)&request_id, 4) ||
         !buffer_write_bytes(buffer,
                             "\x00\x00\x00\x00"
                             "\xd1\x07\x00\x00"
@@ -252,7 +276,8 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
 
     PyMem_Free(collection_name);
 
-    memcpy(buffer->buffer + length_location, &buffer->position, 4);
+    memcpy(buffer_get_buffer(buffer) + length_location,
+           buffer_get_buffer(buffer) + buffer_get_position(buffer), 4);
 
     if (safe) {
         if (!add_last_error(buffer, request_id, last_error_args)) {
@@ -263,7 +288,8 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
 
     /* objectify buffer */
     result = Py_BuildValue("is#", request_id,
-                           buffer->buffer, buffer->position);
+                           buffer_get_buffer(buffer),
+                           buffer_get_position(buffer));
     buffer_free(buffer);
     return result;
 }
@@ -278,7 +304,7 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
     int num_to_return;
     PyObject* query;
     PyObject* field_selector = Py_None;
-    bson_buffer* buffer;
+    buffer_t buffer;
     int length_location;
     PyObject* result;
 
@@ -293,20 +319,22 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
     }
     buffer = buffer_new();
     if (!buffer) {
+        PyErr_NoMemory();
         PyMem_Free(collection_name);
         return NULL;
     }
 
     // save space for message length
-    length_location = buffer_save_bytes(buffer, 4);
-    if (length_location == -1 ||
-        !buffer_write_bytes(buffer, (const char*)&request_id, 4) ||
-        !buffer_write_bytes(buffer,
-                            "\x00\x00\x00\x00"
-                            "\xd4\x07\x00\x00", 8) ||
+    length_location = buffer_save_space(buffer, 4);
+    if (length_location == -1) {
+        PyMem_Free(collection_name);
+        PyErr_NoMemory();
+        return NULL;
+    }
+    if (!buffer_write_bytes(buffer, (const char*)&request_id, 4) ||
+        !buffer_write_bytes(buffer, "\x00\x00\x00\x00\xd4\x07\x00\x00", 8) ||
         !buffer_write_bytes(buffer, (const char*)&options, 4) ||
-        !buffer_write_bytes(buffer,
-                            collection_name,
+        !buffer_write_bytes(buffer, collection_name,
                             collection_name_length + 1) ||
         !buffer_write_bytes(buffer, (const char*)&num_to_skip, 4) ||
         !buffer_write_bytes(buffer, (const char*)&num_to_return, 4) ||
@@ -320,11 +348,13 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
 
     PyMem_Free(collection_name);
 
-    memcpy(buffer->buffer + length_location, &buffer->position, 4);
+    memcpy(buffer_get_buffer(buffer) + length_location,
+           buffer_get_buffer(buffer) + buffer_get_position(buffer), 4);
 
     /* objectify buffer */
     result = Py_BuildValue("is#", request_id,
-                           buffer->buffer, buffer->position);
+                           buffer_get_buffer(buffer),
+                           buffer_get_position(buffer));
     buffer_free(buffer);
     return result;
 }
@@ -336,7 +366,7 @@ static PyObject* _cbson_get_more_message(PyObject* self, PyObject* args) {
     int collection_name_length;
     int num_to_return;
     long long cursor_id;
-    bson_buffer* buffer;
+    buffer_t buffer;
     int length_location;
     PyObject* result;
 
@@ -350,14 +380,19 @@ static PyObject* _cbson_get_more_message(PyObject* self, PyObject* args) {
     }
     buffer = buffer_new();
     if (!buffer) {
+        PyErr_NoMemory();
         PyMem_Free(collection_name);
         return NULL;
     }
 
     // save space for message length
-    length_location = buffer_save_bytes(buffer, 4);
-    if (length_location == -1 ||
-        !buffer_write_bytes(buffer, (const char*)&request_id, 4) ||
+    length_location = buffer_save_space(buffer, 4);
+    if (length_location == -1) {
+        PyMem_Free(collection_name);
+        PyErr_NoMemory();
+        return NULL;
+    }
+    if (!buffer_write_bytes(buffer, (const char*)&request_id, 4) ||
         !buffer_write_bytes(buffer,
                             "\x00\x00\x00\x00"
                             "\xd5\x07\x00\x00"
@@ -374,11 +409,13 @@ static PyObject* _cbson_get_more_message(PyObject* self, PyObject* args) {
 
     PyMem_Free(collection_name);
 
-    memcpy(buffer->buffer + length_location, &buffer->position, 4);
+    memcpy(buffer_get_buffer(buffer) + length_location,
+           buffer_get_buffer(buffer) + buffer_get_position(buffer), 4);
 
     /* objectify buffer */
     result = Py_BuildValue("is#", request_id,
-                           buffer->buffer, buffer->position);
+                           buffer_get_buffer(buffer),
+                           buffer_get_position(buffer));
     buffer_free(buffer);
     return result;
 }

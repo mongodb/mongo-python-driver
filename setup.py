@@ -132,6 +132,7 @@ c_ext = Feature(
                            include_dirs=['bson'],
                            sources=['bson/_cbsonmodule.c',
                                     'bson/time64.c',
+                                    'bson/buffer.c',
                                     'bson/encoding_helpers.c']),
                  Extension('pymongo._cmessage',
                            include_dirs=['bson', 'pymongo'],
@@ -142,11 +143,11 @@ if "--no_ext" in sys.argv:
     features = {}
 elif sys.byteorder == "big":
     print """
-***************************************************
-The optional C extension is currently not supported
+*****************************************************
+The optional C extensions are currently not supported
 on big endian platforms and will not be built.
 Performance may be degraded.
-***************************************************
+*****************************************************
 """
     features = {}
 else:
