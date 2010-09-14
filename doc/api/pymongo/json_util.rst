@@ -1,8 +1,8 @@
-:mod:`json_util` -- Tools for using Python's :mod:`json` module with MongoDB documents
-======================================================================================
-.. versionadded:: 1.1.1
+:mod:`json_util` -- MOVED
+=========================
 
-.. automodule:: pymongo.json_util
-   :synopsis: Tools for using Python's json module with MongoDB documents
-   :members:
-   :undoc-members:
+This module has been deprecated in favor of
+:mod:`bson.json_util`. Please use that module instead.
+
+.. versionchanged:: 1.8.1+
+   Deprecated.

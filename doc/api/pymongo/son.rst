@@ -1,6 +1,8 @@
-:mod:`son` -- Tools for working with SON, an ordered mapping
-============================================================
+:mod:`son` -- MOVED
+===================
 
-.. automodule:: pymongo.son
-   :synopsis: Tools for working with SON, an ordered mapping
-   :members:
+This module has been deprecated in favor of :mod:`bson.son`. Please
+use that module instead.
+
+.. versionchanged:: 1.8.1+
+   Deprecated.

@@ -41,5 +41,5 @@ class FixedOffset(tzinfo):
         return ZERO
 
 
-"""UTC"""
 utc = FixedOffset(0, "UTC")
+"""Fixed offset timezone representing UTC."""

@@ -1,6 +1,8 @@
-:mod:`dbref` -- Tools for manipulating DBRefs (references to documents stored in MongoDB)
-=========================================================================================
+:mod:`dbref` -- MOVED
+=====================
 
-.. automodule:: pymongo.dbref
-   :synopsis: Tools for manipulating DBRefs (references to documents stored in MongoDB)
-   :members:
+This module has been deprecated in favor of :mod:`bson.dbref`. Please
+use that module instead.
+
+.. versionchanged:: 1.8.1+
+   Deprecated.

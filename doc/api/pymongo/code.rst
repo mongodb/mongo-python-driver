@@ -1,9 +1,8 @@
-:mod:`code` -- Tools for representing JavaScript code to be evaluated by MongoDB
-================================================================================
+:mod:`code` -- MOVED
+====================
 
-.. automodule:: pymongo.code
-   :synopsis: Tools for representing JavaScript code to be evaluated by MongoDB
+This module has been deprecated in favor of :mod:`bson.code`. Please
+use that module instead.
 
-   .. autoclass:: Code(code[, scope=None[, **kwargs]])
-      :members:
-      :show-inheritance:
+.. versionchanged:: 1.8.1+
+   Deprecated.

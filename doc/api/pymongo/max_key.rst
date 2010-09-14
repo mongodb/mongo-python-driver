@@ -1,7 +1,8 @@
-:mod:`max_key` -- Representation for the MongoDB internal MaxKey type
-=====================================================================
-.. versionadded:: 1.7
+:mod:`max_key` -- MOVED
+=======================
 
-.. automodule:: pymongo.max_key
-   :synopsis: Representation for the MongoDB internal MaxKey type
-   :members:
+This module has been deprecated in favor of
+:mod:`bson.max_key`. Please use that module instead.
+
+.. versionchanged:: 1.8.1+
+   Deprecated.
