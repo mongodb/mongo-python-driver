@@ -7,3 +7,4 @@ recursive-include tools *.py
 include tools/README.rst
 recursive-include test *.py
 recursive-include pymongo *.h
+recursive-include bson *.h
