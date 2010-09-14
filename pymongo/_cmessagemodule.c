@@ -24,12 +24,6 @@
 
 #include "_cbson.h"
 #include "buffer.h"
-/*#include <stdio.h>
-
-#include <datetime.h>
-
-#include "time64.h"
-#include "encoding_helpers.h"*/
 
 /* Just make this compatible w/ the old API. */
 static inline int buffer_write_bytes(buffer_t buffer, const char* data, int size) {

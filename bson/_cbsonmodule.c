@@ -94,6 +94,9 @@ typedef int Py_ssize_t;
 #endif
 
 
+static PyObject* elements_to_dict(const char* string, int max,
+                                  PyObject* as_class, unsigned char tz_aware);
+
 /* Date stuff */
 static PyObject* datetime_from_millis(long long millis) {
     int microseconds = (millis % 1000) * 1000;
@@ -1203,8 +1206,8 @@ static PyObject* get_value(const char* buffer, int* position, int type,
     return value;
 }
 
-PyObject* elements_to_dict(const char* string, int max,
-                           PyObject* as_class, unsigned char tz_aware) {
+static PyObject* elements_to_dict(const char* string, int max,
+                                  PyObject* as_class, unsigned char tz_aware) {
     int position = 0;
     PyObject* dict = PyObject_CallObject(as_class, NULL);
     if (!dict) {

@@ -23,9 +23,6 @@
 int write_dict(buffer_t buffer, PyObject* dict,
                unsigned char check_keys, unsigned char top_level);
 
-PyObject* elements_to_dict(const char* string, int max, PyObject* as_class,
-                           unsigned char tz_aware);
-
 int write_pair(buffer_t buffer, const char* name, Py_ssize_t name_length,
                PyObject* value, unsigned char check_keys, unsigned char allow_id);
 

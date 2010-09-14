@@ -136,7 +136,11 @@ c_ext = Feature(
                                     'bson/encoding_helpers.c']),
                  Extension('pymongo._cmessage',
                            include_dirs=['bson', 'pymongo'],
-                           sources=['pymongo/_cmessagemodule.c'])])
+                           sources=['pymongo/_cmessagemodule.c',
+                                    'bson/_cbsonmodule.c',
+                                    'bson/time64.c',
+                                    'bson/buffer.c',
+                                    'bson/encoding_helpers.c'])])
 
 if "--no_ext" in sys.argv:
     sys.argv = [x for x in sys.argv if x != "--no_ext"]
@@ -162,7 +166,7 @@ setup(
     author_email="mongodb-user@googlegroups.com",
     url="http://github.com/mongodb/mongo-python-driver",
     keywords=["mongo", "mongodb", "pymongo", "gridfs"],
-    packages=["pymongo", "gridfs"],
+    packages=["bson", "pymongo", "gridfs"],
     install_requires=[],
     features=features,
     license="Apache License, Version 2.0",
