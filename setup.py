@@ -135,7 +135,7 @@ c_ext = Feature(
                                     'bson/buffer.c',
                                     'bson/encoding_helpers.c']),
                  Extension('pymongo._cmessage',
-                           include_dirs=['bson', 'pymongo'],
+                           include_dirs=['bson'],
                            sources=['pymongo/_cmessagemodule.c',
                                     'bson/_cbsonmodule.c',
                                     'bson/time64.c',
