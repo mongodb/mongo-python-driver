@@ -1,6 +1,86 @@
 Changelog
 =========
 
+Changes in Version 1.8.1+
+-------------------------
+
+Version 1.8.1+ adds a new package to the PyMongo distribution,
+:mod:`bson`. :mod:`bson` contains all of the `BSON
+<http://bsonspec.org>`_ encoding and decoding logic, and the BSON
+types that were formerly in the :mod:`pymongo` package. The following
+modules have been renamed:
+
+  - :mod:`pymongo.bson` -> :mod:`bson`
+  - :mod:`pymongo._cbson` -> :mod:`bson._cbson` and
+    :mod:`pymongo._cmessage`
+  - :mod:`pymongo.binary` -> :mod:`bson.binary`
+  - :mod:`pymongo.code` -> :mod:`bson.code`
+  - :mod:`pymongo.dbref` -> :mod:`bson.dbref`
+  - :mod:`pymongo.json_util` -> :mod:`bson.json_util`
+  - :mod:`pymongo.max_key` -> :mod:`bson.max_key`
+  - :mod:`pymongo.min_key` -> :mod:`bson.min_key`
+  - :mod:`pymongo.objectid` -> :mod:`bson.objectid`
+  - :mod:`pymongo.son` -> :mod:`bson.son`
+  - :mod:`pymongo.timestamp` -> :mod:`bson.timestamp`
+  - :mod:`pymongo.tz_util` -> :mod:`bson.tz_util`
+
+In addition, the following exception classes have been renamed:
+
+  - :class:`pymongo.errors.InvalidBSON` ->
+    :class:`bson.errors.InvalidBSON`
+  - :class:`pymongo.errors.InvalidStringData` ->
+    :class:`bson.errors.InvalidStringData`
+  - :class:`pymongo.errors.InvalidDocument` ->
+    :class:`bson.errors.InvalidDocument`
+  - :class:`pymongo.errors.InvalidId` ->
+    :class:`bson.errors.InvalidId`
+
+The above exceptions now inherit from :class:`bson.errors.BSONError`
+rather than :class:`pymongo.errors.PyMongoError`.
+
+.. note:: All of the renamed modules and exceptions above have aliases
+   created with the old names, so these changes should not break
+   existing code. The old names will eventually be deprecated and then
+   removed, so users should begin migrating towards the new names now.
+
+.. warning:: The change to the exception hierarchy mentioned above is
+   possibly breaking. If your code is catching
+   :class:`~pymongo.errors.PyMongoError`, then the exceptions raised
+   by :mod:`bson` will not be caught, even though they would have been
+   caught previously. Before upgrading, it is recommended that users
+   check for any cases like this.
+
+- the C extension now shares buffer.c/h with the Ruby driver
+- :mod:`bson` no longer raises :class:`~pymongo.errors.InvalidName`,
+  all occurrences have been replaced with
+  :class:`~bson.errors.InvalidDocument`.
+- renamed :meth:`bson._to_dicts` to :meth:`~bson.decode_all`.
+- renamed :meth:`~bson.BSON.from_dict` to :meth:`~bson.BSON.encode`
+  and :meth:`~bson.BSON.to_dict` to :meth:`~bson.BSON.decode`.
+- added :meth:`~pymongo.cursor.Cursor.batch_size`.
+- allow updating (some) file metadata after a
+  :class:`~gridfs.grid_file.GridIn` instance has been closed.
+- performance improvements for reading from GridFS.
+- special cased slice with the same start and stop to return an empty
+  cursor.
+- allow writing :class:`unicode` to GridFS if an :attr:`encoding`
+  attribute has been specified for the file.
+- added :meth:`gridfs.GridFS.get_version`.
+- scope variables for :class:`~bson.code.Code` can now be specified as
+  keyword arguments.
+- added :meth:`~gridfs.grid_file.GridOut.readline` to
+  :class:`~gridfs.grid_file.GridOut`.
+- make a best effort to transparently auto-reconnect if a
+  :class:`~pymongo.connection.Connection` has been idle for a while.
+- added :meth:`~pymongo.database.SystemJS.list` to
+  :class:`~pymongo.database.SystemJS`.
+- added `file_document` argument to :meth:`~gridfs.grid_file.GridOut`
+  to allow initializing from an existing file document.
+- raise :class:`~pymongo.errors.TimeoutError` even if the
+  ``getLastError`` command was run manually and not through "safe"
+  mode.
+- added :class:`uuid` support to :mod:`~bson.json_util`.
+
 Changes in Version 1.8.1
 ------------------------
 
