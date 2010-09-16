@@ -165,7 +165,7 @@ class _Pool(threading.local):
         if self.sock is not None and self.sock[0] == os.getpid():
             # There's a race condition here, but we deliberately
             # ignore it.  It means that if the pool_size is 10 we
-            # might actually get 8 or 11 or something like that.
+            # might actually keep slightly more than that.
             if len(self.sockets) < self.pool_size:
                 self.sockets.append(self.sock[1])
             else:

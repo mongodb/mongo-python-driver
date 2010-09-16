@@ -259,7 +259,7 @@ class TestPooling(unittest.TestCase):
             t.join()
 
         # There's a race condition, so be lenient
-        self.assert_(abs(10 - len(c._Connection__pool.sockets)) < 5)
+        self.assert_(abs(10 - len(c._Connection__pool.sockets)) < 10)
 
 
 if __name__ == "__main__":
