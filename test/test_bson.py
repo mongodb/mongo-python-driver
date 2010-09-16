@@ -29,6 +29,7 @@ sys.path[0:0] = [""]
 
 from nose.plugins.skip import SkipTest
 
+import bson
 from bson import (BSON,
                   decode_all,
                   is_valid)
