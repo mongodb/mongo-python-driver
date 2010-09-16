@@ -25,15 +25,6 @@
 #include "_cbson.h"
 #include "buffer.h"
 
-/* Just make this compatible w/ the old API. */
-static inline int buffer_write_bytes(buffer_t buffer, const char* data, int size) {
-    if (buffer_write(buffer, data, size)) {
-        PyErr_NoMemory();
-        return 0;
-    }
-    return 1;
-}
-
 /* Get an error class from the pymongo.errors module.
  *
  * Returns a new ref */

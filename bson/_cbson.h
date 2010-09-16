@@ -26,6 +26,8 @@ typedef int Py_ssize_t;
 #define PY_SSIZE_T_MIN INT_MIN
 #endif
 
+int buffer_write_bytes(buffer_t buffer, const char* data, int size);
+
 int write_dict(buffer_t buffer, PyObject* dict,
                unsigned char check_keys, unsigned char top_level);
 
