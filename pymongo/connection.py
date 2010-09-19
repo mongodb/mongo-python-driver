@@ -172,8 +172,11 @@ class _Pool(threading.local):
                 self.sock[1].close()
         self.sock = None
 
+    def socket_ids(self):
+        return [id(sock) for sock in self.sockets]
 
-class Connection(object):  # TODO support auth for pooling
+
+class Connection(object):
     """Connection to MongoDB.
     """
 
@@ -304,10 +307,15 @@ class Connection(object):  # TODO support auth for pooling
         if _connect:
             self.__find_master()
 
+        # cache of auth username/password credential keyed by DB name
+        self.__auth_credentials = {}
+        self.__sock_auths_by_id = {}
         if username:
             database = database or "admin"
             if not self[database].authenticate(username, password):
                 raise ConfigurationError("authentication failed")
+            # Add database auth credentials for auto-auth later
+            self.add_db_auth(database, username, password)
 
     @classmethod
     def from_uri(cls, uri="mongodb://localhost", **connection_args):
@@ -614,7 +622,33 @@ class Connection(object):  # TODO support auth for pooling
         else:
             raise OperationFailure(error["err"])
 
-    def _send_message(self, message, with_last_error=False):
+    def _authenticate_socket_for_db(self, sock, db_name):
+        # Periodically remove cached auth flags of expired sockets
+        if len(self.__sock_auths_by_id) > self.pool_size:
+            cached_sock_ids = self.__sock_auths_by_id.keys()
+            current_sock_ids = self.__pool.socket_ids()
+            for sock_id in cached_sock_ids:
+                if not sock_id in current_sock_ids:
+                    del(self.__sock_auths_by_id[sock_id])
+        if not self.__auth_credentials:
+            return  # No credentials for any database
+        sock_id = id(sock)
+        if db_name in self.__sock_auths_by_id.get(sock_id, {}):
+            return  # Already authenticated for database
+        if not self.has_db_auth(db_name):
+            return  # No credentials for database
+        username, password = self.get_db_auth(db_name)
+        if not self[db_name].authenticate(username, password):
+            import pdb; pdb.set_trace()
+            raise ConfigurationError("authentication to db %s failed for %s"
+                                     % (db_name, username))
+        if not sock_id in self.__sock_auths_by_id:
+            self.__sock_auths_by_id[sock_id] = {}
+        self.__sock_auths_by_id[sock_id][db_name] = 1
+        return True
+
+    def _send_message(self, message, with_last_error=False,
+                      collection_name=None):
         """Say something to Mongo.
 
         Raises ConnectionFailure if the message cannot be sent. Raises
@@ -630,6 +664,14 @@ class Connection(object):  # TODO support auth for pooling
         """
         sock = self.__socket()
         try:
+            # Always authenticate for admin database, if possible
+            if self._authenticate_socket_for_db(sock, 'admin'):
+                pass  # No need for futher auth with admin login
+            elif collection_name and collection_name.split('.') >= 1:
+                # Authenticate for specific database
+                db_name = collection_name.split('.')[0]
+                self._authenticate_socket_for_db(sock, db_name)
+
             (request_id, data) = message
             sock.sendall(data)
             # Safe mode. We pack the message together with a lastError
@@ -886,3 +928,29 @@ class Connection(object):  # TODO support auth for pooling
 
     def next(self):
         raise TypeError("'Connection' object is not iterable")
+
+    def add_db_auth(self, db_name, username, password):
+        if not username or not isinstance(username, basestring):
+            raise ConfigurationError('invalid username')
+        if not password or not isinstance(password, basestring):
+            raise ConfigurationError('invalid password')
+        self.__auth_credentials[db_name] = (username, password)
+
+    def has_db_auth(self, db_name):
+        return db_name in self.__auth_credentials
+
+    def get_db_auth(self, db_name):
+        if self.has_db_auth(db_name):
+            return self.__auth_credentials[db_name]
+        return None
+
+    def remove_db_auth(self, db_name):
+        if self.has_db_auth(db_name):
+            del(self.__auth_credentials[db_name])
+        # Force close any existing sockets to flush auths
+        self.disconnect()
+
+    def clear_db_auths(self):
+        self.__auth_credentials = {}  # Forget all credentials
+        # Force close any existing sockets to flush auths
+        self.disconnect()
