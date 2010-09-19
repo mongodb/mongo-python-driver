@@ -639,7 +639,6 @@ class Connection(object):
             return  # No credentials for database
         username, password = self.get_db_auth(db_name)
         if not self[db_name].authenticate(username, password):
-            import pdb; pdb.set_trace()
             raise ConfigurationError("authentication to db %s failed for %s"
                                      % (db_name, username))
         if not sock_id in self.__sock_auths_by_id:
