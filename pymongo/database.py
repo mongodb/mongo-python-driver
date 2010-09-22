@@ -523,12 +523,14 @@ class Database(object):
         self.command("logout")
 
     def dereference(self, dbref):
-        """Dereference a DBRef, getting the SON object it points to.
+        """Dereference a :class:`~bson.dbref.DBRef`, getting the
+        document it points to.
 
-        Raises TypeError if `dbref` is not an instance of DBRef. Returns a SON
-        object or None if the reference does not point to a valid object.
-        Raises ValueError if `dbref` has a database specified that is different
-        from the current database.
+        Raises :class:`TypeError` if `dbref` is not an instance of
+        :class:`~bson.dbref.DBRef`. Returns a document, or ``None`` if
+        the reference does not point to a valid document.  Raises
+        :class:`ValueError` if `dbref` has a database specified that
+        is different from the current database.
 
         :Parameters:
           - `dbref`: the reference
