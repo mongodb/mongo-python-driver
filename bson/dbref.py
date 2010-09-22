@@ -78,7 +78,10 @@ class DBRef(object):
         return self.__database
 
     def __getattr__(self, key):
-        return self.__kwargs[key]
+        try:
+            return self.__kwargs[key]
+        except KeyError:
+            raise AttributeError(key)
 
     def as_doc(self):
         """Get the SON document representation of this DBRef.
