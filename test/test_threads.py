@@ -229,7 +229,7 @@ class TestAuthThreads(unittest.TestCase):
 
         # Admin auth
         conn = get_connection()
-        conn.add_db_auth("admin", "admin-user", "password")
+        conn.admin.authenticate("admin-user", "password")
 
         threads = []
         for _ in range(10):
@@ -242,7 +242,7 @@ class TestAuthThreads(unittest.TestCase):
 
         # Database-specific auth
         conn = get_connection()
-        conn.add_db_auth("auth_test", "test-user", "password")
+        conn.auth_test.authenticate("test-user", "password")
 
         threads = []
         for _ in range(10):

@@ -270,7 +270,7 @@ class TestConnection(unittest.TestCase):
         self.assertEqual(([("localhost", 27017)], None, None, None),
                          _parse_uri("localhost/", 27017))
 
-    def test_from_uri(self):
+    def test_auth_from_uri(self):
         c = Connection(self.host, self.port)
 
         self.assertRaises(InvalidURI, Connection, "mongodb://localhost/baz")
@@ -450,7 +450,7 @@ class TestConnection(unittest.TestCase):
         self.assertEqual(aware.pymongo_test.test.find_one()["x"].replace(tzinfo=None),
                          naive.pymongo_test.test.find_one()["x"])
 
-    def test_auto_db_authentication(self):
+    def test_auth_from_database(self):
         conn = Connection(self.host, self.port)
 
         # Setup admin user
@@ -465,11 +465,6 @@ class TestConnection(unittest.TestCase):
 
             conn.pymongo_test.drop_collection("test")
 
-            self.assertRaises(TypeError, conn.add_db_auth, "", "password")
-            self.assertRaises(TypeError, conn.add_db_auth, 5, "password")
-            self.assertRaises(TypeError, conn.add_db_auth, "test-user", "")
-            self.assertRaises(TypeError, conn.add_db_auth, "test-user", 5)
-
             # Not yet logged in
             conn = Connection(self.host, self.port)
             try:
@@ -482,53 +477,48 @@ class TestConnection(unittest.TestCase):
             # Not yet logged in
             conn = Connection(self.host, self.port)
             self.assertRaises(OperationFailure, conn.pymongo_test.test.count)
-            self.assertFalse(conn.has_db_auth('admin'))
-            self.assertEquals(None, conn.get_db_auth('admin'))
 
             # Admin log in via URI
             conn = Connection('admin-user:password@%s' % self.host, self.port)
-            self.assertTrue(conn.has_db_auth('admin'))
-            self.assertEquals('admin-user', conn.get_db_auth('admin')[0])
             conn.admin.system.users.find()
             conn.pymongo_test.test.insert({'_id':1, 'test':'data'}, safe=True)
             self.assertEquals(1, conn.pymongo_test.test.find({'_id':1}).count())
             conn.pymongo_test.test.remove({'_id':1})
 
-            # Clear and reset database authentication for all sockets
-            conn.clear_db_auths()
-            self.assertFalse(conn.has_db_auth('admin'))
+            # Logout admin
+            conn.admin.logout()
             self.assertRaises(OperationFailure, conn.pymongo_test.test.count)
 
-            # Admin log in via add_db_auth
+            # Admin log in via Database.authenticate
             conn = Connection(self.host, self.port)
             conn.admin.system.users.find()
-            conn.add_db_auth('admin', 'admin-user', 'password')
+            conn.admin.authenticate('admin-user', 'password')
             conn.pymongo_test.test.insert({'_id':2, 'test':'data'}, safe=True)
             self.assertEquals(1, conn.pymongo_test.test.find({'_id':2}).count())
             conn.pymongo_test.test.remove({'_id':2})
 
             # Remove database authentication for specific database
-            self.assertTrue(conn.has_db_auth('admin'))
-            conn.remove_db_auth('admin')
-            self.assertFalse(conn.has_db_auth('admin'))
+            conn.admin.logout()
             self.assertRaises(OperationFailure, conn.pymongo_test.test.count)
 
             # Incorrect admin credentials
             conn = Connection(self.host, self.port)
-            conn.add_db_auth('admin', 'admin-user', 'wrong-password')
+            self.assertFalse(
+                conn.admin.authenticate('admin-user', 'wrong-password'))
             self.assertRaises(OperationFailure, conn.pymongo_test.test.count)
 
             # Database-specific log in
             conn = Connection(self.host, self.port)
-            conn.add_db_auth('pymongo_test', 'test-user', 'password')
-            self.assertRaises(OperationFailure, conn.admin.system.users.find_one)
+            conn.pymongo_test.authenticate('test-user', 'password')
+            self.assertRaises(OperationFailure,
+                conn.admin.system.users.find_one)
             conn.pymongo_test.test.insert({'_id':3, 'test':'data'}, safe=True)
             self.assertEquals(1, conn.pymongo_test.test.find({'_id':3}).count())
             conn.pymongo_test.test.remove({'_id':3})
 
             # Incorrect database credentials
             conn = Connection(self.host, self.port)
-            conn.add_db_auth('pymongo_test', 'wrong-user', 'password')
+            conn.pymongo_test.authenticate('wrong-user', 'password')
             self.assertRaises(OperationFailure, conn.pymongo_test.test.find_one)
         finally:
             # Remove auth users from databases

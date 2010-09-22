@@ -141,13 +141,13 @@ class TestPooling(unittest.TestCase):
         run_cases(self, [SaveAndFind, Disconnect, Unique])
 
     def test_independent_pools(self):
-        p = _Pool(None)
+        p = _Pool(None, None)
         self.assertEqual([], p.sockets)
         self.c.end_request()
         self.assertEqual([], p.sockets)
 
         # Sensical values aren't really important here
-        p1 = _Pool(5)
+        p1 = _Pool(5, 32)
         self.assertEqual(None, p.socket_factory)
         self.assertEqual(5, p1.socket_factory)
 
