@@ -20,7 +20,9 @@ from bson.son import SON
 class DBRef(object):
     """A reference to a document stored in MongoDB.
     """
-
+    
+    __kwargs = None
+    
     def __init__(self, collection, id, database=None, _extra={}, **kwargs):
         """Initialize a new :class:`DBRef`.
 
@@ -80,7 +82,7 @@ class DBRef(object):
     def __getattr__(self, key):
         try:
             return self.__kwargs[key]
-        except KeyError:
+        except (TypeError,KeyError):
             raise AttributeError(key)
 
     def as_doc(self):
