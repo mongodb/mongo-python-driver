@@ -544,22 +544,24 @@ class Database(object):
         return self[dbref.collection].find_one({"_id": dbref.id})
 
     def eval(self, code, *args):
-        """Evaluate a JavaScript expression on the Mongo server.
+        """Evaluate a JavaScript expression in MongoDB.
 
-        Useful if you need to touch a lot of data lightly; in such a scenario
-        the network transfer of the data could be a bottleneck. The `code`
-        argument must be a JavaScript function. Additional positional
-        arguments will be passed to that function when it is run on the
-        server.
+        Useful if you need to touch a lot of data lightly; in such a
+        scenario the network transfer of the data could be a
+        bottleneck. The `code` argument must be a JavaScript
+        function. Additional positional arguments will be passed to
+        that function when it is run on the server.
 
-        Raises TypeError if `code` is not an instance of (str, unicode,
-        `Code`). Raises OperationFailure if the eval fails. Returns the result
-        of the evaluation.
+        Raises :class:`TypeError` if `code` is not an instance of
+        (str, unicode, `Code`). Raises
+        :class:`~pymongo.errors.OperationFailure` if the eval
+        fails. Returns the result of the evaluation.
 
         :Parameters:
-          - `code`: string representation of JavaScript code to be evaluated
-          - `args` (optional): additional positional arguments are passed to
-            the `code` being evaluated
+          - `code`: string representation of JavaScript code to be
+            evaluated
+          - `args` (optional): additional positional arguments are
+            passed to the `code` being evaluated
         """
         if not isinstance(code, Code):
             code = Code(code)
