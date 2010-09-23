@@ -220,8 +220,6 @@ class GridIn(object):
             self.__flush()
             self._closed = True
 
-    # TODO should support writing unicode to a file. this means that files will
-    # need to have an encoding attribute.
     def write(self, data):
         """Write data to the file. There is no return value.
 
