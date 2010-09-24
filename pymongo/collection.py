@@ -267,8 +267,7 @@ class Collection(object):
             safe = True
         self.__database.connection._send_message(
             message.insert(self.__full_name, docs,
-                           check_keys, safe, kwargs), safe,
-                           collection_name=self.__full_name)
+                           check_keys, safe, kwargs), safe)
 
         ids = [doc.get("_id", None) for doc in docs]
         return return_one and ids[0] or ids
@@ -361,8 +360,7 @@ class Collection(object):
 
         return self.__database.connection._send_message(
             message.update(self.__full_name, upsert, multi,
-                           spec, document, safe, kwargs), safe,
-                           collection_name=self.__full_name)
+                           spec, document, safe, kwargs), safe)
 
     def drop(self):
         """Alias for :meth:`~pymongo.database.Database.drop_collection`.
@@ -435,8 +433,7 @@ class Collection(object):
             safe = True
 
         return self.__database.connection._send_message(
-            message.delete(self.__full_name, spec_or_id, safe, kwargs), safe,
-                           collection_name=self.__full_name)
+            message.delete(self.__full_name, spec_or_id, safe, kwargs), safe)
 
     def find_one(self, spec_or_id=None, *args, **kwargs):
         """Get a single document from the database.

@@ -511,8 +511,8 @@ class Database(object):
         try:
             self.command("authenticate", user=unicode(name),
                          nonce=nonce, key=key)
-            self.connection._add_db_auth(self.name, unicode(name),
-                                         unicode(password))
+            self.connection._cache_database_credentials(
+                self.name, unicode(name), unicode(password))
             return True
         except OperationFailure:
             return False
@@ -527,7 +527,7 @@ class Database(object):
         :meth:`~pymongo.connection.Connection.disconnect`.
         """
         self.command("logout")
-        self.connection._remove_db_auth(self.name)
+        self.connection._purge_database_credentials(self.name)
 
     def dereference(self, dbref):
         """Dereference a DBRef, getting the SON object it points to.

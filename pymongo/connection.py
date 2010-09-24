@@ -136,17 +136,15 @@ class _Pool(threading.local):
 
     # Non thread-locals
     __slots__ = ["sockets", "socket_factory", "pool_size",
-                 "connection", "auth_credentials"]
+                 "socket_authenticator"]
     sock = None
 
-    def __init__(self, socket_factory, connection):
+    def __init__(self, socket_factory, socket_authenticator):
         self.pool_size = 10
         self.socket_factory = socket_factory
-        self.connection = connection
+        self.socket_authenticator = socket_authenticator
         if not hasattr(self, "sockets"):
             self.sockets = []
-        if not hasattr(self, "auth_credentials"):
-            self.auth_credentials = {}
 
     def socket(self):
         # we store the pid here to avoid issues with fork /
@@ -162,15 +160,7 @@ class _Pool(threading.local):
             self.sock = (pid, self.sockets.pop())
         except IndexError:
             self.sock = (pid, self.socket_factory())
-
-            # Authenticate new socket for known DBs, 'admin' by preference
-            if 'admin' in self.auth_credentials:
-                username, password = self.auth_credentials['admin']
-                self.connection['admin'].authenticate(username, password)
-            else:
-                # Authenticate against all known databases
-                for db_name, (u, p) in self.auth_credentials.items():
-                    self.connection[db_name].authenticate(u, p)
+            self.socket_authenticator()
 
         return self.sock[1]
 
@@ -184,13 +174,6 @@ class _Pool(threading.local):
             else:
                 self.sock[1].close()
         self.sock = None
-
-    def add_db_auth(self, db_name, username, password):
-        self.auth_credentials[db_name] = (username, password)
-
-    def remove_db_auth(self, db_name):
-        if db_name in self.auth_credentials:
-            del(self.auth_credentials[db_name])
 
 
 class Connection(object):
@@ -311,7 +294,7 @@ class Connection(object):
 
         self.__cursor_manager = CursorManager(self)
 
-        self.__pool = _Pool(self.__connect, self)
+        self.__pool = _Pool(self.__connect, self.__authenticate_socket)
         self.__last_checkout = time.time()
 
         self.__network_timeout = network_timeout
@@ -320,6 +303,7 @@ class Connection(object):
 
         # cache of existing indexes used by ensure_index ops
         self.__index_cache = {}
+        self.__auth_credentials = {}
 
         if _connect:
             self.__find_master()
@@ -410,6 +394,25 @@ class Connection(object):
 
         if index_name in self.__index_cache[database_name][collection_name]:
             del self.__index_cache[database_name][collection_name][index_name]
+
+    def _cache_database_credentials(self, db_name, username, password):
+        """Add credentials to the database authentication cache
+        for automatic login when a socket is created.
+
+        If credentials are already cached for the database they
+        will be replaced.
+        """
+        self.__auth_credentials[db_name] = (username, password)
+
+    def _purge_database_credentials(self, db_name):
+        """Purge credentials from the database authentication cache.
+
+        If `db_name` is None purge credentials for all databases.
+        """
+        if db_name is None:
+            self.__auth_credentials.clear()
+        elif db_name in self.__auth_credentials:
+            del(self.__auth_credentials[db_name])
 
     @property
     def host(self):
@@ -548,6 +551,24 @@ class Connection(object):
             self.disconnect()
             raise AutoReconnect("could not connect to %r" % list(self.__nodes))
 
+    def __authenticate_socket(self):
+        """Authenticate using cached database credentials. If credentials for
+        the 'admin' database are available only this database is authenticated,
+        since this gives global access.
+
+        This method should be called by the socket pool when it
+        creates a new socket.
+        """
+        # Authenticate new socket with cached credentials
+        if 'admin' in self.__auth_credentials:
+            # Log in as 'admin' by preference, since it's basically root
+            username, password = self.__auth_credentials['admin']
+            self['admin'].authenticate(username, password)
+        else:
+            # Authenticate against all non-admin databases
+            for db_name, (u, p) in self.__auth_credentials.items():
+                self[db_name].authenticate(u, p)
+
     def __socket(self):
         """Get a socket from the pool.
 
@@ -581,7 +602,7 @@ class Connection(object):
         .. seealso:: :meth:`end_request`
         .. versionadded:: 1.3
         """
-        self.__pool = _Pool(self.__connect, self)
+        self.__pool = _Pool(self.__connect, self.__authenticate_socket)
         self.__host = None
         self.__port = None
 
@@ -634,8 +655,7 @@ class Connection(object):
         else:
             raise OperationFailure(error["err"])
 
-    def _send_message(self, message, with_last_error=False,
-                      collection_name=None):
+    def _send_message(self, message, with_last_error=False):
         """Say something to Mongo.
 
         Raises ConnectionFailure if the message cannot be sent. Raises
@@ -907,9 +927,3 @@ class Connection(object):
 
     def next(self):
         raise TypeError("'Connection' object is not iterable")
-
-    def _add_db_auth(self, db_name, username, password):
-        self.__pool.add_db_auth(db_name, username, password)
-
-    def _remove_db_auth(self, db_name):
-        self.__pool.remove_db_auth(db_name)
