@@ -289,7 +289,8 @@ class Database(object):
 
         if check:
             msg = "command %r failed: %%s" % command
-            helpers._check_command_response(result, msg, allowable_errors)
+            helpers._check_command_response(result, self.connection.disconnect,
+                                            msg, allowable_errors)
 
         return result
 
