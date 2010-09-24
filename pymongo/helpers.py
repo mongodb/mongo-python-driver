@@ -108,11 +108,14 @@ def _unpack_response(response, cursor_id=None, as_class=dict, tz_aware=False):
     return result
 
 
-def _check_command_response(response, msg="%s", allowable_errors=[]):
+def _check_command_response(response, reset, msg="%s", allowable_errors=[]):
     if not response["ok"]:
         if "wtimeout" in response and response["wtimeout"]:
             raise TimeoutError(msg % response["errmsg"])
         if not response["errmsg"] in allowable_errors:
+            if response["errmsg"] == "not master":
+                reset()
+                raise AutoReconnect("not master")
             raise OperationFailure(msg % response["errmsg"])
 
 

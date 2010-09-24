@@ -597,7 +597,7 @@ class Connection(object):  # TODO support auth for pooling
         assert response["number_returned"] == 1
         error = response["data"][0]
 
-        helpers._check_command_response(error)
+        helpers._check_command_response(error, self.disconnect)
 
         # TODO unify logic with database.error method
         if error.get("err", 0) is None:
