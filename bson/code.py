@@ -36,7 +36,7 @@ class Code(str):
       - `**kwargs` (optional): scope variables can also be passed as
         keyword arguments
 
-    .. versionadded:: 1.8.1+
+    .. versionadded:: 1.9
        Ability to pass scope values using keyword arguments.
     """
 

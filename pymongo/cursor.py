@@ -238,7 +238,7 @@ class Cursor(object):
         :Parameters:
           - `batch_size`: The size of each batch of results requested.
 
-        .. versionadded:: 1.8.1+
+        .. versionadded:: 1.9
         """
         if not isinstance(batch_size, int):
             raise TypeError("batch_size must be an int")

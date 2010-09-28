@@ -241,7 +241,7 @@ class GridIn(object):
           - `data`: string of bytes or file-like object to be written
             to the file
 
-        .. versionadded:: 1.8.1+
+        .. versionadded:: 1.9
            The ability to write :class:`unicode`, if the file has an
            :attr:`encoding` attribute.
         """
@@ -326,7 +326,7 @@ class GridOut(object):
           - `file_id`: value of ``"_id"`` for the file to read
           - `file_document`: file document from `root_collection.files`
 
-        .. versionadded:: 1.8.1+
+        .. versionadded:: 1.9
            The `file_document` parameter.
         """
         if not isinstance(root_collection, Collection):
@@ -416,7 +416,7 @@ class GridOut(object):
         :Parameters:
          - `size` (optional): the maximum number of bytes to read
 
-        .. versionadded:: 1.8.1+
+        .. versionadded:: 1.9
         """
         bytes = ""
         while len(bytes) != size:
