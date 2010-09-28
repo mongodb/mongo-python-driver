@@ -31,20 +31,13 @@ old API.
 Doing a Release
 ---------------
 
-1. Test release on Python 2.4-2.7 on Windows, Linux and OSX, with and
-without the C extension. Generally enough to just run the tests on 2.4
-and 2.7 with and without the extension on a single platform, and then
-just test any version on the other platforms as a sanity check.
+1. Test release on Python 2.4-2.7 on Windows, Linux and OSX, with and without the C extension. Generally enough to just run the tests on 2.4 and 2.7 with and without the extension on a single platform, and then just test any version on the other platforms as a sanity check. `python setup.py test` will build the extension and test. `python tools/clean.py` will remove the extension, and then `nosetests` will run the tests without it. Can also run the doctests: `python setup.py doc -t`.
 
-2. Add release notes to doc/changelog.rst. Generally just
-summarize/clarify the git log, but might add some more long form notes
-for big changes.
+2. Add release notes to doc/changelog.rst. Generally just summarize/clarify the git log, but might add some more long form notes for big changes.
 
-3. Search and replace the "+" version number w/ the new version number
-(see note above).
+3. Search and replace the "+" version number w/ the new version number (see note above).
 
-4. Make sure version number is updated in setup.py and
-pymongo/__init__.py
+4. Make sure version number is updated in setup.py and pymongo/__init__.py
 
 5. Commit with a BUMP version_number message.
 
@@ -54,18 +47,10 @@ pymongo/__init__.py
 
 8. Push source to PyPI: `python setup.py sdist upload`
 
-9. Push binaries to PyPI; for each version of python and platform do:
-`python setup.py bdist_egg upload`. Probably best to do `python
-setup.py bdist_egg` first, to make sure the egg builds
-properly. Notably on the Windows Python 2.5 machine you'll probably
-end up needing to do something like `python setup.py build -c mingw32
-bdist_egg upload`. On Windows we also push a binary installer. The
-setup.py target for that is `bdist_wininst`.
+9. Push binaries to PyPI; for each version of python and platform do: `python setup.py bdist_egg upload`. Probably best to do `python setup.py bdist_egg` first, to make sure the egg builds properly. Notably on the Windows Python 2.5 machine you'll probably end up needing to do something like `python setup.py build -c mingw32 bdist_egg upload`. On Windows we also push a binary installer. The setup.py target for that is `bdist_wininst`.
 
-10. Make sure the docs have properly updated (driver buildbot does
-this).
+10. Make sure the docs have properly updated (driver buildbot does this).
 
-11. Add a "+" to the version number in setup.py/__init__.py, commit,
-push.
+11. Add a "+" to the version number in setup.py/__init__.py, commit, push.
 
 12. Announce!
