@@ -623,6 +623,6 @@ class SystemJS(object):
     def list(self):
         """Get a list of the names of the functions stored in this database.
 
-        .. versionadded:: 1.8.1+
+        .. versionadded:: 1.9
         """
         return [x["_id"] for x in self._db.system.js.find(fields=["_id"])]

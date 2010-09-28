@@ -103,7 +103,7 @@ class GridFS(object):
           - `data`: data to be written as a file.
           - `**kwargs` (optional): keyword arguments for file creation
 
-        .. versionadded:: 1.8.1+
+        .. versionadded:: 1.9
            The ability to write :class:`unicode`, if an `encoding` has
            been specified as a keyword argument.
 
@@ -154,7 +154,7 @@ class GridFS(object):
           - `version` (optional): version of the file to get (defualts
             to -1, the most recent version uploaded)
 
-        .. versionadded:: 1.8.1+
+        .. versionadded:: 1.9
         """
         self.__files.ensure_index([("filename", ASCENDING),
                                    ("uploadDate", DESCENDING)])

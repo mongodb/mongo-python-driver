@@ -1,10 +1,10 @@
 Changelog
 =========
 
-Changes in Version 1.8.1+
+Changes in Version 1.9
 -------------------------
 
-Version 1.8.1+ adds a new package to the PyMongo distribution,
+Version 1.9 adds a new package to the PyMongo distribution,
 :mod:`bson`. :mod:`bson` contains all of the `BSON
 <http://bsonspec.org>`_ encoding and decoding logic, and the BSON
 types that were formerly in the :mod:`pymongo` package. The following

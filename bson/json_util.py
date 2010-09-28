@@ -34,7 +34,7 @@ Example usage (deserialization)::
 Currently this does not handle special encoding and decoding for
 :class:`~bson.binary.Binary` and :class:`~bson.code.Code` instances.
 
-.. versionchanged:: 1.8.1+
+.. versionchanged:: 1.9
    Handle :class:`uuid.UUID` instances, whenever possible.
 
 .. versionchanged:: 1.8

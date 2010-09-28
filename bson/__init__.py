@@ -366,7 +366,7 @@ if _use_c:
 def _to_dicts(data, as_class=dict, tz_aware=True):
     """DEPRECATED - `_to_dicts` has been renamed to `decode_all`.
 
-    .. versionchanged:: 1.8.1+
+    .. versionchanged:: 1.9
        Deprecated in favor of :meth:`decode_all`.
     .. versionadded:: 1.7
        The `as_class` parameter.
@@ -389,7 +389,7 @@ def decode_all(data, as_class=dict, tz_aware=True):
       - `tz_aware` (optional): if ``True``, return timezone-aware
         :class:`~datetime.datetime` instances
 
-    .. versionadded:: 1.8.1+
+    .. versionadded:: 1.9
     """
     docs = []
     while len(data):
@@ -432,7 +432,7 @@ class BSON(str):
     def from_dict(cls, dct, check_keys=False):
         """DEPRECATED - `from_dict` has been renamed to `encode`.
 
-        .. versionchanged:: 1.8.1+
+        .. versionchanged:: 1.9
            Deprecated in favor of :meth:`encode`
         """
         warnings.warn("`from_dict` has been renamed to `encode`",
@@ -457,14 +457,14 @@ class BSON(str):
             contain '.', raising :class:`~bson.errors.InvalidDocument` in
             either case
 
-        .. versionadded:: 1.8.1+
+        .. versionadded:: 1.9
         """
         return cls(_dict_to_bson(document, check_keys))
 
     def to_dict(self, as_class=dict, tz_aware=False):
         """DEPRECATED - `to_dict` has been renamed to `decode`.
 
-        .. versionchanged:: 1.8.1+
+        .. versionchanged:: 1.9
            Deprecated in favor of :meth:`decode`
         .. versionadded:: 1.8
            The `tz_aware` parameter.
@@ -496,7 +496,7 @@ class BSON(str):
           - `tz_aware` (optional): if ``True``, return timezone-aware
             :class:`~datetime.datetime` instances
 
-        .. versionadded:: 1.8.1+
+        .. versionadded:: 1.9
         """
         (document, _) = _bson_to_dict(self, as_class, tz_aware)
         return document
@@ -505,7 +505,7 @@ class BSON(str):
 def has_c():
     """Is the C extension installed?
 
-    .. versionadded:: 1.8.1+
+    .. versionadded:: 1.9
     """
     try:
         from bson import _cbson
