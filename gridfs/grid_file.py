@@ -422,7 +422,7 @@ class GridOut(object):
         while len(bytes) != size:
             byte = self.read(1)
             bytes += byte
-            if byte == "" or byte =="\n":
+            if byte == "" or byte == "\n":
                 break
         return bytes
 
