@@ -15,6 +15,16 @@ is a `gridfs
 <http://www.mongodb.org/display/DOCS/GridFS+Specification>`_
 implementation on top of ``pymongo``.
 
+Issues / Questions / Feedback
+=============================
+
+Any issues with, questions about, or feedback for PyMongo should be
+sent to the mongodb-user list on Google Groups. For confirmed issues
+or feature requests, open a case on `jira
+<http://jira.mongodb.org>`_. Please do not e-mail any of the PyMongo
+developers directly with issues or questions - you're more likely to
+get an answer on the list.
+
 Installation
 ============
 
