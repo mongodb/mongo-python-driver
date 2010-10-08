@@ -677,6 +677,8 @@ class Collection(object):
           - `unique`: should this index guarantee uniqueness?
           - `dropDups` or `drop_dups`: should we drop duplicates
             during index creation when creating a unique index?
+          - `background`: if this index should be created in the
+            background
           - `min`: minimum value for keys in a :data:`~pymongo.GEO2D`
             index
           - `max`: maximum value for keys in a :data:`~pymongo.GEO2D`
