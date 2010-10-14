@@ -792,10 +792,10 @@ int write_dict(buffer_t buffer, PyObject* dict, unsigned char check_keys, unsign
         return 0;
     }
     length = buffer_get_position(buffer) - length_location;
-    if (length > 4 * 1024 * 1024) {
+    if (length > 8 * 1024 * 1024) {
         PyObject* InvalidDocument = _error("InvalidDocument");
         PyErr_SetString(InvalidDocument, "document too large - "
-                        "BSON documents are limited to 4 MB");
+                        "BSON documents are limited to 8 MB");
         Py_DECREF(InvalidDocument);
         return 0;
     }

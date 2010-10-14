@@ -982,9 +982,9 @@ class TestCollection(unittest.TestCase):
 
     def test_insert_large_document(self):
         self.assertRaises(InvalidDocument, self.db.test.insert,
-                          {"foo": "x" * 4 * 1024 * 1024})
+                          {"foo": "x" * 8 * 1024 * 1024})
         self.assertRaises(InvalidDocument, self.db.test.insert,
-                          [{"x": 1}, {"foo": "x" * 4 * 1024 * 1024}])
+                          [{"x": 1}, {"foo": "x" * 8 * 1024 * 1024}])
         self.db.test.insert([{"foo": "x" * 2 * 1024 * 1024},
                              {"foo": "x" * 2 * 1024 * 1024}], safe=True)
 
