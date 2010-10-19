@@ -15,6 +15,7 @@
 """Tools for manipulating DBRefs (references to MongoDB documents)."""
 
 from bson.son import SON
+from copy import deepcopy
 
 
 class DBRef(object):
@@ -115,3 +116,13 @@ class DBRef(object):
         """
         return hash((self.__collection, self.__id,
                      self.__database, self.__kwargs))
+
+    def __deepcopy__(self, memo):
+        """Support function for `copy.deepcopy()`.
+
+        .. versionadded:: 1.10
+        """
+        return DBRef(deepcopy(self.__collection, memo),
+                     deepcopy(self.__id, memo),
+                     deepcopy(self.__database, memo),
+                     deepcopy(self.__kwargs, memo))

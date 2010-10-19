@@ -21,6 +21,8 @@ sys.path[0:0] = [""]
 from bson.objectid import ObjectId
 from bson.dbref import DBRef
 
+from copy import deepcopy
+
 
 class TestDBRef(unittest.TestCase):
 
@@ -89,6 +91,21 @@ class TestDBRef(unittest.TestCase):
         self.assertNotEqual(DBRef("coll", 5, foo="bar"), DBRef("coll", 5, foo="baz"))
         self.assertEqual("bar", DBRef("coll", 5, foo="bar").foo)
         self.assertRaises(KeyError, getattr, DBRef("coll", 5, foo="bar"), "bar")
+
+    def test_deepcopy(self):
+        a = DBRef('coll', 'asdf', 'db', x=[1])
+        b = deepcopy(a)
+
+        self.assertEqual(a, b)
+        self.assertNotEqual(id(a), id(b.x))
+        self.assertEqual(a.x, b.x)
+        self.assertNotEqual(id(a.x), id(b.x))
+
+        b.x[0] = 2
+        self.assertEqual(a.x, [1])
+        self.assertEqual(b.x, [2])
+
+
 
 
 if __name__ == "__main__":
