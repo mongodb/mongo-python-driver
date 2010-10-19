@@ -135,21 +135,29 @@ class _Pool(threading.local):
     """
 
     # Non thread-locals
-    __slots__ = ["sockets", "socket_factory", "pool_size"]
+    __slots__ = ["sockets", "socket_factory", "pool_size", "pid"]
+
+    # thread-local default
     sock = None
 
     def __init__(self, socket_factory):
+        self.pid = os.getpid()
         self.pool_size = 10
         self.socket_factory = socket_factory
         if not hasattr(self, "sockets"):
             self.sockets = []
 
+
     def socket(self):
-        # we store the pid here to avoid issues with fork /
-        # multiprocessing - see
-        # test.test_connection:TestConnection.test_fork for an example
-        # of what could go wrong otherwise
+        # We use the pid here to avoid issues with fork / multiprocessing.
+        # See test.test_connection:TestConnection.test_fork for an example of
+        # what could go wrong otherwise
         pid = os.getpid()
+
+        if pid != self.pid:
+            self.sock = None
+            self.sockets = []
+            self.pid = pid
 
         if self.sock is not None and self.sock[0] == pid:
             return self.sock[1]
