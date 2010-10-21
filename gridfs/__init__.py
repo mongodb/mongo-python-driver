@@ -196,6 +196,9 @@ class GridFS(object):
            file. Care should be taken to avoid concurrent reads to a file
            while it is being deleted.
 
+        .. note:: Deletes of non-existent files are considered successful
+           since the end result is the same: no file with that _id remains.
+
         :Parameters:
           - `file_id`: ``"_id"`` of the file to delete
 
