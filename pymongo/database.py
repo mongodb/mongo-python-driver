@@ -344,6 +344,12 @@ class Database(object):
             raise CollectionInvalid("%s invalid: %s" % (name, info))
         return info
 
+    def current_op(self):
+        """Get information on oeprations currently running
+        (same as: db.currentOp() in JavaScript console)
+        """
+        return self['$cmd.sys.inprog'].find_one()
+
     def profiling_level(self):
         """Get the database's current profiling level.
 
