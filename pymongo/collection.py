@@ -947,6 +947,65 @@ class Collection(object):
             return response
         return self.__database[response["result"]]
 
+    def find_and_modify(self, query={}, update=None, upsert=False, **kwargs):
+        """Update and return an object.
+
+        This is a thin wrapper around the findAndModify_ command. The
+        positional arguments are designed to match the first three arguments
+        to :meth:`update` however most options should be passed as named
+        parameters. Either `update` or `remove` arguments are required, all
+        others are optional.
+
+        Returns either the object before or after modification based on `new`
+        parameter. If no objects match the `query` and `upsert` is false,
+        returns ``None``. If upserting and `new` is false, returns ``{}``.
+
+        :Parameters:
+            - `query`: filter for the update (default ``{}``)
+            - `sort`: priority if multiple objects match (default ``{}``)
+            - `update`: see second argument to :meth:`update` (no default)
+            - `remove`: remove rather than updating (default ``False``)
+            - `new`: return updated rather than original object
+              (default ``False``)
+            - `fields`: see second argument to :meth:`find` (default all)
+            - `upsert`: insert if object doesn't exist (default ``False``)
+            - `**kwargs`: any other options the findAndModify_ command
+              supports can be passed here.
+
+
+        .. mongodoc:: findAndModify
+
+        .. _findAndModify: http://dochub.mongodb.org/core/findAndModify
+
+        .. note:: Requires server version **>= 1.3.0**
+
+        .. versionadded:: 1.10
+        """
+        if (not update and not kwargs.get('remove', None)):
+            raise ValueError("Must either update or remove")
+
+        if (update and kwargs.get('remove', None)):
+            raise ValueError("Can't do both update and remove")
+
+        # No need to include empty args
+        if query: kwargs['query'] = query
+        if update: kwargs['update'] = update
+        if upsert: kwargs['upsert'] = upsert
+
+        no_obj_error = "No matching object found"
+
+        out = self.__database.command("findAndModify", self.__name,
+                allowable_errors=[no_obj_error], **kwargs)
+
+        if not out['ok']:
+            if out["errmsg"] == no_obj_error:
+                return None
+            else:
+                # Should never get here b/c of allowable_errors
+                raise ValueError("Unexpected Error: %s"%out)
+
+        return out['value']
+
     def __iter__(self):
         return self
 
