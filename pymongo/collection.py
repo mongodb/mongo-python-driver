@@ -88,7 +88,7 @@ class Collection(object):
             raise InvalidName("collection names must not "
                               "contain '$': %r" % name)
         if name[0] == "." or name[-1] == ".":
-            raise InvalidName("collecion names must not start "
+            raise InvalidName("collection names must not start "
                               "or end with '.': %r" % name)
         if "\x00" in name:
             raise InvalidName("collection names must not contain the "
