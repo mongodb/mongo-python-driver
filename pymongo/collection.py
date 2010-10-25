@@ -97,6 +97,7 @@ class Collection(object):
         self.__database = database
         self.__name = unicode(name)
         self.__full_name = u"%s.%s" % (self.__database.name, self.__name)
+        self.__cursor_class = Cursor
         if create or options is not None:
             self.__create(options)
 
@@ -164,6 +165,31 @@ class Collection(object):
            ``database`` is now a property rather than a method.
         """
         return self.__database
+
+    @property
+    def cursor_class(self):
+        """The :class:`~pymongo.cursor.Cursor` that this
+        :class:`Collection` is a part of.
+        """
+        return self.__cursor_class
+
+    @cursor_class.setter
+    def cursor_class(self, cursor_class):
+        """Set cursor class for collection.
+
+        Raises :class:`TypeError` if `cursor_class` is not an instance of
+        :class:`~pymongo.cursor.Cursor`.
+
+        :Parameters:
+          - `cursor_class`: class to use for cursors
+        """
+
+
+        if not issubclass(cursor_class, Cursor):
+            raise TypeError("Cursor class must be a subclass of Cursor")
+
+        self.__cursor_class = cursor_class
+
 
     def save(self, to_save, manipulate=True, safe=False, **kwargs):
         """Save a document in this collection.
@@ -549,7 +575,7 @@ class Collection(object):
 
         .. mongodoc:: find
         """
-        return Cursor(self, *args, **kwargs)
+        return self.__cursor_class(self, *args, **kwargs)
 
     def count(self):
         """Get the number of documents in this collection.
