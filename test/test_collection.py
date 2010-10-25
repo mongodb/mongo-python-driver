@@ -1062,6 +1062,29 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(1, c.find_one(as_class=SON)["x"])
         self.assertEqual(1, c.find(as_class=SON).next()["x"])
 
+    def test_find_and_modify(self):
+        c = self.db.test
+        c.drop()
+        c.insert({'_id': 1, 'i':1})
+
+        self.assertEqual({'_id': 1, 'i':1},
+                         c.find_and_modify({'_id':1}, {'$inc':{'i':1}}))
+        self.assertEqual({'_id': 1, 'i':3},
+                         c.find_and_modify({'_id':1}, {'$inc':{'i':1}},
+                                           new=True))
+
+        self.assertEqual({'_id': 1, 'i':3},
+                         c.find_and_modify({'_id':1}, remove=True))
+
+        self.assertEqual(None, c.find_one({'_id':1}))
+
+        self.assertEqual(None, c.find_and_modify({'_id':1}, {'$inc':{'i':1}}))
+        self.assertEqual({}, c.find_and_modify({'_id':1}, {'$inc':{'i':1}},
+                                               upsert=True))
+        self.assertEqual({'_id': 1, 'i':2},
+                         c.find_and_modify({'_id':1}, {'$inc':{'i':1}},
+                                           upsert=True, new=True))
+
 
 if __name__ == "__main__":
     unittest.main()
