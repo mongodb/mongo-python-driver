@@ -527,6 +527,8 @@ class Collection(object):
           - `as_class` (optional): class to use for documents in the
             query result (default is
             :attr:`~pymongo.connection.Connection.document_class`)
+          - `wrap` (optional): a class object used to wrap documents in the
+            query result
           - `network_timeout` (optional): specify a timeout to use for
             this query, which will override the
             :class:`~pymongo.connection.Connection`-level default

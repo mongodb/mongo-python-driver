@@ -1085,6 +1085,28 @@ class TestCollection(unittest.TestCase):
                          c.find_and_modify({'_id':1}, {'$inc':{'i':1}},
                                            upsert=True, new=True))
 
+    def test_find_w_wrap(self):
+        c = self.db.test
+        c.drop()
+        c.insert({'_id': 1, 'foo':{'bar':1}})
+        
+        class Document(dict):
+            def __init__(self, son, collection):
+                super(Document, self).__init__(dict((str(key), value) for key, value in son.items()))
+                self._collection = collection
+
+            def save(self):
+                self._collection.save(self)
+
+        doc = c.find_one({'_id':1}, wrap=Document)
+        self.assert_(type(doc) is Document)
+        self.assert_(type(doc['foo']) is dict)
+        self.assertEqual(doc['foo'], {'bar':1})
+        self.assertEqual(doc._collection, c)
+        self.assert_(hasattr(doc, 'save'))
+        doc['foo']['bar'] = 2
+        doc.save()
+        self.assertEqual(c.find_one({'_id':1}), {'_id':1, 'foo':{'bar':2}})
 
 if __name__ == "__main__":
     unittest.main()

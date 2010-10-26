@@ -37,7 +37,7 @@ class Cursor(object):
 
     def __init__(self, collection, spec=None, fields=None, skip=0, limit=0,
                  timeout=True, snapshot=False, tailable=False, sort=None,
-                 max_scan=None, as_class=None,
+                 max_scan=None, as_class=None, wrap=None,
                  _must_use_master=False, _is_command=False,
                  **kwargs):
         """Create a new cursor.
@@ -97,6 +97,7 @@ class Cursor(object):
         self.__explain = False
         self.__hint = None
         self.__as_class = as_class
+        self.__wrap = wrap
         self.__tz_aware = collection.database.connection.tz_aware
         self.__must_use_master = _must_use_master
         self.__is_command = _is_command
@@ -599,7 +600,7 @@ class Cursor(object):
             raise StopIteration
         db = self.__collection.database
         if len(self.__data) or self._refresh():
-            next = db._fix_outgoing(self.__data.pop(0), self.__collection)
+            next = db._fix_outgoing(self.__data.pop(0), self.__collection, self.__wrap)
         else:
             raise StopIteration
         return next

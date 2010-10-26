@@ -208,17 +208,23 @@ class Database(object):
             son = manipulator.transform_incoming(son, collection)
         return son
 
-    def _fix_outgoing(self, son, collection):
+    def _fix_outgoing(self, son, collection, wrap):
         """Apply manipulators to a SON object as it comes out of the database.
 
         :Parameters:
           - `son`: the son object coming out of the database
           - `collection`: the collection the son object was saved in
+          - `wrap` : a class object which its __init__ take a SON object and a collection
+
+          If `wrap` is not None, return an instance of the wrap object. Return
+          a SON object otherwise.
         """
         for manipulator in reversed(self.__outgoing_manipulators):
             son = manipulator.transform_outgoing(son, collection)
         for manipulator in reversed(self.__outgoing_copying_manipulators):
             son = manipulator.transform_outgoing(son, collection)
+        if wrap is not None:
+            return wrap(son, collection=collection)
         return son
 
     def command(self, command, value=1,

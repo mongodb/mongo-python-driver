@@ -1,6 +1,13 @@
 Changelog
 =========
 
+Changes in Version 1.10
+-----------------------
+
+- added `wrap` argument for
+  :meth:`~pymongo.collection.Collection.find`, and in
+  :meth: `~pymongo.database._fix_outgoing`.
+
 Changes in Version 1.9
 -------------------------
 
