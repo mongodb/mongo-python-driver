@@ -191,9 +191,9 @@ class ObjectId(object):
     def __repr__(self):
         return "ObjectId('%s')" % self.__id.encode("hex")
 
-    def __cmp__(self, other):
+    def __lt__(self, other):
         if isinstance(other, ObjectId):
-            return cmp(self.__id, other.__id)
+            return self.__id < other.__id
         return NotImplemented
 
     def __hash__(self):

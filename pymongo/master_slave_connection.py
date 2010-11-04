@@ -169,10 +169,11 @@ class MasterSlaveConnection(object):
         self.__in_request = False
         self.__master.end_request()
 
-    def __cmp__(self, other):
+    def __lt__(self, other):
         if isinstance(other, MasterSlaveConnection):
-            return cmp((self.__master, self.__slaves),
-                       (other.__master, other.__slaves))
+            mytuple = (self.__master, self.__slaves)
+            othertuple = (other.__master, other.__slaves)
+            return mytuple < othertuple
         return NotImplemented
 
     def __repr__(self):

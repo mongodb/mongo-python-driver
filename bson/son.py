@@ -175,11 +175,12 @@ class SON(dict):
         except KeyError:
             return default
 
-    def __cmp__(self, other):
+    def __lt__(self, other):
         if isinstance(other, SON):
-            return cmp((dict(self.iteritems()), self.keys()),
-                       (dict(other.iteritems()), other.keys()))
-        return cmp(dict(self.iteritems()), other)
+            mytuple = (dict(self.iteritems()), self.keys())
+            othertuple = (dict(other.iteritems()), other.keys())
+            return mytuple < othertuple                       
+        return dict(self.iteritems()) < other
 
     def __len__(self):
         return len(self.keys())

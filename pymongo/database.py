@@ -125,10 +125,11 @@ class Database(object):
         """
         return self.__name
 
-    def __cmp__(self, other):
+    def __lt__(self, other):
         if isinstance(other, Database):
-            return cmp((self.__connection, self.__name),
-                       (other.__connection, other.__name))
+            mytuple = (self.__connection, self.__name)
+            othertuple = (other.__connection, other.__name)
+            return mytuple < othertuple
         return NotImplemented
 
     def __repr__(self):

@@ -743,10 +743,11 @@ class Connection(object):  # TODO support auth for pooling
         """
         self.__pool.return_socket()
 
-    def __cmp__(self, other):
+    def __lt__(self, other):
         if isinstance(other, Connection):
-            return cmp((self.__host, self.__port),
-                       (other.__host, other.__port))
+            mytuple = (self.__host, self.__port)
+            othertuple = (other.__host, other.__port)
+            return mytuple < othertuple
         return NotImplemented
 
     def __repr__(self):

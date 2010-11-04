@@ -101,12 +101,13 @@ class DBRef(object):
         return "DBRef(%r, %r, %r%s)" % (self.collection, self.id,
                                         self.database, extra)
 
-    def __cmp__(self, other):
+    def __lt__(self, other):
         if isinstance(other, DBRef):
-            return cmp([self.__database, self.__collection,
-                        self.__id, self.__kwargs],
-                       [other.__database, other.__collection,
-                        other.__id, other.__kwargs])
+            mylist = [self.__database, self.__collection,
+                      self.__id, self.__kwargs]
+            otherlist = [other.__database, other.__collection,
+                         other.__id, other.__kwargs]
+            return mylist < otherlist
         return NotImplemented
 
     def __hash__(self):
