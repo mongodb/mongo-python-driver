@@ -9,7 +9,7 @@ except:
     has_subprocess = False
 import shutil
 
-from ez_setup import use_setuptools
+from distribute_setup import use_setuptools
 use_setuptools()
 from setuptools import setup
 from setuptools import Feature
