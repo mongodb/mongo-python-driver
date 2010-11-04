@@ -129,13 +129,6 @@ class Collection(object):
     def __repr__(self):
         return "Collection(%r, %r)" % (self.__database, self.__name)
 
-    def __lt__(self, other):
-        if isinstance(other, Collection):
-            mytuple = (self.__database, self.__name)
-            othertuple = (other.__database, other.__name)
-            return mytuple < othertuple
-        return NotImplemented
-
     def __eq__(self, other):
         if isinstance(other, Collection):
             mytuple = (self.__database, self.__name)

@@ -191,11 +191,6 @@ class ObjectId(object):
     def __repr__(self):
         return "ObjectId('%s')" % self.__id.encode("hex")
 
-    def __lt__(self, other):
-        if isinstance(other, ObjectId):
-            return self.__id < other.__id
-        return NotImplemented
-
     def __eq__(self, other):
         if isinstance(other, ObjectId):
             return self.__id == other.__id

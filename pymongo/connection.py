@@ -743,13 +743,6 @@ class Connection(object):  # TODO support auth for pooling
         """
         self.__pool.return_socket()
 
-    def __lt__(self, other):
-        if isinstance(other, Connection):
-            mytuple = (self.__host, self.__port)
-            othertuple = (other.__host, other.__port)
-            return mytuple < othertuple
-        return NotImplemented
-
     def __eq__(self, other):
         if isinstance(other, Connection):
             mytuple = (self.__host, self.__port)

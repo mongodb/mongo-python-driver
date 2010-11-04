@@ -125,13 +125,6 @@ class Database(object):
         """
         return self.__name
 
-    def __lt__(self, other):
-        if isinstance(other, Database):
-            mytuple = (self.__connection, self.__name)
-            othertuple = (other.__connection, other.__name)
-            return mytuple < othertuple
-        return NotImplemented
-
     def __eq__(self, other):
         if isinstance(other, Database):
             mytuple = (self.__connection, self.__name)

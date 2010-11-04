@@ -169,13 +169,6 @@ class MasterSlaveConnection(object):
         self.__in_request = False
         self.__master.end_request()
 
-    def __lt__(self, other):
-        if isinstance(other, MasterSlaveConnection):
-            mytuple = (self.__master, self.__slaves)
-            othertuple = (other.__master, other.__slaves)
-            return mytuple < othertuple
-        return NotImplemented
-
     def __eq__(self, other):
         if isinstance(other, MasterSlaveConnection):
             mytuple = (self.__master, self.__slaves)
