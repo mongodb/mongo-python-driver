@@ -352,7 +352,7 @@ class Collection(object):
         if not isinstance(upsert, bool):
             raise TypeError("upsert must be an instance of bool")
 
-        if upsert and manipulate:
+        if manipulate:
             document = self.__database._fix_incoming(document, self)
 
         if kwargs:
