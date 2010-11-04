@@ -1,6 +1,6 @@
 include README.rst
 include LICENSE
-include ez_setup.py
+include distribute_setup.py
 recursive-include doc *.rst
 recursive-include doc *.py
 recursive-include tools *.py
