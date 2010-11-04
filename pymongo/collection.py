@@ -136,6 +136,13 @@ class Collection(object):
             return mytuple < othertuple
         return NotImplemented
 
+    def __eq__(self, other):
+        if isinstance(other, Collection):
+            mytuple = (self.__database, self.__name)
+            othertuple = (other.__database, other.__name)
+            return mytuple == othertuple
+        return NotImplemented
+
     @property
     def full_name(self):
         """The full name of this :class:`Collection`.

@@ -132,6 +132,13 @@ class Database(object):
             return mytuple < othertuple
         return NotImplemented
 
+    def __eq__(self, other):
+        if isinstance(other, Database):
+            mytuple = (self.__connection, self.__name)
+            othertuple = (other.__connection, other.__name)
+            return mytuple == othertuple
+        return NotImplemented
+
     def __repr__(self):
         return "Database(%r, %r)" % (self.__connection, self.__name)
 

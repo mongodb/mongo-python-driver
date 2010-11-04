@@ -750,6 +750,13 @@ class Connection(object):  # TODO support auth for pooling
             return mytuple < othertuple
         return NotImplemented
 
+    def __eq__(self, other):
+        if isinstance(other, Connection):
+            mytuple = (self.__host, self.__port)
+            othertuple = (other.__host, other.__port)
+            return mytuple == othertuple
+        return NotImplemented
+
     def __repr__(self):
         if len(self.__nodes) == 1:
             return "Connection(%r, %r)" % (self.__host, self.__port)

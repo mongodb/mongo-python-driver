@@ -196,6 +196,11 @@ class ObjectId(object):
             return self.__id < other.__id
         return NotImplemented
 
+    def __eq__(self, other):
+        if isinstance(other, ObjectId):
+            return self.__id == other.__id
+        return NotImplemented
+
     def __hash__(self):
         """Get a hash value for this :class:`ObjectId`.
 

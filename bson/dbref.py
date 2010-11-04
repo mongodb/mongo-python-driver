@@ -110,6 +110,15 @@ class DBRef(object):
             return mylist < otherlist
         return NotImplemented
 
+    def __eq__(self, other):
+        if isinstance(other, DBRef):
+            mylist = [self.__database, self.__collection,
+                      self.__id, self.__kwargs]
+            otherlist = [other.__database, other.__collection,
+                         other.__id, other.__kwargs]
+            return mylist == otherlist
+        return NotImplemented
+
     def __hash__(self):
         """Get a hash value for this :class:`DBRef`.
 

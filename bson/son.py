@@ -182,6 +182,13 @@ class SON(dict):
             return mytuple < othertuple                       
         return dict(self.iteritems()) < other
 
+    def __eq__(self, other):
+        if isinstance(other, SON):
+            mytuple = (dict(self.iteritems()), self.keys())
+            othertuple = (dict(other.iteritems()), other.keys())
+            return mytuple == othertuple                       
+        return dict(self.iteritems()) == other
+
     def __len__(self):
         return len(self.keys())
 

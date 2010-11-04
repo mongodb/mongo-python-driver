@@ -176,6 +176,13 @@ class MasterSlaveConnection(object):
             return mytuple < othertuple
         return NotImplemented
 
+    def __eq__(self, other):
+        if isinstance(other, MasterSlaveConnection):
+            mytuple = (self.__master, self.__slaves)
+            othertuple = (other.__master, other.__slaves)
+            return mytuple == othertuple
+        return NotImplemented
+
     def __repr__(self):
         return "MasterSlaveConnection(%r, %r)" % (self.__master, self.__slaves)
 
