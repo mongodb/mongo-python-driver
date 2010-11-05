@@ -69,7 +69,7 @@ def _get_c_string(data, length=None):
         except ValueError:
             raise InvalidBSON()
 
-    return (unicode(data[:length], "utf-8"), data[length + 1:])
+    return (data[:length].decode("utf-8"), data[length + 1:])
 
 
 def _make_c_string(string, check_null=False):
