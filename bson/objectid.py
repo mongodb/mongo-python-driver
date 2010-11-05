@@ -32,13 +32,14 @@ import time
 
 from bson.errors import InvalidId
 from bson.tz_util import utc
+from bson.compat import b
 
 
 def _machine_bytes():
     """Get the machine portion of an ObjectId.
     """
     machine_hash = _md5func()
-    machine_hash.update(socket.gethostname())
+    machine_hash.update(b(socket.gethostname()))
     return machine_hash.digest()[0:3]
 
 
