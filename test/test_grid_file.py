@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+#
 # Copyright 2009-2010 10gen, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +27,7 @@ import sys
 import unittest
 sys.path[0:0] = [""]
 
+from bson.objectid import ObjectId
 from gridfs.grid_file import (_SEEK_CUR,
                               _SEEK_END,
                               GridIn,
@@ -32,7 +35,6 @@ from gridfs.grid_file import (_SEEK_CUR,
                               GridOut)
 from gridfs.errors import (NoFile,
                            UnsupportedAPI)
-from pymongo.objectid import ObjectId
 from test_connection import get_connection
 import qcheck
 
@@ -135,10 +137,8 @@ class TestGridFile(unittest.TestCase):
         self.assertRaises(AttributeError, setattr, a, "_id", 5)
 
         self.assertEqual("my_file", a.filename)
-        self.assertRaises(AttributeError, setattr, a, "name", "foo")
 
         self.assertEqual("text/html", a.content_type)
-        self.assertRaises(AttributeError, setattr, a, "content_type", "foo")
 
         self.assertEqual(0, a.length)
         self.assertRaises(AttributeError, setattr, a, "length", 5)
@@ -150,10 +150,8 @@ class TestGridFile(unittest.TestCase):
         self.assertRaises(AttributeError, setattr, a, "upload_date", 5)
 
         self.assertEqual(["foo"], a.aliases)
-        self.assertRaises(AttributeError, setattr, a, "aliases", [])
 
         self.assertEqual({"foo": 1}, a.metadata)
-        self.assertRaises(AttributeError, setattr, a, "metadata", {})
 
         self.assertEqual("d41d8cd98f00b204e9800998ecf8427e", a.md5)
         self.assertRaises(AttributeError, setattr, a, "md5", 5)
@@ -225,6 +223,19 @@ class TestGridFile(unittest.TestCase):
         for attr in ["_id", "name", "content_type", "length", "chunk_size",
                      "upload_date", "aliases", "metadata", "md5"]:
             self.assertRaises(AttributeError, setattr, b, attr, 5)
+
+    def test_grid_out_file_document(self):
+        a = GridIn(self.db.fs)
+        a.write("foo bar")
+        a.close()
+
+        b = GridOut(self.db.fs, file_document=self.db.fs.files.find_one())
+        self.assertEqual("foo bar", b.read())
+
+        c = GridOut(self.db.fs, 5, file_document=self.db.fs.files.find_one())
+        self.assertEqual("foo bar", c.read())
+
+        self.assertRaises(NoFile, GridOut, self.db.fs, file_document={})
 
     def test_write_file_like(self):
         a = GridIn(self.db.fs)
@@ -354,6 +365,24 @@ class TestGridFile(unittest.TestCase):
         self.assertEqual("d", g.read(2))
         self.assertEqual("", g.read(2))
 
+    def test_readline(self):
+        f = GridIn(self.db.fs, chunkSize=5)
+        f.write("""Hello world,
+How are you?
+Hope all is well.
+Bye""")
+        f.close()
+
+        g = GridOut(self.db.fs, f._id)
+        self.assertEqual("H", g.read(1))
+        self.assertEqual("ello world,\n", g.readline())
+        self.assertEqual("How a", g.readline(5))
+        self.assertEqual("", g.readline(0))
+        self.assertEqual("re you?\n", g.readline())
+        self.assertEqual("Hope all is well.\n", g.readline(1000))
+        self.assertEqual("Bye", g.readline())
+        self.assertEqual("", g.readline())
+
     def test_iterator(self):
         f = GridIn(self.db.fs)
         f.close()
@@ -390,6 +419,58 @@ class TestGridFile(unittest.TestCase):
             out_data += s
 
         self.assertEqual(in_data, out_data)
+
+    def test_write_unicode(self):
+        f = GridIn(self.db.fs)
+        self.assertRaises(TypeError, f.write, u"foo")
+
+        f = GridIn(self.db.fs, encoding="utf-8")
+        f.write(u"foo")
+        f.close()
+
+        g = GridOut(self.db.fs, f._id)
+        self.assertEqual("foo", g.read())
+
+        f = GridIn(self.db.fs, encoding="iso-8859-1")
+        f.write(u"aé")
+        f.close()
+
+        g = GridOut(self.db.fs, f._id)
+        self.assertEqual(u"aé".encode("iso-8859-1"), g.read())
+
+    def test_set_after_close(self):
+        f = GridIn(self.db.fs, _id="foo", bar="baz")
+
+        self.assertEqual("foo", f._id)
+        self.assertEqual("baz", f.bar)
+        self.assertRaises(AttributeError, getattr, f, "baz")
+        self.assertRaises(AttributeError, getattr, f, "uploadDate")
+
+        self.assertRaises(AttributeError, setattr, f, "_id", 5)
+        f.bar = "foo"
+        f.baz = 5
+
+        self.assertEqual("foo", f._id)
+        self.assertEqual("foo", f.bar)
+        self.assertEqual(5, f.baz)
+        self.assertRaises(AttributeError, getattr, f, "uploadDate")
+
+        f.close()
+
+        self.assertEqual("foo", f._id)
+        self.assertEqual("foo", f.bar)
+        self.assertEqual(5, f.baz)
+        self.assert_(f.uploadDate)
+
+        self.assertRaises(AttributeError, setattr, f, "_id", 5)
+        f.bar = "a"
+        f.baz = "b"
+        self.assertRaises(AttributeError, setattr, f, "upload_date", 5)
+
+        g = GridOut(self.db.fs, f._id)
+        self.assertEqual("a", f.bar)
+        self.assertEqual("b", f.baz)
+
 
 if __name__ == "__main__":
     unittest.main()

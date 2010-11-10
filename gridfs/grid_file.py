@@ -22,18 +22,22 @@ try:
 except ImportError:
     from StringIO import StringIO
 
+from bson.binary import Binary
+from bson.objectid import ObjectId
 from gridfs.errors import (CorruptGridFile,
+                           FileExists,
                            NoFile,
                            UnsupportedAPI)
-from pymongo.binary import Binary
+from pymongo import ASCENDING
 from pymongo.collection import Collection
-from pymongo.objectid import ObjectId
+from pymongo.errors import DuplicateKeyError
 
 try:
     _SEEK_SET = os.SEEK_SET
     _SEEK_CUR = os.SEEK_CUR
     _SEEK_END = os.SEEK_END
-except AttributeError: # before 2.5
+# before 2.5
+except AttributeError:
     _SEEK_SET = 0
     _SEEK_CUR = 1
     _SEEK_END = 2
@@ -52,18 +56,16 @@ def _create_property(field_name, docstring,
             raise AttributeError("can only get %r on a closed file" %
                                  field_name)
         return self._file.get(field_name, None)
+
     def setter(self, value):
         if self._closed:
-            raise AttributeError("cannot set %r on a closed file" %
-                                 field_name)
+            self._coll.files.update({"_id": self._file["_id"]},
+                                    {"$set": {field_name: value}}, safe=True)
         self._file[field_name] = value
 
     if read_only:
         docstring = docstring + "\n\nThis attribute is read-only."
-    elif not closed_only:
-        docstring = "%s\n\n%s" % (docstring, "This attribute can only be "
-                                  "set before :meth:`close` has been called.")
-    else:
+    elif closed_only:
         docstring = "%s\n\n%s" % (docstring, "This attribute is read-only and "
                                   "can only be read after :meth:`close` "
                                   "has been called.")
@@ -93,7 +95,8 @@ class GridIn(object):
         arguments include:
 
           - ``"_id"``: unique ID for this file (default:
-            :class:`~pymongo.objectid.ObjectId`)
+            :class:`~bson.objectid.ObjectId`) - this ``"_id"`` must
+            not have already been used for another file
 
           - ``"filename"``: human name for the file
 
@@ -103,12 +106,17 @@ class GridIn(object):
           - ``"chunkSize"`` or ``"chunk_size"``: size of each of the
             chunks, in bytes (default: 256 kb)
 
+          - ``"encoding"``: encoding used for this file - any
+            :class:`unicode` that is written to the file will be
+            converted to a :class:`str` with this encoding
+
         :Parameters:
           - `root_collection`: root collection to write to
           - `**kwargs` (optional): file level options (see above)
         """
         if not isinstance(root_collection, Collection):
-            raise TypeError("root_collection must be an instance of Collection")
+            raise TypeError("root_collection must be an "
+                            "instance of Collection")
 
         # Handle alternative naming
         if "content_type" in kwargs:
@@ -120,6 +128,9 @@ class GridIn(object):
         kwargs["_id"] = kwargs.get("_id", ObjectId())
         kwargs["chunkSize"] = kwargs.get("chunkSize", DEFAULT_CHUNK_SIZE)
 
+        root_collection.chunks.ensure_index([("files_id", ASCENDING),
+                                             ("n", ASCENDING)],
+                                            unique=True)
         object.__setattr__(self, "_coll", root_collection)
         object.__setattr__(self, "_chunks", root_collection.chunks)
         object.__setattr__(self, "_file", kwargs)
@@ -155,9 +166,10 @@ class GridIn(object):
         raise AttributeError("GridIn object has no attribute '%s'" % name)
 
     def __setattr__(self, name, value):
-        if self._closed:
-            raise AttributeError("cannot set %r on a closed file" % name)
         object.__setattr__(self, name, value)
+        if self._closed:
+            self._coll.files.update({"_id": self._file["_id"]},
+                                    {"$set": {name: value}}, safe=True)
 
     def __flush_data(self, data):
         """Flush `data` to a chunk.
@@ -192,7 +204,11 @@ class GridIn(object):
         self._file["md5"] = md5
         self._file["length"] = self._position
         self._file["uploadDate"] = datetime.datetime.utcnow()
-        return self._coll.files.insert(self._file)
+
+        try:
+            return self._coll.files.insert(self._file, safe=True)
+        except DuplicateKeyError:
+            raise FileExists("file with _id %r already exists" % self._id)
 
     def close(self):
         """Flush the file and close it.
@@ -204,28 +220,36 @@ class GridIn(object):
             self.__flush()
             self._closed = True
 
-    # TODO should support writing unicode to a file. this means that files will
-    # need to have an encoding attribute.
     def write(self, data):
         """Write data to the file. There is no return value.
 
         `data` can be either a string of bytes or a file-like object
-        (implementing :meth:`read`).
+        (implementing :meth:`read`). If the file has an
+        :attr:`encoding` attribute, `data` can also be a
+        :class:`unicode` instance, which will be encoded as
+        :attr:`encoding` before being written.
 
         Due to buffering, the data may not actually be written to the
         database until the :meth:`close` method is called. Raises
         :class:`ValueError` if this file is already closed. Raises
         :class:`TypeError` if `data` is not an instance of
-        :class:`str` or a file-like object.
+        :class:`str`, a file-like object, or an instance of
+        :class:`unicode` (only allowed if the file has an
+        :attr:`encoding` attribute).
 
         :Parameters:
           - `data`: string of bytes or file-like object to be written
             to the file
+
+        .. versionadded:: 1.9
+           The ability to write :class:`unicode`, if the file has an
+           :attr:`encoding` attribute.
         """
         if self._closed:
             raise ValueError("cannot write to a closed file")
 
-        try: # file-like
+        # file-like
+        try:
             if self._buffer.tell() > 0:
                 space = self.chunk_size - self._buffer.tell()
                 self._buffer.write(data.read(space))
@@ -235,9 +259,17 @@ class GridIn(object):
                 self.__flush_data(to_write)
                 to_write = data.read(self.chunk_size)
             self._buffer.write(to_write)
-        except AttributeError: # string
-            if not isinstance(data, str):
+        # string
+        except AttributeError:
+            if not isinstance(data, basestring):
                 raise TypeError("can only write strings or file-like objects")
+
+            if isinstance(data, unicode):
+                try:
+                    data = data.encode(self.encoding)
+                except AttributeError:
+                    raise TypeError("must specify an encoding for file in "
+                                    "order to write unicode")
 
             while data:
                 space = self.chunk_size - self._buffer.tell()
@@ -269,35 +301,46 @@ class GridIn(object):
         Close the file and allow exceptions to propogate.
         """
         self.close()
-        return False # propogate exceptions
+
+        # propogate exceptions
+        return False
 
 
 class GridOut(object):
     """Class to read data out of GridFS.
     """
-    def __init__(self, root_collection, file_id):
+    def __init__(self, root_collection, file_id=None, file_document=None):
         """Read a file from GridFS
 
         Application developers should generally not need to
         instantiate this class directly - instead see the methods
         provided by :class:`~gridfs.GridFS`.
 
-        Raises :class:`TypeError` if `root_collection` is not an instance of
+        Either `file_id` or `file_document` must be specified,
+        `file_document` will be given priority if present. Raises
+        :class:`TypeError` if `root_collection` is not an instance of
         :class:`~pymongo.collection.Collection`.
 
         :Parameters:
           - `root_collection`: root collection to read from
           - `file_id`: value of ``"_id"`` for the file to read
+          - `file_document`: file document from `root_collection.files`
+
+        .. versionadded:: 1.9
+           The `file_document` parameter.
         """
         if not isinstance(root_collection, Collection):
-            raise TypeError("root_collection must be an instance of Collection")
+            raise TypeError("root_collection must be an "
+                            "instance of Collection")
 
         self.__chunks = root_collection.chunks
-        self._file = root_collection.files.find_one({"_id": file_id})
+
+        files = root_collection.files
+        self._file = file_document or files.find_one({"_id": file_id})
 
         if not self._file:
             raise NoFile("no file in gridfs collection %r with _id %r" %
-                         (root_collection, file_id))
+                         (files, file_id))
 
         self.__buffer = ""
         self.__position = 0
@@ -342,26 +385,46 @@ class GridOut(object):
         if size < 0 or size > remainder:
             size = remainder
 
-        data = self.__buffer
-        chunk_number = (len(data) + self.__position) / self.chunk_size
+        received = len(self.__buffer)
+        chunk_number = (received + self.__position) / self.chunk_size
+        chunks = []
 
-        while len(data) < size:
+        while received < size:
             chunk = self.__chunks.find_one({"files_id": self._id,
                                             "n": chunk_number})
             if not chunk:
                 raise CorruptGridFile("no chunk #%d" % chunk_number)
 
-            if not data:
-                data += chunk["data"][self.__position % self.chunk_size:]
+            if received:
+                chunk_data = chunk["data"]
             else:
-                data += chunk["data"]
+                chunk_data = chunk["data"][self.__position % self.chunk_size:]
 
+            received += len(chunk_data)
+            chunks.append(chunk_data)
             chunk_number += 1
 
+        data = "".join([self.__buffer] + chunks)
         self.__position += size
         to_return = data[:size]
         self.__buffer = data[size:]
         return to_return
+
+    def readline(self, size=-1):
+        """Read one line or up to `size` bytes from the file.
+
+        :Parameters:
+         - `size` (optional): the maximum number of bytes to read
+
+        .. versionadded:: 1.9
+        """
+        bytes = ""
+        while len(bytes) != size:
+            byte = self.read(1)
+            bytes += byte
+            if byte == "" or byte == "\n":
+                break
+        return bytes
 
     def tell(self):
         """Return the current position of this file.

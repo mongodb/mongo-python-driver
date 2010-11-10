@@ -28,7 +28,7 @@ import sys
 import warnings
 sys.path[0:0] = [""]
 
-from pymongo.errors import ConnectionFailure, ConfigurationError
+from pymongo.errors import ConnectionFailure
 from pymongo.connection import Connection
 
 skip_tests = True
@@ -83,9 +83,9 @@ class TestPaired(unittest.TestCase):
         self.assertEqual(port, connection.port)
 
         slave = self.left == (host, port) and self.right or self.left
-        self.assertRaises(ConfigurationError, Connection.paired,
+        self.assertRaises(ConnectionFailure, Connection.paired,
                           slave, self.bad)
-        self.assertRaises(ConfigurationError, Connection.paired,
+        self.assertRaises(ConnectionFailure, Connection.paired,
                           self.bad, slave)
 
     def test_repr(self):
@@ -93,7 +93,7 @@ class TestPaired(unittest.TestCase):
         connection = Connection.paired(self.left, self.right)
 
         self.assertEqual(repr(connection),
-                         "Connection.paired(('%s', %s), ('%s', %s))" %
+                         "Connection(['%s:%s', '%s:%s'])" %
                          (self.left[0],
                           self.left[1],
                           self.right[0],

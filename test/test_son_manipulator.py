@@ -19,13 +19,15 @@ import unittest
 import sys
 sys.path[0:0] = [""]
 
-import qcheck
-from pymongo.objectid import ObjectId
-from pymongo.son import SON
-from pymongo.son_manipulator import SONManipulator, ObjectIdInjector
-from pymongo.son_manipulator import NamespaceInjector, ObjectIdShuffler
+from bson.objectid import ObjectId
+from bson.son import SON
 from pymongo.database import Database
+from pymongo.son_manipulator import (NamespaceInjector,
+                                     ObjectIdInjector,
+                                     ObjectIdShuffler,
+                                     SONManipulator)
 from test_connection import get_connection
+import qcheck
 
 
 class TestSONManipulator(unittest.TestCase):

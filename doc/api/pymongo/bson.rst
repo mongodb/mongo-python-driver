@@ -1,7 +1,10 @@
-:mod:`bson` -- Tools for working with `BSON <http://www.mongodb.org/display/DOCS/BSON>`_ in Python
-==================================================================================================
+:mod:`bson` -- MOVED
+====================
 
-.. automodule:: pymongo.bson
-   :synopsis: Tools for working with BSON in Python
-   :members:
-   :show-inheritance:
+.. module:: pymongo.bson
+
+This module has been deprecated in favor of :mod:`bson`. Please use
+that module instead.
+
+.. versionchanged:: 1.9
+   Deprecated.

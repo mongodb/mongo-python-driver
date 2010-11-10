@@ -38,11 +38,13 @@ SLOW_ONLY = 1
 ALL = 2
 """Profile all operations."""
 
-version = "1.6+"
+# Remember to change in setup.py as well!
+version = "1.9+"
 """Current version of PyMongo."""
 
 Connection = PyMongo_Connection
 """Alias for :class:`pymongo.connection.Connection`."""
+
 
 def has_c():
     """Is the C extension installed?
@@ -50,7 +52,7 @@ def has_c():
     .. versionadded:: 1.5
     """
     try:
-        from pymongo import _cbson
+        from pymongo import _cmessage
         return True
     except ImportError:
         return False

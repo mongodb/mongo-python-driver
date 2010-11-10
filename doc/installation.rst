@@ -22,16 +22,16 @@ the driver from the resulting tree::
 
 .. _install-no-c:
 
-Installing Without the C Extension
-----------------------------------
-By default, the driver attempts to build and install an optional C
-extension (used for increasing performance) when it is installed. If
-the extension fails to build the driver will be installed anyway but a
+Installing Without C Extensions
+-------------------------------
+By default, the driver attempts to build and install optional C
+extensions (used for increasing performance) when it is installed. If
+any extension fails to build the driver will be installed anyway but a
 warning will be printed.
 
-In :ref:`certain cases <using-with-mod-wsgi>`, you
-might wish to install the driver without the C extension, even if the
-extension builds properly. This can be done using a command line
-option to *setup.py*::
+In :ref:`certain cases <using-with-mod-wsgi>`, you might wish to
+install the driver without the C extensions, even if the extensions
+build properly. This can be done using a command line option to
+*setup.py*::
 
   $ python setup.py --no_ext install

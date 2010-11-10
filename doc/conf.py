@@ -5,7 +5,7 @@
 # This file is execfile()d with the current directory set to its containing dir.
 
 import sys, os
-sys.path.append(os.path.abspath('..'))
+sys.path[0:0] = [os.path.abspath('..')]
 
 import pymongo
 

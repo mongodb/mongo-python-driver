@@ -107,10 +107,22 @@ about the decision, but here is a brief summary:
 
 What is the correct way to handle time zones with PyMongo?
 ----------------------------------------------------------
-Currently the correct way is to only save naive
+
+Prior to PyMongo version 1.7, the correct way is to only save naive
 :class:`~datetime.datetime` instances, and to save all dates as
-UTC. Unfortunately, Python time zone handling is less than elegant so
-it is quite difficult for the driver to do anything smarter than this.
+UTC. In versions >= 1.7, the driver will automatically convert aware
+datetimes to UTC before saving them. By default, datetimes retrieved
+from the server (no matter what version of the driver you're using)
+will be naive and represent UTC. In newer versions of the driver you
+can set the :class:`~pymongo.connection.Connection` `tz_aware`
+parameter to ``True``, which will cause all
+:class:`~datetime.datetime` instances returned from that Connection to
+be aware (UTC). This setting is recommended, as it can force
+application code to handle timezones properly.
+
+.. warning:: Be careful not to save naive :class:`~datetime.datetime`
+   instances that are not UTC (i.e. the result of calling
+   :meth:`datetime.datetime.now`).
 
 Something like :mod:`pytz` can be used to convert dates to localtime
 after retrieving them from the database.
@@ -170,7 +182,27 @@ How can I use something like Python's :mod:`json` module to encode my documents 
 ----------------------------------------------------------------------------------------
 The :mod:`json` module won't work out of the box with all documents
 from PyMongo as PyMongo supports some special types (like
-:class:`~pymongo.objectid.ObjectId` and :class:`~pymongo.dbref.DBRef`)
+:class:`~bson.objectid.ObjectId` and :class:`~bson.dbref.DBRef`)
 that are not supported in JSON. We've added some utilities for working
 with :mod:`json` and :mod:`simplejson` in the
-:mod:`~pymongo.json_util` module.
+:mod:`~bson.json_util` module.
+
+.. _year-2038-problem:
+
+Why do I get an error for dates on or after 2038?
+-------------------------------------------------
+On Unix systems, dates are represented as seconds from 1 January 1970 and usually stored in the C
+:mod:`time_t` type. On most 32-bit operating systems :mod:`time_t` is a signed 4 byte integer
+which means it can't handle dates after 19 January 2038; this is known as the
+`year 2038 problem <http://en.wikipedia.org/wiki/Year_2038_problem>`_. Neither MongoDB nor
+Python uses :mod:`time_t` to represent dates internally so do not suffer from this problem, but
+Python's :mod:`datetime.datetime.fromtimestamp()` used by PyMongo's Python implementation of
+:mod:`bson` does, which means it is susceptible. Therefore, on 32-bit systems you may get an
+error retrieving dates after 2038 from MongoDB using PyMongo with the Python version of
+:mod:`bson`.
+
+The C implementation of :mod:`bson` also used to suffer from this problem but it was fixed in
+commit ``566bc9fb7be6f9ab2604`` (10 May 2010).
+
+
+

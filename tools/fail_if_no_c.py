@@ -20,7 +20,8 @@ Only really intended to be used by internal build scripts.
 import sys
 sys.path[0:0] = [""]
 
+import bson
 import pymongo
 
-if not pymongo.has_c():
-    sys.exit("could not import _cbson")
+if not pymongo.has_c() or not bson.has_c():
+    sys.exit("could not load C extensions")

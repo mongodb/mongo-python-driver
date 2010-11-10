@@ -1,7 +1,10 @@
-:mod:`timestamp` -- Tools for representing MongoDB internal Timestamps
-======================================================================
-.. versionadded:: 1.5
+:mod:`timestamp` -- MOVED
+=========================
 
-.. automodule:: pymongo.timestamp
-   :synopsis: Tools for representing MongoDB internal Timestamps
-   :members:
+.. module:: pymongo.timestamp
+
+This module has been deprecated in favor of
+:mod:`bson.timestamp`. Please use that module instead.
+
+.. versionchanged:: 1.9
+   Deprecated.

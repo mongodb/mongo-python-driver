@@ -66,6 +66,16 @@ class MasterSlaveConnection(object):
     def slaves(self):
         return self.__slaves
 
+    # TODO this is a temporary hack PYTHON-136 is the right solution for this
+    @property
+    def document_class(self):
+        return dict
+
+    # TODO this is a temporary hack PYTHON-136 is the right solution for this
+    @property
+    def tz_aware(self):
+        return True
+
     @property
     def slave_okay(self):
         """Is it okay for this connection to connect directly to a slave?
@@ -108,9 +118,8 @@ class MasterSlaveConnection(object):
     # _connection_to_use is a hack that we need to include to make sure
     # that getmore operations can be sent to the same instance on which
     # the cursor actually resides...
-    def _send_message_with_response(self, message,
-                                    _sock=None, _connection_to_use=None,
-                                    _must_use_master=False):
+    def _send_message_with_response(self, message, _connection_to_use=None,
+                                    _must_use_master=False, **kwargs):
         """Receive a message from Mongo.
 
         Sends the given message and returns a (connection_id, response) pair.
@@ -121,12 +130,13 @@ class MasterSlaveConnection(object):
         """
         if _connection_to_use is not None:
             if _connection_to_use == -1:
-                return (-1, self.__master._send_message_with_response(message,
-                                                                      _sock))
+                return (-1,
+                         self.__master._send_message_with_response(message,
+                                                                   **kwargs))
             else:
                 return (_connection_to_use,
                         self.__slaves[_connection_to_use]
-                        ._send_message_with_response(message, _sock))
+                        ._send_message_with_response(message, **kwargs))
 
         # for now just load-balance randomly among slaves only...
         connection_id = random.randrange(0, len(self.__slaves))
@@ -136,11 +146,11 @@ class MasterSlaveConnection(object):
         # master since that is where writes go.
         if _must_use_master or self.__in_request or connection_id == -1:
             return (-1, self.__master._send_message_with_response(message,
-                                                                  _sock))
+                                                                  **kwargs))
 
-        return (connection_id,
-                self.__slaves[connection_id]._send_message_with_response(message,
-                                                                         _sock))
+        slaves = self.__slaves[connection_id]
+        return (connection_id, slaves._send_message_with_response(message,
+                                                                  **kwargs))
 
     def start_request(self):
         """Start a "request".

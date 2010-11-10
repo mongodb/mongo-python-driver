@@ -8,10 +8,22 @@ About
 =====
 
 The PyMongo distribution contains tools for interacting with MongoDB
-database from Python.  The ``pymongo`` package is a native Python
-driver for MongoDB. The ``gridfs`` package is a `gridfs
+database from Python.  The ``bson`` package is an implementation of
+the `BSON format <http://bsonspec.org>`_ for Python. The ``pymongo``
+package is a native Python driver for MongoDB. The ``gridfs`` package
+is a `gridfs
 <http://www.mongodb.org/display/DOCS/GridFS+Specification>`_
 implementation on top of ``pymongo``.
+
+Issues / Questions / Feedback
+=============================
+
+Any issues with, questions about, or feedback for PyMongo should be
+sent to the mongodb-user list on Google Groups. For confirmed issues
+or feature requests, open a case on `jira
+<http://jira.mongodb.org>`_. Please do not e-mail any of the PyMongo
+developers directly with issues or questions - you're more likely to
+get an answer on the list.
 
 Installation
 ============

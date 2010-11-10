@@ -20,24 +20,25 @@ import sys
 sys.path[0:0] = [""]
 import unittest
 
+from bson.code import Code
+from bson.dbref import DBRef
+from bson.objectid import ObjectId
+from bson.son import SON
 from pymongo import (ALL,
                      ASCENDING,
                      DESCENDING,
                      helpers,
                      OFF,
                      SLOW_ONLY)
-from pymongo.code import Code
 from pymongo.collection import Collection
 from pymongo.connection import Connection
 from pymongo.database import Database
-from pymongo.dbref import DBRef
 from pymongo.errors import (CollectionInvalid,
                             InvalidName,
                             InvalidOperation,
                             OperationFailure)
-from pymongo.objectid import ObjectId
-from pymongo.son import SON
-from pymongo.son_manipulator import AutoReference, NamespaceInjector
+from pymongo.son_manipulator import (AutoReference,
+                                     NamespaceInjector)
 from test import version
 from test.test_connection import get_connection
 
@@ -112,17 +113,23 @@ class TestDatabase(unittest.TestCase):
         db.test.save({"dummy": u"object"})
         self.assert_("test" in db.collection_names())
         db.drop_collection("test")
-        self.failIf("test" in db.collection_names())
+        self.assertFalse("test" in db.collection_names())
 
         db.test.save({"dummy": u"object"})
         self.assert_("test" in db.collection_names())
         db.drop_collection(u"test")
-        self.failIf("test" in db.collection_names())
+        self.assertFalse("test" in db.collection_names())
 
         db.test.save({"dummy": u"object"})
         self.assert_("test" in db.collection_names())
         db.drop_collection(db.test)
-        self.failIf("test" in db.collection_names())
+        self.assertFalse("test" in db.collection_names())
+
+        db.test.save({"dummy": u"object"})
+        self.assert_("test" in db.collection_names())
+        db.test.drop()
+        self.assertFalse("test" in db.collection_names())
+        db.test.drop()
 
         db.drop_collection(db.test.doesnotexist)
 
@@ -197,7 +204,10 @@ class TestDatabase(unittest.TestCase):
         prev_error = db.previous_error()
         self.assertEqual(prev_error["nPrev"], 1)
         del prev_error["nPrev"]
-        self.assertEqual(db.error(), prev_error)
+        prev_error.pop("lastOp", None)
+        error = db.error()
+        error.pop("lastOp", None)
+        self.assertEqual(error, prev_error)
 
         db.test.find_one()
         self.assertEqual(None, db.error())
@@ -223,7 +233,7 @@ class TestDatabase(unittest.TestCase):
         self.assert_(db.last_status()["updatedExisting"])
 
         db.test.update({"i": 1}, {"$set": {"i": 500}})
-        self.failIf(db.last_status()["updatedExisting"])
+        self.assertFalse(db.last_status()["updatedExisting"])
 
     def test_password_digest(self):
         self.assertRaises(TypeError, helpers._password_digest, 5)
@@ -248,20 +258,20 @@ class TestDatabase(unittest.TestCase):
         self.assertRaises(TypeError, db.authenticate, 5, "password")
         self.assertRaises(TypeError, db.authenticate, "mike", 5)
 
-        self.failIf(db.authenticate("mike", "not a real password"))
-        self.failIf(db.authenticate("faker", "password"))
+        self.assertFalse(db.authenticate("mike", "not a real password"))
+        self.assertFalse(db.authenticate("faker", "password"))
         self.assert_(db.authenticate("mike", "password"))
         self.assert_(db.authenticate(u"mike", u"password"))
 
         db.remove_user("mike")
-        self.failIf(db.authenticate("mike", "password"))
+        self.assertFalse(db.authenticate("mike", "password"))
 
-        self.failIf(db.authenticate("Gustave", u"Dor\xe9"))
+        self.assertFalse(db.authenticate("Gustave", u"Dor\xe9"))
         db.add_user("Gustave", u"Dor\xe9")
         self.assert_(db.authenticate("Gustave", u"Dor\xe9"))
 
         db.add_user("Gustave", "password")
-        self.failIf(db.authenticate("Gustave", u"Dor\xe9"))
+        self.assertFalse(db.authenticate("Gustave", u"Dor\xe9"))
         self.assert_(db.authenticate("Gustave", u"password"))
 
         # just make sure there are no exceptions here
@@ -364,10 +374,6 @@ class TestDatabase(unittest.TestCase):
         db = self.connection.pymongo_test
         db.test.remove({})
 
-        self.assertRaises(TypeError, db.test.remove, 5)
-        self.assertRaises(TypeError, db.test.remove, "test")
-        self.assertRaises(TypeError, db.test.remove, [])
-
         one = db.test.save({"x": 1})
         db.test.save({"x": 2})
         db.test.save({"x": 3})
@@ -392,11 +398,11 @@ class TestDatabase(unittest.TestCase):
 
         self.assert_(db.test.find_one({"x": 2}))
         db.test.remove({"x": 2})
-        self.failIf(db.test.find_one({"x": 2}))
+        self.assertFalse(db.test.find_one({"x": 2}))
 
         self.assert_(db.test.find_one())
         db.test.remove({})
-        self.failIf(db.test.find_one())
+        self.assertFalse(db.test.find_one())
 
     def test_save_a_bunch(self):
         db = self.connection.pymongo_test
@@ -490,6 +496,20 @@ class TestDatabase(unittest.TestCase):
 
         db.system_js.no_param = Code("return 5;")
         self.assertEqual(5, db.system_js.no_param())
+
+    def test_system_js_list(self):
+        db = self.connection.pymongo_test
+        db.system.js.remove()
+        self.assertEqual([], db.system_js.list())
+
+        db.system_js.foo = "blah"
+        self.assertEqual(["foo"], db.system_js.list())
+
+        db.system_js.bar = "baz"
+        self.assertEqual(set(["foo", "bar"]), set(db.system_js.list()))
+
+        del db.system_js.foo
+        self.assertEqual(["bar"], db.system_js.list())
 
 
 if __name__ == "__main__":

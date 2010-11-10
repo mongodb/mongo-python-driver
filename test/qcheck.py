@@ -19,10 +19,10 @@ import re
 import sys
 sys.path[0:0] = [""]
 
-from pymongo.binary import Binary
-from pymongo.objectid import ObjectId
-from pymongo.dbref import DBRef
-from pymongo.son import SON
+from bson.binary import Binary
+from bson.dbref import DBRef
+from bson.objectid import ObjectId
+from bson.son import SON
 
 gen_target = 100
 reduction_attempts = 10

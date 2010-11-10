@@ -60,7 +60,7 @@ class MongodocDirective(Directive):
         env = self.state.document.settings.env
 
         return make_admonition(mongodoc, self.name,
-                               [_('See general MongoDB documentation')],
+                               ['See general MongoDB documentation'],
                                self.options, self.content, self.lineno,
                                self.content_offset, self.block_text, self.state,
                                self.state_machine)
@@ -83,7 +83,7 @@ def process_mongodoc_nodes(app, doctree, fromdocname):
             link = mongoref("", "")
             link["refuri"] = "http://dochub.mongodb.org/core/%s" % tag
             link["name"] = anchor
-            link.append(nodes.emphasis(_(tag), _(tag)))
+            link.append(nodes.emphasis(tag, tag))
             new_para = nodes.paragraph()
             new_para += link
             node.replace(para, new_para)

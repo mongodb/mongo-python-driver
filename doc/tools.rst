@@ -57,6 +57,11 @@ MongoEngine
   <http://github.com/hmarr/mongoengine>`_; for more information, see
   the `tutorial <http://hmarr.com/mongoengine/tutorial.html>`_.
 
+DjangoMongodbEngine
+  `Django MongoDB Engine
+  <http://github.com/FlaPer87/django-mongodb-engine/>`_ is a mongodb
+  database backend for Django.
+
 pymongo-bongo
   `pymongo-bongo <http://pypi.python.org/pypi/pymongo-bongo/>`_ is a
   project to add some syntactic sugar on top of PyMongo. It is open

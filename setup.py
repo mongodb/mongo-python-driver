@@ -19,7 +19,8 @@ from distutils.errors import CCompilerError
 from distutils.errors import DistutilsPlatformError, DistutilsExecError
 from distutils.core import Extension
 
-from pymongo import version
+# Remember to change in pymongo/__init__.py as well!
+version = "1.9+"
 
 f = open("README.rst")
 try:
@@ -125,16 +126,33 @@ although they do result in significant speed improvements.
                                           "advantage of the extension.")
 
 c_ext = Feature(
-    "optional C extension",
+    "optional C extensions",
     standard=True,
-    ext_modules=[Extension('pymongo._cbson',
-                           include_dirs=['pymongo'],
-                           sources=['pymongo/_cbsonmodule.c',
-                                    'pymongo/time_helpers.c',
-                                    'pymongo/encoding_helpers.c'])])
+    ext_modules=[Extension('bson._cbson',
+                           include_dirs=['bson'],
+                           sources=['bson/_cbsonmodule.c',
+                                    'bson/time64.c',
+                                    'bson/buffer.c',
+                                    'bson/encoding_helpers.c']),
+                 Extension('pymongo._cmessage',
+                           include_dirs=['bson'],
+                           sources=['pymongo/_cmessagemodule.c',
+                                    'bson/_cbsonmodule.c',
+                                    'bson/time64.c',
+                                    'bson/buffer.c',
+                                    'bson/encoding_helpers.c'])])
 
 if "--no_ext" in sys.argv:
     sys.argv = [x for x in sys.argv if x != "--no_ext"]
+    features = {}
+elif sys.byteorder == "big":
+    print """
+*****************************************************
+The optional C extensions are currently not supported
+on big endian platforms and will not be built.
+Performance may be degraded.
+*****************************************************
+"""
     features = {}
 else:
     features = {"c-ext": c_ext}
@@ -147,8 +165,8 @@ setup(
     author="Mike Dirolf",
     author_email="mongodb-user@googlegroups.com",
     url="http://github.com/mongodb/mongo-python-driver",
-    keywords=["mongo", "mongodb", "pymongo", "gridfs"],
-    packages=["pymongo", "gridfs"],
+    keywords=["mongo", "mongodb", "pymongo", "gridfs", "bson"],
+    packages=["bson", "pymongo", "gridfs"],
     install_requires=[],
     features=features,
     license="Apache License, Version 2.0",

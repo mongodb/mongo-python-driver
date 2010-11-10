@@ -18,8 +18,10 @@ import unittest
 import sys
 sys.path[0:0] = [""]
 
-from pymongo.objectid import ObjectId
-from pymongo.dbref import DBRef
+from bson.objectid import ObjectId
+from bson.dbref import DBRef
+
+from copy import deepcopy
 
 
 class TestDBRef(unittest.TestCase):
@@ -61,8 +63,12 @@ class TestDBRef(unittest.TestCase):
                          "DBRef('coll', ObjectId('1234567890abcdef12345678'))")
         self.assertEqual(repr(DBRef(u"coll", ObjectId("1234567890abcdef12345678"))),
                          "DBRef(u'coll', ObjectId('1234567890abcdef12345678'))")
+        self.assertEqual(repr(DBRef("coll", 5, foo="bar")),
+                         "DBRef('coll', 5, foo='bar')")
         self.assertEqual(repr(DBRef("coll", ObjectId("1234567890abcdef12345678"), "foo")),
                          "DBRef('coll', ObjectId('1234567890abcdef12345678'), 'foo')")
+        self.assertEqual(repr(DBRef("coll", 5, "baz", foo="bar", baz=4)),
+                         "DBRef('coll', 5, 'baz', foo='bar', baz=4)")
 
     def test_cmp(self):
         self.assertEqual(DBRef("coll", ObjectId("1234567890abcdef12345678")),
@@ -78,6 +84,28 @@ class TestDBRef(unittest.TestCase):
                          DBRef(u"coll", ObjectId("1234567890abcdef12345678"), "foo"))
         self.assertNotEqual(DBRef("coll", ObjectId("1234567890abcdef12345678"), "foo"),
                             DBRef(u"coll", ObjectId("1234567890abcdef12345678"), "bar"))
+
+    def test_kwargs(self):
+        self.assertEqual(DBRef("coll", 5, foo="bar"), DBRef("coll", 5, foo="bar"))
+        self.assertNotEqual(DBRef("coll", 5, foo="bar"), DBRef("coll", 5))
+        self.assertNotEqual(DBRef("coll", 5, foo="bar"), DBRef("coll", 5, foo="baz"))
+        self.assertEqual("bar", DBRef("coll", 5, foo="bar").foo)
+        self.assertRaises(KeyError, getattr, DBRef("coll", 5, foo="bar"), "bar")
+
+    def test_deepcopy(self):
+        a = DBRef('coll', 'asdf', 'db', x=[1])
+        b = deepcopy(a)
+
+        self.assertEqual(a, b)
+        self.assertNotEqual(id(a), id(b.x))
+        self.assertEqual(a.x, b.x)
+        self.assertNotEqual(id(a.x), id(b.x))
+
+        b.x[0] = 2
+        self.assertEqual(a.x, [1])
+        self.assertEqual(b.x, [2])
+
+
 
 
 if __name__ == "__main__":

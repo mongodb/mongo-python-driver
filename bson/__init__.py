@@ -12,25 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tools for dealing with Mongo's BSON data representation.
+"""BSON (Binary JSON) encoding and decoding.
+"""
 
-Generally not needed to be used by application developers."""
-
-import struct
-import re
-import datetime
 import calendar
+import datetime
+import re
+import struct
+import warnings
 
-from pymongo.binary import Binary
-from pymongo.code import Code
-from pymongo.dbref import DBRef
-from pymongo.errors import (InvalidBSON,
-                            InvalidDocument,
-                            InvalidName,
-                            InvalidStringData)
-from pymongo.objectid import ObjectId
-from pymongo.son import SON
-from timestamp import Timestamp
+from bson.binary import Binary
+from bson.code import Code
+from bson.dbref import DBRef
+from bson.errors import (InvalidBSON,
+                         InvalidDocument,
+                         InvalidStringData)
+from bson.max_key import MaxKey
+from bson.min_key import MinKey
+from bson.objectid import ObjectId
+from bson.son import SON
+from bson.timestamp import Timestamp
+from bson.tz_util import utc
 
 
 try:
@@ -50,9 +52,10 @@ except ImportError:
 RE_TYPE = type(re.compile(""))
 
 
-def _get_int(data):
+def _get_int(data, as_class=None, tz_aware=False, unsigned=False):
+    format = unsigned and "I" or "i"
     try:
-        value = struct.unpack("<i", data[:4])[0]
+        value = struct.unpack("<%s" % format, data[:4])[0]
     except struct.error:
         raise InvalidBSON()
 
@@ -84,176 +87,24 @@ def _make_c_string(string, check_null=False):
                                     "UTF-8: %r" % string)
 
 
-def _validate_number(data):
-    assert len(data) >= 8
-    return data[8:]
-
-
-def _validate_string(data):
-    (length, data) = _get_int(data)
-    assert len(data) >= length
-    assert data[length - 1] == "\x00"
-    return data[length:]
-
-
-def _validate_object(data):
-    return _validate_document(data, None)
-
-
-def _validate_array(data):
-    return _validate_document(data, re.compile("^\d+$"))
-
-
-def _validate_binary(data):
-    (length, data) = _get_int(data)
-    # + 1 for the subtype byte
-    assert len(data) >= length + 1
-    return data[length + 1:]
-
-
-def _validate_undefined(data):
-    return data
-
-
-_OID_SIZE = 12
-
-
-def _validate_oid(data):
-    assert len(data) >= _OID_SIZE
-    return data[_OID_SIZE:]
-
-
-def _validate_boolean(data):
-    assert len(data) >= 1
-    return data[1:]
-
-
-_DATE_SIZE = 8
-
-
-def _validate_date(data):
-    assert len(data) >= _DATE_SIZE
-    return data[_DATE_SIZE:]
-
-
-_validate_null = _validate_undefined
-
-
-def _validate_regex(data):
-    (regex, data) = _get_c_string(data)
-    (options, data) = _get_c_string(data)
-    return data
-
-
-def _validate_ref(data):
-    data = _validate_string(data)
-    return _validate_oid(data)
-
-
-_validate_code = _validate_string
-
-
-def _validate_code_w_scope(data):
-    (length, data) = _get_int(data)
-    assert len(data) >= length + 1
-    return data[length + 1:]
-
-
-_validate_symbol = _validate_string
-
-
-def _validate_number_int(data):
-    assert len(data) >= 4
-    return data[4:]
-
-
-def _validate_timestamp(data):
-    assert len(data) >= 8
-    return data[8:]
-
-def _validate_number_long(data):
-    assert len(data) >= 8
-    return data[8:]
-
-
-_element_validator = {
-    "\x01": _validate_number,
-    "\x02": _validate_string,
-    "\x03": _validate_object,
-    "\x04": _validate_array,
-    "\x05": _validate_binary,
-    "\x06": _validate_undefined,
-    "\x07": _validate_oid,
-    "\x08": _validate_boolean,
-    "\x09": _validate_date,
-    "\x0A": _validate_null,
-    "\x0B": _validate_regex,
-    "\x0C": _validate_ref,
-    "\x0D": _validate_code,
-    "\x0E": _validate_symbol,
-    "\x0F": _validate_code_w_scope,
-    "\x10": _validate_number_int,
-    "\x11": _validate_timestamp,
-    "\x12": _validate_number_long}
-
-
-def _validate_element_data(type, data):
-    try:
-        return _element_validator[type](data)
-    except KeyError:
-        raise InvalidBSON("unrecognized type: %s" % type)
-
-
-def _validate_element(data, valid_name):
-    element_type = data[0]
-    (element_name, data) = _get_c_string(data[1:])
-    if valid_name:
-        assert valid_name.match(element_name), "name is invalid"
-    return _validate_element_data(element_type, data)
-
-
-def _validate_elements(data, valid_name):
-    while data:
-        data = _validate_element(data, valid_name)
-
-
-def _validate_document(data, valid_name=None):
-    try:
-        obj_size = struct.unpack("<i", data[:4])[0]
-    except struct.error:
-        raise InvalidBSON()
-
-    assert obj_size <= len(data)
-    obj = data[4:obj_size]
-    assert len(obj)
-
-    eoo = obj[-1]
-    assert eoo == "\x00"
-
-    elements = obj[:-1]
-    _validate_elements(elements, valid_name)
-
-    return data[obj_size:]
-
-
-def _get_number(data):
+def _get_number(data, as_class, tz_aware):
     return (struct.unpack("<d", data[:8])[0], data[8:])
 
 
-def _get_string(data):
+def _get_string(data, as_class, tz_aware):
     return _get_c_string(data[4:], struct.unpack("<i", data[:4])[0] - 1)
 
 
-def _get_object(data):
-    (object, data) = _bson_to_dict(data)
+def _get_object(data, as_class, tz_aware):
+    (object, data) = _bson_to_dict(data, as_class, tz_aware)
     if "$ref" in object:
-        return (DBRef(object["$ref"], object["$id"],
-                      object.get("$db", None)), data)
+        return (DBRef(object.pop("$ref"), object.pop("$id"),
+                      object.pop("$db", None), object), data)
     return (object, data)
 
 
-def _get_array(data):
-    (obj, data) = _get_object(data)
+def _get_array(data, as_class, tz_aware):
+    (obj, data) = _get_object(data, as_class, tz_aware)
     result = []
     i = 0
     while True:
@@ -265,7 +116,7 @@ def _get_array(data):
     return (result, data)
 
 
-def _get_binary(data):
+def _get_binary(data, as_class, tz_aware):
     (length, data) = _get_int(data)
     subtype = ord(data[0])
     data = data[1:]
@@ -279,31 +130,33 @@ def _get_binary(data):
     return (Binary(data[:length], subtype), data[length:])
 
 
-def _get_oid(data):
+def _get_oid(data, as_class, tz_aware):
     return (ObjectId(data[:12]), data[12:])
 
 
-def _get_boolean(data):
+def _get_boolean(data, as_class, tz_aware):
     return (data[0] == "\x01", data[1:])
 
 
-def _get_date(data):
+def _get_date(data, as_class, tz_aware):
     seconds = float(struct.unpack("<q", data[:8])[0]) / 1000.0
+    if tz_aware:
+        return (datetime.datetime.fromtimestamp(seconds, utc), data[8:])
     return (datetime.datetime.utcfromtimestamp(seconds), data[8:])
 
 
-def _get_code_w_scope(data):
+def _get_code_w_scope(data, as_class, tz_aware):
     (_, data) = _get_int(data)
     (code, data) = _get_string(data)
-    (scope, data) = _get_object(data)
+    (scope, data) = _get_object(data, as_class, tz_aware)
     return (Code(code, scope), data)
 
 
-def _get_null(data):
+def _get_null(data, as_class, tz_aware):
     return (None, data)
 
 
-def _get_regex(data):
+def _get_regex(data, as_class, tz_aware):
     (pattern, data) = _get_c_string(data)
     (bson_flags, data) = _get_c_string(data)
     flags = 0
@@ -322,19 +175,21 @@ def _get_regex(data):
     return (re.compile(pattern, flags), data)
 
 
-def _get_ref(data):
+def _get_ref(data, as_class, tz_aware):
     (collection, data) = _get_c_string(data[4:])
     (oid, data) = _get_oid(data)
     return (DBRef(collection, oid), data)
 
 
-def _get_timestamp(data):
-    (inc, data) = _get_int(data)
-    (timestamp, data) = _get_int(data)
+def _get_timestamp(data, as_class, tz_aware):
+    (inc, data) = _get_int(data, unsigned=True)
+    (timestamp, data) = _get_int(data, unsigned=True)
     return (Timestamp(timestamp, inc), data)
 
-def _get_long(data):
+
+def _get_long(data, as_class, tz_aware):
     return (struct.unpack("<q", data[:8])[0], data[8:])
+
 
 _element_getter = {
     "\x01": _get_number,
@@ -342,41 +197,46 @@ _element_getter = {
     "\x03": _get_object,
     "\x04": _get_array,
     "\x05": _get_binary,
-    "\x06": _get_null, # undefined
+    "\x06": _get_null,  # undefined
     "\x07": _get_oid,
     "\x08": _get_boolean,
     "\x09": _get_date,
     "\x0A": _get_null,
     "\x0B": _get_regex,
     "\x0C": _get_ref,
-    "\x0D": _get_string, # code
-    "\x0E": _get_string, # symbol
+    "\x0D": _get_string,  # code
+    "\x0E": _get_string,  # symbol
     "\x0F": _get_code_w_scope,
-    "\x10": _get_int, # number_int
+    "\x10": _get_int,  # number_int
     "\x11": _get_timestamp,
     "\x12": _get_long,
-}
+    "\xFF": lambda x, y, z: (MinKey(), x),
+    "\x7F": lambda x, y, z: (MaxKey(), x)}
 
 
-def _element_to_dict(data):
+def _element_to_dict(data, as_class, tz_aware):
     element_type = data[0]
     (element_name, data) = _get_c_string(data[1:])
-    (value, data) = _element_getter[element_type](data)
+    (value, data) = _element_getter[element_type](data, as_class, tz_aware)
     return (element_name, value, data)
 
 
-def _elements_to_dict(data):
-    result = {}
+def _elements_to_dict(data, as_class, tz_aware):
+    result = as_class()
     while data:
-        (key, value, data) = _element_to_dict(data)
+        (key, value, data) = _element_to_dict(data, as_class, tz_aware)
         result[key] = value
     return result
 
 
-def _bson_to_dict(data):
+def _bson_to_dict(data, as_class, tz_aware):
     obj_size = struct.unpack("<i", data[:4])[0]
+    if len(data) < obj_size:
+        raise InvalidBSON("objsize too large")
+    if data[obj_size - 1] != "\x00":
+        raise InvalidBSON("bad eoo")
     elements = data[4:obj_size - 1]
-    return (_elements_to_dict(elements), data[obj_size:])
+    return (_elements_to_dict(elements, as_class, tz_aware), data[obj_size:])
 if _use_c:
     _bson_to_dict = _cbson._bson_to_dict
 
@@ -388,9 +248,9 @@ def _element_to_bson(key, value, check_keys):
 
     if check_keys:
         if key.startswith("$"):
-            raise InvalidName("key %r must not start with '$'" % key)
+            raise InvalidDocument("key %r must not start with '$'" % key)
         if "." in key:
-            raise InvalidName("key %r must not contain '.'" % key)
+            raise InvalidDocument("key %r must not contain '.'" % key)
 
     name = _make_c_string(key, True)
     if isinstance(value, float):
@@ -438,18 +298,20 @@ def _element_to_bson(key, value, check_keys):
         return "\x08" + name + "\x00"
     if isinstance(value, (int, long)):
         # TODO this is a really ugly way to check for this...
-        if value > 2**64 / 2 - 1 or value < -2**64 / 2:
-            raise OverflowError("MongoDB can only handle up to 8-byte ints")
-        if value > 2**32 / 2 - 1 or value < -2**32 / 2:
+        if value > 2 ** 64 / 2 - 1 or value < -2 ** 64 / 2:
+            raise OverflowError("BSON can only handle up to 8-byte ints")
+        if value > 2 ** 32 / 2 - 1 or value < -2 ** 32 / 2:
             return "\x12" + name + struct.pack("<q", value)
         return "\x10" + name + struct.pack("<i", value)
     if isinstance(value, datetime.datetime):
+        if value.utcoffset() is not None:
+            value = value - value.utcoffset()
         millis = int(calendar.timegm(value.timetuple()) * 1000 +
                      value.microsecond / 1000)
         return "\x09" + name + struct.pack("<q", millis)
     if isinstance(value, Timestamp):
-        time = struct.pack("<i", value.time)
-        inc = struct.pack("<i", value.inc)
+        time = struct.pack("<I", value.time)
+        inc = struct.pack("<I", value.inc)
         return "\x11" + name + inc + time
     if value is None:
         return "\x0A" + name
@@ -472,6 +334,10 @@ def _element_to_bson(key, value, check_keys):
             _make_c_string(flags)
     if isinstance(value, DBRef):
         return _element_to_bson(key, value.as_doc(), False)
+    if isinstance(value, MinKey):
+        return "\xFF" + name
+    if isinstance(value, MaxKey):
+        return "\x7F" + name
 
     raise InvalidDocument("cannot convert value of type %s to bson" %
                           type(value))
@@ -490,33 +356,48 @@ def _dict_to_bson(dict, check_keys, top_level=True):
 
     length = len(elements) + 5
     if length > 4 * 1024 * 1024:
-        raise InvalidDocument("document too large - BSON documents are limited "
-                              "to 4 MB")
+        raise InvalidDocument("document too large - BSON documents are"
+                              "limited to 4 MB")
     return struct.pack("<i", length) + elements + "\x00"
 if _use_c:
     _dict_to_bson = _cbson._dict_to_bson
 
 
-def _to_dicts(data):
-    """Convert binary data to sequence of SON objects.
+def _to_dicts(data, as_class=dict, tz_aware=True):
+    """DEPRECATED - `_to_dicts` has been renamed to `decode_all`.
 
-    Data must be concatenated strings of valid BSON data.
+    .. versionchanged:: 1.9
+       Deprecated in favor of :meth:`decode_all`.
+    .. versionadded:: 1.7
+       The `as_class` parameter.
+    """
+    warnings.warn("`_to_dicts` has been renamed to `decode_all`",
+                  DeprecationWarning)
+    return decode_all(data, as_class, tz_aware)
+
+
+def decode_all(data, as_class=dict, tz_aware=True):
+    """Decode BSON data to multiple documents.
+
+    `data` must be a string of concatenated, valid, BSON-encoded
+    documents.
 
     :Parameters:
-      - `data`: bson data
+      - `data`: BSON data
+      - `as_class` (optional): the class to use for the resulting
+        documents
+      - `tz_aware` (optional): if ``True``, return timezone-aware
+        :class:`~datetime.datetime` instances
+
+    .. versionadded:: 1.9
     """
-    dicts = []
+    docs = []
     while len(data):
-        (son, data) = _bson_to_dict(data)
-        dicts.append(son)
-    return dicts
+        (doc, data) = _bson_to_dict(data, as_class, tz_aware)
+        docs.append(doc)
+    return docs
 if _use_c:
-    _to_dicts = _cbson._to_dicts
-
-
-def _to_dict(data):
-    (son, _) = _bson_to_dict(data)
-    return son
+    decode_all = _cbson.decode_all
 
 
 def is_valid(bson):
@@ -537,37 +418,97 @@ def is_valid(bson):
         raise InvalidBSON("BSON documents are limited to 4MB")
 
     try:
-        remainder = _validate_document(bson)
+        (_, remainder) = _bson_to_dict(bson, dict, True)
         return remainder == ""
-    except (AssertionError, InvalidBSON):
+    except:
         return False
 
 
 class BSON(str):
-    """BSON data.
-
-    Represents binary data storable in and retrievable from Mongo.
+    """BSON (Binary JSON) data.
     """
 
     @classmethod
     def from_dict(cls, dct, check_keys=False):
-        """Create a new :class:`BSON` instance from a mapping type
-        (like :class:`dict`).
+        """DEPRECATED - `from_dict` has been renamed to `encode`.
 
-        Raises :class:`TypeError` if `dct` is not a mapping type, or
-        contains keys that are not instances of :class:`basestring`.
-        Raises :class:`~pymongo.errors.InvalidDocument` if `dct`
-        cannot be converted to :class:`BSON`.
+        .. versionchanged:: 1.9
+           Deprecated in favor of :meth:`encode`
+        """
+        warnings.warn("`from_dict` has been renamed to `encode`",
+                      DeprecationWarning)
+        return cls.encode(dct, check_keys)
+
+    @classmethod
+    def encode(cls, document, check_keys=False):
+        """Encode a document to a new :class:`BSON` instance.
+
+        A document can be any mapping type (like :class:`dict`).
+
+        Raises :class:`TypeError` if `document` is not a mapping type,
+        or contains keys that are not instances of
+        :class:`basestring`.  Raises
+        :class:`~bson.errors.InvalidDocument` if `document` cannot be
+        converted to :class:`BSON`.
 
         :Parameters:
-          - `dct`: mapping type representing a document
+          - `document`: mapping type representing a document
           - `check_keys` (optional): check if keys start with '$' or
-            contain '.', raising :class:`~pymongo.errors.InvalidName`
-            in either case
-        """
-        return cls(_dict_to_bson(dct, check_keys))
+            contain '.', raising :class:`~bson.errors.InvalidDocument` in
+            either case
 
-    def to_dict(self):
-        """Get the dictionary representation of this data."""
-        (son, _) = _bson_to_dict(self)
-        return son
+        .. versionadded:: 1.9
+        """
+        return cls(_dict_to_bson(document, check_keys))
+
+    def to_dict(self, as_class=dict, tz_aware=False):
+        """DEPRECATED - `to_dict` has been renamed to `decode`.
+
+        .. versionchanged:: 1.9
+           Deprecated in favor of :meth:`decode`
+        .. versionadded:: 1.8
+           The `tz_aware` parameter.
+        .. versionadded:: 1.7
+           The `as_class` parameter.
+        """
+        warnings.warn("`to_dict` has been renamed to `decode`",
+                      DeprecationWarning)
+        return self.decode(as_class, tz_aware)
+
+    def decode(self, as_class=dict, tz_aware=False):
+        """Decode this BSON data.
+
+        The default type to use for the resultant document is
+        :class:`dict`. Any other class that supports
+        :meth:`__setitem__` can be used instead by passing it as the
+        `as_class` parameter.
+
+        If `tz_aware` is ``True`` (recommended), any
+        :class:`~datetime.datetime` instances returned will be
+        timezone-aware, with their timezone set to
+        :attr:`bson.tz_util.utc`. Otherwise (default), all
+        :class:`~datetime.datetime` instances will be naive (but
+        contain UTC).
+
+        :Parameters:
+          - `as_class` (optional): the class to use for the resulting
+            document
+          - `tz_aware` (optional): if ``True``, return timezone-aware
+            :class:`~datetime.datetime` instances
+
+        .. versionadded:: 1.9
+        """
+        (document, _) = _bson_to_dict(self, as_class, tz_aware)
+        return document
+
+
+def has_c():
+    """Is the C extension installed?
+
+    .. versionadded:: 1.9
+    """
+    try:
+        from bson import _cbson
+        return True
+    except ImportError:
+        return False

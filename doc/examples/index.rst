@@ -19,4 +19,5 @@ MongoDB, you can start it like so:
    gridfs
    map_reduce
    geo
+   replica_set
    custom_type

@@ -15,15 +15,13 @@
 """Collection level utilities for Mongo."""
 
 import warnings
-import struct
 
+from bson.code import Code
+from bson.son import SON
 from pymongo import (helpers,
                      message)
-from pymongo.code import Code
 from pymongo.cursor import Cursor
 from pymongo.errors import InvalidName
-from pymongo.objectid import ObjectId
-from pymongo.son import SON
 
 _ZERO = "\x00\x00\x00\x00"
 
@@ -90,7 +88,7 @@ class Collection(object):
             raise InvalidName("collection names must not "
                               "contain '$': %r" % name)
         if name[0] == "." or name[-1] == ".":
-            raise InvalidName("collecion names must not start "
+            raise InvalidName("collection names must not start "
                               "or end with '.': %r" % name)
         if "\x00" in name:
             raise InvalidName("collection names must not contain the "
@@ -99,13 +97,6 @@ class Collection(object):
         self.__database = database
         self.__name = unicode(name)
         self.__full_name = u"%s.%s" % (self.__database.name, self.__name)
-        # TODO remove the callable_value wrappers after deprecation is complete
-        self.__database_w = helpers.callable_value(self.__database,
-                                                   "Collection.database")
-        self.__name_w = helpers.callable_value(self.__name,
-                                               "Collection.name")
-        self.__full_name_w = helpers.callable_value(self.__full_name,
-                                                    "Collection.full_name")
         if create or options is not None:
             self.__create(options)
 
@@ -151,20 +142,18 @@ class Collection(object):
         The full name is of the form `database_name.collection_name`.
 
         .. versionchanged:: 1.3
-           ``full_name`` is now a property rather than a method. The
-           ``full_name()`` method is deprecated.
+           ``full_name`` is now a property rather than a method.
         """
-        return self.__full_name_w
+        return self.__full_name
 
     @property
     def name(self):
         """The name of this :class:`Collection`.
 
         .. versionchanged:: 1.3
-           ``name`` is now a property rather than a method. The
-           ``name()`` method is deprecated.
+           ``name`` is now a property rather than a method.
         """
-        return self.__name_w
+        return self.__name
 
     @property
     def database(self):
@@ -172,29 +161,43 @@ class Collection(object):
         :class:`Collection` is a part of.
 
         .. versionchanged:: 1.3
-           ``database`` is now a property rather than a method. The
-           ``database()`` method is deprecated.
+           ``database`` is now a property rather than a method.
         """
-        return self.__database_w
+        return self.__database
 
-    def save(self, to_save, manipulate=True, safe=False):
+    def save(self, to_save, manipulate=True, safe=False, **kwargs):
         """Save a document in this collection.
 
-        If `to_save` already has an '_id' then an update (upsert) operation
-        is performed and any existing document with that _id is overwritten.
-        Otherwise an '_id' will be added to `to_save` and an insert operation
-        is performed. Returns the _id of the saved document.
+        If `to_save` already has an ``"_id"`` then an :meth:`update`
+        (upsert) operation is performed and any existing document with
+        that ``"_id"`` is overwritten.  Otherwise an ``"_id"`` will be
+        added to `to_save` and an :meth:`insert` operation is
+        performed. Returns the ``"_id"`` of the saved document.
 
-        Raises TypeError if to_save is not an instance of dict. If `safe`
-        is True then the save will be checked for errors, raising
-        OperationFailure if one occurred. Safe inserts wait for a
-        response from the database, while normal inserts do not. Returns the
-        _id of the saved document.
+        Raises :class:`TypeError` if `to_save` is not an instance of
+        :class:`dict`. If `safe` is ``True`` then the save will be
+        checked for errors, raising
+        :class:`~pymongo.errors.OperationFailure` if one
+        occurred. Safe inserts wait for a response from the database,
+        while normal inserts do not.
+
+        Any additional keyword arguments imply ``safe=True``, and will
+        be used as options for the resultant `getLastError`
+        command. For example, to wait for replication to 3 nodes, pass
+        ``w=3``.
 
         :Parameters:
-          - `to_save`: the SON object to be saved
-          - `manipulate` (optional): manipulate the SON object before saving it
+          - `to_save`: the document to be saved
+          - `manipulate` (optional): manipulate the document before
+            saving it?
           - `safe` (optional): check that the save succeeded?
+          - `**kwargs` (optional): any additional arguments imply
+            ``safe=True``, and will be used as options for the
+            `getLastError` command
+
+        .. versionadded:: 1.8
+           Support for passing `getLastError` options as keyword
+           arguments.
 
         .. mongodoc:: insert
         """
@@ -202,31 +205,50 @@ class Collection(object):
             raise TypeError("cannot save object of type %s" % type(to_save))
 
         if "_id" not in to_save:
-            return self.insert(to_save, manipulate, safe)
+            return self.insert(to_save, manipulate, safe, **kwargs)
         else:
             self.update({"_id": to_save["_id"]}, to_save, True,
-                        manipulate, safe)
+                        manipulate, safe, **kwargs)
             return to_save.get("_id", None)
 
     def insert(self, doc_or_docs,
-               manipulate=True, safe=False, check_keys=True):
+               manipulate=True, safe=False, check_keys=True, **kwargs):
         """Insert a document(s) into this collection.
 
-        If manipulate is set the document(s) are manipulated using any
-        SONManipulators that have been added to this database. Returns the _id
-        of the inserted document or a list of _ids of the inserted documents.
-        If the document(s) does not already contain an '_id' one will be added.
-        If `safe` is True then the insert will be checked for errors, raising
-        OperationFailure if one occurred. Safe inserts wait for a response from
-        the database, while normal inserts do not.
+        If `manipulate` is set, the document(s) are manipulated using
+        any :class:`~pymongo.son_manipulator.SONManipulator` instances
+        that have been added to this
+        :class:`~pymongo.database.Database`. Returns the ``"_id"`` of
+        the inserted document or a list of ``"_id"`` values of the
+        inserted documents.  If the document(s) does not already
+        contain an ``"_id"`` one will be added.
+
+        If `safe` is ``True`` then the insert will be checked for
+        errors, raising :class:`~pymongo.errors.OperationFailure` if
+        one occurred. Safe inserts wait for a response from the
+        database, while normal inserts do not.
+
+        Any additional keyword arguments imply ``safe=True``, and
+        will be used as options for the resultant `getLastError`
+        command. For example, to wait for replication to 3 nodes, pass
+        ``w=3``.
 
         :Parameters:
-          - `doc_or_docs`: a SON object or list of SON objects to be inserted
-          - `manipulate` (optional): manipulate the documents before inserting?
+          - `doc_or_docs`: a document or list of documents to be
+            inserted
+          - `manipulate` (optional): manipulate the documents before
+            inserting?
           - `safe` (optional): check that the insert succeeded?
           - `check_keys` (optional): check if keys start with '$' or
-            contain '.', raising `pymongo.errors.InvalidName` in either case
+            contain '.', raising :class:`~pymongo.errors.InvalidName`
+            in either case
+          - `**kwargs` (optional): any additional arguments imply
+            ``safe=True``, and will be used as options for the
+            `getLastError` command
 
+        .. versionadded:: 1.8
+           Support for passing `getLastError` options as keyword
+           arguments.
         .. versionchanged:: 1.1
            Bulk insert works with any iterable
 
@@ -241,14 +263,17 @@ class Collection(object):
         if manipulate:
             docs = [self.__database._fix_incoming(doc, self) for doc in docs]
 
+        if kwargs:
+            safe = True
         self.__database.connection._send_message(
-            message.insert(self.__full_name, docs, check_keys, safe), safe)
+            message.insert(self.__full_name, docs,
+                           check_keys, safe, kwargs), safe)
 
         ids = [doc.get("_id", None) for doc in docs]
         return return_one and ids[0] or ids
 
-    def update(self, spec, document,
-               upsert=False, manipulate=False, safe=False, multi=False):
+    def update(self, spec, document, upsert=False, manipulate=False,
+               safe=False, multi=False, **kwargs):
         """Update a document(s) in this collection.
 
         Raises :class:`TypeError` if either `spec` or `document` is
@@ -278,15 +303,20 @@ class Collection(object):
         If `safe` is ``True`` returns the response to the *lastError*
         command. Otherwise, returns ``None``.
 
+        Any additional keyword arguments imply ``safe=True``, and will
+        be used as options for the resultant `getLastError`
+        command. For example, to wait for replication to 3 nodes, pass
+        ``w=3``.
+
         :Parameters:
-          - `spec`: a ``dict`` or :class:`~pymongo.son.SON` instance
+          - `spec`: a ``dict`` or :class:`~bson.son.SON` instance
             specifying elements which must be present for a document
             to be updated
-          - `document`: a ``dict`` or :class:`~pymongo.son.SON`
+          - `document`: a ``dict`` or :class:`~bson.son.SON`
             instance specifying the document to be used for the update
             or (in the case of an upsert) insert - see docs on MongoDB
             `update modifiers`_
-          - `upsert` (optional): perform an `upsert`_ if ``True``
+          - `upsert` (optional): perform an upsert if ``True``
           - `manipulate` (optional): manipulate the document before
             updating? If ``True`` all instances of
             :mod:`~pymongo.son_manipulator.SONManipulator` added to
@@ -299,14 +329,19 @@ class Collection(object):
             might eventually change to ``True``. It is recommended
             that you specify this argument explicitly for all update
             operations in order to prepare your code for that change.
+          - `**kwargs` (optional): any additional arguments imply
+            ``safe=True``, and will be used as options for the
+            `getLastError` command
 
+        .. versionadded:: 1.8
+           Support for passing `getLastError` options as keyword
+           arguments.
         .. versionchanged:: 1.4
            Return the response to *lastError* if `safe` is ``True``.
         .. versionadded:: 1.1.1
            The `multi` parameter.
 
         .. _update modifiers: http://www.mongodb.org/display/DOCS/Updating
-        .. _upsert: http://www.mongodb.org/display/DOCS/Updating#Updating-Upserts
 
         .. mongodoc:: update
         """
@@ -320,44 +355,68 @@ class Collection(object):
         if upsert and manipulate:
             document = self.__database._fix_incoming(document, self)
 
+        if kwargs:
+            safe = True
+
         return self.__database.connection._send_message(
             message.update(self.__full_name, upsert, multi,
-                           spec, document, safe), safe)
+                           spec, document, safe, kwargs), safe)
 
-    def remove(self, spec_or_object_id=None, safe=False):
+    def drop(self):
+        """Alias for :meth:`~pymongo.database.Database.drop_collection`.
+
+        The following two calls are equivalent:
+
+          >>> db.foo.drop()
+          >>> db.drop_collection("foo")
+
+        .. versionadded:: 1.8
+        """
+        self.__database.drop_collection(self.__name)
+
+    def remove(self, spec_or_id=None, safe=False, **kwargs):
         """Remove a document(s) from this collection.
 
         .. warning:: Calls to :meth:`remove` should be performed with
            care, as removed data cannot be restored.
 
-        Raises :class:`~pymongo.errors.TypeError` if
-        `spec_or_object_id` is not an instance of (``dict``,
-        :class:`~pymongo.objectid.ObjectId`). If `safe` is ``True``
-        then the remove operation will be checked for errors, raising
+        If `safe` is ``True`` then the remove operation will be
+        checked for errors, raising
         :class:`~pymongo.errors.OperationFailure` if one
         occurred. Safe removes wait for a response from the database,
         while normal removes do not.
 
-        If no `spec_or_object_id` is given all documents in this
-        collection will be removed. This is not equivalent to calling
-        :meth:`~pymongo.database.Database.drop_collection`, however, as
-        indexes will not be removed.
+        If `spec_or_id` is ``None``, all documents in this collection
+        will be removed. This is not equivalent to calling
+        :meth:`~pymongo.database.Database.drop_collection`, however,
+        as indexes will not be removed.
 
         If `safe` is ``True`` returns the response to the *lastError*
         command. Otherwise, returns ``None``.
 
-        :Parameters:
-          - `spec_or_object_id` (optional): a ``dict`` or
-            :class:`~pymongo.son.SON` instance specifying which documents
-            should be removed; or an instance of
-            :class:`~pymongo.objectid.ObjectId` specifying the value of the
-            ``_id`` field for the document to be removed
-          - `safe` (optional): check that the remove succeeded?
+        Any additional keyword arguments imply ``safe=True``, and will
+        be used as options for the resultant `getLastError`
+        command. For example, to wait for replication to 3 nodes, pass
+        ``w=3``.
 
+        :Parameters:
+          - `spec_or_id` (optional): a dictionary specifying the
+            documents to be removed OR any other type specifying the
+            value of ``"_id"`` for the document to be removed
+          - `safe` (optional): check that the remove succeeded?
+          - `**kwargs` (optional): any additional arguments imply
+            ``safe=True``, and will be used as options for the
+            `getLastError` command
+
+        .. versionadded:: 1.8
+           Support for passing `getLastError` options as keyword arguments.
+        .. versionchanged:: 1.7 Accept any type other than a ``dict``
+           instance for removal by ``"_id"``, not just
+           :class:`~bson.objectid.ObjectId` instances.
         .. versionchanged:: 1.4
            Return the response to *lastError* if `safe` is ``True``.
         .. versionchanged:: 1.2
-           The `spec_or_object_id` parameter is now optional. If it is
+           The `spec_or_id` parameter is now optional. If it is
            not specified *all* documents in the collection will be
            removed.
         .. versionadded:: 1.1
@@ -365,141 +424,132 @@ class Collection(object):
 
         .. mongodoc:: remove
         """
-        spec = spec_or_object_id
-        if spec is None:
-            spec = {}
-        if isinstance(spec, ObjectId):
-            spec = {"_id": spec}
+        if spec_or_id is None:
+            spec_or_id = {}
+        if not isinstance(spec_or_id, dict):
+            spec_or_id = {"_id": spec_or_id}
 
-        if not isinstance(spec, dict):
-            raise TypeError("spec must be an instance of dict, not %s" %
-                            type(spec))
+        if kwargs:
+            safe = True
 
         return self.__database.connection._send_message(
-            message.delete(self.__full_name, spec, safe), safe)
+            message.delete(self.__full_name, spec_or_id, safe, kwargs), safe)
 
-    def find_one(self, spec_or_object_id=None, fields=None,
-                 _sock=None, _must_use_master=False, _is_command=False):
-        """Get a single object from the database.
+    def find_one(self, spec_or_id=None, *args, **kwargs):
+        """Get a single document from the database.
 
-        Raises TypeError if the argument is of an improper type. Returns a
-        single SON object, or None if no result is found.
+        All arguments to :meth:`find` are also valid arguments for
+        :meth:`find_one`, although any `limit` argument will be
+        ignored. Returns a single document, or ``None`` if no matching
+        document is found.
 
         :Parameters:
-          - `spec_or_object_id` (optional): a SON object specifying elements
-            which must be present for a document to be returned OR an instance
-            of ObjectId to be used as the value for an _id query
-          - `fields` (optional): a list of field names that should be included
-            in the returned document ("_id" will always be included)
-        """
-        spec = spec_or_object_id
-        if spec is None:
-            spec = SON()
-        if isinstance(spec, ObjectId):
-            spec = SON({"_id": spec})
 
-        for result in self.find(spec, limit=-1, fields=fields,
-                                _sock=_sock, _must_use_master=_must_use_master,
-                                _is_command=_is_command):
+          - `spec_or_id` (optional): a dictionary specifying
+            the query to be performed OR any other type to be used as
+            the value for a query for ``"_id"``.
+
+          - `*args` (optional): any additional positional arguments
+            are the same as the arguments to :meth:`find`.
+
+          - `**kwargs` (optional): any additional keyword arguments
+            are the same as the arguments to :meth:`find`.
+
+        .. versionchanged:: 1.7
+           Allow passing any of the arguments that are valid for
+           :meth:`find`.
+
+        .. versionchanged:: 1.7 Accept any type other than a ``dict``
+           instance as an ``"_id"`` query, not just
+           :class:`~bson.objectid.ObjectId` instances.
+        """
+        if spec_or_id is not None and not isinstance(spec_or_id, dict):
+            spec_or_id = {"_id": spec_or_id}
+
+        for result in self.find(spec_or_id, *args, **kwargs).limit(-1):
             return result
         return None
 
-    def _fields_list_to_dict(self, fields):
-        """Takes a list of field names and returns a matching dictionary.
-
-        ["a", "b"] becomes {"a": 1, "b": 1}
-
-        and
-
-        ["a.b.c", "d", "a.c"] becomes {"a.b.c": 1, "d": 1, "a.c": 1}
-        """
-        as_dict = {}
-        for field in fields:
-            if not isinstance(field, basestring):
-                raise TypeError("fields must be a list of key names as "
-                                "(string, unicode)")
-            as_dict[field] = 1
-        return as_dict
-
-    def find(self, spec=None, fields=None, skip=0, limit=0,
-             timeout=True, snapshot=False, tailable=False,
-             _sock=None, _must_use_master=False, _is_command=False):
+    def find(self, *args, **kwargs):
         """Query the database.
 
-        The `spec` argument is a prototype document that all results must
-        match. For example:
+        The `spec` argument is a prototype document that all results
+        must match. For example:
 
         >>> db.test.find({"hello": "world"})
 
-        only matches documents that have a key "hello" with value "world".
-        Matches can have other keys *in addition* to "hello". The `fields`
-        argument is used to specify a subset of fields that should be included
-        in the result documents. By limiting results to a certain subset of
-        fields you can cut down on network traffic and decoding time.
+        only matches documents that have a key "hello" with value
+        "world".  Matches can have other keys *in addition* to
+        "hello". The `fields` argument is used to specify a subset of
+        fields that should be included in the result documents. By
+        limiting results to a certain subset of fields you can cut
+        down on network traffic and decoding time.
 
-        Raises TypeError if any of the arguments are of improper type. Returns
-        an instance of Cursor corresponding to this query.
+        Raises :class:`TypeError` if any of the arguments are of
+        improper type. Returns an instance of
+        :class:`~pymongo.cursor.Cursor` corresponding to this query.
 
         :Parameters:
-          - `spec` (optional): a SON object specifying elements which must be
-            present for a document to be included in the result set
-          - `fields` (optional): a list of field names that should be returned
-            in the result set ("_id" will always be included)
-          - `skip` (optional): the number of documents to omit (from the start
-            of the result set) when returning the results
-          - `limit` (optional): the maximum number of results to return
-          - `timeout` (optional): if True, any returned cursor will be subject
-            to the normal timeout behavior of the mongod process. Otherwise,
-            the returned cursor will never timeout at the server. Care should
-            be taken to ensure that cursors with timeout turned off are
-            properly closed.
-          - `snapshot` (optional): if True, snapshot mode will be used for this
-            query. Snapshot mode assures no duplicates are returned, or objects
-            missed, which were present at both the start and end of the query's
-            execution. For details, see the `snapshot documentation
-            <http://www.mongodb.org/display/DOCS/How+to+do+Snapshotting+in+the+Mongo+Database>`_.
-          - `tailable` (optional): the result of this find call will be a
-            tailable cursor - tailable cursors aren't closed when the last data
-            is retrieved but are kept open and the cursors location marks the
-            final document's position. if more data is received iteration of
-            the cursor will continue from the last document received. For
-            details, see the `tailable cursor documentation
+          - `spec` (optional): a SON object specifying elements which
+            must be present for a document to be included in the
+            result set
+          - `fields` (optional): a list of field names that should be
+            returned in the result set ("_id" will always be
+            included), or a dict specifying the fields to return
+          - `skip` (optional): the number of documents to omit (from
+            the start of the result set) when returning the results
+          - `limit` (optional): the maximum number of results to
+            return
+          - `timeout` (optional): if True, any returned cursor will be
+            subject to the normal timeout behavior of the mongod
+            process. Otherwise, the returned cursor will never timeout
+            at the server. Care should be taken to ensure that cursors
+            with timeout turned off are properly closed.
+          - `snapshot` (optional): if True, snapshot mode will be used
+            for this query. Snapshot mode assures no duplicates are
+            returned, or objects missed, which were present at both
+            the start and end of the query's execution. For details,
+            see the `snapshot documentation
+            <http://dochub.mongodb.org/core/snapshot>`_.
+          - `tailable` (optional): the result of this find call will
+            be a tailable cursor - tailable cursors aren't closed when
+            the last data is retrieved but are kept open and the
+            cursors location marks the final document's position. if
+            more data is received iteration of the cursor will
+            continue from the last document received. For details, see
+            the `tailable cursor documentation
             <http://www.mongodb.org/display/DOCS/Tailable+Cursors>`_.
+          - `sort` (optional): a list of (key, direction) pairs
+            specifying the sort order for this query. See
+            :meth:`~pymongo.cursor.Cursor.sort` for details.
+          - `max_scan` (optional): limit the number of documents
+            examined when performing the query
+          - `as_class` (optional): class to use for documents in the
+            query result (default is
+            :attr:`~pymongo.connection.Connection.document_class`)
+          - `network_timeout` (optional): specify a timeout to use for
+            this query, which will override the
+            :class:`~pymongo.connection.Connection`-level default
+
+        .. note:: The `max_scan` parameter requires server
+           version **>= 1.5.1**
+
+        .. versionadded:: 1.8
+           The `network_timeout` parameter.
+
+        .. versionadded:: 1.7
+           The `sort`, `max_scan` and `as_class` parameters.
+
+        .. versionchanged:: 1.7
+           The `fields` parameter can now be a dict or any iterable in
+           addition to a list.
 
         .. versionadded:: 1.1
            The `tailable` parameter.
 
         .. mongodoc:: find
         """
-        if spec is None:
-            spec = SON()
-
-        slave_okay = self.__database.connection.slave_okay
-
-        if not isinstance(spec, dict):
-            raise TypeError("spec must be an instance of dict")
-        if fields is not None and not isinstance(fields, list):
-            raise TypeError("fields must be an instance of list")
-        if not isinstance(skip, int):
-            raise TypeError("skip must be an instance of int")
-        if not isinstance(limit, int):
-            raise TypeError("limit must be an instance of int")
-        if not isinstance(timeout, bool):
-            raise TypeError("timeout must be an instance of bool")
-        if not isinstance(snapshot, bool):
-            raise TypeError("snapshot must be an instance of bool")
-        if not isinstance(tailable, bool):
-            raise TypeError("tailable must be an instance of bool")
-
-        if fields is not None:
-            if not fields:
-                fields = ["_id"]
-            fields = self._fields_list_to_dict(fields)
-
-        return Cursor(self, spec, fields, skip, limit, slave_okay, timeout,
-                      tailable, snapshot, _sock=_sock,
-                      _must_use_master=_must_use_master,
-                      _is_command=_is_command)
+        return Cursor(self, *args, **kwargs)
 
     def count(self):
         """Get the number of documents in this collection.
@@ -509,7 +559,8 @@ class Collection(object):
         """
         return self.find().count()
 
-    def create_index(self, key_or_list, deprecated_unique=None, ttl=300, **kwargs):
+    def create_index(self, key_or_list, deprecated_unique=None,
+                     ttl=300, **kwargs):
         """Creates an index on this collection.
 
         Takes either a single key or a list of (key, direction) pairs.
@@ -523,8 +574,8 @@ class Collection(object):
 
         >>> my_collection.create_index("mike")
 
-        For a `compound index`_ on ``'mike'`` descending and
-        ``'eliot'`` ascending we need to use a list of tuples:
+        For a compound index on ``'mike'`` descending and ``'eliot'``
+        ascending we need to use a list of tuples:
 
         >>> my_collection.create_index([("mike", pymongo.DESCENDING),
         ...                             ("eliot", pymongo.ASCENDING)])
@@ -550,8 +601,9 @@ class Collection(object):
             this index will be recognized by subsequent calls to
             :meth:`ensure_index` - see documentation for
             :meth:`ensure_index` for details
-          - `kwargs` (optional): any additional index creation options
-            (see the above list) should be passed as keyword arguments
+          - `**kwargs` (optional): any additional index creation
+            options (see the above list) should be passed as keyword
+            arguments
 
         .. versionchanged:: 1.5.1
            Accept kwargs to support all index creation options.
@@ -560,8 +612,6 @@ class Collection(object):
            The `name` parameter.
 
         .. seealso:: :meth:`ensure_index`
-
-        .. _compound index: http://www.mongodb.org/display/DOCS/Indexes#Indexes-CompoundKeysIndexes
 
         .. mongodoc:: indexes
         """
@@ -591,7 +641,8 @@ class Collection(object):
                                               check_keys=False)
         return name
 
-    def ensure_index(self, key_or_list, deprecated_unique=None, ttl=300, **kwargs):
+    def ensure_index(self, key_or_list, deprecated_unique=None,
+                     ttl=300, **kwargs):
         """Ensures that an index exists on this collection.
 
         Takes either a single key or a list of (key, direction) pairs.
@@ -626,6 +677,8 @@ class Collection(object):
           - `unique`: should this index guarantee uniqueness?
           - `dropDups` or `drop_dups`: should we drop duplicates
             during index creation when creating a unique index?
+          - `background`: if this index should be created in the
+            background
           - `min`: minimum value for keys in a :data:`~pymongo.GEO2D`
             index
           - `max`: maximum value for keys in a :data:`~pymongo.GEO2D`
@@ -638,8 +691,9 @@ class Collection(object):
           - `ttl` (optional): time window (in seconds) during which
             this index will be recognized by subsequent calls to
             :meth:`ensure_index`
-          - `kwargs` (optional): any additional index creation options
-            (see the above list) should be passed as keyword arguments
+          - `**kwargs` (optional): any additional index creation
+            options (see the above list) should be passed as keyword
+            arguments
 
         .. versionchanged:: 1.5.1
            Accept kwargs to support all index creation options.
@@ -657,7 +711,8 @@ class Collection(object):
 
         if self.__database.connection._cache_index(self.__database.name,
                                                    self.__name, name, ttl):
-            return self.create_index(key_or_list, deprecated_unique, ttl, **kwargs)
+            return self.create_index(key_or_list, deprecated_unique,
+                                     ttl, **kwargs)
         return None
 
     def drop_indexes(self):
@@ -696,20 +751,41 @@ class Collection(object):
 
         self.__database.connection._purge_index(self.__database.name,
                                                 self.__name, name)
-        self.__database.command("deleteIndexes", self.__name, index=name,
+        self.__database.command("dropIndexes", self.__name, index=name,
                                 allowable_errors=["ns not found"])
 
     def index_information(self):
         """Get information on this collection's indexes.
 
-        Returns a dictionary where the keys are index names (as returned by
-        create_index()) and the values are lists of (key, direction) pairs
-        specifying the index (as passed to create_index()).
+        Returns a dictionary where the keys are index names (as
+        returned by create_index()) and the values are dictionaries
+        containing information about each index. The dictionary is
+        guaranteed to contain at least a single key, ``"key"`` which
+        is a list of (key, direction) pairs specifying the index (as
+        passed to create_index()). It will also contain any other
+        information in `system.indexes`, except for the ``"ns"`` and
+        ``"name"`` keys, which are cleaned. Example output might look
+        like this:
+
+        >>> db.test.ensure_index("x", unique=True)
+        u'x_1'
+        >>> db.test.index_information()
+        {u'_id_': {u'key': [(u'_id', 1)]},
+         u'x_1': {u'unique': True, u'key': [(u'x', 1)]}}
+
+
+        .. versionchanged:: 1.7
+           The values in the resultant dictionary are now dictionaries
+           themselves, whose ``"key"`` item contains the list that was
+           the value in previous versions of PyMongo.
         """
-        raw = self.__database.system.indexes.find({"ns": self.__full_name})
+        raw = self.__database.system.indexes.find({"ns": self.__full_name},
+                                                  {"ns": 0}, as_class=SON)
         info = {}
         for index in raw:
-            info[index["name"]] = index["key"].items()
+            index["key"] = index["key"].items()
+            index = dict(index)
+            info[index.pop("name")] = index
         return info
 
     def options(self):
@@ -744,9 +820,9 @@ class Collection(object):
 
           - ``None`` to use the entire document as a key.
           - A :class:`list` of keys (each a :class:`basestring`) to group by.
-          - A :class:`basestring` or :class:`~pymongo.code.Code` instance
-            containing a JavaScript function to be applied to each document,
-            returning the key to group by.
+          - A :class:`basestring` or :class:`~bson.code.Code` instance
+            containing a JavaScript function to be applied to each
+            document, returning the key to group by.
 
         :Parameters:
           - `key`: fields to group by (see above description)
@@ -774,7 +850,7 @@ class Collection(object):
         if isinstance(key, basestring):
             group["$keyf"] = Code(key)
         elif key is not None:
-            group = {"key": self._fields_list_to_dict(key)}
+            group = {"key": helpers._fields_list_to_dict(key)}
         group["ns"] = self.__name
         group["$reduce"] = Code(reduce)
         group["cond"] = condition
@@ -784,7 +860,7 @@ class Collection(object):
 
         return self.__database.command("group", group)["retval"]
 
-    def rename(self, new_name):
+    def rename(self, new_name, **kwargs):
         """Rename this collection.
 
         If operating in auth mode, client must be authorized as an
@@ -795,20 +871,27 @@ class Collection(object):
 
         :Parameters:
           - `new_name`: new name for this collection
+          - `**kwargs` (optional): any additional rename options
+            should be passed as keyword arguments
+            (i.e. ``dropTarget=True``)
+
+        .. versionadded:: 1.7
+           support for accepting keyword arguments for rename options
         """
         if not isinstance(new_name, basestring):
             raise TypeError("new_name must be an instance of basestring")
 
         if not new_name or ".." in new_name:
             raise InvalidName("collection names cannot be empty")
-        if "$" in new_name:
-            raise InvalidName("collection names must not contain '$'")
         if new_name[0] == "." or new_name[-1] == ".":
             raise InvalidName("collecion names must not start or end with '.'")
+        if "$" in new_name and not new_name.startswith("oplog.$main"):
+            raise InvalidName("collection names must not contain '$'")
 
         new_name = "%s.%s" % (self.__database.name, new_name)
         self.__database.connection.admin.command("renameCollection",
-                                                 self.__full_name, to=new_name)
+                                                 self.__full_name,
+                                                 to=new_name, **kwargs)
 
     def distinct(self, key):
         """Get a list of distinct values for `key` among all documents
@@ -863,6 +946,65 @@ class Collection(object):
         if full_response:
             return response
         return self.__database[response["result"]]
+
+    def find_and_modify(self, query={}, update=None, upsert=False, **kwargs):
+        """Update and return an object.
+
+        This is a thin wrapper around the findAndModify_ command. The
+        positional arguments are designed to match the first three arguments
+        to :meth:`update` however most options should be passed as named
+        parameters. Either `update` or `remove` arguments are required, all
+        others are optional.
+
+        Returns either the object before or after modification based on `new`
+        parameter. If no objects match the `query` and `upsert` is false,
+        returns ``None``. If upserting and `new` is false, returns ``{}``.
+
+        :Parameters:
+            - `query`: filter for the update (default ``{}``)
+            - `sort`: priority if multiple objects match (default ``{}``)
+            - `update`: see second argument to :meth:`update` (no default)
+            - `remove`: remove rather than updating (default ``False``)
+            - `new`: return updated rather than original object
+              (default ``False``)
+            - `fields`: see second argument to :meth:`find` (default all)
+            - `upsert`: insert if object doesn't exist (default ``False``)
+            - `**kwargs`: any other options the findAndModify_ command
+              supports can be passed here.
+
+
+        .. mongodoc:: findAndModify
+
+        .. _findAndModify: http://dochub.mongodb.org/core/findAndModify
+
+        .. note:: Requires server version **>= 1.3.0**
+
+        .. versionadded:: 1.10
+        """
+        if (not update and not kwargs.get('remove', None)):
+            raise ValueError("Must either update or remove")
+
+        if (update and kwargs.get('remove', None)):
+            raise ValueError("Can't do both update and remove")
+
+        # No need to include empty args
+        if query: kwargs['query'] = query
+        if update: kwargs['update'] = update
+        if upsert: kwargs['upsert'] = upsert
+
+        no_obj_error = "No matching object found"
+
+        out = self.__database.command("findAndModify", self.__name,
+                allowable_errors=[no_obj_error], **kwargs)
+
+        if not out['ok']:
+            if out["errmsg"] == no_obj_error:
+                return None
+            else:
+                # Should never get here b/c of allowable_errors
+                raise ValueError("Unexpected Error: %s"%out)
+
+        return out['value']
 
     def __iter__(self):
         return self
