@@ -123,6 +123,8 @@ def _closed(sock):
     if sys.platform.startswith("java"):
         sock.setblocking(0)
     rd, _, _ = select.select([sock], [], [], 0)
+    if sys.platform.startswith("java"):
+        sock.setblocking(1)
     try:
         return len(rd) and sock.recv() == ""
     except:
