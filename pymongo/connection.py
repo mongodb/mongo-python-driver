@@ -615,7 +615,7 @@ class Connection(object):  # TODO support auth for pooling
             raise AutoReconnect("not master")
 
         if "code" in error:
-            if error["code"] in [11000, 11001]:
+            if error["code"] in [11000, 11001, 12582]:
                 raise DuplicateKeyError(error["err"])
             else:
                 raise OperationFailure(error["err"], error["code"])
