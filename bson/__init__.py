@@ -147,7 +147,7 @@ def _get_date(data, as_class, tz_aware):
 
 def _get_code_w_scope(data, as_class, tz_aware):
     (_, data) = _get_int(data)
-    (code, data) = _get_string(data)
+    (code, data) = _get_string(data, as_class, tz_aware)
     (scope, data) = _get_object(data, as_class, tz_aware)
     return (Code(code, scope), data)
 
