@@ -232,7 +232,7 @@ class MasterSlaveConnection(object):
     def __iter__(self):
         return self
 
-    def next(self):
+    def __next__(self):
         raise TypeError("'MasterSlaveConnection' object is not iterable")
 
     def _cache_index(self, database_name, collection_name, index_name, ttl):

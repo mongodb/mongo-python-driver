@@ -17,10 +17,7 @@
 import datetime
 import math
 import os
-try:
-    from cStringIO import StringIO
-except ImportError:
-    from StringIO import StringIO
+from io import BytesIO
 
 from bson.binary import Binary
 from bson.objectid import ObjectId
@@ -134,7 +131,7 @@ class GridIn(object):
         object.__setattr__(self, "_coll", root_collection)
         object.__setattr__(self, "_chunks", root_collection.chunks)
         object.__setattr__(self, "_file", kwargs)
-        object.__setattr__(self, "_buffer", StringIO())
+        object.__setattr__(self, "_buffer", BytesIO())
         object.__setattr__(self, "_position", 0)
         object.__setattr__(self, "_chunk_number", 0)
         object.__setattr__(self, "_closed", False)
@@ -191,7 +188,7 @@ class GridIn(object):
         """
         self.__flush_data(self._buffer.getvalue())
         self._buffer.close()
-        self._buffer = StringIO()
+        self._buffer = BytesIO()
 
     def __flush(self):
         """Flush the file to the database.
@@ -261,10 +258,11 @@ class GridIn(object):
             self._buffer.write(to_write)
         # string
         except AttributeError:
-            if not isinstance(data, basestring):
-                raise TypeError("can only write strings or file-like objects")
+            if not isinstance(data, (str, bytes)):
+                raise TypeError(
+                    "can only write strings, bytes or file-like objects")
 
-            if isinstance(data, unicode):
+            if isinstance(data, str):
                 try:
                     data = data.encode(self.encoding)
                 except AttributeError:
@@ -342,7 +340,7 @@ class GridOut(object):
             raise NoFile("no file in gridfs collection %r with _id %r" %
                          (files, file_id))
 
-        self.__buffer = ""
+        self.__buffer = b""
         self.__position = 0
 
     _id = _create_property("_id", "The ``'_id'`` value for this file.", True)
@@ -386,7 +384,7 @@ class GridOut(object):
             size = remainder
 
         received = len(self.__buffer)
-        chunk_number = (received + self.__position) / self.chunk_size
+        chunk_number = int((received + self.__position) / self.chunk_size)
         chunks = []
 
         while received < size:
@@ -404,7 +402,7 @@ class GridOut(object):
             chunks.append(chunk_data)
             chunk_number += 1
 
-        data = "".join([self.__buffer] + chunks)
+        data = b"".join([self.__buffer] + chunks)
         self.__position += size
         to_return = data[:size]
         self.__buffer = data[size:]
@@ -418,11 +416,11 @@ class GridOut(object):
 
         .. versionadded:: 1.9
         """
-        bytes = ""
+        bytes = b""
         while len(bytes) != size:
             byte = self.read(1)
             bytes += byte
-            if byte == "" or byte == "\n":
+            if byte == b"" or byte == b"\n":
                 break
         return bytes
 
@@ -456,7 +454,7 @@ class GridOut(object):
             raise IOError(22, "Invalid value for `pos` - must be positive")
 
         self.__position = new_pos
-        self.__buffer = ""
+        self.__buffer = b""
 
     def __iter__(self):
         """Return an iterator over all of this file's data.
@@ -473,13 +471,12 @@ class GridOutIterator(object):
         self.__id = grid_out._id
         self.__chunks = chunks
         self.__current_chunk = 0
-        self.__max_chunk = math.ceil(float(grid_out.length) /
-                                     grid_out.chunk_size)
+        self.__max_chunk = math.ceil(grid_out.length / grid_out.chunk_size)
 
     def __iter__(self):
         return self
 
-    def next(self):
+    def __next__(self):
         if self.__current_chunk >= self.__max_chunk:
             raise StopIteration
         chunk = self.__chunks.find_one({"files_id": self.__id,
@@ -487,7 +484,7 @@ class GridOutIterator(object):
         if not chunk:
             raise CorruptGridFile("no chunk #%d" % self.__current_chunk)
         self.__current_chunk += 1
-        return str(chunk["data"])
+        return bytes(chunk["data"])
 
 
 class GridFile(object):

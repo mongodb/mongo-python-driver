@@ -61,7 +61,7 @@ USER_DEFINED_SUBTYPE = 128
 """
 
 
-class Binary(str):
+class Binary(bytes):
     """Representation of BSON binary data.
 
     This is necessary because we want to represent Python strings as
@@ -81,13 +81,13 @@ class Binary(str):
     """
 
     def __new__(cls, data, subtype=OLD_BINARY_SUBTYPE):
-        if not isinstance(data, str):
-            raise TypeError("data must be an instance of str")
+        if not isinstance(data, bytes):
+            raise TypeError("data must be an instance of bytes")
         if not isinstance(subtype, int):
             raise TypeError("subtype must be an instance of int")
         if subtype >= 256 or subtype < 0:
             raise ValueError("subtype must be contained in [0, 256)")
-        self = str.__new__(cls, data)
+        self = bytes.__new__(cls, data)
         self.__subtype = subtype
         return self
 
@@ -99,7 +99,7 @@ class Binary(str):
 
     def __eq__(self, other):
         if isinstance(other, Binary):
-            return (self.__subtype, str(self)) == (other.subtype, str(other))
+            return (self.__subtype, bytes(self)) == (other.subtype, bytes(other))
         # We don't return NotImplemented here because if we did then
         # Binary("foo") == "foo" would return True, since Binary is a
         # subclass of str...
@@ -109,4 +109,4 @@ class Binary(str):
         return not self == other
 
     def __repr__(self):
-        return "Binary(%s, %s)" % (str.__repr__(self), self.__subtype)
+        return "Binary(%s, %s)" % (bytes.__repr__(self), self.__subtype)

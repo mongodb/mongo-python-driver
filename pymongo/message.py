@@ -35,7 +35,7 @@ except ImportError:
 from pymongo.errors import InvalidOperation
 
 
-__ZERO = "\x00\x00\x00\x00"
+__ZERO = b"\x00\x00\x00\x00"
 
 
 def __last_error(args):
@@ -64,7 +64,7 @@ def insert(collection_name, docs, check_keys, safe, last_error_args):
     """
     data = __ZERO
     data += bson._make_c_string(collection_name)
-    bson_data = "".join([bson.BSON.encode(doc, check_keys) for doc in docs])
+    bson_data = b"".join([bson.BSON.encode(doc, check_keys) for doc in docs])
     if not bson_data:
         raise InvalidOperation("cannot do an empty bulk insert")
     data += bson_data

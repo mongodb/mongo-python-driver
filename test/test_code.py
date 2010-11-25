@@ -30,11 +30,11 @@ class TestCode(unittest.TestCase):
         self.assertRaises(TypeError, Code, 5)
         self.assertRaises(TypeError, Code, None)
         self.assertRaises(TypeError, Code, "aoeu", 5)
-        self.assertRaises(TypeError, Code, u"aoeu", 5)
+        self.assertRaises(TypeError, Code, "aoeu", 5)
         self.assert_(Code("aoeu"))
-        self.assert_(Code(u"aoeu"))
+        self.assert_(Code("aoeu"))
         self.assert_(Code("aoeu", {}))
-        self.assert_(Code(u"aoeu", {}))
+        self.assert_(Code("aoeu", {}))
 
     def test_read_only(self):
         c = Code("blah")
@@ -62,7 +62,7 @@ class TestCode(unittest.TestCase):
         c = Code("hello world", {"blah": 3})
         self.assertEqual(repr(c), "Code('hello world', {'blah': 3})")
         c = Code("\x08\xFF")
-        self.assertEqual(repr(c), "Code('\\x08\\xff', {})")
+        self.assertEqual(repr(c), "Code('\\x08ÿ', {})")
 
     def test_equality(self):
         b = Code("hello")

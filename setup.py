@@ -4,7 +4,6 @@ from warnings import warn
 import sys
 import os
 import subprocess
-import shutil
 
 from distribute_setup import use_setuptools
 use_setuptools()
@@ -149,6 +148,8 @@ setup(
     long_description=readme_content,
     author="Mike Dirolf",
     author_email="mongodb-user@googlegroups.com",
+    maintainer="Alex Gronholm",
+    mainainer_email="alex.gronholm+pypi@nextday.fi",
     url="http://github.com/mongodb/mongo-python-driver",
     keywords=["mongo", "mongodb", "pymongo", "gridfs", "bson"],
     packages=["bson", "pymongo", "gridfs"],
@@ -156,7 +157,6 @@ setup(
     tests_require=['nose'],
     test_suite="nose.collector",
     features=features,
-    use_2to3=True,
     license="Apache License, Version 2.0",
     classifiers=[
         "Development Status :: 5 - Production/Stable",

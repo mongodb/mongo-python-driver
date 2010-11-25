@@ -28,46 +28,46 @@ class TestBinary(unittest.TestCase):
 
     def test_binary(self):
         a_string = "hello world"
-        a_binary = Binary("hello world")
-        self.assert_(a_binary.startswith("hello"))
-        self.assert_(a_binary.endswith("world"))
+        a_binary = Binary(b"hello world")
+        self.assert_(a_binary.startswith(b"hello"))
+        self.assert_(a_binary.endswith(b"world"))
         self.assert_(isinstance(a_binary, Binary))
         self.assertFalse(isinstance(a_string, Binary))
 
     def test_exceptions(self):
         self.assertRaises(TypeError, Binary, None)
-        self.assertRaises(TypeError, Binary, u"hello")
+        self.assertRaises(TypeError, Binary, "hello")
         self.assertRaises(TypeError, Binary, 5)
         self.assertRaises(TypeError, Binary, 10.2)
-        self.assertRaises(TypeError, Binary, "hello", None)
-        self.assertRaises(TypeError, Binary, "hello", "100")
-        self.assertRaises(ValueError, Binary, "hello", -1)
-        self.assertRaises(ValueError, Binary, "hello", 256)
-        self.assert_(Binary("hello", 0))
-        self.assert_(Binary("hello", 255))
+        self.assertRaises(TypeError, Binary, b"hello", None)
+        self.assertRaises(TypeError, Binary, b"hello", "100")
+        self.assertRaises(ValueError, Binary, b"hello", -1)
+        self.assertRaises(ValueError, Binary, b"hello", 256)
+        self.assert_(Binary(b"hello", 0))
+        self.assert_(Binary(b"hello", 255))
 
     def test_subtype(self):
-        b = Binary("hello")
+        b = Binary(b"hello")
         self.assertEqual(b.subtype, 2)
-        c = Binary("hello", 100)
+        c = Binary(b"hello", 100)
         self.assertEqual(c.subtype, 100)
 
     def test_equality(self):
-        b = Binary("hello")
-        c = Binary("hello", 100)
+        b = Binary(b"hello")
+        c = Binary(b"hello", 100)
         self.assertNotEqual(b, c)
-        self.assertEqual(c, Binary("hello", 100))
-        self.assertEqual(b, Binary("hello"))
-        self.assertNotEqual(b, Binary("hello "))
-        self.assertNotEqual("hello", Binary("hello"))
+        self.assertEqual(c, Binary(b"hello", 100))
+        self.assertEqual(b, Binary(b"hello"))
+        self.assertNotEqual(b, Binary(b"hello "))
+        self.assertNotEqual("hello", Binary(b"hello"))
 
     def test_repr(self):
-        b = Binary("hello world")
-        self.assertEqual(repr(b), "Binary('hello world', 2)")
-        c = Binary("\x08\xFF")
-        self.assertEqual(repr(c), "Binary('\\x08\\xff', 2)")
-        d = Binary("test", 100)
-        self.assertEqual(repr(d), "Binary('test', 100)")
+        b = Binary(b"hello world")
+        self.assertEqual(repr(b), "Binary(b'hello world', 2)")
+        c = Binary(b"\x08\xFF")
+        self.assertEqual(repr(c), "Binary(b'\\x08\\xff', 2)")
+        d = Binary(b"test", 100)
+        self.assertEqual(repr(d), "Binary(b'test', 100)")
 
 if __name__ == "__main__":
     unittest.main()

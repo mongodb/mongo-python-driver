@@ -26,8 +26,8 @@ from pymongo.son_manipulator import (NamespaceInjector,
                                      ObjectIdInjector,
                                      ObjectIdShuffler,
                                      SONManipulator)
-from test_connection import get_connection
-import qcheck
+from .test_connection import get_connection
+from . import qcheck
 
 
 class TestSONManipulator(unittest.TestCase):
@@ -74,7 +74,7 @@ class TestSONManipulator(unittest.TestCase):
             son = manip.transform_incoming(son_in, collection)
             if not "_id" in son:
                 return True
-            for (k, v) in son.items():
+            for (k, v) in list(son.items()):
                 self.assertEqual(k, "_id")
                 break
             pprint(son_in)

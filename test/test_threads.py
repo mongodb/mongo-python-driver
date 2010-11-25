@@ -19,7 +19,7 @@ import threading
 
 from nose.plugins.skip import SkipTest
 
-from test_connection import get_connection
+from .test_connection import get_connection
 from pymongo.errors import AutoReconnect
 
 
@@ -45,7 +45,7 @@ class Insert(threading.Thread):
         self.expect_exception = expect_exception
 
     def run(self):
-        for _ in xrange(self.n):
+        for _ in range(self.n):
             error = True
 
             try:
@@ -68,7 +68,7 @@ class Update(threading.Thread):
         self.expect_exception = expect_exception
 
     def run(self):
-        for _ in xrange(self.n):
+        for _ in range(self.n):
             error = True
 
             try:
@@ -104,7 +104,7 @@ class TestThreads(unittest.TestCase):
 
     def test_threading(self):
         self.db.test.remove({})
-        for i in xrange(1000):
+        for i in range(1000):
             self.db.test.save({"x": i}, safe=True)
 
         threads = []

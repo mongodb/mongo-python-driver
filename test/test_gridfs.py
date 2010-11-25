@@ -17,10 +17,7 @@
 """Tests for the gridfs package.
 """
 
-try:
-    from cStringIO import StringIO
-except ImportError:
-    from StringIO import StringIO
+from io import BytesIO
 import datetime
 import unittest
 import threading
@@ -31,7 +28,7 @@ sys.path[0:0] = [""]
 import gridfs
 from gridfs.errors import (FileExists,
                            NoFile)
-from test_connection import get_connection
+from .test_connection import get_connection
 
 
 class JustWrite(threading.Thread):
@@ -43,7 +40,7 @@ class JustWrite(threading.Thread):
     def run(self):
         for _ in range(10):
             file = self.fs.new_file(filename="test")
-            file.write("hello")
+            file.write(b"hello")
             file.close()
 
 
@@ -56,7 +53,7 @@ class JustRead(threading.Thread):
     def run(self):
         for _ in range(10):
             file = self.fs.get("test")
-            assert file.read() == "hello"
+            assert file.read() == b"hello"
 
 
 class TestGridfs(unittest.TestCase):
@@ -75,8 +72,8 @@ class TestGridfs(unittest.TestCase):
         self.assertRaises(TypeError, gridfs.GridFS, self.db, 5)
 
     def test_basic(self):
-        oid = self.fs.put("hello world")
-        self.assertEqual("hello world", self.fs.get(oid).read())
+        oid = self.fs.put(b"hello world")
+        self.assertEqual(b"hello world", self.fs.get(oid).read())
         self.assertEqual(1, self.db.fs.files.count())
         self.assertEqual(1, self.db.fs.chunks.count())
 
@@ -86,26 +83,26 @@ class TestGridfs(unittest.TestCase):
         self.assertEqual(0, self.db.fs.chunks.count())
 
         self.assertRaises(NoFile, self.fs.get, "foo")
-        oid = self.fs.put("hello world", _id="foo")
+        oid = self.fs.put(b"hello world", _id="foo")
         self.assertEqual("foo", oid)
-        self.assertEqual("hello world", self.fs.get("foo").read())
+        self.assertEqual(b"hello world", self.fs.get("foo").read())
 
 
     def test_list(self):
         self.assertEqual([], self.fs.list())
-        self.fs.put("hello world")
+        self.fs.put(b"hello world")
         self.assertEqual([], self.fs.list())
 
-        self.fs.put("", filename="mike")
-        self.fs.put("foo", filename="test")
-        self.fs.put("", filename="hello world")
+        self.fs.put(b"", filename="mike")
+        self.fs.put(b"foo", filename="test")
+        self.fs.put(b"", filename="hello world")
 
         self.assertEqual(set(["mike", "test", "hello world"]),
                          set(self.fs.list()))
 
     def test_empty_file(self):
-        oid = self.fs.put("")
-        self.assertEqual("", self.fs.get(oid).read())
+        oid = self.fs.put(b"")
+        self.assertEqual(b"", self.fs.get(oid).read())
         self.assertEqual(1, self.db.fs.files.count())
         self.assertEqual(0, self.db.fs.chunks.count())
 
@@ -114,11 +111,11 @@ class TestGridfs(unittest.TestCase):
         self.assertEqual(oid, raw["_id"])
         self.assert_(isinstance(raw["uploadDate"], datetime.datetime))
         self.assertEqual(256*1024, raw["chunkSize"])
-        self.assert_(isinstance(raw["md5"], basestring))
+        self.assert_(isinstance(raw["md5"], str))
 
     def test_alt_collection(self):
-        oid = self.alt.put("hello world")
-        self.assertEqual("hello world", self.alt.get(oid).read())
+        oid = self.alt.put(b"hello world")
+        self.assertEqual(b"hello world", self.alt.get(oid).read())
         self.assertEqual(1, self.db.alt.files.count())
         self.assertEqual(1, self.db.alt.chunks.count())
 
@@ -128,19 +125,19 @@ class TestGridfs(unittest.TestCase):
         self.assertEqual(0, self.db.alt.chunks.count())
 
         self.assertRaises(NoFile, self.alt.get, "foo")
-        oid = self.alt.put("hello world", _id="foo")
+        oid = self.alt.put(b"hello world", _id="foo")
         self.assertEqual("foo", oid)
-        self.assertEqual("hello world", self.alt.get("foo").read())
+        self.assertEqual(b"hello world", self.alt.get("foo").read())
 
-        self.alt.put("", filename="mike")
-        self.alt.put("foo", filename="test")
-        self.alt.put("", filename="hello world")
+        self.alt.put(b"", filename="mike")
+        self.alt.put(b"foo", filename="test")
+        self.alt.put(b"", filename="hello world")
 
         self.assertEqual(set(["mike", "test", "hello world"]),
                          set(self.alt.list()))
 
     def test_threaded_reads(self):
-        self.fs.put("hello", _id="test")
+        self.fs.put(b"hello", _id="test")
 
         threads = []
         for i in range(10):
@@ -160,56 +157,56 @@ class TestGridfs(unittest.TestCase):
             threads[i].join()
 
         f = self.fs.get_last_version("test")
-        self.assertEqual(f.read(), "hello")
+        self.assertEqual(f.read(), b"hello")
 
     def test_get_last_version(self):
-        a = self.fs.put("foo", filename="test")
+        a = self.fs.put(b"foo", filename="test")
         time.sleep(0.01)
         b = self.fs.new_file(filename="test")
-        b.write("bar")
+        b.write(b"bar")
         b.close()
         time.sleep(0.01)
         b = b._id
-        c = self.fs.put("baz", filename="test")
+        c = self.fs.put(b"baz", filename="test")
 
-        self.assertEqual("baz", self.fs.get_last_version("test").read())
+        self.assertEqual(b"baz", self.fs.get_last_version("test").read())
         self.fs.delete(c)
-        self.assertEqual("bar", self.fs.get_last_version("test").read())
+        self.assertEqual(b"bar", self.fs.get_last_version("test").read())
         self.fs.delete(b)
-        self.assertEqual("foo", self.fs.get_last_version("test").read())
+        self.assertEqual(b"foo", self.fs.get_last_version("test").read())
         self.fs.delete(a)
         self.assertRaises(NoFile, self.fs.get_last_version, "test")
 
     def test_get_version(self):
-        self.fs.put("foo", filename="test")
+        self.fs.put(b"foo", filename="test")
         time.sleep(0.01)
-        self.fs.put("bar", filename="test")
+        self.fs.put(b"bar", filename="test")
         time.sleep(0.01)
-        self.fs.put("baz", filename="test")
+        self.fs.put(b"baz", filename="test")
         time.sleep(0.01)
 
-        self.assertEqual("foo", self.fs.get_version("test", 0).read())
-        self.assertEqual("bar", self.fs.get_version("test", 1).read())
-        self.assertEqual("baz", self.fs.get_version("test", 2).read())
+        self.assertEqual(b"foo", self.fs.get_version("test", 0).read())
+        self.assertEqual(b"bar", self.fs.get_version("test", 1).read())
+        self.assertEqual(b"baz", self.fs.get_version("test", 2).read())
 
-        self.assertEqual("baz", self.fs.get_version("test", -1).read())
-        self.assertEqual("bar", self.fs.get_version("test", -2).read())
-        self.assertEqual("foo", self.fs.get_version("test", -3).read())
+        self.assertEqual(b"baz", self.fs.get_version("test", -1).read())
+        self.assertEqual(b"bar", self.fs.get_version("test", -2).read())
+        self.assertEqual(b"foo", self.fs.get_version("test", -3).read())
 
         self.assertRaises(NoFile, self.fs.get_version, "test", 3)
         self.assertRaises(NoFile, self.fs.get_version, "test", -4)
 
     def test_put_filelike(self):
-        oid = self.fs.put(StringIO("hello world"), chunk_size=1)
+        oid = self.fs.put(BytesIO(b"hello world"), chunk_size=1)
         self.assertEqual(11, self.db.fs.chunks.count())
-        self.assertEqual("hello world", self.fs.get(oid).read())
+        self.assertEqual(b"hello world", self.fs.get(oid).read())
 
     def test_put_duplicate(self):
-        oid = self.fs.put("hello")
+        oid = self.fs.put(b"hello")
         self.assertRaises(FileExists, self.fs.put, "world", _id=oid)
 
     def test_exists(self):
-        oid = self.fs.put("hello")
+        oid = self.fs.put(b"hello")
         self.assert_(self.fs.exists(oid))
         self.assert_(self.fs.exists({"_id": oid}))
         self.assert_(self.fs.exists(_id=oid))
@@ -217,7 +214,7 @@ class TestGridfs(unittest.TestCase):
         self.assertFalse(self.fs.exists(filename="mike"))
         self.assertFalse(self.fs.exists("mike"))
 
-        oid = self.fs.put("hello", filename="mike", foo=12)
+        oid = self.fs.put(b"hello", filename="mike", foo=12)
         self.assert_(self.fs.exists(oid))
         self.assert_(self.fs.exists({"_id": oid}))
         self.assert_(self.fs.exists(_id=oid))
@@ -234,14 +231,14 @@ class TestGridfs(unittest.TestCase):
         self.assertFalse(self.fs.exists({"foo": {"$gt": 12}}))
 
     def test_put_unicode(self):
-        self.assertRaises(TypeError, self.fs.put, u"hello")
+        self.assertRaises(TypeError, self.fs.put, "hello")
 
-        oid = self.fs.put(u"hello", encoding="utf-8")
-        self.assertEqual("hello", self.fs.get(oid).read())
+        oid = self.fs.put("hello", encoding="utf-8")
+        self.assertEqual(b"hello", self.fs.get(oid).read())
         self.assertEqual("utf-8", self.fs.get(oid).encoding)
 
-        oid = self.fs.put(u"aé", encoding="iso-8859-1")
-        self.assertEqual(u"aé".encode("iso-8859-1"), self.fs.get(oid).read())
+        oid = self.fs.put("aé", encoding="iso-8859-1")
+        self.assertEqual("aé".encode("iso-8859-1"), self.fs.get(oid).read())
         self.assertEqual("iso-8859-1", self.fs.get(oid).encoding)
 
 

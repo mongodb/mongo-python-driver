@@ -20,7 +20,7 @@ class Code(str):
     """BSON's JavaScript code type.
 
     Raises :class:`TypeError` if `code` is not an instance of
-    :class:`basestring` or `scope` is not ``None`` or an instance of
+    :class:`str` or `scope` is not ``None`` or an instance of
     :class:`dict`.
 
     Scope variables can be set by passing a dictionary as the `scope`
@@ -41,8 +41,8 @@ class Code(str):
     """
 
     def __new__(cls, code, scope=None, **kwargs):
-        if not isinstance(code, basestring):
-            raise TypeError("code must be an instance of basestring")
+        if not isinstance(code, str):
+            raise TypeError("code must be an instance of str")
 
         self = str.__new__(cls, code)
 

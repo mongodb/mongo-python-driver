@@ -84,8 +84,6 @@ def _str_to_node(string, default_port=27017):
 def _parse_uri(uri, default_port):
     """MongoDB URI parser.
     """
-    info = {}
-
     if uri.startswith("mongodb://"):
         uri = uri[len("mongodb://"):]
     elif "://" in uri:
@@ -255,7 +253,7 @@ class Connection(object):  # TODO support auth for pooling
         """
         if host is None:
             host = self.HOST
-        if isinstance(host, basestring):
+        if isinstance(host, str):
             host = [host]
         if port is None:
             port = self.PORT
@@ -489,7 +487,7 @@ class Connection(object):  # TODO support auth for pooling
         """
         # Special case the first node to try to get the primary or any
         # additional hosts from a replSet:
-        first = iter(self.__nodes).next()
+        first = next(iter(self.__nodes))
 
         primary = self.__try_node(first)
         if primary is True:
@@ -649,7 +647,7 @@ class Connection(object):  # TODO support auth for pooling
                                                             sock)
                 return self.__check_response_to_last_error(response)
             return None
-        except (ConnectionFailure, socket.error), e:
+        except (ConnectionFailure, socket.error) as e:
             self.disconnect()
             raise AutoReconnect(str(e))
 
@@ -659,10 +657,10 @@ class Connection(object):  # TODO support auth for pooling
         Takes length to receive and repeatedly calls recv until able to
         return a buffer of that length, raising ConnectionFailure on error.
         """
-        message = ""
+        message = b""
         while len(message) < length:
             chunk = sock.recv(length - len(message))
-            if chunk == "":
+            if chunk == b"":
                 raise ConnectionFailure("connection closed")
             message += chunk
         return message
@@ -706,7 +704,7 @@ class Connection(object):  # TODO support auth for pooling
                 if "network_timeout" in kwargs:
                     sock.settimeout(kwargs["network_timeout"])
                 return self.__send_and_receive(message, sock)
-            except (ConnectionFailure, socket.error), e:
+            except (ConnectionFailure, socket.error) as e:
                 self.disconnect()
                 raise AutoReconnect(str(e))
         finally:
@@ -791,7 +789,7 @@ class Connection(object):  # TODO support auth for pooling
         .. seealso:: :meth:`set_cursor_manager` and
            the :mod:`~pymongo.cursor_manager` module
         """
-        if not isinstance(cursor_id, (int, long)):
+        if not isinstance(cursor_id, int):
             raise TypeError("cursor_id must be an instance of (int, long)")
 
         self.__cursor_manager.close(cursor_id)
@@ -835,7 +833,7 @@ class Connection(object):  # TODO support auth for pooling
         if isinstance(name, database.Database):
             name = name.name
 
-        if not isinstance(name, basestring):
+        if not isinstance(name, str):
             raise TypeError("name_or_database must be an instance of "
                             "(Database, str, unicode)")
 
@@ -847,7 +845,7 @@ class Connection(object):  # TODO support auth for pooling
         """Copy a database, potentially from another host.
 
         Raises :class:`TypeError` if `from_name` or `to_name` is not
-        an instance of :class:`basestring`. Raises
+        an instance of :class:`str`. Raises
         :class:`~pymongo.errors.InvalidName` if `to_name` is not a
         valid database name.
 
@@ -869,10 +867,10 @@ class Connection(object):  # TODO support auth for pooling
 
         .. versionadded:: 1.5
         """
-        if not isinstance(from_name, basestring):
-            raise TypeError("from_name must be an instance of basestring")
-        if not isinstance(to_name, basestring):
-            raise TypeError("to_name must be an instance of basestring")
+        if not isinstance(from_name, str):
+            raise TypeError("from_name must be an instance of str")
+        if not isinstance(to_name, str):
+            raise TypeError("to_name must be an instance of str")
 
         database._check_name(to_name)
 
@@ -893,5 +891,5 @@ class Connection(object):  # TODO support auth for pooling
     def __iter__(self):
         return self
 
-    def next(self):
+    def __next__(self):
         raise TypeError("'Connection' object is not iterable")

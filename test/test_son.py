@@ -31,7 +31,7 @@ class TestSON(unittest.TestCase):
         a["hello"] = "world"
         a["mike"] = "awesome"
         a["hello_"] = "mike"
-        self.assertEqual(a.items(), [("hello", "world"),
+        self.assertEqual(list(a.items()), [("hello", "world"),
                                      ("mike", "awesome"),
                                      ("hello_", "mike")])
 

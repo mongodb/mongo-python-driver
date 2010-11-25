@@ -144,7 +144,7 @@ class AutoReference(SONManipulator):
             return value
 
         def transform_dict(object):
-            for (key, value) in object.items():
+            for (key, value) in list(object.items()):
                 object[key] = transform_value(value)
             return object
 
@@ -164,7 +164,7 @@ class AutoReference(SONManipulator):
             return value
 
         def transform_dict(object):
-            for (key, value) in object.items():
+            for (key, value) in list(object.items()):
                 object[key] = transform_value(value)
             return object
 

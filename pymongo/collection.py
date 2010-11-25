@@ -29,7 +29,7 @@ _ZERO = "\x00\x00\x00\x00"
 def _gen_index_name(keys):
     """Generate an index name from the set of fields it is over.
     """
-    return u"_".join([u"%s_%s" % item for item in keys])
+    return "_".join(["%s_%s" % item for item in keys])
 
 
 class Collection(object):
@@ -40,7 +40,7 @@ class Collection(object):
         """Get / create a Mongo collection.
 
         Raises :class:`TypeError` if `name` is not an instance of
-        :class:`basestring`. Raises
+        :class:`str`. Raises
         :class:`~pymongo.errors.InvalidName` if `name` is not a valid
         collection name. Any additional keyword arguments will be used
         as options passed to the create command. See
@@ -68,8 +68,8 @@ class Collection(object):
 
         .. mongodoc:: collections
         """
-        if not isinstance(name, basestring):
-            raise TypeError("name must be an instance of basestring")
+        if not isinstance(name, str):
+            raise TypeError("name must be an instance of str")
 
         if options is not None:
             warnings.warn("the options argument to Collection is deprecated "
@@ -95,8 +95,8 @@ class Collection(object):
                               "null character")
 
         self.__database = database
-        self.__name = unicode(name)
-        self.__full_name = u"%s.%s" % (self.__database.name, self.__name)
+        self.__name = str(name)
+        self.__full_name = "%s.%s" % (self.__database.name, self.__name)
         if create or options is not None:
             self.__create(options)
 
@@ -121,7 +121,7 @@ class Collection(object):
         :Parameters:
           - `name`: the name of the collection to get
         """
-        return Collection(self.__database, u"%s.%s" % (self.__name, name))
+        return Collection(self.__database, "%s.%s" % (self.__name, name))
 
     def __getitem__(self, name):
         return self.__getattr__(name)
@@ -565,7 +565,7 @@ class Collection(object):
         """Creates an index on this collection.
 
         Takes either a single key or a list of (key, direction) pairs.
-        The key(s) must be an instance of :class:`basestring`, and the
+        The key(s) must be an instance of :class:`str`, and the
         directions must be one of (:data:`~pymongo.ASCENDING`,
         :data:`~pymongo.DESCENDING`, :data:`~pymongo.GEO2D`). Returns
         the name of the created index.
@@ -647,7 +647,7 @@ class Collection(object):
         """Ensures that an index exists on this collection.
 
         Takes either a single key or a list of (key, direction) pairs.
-        The key(s) must be an instance of :class:`basestring`, and the
+        The key(s) must be an instance of :class:`str`, and the
         direction(s) must be one of (:data:`~pymongo.ASCENDING`,
         :data:`~pymongo.DESCENDING`, :data:`~pymongo.GEO2D`). See
         :meth:`create_index` for a detailed example.
@@ -724,7 +724,7 @@ class Collection(object):
         """
         self.__database.connection._purge_index(self.__database.name,
                                                 self.__name)
-        self.drop_index(u"*")
+        self.drop_index("*")
 
     def drop_index(self, index_or_name):
         """Drops the specified index on this collection.
@@ -747,7 +747,7 @@ class Collection(object):
         if isinstance(index_or_name, list):
             name = _gen_index_name(index_or_name)
 
-        if not isinstance(name, basestring):
+        if not isinstance(name, str):
             raise TypeError("index_or_name must be an index name or list")
 
         self.__database.connection._purge_index(self.__database.name,
@@ -784,7 +784,7 @@ class Collection(object):
                                                   {"ns": 0}, as_class=SON)
         info = {}
         for index in raw:
-            index["key"] = index["key"].items()
+            index["key"] = list(index["key"].items())
             index = dict(index)
             info[index.pop("name")] = index
         return info
@@ -820,8 +820,8 @@ class Collection(object):
         The `key` parameter can be:
 
           - ``None`` to use the entire document as a key.
-          - A :class:`list` of keys (each a :class:`basestring`) to group by.
-          - A :class:`basestring` or :class:`~bson.code.Code` instance
+          - A :class:`list` of keys (each a :class:`str`) to group by.
+          - A :class:`str` or :class:`~bson.code.Code` instance
             containing a JavaScript function to be applied to each
             document, returning the key to group by.
 
@@ -848,7 +848,7 @@ class Collection(object):
                           DeprecationWarning)
 
         group = {}
-        if isinstance(key, basestring):
+        if isinstance(key, str):
             group["$keyf"] = Code(key)
         elif key is not None:
             group = {"key": helpers._fields_list_to_dict(key)}
@@ -866,7 +866,7 @@ class Collection(object):
 
         If operating in auth mode, client must be authorized as an
         admin to perform this operation. Raises :class:`TypeError` if
-        `new_name` is not an instance of :class:`basestring`. Raises
+        `new_name` is not an instance of :class:`str`. Raises
         :class:`~pymongo.errors.InvalidName` if `new_name` is not a
         valid collection name.
 
@@ -879,8 +879,8 @@ class Collection(object):
         .. versionadded:: 1.7
            support for accepting keyword arguments for rename options
         """
-        if not isinstance(new_name, basestring):
-            raise TypeError("new_name must be an instance of basestring")
+        if not isinstance(new_name, str):
+            raise TypeError("new_name must be an instance of str")
 
         if not new_name or ".." in new_name:
             raise InvalidName("collection names cannot be empty")
@@ -899,7 +899,7 @@ class Collection(object):
         in this collection.
 
         Raises :class:`TypeError` if `key` is not an instance of
-        :class:`basestring`.
+        :class:`str`.
 
         To get the distinct values for a key in the result set of a
         query use :meth:`~pymongo.cursor.Cursor.distinct`.
@@ -1010,7 +1010,7 @@ class Collection(object):
     def __iter__(self):
         return self
 
-    def next(self):
+    def __next__(self):
         raise TypeError("'Collection' object is not iterable")
 
     def __call__(self, *args, **kwargs):

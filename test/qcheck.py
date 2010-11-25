@@ -17,6 +17,7 @@ import traceback
 import datetime
 import re
 import sys
+from functools import reduce
 sys.path[0:0] = [""]
 
 from bson.binary import Binary
@@ -55,7 +56,7 @@ def gen_int():
 
 
 def gen_float():
-    return lambda: (random.random() - 0.5) * sys.maxint
+    return lambda: (random.random() - 0.5) * sys.maxsize
 
 
 def gen_boolean():
@@ -71,19 +72,19 @@ def gen_printable_string(gen_length):
 
 
 def gen_char(set=None):
-    return lambda: chr(random.randint(0, 255))
+    return lambda: bytes([random.randint(0, 255)])
 
 
 def gen_string(gen_length):
-    return lambda: "".join(gen_list(gen_char(), gen_length)())
+    return lambda: b"".join(gen_list(gen_char(), gen_length)())
 
 
 def gen_unichar():
-    return lambda: unichr(random.randint(1, 0xFFF))
+    return lambda: chr(random.randint(1, 0xFFF))
 
 
 def gen_unicode(gen_length):
-    return lambda: u"".join([x for x in
+    return lambda: "".join([x for x in
                              gen_list(gen_unichar(), gen_length)() if
                              x not in ".$"])
 
@@ -116,7 +117,7 @@ def gen_regexp(gen_length):
     # TODO our patterns only consist of one letter.
     # this is because of a bug in CPython's regex equality testing,
     # which I haven't quite tracked down, so I'm just ignoring it...
-    pattern = lambda: u"".join(gen_list(choose_lifted(u"a"), gen_length)())
+    pattern = lambda: "".join(gen_list(choose_lifted("a"), gen_length)())
 
     def gen_flags():
         flags = 0

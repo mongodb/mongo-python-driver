@@ -16,14 +16,10 @@
 <http://dochub.mongodb.org/core/objectids>`_.
 """
 
+from hashlib import md5
+from binascii import hexlify
 import calendar
 import datetime
-try:
-    import hashlib
-    _md5func = hashlib.md5
-except ImportError:  # for Python < 2.5
-    import md5
-    _md5func = md5.new
 import os
 import socket
 import struct
@@ -32,14 +28,13 @@ import time
 
 from bson.errors import InvalidId
 from bson.tz_util import utc
-from bson.compat import b
 
 
 def _machine_bytes():
     """Get the machine portion of an ObjectId.
     """
-    machine_hash = _md5func()
-    machine_hash.update(b(socket.gethostname()))
+    machine_hash = md5()
+    machine_hash.update(socket.gethostname().encode())
     return machine_hash.digest()[0:3]
 
 
@@ -56,7 +51,7 @@ class ObjectId(object):
         """Initialize a new ObjectId.
 
         If `oid` is ``None``, create a new (unique) ObjectId. If `oid`
-        is an instance of (``basestring``, :class:`ObjectId`) validate
+        is an instance of (``str``, ``bytes``, :class:`ObjectId`) validate
         it and use that.  Otherwise, a :class:`TypeError` is
         raised. If `oid` is invalid,
         :class:`~bson.errors.InvalidId` is raised.
@@ -113,13 +108,13 @@ class ObjectId(object):
         if generation_time.utcoffset() is not None:
             generation_time = generation_time - generation_time.utcoffset()
         ts = calendar.timegm(generation_time.timetuple())
-        oid = struct.pack(">i", int(ts)) + "\x00" * 8
+        oid = struct.pack(">i", int(ts)) + b"\x00" * 8
         return cls(oid)
 
     def __generate(self):
         """Generate a new value for this ObjectId.
         """
-        oid = ""
+        oid = b""
 
         # 4 bytes current time
         oid += struct.pack(">i", int(time.time()))
@@ -149,13 +144,16 @@ class ObjectId(object):
         """
         if isinstance(oid, ObjectId):
             self.__id = oid.__id
-        elif isinstance(oid, basestring):
+        elif isinstance(oid, bytes):
             if len(oid) == 12:
                 self.__id = oid
-            elif len(oid) == 24:
+            else:
+                raise InvalidId("%s is not a valid ObjectId" % oid)
+        elif isinstance(oid, str):
+            if len(oid) == 24:
                 try:
-                    self.__id = oid.decode("hex")
-                except TypeError:
+                    self.__id = bytes.fromhex(oid)
+                except:
                     raise InvalidId("%s is not a valid ObjectId" % oid)
             else:
                 raise InvalidId("%s is not a valid ObjectId" % oid)
@@ -187,10 +185,10 @@ class ObjectId(object):
         return datetime.datetime.fromtimestamp(t, utc)
 
     def __str__(self):
-        return self.__id.encode("hex")
+        return hexlify(self.__id).decode()
 
     def __repr__(self):
-        return "ObjectId('%s')" % self.__id.encode("hex")
+        return "ObjectId('%s')" % str(self)
 
     def __eq__(self, other):
         if isinstance(other, ObjectId):

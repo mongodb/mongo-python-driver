@@ -93,14 +93,14 @@ class SON(dict):
     # efficient.
     # second level definitions support higher levels
     def __iter__(self):
-        for k in self.keys():
+        for k in list(self.keys()):
             yield k
 
     def has_key(self, key):
-        return key in self.keys()
+        return key in list(self.keys())
 
     def __contains__(self, key):
-        return key in self.keys()
+        return key in list(self.keys())
 
     # third level takes advantage of second level definitions
     def iteritems(self):
@@ -112,17 +112,17 @@ class SON(dict):
 
     # fourth level uses definitions from lower levels
     def itervalues(self):
-        for _, v in self.iteritems():
+        for _, v in self.items():
             yield v
 
     def values(self):
-        return [v for _, v in self.iteritems()]
+        return [v for _, v in self.items()]
 
     def items(self):
         return list(SON.iteritems(self))
 
     def clear(self):
-        for key in self.keys():
+        for key in list(self.keys()):
             del self[key]
 
     def setdefault(self, key, default=None):
@@ -147,7 +147,7 @@ class SON(dict):
 
     def popitem(self):
         try:
-            k, v = self.iteritems().next()
+            k, v = next(self.iteritems())
         except StopIteration:
             raise KeyError('container is empty')
         del self[k]
@@ -158,10 +158,10 @@ class SON(dict):
         if other is None:
             pass
         elif hasattr(other, 'iteritems'):  # iteritems saves memory and lookups
-            for k, v in other.iteritems():
+            for k, v in other.items():
                 self[k] = v
         elif hasattr(other, 'keys'):
-            for k in other.keys():
+            for k in list(other.keys()):
                 self[k] = other[k]
         else:
             for k, v in other:
@@ -176,7 +176,7 @@ class SON(dict):
             return default
 
     def __len__(self):
-        return len(self.keys())
+        return len(list(self.keys()))
 
     def to_dict(self):
         """Convert a SON document to a normal Python dictionary instance.
@@ -191,7 +191,7 @@ class SON(dict):
             if isinstance(value, SON):
                 value = dict(value)
             if isinstance(value, dict):
-                for k, v in value.iteritems():
+                for k, v in value.items():
                     value[k] = transform_value(v)
             return value
 

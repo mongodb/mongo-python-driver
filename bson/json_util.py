@@ -53,11 +53,7 @@ Currently this does not handle special encoding and decoding for
 import calendar
 import datetime
 import re
-try:
-    import uuid
-    _use_uuid = True
-except ImportError:
-    _use_uuid = False
+import uuid
 
 from bson.dbref import DBRef
 from bson.max_key import MaxKey
@@ -83,8 +79,7 @@ def object_hook(dct):
     if "$ref" in dct:
         return DBRef(dct["$ref"], dct["$id"], dct.get("$db", None))
     if "$date" in dct:
-        return datetime.datetime.fromtimestamp(float(dct["$date"]) / 1000.0,
-                                               utc)
+        return datetime.datetime.fromtimestamp(dct["$date"] / 1000, utc)
     if "$regex" in dct:
         flags = 0
         if "i" in dct["$options"]:
@@ -96,7 +91,7 @@ def object_hook(dct):
         return MinKey()
     if "$maxKey" in dct:
         return MaxKey()
-    if _use_uuid and "$uuid" in dct:
+    if "$uuid" in dct:
         return uuid.UUID(dct["$uuid"])
     return dct
 
@@ -127,6 +122,6 @@ def default(obj):
         return {"$maxKey": 1}
     if isinstance(obj, Timestamp):
         return {"t": obj.time, "i": obj.inc}
-    if _use_uuid and isinstance(obj, uuid.UUID):
+    if isinstance(obj, uuid.UUID):
         return {"$uuid": obj.hex}
     raise TypeError("%r is not JSON serializable" % obj)

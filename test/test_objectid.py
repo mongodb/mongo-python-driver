@@ -46,36 +46,36 @@ class TestObjectId(unittest.TestCase):
         self.assertRaises(InvalidId, ObjectId, "12345678901")
         self.assertRaises(InvalidId, ObjectId, "1234567890123")
         self.assert_(ObjectId())
-        self.assert_(ObjectId("123456789012"))
+        self.assert_(ObjectId(b"123456789012"))
         a = ObjectId()
         self.assert_(ObjectId(a))
 
     def test_unicode(self):
         a = ObjectId()
-        self.assertEqual(a, ObjectId(unicode(a)))
+        self.assertEqual(a, ObjectId(str(a)))
         self.assertEqual(ObjectId("123456789012123456789012"),
-                         ObjectId(u"123456789012123456789012"))
-        self.assertRaises(InvalidId, ObjectId, u"hello")
+                         ObjectId("123456789012123456789012"))
+        self.assertRaises(InvalidId, ObjectId, "hello")
 
     def test_from_hex(self):
         ObjectId("123456789012123456789012")
         self.assertRaises(InvalidId, ObjectId, "123456789012123456789G12")
-        self.assertRaises(InvalidId, ObjectId, u"123456789012123456789G12")
+        self.assertRaises(InvalidId, ObjectId, "123456789012123456789G12")
 
     def test_repr_str(self):
         self.assertEqual(repr(ObjectId("1234567890abcdef12345678")),
                          "ObjectId('1234567890abcdef12345678')")
         self.assertEqual(str(ObjectId("1234567890abcdef12345678")), "1234567890abcdef12345678")
-        self.assertEqual(str(ObjectId("123456789012")), "313233343536373839303132")
-        self.assertEqual(ObjectId("1234567890abcdef12345678").binary, '\x124Vx\x90\xab\xcd\xef\x124Vx')
-        self.assertEqual(str(ObjectId('\x124Vx\x90\xab\xcd\xef\x124Vx')), "1234567890abcdef12345678")
+        self.assertEqual(str(ObjectId(b"123456789012")), "313233343536373839303132")
+        self.assertEqual(ObjectId("1234567890abcdef12345678").binary, b'\x124Vx\x90\xab\xcd\xef\x124Vx')
+        self.assertEqual(str(ObjectId(b'\x124Vx\x90\xab\xcd\xef\x124Vx')), "1234567890abcdef12345678")
 
     def test_cmp(self):
         a = ObjectId()
         self.assertEqual(a, ObjectId(a))
-        self.assertEqual(ObjectId("123456789012"), ObjectId("123456789012"))
+        self.assertEqual(ObjectId(b"123456789012"), ObjectId(b"123456789012"))
         self.assertNotEqual(ObjectId(), ObjectId())
-        self.assertNotEqual(ObjectId("123456789012"), "123456789012")
+        self.assertNotEqual(ObjectId(b"123456789012"), "123456789012")
 
     def test_binary_str_equivalence(self):
         a = ObjectId()
@@ -94,7 +94,7 @@ class TestObjectId(unittest.TestCase):
             raise SkipTest()
 
         pool = multiprocessing.Pool(2)
-        ids = pool.map(oid, range(20))
+        ids = pool.map(oid, list(range(20)))
         pool.close()
         pool.join()
 

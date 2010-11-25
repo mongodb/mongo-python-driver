@@ -26,7 +26,7 @@ class DBRef(object):
         """Initialize a new :class:`DBRef`.
 
         Raises :class:`TypeError` if `collection` or `database` is not
-        an instance of :class:`basestring`. `database` is optional and
+        an instance of :class:`str`. `database` is optional and
         allows references to documents to work across databases. Any
         additional keyword arguments will create additional fields in
         the resultant embedded document.
@@ -45,10 +45,10 @@ class DBRef(object):
 
         .. mongodoc:: dbrefs
         """
-        if not isinstance(collection, basestring):
-            raise TypeError("collection must be an instance of basestring")
-        if database is not None and not isinstance(database, basestring):
-            raise TypeError("database must be an instance of basestring")
+        if not isinstance(collection, str):
+            raise TypeError("collection must be an instance of str")
+        if database is not None and not isinstance(database, str):
+            raise TypeError("database must be an instance of str")
 
         self.__collection = collection
         self.__id = id
@@ -95,7 +95,7 @@ class DBRef(object):
 
     def __repr__(self):
         extra = "".join([", %s=%r" % (k, v)
-                         for k, v in self.__kwargs.iteritems()])
+                         for k, v in self.__kwargs.items()])
         if self.database is None:
             return "DBRef(%r, %r%s)" % (self.collection, self.id, extra)
         return "DBRef(%r, %r, %r%s)" % (self.collection, self.id,

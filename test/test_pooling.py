@@ -25,7 +25,7 @@ sys.path[0:0] = [""]
 from nose.plugins.skip import SkipTest
 
 from pymongo.connection import _Pool
-from test_connection import get_connection
+from .test_connection import get_connection
 
 N = 50
 DB = "pymongo-pooling-tests"
@@ -42,7 +42,7 @@ class MongoThread(threading.Thread):
 class SaveAndFind(MongoThread):
 
     def run(self):
-        for _ in xrange(N):
+        for _ in range(N):
             rand = random.randint(0, N)
             id = self.db.sf.save({"x": rand}, safe=True)
             self.ut.assertEqual(rand, self.db.sf.find_one(id)["x"])
@@ -52,7 +52,7 @@ class SaveAndFind(MongoThread):
 class Unique(MongoThread):
 
     def run(self):
-        for _ in xrange(N):
+        for _ in range(N):
             self.db.unique.insert({})
             self.ut.assertEqual(None, self.db.error())
             self.connection.end_request()
@@ -61,7 +61,7 @@ class Unique(MongoThread):
 class NonUnique(MongoThread):
 
     def run(self):
-        for _ in xrange(N):
+        for _ in range(N):
             self.db.unique.insert({"_id": "mike"})
             self.ut.assertNotEqual(None, self.db.error())
             self.connection.end_request()
@@ -70,7 +70,7 @@ class NonUnique(MongoThread):
 class Disconnect(MongoThread):
 
     def run(self):
-        for _ in xrange(N):
+        for _ in range(N):
             self.connection.disconnect()
 
 
@@ -78,7 +78,7 @@ class NoRequest(MongoThread):
 
     def run(self):
         errors = 0
-        for _ in xrange(N):
+        for _ in range(N):
             self.db.unique.insert({"_id": "mike"})
             if self.db.error() is None:
                 errors += 1

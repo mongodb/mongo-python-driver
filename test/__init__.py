@@ -15,7 +15,7 @@
 """Clean up databases after running `nosetests`.
 """
 
-from test_connection import get_connection
+from .test_connection import get_connection
 
 def teardown():
     c = get_connection()
