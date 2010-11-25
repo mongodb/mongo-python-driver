@@ -18,6 +18,7 @@ Regular dictionaries can be used instead of SON objects, but not when the order
 of keys is important. A SON object can be used just like a normal Python
 dictionary."""
 
+import copy
 
 class SON(dict):
     """SON data.
@@ -202,3 +203,9 @@ class SON(dict):
             return value
 
         return transform_value(dict(self))
+
+    def __deepcopy__(self, memo):
+        out = SON()
+        for k, v in self.iteritems():
+            out[k] = copy.deepcopy(v, memo)
+        return out
