@@ -257,13 +257,8 @@ def _element_to_bson(key, value, check_keys):
         return b"\x01" + name + struct.pack("<d", value)
 
     # Use Binary w/ subtype 3 for UUID instances
-    try:
-        import uuid
-
-        if isinstance(value, uuid.UUID):
-            value = Binary(value.bytes_le, subtype=3)
-    except ImportError:
-        pass
+    if isinstance(value, uuid.UUID):
+        value = Binary(value.bytes_le, subtype=3)
 
     if isinstance(value, Binary):
         subtype = value.subtype
