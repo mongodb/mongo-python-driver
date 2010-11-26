@@ -20,10 +20,21 @@
  * should be used to speed up message creation.
  */
 
-#include <Python.h>
+#include "Python.h"
 
 #include "_cbson.h"
 #include "buffer.h"
+
+struct module_state {
+	PyObject* _cbsonModule;
+};
+
+#if PY_MAJOR_VERSION >= 3
+#define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
+#else
+#define GETSTATE(m) (&_state)
+static struct module_state _state;
+#endif
 
 /* Get an error class from the pymongo.errors module.
  *
@@ -41,7 +52,7 @@ static PyObject* _error(char* name) {
 
 /* add a lastError message on the end of the buffer.
  * returns 0 on failure */
-static int add_last_error(buffer_t buffer, int request_id, PyObject* args) {
+static int add_last_error(PyObject* self, buffer_t buffer, int request_id, PyObject* args) {
     int message_start;
     int document_start;
     int message_length;
@@ -50,6 +61,8 @@ static int add_last_error(buffer_t buffer, int request_id, PyObject* args) {
     PyObject* value;
     Py_ssize_t pos = 0;
     PyObject* one;
+
+    struct module_state *state = GETSTATE(self);
 
     message_start = buffer_save_space(buffer, 4);
     if (message_start == -1) {
@@ -77,7 +90,7 @@ static int add_last_error(buffer_t buffer, int request_id, PyObject* args) {
 
     /* getlasterror: 1 */
     one = PyLong_FromLong(1);
-    if (!write_pair(buffer, "getlasterror", 12, one, 0, 1)) {
+    if (!write_pair(state->_cbsonModule, buffer, "getlasterror", 12, one, 0, 1)) {
         Py_DECREF(one);
         return 0;
     }
@@ -85,7 +98,7 @@ static int add_last_error(buffer_t buffer, int request_id, PyObject* args) {
 
     /* getlasterror options */
     while (PyDict_Next(args, &pos, &key, &value)) {
-        if (!decode_and_write_pair(buffer, key, value, 0, 0)) {
+        if (!decode_and_write_pair(state->_cbsonModule, buffer, key, value, 0, 0)) {
             return 0;
         }
     }
@@ -123,6 +136,8 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
     buffer_t buffer;
     int length_location;
     PyObject* result;
+
+    struct module_state *state = GETSTATE(self);
 
     if (!PyArg_ParseTuple(args, "et#ObbO",
                           "utf-8",
@@ -172,7 +187,7 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
     }
     for (i = 0; i < list_length; i++) {
         PyObject* doc = PyList_GetItem(docs, i);
-        if (!write_dict(buffer, doc, check_keys, 1)) {
+        if (!write_dict(state->_cbsonModule, buffer, doc, check_keys, 1)) {
             buffer_free(buffer);
             return NULL;
         }
@@ -182,7 +197,7 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
            buffer_get_buffer(buffer) + buffer_get_position(buffer), 4);
 
     if (safe) {
-        if (!add_last_error(buffer, request_id, last_error_args)) {
+        if (!add_last_error(self, buffer, request_id, last_error_args)) {
             buffer_free(buffer);
             return NULL;
         }
@@ -211,6 +226,8 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
     buffer_t buffer;
     int length_location;
     PyObject* result;
+
+    struct module_state *state = GETSTATE(self);
 
     if (!PyArg_ParseTuple(args, "et#bbOObO",
                           "utf-8",
@@ -252,8 +269,8 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
                             collection_name,
                             collection_name_length + 1) ||
         !buffer_write_bytes(buffer, (const char*)&options, 4) ||
-        !write_dict(buffer, spec, 0, 1) ||
-        !write_dict(buffer, doc, 0, 1)) {
+        !write_dict(state->_cbsonModule, buffer, spec, 0, 1) ||
+        !write_dict(state->_cbsonModule, buffer, doc, 0, 1)) {
         buffer_free(buffer);
         PyMem_Free(collection_name);
         return NULL;
@@ -265,7 +282,7 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
            buffer_get_buffer(buffer) + buffer_get_position(buffer), 4);
 
     if (safe) {
-        if (!add_last_error(buffer, request_id, last_error_args)) {
+        if (!add_last_error(self, buffer, request_id, last_error_args)) {
             buffer_free(buffer);
             return NULL;
         }
@@ -292,6 +309,8 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
     buffer_t buffer;
     int length_location;
     PyObject* result;
+
+    struct module_state *state = GETSTATE(self);
 
     if (!PyArg_ParseTuple(args, "Iet#iiO|O",
                           &options,
@@ -323,9 +342,9 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
                             collection_name_length + 1) ||
         !buffer_write_bytes(buffer, (const char*)&num_to_skip, 4) ||
         !buffer_write_bytes(buffer, (const char*)&num_to_return, 4) ||
-        !write_dict(buffer, query, 0, 1) ||
+        !write_dict(state->_cbsonModule, buffer, query, 0, 1) ||
         ((field_selector != Py_None) &&
-         !write_dict(buffer, field_selector, 0, 1))) {
+         !write_dict(state->_cbsonModule, buffer, field_selector, 0, 1))) {
         buffer_free(buffer);
         PyMem_Free(collection_name);
         return NULL;
@@ -417,19 +436,63 @@ static PyMethodDef _CMessageMethods[] = {
     {NULL, NULL, 0, NULL}
 };
 
-PyMODINIT_FUNC init_cmessage(void) {
-    PyObject *m;
+#if PY_MAJOR_VERSION >= 3
 
-    /* TODO is this necessary?
-     *
-     * We import _cbson here to make sure that it's init function has
-     * been run.
-     */
-    m = PyImport_ImportModule("bson._cbson");
-    Py_DECREF(m);
+static int _cmessage_traverse(PyObject *m, visitproc visit, void *arg) {
+    Py_VISIT(GETSTATE(m)->_cbsonModule);
+    return 0;
+}
 
-    m = Py_InitModule("_cmessage", _CMessageMethods);
-    if (m == NULL) {
-        return;
+static int _cmessage_clear(PyObject *m) {
+    Py_CLEAR(GETSTATE(m)->_cbsonModule);
+    return 0;
+}
+
+
+static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "_cmessage",
+        NULL,
+        sizeof(struct module_state),
+        _CMessageMethods,
+        NULL,
+        _cmessage_traverse,
+        _cmessage_clear,
+        NULL
+};
+
+#define INITERROR return NULL
+
+PyMODINIT_FUNC
+PyInit__cmessage(void)
+
+#else
+#define INITERROR return
+
+PyMODINIT_FUNC
+init_cmessage(void)
+#endif
+{
+#if PY_MAJOR_VERSION >= 3
+    PyObject *module = PyModule_Create(&moduledef);
+#else
+    PyObject *module = Py_InitModule("_cmessage", _CMessageMethods);
+#endif
+
+    if (module == NULL) {
+        INITERROR;
     }
+
+    // Store a reference to the _cbson module since it's needed to call some
+    // of its functions
+    struct module_state *state = GETSTATE(module);
+    state->_cbsonModule = PyImport_ImportModule("bson._cbson");
+    if (!state->_cbsonModule) {
+        Py_DECREF(module);
+    	INITERROR;
+    }
+
+#if PY_MAJOR_VERSION >= 3
+    return module;
+#endif
 }

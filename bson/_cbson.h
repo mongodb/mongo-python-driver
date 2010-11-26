@@ -17,25 +17,18 @@
 #ifndef _CBSON_H
 #define _CBSON_H
 
-#include <Python.h>
-#include <stdio.h>
+#include "Python.h"
 #include "buffer.h"
-
-#if PY_VERSION_HEX < 0x02050000 && !defined(PY_SSIZE_T_MIN)
-typedef unsigned int Py_ssize_t;
-#define PY_SSIZE_T_MAX UINT_MAX
-#define PY_SSIZE_T_MIN 0
-#endif
 
 int buffer_write_bytes(buffer_t buffer, const char* data, int size);
 
-int write_dict(buffer_t buffer, PyObject* dict,
+int write_dict(PyObject* self, buffer_t buffer, PyObject* dict,
                unsigned char check_keys, unsigned char top_level);
 
-int write_pair(buffer_t buffer, const char* name, Py_ssize_t name_length,
+int write_pair(PyObject* self, buffer_t buffer, const char* name, Py_ssize_t name_length,
                PyObject* value, unsigned char check_keys, unsigned char allow_id);
 
-int decode_and_write_pair(buffer_t buffer, PyObject* key, PyObject* value,
+int decode_and_write_pair(PyObject* self, buffer_t buffer, PyObject* key, PyObject* value,
                           unsigned char check_keys, unsigned char top_level);
 
 #endif
