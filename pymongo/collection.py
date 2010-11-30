@@ -634,11 +634,13 @@ class Collection(object):
 
         index.update(kwargs)
 
+        self.__database.system.indexes.insert(index, manipulate=False,
+                                              check_keys=False,
+                                              safe=True)
+
         self.__database.connection._cache_index(self.__database.name,
                                                 self.__name, name, ttl)
 
-        self.__database.system.indexes.insert(index, manipulate=False,
-                                              check_keys=False)
         return name
 
     def ensure_index(self, key_or_list, deprecated_unique=None,
