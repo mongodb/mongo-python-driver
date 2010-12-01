@@ -778,6 +778,12 @@ int write_dict(buffer_t buffer, PyObject* dict, unsigned char check_keys, unsign
     }
     while ((key = PyIter_Next(iter)) != NULL) {
         PyObject* value = PyDict_GetItem(dict, key);
+        if (!value) {
+            PyErr_SetObject(PyExc_KeyError, key);
+            Py_DECREF(key);
+            Py_DECREF(iter);
+            return 0;
+        }
         if (!decode_and_write_pair(buffer, key, value, check_keys, top_level)) {
             Py_DECREF(key);
             Py_DECREF(iter);
