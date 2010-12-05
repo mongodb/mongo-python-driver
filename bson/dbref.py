@@ -123,8 +123,8 @@ class DBRef(object):
 
         .. versionadded:: 1.1
         """
-        return hash((self.__collection, self.__id,
-                     self.__database, self.__kwargs))
+        return hash((self.__collection, self.__id, self.__database,
+                     tuple(sorted(self.__kwargs.items()))))
 
     def __deepcopy__(self, memo):
         """Support function for `copy.deepcopy()`.
