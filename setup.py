@@ -16,14 +16,13 @@ from distutils.errors import DistutilsPlatformError, DistutilsExecError
 from distutils.core import Extension
 
 # Remember to change in pymongo/__init__.py as well!
-version = "1.9+"
+version = "1.9b1"
 
 f = open("README.rst")
 try:
-    try:
-        readme_content = f.read()
-    except:
-        readme_content = ""
+    readme_content = f.read()
+except:
+    readme_content = ""
 finally:
     f.close()
 
@@ -159,7 +158,7 @@ setup(
     features=features,
     license="Apache License, Version 2.0",
     classifiers=[
-        "Development Status :: 5 - Production/Stable",
+        "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: Apache Software License",
         "Operating System :: MacOS :: MacOS X",
