@@ -33,3 +33,4 @@ The following is a list of people who have contributed to
 - Flavio Percoco Premoli (FlaPer87)
 - Ken Kurzweil (kurzweil)
 - Christian Wyglendowski (dowski)
+- Alex Grönholm (agronholm)
