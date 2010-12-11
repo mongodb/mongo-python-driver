@@ -141,7 +141,7 @@ else:
     features = {"c-ext": c_ext}
 
 setup(
-    name="pymongo",
+    name="pymongo3",
     version=version,
     description="Python driver for MongoDB <http://www.mongodb.org>",
     long_description=readme_content,

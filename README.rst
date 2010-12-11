@@ -1,11 +1,16 @@
-=======
-PyMongo
-=======
+========
+PyMongo3
+========
 :Info: See `the mongo site <http://www.mongodb.org>`_ for more information. See `github <http://github.com/mongodb/mongo-python-driver/tree>`_ for the latest source.
 :Author: Mike Dirolf <mike@10gen.com>
 
 About
 =====
+
+This is a semi-official port of PyMongo 1.9+ to Python 3.x. Semantics are
+mostly compatible with the official PyMongo branch, except for a few things
+listed in the next section. This port can currently only be used on Python 3.1
+or later. Compatibility with Python 2.6+ may be added in the future.
 
 The PyMongo distribution contains tools for interacting with MongoDB
 database from Python.  The ``bson`` package is an implementation of
@@ -15,21 +20,31 @@ is a `gridfs
 <http://www.mongodb.org/display/DOCS/GridFS+Specification>`_
 implementation on top of ``pymongo``.
 
+About the Py3K port
+===================
+
+Byte strings and unicode strings were clearly separated in Python 3. PyMongo3
+adapts to these changes by decoding Binary of subtype 0 to the "bytes" type.
+There has been considerable effort to make things work the way developers would
+expect them to, with regards to the new semantics of Python 3. If you feel
+that the new semantics don't match your expectations, feel free to ask on the
+mailing list or create a new issue on github (see the next section for that).
+
 Issues / Questions / Feedback
 =============================
 
-Any issues with, questions about, or feedback for PyMongo should be
+Any issues with, questions about, or feedback for PyMongo3 should be
 sent to the mongodb-user list on Google Groups. For confirmed issues
-or feature requests, open a case on `jira
-<http://jira.mongodb.org>`_. Please do not e-mail any of the PyMongo
-developers directly with issues or questions - you're more likely to
-get an answer on the list.
+or feature requests, open a case on `github
+<https://github.com/agronholm/mongo-python-driver-py3k/issues>`_.
+Please do not e-mail any of the PyMongo developers directly with issues or
+questions - you're more likely to get an answer on the list.
 
 Installation
 ============
 
-If you have `setuptools
-<http://peak.telecommunity.com/DevCenter/setuptools>`_ installed you
+If you have `distribute
+<http://pypi.python.org/pypi/distribute/>`_ installed you
 should be able to do **easy_install pymongo** to install
 PyMongo. Otherwise you can download the project source and do **python
 setup.py install** to install.
@@ -37,14 +52,13 @@ setup.py install** to install.
 Dependencies
 ============
 
-The PyMongo distribution is supported and tested on Python 2.x, where
-x >= 4. PyMongo versions <= 1.3 also supported Python 2.3, but that is
-no longer supported. If you need to use Python 2.3 please contact us.
+The PyMongo3 distribution is supported and tested on Python 3.x, where
+x >= 1.
 
 Additional dependencies are:
 
 - (to generate documentation) sphinx_
-- (to auto-discover tests) `nose <http://somethingaboutorange.com/mrl/projects/nose/>`_
+- (to auto-discover tests) `nose <http://bitbucket.org/caseman/nose3-caseman-fix/>`_
 
 Examples
 ========
@@ -54,9 +68,9 @@ Here's a basic example (for more see the *examples* section of the docs):
 >>> connection = pymongo.Connection("localhost", 27017)
 >>> db = connection.test
 >>> db.name()
-u'test'
+'test'
 >>> db.my_collection
-Collection(Database(Connection('localhost', 27017), u'test'), u'my_collection')
+Collection(Database(Connection('localhost', 27017), 'test'), 'my_collection')
 >>> db.my_collection.save({"x": 10})
 ObjectId('4aba15ebe23f6b53b0000000')
 >>> db.my_collection.save({"x": 8})
@@ -64,7 +78,7 @@ ObjectId('4aba160ee23f6b543e000000')
 >>> db.my_collection.save({"x": 11})
 ObjectId('4aba160ee23f6b543e000002')
 >>> db.my_collection.find_one()
-{u'x': 10, u'_id': ObjectId('4aba15ebe23f6b53b0000000')}
+{'x': 10, '_id': ObjectId('4aba15ebe23f6b53b0000000')}
 >>> for item in db.my_collection.find():
 ...     print item["x"]
 ...
@@ -72,7 +86,7 @@ ObjectId('4aba160ee23f6b543e000002')
 8
 11
 >>> db.my_collection.create_index("x")
-u'x_1'
+'x_1'
 >>> for item in db.my_collection.find().sort("x", pymongo.ASCENDING):
 ...     print item["x"]
 ...
@@ -93,9 +107,10 @@ setup.py doc**. Generated documentation can be found in the
 Testing
 =======
 
-The easiest way to run the tests is to install `nose
-<http://somethingaboutorange.com/mrl/projects/nose/>`_ (**easy_install
-nose**) and run **nosetests** or **python setup.py test** in the root
-of the distribution. Tests are located in the *test/* directory.
+The easiest way to run the tests is to install the Python 3.x compatible fork
+of nosetests, `nose3
+<http://bitbucket.org/caseman/nose3-caseman-fix/>`_ and run **nosetests3** or
+**python setup.py test** in the root of the distribution.
+Tests are located in the *test/* directory.
 
 .. _sphinx: http://sphinx.pocoo.org/

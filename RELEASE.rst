@@ -31,7 +31,7 @@ old API.
 Doing a Release
 ---------------
 
-1. Test release on Python 2.4-2.7 on Windows, Linux and OSX, with and without the C extension. Generally enough to just run the tests on 2.4 and 2.7 with and without the extension on a single platform, and then just test any version on the other platforms as a sanity check. `python setup.py test` will build the extension and test. `python tools/clean.py` will remove the extension, and then `nosetests` will run the tests without it. Can also run the doctests: `python setup.py doc -t`.
+1. Test release on Python 3.1-3.2 on Windows, Linux and OSX, with and without the C extension. Generally enough to just run the tests on 2.4 and 2.7 with and without the extension on a single platform, and then just test any version on the other platforms as a sanity check. `python setup.py test` will build the extension and test. `python tools/clean.py` will remove the extension, and then `nosetests` will run the tests without it. Can also run the doctests: `python setup.py doc -t`.
 
 2. Add release notes to doc/changelog.rst. Generally just summarize/clarify the git log, but might add some more long form notes for big changes.
 
