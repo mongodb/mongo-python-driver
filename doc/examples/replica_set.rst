@@ -67,8 +67,8 @@ After connecting, we run the initiate command to get things started
 configuration options see the replica set documentation)::
 
   >>> c.admin.command("replSetInitiate")
-  {u'info': u'Config now saved locally.  Should come online in about a minute.',
-   u'info2': u'no configuration explicitly specified -- making one', u'ok': 1.0}
+  {'info': 'Config now saved locally.  Should come online in about a minute.',
+   'info2': 'no configuration explicitly specified -- making one', 'ok': 1.0}
 
 The three ``mongod`` servers we started earlier will now coordinate
 and come online as a replica set.
@@ -84,13 +84,13 @@ one or more members of the set. For example, any of the following
 will create a connection to the set we just created::
 
   >>> Connection("morton.local")
-  Connection([u'morton.local:27019', 'morton.local:27017', u'morton.local:27018'])
+  Connection(['morton.local:27019', 'morton.local:27017', 'morton.local:27018'])
   >>> Connection("morton.local:27018")
-  Connection([u'morton.local:27019', u'morton.local:27017', 'morton.local:27018'])
+  Connection(['morton.local:27019', 'morton.local:27017', 'morton.local:27018'])
   >>> Connection("morton.local", 27019)
-  Connection(['morton.local:27019', u'morton.local:27017', u'morton.local:27018'])
+  Connection(['morton.local:27019', 'morton.local:27017', 'morton.local:27018'])
   >>> Connection(["morton.local:27018", "morton.local:27019"])
-  Connection(['morton.local:27019', u'morton.local:27017', 'morton.local:27018'])
+  Connection(['morton.local:27019', 'morton.local:27017', 'morton.local:27018'])
   >>> Connection("mongodb://morton.local:27017,morton.local:27018,morton.local:27019")
   Connection(['morton.local:27019', 'morton.local:27017', 'morton.local:27018'])
 
@@ -112,7 +112,7 @@ connect to the replica set and perform a couple of basic operations::
   >>> db.test.save({"x": 1})
   ObjectId('...')
   >>> db.test.find_one()
-  {u'x': 1, u'_id': ObjectId('...')}
+  {'x': 1, '_id': ObjectId('...')}
 
 By checking the host and port, we can see that we're connected to
 *morton.local:27017*, which is the current primary::
@@ -144,9 +144,9 @@ general). At that point the driver will connect to the new primary and
 the operation will succeed::
 
   >>> db.test.find_one()
-  {u'x': 1, u'_id': ObjectId('...')}
+  {'x': 1, '_id': ObjectId('...')}
   >>> db.connection.host
-  u'morton.local'
+  'morton.local'
   >>> db.connection.port
   27018
 

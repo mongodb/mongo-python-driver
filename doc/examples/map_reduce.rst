@@ -77,9 +77,9 @@ iterate over the result collection:
   >>> for doc in result.find():
   ...   print doc
   ...
-  {u'_id': u'cat', u'value': 3.0}
-  {u'_id': u'dog', u'value': 2.0}
-  {u'_id': u'mouse', u'value': 1.0}
+  {'_id': 'cat', 'value': 3.0}
+  {'_id': 'dog', 'value': 2.0}
+  {'_id': 'mouse', 'value': 1.0}
 
 Advanced Map/Reduce
 -------------------
@@ -89,7 +89,7 @@ PyMongo's API supports all of the features of MongoDB's map/reduce engine. One i
 .. doctest::
 
   >>> db.things.map_reduce(map, reduce, full_response=True)
-  {u'counts': {u'input': 4, u'emit': 6, u'output': 3}, u'timeMillis': ..., u'ok': ..., u'result': u'...'}
+  {'counts': {'input': 4, 'emit': 6, 'output': 3}, 'timeMillis': ..., 'ok': ..., 'result': '...'}
 
 All of the optional map/reduce parameters are also supported, simply pass them as keyword arguments. In this example we use the `query` parameter to limit the documents that will be mapped over:
 
@@ -99,7 +99,7 @@ All of the optional map/reduce parameters are also supported, simply pass them a
   >>> for doc in result.find():
   ...   print doc
   ...
-  {u'_id': u'cat', u'value': 2.0}
-  {u'_id': u'dog', u'value': 1.0}
+  {'_id': 'cat', 'value': 2.0}
+  {'_id': 'dog', 'value': 1.0}
 
 .. seealso:: The full list of options for MongoDB's `map reduce engine <http://www.mongodb.org/display/DOCS/MapReduce>`_

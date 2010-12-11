@@ -25,7 +25,7 @@ Creating a geospatial index in pymongo is easy:
   >>> from pymongo import Connection, GEO2D
   >>> db = Connection().geo_example
   >>> db.places.create_index([("loc", GEO2D)])
-  u'loc_2d'
+  'loc_2d'
 
 Inserting Places
 ----------------
@@ -55,9 +55,9 @@ Using the geospatial index we can find documents near another point:
   >>> for doc in db.places.find({"loc": {"$near": [3, 6]}}).limit(3):
   ...   repr(doc)
   ...
-  "{u'loc': [2, 5], u'_id': ObjectId('...')}"
-  "{u'loc': [4, 4], u'_id': ObjectId('...')}"
-  "{u'loc': [1, 2], u'_id': ObjectId('...')}"
+  "{'loc': [2, 5], '_id': ObjectId('...')}"
+  "{'loc': [4, 4], '_id': ObjectId('...')}"
+  "{'loc': [1, 2], '_id': ObjectId('...')}"
 
 It's also possible to query for all items within a given rectangle
 (specified by lower-left and upper-right coordinates):
@@ -67,8 +67,8 @@ It's also possible to query for all items within a given rectangle
   >>> for doc in db.places.find({"loc": {"$within": {"$box": [[2, 2], [5, 6]]}}}):
   ...   repr(doc)
   ...
-  "{u'loc': [4, 4], u'_id': ObjectId('...')}"
-  "{u'loc': [2, 5], u'_id': ObjectId('...')}"
+  "{'loc': [4, 4], '_id': ObjectId('...')}"
+  "{'loc': [2, 5], '_id': ObjectId('...')}"
 
 Or circle (specified by center point and radius):
 
@@ -77,6 +77,6 @@ Or circle (specified by center point and radius):
   >>> for doc in db.places.find({"loc": {"$within": {"$center": [[0, 0], 6]}}}):
   ...   repr(doc)
   ...
-  "{u'loc': [1, 2], u'_id': ObjectId('...')}"
-  "{u'loc': [2, 5], u'_id': ObjectId('...')}"
-  "{u'loc': [4, 4], u'_id': ObjectId('...')}"
+  "{'loc': [1, 2], '_id': ObjectId('...')}"
+  "{'loc': [2, 5], '_id': ObjectId('...')}"
+  "{'loc': [4, 4], '_id': ObjectId('...')}"
