@@ -45,7 +45,7 @@ Installation
 
 If you have `distribute
 <http://pypi.python.org/pypi/distribute/>`_ installed you
-should be able to do **easy_install pymongo** to install
+should be able to do **easy_install pymongo3** to install
 PyMongo. Otherwise you can download the project source and do **python
 setup.py install** to install.
 
