@@ -81,20 +81,28 @@ def _str_to_node(string, default_port=27017):
     return (host, port)
 
 
-def _parse_uri(uri, default_port):
+def _parse_uri(uri, default_port=27017):
     """MongoDB URI parser.
     """
-    info = {}
 
     if uri.startswith("mongodb://"):
         uri = uri[len("mongodb://"):]
     elif "://" in uri:
         raise InvalidURI("Invalid uri scheme: %s" % _partition(uri, "://")[0])
 
-    (hosts, database) = _partition(uri, "/")
+    (hosts, namespace) = _partition(uri, "/")
 
-    if not database:
-        database = None
+    raw_options = None
+    if namespace:
+        (namespace, raw_options) = _partition(namespace, "?")
+        if namespace.find(".") < 0:
+            db = namespace
+            collection = None
+        else:
+            (db, collection) = namespace.split(".", 1)
+    else:
+        db = None
+        collection = None
 
     username = None
     password = None
@@ -112,7 +120,21 @@ def _parse_uri(uri, default_port):
             raise InvalidURI("empty host (or extra comma in host list)")
         host_list.append(_str_to_node(host, default_port))
 
-    return (host_list, database, username, password)
+    options = {}
+    if raw_options:
+        and_idx = raw_options.find("&")
+        semi_idx = raw_options.find(";")
+        if and_idx >= 0 and semi_idx >= 0:
+            raise InvalidURI("Cannot mix & and ; for option separators.")
+        elif and_idx >= 0:
+            options = dict([kv.split("=") for kv in raw_options.split("&")])
+        elif semi_idx >= 0:
+            options = dict([kv.split("=") for kv in raw_options.split(";")])
+        elif raw_options.find("="):
+            options = dict([raw_options.split("=")])
+
+
+    return (host_list, db, username, password, collection, options)
 
 
 def _closed(sock):
@@ -266,12 +288,16 @@ class Connection(object):  # TODO support auth for pooling
         database = None
         username = None
         password = None
+        collection = None
+        options = {}
         for uri in host:
-            (n, db, u, p) = _parse_uri(uri, port)
+            (n, db, u, p, coll, opts) = _parse_uri(uri, port)
             nodes.update(n)
             database = db or database
             username = u or username
             password = p or password
+            collection = coll or collection
+            options = opts or options
         if not nodes:
             raise ConfigurationError("need to specify at least one host")
         self.__nodes = nodes
@@ -292,10 +318,19 @@ class Connection(object):  # TODO support auth for pooling
         self.__host = None
         self.__port = None
 
-        self.__slave_okay = slave_okay
+        if options.has_key("slaveok"):
+            self.__slave_okay = options['slaveok'][0].upper()=='T'
+        else:
+            self.__slave_okay = slave_okay
+
         if slave_okay and len(self.__nodes) > 1:
             raise ConfigurationError("cannot specify slave_okay for a paired "
                                      "or replica set connection")
+
+        # TODO - Support using other options like w and fsync from URI
+        self.__options = options
+        # TODO - Support setting the collection from URI as the Java driver does
+        self.__collection = collection
 
         self.__cursor_manager = CursorManager(self)
 
