@@ -39,6 +39,10 @@ gmtime64_r() is a 64-bit equivalent of gmtime_r().
 
 */
 
+/* Disable warnings regarding the use of the non-secure C library functions
+   instead of the *_s versions on win32 */
+#define _CRT_SECURE_NO_WARNINGS
+
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
