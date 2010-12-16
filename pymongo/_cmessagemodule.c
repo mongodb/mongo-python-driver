@@ -473,10 +473,13 @@ PyMODINIT_FUNC
 init_cmessage(void)
 #endif
 {
+	PyObject* module;
+	struct module_state* state;
+
 #if PY_MAJOR_VERSION >= 3
-    PyObject *module = PyModule_Create(&moduledef);
+    module = PyModule_Create(&moduledef);
 #else
-    PyObject *module = Py_InitModule("_cmessage", _CMessageMethods);
+    module = Py_InitModule("_cmessage", _CMessageMethods);
 #endif
 
     if (module == NULL) {
@@ -485,7 +488,7 @@ init_cmessage(void)
 
     // Store a reference to the _cbson module since it's needed to call some
     // of its functions
-    struct module_state *state = GETSTATE(module);
+    state = GETSTATE(module);
     state->_cbsonModule = PyImport_ImportModule("bson._cbson");
     if (!state->_cbsonModule) {
         Py_DECREF(module);

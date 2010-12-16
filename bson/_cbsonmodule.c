@@ -136,17 +136,20 @@ int buffer_write_bytes(buffer_t buffer, const char* data, int size) {
 
 /* returns 0 on failure */
 static int write_string(buffer_t buffer, PyObject* py_string) {
-    PyObject* encoded = PyUnicode_AsUTF8String(py_string);
+	char* string;
+	Py_ssize_t string_length;
+
+	PyObject* encoded = PyUnicode_AsUTF8String(py_string);
     if (!encoded) {
         return 0;
     }
 
-    const char* string = PyBytes_AsString(encoded);
+    string = PyBytes_AsString(encoded);
     if (!string) {
     	Py_DECREF(encoded);
         return 0;
     }
-    Py_ssize_t string_length = PyBytes_Size(encoded) + 1;
+    string_length = PyBytes_Size(encoded) + 1;
 
     if (!buffer_write_bytes(buffer, (const char*)&string_length, 4)) {
     	Py_DECREF(encoded);
@@ -1420,12 +1423,13 @@ PyMODINIT_FUNC
 init_cbson(void)
 #endif
 {
+	PyObject* module;
     PyDateTime_IMPORT;
 
 #if PY_MAJOR_VERSION >= 3
-    PyObject *module = PyModule_Create(&moduledef);
+    module = PyModule_Create(&moduledef);
 #else
-    PyObject *module = Py_InitModule("_cbson", _CBSONMethods);
+    module = Py_InitModule("_cbson", _CBSONMethods);
 #endif
 
     if (module == NULL) {
