@@ -114,6 +114,12 @@ class TestCollection(unittest.TestCase):
                      [a["name"] for a in db.system.indexes
                       .find({"ns": u"pymongo_test.test"})])
 
+        db.test.drop()
+        db.test.insert({'a':1})
+        db.test.insert({'a':1})
+        self.assertRaises(DuplicateKeyError, db.test.create_index,
+                                                    'a', unique=True)
+
     def test_ensure_index(self):
         db = self.db
 
