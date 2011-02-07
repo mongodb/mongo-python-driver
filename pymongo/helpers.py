@@ -116,6 +116,13 @@ def _check_command_response(response, reset, msg="%s", allowable_errors=[]):
             if response["errmsg"] == "not master":
                 reset()
                 raise AutoReconnect("not master")
+            if response["errmsg"] == "db assertion failure":
+                ex_msg = ("db assertion failure, assertion: '%s'" %
+                          response.get("assertion", ""))
+                if "assertionCode" in response:
+                    ex_msg += (", assertionCode: %d" %
+                               (response["assertionCode"],))
+                raise OperationFailure(ex_msg, response.get("assertionCode"))
             raise OperationFailure(msg % response["errmsg"])
 
 
