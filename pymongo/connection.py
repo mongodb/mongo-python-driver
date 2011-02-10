@@ -526,6 +526,9 @@ class Connection(object):  # TODO support auth for pooling
         # additional hosts from a replSet:
         first = iter(self.__nodes).next()
 
+        if len(self.__nodes) == 1 and self.__slave_okay:
+            return first
+
         primary = self.__try_node(first)
         if primary is True:
             return first
