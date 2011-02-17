@@ -527,6 +527,8 @@ class Connection(object):  # TODO support auth for pooling
         first = iter(self.__nodes).next()
 
         if len(self.__nodes) == 1 and self.__slave_okay:
+            # Set host and port here since we are skipping __try_node.
+            self.__host, self.__port = first
             return first
 
         primary = self.__try_node(first)
