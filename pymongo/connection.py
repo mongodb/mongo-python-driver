@@ -318,8 +318,11 @@ class Connection(object):  # TODO support auth for pooling
         self.__host = None
         self.__port = None
 
-        if options.has_key("slaveok"):
-            self.__slave_okay = options['slaveok'][0].upper()=='T'
+        for k in options.iterkeys():
+            # PYTHON-205 - Lets not break existing client code.
+            if k in ("slaveOk", "slaveok"):
+                self.__slave_okay = (options[k][0].upper() == 'T')
+                break
         else:
             self.__slave_okay = slave_okay
 
