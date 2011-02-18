@@ -139,14 +139,20 @@ How can I use PyMongo from a web framework like Django?
 -------------------------------------------------------
 `Django <http://www.djangoproject.com/>`_ is a popular Python web
 framework. Django includes an ORM, :mod:`django.db`. Currently,
-MongoDB is not supported as a back-end for :mod:`django.db`.
+there's no official MongoDB backend for Django.
 
-That being said, it's easy to use MongoDB (and PyMongo) from Django
-without using such a project. Certain features of Django that require
+`django-mongodb-engine <https://github.com/django-mongodb-engine/mongodb-engine>`_
+is an unofficial, actively developed MongoDB backend that supports Django
+aggregations, (atomic) updates, embedded objects, Map/Reduce and GridFS.
+It allows you to use most of Django's built-in features, including the
+ORM, admin, authentication, site and session frameworks and caching through
+`django-mongodb-cache <https://github.com/django-mongodb-engine/mongodb-cache>`_.
+
+However, it's easy to use MongoDB (and PyMongo) from Django
+without using a Django backend. Certain features of Django that require
 :mod:`django.db` (admin, authentication and sessions) will not work
 using just MongoDB, but most of what Django provides can still be
-used. This is similar to using Django on top of the `App Engine
-datastore <http://code.google.com/appengine/articles/django.html>`_.
+used.
 
 We have written a demo `Django + MongoDB project
 <http://github.com/mdirolf/DjanMon/tree/master>`_. The README for that
@@ -155,11 +161,6 @@ Django. The main point is that your persistence code will go directly
 into your views, rather than being defined in separate models. The
 README also gives instructions for how to change settings.py to
 disable the features that won't work with MongoDB.
-
-One project which should make working with MongoDB and Django easier
-is `mango <http://github.com/vpulim/mango>`_. Mango is a set of
-MongoDB backends for Django sessions and authentication (bypassing
-:mod:`django.db` entirely).
 
 .. _using-with-mod-wsgi:
 
