@@ -91,6 +91,9 @@ static PyTypeObject* REType = NULL;
 static PyObject* elements_to_dict(const char* string, int max,
                                   PyObject* as_class, unsigned char tz_aware);
 
+static int _write_element_to_buffer(buffer_t buffer, int type_byte, PyObject* value,
+                                    unsigned char check_keys, unsigned char first_attempt);
+
 /* Date stuff */
 static PyObject* datetime_from_millis(long long millis) {
     int microseconds = (millis % 1000) * 1000;
@@ -207,12 +210,21 @@ static int _reload_python_objects(void) {
     return 0;
 }
 
+static int write_element_to_buffer(buffer_t buffer, int type_byte, PyObject* value, unsigned char check_keys, unsigned char first_attempt) {
+    if(Py_EnterRecursiveCall(" while encoding an object to BSON "))
+        return 0;
+    int result = _write_element_to_buffer(buffer, type_byte, value,
+                                          check_keys, first_attempt);
+    Py_LeaveRecursiveCall();
+    return result;
+}
+
 /* TODO our platform better be little-endian w/ 4-byte ints! */
 /* Write a single value to the buffer (also write it's type_byte, for which
  * space has already been reserved.
  *
  * returns 0 on failure */
-static int write_element_to_buffer(buffer_t buffer, int type_byte, PyObject* value, unsigned char check_keys, unsigned char first_attempt) {
+static int _write_element_to_buffer(buffer_t buffer, int type_byte, PyObject* value, unsigned char check_keys, unsigned char first_attempt) {
     if (PyBool_Check(value)) {
         const long bool = PyInt_AsLong(value);
         const char c = bool ? 0x01 : 0x00;
