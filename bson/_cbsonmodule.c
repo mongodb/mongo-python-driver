@@ -210,7 +210,8 @@ static int _reload_python_objects(void) {
     return 0;
 }
 
-static int write_element_to_buffer(buffer_t buffer, int type_byte, PyObject* value, unsigned char check_keys, unsigned char first_attempt) {
+static int write_element_to_buffer(buffer_t buffer, int type_byte, PyObject* value,
+                                   unsigned char check_keys, unsigned char first_attempt) {
     if(Py_EnterRecursiveCall(" while encoding an object to BSON "))
         return 0;
     int result = _write_element_to_buffer(buffer, type_byte, value,
@@ -224,7 +225,8 @@ static int write_element_to_buffer(buffer_t buffer, int type_byte, PyObject* val
  * space has already been reserved.
  *
  * returns 0 on failure */
-static int _write_element_to_buffer(buffer_t buffer, int type_byte, PyObject* value, unsigned char check_keys, unsigned char first_attempt) {
+static int _write_element_to_buffer(buffer_t buffer, int type_byte, PyObject* value,
+                                    unsigned char check_keys, unsigned char first_attempt) {
     if (PyBool_Check(value)) {
         const long bool = PyInt_AsLong(value);
         const char c = bool ? 0x01 : 0x00;
@@ -659,7 +661,8 @@ static int check_key_name(const char* name,
 /* Write a (key, value) pair to the buffer.
  *
  * Returns 0 on failure */
-int write_pair(buffer_t buffer, const char* name, Py_ssize_t name_length, PyObject* value, unsigned char check_keys, unsigned char allow_id) {
+int write_pair(buffer_t buffer, const char* name, Py_ssize_t name_length,
+               PyObject* value, unsigned char check_keys, unsigned char allow_id) {
     int type_byte;
 
     /* Don't write any _id elements unless we're explicitly told to -
