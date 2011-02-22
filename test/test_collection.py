@@ -171,6 +171,8 @@ class TestCollection(unittest.TestCase):
         time.sleep(1.1)
         self.assertEqual("goodbye_1",
                          db.test.ensure_index("goodbye"))
+        # Clean up indexes for later tests
+        db.test.drop_indexes()
 
     def test_index_on_binary(self):
         db = self.db
@@ -645,10 +647,15 @@ class TestCollection(unittest.TestCase):
         if not version.at_least(self.connection, (1, 5, 1)):
             raise SkipTest()
 
-        self.assertRaises(TimeoutError, self.db.test.save, {"x": 1}, w=2, wtimeout=1)
-        self.assertRaises(TimeoutError, self.db.test.insert, {"x": 1}, w=2, wtimeout=1)
-        self.assertRaises(TimeoutError, self.db.test.update, {"x": 1}, {"y": 2}, w=2, wtimeout=1)
-        self.assertRaises(TimeoutError, self.db.test.remove, {"x": 1}, {"y": 2}, w=2, wtimeout=1)
+        # XXX: Fix this if we ever have a replica set unittest env.
+        # mongo >=1.7.6 errors with 'norepl' when w=2+
+        # and we aren't replicated.
+        if not version.at_least(self.connection, (1, 7, 6)):
+            self.assertRaises(TimeoutError, self.db.test.save, {"x": 1}, w=2, wtimeout=1)
+            self.assertRaises(TimeoutError, self.db.test.insert, {"x": 1}, w=2, wtimeout=1)
+            self.assertRaises(TimeoutError, self.db.test.update, {"x": 1}, {"y": 2}, w=2, wtimeout=1)
+            self.assertRaises(TimeoutError, self.db.test.remove, {"x": 1}, {"y": 2}, w=2, wtimeout=1)
+
         self.db.test.save({"x": 1}, w=1, wtimeout=1)
         self.db.test.insert({"x": 1}, w=1, wtimeout=1)
         self.db.test.remove({"x": 1}, w=1, wtimeout=1)
@@ -656,7 +663,11 @@ class TestCollection(unittest.TestCase):
 
     def test_manual_last_error(self):
         self.db.test.save({"x": 1})
-        self.assertRaises(TimeoutError, self.db.command, "getlasterror", w=2, wtimeout=1)
+        # XXX: Fix this if we ever have a replica set unittest env.
+        # mongo >=1.7.6 errors with 'norepl' when w=2+
+        # and we aren't replicated
+        if not version.at_least(self.connection, (1, 7, 6)):
+            self.assertRaises(TimeoutError, self.db.command, "getlasterror", w=2, wtimeout=1)
         self.db.command("getlasterror", w=1, wtimeout=1)
 
     def test_count(self):
@@ -1018,15 +1029,16 @@ class TestCollection(unittest.TestCase):
                       "  }"
                       "  return total;"
                       "}")
-        result = db.test.map_reduce(map, reduce)
+        result = db.test.map_reduce(map, reduce, out='mrunittests')
         self.assertEqual(3, result.find_one({"_id": "cat"})["value"])
         self.assertEqual(2, result.find_one({"_id": "dog"})["value"])
         self.assertEqual(1, result.find_one({"_id": "mouse"})["value"])
 
-        full_result = db.test.map_reduce(map, reduce, full_response=True)
+        full_result = db.test.map_reduce(map, reduce,
+                                         out='mrunittests', full_response=True)
         self.assertEqual(6, full_result["counts"]["emit"])
 
-        result = db.test.map_reduce(map, reduce, limit=2)
+        result = db.test.map_reduce(map, reduce, out='mrunittests', limit=2)
         self.assertEqual(2, result.find_one({"_id": "cat"})["value"])
         self.assertEqual(1, result.find_one({"_id": "dog"})["value"])
         self.assertEqual(None, result.find_one({"_id": "mouse"}))
