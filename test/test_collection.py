@@ -1034,6 +1034,31 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(2, result.find_one({"_id": "dog"})["value"])
         self.assertEqual(1, result.find_one({"_id": "mouse"})["value"])
 
+        if version.at_least(self.db.connection, (1, 7, 4)):
+            db.test.insert({"id": 5, "tags": ["hampster"]})
+            result = db.test.map_reduce(map, reduce, out='mrunittests')
+            self.assertEqual(1, result.find_one({"_id": "hampster"})["value"])
+            db.test.remove({"id": 5})
+            result = db.test.map_reduce(map, reduce,
+                                        out='mrunittests', merge_output=True)
+            self.assertEqual(3, result.find_one({"_id": "cat"})["value"])
+            self.assertEqual(1, result.find_one({"_id": "hampster"})["value"])
+
+            result = db.test.map_reduce(map, reduce,
+                                        out='mrunittests', reduce_output=True)
+            self.assertEqual(6, result.find_one({"_id": "cat"})["value"])
+            self.assertEqual(4, result.find_one({"_id": "dog"})["value"])
+            self.assertEqual(2, result.find_one({"_id": "mouse"})["value"])
+            self.assertEqual(1, result.find_one({"_id": "hampster"})["value"])
+
+            self.assertRaises(InvalidOperation,
+                              db.test.map_reduce,
+                              map,
+                              reduce,
+                              out='mrunittests',
+                              merge_output=True,
+                              reduce_output=True)
+
         full_result = db.test.map_reduce(map, reduce,
                                          out='mrunittests', full_response=True)
         self.assertEqual(6, full_result["counts"]["emit"])
@@ -1042,6 +1067,16 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(2, result.find_one({"_id": "cat"})["value"])
         self.assertEqual(1, result.find_one({"_id": "dog"})["value"])
         self.assertEqual(None, result.find_one({"_id": "mouse"}))
+
+        if version.at_least(self.db.connection, (1, 7, 4)):
+            result = db.test.inline_map_reduce(map, reduce)
+            self.assertTrue(isinstance(result, list))
+            self.assertEqual(3, len(result))
+            self.assertTrue(result[1]["_id"] in ("cat", "dog", "mouse"))
+
+            full_result = db.test.inline_map_reduce(map, reduce,
+                                                    full_response=True)
+            self.assertEqual(6, full_result["counts"]["emit"])
 
     def test_messages_with_unicode_collection_names(self):
         db = self.db
