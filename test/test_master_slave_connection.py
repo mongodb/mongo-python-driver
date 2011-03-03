@@ -68,6 +68,24 @@ class TestMasterSlaveConnection(unittest.TestCase):
                          "MasterSlaveConnection(%r, %r)" %
                          (self.master, self.slaves))
 
+    def test_disconnect(self):
+      class Connection(object):
+        def __init__(self):
+          self._disconnects = 0
+        def disconnect(self):
+          self._disconnects += 1
+
+      self.connection._MasterSlaveConnection__master = Connection()
+      self.connection._MasterSlaveConnection__slaves = [ Connection(), Connection() ]
+
+      self.connection.disconnect()
+      self.assertEquals( 1, 
+        self.connection._MasterSlaveConnection__master._disconnects )
+      self.assertEquals( 1, 
+        self.connection._MasterSlaveConnection__slaves[0]._disconnects )
+      self.assertEquals( 1, 
+        self.connection._MasterSlaveConnection__slaves[1]._disconnects )
+
     def test_send_message_with_response_continues_until_slave_works(self):
       class Slave(object):
         calls = 0
