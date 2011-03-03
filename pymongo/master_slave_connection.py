@@ -84,6 +84,19 @@ class MasterSlaveConnection(object):
         """
         return True
 
+    def disconnect(self):
+        """Disconnect from MongoDB.
+
+        Disconnecting will call disconnect on all master and slave 
+        connections.
+
+        .. seealso:: Module :mod:`~pymongo.connection`
+        .. versionadded:: 1.9
+        """
+        self.__master.disconnect()
+        for slave in self.__slaves:
+          slave.disconnect()
+
     def set_cursor_manager(self, manager_class):
         """Set the cursor manager for this connection.
 
