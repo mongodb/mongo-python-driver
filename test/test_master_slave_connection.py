@@ -38,23 +38,16 @@ class TestMasterSlaveConnection(unittest.TestCase):
 
         self.slaves = []
         try:
-            slave = Connection(os.environ.get("DB_IP2", host),
+            self.slaves.append(Connection(os.environ.get("DB_IP2", host),
                                int(os.environ.get("DB_PORT2", 27018)),
-                               slave_okay=True)
-            # If slave_okay is True and we've only provided one host we
-            # don't check if that host is reachable while initializing
-            # the connection object. Check if the host is reachable here.
-            if slave.admin.command('ping'):
-                self.slaves.append(slave)
+                               slave_okay=True))
         except ConnectionFailure:
             pass
 
         try:
-            slave = Connection(os.environ.get("DB_IP3", host),
+            self.slaves.append(Connection(os.environ.get("DB_IP3", host),
                                int(os.environ.get("DB_PORT3", 27019)),
-                               slave_okay=True)
-            if slave.admin.command('ping'):
-                self.slaves.append(slave)
+                               slave_okay=True))
         except ConnectionFailure:
             pass
 

@@ -50,6 +50,7 @@ from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
                             ConnectionFailure,
                             DuplicateKeyError,
+                            InvalidDocument,
                             InvalidURI,
                             OperationFailure)
 
@@ -209,6 +210,8 @@ class Connection(object):  # TODO support auth for pooling
 
     HOST = "localhost"
     PORT = 27017
+
+    __max_bson_size = 4 * 1024 * 1024
 
     def __init__(self, host=None, port=None, pool_size=None,
                  auto_start_request=None, timeout=None, slave_okay=False,
@@ -496,6 +499,15 @@ class Connection(object):  # TODO support auth for pooling
         """
         return self.__tz_aware
 
+    @property
+    def max_bson_size(self):
+        """Return the maximum size BSON object the connected server
+        accepts in bytes. Defaults to 4MB in server < 1.7.4.
+
+        .. versionadded:: 1.10
+        """
+        return self.__max_bson_size
+
     def __add_hosts_and_get_primary(self, response):
         if "hosts" in response:
             self.__nodes.update([_str_to_node(h) for h in response["hosts"]])
@@ -509,6 +521,17 @@ class Connection(object):  # TODO support auth for pooling
         try:
             response = self.admin.command("ismaster")
             self.end_request()
+
+            if "maxBsonObjectSize" in response:
+                self.__max_bson_size = response["maxBsonObjectSize"]
+
+            # If __slave_okay is True and we've only been given one node
+            # assume this should be a direct connection and don't try to
+            # discover other nodes.
+            if len(self.__nodes) == 1 and self.__slave_okay:
+                if response["ismaster"]:
+                    return True
+                return False
 
             primary = self.__add_hosts_and_get_primary(response)
             if response["ismaster"]:
@@ -528,11 +551,6 @@ class Connection(object):  # TODO support auth for pooling
         # Special case the first node to try to get the primary or any
         # additional hosts from a replSet:
         first = iter(self.__nodes).next()
-
-        if len(self.__nodes) == 1 and self.__slave_okay:
-            # Set host and port here since we are skipping __try_node.
-            self.__host, self.__port = first
-            return first
 
         primary = self.__try_node(first)
         if primary is True:
@@ -665,6 +683,27 @@ class Connection(object):  # TODO support auth for pooling
         else:
             raise OperationFailure(error["err"])
 
+    def __check_bson_size(self, message):
+        """Make sure the message doesn't include BSON documents larger
+        than the connected server will accept.
+
+        :Parameters:
+          - `message`: message to check
+        """
+        if len(message) == 3:
+            (request_id, data, max_doc_size) = message
+            if max_doc_size > self.__max_bson_size:
+                raise InvalidDocument("BSON document too large (%d bytes)"
+                                      " - the connected server supports"
+                                      " BSON document sizes up to %d"
+                                      " bytes." %
+                                      (max_doc_size, self.__max_bson_size))
+            return (request_id, data)
+        else:
+            # get_more and kill_cursors messages
+            # don't include BSON documents.
+            return message
+
     def _send_message(self, message, with_last_error=False):
         """Say something to Mongo.
 
@@ -681,7 +720,7 @@ class Connection(object):  # TODO support auth for pooling
         """
         sock = self.__socket()
         try:
-            (request_id, data) = message
+            (request_id, data) = self.__check_bson_size(message)
             sock.sendall(data)
             # Safe mode. We pack the message together with a lastError
             # message and send both. We then get the response (to the
@@ -727,7 +766,7 @@ class Connection(object):  # TODO support auth for pooling
     def __send_and_receive(self, message, sock):
         """Send a message on the given socket and return the response data.
         """
-        (request_id, data) = message
+        (request_id, data) = self.__check_bson_size(message)
         sock.sendall(data)
         return self.__receive_message_on_socket(1, request_id, sock)
 
