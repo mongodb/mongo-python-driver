@@ -11,6 +11,6 @@
    .. autodata:: MD5_SUBTYPE
    .. autodata:: USER_DEFINED_SUBTYPE
 
-   .. autoclass:: Binary(data[, subtype=BINARY_SUBTYPE])
+   .. autoclass:: Binary(data[, subtype=OLD_BINARY_SUBTYPE])
       :members:
       :show-inheritance:

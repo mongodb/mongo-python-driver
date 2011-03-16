@@ -240,9 +240,6 @@ class TestBSON(unittest.TestCase):
     def test_non_string_keys(self):
         self.assertRaises(InvalidDocument, BSON.encode, {8.9: "test"})
 
-    def test_large_document(self):
-        self.assertRaises(InvalidDocument, BSON.encode, {"key": "x"*4*1024*1024})
-
     def test_utf8(self):
         w = {u"aéあ": u"aéあ"}
         self.assertEqual(w, BSON.encode(w).decode())

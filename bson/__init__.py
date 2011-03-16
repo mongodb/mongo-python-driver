@@ -355,9 +355,6 @@ def _dict_to_bson(dict, check_keys, top_level=True):
         raise TypeError("encoder expected a mapping type but got: %r" % dict)
 
     length = len(elements) + 5
-    if length > 4 * 1024 * 1024:
-        raise InvalidDocument("document too large - BSON documents are"
-                              "limited to 4 MB")
     return struct.pack("<i", length) + elements + "\x00"
 if _use_c:
     _dict_to_bson = _cbson._dict_to_bson
@@ -412,10 +409,6 @@ def is_valid(bson):
     """
     if not isinstance(bson, str):
         raise TypeError("BSON data must be an instance of a subclass of str")
-
-    # 4 MB limit
-    if len(bson) > 4 * 1024 * 1024:
-        raise InvalidBSON("BSON documents are limited to 4MB")
 
     try:
         (_, remainder) = _bson_to_dict(bson, dict, True)

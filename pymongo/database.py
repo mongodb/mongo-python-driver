@@ -452,7 +452,7 @@ class Database(object):
         User `name` will no longer have permissions to access this
         :class:`Database`.
 
-        :Paramaters:
+        :Parameters:
           - `name`: the name of the user to remove
 
         .. versionadded:: 1.4

@@ -171,6 +171,8 @@ class TestCollection(unittest.TestCase):
         time.sleep(1.1)
         self.assertEqual("goodbye_1",
                          db.test.ensure_index("goodbye"))
+        # Clean up indexes for later tests
+        db.test.drop_indexes()
 
     def test_index_on_binary(self):
         db = self.db
@@ -645,10 +647,15 @@ class TestCollection(unittest.TestCase):
         if not version.at_least(self.connection, (1, 5, 1)):
             raise SkipTest()
 
-        self.assertRaises(TimeoutError, self.db.test.save, {"x": 1}, w=2, wtimeout=1)
-        self.assertRaises(TimeoutError, self.db.test.insert, {"x": 1}, w=2, wtimeout=1)
-        self.assertRaises(TimeoutError, self.db.test.update, {"x": 1}, {"y": 2}, w=2, wtimeout=1)
-        self.assertRaises(TimeoutError, self.db.test.remove, {"x": 1}, {"y": 2}, w=2, wtimeout=1)
+        # XXX: Fix this if we ever have a replica set unittest env.
+        # mongo >=1.7.6 errors with 'norepl' when w=2+
+        # and we aren't replicated.
+        if not version.at_least(self.connection, (1, 7, 6)):
+            self.assertRaises(TimeoutError, self.db.test.save, {"x": 1}, w=2, wtimeout=1)
+            self.assertRaises(TimeoutError, self.db.test.insert, {"x": 1}, w=2, wtimeout=1)
+            self.assertRaises(TimeoutError, self.db.test.update, {"x": 1}, {"y": 2}, w=2, wtimeout=1)
+            self.assertRaises(TimeoutError, self.db.test.remove, {"x": 1}, {"y": 2}, w=2, wtimeout=1)
+
         self.db.test.save({"x": 1}, w=1, wtimeout=1)
         self.db.test.insert({"x": 1}, w=1, wtimeout=1)
         self.db.test.remove({"x": 1}, w=1, wtimeout=1)
@@ -656,7 +663,11 @@ class TestCollection(unittest.TestCase):
 
     def test_manual_last_error(self):
         self.db.test.save({"x": 1})
-        self.assertRaises(TimeoutError, self.db.command, "getlasterror", w=2, wtimeout=1)
+        # XXX: Fix this if we ever have a replica set unittest env.
+        # mongo >=1.7.6 errors with 'norepl' when w=2+
+        # and we aren't replicated
+        if not version.at_least(self.connection, (1, 7, 6)):
+            self.assertRaises(TimeoutError, self.db.command, "getlasterror", w=2, wtimeout=1)
         self.db.command("getlasterror", w=1, wtimeout=1)
 
     def test_count(self):
@@ -987,12 +998,25 @@ class TestCollection(unittest.TestCase):
                                                "$query": {}})[0]["x"])
 
     def test_insert_large_document(self):
+        max_size = self.db.connection.max_bson_size
+        half_size = max_size / 2
+        if version.at_least(self.db.connection, (1, 7, 4)):
+            self.assertEqual(max_size, 16777216)
         self.assertRaises(InvalidDocument, self.db.test.insert,
-                          {"foo": "x" * 4 * 1024 * 1024})
+                          {"foo": "x" * max_size})
+        self.assertRaises(InvalidDocument, self.db.test.save,
+                          {"foo": "x" * max_size})
         self.assertRaises(InvalidDocument, self.db.test.insert,
-                          [{"x": 1}, {"foo": "x" * 4 * 1024 * 1024}])
-        self.db.test.insert([{"foo": "x" * 2 * 1024 * 1024},
-                             {"foo": "x" * 2 * 1024 * 1024}], safe=True)
+                          [{"x": 1}, {"foo": "x" * max_size}])
+        self.db.test.insert([{"foo": "x" * half_size},
+                             {"foo": "x" * half_size}], safe=True)
+
+        self.db.test.insert({"bar": "x"})
+        self.assertRaises(InvalidDocument, self.db.test.update,
+                          {"bar": "x"}, {"bar": "x" * (max_size - 14)},
+                          safe=True)
+        self.db.test.update({"bar": "x"}, {"bar": "x" * (max_size - 15)},
+                            safe=True)
 
     def test_map_reduce(self):
         if not version.at_least(self.db.connection, (1, 1, 1)):
@@ -1018,18 +1042,54 @@ class TestCollection(unittest.TestCase):
                       "  }"
                       "  return total;"
                       "}")
-        result = db.test.map_reduce(map, reduce)
+        result = db.test.map_reduce(map, reduce, out='mrunittests')
         self.assertEqual(3, result.find_one({"_id": "cat"})["value"])
         self.assertEqual(2, result.find_one({"_id": "dog"})["value"])
         self.assertEqual(1, result.find_one({"_id": "mouse"})["value"])
 
-        full_result = db.test.map_reduce(map, reduce, full_response=True)
+        if version.at_least(self.db.connection, (1, 7, 4)):
+            db.test.insert({"id": 5, "tags": ["hampster"]})
+            result = db.test.map_reduce(map, reduce, out='mrunittests')
+            self.assertEqual(1, result.find_one({"_id": "hampster"})["value"])
+            db.test.remove({"id": 5})
+            result = db.test.map_reduce(map, reduce,
+                                        out='mrunittests', merge_output=True)
+            self.assertEqual(3, result.find_one({"_id": "cat"})["value"])
+            self.assertEqual(1, result.find_one({"_id": "hampster"})["value"])
+
+            result = db.test.map_reduce(map, reduce,
+                                        out='mrunittests', reduce_output=True)
+            self.assertEqual(6, result.find_one({"_id": "cat"})["value"])
+            self.assertEqual(4, result.find_one({"_id": "dog"})["value"])
+            self.assertEqual(2, result.find_one({"_id": "mouse"})["value"])
+            self.assertEqual(1, result.find_one({"_id": "hampster"})["value"])
+
+            self.assertRaises(InvalidOperation,
+                              db.test.map_reduce,
+                              map,
+                              reduce,
+                              out='mrunittests',
+                              merge_output=True,
+                              reduce_output=True)
+
+        full_result = db.test.map_reduce(map, reduce,
+                                         out='mrunittests', full_response=True)
         self.assertEqual(6, full_result["counts"]["emit"])
 
-        result = db.test.map_reduce(map, reduce, limit=2)
+        result = db.test.map_reduce(map, reduce, out='mrunittests', limit=2)
         self.assertEqual(2, result.find_one({"_id": "cat"})["value"])
         self.assertEqual(1, result.find_one({"_id": "dog"})["value"])
         self.assertEqual(None, result.find_one({"_id": "mouse"}))
+
+        if version.at_least(self.db.connection, (1, 7, 4)):
+            result = db.test.inline_map_reduce(map, reduce)
+            self.assertTrue(isinstance(result, list))
+            self.assertEqual(3, len(result))
+            self.assertTrue(result[1]["_id"] in ("cat", "dog", "mouse"))
+
+            full_result = db.test.inline_map_reduce(map, reduce,
+                                                    full_response=True)
+            self.assertEqual(6, full_result["counts"]["emit"])
 
     def test_messages_with_unicode_collection_names(self):
         db = self.db

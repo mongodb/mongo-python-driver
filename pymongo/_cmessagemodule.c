@@ -97,13 +97,6 @@ static int add_last_error(buffer_t buffer, int request_id, PyObject* args) {
 
     message_length = buffer_get_position(buffer) - message_start;
     document_length = buffer_get_position(buffer) - document_start;
-    if (document_length > 4 * 1024 * 1024) {
-        PyObject* InvalidDocument = _error("InvalidDocument");
-        PyErr_SetString(InvalidDocument, "document too large - "
-                        "BSON documents are limited to 4 MB");
-        Py_DECREF(InvalidDocument);
-        return 0;
-    }
     memcpy(buffer_get_buffer(buffer) + message_start, &message_length, 4);
     memcpy(buffer_get_buffer(buffer) + document_start, &document_length, 4);
     return 1;
@@ -115,6 +108,7 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
     char* collection_name = NULL;
     int collection_name_length;
     PyObject* docs;
+    int before, cur_size, max_size = 0;
     int list_length;
     int i;
     unsigned char check_keys;
@@ -172,10 +166,13 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
     }
     for (i = 0; i < list_length; i++) {
         PyObject* doc = PyList_GetItem(docs, i);
+        before = buffer_get_position(buffer);
         if (!write_dict(buffer, doc, check_keys, 1)) {
             buffer_free(buffer);
             return NULL;
         }
+        cur_size = buffer_get_position(buffer) - before;
+        max_size = (cur_size > max_size) ? cur_size : max_size;
     }
 
     memcpy(buffer_get_buffer(buffer) + length_location,
@@ -189,9 +186,10 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
     }
 
     /* objectify buffer */
-    result = Py_BuildValue("is#", request_id,
+    result = Py_BuildValue("is#i", request_id,
                            buffer_get_buffer(buffer),
-                           buffer_get_position(buffer));
+                           buffer_get_position(buffer),
+                           max_size);
     buffer_free(buffer);
     return result;
 }
@@ -201,6 +199,7 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
     int request_id = rand();
     char* collection_name = NULL;
     int collection_name_length;
+    int before, cur_size, max_size = 0;
     PyObject* doc;
     PyObject* spec;
     unsigned char multi;
@@ -251,13 +250,28 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
         !buffer_write_bytes(buffer,
                             collection_name,
                             collection_name_length + 1) ||
-        !buffer_write_bytes(buffer, (const char*)&options, 4) ||
-        !write_dict(buffer, spec, 0, 1) ||
-        !write_dict(buffer, doc, 0, 1)) {
+        !buffer_write_bytes(buffer, (const char*)&options, 4)) {
         buffer_free(buffer);
         PyMem_Free(collection_name);
         return NULL;
     }
+
+    before = buffer_get_position(buffer);
+    if (!write_dict(buffer, spec, 0, 1)) {
+        buffer_free(buffer);
+        PyMem_Free(collection_name);
+        return NULL;
+    }
+    max_size = buffer_get_position(buffer) - before;
+
+    before = buffer_get_position(buffer);
+    if (!write_dict(buffer, doc, 0, 1)) {
+        buffer_free(buffer);
+        PyMem_Free(collection_name);
+        return NULL;
+    }
+    cur_size = buffer_get_position(buffer) - before;
+    max_size = (cur_size > max_size) ? cur_size : max_size;
 
     PyMem_Free(collection_name);
 
@@ -272,9 +286,10 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
     }
 
     /* objectify buffer */
-    result = Py_BuildValue("is#", request_id,
+    result = Py_BuildValue("is#i", request_id,
                            buffer_get_buffer(buffer),
-                           buffer_get_position(buffer));
+                           buffer_get_position(buffer),
+                           max_size);
     buffer_free(buffer);
     return result;
 }
@@ -285,6 +300,7 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
     unsigned int options;
     char* collection_name = NULL;
     int collection_name_length;
+    int begin, cur_size, max_size = 0;
     int num_to_skip;
     int num_to_return;
     PyObject* query;
@@ -322,13 +338,29 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
         !buffer_write_bytes(buffer, collection_name,
                             collection_name_length + 1) ||
         !buffer_write_bytes(buffer, (const char*)&num_to_skip, 4) ||
-        !buffer_write_bytes(buffer, (const char*)&num_to_return, 4) ||
-        !write_dict(buffer, query, 0, 1) ||
-        ((field_selector != Py_None) &&
-         !write_dict(buffer, field_selector, 0, 1))) {
+        !buffer_write_bytes(buffer, (const char*)&num_to_return, 4)) {
         buffer_free(buffer);
         PyMem_Free(collection_name);
         return NULL;
+    }
+
+    begin = buffer_get_position(buffer);
+    if (!write_dict(buffer, query, 0, 1)) {
+        buffer_free(buffer);
+        PyMem_Free(collection_name);
+        return NULL;
+    }
+    max_size = buffer_get_position(buffer) - begin;
+
+    if (field_selector != Py_None) {
+        begin = buffer_get_position(buffer);
+        if (!write_dict(buffer, field_selector, 0, 1)) {
+            buffer_free(buffer);
+            PyMem_Free(collection_name);
+            return NULL;
+        }
+        cur_size = buffer_get_position(buffer) - begin;
+        max_size = (cur_size > max_size) ? cur_size : max_size;
     }
 
     PyMem_Free(collection_name);
@@ -337,9 +369,10 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
            buffer_get_buffer(buffer) + buffer_get_position(buffer), 4);
 
     /* objectify buffer */
-    result = Py_BuildValue("is#", request_id,
+    result = Py_BuildValue("is#i", request_id,
                            buffer_get_buffer(buffer),
-                           buffer_get_position(buffer));
+                           buffer_get_position(buffer),
+                           max_size);
     buffer_free(buffer);
     return result;
 }

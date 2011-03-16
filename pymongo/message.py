@@ -62,18 +62,24 @@ def __pack_message(operation, data):
 def insert(collection_name, docs, check_keys, safe, last_error_args):
     """Get an **insert** message.
     """
+    max_bson_size = 0
     data = __ZERO
     data += bson._make_c_string(collection_name)
-    bson_data = "".join([bson.BSON.encode(doc, check_keys) for doc in docs])
+    bson_data = ""
+    for doc in docs:
+        encoded = bson.BSON.encode(doc, check_keys)
+        bson_data += encoded
+        max_bson_size = max(len(encoded), max_bson_size)
     if not bson_data:
         raise InvalidOperation("cannot do an empty bulk insert")
     data += bson_data
     if safe:
         (_, insert_message) = __pack_message(2002, data)
-        (request_id, error_message) = __last_error(last_error_args)
-        return (request_id, insert_message + error_message)
+        (request_id, error_message, _) = __last_error(last_error_args)
+        return (request_id, insert_message + error_message, max_bson_size)
     else:
-        return __pack_message(2002, data)
+        (request_id, insert_message) = __pack_message(2002, data)
+        return (request_id, insert_message, max_bson_size)
 if _use_c:
     insert = _cbson._insert_message
 
@@ -91,13 +97,15 @@ def update(collection_name, upsert, multi, spec, doc, safe, last_error_args):
     data += bson._make_c_string(collection_name)
     data += struct.pack("<i", options)
     data += bson.BSON.encode(spec)
-    data += bson.BSON.encode(doc)
+    encoded = bson.BSON.encode(doc)
+    data += encoded
     if safe:
         (_, update_message) = __pack_message(2001, data)
-        (request_id, error_message) = __last_error(last_error_args)
-        return (request_id, update_message + error_message)
+        (request_id, error_message, _) = __last_error(last_error_args)
+        return (request_id, update_message + error_message, len(encoded))
     else:
-        return __pack_message(2001, data)
+        (request_id, update_message) = __pack_message(2001, data)
+        return (request_id, update_message, len(encoded))
 if _use_c:
     update = _cbson._update_message
 
@@ -110,10 +118,15 @@ def query(options, collection_name,
     data += bson._make_c_string(collection_name)
     data += struct.pack("<i", num_to_skip)
     data += struct.pack("<i", num_to_return)
-    data += bson.BSON.encode(query)
+    encoded = bson.BSON.encode(query)
+    data += encoded
+    max_bson_size = len(encoded)
     if field_selector is not None:
-        data += bson.BSON.encode(field_selector)
-    return __pack_message(2004, data)
+        encoded = bson.BSON.encode(field_selector)
+        data += encoded
+        max_bson_size = max(len(encoded), max_bson_size)
+    (request_id, query_message) = __pack_message(2004, data)
+    return (request_id, query_message, max_bson_size)
 if _use_c:
     query = _cbson._query_message
 
@@ -136,13 +149,15 @@ def delete(collection_name, spec, safe, last_error_args):
     data = __ZERO
     data += bson._make_c_string(collection_name)
     data += __ZERO
-    data += bson.BSON.encode(spec)
+    encoded = bson.BSON.encode(spec)
+    data += encoded
     if safe:
         (_, remove_message) = __pack_message(2006, data)
-        (request_id, error_message) = __last_error(last_error_args)
-        return (request_id, remove_message + error_message)
+        (request_id, error_message, _) = __last_error(last_error_args)
+        return (request_id, remove_message + error_message, len(encoded))
     else:
-        return __pack_message(2006, data)
+        (request_id, remove_message) = __pack_message(2006, data)
+        return (request_id, remove_message, len(encoded))
 
 
 def kill_cursors(cursor_ids):

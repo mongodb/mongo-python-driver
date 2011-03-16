@@ -21,7 +21,7 @@ from bson.son import SON
 from pymongo import (helpers,
                      message)
 from pymongo.cursor import Cursor
-from pymongo.errors import InvalidName
+from pymongo.errors import InvalidName, InvalidOperation
 
 _ZERO = "\x00\x00\x00\x00"
 
@@ -914,7 +914,8 @@ class Collection(object):
         """
         return self.find().distinct(key)
 
-    def map_reduce(self, map, reduce, full_response=False, **kwargs):
+    def map_reduce(self, map, reduce, out, merge_output=False,
+                   reduce_output=False, full_response=False, **kwargs):
         """Perform a map/reduce operation on this collection.
 
         If `full_response` is ``False`` (default) returns a
@@ -925,6 +926,15 @@ class Collection(object):
         :Parameters:
           - `map`: map function (as a JavaScript string)
           - `reduce`: reduce function (as a JavaScript string)
+          - `out` (required): output collection name
+          - `merge_output` (optional): Merge output into `out`. If the same
+            key exists in both the result set and the existing output collection,
+            the new key will overwrite the existing key
+          - `reduce_output` (optional): If documents exist for a given key
+            in the result set and in the existing output collection, then a
+            reduce operation (using the specified reduce function) will be
+            performed on the two values and the result will be written to
+            the output collection
           - `full_response` (optional): if ``True``, return full response to
             this command - otherwise just return the result collection
           - `**kwargs` (optional): additional arguments to the
@@ -943,11 +953,62 @@ class Collection(object):
 
         .. mongodoc:: mapreduce
         """
+        if not isinstance(out, basestring):
+            raise TypeError("'out' must be an instance of basestring")
+
+        if merge_output and reduce_output:
+            raise InvalidOperation("Can't do both merge and re-reduce of output.")
+
+        if merge_output:
+            out_conf = {"merge": out}
+        elif reduce_output:
+            out_conf = {"reduce": out}
+        else:
+            out_conf = out
+
         response = self.__database.command("mapreduce", self.__name,
-                                           map=map, reduce=reduce, **kwargs)
+                                           map=map, reduce=reduce,
+                                           out=out_conf, **kwargs)
         if full_response:
             return response
-        return self.__database[response["result"]]
+        else:
+            return self.__database[response["result"]]
+
+    def inline_map_reduce(self, map, reduce, full_response=False, **kwargs):
+        """Perform an inline map/reduce operation on this collection.
+
+        Perform the map/reduce operation on the server in RAM. A result
+        collection is not created. The result set is returned as a list
+        of documents.
+
+        If `full_response` is ``False`` (default) returns the
+        result documents in a list. Otherwise, returns the full
+        response from the server to the `map reduce command`_.
+
+        :Parameters:
+          - `map`: map function (as a JavaScript string)
+          - `reduce`: reduce function (as a JavaScript string)
+          - `full_response` (optional): if ``True``, return full response to
+            this command - otherwise just return the result collection
+          - `**kwargs` (optional): additional arguments to the
+            `map reduce command`_ may be passed as keyword arguments to this
+            helper method, e.g.::
+
+            >>> db.test.map_reduce(map, reduce, limit=2)
+
+        .. note:: Requires server version **>= 1.7.4**
+
+        .. versionadded:: 1.10
+        """
+
+        response = self.__database.command("mapreduce", self.__name,
+                                           map=map, reduce=reduce,
+                                           out={"inline": 1}, **kwargs)
+
+        if full_response:
+            return response
+        else:
+            return response.get("results")
 
     def find_and_modify(self, query={}, update=None, upsert=False, **kwargs):
         """Update and return an object.

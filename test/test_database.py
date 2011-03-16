@@ -207,6 +207,9 @@ class TestDatabase(unittest.TestCase):
         prev_error.pop("lastOp", None)
         error = db.error()
         error.pop("lastOp", None)
+        # getLastError includes "connectionId" in recent
+        # server versions, getPrevError does not.
+        error.pop("connectionId", None)
         self.assertEqual(error, prev_error)
 
         db.test.find_one()

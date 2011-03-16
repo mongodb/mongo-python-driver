@@ -32,6 +32,10 @@ def _parse_version_string(version_string):
     elif version_string.endswith("-"):
         version_string = version_string[0:-1]
         mod = -1
+    # Deal with '-rcX' substrings
+    if version_string.find('-rc') != -1:
+        version_string = version_string[0:version_string.find('-rc')]
+        mod = -1
 
     version = [int(part) for part in version_string.split(".")]
     version = _padded(version, 3)
