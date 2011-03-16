@@ -40,7 +40,7 @@ Ming
   for more details.
 
 MongoAlchemy
-  `MongoAlchemy <http://mongoalchemy.org`_ is another ORM-like layer on top of PyMongo. Its API is inspired by `SQLAlchemy <http://sqlalchemy.org>`_. The code is available on `github <https://github.com/jeffjenkins/MongoAlchemy>`_; for more information, see the `tutorial <http://mongoalchemy.org/tutorial.html>`_.
+  `MongoAlchemy <http://mongoalchemy.org>`_ is another ORM-like layer on top of PyMongo. Its API is inspired by `SQLAlchemy <http://sqlalchemy.org>`_. The code is available on `github <https://github.com/jeffjenkins/MongoAlchemy>`_; for more information, see the `tutorial <http://mongoalchemy.org/tutorial.html>`_.
 
 MongoEngine
   `MongoEngine <http://hmarr.com/mongoengine/>`_ is another ORM-like
