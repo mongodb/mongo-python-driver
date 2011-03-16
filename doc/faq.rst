@@ -162,6 +162,11 @@ into your views, rather than being defined in separate models. The
 README also gives instructions for how to change settings.py to
 disable the features that won't work with MongoDB.
 
+One project which should make working with MongoDB and Django easier
+is `mango <http://github.com/vpulim/mango>`_. Mango is a set of
+MongoDB backends for Django sessions and authentication (bypassing
+:mod:`django.db` entirely).
+
 .. _using-with-mod-wsgi:
 
 Does PyMongo work with **mod_wsgi**?
