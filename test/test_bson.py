@@ -208,6 +208,12 @@ class TestBSON(unittest.TestCase):
     def test_bad_encode(self):
         self.assertRaises(InvalidStringData, BSON.encode,
                           {"lalala": '\xf4\xe0\xf0\xe1\xc0 Color Touch'})
+        evil_list = {'a' : []}
+        evil_list['a'].append(evil_list)
+        evil_dict = {}
+        evil_dict['a'] = evil_dict
+        for evil_data in [evil_dict, evil_list]:
+            self.assertRaises(RuntimeError, BSON.encode, evil_data)
 
     def test_overflow(self):
         self.assert_(BSON.encode({"x": 9223372036854775807L}))
