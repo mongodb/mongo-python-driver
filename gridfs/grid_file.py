@@ -467,6 +467,12 @@ class GridOut(object):
         """
         return GridOutIterator(self, self.__chunks)
 
+    def __enter__(self):
+        """ Makes it possible to use :class:`GridOut` files as context manager """
+
+    def __exit__(self, *exc_info):
+        """ Makes it possible to use :class:`GridOut` files as context manager """
+
 
 class GridOutIterator(object):
     def __init__(self, grid_out, chunks):
