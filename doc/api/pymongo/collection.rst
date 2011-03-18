@@ -38,5 +38,6 @@
       .. automethod:: rename
       .. automethod:: distinct
       .. automethod:: map_reduce
+      .. automethod:: inline_map_reduce
       .. automethod:: find_and_modify
 

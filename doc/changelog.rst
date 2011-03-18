@@ -1,8 +1,47 @@
 Changelog
 =========
 
+Changes in Version 1.10
+-----------------------
+
+Version 1.10 includes changes to support new features in MongoDB 1.8.x.
+Highlights include a modified map/reduce API including an inline map/reduce
+helper method, a new find_and_modify helper, and the ablilty to query the
+server for the maximum BSON document size it supports.
+
+- added :meth:`~pymongo.collection.Collection.find_and_modify`.
+- added :meth:`~pymongo.collection.Collection.inline_map_reduce`.
+- changed :meth:`~pymongo.collection.Collection.map_reduce`.
+
+.. warning:: MongoDB versions greater than 1.7.4 no longer generate temporary
+   collections for map/reduce results. An output collection name must be
+   provided and the output will replace any existing output collection with
+   the same name. :meth:`~pymongo.collection.Collection.map_reduce` now
+   requires the `out` parameter.
+
+Issues resolved
+...............
+
+- PYTHON-223: Documentation fix.
+- PYTHON-220: Documentation fix.
+- PYTHON-213: Query server for maximum BSON document size.
+- PYTHON-208: Fix :class:`pymongo.connection.Connection` __repr__.
+- PYTHON-207: Changes to Map/Reduce API.
+- PYTHON-205: Accept slaveOk in the URI to match the URI docs.
+- PYTHON-203: When slave_okay=True and we only specify one host don't autodetect other set members.
+- PYTHON-194: Show size when whining about a document being too large.
+- PYTHON-184: Raise :class:`pymongo.errors.DuplicateKeyError` for duplicate keys in capped collections.
+- PYTHON-178: Don't segfault when trying to encode a recursive data structure.
+- PYTHON-177: Don't segfault when decoding dicts with broken iterators.
+- PYTHON-172: Fix a typo.
+- PYTHON-170: Add :meth:`~pymongo.collection.Collection.find_and_modify`.
+- PYTHON-169: Support deepcopy of DBRef.
+- PYTHON-167: Duplicate of PYTHON-166.
+- PYTHON-166: Fixes a concurrency issue.
+- PYTHON-158: Add code and err string to `db assertion` messages.
+
 Changes in Version 1.9
--------------------------
+----------------------
 
 Version 1.9 adds a new package to the PyMongo distribution,
 :mod:`bson`. :mod:`bson` contains all of the `BSON

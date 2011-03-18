@@ -73,7 +73,7 @@ iterate over the result collection:
 
 .. doctest::
 
-  >>> result = db.things.map_reduce(map, reduce)
+  >>> result = db.things.map_reduce(map, reduce, myresults)
   >>> for doc in result.find():
   ...   print doc
   ...
@@ -88,14 +88,14 @@ PyMongo's API supports all of the features of MongoDB's map/reduce engine. One i
 
 .. doctest::
 
-  >>> db.things.map_reduce(map, reduce, full_response=True)
+  >>> db.things.map_reduce(map, reduce, myresults, full_response=True)
   {u'counts': {u'input': 4, u'emit': 6, u'output': 3}, u'timeMillis': ..., u'ok': ..., u'result': u'...'}
 
 All of the optional map/reduce parameters are also supported, simply pass them as keyword arguments. In this example we use the `query` parameter to limit the documents that will be mapped over:
 
 .. doctest::
 
-  >>> result = db.things.map_reduce(map, reduce, query={"x": {"$lt": 3}})
+  >>> result = db.things.map_reduce(map, reduce, myresults, query={"x": {"$lt": 3}})
   >>> for doc in result.find():
   ...   print doc
   ...
