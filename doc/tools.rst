@@ -26,7 +26,7 @@ layers, the time spent working directly with the driver will have
 increased your understanding of how MongoDB actually works.
 
 MongoKit
-  The `MongoKit <http://bitbucket.org/namlook/mongokit/>`_ framework
+  The `MongoKit <https://github.com/namlook/mongokit>`_ framework
   is an ORM-like layer on top of PyMongo. There is also a MongoKit
   `google group <http://groups.google.com/group/mongokit>`_.
 
@@ -84,8 +84,8 @@ mongodb_beaker
   `mongodb_beaker <http://pypi.python.org/pypi/mongodb_beaker>`_ is a
   project to enable using MongoDB as a backend for `beaker's
   <http://beaker.groovie.org/>`_ caching / session system. The
-  `source is on bitbucket
-  <http://bitbucket.org/bwmcadams/mongodb_beaker/>`_.
+  `source is on github
+  <https://github.com/bwmcadams/mongodb_beaker>`_.
 
 MongoLog
   `MongoLog <http://github.com/andreisavu/mongodb-log/>`_
