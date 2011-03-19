@@ -941,7 +941,7 @@ class Collection(object):
             `map reduce command`_ may be passed as keyword arguments to this
             helper method, e.g.::
 
-            >>> db.test.map_reduce(map, reduce, myresults, limit=2)
+            >>> db.test.map_reduce(map, reduce, "myresults", limit=2)
 
         .. note:: Requires server version **>= 1.1.1**
 
