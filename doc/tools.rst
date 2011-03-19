@@ -26,7 +26,7 @@ layers, the time spent working directly with the driver will have
 increased your understanding of how MongoDB actually works.
 
 MongoKit
-  The `MongoKit <https://github.com/namlook/mongokit>`_ framework
+  The `MongoKit <http://github.com/namlook/mongokit>`_ framework
   is an ORM-like layer on top of PyMongo. There is also a MongoKit
   `google group <http://groups.google.com/group/mongokit>`_.
 
@@ -42,7 +42,7 @@ Ming
 MongoAlchemy
   `MongoAlchemy <http://mongoalchemy.org>`_ is another ORM-like layer on top of
   PyMongo. Its API is inspired by `SQLAlchemy <http://sqlalchemy.org>`_. The
-  code is available on `github <https://github.com/jeffjenkins/MongoAlchemy>`_;
+  code is available on `github <http://github.com/jeffjenkins/MongoAlchemy>`_;
   for more information, see the `tutorial <http://mongoalchemy.org/tutorial.html>`_.
 
 MongoEngine
@@ -85,7 +85,7 @@ mongodb_beaker
   project to enable using MongoDB as a backend for `beaker's
   <http://beaker.groovie.org/>`_ caching / session system. The
   `source is on github
-  <https://github.com/bwmcadams/mongodb_beaker>`_.
+  <http://github.com/bwmcadams/mongodb_beaker>`_.
 
 MongoLog
   `MongoLog <http://github.com/andreisavu/mongodb-log/>`_
