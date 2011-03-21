@@ -213,10 +213,11 @@ static int _reload_python_objects(void) {
 static int write_element_to_buffer(buffer_t buffer, int type_byte,
                                    PyObject* value, unsigned char check_keys,
                                    unsigned char first_attempt) {
+    int result;
     if(Py_EnterRecursiveCall(" while encoding an object to BSON "))
         return 0;
-    int result = _write_element_to_buffer(buffer, type_byte, value,
-                                          check_keys, first_attempt);
+    result = _write_element_to_buffer(buffer, type_byte, value,
+                                      check_keys, first_attempt);
     Py_LeaveRecursiveCall();
     return result;
 }
