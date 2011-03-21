@@ -163,6 +163,7 @@ setup(
     description="Python driver for MongoDB <http://www.mongodb.org>",
     long_description=readme_content,
     author="Mike Dirolf",
+    author_email="mongodb-user@googlegroups.com",
     maintainer="Bernie Hackett",
     maintainer_email="bernie@10gen.com",
     url="http://github.com/mongodb/mongo-python-driver",
