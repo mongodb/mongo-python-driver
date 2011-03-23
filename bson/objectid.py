@@ -51,6 +51,8 @@ class ObjectId(object):
 
     _machine_bytes = _machine_bytes()
 
+    __slots__ = ('__id')
+
     def __init__(self, oid=None):
         """Initialize a new ObjectId.
 
