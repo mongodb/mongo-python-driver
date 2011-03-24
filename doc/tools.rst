@@ -58,18 +58,21 @@ django-mongodb-engine
   <http://github.com/django-mongodb-engine/mongodb-engine/>`_ is a MongoDB
   database backend for Django.
 
-pymongo-bongo
-  `pymongo-bongo <http://pypi.python.org/pypi/pymongo-bongo/>`_ is a
-  project to add some syntactic sugar on top of PyMongo. It is open
-  source and the code is available on `github
-  <http://github.com/svetlyak40wt/pymongo-bongo>`_.
+Minimongo
+  `minimongo <http://pypi.python.org/pypi/minimongo>`_ is a lightweight,
+  pythonic interface to MongoDB.  It retains pymongo's query and update API,
+  and provides a number of additional features, including a simple
+  document-oriented interface, connection pooling, index management, and
+  collection & database naming helpers. The `source is on github
+  <http://github.com/slacy/minimongo>`_.
 
 Smaller or less well-maintained projects (in order from most to least
 recently committed to at the time of the last update to this list):
 
-  - `mongodb-object <http://github.com/marcboeker/mongodb-object>`_
-  - `MongoMagic <http://bitbucket.org/bottiger/mongomagic/wiki/Home>`_
-  - `django-mongodb <http://bitbucket.org/kpot/django-mongodb/>`_
+  - `pymongo-bongo <http://pypi.python.org/pypi/pymongo-bongo/>`_ (11/2009)
+  - `mongodb-object <http://github.com/marcboeker/mongodb-object>`_ (10/2009)
+  - `MongoMagic <http://bitbucket.org/bottiger/mongomagic/wiki/Home>`_ (7/2009)
+  - `django-mongodb <http://bitbucket.org/kpot/django-mongodb/>`_ (7/2009)
 
 Framework Tools
 ---------------
@@ -86,14 +89,6 @@ mongodb_beaker
   <http://beaker.groovie.org/>`_ caching / session system. The
   `source is on github
   <http://github.com/bwmcadams/mongodb_beaker>`_.
-
-minimongo
-  `minimongo <http://pypi.python.org/pypi/minimongo>`_ is a lightweight,
-  pythonic interface to MongoDB.  It retains pymongo's query and update API,
-  and provides a number of additional features, including a simple
-  document-oriented interface, connection pooling, index management, and
-  collection & database naming helpers. The `source is on github
-  <http://github.com/slacy/minimongo>`_.
 
 MongoLog
   `MongoLog <http://github.com/andreisavu/mongodb-log/>`_
