@@ -87,6 +87,14 @@ mongodb_beaker
   `source is on github
   <http://github.com/bwmcadams/mongodb_beaker>`_.
 
+minimongo
+  `minimongo <http://pypi.python.org/pypi/minimongo>`_ is a lightweight,
+  pythonic interface to MongoDB.  It retains pymongo's query and update API,
+  and provides a number of additional features, including a simple
+  document-oriented interface, connection pooling, index management, and
+  collection & database naming helpers. The `source is on github
+  <http://github.com/slacy/minimongo>`_.
+
 MongoLog
   `MongoLog <http://github.com/andreisavu/mongodb-log/>`_
   is a Python logging handler that stores logs in MongoDB using a
