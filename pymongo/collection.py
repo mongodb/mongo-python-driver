@@ -1067,7 +1067,7 @@ class Collection(object):
                 # Should never get here b/c of allowable_errors
                 raise ValueError("Unexpected Error: %s"%out)
 
-        return out['value']
+        return out.get('value')
 
     def __iter__(self):
         return self
