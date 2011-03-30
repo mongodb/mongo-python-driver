@@ -6,7 +6,7 @@ Changes in Version 1.10
 
 Version 1.10 includes changes to support new features in MongoDB 1.8.x.
 Highlights include a modified map/reduce API including an inline map/reduce
-helper method, a new find_and_modify helper, and the ablilty to query the
+helper method, a new find_and_modify helper, and the ability to query the
 server for the maximum BSON document size it supports.
 
 - added :meth:`~pymongo.collection.Collection.find_and_modify`.
