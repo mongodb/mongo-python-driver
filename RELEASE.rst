@@ -47,7 +47,7 @@ Doing a Release
 
 8. Push source to PyPI: `python setup.py sdist upload`
 
-9. Push binaries to PyPI; for each version of python and platform do: `python setup.py bdist_egg upload`. Probably best to do `python setup.py bdist_egg` first, to make sure the egg builds properly. Notably on the Windows Python 2.5 machine you'll probably end up needing to do something like `python setup.py build -c mingw32 bdist_egg upload`. On Windows we also push a binary installer. The setup.py target for that is `bdist_wininst`.
+9. Push binaries to PyPI; for each version of python and platform do: `python setup.py bdist_egg upload`. Probably best to do `python setup.py bdist_egg` first, to make sure the egg builds properly. Notably on the Windows machine, for Python 2.4 and 2.5, you will have to run `python setup.py build -c mingw32 bdist_egg upload` or the C extension build will fail with an error about Visual Studio 2003. On Windows we also push a binary installer. The setup.py target for that is `bdist_wininst`.
 
 10. Make sure the docs have properly updated (driver buildbot does this).
 
