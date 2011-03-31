@@ -669,7 +669,7 @@ class Connection(object):  # TODO support auth for pooling
         helpers._check_command_response(error, self.disconnect)
 
         # TODO unify logic with database.error method
-        if error.get("err", 0) is None:
+        if error.get("err") is None:
             return error
         if error["err"] == "not master":
             self.disconnect()
