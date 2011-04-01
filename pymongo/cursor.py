@@ -150,11 +150,12 @@ class Cursor(object):
         """
         copy = Cursor(self.__collection, self.__spec, self.__fields,
                       self.__skip, self.__limit, self.__timeout,
-                      self.__tailable, self.__snapshot)
+                      self.__snapshot, self.__tailable)
         copy.__ordering = self.__ordering
         copy.__explain = self.__explain
         copy.__hint = self.__hint
         copy.__batch_size = self.__batch_size
+        copy.__as_class = self.__as_class
         return copy
 
     def __die(self):

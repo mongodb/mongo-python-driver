@@ -449,6 +449,15 @@ class TestCursor(unittest.TestCase):
 
         self.assertNotEqual(cursor, cursor.clone())
 
+        class MyClass(dict):
+            pass
+
+        cursor = self.db.test.find(as_class=MyClass)
+        for e in cursor:
+            self.assertEqual(type(MyClass()), type(e))
+        cursor = self.db.test.find(as_class=MyClass)
+        self.assertEqual(type(MyClass()), type(cursor[0]))
+
     def test_count_with_fields(self):
         self.db.test.drop()
         self.db.test.save({"x": 1})
