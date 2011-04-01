@@ -69,73 +69,101 @@ class TestMasterSlaveConnection(unittest.TestCase):
                          (self.master, self.slaves))
 
     def test_disconnect(self):
-      class Connection(object):
-        def __init__(self):
-          self._disconnects = 0
-        def disconnect(self):
-          self._disconnects += 1
+        class Connection(object):
+            def __init__(self):
+                self._disconnects = 0
+            def disconnect(self):
+                self._disconnects += 1
 
-      self.connection._MasterSlaveConnection__master = Connection()
-      self.connection._MasterSlaveConnection__slaves = [ Connection(), Connection() ]
+        self.connection._MasterSlaveConnection__master = Connection()
+        self.connection._MasterSlaveConnection__slaves = [ Connection(), Connection() ]
 
-      self.connection.disconnect()
-      self.assertEquals( 1, 
-        self.connection._MasterSlaveConnection__master._disconnects )
-      self.assertEquals( 1, 
-        self.connection._MasterSlaveConnection__slaves[0]._disconnects )
-      self.assertEquals( 1, 
-        self.connection._MasterSlaveConnection__slaves[1]._disconnects )
-
-    def test_send_message_with_response_continues_until_slave_works(self):
-      class Slave(object):
-        calls = 0
-        def __init__(self, fail):
-          self._fail = fail
-        def _send_message_with_response(self, *args, **kwargs):
-          Slave.calls += 1
-          if self._fail: raise AutoReconnect()
-          return 'sent'
-
-      class NotRandomList(object):
-        last_idx = -1;
-        def __init__(self):
-          self._items = [Slave(True), Slave(True), Slave(False), Slave(True)]
-        def __len__(self):
-          return len(self._items)
-        def __getitem__(self, idx):
-          NotRandomList.last_idx = idx
-          return self._items.pop(0)
-
-      self.connection._MasterSlaveConnection__slaves = NotRandomList()
-  
-      response = self.connection._send_message_with_response('message')
-      self.assertEquals( (NotRandomList.last_idx,'sent'), response )
-      self.assertNotEquals( -1, NotRandomList.last_idx )
-      self.assertEquals( 3, Slave.calls )
+        self.connection.disconnect()
+        self.assertEquals( 1, 
+          self.connection._MasterSlaveConnection__master._disconnects )
+        self.assertEquals( 1, 
+          self.connection._MasterSlaveConnection__slaves[0]._disconnects )
+        self.assertEquals( 1, 
+          self.connection._MasterSlaveConnection__slaves[1]._disconnects )
     
-    def test_send_message_with_response_raises_autoreconnect_if_all_slaves_off(self):
-      class Slave(object):
-        calls = 0
-        def __init__(self, fail):
-          self._fail = fail
-        def _send_message_with_response(self, *args, **kwargs):
-          Slave.calls += 1
-          if self._fail: raise AutoReconnect()
-          return 'sent'
+    def test_send_message_with_response_continues_until_slave_works_when_fail_fast(self):
+        class Slave(object):
+            calls = 0
+            def __init__(self, fail):
+                self._fail = fail
+            def _send_message_with_response(self, *args, **kwargs):
+                Slave.calls += 1
+                if self._fail: raise AutoReconnect()
+                return 'sent'
 
-      class NotRandomList(object):
-        def __init__(self):
-          self._items = [Slave(True), Slave(True), Slave(True), Slave(True)]
-        def __len__(self):
-          return len(self._items)
-        def __getitem__(self, idx):
-          return self._items.pop(0)
+        class NotRandomList(object):
+            last_idx = -1;
+            def __init__(self):
+                self._items = [Slave(True), Slave(True), Slave(False), Slave(True)]
+            def __len__(self):
+                return len(self._items)
+            def __getitem__(self, idx):
+                NotRandomList.last_idx = idx
+                return self._items.pop(0)
 
-      self.connection._MasterSlaveConnection__slaves = NotRandomList()
+        self.connection._MasterSlaveConnection__slaves = NotRandomList()
   
-      self.assertRaises(AutoReconnect, 
-        self.connection._send_message_with_response, 'message' )
-      self.assertEquals( 4, Slave.calls )
+        self.assertRaises( AutoReconnect, self.connection._send_message_with_response, 'message')
+        self.assertNotEquals( -1, NotRandomList.last_idx )
+        self.assertEquals( 1, Slave.calls )
+
+    def test_send_message_with_response_continues_until_slave_works_when_not_fail_fast(self):
+        class Slave(object):
+            calls = 0
+            def __init__(self, fail):
+                self._fail = fail
+            def _send_message_with_response(self, *args, **kwargs):
+                Slave.calls += 1
+                if self._fail: raise AutoReconnect()
+                return 'sent'
+
+        class NotRandomList(object):
+            last_idx = -1;
+            def __init__(self):
+                self._items = [Slave(True), Slave(True), Slave(False), Slave(True)]
+            def __len__(self):
+                return len(self._items)
+            def __getitem__(self, idx):
+                NotRandomList.last_idx = idx
+                return self._items.pop(0)
+
+        self.connection._MasterSlaveConnection__fail_fast = False
+        self.connection._MasterSlaveConnection__slaves = NotRandomList()
+    
+        response = self.connection._send_message_with_response('message')
+        self.assertEquals( (NotRandomList.last_idx,'sent'), response )
+        self.assertNotEquals( -1, NotRandomList.last_idx )
+        self.assertEquals( 3, Slave.calls )
+    
+    def test_send_message_with_response_raises_autoreconnect_if_all_slaves_off_and_not_fail_fast(self):
+        class Slave(object):
+            calls = 0
+            def __init__(self, fail):
+                self._fail = fail
+            def _send_message_with_response(self, *args, **kwargs):
+                Slave.calls += 1
+                if self._fail: raise AutoReconnect()
+                return 'sent'
+
+        class NotRandomList(object):
+            def __init__(self):
+                self._items = [Slave(True), Slave(True), Slave(True), Slave(True)]
+            def __len__(self):
+                return len(self._items)
+            def __getitem__(self, idx):
+                return self._items.pop(0)
+
+        self.connection._MasterSlaveConnection__fail_fast = False
+        self.connection._MasterSlaveConnection__slaves = NotRandomList()
+    
+        self.assertRaises(AutoReconnect, 
+          self.connection._send_message_with_response, 'message' )
+        self.assertEquals( 4, Slave.calls )
       
 
     def test_get_db(self):

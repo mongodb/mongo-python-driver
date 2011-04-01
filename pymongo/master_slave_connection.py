@@ -27,7 +27,7 @@ class MasterSlaveConnection(object):
     """A master-slave connection to Mongo.
     """
 
-    def __init__(self, master, slaves=[]):
+    def __init__(self, master, slaves=[], fail_fast=True):
         """Create a new Master-Slave connection.
 
         The resultant connection should be interacted with using the same
@@ -57,6 +57,7 @@ class MasterSlaveConnection(object):
         self.__in_request = False
         self.__master = master
         self.__slaves = slaves
+        self.__fail_fast = fail_fast
 
     @property
     def master(self):
@@ -91,11 +92,11 @@ class MasterSlaveConnection(object):
         connections.
 
         .. seealso:: Module :mod:`~pymongo.connection`
-        .. versionadded:: 1.9
+        .. versionadded:: 1.10
         """
         self.__master.disconnect()
         for slave in self.__slaves:
-          slave.disconnect()
+            slave.disconnect()
 
     def set_cursor_manager(self, manager_class):
         """Set the cursor manager for this connection.
@@ -161,12 +162,12 @@ class MasterSlaveConnection(object):
         # Iterate through the slaves randomly until we have scucess. Raise
         # reconnect if they all fail.
         for connection_id in random.sample( range(0,len(self.__slaves)), len(self.__slaves) ):
-          try:
-            slave = self.__slaves[connection_id]
-            return (connection_id, slave._send_message_with_response(message,
+            try:
+                slave = self.__slaves[connection_id]
+                return (connection_id, slave._send_message_with_response(message,
                                                                       **kwargs))
-          except AutoReconnect:
-            pass
+            except AutoReconnect:
+                if self.__fail_fast: raise
 
         raise AutoReconnect("failed to connect to slaves")
 
