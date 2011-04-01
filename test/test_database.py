@@ -483,6 +483,7 @@ class TestDatabase(unittest.TestCase):
 
         self.assertEqual(0, db.system.js.count())
         db.system_js.add = "function(a, b) { return a + b; }"
+        self.assertEqual('add', db.system.js.find_one()['_id'])
         self.assertEqual(1, db.system.js.count())
         self.assertEqual(6, db.system_js.add(1, 5))
 
