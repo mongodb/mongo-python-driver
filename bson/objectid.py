@@ -187,6 +187,17 @@ class ObjectId(object):
         t = struct.unpack(">i", self.__id[0:4])[0]
         return datetime.datetime.fromtimestamp(t, utc)
 
+    def __getstate__(self):
+        """return value of object for pickling.
+        needed explicitly because __slots__() defined.
+        """
+        return self.__str__()
+
+    def __setstate__(self, oid):
+        """explicit state set from pickling
+        """
+        self.__validate(oid)
+
     def __str__(self):
         return self.__id.encode("hex")
 
