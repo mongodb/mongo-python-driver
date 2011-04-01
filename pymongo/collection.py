@@ -170,9 +170,12 @@ class Collection(object):
 
         If `to_save` already has an ``"_id"`` then an :meth:`update`
         (upsert) operation is performed and any existing document with
-        that ``"_id"`` is overwritten.  Otherwise an ``"_id"`` will be
-        added to `to_save` and an :meth:`insert` operation is
-        performed. Returns the ``"_id"`` of the saved document.
+        that ``"_id"`` is overwritten. Otherwise an :meth:`insert`
+        operation is performed. In this case if `manipulate` is ``True``
+        an ``"_id"`` will be added to `to_save` and this method returns
+        the ``"_id"`` of the saved document. If `manipulate` is ``False``
+        the ``"_id"`` will be added by the server but this method will
+        return ``None``.
 
         Raises :class:`TypeError` if `to_save` is not an instance of
         :class:`dict`. If `safe` is ``True`` then the save will be
@@ -215,13 +218,15 @@ class Collection(object):
                manipulate=True, safe=False, check_keys=True, **kwargs):
         """Insert a document(s) into this collection.
 
-        If `manipulate` is set, the document(s) are manipulated using
+        If `manipulate` is ``True``, the document(s) are manipulated using
         any :class:`~pymongo.son_manipulator.SONManipulator` instances
-        that have been added to this
-        :class:`~pymongo.database.Database`. Returns the ``"_id"`` of
-        the inserted document or a list of ``"_id"`` values of the
-        inserted documents.  If the document(s) does not already
-        contain an ``"_id"`` one will be added.
+        that have been added to this :class:`~pymongo.database.Database`.
+        In this case an ``"_id"`` will be added if the document(s) does
+        not already contain one and the ``"id"`` (or list of ``"_id"``
+        values for more than one document) will be returned.
+        If `manipulate` is ``False`` and the document(s) does not include
+        an ``"_id"`` one will be added by the server. The server
+        does not return the ``"_id"`` it created so ``None`` is returned.
 
         If `safe` is ``True`` then the insert will be checked for
         errors, raising :class:`~pymongo.errors.OperationFailure` if
