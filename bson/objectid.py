@@ -191,12 +191,12 @@ class ObjectId(object):
         """return value of object for pickling.
         needed explicitly because __slots__() defined.
         """
-        return self.__str__()
+        return self.__id
 
-    def __setstate__(self, oid):
+    def __setstate__(self, value):
         """explicit state set from pickling
         """
-        self.__validate(oid)
+        self.__id = value
 
     def __str__(self):
         return self.__id.encode("hex")
