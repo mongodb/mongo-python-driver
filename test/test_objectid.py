@@ -15,6 +15,7 @@
 """Tests for the objectid module."""
 
 import datetime
+import pickle
 import warnings
 import unittest
 import sys
@@ -123,6 +124,10 @@ class TestObjectId(unittest.TestCase):
         as_utc = (aware - aware.utcoffset()).replace(tzinfo=utc)
         oid = ObjectId.from_datetime(aware)
         self.assertEqual(as_utc, oid.generation_time)
+
+    def test_pickling(self):
+        orig = ObjectId()
+        self.assertEqual(orig, pickle.loads(pickle.dumps(orig)))
 
 if __name__ == "__main__":
     unittest.main()
