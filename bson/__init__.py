@@ -188,7 +188,8 @@ def _get_timestamp(data, as_class, tz_aware):
 
 
 def _get_long(data, as_class, tz_aware):
-    return (struct.unpack("<q", data[:8])[0], data[8:])
+    # Have to cast to long; on 32-bit unpack may return an int.
+    return (long(struct.unpack("<q", data[:8])[0]), data[8:])
 
 
 _element_getter = {
