@@ -296,13 +296,18 @@ def _element_to_bson(key, value, check_keys):
         return "\x08" + name + "\x01"
     if value is False:
         return "\x08" + name + "\x00"
-    if isinstance(value, (int, long)):
+    if isinstance(value, int):
         # TODO this is a really ugly way to check for this...
         if value > 2 ** 64 / 2 - 1 or value < -2 ** 64 / 2:
             raise OverflowError("BSON can only handle up to 8-byte ints")
         if value > 2 ** 32 / 2 - 1 or value < -2 ** 32 / 2:
             return "\x12" + name + struct.pack("<q", value)
         return "\x10" + name + struct.pack("<i", value)
+    if isinstance(value, long):
+        # XXX No long type in Python 3
+        if value > 2 ** 64 / 2 - 1 or value < -2 ** 64 / 2:
+            raise OverflowError("BSON can only handle up to 8-byte ints")
+        return "\x12" + name + struct.pack("<q", value)
     if isinstance(value, datetime.datetime):
         if value.utcoffset() is not None:
             value = value - value.utcoffset()

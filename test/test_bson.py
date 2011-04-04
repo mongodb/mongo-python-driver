@@ -222,6 +222,19 @@ class TestBSON(unittest.TestCase):
         self.assert_(BSON.encode({"x": -9223372036854775808L}))
         self.assertRaises(OverflowError, BSON.encode, {"x": -9223372036854775809L})
 
+    def test_small_long_encode_decode(self):
+        encoded1 = BSON.encode({'x': 256})
+        decoded1 = BSON.decode(encoded1)['x']
+        self.assertEqual(256, decoded1)
+        self.assertEqual(type(256), type(decoded1))
+
+        encoded2 = BSON.encode({'x': 256L})
+        decoded2 = BSON.decode(encoded2)['x']
+        self.assertEqual(256L, decoded2)
+        self.assertEqual(type(256L), type(decoded2))
+
+        self.assertNotEqual(type(decoded1), type(decoded2))
+
     def test_tuple(self):
         self.assertEqual({"tuple": [1, 2]},
                           BSON.encode({"tuple": (1, 2)}).decode())
