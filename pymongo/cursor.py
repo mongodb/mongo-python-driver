@@ -25,7 +25,8 @@ _QUERY_OPTIONS = {
     "tailable_cursor": 2,
     "slave_okay": 4,
     "oplog_replay": 8,
-    "no_timeout": 16}
+    "no_timeout": 16,
+    "await_data": 32}
 
 
 # TODO might be cool to be able to do find().include("foo") or
@@ -38,7 +39,7 @@ class Cursor(object):
     def __init__(self, collection, spec=None, fields=None, skip=0, limit=0,
                  timeout=True, snapshot=False, tailable=False, sort=None,
                  max_scan=None, as_class=None, slave_okay=False,
-                 _must_use_master=False, _is_command=False,
+                 await_data=False, _must_use_master=False, _is_command=False,
                  **kwargs):
         """Create a new cursor.
 
@@ -91,6 +92,7 @@ class Cursor(object):
 
         self.__timeout = timeout
         self.__tailable = tailable
+        self.__await_data = tailable and await_data
         self.__snapshot = snapshot
         self.__ordering = sort and helpers._index_document(sort) or None
         self.__max_scan = max_scan
@@ -151,7 +153,7 @@ class Cursor(object):
         """
         copy = Cursor(self.__collection, self.__spec, self.__fields,
                       self.__skip, self.__limit, self.__timeout,
-                      self.__snapshot, self.__tailable)
+                      self.__snapshot, self.__tailable, self.__await_data)
         copy.__ordering = self.__ordering
         copy.__explain = self.__explain
         copy.__hint = self.__hint
@@ -203,6 +205,8 @@ class Cursor(object):
             options |= _QUERY_OPTIONS["slave_okay"]
         if not self.__timeout:
             options |= _QUERY_OPTIONS["no_timeout"]
+        if self.__await_data:
+            options |= _QUERY_OPTIONS["await_data"]
         return options
 
     def __check_okay_to_chain(self):
