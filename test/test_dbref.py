@@ -14,6 +14,7 @@
 
 """Tests for the dbref module."""
 
+import pickle
 import unittest
 import sys
 sys.path[0:0] = [""]
@@ -90,7 +91,7 @@ class TestDBRef(unittest.TestCase):
         self.assertNotEqual(DBRef("coll", 5, foo="bar"), DBRef("coll", 5))
         self.assertNotEqual(DBRef("coll", 5, foo="bar"), DBRef("coll", 5, foo="baz"))
         self.assertEqual("bar", DBRef("coll", 5, foo="bar").foo)
-        self.assertRaises(KeyError, getattr, DBRef("coll", 5, foo="bar"), "bar")
+        self.assertRaises(AttributeError, getattr, DBRef("coll", 5, foo="bar"), "bar")
 
     def test_deepcopy(self):
         a = DBRef('coll', 'asdf', 'db', x=[1])
@@ -105,8 +106,11 @@ class TestDBRef(unittest.TestCase):
         self.assertEqual(a.x, [1])
         self.assertEqual(b.x, [2])
 
-
-
+    def test_pickling(self):
+        dbr = DBRef('coll', 5, foo='bar')
+        pkl = pickle.dumps(dbr)
+        dbr2 = pickle.loads(pkl)
+        self.assertEqual(dbr, dbr2)
 
 if __name__ == "__main__":
     unittest.main()
