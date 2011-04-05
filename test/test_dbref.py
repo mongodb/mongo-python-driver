@@ -112,5 +112,16 @@ class TestDBRef(unittest.TestCase):
         dbr2 = pickle.loads(pkl)
         self.assertEqual(dbr, dbr2)
 
+    def test_dbref_hash(self):
+        dbref_1a = DBRef('collection', 'id', 'database')
+        dbref_1b = DBRef('collection', 'id', 'database')
+        self.assertEquals(hash(dbref_1a), hash(dbref_1b))
+
+        dbref_2a = DBRef('collection', 'id', 'database', custom='custom')
+        dbref_2b = DBRef('collection', 'id', 'database', custom='custom')
+        self.assertEquals(hash(dbref_2a), hash(dbref_2b))
+
+        self.assertNotEqual(hash(dbref_1a), hash(dbref_2a))
+
 if __name__ == "__main__":
     unittest.main()
