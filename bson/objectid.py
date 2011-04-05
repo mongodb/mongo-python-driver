@@ -196,7 +196,12 @@ class ObjectId(object):
     def __setstate__(self, value):
         """explicit state set from pickling
         """
-        self.__id = value
+        # Provide backwards compatability with OIDs
+        # pickled with pymongo-1.9.
+        if isinstance(value, dict):
+            self.__id = value['_ObjectId__id']
+        else:
+            self.__id = value
 
     def __str__(self):
         return self.__id.encode("hex")
