@@ -88,7 +88,7 @@ class MasterSlaveConnection(object):
     def disconnect(self):
         """Disconnect from MongoDB.
 
-        Disconnecting will call disconnect on all master and slave 
+        Disconnecting will call disconnect on all master and slave
         connections.
 
         .. seealso:: Module :mod:`~pymongo.connection`
@@ -159,13 +159,15 @@ class MasterSlaveConnection(object):
             return (-1, self.__master._send_message_with_response(message,
                                                                   **kwargs))
 
-        # Iterate through the slaves randomly until we have scucess. Raise
+        # Iterate through the slaves randomly until we have success. Raise
         # reconnect if they all fail.
-        for connection_id in random.sample( range(0,len(self.__slaves)), len(self.__slaves) ):
+        for connection_id in random.sample(range(0,
+                                                 len(self.__slaves)),
+                                                 len(self.__slaves)):
             try:
                 slave = self.__slaves[connection_id]
-                return (connection_id, slave._send_message_with_response(message,
-                                                                      **kwargs))
+                return (connection_id,
+                        slave._send_message_with_response(message, **kwargs))
             except AutoReconnect:
                 if self.__fail_fast: raise
 
