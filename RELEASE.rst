@@ -31,7 +31,7 @@ old API.
 Doing a Release
 ---------------
 
-1. Test release on Python 2.4-2.7 on Windows, Linux and OSX, with and without the C extension. Generally enough to just run the tests on 2.4 and 2.7 with and without the extension on a single platform, and then just test any version on the other platforms as a sanity check. `python setup.py test` will build the extension and test. `python tools/clean.py` will remove the extension, and then `nosetests` will run the tests without it. Can also run the doctests: `python setup.py doc -t`.
+1. Test release on Python 2.4-2.7 on Windows, Linux and OSX, with and without the C extension. Generally enough to just run the tests on 2.4 and 2.7 with and without the extension on a single platform, and then just test any version on the other platforms as a sanity check. `python setup.py test` will build the extension and test. `python tools/clean.py` will remove the extension, and then `nosetests` will run the tests without it. Can also run the doctests: `python setup.py doc -t`. For building extensions on Windows check section below.
 
 2. Add release notes to doc/changelog.rst. Generally just summarize/clarify the git log, but might add some more long form notes for big changes.
 
@@ -54,3 +54,13 @@ Doing a Release
 11. Add a "+" to the version number in setup.py/__init__.py, commit, push.
 
 12. Announce!
+
+Building extensions on Windows
+------------------------------
+Currently the default "python setup.py tests" only builds extensions on Windows 32 bit only. Also the default option expects Visual Studio 2008. This has been tested with python 2.6 and 2.7
+
+1. On your Windows 32 bit machine install Microsoft Visual C++ 2008 Express Edition (or equivalent 2008 edition) in the default location
+
+2. Ensure you have nose installed
+
+3. Run python setup.py tests to build the C extensions and run pymongo tests.
