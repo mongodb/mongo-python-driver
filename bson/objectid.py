@@ -187,6 +187,23 @@ class ObjectId(object):
         t = struct.unpack(">i", self.__id[0:4])[0]
         return datetime.datetime.fromtimestamp(t, utc)
 
+    def __getstate__(self):
+        """return value of object for pickling.
+        needed explicitly because __slots__() defined.
+        """
+        return self.__id
+
+    def __setstate__(self, value):
+        """explicit state set from pickling
+        """
+        # We need to make sure that we're backward compatible with pickled
+        # objects from pymongo v1.9.  Those come in with a dict from
+        # setstate.
+        if isinstance(value, dict):
+            self.__id = value['_ObjectId__id']
+        else:
+            self.__id = value
+
     def __str__(self):
         return self.__id.encode("hex")
 
