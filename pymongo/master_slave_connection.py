@@ -27,7 +27,7 @@ class MasterSlaveConnection(object):
     """A master-slave connection to Mongo.
     """
 
-    def __init__(self, master, slaves=[], fail_fast=True):
+    def __init__(self, master, slaves=[]):
         """Create a new Master-Slave connection.
 
         The resultant connection should be interacted with using the same
@@ -57,7 +57,6 @@ class MasterSlaveConnection(object):
         self.__in_request = False
         self.__master = master
         self.__slaves = slaves
-        self.__fail_fast = fail_fast
 
     @property
     def master(self):
@@ -92,7 +91,7 @@ class MasterSlaveConnection(object):
         connections.
 
         .. seealso:: Module :mod:`~pymongo.connection`
-        .. versionadded:: 1.10
+        .. versionadded:: 1.10+
         """
         self.__master.disconnect()
         for slave in self.__slaves:
@@ -169,7 +168,7 @@ class MasterSlaveConnection(object):
                 return (connection_id,
                         slave._send_message_with_response(message, **kwargs))
             except AutoReconnect:
-                if self.__fail_fast: raise
+                pass
 
         raise AutoReconnect("failed to connect to slaves")
 
