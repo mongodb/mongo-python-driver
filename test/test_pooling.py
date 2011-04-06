@@ -30,6 +30,7 @@ from test_connection import get_connection
 N = 50
 DB = "pymongo-pooling-tests"
 
+
 class MongoThread(threading.Thread):
 
     def __init__(self, test_case):

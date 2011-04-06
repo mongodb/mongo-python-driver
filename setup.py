@@ -79,12 +79,12 @@ Please ask in the user forums for help.
 
 
 if sys.platform == 'win32' and sys.version_info > (2, 6):
-   # 2.6's distutils.msvc9compiler can raise an IOError when failing to
-   # find the compiler
-   build_errors = (CCompilerError, DistutilsExecError, DistutilsPlatformError,
-                 IOError)
+    # 2.6's distutils.msvc9compiler can raise an IOError when failing to
+    # find the compiler
+    build_errors = (CCompilerError, DistutilsExecError,
+                    DistutilsPlatformError, IOError)
 else:
-   build_errors = (CCompilerError, DistutilsExecError, DistutilsPlatformError)
+    build_errors = (CCompilerError, DistutilsExecError, DistutilsPlatformError)
 
 
 class custom_build_ext(build_ext):
@@ -110,7 +110,8 @@ although they do result in significant speed improvements.
             print e
             print self.warning_message % ("Extension modules",
                                           "There was an issue with your "
-                                          "platform configuration - see above.")
+                                          "platform configuration "
+                                          "- see above.")
 
     def build_extension(self, ext):
         if sys.version_info[:3] >= (2, 4, 0):
@@ -118,7 +119,8 @@ although they do result in significant speed improvements.
                 build_ext.build_extension(self, ext)
             except build_errors, e:
                 print e
-                print self.warning_message % ("The %s extension module" % ext.name,
+                print self.warning_message % ("The %s extension "
+                                              "module" % ext.name,
                                               "Above is the ouput showing how "
                                               "the compilation failed.")
         else:

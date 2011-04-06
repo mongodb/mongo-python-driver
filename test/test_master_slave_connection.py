@@ -72,11 +72,13 @@ class TestMasterSlaveConnection(unittest.TestCase):
         class Connection(object):
             def __init__(self):
                 self._disconnects = 0
+
             def disconnect(self):
                 self._disconnects += 1
 
         self.connection._MasterSlaveConnection__master = Connection()
-        self.connection._MasterSlaveConnection__slaves = [Connection(), Connection()]
+        self.connection._MasterSlaveConnection__slaves = [Connection(),
+                                                          Connection()]
 
         self.connection.disconnect()
         self.assertEquals(1,
@@ -89,8 +91,10 @@ class TestMasterSlaveConnection(unittest.TestCase):
     def test_continue_until_slave_works(self):
         class Slave(object):
             calls = 0
+
             def __init__(self, fail):
                 self._fail = fail
+
             def _send_message_with_response(self, *args, **kwargs):
                 Slave.calls += 1
                 if self._fail:
@@ -98,11 +102,15 @@ class TestMasterSlaveConnection(unittest.TestCase):
                 return 'sent'
 
         class NotRandomList(object):
-            last_idx = -1;
+            last_idx = -1
+
             def __init__(self):
-                self._items = [Slave(True), Slave(True), Slave(False), Slave(True)]
+                self._items = [Slave(True), Slave(True),
+                               Slave(False), Slave(True)]
+
             def __len__(self):
                 return len(self._items)
+
             def __getitem__(self, idx):
                 NotRandomList.last_idx = idx
                 return self._items.pop(0)
@@ -117,8 +125,10 @@ class TestMasterSlaveConnection(unittest.TestCase):
     def test_raise_autoreconnect_if_all_slaves_fail(self):
         class Slave(object):
             calls = 0
+
             def __init__(self, fail):
                 self._fail = fail
+
             def _send_message_with_response(self, *args, **kwargs):
                 Slave.calls += 1
                 if self._fail:
@@ -127,9 +137,12 @@ class TestMasterSlaveConnection(unittest.TestCase):
 
         class NotRandomList(object):
             def __init__(self):
-                self._items = [Slave(True), Slave(True), Slave(True), Slave(True)]
+                self._items = [Slave(True), Slave(True),
+                               Slave(True), Slave(True)]
+
             def __len__(self):
                 return len(self._items)
+
             def __getitem__(self, idx):
                 return self._items.pop(0)
 
@@ -218,7 +231,8 @@ class TestMasterSlaveConnection(unittest.TestCase):
         self.db.test.create_index('username', unique=True)
 
         self.db.test.save({'username': 'mike'}, safe=True)
-        self.assertRaises(OperationFailure, self.db.test.save, {'username': 'mike'}, safe=True)
+        self.assertRaises(OperationFailure,
+                          self.db.test.save, {'username': 'mike'}, safe=True)
 
     # NOTE this test is non-deterministic, but I expect
     # some failures unless the db is pulling instantaneously...
@@ -268,7 +282,7 @@ class TestMasterSlaveConnection(unittest.TestCase):
 
         for i in range(10000):
             db.test.insert({"i": i})
-        time.sleep(11) # need to sleep to be sure this gets pulled...
+        time.sleep(11)  # need to sleep to be sure this gets pulled...
 
         self.assertEqual(before, cursor_count())
 

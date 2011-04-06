@@ -933,8 +933,8 @@ class Collection(object):
           - `reduce`: reduce function (as a JavaScript string)
           - `out` (required): output collection name
           - `merge_output` (optional): Merge output into `out`. If the same
-            key exists in both the result set and the existing output collection,
-            the new key will overwrite the existing key
+            key exists in both the result set and the existing output
+            collection, the new key will overwrite the existing key
           - `reduce_output` (optional): If documents exist for a given key
             in the result set and in the existing output collection, then a
             reduce operation (using the specified reduce function) will be
@@ -962,7 +962,8 @@ class Collection(object):
             raise TypeError("'out' must be an instance of basestring")
 
         if merge_output and reduce_output:
-            raise InvalidOperation("Can't do both merge and re-reduce of output.")
+            raise InvalidOperation("Can't do both merge"
+                                   " and re-reduce of output.")
 
         if merge_output:
             out_conf = {"merge": out}
@@ -1056,9 +1057,12 @@ class Collection(object):
             raise ValueError("Can't do both update and remove")
 
         # No need to include empty args
-        if query: kwargs['query'] = query
-        if update: kwargs['update'] = update
-        if upsert: kwargs['upsert'] = upsert
+        if query:
+            kwargs['query'] = query
+        if update:
+            kwargs['update'] = update
+        if upsert:
+            kwargs['upsert'] = upsert
 
         no_obj_error = "No matching object found"
 
@@ -1070,7 +1074,7 @@ class Collection(object):
                 return None
             else:
                 # Should never get here b/c of allowable_errors
-                raise ValueError("Unexpected Error: %s"%out)
+                raise ValueError("Unexpected Error: %s" % (out,))
 
         return out.get('value')
 

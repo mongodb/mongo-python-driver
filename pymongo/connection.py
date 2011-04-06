@@ -134,7 +134,6 @@ def _parse_uri(uri, default_port=27017):
         elif raw_options.find("="):
             options = dict([raw_options.split("=")])
 
-
     return (host_list, db, username, password, collection, options)
 
 
@@ -169,7 +168,6 @@ class _Pool(threading.local):
         self.socket_factory = socket_factory
         if not hasattr(self, "sockets"):
             self.sockets = []
-
 
     def socket(self):
         # We use the pid here to avoid issues with fork / multiprocessing.
@@ -335,7 +333,7 @@ class Connection(object):  # TODO support auth for pooling
 
         # TODO - Support using other options like w and fsync from URI
         self.__options = options
-        # TODO - Support setting the collection from URI as the Java driver does
+        # TODO - Support setting the collection from URI like the Java driver
         self.__collection = collection
 
         self.__cursor_manager = CursorManager(self)

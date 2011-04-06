@@ -90,7 +90,6 @@ class TestGridfs(unittest.TestCase):
         self.assertEqual("foo", oid)
         self.assertEqual("hello world", self.fs.get("foo").read())
 
-
     def test_list(self):
         self.assertEqual([], self.fs.list())
         self.fs.put("hello world")
@@ -113,7 +112,7 @@ class TestGridfs(unittest.TestCase):
         self.assertEqual(0, raw["length"])
         self.assertEqual(oid, raw["_id"])
         self.assert_(isinstance(raw["uploadDate"], datetime.datetime))
-        self.assertEqual(256*1024, raw["chunkSize"])
+        self.assertEqual(256 * 1024, raw["chunkSize"])
         self.assert_(isinstance(raw["md5"], basestring))
 
     def test_alt_collection(self):

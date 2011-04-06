@@ -60,7 +60,6 @@ class TestGridFile(unittest.TestCase):
         g = GridOut(self.db.fs, f._id)
         self.assertEqual("hello world", g.read())
 
-
         f = GridIn(self.db.fs, filename="test")
         f.close()
         self.assertEqual(2, self.db.fs.files.find().count())
@@ -173,7 +172,8 @@ class TestGridFile(unittest.TestCase):
         self.assertEqual("hello", a.baz)
         self.assertRaises(AttributeError, getattr, a, "mike")
 
-        b = GridIn(self.db.fs, content_type="text/html", chunk_size=1000, baz=100)
+        b = GridIn(self.db.fs,
+                   content_type="text/html", chunk_size=1000, baz=100)
         self.assertEqual("text/html", b.content_type)
         self.assertEqual(1000, b.chunk_size)
         self.assertEqual(100, b.baz)
@@ -405,7 +405,8 @@ Bye""")
         self.assertEqual(["he", "ll", "o ", "wo", "rl", "d"], list(g))
 
     def test_read_chunks_unaligned_buffer_size(self):
-        in_data = "This is a text that doesn't quite fit in a single 16-byte chunk."
+        in_data = ("This is a text that doesn't "
+                   "quite fit in a single 16-byte chunk.")
         f = GridIn(self.db.fs, chunkSize=16)
         f.write(in_data)
         f.close()

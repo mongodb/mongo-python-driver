@@ -20,6 +20,7 @@ dictionary."""
 
 import copy
 
+
 class SON(dict):
     """SON data.
 

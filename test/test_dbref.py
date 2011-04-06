@@ -60,38 +60,55 @@ class TestDBRef(unittest.TestCase):
         self.assertRaises(AttributeError, bar)
 
     def test_repr(self):
-        self.assertEqual(repr(DBRef("coll", ObjectId("1234567890abcdef12345678"))),
+        self.assertEqual(repr(DBRef("coll",
+                                    ObjectId("1234567890abcdef12345678"))),
                          "DBRef('coll', ObjectId('1234567890abcdef12345678'))")
-        self.assertEqual(repr(DBRef(u"coll", ObjectId("1234567890abcdef12345678"))),
-                         "DBRef(u'coll', ObjectId('1234567890abcdef12345678'))")
+        self.assertEqual(repr(DBRef(u"coll",
+                              ObjectId("1234567890abcdef12345678"))),
+                         "DBRef(u'coll', ObjectId('1234567890abcdef12345678'))"
+                        )
         self.assertEqual(repr(DBRef("coll", 5, foo="bar")),
                          "DBRef('coll', 5, foo='bar')")
-        self.assertEqual(repr(DBRef("coll", ObjectId("1234567890abcdef12345678"), "foo")),
-                         "DBRef('coll', ObjectId('1234567890abcdef12345678'), 'foo')")
+        self.assertEqual(repr(DBRef("coll",
+                              ObjectId("1234567890abcdef12345678"), "foo")),
+                         "DBRef('coll', ObjectId('1234567890abcdef12345678'), "
+                         "'foo')")
         self.assertEqual(repr(DBRef("coll", 5, "baz", foo="bar", baz=4)),
                          "DBRef('coll', 5, 'baz', foo='bar', baz=4)")
 
     def test_cmp(self):
         self.assertEqual(DBRef("coll", ObjectId("1234567890abcdef12345678")),
                          DBRef(u"coll", ObjectId("1234567890abcdef12345678")))
-        self.assertNotEqual(DBRef("coll", ObjectId("1234567890abcdef12345678")),
-                            DBRef(u"coll", ObjectId("1234567890abcdef12345678"), "foo"))
-        self.assertNotEqual(DBRef("coll", ObjectId("1234567890abcdef12345678")),
+        self.assertNotEqual(DBRef("coll",
+                                  ObjectId("1234567890abcdef12345678")),
+                            DBRef(u"coll",
+                                  ObjectId("1234567890abcdef12345678"), "foo"))
+        self.assertNotEqual(DBRef("coll",
+                                  ObjectId("1234567890abcdef12345678")),
                             DBRef("col", ObjectId("1234567890abcdef12345678")))
-        self.assertNotEqual(DBRef("coll", ObjectId("1234567890abcdef12345678")),
+        self.assertNotEqual(DBRef("coll",
+                            ObjectId("1234567890abcdef12345678")),
                             DBRef("coll", ObjectId("123456789011")))
-        self.assertNotEqual(DBRef("coll", ObjectId("1234567890abcdef12345678")), 4)
-        self.assertEqual(DBRef("coll", ObjectId("1234567890abcdef12345678"), "foo"),
-                         DBRef(u"coll", ObjectId("1234567890abcdef12345678"), "foo"))
-        self.assertNotEqual(DBRef("coll", ObjectId("1234567890abcdef12345678"), "foo"),
-                            DBRef(u"coll", ObjectId("1234567890abcdef12345678"), "bar"))
+        self.assertNotEqual(DBRef("coll",
+                                  ObjectId("1234567890abcdef12345678")), 4)
+        self.assertEqual(DBRef("coll",
+                               ObjectId("1234567890abcdef12345678"), "foo"),
+                         DBRef(u"coll",
+                               ObjectId("1234567890abcdef12345678"), "foo"))
+        self.assertNotEqual(DBRef("coll",
+                                  ObjectId("1234567890abcdef12345678"), "foo"),
+                            DBRef(u"coll",
+                                  ObjectId("1234567890abcdef12345678"), "bar"))
 
     def test_kwargs(self):
-        self.assertEqual(DBRef("coll", 5, foo="bar"), DBRef("coll", 5, foo="bar"))
+        self.assertEqual(DBRef("coll", 5, foo="bar"),
+                         DBRef("coll", 5, foo="bar"))
         self.assertNotEqual(DBRef("coll", 5, foo="bar"), DBRef("coll", 5))
-        self.assertNotEqual(DBRef("coll", 5, foo="bar"), DBRef("coll", 5, foo="baz"))
+        self.assertNotEqual(DBRef("coll", 5, foo="bar"),
+                            DBRef("coll", 5, foo="baz"))
         self.assertEqual("bar", DBRef("coll", 5, foo="bar").foo)
-        self.assertRaises(AttributeError, getattr, DBRef("coll", 5, foo="bar"), "bar")
+        self.assertRaises(AttributeError, getattr,
+                          DBRef("coll", 5, foo="bar"), "bar")
 
     def test_deepcopy(self):
         a = DBRef('coll', 'asdf', 'db', x=[1])

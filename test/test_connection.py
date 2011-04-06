@@ -92,7 +92,8 @@ class TestConnection(unittest.TestCase):
     def test_getters(self):
         self.assertEqual(Connection(self.host, self.port).host, self.host)
         self.assertEqual(Connection(self.host, self.port).port, self.port)
-        self.assertEqual(set([(self.host, self.port)]), Connection(self.host, self.port).nodes)
+        self.assertEqual(set([(self.host, self.port)]),
+                         Connection(self.host, self.port).nodes)
 
     def test_get_db(self):
         connection = Connection(self.host, self.port)
@@ -247,21 +248,25 @@ class TestConnection(unittest.TestCase):
 
         self.assertEqual(([("localhost", 27017)], None, None, None, None, {}),
                          _parse_uri("mongodb://localhost", 27017))
-        self.assertEqual(([("localhost", 27017)], None, "fred", "foobar", None, {}),
+        self.assertEqual(([("localhost", 27017)], None,
+                          "fred", "foobar", None, {}),
                          _parse_uri("mongodb://fred:foobar@localhost",
                                                27017))
-        self.assertEqual(([("localhost", 27017)], "baz", "fred", "foobar", None, {}),
+        self.assertEqual(([("localhost", 27017)], "baz",
+                          "fred", "foobar", None, {}),
                          _parse_uri("mongodb://fred:foobar@localhost/baz",
                                                27017))
         self.assertEqual(([("example1.com", 27017), ("example2.com", 27017)],
                           None, None, None, None, {}),
-                         _parse_uri("mongodb://example1.com:27017,example2.com:27017",
-                                               27018))
+                         _parse_uri("mongodb://"
+                                    "example1.com:27017,example2.com:27017",
+                                    27018))
         self.assertEqual(([("localhost", 27017),
                            ("localhost", 27018),
                            ("localhost", 27019)], None, None, None, None, {}),
-                         _parse_uri("mongodb://localhost,localhost:27018,localhost:27019",
-                                               27017))
+                         _parse_uri("mongodb://localhost,"
+                                    "localhost:27018,localhost:27019",
+                                    27017))
 
         self.assertEqual(([("localhost", 27018)], None, None, None, None, {}),
                          _parse_uri("localhost:27018", 27017))
@@ -270,18 +275,26 @@ class TestConnection(unittest.TestCase):
         self.assertEqual(([("localhost", 27017)], None, None, None, None, {}),
                          _parse_uri("localhost/", 27017))
 
-        self.assertEqual(([("localhost", 27017)], "test", None, None, "yield_historical.in", {}),
-                         _parse_uri("mongodb://localhost/test.yield_historical.in", 27017))
-        self.assertEqual(([("localhost", 27017)], "test", "fred", "foobar", "yield_historical.in", {}),
-                         _parse_uri("mongodb://fred:foobar@localhost/test.yield_historical.in",
-                                               27017))
+        self.assertEqual(([("localhost", 27017)], "test",
+                          None, None, "yield_historical.in", {}),
+                         _parse_uri("mongodb://"
+                                    "localhost/test.yield_historical.in",
+                                    27017))
+        self.assertEqual(([("localhost", 27017)], "test", "fred",
+                          "foobar", "yield_historical.in", {}),
+                         _parse_uri("mongodb://fred:foobar@localhost/"
+                                    "test.yield_historical.in",
+                                    27017))
         self.assertEqual(([("example1.com", 27017), ("example2.com", 27017)],
                           "test", None, None, "yield_historical.in", {}),
-                         _parse_uri("mongodb://example1.com:27017,example2.com:27017/test.yield_historical.in",
-                                                27017))
-        self.assertEqual(([("localhost", 27017)], "test", "fred", "foobar", "yield_historical.in", {'slaveok': 'true'}),
-                         _parse_uri("mongodb://fred:foobar@localhost/test.yield_historical.in?slaveok=true",
-                                               27017))
+                         _parse_uri("mongodb://example1.com:27017,example2.com"
+                                    ":27017/test.yield_historical.in",
+                                    27017))
+        self.assertEqual(([("localhost", 27017)], "test", "fred", "foobar",
+                          "yield_historical.in", {'slaveok': 'true'}),
+                         _parse_uri("mongodb://fred:foobar@localhost/"
+                                    "test.yield_historical.in?slaveok=true",
+                                    27017))
 
     def test_from_uri(self):
         c = Connection(self.host, self.port)
@@ -430,7 +443,8 @@ class TestConnection(unittest.TestCase):
         self.assertRaises(ConnectionFailure, get_x, timeout.pymongo_test)
 
         def get_x_timeout(db, t):
-            return db.test.find(network_timeout=t).where(where_func).next()["x"]
+            return db.test.find(
+                        network_timeout=t).where(where_func).next()["x"]
         self.assertEqual(1, get_x_timeout(timeout.pymongo_test, None))
         self.assertRaises(ConnectionFailure, get_x_timeout,
                           no_timeout.pymongo_test, 0.1)
@@ -445,8 +459,9 @@ class TestConnection(unittest.TestCase):
 
         self.assertEqual(None, naive.pymongo_test.test.find_one()["x"].tzinfo)
         self.assertEqual(utc, aware.pymongo_test.test.find_one()["x"].tzinfo)
-        self.assertEqual(aware.pymongo_test.test.find_one()["x"].replace(tzinfo=None),
-                         naive.pymongo_test.test.find_one()["x"])
+        self.assertEqual(
+                aware.pymongo_test.test.find_one()["x"].replace(tzinfo=None),
+                naive.pymongo_test.test.find_one()["x"])
 
 
 if __name__ == "__main__":

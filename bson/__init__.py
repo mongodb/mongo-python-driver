@@ -56,6 +56,7 @@ MIN_INT32 = -2147483648
 MAX_INT64 = 9223372036854775807
 MIN_INT64 = -9223372036854775808
 
+
 def _get_int(data, as_class=None, tz_aware=False, unsigned=False):
     format = unsigned and "I" or "i"
     try:

@@ -48,6 +48,7 @@ from bson.tz_util import (FixedOffset,
 import pymongo
 import qcheck
 
+
 class TestBSON(unittest.TestCase):
 
     def setUp(self):
@@ -175,7 +176,7 @@ class TestBSON(unittest.TestCase):
         helper({"ref": DBRef("coll", 5, foo="bar", bar=4)})
         helper({"ref": DBRef("coll", 5, "foo")})
         helper({"ref": DBRef("coll", 5, "foo", foo="bar")})
-        helper({"ref": Timestamp(1,2)})
+        helper({"ref": Timestamp(1, 2)})
         helper({"foo": MinKey()})
         helper({"foo": MaxKey()})
 
@@ -186,15 +187,18 @@ class TestBSON(unittest.TestCase):
                               qcheck.gen_mongo_dict(3))
 
     def test_aware_datetime(self):
-        aware = datetime.datetime(1993, 4, 4, 2, tzinfo=FixedOffset(555, "SomeZone"))
+        aware = datetime.datetime(1993, 4, 4, 2,
+                                  tzinfo=FixedOffset(555, "SomeZone"))
         as_utc = (aware - aware.utcoffset()).replace(tzinfo=utc)
-        self.assertEqual(datetime.datetime(1993, 4, 3, 16, 45, tzinfo=utc), as_utc)
+        self.assertEqual(datetime.datetime(1993, 4, 3, 16, 45, tzinfo=utc),
+                         as_utc)
         after = BSON.encode({"date": aware}).decode(tz_aware=True)["date"]
         self.assertEqual(utc, after.tzinfo)
         self.assertEqual(as_utc, after)
 
     def test_naive_decode(self):
-        aware = datetime.datetime(1993, 4, 4, 2, tzinfo=FixedOffset(555, "SomeZone"))
+        aware = datetime.datetime(1993, 4, 4, 2,
+                                  tzinfo=FixedOffset(555, "SomeZone"))
         naive_utc = (aware - aware.utcoffset()).replace(tzinfo=None)
         self.assertEqual(datetime.datetime(1993, 4, 3, 16, 45), naive_utc)
         after = BSON.encode({"date": aware}).decode()["date"]
@@ -208,7 +212,7 @@ class TestBSON(unittest.TestCase):
     def test_bad_encode(self):
         self.assertRaises(InvalidStringData, BSON.encode,
                           {"lalala": '\xf4\xe0\xf0\xe1\xc0 Color Touch'})
-        evil_list = {'a' : []}
+        evil_list = {'a': []}
         evil_list['a'].append(evil_list)
         evil_dict = {}
         evil_dict['a'] = evil_dict
@@ -217,10 +221,12 @@ class TestBSON(unittest.TestCase):
 
     def test_overflow(self):
         self.assert_(BSON.encode({"x": 9223372036854775807L}))
-        self.assertRaises(OverflowError, BSON.encode, {"x": 9223372036854775808L})
+        self.assertRaises(OverflowError, BSON.encode,
+                          {"x": 9223372036854775808L})
 
         self.assert_(BSON.encode({"x": -9223372036854775808L}))
-        self.assertRaises(OverflowError, BSON.encode, {"x": -9223372036854775809L})
+        self.assertRaises(OverflowError, BSON.encode,
+                          {"x": -9223372036854775809L})
 
     def test_small_long_encode_decode(self):
         encoded1 = BSON.encode({'x': 256})
@@ -282,8 +288,10 @@ class TestBSON(unittest.TestCase):
         self.assertRaises(InvalidDocument, BSON.encode, {"\x00": "a"})
         self.assertRaises(InvalidDocument, BSON.encode, {u"\x00": "a"})
 
-        self.assertRaises(InvalidDocument, BSON.encode, {"a": re.compile("ab\x00c")})
-        self.assertRaises(InvalidDocument, BSON.encode, {"a": re.compile(u"ab\x00c")})
+        self.assertRaises(InvalidDocument, BSON.encode,
+                          {"a": re.compile("ab\x00c")})
+        self.assertRaises(InvalidDocument, BSON.encode,
+                          {"a": re.compile(u"ab\x00c")})
 
     def test_move_id(self):
         self.assertEqual("\x19\x00\x00\x00\x02_id\x00\x02\x00\x00\x00a\x00"
@@ -295,7 +303,8 @@ class TestBSON(unittest.TestCase):
                          "\x03b\x00"
                          "\x19\x00\x00\x00\x02a\x00\x02\x00\x00\x00a\x00"
                          "\x02_id\x00\x02\x00\x00\x00a\x00\x00\x00",
-                         BSON.encode(SON([("b", SON([("a", "a"), ("_id", "a")])),
+                         BSON.encode(SON([("b",
+                                           SON([("a", "a"), ("_id", "a")])),
                                           ("_id", "b")])))
 
     def test_dates(self):
@@ -324,12 +333,15 @@ class TestBSON(unittest.TestCase):
         # make sure we can serialize subclasses of native Python types.
         class _myint(int):
             pass
+
         class _myfloat(float):
             pass
+
         class _myunicode(unicode):
             pass
-        d = {'a' : _myint(42), 'b' : _myfloat(63.9),
-             'c' : _myunicode('hello world')
+
+        d = {'a': _myint(42), 'b': _myfloat(63.9),
+             'c': _myunicode('hello world')
             }
         d2 = BSON.encode(d).decode()
         for key, value in d2.iteritems():

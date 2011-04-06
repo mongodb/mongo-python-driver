@@ -87,7 +87,6 @@ class TestCursor(unittest.TestCase):
 
         self.assertRaises(TypeError, db.test.find().hint, index)
 
-
     def test_limit(self):
         db = self.db
 
@@ -135,7 +134,6 @@ class TestCursor(unittest.TestCase):
             break
         self.assertRaises(InvalidOperation, a.limit, 5)
 
-
     def test_batch_size(self):
         db = self.db
         db.test.drop()
@@ -177,7 +175,6 @@ class TestCursor(unittest.TestCase):
         cursor_count(db.test.find().batch_size(5).limit(10), 10)
         cursor_count(db.test.find().batch_size(100).limit(10), 10)
         cursor_count(db.test.find().batch_size(500).limit(10), 10)
-
 
     def test_skip(self):
         db = self.db
@@ -512,12 +509,19 @@ class TestCursor(unittest.TestCase):
         for a, b in izip(count(20), self.db.test.find()[40:45][20:]):
             self.assertEqual(a, b['i'])
 
-        self.assertEqual(80, len(list(self.db.test.find()[40:45].limit(0).skip(20))))
-        for a, b in izip(count(20), self.db.test.find()[40:45].limit(0).skip(20)):
+        self.assertEqual(80,
+                         len(list(self.db.test.find()[40:45].limit(0).skip(20))
+                            )
+                        )
+        for a, b in izip(count(20),
+                         self.db.test.find()[40:45].limit(0).skip(20)):
             self.assertEqual(a, b['i'])
 
-        self.assertEqual(80, len(list(self.db.test.find().limit(10).skip(40)[20:])))
-        for a, b in izip(count(20), self.db.test.find().limit(10).skip(40)[20:]):
+        self.assertEqual(80,
+                         len(list(self.db.test.find().limit(10).skip(40)[20:]))
+                        )
+        for a, b in izip(count(20),
+                         self.db.test.find().limit(10).skip(40)[20:]):
             self.assertEqual(a, b['i'])
 
         self.assertEqual(1, len(list(self.db.test.find()[:1])))
@@ -527,7 +531,10 @@ class TestCursor(unittest.TestCase):
         self.assertEqual(1, len(list(self.db.test.find()[99:1000])))
         self.assertEqual(0, len(list(self.db.test.find()[10:10])))
         self.assertEqual(0, len(list(self.db.test.find()[:0])))
-        self.assertEqual(80, len(list(self.db.test.find()[10:10].limit(0).skip(20))))
+        self.assertEqual(80,
+                         len(list(self.db.test.find()[10:10].limit(0).skip(20))
+                            )
+                        )
 
         self.assertRaises(IndexError, lambda: self.db.test.find()[10:8])
 
@@ -545,7 +552,8 @@ class TestCursor(unittest.TestCase):
 
         self.assertRaises(IndexError, lambda x: self.db.test.find()[x], -1)
         self.assertRaises(IndexError, lambda x: self.db.test.find()[x], 100)
-        self.assertRaises(IndexError, lambda x: self.db.test.find().skip(50)[x], 50)
+        self.assertRaises(IndexError,
+                          lambda x: self.db.test.find().skip(50)[x], 50)
 
     def test_count_with_limit_and_skip(self):
         if not version.at_least(self.db.connection, (1, 1, 4, -1)):

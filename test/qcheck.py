@@ -168,9 +168,9 @@ def gen_mongo_dict(depth, ref=True):
                         gen_range(0, 10)), SON)
 
 
-def simplify(case): # TODO this is a hack
+def simplify(case):  # TODO this is a hack
     if isinstance(case, SON) and "$ref" not in case:
-        simplified = SON(case) # make a copy!
+        simplified = SON(case)  # make a copy!
         if random.choice([True, False]):
             # delete
             if not len(simplified.keys()):

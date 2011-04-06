@@ -23,6 +23,7 @@ from pymongo.connection import Connection
 from pymongo.database import Database
 from pymongo.errors import AutoReconnect
 
+
 class MasterSlaveConnection(object):
     """A master-slave connection to Mongo.
     """
