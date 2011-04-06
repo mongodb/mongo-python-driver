@@ -15,7 +15,9 @@
 """Master-Slave connection to Mongo.
 
 Performs all writes to Master instance and distributes reads among all
-instances."""
+slaves. Reads are tried on each slave in turn until the read succeeds
+or all slaves failed.
+"""
 
 import random
 
