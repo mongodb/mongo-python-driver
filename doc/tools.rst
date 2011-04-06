@@ -42,8 +42,8 @@ Ming
 MongoAlchemy
   `MongoAlchemy <http://mongoalchemy.org>`_ is another ORM-like layer on top of
   PyMongo. Its API is inspired by `SQLAlchemy <http://sqlalchemy.org>`_. The
-  code is available on `github <http://github.com/jeffjenkins/MongoAlchemy>`_;
-  for more information, see the `tutorial <http://mongoalchemy.org/tutorial.html>`_.
+  code is available `on github <http://github.com/jeffjenkins/MongoAlchemy>`_;
+  for more information, see `the tutorial <http://mongoalchemy.org/tutorial.html>`_.
 
 MongoEngine
   `MongoEngine <http://hmarr.com/mongoengine/>`_ is another ORM-like
@@ -86,8 +86,8 @@ mango
 mongodb_beaker
   `mongodb_beaker <http://pypi.python.org/pypi/mongodb_beaker>`_ is a
   project to enable using MongoDB as a backend for `beaker's
-  <http://beaker.groovie.org/>`_ caching / session system. The
-  `source is on github
+  <http://beaker.groovie.org/>`_ caching / session system.
+  `The source is on github
   <http://github.com/bwmcadams/mongodb_beaker>`_.
 
 MongoLog
