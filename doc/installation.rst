@@ -12,6 +12,19 @@ To upgrade do::
 
   $ easy_install -U pymongo
 
+If you would rather use the popular easy_install replacement
+`pip <http://pypi.python.org/pypi/pip>`_ do::
+
+  $ pip install pymongo
+
+To get a specific version of pymongo::
+
+  $ pip install pymongo==1.10.1
+
+To upgrade using pip::
+
+  $ pip install --upgrade pymongo
+
 If you'd rather install directly from the source (i.e. to stay on the
 bleeding edge), check out the latest source from github and install
 the driver from the resulting tree::
