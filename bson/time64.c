@@ -39,6 +39,10 @@ gmtime64_r() is a 64-bit equivalent of gmtime_r().
 
 */
 
+#ifdef _MSC_VER
+    #define _CRT_SECURE_NO_WARNINGS
+#endif
+
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -237,12 +241,12 @@ Time64_T timegm64(const struct TM *date) {
     int      cycles  = 0;
 
     if( orig_year > 100 ) {
-        cycles = (orig_year - 100) / 400;
+        cycles = (int)((orig_year - 100) / 400);
         orig_year -= cycles * 400;
         days      += (Time64_T)cycles * days_in_gregorian_cycle;
     }
     else if( orig_year < -300 ) {
-        cycles = (orig_year - 100) / 400;
+        cycles = (int)((orig_year - 100) / 400);
         orig_year -= cycles * 400;
         days      += (Time64_T)cycles * days_in_gregorian_cycle;
     }
@@ -496,12 +500,12 @@ static Time64_T seconds_between_years(Year left_year, Year right_year) {
     int cycles;
 
     if( left_year > 2400 ) {
-        cycles = (left_year - 2400) / 400;
+        cycles = (int)((left_year - 2400) / 400);
         left_year -= cycles * 400;
         seconds   += cycles * seconds_in_gregorian_cycle;
     }
     else if( left_year < 1600 ) {
-        cycles = (left_year - 1600) / 400;
+        cycles = (int)((left_year - 1600) / 400);
         left_year += cycles * 400;
         seconds   += cycles * seconds_in_gregorian_cycle;
     }
@@ -650,7 +654,7 @@ struct TM *gmtime64_r (const Time64_T *in_time, struct TM *p)
         m += (Time64_T) days_in_month[leap][v_tm_mon];
     }
 
-    p->tm_year = year;
+    p->tm_year = (int)year;
     if( p->tm_year != year ) {
 #ifdef EOVERFLOW
         errno = EOVERFLOW;
@@ -720,7 +724,7 @@ struct TM *localtime64_r (const Time64_T *time, struct TM *local_tm)
 
     copy_tm_to_TM64(&safe_date, local_tm);
 
-    local_tm->tm_year = orig_year;
+    local_tm->tm_year = (int)orig_year;
     if( local_tm->tm_year != orig_year ) {
         TIME64_TRACE2("tm_year overflow: tm_year %lld, orig_year %lld\n",
               (Year)local_tm->tm_year, (Year)orig_year);
@@ -805,7 +809,11 @@ char *ctime64_r( const Time64_T* time, char* result ) {
 
 /* Non-thread safe versions of the above */
 struct TM *localtime64(const Time64_T *time) {
-    tzset();
+    #ifdef _MSC_VER
+        _tzset();
+    #else
+        tzset();
+    #endif
     return localtime64_r(time, &Static_Return_Date);
 }
 
@@ -818,6 +826,10 @@ char *asctime64( const struct TM* date ) {
 }
 
 char *ctime64( const Time64_T* time ) {
-    tzset();
+    #ifdef _MSC_VER
+        _tzset();
+    #else
+        tzset();
+    #endif
     return asctime64(localtime64(time));
 }
