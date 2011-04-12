@@ -229,9 +229,8 @@ class Connection(object):  # TODO support auth for pooling
     __max_bson_size = 4 * 1024 * 1024
 
     def __init__(self, host=None, port=None, pool_size=None,
-                 auto_start_request=None, timeout=None, slave_okay=False,
-                 network_timeout=None, document_class=dict, tz_aware=False,
-                 _connect=True):
+                 slave_okay=False, network_timeout=None,
+                 document_class=dict, tz_aware=False, _connect=True):
         """Create a new connection to a single MongoDB instance at *host:port*.
 
         The resultant connection object has connection-pooling built
@@ -264,10 +263,8 @@ class Connection(object):  # TODO support auth for pooling
             the RFC2732 URL syntax (e.g. '[::1]' for localhost)
           - `port` (optional): port number on which to connect
           - `pool_size` (optional): DEPRECATED
-          - `auto_start_request` (optional): DEPRECATED
           - `slave_okay` (optional): is it okay to connect directly to
             and perform queries on a slave instance
-          - `timeout` (optional): DEPRECATED
           - `network_timeout` (optional): timeout (in seconds) to use
             for socket operations - default is no timeout
           - `document_class` (optional): default class to use for
@@ -278,6 +275,8 @@ class Connection(object):  # TODO support auth for pooling
             aware (otherwise they will be naive)
 
         .. seealso:: :meth:`end_request`
+        .. versionchanged:: 1.10.1+
+           Completely remove `auto_start_request` and `timeout` parameters.
         .. versionchanged:: 1.8
            The `host` parameter can now be a full `mongodb URI
            <http://dochub.mongodb.org/core/connections>`_, in addition
@@ -328,12 +327,6 @@ class Connection(object):  # TODO support auth for pooling
         if pool_size is not None:
             warnings.warn("The pool_size parameter to Connection is "
                           "deprecated", DeprecationWarning)
-        if auto_start_request is not None:
-            warnings.warn("The auto_start_request parameter to Connection "
-                          "is deprecated", DeprecationWarning)
-        if timeout is not None:
-            warnings.warn("The timeout parameter to Connection is deprecated",
-                          DeprecationWarning)
 
         self.__host = None
         self.__port = None
