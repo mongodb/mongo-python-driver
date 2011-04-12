@@ -463,6 +463,37 @@ class TestConnection(unittest.TestCase):
                 aware.pymongo_test.test.find_one()["x"].replace(tzinfo=None),
                 naive.pymongo_test.test.find_one()["x"])
 
+    def test_ipv6(self):
+        self.assertRaises(InvalidURI, _parse_uri, "::1", 27017)
+        self.assertRaises(InvalidURI, _parse_uri, "[::1", 27017)
+        self.assertRaises(InvalidURI, _parse_uri, "::1]:27017")
+        self.assertRaises(InvalidURI, _parse_uri, "mongodb://::1", 27017)
+        self.assert_(_parse_uri, "mongodb://[::1]:27017/?slaveOk=true")
+        self.assert_(_parse_uri,
+                     "[::1]:27017,[2001:0db8:85a3:0000:0000:8a2e:0370:7334]"
+                     ":27018,192.168.0.212:27019,localhost:27020")
+        self.assert_(_parse_uri,
+                     "mongodb://[2001:0db8:85a3:0000:0000:8a2e:0370:7334]"
+                     ":27017/?slaveOk=true")
+        try:
+            connection = Connection("[::1]")
+        except:
+            # Either mongod was started without --ipv6
+            # or the OS doesn't support it (or both).
+            raise SkipTest()
+
+        # Try a few simple things
+        connection = Connection("mongodb://[::1]:27017")
+        connection = Connection("mongodb://[::1]:27017/?slaveOk=true")
+        connection = Connection("[::1]:27017,localhost:27017")
+        connection = Connection("localhost:27017,[::1]:27017")
+        connection.pymongo_test.test.save({"dummy": u"object"})
+        connection.pymongo_test_bernie.test.save({"dummy": u"object"})
+
+        dbs = connection.database_names()
+        self.assert_("pymongo_test" in dbs)
+        self.assert_("pymongo_test_bernie" in dbs)
+
 
 if __name__ == "__main__":
     unittest.main()

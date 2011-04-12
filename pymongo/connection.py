@@ -58,6 +58,16 @@ from pymongo.errors import (AutoReconnect,
 _CONNECT_TIMEOUT = 20.0
 
 
+def _partition_ipv6(source):
+    if source.find(']') == -1:
+        raise InvalidURI("an IPv6 address literal must be "
+                         "enclosed in '[' and ']' characters.")
+    i = source.find(']:')
+    if i == -1:
+        return (source[1:-1], None)
+    return (source[1: i], source[i + 2:])
+
+
 def _partition(source, sub):
     """Our own string partitioning method.
 
@@ -74,7 +84,14 @@ def _str_to_node(string, default_port=27017):
 
     "localhost:27017" -> ("localhost", 27017)
     """
-    (host, port) = _partition(string, ":")
+    # IPv6 literal
+    if string[0] == '[':
+        host, port = _partition_ipv6(string)
+    elif string.count(':') > 1 or string.find(']') != -1:
+        raise InvalidURI("an IPv6 address literal must be "
+                         "enclosed in '[' and ']' characters.")
+    else:
+        host, port = _partition(string, ":")
     if port:
         port = int(port)
     else:
@@ -240,9 +257,11 @@ class Connection(object):  # TODO support auth for pooling
         username, and password present will be used.
 
         :Parameters:
-          - `host` (optional): hostname or IPv4 address of the
+          - `host` (optional): hostname or IP address of the
             instance to connect to, or a mongodb URI, or a list of
-            hostnames / mongodb URIs
+            hostnames / mongodb URIs. If `host` is an IPv6 literal
+            it must be enclosed in '[' and ']' characters following
+            the RFC2732 URL syntax (e.g. '[::1]' for localhost)
           - `port` (optional): port number on which to connect
           - `pool_size` (optional): DEPRECATED
           - `auto_start_request` (optional): DEPRECATED
@@ -585,12 +604,23 @@ class Connection(object):  # TODO support auth for pooling
             host, port = self.__find_master()
 
         try:
-            sock = socket.socket()
-            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-            sock.settimeout(self.__network_timeout or _CONNECT_TIMEOUT)
-            sock.connect((host, port))
-            sock.settimeout(self.__network_timeout)
-            return sock
+            try:
+                # Prefer IPv4. If there is demand for an option
+                # to specify one or the other we can add it later.
+                sock = socket.socket(socket.AF_INET)
+                sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+                sock.settimeout(self.__network_timeout or _CONNECT_TIMEOUT)
+                sock.connect((host, port))
+                sock.settimeout(self.__network_timeout)
+                return sock
+            except socket.gaierror:
+                # If that fails try IPv6
+                sock = socket.socket(socket.AF_INET6)
+                sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+                sock.settimeout(self.__network_timeout or _CONNECT_TIMEOUT)
+                sock.connect((host, port))
+                sock.settimeout(self.__network_timeout)
+                return sock
         except socket.error:
             self.disconnect()
             raise AutoReconnect("could not connect to %r" % list(self.__nodes))
