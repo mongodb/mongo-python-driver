@@ -809,11 +809,11 @@ char *ctime64_r( const Time64_T* time, char* result ) {
 
 /* Non-thread safe versions of the above */
 struct TM *localtime64(const Time64_T *time) {
-    #ifdef _MSC_VER
-        _tzset();
-    #else
-        tzset();
-    #endif
+#ifdef _MSC_VER
+    _tzset();
+#else
+    tzset();
+#endif
     return localtime64_r(time, &Static_Return_Date);
 }
 
@@ -826,10 +826,10 @@ char *asctime64( const struct TM* date ) {
 }
 
 char *ctime64( const Time64_T* time ) {
-    #ifdef _MSC_VER
-        _tzset();
-    #else
-        tzset();
-    #endif
+#ifdef _MSC_VER
+    _tzset();
+#else
+    tzset();
+#endif
     return asctime64(localtime64(time));
 }
