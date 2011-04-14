@@ -24,7 +24,7 @@ sys.path[0:0] = [""]
 
 from nose.plugins.skip import SkipTest
 
-from pymongo.connection import _Pool
+from pymongo.connection import Connection, _Pool
 from test_connection import get_connection
 
 N = 50
@@ -135,6 +135,20 @@ class TestPooling(unittest.TestCase):
         self.c[DB].unique.insert({"_id": "mike"})
         self.c[DB].unique.find_one()
 
+    def test_max_pool_size_validation(self):
+        self.assertRaises(ValueError, Connection, max_pool_size=-1)
+        self.assertRaises(TypeError, Connection, max_pool_size='foo')
+        self.assertRaises(TypeError, Connection,
+                          'mongodb://localhost/?maxPoolSize=-1')
+        self.assertRaises(TypeError, Connection,
+                          'mongodb://localhost/?maxPoolSize=foo')
+        self.assertRaises(TypeError, Connection,
+                          'mongodb://localhost/?maxPoolSize=5.5')
+        c = Connection('mongodb://localhost/?maxPoolSize=5')
+        self.assertEqual(c.max_pool_size, 5)
+        c = Connection(max_pool_size=100)
+        self.assertEqual(c.max_pool_size, 100)
+
     def test_no_disconnect(self):
         run_cases(self, [NoRequest, NonUnique, Unique, SaveAndFind])
 
@@ -142,13 +156,13 @@ class TestPooling(unittest.TestCase):
         run_cases(self, [SaveAndFind, Disconnect, Unique])
 
     def test_independent_pools(self):
-        p = _Pool(None)
+        p = _Pool(None, 10)
         self.assertEqual([], p.sockets)
         self.c.end_request()
         self.assertEqual([], p.sockets)
 
         # Sensical values aren't really important here
-        p1 = _Pool(5)
+        p1 = _Pool(5, 10)
         self.assertEqual(None, p.socket_factory)
         self.assertEqual(5, p1.socket_factory)
 
@@ -248,7 +262,7 @@ class TestPooling(unittest.TestCase):
         self.assertEqual(a_sock, a._Connection__pool.socket())
 
     def test_max_pool_size(self):
-        c = get_connection()
+        c = get_connection(max_pool_size=4)
 
         threads = []
         for i in range(40):
@@ -260,7 +274,7 @@ class TestPooling(unittest.TestCase):
             t.join()
 
         # There's a race condition, so be lenient
-        self.assert_(abs(10 - len(c._Connection__pool.sockets)) < 10)
+        self.assert_(abs(4 - len(c._Connection__pool.sockets)) < 4)
 
 
 if __name__ == "__main__":

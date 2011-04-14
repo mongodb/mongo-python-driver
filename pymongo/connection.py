@@ -140,6 +140,7 @@ def _parse_uri(uri, default_port=27017):
 
     options = {}
     if raw_options:
+        raw_options = raw_options.lower()
         and_idx = raw_options.find("&")
         semi_idx = raw_options.find(";")
         if and_idx >= 0 and semi_idx >= 0:
@@ -168,9 +169,7 @@ class _Pool(threading.local):
     """A simple connection pool.
 
     Uses thread-local socket per thread. By calling return_socket() a
-    thread can return a socket to the pool. Right now the pool size is
-    capped at 10 sockets - we can expose this as a parameter later, if
-    needed.
+    thread can return a socket to the pool.
     """
 
     # Non thread-locals
@@ -179,9 +178,9 @@ class _Pool(threading.local):
     # thread-local default
     sock = None
 
-    def __init__(self, socket_factory):
+    def __init__(self, socket_factory, pool_size):
         self.pid = os.getpid()
-        self.pool_size = 10
+        self.pool_size = pool_size
         self.socket_factory = socket_factory
         if not hasattr(self, "sockets"):
             self.sockets = []
@@ -228,7 +227,7 @@ class Connection(object):  # TODO support auth for pooling
 
     __max_bson_size = 4 * 1024 * 1024
 
-    def __init__(self, host=None, port=None, pool_size=None,
+    def __init__(self, host=None, port=None, max_pool_size=10,
                  slave_okay=False, network_timeout=None,
                  document_class=dict, tz_aware=False, _connect=True):
         """Create a new connection to a single MongoDB instance at *host:port*.
@@ -262,7 +261,8 @@ class Connection(object):  # TODO support auth for pooling
             it must be enclosed in '[' and ']' characters following
             the RFC2732 URL syntax (e.g. '[::1]' for localhost)
           - `port` (optional): port number on which to connect
-          - `pool_size` (optional): DEPRECATED
+          - `max_pool_size` (optional): The maximum size limit for
+            the connection pool.
           - `slave_okay` (optional): is it okay to connect directly to
             and perform queries on a slave instance
           - `network_timeout` (optional): timeout (in seconds) to use
@@ -276,7 +276,8 @@ class Connection(object):  # TODO support auth for pooling
 
         .. seealso:: :meth:`end_request`
         .. versionchanged:: 1.10.1+
-           Completely remove `auto_start_request` and `timeout` parameters.
+           Added `max_pool_size`. Completely removed previously deprecated
+           `pool_size`, `auto_start_request` and `timeout` parameters.
         .. versionchanged:: 1.8
            The `host` parameter can now be a full `mongodb URI
            <http://dochub.mongodb.org/core/connections>`_, in addition
@@ -324,18 +325,23 @@ class Connection(object):  # TODO support auth for pooling
             raise InvalidURI("cannot specify database without "
                              "a username and password")
 
-        if pool_size is not None:
-            warnings.warn("The pool_size parameter to Connection is "
-                          "deprecated", DeprecationWarning)
-
         self.__host = None
         self.__port = None
 
-        for k in options.iterkeys():
-            # PYTHON-205 - Lets not break existing client code.
-            if k in ("slaveOk", "slaveok"):
-                self.__slave_okay = (options[k][0].upper() == 'T')
-                break
+        if "maxpoolsize" in options:
+            self.__max_pool_size = options['maxpoolsize']
+            if not self.__max_pool_size.isdigit():
+                raise TypeError("maxPoolSize must be an integer >= 0.")
+            self.__max_pool_size = int(self.__max_pool_size)
+        else:
+            self.__max_pool_size = max_pool_size
+            if not isinstance(self.__max_pool_size, int):
+                raise TypeError("max_pool_size must be an instance of int.")
+        if self.__max_pool_size < 0:
+            raise ValueError("the maximum pool size must be >= 0")
+
+        if "slaveok" in options:
+            self.__slave_okay = (options['slaveok'][0].upper() == 'T')
         else:
             self.__slave_okay = slave_okay
 
@@ -350,7 +356,7 @@ class Connection(object):  # TODO support auth for pooling
 
         self.__cursor_manager = CursorManager(self)
 
-        self.__pool = _Pool(self.__connect)
+        self.__pool = _Pool(self.__connect, self.__max_pool_size)
         self.__last_checkout = time.time()
 
         self.__network_timeout = network_timeout
@@ -467,6 +473,14 @@ class Connection(object):  # TODO support auth for pooling
            ``port`` is now a property rather than a method.
         """
         return self.__port
+
+    @property
+    def max_pool_size(self):
+        """The maximum pool size limit set for this connection.
+
+        .. versionadded:: 1.10.1+
+        """
+        return self.__max_pool_size
 
     @property
     def nodes(self):
@@ -651,7 +665,7 @@ class Connection(object):  # TODO support auth for pooling
         .. seealso:: :meth:`end_request`
         .. versionadded:: 1.3
         """
-        self.__pool = _Pool(self.__connect)
+        self.__pool = _Pool(self.__connect, self.__max_pool_size)
         self.__host = None
         self.__port = None
 
