@@ -50,6 +50,10 @@ class TestCollection(unittest.TestCase):
         self.connection = get_connection()
         self.db = self.connection.pymongo_test
 
+    def tearDown(self):
+        self.db = None
+        self.connection = None
+
     def test_collection(self):
         self.assertRaises(TypeError, Collection, self.db, 5)
 

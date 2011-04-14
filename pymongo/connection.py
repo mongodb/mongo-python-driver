@@ -178,14 +178,39 @@ class _Pool(threading.local):
     # thread-local default
     sock = None
 
-    def __init__(self, socket_factory, pool_size):
+    def __init__(self, pool_size, network_timeout):
         self.pid = os.getpid()
         self.pool_size = pool_size
-        self.socket_factory = socket_factory
+        self.network_timeout = network_timeout
         if not hasattr(self, "sockets"):
             self.sockets = []
 
-    def socket(self):
+    def connect(self, host, port):
+        """Connect to Mongo and return a new (connected) socket.
+        """
+        try:
+            try:
+                # Prefer IPv4. If there is demand for an option
+                # to specify one or the other we can add it later.
+                s = socket.socket(socket.AF_INET)
+                s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+                s.settimeout(self.network_timeout or _CONNECT_TIMEOUT)
+                s.connect((host, port))
+                s.settimeout(self.network_timeout)
+                return s
+            except socket.gaierror:
+                # If that fails try IPv6
+                s = socket.socket(socket.AF_INET6)
+                s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+                s.settimeout(self.network_timeout or _CONNECT_TIMEOUT)
+                s.connect((host, port))
+                s.settimeout(self.network_timeout)
+                return s
+        except socket.error:
+            self.disconnect()
+            raise AutoReconnect("could not connect to %s:%d" % (host, port))
+
+    def socket(self, host, port):
         # We use the pid here to avoid issues with fork / multiprocessing.
         # See test.test_connection:TestConnection.test_fork for an example of
         # what could go wrong otherwise
@@ -202,7 +227,7 @@ class _Pool(threading.local):
         try:
             self.sock = (pid, self.sockets.pop())
         except IndexError:
-            self.sock = (pid, self.socket_factory())
+            self.sock = (pid, self.connect(host, port))
 
         return self.sock[1]
 
@@ -356,10 +381,10 @@ class Connection(object):  # TODO support auth for pooling
 
         self.__cursor_manager = CursorManager(self)
 
-        self.__pool = _Pool(self.__connect, self.__max_pool_size)
+        self.__network_timeout = network_timeout
+        self.__pool = _Pool(self.__max_pool_size, self.__network_timeout)
         self.__last_checkout = time.time()
 
-        self.__network_timeout = network_timeout
         self.__document_class = document_class
         self.__tz_aware = tz_aware
 
@@ -601,37 +626,6 @@ class Connection(object):  # TODO support auth for pooling
 
         raise AutoReconnect("could not find master/primary")
 
-    def __connect(self):
-        """(Re-)connect to Mongo and return a new (connected) socket.
-
-        Connect to the master if this is a paired connection.
-        """
-        host, port = (self.__host, self.__port)
-        if host is None or port is None:
-            host, port = self.__find_master()
-
-        try:
-            try:
-                # Prefer IPv4. If there is demand for an option
-                # to specify one or the other we can add it later.
-                sock = socket.socket(socket.AF_INET)
-                sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-                sock.settimeout(self.__network_timeout or _CONNECT_TIMEOUT)
-                sock.connect((host, port))
-                sock.settimeout(self.__network_timeout)
-                return sock
-            except socket.gaierror:
-                # If that fails try IPv6
-                sock = socket.socket(socket.AF_INET6)
-                sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-                sock.settimeout(self.__network_timeout or _CONNECT_TIMEOUT)
-                sock.connect((host, port))
-                sock.settimeout(self.__network_timeout)
-                return sock
-        except socket.error:
-            self.disconnect()
-            raise AutoReconnect("could not connect to %r" % list(self.__nodes))
-
     def __socket(self):
         """Get a socket from the pool.
 
@@ -643,7 +637,11 @@ class Connection(object):  # TODO support auth for pooling
         the last socket checkout, to keep performance reasonable - we
         can't avoid those completely anyway.
         """
-        sock = self.__pool.socket()
+        host, port = (self.__host, self.__port)
+        if host is None or port is None:
+            host, port = self.__find_master()
+
+        sock = self.__pool.socket(host, port)
         t = time.time()
         if t - self.__last_checkout > 1:
             if _closed(sock):
@@ -665,7 +663,7 @@ class Connection(object):  # TODO support auth for pooling
         .. seealso:: :meth:`end_request`
         .. versionadded:: 1.3
         """
-        self.__pool = _Pool(self.__connect, self.__max_pool_size)
+        self.__pool = _Pool(self.__max_pool_size, self.__network_timeout)
         self.__host = None
         self.__port = None
 

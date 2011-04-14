@@ -475,6 +475,7 @@ class TestConnection(unittest.TestCase):
         self.assert_(_parse_uri,
                      "mongodb://[2001:0db8:85a3:0000:0000:8a2e:0370:7334]"
                      ":27017/?slaveOk=true")
+        self.assertRaises(AutoReconnect, Connection, 'foo')
         try:
             connection = Connection("[::1]")
         except:

@@ -71,7 +71,6 @@ class Database(object):
         self.__outgoing_manipulators = []
         self.__outgoing_copying_manipulators = []
         self.add_son_manipulator(ObjectIdInjector())
-        self.__system_js = SystemJS(self)
 
     def add_son_manipulator(self, manipulator):
         """Add a new son manipulator to this database.
@@ -104,7 +103,7 @@ class Database(object):
 
         .. versionadded:: 1.5
         """
-        return self.__system_js
+        return SystemJS(self)
 
     @property
     def connection(self):

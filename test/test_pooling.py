@@ -135,6 +135,9 @@ class TestPooling(unittest.TestCase):
         self.c[DB].unique.insert({"_id": "mike"})
         self.c[DB].unique.find_one()
 
+    def tearDown(self):
+        self.c = None
+
     def test_max_pool_size_validation(self):
         self.assertRaises(ValueError, Connection, max_pool_size=-1)
         self.assertRaises(TypeError, Connection, max_pool_size='foo')
@@ -156,15 +159,10 @@ class TestPooling(unittest.TestCase):
         run_cases(self, [SaveAndFind, Disconnect, Unique])
 
     def test_independent_pools(self):
-        p = _Pool(None, 10)
+        p = _Pool(10, 0)
         self.assertEqual([], p.sockets)
         self.c.end_request()
         self.assertEqual([], p.sockets)
-
-        # Sensical values aren't really important here
-        p1 = _Pool(5, 10)
-        self.assertEqual(None, p.socket_factory)
-        self.assertEqual(5, p1.socket_factory)
 
     def test_dependent_pools(self):
         c = get_connection()
@@ -206,8 +204,8 @@ class TestPooling(unittest.TestCase):
         b_sock = b._Connection__pool.sockets[0]
         b.test.test.find_one()
         a.test.test.find_one()
-        self.assertEqual(b_sock, b._Connection__pool.socket())
-        self.assertEqual(a_sock, a._Connection__pool.socket())
+        self.assertEqual(b_sock, b._Connection__pool.socket(b.host, b.port))
+        self.assertEqual(a_sock, a._Connection__pool.socket(a.host, a.port))
 
     def test_pool_with_fork(self):
         if sys.platform == "win32":
@@ -259,7 +257,7 @@ class TestPooling(unittest.TestCase):
         self.assert_(a_sock.getsockname() != b_sock)
         self.assert_(a_sock.getsockname() != c_sock)
         self.assert_(b_sock != c_sock)
-        self.assertEqual(a_sock, a._Connection__pool.socket())
+        self.assertEqual(a_sock, a._Connection__pool.socket(a.host, a.port))
 
     def test_max_pool_size(self):
         c = get_connection(max_pool_size=4)

@@ -18,6 +18,8 @@ New cursor managers should be defined as subclasses of CursorManager and can be
 installed on a connection by calling
 `pymongo.connection.Connection.set_cursor_manager`."""
 
+import weakref
+
 
 class CursorManager(object):
     """The default cursor manager.
@@ -31,7 +33,7 @@ class CursorManager(object):
         :Parameters:
           - `connection`: a Mongo Connection
         """
-        self.__connection = connection
+        self.__connection = weakref.ref(connection)
 
     def close(self, cursor_id):
         """Close a cursor by killing it immediately.
@@ -44,7 +46,7 @@ class CursorManager(object):
         if not isinstance(cursor_id, (int, long)):
             raise TypeError("cursor_id must be an instance of (int, long)")
 
-        self.__connection.kill_cursors([cursor_id])
+        self.__connection().kill_cursors([cursor_id])
 
 
 class BatchCursorManager(CursorManager):
@@ -59,14 +61,14 @@ class BatchCursorManager(CursorManager):
         """
         self.__dying_cursors = []
         self.__max_dying_cursors = 20
-        self.__connection = connection
+        self.__connection = weakref.ref(connection)
 
         CursorManager.__init__(self, connection)
 
     def __del__(self):
         """Cleanup - be sure to kill any outstanding cursors.
         """
-        self.__connection.kill_cursors(self.__dying_cursors)
+        self.__connection().kill_cursors(self.__dying_cursors)
 
     def close(self, cursor_id):
         """Close a cursor by killing it in a batch.
@@ -82,5 +84,5 @@ class BatchCursorManager(CursorManager):
         self.__dying_cursors.append(cursor_id)
 
         if len(self.__dying_cursors) > self.__max_dying_cursors:
-            self.__connection.kill_cursors(self.__dying_cursors)
+            self.__connection().kill_cursors(self.__dying_cursors)
             self.__dying_cursors = []
