@@ -495,6 +495,15 @@ class TestConnection(unittest.TestCase):
         self.assert_("pymongo_test" in dbs)
         self.assert_("pymongo_test_bernie" in dbs)
 
+    def test_autoreconnect(self):
+        def find_one(conn):
+            return conn.test.stuff.find_one()
+        # Simulate a temporary connection failure
+        c = Connection('foo', _connect=False)
+        self.assertRaises(AutoReconnect, find_one, c)
+        c._Connection__nodes = set([('localhost', 27017)])
+        self.assert_(find_one, c)
+
 
 if __name__ == "__main__":
     unittest.main()
