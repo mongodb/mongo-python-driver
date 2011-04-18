@@ -37,6 +37,9 @@ from pymongo.errors import InvalidOperation
 
 __ZERO = "\x00\x00\x00\x00"
 
+MAX_INT32 = 2147483647
+MIN_INT32 = -2147483648
+
 
 def __last_error(args):
     """Data to send to do a lastError.
@@ -51,7 +54,7 @@ def __pack_message(operation, data):
 
     Returns the resultant message string.
     """
-    request_id = random.randint(-2 ** 31 - 1, 2 ** 31)
+    request_id = random.randint(MIN_INT32, MAX_INT32)
     message = struct.pack("<i", 16 + len(data))
     message += struct.pack("<i", request_id)
     message += __ZERO  # responseTo
