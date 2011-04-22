@@ -62,7 +62,7 @@ class doc(Command):
                 pass
 
         if has_subprocess:
-            status = subprocess.call(["sphinx-build", "-b", mode, "doc", path])
+            status = subprocess.call(["sphinx-build", "-E", "-b", mode, "doc", path])
 
             if status:
                 raise RuntimeError("documentation step '%s' failed" % mode)
