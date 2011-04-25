@@ -3,17 +3,10 @@ Installing / Upgrading
 .. highlight:: bash
 
 **PyMongo** is in the `Python Package Index
-<http://pypi.python.org/pypi/pymongo/>`_. To install PyMongo using
-`setuptools <http://pypi.python.org/pypi/setuptools>`_ do::
+<http://pypi.python.org/pypi/pymongo/>`_.
 
-  $ easy_install pymongo
-
-To upgrade do::
-
-  $ easy_install -U pymongo
-
-If you would rather use the popular easy_install replacement
-`pip <http://pypi.python.org/pypi/pip>`_ do::
+We recommend using `pip <http://pypi.python.org/pypi/pip>`_
+to install pymongo::
 
   $ pip install pymongo
 
@@ -24,6 +17,27 @@ To get a specific version of pymongo::
 To upgrade using pip::
 
   $ pip install --upgrade pymongo
+
+If you must install pymongo using
+`setuptools <http://pypi.python.org/pypi/setuptools>`_ do::
+
+  $ easy_install pymongo
+
+To upgrade do::
+
+  $ easy_install -U pymongo
+
+**Mac OS Users:** By default OSX uses `/usr/bin/easyinstall` for third
+party package installs. This script is hardcoded to use a version of
+setuptools that is older than the version required by pymongo. You
+can work around it like this::
+
+  $ easy_install -U setuptools
+  $ python -m easy_install pymongo
+
+To upgrade do::
+
+  $ python -m easy_install -U pymongo
 
 If you'd rather install directly from the source (i.e. to stay on the
 bleeding edge), check out the latest source from github and install
