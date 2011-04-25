@@ -599,6 +599,9 @@ class Connection(object):  # TODO support auth for pooling
             if self.__try_node(node) is True:
                 return node
 
+        # Clear the connection pool so we we don't try
+        # running queries against a secondary without slave_okay.
+        self.disconnect()
         raise AutoReconnect("could not find master/primary")
 
     def __connect(self):
