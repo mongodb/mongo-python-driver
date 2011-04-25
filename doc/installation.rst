@@ -27,7 +27,7 @@ To upgrade do::
 
   $ easy_install -U pymongo
 
-**Mac OS Users:** By default OSX uses `/usr/bin/easyinstall` for third
+**Mac OS Users:** By default OSX uses `/usr/bin/easy_install` for third
 party package installs. This script is hardcoded to use a version of
 setuptools that is older than the version required by pymongo. You
 can work around it like this::
