@@ -366,7 +366,7 @@ class GridOut(object):
     def __getattr__(self, name):
         if name in self._file:
             return self._file[name]
-        raise AttributeError("GridIn object has no attribute '%s'" % name)
+        raise AttributeError("GridOut object has no attribute '%s'" % name)
 
     def read(self, size=-1):
         """Read at most `size` bytes from the file (less if there
