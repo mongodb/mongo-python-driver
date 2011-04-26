@@ -532,6 +532,8 @@ class Collection(object):
           - `as_class` (optional): class to use for documents in the
             query result (default is
             :attr:`~pymongo.connection.Connection.document_class`)
+          - `slave_okay` (optional): if True, allows this query to
+            be run against a replica secondary.
           - `network_timeout` (optional): specify a timeout to use for
             this query, which will override the
             :class:`~pymongo.connection.Connection`-level default

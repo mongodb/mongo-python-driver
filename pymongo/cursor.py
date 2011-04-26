@@ -37,7 +37,7 @@ class Cursor(object):
 
     def __init__(self, collection, spec=None, fields=None, skip=0, limit=0,
                  timeout=True, snapshot=False, tailable=False, sort=None,
-                 max_scan=None, as_class=None,
+                 max_scan=None, as_class=None, slave_okay=False,
                  _must_use_master=False, _is_command=False,
                  **kwargs):
         """Create a new cursor.
@@ -97,6 +97,7 @@ class Cursor(object):
         self.__explain = False
         self.__hint = None
         self.__as_class = as_class
+        self.__slave_okay = slave_okay
         self.__tz_aware = collection.database.connection.tz_aware
         self.__must_use_master = _must_use_master
         self.__is_command = _is_command
@@ -157,6 +158,7 @@ class Cursor(object):
         copy.__batch_size = self.__batch_size
         copy.__max_scan = self.__max_scan
         copy.__as_class = self.__as_class
+        copy.__slave_okay = self.__slave_okay
         copy.__must_use_master = self.__must_use_master
         copy.__is_command = self.__is_command
         copy.__kwargs = self.__kwargs
@@ -197,7 +199,8 @@ class Cursor(object):
         options = 0
         if self.__tailable:
             options |= _QUERY_OPTIONS["tailable_cursor"]
-        if self.__collection.database.connection.slave_okay:
+        if (self.__collection.database.connection.slave_okay or
+            self.__slave_okay):
             options |= _QUERY_OPTIONS["slave_okay"]
         if not self.__timeout:
             options |= _QUERY_OPTIONS["no_timeout"]
