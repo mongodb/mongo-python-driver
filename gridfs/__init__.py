@@ -159,7 +159,7 @@ class GridFS(object):
         self.__files.ensure_index([("filename", ASCENDING),
                                    ("uploadDate", DESCENDING)])
 
-        cursor = self.__files.find({"filename": filename})
+        cursor = self.__files.find({"filename": filename}, {"_id": True})
         if version < 0:
             skip = abs(version) - 1
             cursor.limit(-1).skip(skip).sort("uploadDate", DESCENDING)
