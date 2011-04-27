@@ -171,11 +171,9 @@ class GridFS(object):
         self.__files.ensure_index([("filename", ASCENDING),
                                    ("uploadDate", DESCENDING)])
 
-        query = {}
+        query = kwargs
         if filename is not None:
             query["filename"] = filename
-        for key, value in kwargs.iteritems():
-            query[key] = value
 
         cursor = self.__files.find(query, ["_id"])
         if version < 0:
