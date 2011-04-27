@@ -177,7 +177,7 @@ class GridFS(object):
         for key, value in kwargs.iteritems():
             query[key] = value
 
-        cursor = self.__files.find(query, {"_id": True})
+        cursor = self.__files.find(query, ["_id"])
         if version < 0:
             skip = abs(version) - 1
             cursor.limit(-1).skip(skip).sort("uploadDate", DESCENDING)
