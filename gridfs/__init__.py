@@ -160,11 +160,10 @@ class GridFS(object):
             to -1, the most recent version uploaded)
           - `**kwargs` (optional): find files by custom metadata.
 
+        .. versionadded:: 1.10.2
+           `filename` defaults to None;
+           accept keyword arguments to find files by custom metadata.
         .. versionadded:: 1.9
-        .. versionadded:: 1.10.2
-           `filename` defaults to None.
-        .. versionadded:: 1.10.2
-           Accept keyword arguments to find files by custom metadata.
         """
         # TODO: should we automatically ensure indexes on other
         # queries we get from kwargs? should we not ensure this
@@ -201,12 +200,11 @@ class GridFS(object):
           - `filename`: ``"filename"`` of the file to get, or `None`
           - `**kwargs` (optional): find files by custom metadata.
 
-        .. versionadded:: 1.6
         .. versionadded:: 1.10.2
-           `filename` defaults to None.
-        .. versionadded:: 1.10.2
-           Accept keyword arguments to find files by custom metadata. See
+           `filename` defaults to None;
+           accept keyword arguments to find files by custom metadata. See
            :meth:`get_version`.
+        .. versionadded:: 1.6
         """
         return self.get_version(filename=filename, **kwargs)
 
