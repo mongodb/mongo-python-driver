@@ -129,13 +129,18 @@ class GridFS(object):
         """
         return GridOut(self.__collection, file_id)
 
-    def get_version(self, filename, version=-1):
-        """Get a file from GridFS by ``"filename"``.
+    def get_version(self, filename=None, version=-1, **kwargs):
+        """Get a file from GridFS by ``"filename"`` or metadata fields.
 
-        Returns a version of the file in GridFS with the name
-        `filename` as an instance of
-        :class:`~gridfs.grid_file.GridOut`. Version ``-1`` will be the
-        most recently uploaded, ``-2`` the second most recently
+        Returns a version of the file in GridFS whose filename matches
+        `filename` and whose metadata fields match the supplied keyword
+        arguments, as an instance of :class:`~gridfs.grid_file.GridOut`.
+
+        Version numbering is a convenience atop the GridFS API provided
+        by MongoDB. If more than one file matches the query (either by
+        `filename` alone, by metadata fields, or by a combination of
+        both), then version ``-1`` will be the most recently uploaded
+        matching file, ``-2`` the second most recently
         uploaded, etc. Version ``0`` will be the first version
         uploaded, ``1`` the second version, etc. So if three versions
         have been uploaded, then version ``0`` is the same as version
@@ -150,16 +155,30 @@ class GridFS(object):
         time.
 
         :Parameters:
-          - `filename`: ``"filename"`` of the file to get
+          - `filename`: ``"filename"`` of the file to get, or `None`
           - `version` (optional): version of the file to get (defualts
             to -1, the most recent version uploaded)
+          - `**kwargs` (optional): find files by custom metadata.
 
         .. versionadded:: 1.9
+        .. versionadded:: 1.10.2
+           `filename` defaults to None.
+        .. versionadded:: 1.10.2
+           Accept keyword arguments to find files by custom metadata.
         """
+        # TODO: should we automatically ensure indexes on other
+        # queries we get from kwargs? should we not ensure this
+        # index if querying by something other than filename?
         self.__files.ensure_index([("filename", ASCENDING),
                                    ("uploadDate", DESCENDING)])
 
-        cursor = self.__files.find({"filename": filename}, {"_id": True})
+        query = {}
+        if filename is not None:
+            query["filename"] = filename
+        for key, value in kwargs.iteritems():
+            query[key] = value
+
+        cursor = self.__files.find(query, {"_id": True})
         if version < 0:
             skip = abs(version) - 1
             cursor.limit(-1).skip(skip).sort("uploadDate", DESCENDING)
@@ -171,18 +190,25 @@ class GridFS(object):
         except StopIteration:
             raise NoFile("no version %d for filename %r" % (version, filename))
 
-    def get_last_version(self, filename):
-        """Get the most recent version of a file in GridFS by ``"filename"``.
+    def get_last_version(self, filename=None, **kwargs):
+        """Get the most recent version of a file in GridFS by ``"filename"``
+        or metadata fields.
 
         Equivalent to calling :meth:`get_version` with the default
         `version` (``-1``).
 
         :Parameters:
-          - `filename`: ``"filename"`` of the file to get
+          - `filename`: ``"filename"`` of the file to get, or `None`
+          - `**kwargs` (optional): find files by custom metadata.
 
         .. versionadded:: 1.6
+        .. versionadded:: 1.10.2
+           `filename` defaults to None.
+        .. versionadded:: 1.10.2
+           Accept keyword arguments to find files by custom metadata. See
+           :meth:`get_version`.
         """
-        return self.get_version(filename)
+        return self.get_version(filename=filename, **kwargs)
 
     # TODO add optional safe mode for chunk removal?
     def delete(self, file_id):
