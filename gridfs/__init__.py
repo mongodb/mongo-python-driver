@@ -166,11 +166,9 @@ class GridFS(object):
            accept keyword arguments to find files by custom metadata.
         .. versionadded:: 1.9
         """
-        # TODO: should we automatically ensure indexes on other
-        # queries we get from kwargs? should we not ensure this
-        # index if querying by something other than filename?
-        self.__files.ensure_index([("filename", ASCENDING),
-                                   ("uploadDate", DESCENDING)])
+        if filename is not None and not kwargs:
+            self.__files.ensure_index([("filename", ASCENDING),
+                                       ("uploadDate", DESCENDING)])
 
         query = kwargs
         if filename is not None:
