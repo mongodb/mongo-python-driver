@@ -323,11 +323,27 @@ class Database(object):
 
         self.command("drop", unicode(name), allowable_errors=["ns not found"])
 
-    def validate_collection(self, name_or_collection):
+    def validate_collection(self, name_or_collection, full=False):
         """Validate a collection.
 
-        Returns a string of validation info. Raises CollectionInvalid if
+        Returns a dict of validation info. Raises CollectionInvalid if
         validation fails.
+
+        With MongoDB < 1.9 the result dict will include a `result` key
+        with a string value that represents the validation results. With
+        MongoDB >= 1.9 the `result` key no longer exists and the results
+        are split into individual fields in the result dict.
+
+        :Parameters:
+            `name_or_collection`: A Collection object or the name of a
+                                  collection to validate.
+            `full`: Have the server do a more thorough scan of the
+                    collection. Ignored in MongoDB versions before 1.9.
+
+        .. versionchanged:: 1.10.1+
+           validate_collection previously returned a string.
+        .. versionadded:: 1.10.1+
+           Added `full` option.
         """
         name = name_or_collection
         if isinstance(name, Collection):
@@ -337,12 +353,16 @@ class Database(object):
             raise TypeError("name_or_collection must be an instance of "
                             "(Collection, str, unicode)")
 
-        result = self.command("validate", unicode(name))
+        result = self.command("validate", unicode(name), full=full)
 
-        info = result["result"]
-        if info.find("exception") != -1 or info.find("corrupt") != -1:
-            raise CollectionInvalid("%s invalid: %s" % (name, info))
-        return info
+        if "result" in result:
+            info = result["result"]
+            if info.find("exception") != -1 or info.find("corrupt") != -1:
+                raise CollectionInvalid("%s invalid: %s" % (name, info))
+        elif not result.get("valid", False):
+            raise CollectionInvalid("%s invalid: %r" % (name, result))
+
+        return result
 
     def profiling_level(self):
         """Get the database's current profiling level.

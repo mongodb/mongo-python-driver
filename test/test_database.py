@@ -148,6 +148,8 @@ class TestDatabase(unittest.TestCase):
 
         self.assert_(db.validate_collection("test"))
         self.assert_(db.validate_collection(db.test))
+        self.assert_(db.validate_collection(db.test, full=True))
+
 
     def test_profiling_levels(self):
         db = self.connection.pymongo_test
