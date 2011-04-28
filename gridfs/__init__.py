@@ -166,9 +166,8 @@ class GridFS(object):
            accept keyword arguments to find files by custom metadata.
         .. versionadded:: 1.9
         """
-        if filename is not None and not kwargs:
-            self.__files.ensure_index([("filename", ASCENDING),
-                                       ("uploadDate", DESCENDING)])
+        self.__files.ensure_index([("filename", ASCENDING),
+                                   ("uploadDate", DESCENDING)])
 
         query = kwargs
         if filename is not None:
