@@ -201,7 +201,7 @@ class GridFS(object):
 
         .. versionchanged:: 1.10.1+
            `filename` defaults to None;
-        .. versionadded:: 1.10.2
+        .. versionadded:: 1.10.1+
            accept keyword arguments to find files by custom metadata. See
            :meth:`get_version`.
         .. versionadded:: 1.6
