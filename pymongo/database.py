@@ -355,11 +355,23 @@ class Database(object):
 
         result = self.command("validate", unicode(name), full=full)
 
+        valid = True
+        # Pre 1.9 results
         if "result" in result:
             info = result["result"]
             if info.find("exception") != -1 or info.find("corrupt") != -1:
                 raise CollectionInvalid("%s invalid: %s" % (name, info))
+        # Post 1.9 sharded results
+        elif "raw" in result:
+            for repl, res in result["raw"].iteritems():
+                if not res.get("valid", False):
+                    valid = False
+                    break
+        # Post 1.9 non-sharded results.
         elif not result.get("valid", False):
+            valid = False
+
+        if not valid:
             raise CollectionInvalid("%s invalid: %r" % (name, result))
 
         return result
