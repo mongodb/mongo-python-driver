@@ -181,6 +181,7 @@ class TestGridfs(unittest.TestCase):
 
     def test_get_last_version_with_metadata(self):
         a = self.fs.put("foo", filename="test", author="author")
+        time.sleep(0.01)
         b = self.fs.put("bar", filename="test", author="author")
 
         self.assertEqual("bar", self.fs.get_last_version(author="author").read())
@@ -189,6 +190,7 @@ class TestGridfs(unittest.TestCase):
         self.fs.delete(a)
 
         a = self.fs.put("foo", filename="test", author="author1")
+        time.sleep(0.01)
         b = self.fs.put("bar", filename="test", author="author2")
 
         self.assertEqual("foo", self.fs.get_last_version(author="author1").read())
