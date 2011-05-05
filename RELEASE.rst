@@ -57,10 +57,10 @@ Doing a Release
 
 Building extensions on Windows
 ------------------------------
-Currently the default `python setup.py test` builds extensions on Windows 32 bit only. The default option expects Visual Studio 2008. This has been tested with Python 2.6 and 2.7. The extensions can be built for Python 2.4 and 2.5 using MinGW32 (See `Doing a Release` above).
+Currently the default `python setup.py test` builds extensions on Windows 32 bit only. The default option requires Visual Studio (C++ Express) 2008 and works with Python 2.6 and 2.7. The tests can be run in Python 2.4 and 2.5 by installing MingW32 and running the appropriate command in step 3 below.
 
-1. On your Windows 32 bit machine install Microsoft Visual C++ 2008 Express Edition (or equivalent 2008 edition) in the default location.
+1. On your Windows 32 bit machine install Microsoft Visual C++ 2008 Express Edition (or equivalent 2008 edition) in the default location. For Python 2.4 or 2.5 install MingW32 in it's default location.
 
 2. Ensure you have nose installed.
 
-3. Run `python setup.py test` to build the C extensions and run pymongo tests.
+3. Run `\path\to\Python2(6|7) setup.py test` or `\path\to\Python2(4|5) setup.py build -c mingw32 test` to build the C extensions and run pymongo tests.
