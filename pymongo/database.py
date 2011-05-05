@@ -323,7 +323,8 @@ class Database(object):
 
         self.command("drop", unicode(name), allowable_errors=["ns not found"])
 
-    def validate_collection(self, name_or_collection, full=False):
+    def validate_collection(self, name_or_collection,
+                            scandata=False, full=False):
         """Validate a collection.
 
         Returns a dict of validation info. Raises CollectionInvalid if
@@ -337,13 +338,17 @@ class Database(object):
         :Parameters:
             `name_or_collection`: A Collection object or the name of a
                                   collection to validate.
+            `scandata`: Do extra checks beyond checking the overall
+                        structure of the collection.
             `full`: Have the server do a more thorough scan of the
-                    collection. Ignored in MongoDB versions before 1.9.
+                    collection. Use with `scandata` for a thorough scan
+                    of the structure of the collection and the individual
+                    documents. Ignored in MongoDB versions before 1.9.
 
         .. versionchanged:: 1.10.1+
            validate_collection previously returned a string.
         .. versionadded:: 1.10.1+
-           Added `full` option.
+           Added `scandata` and `full` options.
         """
         name = name_or_collection
         if isinstance(name, Collection):
@@ -353,7 +358,8 @@ class Database(object):
             raise TypeError("name_or_collection must be an instance of "
                             "(Collection, str, unicode)")
 
-        result = self.command("validate", unicode(name), full=full)
+        result = self.command("validate", unicode(name),
+                              scandata=scandata, full=full)
 
         valid = True
         # Pre 1.9 results
@@ -361,10 +367,16 @@ class Database(object):
             info = result["result"]
             if info.find("exception") != -1 or info.find("corrupt") != -1:
                 raise CollectionInvalid("%s invalid: %s" % (name, info))
-        # Post 1.9 sharded results
+        # Sharded results
         elif "raw" in result:
             for repl, res in result["raw"].iteritems():
-                if not res.get("valid", False):
+                if "result" in res:
+                    info = res["result"]
+                    if (info.find("exception") != -1 or
+                        info.find("corrupt") != -1):
+                        raise CollectionInvalid("%s invalid: "
+                                                "%s" % (name, info))
+                elif not res.get("valid", False):
                     valid = False
                     break
         # Post 1.9 non-sharded results.

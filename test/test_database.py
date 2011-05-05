@@ -149,6 +149,9 @@ class TestDatabase(unittest.TestCase):
         self.assert_(db.validate_collection("test"))
         self.assert_(db.validate_collection(db.test))
         self.assert_(db.validate_collection(db.test, full=True))
+        self.assert_(db.validate_collection(db.test, scandata=True))
+        self.assert_(db.validate_collection(db.test, scandata=True, full=True))
+        self.assert_(db.validate_collection(db.test, True, True))
 
 
     def test_profiling_levels(self):
