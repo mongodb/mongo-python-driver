@@ -1,6 +1,60 @@
 Changelog
 =========
 
+Changes in Version 1.11
+-----------------------
+
+Version 1.11 adds a few new features and fixes a few more bugs.
+
+New Features:
+
+- Basic IPv6 support: pymongo prefers IPv4 but will try IPv6. You can
+  also specify an IPv6 address literal in the `host` parameter or a
+  MongoDB URI provided it is enclosed in '[' and ']'.
+- max_pool_size option: previously pymongo had a hard coded pool size
+  of 10 connections. With this change you can specify a different pool
+  size as a parameter to :class:`~pymongo.connection.Connection`
+  (max_pool_size=<integer>) or in the MongoDB URI (maxPoolSize=<integer>).
+- Find by metadata in GridFS: You can know specify query fields as
+  keyword parameters for :meth:`~gridfs.GridFS.get_version` and
+  :meth:`~gridfs.GridFS.get_last_version`.
+- Per-query slave_okay option: slave_okay=True is now a valid keyword
+  argument for :meth:`~pymongo.collection.Collection.find` and
+  :meth:`~pymongo.collection.Collection.find_one`.
+
+API changes:
+
+- :meth:`~pymongo.database.Database.validate_collection` now returns a
+  dict instead of a string. This change was required to deal with an
+  API change on the server. This method also now takes the optional
+  `scandata` and `full` parameters. See the documentation for more
+  details.
+
+.. warning:: The `pool_size`, `auto_start_request`, and `timeout` parameters
+             for :class:`~pymongo.connection.Connection` have been completely
+             removed in this release. They were deprecated in pymongo-1.4 and
+             have had no effect since then. Please make sure that your code
+             doesn't currently pass these parameters when creating a Connection
+             instance.
+
+Issues resolved
+...............
+
+- `PYTHON-241 <https://jira.mongodb.org/browse/PYTHON-241>`_:
+  Support setting slaveok at the cursor level.
+- `PYTHON-240 <https://jira.mongodb.org/browse/PYTHON-240>`_:
+  Queries can sometimes permanently fail after a replica set fail over.
+- `PYTHON-238 <https://jira.mongodb.org/browse/PYTHON-238>`_:
+  error after few million requests
+- `PYTHON-237 <https://jira.mongodb.org/browse/PYTHON-237>`_:
+  Basic IPv6 support.
+- `PYTHON-236 <https://jira.mongodb.org/browse/PYTHON-236>`_:
+  Restore option to specify pool size in Connection.
+- `PYTHON-212 <https://jira.mongodb.org/browse/PYTHON-212>`_:
+  pymongo does not recover after stale config
+- `PYTHON-138 <https://jira.mongodb.org/browse/PYTHON-138>`_:
+  Find method for GridFS
+
 Changes in Version 1.10.1
 -------------------------
 
