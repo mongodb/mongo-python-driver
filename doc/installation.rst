@@ -80,11 +80,15 @@ Dependencies for installing C Extensions on Unix
 ------------------------------------------------
 
 10gen does not currently provide statically linked binary packages for
-Unix. To build the optional C extensions you must have the GNU C compiler
-(gcc) installed. Depending on your flavor of Unix (or Linux distribution)
-you may also need a python-dev package that provides the necessary header
-files for your version of Python. The package name may vary from distro
-to distro.
+Unix flavors other than OSX. To build the optional C extensions you must
+have the GNU C compiler (gcc) installed. Depending on your flavor of Unix
+(or Linux distribution) you may also need a python development package that
+provides the necessary header files for your version of Python. The package
+name may vary from distro to distro. Here are some examples for popular
+Linux distributions:
+
+- RHEL (Red Hat Enterprise Linux)/CentOS: python-devel
+- Debian/Ubuntu: python-dev
 
 Pre-built eggs are available for OSX Snow Leopard on PyPI.
 

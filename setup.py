@@ -100,8 +100,12 @@ be compiled. No C extensions are essential for PyMongo to run,
 although they do result in significant speed improvements.
 
 If you are seeing this message on Linux you probably need to
-install GCC and/or the Python development libraries for your
-version of Python.
+install GCC and/or the Python development package for your
+version of Python. Python development package names for popular
+Linux distributions include:
+
+RHEL/CentOS: python-devel
+Debian/Ubuntu: python-dev
 
 %s
 **************************************************************
