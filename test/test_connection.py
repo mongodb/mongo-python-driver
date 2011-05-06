@@ -475,6 +475,7 @@ class TestConnection(unittest.TestCase):
         self.assert_(_parse_uri,
                      "mongodb://[2001:0db8:85a3:0000:0000:8a2e:0370:7334]"
                      ":27017/?slaveOk=true")
+        self.assertRaises(AutoReconnect, Connection, 'foo')
         try:
             connection = Connection("[::1]")
         except:
@@ -493,6 +494,15 @@ class TestConnection(unittest.TestCase):
         dbs = connection.database_names()
         self.assert_("pymongo_test" in dbs)
         self.assert_("pymongo_test_bernie" in dbs)
+
+    def test_autoreconnect(self):
+        def find_one(conn):
+            return conn.test.stuff.find_one()
+        # Simulate a temporary connection failure
+        c = Connection('foo', _connect=False)
+        self.assertRaises(AutoReconnect, find_one, c)
+        c._Connection__nodes = set([('localhost', 27017)])
+        self.assert_(find_one, c)
 
 
 if __name__ == "__main__":
