@@ -94,7 +94,7 @@ class MasterSlaveConnection(object):
         connections.
 
         .. seealso:: Module :mod:`~pymongo.connection`
-        .. versionadded:: 1.10+
+        .. versionadded:: 1.10.1
         """
         self.__master.disconnect()
         for slave in self.__slaves:

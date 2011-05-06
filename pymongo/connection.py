@@ -275,7 +275,7 @@ class Connection(object):  # TODO support auth for pooling
             aware (otherwise they will be naive)
 
         .. seealso:: :meth:`end_request`
-        .. versionchanged:: 1.10.1+
+        .. versionchanged:: 1.11
            Added `max_pool_size`. Completely removed previously deprecated
            `pool_size`, `auto_start_request` and `timeout` parameters.
         .. versionchanged:: 1.8
@@ -478,7 +478,7 @@ class Connection(object):  # TODO support auth for pooling
     def max_pool_size(self):
         """The maximum pool size limit set for this connection.
 
-        .. versionadded:: 1.10.1+
+        .. versionadded:: 1.11
         """
         return self.__max_pool_size
 

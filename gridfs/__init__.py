@@ -160,10 +160,10 @@ class GridFS(object):
             to -1, the most recent version uploaded)
           - `**kwargs` (optional): find files by custom metadata.
 
-        .. versionchanged:: 1.10.1+
+        .. versionchanged:: 1.11
            `filename` defaults to None;
-        .. versionadded:: 1.10.1+
-           accept keyword arguments to find files by custom metadata.
+        .. versionadded:: 1.11
+           Accept keyword arguments to find files by custom metadata.
         .. versionadded:: 1.9
         """
         self.__files.ensure_index([("filename", ASCENDING),
@@ -196,10 +196,10 @@ class GridFS(object):
           - `filename`: ``"filename"`` of the file to get, or `None`
           - `**kwargs` (optional): find files by custom metadata.
 
-        .. versionchanged:: 1.10.1+
+        .. versionchanged:: 1.11
            `filename` defaults to None;
-        .. versionadded:: 1.10.1+
-           accept keyword arguments to find files by custom metadata. See
+        .. versionadded:: 1.11
+           Accept keyword arguments to find files by custom metadata. See
            :meth:`get_version`.
         .. versionadded:: 1.6
         """

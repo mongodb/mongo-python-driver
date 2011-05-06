@@ -345,9 +345,9 @@ class Database(object):
                     of the structure of the collection and the individual
                     documents. Ignored in MongoDB versions before 1.9.
 
-        .. versionchanged:: 1.10.1+
+        .. versionchanged:: 1.11
            validate_collection previously returned a string.
-        .. versionadded:: 1.10.1+
+        .. versionadded:: 1.11
            Added `scandata` and `full` options.
         """
         name = name_or_collection
