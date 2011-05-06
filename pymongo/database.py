@@ -584,8 +584,8 @@ class SystemJS(object):
     def __init__(self, database):
         """Get a system js helper for the database `database`.
 
-        An instance of :class:`SystemJS` is automatically created for
-        each :class:`Database` instance as :attr:`Database.system_js`,
+        An instance of :class:`SystemJS` can be created with an instance
+        of :class:`Database` through :attr:`Database.system_js`,
         manual instantiation of this class should not be necessary.
 
         :class:`SystemJS` instances allow for easy manipulation and
