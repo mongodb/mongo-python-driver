@@ -87,7 +87,7 @@ def _make_c_string(string, check_null=False):
         try:
             string.decode("utf-8")
             return string + "\x00"
-        except:
+        except UnicodeError:
             raise InvalidStringData("strings in documents must be valid "
                                     "UTF-8: %r" % string)
 
