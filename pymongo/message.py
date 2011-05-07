@@ -99,8 +99,8 @@ def update(collection_name, upsert, multi, spec, doc, safe, last_error_args):
     data = __ZERO
     data += bson._make_c_string(collection_name)
     data += struct.pack("<i", options)
-    data += bson.BSON.encode(spec)
-    encoded = bson.BSON.encode(doc)
+    data += bson.BSON.encode(spec, check_keys=True)
+    encoded = bson.BSON.encode(doc, check_keys=True)
     data += encoded
     if safe:
         (_, update_message) = __pack_message(2001, data)
