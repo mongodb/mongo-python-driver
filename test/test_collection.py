@@ -1192,7 +1192,6 @@ class TestCollection(unittest.TestCase):
         coll = self.db.test
         coll.drop()
 
-        # this should break
         self.assertRaises(InvalidDocument, coll.save, {'a.b': 1, 'c': 2})
 
         coll.save({'a': 1, 'b': 2})
