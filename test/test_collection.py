@@ -1187,6 +1187,20 @@ class TestCollection(unittest.TestCase):
                          c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
                                            upsert=True, new=True))
 
+    def test_python_245(self):
+        # test case for PYTHON-245
+        coll = self.db.test
+        coll.drop()
+
+        # this should break
+        self.assertRaises(InvalidDocument, coll.save, {'a.b': 1, 'c': 2})
+
+        coll.save({'a': 1, 'b': 2})
+        obj = coll.find_one({'a': 1})
+        obj['c.d'] = 3
+        self.assertRaises(InvalidDocument, coll.save, obj)
+
+
 
 if __name__ == "__main__":
     unittest.main()
