@@ -25,6 +25,7 @@ sys.path[0:0] = [""]
 from nose.plugins.skip import SkipTest
 
 from pymongo.connection import Connection, _Pool
+from pymongo.errors import InvalidURI
 from test_connection import get_connection
 
 N = 50
@@ -140,12 +141,12 @@ class TestPooling(unittest.TestCase):
 
     def test_max_pool_size_validation(self):
         self.assertRaises(ValueError, Connection, max_pool_size=-1)
-        self.assertRaises(TypeError, Connection, max_pool_size='foo')
-        self.assertRaises(TypeError, Connection,
+        self.assertRaises(AssertionError, Connection, max_pool_size='foo')
+        self.assertRaises(InvalidURI, Connection,
                           'mongodb://localhost/?maxPoolSize=-1')
-        self.assertRaises(TypeError, Connection,
+        self.assertRaises(InvalidURI, Connection,
                           'mongodb://localhost/?maxPoolSize=foo')
-        self.assertRaises(TypeError, Connection,
+        self.assertRaises(InvalidURI, Connection,
                           'mongodb://localhost/?maxPoolSize=5.5')
         c = Connection('mongodb://localhost/?maxPoolSize=5')
         self.assertEqual(c.max_pool_size, 5)

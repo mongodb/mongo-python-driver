@@ -44,7 +44,8 @@ import warnings
 
 from pymongo import (database,
                      helpers,
-                     message)
+                     message,
+                     uri_parser)
 from pymongo.cursor_manager import CursorManager
 from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
@@ -56,103 +57,6 @@ from pymongo.errors import (AutoReconnect,
 
 
 _CONNECT_TIMEOUT = 20.0
-
-
-def _partition_ipv6(source):
-    if source.find(']') == -1:
-        raise InvalidURI("an IPv6 address literal must be "
-                         "enclosed in '[' and ']' characters.")
-    i = source.find(']:')
-    if i == -1:
-        return (source[1:-1], None)
-    return (source[1: i], source[i + 2:])
-
-
-def _partition(source, sub):
-    """Our own string partitioning method.
-
-    Splits `source` on `sub`.
-    """
-    i = source.find(sub)
-    if i == -1:
-        return (source, None)
-    return (source[:i], source[i + len(sub):])
-
-
-def _str_to_node(string, default_port=27017):
-    """Convert a string to a node tuple.
-
-    "localhost:27017" -> ("localhost", 27017)
-    """
-    # IPv6 literal
-    if string[0] == '[':
-        host, port = _partition_ipv6(string)
-    elif string.count(':') > 1 or string.find(']') != -1:
-        raise InvalidURI("an IPv6 address literal must be "
-                         "enclosed in '[' and ']' characters.")
-    else:
-        host, port = _partition(string, ":")
-    if port:
-        port = int(port)
-    else:
-        port = default_port
-    return (host, port)
-
-
-def _parse_uri(uri, default_port=27017):
-    """MongoDB URI parser.
-    """
-
-    if uri.startswith("mongodb://"):
-        uri = uri[len("mongodb://"):]
-    elif "://" in uri:
-        raise InvalidURI("Invalid uri scheme: %s" % _partition(uri, "://")[0])
-
-    (hosts, namespace) = _partition(uri, "/")
-
-    raw_options = None
-    if namespace:
-        (namespace, raw_options) = _partition(namespace, "?")
-        if namespace.find(".") < 0:
-            db = namespace
-            collection = None
-        else:
-            (db, collection) = namespace.split(".", 1)
-    else:
-        db = None
-        collection = None
-
-    username = None
-    password = None
-    if "@" in hosts:
-        (auth, hosts) = _partition(hosts, "@")
-
-        if ":" not in auth:
-            raise InvalidURI("auth must be specified as "
-                             "'username:password@'")
-        (username, password) = _partition(auth, ":")
-
-    host_list = []
-    for host in hosts.split(","):
-        if not host:
-            raise InvalidURI("empty host (or extra comma in host list)")
-        host_list.append(_str_to_node(host, default_port))
-
-    options = {}
-    if raw_options:
-        raw_options = raw_options.lower()
-        and_idx = raw_options.find("&")
-        semi_idx = raw_options.find(";")
-        if and_idx >= 0 and semi_idx >= 0:
-            raise InvalidURI("Cannot mix & and ; for option separators.")
-        elif and_idx >= 0:
-            options = dict([kv.split("=") for kv in raw_options.split("&")])
-        elif semi_idx >= 0:
-            options = dict([kv.split("=") for kv in raw_options.split(";")])
-        elif raw_options.find("="):
-            options = dict([raw_options.split("=")])
-
-    return (host_list, db, username, password, collection, options)
 
 
 def _closed(sock):
@@ -326,46 +230,41 @@ class Connection(object):  # TODO support auth for pooling
             raise TypeError("port must be an instance of int")
 
         nodes = set()
-        database = None
         username = None
         password = None
-        collection = None
+        db = None
+        coll = None
         options = {}
-        for uri in host:
-            (n, db, u, p, coll, opts) = _parse_uri(uri, port)
-            nodes.update(n)
-            database = db or database
-            username = u or username
-            password = p or password
-            collection = coll or collection
-            options = opts or options
+        for entity in host:
+            if "://" in entity:
+                if entity.startswith("mongodb://"):
+                    res = uri_parser.parse_uri(entity, port)
+                    nodes.update(res["nodelist"])
+                    username = res["username"] or username
+                    password = res["password"] or password
+                    db = res["database"] or db
+                    coll = res["collection"] or coll
+                    options = res["options"]
+                else:
+                    idx = entity.find("://")
+                    raise InvalidURI("Invalid URI scheme: "
+                                     "%s" % (entity[:idx],))
+            else:
+                nodes.update(uri_parser.split_hosts(entity, port))
         if not nodes:
             raise ConfigurationError("need to specify at least one host")
         self.__nodes = nodes
-        if database and username is None:
-            raise InvalidURI("cannot specify database without "
-                             "a username and password")
 
         self.__host = None
         self.__port = None
 
-        if "maxpoolsize" in options:
-            self.__max_pool_size = options['maxpoolsize']
-            if not self.__max_pool_size.isdigit():
-                raise TypeError("maxPoolSize must be an integer >= 0.")
-            self.__max_pool_size = int(self.__max_pool_size)
-        else:
-            self.__max_pool_size = max_pool_size
-            if not isinstance(self.__max_pool_size, int):
-                raise TypeError("max_pool_size must be an instance of int.")
+        assert isinstance(max_pool_size, int), "max_pool_size must be an int"
+        self.__max_pool_size = options.get("maxpoolsize") or max_pool_size
         if self.__max_pool_size < 0:
             raise ValueError("the maximum pool size must be >= 0")
 
-        if "slaveok" in options:
-            self.__slave_okay = (options['slaveok'][0].upper() == 'T')
-        else:
-            self.__slave_okay = slave_okay
-
+        assert isinstance(slave_okay, bool), "slave_okay must be True or False"
+        self.__slave_okay = options.get("slaveok") or slave_okay
         if slave_okay and len(self.__nodes) > 1:
             raise ConfigurationError("cannot specify slave_okay for a paired "
                                      "or replica set connection")
@@ -373,7 +272,7 @@ class Connection(object):  # TODO support auth for pooling
         # TODO - Support using other options like w and fsync from URI
         self.__options = options
         # TODO - Support setting the collection from URI like the Java driver
-        self.__collection = collection
+        self.__collection = coll
 
         self.__cursor_manager = CursorManager(self)
 
@@ -390,9 +289,12 @@ class Connection(object):  # TODO support auth for pooling
         if _connect:
             self.__find_master()
 
+        if db and username is None:
+            warnings.warn("must provide a username and password "
+                          "to authenticate to %s" % (db,))
         if username:
-            database = database or "admin"
-            if not self[database].authenticate(username, password):
+            db = db or "admin"
+            if not self[db].authenticate(username, password):
                 raise ConfigurationError("authentication failed")
 
     @classmethod
@@ -554,10 +456,15 @@ class Connection(object):  # TODO support auth for pooling
         return self.__max_bson_size
 
     def __add_hosts_and_get_primary(self, response):
+        # TODO: There may be an issue here with the server
+        # returning v6 address literals as <v6>:port instead
+        # of [<v6>]:port. I still need to investigate and deal
+        # with that.
         if "hosts" in response:
-            self.__nodes.update([_str_to_node(h) for h in response["hosts"]])
+            self.__nodes.update([uri_parser.parse_host(h)
+                                 for h in response["hosts"]])
         if "primary" in response:
-            return _str_to_node(response["primary"])
+            return uri_parser.parse_host(response["primary"])
         return False
 
     def __try_node(self, node):
