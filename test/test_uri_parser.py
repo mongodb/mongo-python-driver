@@ -18,11 +18,11 @@ import copy
 import unittest
 
 from pymongo.uri_parser import (_partition,
-                                        _rpartition,
-                                        parse_userinfo,
-                                        split_hosts,
-                                        split_options,
-                                        parse_uri)
+                                _rpartition,
+                                parse_userinfo,
+                                split_hosts,
+                                split_options,
+                                parse_uri)
 from pymongo.errors import (ConfigurationError,
                             InvalidURI,
                             UnsupportedOption)
