@@ -19,7 +19,7 @@ import warnings
 from bson.code import Code
 from bson.dbref import DBRef
 from bson.son import SON
-from pymongo import helpers
+from pymongo import common, helpers
 from pymongo.collection import Collection
 from pymongo.errors import (CollectionInvalid,
                             InvalidName,
@@ -39,7 +39,7 @@ def _check_name(name):
                               "character %r" % invalid_char)
 
 
-class Database(object):
+class Database(common.BaseObject):
     """A Mongo database.
     """
 
@@ -58,6 +58,10 @@ class Database(object):
 
         .. mongodoc:: databases
         """
+        super(Database, self).__init__(slave_okay=connection.slave_okay,
+                                       safe=connection.safe,
+                                       **(connection.get_lasterror_options()))
+
         if not isinstance(name, basestring):
             raise TypeError("name must be an instance of basestring")
 

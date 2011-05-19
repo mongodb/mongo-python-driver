@@ -18,7 +18,8 @@ import warnings
 
 from bson.code import Code
 from bson.son import SON
-from pymongo import (helpers,
+from pymongo import (common,
+                     helpers,
                      message)
 from pymongo.cursor import Cursor
 from pymongo.errors import InvalidName, InvalidOperation
@@ -32,7 +33,7 @@ def _gen_index_name(keys):
     return u"_".join([u"%s_%s" % item for item in keys])
 
 
-class Collection(object):
+class Collection(common.BaseObject):
     """A Mongo collection.
     """
 
@@ -68,6 +69,10 @@ class Collection(object):
 
         .. mongodoc:: collections
         """
+        super(Collection, self).__init__(slave_okay=database.slave_okay,
+                                         safe=database.slave_okay,
+                                         **(database.get_lasterror_options()))
+
         if not isinstance(name, basestring):
             raise TypeError("name must be an instance of basestring")
 
@@ -268,8 +273,11 @@ class Collection(object):
         if manipulate:
             docs = [self.__database._fix_incoming(doc, self) for doc in docs]
 
-        if kwargs:
+        if self.safe or kwargs:
             safe = True
+            if not kwargs:
+                kwargs.update(self.get_lasterror_options())
+
         self.__database.connection._send_message(
             message.insert(self.__full_name, docs,
                            check_keys, safe, kwargs), safe)
@@ -360,8 +368,10 @@ class Collection(object):
         if upsert and manipulate:
             document = self.__database._fix_incoming(document, self)
 
-        if kwargs:
+        if self.safe or kwargs:
             safe = True
+            if not kwargs:
+                kwargs.update(self.get_lasterror_options())
 
         return self.__database.connection._send_message(
             message.update(self.__full_name, upsert, multi,
@@ -434,8 +444,10 @@ class Collection(object):
         if not isinstance(spec_or_id, dict):
             spec_or_id = {"_id": spec_or_id}
 
-        if kwargs:
+        if self.safe or kwargs:
             safe = True
+            if not kwargs:
+                kwargs.update(self.get_lasterror_options())
 
         return self.__database.connection._send_message(
             message.delete(self.__full_name, spec_or_id, safe, kwargs), safe)
@@ -556,6 +568,8 @@ class Collection(object):
 
         .. mongodoc:: find
         """
+        if not 'slave_okay' in kwargs and self.slave_okay:
+            kwargs['slave_okay'] = True
         return Cursor(self, *args, **kwargs)
 
     def count(self):

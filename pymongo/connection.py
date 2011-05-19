@@ -42,7 +42,8 @@ import threading
 import time
 import warnings
 
-from pymongo import (database,
+from pymongo import (common,
+                     database,
                      helpers,
                      message,
                      uri_parser)
@@ -143,7 +144,7 @@ class _Pool(threading.local):
         self.sock = None
 
 
-class Connection(object):  # TODO support auth for pooling
+class Connection(common.BaseObject):  # TODO support auth for pooling
     """Connection to MongoDB.
     """
 
@@ -153,8 +154,8 @@ class Connection(object):  # TODO support auth for pooling
     __max_bson_size = 4 * 1024 * 1024
 
     def __init__(self, host=None, port=None, max_pool_size=10,
-                 slave_okay=False, network_timeout=None,
-                 document_class=dict, tz_aware=False, _connect=True):
+                 network_timeout=None, document_class=dict,
+                 tz_aware=False, _connect=True, **kwargs):
         """Create a new connection to a single MongoDB instance at *host:port*.
 
         The resultant connection object has connection-pooling built
@@ -188,8 +189,6 @@ class Connection(object):  # TODO support auth for pooling
           - `port` (optional): port number on which to connect
           - `max_pool_size` (optional): The maximum size limit for
             the connection pool.
-          - `slave_okay` (optional): is it okay to connect directly to
-            and perform queries on a slave instance
           - `network_timeout` (optional): timeout (in seconds) to use
             for socket operations - default is no timeout
           - `document_class` (optional): default class to use for
@@ -199,7 +198,29 @@ class Connection(object):  # TODO support auth for pooling
             in a document by this :class:`Connection` will be timezone
             aware (otherwise they will be naive)
 
+          Other optional parameters can be passed as keyword arguments:
+
+          - `slave_okay` or `slaveok`: Is it OK to perform queries if
+            this connection is to a secondary?
+          - `safe`: Use getlasterror for each write operation?
+          - `j`: Block until write operations have been commited to the
+            journal. Ignored if the server is running without journaling.
+            Implies safe=True.
+          - `w`: If this is a replica set the server won't return until
+            write operations have replicated to this many set members.
+            Implies safe=True.
+          - `wtimeout`: Used in conjunction with `j` and/or `w`. Wait this many
+            milliseconds for journal acknowledgement and/or write replication.
+            Implies safe=True.
+          - `fsync`: Force the database to fsync all files before returning
+            When used with `j` the server awaits the next group commit before
+            returning.
+            Implies safe=True.
+
         .. seealso:: :meth:`end_request`
+        .. versionchanged:: 1.11+
+           `slave_okay` is a pure keyword argument. Added support for safe,
+           and getlasterror options as keyword arguments.
         .. versionchanged:: 1.11
            Added `max_pool_size`. Completely removed previously deprecated
            `pool_size`, `auto_start_request` and `timeout` parameters.
@@ -220,6 +241,8 @@ class Connection(object):  # TODO support auth for pooling
 
         .. mongodoc:: connections
         """
+        super(Connection, self).__init__(**kwargs)
+
         if host is None:
             host = self.HOST
         if isinstance(host, basestring):
@@ -258,14 +281,15 @@ class Connection(object):  # TODO support auth for pooling
         self.__host = None
         self.__port = None
 
+        if options:
+            super(Connection, self)._BaseObject__set_options(**options)
+
         assert isinstance(max_pool_size, int), "max_pool_size must be an int"
         self.__max_pool_size = options.get("maxpoolsize") or max_pool_size
         if self.__max_pool_size < 0:
             raise ValueError("the maximum pool size must be >= 0")
 
-        assert isinstance(slave_okay, bool), "slave_okay must be True or False"
-        self.__slave_okay = options.get("slaveok") or slave_okay
-        if slave_okay and len(self.__nodes) > 1:
+        if self.slave_okay and len(self.__nodes) > 1:
             raise ConfigurationError("cannot specify slave_okay for a paired "
                                      "or replica set connection")
 
@@ -417,12 +441,6 @@ class Connection(object):  # TODO support auth for pooling
         """
         return self.__nodes
 
-    @property
-    def slave_okay(self):
-        """Is it okay for this connection to connect directly to a slave?
-        """
-        return self.__slave_okay
-
     def get_document_class(self):
         return self.__document_class
 
@@ -480,7 +498,7 @@ class Connection(object):  # TODO support auth for pooling
             # If __slave_okay is True and we've only been given one node
             # assume this should be a direct connection and don't try to
             # discover other nodes.
-            if len(self.__nodes) == 1 and self.__slave_okay:
+            if len(self.__nodes) == 1 and self.slave_okay:
                 if response["ismaster"]:
                     return True
                 return False
@@ -509,7 +527,7 @@ class Connection(object):  # TODO support auth for pooling
             return first
 
         # no network error
-        if self.__slave_okay and primary is not None:
+        if self.slave_okay and primary is not None:
             return first
 
         # Wasn't the first node, but we got a primary - let's try it:

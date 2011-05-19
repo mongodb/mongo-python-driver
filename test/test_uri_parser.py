@@ -84,31 +84,28 @@ class TestURI(unittest.TestCase):
         self.assertRaises(UnsupportedOption, split_options,
                           'socketTimeoutMS=500')
 
-        self.assertRaises(InvalidURI, split_options, 'foo')
-        self.assertRaises(InvalidURI, split_options, 'foo=bar')
-        self.assertRaises(InvalidURI, split_options, 'foo=bar;foo')
-        self.assertRaises(InvalidURI, split_options, 'connect=foo')
-        self.assert_(split_options('connect=direct'))
-        self.assert_(split_options('connect=replicaSet'))
-        self.assert_(split_options('connect=Replicaset'))
-        self.assertRaises(InvalidURI, split_options, 'w=foo')
-        self.assertRaises(InvalidURI, split_options, 'w=5.5')
+        self.assertRaises(ConfigurationError, split_options, 'foo')
+        self.assertRaises(ConfigurationError, split_options, 'foo=bar')
+        self.assertRaises(ConfigurationError, split_options, 'foo=bar;foo')
+        self.assertRaises(ConfigurationError, split_options, 'w=foo')
+        self.assertRaises(ConfigurationError, split_options, 'w=5.5')
         self.assert_(split_options, 'w=5')
-        self.assertRaises(InvalidURI, split_options, 'wtimeoutms=foo')
-        self.assertRaises(InvalidURI, split_options, 'wtimeoutms=5.5')
+        self.assertRaises(ConfigurationError, split_options, 'wtimeoutms=foo')
+        self.assertRaises(ConfigurationError, split_options, 'wtimeoutms=5.5')
         self.assert_(split_options, 'wtimeoutms=500')
-        self.assertRaises(InvalidURI, split_options, 'fsync=foo')
-        self.assertRaises(InvalidURI, split_options, 'fsync=5.5')
+        self.assertRaises(ConfigurationError, split_options, 'fsync=foo')
+        self.assertRaises(ConfigurationError, split_options, 'fsync=5.5')
         self.assertEqual({'fsync': True}, split_options('fsync=true'))
         self.assertEqual({'fsync': False}, split_options('fsync=false'))
-        self.assertRaises(InvalidURI, split_options, 'maxpoolsize=foo')
-        self.assertRaises(InvalidURI, split_options, 'maxpoolsize=5.5')
+        self.assertRaises(ConfigurationError, split_options, 'maxpoolsize=foo')
+        self.assertRaises(ConfigurationError, split_options, 'maxpoolsize=5.5')
         self.assert_(split_options, 'maxpoolsize=50')
 
     def test_parse_uri(self):
         self.assertRaises(InvalidURI, parse_uri, "http://foobar.com")
         self.assertRaises(InvalidURI, parse_uri, "http://foo@foobar.com")
-        self.assertRaises(InvalidURI, parse_uri, "mongodb://::1", 27017)
+        self.assertRaises(ConfigurationError,
+                          parse_uri, "mongodb://::1", 27017)
 
         orig = {
             'nodelist': [("localhost", 27017)],

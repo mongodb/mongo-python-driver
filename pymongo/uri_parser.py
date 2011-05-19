@@ -17,6 +17,7 @@
 
 import urllib
 
+from pymongo.common import VALIDATORS, UNSUPPORTED
 from pymongo.errors import (ConfigurationError,
                             InvalidURI,
                             UnsupportedOption)
@@ -122,72 +123,16 @@ def parse_host(entity, default_port=DEFAULT_PORT):
         host, port = parse_ipv6_literal_host(entity, default_port)
     elif entity.find(':') != -1:
         if entity.count(':') > 1:
-            raise InvalidURI("Reserved characters such as ':' must be escaped "
-                             "according RFC 2396. An IPv6 address literal "
-                             "must be enclosed in '[' and ']' according to "
-                             " RFC 2732.")
+            raise ConfigurationError("Reserved characters such as ':' must be "
+                                     "escaped according RFC 2396. An IPv6 "
+                                     "address literal must be enclosed in '[' "
+                                     "and ']' according to RFC 2732.")
         host, port = host.split(':', 1)
     if isinstance(port, basestring):
         if not port.isdigit():
-            raise InvalidURI("Port number must be an integer.")
+            raise ConfigurationError("Port number must be an integer.")
         port = int(port)
     return host, port
-
-
-def validate_connect(option, value):
-    """Validates that the value of 'connect' is 'direct' or
-    'replicaset'.
-    """
-    value = value.lower()
-    if value not in ('direct', 'replicaset'):
-        raise InvalidURI("The value of '%s' must "
-                         "be 'direct' or 'replicaSet'" % (option,))
-    return value
-
-
-def validate_true_false(option, value):
-    """Validates that 'value' is 'true' or 'false'.
-    """
-    if value not in ('true', 'false'):
-        raise InvalidURI("The value of '%s' must be "
-                         "'true' or 'false'" % (option,))
-    return value == 'true'
-
-
-def validate_integer(option, value):
-    """Validates that 'value' is an integer.
-    """
-    if not value.isdigit():
-        raise InvalidURI("The value of '%s' must be "
-                         "an integer." % (option,))
-    return int(value)
-
-
-def noop(dummy, value):
-    """Do nothing..."""
-    return value
-
-
-VALIDATORS = {
-    'connect': validate_connect,
-    'replicaset': noop,
-    'slaveok': validate_true_false,
-    'safe': validate_true_false,
-    'w': validate_integer,
-    'wtimeoutms': validate_integer,
-    'fsync': validate_true_false,
-    'maxpoolsize': validate_integer,
-}
-
-
-UNSUPPORTED = frozenset([
-    'minpoolsize',
-    'waitqueuetimeoutms',
-    'waitqueuemultiple',
-    'connecttimeoutms',
-    'sockettimeoutms'
-])
-
 
 def validate_options(opts):
     """Validates and normalizes options passed in a MongoDB URI.
@@ -205,8 +150,8 @@ def validate_options(opts):
             if opt in UNSUPPORTED:
                 raise UnsupportedOption("%s is not currently "
                                         "supported by pymongo." % (key,))
-            raise InvalidURI("%s is not a "
-                             "recognized MongoDB URI option." % (key,))
+            raise ConfigurationError("%s is not a "
+                                     "recognized MongoDB URI option." % (key,))
         normalized[opt] = validate(key, value)
     return normalized
 
