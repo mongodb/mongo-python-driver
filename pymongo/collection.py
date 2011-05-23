@@ -70,7 +70,7 @@ class Collection(common.BaseObject):
         .. mongodoc:: collections
         """
         super(Collection, self).__init__(slave_okay=database.slave_okay,
-                                         safe=database.slave_okay,
+                                         safe=database.safe,
                                          **(database.get_lasterror_options()))
 
         if not isinstance(name, basestring):

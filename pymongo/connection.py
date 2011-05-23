@@ -293,7 +293,7 @@ class Connection(common.BaseObject):  # TODO support auth for pooling
         self.__port = None
 
         if options:
-            super(Connection, self)._BaseObject__set_options(**options)
+            super(Connection, self)._set_options(**options)
 
         assert isinstance(max_pool_size, int), "max_pool_size must be an int"
         self.__max_pool_size = options.get("maxpoolsize") or max_pool_size

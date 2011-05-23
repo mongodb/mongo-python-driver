@@ -95,11 +95,11 @@ class BaseObject(object):
 
     def __init__(self, **options):
 
-        self._slave_okay = False
-        self._safe = False
+        self.__slave_okay = False
+        self.__safe = False
         self.__safe_opts = {}
 
-        self.__set_options(**options)
+        self._set_options(**options)
 
     def __set_safe_option(self, option, value):
         """Validates and sets getlasterror options for this
@@ -110,9 +110,9 @@ class BaseObject(object):
         else:
             validate = VALIDATORS.get(option, raise_config_error)
             self.__safe_opts[option] = validate(option, value)
-            self._safe = True
+            self.__safe = True
 
-    def __set_options(self, **options):
+    def _set_options(self, **options):
         """Validates and sets all options passed to this object."""
         for option, value in options.iteritems():
             if option in ('slave_okay', 'slaveok'):
@@ -127,11 +127,11 @@ class BaseObject(object):
 
         .. versionadded:: 1.11+
         """
-        return self._slave_okay
+        return self.__slave_okay
 
     def __set_slave_okay(self, value):
         """Property setter for slave_okay"""
-        self.__dict__['_slave_okay'] = validate_boolean('slave_okay', value)
+        self.__slave_okay = validate_boolean('slave_okay', value)
 
     slave_okay = property(__get_slave_okay, __set_slave_okay)
 
@@ -140,11 +140,11 @@ class BaseObject(object):
 
         .. versionadded:: 1.11+
         """
-        return self._safe
+        return self.__safe
 
     def __set_safe(self, value):
         """Property setter for safe"""
-        self.__dict__['_safe'] = validate_boolean('safe', value)
+        self.__safe = validate_boolean('safe', value)
 
     safe = property(__get_safe, __set_safe)
 
