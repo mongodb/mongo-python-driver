@@ -70,6 +70,17 @@ def _closed(sock):
         return True
 
 
+def _partition_node(node):
+    """Split a host:port string returned from mongod/s into
+    a (host, int(port)) pair needed for socket.connect().
+    """
+    idx = node.rfind(':')
+    host, port = node[:idx], int(node[idx + 1:])
+    if host.startswith('['):
+        host = host[1:-1]
+    return host, port
+
+
 class _Pool(threading.local):
     """A simple connection pool.
 
@@ -311,7 +322,7 @@ class Connection(common.BaseObject):  # TODO support auth for pooling
         self.__index_cache = {}
 
         if _connect:
-            self.__find_master()
+            self.__find_node()
 
         if db and username is None:
             warnings.warn("must provide a username and password "
@@ -473,80 +484,66 @@ class Connection(common.BaseObject):  # TODO support auth for pooling
         """
         return self.__max_bson_size
 
-    def __add_hosts_and_get_primary(self, response):
-        # TODO: There may be an issue here with the server
-        # returning v6 address literals as <v6>:port instead
-        # of [<v6>]:port. I still need to investigate and deal
-        # with that.
-        if "hosts" in response:
-            self.__nodes.update([uri_parser.parse_host(h)
-                                 for h in response["hosts"]])
-        if "primary" in response:
-            return uri_parser.parse_host(response["primary"])
-        return False
-
     def __try_node(self, node):
+        """Try to connect to this node and see if it works
+        for our connection type.
+
+        :Parameters:
+         - `node`: The (host, port) pair to try.
+        """
         self.disconnect()
         self.__host, self.__port = node
         try:
             response = self.admin.command("ismaster")
-            self.end_request()
-
-            if "maxBsonObjectSize" in response:
-                self.__max_bson_size = response["maxBsonObjectSize"]
-
-            # If __slave_okay is True and we've only been given one node
-            # assume this should be a direct connection and don't try to
-            # discover other nodes.
-            if len(self.__nodes) == 1 and self.slave_okay:
-                if response["ismaster"]:
-                    return True
-                return False
-
-            primary = self.__add_hosts_and_get_primary(response)
-            if response["ismaster"]:
-                return True
-            return primary
         except:
-            self.end_request()
             return None
 
-    def __find_master(self):
-        """Create a new socket and use it to figure out who the master is.
+        self.end_request()
+
+        if "maxBsonObjectSize" in response:
+            self.__max_bson_size = response["maxBsonObjectSize"]
+
+        # Replica Set?
+        if len(self.__nodes) > 1:
+            if "hosts" in response:
+                self.__nodes.update([_partition_node(h)
+                                     for h in response["hosts"]])
+            if response["ismaster"]:
+                return node
+            elif "primary" in response:
+                candidate = _partition_node(response["primary"])
+                return self.__try_node(candidate)
+            return None
+
+        # Direct connection
+        if response.get("arbiterOnly", False):
+            return None
+        return node
+
+    def __find_node(self):
+        """Find a host, port pair suitable for our connection type.
+
+        If only one host was supplied to __init__ see if we can connect
+        to it. Don't check if the host is a master/primary so we can make
+        a direct connection to read from a slave.
+
+        If more than one host was supplied treat them as a seed list for
+        connecting to a replica set. Try to find the primary and fail if
+        we can't. Possibly updates any replSet information on success.
+
+        If the list of hosts is not a seed list for a replica set the
+        behavior is still the same. We iterate through the list trying
+        to find a host we can send write operations to.
+
+        In either case a connection to an arbiter will never succeed.
 
         Sets __host and __port so that :attr:`host` and :attr:`port`
-        will return the address of the master. Also (possibly) updates
-        any replSet information.
+        will return the address of the connected host.
         """
-        # Special case the first node to try to get the primary or any
-        # additional hosts from a replSet:
-        first = iter(self.__nodes).next()
-
-        primary = self.__try_node(first)
-        if primary is True:
-            return first
-
-        # no network error
-        if self.slave_okay and primary is not None:
-            return first
-
-        # Wasn't the first node, but we got a primary - let's try it:
-        tried = [first]
-        if primary:
-            if self.__try_node(primary) is True:
-                return primary
-            tried.append(primary)
-
-        nodes = self.__nodes - set(tried)
-
-        # Just scan
-        # TODO parallelize these to minimize connect time?
-        for node in nodes:
-            if self.__try_node(node) is True:
+        for candidate in self.__nodes:
+            node = self.__try_node(candidate)
+            if node:
                 return node
-
-        # Clear the connection pool so we we don't try
-        # running queries against a secondary without slave_okay.
         self.disconnect()
         raise AutoReconnect("could not find master/primary")
 
@@ -563,7 +560,7 @@ class Connection(common.BaseObject):  # TODO support auth for pooling
         """
         host, port = (self.__host, self.__port)
         if host is None or port is None:
-            host, port = self.__find_master()
+            host, port = self.__find_node()
 
         try:
             sock = self.__pool.get_socket(host, port)
