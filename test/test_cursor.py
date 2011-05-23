@@ -664,6 +664,12 @@ class TestCursor(unittest.TestCase):
         self.assertEqual(50, len(list(self.db.test.find()
                                       .max_scan(90).max_scan(50))))
 
+    def test_with_statement(self):
+        c1  = self.db.test.find()
+        with self.db.test.find() as c2:
+            self.assertTrue(c2.alive)
+        self.assertTrue(c1.alive)
+        self.assertFalse(c2.alive)
 
 if __name__ == "__main__":
     unittest.main()
