@@ -303,10 +303,6 @@ class Connection(common.BaseObject):  # TODO support auth for pooling
         if self.__max_pool_size < 0:
             raise ValueError("the maximum pool size must be >= 0")
 
-        if self.slave_okay and len(self.__nodes) > 1:
-            raise ConfigurationError("cannot specify slave_okay for a paired "
-                                     "or replica set connection")
-
         # TODO - Support using other options like w and fsync from URI
         self.__options = options
         # TODO - Support setting the collection from URI like the Java driver
