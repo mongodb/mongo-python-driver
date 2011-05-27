@@ -35,7 +35,8 @@ class SON(dict):
     ===================================  =============  ===================
     None                                 null           both
     bool                                 boolean        both
-    int                                  number (int)   both
+    int [#int]_                          int32 / int64  py -> bson
+    long                                 int64          both
     float                                number (real)  both
     string                               string         py -> bson
     unicode                              string         both
@@ -56,6 +57,9 @@ class SON(dict):
     `bson.binary.Binary`. Otherwise it will be saved as a BSON string
     and retrieved as unicode.
 
+    .. [#int] A Python int will be saved as a BSON int32 or BSON int64 depending
+       on its size. A BSON int32 will always decode to a Python int. A BSON int64
+       will always decode to a Python long.
     .. [#dt] datetime.datetime instances will be rounded to the nearest
        millisecond when saved
     .. [#dt2] all datetime.datetime instances are treated as *naive*. clients
