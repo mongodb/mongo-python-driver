@@ -97,8 +97,9 @@ def parse_ipv6_literal_host(entity, default_port):
                           specified in entity.
     """
     if entity.find(']') == -1:
-        raise InvalidURI("an IPv6 address literal must be "
-                         "enclosed in '[' and ']' according to RFC 2732.")
+        raise ConfigurationError("an IPv6 address literal must be "
+                                 "enclosed in '[' and ']' according "
+                                 "to RFC 2732.")
     i = entity.find(']:')
     if i == -1:
         return entity[1:-1], default_port
