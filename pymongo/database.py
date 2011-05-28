@@ -391,6 +391,11 @@ class Database(common.BaseObject):
 
         return result
 
+    def current_op(self):
+        """Get information on operations currently running.
+        """
+        return self['$cmd.sys.inprog'].find_one()
+
     def profiling_level(self):
         """Get the database's current profiling level.
 
