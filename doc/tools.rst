@@ -25,10 +25,20 @@ needs. Even if you eventually come to the decision to use one of these
 layers, the time spent working directly with the driver will have
 increased your understanding of how MongoDB actually works.
 
+Django
+  The `Django <http://github.com/FlaPer87/django/>`_ fork
+  adds nosql support to Django and implements a mongodb backend 
+  that handles mongodb databases. There are 2 repos being used
+  for this fork, the one in the first link and this `Django <http://github.com/aparo/django>`_.
+  Both repositories are synchronized and have the same code.
+
 MongoKit
   The `MongoKit <http://github.com/namlook/mongokit>`_ framework
   is an ORM-like layer on top of PyMongo. There is also a MongoKit
   `google group <http://groups.google.com/group/mongokit>`_.
+
+DjangoMongodbEngine
+  `A MongoDB backend standing outside django.
 
 Ming
   `Ming <http://merciless.sourceforge.net/>`_ (the Merciless) is a
