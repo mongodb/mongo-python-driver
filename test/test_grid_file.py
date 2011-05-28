@@ -27,6 +27,8 @@ import sys
 import unittest
 sys.path[0:0] = [""]
 
+from nose.plugins.skip import SkipTest
+
 from bson.objectid import ObjectId
 from gridfs.grid_file import (_SEEK_CUR,
                               _SEEK_END,
@@ -67,6 +69,18 @@ class TestGridFile(unittest.TestCase):
 
         g = GridOut(self.db.fs, f._id)
         self.assertEqual("", g.read())
+
+    if sys.version_info >= (2, 6):
+        # Hack to make this not be a syntax under Python < 2.6
+        exec '''def test_context_manager(self):
+            with GridIn(self.db.fs, filename='foo') as infile:
+                pass
+            self.assertTrue(infile._closed)
+            with GridOut(self.db.fs, infile._id) as outfile:
+                pass'''
+    else:
+        def test_context_manager(self):
+            raise SkipTest()
 
     def test_md5(self):
         f = GridIn(self.db.fs)
