@@ -35,6 +35,7 @@ access:
 
 import datetime
 import os
+import sys
 import select
 import socket
 import struct
@@ -63,7 +64,12 @@ _CONNECT_TIMEOUT = 20.0
 def _closed(sock):
     """Return True if we know socket has been closed, False otherwise.
     """
+    # Jython requires the socket to be in a non-blocking mode
+    if sys.platform.startswith("java"):
+        sock.setblocking(0)
     rd, _, _ = select.select([sock], [], [], 0)
+    if sys.platform.startswith("java"):
+        sock.setblocking(1)
     try:
         return len(rd) and sock.recv() == ""
     except:
