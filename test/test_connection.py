@@ -430,6 +430,22 @@ class TestConnection(unittest.TestCase):
         c._Connection__nodes = set([('localhost', 27017)])
         self.assert_(find_one, c)
 
+    def test_fsync_lock_unlock(self):
+        c = get_connection()
+        self.assertFalse(c.is_locked)
+        c.fsync(async=True)
+        self.assertFalse(c.is_locked)
+        c.fsync(lock=True)
+        self.assertTrue(c.is_locked)
+        locked = True
+        c.unlock()
+        for _ in xrange(5):
+            locked = c.is_locked
+            if not locked:
+                break
+            time.sleep(1)
+        self.assertFalse(locked)
+
 
 if __name__ == "__main__":
     unittest.main()

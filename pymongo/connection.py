@@ -928,6 +928,30 @@ class Connection(common.BaseObject):  # TODO support auth for pooling
 
         return self.admin.command("copydb", **command)
 
+    @property
+    def is_locked(self):
+        """Is this mongod locked? While locked, all write operations
+        are blocked, although read operations are still allowed.
+        Use :meth:`~pymongo.connection.Connection.unlock` to unlock.
+        """
+        ops = self.admin.current_op()
+        return bool(ops.get('fsyncLock', 0))
+
+    def fsync(self, **kwargs):
+        """Flush all pending writes to datafiles.
+        
+        :Parameters:
+            -`**kwargs`: Optional parameters are supported through
+                         keyword arguments:
+                         async (bool): Block while synchronizing?
+                         lock (bool): Lock this mongod?
+        """
+        self.admin.command("fsync", **kwargs)
+
+    def unlock(self):
+        """Unlock this mongod."""
+        self.admin['$cmd'].sys.unlock.find_one() 
+
     def __iter__(self):
         return self
 
