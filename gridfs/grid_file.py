@@ -467,11 +467,21 @@ class GridOut(object):
         """
         return GridOutIterator(self, self.__chunks)
 
-    def __enter__(self):
-        """ Makes it possible to use :class:`GridOut` files as context manager """
+    def close(self):
+        """Make GridOut more generically file-like."""
+        pass
 
-    def __exit__(self, *exc_info):
-        """ Makes it possible to use :class:`GridOut` files as context manager """
+    def __enter__(self):
+        """Makes it possible to use :class:`GridOut` files
+        with the context manager protocol.
+        """
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Makes it possible to use :class:`GridOut` files
+        with the context manager protocol.
+        """
+        return False
 
 
 class GridOutIterator(object):
