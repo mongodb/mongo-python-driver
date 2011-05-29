@@ -665,11 +665,24 @@ class TestCursor(unittest.TestCase):
                                       .max_scan(90).max_scan(50))))
 
     def test_with_statement(self):
+        if sys.version_info < (2, 6):
+            raise SkipTest()
+
+        self.db.drop_collection("test")
+        for _ in range(100):
+            self.db.test.insert({})
+
         c1  = self.db.test.find()
-        with self.db.test.find() as c2:
-            self.assertTrue(c2.alive)
+        exec """
+with self.db.test.find() as c2:
+    self.assertTrue(c2.alive)
+self.assertFalse(c2.alive)
+
+with self.db.test.find() as c2:
+    self.assertEqual(100, len(list(c2)))
+self.assertFalse(c2.alive)
+"""
         self.assertTrue(c1.alive)
-        self.assertFalse(c2.alive)
 
 if __name__ == "__main__":
     unittest.main()
