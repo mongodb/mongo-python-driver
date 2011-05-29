@@ -271,16 +271,20 @@ class GridIn(object):
                     raise TypeError("must specify an encoding for file in "
                                     "order to write unicode")
 
-            while data:
+            data_len = len(data)
+            data = StringIO(data)
+            while True:
                 space = self.chunk_size - self._buffer.tell()
+                to_write = data.read(space)
 
-                if len(data) <= space:
-                    self._buffer.write(data)
+                if not to_write:
+                    break
+                elif data_len <= space:
+                    self._buffer.write(to_write)
                     break
                 else:
-                    self._buffer.write(data[:space])
+                    self._buffer.write(to_write)
                     self.__flush_buffer()
-                    data = data[space:]
 
     def writelines(self, sequence):
         """Write a sequence of strings to the file.
