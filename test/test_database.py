@@ -38,7 +38,8 @@ from pymongo.errors import (CollectionInvalid,
                             InvalidOperation,
                             OperationFailure)
 from pymongo.son_manipulator import (AutoReference,
-                                     NamespaceInjector)
+                                     NamespaceInjector,
+                                     ObjectIdShuffler)
 from test import version
 from test.test_connection import get_connection
 
@@ -521,6 +522,24 @@ class TestDatabase(unittest.TestCase):
 
         del db.system_js.foo
         self.assertEqual(["bar"], db.system_js.list())
+
+    def test_manipulator_properties(self):
+        db = self.connection.foo
+        self.assertEquals(['ObjectIdInjector'], db.incoming_manipulators)
+        self.assertEquals([], db.incoming_copying_manipulators)
+        self.assertEquals([], db.outgoing_manipulators)
+        self.assertEquals([], db.outgoing_copying_manipulators)
+        db.add_son_manipulator(AutoReference(db))
+        db.add_son_manipulator(NamespaceInjector())
+        db.add_son_manipulator(ObjectIdShuffler())
+        self.assertEqual(2, len(db.incoming_manipulators))
+        for name in db.incoming_manipulators:
+            self.assertTrue(name in ('ObjectIdInjector', 'NamespaceInjector'))
+        self.assertEqual(2, len(db.incoming_copying_manipulators))
+        for name in db.incoming_copying_manipulators:
+            self.assertTrue(name in ('ObjectIdShuffler', 'AutoReference'))
+        self.assertEquals([], db.outgoing_manipulators)
+        self.assertEquals(['AutoReference'], db.outgoing_copying_manipulators)
 
 
 if __name__ == "__main__":

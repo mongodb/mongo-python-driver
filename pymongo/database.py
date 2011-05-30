@@ -128,6 +128,46 @@ class Database(common.BaseObject):
         """
         return self.__name
 
+    @property
+    def incoming_manipulators(self):
+        """List all incoming SON manipulators
+        installed on this instance.
+
+        .. versionadded:: 1.11+
+        """
+        return [manipulator.__class__.__name__
+                for manipulator in self.__incoming_manipulators]
+
+    @property
+    def incoming_copying_manipulators(self):
+        """List all incoming SON copying manipulators
+        installed on this instance.
+
+        .. versionadded:: 1.11+
+        """
+        return [manipulator.__class__.__name__
+                for manipulator in self.__incoming_copying_manipulators]
+
+    @property
+    def outgoing_manipulators(self):
+        """List all outgoing SON manipulators
+        installed on this instance.
+
+        .. versionadded:: 1.11+
+        """
+        return [manipulator.__class__.__name__
+                for manipulator in self.__outgoing_manipulators]
+
+    @property
+    def outgoing_copying_manipulators(self):
+        """List all outgoing SON copying manipulators
+        installed on this instance.
+
+        .. versionadded:: 1.11+
+        """
+        return [manipulator.__class__.__name__
+                for manipulator in self.__outgoing_copying_manipulators]
+
     def __cmp__(self, other):
         if isinstance(other, Database):
             return cmp((self.__connection, self.__name),
