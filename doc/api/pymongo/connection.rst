@@ -24,6 +24,7 @@
       .. autoattribute:: tz_aware
       .. autoattribute:: slave_okay
       .. autoattribute:: safe
+      .. autoattribute:: is_locked
       .. automethod:: get_lasterror_options
       .. automethod:: set_lasterror_options
       .. automethod:: unset_lasterror_options
@@ -36,3 +37,5 @@
       .. automethod:: close_cursor
       .. automethod:: kill_cursors
       .. automethod:: set_cursor_manager
+      .. automethod:: fsync
+      .. automethod:: unlock
