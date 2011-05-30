@@ -946,8 +946,13 @@ class Connection(common.BaseObject):  # TODO support auth for pooling
 
             Optional parameters can be passed as keyword arguments:
 
-            - `async`: If True don't block while synchronizing.
             - `lock`: If True lock the server to disallow writes.
+            - `async`: If True don't block while synchronizing.
+
+            .. warning:: `async` and `lock` can not be used together.
+
+            .. warning:: `async` is not supported on Windows and will
+                         raise an exception on that platform.
 
         .. versionadded:: 1.11+
         """

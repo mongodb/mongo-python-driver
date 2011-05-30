@@ -433,8 +433,10 @@ class TestConnection(unittest.TestCase):
     def test_fsync_lock_unlock(self):
         c = get_connection()
         self.assertFalse(c.is_locked)
-        c.fsync(async=True)
-        self.assertFalse(c.is_locked)
+        # async flushing not supported on windows...
+        if sys.platform not in ('cygwin', 'win32'):
+            c.fsync(async=True)
+            self.assertFalse(c.is_locked)
         c.fsync(lock=True)
         self.assertTrue(c.is_locked)
         locked = True
