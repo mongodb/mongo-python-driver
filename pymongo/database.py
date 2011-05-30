@@ -705,12 +705,21 @@ class SystemJS(object):
     def __setattr__(self, name, code):
         self._db.system.js.save({"_id": name, "value": Code(code)}, safe=True)
 
+    def __setitem__(self, name, code):
+        self.__setattr__(name, code)
+
     def __delattr__(self, name):
         self._db.system.js.remove({"_id": name}, safe=True)
+
+    def __delitem__(self, name):
+        self.__delattr__(name)
 
     def __getattr__(self, name):
         return lambda *args: self._db.eval("function() { return %s.apply(this,"
                                            "arguments); }" % name, *args)
+
+    def __getitem__(self, name):
+        return self.__getattr__(name)
 
     def list(self):
         """Get a list of the names of the functions stored in this database.

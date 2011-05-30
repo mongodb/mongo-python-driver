@@ -494,9 +494,16 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual('add', db.system.js.find_one()['_id'])
         self.assertEqual(1, db.system.js.count())
         self.assertEqual(6, db.system_js.add(1, 5))
-
         del db.system_js.add
         self.assertEqual(0, db.system.js.count())
+        
+        db.system_js['add'] = "function(a, b) { return a + b; }"
+        self.assertEqual('add', db.system.js.find_one()['_id'])
+        self.assertEqual(1, db.system.js.count())
+        self.assertEqual(6, db.system_js['add'](1, 5))
+        del db.system_js['add']
+        self.assertEqual(0, db.system.js.count())
+        
         if version.at_least(db.connection, (1, 3, 2, -1)):
             self.assertRaises(OperationFailure, db.system_js.add, 1, 5)
 
