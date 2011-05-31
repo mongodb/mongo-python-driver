@@ -182,9 +182,19 @@ class TestDatabase(unittest.TestCase):
         info = db.profiling_info()
         self.assert_(isinstance(info, list))
         self.assert_(len(info) >= 1)
-        self.assert_(isinstance(info[0]["info"], basestring))
+        # These basically clue us in to server changes.
+        if version.at_least(db.connection, (1, 9, 1, -1)):
+            self.assert_(isinstance(info[0]['responseLength'], int))
+            self.assert_(isinstance(info[0]['millis'], int))
+            self.assert_(isinstance(info[0]['client'], basestring))
+            self.assert_(isinstance(info[0]['user'], basestring))
+            self.assert_(isinstance(info[0]['ntoreturn'], int))
+            self.assert_(isinstance(info[0]['ns'], basestring))
+            self.assert_(isinstance(info[0]['op'], basestring))
+        else:
+            self.assert_(isinstance(info[0]["info"], basestring))
+            self.assert_(isinstance(info[0]["millis"], float))
         self.assert_(isinstance(info[0]["ts"], datetime.datetime))
-        self.assert_(isinstance(info[0]["millis"], float))
 
     def test_iteration(self):
         db = self.connection.pymongo_test
