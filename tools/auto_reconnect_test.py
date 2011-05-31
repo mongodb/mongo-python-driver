@@ -25,6 +25,7 @@ from pymongo.connection import Connection
 db = Connection.paired(("localhost", 27018)).test
 db.test.remove({})
 
+
 class Something(threading.Thread):
     def run(self):
         while True:

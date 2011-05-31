@@ -72,7 +72,8 @@ class Update(threading.Thread):
             error = True
 
             try:
-                self.collection.update({"test": "unique"}, {"$set": {"test": "update"}}, safe=True)
+                self.collection.update({"test": "unique"},
+                                       {"$set": {"test": "update"}}, safe=True)
                 error = False
             except:
                 if not self.expect_exception:

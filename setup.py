@@ -20,7 +20,7 @@ from distutils.errors import DistutilsPlatformError, DistutilsExecError
 from distutils.core import Extension
 
 # Remember to change in pymongo/__init__.py as well!
-version = "1.10+"
+version = "1.11+"
 
 f = open("README.rst")
 try:
@@ -62,7 +62,7 @@ class doc(Command):
                 pass
 
         if has_subprocess:
-            status = subprocess.call(["sphinx-build", "-b", mode, "doc", path])
+            status = subprocess.call(["sphinx-build", "-E", "-b", mode, "doc", path])
 
             if status:
                 raise RuntimeError("documentation step '%s' failed" % mode)
@@ -79,12 +79,12 @@ Please ask in the user forums for help.
 
 
 if sys.platform == 'win32' and sys.version_info > (2, 6):
-   # 2.6's distutils.msvc9compiler can raise an IOError when failing to
-   # find the compiler
-   build_errors = (CCompilerError, DistutilsExecError, DistutilsPlatformError,
-                 IOError)
+    # 2.6's distutils.msvc9compiler can raise an IOError when failing to
+    # find the compiler
+    build_errors = (CCompilerError, DistutilsExecError,
+                    DistutilsPlatformError, IOError)
 else:
-   build_errors = (CCompilerError, DistutilsExecError, DistutilsPlatformError)
+    build_errors = (CCompilerError, DistutilsExecError, DistutilsPlatformError)
 
 
 class custom_build_ext(build_ext):
@@ -99,6 +99,14 @@ WARNING: %s could not
 be compiled. No C extensions are essential for PyMongo to run,
 although they do result in significant speed improvements.
 
+If you are seeing this message on Linux you probably need to
+install GCC and/or the Python development package for your
+version of Python. Python development package names for popular
+Linux distributions include:
+
+RHEL/CentOS: python-devel
+Debian/Ubuntu: python-dev
+
 %s
 **************************************************************
 """
@@ -110,14 +118,17 @@ although they do result in significant speed improvements.
             print e
             print self.warning_message % ("Extension modules",
                                           "There was an issue with your "
-                                          "platform configuration - see above.")
+                                          "platform configuration "
+                                          "- see above.")
 
     def build_extension(self, ext):
         if sys.version_info[:3] >= (2, 4, 0):
             try:
                 build_ext.build_extension(self, ext)
-            except build_errors:
-                print self.warning_message % ("The %s extension module" % ext.name,
+            except build_errors, e:
+                print e
+                print self.warning_message % ("The %s extension "
+                                              "module" % ext.name,
                                               "Above is the ouput showing how "
                                               "the compilation failed.")
         else:

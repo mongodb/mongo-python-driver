@@ -235,7 +235,7 @@ static int _write_element_to_buffer(buffer_t buffer, int type_byte, PyObject* va
         *(buffer_get_buffer(buffer) + type_byte) = 0x08;
         return buffer_write_bytes(buffer, &c, 1);
     }
-    else if (PyInt_Check(value) || PyLong_Check(value)) {
+    else if (PyInt_Check(value)) {
         const long long_value = PyInt_AsLong(value);
         const int int_value = (int)long_value;
         if (PyErr_Occurred() || long_value != int_value) { /* Overflow */
@@ -252,6 +252,15 @@ static int _write_element_to_buffer(buffer_t buffer, int type_byte, PyObject* va
         }
         *(buffer_get_buffer(buffer) + type_byte) = 0x10;
         return buffer_write_bytes(buffer, (const char*)&int_value, 4);
+    } else if (PyLong_Check(value)) {
+        const long long long_long_value = PyLong_AsLongLong(value);
+        if (PyErr_Occurred()) { /* Overflow */
+            PyErr_SetString(PyExc_OverflowError,
+                            "MongoDB can only handle up to 8-byte ints");
+            return 0;
+        }
+        *(buffer_get_buffer(buffer) + type_byte) = 0x12;
+        return buffer_write_bytes(buffer, (const char*)&long_long_value, 8);
     } else if (PyFloat_Check(value)) {
         const double d = PyFloat_AsDouble(value);
         *(buffer_get_buffer(buffer) + type_byte) = 0x01;

@@ -20,8 +20,10 @@ from sphinx import addnodes
 from sphinx.util.compat import (Directive,
                                 make_admonition)
 
+
 class mongodoc(nodes.Admonition, nodes.Element):
     pass
+
 
 class mongoref(nodes.reference):
     pass
@@ -62,8 +64,8 @@ class MongodocDirective(Directive):
         return make_admonition(mongodoc, self.name,
                                ['See general MongoDB documentation'],
                                self.options, self.content, self.lineno,
-                               self.content_offset, self.block_text, self.state,
-                               self.state_machine)
+                               self.content_offset, self.block_text,
+                               self.state, self.state_machine)
 
 
 def process_mongodoc_nodes(app, doctree, fromdocname):

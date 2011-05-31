@@ -79,7 +79,16 @@ class DBRef(object):
         return self.__database
 
     def __getattr__(self, key):
-        return self.__kwargs[key]
+        try:
+            return self.__kwargs[key]
+        except KeyError:
+            raise AttributeError(key)
+
+    # Have to provide __setstate__ to avoid
+    # infinite recursion since we override
+    # __getattr__.
+    def __setstate__(self, state):
+        self.__dict__.update(state)
 
     def as_doc(self):
         """Get the SON document representation of this DBRef.
@@ -114,8 +123,8 @@ class DBRef(object):
 
         .. versionadded:: 1.1
         """
-        return hash((self.__collection, self.__id,
-                     self.__database, self.__kwargs))
+        return hash((self.__collection, self.__id, self.__database,
+                     tuple(sorted(self.__kwargs.items()))))
 
     def __deepcopy__(self, memo):
         """Support function for `copy.deepcopy()`.

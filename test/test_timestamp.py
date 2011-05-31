@@ -51,10 +51,10 @@ class TestTimestamp(unittest.TestCase):
         self.assert_(Timestamp(0, 0))
 
     def test_equality(self):
-        t = Timestamp(1,1)
-        self.assertNotEqual(t, Timestamp(0,1))
-        self.assertNotEqual(t, Timestamp(1,0))
-        self.assertEqual(t, Timestamp(1,1))
+        t = Timestamp(1, 1)
+        self.assertNotEqual(t, Timestamp(0, 1))
+        self.assertNotEqual(t, Timestamp(1, 0))
+        self.assertEqual(t, Timestamp(1, 1))
 
     def test_repr(self):
         t = Timestamp(0, 0)

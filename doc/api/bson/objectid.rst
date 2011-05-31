@@ -4,7 +4,7 @@
 .. automodule:: bson.objectid
    :synopsis: Tools for working with MongoDB ObjectIds
 
-   .. autoclass:: pymongo.objectid.ObjectId([oid=None])
+   .. autoclass:: bson.objectid.ObjectId([oid=None])
       :members:
 
       .. describe:: str(o)

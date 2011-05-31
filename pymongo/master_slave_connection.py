@@ -15,12 +15,15 @@
 """Master-Slave connection to Mongo.
 
 Performs all writes to Master instance and distributes reads among all
-instances."""
+slaves. Reads are tried on each slave in turn until the read succeeds
+or all slaves failed.
+"""
 
 import random
 
 from pymongo.connection import Connection
 from pymongo.database import Database
+from pymongo.errors import AutoReconnect
 
 
 class MasterSlaveConnection(object):
@@ -84,6 +87,19 @@ class MasterSlaveConnection(object):
         """
         return True
 
+    def disconnect(self):
+        """Disconnect from MongoDB.
+
+        Disconnecting will call disconnect on all master and slave
+        connections.
+
+        .. seealso:: Module :mod:`~pymongo.connection`
+        .. versionadded:: 1.10.1
+        """
+        self.__master.disconnect()
+        for slave in self.__slaves:
+            slave.disconnect()
+
     def set_cursor_manager(self, manager_class):
         """Set the cursor manager for this connection.
 
@@ -138,19 +154,26 @@ class MasterSlaveConnection(object):
                         self.__slaves[_connection_to_use]
                         ._send_message_with_response(message, **kwargs))
 
-        # for now just load-balance randomly among slaves only...
-        connection_id = random.randrange(0, len(self.__slaves))
-
         # _must_use_master is set for commands, which must be sent to the
         # master instance. any queries in a request must be sent to the
         # master since that is where writes go.
-        if _must_use_master or self.__in_request or connection_id == -1:
+        if _must_use_master or self.__in_request:
             return (-1, self.__master._send_message_with_response(message,
                                                                   **kwargs))
 
-        slaves = self.__slaves[connection_id]
-        return (connection_id, slaves._send_message_with_response(message,
-                                                                  **kwargs))
+        # Iterate through the slaves randomly until we have success. Raise
+        # reconnect if they all fail.
+        for connection_id in random.sample(range(0,
+                                                 len(self.__slaves)),
+                                                 len(self.__slaves)):
+            try:
+                slave = self.__slaves[connection_id]
+                return (connection_id,
+                        slave._send_message_with_response(message, **kwargs))
+            except AutoReconnect:
+                pass
+
+        raise AutoReconnect("failed to connect to slaves")
 
     def start_request(self):
         """Start a "request".

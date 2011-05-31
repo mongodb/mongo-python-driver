@@ -90,7 +90,6 @@ class TestGridfs(unittest.TestCase):
         self.assertEqual("foo", oid)
         self.assertEqual("hello world", self.fs.get("foo").read())
 
-
     def test_list(self):
         self.assertEqual([], self.fs.list())
         self.fs.put("hello world")
@@ -113,7 +112,7 @@ class TestGridfs(unittest.TestCase):
         self.assertEqual(0, raw["length"])
         self.assertEqual(oid, raw["_id"])
         self.assert_(isinstance(raw["uploadDate"], datetime.datetime))
-        self.assertEqual(256*1024, raw["chunkSize"])
+        self.assertEqual(256 * 1024, raw["chunkSize"])
         self.assert_(isinstance(raw["md5"], basestring))
 
     def test_alt_collection(self):
@@ -180,6 +179,30 @@ class TestGridfs(unittest.TestCase):
         self.fs.delete(a)
         self.assertRaises(NoFile, self.fs.get_last_version, "test")
 
+    def test_get_last_version_with_metadata(self):
+        a = self.fs.put("foo", filename="test", author="author")
+        time.sleep(0.01)
+        b = self.fs.put("bar", filename="test", author="author")
+
+        self.assertEqual("bar", self.fs.get_last_version(author="author").read())
+        self.fs.delete(b)
+        self.assertEqual("foo", self.fs.get_last_version(author="author").read())
+        self.fs.delete(a)
+
+        a = self.fs.put("foo", filename="test", author="author1")
+        time.sleep(0.01)
+        b = self.fs.put("bar", filename="test", author="author2")
+
+        self.assertEqual("foo", self.fs.get_last_version(author="author1").read())
+        self.assertEqual("bar", self.fs.get_last_version(author="author2").read())
+        self.assertEqual("bar", self.fs.get_last_version(filename="test").read())
+
+        self.assertRaises(NoFile, self.fs.get_last_version, author="author3")
+        self.assertRaises(NoFile, self.fs.get_last_version, filename="nottest", author="author1")
+
+        self.fs.delete(a)
+        self.fs.delete(b)
+
     def test_get_version(self):
         self.fs.put("foo", filename="test")
         time.sleep(0.01)
@@ -198,6 +221,28 @@ class TestGridfs(unittest.TestCase):
 
         self.assertRaises(NoFile, self.fs.get_version, "test", 3)
         self.assertRaises(NoFile, self.fs.get_version, "test", -4)
+
+    def test_get_version_with_metadata(self):
+        a = self.fs.put("foo", filename="test", author="author1")
+        time.sleep(0.01)
+        b = self.fs.put("bar", filename="test", author="author1")
+        time.sleep(0.01)
+        c = self.fs.put("baz", filename="test", author="author2")
+
+        self.assertEqual("foo", self.fs.get_version(filename="test", author="author1", version=-2).read())
+        self.assertEqual("bar", self.fs.get_version(filename="test", author="author1", version=-1).read())
+        self.assertEqual("foo", self.fs.get_version(filename="test", author="author1", version=0).read())
+        self.assertEqual("bar", self.fs.get_version(filename="test", author="author1", version=1).read())
+        self.assertEqual("baz", self.fs.get_version(filename="test", author="author2", version=0).read())
+        self.assertEqual("baz", self.fs.get_version(filename="test", version=-1).read())
+        self.assertEqual("baz", self.fs.get_version(filename="test", version=2).read())
+
+        self.assertRaises(NoFile, self.fs.get_version, filename="test", author="author3")
+        self.assertRaises(NoFile, self.fs.get_version, filename="test", author="author1", version=2)
+
+        self.fs.delete(a)
+        self.fs.delete(b)
+        self.fs.delete(c)
 
     def test_put_filelike(self):
         oid = self.fs.put(StringIO("hello world"), chunk_size=1)

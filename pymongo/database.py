@@ -19,7 +19,7 @@ import warnings
 from bson.code import Code
 from bson.dbref import DBRef
 from bson.son import SON
-from pymongo import helpers
+from pymongo import common, helpers
 from pymongo.collection import Collection
 from pymongo.errors import (CollectionInvalid,
                             InvalidName,
@@ -39,7 +39,7 @@ def _check_name(name):
                               "character %r" % invalid_char)
 
 
-class Database(object):
+class Database(common.BaseObject):
     """A Mongo database.
     """
 
@@ -58,6 +58,10 @@ class Database(object):
 
         .. mongodoc:: databases
         """
+        super(Database, self).__init__(slave_okay=connection.slave_okay,
+                                       safe=connection.safe,
+                                       **(connection.get_lasterror_options()))
+
         if not isinstance(name, basestring):
             raise TypeError("name must be an instance of basestring")
 
@@ -71,7 +75,6 @@ class Database(object):
         self.__outgoing_manipulators = []
         self.__outgoing_copying_manipulators = []
         self.add_son_manipulator(ObjectIdInjector())
-        self.__system_js = SystemJS(self)
 
     def add_son_manipulator(self, manipulator):
         """Add a new son manipulator to this database.
@@ -104,7 +107,7 @@ class Database(object):
 
         .. versionadded:: 1.5
         """
-        return self.__system_js
+        return SystemJS(self)
 
     @property
     def connection(self):
@@ -124,6 +127,46 @@ class Database(object):
            ``name`` is now a property rather than a method.
         """
         return self.__name
+
+    @property
+    def incoming_manipulators(self):
+        """List all incoming SON manipulators
+        installed on this instance.
+
+        .. versionadded:: 1.11+
+        """
+        return [manipulator.__class__.__name__
+                for manipulator in self.__incoming_manipulators]
+
+    @property
+    def incoming_copying_manipulators(self):
+        """List all incoming SON copying manipulators
+        installed on this instance.
+
+        .. versionadded:: 1.11+
+        """
+        return [manipulator.__class__.__name__
+                for manipulator in self.__incoming_copying_manipulators]
+
+    @property
+    def outgoing_manipulators(self):
+        """List all outgoing SON manipulators
+        installed on this instance.
+
+        .. versionadded:: 1.11+
+        """
+        return [manipulator.__class__.__name__
+                for manipulator in self.__outgoing_manipulators]
+
+    @property
+    def outgoing_copying_manipulators(self):
+        """List all outgoing SON copying manipulators
+        installed on this instance.
+
+        .. versionadded:: 1.11+
+        """
+        return [manipulator.__class__.__name__
+                for manipulator in self.__outgoing_copying_manipulators]
 
     def __cmp__(self, other):
         if isinstance(other, Database):
@@ -323,11 +366,32 @@ class Database(object):
 
         self.command("drop", unicode(name), allowable_errors=["ns not found"])
 
-    def validate_collection(self, name_or_collection):
+    def validate_collection(self, name_or_collection,
+                            scandata=False, full=False):
         """Validate a collection.
 
-        Returns a string of validation info. Raises CollectionInvalid if
+        Returns a dict of validation info. Raises CollectionInvalid if
         validation fails.
+
+        With MongoDB < 1.9 the result dict will include a `result` key
+        with a string value that represents the validation results. With
+        MongoDB >= 1.9 the `result` key no longer exists and the results
+        are split into individual fields in the result dict.
+
+        :Parameters:
+            `name_or_collection`: A Collection object or the name of a
+                                  collection to validate.
+            `scandata`: Do extra checks beyond checking the overall
+                        structure of the collection.
+            `full`: Have the server do a more thorough scan of the
+                    collection. Use with `scandata` for a thorough scan
+                    of the structure of the collection and the individual
+                    documents. Ignored in MongoDB versions before 1.9.
+
+        .. versionchanged:: 1.11
+           validate_collection previously returned a string.
+        .. versionadded:: 1.11
+           Added `scandata` and `full` options.
         """
         name = name_or_collection
         if isinstance(name, Collection):
@@ -337,12 +401,40 @@ class Database(object):
             raise TypeError("name_or_collection must be an instance of "
                             "(Collection, str, unicode)")
 
-        result = self.command("validate", unicode(name))
+        result = self.command("validate", unicode(name),
+                              scandata=scandata, full=full)
 
-        info = result["result"]
-        if info.find("exception") != -1 or info.find("corrupt") != -1:
-            raise CollectionInvalid("%s invalid: %s" % (name, info))
-        return info
+        valid = True
+        # Pre 1.9 results
+        if "result" in result:
+            info = result["result"]
+            if info.find("exception") != -1 or info.find("corrupt") != -1:
+                raise CollectionInvalid("%s invalid: %s" % (name, info))
+        # Sharded results
+        elif "raw" in result:
+            for repl, res in result["raw"].iteritems():
+                if "result" in res:
+                    info = res["result"]
+                    if (info.find("exception") != -1 or
+                        info.find("corrupt") != -1):
+                        raise CollectionInvalid("%s invalid: "
+                                                "%s" % (name, info))
+                elif not res.get("valid", False):
+                    valid = False
+                    break
+        # Post 1.9 non-sharded results.
+        elif not result.get("valid", False):
+            valid = False
+
+        if not valid:
+            raise CollectionInvalid("%s invalid: %r" % (name, result))
+
+        return result
+
+    def current_op(self):
+        """Get information on operations currently running.
+        """
+        return self['$cmd.sys.inprog'].find_one()
 
     def profiling_level(self):
         """Get the database's current profiling level.
@@ -585,8 +677,8 @@ class SystemJS(object):
     def __init__(self, database):
         """Get a system js helper for the database `database`.
 
-        An instance of :class:`SystemJS` is automatically created for
-        each :class:`Database` instance as :attr:`Database.system_js`,
+        An instance of :class:`SystemJS` can be created with an instance
+        of :class:`Database` through :attr:`Database.system_js`,
         manual instantiation of this class should not be necessary.
 
         :class:`SystemJS` instances allow for easy manipulation and
@@ -613,12 +705,21 @@ class SystemJS(object):
     def __setattr__(self, name, code):
         self._db.system.js.save({"_id": name, "value": Code(code)}, safe=True)
 
+    def __setitem__(self, name, code):
+        self.__setattr__(name, code)
+
     def __delattr__(self, name):
         self._db.system.js.remove({"_id": name}, safe=True)
+
+    def __delitem__(self, name):
+        self.__delattr__(name)
 
     def __getattr__(self, name):
         return lambda *args: self._db.eval("function() { return %s.apply(this,"
                                            "arguments); }" % name, *args)
+
+    def __getitem__(self, name):
+        return self.__getattr__(name)
 
     def list(self):
         """Get a list of the names of the functions stored in this database.

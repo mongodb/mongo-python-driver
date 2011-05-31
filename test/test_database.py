@@ -38,7 +38,8 @@ from pymongo.errors import (CollectionInvalid,
                             InvalidOperation,
                             OperationFailure)
 from pymongo.son_manipulator import (AutoReference,
-                                     NamespaceInjector)
+                                     NamespaceInjector,
+                                     ObjectIdShuffler)
 from test import version
 from test.test_connection import get_connection
 
@@ -148,10 +149,15 @@ class TestDatabase(unittest.TestCase):
 
         self.assert_(db.validate_collection("test"))
         self.assert_(db.validate_collection(db.test))
+        self.assert_(db.validate_collection(db.test, full=True))
+        self.assert_(db.validate_collection(db.test, scandata=True))
+        self.assert_(db.validate_collection(db.test, scandata=True, full=True))
+        self.assert_(db.validate_collection(db.test, True, True))
+
 
     def test_profiling_levels(self):
         db = self.connection.pymongo_test
-        self.assertEqual(db.profiling_level(), OFF) #default
+        self.assertEqual(db.profiling_level(), OFF)  # default
 
         self.assertRaises(ValueError, db.set_profiling_level, 5.5)
         self.assertRaises(ValueError, db.set_profiling_level, None)
@@ -305,8 +311,10 @@ class TestDatabase(unittest.TestCase):
         obj = {"x": True}
         key = db.test.save(obj)
         self.assertEqual(obj, db.dereference(DBRef("test", key)))
-        self.assertEqual(obj, db.dereference(DBRef("test", key, "pymongo_test")))
-        self.assertRaises(ValueError, db.dereference, DBRef("test", key, "foo"))
+        self.assertEqual(obj,
+                         db.dereference(DBRef("test", key, "pymongo_test")))
+        self.assertRaises(ValueError,
+                          db.dereference, DBRef("test", key, "foo"))
 
         self.assertEqual(None, db.dereference(DBRef("test", 4)))
         obj = {"_id": 4}
@@ -486,9 +494,16 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual('add', db.system.js.find_one()['_id'])
         self.assertEqual(1, db.system.js.count())
         self.assertEqual(6, db.system_js.add(1, 5))
-
         del db.system_js.add
         self.assertEqual(0, db.system.js.count())
+        
+        db.system_js['add'] = "function(a, b) { return a + b; }"
+        self.assertEqual('add', db.system.js.find_one()['_id'])
+        self.assertEqual(1, db.system.js.count())
+        self.assertEqual(6, db.system_js['add'](1, 5))
+        del db.system_js['add']
+        self.assertEqual(0, db.system.js.count())
+        
         if version.at_least(db.connection, (1, 3, 2, -1)):
             self.assertRaises(OperationFailure, db.system_js.add, 1, 5)
 
@@ -514,6 +529,24 @@ class TestDatabase(unittest.TestCase):
 
         del db.system_js.foo
         self.assertEqual(["bar"], db.system_js.list())
+
+    def test_manipulator_properties(self):
+        db = self.connection.foo
+        self.assertEquals(['ObjectIdInjector'], db.incoming_manipulators)
+        self.assertEquals([], db.incoming_copying_manipulators)
+        self.assertEquals([], db.outgoing_manipulators)
+        self.assertEquals([], db.outgoing_copying_manipulators)
+        db.add_son_manipulator(AutoReference(db))
+        db.add_son_manipulator(NamespaceInjector())
+        db.add_son_manipulator(ObjectIdShuffler())
+        self.assertEqual(2, len(db.incoming_manipulators))
+        for name in db.incoming_manipulators:
+            self.assertTrue(name in ('ObjectIdInjector', 'NamespaceInjector'))
+        self.assertEqual(2, len(db.incoming_copying_manipulators))
+        for name in db.incoming_copying_manipulators:
+            self.assertTrue(name in ('ObjectIdShuffler', 'AutoReference'))
+        self.assertEquals([], db.outgoing_manipulators)
+        self.assertEquals(['AutoReference'], db.outgoing_copying_manipulators)
 
 
 if __name__ == "__main__":

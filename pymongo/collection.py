@@ -18,7 +18,8 @@ import warnings
 
 from bson.code import Code
 from bson.son import SON
-from pymongo import (helpers,
+from pymongo import (common,
+                     helpers,
                      message)
 from pymongo.cursor import Cursor
 from pymongo.errors import InvalidName, InvalidOperation
@@ -32,7 +33,7 @@ def _gen_index_name(keys):
     return u"_".join([u"%s_%s" % item for item in keys])
 
 
-class Collection(object):
+class Collection(common.BaseObject):
     """A Mongo collection.
     """
 
@@ -68,6 +69,10 @@ class Collection(object):
 
         .. mongodoc:: collections
         """
+        super(Collection, self).__init__(slave_okay=database.slave_okay,
+                                         safe=database.safe,
+                                         **(database.get_lasterror_options()))
+
         if not isinstance(name, basestring):
             raise TypeError("name must be an instance of basestring")
 
@@ -268,8 +273,11 @@ class Collection(object):
         if manipulate:
             docs = [self.__database._fix_incoming(doc, self) for doc in docs]
 
-        if kwargs:
+        if self.safe or kwargs:
             safe = True
+            if not kwargs:
+                kwargs.update(self.get_lasterror_options())
+
         self.__database.connection._send_message(
             message.insert(self.__full_name, docs,
                            check_keys, safe, kwargs), safe)
@@ -357,11 +365,13 @@ class Collection(object):
         if not isinstance(upsert, bool):
             raise TypeError("upsert must be an instance of bool")
 
-        if upsert and manipulate:
+        if manipulate:
             document = self.__database._fix_incoming(document, self)
 
-        if kwargs:
+        if self.safe or kwargs:
             safe = True
+            if not kwargs:
+                kwargs.update(self.get_lasterror_options())
 
         return self.__database.connection._send_message(
             message.update(self.__full_name, upsert, multi,
@@ -434,8 +444,10 @@ class Collection(object):
         if not isinstance(spec_or_id, dict):
             spec_or_id = {"_id": spec_or_id}
 
-        if kwargs:
+        if self.safe or kwargs:
             safe = True
+            if not kwargs:
+                kwargs.update(self.get_lasterror_options())
 
         return self.__database.connection._send_message(
             message.delete(self.__full_name, spec_or_id, safe, kwargs), safe)
@@ -532,6 +544,8 @@ class Collection(object):
           - `as_class` (optional): class to use for documents in the
             query result (default is
             :attr:`~pymongo.connection.Connection.document_class`)
+          - `slave_okay` (optional): if True, allows this query to
+            be run against a replica secondary.
           - `network_timeout` (optional): specify a timeout to use for
             this query, which will override the
             :class:`~pymongo.connection.Connection`-level default
@@ -554,6 +568,8 @@ class Collection(object):
 
         .. mongodoc:: find
         """
+        if not 'slave_okay' in kwargs and self.slave_okay:
+            kwargs['slave_okay'] = True
         return Cursor(self, *args, **kwargs)
 
     def count(self):
@@ -933,8 +949,8 @@ class Collection(object):
           - `reduce`: reduce function (as a JavaScript string)
           - `out` (required): output collection name
           - `merge_output` (optional): Merge output into `out`. If the same
-            key exists in both the result set and the existing output collection,
-            the new key will overwrite the existing key
+            key exists in both the result set and the existing output
+            collection, the new key will overwrite the existing key
           - `reduce_output` (optional): If documents exist for a given key
             in the result set and in the existing output collection, then a
             reduce operation (using the specified reduce function) will be
@@ -962,7 +978,8 @@ class Collection(object):
             raise TypeError("'out' must be an instance of basestring")
 
         if merge_output and reduce_output:
-            raise InvalidOperation("Can't do both merge and re-reduce of output.")
+            raise InvalidOperation("Can't do both merge"
+                                   " and re-reduce of output.")
 
         if merge_output:
             out_conf = {"merge": out}
@@ -1056,9 +1073,12 @@ class Collection(object):
             raise ValueError("Can't do both update and remove")
 
         # No need to include empty args
-        if query: kwargs['query'] = query
-        if update: kwargs['update'] = update
-        if upsert: kwargs['upsert'] = upsert
+        if query:
+            kwargs['query'] = query
+        if update:
+            kwargs['update'] = update
+        if upsert:
+            kwargs['upsert'] = upsert
 
         no_obj_error = "No matching object found"
 
@@ -1070,7 +1090,7 @@ class Collection(object):
                 return None
             else:
                 # Should never get here b/c of allowable_errors
-                raise ValueError("Unexpected Error: %s"%out)
+                raise ValueError("Unexpected Error: %s" % (out,))
 
         return out.get('value')
 

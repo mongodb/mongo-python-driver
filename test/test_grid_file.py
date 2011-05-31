@@ -27,6 +27,8 @@ import sys
 import unittest
 sys.path[0:0] = [""]
 
+from nose.plugins.skip import SkipTest
+
 from bson.objectid import ObjectId
 from gridfs.grid_file import (_SEEK_CUR,
                               _SEEK_END,
@@ -59,7 +61,6 @@ class TestGridFile(unittest.TestCase):
         # make sure it's still there...
         g = GridOut(self.db.fs, f._id)
         self.assertEqual("hello world", g.read())
-
 
         f = GridIn(self.db.fs, filename="test")
         f.close()
@@ -173,7 +174,8 @@ class TestGridFile(unittest.TestCase):
         self.assertEqual("hello", a.baz)
         self.assertRaises(AttributeError, getattr, a, "mike")
 
-        b = GridIn(self.db.fs, content_type="text/html", chunk_size=1000, baz=100)
+        b = GridIn(self.db.fs,
+                   content_type="text/html", chunk_size=1000, baz=100)
         self.assertEqual("text/html", b.content_type)
         self.assertEqual(1000, b.chunk_size)
         self.assertEqual(100, b.baz)
@@ -405,7 +407,8 @@ Bye""")
         self.assertEqual(["he", "ll", "o ", "wo", "rl", "d"], list(g))
 
     def test_read_chunks_unaligned_buffer_size(self):
-        in_data = "This is a text that doesn't quite fit in a single 16-byte chunk."
+        in_data = ("This is a text that doesn't "
+                   "quite fit in a single 16-byte chunk.")
         f = GridIn(self.db.fs, chunkSize=16)
         f.write(in_data)
         f.close()
@@ -470,6 +473,20 @@ Bye""")
         g = GridOut(self.db.fs, f._id)
         self.assertEqual("a", f.bar)
         self.assertEqual("b", f.baz)
+
+    def test_context_manager(self):
+        if sys.version_info < (2, 6):
+            raise SkipTest()
+
+        contents = "Imagine this is some important data..."
+        # Hack around python2.4 an 2.5 not supporting 'with' syntax
+        exec """
+with GridIn(self.db.fs, filename="important") as infile:
+    infile.write(contents)
+
+with GridOut(self.db.fs, infile._id) as outfile:
+    self.assertEqual(contents, outfile.read())
+"""
 
 
 if __name__ == "__main__":

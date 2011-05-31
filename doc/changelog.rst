@@ -1,6 +1,108 @@
 Changelog
 =========
 
+Changes in Version 1.11
+-----------------------
+
+Version 1.11 adds a few new features and fixes a few more bugs.
+
+New Features:
+
+- Basic IPv6 support: pymongo prefers IPv4 but will try IPv6. You can
+  also specify an IPv6 address literal in the `host` parameter or a
+  MongoDB URI provided it is enclosed in '[' and ']'.
+- max_pool_size option: previously pymongo had a hard coded pool size
+  of 10 connections. With this change you can specify a different pool
+  size as a parameter to :class:`~pymongo.connection.Connection`
+  (max_pool_size=<integer>) or in the MongoDB URI (maxPoolSize=<integer>).
+- Find by metadata in GridFS: You can know specify query fields as
+  keyword parameters for :meth:`~gridfs.GridFS.get_version` and
+  :meth:`~gridfs.GridFS.get_last_version`.
+- Per-query slave_okay option: slave_okay=True is now a valid keyword
+  argument for :meth:`~pymongo.collection.Collection.find` and
+  :meth:`~pymongo.collection.Collection.find_one`.
+
+API changes:
+
+- :meth:`~pymongo.database.Database.validate_collection` now returns a
+  dict instead of a string. This change was required to deal with an
+  API change on the server. This method also now takes the optional
+  `scandata` and `full` parameters. See the documentation for more
+  details.
+
+.. warning:: The `pool_size`, `auto_start_request`, and `timeout` parameters
+             for :class:`~pymongo.connection.Connection` have been completely
+             removed in this release. They were deprecated in pymongo-1.4 and
+             have had no effect since then. Please make sure that your code
+             doesn't currently pass these parameters when creating a Connection
+             instance.
+
+Issues resolved
+...............
+
+- `PYTHON-241 <https://jira.mongodb.org/browse/PYTHON-241>`_:
+  Support setting slaveok at the cursor level.
+- `PYTHON-240 <https://jira.mongodb.org/browse/PYTHON-240>`_:
+  Queries can sometimes permanently fail after a replica set fail over.
+- `PYTHON-238 <https://jira.mongodb.org/browse/PYTHON-238>`_:
+  error after few million requests
+- `PYTHON-237 <https://jira.mongodb.org/browse/PYTHON-237>`_:
+  Basic IPv6 support.
+- `PYTHON-236 <https://jira.mongodb.org/browse/PYTHON-236>`_:
+  Restore option to specify pool size in Connection.
+- `PYTHON-212 <https://jira.mongodb.org/browse/PYTHON-212>`_:
+  pymongo does not recover after stale config
+- `PYTHON-138 <https://jira.mongodb.org/browse/PYTHON-138>`_:
+  Find method for GridFS
+
+Changes in Version 1.10.1
+-------------------------
+
+Version 1.10.1 is primarily a bugfix release. It fixes a regression in
+version 1.10 that broke pickling of ObjectIds. A number of other bugs
+have been fixed as well.
+
+There are two behavior changes to be aware of:
+
+- If a read slave raises :class:`~pymongo.errors.AutoReconnect`
+  :class:`~pymongo.master_slave_connection.MasterSlaveConnection` will now
+  retry the query on each slave until it is successful or all slaves have
+  raised :class:`~pymongo.errors.AutoReconnect`. Any other exception will
+  immediately be raised. The order that the slaves are tried is random.
+  Previously the read would be sent to one randomly chosen slave and
+  :class:`~pymongo.errors.AutoReconnect` was immediately raised in case
+  of a connection failure.
+- A Python `long` is now always BSON encoded as an int64. Previously the
+  encoding was based only on the value of the field and a `long` with a
+  value less than `2147483648` or greater than `-2147483649` would always
+  be BSON encoded as an int32.
+
+Issues resolved
+...............
+
+- `PYTHON-234 <https://jira.mongodb.org/browse/PYTHON-234>`_:
+  Fix setup.py to raise exception if any when building extensions
+- `PYTHON-233 <https://jira.mongodb.org/browse/PYTHON-233>`_:
+  Add information to build and test with extensions on windows
+- `PYTHON-232 <https://jira.mongodb.org/browse/PYTHON-232>`_:
+  Traceback when hashing a DBRef instance
+- `PYTHON-231 <https://jira.mongodb.org/browse/PYTHON-231>`_:
+  Traceback when pickling a DBRef instance
+- `PYTHON-230 <https://jira.mongodb.org/browse/PYTHON-230>`_:
+  Pickled ObjectIds are not compatible between pymongo 1.9 and 1.10
+- `PYTHON-228 <https://jira.mongodb.org/browse/PYTHON-228>`_:
+  Cannot pickle bson.ObjectId
+- `PYTHON-227 <https://jira.mongodb.org/browse/PYTHON-227>`_:
+  Traceback when calling find() on system.js
+- `PYTHON-216 <https://jira.mongodb.org/browse/PYTHON-216>`_:
+  MasterSlaveConnection is missing disconnect() method
+- `PYTHON-186 <https://jira.mongodb.org/browse/PYTHON-186>`_:
+  When storing integers, type is selected according to value instead of type
+- `PYTHON-173 <https://jira.mongodb.org/browse/PYTHON-173>`_:
+  as_class option is not propogated by Cursor.clone
+- `PYTHON-113 <https://jira.mongodb.org/browse/PYTHON-113>`_:
+  Redunducy in MasterSlaveConnection
+
 Changes in Version 1.10
 -----------------------
 
@@ -22,17 +124,17 @@ server for the maximum BSON document size it supports.
 Issues resolved
 ...............
 
-- PYTHON-225: :class:`pymongo.objectid.ObjectId` class definition should use __slots__.
+- PYTHON-225: :class:`~pymongo.objectid.ObjectId` class definition should use __slots__.
 - PYTHON-223: Documentation fix.
 - PYTHON-220: Documentation fix.
 - PYTHON-219: KeyError in :meth:`~pymongo.collection.Collection.find_and_modify`
 - PYTHON-213: Query server for maximum BSON document size.
-- PYTHON-208: Fix :class:`pymongo.connection.Connection` __repr__.
+- PYTHON-208: Fix :class:`~pymongo.connection.Connection` __repr__.
 - PYTHON-207: Changes to Map/Reduce API.
 - PYTHON-205: Accept slaveOk in the URI to match the URI docs.
 - PYTHON-203: When slave_okay=True and we only specify one host don't autodetect other set members.
 - PYTHON-194: Show size when whining about a document being too large.
-- PYTHON-184: Raise :class:`pymongo.errors.DuplicateKeyError` for duplicate keys in capped collections.
+- PYTHON-184: Raise :class:`~pymongo.errors.DuplicateKeyError` for duplicate keys in capped collections.
 - PYTHON-178: Don't segfault when trying to encode a recursive data structure.
 - PYTHON-177: Don't segfault when decoding dicts with broken iterators.
 - PYTHON-172: Fix a typo.

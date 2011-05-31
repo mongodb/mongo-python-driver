@@ -271,16 +271,20 @@ class GridIn(object):
                     raise TypeError("must specify an encoding for file in "
                                     "order to write unicode")
 
-            while data:
+            data_len = len(data)
+            data = StringIO(data)
+            while True:
                 space = self.chunk_size - self._buffer.tell()
+                to_write = data.read(space)
 
-                if len(data) <= space:
-                    self._buffer.write(data)
+                if not to_write:
+                    break
+                elif data_len <= space:
+                    self._buffer.write(to_write)
                     break
                 else:
-                    self._buffer.write(data[:space])
+                    self._buffer.write(to_write)
                     self.__flush_buffer()
-                    data = data[space:]
 
     def writelines(self, sequence):
         """Write a sequence of strings to the file.
@@ -366,7 +370,7 @@ class GridOut(object):
     def __getattr__(self, name):
         if name in self._file:
             return self._file[name]
-        raise AttributeError("GridIn object has no attribute '%s'" % name)
+        raise AttributeError("GridOut object has no attribute '%s'" % name)
 
     def read(self, size=-1):
         """Read at most `size` bytes from the file (less if there
@@ -466,6 +470,22 @@ class GridOut(object):
         webserver that handles such an iterator efficiently.
         """
         return GridOutIterator(self, self.__chunks)
+
+    def close(self):
+        """Make GridOut more generically file-like."""
+        pass
+
+    def __enter__(self):
+        """Makes it possible to use :class:`GridOut` files
+        with the context manager protocol.
+        """
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Makes it possible to use :class:`GridOut` files
+        with the context manager protocol.
+        """
+        return False
 
 
 class GridOutIterator(object):

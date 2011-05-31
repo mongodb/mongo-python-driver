@@ -94,3 +94,9 @@ class InvalidURI(ConfigurationError):
 
     .. versionadded:: 1.5
     """
+
+class UnsupportedOption(ConfigurationError):
+    """Exception for unsupported options.
+
+    .. versionadded:: 1.11+
+    """

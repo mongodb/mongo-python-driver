@@ -51,6 +51,11 @@ except ImportError:
 # This sort of sucks, but seems to be as good as it gets...
 RE_TYPE = type(re.compile(""))
 
+MAX_INT32 = 2147483647
+MIN_INT32 = -2147483648
+MAX_INT64 = 9223372036854775807
+MIN_INT64 = -9223372036854775808
+
 
 def _get_int(data, as_class=None, tz_aware=False, unsigned=False):
     format = unsigned and "I" or "i"
@@ -82,7 +87,7 @@ def _make_c_string(string, check_null=False):
         try:
             string.decode("utf-8")
             return string + "\x00"
-        except:
+        except UnicodeError:
             raise InvalidStringData("strings in documents must be valid "
                                     "UTF-8: %r" % string)
 
@@ -188,7 +193,8 @@ def _get_timestamp(data, as_class, tz_aware):
 
 
 def _get_long(data, as_class, tz_aware):
-    return (struct.unpack("<q", data[:8])[0], data[8:])
+    # Have to cast to long; on 32-bit unpack may return an int.
+    return (long(struct.unpack("<q", data[:8])[0]), data[8:])
 
 
 _element_getter = {
@@ -296,13 +302,18 @@ def _element_to_bson(key, value, check_keys):
         return "\x08" + name + "\x01"
     if value is False:
         return "\x08" + name + "\x00"
-    if isinstance(value, (int, long)):
-        # TODO this is a really ugly way to check for this...
-        if value > 2 ** 64 / 2 - 1 or value < -2 ** 64 / 2:
+    if isinstance(value, int):
+        # TODO this is an ugly way to check for this...
+        if value > MAX_INT64 or value < MIN_INT64:
             raise OverflowError("BSON can only handle up to 8-byte ints")
-        if value > 2 ** 32 / 2 - 1 or value < -2 ** 32 / 2:
+        if value > MAX_INT32 or value < MIN_INT32:
             return "\x12" + name + struct.pack("<q", value)
         return "\x10" + name + struct.pack("<i", value)
+    if isinstance(value, long):
+        # XXX No long type in Python 3
+        if value > MAX_INT64 or value < MIN_INT64:
+            raise OverflowError("BSON can only handle up to 8-byte ints")
+        return "\x12" + name + struct.pack("<q", value)
     if isinstance(value, datetime.datetime):
         if value.utcoffset() is not None:
             value = value - value.utcoffset()
