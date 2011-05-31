@@ -26,3 +26,4 @@ def teardown():
     c.drop_database("pymongo_test1")
     c.drop_database("pymongo_test2")
     c.drop_database("pymongo_test_mike")
+    c.drop_database("pymongo_test_bernie")
