@@ -1235,6 +1235,12 @@ static PyObject* elements_to_dict(const char* string, int max,
     while (position < max) {
         int type = (int)string[position++];
         int name_length = strlen(string + position);
+        if (position + name_length >= max) {
+            PyObject* InvalidBSON = _error("InvalidBSON");
+            PyErr_SetNone(InvalidBSON);
+            Py_DECREF(InvalidBSON);
+            return NULL;
+        }
         PyObject* name = PyUnicode_DecodeUTF8(string + position, name_length, "strict");
         PyObject* value;
         if (!name) {
