@@ -313,5 +313,52 @@ class TestMasterSlaveConnection(unittest.TestCase):
 
         self.assertEqual(before, cursor_count())
 
+    def test_base_object(self):
+        c = self.connection
+        self.assertTrue(c.slave_okay)
+        self.assertFalse(c.safe)
+        self.assertEqual({}, c.get_lasterror_options())
+        db = c.test
+        self.assertTrue(db.slave_okay)
+        self.assertFalse(db.safe)
+        self.assertEqual({}, db.get_lasterror_options())
+        coll = db.test
+        self.assertTrue(coll.slave_okay)
+        self.assertFalse(coll.safe)
+        self.assertEqual({}, coll.get_lasterror_options())
+        cursor = coll.find()
+        self.assertTrue(cursor._Cursor__slave_okay)
+
+        c.safe = True
+        c.set_lasterror_options(w=2, wtimeout=100)
+        self.assertTrue(c.slave_okay)
+        self.assertTrue(c.safe)
+        self.assertEqual({'w': 2, 'wtimeout': 100}, c.get_lasterror_options())
+        db = c.test
+        self.assertTrue(db.slave_okay)
+        self.assertTrue(db.safe)
+        self.assertEqual({'w': 2, 'wtimeout': 100}, db.get_lasterror_options())
+        coll = db.test
+        self.assertTrue(coll.slave_okay)
+        self.assertTrue(coll.safe)
+        self.assertEqual({'w': 2, 'wtimeout': 100},
+                         coll.get_lasterror_options())
+        cursor = coll.find()
+        self.assertTrue(cursor._Cursor__slave_okay)
+
+        coll.insert({'foo': 'bar'})
+        self.assertEquals(1, coll.find({'foo': 'bar'}).count())
+        self.assert_(coll.find({'foo': 'bar'}))
+        coll.remove({'foo': 'bar'}, safe=True)
+        self.assertEquals(0, coll.find({'foo': 'bar'}).count())
+
+        # Set self.connection back to defaults
+        c.safe = False
+        c.unset_lasterror_options()
+        self.assertTrue(self.connection.slave_okay)
+        self.assertFalse(self.connection.safe)
+        self.assertEqual({}, self.connection.get_lasterror_options())
+
+
 if __name__ == "__main__":
     unittest.main()
