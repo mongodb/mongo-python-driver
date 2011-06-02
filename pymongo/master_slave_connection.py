@@ -21,12 +21,13 @@ or all slaves failed.
 
 import random
 
+from pymongo.common import BaseObject
 from pymongo.connection import Connection
 from pymongo.database import Database
 from pymongo.errors import AutoReconnect
 
 
-class MasterSlaveConnection(object):
+class MasterSlaveConnection(BaseObject):
     """A master-slave connection to Mongo.
     """
 
@@ -57,6 +58,11 @@ class MasterSlaveConnection(object):
                 raise TypeError("slave %r is not an instance of Connection" %
                                 slave)
 
+        super(MasterSlaveConnection,
+              self).__init__(slave_okay=True,
+                             safe=master.safe,
+                             **(master.get_lasterror_options()))
+
         self.__in_request = False
         self.__master = master
         self.__slaves = slaves
@@ -77,14 +83,6 @@ class MasterSlaveConnection(object):
     # TODO this is a temporary hack PYTHON-136 is the right solution for this
     @property
     def tz_aware(self):
-        return True
-
-    @property
-    def slave_okay(self):
-        """Is it okay for this connection to connect directly to a slave?
-
-        This is always True for MasterSlaveConnection instances.
-        """
         return True
 
     def disconnect(self):
