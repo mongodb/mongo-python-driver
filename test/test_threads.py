@@ -104,7 +104,7 @@ class TestThreads(unittest.TestCase):
         self.db = get_connection().pymongo_test
 
     def test_threading(self):
-        self.db.test.remove({})
+        self.db.drop_collection("test")
         for i in xrange(1000):
             self.db.test.save({"x": i}, safe=True)
 
