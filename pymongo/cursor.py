@@ -199,8 +199,7 @@ class Cursor(object):
         options = 0
         if self.__tailable:
             options |= _QUERY_OPTIONS["tailable_cursor"]
-        if (self.__collection.database.connection.slave_okay or
-            self.__slave_okay):
+        if self.__slave_okay:
             options |= _QUERY_OPTIONS["slave_okay"]
         if not self.__timeout:
             options |= _QUERY_OPTIONS["no_timeout"]

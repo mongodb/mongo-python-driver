@@ -36,6 +36,10 @@ class TestCommon(unittest.TestCase):
         self.assertFalse(coll.slave_okay)
         self.assertFalse(coll.safe)
         self.assertEqual({}, coll.get_lasterror_options())
+        cursor = coll.find()
+        self.assertFalse(cursor._Cursor__slave_okay)
+        cursor = coll.find(slave_okay=True)
+        self.assertTrue(cursor._Cursor__slave_okay)
 
         c = Connection(slaveok=True, w=1, wtimeout=300, fsync=True, j=True)
         self.assertTrue(c.slave_okay)
@@ -50,6 +54,10 @@ class TestCommon(unittest.TestCase):
         self.assertTrue(coll.slave_okay)
         self.assertTrue(coll.safe)
         self.assertEqual(d, coll.get_lasterror_options())
+        cursor = coll.find()
+        self.assertTrue(cursor._Cursor__slave_okay)
+        cursor = coll.find(slave_okay=False)
+        self.assertFalse(cursor._Cursor__slave_okay)
 
         c = Connection('mongodb://localhost:27017/?'
                        'slaveok=true;w=1;wtimeout=300;fsync=true;j=true')
@@ -65,6 +73,10 @@ class TestCommon(unittest.TestCase):
         self.assertTrue(coll.slave_okay)
         self.assertTrue(coll.safe)
         self.assertEqual(d, coll.get_lasterror_options())
+        cursor = coll.find()
+        self.assertTrue(cursor._Cursor__slave_okay)
+        cursor = coll.find(slave_okay=False)
+        self.assertFalse(cursor._Cursor__slave_okay)
 
         c.unset_lasterror_options()
         self.assertTrue(c.slave_okay)
@@ -82,6 +94,10 @@ class TestCommon(unittest.TestCase):
         self.assertFalse(coll.slave_okay)
         self.assertFalse(coll.safe)
         self.assertEqual({}, coll.get_lasterror_options())
+        cursor = coll.find()
+        self.assertFalse(cursor._Cursor__slave_okay)
+        cursor = coll.find(slave_okay=True)
+        self.assertTrue(cursor._Cursor__slave_okay)
 
         coll.set_lasterror_options(j=True)
         self.assertEqual({'j': True}, coll.get_lasterror_options())
@@ -99,6 +115,12 @@ class TestCommon(unittest.TestCase):
         self.assertTrue(db.slave_okay)
         self.assertFalse(c.slave_okay)
         self.assertFalse(coll.slave_okay)
+        cursor = coll.find()
+        self.assertFalse(cursor._Cursor__slave_okay)
+        cursor = db.coll2.find()
+        self.assertTrue(cursor._Cursor__slave_okay)
+        cursor = db.coll2.find(slave_okay=False)
+        self.assertFalse(cursor._Cursor__slave_okay)
 
         self.assertRaises(ConfigurationError, coll.set_lasterror_options, foo=20)
         self.assertRaises(TypeError, coll._BaseObject__set_slave_okay, 20)
@@ -107,8 +129,8 @@ class TestCommon(unittest.TestCase):
         coll.remove()
         self.assertEquals(None, coll.find_one(slave_okay=True))
         coll.unset_lasterror_options()
-        coll.set_lasterror_options(w=2, wtimeout=10)
-        # Fails if we aren't in a replica set
+        coll.set_lasterror_options(w=4, wtimeout=10)
+        # Fails if we don't have 4 active nodes or we don't have replication...
         self.assertRaises(OperationFailure, coll.insert, {'foo': 'bar'})
         # Succeeds since we override the lasterror settings per query.
         self.assert_(coll.insert({'foo': 'bar'}, fsync=True))
