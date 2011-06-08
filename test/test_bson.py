@@ -172,6 +172,7 @@ class TestBSON(unittest.TestCase):
         helper({"a binary": Binary("test", 254)})
         helper({"another binary": Binary("test")})
         helper(SON([(u'test dst', datetime.datetime(1993, 4, 4, 2))]))
+        helper(SON([(u'test negative dst', datetime.datetime(1, 1, 1, 1, 1, 1))]))
         helper({"big float": float(10000000000)})
         helper({"ref": DBRef("coll", 5)})
         helper({"ref": DBRef("coll", 5, foo="bar", bar=4)})

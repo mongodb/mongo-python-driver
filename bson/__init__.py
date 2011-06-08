@@ -56,6 +56,9 @@ MIN_INT32 = -2147483648
 MAX_INT64 = 9223372036854775807
 MIN_INT64 = -9223372036854775808
 
+EPOCH_AWARE = datetime.datetime.fromtimestamp(0, utc)
+EPOCH_NAIVE = datetime.datetime.utcfromtimestamp(0)
+
 
 def _get_int(data, as_class=None, tz_aware=False, unsigned=False):
     format = unsigned and "I" or "i"
@@ -146,8 +149,8 @@ def _get_boolean(data, as_class, tz_aware):
 def _get_date(data, as_class, tz_aware):
     seconds = float(struct.unpack("<q", data[:8])[0]) / 1000.0
     if tz_aware:
-        return (datetime.datetime.fromtimestamp(seconds, utc), data[8:])
-    return (datetime.datetime.utcfromtimestamp(seconds), data[8:])
+        return (EPOCH_AWARE + datetime.timedelta(seconds=seconds), data[8:])
+    return (EPOCH_NAIVE + datetime.timedelta(seconds=seconds), data[8:])
 
 
 def _get_code_w_scope(data, as_class, tz_aware):
