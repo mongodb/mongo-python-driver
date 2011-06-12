@@ -660,6 +660,9 @@ class Connection(common.BaseObject):
         self.__host = None
         self.__port = None
 
+    def close(self):
+        self.disconnect()
+
     def set_cursor_manager(self, manager_class):
         """Set this connection's cursor manager.
 
