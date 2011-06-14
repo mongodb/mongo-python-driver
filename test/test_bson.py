@@ -188,6 +188,25 @@ class TestBSON(unittest.TestCase):
         qcheck.check_unittest(self, encode_then_decode,
                               qcheck.gen_mongo_dict(3))
 
+    def test_datetime_encode_decode(self):
+        # Negative timestamps
+        dt1 = datetime.datetime(1, 1, 1, 1, 1, 1)
+        dt2 = BSON.encode({"date": dt1}).decode()["date"]
+        self.assertEqual(dt1, dt2)
+
+        dt1 = datetime.datetime(1959, 6, 25, 12, 16, 59)
+        dt2 = BSON.encode({"date": dt1}).decode()["date"]
+        self.assertEqual(dt1, dt2)
+
+        # Positive timestamps
+        dt1 = datetime.datetime(9999, 12, 31, 23, 59, 59)
+        dt2 = BSON.encode({"date": dt1}).decode()["date"]
+        self.assertEqual(dt1, dt2)
+
+        dt1 = datetime.datetime(2011, 6, 14, 10, 47, 53)
+        dt2 = BSON.encode({"date": dt1}).decode()["date"]
+        self.assertEqual(dt1, dt2)
+
     def test_aware_datetime(self):
         aware = datetime.datetime(1993, 4, 4, 2,
                                   tzinfo=FixedOffset(555, "SomeZone"))
