@@ -265,7 +265,7 @@ class Database(common.BaseObject):
         return son
 
     def command(self, command, value=1,
-                check=True, allowable_errors=[], **kwargs):
+                check=True, allowable_errors=[], slave_okay=False, **kwargs):
         """Issue a MongoDB command.
 
         Send command `command` to the database and return the
@@ -308,9 +308,13 @@ class Database(common.BaseObject):
             :class:`~pymongo.errors.OperationFailure` if there are any
           - `allowable_errors`: if `check` is ``True``, error messages
             in this list will be ignored by error-checking
+          - `slave_okay` (optional): if True, allows this command to
+            be run against a replica secondary.
           - `**kwargs` (optional): additional keyword arguments will
             be added to the command document before it is sent
 
+        .. versionchanged:: 1.12
+           Added the `slave_okay` optional argument.
         .. versionchanged:: 1.6
            Added the `value` argument for string commands, and keyword
            arguments for additional command options.
@@ -327,7 +331,7 @@ class Database(common.BaseObject):
         command.update(kwargs)
 
         result = self["$cmd"].find_one(command,
-                                       _must_use_master=True,
+                                       _must_use_master=not slave_okay,
                                        _is_command=True)
 
         if check:
