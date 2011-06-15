@@ -20,23 +20,26 @@ import sys
 sys.path[0:0] = [""]
 import unittest
 
+from bson.code import Code
+from bson.dbref import DBRef
+from bson.objectid import ObjectId
+from bson.son import SON
 from pymongo import (ALL,
                      ASCENDING,
                      DESCENDING,
+                     helpers,
                      OFF,
                      SLOW_ONLY)
-from pymongo.code import Code
 from pymongo.collection import Collection
 from pymongo.connection import Connection
 from pymongo.database import Database
-from pymongo.dbref import DBRef
 from pymongo.errors import (CollectionInvalid,
                             InvalidName,
                             InvalidOperation,
                             OperationFailure)
-from pymongo.objectid import ObjectId
-from pymongo.son import SON
-from pymongo.son_manipulator import AutoReference, NamespaceInjector
+from pymongo.son_manipulator import (AutoReference,
+                                     NamespaceInjector,
+                                     ObjectIdShuffler)
 from test import version
 from test.test_connection import get_connection
 
@@ -79,7 +82,6 @@ class TestDatabase(unittest.TestCase):
         self.assertRaises(TypeError, db.create_collection, 5)
         self.assertRaises(TypeError, db.create_collection, None)
         self.assertRaises(InvalidName, db.create_collection, "coll..ection")
-        self.assertRaises(TypeError, db.create_collection, "test", 5)
 
         test = db.create_collection("test")
         test.save({"hello": u"world"})
@@ -112,17 +114,23 @@ class TestDatabase(unittest.TestCase):
         db.test.save({"dummy": u"object"})
         self.assert_("test" in db.collection_names())
         db.drop_collection("test")
-        self.failIf("test" in db.collection_names())
+        self.assertFalse("test" in db.collection_names())
 
         db.test.save({"dummy": u"object"})
         self.assert_("test" in db.collection_names())
         db.drop_collection(u"test")
-        self.failIf("test" in db.collection_names())
+        self.assertFalse("test" in db.collection_names())
 
         db.test.save({"dummy": u"object"})
         self.assert_("test" in db.collection_names())
         db.drop_collection(db.test)
-        self.failIf("test" in db.collection_names())
+        self.assertFalse("test" in db.collection_names())
+
+        db.test.save({"dummy": u"object"})
+        self.assert_("test" in db.collection_names())
+        db.test.drop()
+        self.assertFalse("test" in db.collection_names())
+        db.test.drop()
 
         db.drop_collection(db.test.doesnotexist)
 
@@ -141,10 +149,15 @@ class TestDatabase(unittest.TestCase):
 
         self.assert_(db.validate_collection("test"))
         self.assert_(db.validate_collection(db.test))
+        self.assert_(db.validate_collection(db.test, full=True))
+        self.assert_(db.validate_collection(db.test, scandata=True))
+        self.assert_(db.validate_collection(db.test, scandata=True, full=True))
+        self.assert_(db.validate_collection(db.test, True, True))
+
 
     def test_profiling_levels(self):
         db = self.connection.pymongo_test
-        self.assertEqual(db.profiling_level(), OFF) #default
+        self.assertEqual(db.profiling_level(), OFF)  # default
 
         self.assertRaises(ValueError, db.set_profiling_level, 5.5)
         self.assertRaises(ValueError, db.set_profiling_level, None)
@@ -169,9 +182,19 @@ class TestDatabase(unittest.TestCase):
         info = db.profiling_info()
         self.assert_(isinstance(info, list))
         self.assert_(len(info) >= 1)
-        self.assert_(isinstance(info[0]["info"], basestring))
+        # These basically clue us in to server changes.
+        if version.at_least(db.connection, (1, 9, 1, -1)):
+            self.assert_(isinstance(info[0]['responseLength'], int))
+            self.assert_(isinstance(info[0]['millis'], int))
+            self.assert_(isinstance(info[0]['client'], basestring))
+            self.assert_(isinstance(info[0]['user'], basestring))
+            self.assert_(isinstance(info[0]['ntoreturn'], int))
+            self.assert_(isinstance(info[0]['ns'], basestring))
+            self.assert_(isinstance(info[0]['op'], basestring))
+        else:
+            self.assert_(isinstance(info[0]["info"], basestring))
+            self.assert_(isinstance(info[0]["millis"], float))
         self.assert_(isinstance(info[0]["ts"], datetime.datetime))
-        self.assert_(isinstance(info[0]["millis"], float))
 
     def test_iteration(self):
         db = self.connection.pymongo_test
@@ -188,16 +211,22 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(None, db.error())
         self.assertEqual(None, db.previous_error())
 
-        db.command({"forceerror": 1}, check=False)
+        db.command("forceerror", check=False)
         self.assert_(db.error())
         self.assert_(db.previous_error())
 
-        db.command({"forceerror": 1}, check=False)
+        db.command("forceerror", check=False)
         self.assert_(db.error())
         prev_error = db.previous_error()
         self.assertEqual(prev_error["nPrev"], 1)
         del prev_error["nPrev"]
-        self.assertEqual(db.error(), prev_error)
+        prev_error.pop("lastOp", None)
+        error = db.error()
+        error.pop("lastOp", None)
+        # getLastError includes "connectionId" in recent
+        # server versions, getPrevError does not.
+        error.pop("connectionId", None)
+        self.assertEqual(error, prev_error)
 
         db.test.find_one()
         self.assertEqual(None, db.error())
@@ -223,22 +252,20 @@ class TestDatabase(unittest.TestCase):
         self.assert_(db.last_status()["updatedExisting"])
 
         db.test.update({"i": 1}, {"$set": {"i": 500}})
-        self.failIf(db.last_status()["updatedExisting"])
+        self.assertFalse(db.last_status()["updatedExisting"])
 
     def test_password_digest(self):
-        db = self.connection.pymongo_test
+        self.assertRaises(TypeError, helpers._password_digest, 5)
+        self.assertRaises(TypeError, helpers._password_digest, True)
+        self.assertRaises(TypeError, helpers._password_digest, None)
 
-        self.assertRaises(TypeError, db._password_digest, 5)
-        self.assertRaises(TypeError, db._password_digest, True)
-        self.assertRaises(TypeError, db._password_digest, None)
-
-        self.assert_(isinstance(db._password_digest("mike", "password"),
+        self.assert_(isinstance(helpers._password_digest("mike", "password"),
                                 unicode))
-        self.assertEqual(db._password_digest("mike", "password"),
+        self.assertEqual(helpers._password_digest("mike", "password"),
                          u"cd7e45b3b2767dc2fa9b6b548457ed00")
-        self.assertEqual(db._password_digest("mike", "password"),
-                         db._password_digest(u"mike", u"password"))
-        self.assertEqual(db._password_digest("Gustave", u"Dor\xe9"),
+        self.assertEqual(helpers._password_digest("mike", "password"),
+                         helpers._password_digest(u"mike", u"password"))
+        self.assertEqual(helpers._password_digest("Gustave", u"Dor\xe9"),
                          u"81e0e2364499209f466e75926a162d73")
 
     def test_authenticate_add_remove_user(self):
@@ -250,20 +277,20 @@ class TestDatabase(unittest.TestCase):
         self.assertRaises(TypeError, db.authenticate, 5, "password")
         self.assertRaises(TypeError, db.authenticate, "mike", 5)
 
-        self.failIf(db.authenticate("mike", "not a real password"))
-        self.failIf(db.authenticate("faker", "password"))
+        self.assertFalse(db.authenticate("mike", "not a real password"))
+        self.assertFalse(db.authenticate("faker", "password"))
         self.assert_(db.authenticate("mike", "password"))
         self.assert_(db.authenticate(u"mike", u"password"))
 
         db.remove_user("mike")
-        self.failIf(db.authenticate("mike", "password"))
+        self.assertFalse(db.authenticate("mike", "password"))
 
-        self.failIf(db.authenticate("Gustave", u"Dor\xe9"))
+        self.assertFalse(db.authenticate("Gustave", u"Dor\xe9"))
         db.add_user("Gustave", u"Dor\xe9")
         self.assert_(db.authenticate("Gustave", u"Dor\xe9"))
 
         db.add_user("Gustave", "password")
-        self.failIf(db.authenticate("Gustave", u"Dor\xe9"))
+        self.assertFalse(db.authenticate("Gustave", u"Dor\xe9"))
         self.assert_(db.authenticate("Gustave", u"password"))
 
         # just make sure there are no exceptions here
@@ -294,8 +321,10 @@ class TestDatabase(unittest.TestCase):
         obj = {"x": True}
         key = db.test.save(obj)
         self.assertEqual(obj, db.dereference(DBRef("test", key)))
-        self.assertEqual(obj, db.dereference(DBRef("test", key, "pymongo_test")))
-        self.assertRaises(ValueError, db.dereference, DBRef("test", key, "foo"))
+        self.assertEqual(obj,
+                         db.dereference(DBRef("test", key, "pymongo_test")))
+        self.assertRaises(ValueError,
+                          db.dereference, DBRef("test", key, "foo"))
 
         self.assertEqual(None, db.dereference(DBRef("test", 4)))
         obj = {"_id": 4}
@@ -366,10 +395,6 @@ class TestDatabase(unittest.TestCase):
         db = self.connection.pymongo_test
         db.test.remove({})
 
-        self.assertRaises(TypeError, db.test.remove, 5)
-        self.assertRaises(TypeError, db.test.remove, "test")
-        self.assertRaises(TypeError, db.test.remove, [])
-
         one = db.test.save({"x": 1})
         db.test.save({"x": 2})
         db.test.save({"x": 3})
@@ -394,11 +419,11 @@ class TestDatabase(unittest.TestCase):
 
         self.assert_(db.test.find_one({"x": 2}))
         db.test.remove({"x": 2})
-        self.failIf(db.test.find_one({"x": 2}))
+        self.assertFalse(db.test.find_one({"x": 2}))
 
         self.assert_(db.test.find_one())
         db.test.remove({})
-        self.failIf(db.test.find_one())
+        self.assertFalse(db.test.find_one())
 
     def test_save_a_bunch(self):
         db = self.connection.pymongo_test
@@ -476,11 +501,19 @@ class TestDatabase(unittest.TestCase):
 
         self.assertEqual(0, db.system.js.count())
         db.system_js.add = "function(a, b) { return a + b; }"
+        self.assertEqual('add', db.system.js.find_one()['_id'])
         self.assertEqual(1, db.system.js.count())
         self.assertEqual(6, db.system_js.add(1, 5))
-
         del db.system_js.add
         self.assertEqual(0, db.system.js.count())
+        
+        db.system_js['add'] = "function(a, b) { return a + b; }"
+        self.assertEqual('add', db.system.js.find_one()['_id'])
+        self.assertEqual(1, db.system.js.count())
+        self.assertEqual(6, db.system_js['add'](1, 5))
+        del db.system_js['add']
+        self.assertEqual(0, db.system.js.count())
+        
         if version.at_least(db.connection, (1, 3, 2, -1)):
             self.assertRaises(OperationFailure, db.system_js.add, 1, 5)
 
@@ -492,6 +525,38 @@ class TestDatabase(unittest.TestCase):
 
         db.system_js.no_param = Code("return 5;")
         self.assertEqual(5, db.system_js.no_param())
+
+    def test_system_js_list(self):
+        db = self.connection.pymongo_test
+        db.system.js.remove()
+        self.assertEqual([], db.system_js.list())
+
+        db.system_js.foo = "blah"
+        self.assertEqual(["foo"], db.system_js.list())
+
+        db.system_js.bar = "baz"
+        self.assertEqual(set(["foo", "bar"]), set(db.system_js.list()))
+
+        del db.system_js.foo
+        self.assertEqual(["bar"], db.system_js.list())
+
+    def test_manipulator_properties(self):
+        db = self.connection.foo
+        self.assertEquals(['ObjectIdInjector'], db.incoming_manipulators)
+        self.assertEquals([], db.incoming_copying_manipulators)
+        self.assertEquals([], db.outgoing_manipulators)
+        self.assertEquals([], db.outgoing_copying_manipulators)
+        db.add_son_manipulator(AutoReference(db))
+        db.add_son_manipulator(NamespaceInjector())
+        db.add_son_manipulator(ObjectIdShuffler())
+        self.assertEqual(2, len(db.incoming_manipulators))
+        for name in db.incoming_manipulators:
+            self.assertTrue(name in ('ObjectIdInjector', 'NamespaceInjector'))
+        self.assertEqual(2, len(db.incoming_copying_manipulators))
+        for name in db.incoming_copying_manipulators:
+            self.assertTrue(name in ('ObjectIdShuffler', 'AutoReference'))
+        self.assertEquals([], db.outgoing_manipulators)
+        self.assertEquals(['AutoReference'], db.outgoing_copying_manipulators)
 
 
 if __name__ == "__main__":

@@ -14,6 +14,9 @@
 
 """Exceptions raised by PyMongo."""
 
+from bson.errors import *
+
+
 class PyMongoError(Exception):
     """Base class for all PyMongo exceptions.
 
@@ -45,6 +48,20 @@ class ConfigurationError(PyMongoError):
 
 class OperationFailure(PyMongoError):
     """Raised when a database operation fails.
+
+    .. versionadded:: 1.8
+       The :attr:`code` attribute.
+    """
+
+    def __init__(self, error, code=None):
+        self.code = code
+        PyMongoError.__init__(self, error)
+
+
+class TimeoutError(OperationFailure):
+    """Raised when a database operation times out.
+
+    .. versionadded:: 1.8
     """
 
 
@@ -62,38 +79,24 @@ class InvalidOperation(PyMongoError):
     """
 
 
-class CollectionInvalid(PyMongoError):
-    """Raised when collection validation fails.
-    """
-
-
 class InvalidName(PyMongoError):
     """Raised when an invalid name is used.
     """
 
 
-class InvalidBSON(PyMongoError):
-    """Raised when trying to create a BSON object from invalid data.
+class CollectionInvalid(PyMongoError):
+    """Raised when collection validation fails.
     """
 
 
-class InvalidStringData(PyMongoError):
-    """Raised when trying to encode a string containing non-UTF8 data.
-    """
-
-
-class InvalidDocument(PyMongoError):
-    """Raised when trying to create a BSON object from an invalid document.
-    """
-
-
-class InvalidId(PyMongoError):
-    """Raised when trying to create an ObjectId from invalid data.
-    """
-
-
-class InvalidURI(PyMongoError):
+class InvalidURI(ConfigurationError):
     """Raised when trying to parse an invalid mongodb URI.
 
-    .. versionadded:: 1.4+
+    .. versionadded:: 1.5
+    """
+
+class UnsupportedOption(ConfigurationError):
+    """Exception for unsupported options.
+
+    .. versionadded:: 1.11+
     """

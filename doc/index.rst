@@ -4,7 +4,9 @@ PyMongo |release| Documentation
 Overview
 --------
 **PyMongo** is a Python distribution containing tools for working with
-`MongoDB <http://www.mongodb.org>`_, and is the recommended way to work with MongoDB from Python. This documentation attempts to explain everything you need to know to use **PyMongo**.
+`MongoDB <http://www.mongodb.org>`_, and is the recommended way to
+work with MongoDB from Python. This documentation attempts to explain
+everything you need to know to use **PyMongo**.
 
 .. todo:: a list of PyMongo's features
 
@@ -24,7 +26,19 @@ Overview
   The complete API documentation, organized by module.
 
 :doc:`tools`
-  A listing of Python tools and libraries that have been written for MongoDB.
+  A listing of Python tools and libraries that have been written for
+  MongoDB.
+
+Getting Help
+------------
+If you're having trouble or have questions about PyMongo, the best place to ask is the `MongoDB user group <http://groups.google.com/group/mongodb-user>`_. Once you get an answer, it'd be great if you could work it back into this documentation and contribute!
+
+Issues
+------
+All issues should be reported (and can be tracked / voted for /
+commented on) at the main `MongoDB JIRA bug tracker
+<http://jira.mongodb.org/browse/PYTHON>`_, in the "Python Driver"
+project.
 
 Contributing
 ------------

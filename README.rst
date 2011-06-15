@@ -2,16 +2,29 @@
 PyMongo
 =======
 :Info: See `the mongo site <http://www.mongodb.org>`_ for more information. See `github <http://github.com/mongodb/mongo-python-driver/tree>`_ for the latest source.
-:Author: Mike Dirolf <mike@10gen.com>
+:Author: Mike Dirolf
+:Maintainer: Bernie Hackett <bernie@10gen.com>
 
 About
 =====
 
 The PyMongo distribution contains tools for interacting with MongoDB
-database from Python.  The ``pymongo`` package is a native Python
-driver for MongoDB. The ``gridfs`` package is a `gridfs
+database from Python.  The ``bson`` package is an implementation of
+the `BSON format <http://bsonspec.org>`_ for Python. The ``pymongo``
+package is a native Python driver for MongoDB. The ``gridfs`` package
+is a `gridfs
 <http://www.mongodb.org/display/DOCS/GridFS+Specification>`_
 implementation on top of ``pymongo``.
+
+Issues / Questions / Feedback
+=============================
+
+Any issues with, questions about, or feedback for PyMongo should be
+sent to the mongodb-user list on Google Groups. For confirmed issues
+or feature requests, open a case on `jira
+<http://jira.mongodb.org>`_. Please do not e-mail any of the PyMongo
+developers directly with issues or questions - you're more likely to
+get an answer on the list.
 
 Installation
 ============
@@ -52,7 +65,7 @@ ObjectId('4aba160ee23f6b543e000000')
 >>> db.my_collection.save({"x": 11})
 ObjectId('4aba160ee23f6b543e000002')
 >>> db.my_collection.find_one()
-{u'x': 10, u'_id': ObjectId('4aba160ee23f6b543e000002')}
+{u'x': 10, u'_id': ObjectId('4aba15ebe23f6b53b0000000')}
 >>> for item in db.my_collection.find():
 ...     print item["x"]
 ...

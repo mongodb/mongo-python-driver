@@ -28,7 +28,7 @@ import sys
 import warnings
 sys.path[0:0] = [""]
 
-from pymongo.errors import ConnectionFailure, ConfigurationError
+from pymongo.errors import ConnectionFailure
 from pymongo.connection import Connection
 
 skip_tests = True
@@ -83,9 +83,9 @@ class TestPaired(unittest.TestCase):
         self.assertEqual(port, connection.port)
 
         slave = self.left == (host, port) and self.right or self.left
-        self.assertRaises(ConfigurationError, Connection.paired,
+        self.assertRaises(ConnectionFailure, Connection.paired,
                           slave, self.bad)
-        self.assertRaises(ConfigurationError, Connection.paired,
+        self.assertRaises(ConnectionFailure, Connection.paired,
                           self.bad, slave)
 
     def test_repr(self):
@@ -93,7 +93,7 @@ class TestPaired(unittest.TestCase):
         connection = Connection.paired(self.left, self.right)
 
         self.assertEqual(repr(connection),
-                         "Connection.paired(('%s', %s), ('%s', %s))" %
+                         "Connection(['%s:%s', '%s:%s'])" %
                          (self.left[0],
                           self.left[1],
                           self.right[0],
@@ -121,25 +121,22 @@ class TestPaired(unittest.TestCase):
             self.assert_(db.test.find_one())
             connection.end_request()
 
-
     def test_deprecation_warnings_paired_connections(self):
         warnings.simplefilter("error")
         try:
-            self.assertRaises(DeprecationWarning, Connection.paired, 
+            self.assertRaises(DeprecationWarning, Connection.paired,
                               self.left, self.right, timeout=3)
-            self.assertRaises(DeprecationWarning, Connection.paired, 
+            self.assertRaises(DeprecationWarning, Connection.paired,
                               self.left, self.right, auto_start_request=True)
-            self.assertRaises(DeprecationWarning, Connection.paired, 
+            self.assertRaises(DeprecationWarning, Connection.paired,
                               self.left, self.right, pool_size=20)
         finally:
             warnings.resetwarnings()
             warnings.simplefilter('ignore')
 
-
     def test_paired_connections_pass_individual_connargs(self):
-        c = Connection.paired(self.left, self.right, slave_okay=True)
-        self.assertTrue(c.__slave_okay)
-
+        c = Connection.paired(self.left, self.right, network_timeout=5)
+        self.assertEqual(5, c._Connection__network_timeout)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,405 @@
 Changelog
 =========
 
+Changes in Version 1.11
+-----------------------
+
+Version 1.11 adds a few new features and fixes a few more bugs.
+
+New Features:
+
+- Basic IPv6 support: pymongo prefers IPv4 but will try IPv6. You can
+  also specify an IPv6 address literal in the `host` parameter or a
+  MongoDB URI provided it is enclosed in '[' and ']'.
+- max_pool_size option: previously pymongo had a hard coded pool size
+  of 10 connections. With this change you can specify a different pool
+  size as a parameter to :class:`~pymongo.connection.Connection`
+  (max_pool_size=<integer>) or in the MongoDB URI (maxPoolSize=<integer>).
+- Find by metadata in GridFS: You can know specify query fields as
+  keyword parameters for :meth:`~gridfs.GridFS.get_version` and
+  :meth:`~gridfs.GridFS.get_last_version`.
+- Per-query slave_okay option: slave_okay=True is now a valid keyword
+  argument for :meth:`~pymongo.collection.Collection.find` and
+  :meth:`~pymongo.collection.Collection.find_one`.
+
+API changes:
+
+- :meth:`~pymongo.database.Database.validate_collection` now returns a
+  dict instead of a string. This change was required to deal with an
+  API change on the server. This method also now takes the optional
+  `scandata` and `full` parameters. See the documentation for more
+  details.
+
+.. warning:: The `pool_size`, `auto_start_request`, and `timeout` parameters
+             for :class:`~pymongo.connection.Connection` have been completely
+             removed in this release. They were deprecated in pymongo-1.4 and
+             have had no effect since then. Please make sure that your code
+             doesn't currently pass these parameters when creating a Connection
+             instance.
+
+Issues resolved
+...............
+
+- `PYTHON-241 <https://jira.mongodb.org/browse/PYTHON-241>`_:
+  Support setting slaveok at the cursor level.
+- `PYTHON-240 <https://jira.mongodb.org/browse/PYTHON-240>`_:
+  Queries can sometimes permanently fail after a replica set fail over.
+- `PYTHON-238 <https://jira.mongodb.org/browse/PYTHON-238>`_:
+  error after few million requests
+- `PYTHON-237 <https://jira.mongodb.org/browse/PYTHON-237>`_:
+  Basic IPv6 support.
+- `PYTHON-236 <https://jira.mongodb.org/browse/PYTHON-236>`_:
+  Restore option to specify pool size in Connection.
+- `PYTHON-212 <https://jira.mongodb.org/browse/PYTHON-212>`_:
+  pymongo does not recover after stale config
+- `PYTHON-138 <https://jira.mongodb.org/browse/PYTHON-138>`_:
+  Find method for GridFS
+
+Changes in Version 1.10.1
+-------------------------
+
+Version 1.10.1 is primarily a bugfix release. It fixes a regression in
+version 1.10 that broke pickling of ObjectIds. A number of other bugs
+have been fixed as well.
+
+There are two behavior changes to be aware of:
+
+- If a read slave raises :class:`~pymongo.errors.AutoReconnect`
+  :class:`~pymongo.master_slave_connection.MasterSlaveConnection` will now
+  retry the query on each slave until it is successful or all slaves have
+  raised :class:`~pymongo.errors.AutoReconnect`. Any other exception will
+  immediately be raised. The order that the slaves are tried is random.
+  Previously the read would be sent to one randomly chosen slave and
+  :class:`~pymongo.errors.AutoReconnect` was immediately raised in case
+  of a connection failure.
+- A Python `long` is now always BSON encoded as an int64. Previously the
+  encoding was based only on the value of the field and a `long` with a
+  value less than `2147483648` or greater than `-2147483649` would always
+  be BSON encoded as an int32.
+
+Issues resolved
+...............
+
+- `PYTHON-234 <https://jira.mongodb.org/browse/PYTHON-234>`_:
+  Fix setup.py to raise exception if any when building extensions
+- `PYTHON-233 <https://jira.mongodb.org/browse/PYTHON-233>`_:
+  Add information to build and test with extensions on windows
+- `PYTHON-232 <https://jira.mongodb.org/browse/PYTHON-232>`_:
+  Traceback when hashing a DBRef instance
+- `PYTHON-231 <https://jira.mongodb.org/browse/PYTHON-231>`_:
+  Traceback when pickling a DBRef instance
+- `PYTHON-230 <https://jira.mongodb.org/browse/PYTHON-230>`_:
+  Pickled ObjectIds are not compatible between pymongo 1.9 and 1.10
+- `PYTHON-228 <https://jira.mongodb.org/browse/PYTHON-228>`_:
+  Cannot pickle bson.ObjectId
+- `PYTHON-227 <https://jira.mongodb.org/browse/PYTHON-227>`_:
+  Traceback when calling find() on system.js
+- `PYTHON-216 <https://jira.mongodb.org/browse/PYTHON-216>`_:
+  MasterSlaveConnection is missing disconnect() method
+- `PYTHON-186 <https://jira.mongodb.org/browse/PYTHON-186>`_:
+  When storing integers, type is selected according to value instead of type
+- `PYTHON-173 <https://jira.mongodb.org/browse/PYTHON-173>`_:
+  as_class option is not propogated by Cursor.clone
+- `PYTHON-113 <https://jira.mongodb.org/browse/PYTHON-113>`_:
+  Redunducy in MasterSlaveConnection
+
+Changes in Version 1.10
+-----------------------
+
+Version 1.10 includes changes to support new features in MongoDB 1.8.x.
+Highlights include a modified map/reduce API including an inline map/reduce
+helper method, a new find_and_modify helper, and the ability to query the
+server for the maximum BSON document size it supports.
+
+- added :meth:`~pymongo.collection.Collection.find_and_modify`.
+- added :meth:`~pymongo.collection.Collection.inline_map_reduce`.
+- changed :meth:`~pymongo.collection.Collection.map_reduce`.
+
+.. warning:: MongoDB versions greater than 1.7.4 no longer generate temporary
+   collections for map/reduce results. An output collection name must be
+   provided and the output will replace any existing output collection with
+   the same name. :meth:`~pymongo.collection.Collection.map_reduce` now
+   requires the `out` parameter.
+
+Issues resolved
+...............
+
+- PYTHON-225: :class:`~pymongo.objectid.ObjectId` class definition should use __slots__.
+- PYTHON-223: Documentation fix.
+- PYTHON-220: Documentation fix.
+- PYTHON-219: KeyError in :meth:`~pymongo.collection.Collection.find_and_modify`
+- PYTHON-213: Query server for maximum BSON document size.
+- PYTHON-208: Fix :class:`~pymongo.connection.Connection` __repr__.
+- PYTHON-207: Changes to Map/Reduce API.
+- PYTHON-205: Accept slaveOk in the URI to match the URI docs.
+- PYTHON-203: When slave_okay=True and we only specify one host don't autodetect other set members.
+- PYTHON-194: Show size when whining about a document being too large.
+- PYTHON-184: Raise :class:`~pymongo.errors.DuplicateKeyError` for duplicate keys in capped collections.
+- PYTHON-178: Don't segfault when trying to encode a recursive data structure.
+- PYTHON-177: Don't segfault when decoding dicts with broken iterators.
+- PYTHON-172: Fix a typo.
+- PYTHON-170: Add :meth:`~pymongo.collection.Collection.find_and_modify`.
+- PYTHON-169: Support deepcopy of DBRef.
+- PYTHON-167: Duplicate of PYTHON-166.
+- PYTHON-166: Fixes a concurrency issue.
+- PYTHON-158: Add code and err string to `db assertion` messages.
+
+Changes in Version 1.9
+----------------------
+
+Version 1.9 adds a new package to the PyMongo distribution,
+:mod:`bson`. :mod:`bson` contains all of the `BSON
+<http://bsonspec.org>`_ encoding and decoding logic, and the BSON
+types that were formerly in the :mod:`pymongo` package. The following
+modules have been renamed:
+
+  - :mod:`pymongo.bson` -> :mod:`bson`
+  - :mod:`pymongo._cbson` -> :mod:`bson._cbson` and
+    :mod:`pymongo._cmessage`
+  - :mod:`pymongo.binary` -> :mod:`bson.binary`
+  - :mod:`pymongo.code` -> :mod:`bson.code`
+  - :mod:`pymongo.dbref` -> :mod:`bson.dbref`
+  - :mod:`pymongo.json_util` -> :mod:`bson.json_util`
+  - :mod:`pymongo.max_key` -> :mod:`bson.max_key`
+  - :mod:`pymongo.min_key` -> :mod:`bson.min_key`
+  - :mod:`pymongo.objectid` -> :mod:`bson.objectid`
+  - :mod:`pymongo.son` -> :mod:`bson.son`
+  - :mod:`pymongo.timestamp` -> :mod:`bson.timestamp`
+  - :mod:`pymongo.tz_util` -> :mod:`bson.tz_util`
+
+In addition, the following exception classes have been renamed:
+
+  - :class:`pymongo.errors.InvalidBSON` ->
+    :class:`bson.errors.InvalidBSON`
+  - :class:`pymongo.errors.InvalidStringData` ->
+    :class:`bson.errors.InvalidStringData`
+  - :class:`pymongo.errors.InvalidDocument` ->
+    :class:`bson.errors.InvalidDocument`
+  - :class:`pymongo.errors.InvalidId` ->
+    :class:`bson.errors.InvalidId`
+
+The above exceptions now inherit from :class:`bson.errors.BSONError`
+rather than :class:`pymongo.errors.PyMongoError`.
+
+.. note:: All of the renamed modules and exceptions above have aliases
+   created with the old names, so these changes should not break
+   existing code. The old names will eventually be deprecated and then
+   removed, so users should begin migrating towards the new names now.
+
+.. warning:: The change to the exception hierarchy mentioned above is
+   possibly breaking. If your code is catching
+   :class:`~pymongo.errors.PyMongoError`, then the exceptions raised
+   by :mod:`bson` will not be caught, even though they would have been
+   caught previously. Before upgrading, it is recommended that users
+   check for any cases like this.
+
+- the C extension now shares buffer.c/h with the Ruby driver
+- :mod:`bson` no longer raises :class:`~pymongo.errors.InvalidName`,
+  all occurrences have been replaced with
+  :class:`~bson.errors.InvalidDocument`.
+- renamed :meth:`bson._to_dicts` to :meth:`~bson.decode_all`.
+- renamed :meth:`~bson.BSON.from_dict` to :meth:`~bson.BSON.encode`
+  and :meth:`~bson.BSON.to_dict` to :meth:`~bson.BSON.decode`.
+- added :meth:`~pymongo.cursor.Cursor.batch_size`.
+- allow updating (some) file metadata after a
+  :class:`~gridfs.grid_file.GridIn` instance has been closed.
+- performance improvements for reading from GridFS.
+- special cased slice with the same start and stop to return an empty
+  cursor.
+- allow writing :class:`unicode` to GridFS if an :attr:`encoding`
+  attribute has been specified for the file.
+- added :meth:`gridfs.GridFS.get_version`.
+- scope variables for :class:`~bson.code.Code` can now be specified as
+  keyword arguments.
+- added :meth:`~gridfs.grid_file.GridOut.readline` to
+  :class:`~gridfs.grid_file.GridOut`.
+- make a best effort to transparently auto-reconnect if a
+  :class:`~pymongo.connection.Connection` has been idle for a while.
+- added :meth:`~pymongo.database.SystemJS.list` to
+  :class:`~pymongo.database.SystemJS`.
+- added `file_document` argument to :meth:`~gridfs.grid_file.GridOut`
+  to allow initializing from an existing file document.
+- raise :class:`~pymongo.errors.TimeoutError` even if the
+  ``getLastError`` command was run manually and not through "safe"
+  mode.
+- added :class:`uuid` support to :mod:`~bson.json_util`.
+
+Changes in Version 1.8.1
+------------------------
+
+- fixed a typo in the C extension that could cause safe-mode
+  operations to report a failure (:class:`SystemError`) even when none
+  occurred.
+- added a :meth:`__ne__` implementation to any class where we define
+  :meth:`__eq__`.
+
+Changes in Version 1.8
+----------------------
+
+Version 1.8 adds support for connecting to replica sets, specifying
+per-operation values for `w` and `wtimeout`, and decoding to
+timezone-aware datetimes.
+
+- fixed a reference leak in the C extension when decoding a
+  :class:`~bson.dbref.DBRef`.
+- added support for `w`, `wtimeout`, and `fsync` (and any other
+  options for `getLastError`) to "safe mode" operations.
+- added :attr:`~pymongo.connection.Connection.nodes` property.
+- added a maximum pool size of 10 sockets.
+- added support for replica sets.
+- DEPRECATED :meth:`~pymongo.connection.Connection.from_uri` and
+  :meth:`~pymongo.connection.Connection.paired`, both are supplanted
+  by extended functionality in :meth:`~pymongo.connection.Connection`.
+- added tz aware support for datetimes in
+  :class:`~bson.objectid.ObjectId`,
+  :class:`~bson.timestamp.Timestamp` and :mod:`~bson.json_util`
+  methods.
+- added :meth:`~pymongo.collection.Collection.drop` helper.
+- reuse the socket used for finding the master when a
+  :class:`~pymongo.connection.Connection` is first created.
+- added support for :class:`~bson.min_key.MinKey`,
+  :class:`~bson.max_key.MaxKey` and
+  :class:`~bson.timestamp.Timestamp` to :mod:`~bson.json_util`.
+- added support for decoding datetimes as aware (UTC) - it is highly
+  recommended to enable this by setting the `tz_aware` parameter to
+  :meth:`~pymongo.connection.Connection` to ``True``.
+- added `network_timeout` option for individual calls to
+  :meth:`~pymongo.collection.Collection.find` and
+  :meth:`~pymongo.collection.Collection.find_one`.
+- added :meth:`~gridfs.GridFS.exists` to check if a file exists in
+  GridFS.
+- added support for additional keys in :class:`~bson.dbref.DBRef`
+  instances.
+- added :attr:`~pymongo.errors.OperationFailure.code` attribute to
+  :class:`~pymongo.errors.OperationFailure` exceptions.
+- fixed serialization of int and float subclasses in the C extension.
+
+Changes in Version 1.7
+----------------------
+
+Version 1.7 is a recommended upgrade for all PyMongo users. The full
+release notes are below, and some more in depth discussion of the
+highlights is `here
+<http://dirolf.com/2010/06/17/pymongo-1.7-released.html>`_.
+
+- no longer attempt to build the C extension on big-endian systems.
+- added :class:`~bson.min_key.MinKey` and
+  :class:`~bson.max_key.MaxKey`.
+- use unsigned for :class:`~bson.timestamp.Timestamp` in BSON
+  encoder/decoder.
+- support ``True`` as ``"ok"`` in command responses, in addition to
+  ``1.0`` - necessary for server versions **>= 1.5.X**
+- BREAKING change to
+  :meth:`~pymongo.collection.Collection.index_information` to add
+  support for querying unique status and other index information.
+- added :attr:`~pymongo.connection.Connection.document_class`, to
+  specify class for returned documents.
+- added `as_class` argument for
+  :meth:`~pymongo.collection.Collection.find`, and in the BSON decoder.
+- added support for creating :class:`~bson.timestamp.Timestamp`
+  instances using a :class:`~datetime.datetime`.
+- allow `dropTarget` argument for
+  :class:`~pymongo.collection.Collection.rename`.
+- handle aware :class:`~datetime.datetime` instances, by converting to
+  UTC.
+- added support for :class:`~pymongo.cursor.Cursor.max_scan`.
+- raise :class:`~gridfs.errors.FileExists` exception when creating a
+  duplicate GridFS file.
+- use `y2038 <http://code.google.com/p/y2038/>`_ for time handling in
+  the C extension - eliminates 2038 problems when extension is
+  installed.
+- added `sort` parameter to
+  :meth:`~pymongo.collection.Collection.find`
+- finalized deprecation of changes from versions **<= 1.4**
+- take any non-:class:`dict` as an ``"_id"`` query for
+  :meth:`~pymongo.collection.Collection.find_one` or
+  :meth:`~pymongo.collection.Collection.remove`
+- added ability to pass a :class:`dict` for `fields` argument to
+  :meth:`~pymongo.collection.Collection.find` (supports ``"$slice"``
+  and field negation)
+- simplified code to find master, since paired setups don't always have
+  a remote
+- fixed bug in C encoder for certain invalid types (like
+  :class:`~pymongo.collection.Collection` instances).
+- don't transparently map ``"filename"`` key to :attr:`name` attribute
+  for GridFS.
+
+Changes in Version 1.6
+----------------------
+
+The biggest change in version 1.6 is a complete re-implementation of
+:mod:`gridfs` with a lot of improvements over the old
+implementation. There are many details and examples of using the new
+API in `this blog post
+<http://dirolf.com/2010/03/29/new-gridfs-implementation-for-pymongo.html>`_. The
+old API has been removed in this version, so existing code will need
+to be modified before upgrading to 1.6.
+
+- fixed issue where connection pool was being shared across
+  :class:`~pymongo.connection.Connection` instances.
+- more improvements to Python code caching in C extension - should
+  improve behavior on mod_wsgi.
+- added :meth:`~bson.objectid.ObjectId.from_datetime`.
+- complete rewrite of :mod:`gridfs` support.
+- improvements to the :meth:`~pymongo.database.Database.command` API.
+- fixed :meth:`~pymongo.collection.Collection.drop_indexes` behavior
+  on non-existent collections.
+- disallow empty bulk inserts.
+
+Changes in Version 1.5.2
+------------------------
+- fixed response handling to ignore unknown response flags in queries.
+- handle server versions containing '-pre-'.
+
+Changes in Version 1.5.1
+------------------------
+- added :data:`~gridfs.grid_file.GridFile._id` property for
+  :class:`~gridfs.grid_file.GridFile` instances.
+- fix for making a :class:`~pymongo.connection.Connection` (with
+  `slave_okay` set) directly to a slave in a replica pair.
+- accept kwargs for
+  :meth:`~pymongo.collection.Collection.create_index` and
+  :meth:`~pymongo.collection.Collection.ensure_index` to support all
+  indexing options.
+- add :data:`pymongo.GEO2D` and support for geo indexing.
+- improvements to Python code caching in C extension - should improve
+  behavior on mod_wsgi.
+
+Changes in Version 1.5
+----------------------
+- added subtype constants to :mod:`~bson.binary` module.
+- DEPRECATED `options` argument to
+  :meth:`~pymongo.collection.Collection` and
+  :meth:`~pymongo.database.Database.create_collection` in favor of
+  kwargs.
+- added :meth:`~pymongo.has_c` to check for C extension.
+- added :meth:`~pymongo.connection.Connection.copy_database`.
+- added :data:`~pymongo.cursor.Cursor.alive` to tell when a cursor
+  might have more data to return (useful for tailable cursors).
+- added :class:`~bson.timestamp.Timestamp` to better support
+  dealing with internal MongoDB timestamps.
+- added `name` argument for
+  :meth:`~pymongo.collection.Collection.create_index` and
+  :meth:`~pymongo.collection.Collection.ensure_index`.
+- fixed connection pooling w/ fork
+- :meth:`~pymongo.connection.Connection.paired` takes all kwargs that
+  are allowed for :meth:`~pymongo.connection.Connection`.
+- :meth:`~pymongo.collection.Collection.insert` returns list for bulk
+  inserts of size one.
+- fixed handling of :class:`datetime.datetime` instances in
+  :mod:`~bson.json_util`.
+- added :meth:`~pymongo.connection.Connection.from_uri` to support
+  MongoDB connection uri scheme.
+- fixed chunk number calculation when unaligned in :mod:`gridfs`.
+- :meth:`~pymongo.database.Database.command` takes a string for simple
+  commands.
+- added :data:`~pymongo.database.Database.system_js` helper for
+  dealing with server-side JS.
+- don't wrap queries containing ``"$query"`` (support manual use of
+  ``"$min"``, etc.).
+- added :class:`~gridfs.errors.GridFSError` as base class for
+  :mod:`gridfs` exceptions.
+
 Changes in Version 1.4
 ----------------------
 
@@ -27,13 +426,13 @@ Other changes:
   for all :mod:`~pymongo.errors`. this changes the exception hierarchy
   somewhat, and is a BREAKING change if you depend on
   :class:`~pymongo.errors.ConnectionFailure` being a :class:`IOError`
-  or :class:`~pymongo.errors.InvalidBSON` being a :class:`ValueError`,
+  or :class:`~bson.errors.InvalidBSON` being a :class:`ValueError`,
   for example.
 - added :class:`~pymongo.errors.DuplicateKeyError` for calls to
   :meth:`~pymongo.collection.Collection.insert` or
   :meth:`~pymongo.collection.Collection.update` with `safe` set to
   ``True``.
-- removed :mod:`~pymongo.thread_util`
+- removed :mod:`~pymongo.thread_util`.
 - added :meth:`~pymongo.database.Database.add_user` and
   :meth:`~pymongo.database.Database.remove_user` helpers.
 - fix for :meth:`~pymongo.database.Database.authenticate` when using
@@ -48,7 +447,7 @@ Other changes:
   parameters to :class:`~pymongo.connection.Connection`. DEPRECATED
   :meth:`~pymongo.connection.Connection.start_request`.
 - use :meth:`socket.sendall`.
-- removed :meth:`~pymongo.son.SON.from_xml` as it was only being used
+- removed :meth:`~bson.son.SON.from_xml` as it was only being used
   for some internal testing - also eliminates dependency on
   :mod:`elementtree`.
 - implementation of :meth:`~pymongo.message.update` in C.
@@ -58,7 +457,7 @@ Other changes:
 - support string as `key` argument to
   :meth:`~pymongo.collection.Collection.group` (keyf) and run all
   groups as commands.
-- support for equality testing for :class:`~pymongo.code.Code`
+- support for equality testing for :class:`~bson.code.Code`
   instances.
 - allow the NULL byte in strings and disallow it in key names or regex
   patterns
@@ -95,11 +494,11 @@ Changes in Version 1.2.1
 - added ``setup.py doc --test`` to run doctests for tutorial, examples
 - moved most examples to Sphinx docs (and remove from *examples/*
   directory)
-- raise :class:`~pymongo.errors.InvalidId` instead of
+- raise :class:`~bson.errors.InvalidId` instead of
   :class:`TypeError` when passing a 24 character string to
-  :class:`~pymongo.objectid.ObjectId` that contains non-hexadecimal
+  :class:`~bson.objectid.ObjectId` that contains non-hexadecimal
   characters
-- allow :class:`unicode` instances for :class:`~pymongo.objectid.ObjectId` init
+- allow :class:`unicode` instances for :class:`~bson.objectid.ObjectId` init
 
 Changes in Version 1.2
 ----------------------
@@ -116,17 +515,17 @@ Changes in Version 1.2
   queries
 - fix for :meth:`~pymongo.cursor.Cursor.__getitem__` after
   :meth:`~pymongo.cursor.Cursor.skip`
-- allow any UTF-8 string in :class:`~pymongo.bson.BSON` encoder, not
+- allow any UTF-8 string in :class:`~bson.BSON` encoder, not
   just ASCII subset
-- added :attr:`~pymongo.objectid.ObjectId.generation_time`
-- removed support for legacy :class:`~pymongo.objectid.ObjectId`
+- added :attr:`~bson.objectid.ObjectId.generation_time`
+- removed support for legacy :class:`~bson.objectid.ObjectId`
   format - pretty sure this was never used, and is just confusing
-- DEPRECATED :meth:`~pymongo.objectid.ObjectId.url_encode` and
-  :meth:`~pymongo.objectid.ObjectId.url_decode` in favor of :meth:`str`
-  and :meth:`~pymongo.objectid.ObjectId`, respectively
+- DEPRECATED :meth:`~bson.objectid.ObjectId.url_encode` and
+  :meth:`~bson.objectid.ObjectId.url_decode` in favor of :meth:`str`
+  and :meth:`~bson.objectid.ObjectId`, respectively
 - allow *oplog.$main* as a valid collection name
 - some minor fixes for installation process
-- added support for datetime and regex in :mod:`~pymongo.json_util`
+- added support for datetime and regex in :mod:`~bson.json_util`
 
 Changes in Version 1.1.2
 ------------------------
@@ -141,8 +540,8 @@ Changes in Version 1.1.1
   :meth:`~pymongo.collection.Collection.update`
 - fix unicode regex patterns with C extension
 - added :meth:`~pymongo.collection.Collection.distinct`
-- added `database` support for :class:`~pymongo.dbref.DBRef`
-- added :mod:`~pymongo.json_util` with helpers for encoding / decoding
+- added `database` support for :class:`~bson.dbref.DBRef`
+- added :mod:`~bson.json_util` with helpers for encoding / decoding
   special types to JSON
 - DEPRECATED :meth:`pymongo.cursor.Cursor.__len__` in favor of
   :meth:`~pymongo.cursor.Cursor.count` with `with_limit_and_skip` set
@@ -151,11 +550,11 @@ Changes in Version 1.1.1
 
 Changes in Version 1.1
 ----------------------
-- added :meth:`__hash__` for :class:`~pymongo.dbref.DBRef` and
-  :class:`~pymongo.objectid.ObjectId`
+- added :meth:`__hash__` for :class:`~bson.dbref.DBRef` and
+  :class:`~bson.objectid.ObjectId`
 - bulk :meth:`~pymongo.collection.Collection.insert` works with any
   iterable
-- fix :class:`~pymongo.objectid.ObjectId` generation when using
+- fix :class:`~bson.objectid.ObjectId` generation when using
   :mod:`multiprocessing`
 - added :attr:`~pymongo.cursor.Cursor.collection`
 - added `network_timeout` parameter for
@@ -197,7 +596,7 @@ Changes in Version 0.15.1
 
 Changes in Version 0.15
 -----------------------
-- fix string representation of :class:`~pymongo.objectid.ObjectId`
+- fix string representation of :class:`~bson.objectid.ObjectId`
   instances
 - added `timeout` parameter for
   :meth:`~pymongo.collection.Collection.find`
@@ -216,7 +615,7 @@ Changes in Version 0.14.1
 
 Changes in Version 0.14
 -----------------------
-- support for long in :class:`~pymongo.bson.BSON`
+- support for long in :class:`~bson.BSON`
 - added :meth:`~pymongo.collection.Collection.rename`
 - added `snapshot` parameter for
   :meth:`~pymongo.collection.Collection.find`
@@ -234,11 +633,11 @@ Changes in Version 0.13
 
 Changes in Version 0.12
 -----------------------
-- improved :class:`~pymongo.objectid.ObjectId` generation
+- improved :class:`~bson.objectid.ObjectId` generation
 - added :class:`~pymongo.errors.AutoReconnect` exception for when
   reconnection is possible
 - make :mod:`gridfs` thread-safe
-- fix for :mod:`gridfs` with non :class:`~pymongo.objectid.ObjectId` ``_id``
+- fix for :mod:`gridfs` with non :class:`~bson.objectid.ObjectId` ``_id``
 
 Changes in Version 0.11.3
 -------------------------

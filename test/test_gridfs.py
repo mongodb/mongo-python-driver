@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+#
 # Copyright 2009-2010 10gen, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,12 +17,20 @@
 """Tests for the gridfs package.
 """
 
+try:
+    from cStringIO import StringIO
+except ImportError:
+    from StringIO import StringIO
+import datetime
 import unittest
 import threading
+import time
 import sys
 sys.path[0:0] = [""]
 
 import gridfs
+from gridfs.errors import (FileExists,
+                           NoFile)
 from test_connection import get_connection
 
 
@@ -32,7 +42,7 @@ class JustWrite(threading.Thread):
 
     def run(self):
         for _ in range(10):
-            file = self.fs.open("test", "w")
+            file = self.fs.new_file(filename="test")
             file.write("hello")
             file.close()
 
@@ -45,9 +55,8 @@ class JustRead(threading.Thread):
 
     def run(self):
         for _ in range(10):
-            file = self.fs.open("test")
+            file = self.fs.get("test")
             assert file.read() == "hello"
-            file.close()
 
 
 class TestGridfs(unittest.TestCase):
@@ -56,132 +65,81 @@ class TestGridfs(unittest.TestCase):
         self.db = get_connection().pymongo_test
         self.db.drop_collection("fs.files")
         self.db.drop_collection("fs.chunks")
-        self.db.drop_collection("pymongo_test.files")
-        self.db.drop_collection("pymongo_test.chunks")
+        self.db.drop_collection("alt.files")
+        self.db.drop_collection("alt.chunks")
         self.fs = gridfs.GridFS(self.db)
+        self.alt = gridfs.GridFS(self.db, "alt")
 
-    def test_open(self):
-        self.assertRaises(IOError, self.fs.open, "my file", "r")
-        f = self.fs.open("my file", "w")
-        f.write("hello gridfs world!")
-        f.close()
+    def test_gridfs(self):
+        self.assertRaises(TypeError, gridfs.GridFS, "foo")
+        self.assertRaises(TypeError, gridfs.GridFS, self.db, 5)
 
-        g = self.fs.open("my file", "r")
-        self.assertEqual("hello gridfs world!", g.read())
-        g.close()
+    def test_basic(self):
+        oid = self.fs.put("hello world")
+        self.assertEqual("hello world", self.fs.get(oid).read())
+        self.assertEqual(1, self.db.fs.files.count())
+        self.assertEqual(1, self.db.fs.chunks.count())
+
+        self.fs.delete(oid)
+        self.assertRaises(NoFile, self.fs.get, oid)
+        self.assertEqual(0, self.db.fs.files.count())
+        self.assertEqual(0, self.db.fs.chunks.count())
+
+        self.assertRaises(NoFile, self.fs.get, "foo")
+        oid = self.fs.put("hello world", _id="foo")
+        self.assertEqual("foo", oid)
+        self.assertEqual("hello world", self.fs.get("foo").read())
 
     def test_list(self):
-        self.assertEqual(self.fs.list(), [])
-
-        f = self.fs.open("mike", "w")
-        f.close()
-
-        f = self.fs.open("test", "w")
-        f.close()
-
-        f = self.fs.open("hello world", "w")
-        f.close()
-
-        self.assertEqual(["mike", "test", "hello world"], self.fs.list())
-
-    def test_remove(self):
-        self.assertRaises(TypeError, self.fs.remove, 5)
-        self.assertRaises(TypeError, self.fs.remove, None)
-        self.assertRaises(TypeError, self.fs.remove, [])
-
-        f = self.fs.open("mike", "w")
-        f.write("hi")
-        f.close()
-        f = self.fs.open("test", "w")
-        f.write("bye")
-        f.close()
-        f = self.fs.open("hello world", "w")
-        f.write("fly")
-        f.close()
-        self.assertEqual(["mike", "test", "hello world"], self.fs.list())
-        self.assertEqual(self.db.fs.files.find().count(), 3)
-        self.assertEqual(self.db.fs.chunks.find().count(), 3)
-
-        self.fs.remove("test")
-
-        self.assertEqual(["mike", "hello world"], self.fs.list())
-        self.assertEqual(self.db.fs.files.find().count(), 2)
-        self.assertEqual(self.db.fs.chunks.find().count(), 2)
-        f = self.fs.open("mike")
-        self.assertEqual(f.read(), "hi")
-        f.close()
-        f = self.fs.open("hello world")
-        self.assertEqual(f.read(), "fly")
-        f.close()
-        self.assertRaises(IOError, self.fs.open, "test")
-
-        self.fs.remove({})
-
         self.assertEqual([], self.fs.list())
-        self.assertEqual(self.db.fs.files.find().count(), 0)
-        self.assertEqual(self.db.fs.chunks.find().count(), 0)
-        self.assertRaises(IOError, self.fs.open, "test")
-        self.assertRaises(IOError, self.fs.open, "mike")
-        self.assertRaises(IOError, self.fs.open, "hello world")
-
-    def test_open_alt_coll(self):
-        f = self.fs.open("my file", "w", "pymongo_test")
-        f.write("hello gridfs world!")
-        f.close()
-
-        self.assertRaises(IOError, self.fs.open, "my file", "r")
-        g = self.fs.open("my file", "r", "pymongo_test")
-        self.assertEqual("hello gridfs world!", g.read())
-        g.close()
-
-    def test_list_alt_coll(self):
-        f = self.fs.open("mike", "w", "pymongo_test")
-        f.close()
-
-        f = self.fs.open("test", "w", "pymongo_test")
-        f.close()
-
-        f = self.fs.open("hello world", "w", "pymongo_test")
-        f.close()
-
+        self.fs.put("hello world")
         self.assertEqual([], self.fs.list())
-        self.assertEqual(["mike", "test", "hello world"],
-                         self.fs.list("pymongo_test"))
 
-    def test_remove_alt_coll(self):
-        f = self.fs.open("mike", "w", "pymongo_test")
-        f.write("hi")
-        f.close()
-        f = self.fs.open("test", "w", "pymongo_test")
-        f.write("bye")
-        f.close()
-        f = self.fs.open("hello world", "w", "pymongo_test")
-        f.write("fly")
-        f.close()
+        self.fs.put("", filename="mike")
+        self.fs.put("foo", filename="test")
+        self.fs.put("", filename="hello world")
 
-        self.fs.remove("test")
-        self.assertEqual(["mike", "test", "hello world"],
-                         self.fs.list("pymongo_test"))
-        self.fs.remove("test", "pymongo_test")
-        self.assertEqual(["mike", "hello world"], self.fs.list("pymongo_test"))
+        self.assertEqual(set(["mike", "test", "hello world"]),
+                         set(self.fs.list()))
 
-        f = self.fs.open("mike", collection="pymongo_test")
-        self.assertEqual(f.read(), "hi")
-        f.close()
-        f = self.fs.open("hello world", collection="pymongo_test")
-        self.assertEqual(f.read(), "fly")
-        f.close()
+    def test_empty_file(self):
+        oid = self.fs.put("")
+        self.assertEqual("", self.fs.get(oid).read())
+        self.assertEqual(1, self.db.fs.files.count())
+        self.assertEqual(0, self.db.fs.chunks.count())
 
-        self.fs.remove({}, "pymongo_test")
+        raw = self.db.fs.files.find_one()
+        self.assertEqual(0, raw["length"])
+        self.assertEqual(oid, raw["_id"])
+        self.assert_(isinstance(raw["uploadDate"], datetime.datetime))
+        self.assertEqual(256 * 1024, raw["chunkSize"])
+        self.assert_(isinstance(raw["md5"], basestring))
 
-        self.assertEqual([], self.fs.list("pymongo_test"))
-        self.assertEqual(self.db.pymongo_test.files.find().count(), 0)
-        self.assertEqual(self.db.pymongo_test.chunks.find().count(), 0)
+    def test_alt_collection(self):
+        oid = self.alt.put("hello world")
+        self.assertEqual("hello world", self.alt.get(oid).read())
+        self.assertEqual(1, self.db.alt.files.count())
+        self.assertEqual(1, self.db.alt.chunks.count())
+
+        self.alt.delete(oid)
+        self.assertRaises(NoFile, self.alt.get, oid)
+        self.assertEqual(0, self.db.alt.files.count())
+        self.assertEqual(0, self.db.alt.chunks.count())
+
+        self.assertRaises(NoFile, self.alt.get, "foo")
+        oid = self.alt.put("hello world", _id="foo")
+        self.assertEqual("foo", oid)
+        self.assertEqual("hello world", self.alt.get("foo").read())
+
+        self.alt.put("", filename="mike")
+        self.alt.put("foo", filename="test")
+        self.alt.put("", filename="hello world")
+
+        self.assertEqual(set(["mike", "test", "hello world"]),
+                         set(self.alt.list()))
 
     def test_threaded_reads(self):
-        f = self.fs.open("test", "w")
-        f.write("hello")
-        f.close()
+        self.fs.put("hello", _id="test")
 
         threads = []
         for i in range(10):
@@ -200,20 +158,137 @@ class TestGridfs(unittest.TestCase):
         for i in range(10):
             threads[i].join()
 
-        f = self.fs.open("test")
+        f = self.fs.get_last_version("test")
         self.assertEqual(f.read(), "hello")
-        f.close()
 
-    # NOTE I do recognize how gross this is. There is no good way to test the
-    # with statement because it is a syntax error in older python versions.
-    # One option would be to use eval and skip the test if it is a syntax
-    # error.
-    if sys.version_info[:2] == (2, 5):
-        import gridfs15
-        test_with_statement = gridfs15.test_with_statement
-    elif sys.version_info[:3] >= (2, 6, 0):
-        import gridfs16
-        test_with_statement = gridfs16.test_with_statement
+    def test_get_last_version(self):
+        a = self.fs.put("foo", filename="test")
+        time.sleep(0.01)
+        b = self.fs.new_file(filename="test")
+        b.write("bar")
+        b.close()
+        time.sleep(0.01)
+        b = b._id
+        c = self.fs.put("baz", filename="test")
+
+        self.assertEqual("baz", self.fs.get_last_version("test").read())
+        self.fs.delete(c)
+        self.assertEqual("bar", self.fs.get_last_version("test").read())
+        self.fs.delete(b)
+        self.assertEqual("foo", self.fs.get_last_version("test").read())
+        self.fs.delete(a)
+        self.assertRaises(NoFile, self.fs.get_last_version, "test")
+
+    def test_get_last_version_with_metadata(self):
+        a = self.fs.put("foo", filename="test", author="author")
+        time.sleep(0.01)
+        b = self.fs.put("bar", filename="test", author="author")
+
+        self.assertEqual("bar", self.fs.get_last_version(author="author").read())
+        self.fs.delete(b)
+        self.assertEqual("foo", self.fs.get_last_version(author="author").read())
+        self.fs.delete(a)
+
+        a = self.fs.put("foo", filename="test", author="author1")
+        time.sleep(0.01)
+        b = self.fs.put("bar", filename="test", author="author2")
+
+        self.assertEqual("foo", self.fs.get_last_version(author="author1").read())
+        self.assertEqual("bar", self.fs.get_last_version(author="author2").read())
+        self.assertEqual("bar", self.fs.get_last_version(filename="test").read())
+
+        self.assertRaises(NoFile, self.fs.get_last_version, author="author3")
+        self.assertRaises(NoFile, self.fs.get_last_version, filename="nottest", author="author1")
+
+        self.fs.delete(a)
+        self.fs.delete(b)
+
+    def test_get_version(self):
+        self.fs.put("foo", filename="test")
+        time.sleep(0.01)
+        self.fs.put("bar", filename="test")
+        time.sleep(0.01)
+        self.fs.put("baz", filename="test")
+        time.sleep(0.01)
+
+        self.assertEqual("foo", self.fs.get_version("test", 0).read())
+        self.assertEqual("bar", self.fs.get_version("test", 1).read())
+        self.assertEqual("baz", self.fs.get_version("test", 2).read())
+
+        self.assertEqual("baz", self.fs.get_version("test", -1).read())
+        self.assertEqual("bar", self.fs.get_version("test", -2).read())
+        self.assertEqual("foo", self.fs.get_version("test", -3).read())
+
+        self.assertRaises(NoFile, self.fs.get_version, "test", 3)
+        self.assertRaises(NoFile, self.fs.get_version, "test", -4)
+
+    def test_get_version_with_metadata(self):
+        a = self.fs.put("foo", filename="test", author="author1")
+        time.sleep(0.01)
+        b = self.fs.put("bar", filename="test", author="author1")
+        time.sleep(0.01)
+        c = self.fs.put("baz", filename="test", author="author2")
+
+        self.assertEqual("foo", self.fs.get_version(filename="test", author="author1", version=-2).read())
+        self.assertEqual("bar", self.fs.get_version(filename="test", author="author1", version=-1).read())
+        self.assertEqual("foo", self.fs.get_version(filename="test", author="author1", version=0).read())
+        self.assertEqual("bar", self.fs.get_version(filename="test", author="author1", version=1).read())
+        self.assertEqual("baz", self.fs.get_version(filename="test", author="author2", version=0).read())
+        self.assertEqual("baz", self.fs.get_version(filename="test", version=-1).read())
+        self.assertEqual("baz", self.fs.get_version(filename="test", version=2).read())
+
+        self.assertRaises(NoFile, self.fs.get_version, filename="test", author="author3")
+        self.assertRaises(NoFile, self.fs.get_version, filename="test", author="author1", version=2)
+
+        self.fs.delete(a)
+        self.fs.delete(b)
+        self.fs.delete(c)
+
+    def test_put_filelike(self):
+        oid = self.fs.put(StringIO("hello world"), chunk_size=1)
+        self.assertEqual(11, self.db.fs.chunks.count())
+        self.assertEqual("hello world", self.fs.get(oid).read())
+
+    def test_put_duplicate(self):
+        oid = self.fs.put("hello")
+        self.assertRaises(FileExists, self.fs.put, "world", _id=oid)
+
+    def test_exists(self):
+        oid = self.fs.put("hello")
+        self.assert_(self.fs.exists(oid))
+        self.assert_(self.fs.exists({"_id": oid}))
+        self.assert_(self.fs.exists(_id=oid))
+
+        self.assertFalse(self.fs.exists(filename="mike"))
+        self.assertFalse(self.fs.exists("mike"))
+
+        oid = self.fs.put("hello", filename="mike", foo=12)
+        self.assert_(self.fs.exists(oid))
+        self.assert_(self.fs.exists({"_id": oid}))
+        self.assert_(self.fs.exists(_id=oid))
+        self.assert_(self.fs.exists(filename="mike"))
+        self.assert_(self.fs.exists({"filename": "mike"}))
+        self.assert_(self.fs.exists(foo=12))
+        self.assert_(self.fs.exists({"foo": 12}))
+        self.assert_(self.fs.exists(foo={"$gt": 11}))
+        self.assert_(self.fs.exists({"foo": {"$gt": 11}}))
+
+        self.assertFalse(self.fs.exists(foo=13))
+        self.assertFalse(self.fs.exists({"foo": 13}))
+        self.assertFalse(self.fs.exists(foo={"$gt": 12}))
+        self.assertFalse(self.fs.exists({"foo": {"$gt": 12}}))
+
+    def test_put_unicode(self):
+        self.assertRaises(TypeError, self.fs.put, u"hello")
+
+        oid = self.fs.put(u"hello", encoding="utf-8")
+        self.assertEqual("hello", self.fs.get(oid).read())
+        self.assertEqual("utf-8", self.fs.get(oid).encoding)
+
+        oid = self.fs.put(u"aé", encoding="iso-8859-1")
+        self.assertEqual(u"aé".encode("iso-8859-1"), self.fs.get(oid).read())
+        self.assertEqual("iso-8859-1", self.fs.get(oid).encoding)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -33,7 +33,7 @@ class SaveAndFind(threading.Thread):
         sum = 0
         for document in self.collection.find():
             sum += document["x"]
-        assert sum == 499500
+        assert sum == 499500, "sum was %d not 499500" % sum
 
 
 class Insert(threading.Thread):
@@ -72,7 +72,8 @@ class Update(threading.Thread):
             error = True
 
             try:
-                self.collection.update({"test": "unique"}, {"$set": {"test": "update"}}, safe=True)
+                self.collection.update({"test": "unique"},
+                                       {"$set": {"test": "update"}}, safe=True)
                 error = False
             except:
                 if not self.expect_exception:
@@ -103,9 +104,9 @@ class TestThreads(unittest.TestCase):
         self.db = get_connection().pymongo_test
 
     def test_threading(self):
-        self.db.test.remove({})
+        self.db.drop_collection("test")
         for i in xrange(1000):
-            self.db.test.save({"x": i})
+            self.db.test.save({"x": i}, safe=True)
 
         threads = []
         for i in range(10):
@@ -123,6 +124,7 @@ class TestThreads(unittest.TestCase):
         self.db.test2.insert({"test": "insert"})
 
         self.db.test2.create_index("test", unique=True)
+        self.db.test2.find_one()
 
         okay = Insert(self.db.test1, 2000, False)
         error = Insert(self.db.test2, 2000, True)
@@ -142,6 +144,7 @@ class TestThreads(unittest.TestCase):
         self.db.test2.insert({"test": "unique"})
 
         self.db.test2.create_index("test", unique=True)
+        self.db.test2.find_one()
 
         okay = Update(self.db.test1, 2000, False)
         error = Update(self.db.test2, 2000, True)

@@ -21,17 +21,25 @@ import os
 import sys
 
 try:
-    os.remove("pymongo/_cbson.so")
+    os.remove("pymongo/_cmessage.so")
+    os.remove("bson/_cbson.so")
 except:
     pass
 
 try:
-    os.remove("pymongo/_cbson.pyd")
+    os.remove("pymongo/_cmessage.pyd")
+    os.remove("bson/_cbson.pyd")
 except:
     pass
 
 try:
-    from pymongo import _cbson
+    from pymongo import _cmessage
+    sys.exit("could still import _cmessage")
+except ImportError:
+    pass
+
+try:
+    from bson import _cbson
     sys.exit("could still import _cbson")
 except ImportError:
     pass

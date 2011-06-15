@@ -19,7 +19,8 @@ from distutils.errors import CCompilerError
 from distutils.errors import DistutilsPlatformError, DistutilsExecError
 from distutils.core import Extension
 
-from pymongo import version
+# Remember to change in pymongo/__init__.py as well!
+version = "1.11+"
 
 f = open("README.rst")
 try:
@@ -61,7 +62,7 @@ class doc(Command):
                 pass
 
         if has_subprocess:
-            status = subprocess.call(["sphinx-build", "-b", mode, "doc", path])
+            status = subprocess.call(["sphinx-build", "-E", "-b", mode, "doc", path])
 
             if status:
                 raise RuntimeError("documentation step '%s' failed" % mode)
@@ -78,12 +79,12 @@ Please ask in the user forums for help.
 
 
 if sys.platform == 'win32' and sys.version_info > (2, 6):
-   # 2.6's distutils.msvc9compiler can raise an IOError when failing to
-   # find the compiler
-   build_errors = (CCompilerError, DistutilsExecError, DistutilsPlatformError,
-                 IOError)
+    # 2.6's distutils.msvc9compiler can raise an IOError when failing to
+    # find the compiler
+    build_errors = (CCompilerError, DistutilsExecError,
+                    DistutilsPlatformError, IOError)
 else:
-   build_errors = (CCompilerError, DistutilsExecError, DistutilsPlatformError)
+    build_errors = (CCompilerError, DistutilsExecError, DistutilsPlatformError)
 
 
 class custom_build_ext(build_ext):
@@ -98,6 +99,14 @@ WARNING: %s could not
 be compiled. No C extensions are essential for PyMongo to run,
 although they do result in significant speed improvements.
 
+If you are seeing this message on Linux you probably need to
+install GCC and/or the Python development package for your
+version of Python. Python development package names for popular
+Linux distributions include:
+
+RHEL/CentOS: python-devel
+Debian/Ubuntu: python-dev
+
 %s
 **************************************************************
 """
@@ -109,14 +118,17 @@ although they do result in significant speed improvements.
             print e
             print self.warning_message % ("Extension modules",
                                           "There was an issue with your "
-                                          "platform configuration - see above.")
+                                          "platform configuration "
+                                          "- see above.")
 
     def build_extension(self, ext):
         if sys.version_info[:3] >= (2, 4, 0):
             try:
                 build_ext.build_extension(self, ext)
-            except build_errors:
-                print self.warning_message % ("The %s extension module" % ext.name,
+            except build_errors, e:
+                print e
+                print self.warning_message % ("The %s extension "
+                                              "module" % ext.name,
                                               "Above is the ouput showing how "
                                               "the compilation failed.")
         else:
@@ -125,16 +137,33 @@ although they do result in significant speed improvements.
                                           "advantage of the extension.")
 
 c_ext = Feature(
-    "optional C extension",
+    "optional C extensions",
     standard=True,
-    ext_modules=[Extension('pymongo._cbson',
-                           include_dirs=['pymongo'],
-                           sources=['pymongo/_cbsonmodule.c',
-                                    'pymongo/time_helpers.c',
-                                    'pymongo/encoding_helpers.c'])])
+    ext_modules=[Extension('bson._cbson',
+                           include_dirs=['bson'],
+                           sources=['bson/_cbsonmodule.c',
+                                    'bson/time64.c',
+                                    'bson/buffer.c',
+                                    'bson/encoding_helpers.c']),
+                 Extension('pymongo._cmessage',
+                           include_dirs=['bson'],
+                           sources=['pymongo/_cmessagemodule.c',
+                                    'bson/_cbsonmodule.c',
+                                    'bson/time64.c',
+                                    'bson/buffer.c',
+                                    'bson/encoding_helpers.c'])])
 
 if "--no_ext" in sys.argv:
     sys.argv = [x for x in sys.argv if x != "--no_ext"]
+    features = {}
+elif sys.byteorder == "big":
+    print """
+*****************************************************
+The optional C extensions are currently not supported
+on big endian platforms and will not be built.
+Performance may be degraded.
+*****************************************************
+"""
     features = {}
 else:
     features = {"c-ext": c_ext}
@@ -146,9 +175,11 @@ setup(
     long_description=readme_content,
     author="Mike Dirolf",
     author_email="mongodb-user@googlegroups.com",
+    maintainer="Bernie Hackett",
+    maintainer_email="bernie@10gen.com",
     url="http://github.com/mongodb/mongo-python-driver",
-    keywords=["mongo", "mongodb", "pymongo", "gridfs"],
-    packages=["pymongo", "gridfs"],
+    keywords=["mongo", "mongodb", "pymongo", "gridfs", "bson"],
+    packages=["bson", "pymongo", "gridfs"],
     install_requires=[],
     features=features,
     license="Apache License, Version 2.0",

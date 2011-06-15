@@ -20,8 +20,10 @@ from sphinx import addnodes
 from sphinx.util.compat import (Directive,
                                 make_admonition)
 
+
 class mongodoc(nodes.Admonition, nodes.Element):
     pass
+
 
 class mongoref(nodes.reference):
     pass
@@ -60,25 +62,30 @@ class MongodocDirective(Directive):
         env = self.state.document.settings.env
 
         return make_admonition(mongodoc, self.name,
-                               [_('See general MongoDB documentation')],
+                               ['See general MongoDB documentation'],
                                self.options, self.content, self.lineno,
-                               self.content_offset, self.block_text, self.state,
-                               self.state_machine)
+                               self.content_offset, self.block_text,
+                               self.state, self.state_machine)
 
 
 def process_mongodoc_nodes(app, doctree, fromdocname):
     env = app.builder.env
 
     for node in doctree.traverse(mongodoc):
+        anchor = None
         for name in node.parent.parent.traverse(addnodes.desc_signature):
             anchor = name["ids"][0]
             break
+        if not anchor:
+            for name in node.parent.traverse(nodes.section):
+                anchor = name["ids"][0]
+                break
         for para in node.traverse(nodes.paragraph):
             tag = str(para.traverse()[1])
             link = mongoref("", "")
             link["refuri"] = "http://dochub.mongodb.org/core/%s" % tag
             link["name"] = anchor
-            link.append(nodes.emphasis(_(tag), _(tag)))
+            link.append(nodes.emphasis(tag, tag))
             new_para = nodes.paragraph()
             new_para += link
             node.replace(para, new_para)

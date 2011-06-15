@@ -9,6 +9,8 @@
 
       Alias for :class:`pymongo.connection.Connection`.
 
+   .. autofunction:: has_c
+
 Sub-modules:
 
 .. toctree::
@@ -20,13 +22,23 @@ Sub-modules:
    cursor
    errors
    master_slave_connection
+   message
+   son_manipulator
+   cursor_manager
+
+Deprecated sub-modules (moved to the :mod:`bson` package):
+
+.. toctree::
+   :maxdepth: 2
+
+   bson
+   binary
    code
    dbref
-   binary
-   objectid
-   bson
-   message
-   son
-   son_manipulator
    json_util
-   cursor_manager
+   max_key
+   min_key
+   objectid
+   son
+   timestamp
+   tz_util

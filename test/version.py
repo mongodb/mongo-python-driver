@@ -14,6 +14,7 @@
 
 """Some tools for running tests based on MongoDB server version."""
 
+
 def _padded(iter, length, padding=0):
     l = list(iter)
     if len(l) < length:
@@ -21,13 +22,21 @@ def _padded(iter, length, padding=0):
             l.append(0)
     return l
 
+
 def _parse_version_string(version_string):
     mod = 0
     if version_string.endswith("+"):
         version_string = version_string[0:-1]
         mod = 1
+    elif version_string.endswith("-pre-"):
+        version_string = version_string[0:-5]
+        mod = -1
     elif version_string.endswith("-"):
         version_string = version_string[0:-1]
+        mod = -1
+    # Deal with '-rcX' substrings
+    if version_string.find('-rc') != -1:
+        version_string = version_string[0:version_string.find('-rc')]
         mod = -1
 
     version = [int(part) for part in version_string.split(".")]
@@ -36,9 +45,11 @@ def _parse_version_string(version_string):
 
     return tuple(version)
 
+
 # Note this is probably broken for very old versions of the database...
 def version(connection):
     return _parse_version_string(connection.server_info()["version"])
+
 
 def at_least(connection, min_version):
     return version(connection) >= tuple(_padded(min_version, 4))

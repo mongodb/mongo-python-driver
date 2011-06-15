@@ -21,6 +21,16 @@ ASCENDING = 1
 DESCENDING = -1
 """Descending sort order."""
 
+GEO2D = "2d"
+"""Index specifier for a 2-dimensional `geospatial index`_.
+
+.. versionadded:: 1.5.1
+
+.. note:: Geo-spatial indexing requires server version **>= 1.3.3+**.
+
+.. _geospatial index: http://www.mongodb.org/display/DOCS/Geospatial+Indexing
+"""
+
 OFF = 0
 """No database profiling."""
 SLOW_ONLY = 1
@@ -28,8 +38,21 @@ SLOW_ONLY = 1
 ALL = 2
 """Profile all operations."""
 
-version = "1.4+"
+# Remember to change in setup.py as well!
+version = "1.11+"
 """Current version of PyMongo."""
 
 Connection = PyMongo_Connection
 """Alias for :class:`pymongo.connection.Connection`."""
+
+
+def has_c():
+    """Is the C extension installed?
+
+    .. versionadded:: 1.5
+    """
+    try:
+        from pymongo import _cmessage
+        return True
+    except ImportError:
+        return False

@@ -18,7 +18,7 @@ import unittest
 import sys
 sys.path[0:0] = [""]
 
-from pymongo.son import SON
+from bson.son import SON
 
 
 class TestSON(unittest.TestCase):

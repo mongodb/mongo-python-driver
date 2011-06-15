@@ -5,7 +5,7 @@
 # This file is execfile()d with the current directory set to its containing dir.
 
 import sys, os
-sys.path.append(os.path.abspath('..'))
+sys.path[0:0] = [os.path.abspath('..')]
 
 import pymongo
 
@@ -27,7 +27,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'PyMongo'
-copyright = u'2009, Michael Dirolf'
+copyright = u'2008 - 2011, 10gen, Inc.'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -101,7 +101,7 @@ html_theme = 'default'
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+#html_static_path = ['_static']
 
 # Custom sidebar templates, maps document names to template names.
 #html_sidebars = {}

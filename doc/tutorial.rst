@@ -13,8 +13,8 @@ This tutorial is intended as an introduction to working with
 Prerequisites
 -------------
 Before we start, make sure that you have the **PyMongo** distribution
-:doc:`installed <installation>`. In the Python shell, the following should run without
-raising an exception:
+:doc:`installed <installation>`. In the Python shell, the following
+should run without raising an exception:
 
 .. doctest::
 
@@ -204,7 +204,7 @@ command to the server:
 There are a couple of interesting things to note about this example:
 
   - The call to :meth:`~pymongo.collection.Collection.insert` now
-    returns two :class:`~pymongo.objectid.ObjectId` instances, one for
+    returns two :class:`~bson.objectid.ObjectId` instances, one for
     each inserted document.
   - ``new_posts[1]`` has a different "shape" than the other posts -
     there is no ``"tags"`` field and we've added a new field,
@@ -293,7 +293,7 @@ about how the query is being performed without the index:
   >>> posts.find({"date": {"$lt": d}}).sort("author").explain()["cursor"]
   u'BasicCursor'
   >>> posts.find({"date": {"$lt": d}}).sort("author").explain()["nscanned"]
-  3.0
+  3
 
 We can see that the query is using the *BasicCursor* and scanning over
 all 3 documents in the collection. Now let's add a compound index and
@@ -307,7 +307,7 @@ look at the same information:
   >>> posts.find({"date": {"$lt": d}}).sort("author").explain()["cursor"]
   u'BtreeCursor date_-1_author_1'
   >>> posts.find({"date": {"$lt": d}}).sort("author").explain()["nscanned"]
-  2.0
+  2
 
 Now the query is using a *BtreeCursor* (the index) and only scanning
 over the 2 matching documents.

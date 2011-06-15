@@ -26,14 +26,24 @@ except ImportError:
         import simplejson as json
     except ImportError:
         json_lib = False
+try:
+    import uuid
+    should_test_uuid = True
+except ImportError:
+    should_test_uuid = False
 
 from nose.plugins.skip import SkipTest
 
 sys.path[0:0] = [""]
 
-from pymongo.json_util import default, object_hook
-from pymongo.objectid import ObjectId
-from pymongo.dbref import DBRef
+from bson.objectid import ObjectId
+from bson.dbref import DBRef
+from bson.min_key import MinKey
+from bson.max_key import MaxKey
+from bson.timestamp import Timestamp
+from bson.tz_util import utc
+from bson.json_util import default, object_hook
+
 
 class TestJsonUtil(unittest.TestCase):
 
@@ -58,16 +68,45 @@ class TestJsonUtil(unittest.TestCase):
         self.round_trip({"ref": DBRef("foo", 5)})
         self.round_trip({"ref": DBRef("foo", 5, "db")})
 
+        # TODO this is broken when using cjson. See:
+        #   http://jira.mongodb.org/browse/PYTHON-153
+        #   http://bugs.python.org/issue6105
+        #
+        # self.assertEqual("{\"ref\": {\"$ref\": \"foo\", \"$id\": 5}}",
+        #                  json.dumps({"ref": DBRef("foo", 5)},
+        #                  default=default))
+        # self.assertEqual("{\"ref\": {\"$ref\": \"foo\",
+        #                              \"$id\": 5, \"$db\": \"bar\"}}",
+        #                  json.dumps({"ref": DBRef("foo", 5, "bar")},
+        #                  default=default))
+
     def test_datetime(self):
         # only millis, not micros
         self.round_trip({"date": datetime.datetime(2009, 12, 9, 15,
-                                                   49, 45, 191000)})
+                                                   49, 45, 191000, utc)})
 
     def test_regex(self):
         res = self.round_tripped({"r": re.compile("a*b", re.IGNORECASE)})["r"]
         self.assertEqual("a*b", res.pattern)
         self.assertEqual(re.IGNORECASE, res.flags)
 
+    def test_minkey(self):
+        self.round_trip({"m": MinKey()})
+
+    def test_maxkey(self):
+        self.round_trip({"m": MinKey()})
+
+    def test_timestamp(self):
+        res = json.dumps({"ts": Timestamp(4, 13)}, default=default)
+        dct = json.loads(res)
+        self.assertEqual(dct['ts']['t'], 4)
+        self.assertEqual(dct['ts']['i'], 13)
+
+    def test_uuid(self):
+        if not should_test_uuid:
+            raise SkipTest()
+        self.round_trip(
+                {'uuid': uuid.UUID('f47ac10b-58cc-4372-a567-0e02b2c3d479')})
 
 if __name__ == "__main__":
     unittest.main()

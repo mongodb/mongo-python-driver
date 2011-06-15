@@ -1,9 +1,10 @@
-:mod:`binary` -- Tools for representing binary data to be stored in MongoDB
-===========================================================================
+:mod:`binary` -- MOVED
+======================
 
-.. automodule:: pymongo.binary
-   :synopsis: Tools for representing binary data to be stored in MongoDB
+.. module:: pymongo.binary
 
-   .. autoclass:: Binary(data[, subtype=2])
-      :members:
-      :show-inheritance:
+This module has been deprecated in favor of :mod:`bson.binary`. Please
+use that module instead.
+
+.. versionchanged:: 1.9
+   Deprecated.

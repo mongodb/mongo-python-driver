@@ -15,15 +15,19 @@
 """Master-Slave connection to Mongo.
 
 Performs all writes to Master instance and distributes reads among all
-instances."""
+slaves. Reads are tried on each slave in turn until the read succeeds
+or all slaves failed.
+"""
 
 import random
 
+from pymongo.common import BaseObject
 from pymongo.connection import Connection
 from pymongo.database import Database
+from pymongo.errors import AutoReconnect
 
 
-class MasterSlaveConnection(object):
+class MasterSlaveConnection(BaseObject):
     """A master-slave connection to Mongo.
     """
 
@@ -34,7 +38,8 @@ class MasterSlaveConnection(object):
         mechanisms as a regular `Connection`. The `Connection` instances used
         to create this `MasterSlaveConnection` can themselves make use of
         connection pooling, etc. 'Connection' instances used as slaves should
-        be created with the slave_okay option set to True.
+        be created with the slave_okay option set to True. Safe options are
+        inherited from `master` and can be changed in this instance.
 
         Raises TypeError if `master` is not an instance of `Connection` or
         slaves is not a list of at least one `Connection` instances.
@@ -54,6 +59,11 @@ class MasterSlaveConnection(object):
                 raise TypeError("slave %r is not an instance of Connection" %
                                 slave)
 
+        super(MasterSlaveConnection,
+              self).__init__(slave_okay=True,
+                             safe=master.safe,
+                             **(master.get_lasterror_options()))
+
         self.__in_request = False
         self.__master = master
         self.__slaves = slaves
@@ -66,13 +76,28 @@ class MasterSlaveConnection(object):
     def slaves(self):
         return self.__slaves
 
+    # TODO this is a temporary hack PYTHON-136 is the right solution for this
     @property
-    def slave_okay(self):
-        """Is it okay for this connection to connect directly to a slave?
+    def document_class(self):
+        return dict
 
-        This is always True for MasterSlaveConnection instances.
-        """
+    # TODO this is a temporary hack PYTHON-136 is the right solution for this
+    @property
+    def tz_aware(self):
         return True
+
+    def disconnect(self):
+        """Disconnect from MongoDB.
+
+        Disconnecting will call disconnect on all master and slave
+        connections.
+
+        .. seealso:: Module :mod:`~pymongo.connection`
+        .. versionadded:: 1.10.1
+        """
+        self.__master.disconnect()
+        for slave in self.__slaves:
+            slave.disconnect()
 
     def set_cursor_manager(self, manager_class):
         """Set the cursor manager for this connection.
@@ -108,9 +133,8 @@ class MasterSlaveConnection(object):
     # _connection_to_use is a hack that we need to include to make sure
     # that getmore operations can be sent to the same instance on which
     # the cursor actually resides...
-    def _send_message_with_response(self, message,
-                                    _sock=None, _connection_to_use=None,
-                                    _must_use_master=False):
+    def _send_message_with_response(self, message, _connection_to_use=None,
+                                    _must_use_master=False, **kwargs):
         """Receive a message from Mongo.
 
         Sends the given message and returns a (connection_id, response) pair.
@@ -121,26 +145,34 @@ class MasterSlaveConnection(object):
         """
         if _connection_to_use is not None:
             if _connection_to_use == -1:
-                return (-1, self.__master._send_message_with_response(message,
-                                                                      _sock))
+                return (-1,
+                         self.__master._send_message_with_response(message,
+                                                                   **kwargs))
             else:
                 return (_connection_to_use,
                         self.__slaves[_connection_to_use]
-                        ._send_message_with_response(message, _sock))
-
-        # for now just load-balance randomly among slaves only...
-        connection_id = random.randrange(0, len(self.__slaves))
+                        ._send_message_with_response(message, **kwargs))
 
         # _must_use_master is set for commands, which must be sent to the
         # master instance. any queries in a request must be sent to the
         # master since that is where writes go.
-        if _must_use_master or self.__in_request or connection_id == -1:
+        if _must_use_master or self.__in_request:
             return (-1, self.__master._send_message_with_response(message,
-                                                                  _sock))
+                                                                  **kwargs))
 
-        return (connection_id,
-                self.__slaves[connection_id]._send_message_with_response(message,
-                                                                         _sock))
+        # Iterate through the slaves randomly until we have success. Raise
+        # reconnect if they all fail.
+        for connection_id in random.sample(range(0,
+                                                 len(self.__slaves)),
+                                                 len(self.__slaves)):
+            try:
+                slave = self.__slaves[connection_id]
+                return (connection_id,
+                        slave._send_message_with_response(message, **kwargs))
+            except AutoReconnect:
+                pass
+
+        raise AutoReconnect("failed to connect to slaves")
 
     def start_request(self):
         """Start a "request".
