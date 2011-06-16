@@ -418,6 +418,7 @@ class Cursor(object):
 
         r = self.__collection.database.command("count", self.__collection.name,
                                                allowable_errors=["ns missing"],
+                                               slave_okay=self.__slave_okay,
                                                **command)
         if r.get("errmsg", "") == "ns missing":
             return 0
@@ -448,6 +449,7 @@ class Cursor(object):
 
         return self.__collection.database.command("distinct",
                                                   self.__collection.name,
+                                                  slave_okay=self.__slave_okay,
                                                   **options)["values"]
 
     def explain(self):

@@ -881,7 +881,8 @@ class Collection(common.BaseObject):
         if finalize is not None:
             group["finalize"] = Code(finalize)
 
-        return self.__database.command("group", group)["retval"]
+        return self.__database.command("group", group,
+                                       slave_okay=self.slave_okay)["retval"]
 
     def rename(self, new_name, **kwargs):
         """Rename this collection.
