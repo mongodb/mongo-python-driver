@@ -38,4 +38,5 @@ int write_pair(buffer_t buffer, const char* name, Py_ssize_t name_length,
 int decode_and_write_pair(buffer_t buffer, PyObject* key, PyObject* value,
                           unsigned char check_keys, unsigned char top_level);
 
+void init_cbson(void);
 #endif

@@ -28,7 +28,7 @@ import struct
 import bson
 from bson.son import SON
 try:
-    from pymongo import _cbson
+    from pymongo import _cmessage
     _use_c = True
 except ImportError:
     _use_c = False
@@ -84,7 +84,7 @@ def insert(collection_name, docs, check_keys, safe, last_error_args):
         (request_id, insert_message) = __pack_message(2002, data)
         return (request_id, insert_message, max_bson_size)
 if _use_c:
-    insert = _cbson._insert_message
+    insert = _cmessage._insert_message
 
 
 def update(collection_name, upsert, multi, spec, doc, safe, last_error_args):
@@ -110,7 +110,7 @@ def update(collection_name, upsert, multi, spec, doc, safe, last_error_args):
         (request_id, update_message) = __pack_message(2001, data)
         return (request_id, update_message, len(encoded))
 if _use_c:
-    update = _cbson._update_message
+    update = _cmessage._update_message
 
 
 def query(options, collection_name,
@@ -131,7 +131,7 @@ def query(options, collection_name,
     (request_id, query_message) = __pack_message(2004, data)
     return (request_id, query_message, max_bson_size)
 if _use_c:
-    query = _cbson._query_message
+    query = _cmessage._query_message
 
 
 def get_more(collection_name, num_to_return, cursor_id):
@@ -143,7 +143,7 @@ def get_more(collection_name, num_to_return, cursor_id):
     data += struct.pack("<q", cursor_id)
     return __pack_message(2005, data)
 if _use_c:
-    get_more = _cbson._get_more_message
+    get_more = _cmessage._get_more_message
 
 
 def delete(collection_name, spec, safe, last_error_args):
