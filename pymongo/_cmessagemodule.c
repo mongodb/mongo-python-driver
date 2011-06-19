@@ -107,10 +107,8 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
     int request_id = rand();
     char* collection_name = NULL;
     int collection_name_length;
-    PyObject* docs;
+    PyObject *docs, *doc, *iter;
     int before, cur_size, max_size = 0;
-    int list_length;
-    int i;
     unsigned char check_keys;
     unsigned char safe;
     PyObject* last_error_args;
@@ -126,8 +124,15 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
         return NULL;
     }
 
+    iter = PyObject_GetIter(docs);
+    if (iter == NULL) {
+        PyMem_Free(collection_name);
+        return NULL;
+    }
+
     buffer = buffer_new();
     if (!buffer) {
+        Py_DECREF(iter);
         PyErr_NoMemory();
         PyMem_Free(collection_name);
         return NULL;
@@ -136,6 +141,7 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
     // save space for message length
     length_location = buffer_save_space(buffer, 4);
     if (length_location == -1) {
+        Py_DECREF(iter);
         PyMem_Free(collection_name);
         PyErr_NoMemory();
         return NULL;
@@ -149,6 +155,7 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
         !buffer_write_bytes(buffer,
                             collection_name,
                             collection_name_length + 1)) {
+        Py_DECREF(iter);
         PyMem_Free(collection_name);
         buffer_free(buffer);
         return NULL;
@@ -156,23 +163,27 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
 
     PyMem_Free(collection_name);
 
-    list_length = PyList_Size(docs);
-    if (list_length <= 0) {
-        PyObject* InvalidOperation = _error("InvalidOperation");
-        PyErr_SetString(InvalidOperation, "cannot do an empty bulk insert");
-        Py_DECREF(InvalidOperation);
-        buffer_free(buffer);
-        return NULL;
-    }
-    for (i = 0; i < list_length; i++) {
-        PyObject* doc = PyList_GetItem(docs, i);
+    while ((doc = PyIter_Next(iter)) != NULL) {
         before = buffer_get_position(buffer);
         if (!write_dict(buffer, doc, check_keys, 1)) {
+            Py_DECREF(doc);
+            Py_DECREF(iter);
             buffer_free(buffer);
             return NULL;
         }
+        Py_DECREF(doc);
         cur_size = buffer_get_position(buffer) - before;
         max_size = (cur_size > max_size) ? cur_size : max_size;
+    }
+    Py_DECREF(iter);
+
+    if (!max_size) {
+        PyObject* InvalidOperation = _error("InvalidOperation");
+        PyErr_SetString(InvalidOperation, "cannot do an empty bulk insert");
+        Py_DECREF(InvalidOperation);
+        Py_DECREF(iter);
+        buffer_free(buffer);
+        return NULL;
     }
 
     message_length = buffer_get_position(buffer) - length_location;
@@ -180,6 +191,7 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
 
     if (safe) {
         if (!add_last_error(buffer, request_id, last_error_args)) {
+            Py_DECREF(iter);
             buffer_free(buffer);
             return NULL;
         }
