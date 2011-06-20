@@ -509,6 +509,26 @@ class BSON(str):
         return document
 
 
+def dumps(document):
+  """Decode a bson document into its :class:`dict` representation.
+
+  This interface mirrors that of the json module.
+  :Parameters:
+    - `document`: mapping type representing a document
+  """
+  return BSON.encode(document)
+
+
+def loads(bsondoc):
+  """Encode a  :class:`dict` document into its BSON data representation.
+
+  This interface mirrors that of the json module.
+  :Parameters:
+    - `bsondoc`: string representing a bson document
+  """
+  return BSON(bsondoc).decode()
+
+
 def has_c():
     """Is the C extension installed?
 

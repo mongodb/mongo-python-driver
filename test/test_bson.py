@@ -380,5 +380,62 @@ class TestBSON(unittest.TestCase):
         d = OrderedDict([("one", 1), ("two", 2), ("three", 3), ("four", 4)])
         self.assertEqual(d, BSON.encode(d).decode(as_class=OrderedDict))
 
+    def test_loads_dumps(self):
+
+      def _test_conversion(dictrep, bsonrep):
+        self.assertEqual(bson.dumps(dictrep), bsonrep)
+        self.assertEqual(bson.loads(bsonrep), dictrep)
+        self.assertEqual(bson.loads(bson.dumps(dictrep)), dictrep)
+        self.assertEqual(bson.dumps(bson.loads(bsonrep)), bsonrep)
+
+      _test_conversion({}, "\x05\x00\x00\x00\x00")
+      _test_conversion({"test": u"hello world"},
+                       "\x1B\x00\x00\x00\x02\x74\x65\x73\x74\x00\x0C\x00\x00"
+                       "\x00\x68\x65\x6C\x6C\x6F\x20\x77\x6F\x72\x6C\x64\x00"
+                       "\x00")
+      _test_conversion({u"mike": 100},
+                       "\x0F\x00\x00\x00\x10\x6D\x69\x6B\x65\x00\x64\x00\x00"
+                       "\x00\x00")
+      _test_conversion({"hello": 1.5},
+                       "\x14\x00\x00\x00\x01\x68\x65\x6C\x6C\x6F\x00\x00\x00"
+                       "\x00\x00\x00\x00\xF8\x3F\x00")
+      _test_conversion({"true": True},
+                       "\x0C\x00\x00\x00\x08\x74\x72\x75\x65\x00\x01\x00")
+      _test_conversion({"false": False},
+                       "\x0D\x00\x00\x00\x08\x66\x61\x6C\x73\x65\x00\x00"
+                       "\x00")
+      _test_conversion({"empty": []},
+                       "\x11\x00\x00\x00\x04\x65\x6D\x70\x74\x79\x00\x05\x00"
+                       "\x00\x00\x00\x00")
+      _test_conversion({"none": {}},
+                       "\x10\x00\x00\x00\x03\x6E\x6F\x6E\x65\x00\x05\x00\x00"
+                       "\x00\x00\x00")
+      _test_conversion({"test": Binary("test", 0)},
+                       "\x14\x00\x00\x00\x05\x74\x65\x73\x74\x00\x04\x00\x00"
+                       "\x00\x00\x74\x65\x73\x74\x00")
+      _test_conversion({"test": Binary("test")},
+                       "\x18\x00\x00\x00\x05\x74\x65\x73\x74\x00\x08\x00\x00"
+                       "\x00\x02\x04\x00\x00\x00\x74\x65\x73\x74\x00")
+      _test_conversion({"test": Binary("test", 128)},
+                       "\x14\x00\x00\x00\x05\x74\x65\x73\x74\x00\x04\x00\x00"
+                       "\x00\x80\x74\x65\x73\x74\x00")
+      _test_conversion({"test": None},
+                       "\x0B\x00\x00\x00\x0A\x74\x65\x73\x74\x00\x00")
+      _test_conversion({"date": datetime.datetime(2007, 1, 8, 0, 30, 11)},
+                       "\x13\x00\x00\x00\x09\x64\x61\x74\x65\x00\x38\xBE\x1C"
+                       "\xFF\x0F\x01\x00\x00\x00")
+      _test_conversion({"$where": Code("test")},
+                       "\x1F\x00\x00\x00\x0F\x24\x77\x68\x65\x72\x65\x00\x12"
+                       "\x00\x00\x00\x05\x00\x00\x00\x74\x65\x73\x74\x00\x05"
+                       "\x00\x00\x00\x00\x00")
+      a = ObjectId("\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0A\x0B")
+      _test_conversion({"oid": a},
+                       "\x16\x00\x00\x00\x07\x6F\x69\x64\x00\x00\x01\x02\x03"
+                       "\x04\x05\x06\x07\x08\x09\x0A\x0B\x00")
+      _test_conversion({"ref": DBRef("coll", a)},
+                       "\x2F\x00\x00\x00\x03ref\x00\x25\x00\x00\x00\x02$ref"
+                       "\x00\x05\x00\x00\x00coll\x00\x07$id\x00\x00\x01\x02"
+                       "\x03\x04\x05\x06\x07\x08\x09\x0A\x0B\x00\x00")
+
 if __name__ == "__main__":
     unittest.main()
