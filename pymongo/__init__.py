@@ -38,8 +38,8 @@ SLOW_ONLY = 1
 ALL = 2
 """Profile all operations."""
 
-# Remember to change in setup.py as well!
-version = "1.11+"
+version_tuple = (1, 11, '+')
+version = '.'.join(version_tuple)
 """Current version of PyMongo."""
 
 Connection = PyMongo_Connection
