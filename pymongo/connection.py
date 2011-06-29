@@ -92,7 +92,7 @@ class _Pool(threading.local):
     """
 
     # Non thread-locals
-    __slots__ = ["sockets", "socket_factory", "pool_size", "pid"]
+    __slots__ = ["sockets", "pool_size", "pid"]
 
     # thread-local default
     sock = None
@@ -963,7 +963,7 @@ class Connection(common.BaseObject):  # TODO support auth for pooling
 
         .. versionadded:: 1.11+
         """
-        self.admin['$cmd'].sys.unlock.find_one() 
+        self.admin['$cmd'].sys.unlock.find_one()
 
     def __iter__(self):
         return self
