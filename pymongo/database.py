@@ -486,7 +486,7 @@ class Database(common.BaseObject):
         error = self.command("getlasterror")
         if error.get("err", 0) is None:
             return None
-        if error["err"] == "not master":
+        if error["err"].startswith("not master"):
             self.__connection.disconnect()
         return error
 

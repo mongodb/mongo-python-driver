@@ -628,9 +628,9 @@ class Connection(common.BaseObject):  # TODO support auth for pooling
         # TODO unify logic with database.error method
         if error.get("err") is None:
             return error
-        if error["err"] == "not master":
+        if error["err"].startswith("not master"):
             self.disconnect()
-            raise AutoReconnect("not master")
+            raise AutoReconnect(error["err"])
 
         if "code" in error:
             if error["code"] in [11000, 11001, 12582]:
