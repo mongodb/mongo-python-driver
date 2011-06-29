@@ -94,7 +94,7 @@ def _unpack_response(response, cursor_id=None, as_class=dict, tz_aware=False):
                                cursor_id)
     elif response_flag & 2:
         error_object = bson.BSON(response[20:]).decode()
-        if error_object["$err"] == "not master":
+        if error_object["$err"].startswith("not master"):
             raise AutoReconnect("master has changed")
         raise OperationFailure("database error: %s" %
                                error_object["$err"])
