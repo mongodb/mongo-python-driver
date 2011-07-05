@@ -38,7 +38,7 @@ import os
 import select
 import socket
 import struct
-import threading
+import thread
 import time
 import warnings
 
@@ -58,6 +58,21 @@ from pymongo.errors import (AutoReconnect,
 
 
 _CONNECT_TIMEOUT = 20.0
+
+
+try:
+    from greenlet import greenlet
+except ImportError:
+    def _thread_identifier():
+        """Return the identifier of the current thread-of-execution."""
+        return os.getpid(), thread.get_ident()
+else:
+    def _thread_identifier():
+        """Return the identifier of the current thread-of-execution.
+        Supports greenlets.
+        """
+        return os.getpid(), thread.get_ident(), greenlet.getcurrent()
+
 
 
 def _closed(sock):
@@ -84,25 +99,20 @@ def _partition_node(node):
     return host, port
 
 
-class _Pool(threading.local):
+
+class _Pool(object):
     """A simple connection pool.
 
-    Uses thread-local socket per thread. By calling return_socket() a
-    thread can return a socket to the pool.
+    Uses thread-local socket per thread (including greenlets).
+    By calling return_socket() a thread can return a socket to the pool.
     """
-
-    # Non thread-locals
-    __slots__ = ["sockets", "socket_factory", "pool_size", "pid"]
-
-    # thread-local default
-    sock = None
 
     def __init__(self, pool_size, network_timeout):
         self.pid = os.getpid()
         self.pool_size = pool_size
         self.network_timeout = network_timeout
-        if not hasattr(self, "sockets"):
-            self.sockets = []
+        self.sockets = []
+        self.active_sockets = {}
 
     def connect(self, host, port):
         """Connect to Mongo and return a new (connected) socket.
@@ -126,36 +136,30 @@ class _Pool(threading.local):
             return s
 
     def get_socket(self, host, port):
-        # We use the pid here to avoid issues with fork / multiprocessing.
+        # We use the _thread_identifier here to avoid issues with multiple
+        # threads of execution (processes, proper threads, greenlets)
         # See test.test_connection:TestConnection.test_fork for an example of
         # what could go wrong otherwise
-        pid = os.getpid()
-
-        if pid != self.pid:
-            self.sock = None
-            self.sockets = []
-            self.pid = pid
-
-        if self.sock is not None and self.sock[0] == pid:
-            return self.sock[1]
+        sock_id = _thread_identifier()
 
         try:
-            self.sock = (pid, self.sockets.pop())
-        except IndexError:
-            self.sock = (pid, self.connect(host, port))
-
-        return self.sock[1]
+            sock = self.active_sockets[sock_id]
+        except KeyError:
+            try:
+                sock = self.sockets.pop()
+            except IndexError:
+                sock = self.connect(host, port)
+            self.active_sockets[sock_id] = sock
+        return sock
 
     def return_socket(self):
-        if self.sock is not None and self.sock[0] == os.getpid():
+        sock = self.active_sockets.pop(_thread_identifier(), None)
+        if sock is not None:
             # There's a race condition here, but we deliberately
             # ignore it.  It means that if the pool_size is 10 we
             # might actually keep slightly more than that.
             if len(self.sockets) < self.pool_size:
-                self.sockets.append(self.sock[1])
-            else:
-                self.sock[1].close()
-        self.sock = None
+                self.sockets.append(sock)
 
 
 class Connection(common.BaseObject):  # TODO support auth for pooling
@@ -963,7 +967,7 @@ class Connection(common.BaseObject):  # TODO support auth for pooling
 
         .. versionadded:: 1.11+
         """
-        self.admin['$cmd'].sys.unlock.find_one() 
+        self.admin['$cmd'].sys.unlock.find_one()
 
     def __iter__(self):
         return self
