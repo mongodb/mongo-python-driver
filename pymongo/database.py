@@ -324,6 +324,10 @@ class Database(common.BaseObject):
         if isinstance(command, basestring):
             command = SON([(command, value)])
 
+        fields = kwargs.get('fields')
+        if fields is not None and not isinstance(fields, dict):
+                kwargs['fields'] = helpers._fields_list_to_dict(fields)
+
         command.update(kwargs)
 
         result = self["$cmd"].find_one(command,

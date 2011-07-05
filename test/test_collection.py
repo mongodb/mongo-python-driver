@@ -1187,6 +1187,12 @@ class TestCollection(unittest.TestCase):
                          c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
                                            upsert=True, new=True))
 
+        self.assertEqual({'_id': 1, 'i': 2},
+                         c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
+                                           fields=['i']))
+        self.assertEqual({'_id': 1, 'i': 4},
+                         c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
+                                           new=True, fields={'i': 1}))
 
 if __name__ == "__main__":
     unittest.main()
