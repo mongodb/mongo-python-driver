@@ -719,8 +719,10 @@ class SystemJS(object):
         self.__delattr__(name)
 
     def __getattr__(self, name):
-        return lambda *args: self._db.eval("function() { return %s.apply(this,"
-                                           "arguments); }" % name, *args)
+        return lambda *args: self._db.eval(Code("function() { "
+                                                "return this[name].apply("
+                                                "this, arguments); }",
+                                                scope={'name': name}), *args)
 
     def __getitem__(self, name):
         return self.__getattr__(name)
