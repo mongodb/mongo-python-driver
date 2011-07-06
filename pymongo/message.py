@@ -68,12 +68,11 @@ def insert(collection_name, docs, check_keys, safe, last_error_args):
     max_bson_size = 0
     data = __ZERO
     data += bson._make_c_string(collection_name)
-    encoded = [ bson.BSON.encode(doc, check_keys) for doc in docs ]
-    max_bson_size = max(map(len, encoded))
-    bson_data = "".join(encoded)
-    if not bson_data:
+    encoded = [bson.BSON.encode(doc, check_keys) for doc in docs]
+    if not encoded:
         raise InvalidOperation("cannot do an empty bulk insert")
-    data += bson_data
+    max_bson_size = max(map(len, encoded))
+    data += "".join(encoded)
     if safe:
         (_, insert_message) = __pack_message(2002, data)
         (request_id, error_message, _) = __last_error(last_error_args)
