@@ -931,7 +931,7 @@ class Connection(common.BaseObject):  # TODO support auth for pooling
     @property
     def is_locked(self):
         """Is this server locked? While locked, all write operations
-        are blocked, although read operations are still allowed.
+        are blocked, although read operations may still be allowed.
         Use :meth:`~pymongo.connection.Connection.unlock` to unlock.
 
         .. versionadded:: 1.11+
@@ -951,8 +951,9 @@ class Connection(common.BaseObject):  # TODO support auth for pooling
 
             .. warning:: `async` and `lock` can not be used together.
 
-            .. warning:: `async` is not supported on Windows and will
-                         raise an exception on that platform.
+            .. warning:: MongoDB does not support the `async` option
+                         on Windows and will raise an exception on that
+                         platform.
 
         .. versionadded:: 1.11+
         """
