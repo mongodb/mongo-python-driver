@@ -61,18 +61,20 @@ int buffer_free(buffer_t buffer) {
 /* Grow `buffer` to at least `min_length`.
  * Return non-zero on allocation failure. */
 static int buffer_grow(buffer_t buffer, int min_length) {
+    int old_size = 0;
     int size = buffer->size;
     char* old_buffer = buffer->buffer;
     if (size >= min_length) {
         return 0;
     }
     while (size < min_length) {
-        int old_size = size;
+        old_size = size;
         size *= 2;
         if (size <= old_size) {
-           /* size did not increase. Could be an overflow or size < 1. Just go with min_length */
+           /* Size did not increase. Could be an overflow
+            * or size < 1. Just go with min_length. */
            size = min_length;
-	    }  
+        }
     }
     buffer->buffer = (char*)realloc(buffer->buffer, sizeof(char) * size);
     if (buffer->buffer == NULL) {
