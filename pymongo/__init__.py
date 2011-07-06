@@ -39,7 +39,7 @@ ALL = 2
 """Profile all operations."""
 
 version_tuple = (1, 11, '+')
-version = '.'.join(version_tuple)
+version = '.'.join(map(str, version_tuple))
 """Current version of PyMongo."""
 
 Connection = PyMongo_Connection
