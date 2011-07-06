@@ -108,9 +108,9 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
     char* collection_name = NULL;
     int collection_name_length;
     PyObject* docs;
+    PyObject* doc;
+    PyObject* iterator;
     int before, cur_size, max_size = 0;
-    int list_length;
-    int i;
     unsigned char check_keys;
     unsigned char safe;
     PyObject* last_error_args;
@@ -156,23 +156,34 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
 
     PyMem_Free(collection_name);
 
-    list_length = PyList_Size(docs);
-    if (list_length <= 0) {
+    iterator = PyObject_GetIter(docs);
+    if (iterator == NULL) {
+        PyObject* InvalidOperation = _error("InvalidOperation");
+        PyErr_SetString(InvalidOperation, "input is not iterable");
+        Py_DECREF(InvalidOperation);
+        buffer_free(buffer);
+        return NULL;
+    }
+    while ((doc = PyIter_Next(iterator)) != NULL) {
+        before = buffer_get_position(buffer);
+        if (!write_dict(buffer, doc, check_keys, 1)) {
+            Py_DECREF(doc);
+            Py_DECREF(iterator);
+            buffer_free(buffer);
+            return NULL;
+        }
+        Py_DECREF(doc);
+        cur_size = buffer_get_position(buffer) - before;
+        max_size = (cur_size > max_size) ? cur_size : max_size;
+    }
+    Py_DECREF(iterator);
+
+    if (!max_size) {
         PyObject* InvalidOperation = _error("InvalidOperation");
         PyErr_SetString(InvalidOperation, "cannot do an empty bulk insert");
         Py_DECREF(InvalidOperation);
         buffer_free(buffer);
         return NULL;
-    }
-    for (i = 0; i < list_length; i++) {
-        PyObject* doc = PyList_GetItem(docs, i);
-        before = buffer_get_position(buffer);
-        if (!write_dict(buffer, doc, check_keys, 1)) {
-            buffer_free(buffer);
-            return NULL;
-        }
-        cur_size = buffer_get_position(buffer) - before;
-        max_size = (cur_size > max_size) ? cur_size : max_size;
     }
 
     message_length = buffer_get_position(buffer) - length_location;

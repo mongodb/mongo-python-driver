@@ -309,6 +309,14 @@ class TestCollection(unittest.TestCase):
         qcheck.check_unittest(self, remove_insert_find_one,
                               qcheck.gen_mongo_dict(3))
 
+    def test_generator_insert(self):
+        db = self.db
+        db.test.remove({})
+        self.assertEqual(db.test.find().count(), 0)
+        db.test.insert(({'a': i} for i in xrange(5)), manipulate=False)
+        self.assertEqual(5, db.test.count())
+        db.test.remove({})
+
     def test_remove_all(self):
         self.db.test.remove()
         self.assertEqual(0, self.db.test.count())
