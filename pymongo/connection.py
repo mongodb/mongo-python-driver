@@ -539,10 +539,18 @@ class Connection(common.BaseObject):  # TODO support auth for pooling
         Sets __host and __port so that :attr:`host` and :attr:`port`
         will return the address of the connected host.
         """
-        for candidate in self.__nodes:
+        # self.__nodes may change size as we iterate.
+        seeds = self.__nodes.copy()
+        for candidate in seeds:
             node = self.__try_node(candidate)
             if node:
                 return node
+        # Try any hosts we discovered that were not in the seed list.
+        for candidate in self.__nodes - seeds:
+            node = self.__try_node(candidate)
+            if node:
+                return node
+        # Couldn't find a suitable host.
         self.disconnect()
         raise AutoReconnect("could not find master/primary")
 
