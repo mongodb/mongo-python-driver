@@ -1095,13 +1095,17 @@ class TestCollection(unittest.TestCase):
             result = db.test.map_reduce(map, reduce, out='mrunittests')
             self.assertEqual(1, result.find_one({"_id": "hampster"})["value"])
             db.test.remove({"id": 5})
+            warnings.simplefilter("ignore")
             result = db.test.map_reduce(map, reduce,
                                         out='mrunittests', merge_output=True)
+            warnings.simplefilter("default")
             self.assertEqual(3, result.find_one({"_id": "cat"})["value"])
             self.assertEqual(1, result.find_one({"_id": "hampster"})["value"])
 
+            warnings.simplefilter("default")
             result = db.test.map_reduce(map, reduce,
                                         out='mrunittests', reduce_output=True)
+            warnings.simplefilter("default")
             self.assertEqual(6, result.find_one({"_id": "cat"})["value"])
             self.assertEqual(4, result.find_one({"_id": "dog"})["value"])
             self.assertEqual(2, result.find_one({"_id": "mouse"})["value"])
