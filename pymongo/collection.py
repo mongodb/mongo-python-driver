@@ -947,15 +947,21 @@ class Collection(common.BaseObject):
         :Parameters:
           - `map`: map function (as a JavaScript string)
           - `reduce`: reduce function (as a JavaScript string)
-          - `out` (required): output collection name
-          - `merge_output` (optional): Merge output into `out`. If the same
-            key exists in both the result set and the existing output
-            collection, the new key will overwrite the existing key
-          - `reduce_output` (optional): If documents exist for a given key
-            in the result set and in the existing output collection, then a
-            reduce operation (using the specified reduce function) will be
-            performed on the two values and the result will be written to
-            the output collection
+          - `out`: output collection name or `out object` (dict). See
+            the `map reduce command`_ documentation for available options.
+            Note: `out` options are order sensitive. :class:`~bson.son.SON`
+            can be used to specify multiple options.
+            e.g. SON([('replace', <collection name>), ('db', <database name>)])
+          - `merge_output` (optional) DEPRECATED: Merge output into `out`.
+            If the same key exists in both the result set and the existing
+            output collection, the new key will overwrite the existing key.
+            Ignored if `out` is not an instance of `basestring`.
+          - `reduce_output` (optional) DEPRECATED: If documents exist for
+            a given key in the result set and in the existing output
+            collection, then a reduce operation (using the specified reduce
+            function) will be performed on the two values and the result will
+            be written to the output collection.
+            Ignored if `out` is not an instance of `basestring`.
           - `full_response` (optional): if ``True``, return full response to
             this command - otherwise just return the result collection
           - `**kwargs` (optional): additional arguments to the
@@ -968,31 +974,45 @@ class Collection(common.BaseObject):
 
         .. seealso:: :doc:`/examples/map_reduce`
 
+        .. versionchanged:: 1.11+
+           DEPRECATED The merge_output and reduce_output parameters.
+
         .. versionadded:: 1.2
 
         .. _map reduce command: http://www.mongodb.org/display/DOCS/MapReduce
 
         .. mongodoc:: mapreduce
         """
-        if not isinstance(out, basestring):
-            raise TypeError("'out' must be an instance of basestring")
-
+        if merge_output or reduce_output:
+            warnings.warn("merge_output and reduce_output are deprecated, "
+                          "please pass {<merge|reduce>: <collection name>} "
+                          "as the 'out' parameter instead.",
+                          DeprecationWarning)
         if merge_output and reduce_output:
-            raise InvalidOperation("Can't do both merge"
-                                   " and re-reduce of output.")
+            raise InvalidOperation("Can't do both merge "
+                                   "and re-reduce of output.")
 
-        if merge_output:
-            out_conf = {"merge": out}
-        elif reduce_output:
-            out_conf = {"reduce": out}
-        else:
+        if isinstance(out, basestring):
+            if merge_output:
+                out_conf = {"merge": out}
+            elif reduce_output:
+                out_conf = {"reduce": out}
+            else:
+                out_conf = out
+        elif isinstance(out, dict):
             out_conf = out
+        else:
+            raise TypeError("'out' must be an instance of basestring or dict")
 
         response = self.__database.command("mapreduce", self.__name,
                                            map=map, reduce=reduce,
                                            out=out_conf, **kwargs)
         if full_response:
             return response
+        elif isinstance(response['result'], dict):
+            dbase = response['result']['db']
+            coll = response['result']['collection']
+            return self.__database.connection[dbase][coll]
         else:
             return self.__database[response["result"]]
 
