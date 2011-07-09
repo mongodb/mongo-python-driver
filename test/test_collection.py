@@ -1098,11 +1098,9 @@ class TestCollection(unittest.TestCase):
             warnings.simplefilter("ignore")
             result = db.test.map_reduce(map, reduce,
                                         out='mrunittests', merge_output=True)
-            warnings.simplefilter("default")
             self.assertEqual(3, result.find_one({"_id": "cat"})["value"])
             self.assertEqual(1, result.find_one({"_id": "hampster"})["value"])
 
-            warnings.simplefilter("default")
             result = db.test.map_reduce(map, reduce,
                                         out='mrunittests', reduce_output=True)
             warnings.simplefilter("default")
