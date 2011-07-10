@@ -1117,6 +1117,19 @@ class TestCollection(unittest.TestCase):
                               merge_output=True,
                               reduce_output=True)
 
+            result = db.test.map_reduce(map, reduce, out={'replace': 'mrunittests'})
+            self.assertEqual(3, result.find_one({"_id": "cat"})["value"])
+            self.assertEqual(2, result.find_one({"_id": "dog"})["value"])
+            self.assertEqual(1, result.find_one({"_id": "mouse"})["value"])
+
+            result = db.test.map_reduce(map, reduce,
+                                        out=SON([('replace', 'mrunittests'),
+                                                 ('db', 'mrtestdb')
+                                                ]))
+            self.assertEqual(3, result.find_one({"_id": "cat"})["value"])
+            self.assertEqual(2, result.find_one({"_id": "dog"})["value"])
+            self.assertEqual(1, result.find_one({"_id": "mouse"})["value"])
+
         full_result = db.test.map_reduce(map, reduce,
                                          out='mrunittests', full_response=True)
         self.assertEqual(6, full_result["counts"]["emit"])
@@ -1127,6 +1140,13 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(None, result.find_one({"_id": "mouse"}))
 
         if version.at_least(self.db.connection, (1, 7, 4)):
+            result = db.test.map_reduce(map, reduce, out={'inline': 1})
+            self.assertTrue(isinstance(result, dict))
+            self.assertTrue('results' in result)
+            self.assertTrue(result['results'][1]["_id"] in ("cat",
+                                                            "dog",
+                                                            "mouse"))
+
             result = db.test.inline_map_reduce(map, reduce)
             self.assertTrue(isinstance(result, list))
             self.assertEqual(3, len(result))
