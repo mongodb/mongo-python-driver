@@ -112,6 +112,7 @@ class Cursor(object):
         self.__tz_aware = collection.database.connection.tz_aware
         self.__must_use_master = _must_use_master
         self.__is_command = _is_command
+        self.__query_flags = 0
 
         self.__data = []
         self.__connection_id = None
@@ -174,6 +175,7 @@ class Cursor(object):
         copy.__partial = self.__partial
         copy.__must_use_master = self.__must_use_master
         copy.__is_command = self.__is_command
+        copy.__query_flags = self.__query_flags
         copy.__kwargs = self.__kwargs
         return copy
 
@@ -209,7 +211,7 @@ class Cursor(object):
     def __query_options(self):
         """Get the query options string to use for this query.
         """
-        options = 0
+        options = self.__query_flags
         if self.__tailable:
             options |= _QUERY_OPTIONS["tailable_cursor"]
         if self.__slave_okay:
@@ -227,6 +229,32 @@ class Cursor(object):
         """
         if self.__retrieved or self.__id is not None:
             raise InvalidOperation("cannot set options after executing query")
+
+    def add_option(self, mask):
+        """Set arbitary query flags using a bitmask.
+        
+        To set the tailable flag:
+        cursor.add_option(2)
+        """
+        if not isinstance(mask, int):
+            raise TypeError("mask must be an int")
+        self.__check_okay_to_chain()
+
+        self.__query_flags |= mask
+        return self
+
+    def remove_option(self, mask):
+        """Unset arbitrary query flags using a bitmask.
+        
+        To unset the tailable flag:
+        cursor.remove_option(2)
+        """
+        if not isinstance(mask, int):
+            raise TypeError("mask must be an int")
+        self.__check_okay_to_chain()
+
+        self.__query_flags &= ~mask
+        return self
 
     def limit(self, limit):
         """Limits the number of results to be returned by this cursor.
