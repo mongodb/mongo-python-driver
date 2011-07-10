@@ -455,6 +455,26 @@ class TestCursor(unittest.TestCase):
         cursor = self.db.test.find(as_class=MyClass)
         self.assertEqual(type(MyClass()), type(cursor[0]))
 
+        # Just test attributes
+        cursor = self.db.test.find(skip=1,
+                                   timeout=False,
+                                   snapshot=True,
+                                   tailable=True,
+                                   as_class=MyClass,
+                                   slave_okay=True,
+                                   await_data=True,
+                                   partial=True).limit(2)
+
+        cursor2 = cursor.clone()
+        self.assertEqual(cursor._Cursor__skip, cursor2._Cursor__skip)
+        self.assertEqual(cursor._Cursor__timeout, cursor2._Cursor__timeout)
+        self.assertEqual(cursor._Cursor__snapshot, cursor2._Cursor__snapshot)
+        self.assertEqual(cursor._Cursor__tailable, cursor2._Cursor__tailable)
+        self.assertEqual(type(cursor._Cursor__as_class), type(cursor2._Cursor__as_class))
+        self.assertEqual(cursor._Cursor__slave_okay, cursor2._Cursor__slave_okay)
+        self.assertEqual(cursor._Cursor__await_data, cursor2._Cursor__await_data)
+        self.assertEqual(cursor._Cursor__partial, cursor2._Cursor__partial)
+
     def test_count_with_fields(self):
         self.db.test.drop()
         self.db.test.save({"x": 1})

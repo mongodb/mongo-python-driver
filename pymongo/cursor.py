@@ -162,8 +162,7 @@ class Cursor(object):
         """
         copy = Cursor(self.__collection, self.__spec, self.__fields,
                       self.__skip, self.__limit, self.__timeout,
-                      self.__snapshot, self.__tailable, self.__await_data,
-                      self.__partial)
+                      self.__snapshot, self.__tailable)
         copy.__ordering = self.__ordering
         copy.__explain = self.__explain
         copy.__hint = self.__hint
@@ -171,6 +170,8 @@ class Cursor(object):
         copy.__max_scan = self.__max_scan
         copy.__as_class = self.__as_class
         copy.__slave_okay = self.__slave_okay
+        copy.__await_data = self.__await_data
+        copy.__partial = self.__partial
         copy.__must_use_master = self.__must_use_master
         copy.__is_command = self.__is_command
         copy.__kwargs = self.__kwargs
