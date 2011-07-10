@@ -26,7 +26,9 @@ _QUERY_OPTIONS = {
     "slave_okay": 4,
     "oplog_replay": 8,
     "no_timeout": 16,
-    "await_data": 32}
+    "await_data": 32,
+    "exhaust": 64,
+    "partial": 128}
 
 
 # TODO might be cool to be able to do find().include("foo") or
@@ -39,8 +41,8 @@ class Cursor(object):
     def __init__(self, collection, spec=None, fields=None, skip=0, limit=0,
                  timeout=True, snapshot=False, tailable=False, sort=None,
                  max_scan=None, as_class=None, slave_okay=False,
-                 await_data=False, _must_use_master=False, _is_command=False,
-                 **kwargs):
+                 await_data=False, partial=False, _must_use_master=False,
+                 _is_command=False, **kwargs):
         """Create a new cursor.
 
         Should not be called directly by application developers - see
@@ -65,6 +67,12 @@ class Cursor(object):
             raise TypeError("snapshot must be an instance of bool")
         if not isinstance(tailable, bool):
             raise TypeError("tailable must be an instance of bool")
+        if not isinstance(slave_okay, bool):
+            raise TypeError("slave_okay must be an instance of bool")
+        if not isinstance(await_data, bool):
+            raise TypeError("await_data must be an instance of bool")
+        if not isinstance(partial, bool):
+            raise TypeError("partial must be an instance of bool")
 
         if fields is not None:
             if not fields:
@@ -93,6 +101,7 @@ class Cursor(object):
         self.__timeout = timeout
         self.__tailable = tailable
         self.__await_data = tailable and await_data
+        self.__partial = partial
         self.__snapshot = snapshot
         self.__ordering = sort and helpers._index_document(sort) or None
         self.__max_scan = max_scan
@@ -153,7 +162,8 @@ class Cursor(object):
         """
         copy = Cursor(self.__collection, self.__spec, self.__fields,
                       self.__skip, self.__limit, self.__timeout,
-                      self.__snapshot, self.__tailable, self.__await_data)
+                      self.__snapshot, self.__tailable, self.__await_data,
+                      self.__partial)
         copy.__ordering = self.__ordering
         copy.__explain = self.__explain
         copy.__hint = self.__hint
@@ -207,6 +217,8 @@ class Cursor(object):
             options |= _QUERY_OPTIONS["no_timeout"]
         if self.__await_data:
             options |= _QUERY_OPTIONS["await_data"]
+        if self.__partial:
+            options |= _QUERY_OPTIONS["partial"]
         return options
 
     def __check_okay_to_chain(self):
