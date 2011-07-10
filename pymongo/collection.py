@@ -1007,7 +1007,8 @@ class Collection(common.BaseObject):
         response = self.__database.command("mapreduce", self.__name,
                                            map=map, reduce=reduce,
                                            out=out_conf, **kwargs)
-        if full_response:
+
+        if full_response or not response.get('result'):
             return response
         elif isinstance(response['result'], dict):
             dbase = response['result']['db']
