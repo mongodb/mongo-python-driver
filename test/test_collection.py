@@ -286,8 +286,12 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(db.test.doesnotexist.options(), {})
 
         db.drop_collection("test")
-        db.create_collection("test", capped=True)
-        self.assertEqual(db.test.options(), {"capped": True})
+        if version.at_least(db.connection, (1, 9)):
+            db.create_collection("test", capped=True, size=1000)
+            self.assertEqual(db.test.options(), {"capped": True, 'size': 1000})
+        else:
+            db.create_collection("test", capped=True)
+            self.assertEqual(db.test.options(), {"capped": True})
         db.drop_collection("test")
 
     def test_insert_find_one(self):
@@ -606,6 +610,7 @@ class TestCollection(unittest.TestCase):
     def test_safe_update(self):
         db = self.db
         v113minus = version.at_least(db.connection, (1, 1, 3, -1))
+        v19 = version.at_least(db.connection, (1, 9))
 
         db.drop_collection("test")
         db.test.create_index("x", unique=True)
@@ -614,7 +619,9 @@ class TestCollection(unittest.TestCase):
         id = db.test.insert({"x": 4})
 
         self.assertEqual(None, db.test.update({"_id": id}, {"$inc": {"x": 1}}))
-        if v113minus:
+        if v19:
+            self.assert_(db.error()["err"].startswith("E11000"))
+        elif v113minus:
             self.assert_(db.error()["err"].startswith("E11001"))
         else:
             self.assert_(db.error()["err"].startswith("E12011"))
