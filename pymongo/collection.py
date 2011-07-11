@@ -777,6 +777,17 @@ class Collection(common.BaseObject):
         self.__database.command("dropIndexes", self.__name, index=name,
                                 allowable_errors=["ns not found"])
 
+    def reindex(self):
+        """Rebuilds all indexes on this collection.
+
+        .. warning:: reindex blocks all other operations (indexes
+           are built in the foreground) and will be slow for large
+           collections.
+
+        .. versionadded:: 1.11+
+        """
+        return self.__database.command("reIndex", self.__name)
+
     def index_information(self):
         """Get information on this collection's indexes.
 

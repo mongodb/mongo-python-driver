@@ -222,6 +222,24 @@ class TestCollection(unittest.TestCase):
                      [a["name"] for a in db.system.indexes
                       .find({"ns": u"pymongo_test.test"})])
 
+    def test_reindex(self):
+        db = self.db
+        db.drop_collection("test")
+        db.test.insert({"foo": "bar", "who": "what", "when": "how"})
+        db.test.create_index("foo")
+        db.test.create_index("who")
+        db.test.create_index("when")
+        info = db.test.index_information()
+        reindexed = db.test.reindex()
+        self.assertEqual(4, reindexed['nIndexes'])
+        self.assertEqual(4, reindexed['nIndexesWas'])
+        indexes = reindexed['indexes']
+        names = [idx['name'] for idx in indexes]
+        for name in names:
+            self.assertTrue(name in info)
+        for key in info:
+            self.assertTrue(key in names)
+
     def test_index_info(self):
         db = self.db
         db.test.drop_indexes()

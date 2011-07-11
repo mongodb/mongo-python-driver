@@ -37,6 +37,7 @@
       .. automethod:: ensure_index
       .. automethod:: drop_index
       .. automethod:: drop_indexes
+      .. automethod:: reindex
       .. automethod:: index_information
       .. automethod:: options
       .. automethod:: group
