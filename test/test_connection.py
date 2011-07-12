@@ -245,6 +245,7 @@ class TestConnection(unittest.TestCase):
         c.pymongo_test.system.users.remove({})
 
         c.admin.add_user("admin", "pass")
+        c.admin.authenticate("admin", "pass")
         c.pymongo_test.add_user("user", "pass")
 
         self.assertRaises(ConfigurationError, Connection,
@@ -269,6 +270,8 @@ class TestConnection(unittest.TestCase):
                                 slave_okay=True).slave_okay)
         self.assert_(Connection("mongodb://%s:%s/?slaveok=true;w=2" %
                                 (self.host, self.port)).slave_okay)
+        c.admin.system.users.remove({})
+        c.pymongo_test.system.users.remove({})
 
     def test_fork(self):
         """Test using a connection before and after a fork.

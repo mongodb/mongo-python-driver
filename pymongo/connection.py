@@ -137,14 +137,15 @@ class _Pool(threading.local):
             self.pid = pid
 
         if self.sock is not None and self.sock[0] == pid:
-            return self.sock[1]
+            return (self.sock[1], True)
 
         try:
             self.sock = (pid, self.sockets.pop())
+            return (self.sock[1], True)
         except IndexError:
             self.sock = (pid, self.connect(host, port))
+            return (self.sock[1], False)
 
-        return self.sock[1]
 
     def return_socket(self):
         if self.sock is not None and self.sock[0] == os.getpid():
@@ -158,7 +159,7 @@ class _Pool(threading.local):
         self.sock = None
 
 
-class Connection(common.BaseObject):  # TODO support auth for pooling
+class Connection(common.BaseObject):
     """Connection to MongoDB.
     """
 
@@ -319,6 +320,7 @@ class Connection(common.BaseObject):  # TODO support auth for pooling
 
         # cache of existing indexes used by ensure_index ops
         self.__index_cache = {}
+        self.__auth_credentials = {}
 
         if _connect:
             self.__find_node()
@@ -412,6 +414,38 @@ class Connection(common.BaseObject):  # TODO support auth for pooling
 
         if index_name in self.__index_cache[database_name][collection_name]:
             del self.__index_cache[database_name][collection_name][index_name]
+
+    def _cache_credentials(self, db_name, username, password):
+        """Add credentials to the database authentication cache
+        for automatic login when a socket is created.
+
+        If credentials are already cached for `db_name` they
+        will be replaced.
+        """
+        self.__auth_credentials[db_name] = (username, password)
+
+    def _purge_credentials(self, db_name=None):
+        """Purge credentials from the database authentication cache.
+
+        If `db_name` is None purge credentials for all databases.
+        """
+        if db_name is None:
+            self.__auth_credentials.clear()
+        elif db_name in self.__auth_credentials:
+            del self.__auth_credentials[db_name]
+
+    def __authenticate_socket(self):
+        """Authenticate using cached database credentials.
+
+        If credentials for the 'admin' database are available only
+        this database is authenticated, since this gives global access.
+        """
+        if "admin" in self.__auth_credentials:
+            username, password = self.__auth_credentials["admin"]
+            self.admin.authenticate(username, password)
+        else:
+            for db_name, (u, p) in self.__auth_credentials.iteritems():
+                self[db_name].authenticate(u, p)
 
     @property
     def host(self):
@@ -570,7 +604,7 @@ class Connection(common.BaseObject):  # TODO support auth for pooling
             host, port = self.__find_node()
 
         try:
-            sock = self.__pool.get_socket(host, port)
+            sock, from_pool = self.__pool.get_socket(host, port)
         except socket.error:
             self.disconnect()
             raise AutoReconnect("could not connect to %s:%d" % (host, port))
@@ -578,8 +612,10 @@ class Connection(common.BaseObject):  # TODO support auth for pooling
         if t - self.__last_checkout > 1:
             if _closed(sock):
                 self.disconnect()
-                sock = self.__pool.get_socket(host, port)
+                sock, from_pool = self.__pool.get_socket(host, port)
         self.__last_checkout = t
+        if self.__auth_credentials and not from_pool:
+            self.__authenticate_socket()
         return sock
 
     def disconnect(self):

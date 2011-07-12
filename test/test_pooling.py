@@ -216,8 +216,10 @@ class TestPooling(unittest.TestCase):
         b_sock = b._Connection__pool.sockets[0]
         b.test.test.find_one()
         a.test.test.find_one()
-        self.assertEqual(b_sock, b._Connection__pool.get_socket(b.host, b.port))
-        self.assertEqual(a_sock, a._Connection__pool.get_socket(a.host, a.port))
+        self.assertEqual(b_sock,
+                         b._Connection__pool.get_socket(b.host, b.port)[0])
+        self.assertEqual(a_sock,
+                         a._Connection__pool.get_socket(a.host, a.port)[0])
 
     def test_pool_with_fork(self):
         if sys.platform == "win32":
@@ -269,7 +271,8 @@ class TestPooling(unittest.TestCase):
         self.assert_(a_sock.getsockname() != b_sock)
         self.assert_(a_sock.getsockname() != c_sock)
         self.assert_(b_sock != c_sock)
-        self.assertEqual(a_sock, a._Connection__pool.get_socket(a.host, a.port))
+        self.assertEqual(a_sock,
+                         a._Connection__pool.get_socket(a.host, a.port)[0])
 
     def test_max_pool_size(self):
         c = get_connection(max_pool_size=4)

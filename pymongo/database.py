@@ -561,28 +561,28 @@ class Database(common.BaseObject):
         Once authenticated, the user has full read and write access to
         this database. Raises :class:`TypeError` if either `name` or
         `password` is not an instance of ``(str,
-        unicode)``. Authentication lasts for the life of the database
-        connection, or until :meth:`logout` is called.
+        unicode)``. Authentication lasts for the life of the underlying
+        :class:`~pymongo.connection.Connection`, or until :meth:`logout`
+        is called.
 
         The "admin" database is special. Authenticating on "admin"
         gives access to *all* databases. Effectively, "admin" access
         means root access to the database.
 
-        .. note:: Currently, authentication is per
-           :class:`~socket.socket`. This means that there are a couple
-           of situations in which re-authentication is necessary:
-
-           - On failover (when an
-             :class:`~pymongo.errors.AutoReconnect` exception is
-             raised).
-
-           - After a call to
-             :meth:`~pymongo.connection.Connection.disconnect` or
-             :meth:`~pymongo.connection.Connection.end_request`.
+        .. note:: This method authenticates the current connection, and
+           will also cause all new :class:`~socket.socket` connections
+           in the underlying :class:`~pymongo.connection.Connection` to
+           be authenticated automatically.
 
            - When sharing a :class:`~pymongo.connection.Connection`
-             between multiple threads, each thread will need to
-             authenticate separately.
+             between multiple threads, all threads will share the
+             authentication. If you need different authentication profiles
+             for different purposes (e.g. admin users) you must use
+             distinct instances of :class:`~pymongo.connection.Connection`.
+
+           - To get authentication to apply immediately to all
+             existing sockets you may need to reset this Connection's
+             sockets using :meth:`~pymongo.connection.Connection.disconnect`.
 
         .. warning:: Currently, calls to
            :meth:`~pymongo.connection.Connection.end_request` will
@@ -608,16 +608,24 @@ class Database(common.BaseObject):
         try:
             self.command("authenticate", user=unicode(name),
                          nonce=nonce, key=key)
+            self.connection._cache_credentials(self.name,
+                                               unicode(name),
+                                               unicode(password))
             return True
         except OperationFailure:
             return False
 
     def logout(self):
-        """Deauthorize use of this database for this connection.
+        """Deauthorize use of this database for this connection
+        and future connections.
 
-        Note that other databases may still be authorized.
+        .. note:: Other databases may still be authenticated, and other
+           existing :class:`~socket.socket` connections may remain
+           authenticated for this database unless you reset all sockets
+           with :meth:`~pymongo.connection.Connection.disconnect`.
         """
         self.command("logout")
+        self.connection._purge_credentials(self.name)
 
     def dereference(self, dbref):
         """Dereference a :class:`~bson.dbref.DBRef`, getting the

@@ -20,7 +20,26 @@ import threading
 from nose.plugins.skip import SkipTest
 
 from test_connection import get_connection
-from pymongo.errors import AutoReconnect
+from pymongo.errors import (AutoReconnect,
+                            OperationFailure,
+                            DuplicateKeyError)
+
+
+class AutoAuthenticateThreads(threading.Thread):
+
+    def __init__(self, collection, num):
+        threading.Thread.__init__(self)
+        self.coll = collection
+        self.num = num
+        self.success = True
+
+    def run(self):
+        try:
+            for i in xrange(self.num):
+                self.coll.insert({'num':i}, safe=True)
+                self.coll.find_one({'num':i})
+        except Exception:
+            self.success = False
 
 
 class SaveAndFind(threading.Thread):
@@ -175,6 +194,65 @@ class TestThreads(unittest.TestCase):
 
         for t in threads:
             t.join()
+
+
+class TestThreadsAuth(unittest.TestCase):
+
+    def setUp(self):
+        self.conn = get_connection()
+
+        # Setup auth users
+        self.conn.admin.system.users.remove({})
+        self.conn.admin.add_user('admin-user', 'password')
+        try:
+            self.conn.admin.system.users.find_one()
+            # If we reach here mongod was likely started
+            # without --auth. Skip this test since it's
+            # pointless without auth enabled.
+            self.tearDown()
+            raise SkipTest()
+        except OperationFailure:
+            pass
+        self.conn.admin.authenticate("admin-user", "password")
+        self.conn.auth_test.system.users.remove({})
+        self.conn.auth_test.add_user("test-user", "password")
+
+    def tearDown(self):
+        # Remove auth users from databases
+        self.conn.admin.authenticate("admin-user", "password")
+        self.conn.admin.system.users.remove({})
+        self.conn.auth_test.system.users.remove({})
+        self.conn.drop_database('auth_test')
+
+    def test_auto_auth_login(self):
+        conn = get_connection()
+        self.assertRaises(OperationFailure, conn.auth_test.test.find_one)
+
+        # Admin auth
+        conn = get_connection()
+        conn.admin.authenticate("admin-user", "password")
+
+        threads = []
+        for _ in xrange(10):
+            t = AutoAuthenticateThreads(conn.auth_test.test, 100)
+            t.start()
+            threads.append(t)
+        for t in threads:
+            t.join()
+            self.assertTrue(t.success)
+
+        # Database-specific auth
+        conn = get_connection()
+        conn.auth_test.authenticate("test-user", "password")
+
+        threads = []
+        for _ in xrange(10):
+            t = AutoAuthenticateThreads(conn.auth_test.test, 100)
+            t.start()
+            threads.append(t)
+        for t in threads:
+            t.join()
+            self.assertTrue(t.success)
 
 
 if __name__ == "__main__":
