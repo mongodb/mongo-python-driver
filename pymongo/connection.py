@@ -526,10 +526,7 @@ class Connection(common.BaseObject):
         """
         self.disconnect()
         self.__host, self.__port = node
-        try:
-            response = self.admin.command("ismaster")
-        except:
-            return None
+        response = self.admin.command("ismaster")
 
         self.end_request()
 
@@ -550,7 +547,7 @@ class Connection(common.BaseObject):
 
         # Direct connection
         if response.get("arbiterOnly", False):
-            return None
+            raise ConfigurationError("%s:%d is an arbiter" % node)
         return node
 
     def __find_node(self):
@@ -573,20 +570,27 @@ class Connection(common.BaseObject):
         Sets __host and __port so that :attr:`host` and :attr:`port`
         will return the address of the connected host.
         """
+        errors = []
         # self.__nodes may change size as we iterate.
         seeds = self.__nodes.copy()
         for candidate in seeds:
-            node = self.__try_node(candidate)
-            if node:
-                return node
+            try:
+                node = self.__try_node(candidate)
+                if node:
+                    return node
+            except Exception, why:
+                errors.append(str(why))
         # Try any hosts we discovered that were not in the seed list.
         for candidate in self.__nodes - seeds:
-            node = self.__try_node(candidate)
-            if node:
-                return node
+            try:
+                node = self.__try_node(candidate)
+                if node:
+                    return node
+            except Exception, why:
+                errors.append(str(why))
         # Couldn't find a suitable host.
         self.disconnect()
-        raise AutoReconnect("could not find master/primary")
+        raise AutoReconnect(', '.join(errors))
 
     def __socket(self):
         """Get a socket from the pool.
@@ -605,9 +609,10 @@ class Connection(common.BaseObject):
 
         try:
             sock, from_pool = self.__pool.get_socket(host, port)
-        except socket.error:
+        except socket.error, why:
             self.disconnect()
-            raise AutoReconnect("could not connect to %s:%d" % (host, port))
+            raise AutoReconnect("could not connect to "
+                                "%s:%d: %s" % (host, port, str(why)))
         t = time.time()
         if t - self.__last_checkout > 1:
             if _closed(sock):
