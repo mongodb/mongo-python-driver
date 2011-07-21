@@ -463,7 +463,8 @@ class TestCursor(unittest.TestCase):
                                    as_class=MyClass,
                                    slave_okay=True,
                                    await_data=True,
-                                   partial=True).limit(2)
+                                   partial=True,
+                                   manipulate=False).limit(2)
         cursor.add_option(64)
 
         cursor2 = cursor.clone()
@@ -479,6 +480,8 @@ class TestCursor(unittest.TestCase):
         self.assertEqual(cursor._Cursor__await_data,
                          cursor2._Cursor__await_data)
         self.assertEqual(cursor._Cursor__partial, cursor2._Cursor__partial)
+        self.assertEqual(cursor._Cursor__manipulate,
+                         cursor2._Cursor__manipulate)
         self.assertEqual(cursor._Cursor__query_flags,
                          cursor2._Cursor__query_flags)
 

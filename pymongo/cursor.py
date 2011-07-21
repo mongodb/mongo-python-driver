@@ -41,8 +41,8 @@ class Cursor(object):
     def __init__(self, collection, spec=None, fields=None, skip=0, limit=0,
                  timeout=True, snapshot=False, tailable=False, sort=None,
                  max_scan=None, as_class=None, slave_okay=False,
-                 await_data=False, partial=False, _must_use_master=False,
-                 _is_command=False, **kwargs):
+                 await_data=False, partial=False, manipulate=True,
+                 _must_use_master=False, _is_command=False, **kwargs):
         """Create a new cursor.
 
         Should not be called directly by application developers - see
@@ -109,6 +109,7 @@ class Cursor(object):
         self.__hint = None
         self.__as_class = as_class
         self.__slave_okay = slave_okay
+        self.__manipulate = manipulate
         self.__tz_aware = collection.database.connection.tz_aware
         self.__must_use_master = _must_use_master
         self.__is_command = _is_command
@@ -173,6 +174,7 @@ class Cursor(object):
         copy.__slave_okay = self.__slave_okay
         copy.__await_data = self.__await_data
         copy.__partial = self.__partial
+        copy.__manipulate = self.__manipulate
         copy.__must_use_master = self.__must_use_master
         copy.__is_command = self.__is_command
         copy.__query_flags = self.__query_flags
@@ -651,10 +653,12 @@ class Cursor(object):
             raise StopIteration
         db = self.__collection.database
         if len(self.__data) or self._refresh():
-            next = db._fix_outgoing(self.__data.pop(0), self.__collection)
+            if self.__manipulate:
+                return db._fix_outgoing(self.__data.pop(0), self.__collection)
+            else:
+                return self.__data.pop(0)
         else:
             raise StopIteration
-        return next
 
     def __enter__(self):
         return self

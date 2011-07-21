@@ -33,6 +33,7 @@ from bson.objectid import ObjectId
 from bson.son import SON
 from pymongo import ASCENDING, DESCENDING
 from pymongo.collection import Collection
+from pymongo.son_manipulator import SONManipulator
 from pymongo.errors import (DuplicateKeyError,
                             InvalidDocument,
                             InvalidName,
@@ -1249,6 +1250,24 @@ class TestCollection(unittest.TestCase):
         self.assertEqual({'_id': 1, 'i': 4},
                          c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
                                            new=True, fields={'i': 1}))
+
+    def test_disabling_manipulators(self):
+
+        class IncByTwo(SONManipulator):
+            def transform_outgoing(self, son, collection):
+                if 'foo' in son:
+                    son['foo'] += 2
+                return son
+
+        db = self.connection.pymongo_test
+        db.add_son_manipulator(IncByTwo())
+        c = db.test
+        c.drop()
+        c.insert({'foo': 0})
+        self.assertEqual(2, c.find_one()['foo'])
+        self.assertEqual(0, c.find_one(manipulate=False)['foo'])
+        self.assertEqual(2, c.find_one(manipulate=True)['foo'])
+        c.remove({})
 
 if __name__ == "__main__":
     unittest.main()
