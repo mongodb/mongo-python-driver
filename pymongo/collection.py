@@ -546,12 +546,25 @@ class Collection(common.BaseObject):
             :attr:`~pymongo.connection.Connection.document_class`)
           - `slave_okay` (optional): if True, allows this query to
             be run against a replica secondary.
+          - `await_data` (optional): if True, the server will block for
+            some extra time before returning, waiting for more data to
+            return. Ignored is `tailable` is False.
+          - `partial` (optional): if True, mongos will return partial
+            results if some shards are down instead of returning an error.
+          - `manipulate`: (optional): If True (the default), apply any
+            outgoing SON manipulators before returning.
           - `network_timeout` (optional): specify a timeout to use for
             this query, which will override the
             :class:`~pymongo.connection.Connection`-level default
 
+        .. note:: The `manipulate` parameter may default to False in
+           a future release.
+
         .. note:: The `max_scan` parameter requires server
            version **>= 1.5.1**
+
+        .. versionadded:: 1.11+
+           The `await_data`, `partial`, and `manipulate` parameters.
 
         .. versionadded:: 1.8
            The `network_timeout` parameter.
