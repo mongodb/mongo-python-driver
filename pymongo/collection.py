@@ -548,7 +548,7 @@ class Collection(common.BaseObject):
             be run against a replica secondary.
           - `await_data` (optional): if True, the server will block for
             some extra time before returning, waiting for more data to
-            return. Ignored is `tailable` is False.
+            return. Ignored if `tailable` is False.
           - `partial` (optional): if True, mongos will return partial
             results if some shards are down instead of returning an error.
           - `manipulate`: (optional): If True (the default), apply any
