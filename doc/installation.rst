@@ -5,11 +5,17 @@ Installing / Upgrading
 **PyMongo** is in the `Python Package Index
 <http://pypi.python.org/pypi/pymongo/>`_.
 
+Microsoft Windows
+-----------------
+
+We recommend using the `MS Windows installers` available from the `Python
+Package Index <http://pypi.python.org/pypi/pymongo/>`_.
+
 Installing with pip
 -------------------
 
-We recommend using `pip <http://pypi.python.org/pypi/pip>`_
-to install pymongo::
+We prefer `pip <http://pypi.python.org/pypi/pip>`_
+to install pymongo on platforms other than Windows::
 
   $ pip install pymongo
 
