@@ -67,8 +67,8 @@ It's also possible to query for all items within a given rectangle
   >>> for doc in db.places.find({"loc": {"$within": {"$box": [[2, 2], [5, 6]]}}}):
   ...   repr(doc)
   ...
-  "{u'loc': [4, 4], u'_id': ObjectId('...')}"
   "{u'loc': [2, 5], u'_id': ObjectId('...')}"
+  "{u'loc': [4, 4], u'_id': ObjectId('...')}"
 
 Or circle (specified by center point and radius):
 
@@ -87,4 +87,5 @@ geoNear queries are also supported using :class:`~bson.son.SON`:
 
   >>> from bson.son import SON
   >>> db.command(SON([('geoNear', 'places'), ('near', [1, 2])]))
+  {u'ok': 1.0, u'near': u'1100000000000001100111100111100000000001100111100111', u'ns': u'geo_example.places', u'stats': ...}
 
