@@ -80,3 +80,11 @@ Or circle (specified by center point and radius):
   "{u'loc': [1, 2], u'_id': ObjectId('...')}"
   "{u'loc': [2, 5], u'_id': ObjectId('...')}"
   "{u'loc': [4, 4], u'_id': ObjectId('...')}"
+
+geoNear queries are also supported using :class:`~bson.son.SON`:
+
+.. doctest::
+
+  >>> from bson.son import SON
+  >>> db.command(SON([('geoNear', 'places'), ('near', [1, 2])]))
+
