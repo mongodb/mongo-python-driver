@@ -89,7 +89,7 @@ PyMongo's API supports all of the features of MongoDB's map/reduce engine. One i
 .. doctest::
 
   >>> db.things.map_reduce(map, reduce, "myresults", full_response=True)
-  {u'counts': {u'input': 4, u'emit': 6, u'output': 3}, u'timeMillis': ..., u'ok': ..., u'result': u'...'}
+  {u'counts': {u'input': 4, u'reduce': 2, u'emit': 6, u'output': 3}, u'timeMillis': ..., u'ok': ..., u'result': u'...'}
 
 All of the optional map/reduce parameters are also supported, simply pass them as keyword arguments. In this example we use the `query` parameter to limit the documents that will be mapped over:
 
@@ -101,5 +101,13 @@ All of the optional map/reduce parameters are also supported, simply pass them a
   ...
   {u'_id': u'cat', u'value': 2.0}
   {u'_id': u'dog', u'value': 1.0}
+
+With MongoDB 1.8.0 or newer you can use :class:`~bson.son.SON` to specify a different database to store the result collection:
+
+.. doctest::
+
+  >>> from bson.son import SON
+  >>> db.things.map_reduce(map, reduce, out=SON([("replace", "results"), ("db", "outdb")]), full_response=True)
+  {u'counts': {u'input': 4, u'reduce': 2, u'emit': 6, u'output': 3}, u'timeMillis': ..., u'ok': ..., u'result': {u'db': ..., u'collection': ...}}
 
 .. seealso:: The full list of options for MongoDB's `map reduce engine <http://www.mongodb.org/display/DOCS/MapReduce>`_
