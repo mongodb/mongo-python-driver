@@ -262,30 +262,6 @@ def _element_to_bson(key, value, check_keys):
             raise InvalidDocument("key %r must not contain '.'" % key)
 
     name = _make_c_string(key, True)
-    if isinstance(value, float):
-        return "\x01" + name + struct.pack("<d", value)
-
-    # Use Binary w/ subtype 3 for UUID instances
-    try:
-        import uuid
-
-        if isinstance(value, uuid.UUID):
-            value = Binary(value.bytes, subtype=3)
-    except ImportError:
-        pass
-
-    if isinstance(value, Binary):
-        subtype = value.subtype
-        if subtype == 2:
-            value = struct.pack("<i", len(value)) + value
-        return "\x05%s%s%s%s" % (name, struct.pack("<i", len(value)),
-                                 chr(subtype), value)
-    if isinstance(value, Code):
-        cstring = _make_c_string(value)
-        scope = _dict_to_bson(value.scope, False, False)
-        full_length = struct.pack("<i", 8 + len(cstring) + len(scope))
-        length = struct.pack("<i", len(cstring))
-        return "\x0F" + name + full_length + length + cstring + scope
     if isinstance(value, str):
         cstring = _make_c_string(value)
         length = struct.pack("<i", len(cstring))
@@ -329,6 +305,30 @@ def _element_to_bson(key, value, check_keys):
         return "\x11" + name + inc + time
     if value is None:
         return "\x0A" + name
+    if isinstance(value, float):
+        return "\x01" + name + struct.pack("<d", value)
+
+    # Use Binary w/ subtype 3 for UUID instances
+    try:
+        import uuid
+
+        if isinstance(value, uuid.UUID):
+            value = Binary(value.bytes, subtype=3)
+    except ImportError:
+        pass
+
+    if isinstance(value, Binary):
+        subtype = value.subtype
+        if subtype == 2:
+            value = struct.pack("<i", len(value)) + value
+        return "\x05%s%s%s%s" % (name, struct.pack("<i", len(value)),
+                                 chr(subtype), value)
+    if isinstance(value, Code):
+        cstring = _make_c_string(value)
+        scope = _dict_to_bson(value.scope, False, False)
+        full_length = struct.pack("<i", 8 + len(cstring) + len(scope))
+        length = struct.pack("<i", len(cstring))
+        return "\x0F" + name + full_length + length + cstring + scope
     if isinstance(value, RE_TYPE):
         pattern = value.pattern
         flags = ""
@@ -359,15 +359,16 @@ def _element_to_bson(key, value, check_keys):
 
 def _dict_to_bson(dict, check_keys, top_level=True):
     try:
-        elements = ""
+        elements = []
         if top_level and "_id" in dict:
-            elements += _element_to_bson("_id", dict["_id"], False)
+            elements.append(_element_to_bson("_id", dict["_id"], False))
         for (key, value) in dict.iteritems():
             if not top_level or key != "_id":
-                elements += _element_to_bson(key, value, check_keys)
+                elements.append(_element_to_bson(key, value, check_keys))
     except AttributeError:
         raise TypeError("encoder expected a mapping type but got: %r" % dict)
 
+    elements = "".join(elements)
     length = len(elements) + 5
     return struct.pack("<i", length) + elements + "\x00"
 if _use_c:
