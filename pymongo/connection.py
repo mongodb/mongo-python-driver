@@ -231,6 +231,10 @@ class Connection(common.BaseObject):
             When used with `j` the server awaits the next group commit before
             returning.
             Implies safe=True.
+          - `replicaset`: The name of the replica set to connect to. The driver
+            will verify that the replica set it connects to matches this name.
+            Implies that the hosts specified are a seed list and the driver should
+            attempt to find all members of the set.
 
         .. seealso:: :meth:`end_request`
         .. versionchanged:: 1.11+
@@ -271,7 +275,6 @@ class Connection(common.BaseObject):
         username = None
         password = None
         db = None
-        coll = None
         options = {}
         for entity in host:
             if "://" in entity:
@@ -281,7 +284,6 @@ class Connection(common.BaseObject):
                     username = res["username"] or username
                     password = res["password"] or password
                     db = res["database"] or db
-                    coll = res["collection"] or coll
                     options = res["options"]
                 else:
                     idx = entity.find("://")
@@ -304,13 +306,10 @@ class Connection(common.BaseObject):
         if self.__max_pool_size < 0:
             raise ValueError("the maximum pool size must be >= 0")
 
-        # TODO - Support using other options like w and fsync from URI
-        self.__options = options
-        # TODO - Support setting the collection from URI like the Java driver
-        self.__collection = coll
 
         self.__cursor_manager = CursorManager(self)
 
+        self.__repl = options.get('replicaset', kwargs.get('replicaset'))
         self.__network_timeout = network_timeout
         self.__pool = _Pool(self.__max_pool_size, self.__network_timeout)
         self.__last_checkout = time.time()
@@ -534,7 +533,17 @@ class Connection(common.BaseObject):
             self.__max_bson_size = response["maxBsonObjectSize"]
 
         # Replica Set?
-        if len(self.__nodes) > 1:
+        if len(self.__nodes) > 1 or self.__repl:
+            # Check that this host is part of the given replica set.
+            if self.__repl:
+                set_name = response.get('setName')
+                # The 'setName' field isn't returned by mongod before 1.6.2
+                # so we can't assume that if it's missing this host isn't in
+                # the specified set.
+                if set_name and set_name != self.__repl:
+                    raise ConfigurationError("%s:%d is not a member of "
+                                             "replica set %s"
+                                             % (node[0], node[1], self.__repl))
             if "hosts" in response:
                 self.__nodes.update([_partition_node(h)
                                      for h in response["hosts"]])

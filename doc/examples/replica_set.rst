@@ -83,11 +83,11 @@ normal :meth:`~pymongo.connection.Connection` constructor, specifying
 one or more members of the set. For example, any of the following
 will create a connection to the set we just created::
 
-  >>> Connection("morton.local")
+  >>> Connection("morton.local", replicaset='foo')
   Connection([u'morton.local:27019', 'morton.local:27017', u'morton.local:27018'])
-  >>> Connection("morton.local:27018")
+  >>> Connection("morton.local:27018", replicaset='foo')
   Connection([u'morton.local:27019', u'morton.local:27017', 'morton.local:27018'])
-  >>> Connection("morton.local", 27019)
+  >>> Connection("morton.local", 27019, replicaset='foo')
   Connection(['morton.local:27019', u'morton.local:27017', u'morton.local:27018'])
   >>> Connection(["morton.local:27018", "morton.local:27019"])
   Connection(['morton.local:27019', u'morton.local:27017', 'morton.local:27018'])
@@ -95,9 +95,11 @@ will create a connection to the set we just created::
   Connection(['morton.local:27019', 'morton.local:27017', 'morton.local:27018'])
 
 The nodes passed to :meth:`~pymongo.connection.Connection` are called
-the *seeds*. As long as at least one of the seeds is online, the
-driver will be able to "discover" all of the nodes in the set and make
-a connection to the current primary.
+the *seeds*. If only one host is specified the `replicaset` parameter
+must be used to indicate this isn't a connection to a single node.
+As long as at least one of the seeds is online, the driver will be able
+to "discover" all of the nodes in the set and make a connection to the
+current primary.
 
 Handling Failover
 -----------------

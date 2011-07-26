@@ -51,13 +51,17 @@ def validate_integer(option, value):
                     "integer or string representation" % (option,))
 
 
-def noop(dummy, value):
-    """Do nothing..."""
-    return value
+def validate_basestring(option, value):
+    """Validates that 'value' is an instance of `basestring`.
+    """
+    if isinstance(value, basestring):
+        return value
+    raise TypeError("Wrong type for %s, value just be an "
+                    "instance of basestring" % (option,))
 
 
 VALIDATORS = { 
-    'replicaset': noop,
+    'replicaset': validate_basestring,
     'slaveok': validate_boolean,
     'safe': validate_boolean,
     'w': validate_integer,
