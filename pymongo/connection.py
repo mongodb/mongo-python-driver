@@ -218,8 +218,8 @@ class Connection(common.BaseObject):
           - `slave_okay` or `slaveok`: Is it OK to perform queries if
             this connection is to a secondary?
           - `safe`: Use getlasterror for each write operation?
-          - `j`: Block until write operations have been commited to the
-            journal. Ignored if the server is running without journaling.
+          - `j` or `journal`: Block until write operations have been commited
+            to the journal. Ignored if the server is running without journaling.
             Implies safe=True.
           - `w`: If this is a replica set the server won't return until
             write operations have replicated to this many set members.

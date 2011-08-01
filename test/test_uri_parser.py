@@ -74,12 +74,6 @@ class TestURI(unittest.TestCase):
         # This should remind us to write tests for these if
         # they are ever supported.
         self.assertRaises(UnsupportedOption, split_options,
-                          'minPoolSize=5')
-        self.assertRaises(UnsupportedOption, split_options,
-                          'waitQueueTimeoutMS=500')
-        self.assertRaises(UnsupportedOption, split_options,
-                          'waitQueueMultiple=5')
-        self.assertRaises(UnsupportedOption, split_options,
                           'connectTimeoutMS=500')
         self.assertRaises(UnsupportedOption, split_options,
                           'socketTimeoutMS=500')

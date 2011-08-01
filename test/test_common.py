@@ -60,6 +60,12 @@ class TestCommon(unittest.TestCase):
         self.assertFalse(cursor._Cursor__slave_okay)
 
         c = Connection('mongodb://localhost:27017/?'
+                       'w=2;wtimeoutMS=300;fsync=true;journal=true')
+        self.assertTrue(c.safe)
+        d = {'w': 2, 'wtimeout': 300, 'fsync': True, 'j': True}
+        self.assertEqual(d, c.get_lasterror_options())
+
+        c = Connection('mongodb://localhost:27017/?'
                        'slaveok=true;w=1;wtimeout=300;fsync=true;j=true')
         self.assertTrue(c.slave_okay)
         self.assertTrue(c.safe)

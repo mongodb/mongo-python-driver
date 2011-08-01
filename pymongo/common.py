@@ -60,23 +60,23 @@ def validate_basestring(option, value):
                     "instance of basestring" % (option,))
 
 
+# jounal is an alias for j,
+# wtimeoutms is an alias for wtimeout
 VALIDATORS = { 
     'replicaset': validate_basestring,
     'slaveok': validate_boolean,
     'safe': validate_boolean,
     'w': validate_integer,
     'wtimeout': validate_integer,
+    'wtimeoutms': validate_integer,
     'fsync': validate_boolean,
     'j': validate_boolean,
+    'journal': validate_boolean,
     'maxpoolsize': validate_integer,
 }
 
 
 UNSUPPORTED = frozenset([
-    'connect',
-    'minpoolsize',
-    'waitqueuetimeoutms',
-    'waitqueuemultiple',
     'connecttimeoutms',
     'sockettimeoutms'
 ])
@@ -85,8 +85,10 @@ UNSUPPORTED = frozenset([
 SAFE_OPTIONS = frozenset([
     'w',
     'wtimeout',
+    'wtimeoutms',
     'fsync',
-    'j'
+    'j',
+    'journal'
 ])
 
 
@@ -124,7 +126,12 @@ class BaseObject(object):
             elif option == 'safe':
                 self.safe = value
             elif option in SAFE_OPTIONS:
-                self.__set_safe_option(option, value)
+                if option == 'journal':
+                    self.__set_safe_option('j', value)
+                elif option == 'wtimeoutms':
+                    self.__set_safe_option('wtimeout', value)
+                else:
+                    self.__set_safe_option(option, value)
 
     def __get_slave_okay(self):
         """Is it OK to perform queries on a secondary or slave?
