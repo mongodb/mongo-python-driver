@@ -80,7 +80,7 @@ class Binary(str):
         to use
     """
 
-    def __new__(cls, data, subtype=OLD_BINARY_SUBTYPE):
+    def __new__(cls, data, subtype=BINARY_SUBTYPE):
         if not isinstance(data, str):
             raise TypeError("data must be an instance of str")
         if not isinstance(subtype, int):
