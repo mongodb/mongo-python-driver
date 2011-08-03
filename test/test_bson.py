@@ -122,7 +122,7 @@ class TestBSON(unittest.TestCase):
         self.assertEqual(BSON.encode({"test": Binary("test", 0)}),
                          "\x14\x00\x00\x00\x05\x74\x65\x73\x74\x00\x04\x00\x00"
                          "\x00\x00\x74\x65\x73\x74\x00")
-        self.assertEqual(BSON.encode({"test": Binary("test")}),
+        self.assertEqual(BSON.encode({"test": Binary("test", 2)}),
                          "\x18\x00\x00\x00\x05\x74\x65\x73\x74\x00\x08\x00\x00"
                          "\x00\x02\x04\x00\x00\x00\x74\x65\x73\x74\x00")
         self.assertEqual(BSON.encode({"test": Binary("test", 128)}),
