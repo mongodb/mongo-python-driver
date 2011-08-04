@@ -179,6 +179,23 @@ If we try with a different author, like "Eliot", we'll get no result:
 
   >>> posts.find_one({"author": "Eliot"})
 
+A Note On Unicode Strings
+-------------------------
+You probably noticed that the regular Python strings we stored earlier look
+different when retrieved from the server (e.g. u'Mike' instead of 'Mike').
+A short explanation is in order.
+
+MongoDB stores data in `BSON format <http://bsonspec.org>`_. BSON strings are
+UTF-8 encoded so PyMongo must ensure that any strings it stores contain only
+valid UTF-8 data. Regular strings (<type 'str'>) are validated and stored
+unaltered. Unicode strings (<type 'unicode'>) are encoded UTF-8 first. The
+reason our example string is represented in the Python shell as u'Mike' instead
+of 'Mike' is that PyMongo decodes each BSON string to a Python unicode string,
+not a regular str.
+
+`You can read more about Python unicode strings here
+<http://docs.python.org/howto/unicode.html>`_.
+
 Bulk Inserts
 ------------
 In order to make querying a little more interesting, let's insert a
