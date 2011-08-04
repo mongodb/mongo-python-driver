@@ -30,6 +30,8 @@ _ZERO = "\x00\x00\x00\x00"
 def _gen_index_name(keys):
     """Generate an index name from the set of fields it is over.
     """
+    if isinstance(keys[0], list):
+        return u"_".join(["%s" % x for x in [item for item in keys]])
     return u"_".join([u"%s_%s" % item for item in keys])
 
 
