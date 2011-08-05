@@ -42,3 +42,4 @@ Deprecated sub-modules (moved to the :mod:`bson` package):
    son
    timestamp
    tz_util
+   uri_parser

@@ -209,16 +209,16 @@ def split_hosts(hosts, default_port=DEFAULT_PORT):
 def parse_uri(uri, default_port=DEFAULT_PORT):
     """Parse and validate a MongoDB URI.
 
-    Returns a dict of the form:
+    Returns a dict of the form::
 
-    {
-        'nodelist': <list of (host, port) tuples>,
-        'username': <username> or None,
-        'password': <password> or None,
-        'database': <database name> or None,
-        'collection': <collection name> or None,
-        'options': <dict of MongoDB URI options>
-    }
+        {
+            'nodelist': <list of (host, port) tuples>,
+            'username': <username> or None,
+            'password': <password> or None,
+            'database': <database name> or None,
+            'collection': <collection name> or None,
+            'options': <dict of MongoDB URI options>
+        }
 
     :Parameters:
         - `uri`: The MongoDB URI to parse.
