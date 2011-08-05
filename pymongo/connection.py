@@ -554,7 +554,7 @@ class Connection(common.BaseObject):
                 return self.__try_node(candidate)
 
             # Explain why we aren't using this connection.
-            raise AutoReconnect('%s:%d is currently a secondary' % node)
+            raise AutoReconnect('%s:%d is not primary or master' % node)
 
         # Direct connection
         if response.get("arbiterOnly", False):
