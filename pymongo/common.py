@@ -136,7 +136,7 @@ class BaseObject(object):
     def __get_slave_okay(self):
         """Is it OK to perform queries on a secondary or slave?
 
-        .. versionadded:: 1.11+
+        .. versionadded:: 2.0
         """
         return self.__slave_okay
 
@@ -149,7 +149,7 @@ class BaseObject(object):
     def __get_safe(self):
         """Use getlasterrer with every write operation?
 
-        .. versionadded:: 1.11+
+        .. versionadded:: 2.0
         """
         return self.__safe
 
@@ -163,7 +163,7 @@ class BaseObject(object):
         """Returns a dict of the getlasterror options set
         on this instance.
 
-        .. versionadded:: 1.11+
+        .. versionadded:: 2.0
         """
         return self.__safe_opts.copy()
 
@@ -177,7 +177,7 @@ class BaseObject(object):
             - `**kwargs`: Options should be passed as keyword
                           arguments (e.g. w=2, fsync=True)
 
-        .. versionadded:: 1.11+
+        .. versionadded:: 2.0
         """
         for key, value in kwargs.iteritems():
             self.__set_safe_option(key, value)
@@ -191,7 +191,7 @@ class BaseObject(object):
         :Parameters:
             - `*options`: The list of options to unset.
 
-        .. versionadded:: 1.11+
+        .. versionadded:: 2.0
         """
         if len(options):
             for option in options:

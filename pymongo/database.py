@@ -133,7 +133,7 @@ class Database(common.BaseObject):
         """List all incoming SON manipulators
         installed on this instance.
 
-        .. versionadded:: 1.11+
+        .. versionadded:: 2.0
         """
         return [manipulator.__class__.__name__
                 for manipulator in self.__incoming_manipulators]
@@ -143,7 +143,7 @@ class Database(common.BaseObject):
         """List all incoming SON copying manipulators
         installed on this instance.
 
-        .. versionadded:: 1.11+
+        .. versionadded:: 2.0
         """
         return [manipulator.__class__.__name__
                 for manipulator in self.__incoming_copying_manipulators]
@@ -153,7 +153,7 @@ class Database(common.BaseObject):
         """List all outgoing SON manipulators
         installed on this instance.
 
-        .. versionadded:: 1.11+
+        .. versionadded:: 2.0
         """
         return [manipulator.__class__.__name__
                 for manipulator in self.__outgoing_manipulators]
@@ -163,7 +163,7 @@ class Database(common.BaseObject):
         """List all outgoing SON copying manipulators
         installed on this instance.
 
-        .. versionadded:: 1.11+
+        .. versionadded:: 2.0
         """
         return [manipulator.__class__.__name__
                 for manipulator in self.__outgoing_copying_manipulators]

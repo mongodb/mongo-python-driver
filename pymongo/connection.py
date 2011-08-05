@@ -237,7 +237,7 @@ class Connection(common.BaseObject):
             attempt to find all members of the set.
 
         .. seealso:: :meth:`end_request`
-        .. versionchanged:: 1.11+
+        .. versionchanged:: 2.0
            `slave_okay` is a pure keyword argument. Added support for safe,
            and getlasterror options as keyword arguments.
         .. versionchanged:: 1.11
@@ -994,7 +994,7 @@ class Connection(common.BaseObject):
         are blocked, although read operations may still be allowed.
         Use :meth:`~pymongo.connection.Connection.unlock` to unlock.
 
-        .. versionadded:: 1.11+
+        .. versionadded:: 2.0
         """
         ops = self.admin.current_op()
         return bool(ops.get('fsyncLock', 0))
@@ -1015,14 +1015,14 @@ class Connection(common.BaseObject):
                          on Windows and will raise an exception on that
                          platform.
 
-        .. versionadded:: 1.11+
+        .. versionadded:: 2.0
         """
         self.admin.command("fsync", **kwargs)
 
     def unlock(self):
         """Unlock a previously locked server.
 
-        .. versionadded:: 1.11+
+        .. versionadded:: 2.0
         """
         self.admin['$cmd'].sys.unlock.find_one() 
 

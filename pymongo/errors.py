@@ -98,5 +98,5 @@ class InvalidURI(ConfigurationError):
 class UnsupportedOption(ConfigurationError):
     """Exception for unsupported options.
 
-    .. versionadded:: 1.11+
+    .. versionadded:: 2.0
     """
