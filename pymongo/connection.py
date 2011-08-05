@@ -552,7 +552,9 @@ class Connection(common.BaseObject):
             elif "primary" in response:
                 candidate = _partition_node(response["primary"])
                 return self.__try_node(candidate)
-            return None
+
+            # Explain why we aren't using this connection.
+            raise AutoReconnect('%s:%d is currently a secondary' % node)
 
         # Direct connection
         if response.get("arbiterOnly", False):
