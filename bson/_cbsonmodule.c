@@ -20,27 +20,36 @@
  * should be used to speed up BSON encoding and decoding.
  */
 
-#include <Python.h>
-#include <stdio.h>
+#include "Python.h"
+#include "datetime.h"
 
-#include <datetime.h>
-
-#include "_cbson.h"
 #include "buffer.h"
 #include "time64.h"
 #include "encoding_helpers.h"
 
-static PyObject* Binary = NULL;
-static PyObject* Code = NULL;
-static PyObject* ObjectId = NULL;
-static PyObject* DBRef = NULL;
-static PyObject* RECompile = NULL;
-static PyObject* UUID = NULL;
-static PyObject* Timestamp = NULL;
-static PyObject* MinKey = NULL;
-static PyObject* MaxKey = NULL;
-static PyObject* UTC = NULL;
-static PyTypeObject* REType = NULL;
+#define _CBSON_MODULE
+#include "_cbsonmodule.h"
+
+struct module_state {
+    PyObject* Binary;
+    PyObject* Code;
+    PyObject* ObjectId;
+    PyObject* DBRef;
+    PyObject* RECompile;
+    PyObject* UUID;
+    PyObject* Timestamp;
+    PyObject* MinKey;
+    PyObject* MaxKey;
+    PyObject* UTC;
+    PyTypeObject* REType;
+};
+
+#if PY_MAJOR_VERSION >= 3
+#define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
+#else
+#define GETSTATE(m) (&_state)
+static struct module_state _state;
+#endif
 
 #if PY_VERSION_HEX < 0x02050000
 #define WARN(category, message)                 \
@@ -88,10 +97,10 @@ static PyTypeObject* REType = NULL;
 #endif
 
 
-static PyObject* elements_to_dict(const char* string, int max,
+static PyObject* elements_to_dict(PyObject* self, const char* string, int max,
                                   PyObject* as_class, unsigned char tz_aware);
 
-static int _write_element_to_buffer(buffer_t buffer, int type_byte, PyObject* value,
+static int _write_element_to_buffer(PyObject* self, buffer_t buffer, int type_byte, PyObject* value,
                                     unsigned char check_keys, unsigned char first_attempt);
 
 /* Date stuff */
@@ -127,7 +136,7 @@ static long long millis_from_datetime(PyObject* datetime) {
 }
 
 /* Just make this compatible w/ the old API. */
-int buffer_write_bytes(buffer_t buffer, const char* data, int size) {
+static int buffer_write_bytes(PyObject* self, buffer_t buffer, const char* data, int size) {
     if (buffer_write(buffer, data, size)) {
         PyErr_NoMemory();
         return 0;
@@ -136,7 +145,7 @@ int buffer_write_bytes(buffer_t buffer, const char* data, int size) {
 }
 
 /* returns 0 on failure */
-static int write_string(buffer_t buffer, PyObject* py_string) {
+static int write_string(PyObject* self, buffer_t buffer, PyObject* py_string) {
     Py_ssize_t string_length;
     const char* string = PyString_AsString(py_string);
     if (!string) {
@@ -144,10 +153,10 @@ static int write_string(buffer_t buffer, PyObject* py_string) {
     }
     string_length = PyString_Size(py_string) + 1;
 
-    if (!buffer_write_bytes(buffer, (const char*)&string_length, 4)) {
+    if (!buffer_write_bytes(self, buffer, (const char*)&string_length, 4)) {
         return 0;
     }
-    if (!buffer_write_bytes(buffer, string, string_length)) {
+    if (!buffer_write_bytes(self, buffer, string, string_length)) {
         return 0;
     }
     return 1;
@@ -187,36 +196,38 @@ static int _reload_object(PyObject** object, char* module_name, char* object_nam
 /* Reload all cached Python objects.
  *
  * Returns non-zero on failure. */
-static int _reload_python_objects(void) {
-    if (_reload_object(&Binary, "bson.binary", "Binary") ||
-        _reload_object(&Code, "bson.code", "Code") ||
-        _reload_object(&ObjectId, "bson.objectid", "ObjectId") ||
-        _reload_object(&DBRef, "bson.dbref", "DBRef") ||
-        _reload_object(&Timestamp, "bson.timestamp", "Timestamp") ||
-        _reload_object(&MinKey, "bson.min_key", "MinKey") ||
-        _reload_object(&MaxKey, "bson.max_key", "MaxKey") ||
-        _reload_object(&UTC, "bson.tz_util", "utc") ||
-        _reload_object(&RECompile, "re", "compile")) {
+static int _reload_python_objects(PyObject* self) {
+    struct module_state *state = GETSTATE(self);
+
+    if (_reload_object(&state->Binary, "bson.binary", "Binary") ||
+        _reload_object(&state->Code, "bson.code", "Code") ||
+        _reload_object(&state->ObjectId, "bson.objectid", "ObjectId") ||
+        _reload_object(&state->DBRef, "bson.dbref", "DBRef") ||
+        _reload_object(&state->Timestamp, "bson.timestamp", "Timestamp") ||
+        _reload_object(&state->MinKey, "bson.min_key", "MinKey") ||
+        _reload_object(&state->MaxKey, "bson.max_key", "MaxKey") ||
+        _reload_object(&state->UTC, "bson.tz_util", "utc") ||
+        _reload_object(&state->RECompile, "re", "compile")) {
         return 1;
     }
     /* If we couldn't import uuid then we must be on 2.4. Just ignore. */
-    if (_reload_object(&UUID, "uuid", "UUID") == 1) {
-        UUID = NULL;
+    if (_reload_object(&state->UUID, "uuid", "UUID") == 1) {
+        state->UUID = NULL;
         PyErr_Clear();
     }
     /* Reload our REType hack too. */
-    REType = PyObject_CallFunction(RECompile, "O",
-                                   PyString_FromString(""))->ob_type;
+    state->REType = PyObject_CallFunction(state->RECompile, "O",
+                                          PyString_FromString(""))->ob_type;
     return 0;
 }
 
-static int write_element_to_buffer(buffer_t buffer, int type_byte,
+static int write_element_to_buffer(PyObject* self, buffer_t buffer, int type_byte,
                                    PyObject* value, unsigned char check_keys,
                                    unsigned char first_attempt) {
     int result;
     if(Py_EnterRecursiveCall(" while encoding an object to BSON "))
         return 0;
-    result = _write_element_to_buffer(buffer, type_byte, value,
+    result = _write_element_to_buffer(self, buffer, type_byte, value,
                                       check_keys, first_attempt);
     Py_LeaveRecursiveCall();
     return result;
@@ -227,13 +238,15 @@ static int write_element_to_buffer(buffer_t buffer, int type_byte,
  * space has already been reserved.
  *
  * returns 0 on failure */
-static int _write_element_to_buffer(buffer_t buffer, int type_byte, PyObject* value,
+static int _write_element_to_buffer(PyObject* self, buffer_t buffer, int type_byte, PyObject* value,
                                     unsigned char check_keys, unsigned char first_attempt) {
+    struct module_state *state = GETSTATE(self);
+
     if (PyBool_Check(value)) {
         const long bool = PyInt_AsLong(value);
         const char c = bool ? 0x01 : 0x00;
         *(buffer_get_buffer(buffer) + type_byte) = 0x08;
-        return buffer_write_bytes(buffer, &c, 1);
+        return buffer_write_bytes(self, buffer, &c, 1);
     }
     else if (PyInt_Check(value)) {
         const long long_value = PyInt_AsLong(value);
@@ -248,10 +261,10 @@ static int _write_element_to_buffer(buffer_t buffer, int type_byte, PyObject* va
                 return 0;
             }
             *(buffer_get_buffer(buffer) + type_byte) = 0x12;
-            return buffer_write_bytes(buffer, (const char*)&long_long_value, 8);
+            return buffer_write_bytes(self, buffer, (const char*)&long_long_value, 8);
         }
         *(buffer_get_buffer(buffer) + type_byte) = 0x10;
-        return buffer_write_bytes(buffer, (const char*)&int_value, 4);
+        return buffer_write_bytes(self, buffer, (const char*)&int_value, 4);
     } else if (PyLong_Check(value)) {
         const long long long_long_value = PyLong_AsLongLong(value);
         if (PyErr_Occurred()) { /* Overflow */
@@ -260,17 +273,17 @@ static int _write_element_to_buffer(buffer_t buffer, int type_byte, PyObject* va
             return 0;
         }
         *(buffer_get_buffer(buffer) + type_byte) = 0x12;
-        return buffer_write_bytes(buffer, (const char*)&long_long_value, 8);
+        return buffer_write_bytes(self, buffer, (const char*)&long_long_value, 8);
     } else if (PyFloat_Check(value)) {
         const double d = PyFloat_AsDouble(value);
         *(buffer_get_buffer(buffer) + type_byte) = 0x01;
-        return buffer_write_bytes(buffer, (const char*)&d, 8);
+        return buffer_write_bytes(self, buffer, (const char*)&d, 8);
     } else if (value == Py_None) {
         *(buffer_get_buffer(buffer) + type_byte) = 0x0A;
         return 1;
     } else if (PyDict_Check(value)) {
         *(buffer_get_buffer(buffer) + type_byte) = 0x03;
-        return write_dict(buffer, value, check_keys, 0);
+        return write_dict(self, buffer, value, check_keys, 0);
     } else if (PyList_Check(value) || PyTuple_Check(value)) {
         int start_position,
             length_location,
@@ -303,14 +316,14 @@ static int _write_element_to_buffer(buffer_t buffer, int type_byte, PyObject* va
                 PyErr_NoMemory();
                 return 0;
             }
-            if (!buffer_write_bytes(buffer, name, strlen(name) + 1)) {
+            if (!buffer_write_bytes(self, buffer, name, strlen(name) + 1)) {
                 free(name);
                 return 0;
             }
             free(name);
 
             item_value = PySequence_GetItem(value, i);
-            if (!write_element_to_buffer(buffer, list_type_byte, item_value, check_keys, 1)) {
+            if (!write_element_to_buffer(self, buffer, list_type_byte, item_value, check_keys, 1)) {
                 Py_DECREF(item_value);
                 return 0;
             }
@@ -318,13 +331,13 @@ static int _write_element_to_buffer(buffer_t buffer, int type_byte, PyObject* va
         }
 
         /* write null byte and fill in length */
-        if (!buffer_write_bytes(buffer, &zero, 1)) {
+        if (!buffer_write_bytes(self, buffer, &zero, 1)) {
             return 0;
         }
         length = buffer_get_position(buffer) - start_position;
         memcpy(buffer_get_buffer(buffer) + length_location, &length, 4);
         return 1;
-    } else if (PyObject_IsInstance(value, Binary)) {
+    } else if (PyObject_IsInstance(value, state->Binary)) {
         PyObject* subtype_object;
 
         *(buffer_get_buffer(buffer) + type_byte) = 0x05;
@@ -340,18 +353,18 @@ static int _write_element_to_buffer(buffer_t buffer, int type_byte, PyObject* va
             Py_DECREF(subtype_object);
             if (subtype == 2) {
                 const int other_length = length + 4;
-                if (!buffer_write_bytes(buffer, (const char*)&other_length, 4)) {
+                if (!buffer_write_bytes(self, buffer, (const char*)&other_length, 4)) {
                     return 0;
                 }
-                if (!buffer_write_bytes(buffer, &subtype, 1)) {
+                if (!buffer_write_bytes(self, buffer, &subtype, 1)) {
                     return 0;
                 }
             }
-            if (!buffer_write_bytes(buffer, (const char*)&length, 4)) {
+            if (!buffer_write_bytes(self, buffer, (const char*)&length, 4)) {
                 return 0;
             }
             if (subtype != 2) {
-                if (!buffer_write_bytes(buffer, &subtype, 1)) {
+                if (!buffer_write_bytes(self, buffer, &subtype, 1)) {
                     return 0;
                 }
             }
@@ -360,13 +373,13 @@ static int _write_element_to_buffer(buffer_t buffer, int type_byte, PyObject* va
                 if (!string) {
                     return 0;
                 }
-                if (!buffer_write_bytes(buffer, string, length)) {
+                if (!buffer_write_bytes(self, buffer, string, length)) {
                     return 0;
                 }
             }
         }
         return 1;
-    } else if (UUID && PyObject_IsInstance(value, UUID)) {
+    } else if (state->UUID && PyObject_IsInstance(value, state->UUID)) {
         // Just a special case of Binary above, but simpler to do as a separate case
 
         // UUID is always 16 bytes, subtype 3
@@ -376,10 +389,10 @@ static int _write_element_to_buffer(buffer_t buffer, int type_byte, PyObject* va
         PyObject* bytes;
 
         *(buffer_get_buffer(buffer) + type_byte) = 0x05;
-        if (!buffer_write_bytes(buffer, (const char*)&length, 4)) {
+        if (!buffer_write_bytes(self, buffer, (const char*)&length, 4)) {
             return 0;
         }
-        if (!buffer_write_bytes(buffer, &subtype, 1)) {
+        if (!buffer_write_bytes(self, buffer, &subtype, 1)) {
             return 0;
         }
 
@@ -387,13 +400,13 @@ static int _write_element_to_buffer(buffer_t buffer, int type_byte, PyObject* va
         if (!bytes) {
             return 0;
         }
-        if (!buffer_write_bytes(buffer, PyString_AsString(bytes), length)) {
+        if (!buffer_write_bytes(self, buffer, PyString_AsString(bytes), length)) {
             Py_DECREF(bytes);
             return 0;
         }
         Py_DECREF(bytes);
         return 1;
-    } else if (PyObject_IsInstance(value, Code)) {
+    } else if (PyObject_IsInstance(value, state->Code)) {
         int start_position,
             length_location,
             length;
@@ -409,7 +422,7 @@ static int _write_element_to_buffer(buffer_t buffer, int type_byte, PyObject* va
             return 0;
         }
 
-        if (!write_string(buffer, value)) {
+        if (!write_string(self, buffer, value)) {
             return 0;
         }
 
@@ -417,7 +430,7 @@ static int _write_element_to_buffer(buffer_t buffer, int type_byte, PyObject* va
         if (!scope) {
             return 0;
         }
-        if (!write_dict(buffer, scope, 0, 0)) {
+        if (!write_dict(self, buffer, scope, 0, 0)) {
             Py_DECREF(scope);
             return 0;
         }
@@ -440,7 +453,7 @@ static int _write_element_to_buffer(buffer_t buffer, int type_byte, PyObject* va
             Py_DECREF(InvalidStringData);
             return 0;
         }
-        result = write_string(buffer, value);
+        result = write_string(self, buffer, value);
         return result;
     } else if (PyUnicode_Check(value)) {
         PyObject* encoded;
@@ -451,7 +464,7 @@ static int _write_element_to_buffer(buffer_t buffer, int type_byte, PyObject* va
         if (!encoded) {
             return 0;
         }
-        result = write_string(buffer, encoded);
+        result = write_string(self, buffer, encoded);
         Py_DECREF(encoded);
         return result;
     } else if (PyDateTime_Check(value)) {
@@ -469,8 +482,8 @@ static int _write_element_to_buffer(buffer_t buffer, int type_byte, PyObject* va
             millis = millis_from_datetime(value);
         }
         *(buffer_get_buffer(buffer) + type_byte) = 0x09;
-        return buffer_write_bytes(buffer, (const char*)&millis, 8);
-    } else if (PyObject_IsInstance(value, ObjectId)) {
+        return buffer_write_bytes(self, buffer, (const char*)&millis, 8);
+    } else if (PyObject_IsInstance(value, state->ObjectId)) {
         PyObject* pystring = PyObject_GetAttrString(value, "_ObjectId__id");
         if (!pystring) {
             return 0;
@@ -481,7 +494,7 @@ static int _write_element_to_buffer(buffer_t buffer, int type_byte, PyObject* va
                 Py_DECREF(pystring);
                 return 0;
             }
-            if (!buffer_write_bytes(buffer, as_string, 12)) {
+            if (!buffer_write_bytes(self, buffer, as_string, 12)) {
                 Py_DECREF(pystring);
                 return 0;
             }
@@ -489,19 +502,19 @@ static int _write_element_to_buffer(buffer_t buffer, int type_byte, PyObject* va
             *(buffer_get_buffer(buffer) + type_byte) = 0x07;
         }
         return 1;
-    } else if (PyObject_IsInstance(value, DBRef)) {
+    } else if (PyObject_IsInstance(value, state->DBRef)) {
         PyObject* as_doc = PyObject_CallMethod(value, "as_doc", NULL);
         if (!as_doc) {
             return 0;
         }
-        if (!write_dict(buffer, as_doc, 0, 0)) {
+        if (!write_dict(self, buffer, as_doc, 0, 0)) {
             Py_DECREF(as_doc);
             return 0;
         }
         Py_DECREF(as_doc);
         *(buffer_get_buffer(buffer) + type_byte) = 0x03;
         return 1;
-    } else if (PyObject_IsInstance(value, Timestamp)) {
+    } else if (PyObject_IsInstance(value, state->Timestamp)) {
         PyObject* obj;
         long i;
 
@@ -511,7 +524,7 @@ static int _write_element_to_buffer(buffer_t buffer, int type_byte, PyObject* va
         }
         i = PyInt_AsLong(obj);
         Py_DECREF(obj);
-        if (!buffer_write_bytes(buffer, (const char*)&i, 4)) {
+        if (!buffer_write_bytes(self, buffer, (const char*)&i, 4)) {
             return 0;
         }
 
@@ -521,14 +534,14 @@ static int _write_element_to_buffer(buffer_t buffer, int type_byte, PyObject* va
         }
         i = PyInt_AsLong(obj);
         Py_DECREF(obj);
-        if (!buffer_write_bytes(buffer, (const char*)&i, 4)) {
+        if (!buffer_write_bytes(self, buffer, (const char*)&i, 4)) {
             return 0;
         }
 
         *(buffer_get_buffer(buffer) + type_byte) = 0x11;
         return 1;
     }
-    else if (PyObject_TypeCheck(value, REType)) {
+    else if (PyObject_TypeCheck(value, state->REType)) {
         PyObject* py_flags = PyObject_GetAttrString(value, "flags");
         PyObject* py_pattern;
         PyObject* encoded_pattern;
@@ -580,7 +593,7 @@ static int _write_element_to_buffer(buffer_t buffer, int type_byte, PyObject* va
             const char* pattern =  PyString_AsString(encoded_pattern);
             pattern_length = strlen(pattern) + 1;
 
-            if (!buffer_write_bytes(buffer, pattern, pattern_length)) {
+            if (!buffer_write_bytes(self, buffer, pattern, pattern_length)) {
                 Py_DECREF(encoded_pattern);
                 return 0;
             }
@@ -608,15 +621,15 @@ static int _write_element_to_buffer(buffer_t buffer, int type_byte, PyObject* va
             STRCAT(flags, FLAGS_SIZE, "x");
         }
         flags_length = strlen(flags) + 1;
-        if (!buffer_write_bytes(buffer, flags, flags_length)) {
+        if (!buffer_write_bytes(self, buffer, flags, flags_length)) {
             return 0;
         }
         *(buffer_get_buffer(buffer) + type_byte) = 0x0B;
         return 1;
-    } else if (PyObject_IsInstance(value, MinKey)) {
+    } else if (PyObject_IsInstance(value, state->MinKey)) {
         *(buffer_get_buffer(buffer) + type_byte) = 0xFF;
         return 1;
-    } else if (PyObject_IsInstance(value, MaxKey)) {
+    } else if (PyObject_IsInstance(value, state->MaxKey)) {
         *(buffer_get_buffer(buffer) + type_byte) = 0x7F;
         return 1;
     } else if (first_attempt) {
@@ -628,10 +641,10 @@ static int _write_element_to_buffer(buffer_t buffer, int type_byte, PyObject* va
                  "wsgi") == -1) {
             return 0;
         }
-        if (_reload_python_objects()) {
+        if (_reload_python_objects(self)) {
             return 0;
         }
-        return write_element_to_buffer(buffer, type_byte, value, check_keys, 0);
+        return write_element_to_buffer(self, buffer, type_byte, value, check_keys, 0);
     }
     {
         PyObject* errmsg = PyString_FromString("Cannot encode object: ");
@@ -672,7 +685,7 @@ static int check_key_name(const char* name,
 /* Write a (key, value) pair to the buffer.
  *
  * Returns 0 on failure */
-int write_pair(buffer_t buffer, const char* name, Py_ssize_t name_length,
+static int write_pair(PyObject* self, buffer_t buffer, const char* name, Py_ssize_t name_length,
                PyObject* value, unsigned char check_keys, unsigned char allow_id) {
     int type_byte;
 
@@ -691,16 +704,16 @@ int write_pair(buffer_t buffer, const char* name, Py_ssize_t name_length,
     if (check_keys && !check_key_name(name, name_length)) {
         return 0;
     }
-    if (!buffer_write_bytes(buffer, name, name_length + 1)) {
+    if (!buffer_write_bytes(self, buffer, name, name_length + 1)) {
         return 0;
     }
-    if (!write_element_to_buffer(buffer, type_byte, value, check_keys, 1)) {
+    if (!write_element_to_buffer(self, buffer, type_byte, value, check_keys, 1)) {
         return 0;
     }
     return 1;
 }
 
-int decode_and_write_pair(buffer_t buffer,
+static int decode_and_write_pair(PyObject* self, buffer_t buffer,
                           PyObject* key, PyObject* value,
                           unsigned char check_keys, unsigned char top_level) {
     PyObject* encoded;
@@ -753,7 +766,7 @@ int decode_and_write_pair(buffer_t buffer,
     }
 
     /* If top_level is True, don't allow writing _id here - it was already written. */
-    if (!write_pair(buffer, PyString_AsString(encoded),
+    if (!write_pair(self, buffer, PyString_AsString(encoded),
                     PyString_Size(encoded), value, check_keys, !top_level)) {
         Py_DECREF(encoded);
         return 0;
@@ -764,7 +777,7 @@ int decode_and_write_pair(buffer_t buffer,
 }
 
 /* returns 0 on failure */
-int write_dict(buffer_t buffer, PyObject* dict, unsigned char check_keys, unsigned char top_level) {
+static int write_dict(PyObject* self, buffer_t buffer, PyObject* dict, unsigned char check_keys, unsigned char top_level) {
     PyObject* key;
     PyObject* iter;
     char zero = 0;
@@ -792,7 +805,7 @@ int write_dict(buffer_t buffer, PyObject* dict, unsigned char check_keys, unsign
         if (_id) {
             /* Don't bother checking keys, but do make sure we're allowed to
              * write _id */
-            if (!write_pair(buffer, "_id", 3, _id, 0, 1)) {
+            if (!write_pair(self, buffer, "_id", 3, _id, 0, 1)) {
                 return 0;
             }
         }
@@ -810,7 +823,7 @@ int write_dict(buffer_t buffer, PyObject* dict, unsigned char check_keys, unsign
             Py_DECREF(iter);
             return 0;
         }
-        if (!decode_and_write_pair(buffer, key, value, check_keys, top_level)) {
+        if (!decode_and_write_pair(self, buffer, key, value, check_keys, top_level)) {
             Py_DECREF(key);
             Py_DECREF(iter);
             return 0;
@@ -820,7 +833,7 @@ int write_dict(buffer_t buffer, PyObject* dict, unsigned char check_keys, unsign
     Py_DECREF(iter);
 
     /* write null byte and fill in length */
-    if (!buffer_write_bytes(buffer, &zero, 1)) {
+    if (!buffer_write_bytes(self, buffer, &zero, 1)) {
         return 0;
     }
     length = buffer_get_position(buffer) - length_location;
@@ -844,7 +857,7 @@ static PyObject* _cbson_dict_to_bson(PyObject* self, PyObject* args) {
         return NULL;
     }
 
-    if (!write_dict(buffer, dict, check_keys, 1)) {
+    if (!write_dict(self, buffer, dict, check_keys, 1)) {
         buffer_free(buffer);
         return NULL;
     }
@@ -856,8 +869,10 @@ static PyObject* _cbson_dict_to_bson(PyObject* self, PyObject* args) {
     return result;
 }
 
-static PyObject* get_value(const char* buffer, int* position, int type,
+static PyObject* get_value(PyObject* self, const char* buffer, int* position, int type,
                            int max, PyObject* as_class, unsigned char tz_aware) {
+    struct module_state *state = GETSTATE(self);
+
     PyObject* value;
     PyObject* error;
     switch (type) {
@@ -898,7 +913,7 @@ static PyObject* get_value(const char* buffer, int* position, int type,
             if (max < size) {
                 goto invalid;
             }
-            value = elements_to_dict(buffer + *position + 4, size - 5, as_class, tz_aware);
+            value = elements_to_dict(self, buffer + *position + 4, size - 5, as_class, tz_aware);
             if (!value) {
                 return NULL;
             }
@@ -923,7 +938,7 @@ static PyObject* get_value(const char* buffer, int* position, int type,
                     PyDict_DelItemString(value, "$db");
                 }
 
-                dbref = PyObject_CallFunctionObjArgs(DBRef, collection, id, database, value, NULL);
+                dbref = PyObject_CallFunctionObjArgs(state->DBRef, collection, id, database, value, NULL);
                 Py_DECREF(value);
                 value = dbref;
 
@@ -960,7 +975,7 @@ static PyObject* get_value(const char* buffer, int* position, int type,
                 int type = (int)buffer[(*position)++];
                 int key_size = strlen(buffer + *position);
                 *position += key_size + 1; /* just skip the key, they're in order. */
-                to_append = get_value(buffer, position, type, max - key_size, as_class, tz_aware);
+                to_append = get_value(self, buffer, position, type, max - key_size, as_class, tz_aware);
                 if (!to_append) {
                     return NULL;
                 }
@@ -992,7 +1007,7 @@ static PyObject* get_value(const char* buffer, int* position, int type,
                 return NULL;
             }
 
-            if (subtype == 3 && UUID) { // Encode as UUID, not Binary
+            if (subtype == 3 && state->UUID) { // Encode as UUID, not Binary
                 PyObject* kwargs;
                 PyObject* args = PyTuple_New(0);
                 if (!args) {
@@ -1007,7 +1022,7 @@ static PyObject* get_value(const char* buffer, int* position, int type,
                 assert(length == 16); // UUID should always be 16 bytes
 
                 PyDict_SetItemString(kwargs, "bytes", data);
-                value = PyObject_Call(UUID, args, kwargs);
+                value = PyObject_Call(state->UUID, args, kwargs);
 
                 Py_DECREF(args);
                 Py_DECREF(kwargs);
@@ -1025,7 +1040,7 @@ static PyObject* get_value(const char* buffer, int* position, int type,
                 Py_DECREF(data);
                 return NULL;
             }
-            value = PyObject_CallFunctionObjArgs(Binary, data, st, NULL);
+            value = PyObject_CallFunctionObjArgs(state->Binary, data, st, NULL);
             Py_DECREF(st);
             Py_DECREF(data);
             if (!value) {
@@ -1046,7 +1061,7 @@ static PyObject* get_value(const char* buffer, int* position, int type,
             if (max < 12) {
                 goto invalid;
             }
-            value = PyObject_CallFunction(ObjectId, "s#", buffer + *position, 12);
+            value = PyObject_CallFunction(state->ObjectId, "s#", buffer + *position, 12);
             if (!value) {
                 return NULL;
             }
@@ -1094,7 +1109,7 @@ static PyObject* get_value(const char* buffer, int* position, int type,
                 Py_DECREF(args);
                 return NULL;
             }
-            if (PyDict_SetItemString(kwargs, "tzinfo", UTC) == -1) {
+            if (PyDict_SetItemString(kwargs, "tzinfo", state->UTC) == -1) {
                 Py_DECREF(replace);
                 Py_DECREF(args);
                 Py_DECREF(kwargs);
@@ -1142,7 +1157,7 @@ static PyObject* get_value(const char* buffer, int* position, int type,
                 }
             }
             *position += flags_length + 1;
-            value = PyObject_CallFunction(RECompile, "Oi", pattern, flags);
+            value = PyObject_CallFunction(state->RECompile, "Oi", pattern, flags);
             Py_DECREF(pattern);
             break;
         }
@@ -1165,13 +1180,13 @@ static PyObject* get_value(const char* buffer, int* position, int type,
             if (max < collection_length + 12) {
                 goto invalid;
             }
-            id = PyObject_CallFunction(ObjectId, "s#", buffer + *position, 12);
+            id = PyObject_CallFunction(state->ObjectId, "s#", buffer + *position, 12);
             if (!id) {
                 Py_DECREF(collection);
                 return NULL;
             }
             *position += 12;
-            value = PyObject_CallFunctionObjArgs(DBRef, collection, id, NULL);
+            value = PyObject_CallFunctionObjArgs(state->DBRef, collection, id, NULL);
             Py_DECREF(collection);
             Py_DECREF(id);
             break;
@@ -1195,7 +1210,7 @@ static PyObject* get_value(const char* buffer, int* position, int type,
             *position += code_length + 1;
 
             memcpy(&scope_size, buffer + *position, 4);
-            scope = elements_to_dict(buffer + *position + 4, scope_size - 5,
+            scope = elements_to_dict(self, buffer + *position + 4, scope_size - 5,
                                      (PyObject*)&PyDict_Type, tz_aware);
             if (!scope) {
                 Py_DECREF(code);
@@ -1203,7 +1218,7 @@ static PyObject* get_value(const char* buffer, int* position, int type,
             }
             *position += scope_size;
 
-            value = PyObject_CallFunctionObjArgs(Code, code, scope, NULL);
+            value = PyObject_CallFunctionObjArgs(state->Code, code, scope, NULL);
             Py_DECREF(code);
             Py_DECREF(scope);
             break;
@@ -1230,7 +1245,7 @@ static PyObject* get_value(const char* buffer, int* position, int type,
             }
             memcpy(&inc, buffer + *position, 4);
             memcpy(&time, buffer + *position + 4, 4);
-            value = PyObject_CallFunction(Timestamp, "II", time, inc);
+            value = PyObject_CallFunction(state->Timestamp, "II", time, inc);
             if (!value) {
                 return NULL;
             }
@@ -1253,12 +1268,12 @@ static PyObject* get_value(const char* buffer, int* position, int type,
         }
     case -1:
         {
-            value = PyObject_CallFunctionObjArgs(MinKey, NULL);
+            value = PyObject_CallFunctionObjArgs(state->MinKey, NULL);
             break;
         }
     case 127:
         {
-            value = PyObject_CallFunctionObjArgs(MaxKey, NULL);
+            value = PyObject_CallFunctionObjArgs(state->MaxKey, NULL);
             break;
         }
     default:
@@ -1279,7 +1294,7 @@ static PyObject* get_value(const char* buffer, int* position, int type,
     return NULL;
 }
 
-static PyObject* elements_to_dict(const char* string, int max,
+static PyObject* elements_to_dict(PyObject* self, const char* string, int max,
                                   PyObject* as_class, unsigned char tz_aware) {
     int position = 0;
     PyObject* dict = PyObject_CallObject(as_class, NULL);
@@ -1302,7 +1317,7 @@ static PyObject* elements_to_dict(const char* string, int max,
             return NULL;
         }
         position += name_length + 1;
-        value = get_value(string, &position, type, max - position, as_class, tz_aware);
+        value = get_value(self, string, &position, type, max - position, as_class, tz_aware);
         if (!value) {
             return NULL;
         }
@@ -1364,7 +1379,7 @@ static PyObject* _cbson_bson_to_dict(PyObject* self, PyObject* args) {
         return NULL;
     }
 
-    dict = elements_to_dict(string + 4, size - 5, as_class, tz_aware);
+    dict = elements_to_dict(self, string + 4, size - 5, as_class, tz_aware);
     if (!dict) {
         return NULL;
     }
@@ -1432,7 +1447,7 @@ static PyObject* _cbson_decode_all(PyObject* self, PyObject* args) {
             return NULL;
         }
 
-        dict = elements_to_dict(string + 4, size - 5, as_class, tz_aware);
+        dict = elements_to_dict(self, string + 4, size - 5, as_class, tz_aware);
         if (!dict) {
             return NULL;
         }
@@ -1458,12 +1473,38 @@ static PyMethodDef _CBSONMethods[] = {
 PyMODINIT_FUNC init_cbson(void) {
     PyObject *m;
 
-    PyDateTime_IMPORT;
     m = Py_InitModule("_cbson", _CBSONMethods);
     if (m == NULL) {
         return;
     }
 
-    // TODO we don't do any error checking here, should we be?
-    _reload_python_objects();
+    /* Import datetime */
+    PyDateTime_IMPORT;
+    if (PyDateTimeAPI == NULL) {
+        Py_DECREF(m);
+        return;
+    }
+
+    /* Import several python objects */
+    if (_reload_python_objects(m)) {
+        Py_DECREF(m);
+        return;
+    }
+
+    /* Export C API */
+    static void *_cbson_API[_cbson_API_POINTER_COUNT];
+    _cbson_API[_cbson_buffer_write_bytes_INDEX] = (void *) buffer_write_bytes;
+    _cbson_API[_cbson_write_dict_INDEX] = (void *) write_dict;
+    _cbson_API[_cbson_write_pair_INDEX] = (void *) write_pair;
+    _cbson_API[_cbson_decode_and_write_pair_INDEX] = (void *) decode_and_write_pair;
+
+    #if PY_MAJOR_VERSION >= 3
+        PyObject *c_api_object = PyCapsule_New((void *) _cbson_API, "_cbson._C_API", NULL);
+    #else
+        PyObject *c_api_object = PyCObject_FromVoidPtr((void *) _cbson_API, NULL);
+    #endif
+
+    if (c_api_object != NULL) {
+        PyModule_AddObject(m, "_C_API", c_api_object);
+    }
 }
