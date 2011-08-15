@@ -46,6 +46,10 @@ API changes:
   used PyMongo will treat the specified host:port pair(s) as a seed list and
   connect using replica set behavior.
 
+.. warning:: The default subtype for :class:`~bson.binary.Binary` has changed
+             from :const:`~bson.binary.OLD_BINARY_SUBTYPE` (2) to
+             :const:`~bson.binary.BINARY_SUBTYPE` (0).
+
 Issues Resolved
 ...............
 
