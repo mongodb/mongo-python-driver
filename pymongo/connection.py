@@ -154,8 +154,8 @@ class _Pool(threading.local):
         pid = os.getpid()
 
         if pid != self.pid:
-            self.pid = pid
             self.sockets = []
+            self.pid = pid
             self.holder = _SocketHolder(self)
 
         if self.holder.reusable and self.holder.sock is not None and self.holder.sock[0] == pid:
