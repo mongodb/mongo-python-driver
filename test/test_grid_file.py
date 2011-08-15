@@ -30,7 +30,8 @@ sys.path[0:0] = [""]
 from nose.plugins.skip import SkipTest
 
 from bson.objectid import ObjectId
-from gridfs.grid_file import (_SEEK_CUR,
+from gridfs.grid_file import (DEFAULT_CHUNK_SIZE,
+                              _SEEK_CUR,
                               _SEEK_END,
                               GridIn,
                               GridFile,
@@ -487,6 +488,31 @@ with GridIn(self.db.fs, filename="important") as infile:
 with GridOut(self.db.fs, infile._id) as outfile:
     self.assertEqual(contents, outfile.read())
 """
+
+    def test_prechunked_string(self):
+
+        def write_me(s, chunk_size):
+            buffer = StringIO(s)
+            infile = GridIn(self.db.fs)
+            while True:
+                to_write = buffer.read(chunk_size)
+                if to_write == '':
+                    break
+                infile.write(to_write)
+            infile.close()
+            buffer.close()
+
+            outfile = GridOut(self.db.fs, infile._id)
+            data = outfile.read()
+            self.assertEqual(s, data)
+
+        s = 'x' * DEFAULT_CHUNK_SIZE * 4
+        # Test with default chunk size
+        write_me(s, DEFAULT_CHUNK_SIZE)
+        # Multiple
+        write_me(s, DEFAULT_CHUNK_SIZE * 3)
+        # Custom
+        write_me(s, 262300)
 
 
 if __name__ == "__main__":
