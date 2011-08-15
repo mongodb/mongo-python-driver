@@ -39,13 +39,13 @@ To upgrade do::
 
   $ easy_install -U pymongo
 
-Mac OS Issues
--------------
+Mac OS Snow Leopard Issues
+--------------------------
 
 By default OSX uses `/usr/bin/easy_install` for third party package installs.
-This script is hardcoded to use a version of setuptools that is older than
-the version required by pymongo for python2.7 support. You can work around
-it like this::
+In OSX 10.6.x this script is hardcoded to use a version of setuptools that is
+older than the version required by PyMongo for python2.7 support. You can work
+around it like this::
 
   $ easy_install -U setuptools
   $ python -m easy_install pymongo
@@ -54,12 +54,12 @@ To upgrade do::
 
   $ python -m easy_install -U pymongo
 
-**Xcode 4 Users**: The Python versions shipped with OSX 10.6.x are universal
-binaries. They support i386, PPC, and (in the case of python2.6) x86_64.
-Xcode 4 removed support for PPC. Because of this the distutils version
-shipped with Apple's builds of Python will fail to build the C extensions
-if you have Xcode 4 installed. This issue may also affect some builds of
-Python downloaded from python.org. There is a workaround::
+**Snow Leopard Xcode 4 Users**: The Python versions shipped with OSX 10.6.x
+are universal binaries. They support i386, PPC, and (in the case of python2.6)
+x86_64. Since Xcode 4 removed support for PPC the distutils version shipped
+with Apple's builds of Python will fail to build the C extensions if you have
+Xcode 4 installed. This issue may also affect some builds of Python downloaded
+from python.org. There is a workaround::
 
   # For Apple-supplied Python2.6 (installed at /usr/bin/python2.6)
   $ env ARCHFLAGS='-arch i386 -arch x86_64' python -m easy_install pymongo
