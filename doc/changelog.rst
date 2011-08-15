@@ -1,6 +1,19 @@
 Changelog
 =========
 
+Changes in Version 2.0.1
+------------------------
+
+Version 2.0.1 fixes a regression in :class:`~gridfs.grid_file.GridIn` when
+writing pre-chunked strings. Thanks go to Alexey Borzenkov for reporting the
+issue and submitting a patch.
+
+Issues Resolved
+...............
+
+- `PYTHON-271 <https://jira.mongodb.org/browse/PYTHON-271>`_:
+  Regression in GridFS leads to serious loss of data.
+
 Changes in Version 2.0
 ----------------------
 
