@@ -248,43 +248,35 @@ class GridIn(object):
         if self._closed:
             raise ValueError("cannot write to a closed file")
 
-        # file-like
         try:
-            if self._buffer.tell() > 0:
-                space = self.chunk_size - self._buffer.tell()
-                self._buffer.write(data.read(space))
-                self.__flush_buffer()
-            to_write = data.read(self.chunk_size)
-            while to_write and len(to_write) == self.chunk_size:
-                self.__flush_data(to_write)
-                to_write = data.read(self.chunk_size)
-            self._buffer.write(to_write)
-        # string
+            # file-like
+            read = data.read
         except AttributeError:
+            # string
             if not isinstance(data, basestring):
                 raise TypeError("can only write strings or file-like objects")
-
             if isinstance(data, unicode):
                 try:
                     data = data.encode(self.encoding)
                 except AttributeError:
                     raise TypeError("must specify an encoding for file in "
                                     "order to write unicode")
+            read = StringIO(data).read
 
-            data_len = len(data)
-            data = StringIO(data)
-            while True:
-                space = self.chunk_size - self._buffer.tell()
-                to_write = data.read(space)
-
-                if not to_write:
-                    break
-                elif data_len <= space:
-                    self._buffer.write(to_write)
-                    break
-                else:
-                    self._buffer.write(to_write)
-                    self.__flush_buffer()
+        if self._buffer.tell() > 0:
+            # Make sure to flush only when _buffer is complete
+            space = self.chunk_size - self._buffer.tell()
+            if space:
+                to_write = read(space)
+                self._buffer.write(to_write)
+                if len(to_write) < space:
+                    return # EOF or incomplete
+            self.__flush_buffer()
+        to_write = read(self.chunk_size)
+        while to_write and len(to_write) == self.chunk_size:
+            self.__flush_data(to_write)
+            to_write = read(self.chunk_size)
+        self._buffer.write(to_write)
 
     def writelines(self, sequence):
         """Write a sequence of strings to the file.
