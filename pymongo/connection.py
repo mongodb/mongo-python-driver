@@ -64,10 +64,7 @@ def _closed(sock):
     """Return True if we know socket has been closed, False otherwise.
     """
     rd, _, _ = select.select([sock], [], [], 0)
-    try:
-        return len(rd) and sock.recv() == ""
-    except:
-        return True
+    return len(rd) > 0
 
 
 def _partition_node(node):
