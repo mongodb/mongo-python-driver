@@ -81,6 +81,30 @@ def _partition_node(node):
     return host, port
 
 
+class _SocketHolder(object):
+    def __init__(self, pool):
+        self.sock = None
+        self.reusable = False
+        self.sockets = pool.sockets
+        self.pool_size = pool.pool_size
+
+    def attach(self, pid, sock):
+        self.discard()
+        self.sock = (pid, sock)
+        self.reusable = False
+
+    def discard(self, reuse=True):
+        if self.sock is not None:
+            (pid, sock), self.sock = self.sock, None
+            if reuse and self.reusable and pid == os.getpid() and len(self.sockets) < self.pool_size:
+                # There's a race condition here, but we deliberately
+                # ignore it.  It means that if the pool_size is 10 we
+                # might actually keep slightly more than that.
+                self.sockets.append(sock)
+
+    def __del__(self):
+        self.discard()
+
 class _Pool(threading.local):
     """A simple connection pool.
 
@@ -89,10 +113,10 @@ class _Pool(threading.local):
     """
 
     # Non thread-locals
-    __slots__ = ["sockets", "socket_factory", "pool_size", "pid"]
+    __slots__ = ["sockets", "pool_size", "pid"]
 
     # thread-local default
-    sock = None
+    holder = None
 
     def __init__(self, pool_size, network_timeout):
         self.pid = os.getpid()
@@ -100,6 +124,7 @@ class _Pool(threading.local):
         self.network_timeout = network_timeout
         if not hasattr(self, "sockets"):
             self.sockets = []
+        self.holder = _SocketHolder(self)
 
     def connect(self, host, port):
         """Connect to Mongo and return a new (connected) socket.
@@ -129,31 +154,32 @@ class _Pool(threading.local):
         pid = os.getpid()
 
         if pid != self.pid:
-            self.sock = None
-            self.sockets = []
             self.pid = pid
+            self.sockets = []
+            self.holder = _SocketHolder(self)
 
-        if self.sock is not None and self.sock[0] == pid:
-            return (self.sock[1], True)
+        if self.holder.reusable and self.holder.sock is not None and self.holder.sock[0] == pid:
+            self.holder.reusable = False
+            return (self.holder.sock[1], True)
 
         try:
-            self.sock = (pid, self.sockets.pop())
-            return (self.sock[1], True)
+            self.holder.attach(pid, self.sockets.pop())
+            return (self.holder.sock[1], True)
         except IndexError:
-            self.sock = (pid, self.connect(host, port))
-            return (self.sock[1], False)
+            self.holder.attach(pid, self.connect(host, port))
+            return (self.holder.sock[1], False)
 
 
     def return_socket(self):
-        if self.sock is not None and self.sock[0] == os.getpid():
-            # There's a race condition here, but we deliberately
-            # ignore it.  It means that if the pool_size is 10 we
-            # might actually keep slightly more than that.
-            if len(self.sockets) < self.pool_size:
-                self.sockets.append(self.sock[1])
-            else:
-                self.sock[1].close()
-        self.sock = None
+        self.holder.discard()
+
+
+    def discard_socket(self):
+        self.holder.discard(False)
+
+
+    def socket_reusable(self, reusable):
+        self.holder.reusable = reusable
 
 
 class Connection(common.BaseObject):
@@ -623,12 +649,14 @@ class Connection(common.BaseObject):
                                 "%s:%d: %s" % (host, port, str(why)))
         t = time.time()
         if t - self.__last_checkout > 1:
-            if _closed(sock):
-                self.disconnect()
+            while from_pool and _closed(sock):
+                self.__pool.discard_socket()
                 sock, from_pool = self.__pool.get_socket(host, port)
         self.__last_checkout = t
         if self.__auth_credentials and not from_pool:
+            self.__pool.socket_reusable(True)
             self.__authenticate_socket()
+            self.__pool.socket_reusable(False)
         return sock
 
     def disconnect(self):
@@ -743,7 +771,9 @@ class Connection(common.BaseObject):
             if with_last_error:
                 response = self.__receive_message_on_socket(1, request_id,
                                                             sock)
+                self.__pool.socket_reusable(True)
                 return self.__check_response_to_last_error(response)
+            self.__pool.socket_reusable(True)
             return None
         except (ConnectionFailure, socket.error), e:
             self.disconnect()
@@ -801,7 +831,9 @@ class Connection(common.BaseObject):
             try:
                 if "network_timeout" in kwargs:
                     sock.settimeout(kwargs["network_timeout"])
-                return self.__send_and_receive(message, sock)
+                response = self.__send_and_receive(message, sock)
+                self.__pool.socket_reusable(True)
+                return response
             except (ConnectionFailure, socket.error), e:
                 self.disconnect()
                 raise AutoReconnect(str(e))

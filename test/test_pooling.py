@@ -159,13 +159,13 @@ class TestPooling(unittest.TestCase):
     def test_simple_disconnect(self):
         self.c.test.stuff.find()
         self.assertEqual(0, len(self.c._Connection__pool.sockets))
-        self.assertNotEqual(None, self.c._Connection__pool.sock)
+        self.assertNotEqual(None, self.c._Connection__pool.holder.sock)
         self.c.end_request()
         self.assertEqual(1, len(self.c._Connection__pool.sockets))
-        self.assertEqual(None, self.c._Connection__pool.sock)
+        self.assertEqual(None, self.c._Connection__pool.holder.sock)
         self.c.disconnect()
         self.assertEqual(0, len(self.c._Connection__pool.sockets))
-        self.assertEqual(None, self.c._Connection__pool.sock)
+        self.assertEqual(None, self.c._Connection__pool.holder.sock)
 
     def test_disconnect(self):
         run_cases(self, [SaveAndFind, Disconnect, Unique])
