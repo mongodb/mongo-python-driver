@@ -148,10 +148,7 @@ c_ext = Feature(
                  Extension('pymongo._cmessage',
                            include_dirs=['bson'],
                            sources=['pymongo/_cmessagemodule.c',
-                                    'bson/_cbsonmodule.c',
-                                    'bson/time64.c',
-                                    'bson/buffer.c',
-                                    'bson/encoding_helpers.c'])])
+                                    'bson/buffer.c'])])
 
 if "--no_ext" in sys.argv:
     sys.argv = [x for x in sys.argv if x != "--no_ext"]
