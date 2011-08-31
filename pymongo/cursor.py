@@ -611,13 +611,12 @@ class Cursor(object):
             return len(self.__data)
 
         if self.__id is None:  # Query
-            limit, batch_size = abs(self.__limit), abs(self.__batch_size)
-            ntoreturn = 0
-            if limit > 0 and batch_size > 0:
-                ntoreturn = min(limit, batch_size)
-            elif limit or batch_size:
-                # whichever is non-zero will win
-                ntoreturn = limit or batch_size
+            ntoreturn = self.__batch_size
+            if self.__limit:
+                if self.__batch_size:
+                    ntoreturn = min(self.__limit, self.__batch_size)
+                else:
+                    ntoreturn = self.__limit
             self.__send_message(
                 message.query(self.__query_options(),
                               self.__collection.full_name,
