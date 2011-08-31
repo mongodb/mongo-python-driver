@@ -31,7 +31,7 @@ class MasterSlaveConnection(BaseObject):
     """A master-slave connection to Mongo.
     """
 
-    def __init__(self, master, slaves=[]):
+    def __init__(self, master, slaves=[], tz_aware=False):
         """Create a new Master-Slave connection.
 
         The resultant connection should be interacted with using the same
@@ -48,6 +48,10 @@ class MasterSlaveConnection(BaseObject):
           - `master`: `Connection` instance for the writable Master
           - `slaves` (optional): list of `Connection` instances for the
             read-only slaves
+          - `tz_aware` (optional): if ``True``,
+            :class:`~datetime.datetime` instances returned as values
+            in a document by this :class:`MasterSlaveConnection` will be timezone
+            aware (otherwise they will be naive)
         """
         if not isinstance(master, Connection):
             raise TypeError("master must be a Connection instance")
@@ -67,6 +71,7 @@ class MasterSlaveConnection(BaseObject):
         self.__in_request = False
         self.__master = master
         self.__slaves = slaves
+        self.__tz_aware = tz_aware
 
     @property
     def master(self):
@@ -81,10 +86,9 @@ class MasterSlaveConnection(BaseObject):
     def document_class(self):
         return dict
 
-    # TODO this is a temporary hack PYTHON-136 is the right solution for this
     @property
     def tz_aware(self):
-        return True
+        return self.__tz_aware
 
     def disconnect(self):
         """Disconnect from MongoDB.

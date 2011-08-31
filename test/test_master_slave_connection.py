@@ -14,14 +14,16 @@
 
 """Test for master slave connections."""
 
-import unittest
+import datetime
 import os
-import time
 import sys
+import time
+import unittest
 sys.path[0:0] = [""]
 
 from nose.plugins.skip import SkipTest
 
+from bson.tz_util import utc
 from pymongo.errors import ConnectionFailure, InvalidName
 from pymongo.errors import CollectionInvalid, OperationFailure
 from pymongo.errors import AutoReconnect
@@ -358,6 +360,26 @@ class TestMasterSlaveConnection(unittest.TestCase):
         self.assertTrue(self.connection.slave_okay)
         self.assertFalse(self.connection.safe)
         self.assertEqual({}, self.connection.get_lasterror_options())
+
+    def test_tz_aware(self):
+        dt = datetime.datetime.utcnow()
+        conn = MasterSlaveConnection(self.master, self.slaves)
+        self.assertEquals(False, conn.tz_aware)
+        db = conn.pymongo_test
+        db.tztest.insert({'dt': dt}, safe=True)
+        self.assertEqual(None, db.tztest.find_one()['dt'].tzinfo)
+
+        conn = MasterSlaveConnection(self.master, self.slaves, tz_aware=True)
+        self.assertEquals(True, conn.tz_aware)
+        db = conn.pymongo_test
+        db.tztest.insert({'dt': dt}, safe=True)
+        self.assertEqual(utc, db.tztest.find_one()['dt'].tzinfo)
+
+        conn = MasterSlaveConnection(self.master, self.slaves, tz_aware=False)
+        self.assertEquals(False, conn.tz_aware)
+        db = conn.pymongo_test
+        db.tztest.insert({'dt': dt})
+        self.assertEqual(None, db.tztest.find_one()['dt'].tzinfo)
 
 
 if __name__ == "__main__":
