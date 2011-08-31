@@ -472,8 +472,10 @@ Bye""")
         self.assertRaises(AttributeError, setattr, f, "upload_date", 5)
 
         g = GridOut(self.db.fs, f._id)
-        self.assertEqual("a", f.bar)
-        self.assertEqual("b", f.baz)
+        self.assertEqual("a", g.bar)
+        self.assertEqual("b", g.baz)
+        # Versions 2.0.1 and older saved a _closed field for some reason.
+        self.assertRaises(AttributeError, getattr, g, "_closed")
 
     def test_context_manager(self):
         if sys.version_info < (2, 6):
