@@ -39,7 +39,7 @@ ALL = 2
 """Profile all operations."""
 
 # Remember to change in setup.py as well!
-version = "2.0.1"
+version = "2.0.1+"
 """Current version of PyMongo."""
 
 Connection = PyMongo_Connection
