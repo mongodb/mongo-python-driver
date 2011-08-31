@@ -182,6 +182,18 @@ class TestCursor(unittest.TestCase):
         for x in range(500):
             db.test.save({"x": x})
 
+        curs = db.test.find().limit(0).batch_size(10)
+        curs.next()
+        self.assertEquals(10, curs._Cursor__retrieved)
+
+        curs = db.test.find().limit(-2).batch_size(0)
+        curs.next()
+        self.assertEquals(2, curs._Cursor__retrieved)
+
+        curs = db.test.find().limit(-4).batch_size(5)
+        curs.next()
+        self.assertEquals(4, curs._Cursor__retrieved)
+
         curs = db.test.find().limit(50).batch_size(500)
         curs.next()
         self.assertEquals(50, curs._Cursor__retrieved)
@@ -194,11 +206,15 @@ class TestCursor(unittest.TestCase):
         curs.next()
         self.assertEquals(50, curs._Cursor__retrieved)
 
-        # this one might be shaky, as the default
+        # these two might be shaky, as the default
         # is set by the server. as of 2.0.0-rc0, 101
         # or 1MB (whichever is smaller) is default
         # for queries without ntoreturn
         curs = db.test.find()
+        curs.next()
+        self.assertEquals(101, curs._Cursor__retrieved)
+
+        curs = db.test.find().limit(0).batch_size(0)
         curs.next()
         self.assertEquals(101, curs._Cursor__retrieved)
 
