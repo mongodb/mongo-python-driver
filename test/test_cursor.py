@@ -176,6 +176,32 @@ class TestCursor(unittest.TestCase):
         cursor_count(db.test.find().batch_size(100).limit(10), 10)
         cursor_count(db.test.find().batch_size(500).limit(10), 10)
 
+    def test_limit_and_batch_size(self):
+        db = self.db
+        db.test.drop()
+        for x in range(500):
+            db.test.save({"x": x})
+
+        curs = db.test.find().limit(50).batch_size(500)
+        curs.next()
+        self.assertEquals(50, curs._Cursor__retrieved)
+
+        curs = db.test.find().batch_size(500)
+        curs.next()
+        self.assertEquals(500, curs._Cursor__retrieved)
+
+        curs = db.test.find().limit(50)
+        curs.next()
+        self.assertEquals(50, curs._Cursor__retrieved)
+
+        # this one might be shaky, as the default
+        # is set by the server. as of 2.0.0-rc0, 101
+        # or 1MB (whichever is smaller) is default
+        # for queries without ntoreturn
+        curs = db.test.find()
+        curs.next()
+        self.assertEquals(101, curs._Cursor__retrieved)
+
     def test_skip(self):
         db = self.db
 
