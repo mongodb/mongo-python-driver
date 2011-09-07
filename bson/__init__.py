@@ -292,13 +292,9 @@ def _element_to_bson(key, value, check_keys):
         return "\x01" + name + struct.pack("<d", value)
 
     # Use Binary w/ subtype 3 for UUID instances
-    try:
-        import uuid
-
+    if _use_uuid:
         if isinstance(value, uuid.UUID):
             value = Binary(value.bytes, subtype=3)
-    except ImportError:
-        pass
 
     if isinstance(value, Binary):
         subtype = value.subtype
@@ -385,17 +381,18 @@ def _element_to_bson(key, value, check_keys):
 
 def _dict_to_bson(dict, check_keys, top_level=True):
     try:
-        elements = ""
+        elements = []
         if top_level and "_id" in dict:
-            elements += _element_to_bson("_id", dict["_id"], False)
+            elements.append(_element_to_bson("_id", dict["_id"], False))
         for (key, value) in dict.iteritems():
             if not top_level or key != "_id":
-                elements += _element_to_bson(key, value, check_keys)
+                elements.append(_element_to_bson(key, value, check_keys))
     except AttributeError:
         raise TypeError("encoder expected a mapping type but got: %r" % dict)
 
-    length = len(elements) + 5
-    return struct.pack("<i", length) + elements + "\x00"
+    encoded = ''.join(elements)
+    length = len(encoded) + 5
+    return struct.pack("<i", length) + encoded + "\x00"
 if _use_c:
     _dict_to_bson = _cbson._dict_to_bson
 
