@@ -404,7 +404,6 @@ class TestConnection(unittest.TestCase):
                 naive.pymongo_test.test.find_one()["x"])
 
     def test_ipv6(self):
-        self.assertRaises(AutoReconnect, Connection, 'foo')
         try:
             connection = Connection("[::1]")
         except:
@@ -423,15 +422,6 @@ class TestConnection(unittest.TestCase):
         dbs = connection.database_names()
         self.assert_("pymongo_test" in dbs)
         self.assert_("pymongo_test_bernie" in dbs)
-
-    def test_autoreconnect(self):
-        def find_one(conn):
-            return conn.test.stuff.find_one()
-        # Simulate a temporary connection failure
-        c = Connection('foo', _connect=False)
-        self.assertRaises(AutoReconnect, find_one, c)
-        c._Connection__nodes = set([('localhost', 27017)])
-        self.assert_(find_one, c)
 
     def test_fsync_lock_unlock(self):
         c = get_connection()
