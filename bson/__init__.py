@@ -60,24 +60,28 @@ EPOCH_AWARE = datetime.datetime.fromtimestamp(0, utc)
 EPOCH_NAIVE = datetime.datetime.utcfromtimestamp(0)
 
 
-def _get_int(data, as_class=None, tz_aware=False, unsigned=False):
+def _get_int(data, position, as_class=None, tz_aware=False, unsigned=False):
     format = unsigned and "I" or "i"
     try:
-        value = struct.unpack("<%s" % format, data[:4])[0]
+        value = struct.unpack("<%s" % format, data[position:position + 4])[0]
     except struct.error:
         raise InvalidBSON()
+    position += 4
+    return value, position
 
-    return (value, data[4:])
 
-
-def _get_c_string(data, length=None):
+def _get_c_string(data, position, length=None):
     if length is None:
         try:
-            length = data.index("\x00")
+            end = data.index("\x00", position)
         except ValueError:
             raise InvalidBSON()
+    else:
+        end = position + length
+    value = unicode(data[position:end], "utf-8")
+    position = end + 1
 
-    return (unicode(data[:length], "utf-8"), data[length + 1:])
+    return value, position
 
 
 def _make_c_string(string, check_null=False):
@@ -95,24 +99,31 @@ def _make_c_string(string, check_null=False):
                                     "UTF-8: %r" % string)
 
 
-def _get_number(data, as_class, tz_aware):
-    return (struct.unpack("<d", data[:8])[0], data[8:])
+def _get_number(data, position, as_class, tz_aware):
+    num = struct.unpack("<d", data[position:position + 8])[0]
+    position += 8
+    return num, position
 
 
-def _get_string(data, as_class, tz_aware):
-    return _get_c_string(data[4:], struct.unpack("<i", data[:4])[0] - 1)
+def _get_string(data, position, as_class, tz_aware):
+    length = struct.unpack("<i", data[position:position + 4])[0] - 1
+    position += 4
+    return _get_c_string(data, position, length)
 
 
-def _get_object(data, as_class, tz_aware):
-    (object, data) = _bson_to_dict(data, as_class, tz_aware)
+def _get_object(data, position, as_class, tz_aware):
+    obj_size = struct.unpack("<i", data[position:position + 4])[0]
+    encoded = data[position + 4:position + obj_size - 1]
+    object = _elements_to_dict(encoded, as_class, tz_aware)
+    position += obj_size
     if "$ref" in object:
         return (DBRef(object.pop("$ref"), object.pop("$id"),
-                      object.pop("$db", None), object), data)
-    return (object, data)
+                      object.pop("$db", None), object), position)
+    return object, position
 
 
-def _get_array(data, as_class, tz_aware):
-    (obj, data) = _get_object(data, as_class, tz_aware)
+def _get_array(data, position, as_class, tz_aware):
+    obj, position = _get_object(data, position, as_class, tz_aware)
     result = []
     i = 0
     while True:
@@ -121,52 +132,61 @@ def _get_array(data, as_class, tz_aware):
             i += 1
         except KeyError:
             break
-    return (result, data)
+    return result, position
 
 
-def _get_binary(data, as_class, tz_aware):
-    (length, data) = _get_int(data)
-    subtype = ord(data[0])
-    data = data[1:]
+def _get_binary(data, position, as_class, tz_aware):
+    length, position = _get_int(data, position)
+    subtype = ord(data[position])
+    position += 1
     if subtype == 2:
-        (length2, data) = _get_int(data)
+        length2, position = _get_int(data, position)
         if length2 != length - 4:
             raise InvalidBSON("invalid binary (st 2) - lengths don't match!")
         length = length2
     if subtype == 3 and _use_uuid:
-        return (uuid.UUID(bytes=data[:length]), data[length:])
-    return (Binary(data[:length], subtype), data[length:])
+        value = uuid.UUID(bytes=data[position:position + length])
+        position += length
+        return (value, position)
+    value = Binary(data[position:position + length], subtype)
+    position += length
+    return value, position
 
 
-def _get_oid(data, as_class, tz_aware):
-    return (ObjectId(data[:12]), data[12:])
+def _get_oid(data, position, as_class, tz_aware):
+    value = ObjectId(data[position:position + 12])
+    position += 12
+    return value, position
 
 
-def _get_boolean(data, as_class, tz_aware):
-    return (data[0] == "\x01", data[1:])
+def _get_boolean(data, position, as_class, tz_aware):
+    value = data[position] == "\x01"
+    position += 1
+    return value, position
 
 
-def _get_date(data, as_class, tz_aware):
-    seconds = float(struct.unpack("<q", data[:8])[0]) / 1000.0
+def _get_date(data, position, as_class, tz_aware):
+    seconds = float(struct.unpack("<q", data[position:position + 8])[0]) / 1000.0
+    position += 8
     if tz_aware:
-        return (EPOCH_AWARE + datetime.timedelta(seconds=seconds), data[8:])
-    return (EPOCH_NAIVE + datetime.timedelta(seconds=seconds), data[8:])
+        return EPOCH_AWARE + datetime.timedelta(seconds=seconds), position
+    return EPOCH_NAIVE + datetime.timedelta(seconds=seconds), position
 
 
-def _get_code_w_scope(data, as_class, tz_aware):
-    (_, data) = _get_int(data)
-    (code, data) = _get_string(data, as_class, tz_aware)
-    (scope, data) = _get_object(data, as_class, tz_aware)
-    return (Code(code, scope), data)
+def _get_code_w_scope(data, position, as_class, tz_aware):
+    _, position = _get_int(data, position)
+    code, position = _get_string(data, position, as_class, tz_aware)
+    scope, position = _get_object(data, position, as_class, tz_aware)
+    return Code(code, scope), position
 
 
-def _get_null(data, as_class, tz_aware):
-    return (None, data)
+def _get_null(data, position, as_class, tz_aware):
+    return None, position
 
 
-def _get_regex(data, as_class, tz_aware):
-    (pattern, data) = _get_c_string(data)
-    (bson_flags, data) = _get_c_string(data)
+def _get_regex(data, position, as_class, tz_aware):
+    pattern, position = _get_c_string(data, position)
+    bson_flags, position = _get_c_string(data, position)
     flags = 0
     if "i" in bson_flags:
         flags |= re.IGNORECASE
@@ -180,24 +200,27 @@ def _get_regex(data, as_class, tz_aware):
         flags |= re.UNICODE
     if "x" in bson_flags:
         flags |= re.VERBOSE
-    return (re.compile(pattern, flags), data)
+    return re.compile(pattern, flags), position
 
 
-def _get_ref(data, as_class, tz_aware):
-    (collection, data) = _get_c_string(data[4:])
-    (oid, data) = _get_oid(data)
-    return (DBRef(collection, oid), data)
+def _get_ref(data, position, as_class, tz_aware):
+    position += 4
+    collection, position = _get_c_string(data, position)
+    oid, position = _get_oid(data, position)
+    return DBRef(collection, oid), position
 
 
-def _get_timestamp(data, as_class, tz_aware):
-    (inc, data) = _get_int(data, unsigned=True)
-    (timestamp, data) = _get_int(data, unsigned=True)
-    return (Timestamp(timestamp, inc), data)
+def _get_timestamp(data, position, as_class, tz_aware):
+    inc, position = _get_int(data, position, unsigned=True)
+    timestamp, position = _get_int(data, position, unsigned=True)
+    return Timestamp(timestamp, inc), position
 
 
-def _get_long(data, as_class, tz_aware):
+def _get_long(data, position, as_class, tz_aware):
     # Have to cast to long; on 32-bit unpack may return an int.
-    return (long(struct.unpack("<q", data[:8])[0]), data[8:])
+    value = long(struct.unpack("<q", data[position:position + 8])[0])
+    position += 8
+    return value, position
 
 
 _element_getter = {
@@ -219,24 +242,27 @@ _element_getter = {
     "\x10": _get_int,  # number_int
     "\x11": _get_timestamp,
     "\x12": _get_long,
-    "\xFF": lambda x, y, z: (MinKey(), x),
-    "\x7F": lambda x, y, z: (MaxKey(), x)}
+    "\xFF": lambda w, x, y, z: (MinKey(), x),
+    "\x7F": lambda w, x, y, z: (MaxKey(), x)}
 
 
-def _element_to_dict(data, as_class, tz_aware):
-    element_type = data[0]
-    (element_name, data) = _get_c_string(data[1:])
-    (value, data) = _element_getter[element_type](data, as_class, tz_aware)
-    return (element_name, value, data)
+def _element_to_dict(data, position, as_class, tz_aware):
+    element_type = data[position]
+    position += 1
+    element_name, position = _get_c_string(data, position)
+    value, position = _element_getter[element_type](data, position,
+                                                    as_class, tz_aware)
+    return element_name, value, position
 
 
 def _elements_to_dict(data, as_class, tz_aware):
     result = as_class()
-    while data:
-        (key, value, data) = _element_to_dict(data, as_class, tz_aware)
+    position = 0
+    end = len(data) - 1
+    while position < end:
+        (key, value, position) = _element_to_dict(data, position, as_class, tz_aware)
         result[key] = value
     return result
-
 
 def _bson_to_dict(data, as_class, tz_aware):
     obj_size = struct.unpack("<i", data[:4])[0]
@@ -403,9 +429,17 @@ def decode_all(data, as_class=dict, tz_aware=True):
     .. versionadded:: 1.9
     """
     docs = []
-    while len(data):
-        (doc, data) = _bson_to_dict(data, as_class, tz_aware)
-        docs.append(doc)
+    position = 0
+    end = len(data) - 1
+    while position < end:
+        obj_size = struct.unpack("<i", data[position:position + 4])[0]
+        if len(data) - position < obj_size:
+           raise InvalidBSON("objsize too large")
+        if data[position + obj_size - 1] != "\x00":
+            raise InvalidBSON("bad eoo")
+        elements = data[position + 4:position + obj_size - 1]
+        position += obj_size
+        docs.append(_elements_to_dict(elements, as_class, tz_aware))
     return docs
 if _use_c:
     decode_all = _cbson.decode_all
