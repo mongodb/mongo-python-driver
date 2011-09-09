@@ -219,8 +219,8 @@ class Collection(common.BaseObject):
                         manipulate, safe, **kwargs)
             return to_save.get("_id", None)
 
-    def insert(self, doc_or_docs,
-               manipulate=True, safe=False, check_keys=True, **kwargs):
+    def insert(self, doc_or_docs, manipulate=True,
+               safe=False, check_keys=True, continue_on_error=False, **kwargs):
         """Insert a document(s) into this collection.
 
         If `manipulate` is ``True``, the document(s) are manipulated using
@@ -252,10 +252,20 @@ class Collection(common.BaseObject):
           - `check_keys` (optional): check if keys start with '$' or
             contain '.', raising :class:`~pymongo.errors.InvalidName`
             in either case
+          - `continue_on_error` (optional): If True, the database will not stop
+            processing a bulk insert if one fails (e.g. due to duplicate IDs).
+            This makes bulk insert behave similarly to a series of single
+            inserts, except lastError will be set if any insert fails, not just
+            the last one. If multiple errors occur, only the most recent will
+            be reported by :meth:`~pymongo.database.Database.error`.
           - `**kwargs` (optional): any additional arguments imply
             ``safe=True``, and will be used as options for the
             `getLastError` command
 
+        .. note:: `continue_on_error` requires server version **>= 1.9.1**
+
+        .. versionadded:: 2.0.1+
+           Support for continue_on_error.
         .. versionadded:: 1.8
            Support for passing `getLastError` options as keyword
            arguments.
@@ -280,7 +290,7 @@ class Collection(common.BaseObject):
 
         self.__database.connection._send_message(
             message.insert(self.__full_name, docs,
-                           check_keys, safe, kwargs), safe)
+                           check_keys, safe, continue_on_error, kwargs), safe)
 
         ids = [doc.get("_id", None) for doc in docs]
         return return_one and ids[0] or ids

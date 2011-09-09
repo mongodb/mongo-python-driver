@@ -62,11 +62,15 @@ def __pack_message(operation, data):
     return (request_id, message + data)
 
 
-def insert(collection_name, docs, check_keys, safe, last_error_args):
+def insert(collection_name, docs, check_keys,
+           safe, continue_on_error, last_error_args):
     """Get an **insert** message.
     """
     max_bson_size = 0
-    data = __ZERO
+    options = 0
+    if continue_on_error:
+        options += 1
+    data = struct.pack("<i", options)
     data += bson._make_c_string(collection_name)
     encoded = [bson.BSON.encode(doc, check_keys) for doc in docs]
     if not encoded:

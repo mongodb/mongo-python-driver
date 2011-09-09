@@ -111,19 +111,25 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
     PyObject* doc;
     PyObject* iterator;
     int before, cur_size, max_size = 0;
+    int options = 0;
     unsigned char check_keys;
     unsigned char safe;
+    unsigned char continue_on_error;
     PyObject* last_error_args;
     buffer_t buffer;
     int length_location, message_length;
     PyObject* result;
 
-    if (!PyArg_ParseTuple(args, "et#ObbO",
+    if (!PyArg_ParseTuple(args, "et#ObbbO",
                           "utf-8",
                           &collection_name,
                           &collection_name_length,
-                          &docs, &check_keys, &safe, &last_error_args)) {
+                          &docs, &check_keys, &safe,
+                          &continue_on_error, &last_error_args)) {
         return NULL;
+    }
+    if (continue_on_error) {
+        options += 1;
     }
 
     buffer = buffer_new();
@@ -143,9 +149,9 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
     if (!buffer_write_bytes(buffer, (const char*)&request_id, 4) ||
         !buffer_write_bytes(buffer,
                             "\x00\x00\x00\x00"
-                            "\xd2\x07\x00\x00"
-                            "\x00\x00\x00\x00",
-                            12) ||
+                            "\xd2\x07\x00\x00",
+                            8) ||
+        !buffer_write_bytes(buffer, (const char*)&options, 4) ||
         !buffer_write_bytes(buffer,
                             collection_name,
                             collection_name_length + 1)) {

@@ -25,7 +25,7 @@
       .. automethod:: get_lasterror_options
       .. automethod:: set_lasterror_options
       .. automethod:: unset_lasterror_options
-      .. automethod:: insert(doc_or_docs[, manipulate=True[, safe=False[, check_keys=True[, **kwargs]]]])
+      .. automethod:: insert(doc_or_docs[, manipulate=True[, safe=False[, check_keys=True[, continue_on_error=False[, **kwargs]]]])
       .. automethod:: save(to_save[, manipulate=True[, safe=False[, **kwargs]]])
       .. automethod:: update(spec, document[, upsert=False[, manipulate=False[, safe=False[, multi=False[, **kwargs]]]]])
       .. automethod:: remove([spec_or_object_id=None[, safe=False[, **kwargs]]])

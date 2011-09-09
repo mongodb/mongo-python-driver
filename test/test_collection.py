@@ -547,6 +547,43 @@ class TestCollection(unittest.TestCase):
                           db.test.update, {"x": 1},
                           {"$inc": {"x": 1}}, safe=True)
 
+    def test_continue_on_error(self):
+        db = self.db
+        if not version.at_least(db.connection, (1, 9, 1)):
+            raise SkipTest()
+
+        db.drop_collection("test")
+        oid = db.test.insert({"one": 1})
+        self.assertEqual(1, db.test.count())
+
+        docs = []
+        docs.append({"_id": oid, "two": 2})
+        docs.append({"three": 3})
+        docs.append({"four": 4})
+        docs.append({"five": 5})
+
+        db.test.insert(docs, manipulate=False)
+        self.assertEqual(11000, db.error()['code'])
+        self.assertEqual(1, db.test.count())
+
+        db.test.insert(docs, manipulate=False, continue_on_error=True)
+        self.assertEqual(11000, db.error()['code'])
+        self.assertEqual(4, db.test.count())
+
+        db.drop_collection("test")
+        oid = db.test.insert({"_id": oid, "one": 1})
+        self.assertEqual(1, db.test.count())
+        docs[0].pop("_id")
+        docs[2]["_id"] = oid
+
+        db.test.insert(docs, manipulate=False)
+        self.assertEqual(11000, db.error()['code'])
+        self.assertEqual(3, db.test.count())
+
+        db.test.insert(docs, manipulate=False, continue_on_error=True)
+        self.assertEqual(11000, db.error()['code'])
+        self.assertEqual(6, db.test.count())
+
     def test_error_code(self):
         try:
             self.db.test.update({}, {"$thismodifierdoesntexist": 1}, safe=True)
