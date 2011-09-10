@@ -38,7 +38,7 @@ def validate_boolean(option, value):
 
 
 def validate_integer(option, value):
-    """Validates that 'value' is an integer.
+    """Validates that 'value' is an integer (or basestring representation).
     """
     if isinstance(value, (int, long)):
         return value
@@ -60,13 +60,26 @@ def validate_basestring(option, value):
                     "instance of basestring" % (option,))
 
 
+def validate_int_or_basestring(option, value):
+    """Validates that 'value' is an integer or string.
+    """
+    if isinstance(value, (int, long)):
+        return value
+    elif isinstance(value, basestring):
+        if value.isdigit():
+            return int(value)
+        return value
+    raise TypeError("Wrong type for %s, value just be an "
+                    "integer or a string" % (option,))
+
+
 # jounal is an alias for j,
 # wtimeoutms is an alias for wtimeout
 VALIDATORS = { 
     'replicaset': validate_basestring,
     'slaveok': validate_boolean,
     'safe': validate_boolean,
-    'w': validate_integer,
+    'w': validate_int_or_basestring,
     'wtimeout': validate_integer,
     'wtimeoutms': validate_integer,
     'fsync': validate_boolean,

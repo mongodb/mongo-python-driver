@@ -221,8 +221,9 @@ class Connection(common.BaseObject):
           - `j` or `journal`: Block until write operations have been commited
             to the journal. Ignored if the server is running without journaling.
             Implies safe=True.
-          - `w`: If this is a replica set the server won't return until
-            write operations have replicated to this many set members.
+          - `w`: (integer or string) If this is a replica set write operations
+            won't return until they have been replicated to the specified
+            number or tagged set of servers.
             Implies safe=True.
           - `wtimeout`: Used in conjunction with `j` and/or `w`. Wait this many
             milliseconds for journal acknowledgement and/or write replication.
@@ -237,6 +238,8 @@ class Connection(common.BaseObject):
             attempt to find all members of the set.
 
         .. seealso:: :meth:`end_request`
+        .. versionchanged:: 2.0.1+
+           Support `w` = integer or string.
         .. versionchanged:: 2.0
            `slave_okay` is a pure keyword argument. Added support for safe,
            and getlasterror options as keyword arguments.

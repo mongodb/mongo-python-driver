@@ -41,10 +41,11 @@ class TestCommon(unittest.TestCase):
         cursor = coll.find(slave_okay=True)
         self.assertTrue(cursor._Cursor__slave_okay)
 
-        c = Connection(slaveok=True, w=1, wtimeout=300, fsync=True, j=True)
+        c = Connection(slaveok=True, w='majority',
+                                     wtimeout=300, fsync=True, j=True)
         self.assertTrue(c.slave_okay)
         self.assertTrue(c.safe)
-        d = {'w': 1, 'wtimeout': 300, 'fsync': True, 'j': True}
+        d = {'w': 'majority', 'wtimeout': 300, 'fsync': True, 'j': True}
         self.assertEqual(d, c.get_lasterror_options())
         db = c.test
         self.assertTrue(db.slave_okay)
@@ -112,9 +113,9 @@ class TestCommon(unittest.TestCase):
         self.assertEqual({}, c.get_lasterror_options())
         self.assertFalse(c.safe)
 
-        db.set_lasterror_options(w=1)
+        db.set_lasterror_options(w='majority')
         self.assertEqual({'j': True}, coll.get_lasterror_options())
-        self.assertEqual({'w': 1}, db.get_lasterror_options())
+        self.assertEqual({'w': 'majority'}, db.get_lasterror_options())
         self.assertEqual({}, c.get_lasterror_options())
         self.assertFalse(c.safe)
         db.slave_okay = True
