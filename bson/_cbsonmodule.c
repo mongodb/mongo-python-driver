@@ -994,7 +994,7 @@ static PyObject* get_value(const char* buffer, int* position, int type,
                 return NULL;
             }
 
-            if ((subtype == 3 || subtype == 4) && UUID) { // Encoded as UUID, not Binary
+            if ((subtype == 3 || subtype == 4) && UUID) { // Encode as UUID, not Binary
                 PyObject* kwargs;
                 PyObject* args = PyTuple_New(0);
                 if (!args) {

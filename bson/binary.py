@@ -147,7 +147,7 @@ class UUIDLegacy(Binary):
 
     def __new__(cls, obj):
         if not isinstance(obj, UUID):
-            raise TypeError("data must be an instance of uuid.UUID")
+            raise TypeError("obj must be an instance of uuid.UUID")
         self = Binary.__new__(cls, obj.bytes, 3)
         self.__uuid = obj
         return self
