@@ -129,13 +129,21 @@ class UUIDLegacy(Binary):
       >>> id = uuid.uuid4()
       >>> db.test.insert({'uuid': Binary(id.bytes, 3)})
       ObjectId('...')
+      >>> db.test.find({'uuid': id}).count()
+      0
+      >>> db.test.find({'uuid': UUIDLegacy(id)}).count()
+      1
       >>> db.test.find({'uuid': UUIDLegacy(id)})[0]['uuid']
-      UUIDLegacy('...')
-      >>> db.test.find({'uuid': UUIDLegacy(id)})[0]['uuid'].uuid
       UUID('...')
       >>>
       >>> # Convert from subtype 3 to subtype 4
-      >>> db.test.update({'uuid': UUIDLegacy(id)}, {'$set': {'uuid': id}})
+      >>> doc = db.test.find_one({'uuid': UUIDLegacy(id)})
+      >>> db.test.save(doc)
+      ObjectId('...')
+      >>> db.test.find({'uuid': UUIDLegacy(id)}).count()
+      0
+      >>> db.test.find({'uuid': {'$in': [UUIDLegacy(id), id]}}).count()
+      1
       >>> db.test.find_one({'uuid': id})['uuid']
       UUID('...')
 

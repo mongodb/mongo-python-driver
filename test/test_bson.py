@@ -285,11 +285,10 @@ class TestBSON(unittest.TestCase):
         id = uuid.uuid4()
         legacy = UUIDLegacy(id)
         self.assertEquals(3, legacy.subtype)
-        transformed = (BSON.encode({"legacy": legacy})).decode()["legacy"]
-        self.assert_(isinstance(transformed, UUIDLegacy))
-        self.assertEqual(legacy, transformed)
-        self.assertEqual(id, transformed.uuid)
-        self.assertNotEqual(UUIDLegacy(uuid.uuid4()), transformed)
+        transformed = (BSON.encode({"uuid": legacy})).decode()["uuid"]
+        self.assert_(isinstance(transformed, uuid.UUID))
+        self.assertEqual(id, transformed)
+        self.assertNotEqual(UUIDLegacy(uuid.uuid4()), UUIDLegacy(transformed))
 
     # The C extension was segfaulting on unicode RegExs, so we have this test
     # that doesn't really test anything but the lack of a segfault.

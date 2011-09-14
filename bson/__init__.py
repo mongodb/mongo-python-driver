@@ -21,7 +21,7 @@ import re
 import struct
 import warnings
 
-from bson.binary import Binary, UUIDLegacy
+from bson.binary import Binary
 from bson.code import Code
 from bson.dbref import DBRef
 from bson.errors import (InvalidBSON,
@@ -146,8 +146,6 @@ def _get_binary(data, position, as_class, tz_aware):
         length = length2
     if subtype in (3, 4) and _use_uuid:
         value = uuid.UUID(bytes=data[position:position + length])
-        if subtype == 3:
-            value = UUIDLegacy(value)
         position += length
         return (value, position)
     value = Binary(data[position:position + length], subtype)

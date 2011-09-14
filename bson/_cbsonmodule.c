@@ -36,7 +36,6 @@ static PyObject* ObjectId = NULL;
 static PyObject* DBRef = NULL;
 static PyObject* RECompile = NULL;
 static PyObject* UUID = NULL;
-static PyObject* UUIDLegacy = NULL;
 static PyObject* Timestamp = NULL;
 static PyObject* MinKey = NULL;
 static PyObject* MaxKey = NULL;
@@ -190,7 +189,6 @@ static int _reload_object(PyObject** object, char* module_name, char* object_nam
  * Returns non-zero on failure. */
 static int _reload_python_objects(void) {
     if (_reload_object(&Binary, "bson.binary", "Binary") ||
-        _reload_object(&UUIDLegacy, "bson.binary", "UUIDLegacy") ||
         _reload_object(&Code, "bson.code", "Code") ||
         _reload_object(&ObjectId, "bson.objectid", "ObjectId") ||
         _reload_object(&DBRef, "bson.dbref", "DBRef") ||
@@ -1010,12 +1008,6 @@ static PyObject* get_value(const char* buffer, int* position, int type,
 
                 PyDict_SetItemString(kwargs, "bytes", data);
                 value = PyObject_Call(UUID, args, kwargs);
-                if (subtype == 3) {
-                    PyObject* ul;
-                    ul = PyObject_CallFunctionObjArgs(UUIDLegacy, value, NULL);
-                    Py_DECREF(value);
-                    value = ul;
-                }
 
                 Py_DECREF(args);
                 Py_DECREF(kwargs);
