@@ -36,6 +36,7 @@ static PyObject* ObjectId = NULL;
 static PyObject* DBRef = NULL;
 static PyObject* RECompile = NULL;
 static PyObject* UUID = NULL;
+static PyObject* UUIDLegacy = NULL;
 static PyObject* Timestamp = NULL;
 static PyObject* MinKey = NULL;
 static PyObject* MaxKey = NULL;
@@ -189,6 +190,7 @@ static int _reload_object(PyObject** object, char* module_name, char* object_nam
  * Returns non-zero on failure. */
 static int _reload_python_objects(void) {
     if (_reload_object(&Binary, "bson.binary", "Binary") ||
+        _reload_object(&UUIDLegacy, "bson.binary", "UUIDLegacy") ||
         _reload_object(&Code, "bson.code", "Code") ||
         _reload_object(&ObjectId, "bson.objectid", "ObjectId") ||
         _reload_object(&DBRef, "bson.dbref", "DBRef") ||
@@ -371,7 +373,7 @@ static int _write_element_to_buffer(buffer_t buffer, int type_byte, PyObject* va
 
         // UUID is always 16 bytes, subtype 3
         int length = 16;
-        const char subtype = 3;
+        const char subtype = 4;
 
         PyObject* bytes;
 
@@ -992,7 +994,7 @@ static PyObject* get_value(const char* buffer, int* position, int type,
                 return NULL;
             }
 
-            if (subtype == 3 && UUID) { // Encode as UUID, not Binary
+            if ((subtype == 3 || subtype == 4) && UUID) { // Encoded as UUID, not Binary
                 PyObject* kwargs;
                 PyObject* args = PyTuple_New(0);
                 if (!args) {
@@ -1008,6 +1010,12 @@ static PyObject* get_value(const char* buffer, int* position, int type,
 
                 PyDict_SetItemString(kwargs, "bytes", data);
                 value = PyObject_Call(UUID, args, kwargs);
+                if (subtype == 3) {
+                    PyObject* ul;
+                    ul = PyObject_CallFunctionObjArgs(UUIDLegacy, value, NULL);
+                    Py_DECREF(value);
+                    value = ul;
+                }
 
                 Py_DECREF(args);
                 Py_DECREF(kwargs);

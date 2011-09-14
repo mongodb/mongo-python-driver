@@ -12,6 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+try:
+    from uuid import UUID
+except ImportError:
+    # Python2.4 doesn't have a uuid module.
+    pass
+
 """Tools for representing BSON binary data.
 """
 
@@ -110,3 +116,47 @@ class Binary(str):
 
     def __repr__(self):
         return "Binary(%s, %s)" % (str.__repr__(self), self.__subtype)
+
+
+class UUIDLegacy(Binary):
+    """UUID wrapper to support working with UUIDs stored as legacy
+    BSON binary subtype 3.
+
+    .. doctest::
+
+      >>> import uuid
+      >>> from bson.binary import Binary, UUIDLegacy
+      >>> id = uuid.uuid4()
+      >>> db.test.insert({'uuid': Binary(id.bytes, 3)})
+      ObjectId('...')
+      >>> db.test.find({'uuid': UUIDLegacy(id)})[0]['uuid']
+      UUIDLegacy('...')
+      >>> db.test.find({'uuid': UUIDLegacy(id)})[0]['uuid'].uuid
+      UUID('...')
+      >>>
+      >>> # Convert from subtype 3 to subtype 4
+      >>> db.test.update({'uuid': UUIDLegacy(id)}, {'$set': {'uuid': id}})
+      >>> db.test.find_one({'uuid': id})['uuid']
+      UUID('...')
+
+    Raises TypeError if `obj` is not an instance of :class:`~uuid.UUID`.
+
+    :Parameters:
+      - `obj`: An instance of :class:`~uuid.UUID`.
+    """
+
+    def __new__(cls, obj):
+        if not isinstance(obj, UUID):
+            raise TypeError("data must be an instance of uuid.UUID")
+        self = Binary.__new__(cls, obj.bytes, 3)
+        self.__uuid = obj
+        return self
+
+    @property
+    def uuid(self):
+        """UUID instance wrapped by this UUIDLegacy instance.
+        """
+        return self.__uuid
+
+    def __repr__(self):
+        return "UUIDLegacy('%s')" % self.__uuid

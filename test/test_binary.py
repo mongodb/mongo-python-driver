@@ -16,9 +16,16 @@
 
 import unittest
 import sys
+try:
+    import uuid
+    should_test_uuid = True
+except ImportError:
+    should_test_uuid = False
 sys.path[0:0] = [""]
 
-from bson.binary import Binary
+from bson.binary import Binary, UUIDLegacy
+from nose.plugins.skip import SkipTest
+from test_connection import get_connection
 
 
 class TestBinary(unittest.TestCase):
@@ -74,6 +81,39 @@ class TestBinary(unittest.TestCase):
         self.assertEqual(repr(d), "Binary('\\x08\\xff', 2)")
         e = Binary("test", 100)
         self.assertEqual(repr(e), "Binary('test', 100)")
+
+    def test_uuid_queries(self):
+        if not should_test_uuid:
+            raise SkipTest()
+
+        c = get_connection()
+        coll = c.pymongo_test.test
+        coll.drop()
+
+        uu = uuid.uuid4()
+        ul = UUIDLegacy(uu)
+        coll.insert({'uuid': uu})
+        coll.insert({'uuid': uuid.uuid4()})
+        coll.insert({'uuid': uuid.uuid4()})
+        coll.insert({'uuid': ul})
+
+        # Test UUIDLegacy queries.
+        cur = coll.find({'uuid': ul})
+        self.assertEquals(1, cur.count())
+        retrieved = cur.next()['uuid']
+        self.assertEquals(ul, retrieved)
+        self.assertEquals(uu, retrieved.uuid)
+
+        # Test regular UUID queries.
+        cur = coll.find({'uuid': uu})
+        self.assertEquals(1, cur.count())
+        self.assertEquals(uu, cur.next()['uuid'])
+
+        # Test both.
+        cur = coll.find({'uuid': {'$in': [uu, ul]}})
+        self.assertEquals(2, cur.count())
+        coll.drop()
+
 
 if __name__ == "__main__":
     unittest.main()

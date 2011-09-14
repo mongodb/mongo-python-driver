@@ -14,3 +14,7 @@
    .. autoclass:: Binary(data[, subtype=BINARY_SUBTYPE])
       :members:
       :show-inheritance:
+
+   .. autoclass:: UUIDLegacy(obj)
+      :members:
+      :show-inheritance:
