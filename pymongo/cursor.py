@@ -192,6 +192,13 @@ class Cursor(object):
                 connection.close_cursor(self.__id)
         self.__killed = True
 
+    def close(self):
+        """Explicitly close this cursor. Required for PyPy, Jython and
+        other Python implementations that don't use reference counting
+        garbage collection.
+        """
+        self.__die()
+
     def __query_spec(self):
         """Get the spec to use for a query.
         """

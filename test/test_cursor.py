@@ -383,7 +383,13 @@ class TestCursor(unittest.TestCase):
             break
         self.assertRaises(InvalidOperation, a.where, 'this.x < 3')
 
-    def test_kill_cursors(self):
+    def test_kill_cursors_implicit(self):
+        # Only CPython does reference counting garbage collection.
+        if (sys.platform.startswith('java') or
+            sys.platform == 'cli' or
+            'PyPy' in sys.version):
+            raise SkipTest()
+
         db = self.db
         db.drop_collection("test")
 
@@ -394,6 +400,7 @@ class TestCursor(unittest.TestCase):
             test.insert({"i": i})
         self.assertEqual(c, db.command("cursorInfo")["clientCursors_size"])
 
+        # Automatically closed by the server (limit == -1).
         for _ in range(10):
             db.test.find_one()
         self.assertEqual(c, db.command("cursorInfo")["clientCursors_size"])
@@ -408,9 +415,44 @@ class TestCursor(unittest.TestCase):
             break
         self.assertNotEqual(c, db.command("cursorInfo")["clientCursors_size"])
 
+        # Explicitly close (won't work with PyPy and Jython).
         del a
         self.assertEqual(c, db.command("cursorInfo")["clientCursors_size"])
 
+        # Automatically closed by the server since the entire
+        # result was returned.
+        a = db.test.find().limit(10)
+        for x in a:
+            break
+        self.assertEqual(c, db.command("cursorInfo")["clientCursors_size"])
+
+    def test_kill_cursors_explicit(self):
+        db = self.db
+        db.drop_collection("test")
+
+        c = db.command("cursorInfo")["clientCursors_size"]
+
+        test = db.test
+        for i in range(10000):
+            test.insert({"i": i})
+        self.assertEqual(c, db.command("cursorInfo")["clientCursors_size"])
+
+        # Automatically closed by the server (limit == -1).
+        for _ in range(10):
+            db.test.find_one()
+        self.assertEqual(c, db.command("cursorInfo")["clientCursors_size"])
+
+        a = db.test.find()
+        for x in a:
+            break
+        self.assertNotEqual(c, db.command("cursorInfo")["clientCursors_size"])
+
+        # Explicitly close (should work with all interpreter implementations).
+        a.close()
+        self.assertEqual(c, db.command("cursorInfo")["clientCursors_size"])
+
+        # Automatically closed by the server since the entire
+        # result was returned.
         a = db.test.find().limit(10)
         for x in a:
             break
