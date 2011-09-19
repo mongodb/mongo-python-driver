@@ -63,7 +63,11 @@ _CONNECT_TIMEOUT = 20.0
 def _closed(sock):
     """Return True if we know socket has been closed, False otherwise.
     """
-    rd, _, _ = select.select([sock], [], [], 0)
+    try:
+        rd, _, _ = select.select([sock], [], [], 0)
+    # Any exception here is equally bad (socket.error, ValueError, etc.).
+    except:
+        return True
     return len(rd) > 0
 
 
