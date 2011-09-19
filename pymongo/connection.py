@@ -35,9 +35,9 @@ access:
 
 import datetime
 import os
-import select
 import socket
 import struct
+import sys
 import threading
 import time
 import warnings
@@ -56,6 +56,11 @@ from pymongo.errors import (AutoReconnect,
                             InvalidURI,
                             OperationFailure)
 
+if sys.platform.startswith('java'):
+    from select import cpython_compatible_select as select
+else:
+    from select import select
+
 
 _CONNECT_TIMEOUT = 20.0
 
@@ -64,7 +69,7 @@ def _closed(sock):
     """Return True if we know socket has been closed, False otherwise.
     """
     try:
-        rd, _, _ = select.select([sock], [], [], 0)
+        rd, _, _ = select([sock], [], [], 0)
     # Any exception here is equally bad (select.error, ValueError, etc.).
     except:
         return True
