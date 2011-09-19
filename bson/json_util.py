@@ -59,6 +59,7 @@ try:
 except ImportError:
     _use_uuid = False
 
+from bson import EPOCH_AWARE
 from bson.dbref import DBRef
 from bson.max_key import MaxKey
 from bson.min_key import MinKey
@@ -83,8 +84,8 @@ def object_hook(dct):
     if "$ref" in dct:
         return DBRef(dct["$ref"], dct["$id"], dct.get("$db", None))
     if "$date" in dct:
-        return datetime.datetime.fromtimestamp(float(dct["$date"]) / 1000.0,
-                                               utc)
+        secs = float(dct["$date"]) / 1000.0
+        return EPOCH_AWARE + datetime.timedelta(seconds=secs)
     if "$regex" in dct:
         flags = 0
         if "i" in dct["$options"]:
