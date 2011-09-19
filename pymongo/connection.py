@@ -65,7 +65,7 @@ def _closed(sock):
     """
     try:
         rd, _, _ = select.select([sock], [], [], 0)
-    # Any exception here is equally bad (socket.error, ValueError, etc.).
+    # Any exception here is equally bad (select.error, ValueError, etc.).
     except:
         return True
     return len(rd) > 0
