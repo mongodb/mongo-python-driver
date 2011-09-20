@@ -18,14 +18,7 @@ import unittest
 import datetime
 import re
 import sys
-json_lib = True
-try:
-    import json
-except ImportError:
-    try:
-        import simplejson as json
-    except ImportError:
-        json_lib = False
+
 try:
     import uuid
     should_test_uuid = True
@@ -37,23 +30,21 @@ from nose.plugins.skip import SkipTest
 sys.path[0:0] = [""]
 
 from bson.objectid import ObjectId
+from bson.binary import Binary, MD5_SUBTYPE
+from bson.code import Code
 from bson.dbref import DBRef
 from bson.min_key import MinKey
 from bson.max_key import MaxKey
 from bson.timestamp import Timestamp
 from bson.tz_util import utc
-from bson.json_util import default, object_hook
+from bson.json_util import JSONEncoder, JSONDecoder, json
 
 
 class TestJsonUtil(unittest.TestCase):
 
-    def setUp(self):
-        if not json_lib:
-            raise SkipTest()
-
     def round_tripped(self, doc):
-        return json.loads(json.dumps(doc, default=default),
-                          object_hook=object_hook)
+        return json.loads(json.dumps(doc, cls=JSONEncoder),
+                          cls=JSONDecoder)
 
     def round_trip(self, doc):
         self.assertEqual(doc, self.round_tripped(doc))
@@ -97,10 +88,20 @@ class TestJsonUtil(unittest.TestCase):
         self.round_trip({"m": MinKey()})
 
     def test_timestamp(self):
-        res = json.dumps({"ts": Timestamp(4, 13)}, default=default)
+        res = json.dumps({"ts": Timestamp(4, 13)}, cls=JSONEncoder)
         dct = json.loads(res)
         self.assertEqual(dct['ts']['t'], 4)
         self.assertEqual(dct['ts']['i'], 13)
+
+    def test_binary(self):
+        self.round_trip({"bin": Binary("\x00\x01\x02\x03\x04")})
+        self.round_trip({
+            "md5": Binary(' n7\x18\xaf\t/\xd1\xd1/\x80\xca\xe7q\xcc\xac',
+                MD5_SUBTYPE)})
+
+    def test_code(self):
+        self.round_trip({"code": Code("function x() { return 1; }")})
+        self.round_trip({"code": Code("function y() { return z; }", z=2)})
 
     def test_uuid(self):
         if not should_test_uuid:
