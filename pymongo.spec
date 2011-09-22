@@ -129,14 +129,14 @@ rm -rf %{buildroot}
 
 %files
 %defattr(-,root,root,-)
-%doc LICENSE PKG-INFO README.rst doc
+%doc LICENSE pymongo.egg-info/PKG-INFO README.rst doc
 %{python_sitearch}/%{name}
 %{python_sitearch}/%{name}-%{version}-*.egg-info
 
 %if 0%{?with_python3}
 %files -n python3-pymongo
 %defattr(-,root,root,-)
-%doc LICENSE PKG-INFO README.rst doc
+%doc LICENSE pymongo.egg-info/PKG-INFO README.rst doc
 %{python3_sitearch}/%{name}
 %{python3_sitearch}/%{name}-%{version}-*.egg-info
 %endif # with_python3
