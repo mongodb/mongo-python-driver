@@ -173,7 +173,7 @@ class GridFS(object):
         if filename is not None:
             query["filename"] = filename
 
-        cursor = self.__files.find(query, ["_id"])
+        cursor = self.__files.find(query)
         if version < 0:
             skip = abs(version) - 1
             cursor.limit(-1).skip(skip).sort("uploadDate", DESCENDING)
@@ -181,7 +181,7 @@ class GridFS(object):
             cursor.limit(-1).skip(version).sort("uploadDate", ASCENDING)
         try:
             grid_file = cursor.next()
-            return GridOut(self.__collection, grid_file["_id"])
+            return GridOut(self.__collection, file_document=grid_file)
         except StopIteration:
             raise NoFile("no version %d for filename %r" % (version, filename))
 
