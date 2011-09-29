@@ -1050,6 +1050,12 @@ class Connection(common.BaseObject):
         """
         self.admin['$cmd'].sys.unlock.find_one() 
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.disconnect()
+
     def __iter__(self):
         return self
 

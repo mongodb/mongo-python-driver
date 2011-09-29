@@ -460,5 +460,14 @@ with contextlib.closing(conn):
         self.assertEqual(None, conn._Connection__pool.sock)
         self.assertEqual(0, len(conn._Connection__pool.sockets))
 
+        exec """
+with get_connection() as connection:
+    self.assertEquals("bar", connection.pymongo_test.test.find_one()["foo"])
+"""
+
+        self.assertEqual(None, connection._Connection__pool.sock)
+        self.assertEqual(0, len(connection._Connection__pool.sockets))
+
+
 if __name__ == "__main__":
     unittest.main()
