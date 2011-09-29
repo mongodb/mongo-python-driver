@@ -9,6 +9,7 @@
       .. automethod:: from_uri([uri='mongodb://localhost'])
       .. automethod:: paired(left[, right=('localhost', 27017)])
       .. automethod:: disconnect
+      .. automethod:: close
 
       .. describe:: c[db_name] || c.db_name
 

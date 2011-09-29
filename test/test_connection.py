@@ -441,6 +441,24 @@ class TestConnection(unittest.TestCase):
             time.sleep(1)
         self.assertFalse(locked)
 
+    def test_contextlib(self):
+        if sys.version_info < (2, 6):
+            raise SkipTest()
+        import contextlib
+
+        conn = get_connection()
+        conn.pymongo_test.drop_collection("test")
+        conn.pymongo_test.test.insert({"foo": "bar"})
+        self.assertNotEqual(None, conn._Connection__pool.sock)
+        self.assertEqual(0, len(conn._Connection__pool.sockets))
+
+        exec """
+with contextlib.closing(conn):
+    self.assertEquals("bar", conn.pymongo_test.test.find_one()["foo"])
+"""
+
+        self.assertEqual(None, conn._Connection__pool.sock)
+        self.assertEqual(0, len(conn._Connection__pool.sockets))
 
 if __name__ == "__main__":
     unittest.main()

@@ -661,6 +661,18 @@ class Connection(common.BaseObject):
         self.__port = None
 
     def close(self):
+        """Alias for :meth:`disconnect`
+
+        Disconnecting will close all underlying sockets in the
+        connection pool. If the :class:`Connection` is used again it
+        will be automatically re-opened. Care should be taken to make
+        sure that :meth:`disconnect` is not called in the middle of a
+        sequence of operations in which ordering is important. This
+        could lead to unexpected results.
+
+        .. seealso:: :meth:`end_request`
+        .. versionadded:: 2.0.1+
+        """
         self.disconnect()
 
     def set_cursor_manager(self, manager_class):
