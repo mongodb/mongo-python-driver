@@ -56,7 +56,7 @@ MongoEngine
 django-mongodb-engine
   `Django MongoDB Engine
   <http://django-mongodb.org/>`_ is a MongoDB
-  database backend for Django that completely integrates with the its ORM.
+  database backend for Django that completely integrates with its ORM.
   For more information see the `tutorial <http://django-mongodb.org/tutorial.html>`_.
 
 Minimongo
