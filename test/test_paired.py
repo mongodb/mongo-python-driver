@@ -136,7 +136,7 @@ class TestPaired(unittest.TestCase):
 
     def test_paired_connections_pass_individual_connargs(self):
         c = Connection.paired(self.left, self.right, network_timeout=5)
-        self.assertEqual(5, c._Connection__network_timeout)
+        self.assertEqual(5, c._Connection__net_timeout)
 
 
 if __name__ == "__main__":

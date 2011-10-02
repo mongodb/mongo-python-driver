@@ -141,15 +141,7 @@ class TestPooling(unittest.TestCase):
 
     def test_max_pool_size_validation(self):
         self.assertRaises(ValueError, Connection, max_pool_size=-1)
-        self.assertRaises(AssertionError, Connection, max_pool_size='foo')
-        self.assertRaises(ConfigurationError, Connection,
-                          'mongodb://localhost/?maxPoolSize=-1')
-        self.assertRaises(ConfigurationError, Connection,
-                          'mongodb://localhost/?maxPoolSize=foo')
-        self.assertRaises(ConfigurationError, Connection,
-                          'mongodb://localhost/?maxPoolSize=5.5')
-        c = Connection('mongodb://localhost/?maxPoolSize=5')
-        self.assertEqual(c.max_pool_size, 5)
+        self.assertRaises(ConfigurationError, Connection, max_pool_size='foo')
         c = Connection(max_pool_size=100)
         self.assertEqual(c.max_pool_size, 100)
 
@@ -171,7 +163,7 @@ class TestPooling(unittest.TestCase):
         run_cases(self, [SaveAndFind, Disconnect, Unique])
 
     def test_independent_pools(self):
-        p = _Pool(10, 0)
+        p = _Pool(10, 0, 0)
         self.assertEqual([], p.sockets)
         self.c.end_request()
         self.assertEqual([], p.sockets)

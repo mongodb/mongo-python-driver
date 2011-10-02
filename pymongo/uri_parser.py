@@ -17,7 +17,7 @@
 
 import urllib
 
-from pymongo.common import VALIDATORS, UNSUPPORTED
+from pymongo.common import validate
 from pymongo.errors import (ConfigurationError,
                             InvalidURI,
                             UnsupportedOption)
@@ -144,16 +144,9 @@ def validate_options(opts):
         - `opts`: A dict of MongoDB URI options.
     """
     normalized = {}
-    for key, value in opts.iteritems():
-        opt = key.lower()
-        validate = VALIDATORS.get(opt)
-        if not validate:
-            if opt in UNSUPPORTED:
-                raise UnsupportedOption("%s is not currently "
-                                        "supported by pymongo." % (key,))
-            raise ConfigurationError("%s is not a "
-                                     "recognized MongoDB URI option." % (key,))
-        normalized[opt] = validate(key, value)
+    for option, value in opts.iteritems():
+        option, value = validate(option, value)
+        normalized[option] = value
     return normalized
 
 

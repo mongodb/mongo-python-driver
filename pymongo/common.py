@@ -73,11 +73,24 @@ def validate_int_or_basestring(option, value):
                     "integer or a string" % (option,))
 
 
+def validate_timeout_or_none(option, value):
+    """Validates a timeout specified in milliseconds returning
+    a value in floating point seconds.
+    """
+    if value is None:
+        return value
+    value = validate_integer(option, value)
+    if value <= 0:
+        raise ConfigurationError("%s must be a positive integer" % (option,))
+    return value / 1000.0
+
+
 # jounal is an alias for j,
 # wtimeoutms is an alias for wtimeout
 VALIDATORS = { 
     'replicaset': validate_basestring,
     'slaveok': validate_boolean,
+    'slave_okay': validate_boolean,
     'safe': validate_boolean,
     'w': validate_int_or_basestring,
     'wtimeout': validate_integer,
@@ -85,14 +98,18 @@ VALIDATORS = {
     'fsync': validate_boolean,
     'j': validate_boolean,
     'journal': validate_boolean,
-    'maxpoolsize': validate_integer,
+    'connecttimeoutms': validate_timeout_or_none,
+    'sockettimeoutms': validate_timeout_or_none,
 }
 
 
-UNSUPPORTED = frozenset([
-    'connecttimeoutms',
-    'sockettimeoutms'
-])
+def validate(option, value):
+    """Generic validation function.
+    """
+    lower = option.lower()
+    validator = VALIDATORS.get(lower, raise_config_error)
+    value = validator(option, value)
+    return lower, value
 
 
 SAFE_OPTIONS = frozenset([

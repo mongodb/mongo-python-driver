@@ -62,9 +62,6 @@ else:
     from select import select
 
 
-_CONNECT_TIMEOUT = 20.0
-
-
 def _closed(sock):
     """Return True if we know socket has been closed, False otherwise.
     """
@@ -98,15 +95,16 @@ class _Pool(threading.local):
     """
 
     # Non thread-locals
-    __slots__ = ["sockets", "socket_factory", "pool_size", "pid"]
+    __slots__ = ["pid", "max_size", "net_timeout", "conn_timeout", "sockets"]
 
     # thread-local default
     sock = None
 
-    def __init__(self, pool_size, network_timeout):
+    def __init__(self, max_size, net_timeout, conn_timeout):
         self.pid = os.getpid()
-        self.pool_size = pool_size
-        self.network_timeout = network_timeout
+        self.max_size = max_size
+        self.net_timeout = net_timeout
+        self.conn_timeout = conn_timeout
         if not hasattr(self, "sockets"):
             self.sockets = []
 
@@ -118,17 +116,17 @@ class _Pool(threading.local):
             # to specify one or the other we can add it later.
             s = socket.socket(socket.AF_INET)
             s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-            s.settimeout(self.network_timeout or _CONNECT_TIMEOUT)
+            s.settimeout(self.conn_timeout or 20.0)
             s.connect((host, port))
-            s.settimeout(self.network_timeout)
+            s.settimeout(self.net_timeout)
             return s
         except socket.gaierror:
             # If that fails try IPv6
             s = socket.socket(socket.AF_INET6)
             s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-            s.settimeout(self.network_timeout or _CONNECT_TIMEOUT)
+            s.settimeout(self.conn_timeout or 20.0)
             s.connect((host, port))
-            s.settimeout(self.network_timeout)
+            s.settimeout(self.net_timeout)
             return s
 
     def get_socket(self, host, port):
@@ -158,7 +156,7 @@ class _Pool(threading.local):
             # There's a race condition here, but we deliberately
             # ignore it.  It means that if the pool_size is 10 we
             # might actually keep slightly more than that.
-            if len(self.sockets) < self.pool_size:
+            if len(self.sockets) < self.max_size:
                 self.sockets.append(self.sock[1])
             else:
                 self.sock[1].close()
@@ -269,8 +267,6 @@ class Connection(common.BaseObject):
 
         .. mongodoc:: connections
         """
-        super(Connection, self).__init__(**kwargs)
-
         if host is None:
             host = self.HOST
         if isinstance(host, basestring):
@@ -302,25 +298,37 @@ class Connection(common.BaseObject):
                 nodes.update(uri_parser.split_hosts(entity, port))
         if not nodes:
             raise ConfigurationError("need to specify at least one host")
-        self.__nodes = nodes
 
+        self.__nodes = nodes
         self.__host = None
         self.__port = None
 
-        if options:
-            super(Connection, self)._set_options(**options)
+        for option, value in kwargs.iteritems():
+            option, value = common.validate(option, value)
+            options[option] = value
 
-        assert isinstance(max_pool_size, int), "max_pool_size must be an int"
-        self.__max_pool_size = options.get("maxpoolsize") or max_pool_size
-        if self.__max_pool_size < 0:
-            raise ValueError("the maximum pool size must be >= 0")
-
+        if not isinstance(max_pool_size, int):
+            raise ConfigurationError("max_pool_size must be an integer")
+        if max_pool_size < 0:
+            raise ValueError("max_pool_size must be >= 0")
+        self.__max_pool_size = max_pool_size
 
         self.__cursor_manager = CursorManager(self)
 
-        self.__repl = options.get('replicaset', kwargs.get('replicaset'))
-        self.__network_timeout = network_timeout
-        self.__pool = _Pool(self.__max_pool_size, self.__network_timeout)
+        self.__repl = options.get('replicaset')
+
+        if network_timeout is not None:
+            if (not isinstance(network_timeout, (int, float)) or
+                network_timeout <= 0):
+                raise ConfigurationError("network_timeout must "
+                                         "be a positive integer")
+        self.__net_timeout = (network_timeout or
+                              options.get('sockettimeoutms'))
+        self.__conn_timeout = options.get('connectiontimeoutms')
+        self.__pool = _Pool(self.__max_pool_size,
+                            self.__net_timeout,
+                            self.__conn_timeout)
+
         self.__last_checkout = time.time()
 
         self.__document_class = document_class
@@ -329,6 +337,8 @@ class Connection(common.BaseObject):
         # cache of existing indexes used by ensure_index ops
         self.__index_cache = {}
         self.__auth_credentials = {}
+
+        super(Connection, self).__init__(**options)
 
         if _connect:
             self.__find_node()
@@ -656,7 +666,9 @@ class Connection(common.BaseObject):
         .. seealso:: :meth:`end_request`
         .. versionadded:: 1.3
         """
-        self.__pool = _Pool(self.__max_pool_size, self.__network_timeout)
+        self.__pool = _Pool(self.__max_pool_size,
+                            self.__net_timeout,
+                            self.__conn_timeout)
         self.__host = None
         self.__port = None
 
@@ -834,7 +846,7 @@ class Connection(common.BaseObject):
                 raise AutoReconnect(str(e))
         finally:
             if "network_timeout" in kwargs:
-                sock.settimeout(self.__network_timeout)
+                sock.settimeout(self.__net_timeout)
 
     def start_request(self):
         """DEPRECATED all operations will start a request.
