@@ -14,7 +14,6 @@
 
 """Python driver for MongoDB."""
 
-from pymongo.connection import Connection as PyMongo_Connection
 
 ASCENDING = 1
 """Ascending sort order."""
@@ -38,6 +37,13 @@ SLOW_ONLY = 1
 ALL = 2
 """Profile all operations."""
 
+PRIMARY = 1
+"""Send all reads to the primary in a ReplicaSetConnction."""
+SECONDARY = 2
+"""Send reads to all active members of a ReplicaSetConnection."""
+SECONDARY_ONLY = 3
+"""Send all reads to secondaries in a ReplicaSetConnection."""
+
 version_tuple = (2, 0, 1, '+')
 
 def get_version_string():
@@ -48,9 +54,8 @@ def get_version_string():
 version = get_version_string()
 """Current version of PyMongo."""
 
-Connection = PyMongo_Connection
-"""Alias for :class:`pymongo.connection.Connection`."""
-
+from pymongo.connection import Connection
+from pymongo.replica_set_connection import ReplicaSetConnection
 
 def has_c():
     """Is the C extension installed?

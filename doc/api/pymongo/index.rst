@@ -23,6 +23,8 @@ Sub-modules:
    errors
    master_slave_connection
    message
+   pool
+   replica_set_connection
    son_manipulator
    cursor_manager
 
