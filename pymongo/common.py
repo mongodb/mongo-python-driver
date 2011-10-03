@@ -47,7 +47,7 @@ def validate_integer(option, value):
             raise ConfigurationError("The value of '%s' must be "
                                      "an integer." % (option,))
         return int(value)
-    raise TypeError("Wrong type for %s, value just be an "
+    raise TypeError("Wrong type for %s, value must be an "
                     "integer or string representation" % (option,))
 
 
@@ -56,7 +56,7 @@ def validate_basestring(option, value):
     """
     if isinstance(value, basestring):
         return value
-    raise TypeError("Wrong type for %s, value just be an "
+    raise TypeError("Wrong type for %s, value must be an "
                     "instance of basestring" % (option,))
 
 
@@ -69,7 +69,7 @@ def validate_int_or_basestring(option, value):
         if value.isdigit():
             return int(value)
         return value
-    raise TypeError("Wrong type for %s, value just be an "
+    raise TypeError("Wrong type for %s, value must be an "
                     "integer or a string" % (option,))
 
 
@@ -134,21 +134,21 @@ class BaseObject(object):
         self.__slave_okay = False
         self.__safe = False
         self.__safe_opts = {}
+        self.__set_options(options)
 
-        self._set_options(**options)
-
-    def __set_safe_option(self, option, value):
+    def __set_safe_option(self, option, value, check=False):
         """Validates and sets getlasterror options for this
         object (Connection, Database, Collection, etc.)
         """
         if value is None:
             self.__safe_opts.pop(option, None)
         else:
-            validate = VALIDATORS.get(option, raise_config_error)
-            self.__safe_opts[option] = validate(option, value)
+            if check:
+                option, value = validate(option, value)
+            self.__safe_opts[option] = value
             self.__safe = True
 
-    def _set_options(self, **options):
+    def __set_options(self, options):
         """Validates and sets all options passed to this object."""
         for option, value in options.iteritems():
             if option in ('slave_okay', 'slaveok'):
@@ -210,7 +210,7 @@ class BaseObject(object):
         .. versionadded:: 2.0
         """
         for key, value in kwargs.iteritems():
-            self.__set_safe_option(key, value)
+            self.__set_safe_option(key, value, check=True)
 
     def unset_lasterror_options(self, *options):
         """Unset getlasterror options for this instance.
