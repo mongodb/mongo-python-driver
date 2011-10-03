@@ -38,7 +38,7 @@ ALL = 2
 """Profile all operations."""
 
 PRIMARY = 1
-"""Send all reads to the primary in a ReplicaSetConnction."""
+"""Send all reads to the primary in a ReplicaSetConnection."""
 SECONDARY = 2
 """Send reads to all active members of a ReplicaSetConnection."""
 SECONDARY_ONLY = 3

@@ -219,7 +219,7 @@ class Connection(common.BaseObject):
 
           Other optional parameters can be passed as keyword arguments:
 
-          - `slave_okay` or `slaveok`: Is it OK to perform queries if
+          - `slave_okay` or `slaveOk`: Is it OK to perform queries if
             this connection is to a secondary?
           - `safe`: Use getlasterror for each write operation?
           - `j` or `journal`: Block until write operations have been commited
@@ -236,10 +236,14 @@ class Connection(common.BaseObject):
             When used with `j` the server awaits the next group commit before
             returning.
             Implies safe=True.
-          - `replicaset`: The name of the replica set to connect to. The driver
+          - `replicaSet`: The name of the replica set to connect to. The driver
             will verify that the replica set it connects to matches this name.
             Implies that the hosts specified are a seed list and the driver should
             attempt to find all members of the set.
+          - `socketTimeoutMS`: How long a send or receive on a socket can take
+            before timing out.
+          - `connectTimeoutMS`: How long a connection can take to be opened
+            before timing out.
 
         .. seealso:: :meth:`end_request`
         .. versionchanged:: 2.0.1+
