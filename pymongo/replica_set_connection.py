@@ -191,8 +191,6 @@ class ReplicaSetConnection(common.BaseObject):
 
         super(ReplicaSetConnection, self).__init__(**self.__opts)
 
-        self.slave_okay = True
-
         if db_name and username is None:
             warnings.warn("must provide a username and password "
                           "to authenticate to %s" % (db_name,))
@@ -304,6 +302,13 @@ class ReplicaSetConnection(common.BaseObject):
         """All arbiters known to this replica set.
         """
         return self.__arbiters
+
+    @property
+    def slave_okay(self):
+        """Is it OK to perform queries on a secondary? This is
+        always True for an instance of ReplicaSetConnection.
+        """
+        return True
 
     @property
     def max_pool_size(self):
