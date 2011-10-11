@@ -62,6 +62,9 @@ else:
     from select import select
 
 
+MAX_BSON_SIZE = 4 * 1024 * 1024
+
+
 def _closed(sock):
     """Return True if we know socket has been closed, False otherwise.
     """
@@ -91,7 +94,7 @@ class ReplicaSetConnection(common.BaseObject):
     """Connection to a MongoDB replica set.
     """
 
-    def __init__(self, hosts_or_uri, max_pool_size=10,
+    def __init__(self, hosts_or_uri=None, max_pool_size=10,
                  document_class=dict, tz_aware=False, **kwargs):
         """Create a new connection to a MongoDB replica set.
 
@@ -111,11 +114,12 @@ class ReplicaSetConnection(common.BaseObject):
         The `hosts_or_uri` parameter can be a full `mongodb URI
         <http://dochub.mongodb.org/core/connections>`_, in addition to
         a string of `host:port` pairs (e.g. 'host1:port1,host2:port2').
+        If `hosts_or_uri` is None 'localhost:27017' will be used.
 
         :Parameters:
-          - `hosts_or_uri`: A MongoDB URI or string of `host:port` pairs.
-            If a host is an IPv6 literal it must be enclosed in '[' and ']'
-            characters following the RFC2732 URL syntax (e.g. '[::1]' for
+          - `hosts_or_uri` (optional): A MongoDB URI or string of `host:port`
+            pairs. If a host is an IPv6 literal it must be enclosed in '[' and
+            ']' characters following the RFC2732 URL syntax (e.g. '[::1]' for
             localhost)
           - `max_pool_size` (optional): The maximum size limit for
             each connection pool.
@@ -125,9 +129,10 @@ class ReplicaSetConnection(common.BaseObject):
             :class:`~datetime.datetime` instances returned as values
             in a document by this :class:`Connection` will be timezone
             aware (otherwise they will be naive)
-          - `replicaset`: (required) The name of the replica set to connect to.
-            The driver will verify that each host it connects to is a member
-            of this replica set.
+          - `replicaSet`: (required) The name of the replica set to connect to.
+            The driver will verify that each host it connects to is a member of
+            this replica set. Can be passed as a keyword argument or as a
+            MongoDB URI option.
 
           Other optional parameters can be passed as keyword arguments:
 
@@ -139,9 +144,9 @@ class ReplicaSetConnection(common.BaseObject):
             won't return until they have been replicated to the specified
             number or tagged set of servers.
             Implies safe=True.
-          - `wtimeout`: Used in conjunction with `j` and/or `w`. Wait this many
-            milliseconds for journal acknowledgement and/or write replication.
-            Implies safe=True.
+          - `wtimeoutMS`: Used in conjunction with `j` and/or `w`. Wait this
+            many milliseconds for journal acknowledgement and/or write
+            replication. Implies safe=True.
           - `fsync`: Force the database to fsync all files before returning
             When used with `j` the server awaits the next group commit before
             returning. Implies safe=True.
@@ -159,7 +164,8 @@ class ReplicaSetConnection(common.BaseObject):
         self.__document_class = document_class
         self.__tz_aware = tz_aware
         self.__opts = {}
-        self.__hosts = set()
+        self.__seeds = set()
+        self.__hosts = None
         self.__arbiters = set()
         self.__writer = None
         self.__readers = []
@@ -169,15 +175,17 @@ class ReplicaSetConnection(common.BaseObject):
         self.__read_pref = SECONDARY
         username = None
         db_name = None
-        if '://' in hosts_or_uri:
+        if hosts_or_uri is None:
+            self.__seeds.add(('localhost', 27017))
+        elif '://' in hosts_or_uri:
             res = uri_parser.parse_uri(hosts_or_uri)
-            self.__seeds = res['nodes']
+            self.__seeds.update(res['nodes'])
             username = res['username']
             password = res['password']
             db_name = res['database']
             self.__opts = res['options']
         else:
-            self.__seeds = uri_parser.split_hosts(hosts_or_uri)
+            self.__seeds.update(uri_parser.split_hosts(hosts_or_uri))
 
         for option, value in kwargs.iteritems():
             option, value = common.validate(option, value)
@@ -185,11 +193,15 @@ class ReplicaSetConnection(common.BaseObject):
 
         self.__name = self.__opts.get('replicaset')
         if not self.__name:
-            raise ConfigurationError("You must provide a replica set name.")
+            raise ConfigurationError("the replicaSet "
+                                     "keyword parameter is required.")
         self.__net_timeout = self.__opts.get('sockettimeoutms')
         self.__conn_timeout = self.__opts.get('connecttimeoutms')
 
         super(ReplicaSetConnection, self).__init__(**self.__opts)
+
+        # TODO: Connect with no primary.
+        self.__find_primary()
 
         if db_name and username is None:
             warnings.warn("must provide a username and password "
@@ -338,6 +350,7 @@ class ReplicaSetConnection(common.BaseObject):
         if pref not in (PRIMARY, SECONDARY, SECONDARY_ONLY):
             raise ConfigurationError("Not a valid read preference.")
         self.__read_pref = pref
+        self.__update_readers()
 
     read_preference = property(get_read_preference, set_read_preference,
                               doc="""The read preference setting for
@@ -367,7 +380,7 @@ class ReplicaSetConnection(common.BaseObject):
         request_id, msg, _ = message.query(0, dbase + '.$cmd', 0, -1, query)
         sock.sendall(msg)
         raw = self.__recv_msg(1, request_id, sock)
-        print helpers._unpack_response(raw)['data'][0]
+        helpers._unpack_response(raw)['data'][0]
 
     def __is_master(self, candidate):
         """Directly call ismaster.
@@ -383,81 +396,71 @@ class ReplicaSetConnection(common.BaseObject):
         response = helpers._unpack_response(raw)['data'][0]
         return response, mongo
 
-    def __try_node(self, candidate):
-        """Check if this host has information on the other hosts
-        and arbiters in this replica set.
-        """
-        response, _ = self.__is_master(candidate)
-
-        # XXX: Should this happen someplace else?
-        # Check that this host is part of the given replica set.
-        set_name = response.get('setName')
-        # The 'setName' field isn't returned by mongod before 1.6.2
-        # so we can't assume that if it's missing this host isn't in
-        # the specified set.
-        if set_name and set_name != self.__name:
-            host, port = candidate
-            raise ConfigurationError("%s:%d is not a member of "
-                                     "replica set %s"
-                                     % (host, port, self.__name))
-        if "arbiters" in response:
-            self.__arbiters.update([_partition_node(h)
-                                    for h in response["arbiters"]])
-        if "hosts" in response:
-            self.__hosts.update([_partition_node(h)
-                                 for h in response["hosts"]])
-            return True
-        # TODO: raise some kind of exception here...
-        return False
-
     def __update_readers(self):
         """Update the list of hosts we can send read requests to.
         """
-        for host in self.__hosts:
-            if host in self.__readers:
-                continue
-            response, mongo = self.__is_master(host)
-            if self.__read_pref == SECONDARY_ONLY and response['ismaster']:
-                continue
-            bson_max = response.get('max_bson_size') or 4 * 1024 * 1024
-            self.__readers.append(host)
-            self.__reader_pools[host] = {'pool': mongo,
-                                         'last_checkout': time.time(),
-                                         'max_bson_size': bson_max}
+        readers = []
+        reader_pools = {}
+        if self.__read_pref != PRIMARY:
+            for host in self.__hosts:
+                try:
+                    response, mongo = self.__is_master(host)
+                    if (self.__read_pref == SECONDARY_ONLY and
+                        response['ismaster']):
+                        continue
+                    bson_max = response.get('max_bson_size') or MAX_BSON_SIZE
+                    readers.append(host)
+                    reader_pools[host] = {'pool': mongo,
+                                          'last_checkout': time.time(),
+                                          'max_bson_size': bson_max}
+                except:
+                    continue
+        self.__readers = readers
+        self.__reader_pools = reader_pools
 
     def __refresh_hosts(self):
-        """Iterate through the existing host list, and possibly the
+        """Iterate through the existing host list, or possibly the
         seed list, to update the list of hosts and arbiters in this
         replica set.
         """
         errors = []
-        if self.__hosts:
-            hosts = self.__hosts.copy()
-            for host in hosts:
-                try:
-                    if self.__try_node(host):
-                        return
-                except Exception, why:
-                    errors.append(str(why))
-        for host in self.__seeds:
+        nodes = self.__hosts or self.__seeds
+
+        for node in nodes:
             try:
-                if self.__try_node(host):
-                    return
+                response, _ = self.__is_master(node)
+
+                # Check that this host is part of the given replica set.
+                set_name = response.get('setName')
+                # The 'setName' field isn't returned by mongod before 1.6.2
+                # so we can't assume that if it's missing this host isn't in
+                # the specified set.
+                if set_name and set_name != self.__name:
+                    host, port = node
+                    raise ConfigurationError("%s:%d is not a member of "
+                                             "replica set %s"
+                                             % (host, port, self.__name))
+                if "arbiters" in response:
+                    self.__arbiters = set([_partition_node(h)
+                                            for h in response["arbiters"]])
+                if "hosts" in response:
+                    self.__hosts = set([_partition_node(h)
+                                        for h in response["hosts"]])
+                    break
             except Exception, why:
-                errors.append(str(why))
-        # Couldn't find a suitable host.
-        raise AutoReconnect(', '.join(errors))
+                errors.append("%s:%d: %s" % (node[0], node[1], str(why)))
+        else:
+            # Couldn't find a suitable host.
+            raise AutoReconnect(', '.join(errors))
 
-    def __refresh(self):
-        # XXX: Do this differently?
-        self.__refresh_hosts()
-        self.__update_readers()
-
-    def __check_is_primary(self, candidate):
+    def __check_is_primary(self, host):
         """Checks if this host is the primary for the replica set.
         """
-        response, mongo = self.__is_master(candidate)
-        bson_max = response.get('max_bson_size') or 4 * 1024 * 1024
+        try:
+            response, mongo = self.__is_master(host)
+        except Exception, why:
+            raise AutoReconnect("%s:%d: %s" % (host[0], host[1], str(why)))
+        bson_max = response.get('max_bson_size') or MAX_BSON_SIZE
         if response["ismaster"]:
             self.__writer = {'pool': mongo,
                              'last_checkout': time.time(),
@@ -465,8 +468,12 @@ class ReplicaSetConnection(common.BaseObject):
             return True
         elif "primary" in response:
             candidate = _partition_node(response["primary"])
-            return self.__check_is_primary(candidate)
-        raise AutoReconnect('%s:%d is not the primary' % candidate)
+            # Don't report the same connect failure multiple times.
+            try:
+                return self.__check_is_primary(candidate)
+            except:
+                pass
+        raise AutoReconnect('%s:%d: not primary' % host)
 
     def __find_primary(self):
         """Returns a connection to the primary of this replica set,
@@ -475,8 +482,9 @@ class ReplicaSetConnection(common.BaseObject):
         if self.__writer:
             return self.__writer
 
-        # We must have had a failover so recheck the set.
-        self.__refresh()
+        # This is either the first connection or we had a failover.
+        self.__refresh_hosts()
+        self.__update_readers()
 
         errors = []
         for candidate in self.__hosts:
@@ -501,21 +509,21 @@ class ReplicaSetConnection(common.BaseObject):
         """
         try:
             sock, from_pool = mongo['pool'].get_socket()
+
+            now = time.time()
+            if now - mongo['last_checkout'] > 1:
+                if _closed(sock):
+                    host = mongo['pool'].host
+                    mongo['pool'] = pool.Pool(host,
+                                              self.__max_pool_size,
+                                              self.__net_timeout,
+                                              self.__conn_timeout)
+                    sock, from_pool = mongo['pool'].get_socket()
+            mongo['last_checkout'] = now
         except socket.error, why:
             host, port = mongo['pool'].host
             raise AutoReconnect("could not connect to "
                                 "%s:%d: %s" % (host, port, str(why)))
-
-        now = time.time()
-        if now - mongo['last_checkout'] > 1:
-            if _closed(sock):
-                host = mongo['pool'].host
-                mongo['pool'] = pool.Pool(host,
-                                          self.__max_pool_size,
-                                          self.__net_timeout,
-                                          self.__conn_timeout)
-                sock, from_pool = mongo['pool'].get_socket()
-        mongo['last_checkout'] = now
         if self.__auth_credentials and not from_pool:
             self.__authenticate_socket(sock)
         return sock
@@ -629,7 +637,7 @@ class ReplicaSetConnection(common.BaseObject):
           - `msg`: message to send
           - `safe`: check getLastError status after sending the message
         """
-        if _connection_to_use in (-1, None) or self.__read_pref == PRIMARY:
+        if _connection_to_use in (None, -1):
             mongo = self.__find_primary()
         else:
             host = self.__readers[_connection_to_use]
@@ -649,18 +657,51 @@ class ReplicaSetConnection(common.BaseObject):
                     return self.__check_response_to_last_error(response)
                 return None
             except(ConnectionFailure, socket.error), why:
-                if _connection_to_use in (-1, None):
+                if _connection_to_use in (None, -1):
                     self.disconnect()
                 raise AutoReconnect(str(why))
         finally:
             mongo['pool'].return_socket()
 
-    def __send_and_receive(self, msg, sock, max_size):
+    def __send_and_receive(self, mongo, msg, timeout):
         """Send a message on the given socket and return the response data.
         """
-        request_id, data = self.__check_bson_size(msg, max_size)
-        sock.sendall(data)
-        return self.__recv_msg(1, request_id, sock)
+        try:
+            sock = self.__socket(mongo)
+            if timeout:
+                sock.settimeout(timeout)
+            rqst_id, data = self.__check_bson_size(msg, mongo['max_bson_size'])
+            sock.sendall(data)
+            return self.__recv_msg(1, rqst_id, sock)
+        finally:
+            if timeout:
+                sock.settimeout(self.__net_timeout)
+            mongo['pool'].return_socket()
+
+    def __iter_secondaries(self, msg, timeout):
+        """Iterate through the readers attempting to return a read
+        result.
+        """
+        errors = []
+        for conn_id in random.sample(range(0, len(self.__readers)),
+                                     len(self.__readers)):
+            try:
+                host = self.__readers[conn_id]
+                mongo = self.__reader_pools[host]
+                return conn_id, self.__send_and_receive(mongo, msg, timeout)
+            except Exception, why:
+                errors.append(str(why))
+        else:
+            if (self.__read_pref == SECONDARY_ONLY or
+                not self.__writer):
+                raise AutoReconnect(', '.join(errors))
+            # Fall back to primary...
+            try:
+                return -1, self.__send_and_receive(self.__writer, msg, timeout)
+            except Exception, why:
+                self.disconnect()
+                errors.append(str(why))
+                raise AutoReconnect(', '.join(errors))
 
     def _send_message_with_response(self, msg, _connection_to_use=None,
                                     _must_use_master=False, **kwargs):
@@ -671,48 +712,26 @@ class ReplicaSetConnection(common.BaseObject):
         :Parameters:
           - `msg`: (request_id, data) pair making up the message to send
         """
-        conn_id = _connection_to_use
-        mongo = None
-        if _must_use_master or self.__read_pref == PRIMARY:
-            conn_id = -1
-            mongo = self.__find_primary()
-        elif conn_id is None:
-            # XXX: Iterate until success or total failure?
-            conn_id = random.randrange(0, len(self.__readers))
-            try:
-                host = self.__readers[conn_id]
-                mongo = self.__reader_pools[host]
-            except Exception, why:
-                if self.__read_pref == SECONDARY_ONLY:
-                    raise
-        elif conn_id is not None:
-            if conn_id == -1:
+        timeout = kwargs.get("network_timeout")
+        if _connection_to_use is not None:
+            if _connection_to_use == -1:
                 mongo = self.__find_primary()
             else:
-                host = self.__readers[conn_id]
+                host = self.__readers[_connection_to_use]
                 mongo = self.__reader_pools[host]
-
-        if mongo is None:
-            # Fallback to the primary
-            conn_id = -1
+        elif _must_use_master or self.__read_pref == PRIMARY:
+            _connection_to_use = -1
             mongo = self.__find_primary()
+        else:
+            return self.__iter_secondaries(msg, timeout)
 
         try:
-            try:
-                sock = self.__socket(mongo)
-                if "network_timeout" in kwargs:
-                    sock.settimeout(kwargs["network_timeout"])
-                response = self.__send_and_receive(msg,
-                                                   sock,
-                                                   mongo['max_bson_size'])
-                sock.settimeout(self.__net_timeout)
-                return conn_id, response
-            except(ConnectionFailure, socket.error), why:
-                if conn_id == -1:
-                    self.disconnect()
-                raise AutoReconnect(str(why))
-        finally:
-            mongo['pool'].return_socket()
+            return _connection_to_use, self.__send_and_receive(mongo,
+                                                               msg, timeout)
+        except(ConnectionFailure, socket.error), why:
+            if _connection_to_use == -1:
+                self.disconnect()
+            raise AutoReconnect(str(why))
 
     def __cmp__(self, other):
         # XXX: Implement this?
