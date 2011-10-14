@@ -39,6 +39,7 @@ import sys
 import time
 import warnings
 
+from bson.son import SON
 from pymongo import (common,
                      database,
                      helpers,
@@ -284,7 +285,8 @@ class ReplicaSetConnection(common.BaseObject):
         elif db_name in self.__auth_credentials:
             del self.__auth_credentials[db_name]
 
-    def __authenticate_socket(self, sock):
+    # TODO: auto logout...
+    def __check_auth(self, sock, authset):
         """Authenticate using cached database credentials.
 
         If credentials for the 'admin' database are available only
@@ -293,9 +295,13 @@ class ReplicaSetConnection(common.BaseObject):
         if "admin" in self.__auth_credentials:
             username, password = self.__auth_credentials["admin"]
             self.__auth(sock, 'admin', username, password)
+            authset.add('admin')
         else:
-            for db_name, (user, pwd) in self.__auth_credentials.iteritems():
+            names = set(self.__auth_credentials.iterkeys())
+            for db_name in names - authset:
+                user, pwd = self.__auth_credentials[db_name]
                 self.__auth(sock, db_name, user, pwd)
+                authset.add(db_name)
 
     @property
     def seeds(self):
@@ -376,9 +382,11 @@ class ReplicaSetConnection(common.BaseObject):
         key = helpers._auth_key(nonce, user, passwd)
 
         # Actually authenticate
-        query = {'authenticate': 1, 'user': user, 'nonce': nonce, 'key': key}
+        query = SON([('authenticate', 1),
+                     ('user', user), ('nonce', nonce), ('key', key)])
         request_id, msg, _ = message.query(0, dbase + '.$cmd', 0, -1, query)
         sock.sendall(msg)
+        # TODO: check response for errors
         raw = self.__recv_msg(1, request_id, sock)
         helpers._unpack_response(raw)['data'][0]
 
@@ -508,7 +516,7 @@ class ReplicaSetConnection(common.BaseObject):
         can't avoid those completely anyway.
         """
         try:
-            sock, from_pool = mongo['pool'].get_socket()
+            sock, authset = mongo['pool'].get_socket()
 
             now = time.time()
             if now - mongo['last_checkout'] > 1:
@@ -518,14 +526,14 @@ class ReplicaSetConnection(common.BaseObject):
                                               self.__max_pool_size,
                                               self.__net_timeout,
                                               self.__conn_timeout)
-                    sock, from_pool = mongo['pool'].get_socket()
+                    sock, authset = mongo['pool'].get_socket()
             mongo['last_checkout'] = now
         except socket.error, why:
             host, port = mongo['pool'].host
             raise AutoReconnect("could not connect to "
                                 "%s:%d: %s" % (host, port, str(why)))
-        if self.__auth_credentials and not from_pool:
-            self.__authenticate_socket(sock)
+        if self.__auth_credentials and "admin" not in authset:
+            self.__check_auth(sock, authset)
         return sock
 
     def disconnect(self):

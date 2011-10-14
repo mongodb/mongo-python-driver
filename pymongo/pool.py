@@ -76,14 +76,14 @@ class Pool(threading.local):
             self.pid = pid
 
         if self.sock is not None and self.sock[0] == pid:
-            return (self.sock[1], True)
+            return (self.sock[1], self.sock[2])
 
         try:
-            self.sock = (pid, self.sockets.pop())
-            return (self.sock[1], True)
+            sock, auth = self.sockets.pop()
+            self.sock = (pid, sock, auth)
         except IndexError:
-            self.sock = (pid, self.connect())
-            return (self.sock[1], False)
+            self.sock = (pid, self.connect(), set())
+        return (self.sock[1], self.sock[2])
 
     def return_socket(self):
         """Return the socket currently in use to the pool. If the
@@ -94,7 +94,7 @@ class Pool(threading.local):
             # ignore it.  It means that if the pool_size is 10 we
             # might actually keep slightly more than that.
             if len(self.sockets) < self.max_size:
-                self.sockets.append(self.sock[1])
+                self.sockets.append((self.sock[1], self.sock[2]))
             else:
                 self.sock[1].close()
         self.sock = None
