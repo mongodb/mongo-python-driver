@@ -114,7 +114,8 @@ def _check_command_response(response, reset, msg="%s", allowable_errors=[]):
             raise TimeoutError(msg % response["errmsg"])
         if not response["errmsg"] in allowable_errors:
             if response["errmsg"] == "not master":
-                reset()
+                if reset is not None:
+                    reset()
                 raise AutoReconnect("not master")
             if response["errmsg"] == "db assertion failure":
                 ex_msg = ("db assertion failure, assertion: '%s'" %

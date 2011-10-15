@@ -180,7 +180,7 @@ class ReplicaSetConnection(common.BaseObject):
             self.__seeds.add(('localhost', 27017))
         elif '://' in hosts_or_uri:
             res = uri_parser.parse_uri(hosts_or_uri)
-            self.__seeds.update(res['nodes'])
+            self.__seeds.update(res['nodelist'])
             username = res['username']
             password = res['password']
             db_name = res['database']
@@ -369,39 +369,37 @@ class ReplicaSetConnection(common.BaseObject):
         """
         return self.__tz_aware
 
-    def __auth(self, sock, dbase, user, passwd):
-        """Athenticate `sock` against `dbase`
+    def __simple_command(self, sock, dbname, spec):
+        """Send a command to the server.
         """
-        # TODO: Error handling...
-        # Get a nonce
-        request_id, msg, _ = message.query(0, dbase + '.$cmd',
-                                           0, -1, {'getnonce': 1})
+        rqst_id, msg, _ = message.query(0, dbname + '.$cmd', 0, -1, spec)
         sock.sendall(msg)
-        raw = self.__recv_msg(1, request_id, sock)
-        nonce = helpers._unpack_response(raw)['data'][0]['nonce']
+        response = self.__recv_msg(1, rqst_id, sock)
+        response = helpers._unpack_response(response)['data'][0]
+        msg = "command %r failed: %%s" % spec
+        helpers._check_command_response(response, None, msg)
+        return response
+
+    def __auth(self, sock, dbname, user, passwd):
+        """Authenticate socket `sock` against database `dbname`.
+        """
+        # Get a nonce
+        response = self.__simple_command(sock, dbname, {'getnonce': 1})
+        nonce = response['nonce']
         key = helpers._auth_key(nonce, user, passwd)
 
         # Actually authenticate
         query = SON([('authenticate', 1),
                      ('user', user), ('nonce', nonce), ('key', key)])
-        request_id, msg, _ = message.query(0, dbase + '.$cmd', 0, -1, query)
-        sock.sendall(msg)
-        # TODO: check response for errors
-        raw = self.__recv_msg(1, request_id, sock)
-        helpers._unpack_response(raw)['data'][0]
+        self.__simple_command(sock, dbname, query)
 
-    def __is_master(self, candidate):
+    def __is_master(self, host):
         """Directly call ismaster.
         """
-        # TODO: Error handling...
-        request_id, msg, _ = message.query(0, 'admin.$cmd',
-                                           0, -1, {'ismaster': 1})
-        mongo = pool.Pool(candidate, self.__max_pool_size,
+        mongo = pool.Pool(host, self.__max_pool_size,
                           self.__net_timeout, self.__conn_timeout)
         sock = mongo.get_socket()[0]
-        sock.sendall(msg)
-        raw = self.__recv_msg(1, request_id, sock)
-        response = helpers._unpack_response(raw)['data'][0]
+        response = self.__simple_command(sock, 'admin', {'ismaster': 1})
         return response, mongo
 
     def __update_readers(self):
