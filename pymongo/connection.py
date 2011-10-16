@@ -725,12 +725,12 @@ class Connection(common.BaseObject):
 
         helpers._check_command_response(error, self.disconnect)
 
-        # TODO unify logic with database.error method
-        if error.get("err") is None:
+        error_msg = error.get("err", "")
+        if error_msg is None:
             return error
-        if error["err"].startswith("not master"):
+        if error_msg.startswith("not master"):
             self.disconnect()
-            raise AutoReconnect(error["err"])
+            raise AutoReconnect(error_msg)
 
         if "code" in error:
             if error["code"] in [11000, 11001, 12582]:

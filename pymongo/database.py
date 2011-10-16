@@ -484,9 +484,10 @@ class Database(common.BaseObject):
         error that occurred.
         """
         error = self.command("getlasterror")
-        if error.get("err", 0) is None:
+        error_msg = error.get("err", "")
+        if error_msg is None:
             return None
-        if error["err"].startswith("not master"):
+        if error_msg.startswith("not master"):
             self.__connection.disconnect()
         return error
 
