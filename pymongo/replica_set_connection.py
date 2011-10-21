@@ -285,23 +285,38 @@ class ReplicaSetConnection(common.BaseObject):
         elif db_name in self.__auth_credentials:
             del self.__auth_credentials[db_name]
 
-    # TODO: auto logout...
     def __check_auth(self, sock, authset):
         """Authenticate using cached database credentials.
 
         If credentials for the 'admin' database are available only
         this database is authenticated, since this gives global access.
         """
+        names = set(self.__auth_credentials.iterkeys())
+
+        # Logout from any databases no longer listed in the credentials cache.
+        for dbname in authset - names:
+            try:
+                self.__simple_command(sock, dbname, {'logout': 1})
+            # TODO: We used this socket to logout. Fix logout so we don't
+            # have to catch this.
+            except OperationFailure:
+                pass
+            authset.discard(dbname)
+
+        # Once logged into the admin database we can access anything.
+        if "admin" in authset:
+            return
+
         if "admin" in self.__auth_credentials:
             username, password = self.__auth_credentials["admin"]
             self.__auth(sock, 'admin', username, password)
             authset.add('admin')
         else:
-            names = set(self.__auth_credentials.iterkeys())
             for db_name in names - authset:
                 user, pwd = self.__auth_credentials[db_name]
                 self.__auth(sock, db_name, user, pwd)
                 authset.add(db_name)
+
 
     @property
     def seeds(self):
@@ -530,7 +545,7 @@ class ReplicaSetConnection(common.BaseObject):
             host, port = mongo['pool'].host
             raise AutoReconnect("could not connect to "
                                 "%s:%d: %s" % (host, port, str(why)))
-        if self.__auth_credentials and "admin" not in authset:
+        if self.__auth_credentials or authset:
             self.__check_auth(sock, authset)
         return sock
 
