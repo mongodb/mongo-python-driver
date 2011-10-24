@@ -344,7 +344,7 @@ class Connection(common.BaseObject):
                                          "be a positive integer")
         self.__net_timeout = (network_timeout or
                               options.get('sockettimeoutms'))
-        self.__conn_timeout = options.get('connectiontimeoutms')
+        self.__conn_timeout = options.get('connecttimeoutms')
         self.__use_ssl = options.get('ssl', False)
         if self.__use_ssl and not have_ssl:
             raise ConfigurationError("The ssl module is not available. If you "
