@@ -192,6 +192,7 @@ setup(
     install_requires=[],
     features=features,
     license="Apache License, Version 2.0",
+    tests_require=['nose'],
     test_suite="nose.collector",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
