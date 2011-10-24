@@ -61,6 +61,11 @@ if sys.platform.startswith('java'):
 else:
     from select import select
 
+have_ssl = True
+try:
+    import ssl
+except ImportError:
+    have_ssl = False
 
 def _closed(sock):
     """Return True if we know socket has been closed, False otherwise.
@@ -95,16 +100,18 @@ class _Pool(threading.local):
     """
 
     # Non thread-locals
-    __slots__ = ["pid", "max_size", "net_timeout", "conn_timeout", "sockets"]
+    __slots__ = ["pid", "max_size", "net_timeout",
+                 "conn_timeout", "use_ssl", "sockets"]
 
     # thread-local default
     sock = None
 
-    def __init__(self, max_size, net_timeout, conn_timeout):
+    def __init__(self, max_size, net_timeout, conn_timeout, use_ssl):
         self.pid = os.getpid()
         self.max_size = max_size
         self.net_timeout = net_timeout
         self.conn_timeout = conn_timeout
+        self.use_ssl = use_ssl
         if not hasattr(self, "sockets"):
             self.sockets = []
 
@@ -118,16 +125,23 @@ class _Pool(threading.local):
             s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             s.settimeout(self.conn_timeout or 20.0)
             s.connect((host, port))
-            s.settimeout(self.net_timeout)
-            return s
         except socket.gaierror:
             # If that fails try IPv6
             s = socket.socket(socket.AF_INET6)
             s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             s.settimeout(self.conn_timeout or 20.0)
             s.connect((host, port))
-            s.settimeout(self.net_timeout)
-            return s
+
+        if self.use_ssl:
+            try:
+                s = ssl.wrap_socket(s)
+            except ssl.SSLError:
+                raise ConnectionFailure("SSL handshake failed. MongoDB may "
+                                        "not be configured with SSL support.")
+
+        s.settimeout(self.net_timeout)
+
+        return s
 
     def get_socket(self, host, port):
         # We use the pid here to avoid issues with fork / multiprocessing.
@@ -244,10 +258,12 @@ class Connection(common.BaseObject):
             before timing out.
           - `connectTimeoutMS`: How long a connection can take to be opened
             before timing out.
+          - `ssl`: If True, create the connection to the server using SSL.
 
         .. seealso:: :meth:`end_request`
         .. versionchanged:: 2.0.1+
            Support `w` = integer or string.
+           Added `ssl` option.
         .. versionchanged:: 2.0
            `slave_okay` is a pure keyword argument. Added support for safe,
            and getlasterror options as keyword arguments.
@@ -329,9 +345,16 @@ class Connection(common.BaseObject):
         self.__net_timeout = (network_timeout or
                               options.get('sockettimeoutms'))
         self.__conn_timeout = options.get('connectiontimeoutms')
+        self.__use_ssl = options.get('ssl', False)
+        if self.__use_ssl and not have_ssl:
+            raise ConfigurationError("The ssl module is not available. If you "
+                                     "are using a python version previous to "
+                                     "2.6 you must install the ssl package "
+                                     "from PyPI.")
         self.__pool = _Pool(self.__max_pool_size,
                             self.__net_timeout,
-                            self.__conn_timeout)
+                            self.__conn_timeout,
+                            self.__use_ssl)
 
         self.__last_checkout = time.time()
 
@@ -672,7 +695,8 @@ class Connection(common.BaseObject):
         """
         self.__pool = _Pool(self.__max_pool_size,
                             self.__net_timeout,
-                            self.__conn_timeout)
+                            self.__conn_timeout,
+                            self.__use_ssl)
         self.__host = None
         self.__port = None
 

@@ -155,6 +155,7 @@ class ReplicaSetConnection(common.BaseObject):
             before timing out.
           - `connectTimeoutMS`: How long a connection can take to be opened
             before timing out.
+          - `ssl`: If True, create the connection to the servers using SSL.
 
         .. versionadded:: 2.0.1+
         """
@@ -198,6 +199,12 @@ class ReplicaSetConnection(common.BaseObject):
                                      "keyword parameter is required.")
         self.__net_timeout = self.__opts.get('sockettimeoutms')
         self.__conn_timeout = self.__opts.get('connecttimeoutms')
+        self.__use_ssl = self.__opts.get('ssl', False)
+        if self.__use_ssl and not pool.have_ssl:
+            raise ConfigurationError("The ssl module is not available. If you "
+                                     "are using a python version previous to "
+                                     "2.6 you must install the ssl package "
+                                     "from PyPI.")
 
         super(ReplicaSetConnection, self).__init__(**self.__opts)
 
@@ -412,7 +419,8 @@ class ReplicaSetConnection(common.BaseObject):
         """Directly call ismaster.
         """
         mongo = pool.Pool(host, self.__max_pool_size,
-                          self.__net_timeout, self.__conn_timeout)
+                          self.__net_timeout, self.__conn_timeout,
+                          self.__use_ssl)
         sock = mongo.get_socket()[0]
         response = self.__simple_command(sock, 'admin', {'ismaster': 1})
         return response, mongo
@@ -538,7 +546,8 @@ class ReplicaSetConnection(common.BaseObject):
                     mongo['pool'] = pool.Pool(host,
                                               self.__max_pool_size,
                                               self.__net_timeout,
-                                              self.__conn_timeout)
+                                              self.__conn_timeout,
+                                              self.__use_ssl)
                     sock, authset = mongo['pool'].get_socket()
             mongo['last_checkout'] = now
         except socket.error, why:

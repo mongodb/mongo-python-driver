@@ -16,6 +16,14 @@ import os
 import socket
 import threading
 
+from pymongo.errors import ConnectionFailure
+
+have_ssl = True
+try:
+    import ssl
+except ImportError:
+    have_ssl = False
+
 
 class Pool(threading.local):
     """A simple connection pool.
@@ -26,17 +34,18 @@ class Pool(threading.local):
 
     # Non thread-locals
     __slots__ = ["pid", "host", "max_size",
-                 "net_timeout", "conn_timeout", "sockets"]
+                 "net_timeout", "conn_timeout", "use_ssl", "sockets"]
 
     # thread-local default
     sock = None
 
-    def __init__(self, host, max_size, net_timeout, conn_timeout):
+    def __init__(self, host, max_size, net_timeout, conn_timeout, use_ssl):
         self.pid = os.getpid()
         self.host = host
         self.max_size = max_size
         self.net_timeout = net_timeout
         self.conn_timeout = conn_timeout
+        self.use_ssl = use_ssl
         if not hasattr(self, "sockets"):
             self.sockets = []
 
@@ -50,16 +59,23 @@ class Pool(threading.local):
             s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             s.settimeout(self.conn_timeout or 20.0)
             s.connect(self.host)
-            s.settimeout(self.net_timeout)
-            return s
         except socket.gaierror:
             # If that fails try IPv6
             s = socket.socket(socket.AF_INET6)
             s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             s.settimeout(self.conn_timeout or 20.0)
             s.connect(self.host)
-            s.settimeout(self.net_timeout)
-            return s
+
+        if self.use_ssl:
+            try:
+                s = ssl.wrap_socket(s)
+            except ssl.SSLError:
+                raise ConnectionFailure("SSL handshake failed. MongoDB may "
+                                        "not be configured with SSL support.")
+
+        s.settimeout(self.net_timeout)
+
+        return s
 
     def get_socket(self):
         """Get a socket from the pool. Returns a new socket if the
