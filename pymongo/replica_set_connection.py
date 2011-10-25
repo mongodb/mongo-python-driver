@@ -808,7 +808,8 @@ class ReplicaSetConnection(common.BaseObject):
         if not isinstance(cursor_id, (int, long)):
             raise TypeError("cursor_id must be an instance of (int, long)")
 
-        self._send_message(message.kill_cursors([cursor_id]), conn_id)
+        self._send_message(message.kill_cursors([cursor_id]),
+                           _connection_to_use=conn_id)
 
     def database_names(self):
         """Get a list of the names of all databases on the connected server.
