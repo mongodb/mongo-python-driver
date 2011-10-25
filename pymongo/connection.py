@@ -136,6 +136,7 @@ class _Pool(threading.local):
             try:
                 s = ssl.wrap_socket(s)
             except ssl.SSLError:
+                s.close()
                 raise ConnectionFailure("SSL handshake failed. MongoDB may "
                                         "not be configured with SSL support.")
 
