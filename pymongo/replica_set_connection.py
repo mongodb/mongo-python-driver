@@ -391,6 +391,16 @@ class ReplicaSetConnection(common.BaseObject):
         """
         return self.__tz_aware
 
+    @property
+    def max_bson_size(self):
+        """Returns the maximum size BSON object the connected primary
+        accepts in bytes. Defaults to 4MB in server < 1.7.4. Returns
+        0 if no primary is available.
+        """
+        if self.__writer:
+            return self.__writer['max_bson_size']
+        return 0
+
     def __simple_command(self, sock, dbname, spec):
         """Send a command to the server.
         """
@@ -425,6 +435,8 @@ class ReplicaSetConnection(common.BaseObject):
         response = self.__simple_command(sock, 'admin', {'ismaster': 1})
         return response, mongo
 
+    # TODO: Ensure cursors can call getMore from the
+    # right host after a failover.
     def __update_readers(self):
         """Update the list of hosts we can send read requests to.
         """
@@ -433,11 +445,11 @@ class ReplicaSetConnection(common.BaseObject):
         if self.__read_pref != PRIMARY:
             for host in self.__hosts:
                 try:
-                    response, mongo = self.__is_master(host)
+                    res, mongo = self.__is_master(host)
                     if (self.__read_pref == SECONDARY_ONLY and
-                        response['ismaster']):
+                        res['ismaster']):
                         continue
-                    bson_max = response.get('max_bson_size') or MAX_BSON_SIZE
+                    bson_max = res.get('maxBsonObjectSize') or MAX_BSON_SIZE
                     readers.append(host)
                     reader_pools[host] = {'pool': mongo,
                                           'last_checkout': time.time(),
@@ -489,7 +501,7 @@ class ReplicaSetConnection(common.BaseObject):
             response, mongo = self.__is_master(host)
         except Exception, why:
             raise AutoReconnect("%s:%d: %s" % (host[0], host[1], str(why)))
-        bson_max = response.get('max_bson_size') or MAX_BSON_SIZE
+        bson_max = response.get('maxBsonObjectSize') or MAX_BSON_SIZE
         if response["ismaster"]:
             self.__writer = {'pool': mongo,
                              'last_checkout': time.time(),
@@ -810,6 +822,11 @@ class ReplicaSetConnection(common.BaseObject):
 
         self._send_message(message.kill_cursors([cursor_id]),
                            _connection_to_use=conn_id)
+
+    def server_info(self):
+        """Get information about the MongoDB primary we're connected to.
+        """
+        return self.admin.command("buildinfo")
 
     def database_names(self):
         """Get a list of the names of all databases on the connected server.
