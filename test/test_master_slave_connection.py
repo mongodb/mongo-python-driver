@@ -367,18 +367,21 @@ class TestMasterSlaveConnection(unittest.TestCase):
         self.assertEquals(False, conn.tz_aware)
         db = conn.pymongo_test
         db.tztest.insert({'dt': dt}, safe=True)
+        time.sleep(0.5)
         self.assertEqual(None, db.tztest.find_one()['dt'].tzinfo)
 
         conn = MasterSlaveConnection(self.master, self.slaves, tz_aware=True)
         self.assertEquals(True, conn.tz_aware)
         db = conn.pymongo_test
         db.tztest.insert({'dt': dt}, safe=True)
+        time.sleep(0.5)
         self.assertEqual(utc, db.tztest.find_one()['dt'].tzinfo)
 
         conn = MasterSlaveConnection(self.master, self.slaves, tz_aware=False)
         self.assertEquals(False, conn.tz_aware)
         db = conn.pymongo_test
         db.tztest.insert({'dt': dt})
+        time.sleep(0.5)
         self.assertEqual(None, db.tztest.find_one()['dt'].tzinfo)
 
 
