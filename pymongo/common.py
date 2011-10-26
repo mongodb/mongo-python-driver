@@ -79,7 +79,11 @@ def validate_timeout_or_none(option, value):
     """
     if value is None:
         return value
-    value = validate_integer(option, value)
+    try:
+        value = float(value)
+    except (ValueError, TypeError):
+        raise ConfigurationError("%s must be an instance of int, float, "
+                                 "or a string representation" % (option,))
     if value <= 0:
         raise ConfigurationError("%s must be a positive integer" % (option,))
     return value / 1000.0

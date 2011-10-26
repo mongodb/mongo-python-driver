@@ -361,6 +361,12 @@ class TestConnection(unittest.TestCase):
         self.assert_(isinstance(db.test.find_one(), dict))
         self.assertFalse(isinstance(db.test.find_one(), SON))
 
+    def test_timeouts(self):
+        conn = Connection(self.host, self.port, connectTimeoutMS=300)
+        self.assertEquals(0.3, conn._Connection__pool.conn_timeout)
+        conn = Connection(self.host, self.port, socketTimeoutMS=300)
+        self.assertEquals(0.3, conn._Connection__pool.net_timeout)
+
     def test_network_timeout(self):
         no_timeout = Connection(self.host, self.port)
         timeout = Connection(self.host, self.port, network_timeout=0.1)
