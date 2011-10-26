@@ -157,9 +157,9 @@ class BaseObject(object):
         """Validates and sets all options passed to this object."""
         for option, value in options.iteritems():
             if option in ('slave_okay', 'slaveok'):
-                self.slave_okay = value
+                self.__slave_okay = validate_boolean(option, value)
             elif option == 'safe':
-                self.safe = value
+                self.__safe = validate_boolean(option, value)
             elif option in SAFE_OPTIONS:
                 if option == 'journal':
                     self.__set_safe_option('j', value)

@@ -343,12 +343,21 @@ class ReplicaSetConnection(common.BaseObject):
         """
         return self.__arbiters
 
-    @property
-    def slave_okay(self):
+    def __get_slave_okay(self):
         """Is it OK to perform queries on a secondary? This is
         always True for an instance of ReplicaSetConnection.
         """
         return True
+
+    def __set_slave_okay(self, value):
+        """Setter for slave_okay. Just raises an exception since
+        slave_okay is always True in ReplicaSetConnection.
+        """
+        raise ConfigurationError("slave_okay is always True in a "
+                                 "ReplicaSetConnection. Use the "
+                                 "read_preference attribute instead.")
+
+    slave_okay = property(__get_slave_okay, __set_slave_okay)
 
     @property
     def max_pool_size(self):
