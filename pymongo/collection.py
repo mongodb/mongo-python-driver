@@ -36,6 +36,7 @@ def _gen_index_name(keys):
 class Collection(common.BaseObject):
     """A Mongo collection.
     """
+    cursor_cls = Cursor
 
     def __init__(self, database, name, options=None, create=False, **kwargs):
         """Get / create a Mongo collection.
@@ -593,7 +594,7 @@ class Collection(common.BaseObject):
         """
         if not 'slave_okay' in kwargs and self.slave_okay:
             kwargs['slave_okay'] = True
-        return Cursor(self, *args, **kwargs)
+        return self.cursor_cls(self, *args, **kwargs)
 
     def count(self):
         """Get the number of documents in this collection.
