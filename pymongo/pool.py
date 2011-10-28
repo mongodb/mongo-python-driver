@@ -102,6 +102,13 @@ class Pool(threading.local):
             self.sock = (pid, self.connect(), set())
         return (self.sock[1], self.sock[2])
 
+    def discard_socket(self):
+        """Close and discard the active socket.
+        """
+        if self.sock:
+            self.sock[1].close()
+            self.sock = None
+
     def return_socket(self):
         """Return the socket currently in use to the pool. If the
         pool is full the socket will be discarded.

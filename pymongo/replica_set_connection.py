@@ -444,8 +444,10 @@ class ReplicaSetConnection(common.BaseObject):
         response = self.__simple_command(sock, 'admin', {'ismaster': 1})
         return response, mongo
 
-    # TODO: Ensure cursors can call getMore from the
-    # right host after a failover.
+    # TODO:
+    # Ensure cursors can call getMore from the right host after a failover.
+    # Check that 'ismaster' or 'secondary' is True.
+    # Don't create two pools for the primary.
     def __update_readers(self):
         """Update the list of hosts we can send read requests to.
         """
@@ -497,7 +499,7 @@ class ReplicaSetConnection(common.BaseObject):
                     self.__hosts = set([_partition_node(h)
                                         for h in response["hosts"]])
                     break
-            except Exception, why:
+            except (ConnectionFailure, socket.error), why:
                 errors.append("%s:%d: %s" % (node[0], node[1], str(why)))
         else:
             # Couldn't find a suitable host.
@@ -508,14 +510,13 @@ class ReplicaSetConnection(common.BaseObject):
         """
         try:
             response, mongo = self.__is_master(host)
-        except Exception, why:
-            raise AutoReconnect("%s:%d: %s" % (host[0], host[1], str(why)))
+        except (ConnectionFailure, socket.error), why:
+            raise ConnectionFailure("%s:%d: %s" % (host[0], host[1], str(why)))
         bson_max = response.get('maxBsonObjectSize') or MAX_BSON_SIZE
         if response["ismaster"]:
-            self.__writer = {'pool': mongo,
-                             'last_checkout': time.time(),
-                             'max_bson_size': bson_max}
-            return True
+            return {'pool': mongo,
+                    'last_checkout': time.time(),
+                    'max_bson_size': bson_max}
         elif "primary" in response:
             candidate = _partition_node(response["primary"])
             # Don't report the same connect failure multiple times.
@@ -539,9 +540,9 @@ class ReplicaSetConnection(common.BaseObject):
         errors = []
         for candidate in self.__hosts:
             try:
-                if self.__check_is_primary(candidate):
-                    return self.__writer
-            except Exception, why:
+                self.__writer = self.__check_is_primary(candidate)
+                return self.__writer
+            except (ConnectionFailure, socket.error), why:
                 errors.append(str(why))
         # Couldn't find the primary.
         raise AutoReconnect(', '.join(errors))
@@ -693,66 +694,45 @@ class ReplicaSetConnection(common.BaseObject):
         else:
             host = self.__readers[_connection_to_use]
             mongo = self.__reader_pools[host]
-        try:
-            try:
-                rqst_id, data = self.__check_bson_size(msg,
-                                                       mongo['max_bson_size'])
-                sock = self.__socket(mongo)
-                sock.sendall(data)
-                # Safe mode. We pack the message together with a lastError
-                # message and send both. We then get the response (to the
-                # lastError) and raise OperationFailure if it is an error
-                # response.
-                if safe:
-                    response = self.__recv_msg(1, rqst_id, sock)
-                    return self.__check_response_to_last_error(response)
-                return None
-            except(ConnectionFailure, socket.error), why:
-                if _connection_to_use in (None, -1):
-                    self.disconnect()
-                raise AutoReconnect(str(why))
-        finally:
-            mongo['pool'].return_socket()
 
-    def __send_and_receive(self, mongo, msg, timeout):
+        sock = self.__socket(mongo)
+        try:
+            rqst_id, data = self.__check_bson_size(msg,
+                                                   mongo['max_bson_size'])
+            sock.sendall(data)
+            # Safe mode. We pack the message together with a lastError
+            # message and send both. We then get the response (to the
+            # lastError) and raise OperationFailure if it is an error
+            # response.
+            if safe:
+                response = self.__recv_msg(1, rqst_id, sock)
+                return self.__check_response_to_last_error(response)
+            return None
+        except(ConnectionFailure, socket.error), why:
+            mongo['pool'].discard_socket()
+            if _connection_to_use in (None, -1):
+                self.disconnect()
+            raise AutoReconnect(str(why))
+        mongo['pool'].return_socket()
+
+    def __send_and_receive(self, mongo, msg, **kwargs):
         """Send a message on the given socket and return the response data.
         """
+        sock = self.__socket(mongo)
         try:
-            sock = self.__socket(mongo)
-            if timeout:
-                sock.settimeout(timeout)
-            rqst_id, data = self.__check_bson_size(msg, mongo['max_bson_size'])
+            if "network_timeout" in kwargs:
+                sock.settimeout(kwargs['network_timeout'])
+            rqst_id, data = self.__check_bson_size(msg,
+                                                   mongo['max_bson_size'])
             sock.sendall(data)
             return self.__recv_msg(1, rqst_id, sock)
-        finally:
-            if timeout:
-                sock.settimeout(self.__net_timeout)
-            mongo['pool'].return_socket()
+        except (ConnectionFailure, socket.error), why:
+            mongo['pool'].discard_socket()
+            raise AutoReconnect(str(why))
 
-    def __iter_secondaries(self, msg, timeout):
-        """Iterate through the readers attempting to return a read
-        result.
-        """
-        errors = []
-        for conn_id in random.sample(range(0, len(self.__readers)),
-                                     len(self.__readers)):
-            try:
-                host = self.__readers[conn_id]
-                mongo = self.__reader_pools[host]
-                return conn_id, self.__send_and_receive(mongo, msg, timeout)
-            except Exception, why:
-                errors.append(str(why))
-        else:
-            if (self.__read_pref == SECONDARY_ONLY or
-                not self.__writer):
-                raise AutoReconnect(', '.join(errors))
-            # Fall back to primary...
-            try:
-                return -1, self.__send_and_receive(self.__writer, msg, timeout)
-            except Exception, why:
-                self.disconnect()
-                errors.append(str(why))
-                raise AutoReconnect(', '.join(errors))
+        if "network_timeout" in kwargs:
+            sock.settimeout(self.__net_timeout)
+        mongo['pool'].return_socket()
 
     def _send_message_with_response(self, msg, _connection_to_use=None,
                                     _must_use_master=False, **kwargs):
@@ -763,26 +743,35 @@ class ReplicaSetConnection(common.BaseObject):
         :Parameters:
           - `msg`: (request_id, data) pair making up the message to send
         """
-        timeout = kwargs.get("network_timeout")
-        if _connection_to_use is not None:
-            if _connection_to_use == -1:
-                mongo = self.__find_primary()
-            else:
-                host = self.__readers[_connection_to_use]
-                mongo = self.__reader_pools[host]
-        elif _must_use_master or self.__read_pref == PRIMARY:
-            _connection_to_use = -1
-            mongo = self.__find_primary()
-        else:
-            return self.__iter_secondaries(msg, timeout)
-
         try:
-            return _connection_to_use, self.__send_and_receive(mongo,
-                                                               msg, timeout)
-        except(ConnectionFailure, socket.error), why:
+            if _connection_to_use is not None:
+                if _connection_to_use == -1:
+                    mongo = self.__find_primary()
+                else:
+                    host = self.__readers[_connection_to_use]
+                    mongo = self.__reader_pools[host]
+                return _connection_to_use, self.__send_and_receive(mongo,
+                                                                   msg,
+                                                                   **kwargs)
+            elif _must_use_master or self.__read_pref == PRIMARY:
+                _connection_to_use = -1
+                mongo = self.__find_primary()
+                return -1, self.__send_and_receive(mongo, msg, **kwargs)
+        except AutoReconnect:
             if _connection_to_use == -1:
                 self.disconnect()
-            raise AutoReconnect(str(why))
+            raise
+
+        errors = []
+        for conn_id in random.sample(range(0, len(self.__readers)),
+                                     len(self.__readers)):
+            try:
+                host = self.__readers[conn_id]
+                mongo = self.__reader_pools[host]
+                return conn_id, self.__send_and_receive(mongo, msg, **kwargs)
+            except AutoReconnect, why:
+                errors.append(str(why))
+        raise AutoReconnect(', '.join(errors))
 
     def __cmp__(self, other):
         # XXX: Implement this?
