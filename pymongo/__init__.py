@@ -37,11 +37,11 @@ SLOW_ONLY = 1
 ALL = 2
 """Profile all operations."""
 
-PRIMARY = 1
+PRIMARY = 0
 """Send all reads to the primary in a ReplicaSetConnection."""
-SECONDARY = 2
+SECONDARY = 1
 """Send reads to all active members of a ReplicaSetConnection."""
-SECONDARY_ONLY = 3
+SECONDARY_ONLY = 2
 """Send all reads to secondaries in a ReplicaSetConnection."""
 
 version_tuple = (2, 0, 1, '+')

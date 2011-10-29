@@ -15,6 +15,7 @@
 
 """Functions and classes common to multiple pymongo modules."""
 
+from pymongo import PRIMARY, SECONDARY, SECONDARY_ONLY
 from pymongo.errors import ConfigurationError
 
 
@@ -89,9 +90,17 @@ def validate_timeout_or_none(option, value):
     return value / 1000.0
 
 
+def validate_read_preference(dummy, value):
+    """Validate read preference for a ReplicaSetConnection.
+    """
+    if value not in (PRIMARY, SECONDARY, SECONDARY_ONLY):
+        raise ConfigurationError("Not a valid read preference")
+    return value
+
+
 # jounal is an alias for j,
 # wtimeoutms is an alias for wtimeout
-VALIDATORS = { 
+VALIDATORS = {
     'replicaset': validate_basestring,
     'slaveok': validate_boolean,
     'slave_okay': validate_boolean,
@@ -105,6 +114,7 @@ VALIDATORS = {
     'connecttimeoutms': validate_timeout_or_none,
     'sockettimeoutms': validate_timeout_or_none,
     'ssl': validate_boolean,
+    'read_preference': validate_read_preference,
 }
 
 
@@ -137,6 +147,7 @@ class BaseObject(object):
     def __init__(self, **options):
 
         self.__slave_okay = False
+        self.__read_pref = SECONDARY
         self.__safe = False
         self.__safe_opts = {}
         self.__set_options(options)
@@ -158,6 +169,8 @@ class BaseObject(object):
         for option, value in options.iteritems():
             if option in ('slave_okay', 'slaveok'):
                 self.__slave_okay = validate_boolean(option, value)
+            elif option == 'read_preference':
+                self.__read_pref = validate_read_preference(option, value)
             elif option == 'safe':
                 self.__safe = validate_boolean(option, value)
             elif option in SAFE_OPTIONS:
@@ -180,6 +193,21 @@ class BaseObject(object):
         self.__slave_okay = validate_boolean('slave_okay', value)
 
     slave_okay = property(__get_slave_okay, __set_slave_okay)
+
+    def __get_read_pref(self):
+        """The read preference for this instance. Only used
+        with an instance of ReplicaSetConnection. Ignored in
+        Connection and MasterSlaveConnection.
+
+        .. versionadded:: 2.0.1+
+        """
+        return self.__read_pref
+
+    def __set_read_pref(self, value):
+        """Property setter for read_preference"""
+        self.__read_pref = validate_read_preference('read_preference', value)
+
+    read_preference = property(__get_read_pref, __set_read_pref)
 
     def __get_safe(self):
         """Use getlasterrer with every write operation?
@@ -222,7 +250,7 @@ class BaseObject(object):
 
         If no options are passed unsets all getlasterror options.
         This does not set `safe` to False.
-        
+
         :Parameters:
             - `*options`: The list of options to unset.
 
@@ -233,4 +261,3 @@ class BaseObject(object):
                 self.__safe_opts.pop(option, None)
         else:
             self.__safe_opts = {}
-

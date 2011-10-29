@@ -58,9 +58,11 @@ class Database(common.BaseObject):
 
         .. mongodoc:: databases
         """
-        super(Database, self).__init__(slave_okay=connection.slave_okay,
-                                       safe=connection.safe,
-                                       **(connection.get_lasterror_options()))
+        super(Database,
+              self).__init__(slave_okay=connection.slave_okay,
+                             read_preference=connection.read_preference,
+                             safe=connection.safe,
+                             **(connection.get_lasterror_options()))
 
         if not isinstance(name, basestring):
             raise TypeError("name must be an instance of basestring")

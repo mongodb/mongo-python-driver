@@ -17,7 +17,8 @@
 from bson.code import Code
 from bson.son import SON
 from pymongo import (helpers,
-                     message)
+                     message,
+                     SECONDARY)
 from pymongo.errors import (InvalidOperation,
                             AutoReconnect)
 
@@ -42,7 +43,8 @@ class Cursor(object):
                  timeout=True, snapshot=False, tailable=False, sort=None,
                  max_scan=None, as_class=None, slave_okay=False,
                  await_data=False, partial=False, manipulate=True,
-                 _must_use_master=False, _is_command=False, **kwargs):
+                 read_preference=SECONDARY, _must_use_master=False,
+                 _is_command=False, **kwargs):
         """Create a new cursor.
 
         Should not be called directly by application developers - see
@@ -110,6 +112,7 @@ class Cursor(object):
         self.__as_class = as_class
         self.__slave_okay = slave_okay
         self.__manipulate = manipulate
+        self.__read_preference = read_preference
         self.__tz_aware = collection.database.connection.tz_aware
         self.__must_use_master = _must_use_master
         self.__is_command = _is_command
@@ -175,6 +178,7 @@ class Cursor(object):
         copy.__await_data = self.__await_data
         copy.__partial = self.__partial
         copy.__manipulate = self.__manipulate
+        copy.__read_preference = self.__read_preference
         copy.__must_use_master = self.__must_use_master
         copy.__is_command = self.__is_command
         copy.__query_flags = self.__query_flags
@@ -574,6 +578,7 @@ class Cursor(object):
         """
         db = self.__collection.database
         kwargs = {"_must_use_master": self.__must_use_master}
+        kwargs["read_preference"] = self.__read_preference
         if self.__connection_id is not None:
             kwargs["_connection_to_use"] = self.__connection_id
         kwargs.update(self.__kwargs)

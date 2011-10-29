@@ -18,11 +18,12 @@
       .. autoattribute:: seeds
       .. autoattribute:: hosts
       .. autoattribute:: arbiters
+      .. autoattribute:: primary
+      .. autoattribute:: secondaries
       .. autoattribute:: read_preference
       .. autoattribute:: max_pool_size
       .. autoattribute:: document_class
       .. autoattribute:: tz_aware
-      .. autoattribute:: slave_okay
       .. autoattribute:: safe
       .. automethod:: get_lasterror_options
       .. automethod:: set_lasterror_options

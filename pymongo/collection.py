@@ -69,9 +69,11 @@ class Collection(common.BaseObject):
 
         .. mongodoc:: collections
         """
-        super(Collection, self).__init__(slave_okay=database.slave_okay,
-                                         safe=database.safe,
-                                         **(database.get_lasterror_options()))
+        super(Collection,
+              self).__init__(slave_okay=database.slave_okay,
+                             read_preference=database.read_preference,
+                             safe=database.safe,
+                             **(database.get_lasterror_options()))
 
         if not isinstance(name, basestring):
             raise TypeError("name must be an instance of basestring")
@@ -566,6 +568,8 @@ class Collection(common.BaseObject):
           - `network_timeout` (optional): specify a timeout to use for
             this query, which will override the
             :class:`~pymongo.connection.Connection`-level default
+          - `read_preference` (optional): The read preference for
+            this read operation. Only used with ReplicaSetConnection.
 
         .. note:: The `manipulate` parameter may default to False in
            a future release.
@@ -593,6 +597,8 @@ class Collection(common.BaseObject):
         """
         if not 'slave_okay' in kwargs and self.slave_okay:
             kwargs['slave_okay'] = True
+        if not 'read_preference'in kwargs:
+            kwargs['read_preference'] = self.read_preference
         return Cursor(self, *args, **kwargs)
 
     def count(self):
