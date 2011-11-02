@@ -234,8 +234,6 @@ class Connection(common.BaseObject):
 
           Other optional parameters can be passed as keyword arguments:
 
-          - `slave_okay` or `slaveOk`: Is it OK to perform queries if
-            this connection is to a secondary?
           - `safe`: Use getlasterror for each write operation?
           - `j` or `journal`: Block until write operations have been commited
             to the journal. Ignored if the server is running without journaling.
@@ -260,11 +258,16 @@ class Connection(common.BaseObject):
           - `connectTimeoutMS`: How long a connection can take to be opened
             before timing out.
           - `ssl`: If True, create the connection to the server using SSL.
+          - `read_preference`: The read preference for this connection.
+            See :class:~`pymongo.ReadPreference` for available options.
+          - `slave_okay` or `slaveOk` (deprecated): Use `read_preference`
+            instead.
 
         .. seealso:: :meth:`end_request`
         .. versionchanged:: 2.0.1+
            Support `w` = integer or string.
            Added `ssl` option.
+           DEPRECATED slave_okay/slaveOk.
         .. versionchanged:: 2.0
            `slave_okay` is a pure keyword argument. Added support for safe,
            and getlasterror options as keyword arguments.
@@ -280,9 +283,6 @@ class Connection(common.BaseObject):
            The `tz_aware` parameter.
         .. versionadded:: 1.7
            The `document_class` parameter.
-        .. versionchanged:: 1.4
-           DEPRECATED The `pool_size`, `auto_start_request`, and `timeout`
-           parameters.
         .. versionadded:: 1.1
            The `network_timeout` parameter.
 

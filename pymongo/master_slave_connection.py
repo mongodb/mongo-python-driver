@@ -21,6 +21,7 @@ or all slaves failed.
 
 import random
 
+from pymongo import ReadPreference
 from pymongo.common import BaseObject
 from pymongo.connection import Connection
 from pymongo.database import Database
@@ -38,7 +39,8 @@ class MasterSlaveConnection(BaseObject):
         mechanisms as a regular `Connection`. The `Connection` instances used
         to create this `MasterSlaveConnection` can themselves make use of
         connection pooling, etc. 'Connection' instances used as slaves should
-        be created with the slave_okay option set to True. Safe options are
+        be created with the read_preference option set to
+        :attr:`~pymongo.ReadPreference.SECONDARY`. Safe options are
         inherited from `master` and can be changed in this instance.
 
         Raises TypeError if `master` is not an instance of `Connection` or
@@ -65,6 +67,7 @@ class MasterSlaveConnection(BaseObject):
 
         super(MasterSlaveConnection,
               self).__init__(slave_okay=True,
+                             read_preference=ReadPreference.SECONDARY,
                              safe=master.safe,
                              **(master.get_lasterror_options()))
 

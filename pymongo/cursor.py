@@ -18,7 +18,7 @@ from bson.code import Code
 from bson.son import SON
 from pymongo import (helpers,
                      message,
-                     SECONDARY)
+                     ReadPreference)
 from pymongo.errors import (InvalidOperation,
                             AutoReconnect)
 
@@ -43,8 +43,8 @@ class Cursor(object):
                  timeout=True, snapshot=False, tailable=False, sort=None,
                  max_scan=None, as_class=None, slave_okay=False,
                  await_data=False, partial=False, manipulate=True,
-                 read_preference=SECONDARY, _must_use_master=False,
-                 _is_command=False, **kwargs):
+                 read_preference=ReadPreference.PRIMARY,
+                 _must_use_master=False, _is_command=False, **kwargs):
         """Create a new cursor.
 
         Should not be called directly by application developers - see
@@ -227,7 +227,7 @@ class Cursor(object):
         options = self.__query_flags
         if self.__tailable:
             options |= _QUERY_OPTIONS["tailable_cursor"]
-        if self.__slave_okay:
+        if self.__slave_okay or self.__read_preference:
             options |= _QUERY_OPTIONS["slave_okay"]
         if not self.__timeout:
             options |= _QUERY_OPTIONS["no_timeout"]

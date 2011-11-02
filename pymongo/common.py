@@ -14,8 +14,9 @@
 
 
 """Functions and classes common to multiple pymongo modules."""
+import warnings
 
-from pymongo import PRIMARY, SECONDARY, SECONDARY_ONLY
+from pymongo import ReadPreference
 from pymongo.errors import ConfigurationError
 
 
@@ -93,7 +94,8 @@ def validate_timeout_or_none(option, value):
 def validate_read_preference(dummy, value):
     """Validate read preference for a ReplicaSetConnection.
     """
-    if value not in (PRIMARY, SECONDARY, SECONDARY_ONLY):
+    if value not in range(ReadPreference.PRIMARY,
+                          ReadPreference.SECONDARY_ONLY + 1):
         raise ConfigurationError("Not a valid read preference")
     return value
 
@@ -147,7 +149,7 @@ class BaseObject(object):
     def __init__(self, **options):
 
         self.__slave_okay = False
-        self.__read_pref = SECONDARY
+        self.__read_pref = ReadPreference.PRIMARY
         self.__safe = False
         self.__safe_opts = {}
         self.__set_options(options)
@@ -168,6 +170,8 @@ class BaseObject(object):
         """Validates and sets all options passed to this object."""
         for option, value in options.iteritems():
             if option in ('slave_okay', 'slaveok'):
+                warnings.warn("%s is deprecated. Please use read_preference "
+                      "instead.", DeprecationWarning)
                 self.__slave_okay = validate_boolean(option, value)
             elif option == 'read_preference':
                 self.__read_pref = validate_read_preference(option, value)
@@ -182,22 +186,25 @@ class BaseObject(object):
                     self.__set_safe_option(option, value)
 
     def __get_slave_okay(self):
-        """Is it OK to perform queries on a secondary or slave?
+        """DEPRECATED. Use `read_preference` instead.
 
+        .. versionchanged:: 2.0.1+
         .. versionadded:: 2.0
         """
         return self.__slave_okay
 
     def __set_slave_okay(self, value):
         """Property setter for slave_okay"""
+        warnings.warn("DEPRECATED. Please use "
+                      ":attr:`read_preference` instead.", DeprecationWarning)
         self.__slave_okay = validate_boolean('slave_okay', value)
 
     slave_okay = property(__get_slave_okay, __set_slave_okay)
 
     def __get_read_pref(self):
-        """The read preference for this instance. Only used
-        with an instance of ReplicaSetConnection. Ignored in
-        Connection and MasterSlaveConnection.
+        """The read preference for this instance.
+
+        See :class:`~pymongo.ReadPreference` for available options.
 
         .. versionadded:: 2.0.1+
         """

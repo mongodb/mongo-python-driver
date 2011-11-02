@@ -46,9 +46,7 @@ from pymongo import (common,
                      message,
                      pool,
                      uri_parser,
-                     PRIMARY,
-                     SECONDARY,
-                     SECONDARY_ONLY)
+                     ReadPreference)
 from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
                             ConnectionFailure,
@@ -156,6 +154,10 @@ class ReplicaSetConnection(common.BaseObject):
           - `connectTimeoutMS`: How long a connection can take to be opened
             before timing out.
           - `ssl`: If True, create the connection to the servers using SSL.
+          - `read_preference`: The read preference for this connection.
+            See :class:~`pymongo.ReadPreference` for available options.
+          - `slave_okay` or `slaveOk` (deprecated): Use `read_preference`
+            instead.
 
         .. versionadded:: 2.0.1+
         """
@@ -353,22 +355,6 @@ class ReplicaSetConnection(common.BaseObject):
         """All arbiters known to this replica set.
         """
         return self.__arbiters
-
-    def __get_slave_okay(self):
-        """Is it OK to perform queries on a secondary? This is
-        always True for an instance of ReplicaSetConnection.
-        """
-        return True
-
-    def __set_slave_okay(self, value):
-        """Setter for slave_okay. Just raises an exception since
-        slave_okay is always True in ReplicaSetConnection.
-        """
-        raise ConfigurationError("slave_okay is always True in a "
-                                 "ReplicaSetConnection. Use the "
-                                 "read_preference attribute instead.")
-
-    slave_okay = property(__get_slave_okay, __set_slave_okay)
 
     @property
     def max_pool_size(self):
@@ -735,7 +721,7 @@ class ReplicaSetConnection(common.BaseObject):
         :Parameters:
           - `msg`: (request_id, data) pair making up the message to send
         """
-        read_pref = kwargs.get('read_preference', SECONDARY)
+        read_pref = kwargs.get('read_preference', ReadPreference.PRIMARY)
         try:
             if _connection_to_use is not None:
                 if _connection_to_use == -1:
@@ -745,7 +731,7 @@ class ReplicaSetConnection(common.BaseObject):
                 return _connection_to_use, self.__send_and_receive(mongo,
                                                                    msg,
                                                                    **kwargs)
-            elif _must_use_master or read_pref == PRIMARY:
+            elif _must_use_master or not read_pref:
                 _connection_to_use = -1
                 mongo = self.__find_primary()
                 return -1, self.__send_and_receive(mongo, msg, **kwargs)
@@ -764,7 +750,7 @@ class ReplicaSetConnection(common.BaseObject):
             except AutoReconnect, why:
                 errors.append(str(why))
         # Fallback to primary
-        if read_pref != SECONDARY_ONLY:
+        if read_pref == ReadPreference.SECONDARY:
             try:
                 mongo = self.__find_primary()
                 return -1, self.__send_and_receive(mongo, msg, **kwargs)

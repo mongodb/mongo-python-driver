@@ -26,7 +26,7 @@ from nose.plugins.skip import SkipTest
 
 from bson.son import SON
 from bson.tz_util import utc
-from pymongo import PRIMARY, SECONDARY
+from pymongo import ReadPreference
 from pymongo.connection import Connection
 from pymongo.replica_set_connection import ReplicaSetConnection
 from pymongo.replica_set_connection import _partition_node
@@ -68,10 +68,6 @@ class TestConnection(unittest.TestCase):
                           "somedomainthatdoesntexist.org:27017",
                           replicaSet=self.name,
                           connectTimeoutMS=600)
-        self.assertRaises(ConnectionFailure, ReplicaSetConnection,
-                          "somedomainthatdoesntexist.org:123456789",
-                          replicaSet=self.name,
-                          connectTimeoutMS=600)
         self.assertRaises(ConfigurationError, ReplicaSetConnection,
                           pair, replicaSet='fdlksjfdslkjfd')
         self.assert_(ReplicaSetConnection(pair, replicaSet=self.name))
@@ -89,27 +85,27 @@ class TestConnection(unittest.TestCase):
         self.assertEqual(c.primary, self.primary)
         self.assertEqual(c.hosts, self.hosts)
         self.assertEqual(c.arbiters, self.arbiters)
-        self.assertEqual(c.read_preference, SECONDARY)
+        self.assertEqual(c.read_preference, ReadPreference.PRIMARY)
         self.assertEqual(c.max_pool_size, 10)
         self.assertEqual(c.document_class, dict)
         self.assertEqual(c.tz_aware, False)
-        self.assertEqual(c.slave_okay, True)
+        self.assertEqual(c.slave_okay, False)
         self.assertEqual(c.safe, False)
         c.close()
 
         c = ReplicaSetConnection(pair, replicaSet=self.name, max_pool_size=25,
                                  document_class=SON, tz_aware=True,
                                  slaveOk=False, safe=True,
-                                 read_preference=PRIMARY)
+                                 read_preference=ReadPreference.SECONDARY)
         c.admin.command('ping')
         self.assertEqual(c.primary, self.primary)
         self.assertEqual(c.hosts, self.hosts)
         self.assertEqual(c.arbiters, self.arbiters)
-        self.assertEqual(c.read_preference, PRIMARY)
+        self.assertEqual(c.read_preference, ReadPreference.SECONDARY)
         self.assertEqual(c.max_pool_size, 25)
         self.assertEqual(c.document_class, SON)
         self.assertEqual(c.tz_aware, True)
-        self.assertEqual(c.slave_okay, True)
+        self.assertEqual(c.slave_okay, False)
         self.assertEqual(c.safe, True)
 
         if version.at_least(c, (1, 7, 4)):
@@ -145,12 +141,12 @@ class TestConnection(unittest.TestCase):
         db.test.insert({'foo': 'x'}, safe=True)
         self.assertEqual(1, db.test.count())
 
-        cursor = db.test.find(read_preference=PRIMARY)
+        cursor = db.test.find()
         self.assertEqual('x', cursor.next()['foo'])
         # Ensure we read from the primary
         self.assertEqual(-1, cursor._Cursor__connection_id)
         time.sleep(1)
-        cursor = db.test.find()
+        cursor = db.test.find(read_preference=ReadPreference.SECONDARY)
         self.assertEqual('x', cursor.next()['foo'])
         # Ensure we didn't read from the primary
         self.assertNotEqual(-1, cursor._Cursor__connection_id)
@@ -194,7 +190,7 @@ class TestConnection(unittest.TestCase):
         connection.close()
 
     def test_copy_db(self):
-        c = self._get_connection(read_preference=PRIMARY)
+        c = self._get_connection()
 
         self.assertRaises(TypeError, c.copy_database, 4, "foo")
         self.assertRaises(TypeError, c.copy_database, "foo", 4)
@@ -354,7 +350,7 @@ class TestConnection(unittest.TestCase):
         db.connection.close()
 
     def test_document_class(self):
-        c = self._get_connection(read_preference=PRIMARY)
+        c = self._get_connection()
         db = c.pymongo_test
         db.test.insert({"x": 1})
 
@@ -369,7 +365,7 @@ class TestConnection(unittest.TestCase):
         self.assertFalse(isinstance(db.test.find_one(as_class=dict), SON))
         c.close()
 
-        c = self._get_connection(document_class=SON, read_preference=PRIMARY)
+        c = self._get_connection(document_class=SON)
         db = c.pymongo_test
 
         self.assertEqual(SON, c.document_class)
@@ -384,8 +380,8 @@ class TestConnection(unittest.TestCase):
         c.close()
 
     def test_network_timeout(self):
-        no_timeout = self._get_connection(read_preference=PRIMARY)
-        timeout = self._get_connection(socketTimeoutMS=100, read_preference=PRIMARY)
+        no_timeout = self._get_connection()
+        timeout = self._get_connection(socketTimeoutMS=100)
 
         no_timeout.pymongo_test.drop_collection("test")
         no_timeout.pymongo_test.test.insert({"x": 1}, safe=True)
@@ -415,8 +411,8 @@ class TestConnection(unittest.TestCase):
         timeout.close()
 
     def test_tz_aware(self):
-        aware = self._get_connection(tz_aware=True, read_preference=PRIMARY)
-        naive = self._get_connection(read_preference=PRIMARY)
+        aware = self._get_connection(tz_aware=True)
+        naive = self._get_connection()
         aware.pymongo_test.drop_collection("test")
 
         now = datetime.datetime.utcnow()

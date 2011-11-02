@@ -9,6 +9,11 @@
 
       Alias for :class:`pymongo.connection.Connection`.
 
+   .. data:: ReplicaSetConnection
+
+      Alias for :class:`pymongo.replica_set_connection.ReplicaSetConnection`.
+
+   .. autodata:: ReadPreference
    .. autofunction:: has_c
 
 Sub-modules:

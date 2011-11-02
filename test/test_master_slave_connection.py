@@ -24,6 +24,7 @@ sys.path[0:0] = [""]
 from nose.plugins.skip import SkipTest
 
 from bson.tz_util import utc
+from pymongo import ReadPreference
 from pymongo.errors import ConnectionFailure, InvalidName
 from pymongo.errors import CollectionInvalid, OperationFailure
 from pymongo.errors import AutoReconnect
@@ -43,14 +44,14 @@ class TestMasterSlaveConnection(unittest.TestCase):
         try:
             self.slaves.append(Connection(os.environ.get("DB_IP2", host),
                                int(os.environ.get("DB_PORT2", 27018)),
-                               slave_okay=True))
+                               read_preference=ReadPreference.SECONDARY))
         except ConnectionFailure:
             pass
 
         try:
             self.slaves.append(Connection(os.environ.get("DB_IP3", host),
                                int(os.environ.get("DB_PORT3", 27019)),
-                               slave_okay=True))
+                               read_preference=ReadPreference.SECONDARY))
         except ConnectionFailure:
             pass
 

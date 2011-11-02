@@ -595,9 +595,9 @@ class Collection(common.BaseObject):
 
         .. mongodoc:: find
         """
-        if not 'slave_okay' in kwargs and self.slave_okay:
-            kwargs['slave_okay'] = True
-        if not 'read_preference'in kwargs:
+        if not 'slave_okay' in kwargs:
+            kwargs['slave_okay'] = self.slave_okay
+        if not 'read_preference' in kwargs:
             kwargs['read_preference'] = self.read_preference
         return Cursor(self, *args, **kwargs)
 
