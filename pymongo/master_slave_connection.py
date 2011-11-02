@@ -32,7 +32,7 @@ class MasterSlaveConnection(BaseObject):
     """A master-slave connection to Mongo.
     """
 
-    def __init__(self, master, slaves=[], tz_aware=False):
+    def __init__(self, master, slaves=[], document_class=dict, tz_aware=False):
         """Create a new Master-Slave connection.
 
         The resultant connection should be interacted with using the same
@@ -50,6 +50,8 @@ class MasterSlaveConnection(BaseObject):
           - `master`: `Connection` instance for the writable Master
           - `slaves` (optional): list of `Connection` instances for the
             read-only slaves
+          - `document_class` (optional): default class to use for
+            documents returned from queries on this connection
           - `tz_aware` (optional): if ``True``,
             :class:`~datetime.datetime` instances returned as values
             in a document by this :class:`MasterSlaveConnection` will be timezone
@@ -73,6 +75,7 @@ class MasterSlaveConnection(BaseObject):
         self.__in_request = False
         self.__master = master
         self.__slaves = slaves
+        self.__document_class = document_class
         self.__tz_aware = tz_aware
 
     @property
@@ -83,10 +86,15 @@ class MasterSlaveConnection(BaseObject):
     def slaves(self):
         return self.__slaves
 
-    # TODO this is a temporary hack PYTHON-136 is the right solution for this
-    @property
-    def document_class(self):
-        return dict
+    def get_document_class(self):
+        return self.__document_class
+
+    def set_document_class(self, klass):
+        self.__document_class = klass
+
+    document_class = property(get_document_class, set_document_class,
+                              doc="""Default class to use for documents
+                              returned on this connection.""")
 
     @property
     def tz_aware(self):

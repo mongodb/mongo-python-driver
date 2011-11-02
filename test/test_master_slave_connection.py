@@ -23,6 +23,7 @@ sys.path[0:0] = [""]
 
 from nose.plugins.skip import SkipTest
 
+from bson.son import SON
 from bson.tz_util import utc
 from pymongo import ReadPreference
 from pymongo.errors import ConnectionFailure, InvalidName
@@ -370,6 +371,35 @@ class TestMasterSlaveConnection(unittest.TestCase):
         self.assertTrue(bool(self.connection.read_preference))
         self.assertFalse(self.connection.safe)
         self.assertEqual({}, self.connection.get_lasterror_options())
+
+    def test_document_class(self):
+        c = MasterSlaveConnection(self.master, self.slaves)
+        db = c.pymongo_test
+        db.test.insert({"x": 1})
+        time.sleep(1)
+
+        self.assertEqual(dict, c.document_class)
+        self.assert_(isinstance(db.test.find_one(), dict))
+        self.assertFalse(isinstance(db.test.find_one(), SON))
+
+        c.document_class = SON
+
+        self.assertEqual(SON, c.document_class)
+        self.assert_(isinstance(db.test.find_one(), SON))
+        self.assertFalse(isinstance(db.test.find_one(as_class=dict), SON))
+
+        c = MasterSlaveConnection(self.master, self.slaves, document_class=SON)
+        db = c.pymongo_test
+
+        self.assertEqual(SON, c.document_class)
+        self.assert_(isinstance(db.test.find_one(), SON))
+        self.assertFalse(isinstance(db.test.find_one(as_class=dict), SON))
+
+        c.document_class = dict
+
+        self.assertEqual(dict, c.document_class)
+        self.assert_(isinstance(db.test.find_one(), dict))
+        self.assertFalse(isinstance(db.test.find_one(), SON))
 
     def test_tz_aware(self):
         dt = datetime.datetime.utcnow()
