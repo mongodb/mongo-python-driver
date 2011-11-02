@@ -449,6 +449,12 @@ class Cursor(object):
         `with_limit_and_skip` to ``True`` if that is the desired behavior.
         Raises :class:`~pymongo.errors.OperationFailure` on a database error.
 
+        With :class:`~pymongo.replica_set_connection.ReplicaSetConnection`
+        or :class:`~pymongo.master_slave_connection.MasterSlaveConnection`,
+        if `read_preference` is not :attr:`pymongo.ReadPreference.PRIMARY` or
+        (deprecated) `slave_okay` is `True` the count command will be sent to
+        a secondary or slave.
+
         :Parameters:
           - `with_limit_and_skip` (optional): take any :meth:`limit` or
             :meth:`skip` that has been applied to this cursor into account when
@@ -463,6 +469,9 @@ class Cursor(object):
            calling :meth:`count` with `with_limit_and_skip` set to ``True``.
         """
         command = {"query": self.__spec, "fields": self.__fields}
+
+        use_master = not self.__slave_okay and not self.__read_preference
+        command['_use_master'] = use_master
 
         if with_limit_and_skip:
             if self.__limit:
@@ -484,6 +493,12 @@ class Cursor(object):
         Raises :class:`TypeError` if `key` is not an instance of
         :class:`basestring`.
 
+        With :class:`~pymongo.replica_set_connection.ReplicaSetConnection`
+        or :class:`~pymongo.master_slave_connection.MasterSlaveConnection`,
+        if `read_preference` is not :attr:`pymongo.ReadPreference.PRIMARY` or
+        (deprecated) `slave_okay` is `True` the distinct command will be sent
+        to a secondary or slave.
+
         :Parameters:
           - `key`: name of key for which we want to get the distinct values
 
@@ -499,6 +514,9 @@ class Cursor(object):
         options = {"key": key}
         if self.__spec:
             options["query"] = self.__spec
+
+        use_master = not self.__slave_okay and not self.__read_preference
+        options['_use_master'] = use_master
 
         return self.__collection.database.command("distinct",
                                                   self.__collection.name,

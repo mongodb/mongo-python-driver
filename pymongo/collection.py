@@ -887,6 +887,13 @@ class Collection(common.BaseObject):
             containing a JavaScript function to be applied to each
             document, returning the key to group by.
 
+        With :class:`~pymongo.replica_set_connection.ReplicaSetConnection`
+        or :class:`~pymongo.master_slave_connection.MasterSlaveConnection`,
+        if the `read_preference` attribute of this instance is not set to
+        :attr:`pymongo.ReadPreference.PRIMARY` or the (deprecated)
+        `slave_okay` attribute of this instance is set to `True` the group
+        command will be sent to a secondary or slave.
+
         :Parameters:
           - `key`: fields to group by (see above description)
           - `condition`: specification of rows to be
@@ -921,7 +928,10 @@ class Collection(common.BaseObject):
         if finalize is not None:
             group["finalize"] = Code(finalize)
 
-        return self.__database.command("group", group)["retval"]
+        use_master = not self.slave_okay and not self.read_preference
+
+        return self.__database.command("group", group,
+                                       _use_master=use_master)["retval"]
 
     def rename(self, new_name, **kwargs):
         """Rename this collection.

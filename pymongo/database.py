@@ -326,6 +326,8 @@ class Database(common.BaseObject):
         if isinstance(command, basestring):
             command = SON([(command, value)])
 
+        use_master = kwargs.pop('_use_master', True)
+
         fields = kwargs.get('fields')
         if fields is not None and not isinstance(fields, dict):
                 kwargs['fields'] = helpers._fields_list_to_dict(fields)
@@ -333,7 +335,7 @@ class Database(common.BaseObject):
         command.update(kwargs)
 
         result = self["$cmd"].find_one(command,
-                                       _must_use_master=True,
+                                       _must_use_master=use_master,
                                        _is_command=True)
 
         if check:
