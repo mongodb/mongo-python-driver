@@ -155,7 +155,7 @@ class ReplicaSetConnection(common.BaseObject):
             before timing out.
           - `ssl`: If True, create the connection to the servers using SSL.
           - `read_preference`: The read preference for this connection.
-            See :class:~`pymongo.ReadPreference` for available options.
+            See :class:`~pymongo.ReadPreference` for available options.
           - `slave_okay` or `slaveOk` (deprecated): Use `read_preference`
             instead.
 
