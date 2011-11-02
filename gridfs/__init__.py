@@ -54,8 +54,10 @@ class GridFS(object):
         self.__collection = database[collection]
         self.__files = self.__collection.files
         self.__chunks = self.__collection.chunks
-        self.__chunks.ensure_index([("files_id", ASCENDING), ("n", ASCENDING)],
-                                   unique=True)
+        if not database.slave_okay and not database.read_preference:
+            self.__chunks.ensure_index([("files_id", ASCENDING),
+                                        ("n", ASCENDING)],
+                                       unique=True)
 
     def new_file(self, **kwargs):
         """Create a new file in GridFS.
@@ -166,8 +168,10 @@ class GridFS(object):
            Accept keyword arguments to find files by custom metadata.
         .. versionadded:: 1.9
         """
-        self.__files.ensure_index([("filename", ASCENDING),
-                                   ("uploadDate", DESCENDING)])
+        database = self.__database
+        if not database.slave_okay and not database.read_preference:
+            self.__files.ensure_index([("filename", ASCENDING),
+                                       ("uploadDate", DESCENDING)])
 
         query = kwargs
         if filename is not None:
