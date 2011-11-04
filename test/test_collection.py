@@ -504,6 +504,13 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(self.db.test.find_one()["_id"], id)
         self.assert_(isinstance(id, ObjectId))
 
+    def test_save_with_invalid_key(self):
+        self.db.drop_collection("test")
+        self.assert_(self.db.test.insert({"hello": "world"}))
+        doc = self.db.test.find_one()
+        doc['a.b'] = 'c'
+        self.assertRaises(InvalidDocument, self.db.test.save, doc)
+
     def test_unique_index(self):
         db = self.db
 

@@ -218,7 +218,7 @@ class Collection(common.BaseObject):
             return self.insert(to_save, manipulate, safe, **kwargs)
         else:
             self.update({"_id": to_save["_id"]}, to_save, True,
-                        manipulate, safe, **kwargs)
+                        manipulate, safe, _check_keys=True, **kwargs)
             return to_save.get("_id", None)
 
     def insert(self, doc_or_docs, manipulate=True,
@@ -298,7 +298,7 @@ class Collection(common.BaseObject):
         return return_one and ids[0] or ids
 
     def update(self, spec, document, upsert=False, manipulate=False,
-               safe=False, multi=False, **kwargs):
+               safe=False, multi=False, _check_keys=False, **kwargs):
         """Update a document(s) in this collection.
 
         Raises :class:`TypeError` if either `spec` or `document` is
@@ -385,9 +385,12 @@ class Collection(common.BaseObject):
             if not kwargs:
                 kwargs.update(self.get_lasterror_options())
 
+        # _check_keys is used by save() so we don't upsert pre-existing
+        # documents after adding an invalid key like 'a.b'. It can't really
+        # be used for any other update operations.
         return self.__database.connection._send_message(
             message.update(self.__full_name, upsert, multi,
-                           spec, document, safe, kwargs), safe)
+                           spec, document, safe, _check_keys, kwargs), safe)
 
     def drop(self):
         """Alias for :meth:`~pymongo.database.Database.drop_collection`.

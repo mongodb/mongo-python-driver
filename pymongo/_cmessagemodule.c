@@ -222,18 +222,19 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
     unsigned char multi;
     unsigned char upsert;
     unsigned char safe;
+    unsigned char check_keys;
     PyObject* last_error_args;
     int options;
     buffer_t buffer;
     int length_location, message_length;
     PyObject* result;
 
-    if (!PyArg_ParseTuple(args, "et#bbOObO",
+    if (!PyArg_ParseTuple(args, "et#bbOObbO",
                           "utf-8",
                           &collection_name,
                           &collection_name_length,
                           &upsert, &multi, &spec, &doc, &safe,
-                          &last_error_args)) {
+                          &check_keys, &last_error_args)) {
         return NULL;
     }
 
@@ -282,7 +283,7 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
     max_size = buffer_get_position(buffer) - before;
 
     before = buffer_get_position(buffer);
-    if (!write_dict(buffer, doc, 0, 1)) {
+    if (!write_dict(buffer, doc, check_keys, 1)) {
         buffer_free(buffer);
         PyMem_Free(collection_name);
         return NULL;

@@ -88,7 +88,8 @@ if _use_c:
     insert = _cmessage._insert_message
 
 
-def update(collection_name, upsert, multi, spec, doc, safe, last_error_args):
+def update(collection_name, upsert, multi,
+           spec, doc, safe, check_keys, last_error_args):
     """Get an **update** message.
     """
     options = 0
@@ -101,7 +102,7 @@ def update(collection_name, upsert, multi, spec, doc, safe, last_error_args):
     data += bson._make_c_string(collection_name)
     data += struct.pack("<i", options)
     data += bson.BSON.encode(spec)
-    encoded = bson.BSON.encode(doc)
+    encoded = bson.BSON.encode(doc, check_keys)
     data += encoded
     if safe:
         (_, update_message) = __pack_message(2001, data)
