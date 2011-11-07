@@ -270,6 +270,10 @@ class MasterSlaveConnection(BaseObject):
     def next(self):
         raise TypeError("'MasterSlaveConnection' object is not iterable")
 
+    def _cached(self, database_name, collection_name, index_name):
+        return self.__master._cached(database_name,
+                                     collection_name, index_name)
+
     def _cache_index(self, database_name, collection_name, index_name, ttl):
         return self.__master._cache_index(database_name, collection_name,
                                           index_name, ttl)

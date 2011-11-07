@@ -19,6 +19,7 @@
 import itertools
 import re
 import sys
+import threading
 import time
 import unittest
 import warnings
@@ -176,8 +177,39 @@ class TestCollection(unittest.TestCase):
         time.sleep(1.1)
         self.assertEqual("goodbye_1",
                          db.test.ensure_index("goodbye"))
+        # Make sure the expiration time is updated.
+        self.assertEqual(None,
+                         db.test.ensure_index("goodbye"))
         # Clean up indexes for later tests
         db.test.drop_indexes()
+
+    def test_ensure_unique_index_threaded(self):
+        db = self.db
+        db.test.drop()
+        db.test.insert({'foo': i} for i in xrange(10000))
+
+        class Indexer(threading.Thread):
+            def run(self):
+                try:
+                    db.test.ensure_index('foo', unique=True)
+                    db.test.insert({'foo': 'bar'})
+                    db.test.insert({'foo': 'bar'})
+                except OperationFailure:
+                    pass
+
+        threads = []
+        for _ in xrange(10):
+            t = Indexer()
+            threads.append(t)
+
+        for i in xrange(10):
+            threads[i].start()
+
+        for i in xrange(10):
+            threads[i].join()
+
+        self.assertEqual(10001, db.test.count())
+        db.test.drop()
 
     def test_index_on_binary(self):
         db = self.db

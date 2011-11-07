@@ -407,13 +407,18 @@ class Connection(common.BaseObject):
         return cls([":".join(map(str, left)), ":".join(map(str, right))],
                    **connection_args)
 
+    def _cached(self, dbname, coll, index):
+        """Test if `index` is cached.
+        """
+        cache = self.__index_cache
+        now = datetime.datetime.utcnow()
+        return (dbname in cache and
+                coll in cache[dbname] and
+                index in cache[dbname][coll] and
+                now < cache[dbname][coll][index])
+
     def _cache_index(self, database, collection, index, ttl):
         """Add an index to the index cache for ensure_index operations.
-
-        Return ``True`` if the index has been newly cached or if the index had
-        expired and is being re-cached.
-
-        Return ``False`` if the index exists and is valid.
         """
         now = datetime.datetime.utcnow()
         expire = datetime.timedelta(seconds=ttl) + now
@@ -422,19 +427,13 @@ class Connection(common.BaseObject):
             self.__index_cache[database] = {}
             self.__index_cache[database][collection] = {}
             self.__index_cache[database][collection][index] = expire
-            return True
 
-        if collection not in self.__index_cache[database]:
+        elif collection not in self.__index_cache[database]:
             self.__index_cache[database][collection] = {}
             self.__index_cache[database][collection][index] = expire
-            return True
 
-        if index in self.__index_cache[database][collection]:
-            if now < self.__index_cache[database][collection][index]:
-                return False
-
-        self.__index_cache[database][collection][index] = expire
-        return True
+        else:
+            self.__index_cache[database][collection][index] = expire
 
     def _purge_index(self, database_name,
                      collection_name=None, index_name=None):

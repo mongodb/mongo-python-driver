@@ -764,8 +764,8 @@ class Collection(common.BaseObject):
             keys = helpers._index_list(key_or_list)
             name = kwargs["name"] = _gen_index_name(keys)
 
-        if self.__database.connection._cache_index(self.__database.name,
-                                                   self.__name, name, ttl):
+        if not self.__database.connection._cached(self.__database.name,
+                                                  self.__name, name):
             return self.create_index(key_or_list, deprecated_unique,
                                      ttl, **kwargs)
         return None
