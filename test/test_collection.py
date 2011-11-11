@@ -1408,9 +1408,12 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(5, coll.find_one({'_id': uu})['i'])
 
         db = self.connection.pymongo_test
-        self.assertEqual(None, db.command('findAndModify', 'uuid',
-                                          query={'_id': uu},
-                                          update={'$set': {'i': 6}})['value'])
+        no_obj_error = "No matching object found"
+        result = db.command('findAndModify', 'uuid',
+                            allowable_errors=[no_obj_error],
+                            query={'_id': uu},
+                            update={'$set': {'i': 6}})
+        self.assertEqual(None, result.get('value'))
         self.assertEqual(5, db.command('findAndModify', 'uuid',
                                        uuid_subtype=OLD_UUID_SUBTYPE,
                                        update={'$set': {'i': 6}},
