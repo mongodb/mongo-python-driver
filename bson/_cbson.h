@@ -30,13 +30,16 @@ typedef unsigned int Py_ssize_t;
 int buffer_write_bytes(buffer_t buffer, const char* data, int size);
 
 int write_dict(buffer_t buffer, PyObject* dict,
-               unsigned char check_keys, unsigned char top_level);
+               unsigned char check_keys, unsigned char uuid_subtype,
+               unsigned char top_level);
 
 int write_pair(buffer_t buffer, const char* name, Py_ssize_t name_length,
-               PyObject* value, unsigned char check_keys, unsigned char allow_id);
+               PyObject* value, unsigned char check_keys,
+               unsigned char uuid_subtype, unsigned char allow_id);
 
 int decode_and_write_pair(buffer_t buffer, PyObject* key, PyObject* value,
-                          unsigned char check_keys, unsigned char top_level);
+                          unsigned char check_keys, unsigned char uuid_subtype,
+                          unsigned char top_level);
 
 PyMODINIT_FUNC init_cbson(void);
 #endif

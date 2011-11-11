@@ -171,7 +171,7 @@ class BaseObject(object):
         for option, value in options.iteritems():
             if option in ('slave_okay', 'slaveok'):
                 warnings.warn("%s is deprecated. Please use read_preference "
-                      "instead.", DeprecationWarning)
+                      "instead." % (option,), DeprecationWarning)
                 self.__slave_okay = validate_boolean(option, value)
             elif option == 'read_preference':
                 self.__read_pref = validate_read_preference(option, value)

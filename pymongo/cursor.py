@@ -44,7 +44,8 @@ class Cursor(object):
                  max_scan=None, as_class=None, slave_okay=False,
                  await_data=False, partial=False, manipulate=True,
                  read_preference=ReadPreference.PRIMARY,
-                 _must_use_master=False, _is_command=False, **kwargs):
+                 _must_use_master=False, _is_command=False,
+                 _uuid_subtype=None, **kwargs):
         """Create a new cursor.
 
         Should not be called directly by application developers - see
@@ -116,6 +117,7 @@ class Cursor(object):
         self.__tz_aware = collection.database.connection.tz_aware
         self.__must_use_master = _must_use_master
         self.__is_command = _is_command
+        self.__uuid_subtype = _uuid_subtype or collection.uuid_subtype
         self.__query_flags = 0
 
         self.__data = []
@@ -181,6 +183,7 @@ class Cursor(object):
         copy.__read_preference = self.__read_preference
         copy.__must_use_master = self.__must_use_master
         copy.__is_command = self.__is_command
+        copy.__uuid_subtype = self.__uuid_subtype
         copy.__query_flags = self.__query_flags
         copy.__kwargs = self.__kwargs
         return copy
@@ -479,9 +482,11 @@ class Cursor(object):
             if self.__skip:
                 command["skip"] = self.__skip
 
-        r = self.__collection.database.command("count", self.__collection.name,
-                                               allowable_errors=["ns missing"],
-                                               **command)
+        database = self.__collection.database
+        r = database.command("count", self.__collection.name,
+                             allowable_errors=["ns missing"],
+                             uuid_subtype = self.__uuid_subtype,
+                             **command)
         if r.get("errmsg", "") == "ns missing":
             return 0
         return int(r["n"])
@@ -518,9 +523,11 @@ class Cursor(object):
         use_master = not self.__slave_okay and not self.__read_preference
         options['_use_master'] = use_master
 
-        return self.__collection.database.command("distinct",
-                                                  self.__collection.name,
-                                                  **options)["values"]
+        database = self.__collection.database
+        return database.command("distinct",
+                                self.__collection.name,
+                                uuid_subtype = self.__uuid_subtype,
+                                **options)["values"]
 
     def explain(self):
         """Returns an explain plan record for this cursor.
@@ -651,7 +658,8 @@ class Cursor(object):
                 message.query(self.__query_options(),
                               self.__collection.full_name,
                               self.__skip, ntoreturn,
-                              self.__query_spec(), self.__fields))
+                              self.__query_spec(), self.__fields,
+                              self.__uuid_subtype))
             if not self.__id:
                 self.__killed = True
         elif self.__id:  # Get More

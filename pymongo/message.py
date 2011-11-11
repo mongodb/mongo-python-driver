@@ -63,7 +63,7 @@ def __pack_message(operation, data):
 
 
 def insert(collection_name, docs, check_keys,
-           safe, continue_on_error, last_error_args):
+           safe, last_error_args, continue_on_error, uuid_subtype):
     """Get an **insert** message.
     """
     max_bson_size = 0
@@ -72,7 +72,7 @@ def insert(collection_name, docs, check_keys,
         options += 1
     data = struct.pack("<i", options)
     data += bson._make_c_string(collection_name)
-    encoded = [bson.BSON.encode(doc, check_keys) for doc in docs]
+    encoded = [bson.BSON.encode(doc, check_keys, uuid_subtype) for doc in docs]
     if not encoded:
         raise InvalidOperation("cannot do an empty bulk insert")
     max_bson_size = max(map(len, encoded))
@@ -89,7 +89,7 @@ if _use_c:
 
 
 def update(collection_name, upsert, multi,
-           spec, doc, safe, check_keys, last_error_args):
+           spec, doc, safe, last_error_args, check_keys, uuid_subtype):
     """Get an **update** message.
     """
     options = 0
@@ -101,8 +101,8 @@ def update(collection_name, upsert, multi,
     data = __ZERO
     data += bson._make_c_string(collection_name)
     data += struct.pack("<i", options)
-    data += bson.BSON.encode(spec)
-    encoded = bson.BSON.encode(doc, check_keys)
+    data += bson.BSON.encode(spec, False, uuid_subtype)
+    encoded = bson.BSON.encode(doc, check_keys, uuid_subtype)
     data += encoded
     if safe:
         (_, update_message) = __pack_message(2001, data)
@@ -115,19 +115,19 @@ if _use_c:
     update = _cmessage._update_message
 
 
-def query(options, collection_name,
-          num_to_skip, num_to_return, query, field_selector=None):
+def query(options, collection_name, num_to_skip,
+          num_to_return, query, field_selector=None, uuid_subtype=4):
     """Get a **query** message.
     """
     data = struct.pack("<I", options)
     data += bson._make_c_string(collection_name)
     data += struct.pack("<i", num_to_skip)
     data += struct.pack("<i", num_to_return)
-    encoded = bson.BSON.encode(query)
+    encoded = bson.BSON.encode(query, False, uuid_subtype)
     data += encoded
     max_bson_size = len(encoded)
     if field_selector is not None:
-        encoded = bson.BSON.encode(field_selector)
+        encoded = bson.BSON.encode(field_selector, False, uuid_subtype)
         data += encoded
         max_bson_size = max(len(encoded), max_bson_size)
     (request_id, query_message) = __pack_message(2004, data)
@@ -148,13 +148,13 @@ if _use_c:
     get_more = _cmessage._get_more_message
 
 
-def delete(collection_name, spec, safe, last_error_args):
+def delete(collection_name, spec, safe, last_error_args, uuid_subtype):
     """Get a **delete** message.
     """
     data = __ZERO
     data += bson._make_c_string(collection_name)
     data += __ZERO
-    encoded = bson.BSON.encode(spec)
+    encoded = bson.BSON.encode(spec, False, uuid_subtype)
     data += encoded
     if safe:
         (_, remove_message) = __pack_message(2006, data)

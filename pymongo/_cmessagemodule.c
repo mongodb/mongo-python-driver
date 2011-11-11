@@ -77,7 +77,7 @@ static int add_last_error(buffer_t buffer, int request_id, PyObject* args) {
 
     /* getlasterror: 1 */
     one = PyLong_FromLong(1);
-    if (!write_pair(buffer, "getlasterror", 12, one, 0, 1)) {
+    if (!write_pair(buffer, "getlasterror", 12, one, 0, 4, 1)) {
         Py_DECREF(one);
         return 0;
     }
@@ -85,7 +85,7 @@ static int add_last_error(buffer_t buffer, int request_id, PyObject* args) {
 
     /* getlasterror options */
     while (PyDict_Next(args, &pos, &key, &value)) {
-        if (!decode_and_write_pair(buffer, key, value, 0, 0)) {
+        if (!decode_and_write_pair(buffer, key, value, 0, 4, 0)) {
             return 0;
         }
     }
@@ -115,17 +115,19 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
     unsigned char check_keys;
     unsigned char safe;
     unsigned char continue_on_error;
+    unsigned char uuid_subtype;
     PyObject* last_error_args;
     buffer_t buffer;
     int length_location, message_length;
     PyObject* result;
 
-    if (!PyArg_ParseTuple(args, "et#ObbbO",
+    if (!PyArg_ParseTuple(args, "et#ObbObb",
                           "utf-8",
                           &collection_name,
                           &collection_name_length,
                           &docs, &check_keys, &safe,
-                          &continue_on_error, &last_error_args)) {
+                          &last_error_args,
+                          &continue_on_error, &uuid_subtype)) {
         return NULL;
     }
     if (continue_on_error) {
@@ -172,7 +174,7 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
     }
     while ((doc = PyIter_Next(iterator)) != NULL) {
         before = buffer_get_position(buffer);
-        if (!write_dict(buffer, doc, check_keys, 1)) {
+        if (!write_dict(buffer, doc, check_keys, uuid_subtype, 1)) {
             Py_DECREF(doc);
             Py_DECREF(iterator);
             buffer_free(buffer);
@@ -223,18 +225,19 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
     unsigned char upsert;
     unsigned char safe;
     unsigned char check_keys;
+    unsigned char uuid_subtype;
     PyObject* last_error_args;
     int options;
     buffer_t buffer;
     int length_location, message_length;
     PyObject* result;
 
-    if (!PyArg_ParseTuple(args, "et#bbOObbO",
+    if (!PyArg_ParseTuple(args, "et#bbOObObb",
                           "utf-8",
                           &collection_name,
                           &collection_name_length,
                           &upsert, &multi, &spec, &doc, &safe,
-                          &check_keys, &last_error_args)) {
+                          &last_error_args, &check_keys, &uuid_subtype)) {
         return NULL;
     }
 
@@ -275,7 +278,7 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
     }
 
     before = buffer_get_position(buffer);
-    if (!write_dict(buffer, spec, 0, 1)) {
+    if (!write_dict(buffer, spec, 0, 4, 1)) {
         buffer_free(buffer);
         PyMem_Free(collection_name);
         return NULL;
@@ -283,7 +286,7 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
     max_size = buffer_get_position(buffer) - before;
 
     before = buffer_get_position(buffer);
-    if (!write_dict(buffer, doc, check_keys, 1)) {
+    if (!write_dict(buffer, doc, check_keys, uuid_subtype, 1)) {
         buffer_free(buffer);
         PyMem_Free(collection_name);
         return NULL;
@@ -323,17 +326,18 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
     int num_to_return;
     PyObject* query;
     PyObject* field_selector = Py_None;
+    unsigned char uuid_subtype = 4;
     buffer_t buffer;
     int length_location, message_length;
     PyObject* result;
 
-    if (!PyArg_ParseTuple(args, "Iet#iiO|O",
+    if (!PyArg_ParseTuple(args, "Iet#iiO|Ob",
                           &options,
                           "utf-8",
                           &collection_name,
                           &collection_name_length,
                           &num_to_skip, &num_to_return,
-                          &query, &field_selector)) {
+                          &query, &field_selector, &uuid_subtype)) {
         return NULL;
     }
     buffer = buffer_new();
@@ -363,7 +367,7 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
     }
 
     begin = buffer_get_position(buffer);
-    if (!write_dict(buffer, query, 0, 1)) {
+    if (!write_dict(buffer, query, 0, uuid_subtype, 1)) {
         buffer_free(buffer);
         PyMem_Free(collection_name);
         return NULL;
@@ -372,7 +376,7 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
 
     if (field_selector != Py_None) {
         begin = buffer_get_position(buffer);
-        if (!write_dict(buffer, field_selector, 0, 1)) {
+        if (!write_dict(buffer, field_selector, 0, uuid_subtype, 1)) {
             buffer_free(buffer);
             PyMem_Free(collection_name);
             return NULL;

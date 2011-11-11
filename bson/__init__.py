@@ -21,7 +21,7 @@ import re
 import struct
 import warnings
 
-from bson.binary import Binary
+from bson.binary import Binary, UUID_SUBTYPE
 from bson.code import Code
 from bson.dbref import DBRef
 from bson.errors import (InvalidBSON,
@@ -276,7 +276,7 @@ if _use_c:
     _bson_to_dict = _cbson._bson_to_dict
 
 
-def _element_to_bson(key, value, check_keys):
+def _element_to_bson(key, value, check_keys, uuid_subtype):
     if not isinstance(key, basestring):
         raise InvalidDocument("documents must have only string keys, "
                               "key was %r" % key)
@@ -294,7 +294,7 @@ def _element_to_bson(key, value, check_keys):
     # Use Binary w/ subtype 3 for UUID instances
     if _use_uuid:
         if isinstance(value, uuid.UUID):
-            value = Binary(value.bytes, subtype=4)
+            value = Binary(value.bytes, subtype=uuid_subtype)
 
     if isinstance(value, Binary):
         subtype = value.subtype
@@ -304,7 +304,7 @@ def _element_to_bson(key, value, check_keys):
                                  chr(subtype), value)
     if isinstance(value, Code):
         cstring = _make_c_string(value)
-        scope = _dict_to_bson(value.scope, False, False)
+        scope = _dict_to_bson(value.scope, False, uuid_subtype, False)
         full_length = struct.pack("<i", 8 + len(cstring) + len(scope))
         length = struct.pack("<i", len(cstring))
         return "\x0F" + name + full_length + length + cstring + scope
@@ -317,10 +317,10 @@ def _element_to_bson(key, value, check_keys):
         length = struct.pack("<i", len(cstring))
         return "\x02" + name + length + cstring
     if isinstance(value, dict):
-        return "\x03" + name + _dict_to_bson(value, check_keys, False)
+        return "\x03" + name + _dict_to_bson(value, check_keys, uuid_subtype, False)
     if isinstance(value, (list, tuple)):
         as_dict = SON(zip([str(i) for i in range(len(value))], value))
-        return "\x04" + name + _dict_to_bson(as_dict, check_keys, False)
+        return "\x04" + name + _dict_to_bson(as_dict, check_keys, uuid_subtype, False)
     if isinstance(value, ObjectId):
         return "\x07" + name + value.binary
     if value is True:
@@ -369,7 +369,7 @@ def _element_to_bson(key, value, check_keys):
         return "\x0B" + name + _make_c_string(pattern, True) + \
             _make_c_string(flags)
     if isinstance(value, DBRef):
-        return _element_to_bson(key, value.as_doc(), False)
+        return _element_to_bson(key, value.as_doc(), False, uuid_subtype)
     if isinstance(value, MinKey):
         return "\xFF" + name
     if isinstance(value, MaxKey):
@@ -379,14 +379,14 @@ def _element_to_bson(key, value, check_keys):
                           type(value))
 
 
-def _dict_to_bson(dict, check_keys, top_level=True):
+def _dict_to_bson(dict, check_keys, uuid_subtype, top_level=True):
     try:
         elements = []
         if top_level and "_id" in dict:
-            elements.append(_element_to_bson("_id", dict["_id"], False))
+            elements.append(_element_to_bson("_id", dict["_id"], False, uuid_subtype))
         for (key, value) in dict.iteritems():
             if not top_level or key != "_id":
-                elements.append(_element_to_bson(key, value, check_keys))
+                elements.append(_element_to_bson(key, value, check_keys, uuid_subtype))
     except AttributeError:
         raise TypeError("encoder expected a mapping type but got: %r" % dict)
 
@@ -478,7 +478,7 @@ class BSON(str):
         return cls.encode(dct, check_keys)
 
     @classmethod
-    def encode(cls, document, check_keys=False):
+    def encode(cls, document, check_keys=False, uuid_subtype=UUID_SUBTYPE):
         """Encode a document to a new :class:`BSON` instance.
 
         A document can be any mapping type (like :class:`dict`).
@@ -497,7 +497,7 @@ class BSON(str):
 
         .. versionadded:: 1.9
         """
-        return cls(_dict_to_bson(document, check_keys))
+        return cls(_dict_to_bson(document, check_keys, uuid_subtype))
 
     def to_dict(self, as_class=dict, tz_aware=False):
         """DEPRECATED - `to_dict` has been renamed to `decode`.

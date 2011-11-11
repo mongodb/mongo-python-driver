@@ -24,8 +24,7 @@ except ImportError:
 BINARY_SUBTYPE = 0
 """BSON binary subtype for binary data.
 
-This is becomming the default subtype and should be the most commonly
-used.
+This is the default subtype for binary data.
 
 .. versionadded:: 1.5
 """
@@ -39,19 +38,25 @@ FUNCTION_SUBTYPE = 1
 OLD_BINARY_SUBTYPE = 2
 """Old BSON binary subtype for binary data.
 
-This is still the default subtype, but that is changing to
-:data:`BINARY_SUBTYPE`.
+This is the old default subtype, the current
+default is :data:`BINARY_SUBTYPE`.
 
 .. versionadded:: 1.7
 """
 
-UUID_SUBTYPE = 3
+UUID_SUBTYPE = 4
 """BSON binary subtype for a UUID.
 
 :class:`uuid.UUID` instances will automatically be encoded
 by :mod:`bson` using this subtype.
 
 .. versionadded:: 1.5
+"""
+
+OLD_UUID_SUBTYPE = 3
+"""Old BSON binary subtype for a UUID.
+
+.. versionadded:: 2.0.1+
 """
 
 MD5_SUBTYPE = 5
@@ -156,7 +161,7 @@ class UUIDLegacy(Binary):
     def __new__(cls, obj):
         if not isinstance(obj, UUID):
             raise TypeError("obj must be an instance of uuid.UUID")
-        self = Binary.__new__(cls, obj.bytes, 3)
+        self = Binary.__new__(cls, obj.bytes, OLD_UUID_SUBTYPE)
         self.__uuid = obj
         return self
 

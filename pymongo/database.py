@@ -16,6 +16,7 @@
 
 import warnings
 
+from bson.binary import UUID_SUBTYPE
 from bson.code import Code
 from bson.dbref import DBRef
 from bson.son import SON
@@ -267,7 +268,8 @@ class Database(common.BaseObject):
         return son
 
     def command(self, command, value=1,
-                check=True, allowable_errors=[], **kwargs):
+                check=True, allowable_errors=[],
+                uuid_subtype=UUID_SUBTYPE, **kwargs):
         """Issue a MongoDB command.
 
         Send command `command` to the database and return the
@@ -310,6 +312,8 @@ class Database(common.BaseObject):
             :class:`~pymongo.errors.OperationFailure` if there are any
           - `allowable_errors`: if `check` is ``True``, error messages
             in this list will be ignored by error-checking
+          - `uuid_subtype` (optional): The BSON binary subtype to use
+            for a UUID used in this command.
           - `**kwargs` (optional): additional keyword arguments will
             be added to the command document before it is sent
 
@@ -336,7 +340,8 @@ class Database(common.BaseObject):
 
         result = self["$cmd"].find_one(command,
                                        _must_use_master=use_master,
-                                       _is_command=True)
+                                       _is_command=True,
+                                       _uuid_subtype = uuid_subtype)
 
         if check:
             msg = "command %r failed: %%s" % command

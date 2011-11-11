@@ -16,13 +16,14 @@
 
 import warnings
 
+from bson.binary import OLD_UUID_SUBTYPE, UUID_SUBTYPE
 from bson.code import Code
 from bson.son import SON
 from pymongo import (common,
                      helpers,
                      message)
 from pymongo.cursor import Cursor
-from pymongo.errors import InvalidName, InvalidOperation
+from pymongo.errors import ConfigurationError, InvalidName, InvalidOperation
 
 _ZERO = "\x00\x00\x00\x00"
 
@@ -103,6 +104,7 @@ class Collection(common.BaseObject):
 
         self.__database = database
         self.__name = unicode(name)
+        self.__uuid_subtype = UUID_SUBTYPE
         self.__full_name = u"%s.%s" % (self.__database.name, self.__name)
         if create or options is not None:
             self.__create(options)
@@ -171,6 +173,18 @@ class Collection(common.BaseObject):
            ``database`` is now a property rather than a method.
         """
         return self.__database
+
+    def __get_uuid_subtype(self):
+        return self.__uuid_subtype
+
+    def __set_uuid_subtype(self, subtype):
+        if subtype not in (OLD_UUID_SUBTYPE, UUID_SUBTYPE):
+            raise ConfigurationError("Not a valid binary subtype for a UUID.")
+        self.__uuid_subtype = subtype
+
+    uuid_subtype = property(__get_uuid_subtype, __set_uuid_subtype,
+                            doc="""The BSON binary subtype for
+                            a UUID used for this collection.""")
 
     def save(self, to_save, manipulate=True, safe=False, **kwargs):
         """Save a document in this collection.
@@ -292,7 +306,8 @@ class Collection(common.BaseObject):
 
         self.__database.connection._send_message(
             message.insert(self.__full_name, docs,
-                           check_keys, safe, continue_on_error, kwargs), safe)
+                           check_keys, safe, kwargs,
+                           continue_on_error, self.__uuid_subtype), safe)
 
         ids = [doc.get("_id", None) for doc in docs]
         return return_one and ids[0] or ids
@@ -390,7 +405,8 @@ class Collection(common.BaseObject):
         # be used for any other update operations.
         return self.__database.connection._send_message(
             message.update(self.__full_name, upsert, multi,
-                           spec, document, safe, _check_keys, kwargs), safe)
+                           spec, document, safe, kwargs,
+                           _check_keys, self.__uuid_subtype), safe)
 
     def drop(self):
         """Alias for :meth:`~pymongo.database.Database.drop_collection`.
@@ -465,7 +481,8 @@ class Collection(common.BaseObject):
                 kwargs.update(self.get_lasterror_options())
 
         return self.__database.connection._send_message(
-            message.delete(self.__full_name, spec_or_id, safe, kwargs), safe)
+            message.delete(self.__full_name, spec_or_id,
+                           safe, kwargs, self.__uuid_subtype), safe)
 
     def find_one(self, spec_or_id=None, *args, **kwargs):
         """Get a single document from the database.
@@ -934,6 +951,7 @@ class Collection(common.BaseObject):
         use_master = not self.slave_okay and not self.read_preference
 
         return self.__database.command("group", group,
+                                       uuid_subtype=self.__uuid_subtype,
                                        _use_master=use_master)["retval"]
 
     def rename(self, new_name, **kwargs):
@@ -1058,6 +1076,7 @@ class Collection(common.BaseObject):
             raise TypeError("'out' must be an instance of basestring or dict")
 
         response = self.__database.command("mapreduce", self.__name,
+                                           uuid_subtype=self.__uuid_subtype,
                                            map=map, reduce=reduce,
                                            out=out_conf, **kwargs)
 
@@ -1098,6 +1117,7 @@ class Collection(common.BaseObject):
         """
 
         response = self.__database.command("mapreduce", self.__name,
+                                           uuid_subtype=self.__uuid_subtype,
                                            map=map, reduce=reduce,
                                            out={"inline": 1}, **kwargs)
 
@@ -1157,7 +1177,9 @@ class Collection(common.BaseObject):
         no_obj_error = "No matching object found"
 
         out = self.__database.command("findAndModify", self.__name,
-                allowable_errors=[no_obj_error], **kwargs)
+                                      allowable_errors=[no_obj_error],
+                                      uuid_subtype=self.__uuid_subtype,
+                                      **kwargs)
 
         if not out['ok']:
             if out["errmsg"] == no_obj_error:

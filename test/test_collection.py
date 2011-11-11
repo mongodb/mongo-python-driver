@@ -28,14 +28,15 @@ from nose.plugins.skip import SkipTest
 
 sys.path[0:0] = [""]
 
-from bson.binary import Binary
+from bson.binary import Binary, UUIDLegacy, OLD_UUID_SUBTYPE, UUID_SUBTYPE
 from bson.code import Code
 from bson.objectid import ObjectId
 from bson.son import SON
 from pymongo import ASCENDING, DESCENDING
 from pymongo.collection import Collection
 from pymongo.son_manipulator import SONManipulator
-from pymongo.errors import (DuplicateKeyError,
+from pymongo.errors import (ConfigurationError,
+                            DuplicateKeyError,
                             InvalidDocument,
                             InvalidName,
                             InvalidOperation,
@@ -44,6 +45,12 @@ from pymongo.errors import (DuplicateKeyError,
 from test.test_connection import get_connection
 from test import (qcheck,
                   version)
+
+have_uuid = True
+try:
+    import uuid
+except ImportError:
+    have_uuid = False
 
 
 class TestCollection(unittest.TestCase):
@@ -1344,6 +1351,75 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(0, c.find_one(manipulate=False)['foo'])
         self.assertEqual(2, c.find_one(manipulate=True)['foo'])
         c.remove({})
+
+    def test_uuid_subtype(self):
+        if not have_uuid:
+            raise SkipTest()
+
+        coll = self.connection.pymongo_test.uuid
+        coll.drop()
+
+        def change_subtype(collection, subtype):
+            collection.uuid_subtype = subtype
+
+        self.assertEqual(UUID_SUBTYPE, coll.uuid_subtype)
+        self.assertRaises(ConfigurationError, change_subtype, coll, 5)
+        self.assertRaises(ConfigurationError, change_subtype, coll, 2)
+        coll.uuid_subtype = OLD_UUID_SUBTYPE
+        self.assertEqual(OLD_UUID_SUBTYPE, coll.uuid_subtype)
+
+        uu = uuid.uuid4()
+        coll.insert({'uu': uu})
+        self.assertEqual(uu, coll.find_one({'uu': uu})['uu'])
+        coll.uuid_subtype = UUID_SUBTYPE
+        self.assertEqual(None, coll.find_one({'uu': uu}))
+        self.assertEqual(uu, coll.find_one({'uu': UUIDLegacy(uu)})['uu'])
+
+        self.assertEqual(0, coll.find({'uu': uu}).count())
+        coll.uuid_subtype = OLD_UUID_SUBTYPE
+        self.assertEqual(1, coll.find({'uu': uu}).count())
+
+        coll.uuid_subtype = UUID_SUBTYPE
+        coll.remove({'uu': uu})
+        self.assertEqual(1, coll.count())
+        coll.uuid_subtype = OLD_UUID_SUBTYPE
+        coll.remove({'uu': uu})
+        self.assertEqual(0, coll.count())
+
+        coll.insert({'_id': uu, 'i': 0})
+        self.assertEqual(0, coll.find_one({'_id': uu})['i'])
+        doc = coll.find_one({'_id': uu})
+        doc['i'] = 1
+        coll.save(doc)
+        self.assertEqual(1, coll.find_one({'_id': uu})['i'])
+
+        coll.update({'_id': uu}, {'$set': {'i': 2}})
+        self.assertEqual(2, coll.find_one({'_id': uu})['i'])
+
+        self.assertEqual([2], coll.find({'_id': uu}).distinct('i'))
+        coll.uuid_subtype = UUID_SUBTYPE
+        self.assertEqual([], coll.find({'_id': uu}).distinct('i'))
+
+        self.assertEqual(None, coll.find_and_modify({'_id': uu},
+                                                     {'$set': {'i': 5}}))
+        coll.uuid_subtype = OLD_UUID_SUBTYPE
+        self.assertEqual(2, coll.find_and_modify({'_id': uu},
+                                                  {'$set': {'i': 5}})['i'])
+        self.assertEqual(5, coll.find_one({'_id': uu})['i'])
+
+        db = self.connection.pymongo_test
+        self.assertEqual(None, db.command('findAndModify', 'uuid',
+                                          query={'_id': uu},
+                                          update={'$set': {'i': 6}})['value'])
+        self.assertEqual(5, db.command('findAndModify', 'uuid',
+                                       uuid_subtype=OLD_UUID_SUBTYPE,
+                                       update={'$set': {'i': 6}},
+                                       query={'_id': uu})['value']['i'])
+        self.assertEqual(6, db.command('findAndModify', 'uuid',
+                                       update={'$set': {'i': 7}},
+                                       query={'_id': UUIDLegacy(uu)}
+                                      )['value']['i'])
+
 
 if __name__ == "__main__":
     unittest.main()
