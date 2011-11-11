@@ -289,6 +289,20 @@ class TestGridfs(unittest.TestCase):
         self.assertEqual(u"aé".encode("iso-8859-1"), self.fs.get(oid).read())
         self.assertEqual("iso-8859-1", self.fs.get(oid).encoding)
 
+    def test_missing_length_iter(self):
+        # Test fix that guards against PHP-237
+        self.fs.put("", filename="empty")
+        doc = self.db.fs.files.find_one({"filename": "empty"})
+        doc.pop("length")
+        self.db.fs.files.save(doc)
+        f = self.fs.get_last_version(filename="empty")
+
+        def iterate_file(grid_file):
+            for chunk in grid_file:
+                pass
+            return True
+
+        self.assertTrue(iterate_file(f))
 
 if __name__ == "__main__":
     unittest.main()
