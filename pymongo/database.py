@@ -344,7 +344,7 @@ class Database(common.BaseObject):
                                        _uuid_subtype = uuid_subtype)
 
         if check:
-            msg = "command %r failed: %%s" % command
+            msg = "command %s failed: %%s" % repr(command).replace("%", "%%")
             helpers._check_command_response(result, self.connection.disconnect,
                                             msg, allowable_errors)
 
