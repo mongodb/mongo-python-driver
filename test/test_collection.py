@@ -1362,12 +1362,14 @@ class TestCollection(unittest.TestCase):
         def change_subtype(collection, subtype):
             collection.uuid_subtype = subtype
 
+        # Test property
         self.assertEqual(UUID_SUBTYPE, coll.uuid_subtype)
         self.assertRaises(ConfigurationError, change_subtype, coll, 5)
         self.assertRaises(ConfigurationError, change_subtype, coll, 2)
         coll.uuid_subtype = OLD_UUID_SUBTYPE
         self.assertEqual(OLD_UUID_SUBTYPE, coll.uuid_subtype)
 
+        # Test basic query
         uu = uuid.uuid4()
         coll.insert({'uu': uu})
         self.assertEqual(uu, coll.find_one({'uu': uu})['uu'])
@@ -1375,10 +1377,12 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(None, coll.find_one({'uu': uu}))
         self.assertEqual(uu, coll.find_one({'uu': UUIDLegacy(uu)})['uu'])
 
+        # Test Cursor.count
         self.assertEqual(0, coll.find({'uu': uu}).count())
         coll.uuid_subtype = OLD_UUID_SUBTYPE
         self.assertEqual(1, coll.find({'uu': uu}).count())
 
+        # Test remove
         coll.uuid_subtype = UUID_SUBTYPE
         coll.remove({'uu': uu})
         self.assertEqual(1, coll.count())
@@ -1386,6 +1390,7 @@ class TestCollection(unittest.TestCase):
         coll.remove({'uu': uu})
         self.assertEqual(0, coll.count())
 
+        # Test save
         coll.insert({'_id': uu, 'i': 0})
         self.assertEqual(0, coll.find_one({'_id': uu})['i'])
         doc = coll.find_one({'_id': uu})
@@ -1393,13 +1398,20 @@ class TestCollection(unittest.TestCase):
         coll.save(doc)
         self.assertEqual(1, coll.find_one({'_id': uu})['i'])
 
+        # Test update
+        coll.uuid_subtype = UUID_SUBTYPE
+        coll.update({'_id': uu}, {'$set': {'i': 2}})
+        coll.uuid_subtype = OLD_UUID_SUBTYPE
+        self.assertEqual(1, coll.find_one({'_id': uu})['i'])
         coll.update({'_id': uu}, {'$set': {'i': 2}})
         self.assertEqual(2, coll.find_one({'_id': uu})['i'])
 
+        # Test Cursor.distinct
         self.assertEqual([2], coll.find({'_id': uu}).distinct('i'))
         coll.uuid_subtype = UUID_SUBTYPE
         self.assertEqual([], coll.find({'_id': uu}).distinct('i'))
 
+        # Test find_and_modify
         self.assertEqual(None, coll.find_and_modify({'_id': uu},
                                                      {'$set': {'i': 5}}))
         coll.uuid_subtype = OLD_UUID_SUBTYPE
@@ -1407,6 +1419,7 @@ class TestCollection(unittest.TestCase):
                                                   {'$set': {'i': 5}})['i'])
         self.assertEqual(5, coll.find_one({'_id': uu})['i'])
 
+        # Test command
         db = self.connection.pymongo_test
         no_obj_error = "No matching object found"
         result = db.command('findAndModify', 'uuid',
@@ -1423,6 +1436,58 @@ class TestCollection(unittest.TestCase):
                                        query={'_id': UUIDLegacy(uu)}
                                       )['value']['i'])
 
+        # Test (inline)_map_reduce
+        coll.drop()
+        coll.insert({"_id": uu, "x": 1, "tags": ["dog", "cat"]})
+        coll.insert({"_id": uuid.uuid4(), "x": 3,
+                     "tags": ["mouse", "cat", "dog"]})
+
+        map = Code("function () {"
+                   "  this.tags.forEach(function(z) {"
+                   "    emit(z, 1);"
+                   "  });"
+                   "}")
+
+        reduce = Code("function (key, values) {"
+                      "  var total = 0;"
+                      "  for (var i = 0; i < values.length; i++) {"
+                      "    total += values[i];"
+                      "  }"
+                      "  return total;"
+                      "}")
+
+        coll.uuid_subtype = UUID_SUBTYPE
+        q = {"_id": uu}
+        result = coll.inline_map_reduce(map, reduce, query=q)
+        self.assertEqual([], result)
+
+        result = coll.map_reduce(map, reduce, "results", query=q)
+        self.assertEqual(0, db.results.count())
+
+        coll.uuid_subtype = OLD_UUID_SUBTYPE
+        q = {"_id": uu}
+        result = coll.inline_map_reduce(map, reduce, query=q)
+        self.assertEqual(2, len(result))
+
+        result = coll.map_reduce(map, reduce, "results", query=q)
+        self.assertEqual(2, db.results.count())
+
+        db.drop_collection("result")
+        coll.drop()
+
+        # Test group
+        coll.insert({"_id": uu, "a": 2})
+        coll.insert({"_id": uuid.uuid4(), "a": 1})
+
+        reduce = "function (obj, prev) { prev.count++; }"
+        coll.uuid_subtype = UUID_SUBTYPE
+        self.assertEqual([],
+                         coll.group([], {"_id": uu},
+                                     {"count": 0}, reduce))
+        coll.uuid_subtype = OLD_UUID_SUBTYPE
+        self.assertEqual([{"count": 1}],
+                         coll.group([], {"_id": uu},
+                                    {"count": 0}, reduce))
 
 if __name__ == "__main__":
     unittest.main()
