@@ -36,6 +36,7 @@ import random
 import socket
 import struct
 import sys
+import threading
 import time
 import warnings
 
@@ -87,6 +88,21 @@ def _partition_node(node):
     if host.startswith('['):
         host = host[1:-1]
     return host, port
+
+
+class Monitor(threading.Thread):
+    def __init__(self, func, interval=5):
+        self.func = func
+        self.interval = interval
+        super(Monitor, self).__init__()
+
+    def run(self):
+        while True:
+            try:
+                self.func()
+            except:
+                pass
+            time.sleep(self.interval)
 
 
 class ReplicaSetConnection(common.BaseObject):
@@ -210,6 +226,11 @@ class ReplicaSetConnection(common.BaseObject):
         super(ReplicaSetConnection, self).__init__(**self.__opts)
 
         self.refresh()
+
+        monitor_thread = Monitor(self.refresh)
+        monitor_thread.setName("ReplicaSetMonitorThread")
+        monitor_thread.setDaemon(True)
+        monitor_thread.start()
 
         if db_name and username is None:
             warnings.warn("must provide a username and password "
@@ -454,10 +475,16 @@ class ReplicaSetConnection(common.BaseObject):
         """
         errors = []
         nodes = self.__hosts or self.__seeds
+        hosts = set()
 
         for node in nodes:
             try:
-                response, _ = self.__is_master(node)
+                if node in self.__pools:
+                    sock = self.__socket(self.__pools[node])
+                    response = self.__simple_command(sock, 'admin',
+                                                     {'ismaster': 1})
+                else:
+                    response, _ = self.__is_master(node)
 
                 # Check that this host is part of the given replica set.
                 set_name = response.get('setName')
@@ -471,13 +498,18 @@ class ReplicaSetConnection(common.BaseObject):
                                              % (host, port, self.__name))
                 if "arbiters" in response:
                     self.__arbiters = set([_partition_node(h)
-                                            for h in response["arbiters"]])
+                                           for h in response["arbiters"]])
                 if "hosts" in response:
-                    self.__hosts = set([_partition_node(h)
-                                        for h in response["hosts"]])
-                    break
+                    hosts.update([_partition_node(h)
+                                  for h in response["hosts"]])
+                if "passives" in response:
+                    hosts.update([_partition_node(h)
+                                  for h in response["passives"]])
             except (ConnectionFailure, socket.error), why:
                 errors.append("%s:%d: %s" % (node[0], node[1], str(why)))
+            if hosts:
+                self.__hosts = hosts
+                break
         else:
             # Couldn't find a suitable host.
             raise AutoReconnect(', '.join(errors))
@@ -670,7 +702,7 @@ class ReplicaSetConnection(common.BaseObject):
         if _connection_to_use in (None, -1):
             mongo = self.__find_primary()
         else:
-            mongo = self.__reader_pools[_connection_to_use]
+            mongo = self.__pools[_connection_to_use]
 
         try:
             sock = self.__socket(mongo)
