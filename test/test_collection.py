@@ -32,7 +32,7 @@ from bson.binary import Binary, UUIDLegacy, OLD_UUID_SUBTYPE, UUID_SUBTYPE
 from bson.code import Code
 from bson.objectid import ObjectId
 from bson.son import SON
-from pymongo import ASCENDING, DESCENDING
+from pymongo import ASCENDING, DESCENDING, GEO2D, GEOHAYSTACK
 from pymongo.collection import Collection
 from pymongo.son_manipulator import SONManipulator
 from pymongo.errors import (ConfigurationError,
@@ -310,6 +310,75 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(True,
                      db.test.index_information()["hello_-1_world_1"]["unique"])
 
+    def test_index_geo2d(self):
+        db = self.db
+        db.test.drop_indexes()
+        self.assertEqual('loc_2d', db.test.create_index([("loc", GEO2D)]))
+        self.assertEqual({'key': [('loc', '2d')], 'v': 1}, db.test.index_information()['loc_2d'])
+
+    def test_index_haystack(self):
+        db = self.db
+        db.test.drop_indexes()
+        db.test.remove()
+        _id = db.test.insert({ "pos" : { "long" : 34.2, "lat" : 33.3 }, "type" : "restaurant" })
+        db.test.insert({ "pos" : { "long" : 34.2, "lat" : 37.3 }, "type" : "restaurant" })
+        db.test.insert({ "pos" : { "long" : 59.1, "lat" : 87.2 }, "type" : "office" })
+        db.test.create_index([("pos", GEOHAYSTACK), ("type", ASCENDING)], bucket_size=1)
+
+        results = db.command(SON([
+            ("geoSearch", "test"),
+            ("near", [33, 33]),
+            ("maxDistance", 6),
+            ("search", { "type" : "restaurant" }),
+            ("limit", 30),
+        ]))['results']
+        self.assertEqual(2, len(results))
+        self.assertEqual({
+            "_id" : _id,
+            "pos" : {
+                "long" : 34.2,
+                "lat" : 33.3
+            },
+            "type" : "restaurant"
+        }, results[0])
+
+    def test_index_sparse(self):
+        db = self.db
+        db.test.drop_indexes()
+        db.test.create_index([('key', ASCENDING)], sparse=True)
+        self.assert_(db.test.index_information()['key_1']['sparse'])
+
+    def test_index_background(self):
+        db = self.db
+        db.test.drop_indexes()
+        db.test.create_index([('keya', ASCENDING)])
+        db.test.create_index([('keyb', ASCENDING)], background=False)
+        db.test.create_index([('keyc', ASCENDING)], background=True)
+        self.assertNotIn('background', db.test.index_information()['keya_1'])
+        self.assertFalse(db.test.index_information()['keyb_1']['background'])
+        self.assert_(db.test.index_information()['keyc_1']['background'])
+
+    def test_index_drop_dups(self):
+        db = self.db
+
+        def my_little_setup():
+            db.test.drop_indexes()
+            db.test.remove()
+            db.test.insert({'i': 1})
+            db.test.insert({'i': 2})
+            db.test.insert({'i': 2}) # duplicate
+            db.test.insert({'i': 3})
+
+        # Try *not* dropping duplicates
+        my_little_setup()
+        self.assertRaises(DuplicateKeyError, lambda: db.test.create_index([('i', ASCENDING)], unique=True, drop_dups=False))
+        self.assertEqual(4, db.test.count())
+
+        # Now drop duplicates
+        my_little_setup()
+        db.test.create_index([('i', ASCENDING)], unique=True, drop_dups=True)
+        self.assertEqual(3, db.test.count())
+
     def test_field_selection(self):
         db = self.db
         db.drop_collection("test")
@@ -524,6 +593,24 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(1, len(id))
 
         self.assertRaises(InvalidOperation, db.test.insert, [])
+
+    def test_insert_multiple_with_duplicate(self):
+        db = self.db
+        db.drop_collection("test")
+        db.test.ensure_index([('i', ASCENDING)], unique=True)
+
+        # No error
+        db.test.insert([{ 'i': i } for i in range(5, 10)], safe=False)
+        db.test.remove()
+
+        # No error
+        db.test.insert([{ 'i': 1 }] * 2)
+        self.assertEqual(1, db.test.count())
+
+        self.assertRaises(
+            DuplicateKeyError,
+            lambda: db.test.insert([{ 'i': 2 }] * 2, safe=True),
+        )
 
     def test_insert_iterables(self):
         db = self.db
