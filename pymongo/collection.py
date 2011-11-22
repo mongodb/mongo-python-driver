@@ -657,6 +657,7 @@ class Collection(common.BaseObject):
             given, a name will be generated
           - `unique`: should this index guarantee uniqueness?
           - `dropDups` or `drop_dups`: should we drop duplicates
+          - `bucketSize` or `bucket_size`: size of buckets for geoHaystack indexes
             during index creation when creating a unique index?
           - `min`: minimum value for keys in a :data:`~pymongo.GEO2D`
             index
@@ -701,6 +702,9 @@ class Collection(common.BaseObject):
 
         if "drop_dups" in kwargs:
             kwargs["dropDups"] = kwargs.pop("drop_dups")
+
+        if "bucket_size" in kwargs:
+            kwargs["bucketSize"] = kwargs.pop("bucket_size")
 
         index.update(kwargs)
 

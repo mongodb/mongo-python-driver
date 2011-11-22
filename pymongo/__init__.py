@@ -30,6 +30,17 @@ GEO2D = "2d"
 .. _geospatial index: http://www.mongodb.org/display/DOCS/Geospatial+Indexing
 """
 
+GEOHAYSTACK = "geoHaystack"
+"""Index specifier for a 2-dimensional `haystack index`_.
+
+.. versionadded::
+
+.. note:: Geo-spatial indexing requires server version **>= 1.5.6+**.
+
+.. _geospatial index: http://www.mongodb.org/display/DOCS/Geospatial+Haystack+Indexing
+"""
+
+
 OFF = 0
 """No database profiling."""
 SLOW_ONLY = 1

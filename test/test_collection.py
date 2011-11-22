@@ -32,7 +32,7 @@ from bson.binary import Binary, UUIDLegacy, OLD_UUID_SUBTYPE, UUID_SUBTYPE
 from bson.code import Code
 from bson.objectid import ObjectId
 from bson.son import SON
-from pymongo import ASCENDING, DESCENDING
+from pymongo import ASCENDING, DESCENDING, GEO2D, GEOHAYSTACK
 from pymongo.collection import Collection
 from pymongo.son_manipulator import SONManipulator
 from pymongo.errors import (ConfigurationError,
@@ -309,6 +309,32 @@ class TestCollection(unittest.TestCase):
                         )
         self.assertEqual(True,
                      db.test.index_information()["hello_-1_world_1"]["unique"])
+
+    def test_index_geo2d(self):
+        db = self.db
+        db.test.drop_indexes()
+        self.assertEqual('loc_2d', db.test.create_index([("loc", GEO2D)]))
+        self.assertEqual({'key': [('loc', '2d')], 'v': 1}, db.test.index_information()['loc_2d'])
+
+    def test_index_haystack(self):
+        db = self.db
+        db.test.drop_indexes()
+        db.test.remove()
+        _id = db.test.insert({ "pos" : { "long" : 34.2, "lat" : 33.3 }, "type" : "restaurant" })
+        db.test.insert({ "pos" : { "long" : 34.2, "lat" : 37.3 }, "type" : "restaurant" })
+        db.test.insert({ "pos" : { "long" : 59.1, "lat" : 87.2 }, "type" : "office" })
+        db.test.create_index([("pos", GEOHAYSTACK), ("type", ASCENDING)], bucket_size=1)
+
+        results = db.command("geoSearch", "test", **{ "near" : [33, 33], "maxDistance" : 6, "search" : { "type" : "restaurant" }, "limit" : 30 })['results']
+        self.assertEqual(2, len(results))
+        self.assertEqual({
+            "_id" : _id,
+            "pos" : {
+                "long" : 34.2,
+                "lat" : 33.3
+            },
+            "type" : "restaurant"
+        }, results[0])
 
     def test_field_selection(self):
         db = self.db
