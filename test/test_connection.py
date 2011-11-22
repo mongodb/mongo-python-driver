@@ -458,6 +458,8 @@ class TestConnection(unittest.TestCase):
         self.assertNotEqual(None, conn._Connection__pool.sock)
         self.assertEqual(0, len(conn._Connection__pool.sockets))
 
+        # We need exec here because if the Python version is less than 2.6
+        # these with-statements won't even compile.
         exec """
 with contextlib.closing(conn):
     self.assertEquals("bar", conn.pymongo_test.test.find_one()["foo"])
