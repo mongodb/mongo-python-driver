@@ -336,6 +336,43 @@ class TestCollection(unittest.TestCase):
             "type" : "restaurant"
         }, results[0])
 
+    def test_index_sparse(self):
+        db = self.db
+        db.test.drop_indexes()
+        db.test.create_index([('key', ASCENDING)], sparse=True)
+        self.assert_(db.test.index_information()['key_1']['sparse'])
+
+    def test_index_background(self):
+        db = self.db
+        db.test.drop_indexes()
+        db.test.create_index([('keya', ASCENDING)])
+        db.test.create_index([('keyb', ASCENDING)], background=False)
+        db.test.create_index([('keyc', ASCENDING)], background=True)
+        self.assertNotIn('background', db.test.index_information()['keya_1'])
+        self.assertFalse(db.test.index_information()['keyb_1']['background'])
+        self.assert_(db.test.index_information()['keyc_1']['background'])
+
+    def test_index_drop_dups(self):
+        db = self.db
+
+        def my_little_setup():
+            db.test.drop_indexes()
+            db.test.remove()
+            db.test.insert({'i': 1})
+            db.test.insert({'i': 2})
+            db.test.insert({'i': 2}) # duplicate
+            db.test.insert({'i': 3})
+
+        # Try *not* dropping duplicates
+        my_little_setup()
+        self.assertRaises(DuplicateKeyError, lambda: db.test.create_index([('i', ASCENDING)], unique=True, drop_dups=False))
+        self.assertEqual(4, db.test.count())
+
+        # Now drop duplicates
+        my_little_setup()
+        db.test.create_index([('i', ASCENDING)], unique=True, drop_dups=True)
+        self.assertEqual(3, db.test.count())
+
     def test_field_selection(self):
         db = self.db
         db.drop_collection("test")
@@ -550,6 +587,24 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(1, len(id))
 
         self.assertRaises(InvalidOperation, db.test.insert, [])
+
+    def test_insert_multiple_with_duplicate(self):
+        db = self.db
+        db.drop_collection("test")
+        db.test.ensure_index([('i', ASCENDING)], unique=True)
+
+        # No error
+        db.test.insert([{ 'i': i } for i in range(5, 10)], safe=False)
+        db.test.remove()
+
+        # No error
+        db.test.insert([{ 'i': 1 }] * 2)
+        self.assertEqual(1, db.test.count())
+
+        self.assertRaises(
+            DuplicateKeyError,
+            lambda: db.test.insert([{ 'i': 2 }] * 2, safe=True),
+        )
 
     def test_insert_iterables(self):
         db = self.db
