@@ -184,7 +184,7 @@ class TestPooling(unittest.TestCase):
         c.test.test.find_one()
         self.assertEqual(0, len(c._Connection__pool.sockets))
 
-    def test_inultiple_connections(self):
+    def test_multiple_connections(self):
         a = get_connection()
         b = get_connection()
         self.assertEqual(1, len(a._Connection__pool.sockets))
