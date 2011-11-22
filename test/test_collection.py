@@ -325,7 +325,13 @@ class TestCollection(unittest.TestCase):
         db.test.insert({ "pos" : { "long" : 59.1, "lat" : 87.2 }, "type" : "office" })
         db.test.create_index([("pos", GEOHAYSTACK), ("type", ASCENDING)], bucket_size=1)
 
-        results = db.command("geoSearch", "test", **{ "near" : [33, 33], "maxDistance" : 6, "search" : { "type" : "restaurant" }, "limit" : 30 })['results']
+        results = db.command(SON([
+            ("geoSearch", "test"),
+            ("near", [33, 33]),
+            ("maxDistance", 6),
+            ("search", { "type" : "restaurant" }),
+            ("limit", 30),
+        ]))['results']
         self.assertEqual(2, len(results))
         self.assertEqual({
             "_id" : _id,
