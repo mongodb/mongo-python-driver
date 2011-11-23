@@ -747,7 +747,7 @@ class TestCursor(unittest.TestCase):
     def test_get_more(self):
         db = self.db
         db.drop_collection("test")
-        db.test.insert([{ 'i': i } for i in range(10)])
+        db.test.insert([{'i': i} for i in range(10)])
         self.assertEqual(10, len(list(db.test.find().batch_size(5))))
 
     def test_tailable(self):
@@ -831,7 +831,7 @@ class TestCursor(unittest.TestCase):
         for _ in range(100):
             self.db.test.insert({})
 
-        c1  = self.db.test.find()
+        c1 = self.db.test.find()
         exec """
 with self.db.test.find() as c2:
     self.assertTrue(c2.alive)
