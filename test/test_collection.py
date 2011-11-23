@@ -314,7 +314,8 @@ class TestCollection(unittest.TestCase):
         db = self.db
         db.test.drop_indexes()
         self.assertEqual('loc_2d', db.test.create_index([("loc", GEO2D)]))
-        self.assertEqual({'key': [('loc', '2d')], 'v': 1}, db.test.index_information()['loc_2d'])
+        index_info = db.test.index_information()['loc_2d']
+        self.assertEqual([('loc', '2d')], index_info['key'])
 
     def test_index_haystack(self):
         db = self.db
@@ -358,26 +359,46 @@ class TestCollection(unittest.TestCase):
         self.assertFalse(db.test.index_information()['keyb_1']['background'])
         self.assert_(db.test.index_information()['keyc_1']['background'])
 
+    def _drop_dups_setup(self, db):
+        db.drop_collection('test')
+        db.test.insert({'i': 1})
+        db.test.insert({'i': 2})
+        db.test.insert({'i': 2}) # duplicate
+        db.test.insert({'i': 3})
+
     def test_index_drop_dups(self):
+        # Try dropping duplicates
         db = self.db
+        self._drop_dups_setup(db)
 
-        def my_little_setup():
-            db.test.drop_indexes()
-            db.test.remove()
-            db.test.insert({'i': 1})
-            db.test.insert({'i': 2})
-            db.test.insert({'i': 2}) # duplicate
-            db.test.insert({'i': 3})
+        if version.at_least(db.connection, (1, 9, 2)):
+            # No error, just drop the duplicate
+            db.test.create_index([('i', ASCENDING)], unique=True, drop_dups=True)
+        else:
+            # https://jira.mongodb.org/browse/SERVER-2054 "Creating an index with dropDups shouldn't assert"
+            # On Mongo < 1.9.2, the duplicate is dropped & the index created, but an error is thrown
+            self.assertRaises(DuplicateKeyError, lambda: db.test.create_index([('i', ASCENDING)], unique=True, drop_dups=True))
 
+        # Duplicate was dropped
+        self.assertEqual(3, db.test.count())
+
+        # Index was created, plus the index on _id
+        self.assertEqual(2, len(db.test.index_information()))
+
+    def test_index_dont_drop_dups(self):
         # Try *not* dropping duplicates
-        my_little_setup()
+        db = self.db
+        self._drop_dups_setup(db)
+
+        # There's a duplicate
         self.assertRaises(DuplicateKeyError, lambda: db.test.create_index([('i', ASCENDING)], unique=True, drop_dups=False))
+
+        # Duplicate wasn't dropped
         self.assertEqual(4, db.test.count())
 
-        # Now drop duplicates
-        my_little_setup()
-        db.test.create_index([('i', ASCENDING)], unique=True, drop_dups=True)
-        self.assertEqual(3, db.test.count())
+        # Index wasn't created, only the default index on _id
+        self.assertEqual(1, len(db.test.index_information()))
+
 
     def test_field_selection(self):
         db = self.db
@@ -1473,6 +1494,8 @@ class TestCollection(unittest.TestCase):
                                            new=True, fields={'i': 1}))
 
     def test_find_with_nested(self):
+        if not version.at_least(self.db.connection, (2, 0, 0)):
+            raise SkipTest()
         c = self.db.test
         c.drop()
         c.insert([{ 'i': i } for i in range(5)]) # [0, 1, 2, 3, 4]

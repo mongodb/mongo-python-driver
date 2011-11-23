@@ -744,6 +744,12 @@ class TestCursor(unittest.TestCase):
 
         self.assertRaises(AttributeError, set_coll)
 
+    def test_get_more(self):
+        db = self.db
+        db.drop_collection("test")
+        db.test.insert([{ 'i': i } for i in range(10)])
+        self.assertEqual(10, len(list(db.test.find().batch_size(5))))
+
     def test_tailable(self):
         db = self.db
         db.drop_collection("test")
