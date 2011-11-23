@@ -377,7 +377,10 @@ class TestCollection(unittest.TestCase):
         else:
             # https://jira.mongodb.org/browse/SERVER-2054 "Creating an index with dropDups shouldn't assert"
             # On Mongo < 1.9.2, the duplicate is dropped & the index created, but an error is thrown
-            self.assertRaises(DuplicateKeyError, lambda: db.test.create_index([('i', ASCENDING)], unique=True, drop_dups=True))
+            self.assertRaises(
+                DuplicateKeyError,
+                lambda: db.test.create_index([('i', ASCENDING)], unique=True, drop_dups=True)
+            )
 
         # Duplicate was dropped
         self.assertEqual(3, db.test.count())
@@ -391,7 +394,10 @@ class TestCollection(unittest.TestCase):
         self._drop_dups_setup(db)
 
         # There's a duplicate
-        self.assertRaises(DuplicateKeyError, lambda: db.test.create_index([('i', ASCENDING)], unique=True, drop_dups=False))
+        self.assertRaises(
+            DuplicateKeyError,
+            lambda: db.test.create_index([('i', ASCENDING)], unique=True, drop_dups=False)
+        )
 
         # Duplicate wasn't dropped
         self.assertEqual(4, db.test.count())
