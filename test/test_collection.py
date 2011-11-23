@@ -314,32 +314,40 @@ class TestCollection(unittest.TestCase):
         db = self.db
         db.test.drop_indexes()
         self.assertEqual('loc_2d', db.test.create_index([("loc", GEO2D)]))
-        self.assertEqual({'key': [('loc', '2d')], 'v': 1}, db.test.index_information()['loc_2d'])
+        index_info = db.test.index_information()['loc_2d']
+        self.assertEqual([('loc', '2d')], index_info['key'])
 
     def test_index_haystack(self):
         db = self.db
         db.test.drop_indexes()
         db.test.remove()
-        _id = db.test.insert({ "pos" : { "long" : 34.2, "lat" : 33.3 }, "type" : "restaurant" })
-        db.test.insert({ "pos" : { "long" : 34.2, "lat" : 37.3 }, "type" : "restaurant" })
-        db.test.insert({ "pos" : { "long" : 59.1, "lat" : 87.2 }, "type" : "office" })
-        db.test.create_index([("pos", GEOHAYSTACK), ("type", ASCENDING)], bucket_size=1)
+        _id = db.test.insert(
+                {"pos": {"long": 34.2, "lat": 33.3},
+                  "type": "restaurant"})
+        db.test.insert({
+            "pos": {"long": 34.2, "lat": 37.3}, "type": "restaurant"
+        })
+        db.test.insert({
+            "pos": {"long": 59.1, "lat": 87.2}, "type": "office"
+        })
+        db.test.create_index(
+            [("pos", GEOHAYSTACK), ("type", ASCENDING)],
+            bucket_size=1
+        )
 
         results = db.command(SON([
             ("geoSearch", "test"),
             ("near", [33, 33]),
             ("maxDistance", 6),
-            ("search", { "type" : "restaurant" }),
+            ("search", {"type": "restaurant"}),
             ("limit", 30),
         ]))['results']
+
         self.assertEqual(2, len(results))
         self.assertEqual({
-            "_id" : _id,
-            "pos" : {
-                "long" : 34.2,
-                "lat" : 33.3
-            },
-            "type" : "restaurant"
+            "_id": _id,
+            "pos": {"long": 34.2, "lat": 33.3},
+            "type": "restaurant"
         }, results[0])
 
     def test_index_sparse(self):
@@ -354,30 +362,66 @@ class TestCollection(unittest.TestCase):
         db.test.create_index([('keya', ASCENDING)])
         db.test.create_index([('keyb', ASCENDING)], background=False)
         db.test.create_index([('keyc', ASCENDING)], background=True)
-        self.assertNotIn('background', db.test.index_information()['keya_1'])
+        self.assertFalse('background' in db.test.index_information()['keya_1'])
         self.assertFalse(db.test.index_information()['keyb_1']['background'])
         self.assert_(db.test.index_information()['keyc_1']['background'])
 
+    def _drop_dups_setup(self, db):
+        db.drop_collection('test')
+        db.test.insert({'i': 1})
+        db.test.insert({'i': 2})
+        db.test.insert({'i': 2})  # duplicate
+        db.test.insert({'i': 3})
+
     def test_index_drop_dups(self):
+        # Try dropping duplicates
         db = self.db
+        self._drop_dups_setup(db)
 
-        def my_little_setup():
-            db.test.drop_indexes()
-            db.test.remove()
-            db.test.insert({'i': 1})
-            db.test.insert({'i': 2})
-            db.test.insert({'i': 2}) # duplicate
-            db.test.insert({'i': 3})
+        if version.at_least(db.connection, (1, 9, 2)):
+            # No error, just drop the duplicate
+            db.test.create_index(
+                [('i', ASCENDING)],
+                unique=True,
+                drop_dups=True
+            )
+        else:
+            # https://jira.mongodb.org/browse/SERVER-2054 "Creating an index
+            # with dropDups shouldn't assert". On Mongo < 1.9.2, the duplicate
+            # is dropped & the index created, but an error is thrown.
+            def test_create():
+                db.test.create_index(
+                    [('i', ASCENDING)],
+                    unique=True,
+                    drop_dups=True
+                )
+            self.assertRaises(DuplicateKeyError, test_create)
 
+        # Duplicate was dropped
+        self.assertEqual(3, db.test.count())
+
+        # Index was created, plus the index on _id
+        self.assertEqual(2, len(db.test.index_information()))
+
+    def test_index_dont_drop_dups(self):
         # Try *not* dropping duplicates
-        my_little_setup()
-        self.assertRaises(DuplicateKeyError, lambda: db.test.create_index([('i', ASCENDING)], unique=True, drop_dups=False))
+        db = self.db
+        self._drop_dups_setup(db)
+
+        # There's a duplicate
+        def test_create():
+            db.test.create_index(
+                [('i', ASCENDING)],
+                unique=True,
+                drop_dups=False
+            )
+        self.assertRaises(DuplicateKeyError, test_create)
+
+        # Duplicate wasn't dropped
         self.assertEqual(4, db.test.count())
 
-        # Now drop duplicates
-        my_little_setup()
-        db.test.create_index([('i', ASCENDING)], unique=True, drop_dups=True)
-        self.assertEqual(3, db.test.count())
+        # Index wasn't created, only the default index on _id
+        self.assertEqual(1, len(db.test.index_information()))
 
     def test_field_selection(self):
         db = self.db
@@ -600,16 +644,16 @@ class TestCollection(unittest.TestCase):
         db.test.ensure_index([('i', ASCENDING)], unique=True)
 
         # No error
-        db.test.insert([{ 'i': i } for i in range(5, 10)], safe=False)
+        db.test.insert([{'i': i} for i in range(5, 10)], safe=False)
         db.test.remove()
 
         # No error
-        db.test.insert([{ 'i': 1 }] * 2)
+        db.test.insert([{'i': 1}] * 2)
         self.assertEqual(1, db.test.count())
 
         self.assertRaises(
             DuplicateKeyError,
-            lambda: db.test.insert([{ 'i': 2 }] * 2, safe=True),
+            lambda: db.test.insert([{'i': 2}] * 2, safe=True),
         )
 
     def test_insert_iterables(self):
@@ -639,25 +683,36 @@ class TestCollection(unittest.TestCase):
         self.assert_(isinstance(id, ObjectId))
 
         # Save a doc with explicit id
-        self.db.test.save({"_id": "explicit_id", "hello": "bar" })
-        doc = self.db.test.find_one({ "_id": "explicit_id" })
+        self.db.test.save({"_id": "explicit_id", "hello": "bar"})
+        doc = self.db.test.find_one({"_id": "explicit_id"})
         self.assertEqual(doc['_id'], 'explicit_id')
         self.assertEqual(doc['hello'], 'bar')
 
         # Save docs with _id field already present (shouldn't create new docs)
         self.assertEqual(2, self.db.test.count())
-        self.db.test.save({ '_id': id, 'hello': 'world' })
+        self.db.test.save({'_id': id, 'hello': 'world'})
         self.assertEqual(2, self.db.test.count())
-        self.db.test.save({ '_id': 'explicit_id', 'hello': 'baz' })
+        self.db.test.save({'_id': 'explicit_id', 'hello': 'baz'})
         self.assertEqual(2, self.db.test.count())
-        self.assertEqual('baz', self.db.test.find_one({ '_id': 'explicit_id' })['hello'])
+        self.assertEqual(
+            'baz',
+            self.db.test.find_one({'_id': 'explicit_id'})['hello']
+        )
 
         # Safe mode
         self.db.test.create_index("hello", unique=True)
-        # No exception, even though we're duplicating the first doc's "hello" value
-        self.db.test.save({ '_id': 'explicit_id', 'hello': 'world' }, safe=False)
+        # No exception, even though we duplicate the first doc's "hello" value
+        self.db.test.save(
+            {'_id': 'explicit_id', 'hello': 'world'},
+            safe=False
+        )
 
-        self.assertRaises(DuplicateKeyError, self.db.test.save, { '_id': 'explicit_id', 'hello': 'world' }, safe=True)
+        self.assertRaises(
+            DuplicateKeyError,
+            self.db.test.save,
+            {'_id': 'explicit_id', 'hello': 'world'},
+            safe=True
+        )
 
     def test_save_with_invalid_key(self):
         self.db.drop_collection("test")
@@ -945,8 +1000,8 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(db.test.count(), 2)
         db.test.save({'foo': 'bar'})
         db.test.save({'foo': 'baz'})
-        self.assertEqual(db.test.find({'foo':'bar'}).count(), 1)
-        self.assertEqual(db.test.find({'foo':re.compile(r'ba.*')}).count(), 2)
+        self.assertEqual(db.test.find({'foo': 'bar'}).count(), 1)
+        self.assertEqual(db.test.find({'foo': re.compile(r'ba.*')}).count(), 2)
 
     def test_group(self):
         db = self.db
@@ -1248,7 +1303,7 @@ class TestCollection(unittest.TestCase):
 
         self.assertEqual([1, 2, 3], distinct)
 
-        distinct = self.db.test.find({ 'a': { '$gt': 1 } }).distinct("a")
+        distinct = self.db.test.find({'a': {'$gt': 1}}).distinct("a")
         distinct.sort()
 
         self.assertEqual([2, 3], distinct)
@@ -1364,7 +1419,11 @@ class TestCollection(unittest.TestCase):
                               merge_output=True,
                               reduce_output=True)
 
-            result = db.test.map_reduce(map, reduce, out={'replace': 'mrunittests'})
+            result = db.test.map_reduce(
+                map,
+                reduce,
+                out={'replace': 'mrunittests'}
+            )
             self.assertEqual(3, result.find_one({"_id": "cat"})["value"])
             self.assertEqual(2, result.find_one({"_id": "dog"})["value"])
             self.assertEqual(1, result.find_one({"_id": "mouse"})["value"])
@@ -1473,9 +1532,11 @@ class TestCollection(unittest.TestCase):
                                            new=True, fields={'i': 1}))
 
     def test_find_with_nested(self):
+        if not version.at_least(self.db.connection, (2, 0, 0)):
+            raise SkipTest()
         c = self.db.test
         c.drop()
-        c.insert([{ 'i': i } for i in range(5)]) # [0, 1, 2, 3, 4]
+        c.insert([{'i': i} for i in range(5)])  # [0, 1, 2, 3, 4]
         self.assertEqual(
             [2],
             [i['i'] for i in c.find({
@@ -1483,15 +1544,15 @@ class TestCollection(unittest.TestCase):
                     {
                         # This clause gives us [1,2,4]
                         '$or': [
-                            { 'i': { '$lte': 2 } },
-                            { 'i': { '$gt': 3 } },
+                            {'i': {'$lte': 2}},
+                            {'i': {'$gt': 3}},
                         ],
                     },
                     {
                         # This clause gives us [2,3]
                         '$or': [
-                            { 'i': 2 },
-                            { 'i': 3 },
+                            {'i': 2},
+                            {'i': 3},
                         ]
                     },
                 ]
@@ -1499,21 +1560,21 @@ class TestCollection(unittest.TestCase):
         )
 
         self.assertEqual(
-            [0,1,2],
+            [0, 1, 2],
             [i['i'] for i in c.find({
                 '$or': [
                     {
                         # This clause gives us [2]
                         '$and': [
-                            { 'i': { '$gte': 2 } },
-                            { 'i': { '$lt': 3 } },
+                            {'i': {'$gte': 2}},
+                            {'i': {'$lt': 3}},
                         ],
                     },
                     {
                         # This clause gives us [0,1]
                         '$and': [
-                            { 'i': { '$gt': -100 } },
-                            { 'i': { '$lt': 2 } },
+                            {'i': {'$gt': -100}},
+                            {'i': {'$lt': 2}},
                         ]
                     },
                 ]
