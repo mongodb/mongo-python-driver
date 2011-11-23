@@ -321,9 +321,10 @@ class TestCollection(unittest.TestCase):
         db = self.db
         db.test.drop_indexes()
         db.test.remove()
-        _id = db.test.insert(
-                {"pos": {"long": 34.2, "lat": 33.3},
-                  "type": "restaurant"})
+        _id = db.test.insert({
+            "pos": {"long": 34.2, "lat": 33.3},
+            "type": "restaurant"
+        })
         db.test.insert({
             "pos": {"long": 34.2, "lat": 37.3}, "type": "restaurant"
         })
