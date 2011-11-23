@@ -355,7 +355,7 @@ class TestCollection(unittest.TestCase):
         db.test.create_index([('keya', ASCENDING)])
         db.test.create_index([('keyb', ASCENDING)], background=False)
         db.test.create_index([('keyc', ASCENDING)], background=True)
-        self.assertNotIn('background', db.test.index_information()['keya_1'])
+        self.assertFalse('background' in db.test.index_information()['keya_1'])
         self.assertFalse(db.test.index_information()['keyb_1']['background'])
         self.assert_(db.test.index_information()['keyc_1']['background'])
 
