@@ -278,7 +278,7 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
     }
 
     before = buffer_get_position(buffer);
-    if (!write_dict(buffer, spec, 0, 4, 1)) {
+    if (!write_dict(buffer, spec, 0, uuid_subtype, 1)) {
         buffer_free(buffer);
         PyMem_Free(collection_name);
         return NULL;

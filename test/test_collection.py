@@ -1619,7 +1619,8 @@ class TestCollection(unittest.TestCase):
 
         # Test basic query
         uu = uuid.uuid4()
-        coll.insert({'uu': uu})
+        # Insert as binary subtype 3
+        coll.insert({'uu': uu}, safe=True)
         self.assertEqual(uu, coll.find_one({'uu': uu})['uu'])
         coll.uuid_subtype = UUID_SUBTYPE
         self.assertEqual(None, coll.find_one({'uu': uu}))
@@ -1639,11 +1640,13 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(0, coll.count())
 
         # Test save
-        coll.insert({'_id': uu, 'i': 0})
+        coll.insert({'_id': uu, 'i': 0}, safe=True)
+        self.assertEqual(1, coll.count())
+        self.assertEqual(1, coll.find({'_id': uu}).count())
         self.assertEqual(0, coll.find_one({'_id': uu})['i'])
         doc = coll.find_one({'_id': uu})
         doc['i'] = 1
-        coll.save(doc)
+        coll.save(doc, safe=True)
         self.assertEqual(1, coll.find_one({'_id': uu})['i'])
 
         # Test update
