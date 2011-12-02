@@ -431,6 +431,7 @@ class TestCollection(unittest.TestCase):
         doc = {"a": 1, "b": 5, "c": {"d": 5, "e": 10}}
         db.test.insert(doc)
 
+        # Test field inclusion
         self.assertEqual(db.test.find({}, ["_id"]).next().keys(), ["_id"])
         l = db.test.find({}, ["a"]).next().keys()
         l.sort()
@@ -446,6 +447,7 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(db.test.find({}, ["c"]).next()["c"],
                          {"d": 5, "e": 10})
 
+        # Test inclusion of fields with dots
         self.assertEqual(db.test.find({}, ["c.d"]).next()["c"], {"d": 5})
         self.assertEqual(db.test.find({}, ["c.e"]).next()["c"], {"e": 10})
         self.assertEqual(db.test.find({}, ["b", "c.e"]).next()["c"],
@@ -455,6 +457,14 @@ class TestCollection(unittest.TestCase):
         l.sort()
         self.assertEqual(l, ["_id", "b", "c"])
         self.assertEqual(db.test.find({}, ["b", "c.e"]).next()["b"], 5)
+
+        # Test field exclusion
+        l = db.test.find({}, {"a": False, "b": 0}).next().keys()
+        l.sort()
+        self.assertEqual(l, ["_id", "c"])
+
+        l = db.test.find({}, {"_id": False}).next().keys()
+        self.assertFalse("_id" in l)
 
     def test_options(self):
         db = self.db
