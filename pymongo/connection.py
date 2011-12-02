@@ -367,6 +367,9 @@ class Connection(common.BaseObject):
         self.__auth_credentials = {}
 
         super(Connection, self).__init__(**options)
+        if self.slave_okay:
+            warnings.warn("slave_okay is deprecated. Please "
+                          "use read_preference instead.", DeprecationWarning)
 
         if _connect:
             self.__find_node()

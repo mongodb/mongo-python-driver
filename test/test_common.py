@@ -15,6 +15,7 @@
 """Test the pymongo common module."""
 
 import unittest
+import warnings
 
 from pymongo.connection import Connection
 from pymongo.errors import ConfigurationError, OperationFailure
@@ -24,6 +25,7 @@ class TestCommon(unittest.TestCase):
 
     def test_baseobject(self):
 
+        warnings.simplefilter("ignore")
         c = Connection()
         self.assertFalse(c.slave_okay)
         self.assertFalse(c.safe)
@@ -142,6 +144,7 @@ class TestCommon(unittest.TestCase):
         # Succeeds since we override the lasterror settings per query.
         self.assert_(coll.insert({'foo': 'bar'}, fsync=True))
         c.drop_database(db)
+        warnings.resetwarnings()
 
 
 if __name__ == "__main__":

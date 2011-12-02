@@ -229,6 +229,9 @@ class ReplicaSetConnection(common.BaseObject):
                                      "from PyPI.")
 
         super(ReplicaSetConnection, self).__init__(**self.__opts)
+        if self.slave_okay:
+            warnings.warn("slave_okay is deprecated. Please "
+                          "use read_preference instead.", DeprecationWarning)
 
         self.refresh()
 
