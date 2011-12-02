@@ -728,21 +728,24 @@ class ReplicaSetConnection(common.BaseObject):
     def __send_and_receive(self, mongo, msg, **kwargs):
         """Send a message on the given socket and return the response data.
         """
-        sock = self.__socket(mongo)
         try:
+            sock = self.__socket(mongo)
             if "network_timeout" in kwargs:
                 sock.settimeout(kwargs['network_timeout'])
+
             rqst_id, data = self.__check_bson_size(msg,
                                                    mongo['max_bson_size'])
             sock.sendall(data)
-            return self.__recv_msg(1, rqst_id, sock)
+            response = self.__recv_msg(1, rqst_id, sock)
+
+            if "network_timeout" in kwargs:
+                sock.settimeout(self.__net_timeout)
+            mongo['pool'].return_socket()
+
+            return response
         except (ConnectionFailure, socket.error), why:
             mongo['pool'].discard_socket()
             raise AutoReconnect(str(why))
-
-        if "network_timeout" in kwargs:
-            sock.settimeout(self.__net_timeout)
-        mongo['pool'].return_socket()
 
     def _send_message_with_response(self, msg, _connection_to_use=None,
                                     _must_use_master=False, **kwargs):
