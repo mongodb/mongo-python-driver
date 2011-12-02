@@ -144,12 +144,12 @@ class TestConnection(unittest.TestCase):
         cursor = db.test.find()
         self.assertEqual('x', cursor.next()['foo'])
         # Ensure we read from the primary
-        self.assertEqual(-1, cursor._Cursor__connection_id)
+        self.assertEqual(c.primary, cursor._Cursor__connection_id)
         time.sleep(1)
         cursor = db.test.find(read_preference=ReadPreference.SECONDARY)
         self.assertEqual('x', cursor.next()['foo'])
         # Ensure we didn't read from the primary
-        self.assertNotEqual(-1, cursor._Cursor__connection_id)
+        self.assertTrue(cursor._Cursor__connection_id in c.secondaries)
 
         self.assertEqual(1, db.test.count())
         db.test.remove({})

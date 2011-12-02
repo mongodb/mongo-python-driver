@@ -39,6 +39,7 @@ import sys
 import threading
 import time
 import warnings
+import weakref
 
 from bson.son import SON
 from pymongo import (common,
@@ -91,15 +92,19 @@ def _partition_node(node):
 
 
 class Monitor(threading.Thread):
-    def __init__(self, func, interval=5):
-        self.func = func
-        self.interval = interval
+    def __init__(self, obj, interval=5):
         super(Monitor, self).__init__()
+        self.obj = weakref.proxy(obj)
+        self.interval = interval
 
     def run(self):
         while True:
             try:
-                self.func()
+                self.obj.refresh()
+            # The connection object has been
+            # collected so we should die.
+            except ReferenceError:
+                break
             except:
                 pass
             time.sleep(self.interval)
@@ -227,7 +232,7 @@ class ReplicaSetConnection(common.BaseObject):
 
         self.refresh()
 
-        monitor_thread = Monitor(self.refresh)
+        monitor_thread = Monitor(self)
         monitor_thread.setName("ReplicaSetMonitorThread")
         monitor_thread.setDaemon(True)
         monitor_thread.start()
@@ -456,7 +461,7 @@ class ReplicaSetConnection(common.BaseObject):
                     res = self.__simple_command(sock, 'admin', {'ismaster': 1})
                 else:
                     res, mongo = self.__is_master(host)
-                    bson_max = res.get('maxBsonObjectSize') or MAX_BSON_SIZE
+                    bson_max = res.get('maxBsonObjectSize', MAX_BSON_SIZE)
                     self.__pools[host] = {'pool': mongo,
                                           'last_checkout': time.time(),
                                           'max_bson_size': bson_max}
@@ -466,6 +471,8 @@ class ReplicaSetConnection(common.BaseObject):
             # as readers.
             if res['secondary']:
                 secondaries.append(host)
+            elif res['ismaster']:
+                self.__writer = host
         self.__readers = secondaries
 
     def refresh(self):
@@ -526,7 +533,7 @@ class ReplicaSetConnection(common.BaseObject):
                 res = self.__simple_command(sock, 'admin', {'ismaster': 1})
             else:
                 res, mongo = self.__is_master(host)
-                bson_max = res.get('maxBsonObjectSize') or MAX_BSON_SIZE
+                bson_max = res.get('maxBsonObjectSize', MAX_BSON_SIZE)
                 self.__pools[host] = {'pool': mongo,
                                       'last_checkout': time.time(),
                                       'max_bson_size': bson_max}
@@ -575,24 +582,18 @@ class ReplicaSetConnection(common.BaseObject):
         the last socket checkout, to keep performance reasonable - we
         can't avoid those completely anyway.
         """
-        try:
-            sock, authset = mongo['pool'].get_socket()
+        sock, authset = mongo['pool'].get_socket()
 
-            now = time.time()
-            if now - mongo['last_checkout'] > 1:
-                if _closed(sock):
-                    host = mongo['pool'].host
-                    mongo['pool'] = pool.Pool(host,
-                                              self.__max_pool_size,
-                                              self.__net_timeout,
-                                              self.__conn_timeout,
-                                              self.__use_ssl)
-                    sock, authset = mongo['pool'].get_socket()
-            mongo['last_checkout'] = now
-        except socket.error, why:
-            host, port = mongo['pool'].host
-            raise AutoReconnect("could not connect to "
-                                "%s:%d: %s" % (host, port, str(why)))
+        now = time.time()
+        if now - mongo['last_checkout'] > 1:
+            if _closed(sock):
+                mongo['pool'] = pool.Pool(mongo['pool'].host,
+                                          self.__max_pool_size,
+                                          self.__net_timeout,
+                                          self.__conn_timeout,
+                                          self.__use_ssl)
+                sock, authset = mongo['pool'].get_socket()
+        mongo['last_checkout'] = now
         if self.__auth_credentials or authset:
             self.__check_auth(sock, authset)
         return sock
@@ -753,21 +754,23 @@ class ReplicaSetConnection(common.BaseObject):
           - `msg`: (request_id, data) pair making up the message to send
         """
         read_pref = kwargs.get('read_preference', ReadPreference.PRIMARY)
+        mongo = None
         try:
             if _connection_to_use is not None:
                 if _connection_to_use == -1:
                     mongo = self.__find_primary()
                 else:
                     mongo = self.__pools[_connection_to_use]
-                return _connection_to_use, self.__send_and_receive(mongo,
+                return mongo['pool'].host, self.__send_and_receive(mongo,
                                                                    msg,
                                                                    **kwargs)
             elif _must_use_master or not read_pref:
-                _connection_to_use = -1
                 mongo = self.__find_primary()
-                return -1, self.__send_and_receive(mongo, msg, **kwargs)
+                return mongo['pool'].host, self.__send_and_receive(mongo,
+                                                                   msg,
+                                                                   **kwargs)
         except AutoReconnect:
-            if _connection_to_use == -1:
+            if mongo == self.__writer:
                 self.disconnect()
             raise
 
@@ -784,10 +787,12 @@ class ReplicaSetConnection(common.BaseObject):
         if read_pref == ReadPreference.SECONDARY:
             try:
                 mongo = self.__find_primary()
-                return -1, self.__send_and_receive(mongo, msg, **kwargs)
+                return mongo['pool'].host, self.__send_and_receive(mongo,
+                                                                   msg,
+                                                                   **kwargs)
             except AutoReconnect, why:
                 self.disconnect()
-                errors.append(str(why))
+                errors.append(why)
         raise AutoReconnect(', '.join(errors))
 
     def __cmp__(self, other):
