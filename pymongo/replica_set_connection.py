@@ -14,9 +14,6 @@
 
 """Tools for connecting to a MongoDB replica set.
 
-THIS IS NOT READY FOR PRODUCTION USE AND IS NOT
-YET SUPPORTED BY 10GEN. USE AT YOUR OWN RISK!!!!
-
 To get a :class:`~pymongo.database.Database` instance from a
 :class:`ReplicaSetConnection` use either dictionary-style or
 attribute-style access:
@@ -182,9 +179,6 @@ class ReplicaSetConnection(common.BaseObject):
 
         .. versionadded:: 2.0.1+
         """
-        warnings.warn("ReplicaSetConnection IS NOT READY "
-                      "FOR PRODUCTION USE. USE AT YOUR OWN RISK!")
-
         self.__max_pool_size = max_pool_size
         self.__document_class = document_class
         self.__tz_aware = tz_aware
@@ -531,7 +525,6 @@ class ReplicaSetConnection(common.BaseObject):
         """
         try:
             if host in self.__pools:
-                # TODO: Handle failures better here...
                 sock = self.__socket(self.__pools[host])
                 res = self.__simple_command(sock, 'admin', {'ismaster': 1})
             else:
@@ -747,8 +740,9 @@ class ReplicaSetConnection(common.BaseObject):
 
             return response
         except (ConnectionFailure, socket.error), why:
+            host, port = mongo['pool'].host
             mongo['pool'].discard_socket()
-            raise AutoReconnect(str(why))
+            raise AutoReconnect("%s:%d: %s" % (host, port, str(why)))
 
     def _send_message_with_response(self, msg, _connection_to_use=None,
                                     _must_use_master=False, **kwargs):
