@@ -361,7 +361,7 @@ class TestMasterSlaveConnection(unittest.TestCase):
         coll.insert({'foo': 'bar'})
         self.assertEquals(1, coll.find({'foo': 'bar'}).count())
         self.assert_(coll.find({'foo': 'bar'}))
-        coll.remove({'foo': 'bar'}, safe=True)
+        coll.remove({'foo': 'bar'}, safe=True, w=2)
         self.assertEquals(0, coll.find({'foo': 'bar'}).count())
 
         # Set self.connection back to defaults
