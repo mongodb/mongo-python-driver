@@ -193,8 +193,8 @@ class BaseObject(object):
 
     def __set_slave_okay(self, value):
         """Property setter for slave_okay"""
-        warnings.warn("DEPRECATED. Please use "
-                      ":attr:`read_preference` instead.", DeprecationWarning)
+        warnings.warn("slave_okay is deprecated. Please use "
+                      "read_preference instead.", DeprecationWarning)
         self.__slave_okay = validate_boolean('slave_okay', value)
 
     slave_okay = property(__get_slave_okay, __set_slave_okay)
