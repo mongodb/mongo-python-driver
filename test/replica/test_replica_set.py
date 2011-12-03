@@ -1,0 +1,204 @@
+import time
+import unittest
+
+import replset_tools
+
+from nose.plugins.skip import SkipTest
+
+from pymongo import (Connection,
+                     ReplicaSetConnection,
+                     ReadPreference)
+from pymongo.errors import AutoReconnect
+
+
+class TestReadPreference(unittest.TestCase):
+
+    def setUp(self):
+        res = replset_tools.start_replica_set(num_members=3,
+                                              with_arbiter=True)
+        self.seed, self.name = res
+
+    def test_read_preference(self):
+        c = ReplicaSetConnection(self.seed, replicaSet=self.name)
+        self.assertTrue(bool(len(c.secondaries)))
+        db = c.pymongo_test
+        db.test.remove({}, safe=True, w=len(c.secondaries))
+
+        # Force replication...
+        db.test.insert({'foo': 'bar'}, safe=True, w=len(c.secondaries))
+
+        # Test PRIMARY
+        for _ in xrange(10):
+            cursor = db.test.find()
+            cursor.next()
+            self.assertEqual(cursor._Cursor__connection_id, c.primary)
+
+        # Test SECONDARY with a secondary
+        db.read_preference = ReadPreference.SECONDARY
+        for _ in xrange(10):
+            cursor = db.test.find()
+            cursor.next()
+            self.assertTrue(cursor._Cursor__connection_id in c.secondaries)
+
+        # Test SECONDARY_ONLY with a secondary
+        db.read_preference = ReadPreference.SECONDARY_ONLY
+        for _ in xrange(10):
+            cursor = db.test.find()
+            cursor.next()
+            self.assertTrue(cursor._Cursor__connection_id in c.secondaries)
+
+        # Test SECONDARY with no secondary
+        killed = replset_tools.kill_all_secondaries()
+        db.read_preference = ReadPreference.SECONDARY
+        for _ in xrange(10):
+            cursor = db.test.find()
+            cursor.next()
+            self.assertEqual(cursor._Cursor__connection_id, c.primary)
+
+        # Test SECONDARY_ONLY with no secondary
+        db.read_preference = ReadPreference.SECONDARY_ONLY
+        for _ in xrange(10):
+            cursor = db.test.find()
+            self.assertRaises(AutoReconnect, cursor.next)
+
+    def tearDown(self):
+        replset_tools.kill_all_members()
+
+class TestHealthMonitor(unittest.TestCase):
+
+    def setUp(self):
+        res = replset_tools.start_replica_set(num_members=3,
+                                              with_arbiter=False)
+        self.seed, self.name = res
+
+    def test_primary_failure(self):
+        c = ReplicaSetConnection(self.seed, replicaSet=self.name)
+        self.assertTrue(bool(len(c.secondaries)))
+        primary = c.primary
+        secondaries = c.secondaries
+
+        def primary_changed():
+            for i in xrange(20):
+                if c.primary != primary:
+                    return True
+                time.sleep(1)
+            return False
+
+        killed = replset_tools.kill_primary()
+        self.assertTrue(bool(len(killed)))
+        self.assertTrue(primary_changed())
+        self.assertTrue(secondaries != c.secondaries)
+
+    def test_secondary_failure(self):
+        c = ReplicaSetConnection(self.seed, replicaSet=self.name)
+        self.assertTrue(bool(len(c.secondaries)))
+        primary = c.primary
+        secondaries = c.secondaries
+
+        def readers_changed():
+            for i in xrange(20):
+                if c.secondaries != secondaries:
+                    return True
+                time.sleep(1)
+            return False
+
+        killed = replset_tools.kill_secondary()
+        self.assertTrue(bool(len(killed)))
+        self.assertEqual(primary, c.primary)
+        self.assertTrue(readers_changed())
+        secondaries = c.secondaries
+
+        replset_tools.restart_members(killed)
+        self.assertEqual(primary, c.primary)
+        self.assertTrue(readers_changed())
+
+    def test_primary_stepdown(self):
+        c = ReplicaSetConnection(self.seed, replicaSet=self.name)
+        self.assertTrue(bool(len(c.secondaries)))
+        primary = c.primary
+        secondaries = c.secondaries
+
+        def primary_changed():
+            for i in xrange(20):
+                if c.primary != primary:
+                    return True
+                time.sleep(1)
+            return False
+
+        replset_tools.stepdown_primary()
+        self.assertTrue(primary_changed())
+        self.assertTrue(secondaries != c.secondaries)
+
+    def tearDown(self):
+        replset_tools.kill_all_members()
+
+class TestWritesWithFailover(unittest.TestCase):
+
+    def setUp(self):
+        res = replset_tools.start_replica_set(num_members=3,
+                                              with_arbiter=False)
+        self.seed, self.name = res
+
+    def test_writes_with_failover(self):
+        c = ReplicaSetConnection(self.seed, replicaSet=self.name)
+        primary = c.primary
+        db = c.pymongo_test
+        db.test.remove({}, safe=True, w=len(c.secondaries))
+        db.test.insert({'foo': 'bar'}, safe=True, w=len(c.secondaries))
+        self.assertEqual('bar', db.test.find_one()['foo'])
+
+        def try_write():
+            for i in xrange(20):
+                try:
+                    db.test.insert({'bar': 'baz'}, safe=True)
+                    return True
+                except AutoReconnect:
+                    time.sleep(1)
+            return False
+
+        killed = replset_tools.kill_primary(9)
+        self.assertTrue(bool(len(killed)))
+        self.assertTrue(try_write())
+        self.assertTrue(primary != c.primary)
+        self.assertEqual('baz', db.test.find_one({'bar': 'baz'})['bar'])
+
+    def tearDown(self):
+        replset_tools.kill_all_members()
+
+class TestReadWithFailover(unittest.TestCase):
+
+    def setUp(self):
+        res = replset_tools.start_replica_set(num_members=3,
+                                              with_arbiter=False)
+        self.seed, self.name = res
+
+    def test_read_with_failover(self):
+        c = ReplicaSetConnection(self.seed, replicaSet=self.name)
+        self.assertTrue(bool(len(c.secondaries)))
+
+        def iter_cursor(cursor):
+            for doc in cursor:
+                pass
+            return True
+
+        db = c.pymongo_test
+        db.test.remove({}, safe=True, w=len(c.secondaries))
+        # Force replication
+        db.test.insert([{'foo': i} for i in xrange(10)],
+                       safe=True, w=len(c.secondaries))
+        self.assertEqual(10, db.test.count())
+
+        db.read_preference = ReadPreference.SECONDARY
+        cursor = db.test.find().batch_size(5)
+        cursor.next()
+        self.assertEqual(5, cursor._Cursor__retrieved)
+        killed = replset_tools.kill_primary()
+        # Primary failure shouldn't interrupt the cursor
+        self.assertTrue(iter_cursor(cursor))
+        self.assertEqual(10, cursor._Cursor__retrieved)
+
+    def tearDown(self):
+        replset_tools.kill_all_members()
+
+if __name__ == '__main__':
+        unittest.main()
