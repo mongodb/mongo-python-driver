@@ -450,6 +450,49 @@ class TestConnection(unittest.TestCase):
         self.assert_("pymongo_test_bernie" in dbs)
         connection.close()
 
+    def test_kill_cursors_explicit(self):
+        c = self._get_connection()
+        db = c.pymongo_test
+        db.drop_collection("test")
+
+        def get_cursor_counts():
+            counts = {}
+            conn = Connection(*c.primary)
+            db = conn.pymongo_test
+            counts[c.primary] = db.command("cursorInfo")["clientCursors_size"]
+            for member in c.secondaries:
+                conn = Connection(*member)
+                db = conn.pymongo_test
+                counts[member] = db.command("cursorInfo")["clientCursors_size"]
+            return counts
+
+        start = get_cursor_counts()
+
+        test = db.test
+        for i in range(10000):
+            test.insert({"i": i}) 
+        self.assertEqual(start, get_cursor_counts())
+
+        # Automatically closed by the server (limit == -1).
+        for _ in range(10):
+            db.test.find_one()
+        self.assertEqual(start, get_cursor_counts())
+
+        a = db.test.find()
+        for x in a:
+            break
+        self.assertNotEqual(start, get_cursor_counts())
+
+        # Explicitly close (should work with all interpreter implementations).
+        a.close()
+        self.assertEqual(start, get_cursor_counts())
+
+        # Automatically closed by the server since the entire
+        # result was returned.
+        a = db.test.find().limit(10)
+        for x in a:
+            break
+        self.assertEqual(start, get_cursor_counts())
 
 if __name__ == "__main__":
     unittest.main()
