@@ -1,3 +1,19 @@
+# Copyright 2009-2011 10gen, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Tools for testing PyMongo with a replica set."""
+
 import os
 import random
 import shutil
@@ -21,6 +37,7 @@ set_name = os.environ.get('SETNAME', 'repl0')
 
 nodes = {}
 
+
 def kill_members(members, sig):
     for member in members:
         try:
@@ -31,14 +48,16 @@ def kill_members(members, sig):
             else:
                 os.kill(proc.pid, sig)
         except OSError:
-            pass # already dead
+            pass  # already dead
+
 
 def kill_all_members():
     kill_members(nodes.keys(), 2)
 
+
 def wait_for(proc, port):
     trys = 0
-    while proc.poll() is None and trys < 40: # ~10 seconds
+    while proc.poll() is None and trys < 40:  # ~10 seconds
         trys += 1
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
@@ -52,6 +71,7 @@ def wait_for(proc, port):
 
     kill_all_members()
     return False
+
 
 def start_replica_set(num_members=3, with_arbiter=True, fresh=True):
     if fresh:
@@ -110,14 +130,17 @@ def start_replica_set(num_members=3, with_arbiter=True, fresh=True):
             pass
     return primary, set_name
 
+
 def get_members_in_state(state):
     c = pymongo.Connection(nodes.keys(), slave_okay=True)
     status = c.admin.command('replSetGetStatus')
     members = status['members']
     return [k['name'] for k in members if k['state'] == state]
 
+
 def get_primary():
     return get_members_in_state(1)
+
 
 def get_random_secondary():
     secondaries = get_members_in_state(2)
@@ -125,32 +148,39 @@ def get_random_secondary():
         return [secondaries[random.randrange(0, len(secondaries))]]
     return secondaries
 
+
 def get_secondaries():
     return get_members_in_state(2)
 
+
 def get_arbiters():
     return get_members_in_state(7)
+
 
 def kill_primary(sig=2):
     primary = get_primary()
     kill_members(primary, sig)
     return primary
 
+
 def kill_secondary(sig=2):
     secondary = get_random_secondary()
     kill_members(secondary, sig)
     return secondary
+
 
 def kill_all_secondaries(sig=2):
     secondaries = get_secondaries()
     kill_members(secondaries, sig)
     return secondaries
 
+
 def stepdown_primary():
     primary = get_primary()
     if primary:
         c = pymongo.Connection(primary)
         c.admin.command('replSetStepDown', 10)
+
 
 def restart_members(members):
     restarted = []
@@ -164,4 +194,3 @@ def restart_members(members):
         if res:
             restarted.append(member)
     return restarted
-
