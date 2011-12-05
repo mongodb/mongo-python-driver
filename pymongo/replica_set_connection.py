@@ -452,17 +452,21 @@ class ReplicaSetConnection(common.BaseObject):
         """
         secondaries = []
         for host in self.__hosts:
+            mongo = None
             try:
                 if host in self.__pools:
-                    sock = self.__socket(self.__pools[host])
+                    mongo = self.__pools[host]
+                    sock = self.__socket(mongo)
                     res = self.__simple_command(sock, 'admin', {'ismaster': 1})
                 else:
-                    res, mongo = self.__is_master(host)
+                    res, conn = self.__is_master(host)
                     bson_max = res.get('maxBsonObjectSize', MAX_BSON_SIZE)
-                    self.__pools[host] = {'pool': mongo,
+                    self.__pools[host] = {'pool': conn,
                                           'last_checkout': time.time(),
                                           'max_bson_size': bson_max}
             except (ConnectionFailure, socket.error):
+                if mongo:
+                    mongo['pool'].discard_socket()
                 continue
             # Only use hosts that are currently in 'secondary' state
             # as readers.
@@ -482,13 +486,15 @@ class ReplicaSetConnection(common.BaseObject):
         hosts = set()
 
         for node in nodes:
+            mongo = None
             try:
                 if node in self.__pools:
-                    sock = self.__socket(self.__pools[node])
+                    mongo = self.__pools[node]
+                    sock = self.__socket(mongo)
                     response = self.__simple_command(sock, 'admin',
                                                      {'ismaster': 1})
                 else:
-                    response, _ = self.__is_master(node)
+                    response, conn = self.__is_master(node)
 
                 # Check that this host is part of the given replica set.
                 set_name = response.get('setName')
@@ -510,6 +516,8 @@ class ReplicaSetConnection(common.BaseObject):
                     hosts.update([_partition_node(h)
                                   for h in response["passives"]])
             except (ConnectionFailure, socket.error), why:
+                if mongo:
+                    mongo['pool'].discard_socket()
                 errors.append("%s:%d: %s" % (node[0], node[1], str(why)))
             if hosts:
                 self.__hosts = hosts
@@ -524,18 +532,22 @@ class ReplicaSetConnection(common.BaseObject):
         """Checks if this host is the primary for the replica set.
         """
         try:
+            mongo = None
             if host in self.__pools:
-                sock = self.__socket(self.__pools[host])
+                mongo = self.__pools[host]
+                sock = self.__socket(mongo)
                 res = self.__simple_command(sock, 'admin', {'ismaster': 1})
             else:
-                res, mongo = self.__is_master(host)
+                res, conn = self.__is_master(host)
                 bson_max = res.get('maxBsonObjectSize', MAX_BSON_SIZE)
-                self.__pools[host] = {'pool': mongo,
+                self.__pools[host] = {'pool': conn,
                                       'last_checkout': time.time(),
                                       'max_bson_size': bson_max}
         except (ConnectionFailure, socket.error), why:
+            if mongo:
+                mongo['pool'].discard_socket()
             raise ConnectionFailure("%s:%d: %s" % (host[0], host[1], str(why)))
-        bson_max = res.get('maxBsonObjectSize') or MAX_BSON_SIZE
+
         if res["ismaster"]:
             return host
         elif "primary" in res:
