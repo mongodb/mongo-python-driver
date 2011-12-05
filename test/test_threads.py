@@ -120,7 +120,16 @@ class IgnoreAutoReconnect(threading.Thread):
 class TestThreads(unittest.TestCase):
 
     def setUp(self):
-        self.db = get_connection().pymongo_test
+        self.db = self._get_connection().pymongo_test
+
+    def _get_connection(self):
+        """
+        Intended for overriding in TestThreadsReplicaSet. This method
+        returns a Connection here, and a ReplicaSetConnection in
+        test_threads_replica_set_connection.py.
+        """
+        # Regular test connection
+        return get_connection()
 
     def test_threading(self):
         self.db.drop_collection("test")
@@ -197,11 +206,17 @@ class TestThreads(unittest.TestCase):
 
 
 class TestThreadsAuth(unittest.TestCase):
+    def _get_connection(self):
+        """
+        Intended for overriding in TestThreadsAuthReplicaSet. This method
+        returns a Connection here, and a ReplicaSetConnection in
+        test_threads_replica_set_connection.py.
+        """
+        # Regular test connection
+        return get_connection()
 
     def setUp(self):
-        self.conn = get_connection()
-
-        # Setup auth users
+        self.conn = self._get_connection()
         self.conn.admin.system.users.remove({})
         self.conn.admin.add_user('admin-user', 'password')
         try:
@@ -225,11 +240,11 @@ class TestThreadsAuth(unittest.TestCase):
         self.conn.drop_database('auth_test')
 
     def test_auto_auth_login(self):
-        conn = get_connection()
+        conn = self._get_connection()
         self.assertRaises(OperationFailure, conn.auth_test.test.find_one)
 
         # Admin auth
-        conn = get_connection()
+        conn = self._get_connection()
         conn.admin.authenticate("admin-user", "password")
 
         threads = []
@@ -242,7 +257,7 @@ class TestThreadsAuth(unittest.TestCase):
             self.assertTrue(t.success)
 
         # Database-specific auth
-        conn = get_connection()
+        conn = self._get_connection()
         conn.auth_test.authenticate("test-user", "password")
 
         threads = []
