@@ -41,7 +41,8 @@ class TestReadPreference(unittest.TestCase):
         db.test.remove({}, safe=True, w=len(c.secondaries))
 
         # Force replication...
-        db.test.insert({'foo': 'bar'}, safe=True, w=len(c.secondaries))
+        w = len(c.secondaries) + 1
+        db.test.insert({'foo': 'bar'}, safe=True, w=w)
 
         # Test PRIMARY
         for _ in xrange(10):
@@ -95,7 +96,7 @@ class TestHealthMonitor(unittest.TestCase):
         secondaries = c.secondaries
 
         def primary_changed():
-            for i in xrange(20):
+            for _ in xrange(20):
                 if c.primary != primary:
                     return True
                 time.sleep(1)
@@ -113,7 +114,7 @@ class TestHealthMonitor(unittest.TestCase):
         secondaries = c.secondaries
 
         def readers_changed():
-            for i in xrange(20):
+            for _ in xrange(20):
                 if c.secondaries != secondaries:
                     return True
                 time.sleep(1)
@@ -136,7 +137,7 @@ class TestHealthMonitor(unittest.TestCase):
         secondaries = c.secondaries
 
         def primary_changed():
-            for i in xrange(20):
+            for _ in xrange(30):
                 if c.primary != primary:
                     return True
                 time.sleep(1)
@@ -161,12 +162,13 @@ class TestWritesWithFailover(unittest.TestCase):
         c = ReplicaSetConnection(self.seed, replicaSet=self.name)
         primary = c.primary
         db = c.pymongo_test
-        db.test.remove({}, safe=True, w=len(c.secondaries))
-        db.test.insert({'foo': 'bar'}, safe=True, w=len(c.secondaries))
+        w = len(c.secondaries) + 1
+        db.test.remove({}, safe=True, w=w)
+        db.test.insert({'foo': 'bar'}, safe=True, w=w)
         self.assertEqual('bar', db.test.find_one()['foo'])
 
         def try_write():
-            for i in xrange(20):
+            for _ in xrange(30):
                 try:
                     db.test.insert({'bar': 'baz'}, safe=True)
                     return True
@@ -201,10 +203,11 @@ class TestReadWithFailover(unittest.TestCase):
             return True
 
         db = c.pymongo_test
-        db.test.remove({}, safe=True, w=len(c.secondaries))
+        w = len(c.secondaries) + 1
+        db.test.remove({}, safe=True, w=w)
         # Force replication
         db.test.insert([{'foo': i} for i in xrange(10)],
-                       safe=True, w=len(c.secondaries))
+                       safe=True, w=w)
         self.assertEqual(10, db.test.count())
 
         db.read_preference = ReadPreference.SECONDARY
