@@ -24,7 +24,7 @@ from nose.plugins.skip import SkipTest
 from pymongo import (Connection,
                      ReplicaSetConnection,
                      ReadPreference)
-from pymongo.errors import AutoReconnect
+from pymongo.errors import AutoReconnect, ConnectionFailure
 
 
 class TestReadPreference(unittest.TestCase):
@@ -43,6 +43,23 @@ class TestReadPreference(unittest.TestCase):
         # Force replication...
         w = len(c.secondaries) + 1
         db.test.insert({'foo': 'bar'}, safe=True, w=w)
+
+        # Test direct connection to a secondary
+        host, port = replset_tools.get_secondaries()[0].split(':')
+        port = int(port)
+        conn = Connection(host, port, slave_okay=True)
+        self.assertEqual(host, conn.host)
+        self.assertEqual(port, conn.port)
+        self.assert_(conn.pymongo_test.test.find_one())
+        conn = Connection(host, port,
+                          read_preference=ReadPreference.SECONDARY)
+        self.assertEqual(host, conn.host)
+        self.assertEqual(port, conn.port)
+        self.assert_(conn.pymongo_test.test.find_one())
+
+        # Test direct connection to an arbiter
+        host = replset_tools.get_arbiters()[0]
+        self.assertRaises(ConnectionFailure, Connection, host)
 
         # Test PRIMARY
         for _ in xrange(10):
@@ -77,6 +94,16 @@ class TestReadPreference(unittest.TestCase):
         for _ in xrange(10):
             cursor = db.test.find()
             self.assertRaises(AutoReconnect, cursor.next)
+
+        replset_tools.restart_members(killed)
+        # Test PRIMARY with no primary (should raise an exception)
+        db.read_preference = ReadPreference.PRIMARY
+        cursor = db.test.find()
+        cursor.next()
+        self.assertEqual(cursor._Cursor__connection_id, c.primary)
+        killed = replset_tools.kill_primary()
+        self.assertTrue(bool(len(killed)))
+        self.assertRaises(AutoReconnect, db.test.find_one)
 
     def tearDown(self):
         replset_tools.kill_all_members()
