@@ -23,6 +23,7 @@
       .. autoattribute:: slave_okay
       .. autoattribute:: read_preference
       .. autoattribute:: safe
+      .. autoattribute:: uuid_subtype
       .. automethod:: get_lasterror_options
       .. automethod:: set_lasterror_options
       .. automethod:: unset_lasterror_options

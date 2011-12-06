@@ -1,6 +1,48 @@
 Changelog
 =========
 
+Changes in Version 2.1
+------------------------
+
+Version 2.1 adds a few frequently requested features and includes the usual
+round of bug fixes and improvements.
+
+Special thanks go to Alexey Borzenkov, Dan Crosta, Kostya Rybnikov,
+Flavio Percoco Premoli, Jonas Haag, and Jesse Davis for their contributions
+to this release.
+
+Important New Features:
+
+- ReplicaSetConnection -
+  :class:`~pymongo.replica_set_connection.ReplicaSetConnection`
+  can be used to distribute reads to secondaries in a replica set. It supports
+  automatic failover handling and periodically checks the state of the
+  replica set to handle issues like primary stepdown or secondaries
+  being removed for backup operations. Read preferences are defined through
+  :class:`~pymongo.ReadPreference`.
+- PyMongo supports the new BSON binary subtype 4 for UUIDs. The default
+  subtype to use can be set through
+  :attr:`~pymongo.collection.Collection.uuid_subtype`
+  The current default remains :attr:`~bson.binary.OLD_UUID_SUBTYPE` but will
+  be changed to :attr:`~bson.binary.UUID_SUBTYPE` in a future release.
+- The getLastError option 'w' can be set to a string, allowing for options
+  like "majority" available in newer version of MongoDB.
+- Added support for the MongoDB URI options socketTimeoutMS and connectTimeoutMS.
+- Added support for the ContinueOnError insert flag.
+- Added basic SSL support.
+- Secondaries can be used for :meth:`~pymongo.cursor.Cursor.count`,
+  :meth:`~pymongo.cursor.Cursor.distinct`, :meth:`~pymongo.collection.Collection.group`,
+  and querying :class:`~gridfs.GridFS`.
+- Added document_class and tz_aware options to
+  :class:`~pymongo.master_slave_connection.MasterSlaveConnection`
+
+Issues Resolved
+...............
+
+See the `PyMongo 2.1 release notes in JIRA`_ for the list of resolved issues in this release.
+
+.. _PyMongo 2.1 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=10583
+
 Changes in Version 2.0.1
 ------------------------
 
@@ -66,9 +108,9 @@ API changes:
 Issues Resolved
 ...............
 
-See the `release notes in JIRA`_ for the list of resolved issues in this release.
+See the `PyMongo 2.0 release notes in JIRA`_ for the list of resolved issues in this release.
 
-.. _release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=10274
+.. _PyMongo 2.0 release notes in JIRA: https://jira.mongodb.org/secure/ReleaseNote.jspa?projectId=10004&version=10274
 
 Changes in Version 1.11
 -----------------------
