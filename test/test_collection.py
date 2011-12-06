@@ -1621,11 +1621,9 @@ class TestCollection(unittest.TestCase):
             collection.uuid_subtype = subtype
 
         # Test property
-        self.assertEqual(UUID_SUBTYPE, coll.uuid_subtype)
+        self.assertEqual(OLD_UUID_SUBTYPE, coll.uuid_subtype)
         self.assertRaises(ConfigurationError, change_subtype, coll, 5)
         self.assertRaises(ConfigurationError, change_subtype, coll, 2)
-        coll.uuid_subtype = OLD_UUID_SUBTYPE
-        self.assertEqual(OLD_UUID_SUBTYPE, coll.uuid_subtype)
 
         # Test basic query
         uu = uuid.uuid4()
@@ -1633,6 +1631,7 @@ class TestCollection(unittest.TestCase):
         coll.insert({'uu': uu}, safe=True)
         self.assertEqual(uu, coll.find_one({'uu': uu})['uu'])
         coll.uuid_subtype = UUID_SUBTYPE
+        self.assertEqual(UUID_SUBTYPE, coll.uuid_subtype)
         self.assertEqual(None, coll.find_one({'uu': uu}))
         self.assertEqual(uu, coll.find_one({'uu': UUIDLegacy(uu)})['uu'])
 

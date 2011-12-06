@@ -91,26 +91,27 @@ class TestBinary(unittest.TestCase):
         coll.drop()
 
         uu = uuid.uuid4()
-        coll.insert({'uuid': uuid.uuid4()})
-        coll.insert({'uuid': uuid.uuid4()})
         coll.insert({'uuid': Binary(uu.bytes, 3)})
+        self.assertEqual(1, coll.count())
 
         # Test UUIDLegacy queries.
-        self.assertEquals(0, coll.find({'uuid': uu}).count())
+        coll.uuid_subtype = 4
+        self.assertEqual(0, coll.find({'uuid': uu}).count())
         cur = coll.find({'uuid': UUIDLegacy(uu)})
-        self.assertEquals(1, cur.count())
+        self.assertEqual(1, cur.count())
         retrieved = cur.next()['uuid']
-        self.assertEquals(uu, retrieved)
+        self.assertEqual(uu, retrieved)
 
-        # Test regular UUID queries.
+        # Test regular UUID queries (using subtype 4).
         coll.insert({'uuid': uu})
+        self.assertEqual(2, coll.count())
         cur = coll.find({'uuid': uu})
-        self.assertEquals(1, cur.count())
-        self.assertEquals(uu, cur.next()['uuid'])
+        self.assertEqual(1, cur.count())
+        self.assertEqual(uu, cur.next()['uuid'])
 
         # Test both.
         cur = coll.find({'uuid': {'$in': [uu, UUIDLegacy(uu)]}})
-        self.assertEquals(2, cur.count())
+        self.assertEqual(2, cur.count())
         coll.drop()
 
 

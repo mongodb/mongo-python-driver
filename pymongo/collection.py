@@ -104,7 +104,7 @@ class Collection(common.BaseObject):
 
         self.__database = database
         self.__name = unicode(name)
-        self.__uuid_subtype = UUID_SUBTYPE
+        self.__uuid_subtype = OLD_UUID_SUBTYPE
         self.__full_name = u"%s.%s" % (self.__database.name, self.__name)
         if create or options is not None:
             self.__create(options)
