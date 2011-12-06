@@ -42,8 +42,7 @@ host = os.environ.get("DB_IP", socket.gethostname())
 port = os.environ.get("DB_PORT", 27017)
 pair = '%s:%d' % (host, port)
 
-class TestConnection(unittest.TestCase):
-
+class TestConnectionReplicaSetBase(unittest.TestCase):
     def setUp(self):
         conn = Connection(pair)
         response = conn.admin.command('ismaster')
@@ -60,9 +59,10 @@ class TestConnection(unittest.TestCase):
 
     def _get_connection(self, **kwargs):
         return ReplicaSetConnection(pair,
-                                    replicaSet=self.name,
-                                    **kwargs)
+            replicaSet=self.name,
+            **kwargs)
 
+class TestConnection(TestConnectionReplicaSetBase):
     def test_connect(self):
         self.assertRaises(ConnectionFailure, ReplicaSetConnection,
                           "somedomainthatdoesntexist.org:27017",
