@@ -57,10 +57,10 @@ class TestConnectionReplicaSetBase(unittest.TestCase):
         else:
             raise SkipTest()
 
-def _get_connection(self, **kwargs):
-    return ReplicaSetConnection(pair,
-        replicaSet=self.name,
-        **kwargs)
+    def _get_connection(self, **kwargs):
+        return ReplicaSetConnection(pair,
+            replicaSet=self.name,
+            **kwargs)
 
 class TestConnection(TestConnectionReplicaSetBase):
     def test_connect(self):
