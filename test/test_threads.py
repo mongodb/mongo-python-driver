@@ -117,8 +117,13 @@ class IgnoreAutoReconnect(threading.Thread):
                 pass
 
 
-class TestThreads(unittest.TestCase):
-
+class BaseTestThreads(object):
+    """
+    Base test class for TestThreads and TestThreadsReplicaSet. (This is not
+    itself a unittest.TestCase, otherwise it'd be run twice -- once when nose
+    imports this module, and once when nose imports
+    test_threads_replica_set_connection.py, which imports this module.)
+    """
     def setUp(self):
         self.db = self._get_connection().pymongo_test
 
@@ -205,7 +210,13 @@ class TestThreads(unittest.TestCase):
             t.join()
 
 
-class TestThreadsAuth(unittest.TestCase):
+class BaseTestThreadsAuth(object):
+    """
+    Base test class for TestThreadsAuth and TestThreadsAuthReplicaSet. (This is
+    not itself a unittest.TestCase, otherwise it'd be run twice -- once when
+    nose imports this module, and once when nose imports
+    test_threads_replica_set_connection.py, which imports this module.)
+    """
     def _get_connection(self):
         """
         Intended for overriding in TestThreadsAuthReplicaSet. This method
@@ -269,6 +280,11 @@ class TestThreadsAuth(unittest.TestCase):
             t.join()
             self.assertTrue(t.success)
 
+class TestThreads(BaseTestThreads, unittest.TestCase):
+    pass
+
+class TestThreadsAuth(BaseTestThreadsAuth, unittest.TestCase):
+    pass
 
 if __name__ == "__main__":
     unittest.main()

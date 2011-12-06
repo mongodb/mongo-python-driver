@@ -19,16 +19,16 @@ import os
 
 from nose.plugins.skip import SkipTest
 from pymongo.replica_set_connection import ReplicaSetConnection
-from test.test_threads import IgnoreAutoReconnect
-from test.test_threads import TestThreads as _testThreads
-from test.test_threads import TestThreadsAuth as _testThreadsAuth
+from test.test_threads import (IgnoreAutoReconnect,
+                               BaseTestThreads,
+                               BaseTestThreadsAuth)
 
 from test.test_replica_set_connection import (TestConnectionReplicaSetBase,
                                               pair)
 
 from pymongo.errors import AutoReconnect
 
-class TestThreadsReplicaSet(TestConnectionReplicaSetBase, _testThreads):
+class TestThreadsReplicaSet(TestConnectionReplicaSetBase, BaseTestThreads):
     def setUp(self):
         """
         Prepare to test all the same things that TestThreads tests, but do it
@@ -91,7 +91,7 @@ class TestThreadsReplicaSet(TestConnectionReplicaSetBase, _testThreads):
             t.join()
 
 
-class TestThreadsAuthReplicaSet(TestConnectionReplicaSetBase, _testThreadsAuth):
+class TestThreadsAuthReplicaSet(TestConnectionReplicaSetBase, BaseTestThreadsAuth):
 
     def setUp(self):
         """
