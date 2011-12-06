@@ -73,15 +73,14 @@ def wait_for(proc, port):
     return False
 
 
-def start_replica_set(num_members=3, with_arbiter=True, fresh=True):
+def start_replica_set(members, fresh=True):
     if fresh:
         if os.path.exists(dbpath):
             shutil.rmtree(dbpath)
-    members = []
-    for i in xrange(num_members):
+    for i in xrange(len(members)):
         cur_port = port + i
         host = '%s:%d' % (hostname, cur_port)
-        members.append({'_id': i, 'host': host})
+        members[i].update({'_id': i, 'host': host})
         path = os.path.join(dbpath, 'db' + str(i))
         if not os.path.exists(path):
             os.makedirs(path)
@@ -101,8 +100,6 @@ def start_replica_set(num_members=3, with_arbiter=True, fresh=True):
         res = wait_for(proc, cur_port)
         if not res:
             return None
-    if with_arbiter:
-        members[-1]['arbiterOnly'] = True
     config = {'_id': set_name, 'members': members}
     primary = members[0]['host']
     c = pymongo.Connection(primary)
@@ -112,12 +109,12 @@ def start_replica_set(num_members=3, with_arbiter=True, fresh=True):
         # Already initialized from a previous run?
         pass
 
-    # Wait for all members to come online
-    expected_secondaries = num_members - 1
     expected_arbiters = 0
-    if with_arbiter:
-        expected_secondaries -= 1
-        expected_arbiters = 1
+    for member in members:
+        if member.get('arbiterOnly'):
+            expected_arbiters += 1
+    expected_secondaries = len(members) - expected_arbiters - 1
+
     while True:
         time.sleep(2)
         try:
@@ -157,6 +154,29 @@ def get_arbiters():
     return get_members_in_state(7)
 
 
+def get_passives():
+    c = pymongo.Connection(nodes.keys(), slave_okay=True)
+    return c.admin.command('ismaster').get('passives', [])
+
+
+def get_hosts():
+    c = pymongo.Connection(nodes.keys(), slave_okay=True)
+    return c.admin.command('ismaster').get('hosts', [])
+
+
+def get_hidden_members():
+    # Both 'hidden' and 'slaveDelay'
+    secondaries = get_secondaries()
+    readers = get_hosts() + get_passives()
+    for member in readers:
+        try:
+            secondaries.remove(member)
+        except:
+            # Skip primary
+            pass
+    return secondaries
+
+
 def kill_primary(sig=2):
     primary = get_primary()
     kill_members(primary, sig)
@@ -179,7 +199,7 @@ def stepdown_primary():
     primary = get_primary()
     if primary:
         c = pymongo.Connection(primary)
-        c.admin.command('replSetStepDown', 10)
+        c.admin.command('replSetStepDown', 20)
 
 
 def restart_members(members):

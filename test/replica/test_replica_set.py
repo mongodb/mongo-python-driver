@@ -21,17 +21,17 @@ import replset_tools
 
 from nose.plugins.skip import SkipTest
 
-from pymongo import (Connection,
-                     ReplicaSetConnection,
+from pymongo import (ReplicaSetConnection,
                      ReadPreference)
+from pymongo.connection import Connection, _partition_node
 from pymongo.errors import AutoReconnect, ConnectionFailure
 
 
 class TestReadPreference(unittest.TestCase):
 
     def setUp(self):
-        res = replset_tools.start_replica_set(num_members=3,
-                                              with_arbiter=True)
+        members = [{}, {}, {'arbiterOnly': True}]
+        res = replset_tools.start_replica_set(members)
         self.seed, self.name = res
 
     def test_read_preference(self):
@@ -83,6 +83,7 @@ class TestReadPreference(unittest.TestCase):
 
         # Test SECONDARY with no secondary
         killed = replset_tools.kill_all_secondaries()
+        self.assertTrue(bool(len(killed)))
         db.read_preference = ReadPreference.SECONDARY
         for _ in xrange(10):
             cursor = db.test.find()
@@ -109,11 +110,47 @@ class TestReadPreference(unittest.TestCase):
         replset_tools.kill_all_members()
 
 
+class TestPassiveAndHidden(unittest.TestCase):
+
+    def setUp(self):
+        members = [{}, {'priority': 0}, {'arbiterOnly': True},
+                   {'priority': 0, 'hidden': True}, {'priority': 0, 'slaveDelay': 5}]
+        res = replset_tools.start_replica_set(members)
+        self.seed, self.name = res
+
+    def test_passive_and_hidden(self):
+        c = ReplicaSetConnection(self.seed, replicaSet=self.name)
+        db = c.pymongo_test
+        db.test.remove({}, safe=True, w=len(c.secondaries))
+        w = len(c.secondaries) + 1
+        db.test.insert({'foo': 'bar'}, safe=True, w=w)
+        db.read_preference = ReadPreference.SECONDARY
+
+        passives = replset_tools.get_passives()
+        passives = [_partition_node(member) for member in passives]
+        hidden = replset_tools.get_hidden_members()
+        hidden = [_partition_node(member) for member in hidden]
+        self.assertEqual(c.secondaries, passives)
+
+        for _ in xrange(10):
+            cursor = db.test.find()
+            cursor.next()
+            self.assertTrue(cursor._Cursor__connection_id not in hidden)
+
+        replset_tools.kill_members(replset_tools.get_passives(), 2)
+
+        for _ in xrange(10):
+            cursor = db.test.find()
+            cursor.next()
+            self.assertEqual(cursor._Cursor__connection_id, c.primary)
+
+    def tearDown(self):
+        replset_tools.kill_all_members()
+
 class TestHealthMonitor(unittest.TestCase):
 
     def setUp(self):
-        res = replset_tools.start_replica_set(num_members=3,
-                                              with_arbiter=False)
+        res = replset_tools.start_replica_set([{}, {}, {}])
         self.seed, self.name = res
 
     def test_primary_failure(self):
@@ -181,8 +218,7 @@ class TestHealthMonitor(unittest.TestCase):
 class TestWritesWithFailover(unittest.TestCase):
 
     def setUp(self):
-        res = replset_tools.start_replica_set(num_members=3,
-                                              with_arbiter=False)
+        res = replset_tools.start_replica_set([{}, {}, {}])
         self.seed, self.name = res
 
     def test_writes_with_failover(self):
@@ -216,8 +252,7 @@ class TestWritesWithFailover(unittest.TestCase):
 class TestReadWithFailover(unittest.TestCase):
 
     def setUp(self):
-        res = replset_tools.start_replica_set(num_members=3,
-                                              with_arbiter=False)
+        res = replset_tools.start_replica_set([{}, {}, {}])
         self.seed, self.name = res
 
     def test_read_with_failover(self):
