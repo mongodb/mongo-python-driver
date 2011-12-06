@@ -35,7 +35,7 @@ class TestThreadsReplicaSet(TestConnectionReplicaSetBase, BaseTestThreads):
         with a replica-set connection
         """
         TestConnectionReplicaSetBase.setUp(self)
-        _testThreads.setUp(self)
+        BaseTestThreads.setUp(self)
 
     def _get_connection(self):
         """
@@ -99,7 +99,7 @@ class TestThreadsAuthReplicaSet(TestConnectionReplicaSetBase, BaseTestThreadsAut
         with a replica-set connection
         """
         TestConnectionReplicaSetBase.setUp(self)
-        _testThreadsAuth.setUp(self)
+        BaseTestThreadsAuth.setUp(self)
 
     def _get_connection(self):
         """
