@@ -117,10 +117,24 @@ class IgnoreAutoReconnect(threading.Thread):
                 pass
 
 
-class TestThreads(unittest.TestCase):
-
+class BaseTestThreads(object):
+    """
+    Base test class for TestThreads and TestThreadsReplicaSet. (This is not
+    itself a unittest.TestCase, otherwise it'd be run twice -- once when nose
+    imports this module, and once when nose imports
+    test_threads_replica_set_connection.py, which imports this module.)
+    """
     def setUp(self):
-        self.db = get_connection().pymongo_test
+        self.db = self._get_connection().pymongo_test
+
+    def _get_connection(self):
+        """
+        Intended for overriding in TestThreadsReplicaSet. This method
+        returns a Connection here, and a ReplicaSetConnection in
+        test_threads_replica_set_connection.py.
+        """
+        # Regular test connection
+        return get_connection()
 
     def test_threading(self):
         self.db.drop_collection("test")
@@ -196,12 +210,24 @@ class TestThreads(unittest.TestCase):
             t.join()
 
 
-class TestThreadsAuth(unittest.TestCase):
+class BaseTestThreadsAuth(object):
+    """
+    Base test class for TestThreadsAuth and TestThreadsAuthReplicaSet. (This is
+    not itself a unittest.TestCase, otherwise it'd be run twice -- once when
+    nose imports this module, and once when nose imports
+    test_threads_replica_set_connection.py, which imports this module.)
+    """
+    def _get_connection(self):
+        """
+        Intended for overriding in TestThreadsAuthReplicaSet. This method
+        returns a Connection here, and a ReplicaSetConnection in
+        test_threads_replica_set_connection.py.
+        """
+        # Regular test connection
+        return get_connection()
 
     def setUp(self):
-        self.conn = get_connection()
-
-        # Setup auth users
+        self.conn = self._get_connection()
         self.conn.admin.system.users.remove({})
         self.conn.admin.add_user('admin-user', 'password')
         try:
@@ -225,11 +251,11 @@ class TestThreadsAuth(unittest.TestCase):
         self.conn.drop_database('auth_test')
 
     def test_auto_auth_login(self):
-        conn = get_connection()
+        conn = self._get_connection()
         self.assertRaises(OperationFailure, conn.auth_test.test.find_one)
 
         # Admin auth
-        conn = get_connection()
+        conn = self._get_connection()
         conn.admin.authenticate("admin-user", "password")
 
         threads = []
@@ -242,7 +268,7 @@ class TestThreadsAuth(unittest.TestCase):
             self.assertTrue(t.success)
 
         # Database-specific auth
-        conn = get_connection()
+        conn = self._get_connection()
         conn.auth_test.authenticate("test-user", "password")
 
         threads = []
@@ -254,6 +280,11 @@ class TestThreadsAuth(unittest.TestCase):
             t.join()
             self.assertTrue(t.success)
 
+class TestThreads(BaseTestThreads, unittest.TestCase):
+    pass
+
+class TestThreadsAuth(BaseTestThreadsAuth, unittest.TestCase):
+    pass
 
 if __name__ == "__main__":
     unittest.main()
