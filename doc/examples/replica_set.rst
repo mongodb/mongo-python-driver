@@ -2,8 +2,8 @@ Connecting to a Replica Set
 ===========================
 
 PyMongo makes working with `replica sets
-<http://dochub.mongodb.org/core/rs>`_ easy. Here we'll launch a new
-replica set and show how to handle both initialization and normal
+<http://www.mongodb.org/display/DOCS/Replica+Sets>`_ easy. Here we'll launch
+a new replica set and show how to handle both initialization and normal
 connections with PyMongo.
 
 .. note:: Replica sets require server version **>= 1.6.0**. Support
@@ -16,7 +16,7 @@ Starting a Replica Set
 ----------------------
 
 The main `replica set documentation
-<http://dochub.mongodb.org/core/rs>`_ contains extensive information
+<http://www.mongodb.org/display/DOCS/Replica+Sets>`_ contains extensive information
 about setting up a new replica set or migrating an existing MongoDB
 setup, be sure to check that out. Here, we'll just do the bare minimum
 to get a three node replica set setup locally.
@@ -110,7 +110,7 @@ can't happen completely transparently, however. Here we'll perform an
 example failover to illustrate how everything behaves. First, we'll
 connect to the replica set and perform a couple of basic operations::
 
-  >>> db = Connection("morton.local").test
+  >>> db = Connection("morton.local", replicaSet='foo').test
   >>> db.test.save({"x": 1})
   ObjectId('...')
   >>> db.test.find_one()
@@ -152,4 +152,34 @@ the operation will succeed::
   >>> db.connection.port
   27018
 
+ReplicaSetConnection
+--------------------
+
+In Pymongo-2.1 a new ReplicaSetConnection class was added that provides
+some new features not supported in the original Connection class. The most
+important of these is the ability to distribute queries to the secondary
+members of a replica set. To connect using ReplicaSetConnection just
+provide a host:port pair and the name of the replica set::
+
+  >>> from pymongo import ReplicaSetConnection
+  >>> ReplicaSetConnection("morton.local:27017", replicaSet='foo')
+  ReplicaSetConnection([u'morton.local:27019', u'morton.local:27017', u'morton.local:27018'])
+
+By default an instance of ReplicaSetConnection will only send queries to
+the primary member of the replica set. To use secondary members for queries
+we have to change the read preference::
+
+  >>> db = ReplicaSetConnection("morton.local:27017", replicaSet='foo').test
+  >>> from pymongo import ReadPreference
+  >>> db.read_preference = ReadPreference.SECONDARY
+
+Now all queries will be sent to the secondary members of the set. If there are
+no secondary members the primary will be used as a fallback. If you have
+queries you would prefer to never send to the primary you can specify that
+using the SECONDARY_ONLY read preference::
+
+  >>> db.read_preference = ReadPreference.SECONDARY_ONLY
+
+Read preference can be set on a connection, database, collection, or on a
+per-query basis.
 
