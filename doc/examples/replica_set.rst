@@ -10,7 +10,7 @@ connections with PyMongo.
    for connecting to replica sets also requires PyMongo version **>=
    1.8.0**.
 
-.. mongodoc:: rs
+.. mongodoc:: Replica+Sets
 
 Starting a Replica Set
 ----------------------

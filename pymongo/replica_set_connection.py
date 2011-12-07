@@ -14,6 +14,9 @@
 
 """Tools for connecting to a MongoDB replica set.
 
+.. seealso:: :doc:`/examples/replica_set` for more examples of how to
+   connect to a replica set.
+
 To get a :class:`~pymongo.database.Database` instance from a
 :class:`ReplicaSetConnection` use either dictionary-style or
 attribute-style access:

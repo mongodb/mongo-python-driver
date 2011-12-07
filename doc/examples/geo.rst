@@ -13,7 +13,7 @@ index in PyMongo.
 .. note:: 2D indexes require server version **>= 1.3.4**. Support for
    2D indexes also requires PyMongo version **>= 1.5.1**.
 
-.. mongodoc:: geo
+.. mongodoc:: Geospatial+Indexing
 
 Creating a Geospatial Index
 ---------------------------
