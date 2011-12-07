@@ -348,13 +348,15 @@ class ReplicaSetConnection(common.BaseObject):
 
     @property
     def seeds(self):
-        """Seed list used to connect to this replica set.
+        """The seed list used to connect to this replica set.
         """
         return self.__seeds
 
     @property
     def hosts(self):
-        """All active hosts known to this replica set.
+        """All active and passive (priority 0) replica set
+        members known to this connection. This does not include
+        hidden or slaveDelay members, or arbiters.
         """
         return self.__hosts
 
@@ -368,13 +370,13 @@ class ReplicaSetConnection(common.BaseObject):
 
     @property
     def secondaries(self):
-        """The secondary nodes in this replica set.
+        """The secondary members known to this connection.
         """
-        return self.__readers
+        return set(self.__readers)
 
     @property
     def arbiters(self):
-        """All arbiters known to this replica set.
+        """The arbiters known to this connection.
         """
         return self.__arbiters
 

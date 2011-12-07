@@ -130,7 +130,7 @@ class TestPassiveAndHidden(unittest.TestCase):
         passives = [_partition_node(member) for member in passives]
         hidden = replset_tools.get_hidden_members()
         hidden = [_partition_node(member) for member in hidden]
-        self.assertEqual(c.secondaries, passives)
+        self.assertEqual(c.secondaries, set(passives))
 
         for _ in xrange(10):
             cursor = db.test.find()
