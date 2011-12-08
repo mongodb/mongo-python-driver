@@ -32,7 +32,6 @@ attribute-style access:
 """
 
 import datetime
-import random
 import socket
 import struct
 import sys
@@ -792,10 +791,8 @@ class ReplicaSetConnection(common.BaseObject):
             raise
 
         errors = []
-        for conn_id in random.sample(range(0, len(self.__readers)),
-                                     len(self.__readers)):
+        for host in helpers.shuffled(self.__readers):
             try:
-                host = self.__readers[conn_id]
                 mongo = self.__pools[host]
                 return host, self.__send_and_receive(mongo, msg, **kwargs)
             except AutoReconnect, why:

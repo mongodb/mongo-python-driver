@@ -19,8 +19,7 @@ slaves. Reads are tried on each slave in turn until the read succeeds
 or all slaves failed.
 """
 
-import random
-
+from pymongo import helpers
 from pymongo import ReadPreference
 from pymongo.common import BaseObject
 from pymongo.connection import Connection
@@ -176,9 +175,7 @@ class MasterSlaveConnection(BaseObject):
 
         # Iterate through the slaves randomly until we have success. Raise
         # reconnect if they all fail.
-        for connection_id in random.sample(range(0,
-                                                 len(self.__slaves)),
-                                                 len(self.__slaves)):
+        for connection_id in helpers.shuffled(xrange(len(self.__slaves))):
             try:
                 slave = self.__slaves[connection_id]
                 return (connection_id,
