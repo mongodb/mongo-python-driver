@@ -39,7 +39,7 @@ from pymongo.errors import (AutoReconnect,
 from test import version
 
 host = os.environ.get("DB_IP", socket.gethostname())
-port = os.environ.get("DB_PORT", 27017)
+port = int(os.environ.get("DB_PORT", 27017))
 pair = '%s:%d' % (host, port)
 
 class TestConnectionReplicaSetBase(unittest.TestCase):
