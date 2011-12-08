@@ -20,6 +20,7 @@ try:
 except:  # for Python < 2.5
     import md5
     _md5func = md5.new
+import random
 import struct
 
 import bson
@@ -166,3 +167,12 @@ def _fields_list_to_dict(fields):
                             "(string, unicode)")
         as_dict[field] = 1
     return as_dict
+
+def shuffled(sequence):
+    """Returns a copy of the sequence (as a :class:`list`) which has been
+    shuffled by :func:`random.shuffle`.
+    """
+    out = list(sequence)
+    random.shuffle(out)
+    return out
+
