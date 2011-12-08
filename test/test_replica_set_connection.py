@@ -138,14 +138,14 @@ class TestConnection(TestConnectionReplicaSetBase):
         db = c.pymongo_test
         db.test.remove({})
         self.assertEqual(0, db.test.count())
-        db.test.insert({'foo': 'x'}, safe=True)
+        db.test.insert({'foo': 'x'}, safe=True, w=self.w)
         self.assertEqual(1, db.test.count())
 
         cursor = db.test.find()
         self.assertEqual('x', cursor.next()['foo'])
         # Ensure we read from the primary
         self.assertEqual(c.primary, cursor._Cursor__connection_id)
-        time.sleep(1)
+
         cursor = db.test.find(read_preference=ReadPreference.SECONDARY)
         self.assertEqual('x', cursor.next()['foo'])
         # Ensure we didn't read from the primary
