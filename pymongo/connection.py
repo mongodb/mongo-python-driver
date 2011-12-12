@@ -165,6 +165,12 @@ class _Pool(threading.local):
             self.sock = (pid, self.connect(host, port))
             return (self.sock[1], False)
 
+    def discard_socket(self):
+        """Close and discard the active socket.
+        """
+        if self.sock:
+            self.sock[1].close()
+            self.sock = None
 
     def return_socket(self):
         if self.sock is not None and self.sock[0] == os.getpid():
@@ -827,7 +833,18 @@ class Connection(common.BaseObject):
         """
         message = ""
         while len(message) < length:
-            chunk = sock.recv(length - len(message))
+            try:
+                chunk = sock.recv(length - len(message))
+            except BaseException, e:
+                # PYTHON-294: must close socket here, because if it remains open
+                # after this then the next time we read from it we may get stale
+                # data from a previous operation.
+                try:
+                    self.__pool.discard_socket()
+                except:
+                    pass
+                raise e
+
             if chunk == "":
                 raise ConnectionFailure("connection closed")
             message += chunk
@@ -877,7 +894,11 @@ class Connection(common.BaseObject):
                 raise AutoReconnect(str(e))
         finally:
             if "network_timeout" in kwargs:
-                sock.settimeout(self.__net_timeout)
+                try:
+                    sock.settimeout(self.__net_timeout)
+                except socket.error:
+                    # There was an exception and we've closed the socket
+                    pass
 
     def start_request(self):
         """DEPRECATED all operations will start a request.
