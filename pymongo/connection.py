@@ -835,7 +835,10 @@ class Connection(common.BaseObject):
         while len(message) < length:
             try:
                 chunk = sock.recv(length - len(message))
-            except BaseException, e:
+            except:
+                # Store the exception from sock.recv() in case we throw a new
+                # exception in this exception-handler.
+                exc_type, exc_value, exc_traceback = sys.exc_info()
                 # PYTHON-294: must close socket here, because if it remains open
                 # after this then the next time we read from it we may get stale
                 # data from a previous operation.
@@ -843,7 +846,7 @@ class Connection(common.BaseObject):
                     self.__pool.discard_socket()
                 except:
                     pass
-                raise e
+                raise exc_value
 
             if chunk == "":
                 raise ConnectionFailure("connection closed")
