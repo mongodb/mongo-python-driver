@@ -16,6 +16,7 @@
 
 import datetime
 import os
+import signal
 import sys
 import time
 import unittest
@@ -481,15 +482,12 @@ with get_connection() as connection:
         Test fix for PYTHON-294 -- make sure Connection closes its socket if it
         gets an interrupt while waiting to recv() from it.
         """
-        import pymongo
-        import signal
-
         c = get_connection()
         db = c.pymongo_test
 
-        # A $where clause which takes 1 sec to execute
+        # A $where clause which takes 1.5 sec to execute
         where = '''function() {
-            var d = new Date((new Date()).getTime() + 1*1000);
+            var d = new Date((new Date()).getTime() + 1.5 * 1000);
             while (d > (new Date())) { }; return true;
         }'''
 
@@ -497,22 +495,22 @@ with get_connection() as connection:
         db.drop_collection('foo')
         db.foo.insert({'_id': 1}, safe=True)
 
-        # Convert SIGALRM to SIGINT -- it's hard to schedule a SIGINT for 1/2 a
+        # Convert SIGALRM to SIGINT -- it's hard to schedule a SIGINT for one
         # second in the future, but easy to schedule SIGALRM.
         def sigalarm(num, frame):
-            import sys
             raise KeyboardInterrupt
 
         old_signal_handler = signal.signal(signal.SIGALRM, sigalarm)
-        signal.setitimer(signal.ITIMER_REAL, 0.5, 0)
+        signal.alarm(1)
         raised = False
         try:
-            # Need list() to actually iterate the cursor and create the
-            # cursor on the server; find is lazily evaluated. The find() will
-            # be interrupted by sigalarm() raising a KeyboardInterrupt.
-            list(db.foo.find({'$where': where}))
-        except KeyboardInterrupt:
-            raised = True
+            try:
+                # Need list() to actually iterate the cursor and create the
+                # cursor on the server; find is lazily evaluated. The find() will
+                # be interrupted by sigalarm() raising a KeyboardInterrupt.
+                list(db.foo.find({'$where': where}))
+            except KeyboardInterrupt:
+                raised = True
         finally:
             signal.signal(signal.SIGALRM, old_signal_handler)
 
@@ -527,6 +525,8 @@ with get_connection() as connection:
             [{'_id': 1}],
             list(db.foo.find())
         )
+
+    # TODO: test raising an error in pool.discard_socket()
 
 if __name__ == "__main__":
     unittest.main()
