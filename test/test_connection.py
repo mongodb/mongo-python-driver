@@ -83,7 +83,7 @@ class TestConnection(unittest.TestCase):
     def test_host_w_port(self):
         self.assert_(Connection("%s:%d" % (self.host, self.port)))
         self.assertRaises(ConnectionFailure, Connection,
-                          "%s:1234567" % self.host, self.port)
+                          "%s:1234567" % (self.host,), self.port)
 
     def test_repr(self):
         self.assertEqual(repr(Connection(self.host, self.port)),
@@ -275,8 +275,7 @@ class TestConnection(unittest.TestCase):
         c.pymongo_test.system.users.remove({})
 
     def test_fork(self):
-        """Test using a connection before and after a fork.
-        """
+        # Test using a connection before and after a fork.
         if sys.platform == "win32":
             raise SkipTest()
 
@@ -419,10 +418,13 @@ class TestConnection(unittest.TestCase):
             raise SkipTest()
 
         # Try a few simple things
-        connection = Connection("mongodb://[::1]:%s" % self.port)
-        connection = Connection("mongodb://[::1]:%s/?slaveOk=true" % self.port)
-        connection = Connection("[::1]:%s,localhost:%s" % (self.port, self.port))
-        connection = Connection("localhost:%s,[::1]:%s" % (self.port, self.port))
+        connection = Connection("mongodb://[::1]:%s" % (self.port,))
+        connection = Connection("mongodb://[::1]:%s/"
+                                "?slaveOk=true" % (self.port,))
+        connection = Connection("[::1]:%s,"
+                                "localhost:%s" % (self.port, self.port))
+        connection = Connection("localhost:%s,"
+                                "[::1]:%s" % (self.port, self.port))
         connection.pymongo_test.test.save({"dummy": u"object"})
         connection.pymongo_test_bernie.test.save({"dummy": u"object"})
 

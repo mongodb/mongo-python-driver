@@ -23,15 +23,17 @@ from pymongo.connection import Connection
 from pymongo.errors import ConfigurationError, OperationFailure
 
 
+host = os.environ.get("DB_IP", socket.gethostname())
+port = int(os.environ.get("DB_PORT", 27017))
+pair = '%s:%d' % (host, port)
+
+
 class TestCommon(unittest.TestCase):
 
     def test_baseobject(self):
 
         warnings.simplefilter("ignore")
 
-        host = os.environ.get("DB_IP", socket.gethostname())
-        port = int(os.environ.get("DB_PORT", 27017))
-        pair = '%s:%d' % (host, port)
         c = Connection(pair)
         self.assertFalse(c.slave_okay)
         self.assertFalse(c.safe)
@@ -69,13 +71,15 @@ class TestCommon(unittest.TestCase):
         self.assertFalse(cursor._Cursor__slave_okay)
 
         c = Connection('mongodb://%s/?'
-                       'w=2;wtimeoutMS=300;fsync=true;journal=true' % pair)
+                       'w=2;wtimeoutMS=300;fsync=true;'
+                       'journal=true' % (pair,))
         self.assertTrue(c.safe)
         d = {'w': 2, 'wtimeout': 300, 'fsync': True, 'j': True}
         self.assertEqual(d, c.get_lasterror_options())
 
         c = Connection('mongodb://%s/?'
-                       'slaveok=true;w=1;wtimeout=300;fsync=true;j=true' % pair)
+                       'slaveok=true;w=1;wtimeout=300;'
+                       'fsync=true;j=true' % (pair,))
         self.assertTrue(c.slave_okay)
         self.assertTrue(c.safe)
         d = {'w': 1, 'wtimeout': 300, 'fsync': True, 'j': True}
