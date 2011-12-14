@@ -419,10 +419,10 @@ class TestConnection(unittest.TestCase):
             raise SkipTest()
 
         # Try a few simple things
-        connection = Connection("mongodb://[::1]:27017")
-        connection = Connection("mongodb://[::1]:27017/?slaveOk=true")
-        connection = Connection("[::1]:27017,localhost:27017")
-        connection = Connection("localhost:27017,[::1]:27017")
+        connection = Connection("mongodb://[::1]:%s" % self.port)
+        connection = Connection("mongodb://[::1]:%s/?slaveOk=true" % self.port)
+        connection = Connection("[::1]:%s,localhost:%s" % (self.port, self.port))
+        connection = Connection("localhost:%s,[::1]:%s" % (self.port, self.port))
         connection.pymongo_test.test.save({"dummy": u"object"})
         connection.pymongo_test_bernie.test.save({"dummy": u"object"})
 

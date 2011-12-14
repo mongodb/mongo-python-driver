@@ -14,6 +14,8 @@
 
 """Test the pymongo common module."""
 
+import os
+import socket
 import unittest
 import warnings
 
@@ -26,7 +28,11 @@ class TestCommon(unittest.TestCase):
     def test_baseobject(self):
 
         warnings.simplefilter("ignore")
-        c = Connection()
+
+        host = os.environ.get("DB_IP", socket.gethostname())
+        port = int(os.environ.get("DB_PORT", 27017))
+        pair = '%s:%d' % (host, port)
+        c = Connection(pair)
         self.assertFalse(c.slave_okay)
         self.assertFalse(c.safe)
         self.assertEqual({}, c.get_lasterror_options())
@@ -43,7 +49,7 @@ class TestCommon(unittest.TestCase):
         cursor = coll.find(slave_okay=True)
         self.assertTrue(cursor._Cursor__slave_okay)
 
-        c = Connection(slaveok=True, w='majority',
+        c = Connection(pair, slaveok=True, w='majority',
                                      wtimeout=300, fsync=True, j=True)
         self.assertTrue(c.slave_okay)
         self.assertTrue(c.safe)
@@ -62,14 +68,14 @@ class TestCommon(unittest.TestCase):
         cursor = coll.find(slave_okay=False)
         self.assertFalse(cursor._Cursor__slave_okay)
 
-        c = Connection('mongodb://localhost:27017/?'
-                       'w=2;wtimeoutMS=300;fsync=true;journal=true')
+        c = Connection('mongodb://%s/?'
+                       'w=2;wtimeoutMS=300;fsync=true;journal=true' % pair)
         self.assertTrue(c.safe)
         d = {'w': 2, 'wtimeout': 300, 'fsync': True, 'j': True}
         self.assertEqual(d, c.get_lasterror_options())
 
-        c = Connection('mongodb://localhost:27017/?'
-                       'slaveok=true;w=1;wtimeout=300;fsync=true;j=true')
+        c = Connection('mongodb://%s/?'
+                       'slaveok=true;w=1;wtimeout=300;fsync=true;j=true' % pair)
         self.assertTrue(c.slave_okay)
         self.assertTrue(c.safe)
         d = {'w': 1, 'wtimeout': 300, 'fsync': True, 'j': True}
