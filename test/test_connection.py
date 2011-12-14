@@ -478,10 +478,8 @@ with get_connection() as connection:
         self.assertEqual(0, len(connection._Connection__pool.sockets))
 
     def test_interrupt_signal(self):
-        """
-        Test fix for PYTHON-294 -- make sure Connection closes its socket if it
-        gets an interrupt while waiting to recv() from it.
-        """
+        # Test fix for PYTHON-294 -- make sure Connection closes its
+        # socket if it gets an interrupt while waiting to recv() from it.
         c = get_connection()
         db = c.pymongo_test
 
