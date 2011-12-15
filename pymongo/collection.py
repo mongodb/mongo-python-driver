@@ -1120,9 +1120,12 @@ class Collection(common.BaseObject):
         .. versionadded:: 1.10
         """
 
+        use_master = not self.slave_okay and not self.read_preference
+
         response = self.__database.command("mapreduce", self.__name,
                                            uuid_subtype=self.__uuid_subtype,
                                            map=map, reduce=reduce,
+                                           _use_master=use_master,
                                            out={"inline": 1}, **kwargs)
 
         if full_response:
