@@ -525,14 +525,20 @@ class TestConnection(TestConnectionReplicaSetBase):
                 # cursor on the server; find is lazily evaluated. The find() will
                 # be interrupted by sigalarm() raising a KeyboardInterrupt.
                 list(db.foo.find({'$where': where}))
-            except KeyboardInterrupt:
+
+            # NOTE A DIFFERENCE BETWEEN Connection AND ReplicaSetConnection:
+            # it's simpler for ReplicaSetConnection to raise a ConnectionFailure
+            # than the original exception (a KeyboardInterrupt) so that's what
+            # it does. When we unify connection classes in 2.2 they'll behave
+            # the same (as yet undecided).
+            except ConnectionFailure:
                 raised = True
         finally:
             signal.signal(signal.SIGALRM, old_signal_handler)
 
         # Can't use self.assertRaises() because it doesn't catch system
         # exceptions
-        self.assert_(raised, "Didn't raise expected KeyboardInterrupt")
+        self.assert_(raised, "Didn't raise expected ConnectionFailure")
 
         # Raises AssertionError due to PYTHON-294 -- Mongo's response to the
         # previous find() is still waiting to be read on the socket, so the
