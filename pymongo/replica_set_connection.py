@@ -759,6 +759,18 @@ class ReplicaSetConnection(common.BaseObject):
             host, port = mongo['pool'].host
             mongo['pool'].discard_socket()
             raise AutoReconnect("%s:%d: %s" % (host, port, str(why)))
+        except:
+            # Store the exception from sock.recv() in case we throw a new
+            # exception in this exception-handler.
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            # PYTHON-294: must close socket here, because if it remains open
+            # after this then the next time we read from it we may get stale
+            # data from a previous operation.
+            try:
+                mongo['pool'].discard_socket()
+            except:
+                pass
+            raise exc_value
 
     def _send_message_with_response(self, msg, _connection_to_use=None,
                                     _must_use_master=False, **kwargs):
