@@ -17,6 +17,8 @@
 import datetime
 import unittest
 import sys
+import copy
+import pickle
 sys.path[0:0] = [""]
 
 from bson.timestamp import Timestamp
@@ -39,6 +41,16 @@ class TestTimestamp(unittest.TestCase):
         t = Timestamp(d, 0)
         self.assertEqual(1273017600, t.time)
         self.assertEqual(d, t.as_datetime())
+
+    def test_datetime_copy_pickle(self):
+        d = datetime.datetime(2010, 5, 5, tzinfo=utc)
+        t = Timestamp(d, 0)
+
+        dc = copy.deepcopy(d)
+        self.assertEqual(dc, t.as_datetime())
+
+        dp = pickle.loads(pickle.dumps(d))
+        self.assertEqual(dp, t.as_datetime())
 
     def test_exceptions(self):
         self.assertRaises(TypeError, Timestamp)

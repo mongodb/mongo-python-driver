@@ -23,13 +23,20 @@ ZERO = timedelta(0)
 class FixedOffset(tzinfo):
     """Fixed offset timezone, in minutes east from UTC.
 
-    Implementation from the Python `standard library documentation
+    Implementation based from the Python `standard library documentation
     <http://docs.python.org/library/datetime.html#tzinfo-objects>`_.
+    Defining __getinitargs__ enables pickling / copying.
     """
 
     def __init__(self, offset, name):
-        self.__offset = timedelta(minutes=offset)
+        if isinstance(offset, timedelta):
+            self.__offset = offset
+        else:
+            self.__offset = timedelta(minutes=offset)
         self.__name = name
+
+    def __getinitargs__(self):
+        return self.__offset, self.__name
 
     def utcoffset(self, dt):
         return self.__offset
