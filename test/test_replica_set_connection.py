@@ -498,6 +498,9 @@ class TestConnection(TestConnectionReplicaSetBase):
     def test_interrupt_signal(self):
         # Test fix for PYTHON-294 -- make sure Connection closes its
         # socket if it gets an interrupt while waiting to recv() from it.
+        if sys.platform == "win32":
+            raise SkipTest()
+
         c = self._get_connection()
         db = c.pymongo_test
 
