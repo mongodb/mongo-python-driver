@@ -16,11 +16,10 @@
 
 import datetime
 import os
-import signal
 import sys
 import time
+import thread
 import unittest
-import warnings
 sys.path[0:0] = [""]
 
 from nose.plugins.skip import SkipTest
@@ -488,9 +487,9 @@ with get_connection() as connection:
         c = get_connection()
         db = c.pymongo_test
 
-        # A $where clause which takes 1.5 sec to execute
+        # A $where clause which takes 0.5 sec to execute
         where = '''function() {
-            var d = new Date((new Date()).getTime() + 1.5 * 1000);
+            var d = new Date((new Date()).getTime() + 0.5 * 1000);
             while (d > (new Date())) { }; return true;
         }'''
 
@@ -498,24 +497,21 @@ with get_connection() as connection:
         db.drop_collection('foo')
         db.foo.insert({'_id': 1}, safe=True)
 
-        # Convert SIGALRM to SIGINT -- it's hard to schedule a SIGINT for one
-        # second in the future, but easy to schedule SIGALRM.
-        def sigalarm(num, frame):
-            raise KeyboardInterrupt
+        def interrupter():
+            time.sleep(0.25)
 
-        old_signal_handler = signal.signal(signal.SIGALRM, sigalarm)
-        signal.alarm(1)
+            # Raises KeyboardInterrupt in the main thread
+            thread.interrupt_main()
+
+        thread.start_new_thread(interrupter, ())
         raised = False
         try:
-            try:
-                # Need list() to actually iterate the cursor and create the
-                # cursor on the server; find is lazily evaluated. The find() will
-                # be interrupted by sigalarm() raising a KeyboardInterrupt.
-                list(db.foo.find({'$where': where}))
-            except KeyboardInterrupt:
-                raised = True
-        finally:
-            signal.signal(signal.SIGALRM, old_signal_handler)
+            # Need list() to actually iterate the cursor and create the
+            # cursor on the server; find is lazily evaluated. The find() will
+            # be interrupted by sigalarm() raising a KeyboardInterrupt.
+            list(db.foo.find({'$where': where}))
+        except KeyboardInterrupt:
+            raised = True
 
         # Can't use self.assertRaises() because it doesn't catch system
         # exceptions
