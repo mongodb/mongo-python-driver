@@ -20,6 +20,7 @@ import signal
 import sys
 import socket
 import time
+import thread
 import unittest
 sys.path[0:0] = [""]
 
@@ -504,9 +505,9 @@ class TestConnection(TestConnectionReplicaSetBase):
         c = self._get_connection()
         db = c.pymongo_test
 
-        # A $where clause which takes 1.5 sec to execute
+        # A $where clause which takes 0.5 sec to execute
         where = '''function() {
-            var d = new Date((new Date()).getTime() + 1.5 * 1000);
+            var d = new Date((new Date()).getTime() + 0.5 * 1000);
             while (d > (new Date())) { }; return true;
         }'''
 
@@ -514,30 +515,27 @@ class TestConnection(TestConnectionReplicaSetBase):
         db.drop_collection('foo')
         db.foo.insert({'_id': 1}, safe=True)
 
-        # Convert SIGALRM to SIGINT -- it's hard to schedule a SIGINT for one
-        # second in the future, but easy to schedule SIGALRM.
-        def sigalarm(num, frame):
-            raise KeyboardInterrupt
+        def interrupter():
+            time.sleep(0.25)
 
-        old_signal_handler = signal.signal(signal.SIGALRM, sigalarm)
-        signal.alarm(1)
+            # Raises KeyboardInterrupt in the main thread
+            thread.interrupt_main()
+
+        thread.start_new_thread(interrupter, ())
         raised = False
         try:
-            try:
-                # Need list() to actually iterate the cursor and create the
-                # cursor on the server; find is lazily evaluated. The find() will
-                # be interrupted by sigalarm() raising a KeyboardInterrupt.
-                list(db.foo.find({'$where': where}))
+            # Need list() to actually iterate the cursor and create the
+            # cursor on the server; find is lazily evaluated. The find() will
+            # be interrupted by sigalarm() raising a KeyboardInterrupt.
+            list(db.foo.find({'$where': where}))
 
-            # NOTE A DIFFERENCE BETWEEN Connection AND ReplicaSetConnection:
-            # it's simpler for ReplicaSetConnection to raise a ConnectionFailure
-            # than the original exception (a KeyboardInterrupt) so that's what
-            # it does. When we unify connection classes in 2.2 they'll behave
-            # the same (as yet undecided).
-            except ConnectionFailure:
-                raised = True
-        finally:
-            signal.signal(signal.SIGALRM, old_signal_handler)
+        # NOTE A DIFFERENCE BETWEEN Connection AND ReplicaSetConnection:
+        # it's simpler for ReplicaSetConnection to raise a ConnectionFailure
+        # than the original exception (a KeyboardInterrupt) so that's what
+        # it does. When we unify connection classes in 2.2 they'll behave
+        # the same (as yet undecided).
+        except ConnectionFailure:
+            raised = True
 
         # Can't use self.assertRaises() because it doesn't catch system
         # exceptions
