@@ -503,10 +503,8 @@ with get_connection() as connection:
         thread.start_new_thread(interrupter, ())
         raised = False
         try:
-            # Need list() to actually iterate the cursor and create the
-            # cursor on the server; find is lazily evaluated. The find() will
-            # be interrupted by sigalarm() raising a KeyboardInterrupt.
-            list(db.foo.find({'$where': where}))
+            # Will be interrupted by a KeyboardInterrupt.
+            db.foo.find({'$where': where}).next()
         except KeyboardInterrupt:
             raised = True
 
@@ -518,8 +516,8 @@ with get_connection() as connection:
         # previous find() is still waiting to be read on the socket, so the
         # request id's don't match.
         self.assertEqual(
-            [{'_id': 1}],
-            list(db.foo.find())
+            {'_id': 1},
+            db.foo.find().next()
         )
 
     # TODO: test raising an error in pool.discard_socket()
