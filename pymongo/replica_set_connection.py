@@ -179,7 +179,7 @@ class ReplicaSetConnection(common.BaseObject):
           - `slave_okay` or `slaveOk` (deprecated): Use `read_preference`
             instead.
 
-        .. versionadded:: 2.0.1+
+        .. versionadded:: 2.1
         """
         self.__max_pool_size = max_pool_size
         self.__document_class = document_class

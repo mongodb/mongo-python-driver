@@ -63,6 +63,8 @@ class Collection(common.BaseObject):
           - `**kwargs` (optional): additional keyword arguments will
             be passed as options for the create collection command
 
+        .. versionadded:: 2.1
+           uuid_subtype attribute
         .. versionchanged:: 1.5
            deprecating `options` in favor of kwargs
         .. versionadded:: 1.5
@@ -280,7 +282,7 @@ class Collection(common.BaseObject):
 
         .. note:: `continue_on_error` requires server version **>= 1.9.1**
 
-        .. versionadded:: 2.0.1+
+        .. versionadded:: 2.1
            Support for continue_on_error.
         .. versionadded:: 1.8
            Support for passing `getLastError` options as keyword

@@ -33,7 +33,7 @@ GEO2D = "2d"
 GEOHAYSTACK = "geoHaystack"
 """Index specifier for a 2-dimensional `haystack index`_.
 
-.. versionadded:: 2.0.1+
+.. versionadded:: 2.1
 
 .. note:: Geo-spatial indexing requires server version **>= 1.5.6+**.
 

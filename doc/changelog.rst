@@ -30,6 +30,7 @@ Important New Features:
 - Added support for the MongoDB URI options socketTimeoutMS and connectTimeoutMS.
 - Added support for the ContinueOnError insert flag.
 - Added basic SSL support.
+- Added basic support for Jython.
 - Secondaries can be used for :meth:`~pymongo.cursor.Cursor.count`,
   :meth:`~pymongo.cursor.Cursor.distinct`, :meth:`~pymongo.collection.Collection.group`,
   and querying :class:`~gridfs.GridFS`.

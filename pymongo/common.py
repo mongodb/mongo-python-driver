@@ -186,7 +186,8 @@ class BaseObject(object):
     def __get_slave_okay(self):
         """DEPRECATED. Use `read_preference` instead.
 
-        .. versionchanged:: 2.0.1+
+        .. versionchanged:: 2.1
+           Deprecated slave_okay.
         .. versionadded:: 2.0
         """
         return self.__slave_okay
@@ -204,7 +205,7 @@ class BaseObject(object):
 
         See :class:`~pymongo.ReadPreference` for available options.
 
-        .. versionadded:: 2.0.1+
+        .. versionadded:: 2.1
         """
         return self.__read_pref
 

@@ -270,7 +270,7 @@ class Connection(common.BaseObject):
             instead.
 
         .. seealso:: :meth:`end_request`
-        .. versionchanged:: 2.0.1+
+        .. versionchanged:: 2.1
            Support `w` = integer or string.
            Added `ssl` option.
            DEPRECATED slave_okay/slaveOk.
@@ -720,7 +720,7 @@ class Connection(common.BaseObject):
         could lead to unexpected results.
 
         .. seealso:: :meth:`end_request`
-        .. versionadded:: 2.0.1+
+        .. versionadded:: 2.1
         """
         self.disconnect()
 

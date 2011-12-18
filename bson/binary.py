@@ -51,7 +51,8 @@ This is the new BSON binary subtype for UUIDs. The
 current default is :data:`OLD_UUID_SUBTYPE` but will
 change to this in a future release.
 
-.. versionchanged:: 2.0.1+
+.. versionchanged:: 2.1
+   Changed to subtype 4.
 .. versionadded:: 1.5
 """
 
@@ -61,7 +62,7 @@ OLD_UUID_SUBTYPE = 3
 :class:`uuid.UUID` instances will automatically be encoded
 by :mod:`bson` using this subtype.
 
-.. versionadded:: 2.0.1+
+.. versionadded:: 2.1
 """
 
 MD5_SUBTYPE = 5
