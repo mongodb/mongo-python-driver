@@ -330,7 +330,14 @@ class Database(common.BaseObject):
         if isinstance(command, basestring):
             command = SON([(command, value)])
 
-        use_master = kwargs.pop('_use_master', True)
+        extra_opts = {
+            'read_preference': kwargs.pop('read_preference',
+                                          self.read_preference),
+            'slave_okay': kwargs.pop('slave_okay', self.slave_okay),
+            '_must_use_master': kwargs.pop('_use_master', True),
+            '_is_command': True,
+            '_uuid_subtype': uuid_subtype
+        }
 
         fields = kwargs.get('fields')
         if fields is not None and not isinstance(fields, dict):
@@ -338,10 +345,7 @@ class Database(common.BaseObject):
 
         command.update(kwargs)
 
-        result = self["$cmd"].find_one(command,
-                                       _must_use_master=use_master,
-                                       _is_command=True,
-                                       _uuid_subtype = uuid_subtype)
+        result = self["$cmd"].find_one(command, **extra_opts)
 
         if check:
             msg = "command %s failed: %%s" % repr(command).replace("%", "%%")

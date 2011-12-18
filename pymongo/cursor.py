@@ -473,6 +473,8 @@ class Cursor(object):
         """
         command = {"query": self.__spec, "fields": self.__fields}
 
+        command['read_preference'] = self.__read_preference
+        command['slave_okay'] = self.__slave_okay
         use_master = not self.__slave_okay and not self.__read_preference
         command['_use_master'] = use_master
 
@@ -520,6 +522,8 @@ class Cursor(object):
         if self.__spec:
             options["query"] = self.__spec
 
+        options['read_preference'] = self.__read_preference
+        options['slave_okay'] = self.__slave_okay
         use_master = not self.__slave_okay and not self.__read_preference
         options['_use_master'] = use_master
 

@@ -956,6 +956,8 @@ class Collection(common.BaseObject):
 
         return self.__database.command("group", group,
                                        uuid_subtype=self.__uuid_subtype,
+                                       read_preference=self.read_preference,
+                                       slave_okay=self.slave_okay,
                                        _use_master=use_master)["retval"]
 
     def rename(self, new_name, **kwargs):
@@ -1122,16 +1124,18 @@ class Collection(common.BaseObject):
 
         use_master = not self.slave_okay and not self.read_preference
 
-        response = self.__database.command("mapreduce", self.__name,
-                                           uuid_subtype=self.__uuid_subtype,
-                                           map=map, reduce=reduce,
-                                           _use_master=use_master,
-                                           out={"inline": 1}, **kwargs)
+        res = self.__database.command("mapreduce", self.__name,
+                                      uuid_subtype=self.__uuid_subtype,
+                                      read_preference=self.read_preference,
+                                      slave_okay=self.slave_okay,
+                                      _use_master=use_master,
+                                      map=map, reduce=reduce,
+                                      out={"inline": 1}, **kwargs)
 
         if full_response:
-            return response
+            return res
         else:
-            return response.get("results")
+            return res.get("results")
 
     def find_and_modify(self, query={}, update=None, upsert=False, **kwargs):
         """Update and return an object.
