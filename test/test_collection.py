@@ -1684,11 +1684,11 @@ class TestCollection(unittest.TestCase):
         no_obj_error = "No matching object found"
         result = db.command('findAndModify', 'uuid',
                             allowable_errors=[no_obj_error],
+                            uuid_subtype=UUID_SUBTYPE,
                             query={'_id': uu},
                             update={'$set': {'i': 6}})
         self.assertEqual(None, result.get('value'))
         self.assertEqual(5, db.command('findAndModify', 'uuid',
-                                       uuid_subtype=OLD_UUID_SUBTYPE,
                                        update={'$set': {'i': 6}},
                                        query={'_id': uu})['value']['i'])
         self.assertEqual(6, db.command('findAndModify', 'uuid',

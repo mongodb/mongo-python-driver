@@ -16,7 +16,7 @@
 
 import warnings
 
-from bson.binary import UUID_SUBTYPE
+from bson.binary import OLD_UUID_SUBTYPE
 from bson.code import Code
 from bson.dbref import DBRef
 from bson.son import SON
@@ -269,7 +269,7 @@ class Database(common.BaseObject):
 
     def command(self, command, value=1,
                 check=True, allowable_errors=[],
-                uuid_subtype=UUID_SUBTYPE, **kwargs):
+                uuid_subtype=OLD_UUID_SUBTYPE, **kwargs):
         """Issue a MongoDB command.
 
         Send command `command` to the database and return the
