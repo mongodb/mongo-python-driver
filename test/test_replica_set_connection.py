@@ -49,7 +49,7 @@ class TestConnectionReplicaSetBase(unittest.TestCase):
         conn = Connection(pair)
         response = conn.admin.command('ismaster')
         if 'setName' in response:
-            self.name = response['setName']
+            self.name = str(response['setName'])
             self.w = len(response['hosts'])
             self.hosts = set([_partition_node(h)
                               for h in response["hosts"]])
@@ -429,20 +429,23 @@ class TestConnection(TestConnectionReplicaSetBase):
 
     def test_ipv6(self):
         try:
-            connection = ReplicaSetConnection("[::1]:27017", replicaSet=self.name)
+            connection = ReplicaSetConnection("[::1]:%d" % (port,),
+                                              replicaSet=self.name)
         except:
             # Either mongod was started without --ipv6
             # or the OS doesn't support it (or both).
             raise SkipTest()
 
         # Try a few simple things
-        connection = ReplicaSetConnection("mongodb://[::1]:27017",
+        connection = ReplicaSetConnection("mongodb://[::1]:%d" % (port,),
                                           replicaSet=self.name)
-        uri = "mongodb://[::1]:27017/?slaveOk=true;replicaSet=" + self.name
-        connection = ReplicaSetConnection(uri)
-        connection = ReplicaSetConnection("[::1]:27017,localhost:27017",
+        connection = ReplicaSetConnection("mongodb://[::1]:%d/?slaveOk=true;"
+                                          "replicaSet=%s" % (port, self.name))
+        connection = ReplicaSetConnection("[::1]:%d,localhost:"
+                                          "%d" % (port, port),
                                           replicaSet=self.name)
-        connection = ReplicaSetConnection("localhost:27017,[::1]:27017",
+        connection = ReplicaSetConnection("localhost:%d,[::1]:"
+                                          "%d" % (port, port),
                                           replicaSet=self.name)
         connection.pymongo_test.test.save({"dummy": u"object"})
         connection.pymongo_test_bernie.test.save({"dummy": u"object"})

@@ -86,7 +86,7 @@ class TestConnection(unittest.TestCase):
 
     def test_repr(self):
         self.assertEqual(repr(Connection(self.host, self.port)),
-                         "Connection('%s', %s)" % (self.host, self.port))
+                         "Connection('%s', %d)" % (self.host, self.port))
 
     def test_getters(self):
         self.assertEqual(Connection(self.host, self.port).host, self.host)
@@ -164,7 +164,7 @@ class TestConnection(unittest.TestCase):
         self.assertEqual("bar", c.pymongo_test1.test.find_one()["foo"])
 
         c.copy_database("pymongo_test", "pymongo_test2",
-                        "%s:%s" % (self.host, self.port))
+                        "%s:%d" % (self.host, self.port))
 
         self.assert_("pymongo_test2" in c.database_names())
         self.assertEqual("bar", c.pymongo_test2.test.find_one()["foo"])
@@ -238,7 +238,7 @@ class TestConnection(unittest.TestCase):
     def test_from_uri(self):
         c = Connection(self.host, self.port)
 
-        self.assertEqual(c, Connection("mongodb://%s:%s" %
+        self.assertEqual(c, Connection("mongodb://%s:%d" %
                                        (self.host, self.port)))
 
         c.admin.system.users.remove({})
@@ -249,26 +249,26 @@ class TestConnection(unittest.TestCase):
         c.pymongo_test.add_user("user", "pass")
 
         self.assertRaises(ConfigurationError, Connection,
-                          "mongodb://foo:bar@%s:%s" % (self.host, self.port))
+                          "mongodb://foo:bar@%s:%d" % (self.host, self.port))
         self.assertRaises(ConfigurationError, Connection,
-                          "mongodb://admin:bar@%s:%s" % (self.host, self.port))
+                          "mongodb://admin:bar@%s:%d" % (self.host, self.port))
         self.assertRaises(ConfigurationError, Connection,
-                          "mongodb://user:pass@%s:%s" % (self.host, self.port))
-        Connection("mongodb://admin:pass@%s:%s" % (self.host, self.port))
+                          "mongodb://user:pass@%s:%d" % (self.host, self.port))
+        Connection("mongodb://admin:pass@%s:%d" % (self.host, self.port))
 
         self.assertRaises(ConfigurationError, Connection,
-                          "mongodb://admin:pass@%s:%s/pymongo_test" %
+                          "mongodb://admin:pass@%s:%d/pymongo_test" %
                           (self.host, self.port))
         self.assertRaises(ConfigurationError, Connection,
-                          "mongodb://user:foo@%s:%s/pymongo_test" %
+                          "mongodb://user:foo@%s:%d/pymongo_test" %
                           (self.host, self.port))
-        Connection("mongodb://user:pass@%s:%s/pymongo_test" %
+        Connection("mongodb://user:pass@%s:%d/pymongo_test" %
                    (self.host, self.port))
 
-        self.assert_(Connection("mongodb://%s:%s" %
+        self.assert_(Connection("mongodb://%s:%d" %
                                 (self.host, self.port),
                                 slave_okay=True).slave_okay)
-        self.assert_(Connection("mongodb://%s:%s/?slaveok=true;w=2" %
+        self.assert_(Connection("mongodb://%s:%d/?slaveok=true;w=2" %
                                 (self.host, self.port)).slave_okay)
         c.admin.system.users.remove({})
         c.pymongo_test.system.users.remove({})
@@ -417,13 +417,13 @@ class TestConnection(unittest.TestCase):
             raise SkipTest()
 
         # Try a few simple things
-        connection = Connection("mongodb://[::1]:%s" % (self.port,))
-        connection = Connection("mongodb://[::1]:%s/"
+        connection = Connection("mongodb://[::1]:%d" % (self.port,))
+        connection = Connection("mongodb://[::1]:%d/"
                                 "?slaveOk=true" % (self.port,))
-        connection = Connection("[::1]:%s,"
-                                "localhost:%s" % (self.port, self.port))
-        connection = Connection("localhost:%s,"
-                                "[::1]:%s" % (self.port, self.port))
+        connection = Connection("[::1]:%d,"
+                                "localhost:%d" % (self.port, self.port))
+        connection = Connection("localhost:%d,"
+                                "[::1]:%d" % (self.port, self.port))
         connection.pymongo_test.test.save({"dummy": u"object"})
         connection.pymongo_test_bernie.test.save({"dummy": u"object"})
 
