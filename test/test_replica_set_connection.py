@@ -505,9 +505,9 @@ class TestConnection(TestConnectionReplicaSetBase):
         c = self._get_connection()
         db = c.pymongo_test
 
-        # A $where clause which takes 0.5 sec to execute
+        # A $where clause which takes 1.5 sec to execute
         where = '''function() {
-            var d = new Date((new Date()).getTime() + 0.5 * 1000);
+            var d = new Date((new Date()).getTime() + 1.5 * 1000);
             while (d > (new Date())) { }; return true;
         }'''
 
@@ -515,39 +515,60 @@ class TestConnection(TestConnectionReplicaSetBase):
         db.drop_collection('foo')
         db.foo.insert({'_id': 1}, safe=True)
 
-        def interrupter():
-            time.sleep(0.25)
+        old_signal_handler = None
 
-            # Raises KeyboardInterrupt in the main thread
-            thread.interrupt_main()
-
-        thread.start_new_thread(interrupter, ())
-        raised = False
         try:
-            # Will be interrupted by a KeyboardInterrupt.
-            db.foo.find({'$where': where}).next()
+            # Platform-specific hacks for raising a KeyboardInterrupt on the main
+            # thread while find() is in-progress: On Windows, SIGALRM is unavailable
+            # so we use second thread. In our Bamboo setup on Linux, the thread
+            # technique causes an error in the test at sock.recv():
+            #    TypeError: 'int' object is not callable
+            # We don't know what causes this in Bamboo, so we hack around it.
+            if sys.platform == 'win32':
+                def interrupter():
+                    time.sleep(0.25)
 
-        # NOTE A DIFFERENCE BETWEEN Connection AND ReplicaSetConnection:
-        # it's simpler for ReplicaSetConnection to raise a ConnectionFailure
-        # than the original exception (a KeyboardInterrupt) so that's what
-        # it does. When we unify connection classes in 2.2 they'll behave
-        # the same (as yet undecided).
-        except ConnectionFailure:
-            raised = True
+                    # Raises KeyboardInterrupt in the main thread
+                    thread.interrupt_main()
 
-        # Can't use self.assertRaises() because it doesn't catch system
-        # exceptions
-        self.assert_(raised, "Didn't raise expected ConnectionFailure")
+                thread.start_new_thread(interrupter, ())
+            else:
+                # Convert SIGALRM to SIGINT -- it's hard to schedule a SIGINT for one
+                # second in the future, but easy to schedule SIGALRM.
+                def sigalarm(num, frame):
+                    raise KeyboardInterrupt
 
-        # Raises AssertionError due to PYTHON-294 -- Mongo's response to the
-        # previous find() is still waiting to be read on the socket, so the
-        # request id's don't match.
-        self.assertEqual(
-            {'_id': 1},
-            db.foo.find().next()
-        )
+                old_signal_handler = signal.signal(signal.SIGALRM, sigalarm)
+                signal.alarm(1)
 
-        # TODO: test raising an error in pool.discard_socket()
+            raised = False
+            try:
+                # Will be interrupted by a KeyboardInterrupt.
+                db.foo.find({'$where': where}).next()
+
+            # NOTE A DIFFERENCE BETWEEN Connection AND ReplicaSetConnection:
+            # it's simpler for ReplicaSetConnection to raise a ConnectionFailure
+            # than the original exception (a KeyboardInterrupt) so that's what
+            # it does. When we unify connection classes in 2.2 they'll behave
+            # the same (as yet undecided).
+            except ConnectionFailure:
+                raised = True
+
+            # Can't use self.assertRaises() because it doesn't catch system
+            # exceptions
+            self.assert_(raised, "Didn't raise expected ConnectionFailure")
+
+            # Raises AssertionError due to PYTHON-294 -- Mongo's response to the
+            # previous find() is still waiting to be read on the socket, so the
+            # request id's don't match.
+            self.assertEqual(
+                {'_id': 1},
+                db.foo.find().next()
+            )
+        finally:
+            if old_signal_handler:
+                signal.signal(signal.SIGALRM, old_signal_handler)
+
 
 if __name__ == "__main__":
     unittest.main()
