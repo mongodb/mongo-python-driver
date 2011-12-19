@@ -383,15 +383,15 @@ class TestConnection(TestConnectionReplicaSetBase):
 
     def test_network_timeout(self):
         no_timeout = self._get_connection()
-        timeout_sec = 0.25
+        timeout_sec = 1
         timeout = self._get_connection(socketTimeoutMS=timeout_sec*1000)
 
         no_timeout.pymongo_test.drop_collection("test")
         no_timeout.pymongo_test.test.insert({"x": 1}, safe=True)
 
-        # A $where clause that takes half a second longer than the timeout
+        # A $where clause that takes a second longer than the timeout
         where_func = """function (doc) {
-  var d = new Date().getTime() + %f * 1000 + 500;;
+  var d = new Date().getTime() + (%f + 1) * 1000;;
   var x = new Date().getTime();
   while (x < d) {
     x = new Date().getTime();
