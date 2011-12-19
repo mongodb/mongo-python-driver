@@ -62,3 +62,4 @@ def _UTC():
     module global.
     """
     return utc
+_UTC.__safe_for_unpickling__ = True
