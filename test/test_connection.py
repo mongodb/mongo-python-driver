@@ -369,19 +369,21 @@ class TestConnection(unittest.TestCase):
 
     def test_network_timeout(self):
         no_timeout = Connection(self.host, self.port)
-        timeout = Connection(self.host, self.port, network_timeout=0.1)
+        timeout_sec = 0.25
+        timeout = Connection(self.host, self.port, network_timeout=timeout_sec)
 
         no_timeout.pymongo_test.drop_collection("test")
         no_timeout.pymongo_test.test.insert({"x": 1}, safe=True)
 
+        # A $where clause that takes half a second longer than the timeout
         where_func = """function (doc) {
-  var d = new Date().getTime() + 200;
+  var d = new Date().getTime() + %f * 1000 + 500;;
   var x = new Date().getTime();
   while (x < d) {
     x = new Date().getTime();
   }
   return true;
-}"""
+}""" % timeout_sec
 
         def get_x(db):
             return db.test.find().where(where_func).next()["x"]
