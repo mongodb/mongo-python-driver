@@ -38,6 +38,9 @@ class FixedOffset(tzinfo):
     def __getinitargs__(self):
         return self.__offset, self.__name
 
+    def __reduce__(self):
+        return _UTC, ()
+
     def utcoffset(self, dt):
         return self.__offset
 
@@ -50,3 +53,12 @@ class FixedOffset(tzinfo):
 
 utc = FixedOffset(0, "UTC")
 """Fixed offset timezone representing UTC."""
+
+
+def _UTC():
+    """Factory function for utc unpickling.
+
+    Makes sure that unpickling a utc instance always returns the same
+    module global.
+    """
+    return utc
