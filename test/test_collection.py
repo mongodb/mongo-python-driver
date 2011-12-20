@@ -484,18 +484,18 @@ class TestCollection(unittest.TestCase):
 
     def test_insert_find_one(self):
         db = self.db
-        db.test.remove({})
+        db.test.remove({}, safe=True)
         self.assertEqual(db.test.find().count(), 0)
         doc = {"hello": u"world"}
-        id = db.test.insert(doc)
+        id = db.test.insert(doc, safe=True)
         self.assertEqual(db.test.find().count(), 1)
         self.assertEqual(doc, db.test.find_one())
         self.assertEqual(doc["_id"], id)
         self.assert_(isinstance(id, ObjectId))
 
         def remove_insert_find_one(dict):
-            db.test.remove({})
-            db.test.insert(dict)
+            db.test.remove({}, safe=True)
+            db.test.insert(dict, safe=True)
             return db.test.find_one() == dict
 
         qcheck.check_unittest(self, remove_insert_find_one,
