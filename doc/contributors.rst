@@ -51,3 +51,4 @@ The following is a list of people who have contributed to
 - Kostya Rybnikov (k-bx)
 - Jesse Davis (ajdavis)
 - Samuel Clay (samuelclay)
+- Ross Lawley (rozza)
