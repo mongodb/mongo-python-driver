@@ -48,11 +48,9 @@ class TestTimestamp(unittest.TestCase):
 
         dc = copy.deepcopy(d)
         self.assertEqual(dc, t.as_datetime())
-        self.assertEqual(d.tzinfo, dc.tzinfo)
 
         dp = pickle.loads(pickle.dumps(d))
         self.assertEqual(dp, t.as_datetime())
-        self.assertEqual(d.tzinfo, dp.tzinfo)
 
     def test_exceptions(self):
         self.assertRaises(TypeError, Timestamp)
