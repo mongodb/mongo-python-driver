@@ -326,7 +326,7 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
     int num_to_return;
     PyObject* query;
     PyObject* field_selector = Py_None;
-    unsigned char uuid_subtype = 4;
+    unsigned char uuid_subtype = 3;
     buffer_t buffer;
     int length_location, message_length;
     PyObject* result;

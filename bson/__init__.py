@@ -21,7 +21,7 @@ import re
 import struct
 import warnings
 
-from bson.binary import Binary, UUID_SUBTYPE
+from bson.binary import Binary, OLD_UUID_SUBTYPE
 from bson.code import Code
 from bson.dbref import DBRef
 from bson.errors import (InvalidBSON,
@@ -467,7 +467,7 @@ class BSON(str):
     """
 
     @classmethod
-    def from_dict(cls, dct, check_keys=False):
+    def from_dict(cls, dct, check_keys=False, uuid_subtype=OLD_UUID_SUBTYPE):
         """DEPRECATED - `from_dict` has been renamed to `encode`.
 
         .. versionchanged:: 1.9
@@ -475,10 +475,10 @@ class BSON(str):
         """
         warnings.warn("`from_dict` has been renamed to `encode`",
                       DeprecationWarning)
-        return cls.encode(dct, check_keys)
+        return cls.encode(dct, check_keys, uuid_subtype)
 
     @classmethod
-    def encode(cls, document, check_keys=False, uuid_subtype=UUID_SUBTYPE):
+    def encode(cls, document, check_keys=False, uuid_subtype=OLD_UUID_SUBTYPE):
         """Encode a document to a new :class:`BSON` instance.
 
         A document can be any mapping type (like :class:`dict`).

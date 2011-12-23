@@ -26,6 +26,7 @@ import random
 import struct
 
 import bson
+from bson.binary import OLD_UUID_SUBTYPE
 from bson.son import SON
 try:
     from pymongo import _cmessage
@@ -116,7 +117,8 @@ if _use_c:
 
 
 def query(options, collection_name, num_to_skip,
-          num_to_return, query, field_selector=None, uuid_subtype=4):
+          num_to_return, query, field_selector=None,
+          uuid_subtype=OLD_UUID_SUBTYPE):
     """Get a **query** message.
     """
     data = struct.pack("<I", options)
