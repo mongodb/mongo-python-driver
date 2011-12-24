@@ -591,7 +591,7 @@ class Collection(common.BaseObject):
             this query, which will override the
             :class:`~pymongo.connection.Connection`-level default
           - `read_preference` (optional): The read preference for
-            this read operation. Only used with ReplicaSetConnection.
+            this query.
 
         .. note:: The `manipulate` parameter may default to False in
            a future release.
@@ -1107,6 +1107,13 @@ class Collection(common.BaseObject):
         If `full_response` is ``False`` (default) returns the
         result documents in a list. Otherwise, returns the full
         response from the server to the `map reduce command`_.
+
+        With :class:`~pymongo.replica_set_connection.ReplicaSetConnection`
+        or :class:`~pymongo.master_slave_connection.MasterSlaveConnection`,
+        if the `read_preference` attribute of this instance is not set to
+        :attr:`pymongo.ReadPreference.PRIMARY` or the (deprecated)
+        `slave_okay` attribute of this instance is set to `True` the inline
+        map reduce will be run on a secondary or slave.
 
         :Parameters:
           - `map`: map function (as a JavaScript string)
