@@ -44,6 +44,22 @@ host = os.environ.get("DB_IP", socket.gethostname())
 port = int(os.environ.get("DB_PORT", 27017))
 pair = '%s:%d' % (host, port)
 
+class TestReplicaSetConnectionAgainstStandalone(unittest.TestCase):
+    """This is a funny beast -- we want to run tests for ReplicaSetConnection
+    but only if the database at DB_IP and DB_PORT is a standalone.
+    """
+    def setUp(self):
+        conn = Connection(pair)
+        response = conn.admin.command('ismaster')
+        if 'setName' in response:
+            raise SkipTest()
+
+    def test_connect(self):
+        self.assertRaises(ConfigurationError, ReplicaSetConnection,
+                          pair, replicaSet='anything',
+                          connectTimeoutMS=600)
+
+
 class TestConnectionReplicaSetBase(unittest.TestCase):
     def setUp(self):
         conn = Connection(pair)
