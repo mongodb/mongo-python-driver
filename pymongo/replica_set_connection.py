@@ -490,7 +490,6 @@ class ReplicaSetConnection(common.BaseObject):
         hosts = set()
 
         for node in nodes:
-            host, port = node
             mongo = None
             try:
                 if node in self.__pools:
@@ -507,6 +506,7 @@ class ReplicaSetConnection(common.BaseObject):
                 # so we can't assume that if it's missing this host isn't in
                 # the specified set.
                 if set_name and set_name != self.__name:
+                    host, port = node
                     raise ConfigurationError("%s:%d is not a member of "
                                              "replica set %s"
                                              % (host, port, self.__name))
