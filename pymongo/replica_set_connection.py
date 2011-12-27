@@ -519,15 +519,6 @@ class ReplicaSetConnection(common.BaseObject):
                 if "passives" in response:
                     hosts.update([_partition_node(h)
                                   for h in response["passives"]])
-
-                # don't allow ReplicaSetConnection to connect
-                # directly to standalone mongods
-                if not any(key in response for key in
-                           ('setName', 'arbiters', 'hosts', 'passives')):
-                    raise ConfigurationError("%s:%d is not a member of "
-                                             "a replica set"
-                                             % (host, port))
-
             except (ConnectionFailure, socket.error), why:
                 if mongo:
                     mongo['pool'].discard_socket()
@@ -536,8 +527,7 @@ class ReplicaSetConnection(common.BaseObject):
                 self.__hosts = hosts
                 break
         else:
-            # Couldn't find a suitable host.
-            raise AutoReconnect(', '.join(errors))
+            raise ConfigurationError('No suitable hosts found')
 
         self.__update_pools()
 
