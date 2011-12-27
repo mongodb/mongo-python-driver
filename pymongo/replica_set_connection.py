@@ -527,6 +527,8 @@ class ReplicaSetConnection(common.BaseObject):
                 self.__hosts = hosts
                 break
         else:
+            if errors:
+                raise AutoReconnect(', '.join(errors))
             raise ConfigurationError('No suitable hosts found')
 
         self.__update_pools()
