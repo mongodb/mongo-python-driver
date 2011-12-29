@@ -54,7 +54,7 @@ Here's a basic example (for more see the *examples* section of the docs):
 >>> import pymongo
 >>> connection = pymongo.Connection("localhost", 27017)
 >>> db = connection.test
->>> db.name()
+>>> db.name
 u'test'
 >>> db.my_collection
 Collection(Database(Connection('localhost', 27017), u'test'), u'my_collection')
