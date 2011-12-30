@@ -562,13 +562,7 @@ class TestConnection(TestConnectionReplicaSetBase):
             try:
                 # Will be interrupted by a KeyboardInterrupt.
                 db.foo.find({'$where': where}).next()
-
-            # NOTE A DIFFERENCE BETWEEN Connection AND ReplicaSetConnection:
-            # it's simpler for ReplicaSetConnection to raise a ConnectionFailure
-            # than the original exception (a KeyboardInterrupt) so that's what
-            # it does. When we unify connection classes in 2.2 they'll behave
-            # the same (as yet undecided).
-            except ConnectionFailure:
+            except KeyboardInterrupt:
                 raised = True
 
             # Can't use self.assertRaises() because it doesn't catch system

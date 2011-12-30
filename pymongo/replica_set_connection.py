@@ -660,10 +660,7 @@ class ReplicaSetConnection(common.BaseObject):
         """
         chunks = []
         while length:
-            try:
-                chunk = sock.recv(length)
-            except:
-                raise ConnectionFailure("connection error")
+            chunk = sock.recv(length)
             if chunk == "":
                 raise ConnectionFailure("connection closed")
             length -= len(chunk)
@@ -739,6 +736,10 @@ class ReplicaSetConnection(common.BaseObject):
             if _connection_to_use in (None, -1):
                 self.disconnect()
             raise AutoReconnect(str(why))
+        except:
+            mongo['pool'].discard_socket()
+            raise
+
         mongo['pool'].return_socket()
 
     def __send_and_receive(self, mongo, msg, **kwargs):
@@ -763,6 +764,9 @@ class ReplicaSetConnection(common.BaseObject):
             host, port = mongo['pool'].host
             mongo['pool'].discard_socket()
             raise AutoReconnect("%s:%d: %s" % (host, port, str(why)))
+        except:
+            mongo['pool'].discard_socket()
+            raise
 
     def _send_message_with_response(self, msg, _connection_to_use=None,
                                     _must_use_master=False, **kwargs):
