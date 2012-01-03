@@ -26,26 +26,42 @@ needs. Even if you eventually come to the decision to use one of these
 layers, the time spent working directly with the driver will have
 increased your understanding of how MongoDB actually works.
 
-* `MongoKit <http://namlook.github.com/mongokit/>`_ is a python module that
-  brings structured schema and validation layer on top of the great pymongo
-  driver.
-  For more information, see
-  `the tutorial <http://namlook.github.com/mongokit/tutorial.html>`_.
-* `Ming <http://merciless.sourceforge.net/>`_ (the Merciless) was developed by
-  `SourceForge <http://sourceforge.net/>`_ in the course of their migration to
-  MongoDB.
-  For more information, see
-  `the tutorial <http://merciless.sourceforge.net/orm.html>`_.
-* `MongoAlchemy <http://mongoalchemy.org>`_ is inspired by the popular
-  `SQLAlchemy <http://sqlalchemy.org>`_ database toolkit.
-  For more information, see `the tutorial <http://mongoalchemy.org/tutorial.html>`_.
-* `MongoEngine <http://mongoengine.org/>`_ allows you to define schemas
-  for documents and query collections using syntax inspired by the Django
-  ORM.For more information, see `the tutorial
-  <http://mongoengine.org/docs/v0.5/tutorial.html>`_.
-* `minimongo <http://pypi.python.org/pypi/minimongo>`_  is a lightweight,
-  schemaless, Pythonic Object-Oriented interface to MongoDB. For more
-  information see `the example <http://pypi.python.org/pypi/minimongo#example>`_.
+
+MongoKit
+  The `MongoKit <http://github.com/namlook/mongokit>`_ framework
+  is an ORM-like layer on top of PyMongo. There is also a MongoKit
+  `google group <http://groups.google.com/group/mongokit>`_.
+
+Ming
+  `Ming <http://merciless.sourceforge.net/>`_ (the Merciless) is a
+  library that allows you to enforce schemas on a MongoDB database in
+  your Python application. It was developed by `SourceForge
+  <http://sourceforge.net/>`_ in the course of their migration to
+  MongoDB. See the `introductory blog post
+  <http://blog.pythonisito.com/2009/12/ming-01-released-python-library-for.html>`_
+  for more details.
+
+MongoAlchemy
+  `MongoAlchemy <http://mongoalchemy.org>`_ is another ORM-like layer on top of
+  PyMongo. Its API is inspired by `SQLAlchemy <http://sqlalchemy.org>`_. The
+  code is available `on github <http://github.com/jeffjenkins/MongoAlchemy>`_;
+  for more information, see `the tutorial <http://mongoalchemy.org/tutorial.html>`_.
+
+MongoEngine
+  `MongoEngine <http://mongoengine.org/>`_ is another ORM-like
+  layer on top of PyMongo. It allows you to define schemas for
+  documents and query collections using syntax inspired by the Django
+  ORM. The code is available on `github
+  <http://github.com/hmarr/mongoengine>`_; for more information, see
+  the `tutorial <http://mongoengine.org/docs/v0.5/tutorial.html>`_.
+
+Minimongo
+  `minimongo <http://pypi.python.org/pypi/minimongo>`_ is a lightweight,
+  pythonic interface to MongoDB.  It retains pymongo's query and update API,
+  and provides a number of additional features, including a simple
+  document-oriented interface, connection pooling, index management, and
+  collection & database naming helpers. The `source is on github
+  <http://github.com/slacy/minimongo>`_.
 
 Framework Tools
 ---------------
@@ -53,9 +69,9 @@ This section lists tools and adapters that have been designed to work with
 various Python frameworks and libraries.
 
 * `Django MongoDB Engine
-  <http://django-mongodb.org/>`_ is a MongoDB database backend for Django that
-  completely integrates with its ORM. For more information
-  `see the tutorial <http://django-mongodb.org/tutorial.html>`_.
+  <http://django-mongodb.org/>`_ is a MongoDB
+  database backend for Django that completely integrates with its ORM.
+  For more information `see the tutorial <http://django-mongodb.org/tutorial.html>`_.
 * `mango <http://github.com/vpulim/mango>`_ provides MongoDB backends for
   Django sessions and authentication (bypassing :mod:`django.db` entirely).
 * `mongodb_beaker <http://pypi.python.org/pypi/mongodb_beaker>`_ is a
