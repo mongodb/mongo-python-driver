@@ -199,7 +199,11 @@ def stepdown_primary():
     primary = get_primary()
     if primary:
         c = pymongo.Connection(primary)
-        c.admin.command('replSetStepDown', 20)
+        # replSetStepDown causes mongod to close all connections
+        try:
+            c.admin.command('replSetStepDown', 20)
+        except:
+            pass
 
 
 def restart_members(members):

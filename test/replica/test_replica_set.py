@@ -160,7 +160,7 @@ class TestHealthMonitor(unittest.TestCase):
         secondaries = c.secondaries
 
         def primary_changed():
-            for _ in xrange(20):
+            for _ in xrange(30):
                 if c.primary != primary:
                     return True
                 time.sleep(1)
