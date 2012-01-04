@@ -1,6 +1,26 @@
 Changelog
 =========
 
+Changes in Version 2.1.1
+------------------------
+
+Version 2.1.1 is a minor release that fixes a few issues
+discovered after the release of 2.1. You can now use
+:class:`~pymongo.replica_set_connection.ReplicaSetConnection`
+to run inline map reduce commands on secondaries. See
+:meth:`~pymongo.collection.Collection.inline_map_reduce` for details.
+
+Special thanks go to Samuel Clay and Ross Lawley for their contributions
+to this release.
+
+Issues Resolved
+...............
+
+See the `PyMongo 2.1.1 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 2.1.1 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/11081
+
 Changes in Version 2.1
 ------------------------
 
