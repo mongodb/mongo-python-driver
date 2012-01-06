@@ -71,7 +71,14 @@ class TestConnectionReplicaSetBase(unittest.TestCase):
                               for h in response["hosts"]])
             self.arbiters = set([_partition_node(h)
                                  for h in response.get("arbiters", [])])
-            self.primary = _partition_node(pair)
+
+            repl_set_status = conn.admin.command('replSetGetStatus')
+            primary_info = next(
+                m for m in repl_set_status['members']
+                if m['stateStr'] == 'PRIMARY'
+            )
+
+            self.primary = _partition_node(primary_info['name'])
         else:
             raise SkipTest()
 
