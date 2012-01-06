@@ -91,7 +91,7 @@ class ReadPreference:
     SECONDARY = 1
     SECONDARY_ONLY = 2
 
-version_tuple = (2, 1, 1)
+version_tuple = (2, 1, 1, '+')
 
 def get_version_string():
     if version_tuple[-1] == '+':
