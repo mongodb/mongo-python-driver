@@ -160,6 +160,18 @@ class TestConnection(TestConnectionReplicaSetBase):
     def test_operations(self):
         c = self._get_connection()
 
+        # Check explicitly for a case we've commonly hit in tests:
+        # a replica set is started with a tiny oplog, a previous
+        # test does a big insert that leaves the secondaries
+        # permanently "RECOVERING", and our insert(w=self.w) hangs
+        # forever.
+        rs_status = c.admin.command('replSetGetStatus')
+        members = rs_status['members']
+        self.assertFalse(
+            [m for m in members if m['stateStr'] == 'RECOVERING'],
+            "Replica set is recovering, try a larger oplogSize next time"
+        )
+
         db = c.pymongo_test
         db.test.remove({})
         self.assertEqual(0, db.test.count())
