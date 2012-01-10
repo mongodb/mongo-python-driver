@@ -73,10 +73,10 @@ class TestConnectionReplicaSetBase(unittest.TestCase):
                                  for h in response.get("arbiters", [])])
 
             repl_set_status = conn.admin.command('replSetGetStatus')
-            primary_info = next(
+            primary_info = [
                 m for m in repl_set_status['members']
                 if m['stateStr'] == 'PRIMARY'
-            )
+            ][0]
 
             self.primary = _partition_node(primary_info['name'])
         else:
