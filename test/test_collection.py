@@ -1132,7 +1132,7 @@ class TestCollection(unittest.TestCase):
         db.drop_collection("test")
 
         for i in range(2000):
-            db.test.insert({"x": i, "y": "mongomongo" * 1000})
+            db.test.insert({"x": i, "y": "mongomongo" * 1000}, safe=True)
 
         self.assertEqual(2000, db.test.count())
 
