@@ -296,6 +296,20 @@ class TestDatabase(unittest.TestCase):
         db.logout()
         db.logout()
 
+    def test_authenticate_kwargs_saved_to_db(self):
+        db = self.connection.pymongo_test
+        db.system.users.remove({})
+
+        db.add_user("user", "password", readOnly=True)
+        self.assert_(db.system.users.find({"readOnly": True}).count())
+
+        # Ensure pwd / username aren't overridden
+        db.add_user("user2", "password", user="bob", pwd="secret")
+        user2 = db.system.users.find_one(user="user2")
+        self.assertNotEqual(user2['user'], "bob")
+        self.assertNotEqual(user2['pwd'], "secret")
+        self.assert_(db.authenticate("user2", "password"))
+
     def test_id_ordering(self):
         db = self.connection.pymongo_test
         db.test.remove({})
