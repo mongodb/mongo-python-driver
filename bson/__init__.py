@@ -405,18 +405,6 @@ if _use_c:
     _dict_to_bson = _cbson._dict_to_bson
 
 
-def _to_dicts(data, as_class=dict, tz_aware=True):
-    """DEPRECATED - `_to_dicts` has been renamed to `decode_all`.
-
-    .. versionchanged:: 1.9
-       Deprecated in favor of :meth:`decode_all`.
-    .. versionadded:: 1.7
-       The `as_class` parameter.
-    """
-    warnings.warn("`_to_dicts` has been renamed to `decode_all`",
-                  DeprecationWarning)
-    return decode_all(data, as_class, tz_aware)
-
 
 def decode_all(data, as_class=dict, tz_aware=True):
     """Decode BSON data to multiple documents.
@@ -475,17 +463,6 @@ class BSON(str):
     """
 
     @classmethod
-    def from_dict(cls, dct, check_keys=False, uuid_subtype=OLD_UUID_SUBTYPE):
-        """DEPRECATED - `from_dict` has been renamed to `encode`.
-
-        .. versionchanged:: 1.9
-           Deprecated in favor of :meth:`encode`
-        """
-        warnings.warn("`from_dict` has been renamed to `encode`",
-                      DeprecationWarning)
-        return cls.encode(dct, check_keys, uuid_subtype)
-
-    @classmethod
     def encode(cls, document, check_keys=False, uuid_subtype=OLD_UUID_SUBTYPE):
         """Encode a document to a new :class:`BSON` instance.
 
@@ -506,20 +483,6 @@ class BSON(str):
         .. versionadded:: 1.9
         """
         return cls(_dict_to_bson(document, check_keys, uuid_subtype))
-
-    def to_dict(self, as_class=dict, tz_aware=False):
-        """DEPRECATED - `to_dict` has been renamed to `decode`.
-
-        .. versionchanged:: 1.9
-           Deprecated in favor of :meth:`decode`
-        .. versionadded:: 1.8
-           The `tz_aware` parameter.
-        .. versionadded:: 1.7
-           The `as_class` parameter.
-        """
-        warnings.warn("`to_dict` has been renamed to `decode`",
-                      DeprecationWarning)
-        return self.decode(as_class, tz_aware)
 
     def decode(self, as_class=dict, tz_aware=False):
         """Decode this BSON data.

@@ -183,23 +183,6 @@ class BaseObject(object):
                 else:
                     self.__set_safe_option(option, value)
 
-    def __get_slave_okay(self):
-        """DEPRECATED. Use `read_preference` instead.
-
-        .. versionchanged:: 2.1
-           Deprecated slave_okay.
-        .. versionadded:: 2.0
-        """
-        return self.__slave_okay
-
-    def __set_slave_okay(self, value):
-        """Property setter for slave_okay"""
-        warnings.warn("slave_okay is deprecated. Please use "
-                      "read_preference instead.", DeprecationWarning)
-        self.__slave_okay = validate_boolean('slave_okay', value)
-
-    slave_okay = property(__get_slave_okay, __set_slave_okay)
-
     def __get_read_pref(self):
         """The read preference for this instance.
 
