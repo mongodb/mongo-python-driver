@@ -417,7 +417,7 @@ class TestConnection(unittest.TestCase):
         except:
             # Either mongod was started without --ipv6
             # or the OS doesn't support it (or both).
-            raise SkipTest()
+            raise SkipTest("No IPV6")
 
         # Try a few simple things
         connection = Connection("mongodb://[::1]:%d" % (self.port,))
