@@ -38,7 +38,7 @@ class Collection(common.BaseObject):
     """A Mongo collection.
     """
 
-    def __init__(self, database, name, options=None, create=False, **kwargs):
+    def __init__(self, database, name, create=False, **kwargs):
         """Get / create a Mongo collection.
 
         Raises :class:`TypeError` if `name` is not an instance of
@@ -57,16 +57,20 @@ class Collection(common.BaseObject):
         :Parameters:
           - `database`: the database to get a collection from
           - `name`: the name of the collection to get
-          - `options`: DEPRECATED dictionary of collection options
           - `create` (optional): if ``True``, force collection
             creation even without options being set
           - `**kwargs` (optional): additional keyword arguments will
             be passed as options for the create collection command
 
+        .. versionchanged:: 2.2
+           Removed deprecated argument: options
+
         .. versionadded:: 2.1
            uuid_subtype attribute
+
         .. versionchanged:: 1.5
            deprecating `options` in favor of kwargs
+
         .. versionadded:: 1.5
            the `create` parameter
 
@@ -80,16 +84,6 @@ class Collection(common.BaseObject):
 
         if not isinstance(name, basestring):
             raise TypeError("name must be an instance of basestring")
-
-        if options is not None:
-            warnings.warn("the options argument to Collection is deprecated "
-                          "and will be removed. please use kwargs instead.",
-                          DeprecationWarning)
-            if not isinstance(options, dict):
-                raise TypeError("options must be an instance of dict")
-            options.update(kwargs)
-        elif kwargs:
-            options = kwargs
 
         if not name or ".." in name:
             raise InvalidName("collection names cannot be empty")
@@ -108,8 +102,8 @@ class Collection(common.BaseObject):
         self.__name = unicode(name)
         self.__uuid_subtype = OLD_UUID_SUBTYPE
         self.__full_name = u"%s.%s" % (self.__database.name, self.__name)
-        if create or options is not None:
-            self.__create(options)
+        if create or kwargs:
+            self.__create(kwargs)
 
     def __create(self, options):
         """Sends a create command with the given options.
@@ -631,8 +625,7 @@ class Collection(common.BaseObject):
         """
         return self.find().count()
 
-    def create_index(self, key_or_list, deprecated_unique=None,
-                     ttl=300, **kwargs):
+    def create_index(self, key_or_list, ttl=300, **kwargs):
         """Creates an index on this collection.
 
         Takes either a single key or a list of (key, direction) pairs.
@@ -669,7 +662,6 @@ class Collection(common.BaseObject):
         :Parameters:
           - `key_or_list`: a single key or a list of (key, direction)
             pairs specifying the index to create
-          - `deprecated_unique`: DEPRECATED - use `unique` as a kwarg
           - `ttl` (optional): time window (in seconds) during which
             this index will be recognized by subsequent calls to
             :meth:`ensure_index` - see documentation for
@@ -677,6 +669,9 @@ class Collection(common.BaseObject):
           - `**kwargs` (optional): any additional index creation
             options (see the above list) should be passed as keyword
             arguments
+
+        .. versionchanged:: 2.2
+           Removed deprecated argument: deprecated_unique
 
         .. versionchanged:: 1.5.1
            Accept kwargs to support all index creation options.
@@ -692,12 +687,6 @@ class Collection(common.BaseObject):
         index_doc = helpers._index_document(keys)
 
         index = {"key": index_doc, "ns": self.__full_name}
-
-        if deprecated_unique is not None:
-            warnings.warn("using a positional arg to specify unique is "
-                          "deprecated, please use kwargs",
-                          DeprecationWarning)
-            index["unique"] = deprecated_unique
 
         name = "name" in kwargs and kwargs["name"] or _gen_index_name(keys)
         index["name"] = name
@@ -719,8 +708,7 @@ class Collection(common.BaseObject):
 
         return name
 
-    def ensure_index(self, key_or_list, deprecated_unique=None,
-                     ttl=300, **kwargs):
+    def ensure_index(self, key_or_list, ttl=300, **kwargs):
         """Ensures that an index exists on this collection.
 
         Takes either a single key or a list of (key, direction) pairs.
@@ -765,13 +753,15 @@ class Collection(common.BaseObject):
         :Parameters:
           - `key_or_list`: a single key or a list of (key, direction)
             pairs specifying the index to create
-          - `deprecated_unique`: DEPRECATED - use `unique` as a kwarg
           - `ttl` (optional): time window (in seconds) during which
             this index will be recognized by subsequent calls to
             :meth:`ensure_index`
           - `**kwargs` (optional): any additional index creation
             options (see the above list) should be passed as keyword
             arguments
+
+        .. versionchanged:: 2.2
+           Removed deprecated argument: deprecated_unique
 
         .. versionchanged:: 1.5.1
            Accept kwargs to support all index creation options.
@@ -789,8 +779,7 @@ class Collection(common.BaseObject):
 
         if not self.__database.connection._cached(self.__database.name,
                                                   self.__name, name):
-            return self.create_index(key_or_list, deprecated_unique,
-                                     ttl, **kwargs)
+            return self.create_index(key_or_list, ttl, **kwargs)
         return None
 
     def drop_indexes(self):
@@ -901,8 +890,7 @@ class Collection(common.BaseObject):
 
     # TODO key and condition ought to be optional, but deprecation
     # could be painful as argument order would have to change.
-    def group(self, key, condition, initial, reduce, finalize=None,
-              command=True):
+    def group(self, key, condition, initial, reduce, finalize=None):
         """Perform a query similar to an SQL *group by* operation.
 
         Returns an array of grouped items.
@@ -929,20 +917,17 @@ class Collection(common.BaseObject):
           - `initial`: initial value of the aggregation counter object
           - `reduce`: aggregation function as a JavaScript string
           - `finalize`: function to be called on each object in output list.
-          - `command` (optional): DEPRECATED if ``True``, run the group as a
-            command instead of in an eval - this option is deprecated and
-            will be removed in favor of running all groups as commands
+
+        .. versionchanged:: 2.2
+           Removed deprecated argument: command
 
         .. versionchanged:: 1.4
            The `key` argument can now be ``None`` or a JavaScript function,
            in addition to a :class:`list` of keys.
+
         .. versionchanged:: 1.3
            The `command` argument now defaults to ``True`` and is deprecated.
         """
-        if not command:
-            warnings.warn("eval-based groups are deprecated, and the "
-                          "command option will be removed.",
-                          DeprecationWarning)
 
         group = {}
         if isinstance(key, basestring):
@@ -1016,8 +1001,7 @@ class Collection(common.BaseObject):
         """
         return self.find().distinct(key)
 
-    def map_reduce(self, map, reduce, out, merge_output=False,
-                   reduce_output=False, full_response=False, **kwargs):
+    def map_reduce(self, map, reduce, out, full_response=False, **kwargs):
         """Perform a map/reduce operation on this collection.
 
         If `full_response` is ``False`` (default) returns a
@@ -1033,16 +1017,6 @@ class Collection(common.BaseObject):
             Note: `out` options are order sensitive. :class:`~bson.son.SON`
             can be used to specify multiple options.
             e.g. SON([('replace', <collection name>), ('db', <database name>)])
-          - `merge_output` (optional) DEPRECATED: Merge output into `out`.
-            If the same key exists in both the result set and the existing
-            output collection, the new key will overwrite the existing key.
-            Ignored if `out` is not an instance of `basestring`.
-          - `reduce_output` (optional) DEPRECATED: If documents exist for
-            a given key in the result set and in the existing output
-            collection, then a reduce operation (using the specified reduce
-            function) will be performed on the two values and the result will
-            be written to the output collection.
-            Ignored if `out` is not an instance of `basestring`.
           - `full_response` (optional): if ``True``, return full response to
             this command - otherwise just return the result collection
           - `**kwargs` (optional): additional arguments to the
@@ -1055,6 +1029,9 @@ class Collection(common.BaseObject):
 
         .. seealso:: :doc:`/examples/map_reduce`
 
+        .. versionchanged:: 2.2
+           Removed deprecated arguments: merge_output and reduce_output
+
         .. versionchanged:: 1.11+
            DEPRECATED The merge_output and reduce_output parameters.
 
@@ -1064,31 +1041,13 @@ class Collection(common.BaseObject):
 
         .. mongodoc:: mapreduce
         """
-        if merge_output or reduce_output:
-            warnings.warn("merge_output and reduce_output are deprecated, "
-                          "please pass {<merge|reduce>: <collection name>} "
-                          "as the 'out' parameter instead.",
-                          DeprecationWarning)
-        if merge_output and reduce_output:
-            raise InvalidOperation("Can't do both merge "
-                                   "and re-reduce of output.")
-
-        if isinstance(out, basestring):
-            if merge_output:
-                out_conf = {"merge": out}
-            elif reduce_output:
-                out_conf = {"reduce": out}
-            else:
-                out_conf = out
-        elif isinstance(out, dict):
-            out_conf = out
-        else:
+        if not isinstance(out, (basestring, dict)):
             raise TypeError("'out' must be an instance of basestring or dict")
 
         response = self.__database.command("mapreduce", self.__name,
                                            uuid_subtype=self.__uuid_subtype,
                                            map=map, reduce=reduce,
-                                           out=out_conf, **kwargs)
+                                           out=out, **kwargs)
 
         if full_response or not response.get('result'):
             return response

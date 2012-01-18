@@ -1081,13 +1081,6 @@ class TestCollection(unittest.TestCase):
                                        "function (obj, prev) { prev.count++; }"
                                       ))
 
-        warnings.simplefilter("error")
-        self.assertRaises(DeprecationWarning,
-                          db.test.group, [], {}, {"count": 0},
-                          "function (obj, prev) { prev.count++; }",
-                          command=False)
-        warnings.simplefilter("default")
-
         self.assertRaises(OperationFailure, db.test.group,
                           [], {}, {}, "5 ++ 5")
 
@@ -1115,17 +1108,17 @@ class TestCollection(unittest.TestCase):
             self.assertEqual(2, db.test.group([], {}, {"count": 0},
                                               Code(reduce_function,
                                                    {"inc_value": 1}),
-                                              command=True)[0]['count'])
+                                             )[0]['count'])
 
             self.assertEqual(4, db.test.group([], {}, {"count": 0},
                                               Code(reduce_function,
                                                    {"inc_value": 2}),
-                                              command=True)[0]['count'])
+                                             )[0]['count'])
 
             self.assertEqual(1, db.test.group([], {}, {"count": 0},
                                               Code(reduce_function,
                                                    {"inc_value": 0.5}),
-                                              command=True)[0]['count'])
+                                             )[0]['count'])
 
     def test_large_limit(self):
         db = self.db
@@ -1408,27 +1401,19 @@ class TestCollection(unittest.TestCase):
             result = db.test.map_reduce(map, reduce, out='mrunittests')
             self.assertEqual(1, result.find_one({"_id": "hampster"})["value"])
             db.test.remove({"id": 5})
-            warnings.simplefilter("ignore")
+
             result = db.test.map_reduce(map, reduce,
-                                        out='mrunittests', merge_output=True)
+                                        out={'merge': 'mrunittests'})
             self.assertEqual(3, result.find_one({"_id": "cat"})["value"])
             self.assertEqual(1, result.find_one({"_id": "hampster"})["value"])
 
             result = db.test.map_reduce(map, reduce,
-                                        out='mrunittests', reduce_output=True)
-            warnings.simplefilter("default")
+                                        out={'reduce': 'mrunittests'})
+
             self.assertEqual(6, result.find_one({"_id": "cat"})["value"])
             self.assertEqual(4, result.find_one({"_id": "dog"})["value"])
             self.assertEqual(2, result.find_one({"_id": "mouse"})["value"])
             self.assertEqual(1, result.find_one({"_id": "hampster"})["value"])
-
-            self.assertRaises(InvalidOperation,
-                              db.test.map_reduce,
-                              map,
-                              reduce,
-                              out='mrunittests',
-                              merge_output=True,
-                              reduce_output=True)
 
             result = db.test.map_reduce(
                 map,
