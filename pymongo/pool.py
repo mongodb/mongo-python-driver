@@ -16,7 +16,8 @@ import os
 import socket
 import threading
 
-from pymongo.errors import ConnectionFailure
+from pymongo.errors import ConnectionFailure, OperationFailure
+
 
 have_ssl = True
 try:
@@ -25,46 +26,74 @@ except ImportError:
     have_ssl = False
 
 
-class Pool(threading.local):
+class Pool(object):
     """A simple connection pool.
-
-    Uses thread-local socket per thread. By calling return_socket() a
-    thread can return a socket to the pool.
     """
+    def __init__(self, pair, max_size, net_timeout, conn_timeout, use_ssl):
+        """
+        :Parameters:
+          - `pair`: a (hostname, port) tuple
+          - `max_size`: approximate number of idle connections to keep open
+          - `net_timeout`: timeout in seconds for operations on open connection
+          - `conn_timeout`: timeout in seconds for establishing connection
+          - `use_ssl`: bool, if True use an encrypted connection
+        """
+        self._reset()
 
-    # Non thread-locals
-    __slots__ = ["pid", "host", "max_size",
-                 "net_timeout", "conn_timeout", "use_ssl", "sockets"]
-
-    # thread-local default
-    sock = None
-
-    def __init__(self, host, max_size, net_timeout, conn_timeout, use_ssl):
-        self.pid = os.getpid()
-        self.host = host
+        self.pair = pair
         self.max_size = max_size
         self.net_timeout = net_timeout
         self.conn_timeout = conn_timeout
         self.use_ssl = use_ssl
-        if not hasattr(self, "sockets"):
-            self.sockets = []
 
-    def connect(self):
-        """Connect to Mongo and return a new (connected) socket.
+    def _reset(self):
+        self.pid = os.getpid()
+        self.sockets = set()
+
+        # Map socket -> set of (host, port, database) triples for which this
+        # socket has been authorized
+        self.authsets = {}
+
+        # Map thread -> socket, or (thread, greenlet) -> socket
+        self.requests = {}
+
+    def _request_key(self):
+        """Overridable"""
+        return id(threading.currentThread())
+
+    def _check_pair_arg(self, pair):
+        if not (self.pair or pair):
+            raise OperationFailure("Must configure host and port on Pool")
+
+        if self.pair and pair:
+            raise OperationFailure(
+                "Attempt to specify pair %s on Pool already configured with "
+                "pair %s" % (pair, self.pair)
+            )
+
+    def connect(self, pair):
+        """Connect to Mongo and return a new (connected) socket. Note that the
+           pool does not keep a reference to the socket -- you must call
+           return_socket() when you're done with it.
         """
-        try:
-            # Prefer IPv4. If there is demand for an option
-            # to specify one or the other we can add it later.
-            s = socket.socket(socket.AF_INET)
-            s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-            s.settimeout(self.conn_timeout or 20.0)
-            s.connect(self.host)
-        except socket.gaierror:
-            # If that fails try IPv6
-            s = socket.socket(socket.AF_INET6)
-            s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-            s.settimeout(self.conn_timeout or 20.0)
-            s.connect(self.host)
+        self._check_pair_arg(pair)
+
+        # Prefer IPv4. If there is demand for an option
+        # to specify one or the other we can add it later.
+        socket_types = (socket.AF_INET, socket.AF_INET6)
+        for socket_type in socket_types:
+            try:
+                s = socket.socket(socket_type)
+                s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+                s.settimeout(self.conn_timeout or 20.0)
+                s.connect(self.pair or pair)
+                break
+            except socket.gaierror:
+                # If that fails try IPv6
+                continue
+        else:
+            # None of the socket types worked
+            raise
 
         if self.use_ssl:
             try:
@@ -75,50 +104,116 @@ class Pool(threading.local):
                                         "not be configured with SSL support.")
 
         s.settimeout(self.net_timeout)
-
         return s
 
-    def get_socket(self):
-        """Get a socket from the pool. Returns a new socket if the
-        pool is empty.
+    def get_socket(self, pair=None):
+        """Get a socket from the pool. Returns a new socket if the pool is
+        empty.
+
+        Returns (sock, from_pool), a connected :class:`socket.socket` and a bool
+        saying whether the socket was from the pool or freshly created.
+
+        :Parameters:
+          - `pair`: optional (hostname, port) tuple
         """
+        self._check_pair_arg(pair)
+
         # We use the pid here to avoid issues with fork / multiprocessing.
         # See test.test_connection:TestConnection.test_fork for an example of
         # what could go wrong otherwise
-        pid = os.getpid()
+        if self.pid != os.getpid():
+            self._reset()
 
-        if pid != self.pid:
-            self.sock = None
-            self.sockets = []
-            self.pid = pid
+        # Have we opened a socket for this request?
+        request_key = self._request_key()
+        sock = self.requests.get(request_key)
+        if sock:
+            return sock, True
 
-        if self.sock is not None and self.sock[0] == pid:
-            return (self.sock[1], self.sock[2])
-
+        # We're not in a request, just get any free socket or create one
         try:
-            sock, auth = self.sockets.pop()
-            self.sock = (pid, sock, auth)
-        except IndexError:
-            self.sock = (pid, self.connect(), set())
-        return (self.sock[1], self.sock[2])
+            sock, from_pool = self.sockets.pop(), True
+        except KeyError:
+            sock, from_pool = self.connect(pair), False
 
-    def discard_socket(self):
+        if request_key in self.requests:
+            # self.requests[request_key] is None, so start_request has been
+            # called earlier. Let's use this socket for this request until
+            # end_request.
+            self.requests[request_key] = sock
+
+        return sock, from_pool
+
+    def start_request(self):
+        # If we're already in a request, do nothing, otherwise put None in the
+        # dict to indicate we're in a request. None will be replaced by a socket
+        # as soon as one is needed.
+        self.requests.setdefault(self._request_key(), None)
+
+    def end_request(self):
+        request_key = self._request_key()
+        request_sock = self.requests.get(request_key)
+
+        if request_key in self.requests:
+            del self.requests[request_key]
+
+        self.return_socket(request_sock)
+
+    def discard_socket(self, sock):
         """Close and discard the active socket.
         """
-        if self.sock:
-            self.sock[1].close()
-            self.sock = None
+        if sock:
+            sock.close()
+            request_key = self._request_key()
+            request_sock = self.requests.get(request_key)
 
-    def return_socket(self):
+            # We're ending the request
+            if request_sock == sock:
+                del self.requests[request_key]
+
+    def return_socket(self, sock):
         """Return the socket currently in use to the pool. If the
         pool is full the socket will be discarded.
         """
-        if self.sock is not None and self.sock[0] == os.getpid():
-            # There's a race condition here, but we deliberately
-            # ignore it.  It means that if the pool_size is 10 we
-            # might actually keep slightly more than that.
-            if len(self.sockets) < self.max_size:
-                self.sockets.append((self.sock[1], self.sock[2]))
-            else:
-                self.sock[1].close()
-        self.sock = None
+        if self.pid != os.getpid():
+            self._reset()
+        elif sock:
+            # Don't really return a socket if we're in a request
+            request_key = self._request_key()
+            if sock is not self.requests.get(request_key):
+                # There's a race condition here, but we deliberately
+                # ignore it.  It means that if the pool_size is 10 we
+                # might actually keep slightly more than that.
+                if len(self.sockets) < self.max_size:
+                    if sock in self.sockets:
+                        # Unexpected, but let it pass
+                        pass
+                    self.sockets.add(sock)
+                else:
+                    sock.close()
+
+    def get_authset(self, sock):
+        """Set of database names for which this socket has been authenticated
+        """
+        return self.authsets.setdefault(sock, set())
+
+
+class Request(object):
+    """
+    A context manager returned by Connection.start_request(), so you can do
+    `with connection.start_request(): do_something()` in Python 2.5+.
+    """
+    def __init__(self, connection):
+        self.connection = connection
+
+    def end(self):
+        self.connection.end_request()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.end()
+        # Returning False means, "Don't suppress exceptions if any were
+        # thrown within the block"
+        return False

@@ -193,6 +193,8 @@ class ReplicaSetConnection(common.BaseObject):
         self.__pools = {}
         self.__index_cache = {}
         self.__auth_credentials = {}
+        self.pool_class = pool.Pool
+
         username = None
         db_name = None
         if hosts_or_uri is None:
@@ -316,13 +318,14 @@ class ReplicaSetConnection(common.BaseObject):
         elif db_name in self.__auth_credentials:
             del self.__auth_credentials[db_name]
 
-    def __check_auth(self, sock, authset):
+    def __check_auth(self, sock, pool):
         """Authenticate using cached database credentials.
 
         If credentials for the 'admin' database are available only
         this database is authenticated, since this gives global access.
         """
         names = set(self.__auth_credentials.iterkeys())
+        authset = pool.get_authset(sock)
 
         # Logout from any databases no longer listed in the credentials cache.
         for dbname in authset - names:
@@ -444,24 +447,26 @@ class ReplicaSetConnection(common.BaseObject):
     def __is_master(self, host):
         """Directly call ismaster.
         """
-        mongo = pool.Pool(host, self.__max_pool_size,
-                          self.__net_timeout, self.__conn_timeout,
-                          self.__use_ssl)
-        sock = mongo.get_socket()[0]
+        pool = self.pool_class(host, self.__max_pool_size,
+                               self.__net_timeout, self.__conn_timeout,
+                               self.__use_ssl)
+        sock, from_pool = pool.get_socket()
         response = self.__simple_command(sock, 'admin', {'ismaster': 1})
-        return response, mongo
+        pool.return_socket(sock)
+        return response, pool
 
     def __update_pools(self):
         """Update the mapping of (host, port) pairs to connection pools.
         """
         secondaries = []
         for host in self.__hosts:
-            mongo = None
+            mongo, sock = None, None
             try:
                 if host in self.__pools:
                     mongo = self.__pools[host]
                     sock = self.__socket(mongo)
                     res = self.__simple_command(sock, 'admin', {'ismaster': 1})
+                    mongo['pool'].return_socket(sock)
                 else:
                     res, conn = self.__is_master(host)
                     bson_max = res.get('maxBsonObjectSize', MAX_BSON_SIZE)
@@ -469,8 +474,8 @@ class ReplicaSetConnection(common.BaseObject):
                                           'last_checkout': time.time(),
                                           'max_bson_size': bson_max}
             except (ConnectionFailure, socket.error):
-                if mongo:
-                    mongo['pool'].discard_socket()
+                if mongo and sock:
+                    mongo['pool'].discard_socket(sock)
                 continue
             # Only use hosts that are currently in 'secondary' state
             # as readers.
@@ -490,13 +495,15 @@ class ReplicaSetConnection(common.BaseObject):
         hosts = set()
 
         for node in nodes:
-            mongo = None
+            mongo, sock = None, None
             try:
                 if node in self.__pools:
                     mongo = self.__pools[node]
                     sock = self.__socket(mongo)
                     response = self.__simple_command(sock, 'admin',
                                                      {'ismaster': 1})
+                    mongo['pool'].return_socket(sock)
+                    sock = None
                 else:
                     response, conn = self.__is_master(node)
 
@@ -520,8 +527,8 @@ class ReplicaSetConnection(common.BaseObject):
                     hosts.update([_partition_node(h)
                                   for h in response["passives"]])
             except (ConnectionFailure, socket.error), why:
-                if mongo:
-                    mongo['pool'].discard_socket()
+                if mongo and sock:
+                    mongo['pool'].discard_socket(sock)
                 errors.append("%s:%d: %s" % (node[0], node[1], str(why)))
             if hosts:
                 self.__hosts = hosts
@@ -536,8 +543,8 @@ class ReplicaSetConnection(common.BaseObject):
     def __check_is_primary(self, host):
         """Checks if this host is the primary for the replica set.
         """
+        mongo, sock = None, None
         try:
-            mongo = None
             if host in self.__pools:
                 mongo = self.__pools[host]
                 sock = self.__socket(mongo)
@@ -549,9 +556,12 @@ class ReplicaSetConnection(common.BaseObject):
                                       'last_checkout': time.time(),
                                       'max_bson_size': bson_max}
         except (ConnectionFailure, socket.error), why:
-            if mongo:
-                mongo['pool'].discard_socket()
+            if mongo and sock:
+                mongo['pool'].discard_socket(sock)
             raise ConnectionFailure("%s:%d: %s" % (host[0], host[1], str(why)))
+        
+        if mongo and sock:
+            mongo['pool'].return_socket(sock)
 
         if res["ismaster"]:
             return host
@@ -584,7 +594,7 @@ class ReplicaSetConnection(common.BaseObject):
         # Couldn't find the primary.
         raise AutoReconnect(', '.join(errors))
 
-    def __socket(self, mongo):
+    def __socket(self, mongo, start_request=False):
         """Get a socket from the pool.
 
         If it's been > 1 second since the last time we checked out a
@@ -595,20 +605,26 @@ class ReplicaSetConnection(common.BaseObject):
         the last socket checkout, to keep performance reasonable - we
         can't avoid those completely anyway.
         """
-        sock, authset = mongo['pool'].get_socket()
+        pool = mongo['pool']
+        if start_request:
+            pool.start_request()
+
+        sock, from_pool = pool.get_socket()
 
         now = time.time()
-        if now - mongo['last_checkout'] > 1:
+        if from_pool and now - mongo['last_checkout'] > 1:
             if _closed(sock):
-                mongo['pool'] = pool.Pool(mongo['pool'].host,
-                                          self.__max_pool_size,
-                                          self.__net_timeout,
-                                          self.__conn_timeout,
-                                          self.__use_ssl)
-                sock, authset = mongo['pool'].get_socket()
+                mongo['pool'] = self.pool_class(pool.host,
+                                                self.__max_pool_size,
+                                                self.__net_timeout,
+                                                self.__conn_timeout,
+                                                self.__use_ssl)
+                if start_request:
+                    pool.start_request()
+                sock, from_pool = pool.get_socket()
         mongo['last_checkout'] = now
-        if self.__auth_credentials or authset:
-            self.__check_auth(sock, authset)
+        if self.__auth_credentials:
+            self.__check_auth(sock, pool)
         return sock
 
     def disconnect(self):
@@ -718,6 +734,7 @@ class ReplicaSetConnection(common.BaseObject):
         else:
             mongo = self.__pools[_connection_to_use]
 
+        sock = None
         try:
             sock = self.__socket(mongo)
             rqst_id, data = self.__check_bson_size(msg,
@@ -727,26 +744,28 @@ class ReplicaSetConnection(common.BaseObject):
             # message and send both. We then get the response (to the
             # lastError) and raise OperationFailure if it is an error
             # response.
+            rv = None
             if safe:
                 response = self.__recv_msg(1, rqst_id, sock)
-                return self.__check_response_to_last_error(response)
-            return None
+                rv = self.__check_response_to_last_error(response)
+            mongo['pool'].return_socket(sock)
+            return rv
         except(ConnectionFailure, socket.error), why:
-            mongo['pool'].discard_socket()
+            mongo['pool'].discard_socket(sock)
             if _connection_to_use in (None, -1):
                 self.disconnect()
             raise AutoReconnect(str(why))
         except:
-            mongo['pool'].discard_socket()
+            mongo['pool'].discard_socket(sock)
             raise
-
-        mongo['pool'].return_socket()
 
     def __send_and_receive(self, mongo, msg, **kwargs):
         """Send a message on the given socket and return the response data.
         """
+        sock = None
         try:
             sock = self.__socket(mongo)
+
             if "network_timeout" in kwargs:
                 sock.settimeout(kwargs['network_timeout'])
 
@@ -757,15 +776,15 @@ class ReplicaSetConnection(common.BaseObject):
 
             if "network_timeout" in kwargs:
                 sock.settimeout(self.__net_timeout)
-            mongo['pool'].return_socket()
+            mongo['pool'].return_socket(sock)
 
             return response
         except (ConnectionFailure, socket.error), why:
-            host, port = mongo['pool'].host
-            mongo['pool'].discard_socket()
+            host, port = mongo['pool'].pair
+            mongo['pool'].discard_socket(sock)
             raise AutoReconnect("%s:%d: %s" % (host, port, str(why)))
         except:
-            mongo['pool'].discard_socket()
+            mongo['pool'].discard_socket(sock)
             raise
 
     def _send_message_with_response(self, msg, _connection_to_use=None,
@@ -785,12 +804,12 @@ class ReplicaSetConnection(common.BaseObject):
                     mongo = self.__find_primary()
                 else:
                     mongo = self.__pools[_connection_to_use]
-                return mongo['pool'].host, self.__send_and_receive(mongo,
+                return mongo['pool'].pair, self.__send_and_receive(mongo,
                                                                    msg,
                                                                    **kwargs)
             elif _must_use_master or not read_pref:
                 mongo = self.__find_primary()
-                return mongo['pool'].host, self.__send_and_receive(mongo,
+                return mongo['pool'].pair, self.__send_and_receive(mongo,
                                                                    msg,
                                                                    **kwargs)
         except AutoReconnect:
@@ -809,13 +828,55 @@ class ReplicaSetConnection(common.BaseObject):
         if read_pref == ReadPreference.SECONDARY:
             try:
                 mongo = self.__find_primary()
-                return mongo['pool'].host, self.__send_and_receive(mongo,
+                return mongo['pool'].pair, self.__send_and_receive(mongo,
                                                                    msg,
                                                                    **kwargs)
             except AutoReconnect, why:
                 self.disconnect()
                 errors.append(why)
         raise AutoReconnect(', '.join(errors))
+
+    def start_request(self):
+        """Ensure the current thread or greenlet always uses the same socket
+           until it calls end_request().
+
+           In Python 2.6 and above, or in Python 2.5 with
+           "from __future__ import with_statement", start_request() can be used
+           as a context manager:
+        >>> connection = pymongo.Connection()
+        >>> db = connection.test
+        >>> _id = db.test_collection.insert({}, safe=True)
+        >>> with connection.start_request():
+        ...     for i in range(100):
+        ...         db.test_collection.update({'_id': _id}, {'$set': {'i':i}})
+        ...     # Definitely read the document after the final update completes
+        ...     print db.test_collection.find({'_id': _id})
+
+        .. versionadded:: 2.1.1+
+           The `Request` return value. `start_request` previously
+           returned None
+        """
+        for mongo in self.__pools.values():
+            mongo['pool'].start_request()
+
+        return pool.Request(self)
+
+    def end_request(self):
+        """Undo :meth:`start_request` and allow this thread's connection to
+        return to the pool.
+
+        Calling :meth:`end_request` allows the :class:`~socket.socket` that has
+        been reserved for this thread by :meth:`start_request` to be returned to
+        the pool. Other threads will then be able to re-use that
+        :class:`~socket.socket`. If your application uses many threads, or has
+        long-running threads that infrequently perform MongoDB operations, then
+        judicious use of this method can lead to performance gains. Care should
+        be taken, however, to make sure that :meth:`end_request` is not called
+        in the middle of a sequence of operations in which ordering is
+        important. This could lead to unexpected results.
+        """
+        for mongo in self.__pools.values():
+            mongo['pool'].end_request()
 
     def __cmp__(self, other):
         # XXX: Implement this?
@@ -933,11 +994,15 @@ class ReplicaSetConnection(common.BaseObject):
         if from_host is not None:
             command["fromhost"] = from_host
 
-        if username is not None:
-            nonce = self.admin.command("copydbgetnonce",
-                                       fromhost=from_host)["nonce"]
-            command["username"] = username
-            command["nonce"] = nonce
-            command["key"] = helpers._auth_key(nonce, username, password)
+        try:
+            self.start_request()
+            if username is not None:
+                nonce = self.admin.command("copydbgetnonce",
+                                           fromhost=from_host)["nonce"]
+                command["username"] = username
+                command["nonce"] = nonce
+                command["key"] = helpers._auth_key(nonce, username, password)
 
-        return self.admin.command("copydb", **command)
+            return self.admin.command("copydb", **command)
+        finally:
+            self.end_request()

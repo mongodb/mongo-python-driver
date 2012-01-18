@@ -34,18 +34,18 @@ access:
 """
 
 import datetime
-import os
 import socket
 import struct
 import sys
-import threading
 import time
 import warnings
 
+from bson.son import SON
 from pymongo import (common,
                      database,
                      helpers,
                      message,
+                     pool,
                      uri_parser)
 from pymongo.cursor_manager import CursorManager
 from pymongo.errors import (AutoReconnect,
@@ -60,12 +60,6 @@ if sys.platform.startswith('java'):
     from select import cpython_compatible_select as select
 else:
     from select import select
-
-have_ssl = True
-try:
-    import ssl
-except ImportError:
-    have_ssl = False
 
 def _closed(sock):
     """Return True if we know socket has been closed, False otherwise.
@@ -90,98 +84,6 @@ def _partition_node(node):
     if host.startswith('['):
         host = host[1:-1]
     return host, port
-
-
-class _Pool(threading.local):
-    """A simple connection pool.
-
-    Uses thread-local socket per thread. By calling return_socket() a
-    thread can return a socket to the pool.
-    """
-
-    # Non thread-locals
-    __slots__ = ["pid", "max_size", "net_timeout",
-                 "conn_timeout", "use_ssl", "sockets"]
-
-    # thread-local default
-    sock = None
-
-    def __init__(self, max_size, net_timeout, conn_timeout, use_ssl):
-        self.pid = os.getpid()
-        self.max_size = max_size
-        self.net_timeout = net_timeout
-        self.conn_timeout = conn_timeout
-        self.use_ssl = use_ssl
-        if not hasattr(self, "sockets"):
-            self.sockets = []
-
-    def connect(self, host, port):
-        """Connect to Mongo and return a new (connected) socket.
-        """
-        try:
-            # Prefer IPv4. If there is demand for an option
-            # to specify one or the other we can add it later.
-            s = socket.socket(socket.AF_INET)
-            s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-            s.settimeout(self.conn_timeout or 20.0)
-            s.connect((host, port))
-        except socket.gaierror:
-            # If that fails try IPv6
-            s = socket.socket(socket.AF_INET6)
-            s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-            s.settimeout(self.conn_timeout or 20.0)
-            s.connect((host, port))
-
-        if self.use_ssl:
-            try:
-                s = ssl.wrap_socket(s)
-            except ssl.SSLError:
-                s.close()
-                raise ConnectionFailure("SSL handshake failed. MongoDB may "
-                                        "not be configured with SSL support.")
-
-        s.settimeout(self.net_timeout)
-
-        return s
-
-    def get_socket(self, host, port):
-        # We use the pid here to avoid issues with fork / multiprocessing.
-        # See test.test_connection:TestConnection.test_fork for an example of
-        # what could go wrong otherwise
-        pid = os.getpid()
-
-        if pid != self.pid:
-            self.sock = None
-            self.sockets = []
-            self.pid = pid
-
-        if self.sock is not None and self.sock[0] == pid:
-            return (self.sock[1], True)
-
-        try:
-            self.sock = (pid, self.sockets.pop())
-            return (self.sock[1], True)
-        except IndexError:
-            self.sock = (pid, self.connect(host, port))
-            return (self.sock[1], False)
-
-    def discard_socket(self):
-        """Close and discard the active socket.
-        """
-        if self.sock:
-            self.sock[1].close()
-            self.sock = None
-
-    def return_socket(self):
-        if self.sock is not None and self.sock[0] == os.getpid():
-            # There's a race condition here, but we deliberately
-            # ignore it.  It means that if the pool_size is 10 we
-            # might actually keep slightly more than that.
-            if len(self.sockets) < self.max_size:
-                self.sockets.append(self.sock[1])
-            else:
-                self.sock[1].close()
-        self.sock = None
 
 
 class Connection(common.BaseObject):
@@ -355,15 +257,19 @@ class Connection(common.BaseObject):
                               options.get('sockettimeoutms'))
         self.__conn_timeout = options.get('connecttimeoutms')
         self.__use_ssl = options.get('ssl', False)
-        if self.__use_ssl and not have_ssl:
+        if self.__use_ssl and not pool.have_ssl:
             raise ConfigurationError("The ssl module is not available. If you "
                                      "are using a python version previous to "
                                      "2.6 you must install the ssl package "
                                      "from PyPI.")
-        self.__pool = _Pool(self.__max_pool_size,
-                            self.__net_timeout,
-                            self.__conn_timeout,
-                            self.__use_ssl)
+        self.pool_class = pool.Pool
+        self.__pool = self.pool_class(
+            None,
+            self.__max_pool_size,
+            self.__net_timeout,
+            self.__conn_timeout,
+            self.__use_ssl
+        )
 
         self.__last_checkout = time.time()
 
@@ -462,18 +368,38 @@ class Connection(common.BaseObject):
         elif db_name in self.__auth_credentials:
             del self.__auth_credentials[db_name]
 
-    def __authenticate_socket(self):
+    def __check_auth(self, sock, pool):
         """Authenticate using cached database credentials.
 
         If credentials for the 'admin' database are available only
         this database is authenticated, since this gives global access.
         """
+        names = set(self.__auth_credentials.iterkeys())
+        authset = pool.get_authset(sock)
+
+        # Logout from any databases no longer listed in the credentials cache.
+        for dbname in authset - names:
+            try:
+                self.__simple_command(sock, dbname, {'logout': 1})
+            # TODO: We used this socket to logout. Fix logout so we don't
+            # have to catch this.
+            except OperationFailure:
+                pass
+            authset.discard(dbname)
+
+        # Once logged into the admin database we can access anything.
+        if "admin" in authset:
+            return
+
         if "admin" in self.__auth_credentials:
             username, password = self.__auth_credentials["admin"]
-            self.admin.authenticate(username, password)
+            self.__auth(sock, 'admin', username, password)
+            authset.add('admin')
         else:
-            for db_name, (u, p) in self.__auth_credentials.iteritems():
-                self[db_name].authenticate(u, p)
+            for db_name in names - authset:
+                user, pwd = self.__auth_credentials[db_name]
+                self.__auth(sock, db_name, user, pwd)
+                authset.add(db_name)
 
     @property
     def host(self):
@@ -545,6 +471,30 @@ class Connection(common.BaseObject):
         """
         return self.__max_bson_size
 
+    def __simple_command(self, sock, dbname, spec):
+        """Send a command to the server.
+        """
+        rqst_id, msg, _ = message.query(0, dbname + '.$cmd', 0, -1, spec)
+        sock.sendall(msg)
+        response = self.__receive_message_on_socket(1, rqst_id, sock)
+        response = helpers._unpack_response(response)['data'][0]
+        msg = "command %r failed: %%s" % spec
+        helpers._check_command_response(response, None, msg)
+        return response
+
+    def __auth(self, sock, dbname, user, passwd):
+        """Authenticate socket `sock` against database `dbname`.
+        """
+        # Get a nonce
+        response = self.__simple_command(sock, dbname, {'getnonce': 1})
+        nonce = response['nonce']
+        key = helpers._auth_key(nonce, user, passwd)
+
+        # Actually authenticate
+        query = SON([('authenticate', 1),
+            ('user', user), ('nonce', nonce), ('key', key)])
+        self.__simple_command(sock, dbname, query)
+
     def __try_node(self, node):
         """Try to connect to this node and see if it works
         for our connection type.
@@ -555,8 +505,6 @@ class Connection(common.BaseObject):
         self.disconnect()
         self.__host, self.__port = node
         response = self.admin.command("ismaster")
-
-        self.end_request()
 
         if "maxBsonObjectSize" in response:
             self.__max_bson_size = response["maxBsonObjectSize"]
@@ -648,7 +596,7 @@ class Connection(common.BaseObject):
             host, port = self.__find_node()
 
         try:
-            sock, from_pool = self.__pool.get_socket(host, port)
+            sock, from_pool = self.__pool.get_socket((host, port))
         except socket.error, why:
             self.disconnect()
             raise AutoReconnect("could not connect to "
@@ -657,10 +605,10 @@ class Connection(common.BaseObject):
         if t - self.__last_checkout > 1:
             if _closed(sock):
                 self.disconnect()
-                sock, from_pool = self.__pool.get_socket(host, port)
+                sock, from_pool = self.__pool.get_socket((host, port))
         self.__last_checkout = t
-        if self.__auth_credentials and not from_pool:
-            self.__authenticate_socket()
+        if self.__auth_credentials:
+            self.__check_auth(sock, self.__pool)
         return sock
 
     def disconnect(self):
@@ -676,10 +624,14 @@ class Connection(common.BaseObject):
         .. seealso:: :meth:`end_request`
         .. versionadded:: 1.3
         """
-        self.__pool = _Pool(self.__max_pool_size,
-                            self.__net_timeout,
-                            self.__conn_timeout,
-                            self.__use_ssl)
+        self.__pool = self.pool_class(
+            None,
+            self.__max_pool_size,
+            self.__net_timeout,
+            self.__conn_timeout,
+            self.__use_ssl
+        )
+
         self.__host = None
         self.__port = None
 
@@ -790,11 +742,14 @@ class Connection(common.BaseObject):
             # message and send both. We then get the response (to the
             # lastError) and raise OperationFailure if it is an error
             # response.
+            rv = None
             if with_last_error:
                 response = self.__receive_message_on_socket(1, request_id,
                                                             sock)
-                return self.__check_response_to_last_error(response)
-            return None
+                rv = self.__check_response_to_last_error(response)
+
+            self.__pool.return_socket(sock)
+            return rv
         except (ConnectionFailure, socket.error), e:
             self.disconnect()
             raise AutoReconnect(str(e))
@@ -812,7 +767,7 @@ class Connection(common.BaseObject):
             except:
                 # If recv was interrupted, discard the socket
                 # and re-raise the exception.
-                self.__pool.discard_socket()
+                self.__pool.discard_socket(sock)
                 raise
             if chunk == "":
                 raise ConnectionFailure("connection closed")
@@ -864,40 +819,53 @@ class Connection(common.BaseObject):
         finally:
             if "network_timeout" in kwargs:
                 try:
+                    # Restore the socket's original timeout and return it to
+                    # the pool
                     sock.settimeout(self.__net_timeout)
+                    self.__pool.return_socket(sock)
                 except socket.error:
                     # There was an exception and we've closed the socket
                     pass
+            else:
+                self.__pool.return_socket(sock)
 
     def start_request(self):
-        """DEPRECATED all operations will start a request.
+        """Ensure the current thread or greenlet always uses the same socket
+           until it calls end_request().
 
-        .. versionchanged:: 1.4
-           DEPRECATED
+           In Python 2.6 and above, or in Python 2.5 with
+           "from __future__ import with_statement", start_request() can be used
+           as a context manager:
+        >>> connection = pymongo.Connection()
+        >>> db = connection.test
+        >>> _id = db.test_collection.insert({}, safe=True)
+        >>> with connection.start_request():
+        ...     for i in range(100):
+        ...         db.test_collection.update({'_id': _id}, {'$set': {'i':i}})
+        ...     # Definitely read the document after the final update completes
+        ...     print db.test_collection.find({'_id': _id})
+
+        .. versionadded:: 2.1.1+
+           The `Request` return value. `start_request` previously returned None
         """
-        warnings.warn("the Connection.start_request method is deprecated",
-                      DeprecationWarning)
+        self.__pool.start_request()
+        return pool.Request(self)
 
     def end_request(self):
-        """Allow this thread's connection to return to the pool.
+        """Undo :meth:`start_request` and allow this thread's connection to
+        return to the pool.
 
-        Calling :meth:`end_request` allows the :class:`~socket.socket`
-        that has been reserved for this thread to be returned to the
-        pool. Other threads will then be able to re-use that
-        :class:`~socket.socket`. If your application uses many
-        threads, or has long-running threads that infrequently perform
-        MongoDB operations, then judicious use of this method can lead
-        to performance gains. Care should be taken, however, to make
-        sure that :meth:`end_request` is not called in the middle of a
-        sequence of operations in which ordering is important. This
-        could lead to unexpected results.
-
-        One important case is when a thread is dying permanently. It
-        is best to call :meth:`end_request` when you know a thread is
-        finished, as otherwise its :class:`~socket.socket` will not be
-        reclaimed.
+        Calling :meth:`end_request` allows the :class:`~socket.socket` that has
+        been reserved for this thread by :meth:`start_request` to be returned to
+        the pool. Other threads will then be able to re-use that
+        :class:`~socket.socket`. If your application uses many threads, or has
+        long-running threads that infrequently perform MongoDB operations, then
+        judicious use of this method can lead to performance gains. Care should
+        be taken, however, to make sure that :meth:`end_request` is not called
+        in the middle of a sequence of operations in which ordering is
+        important. This could lead to unexpected results.
         """
-        self.__pool.return_socket()
+        self.__pool.end_request()
 
     def __cmp__(self, other):
         if isinstance(other, Connection):
@@ -1036,14 +1004,18 @@ class Connection(common.BaseObject):
         if from_host is not None:
             command["fromhost"] = from_host
 
-        if username is not None:
-            nonce = self.admin.command("copydbgetnonce",
-                                       fromhost=from_host)["nonce"]
-            command["username"] = username
-            command["nonce"] = nonce
-            command["key"] = helpers._auth_key(nonce, username, password)
+        try:
+            self.start_request()
+            if username is not None:
+                nonce = self.admin.command("copydbgetnonce",
+                                           fromhost=from_host)["nonce"]
+                command["username"] = username
+                command["nonce"] = nonce
+                command["key"] = helpers._auth_key(nonce, username, password)
 
-        return self.admin.command("copydb", **command)
+            return self.admin.command("copydb", **command)
+        finally:
+            self.end_request()
 
     @property
     def is_locked(self):

@@ -338,7 +338,7 @@ class Database(common.BaseObject):
 
         fields = kwargs.get('fields')
         if fields is not None and not isinstance(fields, dict):
-                kwargs['fields'] = helpers._fields_list_to_dict(fields)
+            kwargs['fields'] = helpers._fields_list_to_dict(fields)
 
         command.update(kwargs)
 
@@ -603,10 +603,7 @@ class Database(common.BaseObject):
 
         .. warning::
 
-          Currently, calls to
-          :meth:`~pymongo.connection.Connection.end_request` will
-          lead to unpredictable behavior in combination with
-          auth. The :class:`~socket.socket` owned by the calling
+          The :class:`~socket.socket` used for authentication
           thread will be returned to the pool, so whichever thread
           uses that :class:`~socket.socket` next will have whatever
           permissions were granted to the calling thread.
@@ -622,17 +619,21 @@ class Database(common.BaseObject):
         if not isinstance(password, basestring):
             raise TypeError("password must be an instance of basestring")
 
-        nonce = self.command("getnonce")["nonce"]
-        key = helpers._auth_key(nonce, name, password)
         try:
-            self.command("authenticate", user=unicode(name),
-                         nonce=nonce, key=key)
-            self.connection._cache_credentials(self.name,
-                                               unicode(name),
-                                               unicode(password))
-            return True
-        except OperationFailure:
-            return False
+            self.connection.start_request()
+            nonce = self.command("getnonce")["nonce"]
+            key = helpers._auth_key(nonce, name, password)
+            try:
+                self.command("authenticate", user=unicode(name),
+                             nonce=nonce, key=key)
+                self.connection._cache_credentials(self.name,
+                                                   unicode(name),
+                                                   unicode(password))
+                return True
+            except OperationFailure:
+                return False
+        finally:
+            self.connection.end_request()
 
     def logout(self):
         """Deauthorize use of this database for this connection
@@ -697,8 +698,9 @@ class Database(common.BaseObject):
         """This is only here so that some API misusages are easier to debug.
         """
         raise TypeError("'Database' object is not callable. If you meant to "
-                        "call the '%s' method on a 'Connection' object it is "
-                        "failing because no such method exists." % self.__name)
+                        "call the '%s' method on a '%s' object it is "
+                        "failing because no such method exists." % (
+                            self.__name, self.__connection.__class__.__name__))
 
 
 class SystemJS(object):

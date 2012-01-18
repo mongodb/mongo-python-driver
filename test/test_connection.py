@@ -36,14 +36,13 @@ from pymongo.errors import (AutoReconnect,
                             InvalidURI,
                             OperationFailure)
 from test import version
-from test.utils import server_is_master_with_slave
+from test.utils import server_is_master_with_slave, delay
 
 
 def get_connection(*args, **kwargs):
     host = os.environ.get("DB_IP", "localhost")
     port = int(os.environ.get("DB_PORT", 27017))
     return Connection(host, port, *args, **kwargs)
-
 
 class TestConnection(unittest.TestCase):
 
@@ -467,8 +466,10 @@ class TestConnection(unittest.TestCase):
         conn = get_connection()
         conn.pymongo_test.drop_collection("test")
         conn.pymongo_test.test.insert({"foo": "bar"})
-        self.assertNotEqual(None, conn._Connection__pool.sock)
-        self.assertEqual(0, len(conn._Connection__pool.sockets))
+
+        # The socket used for the previous commands has been returned to the
+        # pool
+        self.assertEqual(1, len(conn._Connection__pool.sockets))
 
         # We need exec here because if the Python version is less than 2.6
         # these with-statements won't even compile.
@@ -477,16 +478,66 @@ with contextlib.closing(conn):
     self.assertEquals("bar", conn.pymongo_test.test.find_one()["foo"])
 """
 
-        self.assertEqual(None, conn._Connection__pool.sock)
+        # Calling conn.close() has reset the pool
         self.assertEqual(0, len(conn._Connection__pool.sockets))
+
+        # Assign to 'connection' so my IDE stops complaining that it's
+        # unassigned
+        connection = None
 
         exec """
 with get_connection() as connection:
     self.assertEquals("bar", connection.pymongo_test.test.find_one()["foo"])
 """
 
-        self.assertEqual(None, connection._Connection__pool.sock)
+        # Calling conn.close() has reset the pool
         self.assertEqual(0, len(connection._Connection__pool.sockets))
+
+    def test_with_start_request(self):
+        conn = get_connection()
+        pool = conn._Connection__pool
+
+        def get_sock():
+            sock, from_pool = pool.get_socket((self.host, self.port))
+            return sock
+
+        def assertSameSock():
+            self.assertEqual(get_sock(), get_sock())
+
+        def assertDifferentSock():
+            self.assertNotEqual(get_sock(), get_sock())
+
+        # No request started
+        self.assertEqual(0, len(pool.requests))
+        assertDifferentSock()
+
+        # Start a request
+        request_context_mgr = conn.start_request()
+        self.assert_(
+            isinstance(request_context_mgr, object)
+        )
+
+        self.assertEqual(1, len(pool.requests))
+        assertSameSock()
+
+        # End request
+        request_context_mgr.__exit__(None, None, None)
+        self.assertEqual(0, len(pool.requests))
+        assertDifferentSock()
+
+        # Test the 'with' statement
+        if sys.version_info >= (2, 6):
+            # We need exec here because if the Python version is less than 2.6
+            # these with-statements won't even compile.
+            exec """
+with conn.start_request() as request:
+    self.assertEqual(conn, request.connection)
+    self.assertEqual(1, len(pool.requests))
+""" in locals()
+
+            # Request has ended
+            self.assertEqual(0, len(pool.requests))
+            assertDifferentSock()
 
     def test_interrupt_signal(self):
         # Test fix for PYTHON-294 -- make sure Connection closes its
@@ -495,10 +546,7 @@ with get_connection() as connection:
         db = c.pymongo_test
 
         # A $where clause which takes 1.5 sec to execute
-        where = '''function() {
-            var d = new Date((new Date()).getTime() + 1.5 * 1000);
-            while (d > (new Date())) { }; return true;
-        }'''
+        where = delay(1.5)
 
         # Need exactly 1 document so find() will execute its $where clause once
         db.drop_collection('foo')
