@@ -200,7 +200,7 @@ class Database(common.BaseObject):
         """
         return self.__getattr__(name)
 
-    def create_collection(self, name, options=None, **kwargs):
+    def create_collection(self, name, **kwargs):
         """Create a new :class:`~pymongo.collection.Collection` in this
         database.
 
@@ -221,19 +221,16 @@ class Database(common.BaseObject):
 
         :Parameters:
           - `name`: the name of the collection to create
-          - `options`: DEPRECATED options to use on the new collection
           - `**kwargs` (optional): additional keyword arguments will
             be passed as options for the create collection command
+
+        .. versionchanged:: 2.2
+           Removed deprecated argument: options
 
         .. versionchanged:: 1.5
            deprecating `options` in favor of kwargs
         """
         opts = {"create": True}
-        if options is not None:
-            warnings.warn("the options argument to create_collection is "
-                          "deprecated and will be removed. please use "
-                          "kwargs instead.", DeprecationWarning)
-            opts.update(options)
         opts.update(kwargs)
 
         if name in self.collection_names():
