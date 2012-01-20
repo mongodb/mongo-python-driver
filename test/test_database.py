@@ -292,6 +292,10 @@ class TestDatabase(unittest.TestCase):
         self.assertFalse(db.authenticate("Gustave", u"Dor\xe9"))
         self.assert_(db.authenticate("Gustave", u"password"))
 
+        db.add_user("Ross", "password", read_only=True)
+        self.assert_(db.authenticate("Ross", u"password"))
+        self.assert_(db.system.users.find({"readOnly": True}).count())
+
         # just make sure there are no exceptions here
         db.logout()
         db.logout()
