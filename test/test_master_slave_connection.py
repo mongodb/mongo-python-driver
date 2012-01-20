@@ -182,7 +182,8 @@ class TestMasterSlaveConnection(unittest.TestCase):
         self.assert_("pymongo_test_mike" in dbs)
 
     def test_drop_database(self):
-        # This test has been known to fail due to SERVER-2329
+        raise SkipTest("This test often fails due to SERVER-2329")
+
         self.assertRaises(TypeError, self.connection.drop_database, 5)
         self.assertRaises(TypeError, self.connection.drop_database, None)
 
@@ -330,6 +331,7 @@ class TestMasterSlaveConnection(unittest.TestCase):
         self.assertFalse(db.safe)
         self.assertEqual({}, db.get_lasterror_options())
         coll = db.test
+        coll.drop()
         self.assertFalse(coll.slave_okay)
         self.assertTrue(bool(c.read_preference))
         self.assertFalse(coll.safe)
@@ -339,21 +341,22 @@ class TestMasterSlaveConnection(unittest.TestCase):
         self.assertTrue(bool(cursor._Cursor__read_preference))
 
         c.safe = True
-        c.set_lasterror_options(w=3, wtimeout=100)
+        w = 1 + len(self.slaves)
+        c.set_lasterror_options(w=w, wtimeout=100)
         self.assertFalse(c.slave_okay)
         self.assertTrue(bool(c.read_preference))
         self.assertTrue(c.safe)
-        self.assertEqual({'w': 3, 'wtimeout': 100}, c.get_lasterror_options())
+        self.assertEqual({'w': w, 'wtimeout': 100}, c.get_lasterror_options())
         db = c.test
         self.assertFalse(db.slave_okay)
         self.assertTrue(bool(c.read_preference))
         self.assertTrue(db.safe)
-        self.assertEqual({'w': 3, 'wtimeout': 100}, db.get_lasterror_options())
+        self.assertEqual({'w': w, 'wtimeout': 100}, db.get_lasterror_options())
         coll = db.test
         self.assertFalse(coll.slave_okay)
         self.assertTrue(bool(c.read_preference))
         self.assertTrue(coll.safe)
-        self.assertEqual({'w': 3, 'wtimeout': 100},
+        self.assertEqual({'w': w, 'wtimeout': 100},
                          coll.get_lasterror_options())
         cursor = coll.find()
         self.assertFalse(cursor._Cursor__slave_okay)
