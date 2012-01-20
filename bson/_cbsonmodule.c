@@ -400,8 +400,19 @@ static int _write_element_to_buffer(buffer_t buffer, int type_byte,
     } else if (PyObject_IsInstance(value, Code)) {
         int start_position,
             length_location,
-            length;
+            length,
+            no_scope;
         PyObject* scope;
+
+        scope = PyObject_GetAttrString(value, "scope");
+        no_scope = PyObject_Not(scope);
+
+        if (no_scope) {
+            Py_DECREF(scope);
+
+            *(buffer_get_buffer(buffer) + type_byte) = 0x0D;
+            return write_string(buffer, value);
+        }
 
         *(buffer_get_buffer(buffer) + type_byte) = 0x0F;
 
@@ -417,7 +428,6 @@ static int _write_element_to_buffer(buffer_t buffer, int type_byte,
             return 0;
         }
 
-        scope = PyObject_GetAttrString(value, "scope");
         if (!scope) {
             return 0;
         }
@@ -887,7 +897,6 @@ static PyObject* get_value(const char* buffer, int* position, int type,
             break;
         }
     case 2:
-    case 13:
     case 14:
         {
             int value_length = ((int*)(buffer + *position))[0] - 1;
@@ -1185,6 +1194,23 @@ static PyObject* get_value(const char* buffer, int* position, int type,
             value = PyObject_CallFunctionObjArgs(DBRef, collection, id, NULL);
             Py_DECREF(collection);
             Py_DECREF(id);
+            break;
+        }
+    case 13:
+        {
+            PyObject* code;
+            int value_length = ((int*)(buffer + *position))[0] - 1;
+            if (max < value_length) {
+                goto invalid;
+            }
+            *position += 4;
+            code = PyUnicode_DecodeUTF8(buffer + *position, value_length, "strict");
+            if (!code) {
+                return NULL;
+            }
+            *position += value_length + 1;
+            value = PyObject_CallFunctionObjArgs(Code, code, NULL, NULL);
+            Py_DECREF(code);
             break;
         }
     case 15:

@@ -173,6 +173,11 @@ def _get_date(data, position, as_class, tz_aware):
     return EPOCH_NAIVE + datetime.timedelta(seconds=seconds), position
 
 
+def _get_code(data, position, as_class, tz_aware):
+    code, position = _get_string(data, position, as_class, tz_aware)
+    return Code(code), position
+
+
 def _get_code_w_scope(data, position, as_class, tz_aware):
     _, position = _get_int(data, position)
     code, position = _get_string(data, position, as_class, tz_aware)
@@ -236,7 +241,7 @@ _element_getter = {
     "\x0A": _get_null,
     "\x0B": _get_regex,
     "\x0C": _get_ref,
-    "\x0D": _get_string,  # code
+    "\x0D": _get_code,  # code
     "\x0E": _get_string,  # symbol
     "\x0F": _get_code_w_scope,
     "\x10": _get_int,  # number_int
@@ -304,6 +309,9 @@ def _element_to_bson(key, value, check_keys, uuid_subtype):
                                  chr(subtype), value)
     if isinstance(value, Code):
         cstring = _make_c_string(value)
+        if not value.scope:
+            length = struct.pack("<i", len(cstring))
+            return "\x0D" + name + length + cstring
         scope = _dict_to_bson(value.scope, False, uuid_subtype, False)
         full_length = struct.pack("<i", 8 + len(cstring) + len(scope))
         length = struct.pack("<i", len(cstring))
