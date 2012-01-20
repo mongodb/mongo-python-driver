@@ -537,7 +537,7 @@ class Database(common.BaseObject):
     def next(self):
         raise TypeError("'Database' object is not iterable")
 
-    def add_user(self, name, password):
+    def add_user(self, name, password, read_only=False):
         """Create user `name` with password `password`.
 
         Add a new user with permissions for this :class:`Database`.
@@ -547,13 +547,15 @@ class Database(common.BaseObject):
         :Parameters:
           - `name`: the name of the user to create
           - `password`: the password of the user to create
+          - `read_only` (optional): if ``True`` it will make user read only
 
         .. versionadded:: 1.4
         """
         pwd = helpers._password_digest(name, password)
         self.system.users.update({"user": name},
                                  {"user": name,
-                                  "pwd": pwd},
+                                  "pwd": pwd,
+                                  "readOnly": read_only},
                                  upsert=True, safe=True)
 
     def remove_user(self, name):
