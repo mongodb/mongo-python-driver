@@ -139,9 +139,18 @@ class TestBSON(unittest.TestCase):
                          "\x12\x00\x00\x00\x0B\x72\x65\x67\x65\x78\x00\x61\x2A"
                          "\x62\x00\x69\x00\x00")
         self.assertEqual(BSON.encode({"$where": Code("test")}),
-                         "\x1F\x00\x00\x00\x0F\x24\x77\x68\x65\x72\x65\x00\x12"
-                         "\x00\x00\x00\x05\x00\x00\x00\x74\x65\x73\x74\x00\x05"
-                         "\x00\x00\x00\x00\x00")
+                         "\x16\x00\x00\x00\r$where\x00\x05\x00\x00\x00test"
+                         "\x00\x00")
+        self.assertEqual(BSON.encode({"$field":
+                         Code("function(){ return true;}", scope=None)}),
+                         "+\x00\x00\x00\r$field\x00\x1a\x00\x00\x00"
+                         "function(){ return true;}\x00\x00")
+        self.assertEqual(BSON.encode({"$field":
+                          Code("return function(){ return x; }",
+                            scope={'x': False})}),
+                         "=\x00\x00\x00\x0f$field\x000\x00\x00\x00\x1f\x00"
+                         "\x00\x00return function(){ return x; }\x00\t\x00"
+                         "\x00\x00\x08x\x00\x00\x00\x00")
         a = ObjectId("\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0A\x0B")
         self.assertEqual(BSON.encode({"oid": a}),
                          "\x16\x00\x00\x00\x07\x6F\x69\x64\x00\x00\x01\x02\x03"
@@ -182,6 +191,8 @@ class TestBSON(unittest.TestCase):
         helper({"ref": Timestamp(1, 2)})
         helper({"foo": MinKey()})
         helper({"foo": MaxKey()})
+        helper({"$field": Code("function(){ return true; }")})
+        helper({"$field": Code("return function(){ return x; }", scope={'x': False})})
 
         def encode_then_decode(dict):
             return dict == (BSON.encode(dict)).decode()
