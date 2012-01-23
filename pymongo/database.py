@@ -549,6 +549,9 @@ class Database(common.BaseObject):
           - `password`: the password of the user to create
           - `read_only` (optional): if ``True`` it will make user read only
 
+        .. versionchanged:: 2.1.1+
+           Added support for read only users
+
         .. versionadded:: 1.4
         """
         pwd = helpers._password_digest(name, password)
