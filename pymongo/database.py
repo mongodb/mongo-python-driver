@@ -224,7 +224,7 @@ class Database(common.BaseObject):
           - `**kwargs` (optional): additional keyword arguments will
             be passed as options for the create collection command
 
-        .. versionchanged:: 2.2
+        .. versionchanged:: 2.1.1+
            Removed deprecated argument: options
 
         .. versionchanged:: 1.5
