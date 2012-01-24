@@ -183,9 +183,15 @@ class TestDatabase(unittest.TestCase):
         info = db.profiling_info()
         self.assert_(isinstance(info, list))
 
-        raise SkipTest(
-            "We need SERVER-4754 fixed for the rest of this test to pass"
-        )
+        # Check if we're going to fail because of SERVER-4754, in which
+        # profiling info isn't collected if mongod was started with --auth
+        command_line = self.connection.admin.command('getCmdLineOpts')
+        self.assertEqual(1, command_line['ok'])
+
+        if '--auth' in command_line['argv']:
+            raise SkipTest(
+                "We need SERVER-4754 fixed for the rest of this test to pass"
+            )
 
         self.assert_(len(info) >= 1)
         # These basically clue us in to server changes.
