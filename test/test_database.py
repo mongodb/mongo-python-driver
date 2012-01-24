@@ -17,6 +17,8 @@
 import datetime
 import random
 import sys
+from unittest.case import SkipTest
+
 sys.path[0:0] = [""]
 import unittest
 
@@ -180,6 +182,11 @@ class TestDatabase(unittest.TestCase):
 
         info = db.profiling_info()
         self.assert_(isinstance(info, list))
+
+        raise SkipTest(
+            "We need SERVER-4754 fixed for the rest of this test to pass"
+        )
+
         self.assert_(len(info) >= 1)
         # These basically clue us in to server changes.
         if version.at_least(db.connection, (1, 9, 1, -1)):
