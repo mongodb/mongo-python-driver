@@ -119,8 +119,8 @@ be aware (UTC). This setting is recommended, as it can force
 application code to handle timezones properly.
 
 .. warning:: Be careful not to save naive :class:`~datetime.datetime`
-   instances that are not UTC (i.e. the result of calling
-   :meth:`datetime.datetime.now`).
+   instances that are not UTC (i.e. the result of
+   calling :meth:`datetime.datetime.now`).
 
 Something like :mod:`pytz` can be used to convert dates to localtime
 after retrieving them from the database.

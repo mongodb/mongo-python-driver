@@ -595,8 +595,8 @@ class Database(common.BaseObject):
              existing sockets you may need to reset this Connection's
              sockets using :meth:`~pymongo.connection.Connection.disconnect`.
 
-        .. warning:: Currently, calls to
-           :meth:`~pymongo.connection.Connection.end_request` will
+        .. warning:: Currently, calls
+           to :meth:`~pymongo.connection.Connection.end_request` will
            lead to unpredictable behavior in combination with
            auth. The :class:`~socket.socket` owned by the calling
            thread will be returned to the pool, so whichever thread

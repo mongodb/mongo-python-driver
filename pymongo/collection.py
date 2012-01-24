@@ -803,8 +803,8 @@ class Collection(common.BaseObject):
         TypeError if index is not an instance of (str, unicode, list).
 
         .. warning:: if a custom name was used on index creation (by
-          passing the `name` parameter to :meth:`create_index` or
-          :meth:`ensure_index`) the index **must** be dropped by name.
+           passing the `name` parameter to :meth:`create_index`
+           or :meth:`ensure_index`) the index *must* be dropped by name.
 
         :Parameters:
           - `index_or_name`: index (or name of index) to drop
@@ -1088,6 +1088,8 @@ class Collection(common.BaseObject):
         .. note:: Requires server version **>= 1.7.4**
 
         .. versionadded:: 1.10
+
+        .. _map reduce command: http://www.mongodb.org/display/DOCS/MapReduce
         """
 
         use_master = not self.slave_okay and not self.read_preference

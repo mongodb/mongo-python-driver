@@ -123,8 +123,8 @@ API changes:
   connect using replica set behavior.
 
 .. warning:: The default subtype for :class:`~bson.binary.Binary` has changed
-             from :const:`~bson.binary.OLD_BINARY_SUBTYPE` (2) to
-             :const:`~bson.binary.BINARY_SUBTYPE` (0).
+             from :const:`~bson.binary.OLD_BINARY_SUBTYPE` (2)
+             to :const:`~bson.binary.BINARY_SUBTYPE` (0).
 
 Issues Resolved
 ...............
@@ -319,8 +319,8 @@ rather than :class:`pymongo.errors.PyMongoError`.
    removed, so users should begin migrating towards the new names now.
 
 .. warning:: The change to the exception hierarchy mentioned above is
-   possibly breaking. If your code is catching
-   :class:`~pymongo.errors.PyMongoError`, then the exceptions raised
+   possibly breaking. If your code is
+   catching :class:`~pymongo.errors.PyMongoError`, then the exceptions raised
    by :mod:`bson` will not be caught, even though they would have been
    caught previously. Before upgrading, it is recommended that users
    check for any cases like this.
