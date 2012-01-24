@@ -6,8 +6,6 @@
 
    .. autoclass:: pymongo.connection.Connection([host='localhost'[, port=27017[, max_pool_size=10[, network_timeout=None[, document_class=dict[, tz_aware=False[, **kwargs]]]]]]])
 
-      .. automethod:: from_uri([uri='mongodb://localhost'])
-      .. automethod:: paired(left[, right=('localhost', 27017)])
       .. automethod:: disconnect
       .. automethod:: close
 
