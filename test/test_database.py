@@ -15,29 +15,24 @@
 """Test the database module."""
 
 import datetime
-import random
 import sys
-from unittest.case import SkipTest
 
 sys.path[0:0] = [""]
 import unittest
+from nose.plugins.skip import SkipTest
 
 from bson.code import Code
 from bson.dbref import DBRef
 from bson.objectid import ObjectId
 from bson.son import SON
 from pymongo import (ALL,
-                     ASCENDING,
-                     DESCENDING,
                      helpers,
                      OFF,
                      SLOW_ONLY)
 from pymongo.collection import Collection
-from pymongo.connection import Connection
 from pymongo.database import Database
 from pymongo.errors import (CollectionInvalid,
                             InvalidName,
-                            InvalidOperation,
                             OperationFailure)
 from pymongo.son_manipulator import (AutoReference,
                                      NamespaceInjector,
