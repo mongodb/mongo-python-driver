@@ -390,34 +390,6 @@ class Connection(common.BaseObject):
             if not self[db].authenticate(username, password):
                 raise ConfigurationError("authentication failed")
 
-    @classmethod
-    def from_uri(cls, uri="mongodb://localhost", **connection_args):
-        """DEPRECATED Can pass a mongodb URI directly to Connection() instead.
-
-        .. versionchanged:: 1.8
-           DEPRECATED
-        .. versionadded:: 1.5
-        """
-        warnings.warn("Connection.from_uri is deprecated - can pass "
-                      "URIs to Connection() now", DeprecationWarning)
-        return cls(uri, **connection_args)
-
-    @classmethod
-    def paired(cls, left, right=None, **connection_args):
-        """DEPRECATED Can pass a list of hostnames to Connection() instead.
-
-        .. versionchanged:: 1.8
-           DEPRECATED
-        """
-        warnings.warn("Connection.paired is deprecated - can pass multiple "
-                      "hostnames to Connection() now", DeprecationWarning)
-        if isinstance(left, str) or isinstance(right, str):
-            raise TypeError("arguments to paired must be tuples")
-        if right is None:
-            right = (cls.HOST, cls.PORT)
-        return cls([":".join(map(str, left)), ":".join(map(str, right))],
-                   **connection_args)
-
     def _cached(self, dbname, coll, index):
         """Test if `index` is cached.
         """

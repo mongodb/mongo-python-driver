@@ -8,7 +8,7 @@
    .. autodata:: pymongo.DESCENDING
    .. autodata:: pymongo.GEO2D
 
-   .. autoclass:: pymongo.collection.Collection(database, name[, options=None[, create=False[, **kwargs]]])
+   .. autoclass:: pymongo.collection.Collection(database, name[, [, create=False[, **kwargs]]])
 
       .. describe:: c[name] || c.name
 
@@ -35,17 +35,12 @@
       .. automethod:: find([spec=None[, fields=None[, skip=0[, limit=0[, timeout=True[, snapshot=False[, tailable=False[, sort=None[, max_scan=None[, as_class=None[, slave_okay=False[, await_data=False[, partial=False[, manipulate=True[, read_preference=ReadPreference.PRIMARY[, **kwargs]]]]]]]]]]]]]]]])
       .. automethod:: find_one([spec_or_id=None[, *args[, **kwargs]]])
       .. automethod:: count
-      .. automethod:: create_index
-      .. automethod:: ensure_index
       .. automethod:: drop_index
       .. automethod:: drop_indexes
       .. automethod:: reindex
       .. automethod:: index_information
-      .. automethod:: options
-      .. automethod:: group
       .. automethod:: rename
       .. automethod:: distinct
-      .. automethod:: map_reduce
       .. automethod:: inline_map_reduce
       .. automethod:: find_and_modify
 
