@@ -122,9 +122,11 @@ API changes:
   used PyMongo will treat the specified host:port pair(s) as a seed list and
   connect using replica set behavior.
 
-.. warning:: The default subtype for :class:`~bson.binary.Binary` has changed
-             from :const:`~bson.binary.OLD_BINARY_SUBTYPE` (2) to
-             :const:`~bson.binary.BINARY_SUBTYPE` (0).
+.. warning::
+
+    The default subtype for :class:`~bson.binary.Binary` has changed
+    from :const:`~bson.binary.OLD_BINARY_SUBTYPE` (2) to
+    :const:`~bson.binary.BINARY_SUBTYPE` (0).
 
 Issues Resolved
 ...............
@@ -162,12 +164,12 @@ API changes:
   `scandata` and `full` parameters. See the documentation for more
   details.
 
-.. warning:: The `pool_size`, `auto_start_request`, and `timeout` parameters
-             for :class:`~pymongo.connection.Connection` have been completely
-             removed in this release. They were deprecated in pymongo-1.4 and
-             have had no effect since then. Please make sure that your code
-             doesn't currently pass these parameters when creating a Connection
-             instance.
+.. warning::  The `pool_size`, `auto_start_request`, and `timeout` parameters
+              for :class:`~pymongo.connection.Connection` have been completely
+              removed in this release. They were deprecated in pymongo-1.4 and
+              have had no effect since then. Please make sure that your code
+              doesn't currently pass these parameters when creating a
+              Connection instance.
 
 Issues resolved
 ...............
@@ -313,17 +315,19 @@ In addition, the following exception classes have been renamed:
 The above exceptions now inherit from :class:`bson.errors.BSONError`
 rather than :class:`pymongo.errors.PyMongoError`.
 
-.. note:: All of the renamed modules and exceptions above have aliases
-   created with the old names, so these changes should not break
-   existing code. The old names will eventually be deprecated and then
-   removed, so users should begin migrating towards the new names now.
+.. note::  All of the renamed modules and exceptions above have aliases
+           created with the old names, so these changes should not break
+           existing code. The old names will eventually be deprecated and then
+           removed, so users should begin migrating towards the new names now.
 
-.. warning:: The change to the exception hierarchy mentioned above is
-   possibly breaking. If your code is catching
-   :class:`~pymongo.errors.PyMongoError`, then the exceptions raised
-   by :mod:`bson` will not be caught, even though they would have been
-   caught previously. Before upgrading, it is recommended that users
-   check for any cases like this.
+.. warning::
+
+  The change to the exception hierarchy mentioned above is
+  possibly breaking. If your code is catching
+  :class:`~pymongo.errors.PyMongoError`, then the exceptions raised
+  by :mod:`bson` will not be caught, even though they would have been
+  caught previously. Before upgrading, it is recommended that users
+  check for any cases like this.
 
 - the C extension now shares buffer.c/h with the Ruby driver
 - :mod:`bson` no longer raises :class:`~pymongo.errors.InvalidName`,

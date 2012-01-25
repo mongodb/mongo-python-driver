@@ -32,21 +32,4 @@ Sub-modules:
    replica_set_connection
    son_manipulator
    cursor_manager
-
-Deprecated sub-modules (moved to the :mod:`bson` package):
-
-.. toctree::
-   :maxdepth: 2
-
-   bson
-   binary
-   code
-   dbref
-   json_util
-   max_key
-   min_key
-   objectid
-   son
-   timestamp
-   tz_util
    uri_parser

@@ -813,7 +813,9 @@ class Collection(common.BaseObject):
         specifier should be a list of (key, direction) pairs. Raises
         TypeError if index is not an instance of (str, unicode, list).
 
-        .. warning:: if a custom name was used on index creation (by
+        .. warning::
+
+          if a custom name was used on index creation (by
           passing the `name` parameter to :meth:`create_index` or
           :meth:`ensure_index`) the index **must** be dropped by name.
 
