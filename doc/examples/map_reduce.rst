@@ -49,23 +49,27 @@ the array:
 .. doctest::
 
   >>> from bson.code import Code
-  >>> mapper = Code("function () {"
-  ...            "  this.tags.forEach(function(z) {"
-  ...            "    emit(z, 1);"
-  ...            "  });"
-  ...            "}")
+  >>> mapper = Code("""
+  ...               function () {
+  ...                 this.tags.forEach(function(z) {
+  ...                   emit(z, 1);
+  ...                 });
+  ...               }
+  ...               """)
 
 The **reduce** function sums over all of the emitted values for a given key:
 
 .. doctest::
 
-  >>> reducer = Code("function (key, values) {"
-  ...               "  var total = 0;"
-  ...               "  for (var i = 0; i < values.length; i++) {"
-  ...               "    total += values[i];"
-  ...               "  }"
-  ...               "  return total;"
-  ...               "}")
+  >>> reducer = Code("""
+  ...                function (key, values) {
+  ...                  var total = 0;
+  ...                  for (var i = 0; i < values.length; i++) {
+  ...                    total += values[i];
+  ...                  }
+  ...                  return total;
+  ...                }
+  ...                """)
 
 .. note:: We can't just return ``values.length`` as the **reduce** function
    might be called iteratively on the results of other reduce steps.
@@ -75,7 +79,7 @@ iterate over the result collection:
 
 .. doctest::
 
-  >>> result = db.things.map_reduce(mapper, reduce, "myresults")
+  >>> result = db.things.map_reduce(mapper, reducer, "myresults")
   >>> for doc in result.find():
   ...   print doc
   ...
