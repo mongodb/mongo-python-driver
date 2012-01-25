@@ -583,28 +583,31 @@ class Database(common.BaseObject):
         gives access to *all* databases. Effectively, "admin" access
         means root access to the database.
 
-        .. note:: This method authenticates the current connection, and
-           will also cause all new :class:`~socket.socket` connections
-           in the underlying :class:`~pymongo.connection.Connection` to
-           be authenticated automatically.
+        .. note::
+          This method authenticates the current connection, and
+          will also cause all new :class:`~socket.socket` connections
+          in the underlying :class:`~pymongo.connection.Connection` to
+          be authenticated automatically.
 
-           - When sharing a :class:`~pymongo.connection.Connection`
-             between multiple threads, all threads will share the
-             authentication. If you need different authentication profiles
-             for different purposes (e.g. admin users) you must use
-             distinct instances of :class:`~pymongo.connection.Connection`.
+         - When sharing a :class:`~pymongo.connection.Connection`
+           between multiple threads, all threads will share the
+           authentication. If you need different authentication profiles
+           for different purposes (e.g. admin users) you must use
+           distinct instances of :class:`~pymongo.connection.Connection`.
 
-           - To get authentication to apply immediately to all
-             existing sockets you may need to reset this Connection's
-             sockets using :meth:`~pymongo.connection.Connection.disconnect`.
+         - To get authentication to apply immediately to all
+           existing sockets you may need to reset this Connection's
+           sockets using :meth:`~pymongo.connection.Connection.disconnect`.
 
-        .. warning:: Currently, calls to
-           :meth:`~pymongo.connection.Connection.end_request` will
-           lead to unpredictable behavior in combination with
-           auth. The :class:`~socket.socket` owned by the calling
-           thread will be returned to the pool, so whichever thread
-           uses that :class:`~socket.socket` next will have whatever
-           permissions were granted to the calling thread.
+        .. warning::
+
+          Currently, calls to
+          :meth:`~pymongo.connection.Connection.end_request` will
+          lead to unpredictable behavior in combination with
+          auth. The :class:`~socket.socket` owned by the calling
+          thread will be returned to the pool, so whichever thread
+          uses that :class:`~socket.socket` next will have whatever
+          permissions were granted to the calling thread.
 
         :Parameters:
           - `name`: the name of the user to authenticate
