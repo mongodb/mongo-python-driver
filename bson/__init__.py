@@ -553,8 +553,4 @@ def has_c():
 
     .. versionadded:: 1.9
     """
-    try:
-        from bson import _cbson
-        return True
-    except ImportError:
-        return False
+    return _use_c
