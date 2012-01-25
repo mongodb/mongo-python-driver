@@ -49,7 +49,7 @@ the array:
 .. doctest::
 
   >>> from bson.code import Code
-  >>> map = Code("function () {"
+  >>> mapper = Code("function () {"
   ...            "  this.tags.forEach(function(z) {"
   ...            "    emit(z, 1);"
   ...            "  });"
@@ -59,7 +59,7 @@ The **reduce** function sums over all of the emitted values for a given key:
 
 .. doctest::
 
-  >>> reduce = Code("function (key, values) {"
+  >>> reducer = Code("function (key, values) {"
   ...               "  var total = 0;"
   ...               "  for (var i = 0; i < values.length; i++) {"
   ...               "    total += values[i];"
@@ -75,7 +75,7 @@ iterate over the result collection:
 
 .. doctest::
 
-  >>> result = db.things.map_reduce(map, reduce, "myresults")
+  >>> result = db.things.map_reduce(mapper, reduce, "myresults")
   >>> for doc in result.find():
   ...   print doc
   ...
@@ -90,14 +90,14 @@ PyMongo's API supports all of the features of MongoDB's map/reduce engine. One i
 
 .. doctest::
 
-  >>> db.things.map_reduce(map, reduce, "myresults", full_response=True)
+  >>> db.things.map_reduce(mapper, reducer, "myresults", full_response=True)
   {u'counts': {u'input': 4, u'reduce': 2, u'emit': 6, u'output': 3}, u'timeMillis': ..., u'ok': ..., u'result': u'...'}
 
 All of the optional map/reduce parameters are also supported, simply pass them as keyword arguments. In this example we use the `query` parameter to limit the documents that will be mapped over:
 
 .. doctest::
 
-  >>> result = db.things.map_reduce(map, reduce, "myresults", query={"x": {"$lt": 3}})
+  >>> result = db.things.map_reduce(mapper, reducer, "myresults", query={"x": {"$lt": 3}})
   >>> for doc in result.find():
   ...   print doc
   ...
@@ -109,7 +109,7 @@ With MongoDB 1.8.0 or newer you can use :class:`~bson.son.SON` to specify a diff
 .. doctest::
 
   >>> from bson.son import SON
-  >>> db.things.map_reduce(map, reduce, out=SON([("replace", "results"), ("db", "outdb")]), full_response=True)
-  {u'counts': {u'input': 4, u'reduce': 2, u'emit': 6, u'output': 3}, u'timeMillis': ..., u'ok': ..., u'result': {u'db': ..., u'collection': ...}}
+  >>> db.things.map_reduce(mapper, reducer, out=SON([("replace", "results"), ("db", "outdb")]), full_response=True)
+  {u'counts': {u'input': 4, u'reducer': 2, u'emit': 6, u'output': 3}, u'timeMillis': ..., u'ok': ..., u'result': {u'db': ..., u'collection': ...}}
 
 .. seealso:: The full list of options for MongoDB's `map reduce engine <http://www.mongodb.org/display/DOCS/MapReduce>`_
