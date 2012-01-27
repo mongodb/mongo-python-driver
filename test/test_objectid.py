@@ -133,7 +133,9 @@ class TestObjectId(unittest.TestCase):
 
     def test_pickling(self):
         orig = ObjectId()
-        self.assertEqual(orig, pickle.loads(pickle.dumps(orig)))
+        for protocol in [0, 1, 2, -1]:
+            pkl = pickle.dumps(orig, protocol=protocol)
+            self.assertEqual(orig, pickle.loads(pkl))
 
     def test_pickle_backwards_compatability(self):
 

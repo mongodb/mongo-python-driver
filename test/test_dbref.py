@@ -125,9 +125,10 @@ class TestDBRef(unittest.TestCase):
 
     def test_pickling(self):
         dbr = DBRef('coll', 5, foo='bar')
-        pkl = pickle.dumps(dbr)
-        dbr2 = pickle.loads(pkl)
-        self.assertEqual(dbr, dbr2)
+        for protocol in [0, 1, 2, -1]:
+            pkl = pickle.dumps(dbr, protocol=protocol)
+            dbr2 = pickle.loads(pkl)
+            self.assertEqual(dbr, dbr2)
 
     def test_dbref_hash(self):
         dbref_1a = DBRef('collection', 'id', 'database')
