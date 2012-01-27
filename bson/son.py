@@ -72,6 +72,11 @@ class SON(dict):
         self.update(data)
         self.update(kwargs)
 
+    def __new__(cls, *args, **kwargs):
+        instance = super(SON, cls).__new__(cls, *args, **kwargs)
+        instance.__keys = []
+        return instance
+
     def __repr__(self):
         result = []
         for key in self.__keys:
@@ -214,3 +219,4 @@ class SON(dict):
         for k, v in self.iteritems():
             out[k] = copy.deepcopy(v, memo)
         return out
+
