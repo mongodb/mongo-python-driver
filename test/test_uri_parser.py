@@ -51,6 +51,12 @@ class TestURI(unittest.TestCase):
         self.assert_(parse_userinfo('user:password'))
         self.assertEqual(('us:r', 'p@ssword'),
                          parse_userinfo('us%3Ar:p%40ssword'))
+        self.assertEqual(('us er', 'p ssword'),
+                         parse_userinfo('us+er:p+ssword'))
+        self.assertEqual(('us er', 'p ssword'),
+                         parse_userinfo('us%20er:p%20ssword'))
+        self.assertEqual(('us+er', 'p+ssword'),
+                         parse_userinfo('us%2Ber:p%2Bssword'))
 
     def test_split_hosts(self):
         self.assertRaises(ConfigurationError, split_hosts,

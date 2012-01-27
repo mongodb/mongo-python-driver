@@ -218,7 +218,9 @@ class Connection(common.BaseObject):
         URIs. Any port specified in the host string(s) will override
         the `port` parameter. If multiple mongodb URIs containing
         database or auth information are passed, the last database,
-        username, and password present will be used.
+        username, and password present will be used.  For username and
+        passwords reserved characters like ':', '/', '+' and '@' must be
+        escaped following RFC 2396.
 
         :Parameters:
           - `host` (optional): hostname or IP address of the
@@ -1107,7 +1109,7 @@ class Connection(common.BaseObject):
 
         .. versionadded:: 2.0
         """
-        self.admin['$cmd'].sys.unlock.find_one() 
+        self.admin['$cmd'].sys.unlock.find_one()
 
     def __enter__(self):
         return self
