@@ -21,7 +21,13 @@ def delay(sec):
         while (d > (new Date())) { }; return true;
     }''' % sec
 
-def server_started_with_auth(connection):
+def get_command_line(connection):
     command_line = connection.admin.command('getCmdLineOpts')
     assert command_line['ok'] == 1, "getCmdLineOpts() failed"
-    return '--auth'  in command_line['argv']
+    return command_line['argv']
+
+def server_started_with_auth(connection):
+    return '--auth' in get_command_line(connection)
+
+def server_is_master_with_slave(connection):
+    return '--master' in get_command_line(connection)
