@@ -342,21 +342,22 @@ class TestMasterSlaveConnection(unittest.TestCase):
 
         c.safe = True
         w = 1 + len(self.slaves)
-        c.set_lasterror_options(w=w, wtimeout=100)
+        wtimeout=10000 # Wait 10 seconds for replication to complete
+        c.set_lasterror_options(w=w, wtimeout=wtimeout)
         self.assertFalse(c.slave_okay)
         self.assertTrue(bool(c.read_preference))
         self.assertTrue(c.safe)
-        self.assertEqual({'w': w, 'wtimeout': 100}, c.get_lasterror_options())
+        self.assertEqual({'w': w, 'wtimeout': wtimeout}, c.get_lasterror_options())
         db = c.test
         self.assertFalse(db.slave_okay)
         self.assertTrue(bool(c.read_preference))
         self.assertTrue(db.safe)
-        self.assertEqual({'w': w, 'wtimeout': 100}, db.get_lasterror_options())
+        self.assertEqual({'w': w, 'wtimeout': wtimeout}, db.get_lasterror_options())
         coll = db.test
         self.assertFalse(coll.slave_okay)
         self.assertTrue(bool(c.read_preference))
         self.assertTrue(coll.safe)
-        self.assertEqual({'w': w, 'wtimeout': 100},
+        self.assertEqual({'w': w, 'wtimeout': wtimeout},
                          coll.get_lasterror_options())
         cursor = coll.find()
         self.assertFalse(cursor._Cursor__slave_okay)
