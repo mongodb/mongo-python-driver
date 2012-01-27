@@ -38,6 +38,7 @@ from pymongo.son_manipulator import (AutoReference,
                                      NamespaceInjector,
                                      ObjectIdShuffler)
 from test import version
+from testutils import server_started_with_auth
 from test.test_connection import get_connection
 
 
@@ -180,10 +181,7 @@ class TestDatabase(unittest.TestCase):
 
         # Check if we're going to fail because of SERVER-4754, in which
         # profiling info isn't collected if mongod was started with --auth
-        command_line = self.connection.admin.command('getCmdLineOpts')
-        self.assertEqual(1, command_line['ok'])
-
-        if '--auth' in command_line['argv']:
+        if server_started_with_auth(self.connection):
             raise SkipTest(
                 "We need SERVER-4754 fixed for the rest of this test to pass"
             )

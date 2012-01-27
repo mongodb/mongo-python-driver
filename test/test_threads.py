@@ -19,6 +19,7 @@ import threading
 
 from nose.plugins.skip import SkipTest
 
+from test.testutils import server_started_with_auth
 from test_connection import get_connection
 from pymongo.errors import (AutoReconnect,
                             OperationFailure,
@@ -228,17 +229,10 @@ class BaseTestThreadsAuth(object):
 
     def setUp(self):
         self.conn = self._get_connection()
+        if not server_started_with_auth(self.conn):
+            raise SkipTest("Can't test; server wasn't started with --auth")
         self.conn.admin.system.users.remove({})
         self.conn.admin.add_user('admin-user', 'password')
-        try:
-            self.conn.admin.system.users.find_one()
-            # If we reach here mongod was likely started
-            # without --auth. Skip this test since it's
-            # pointless without auth enabled.
-            self.tearDown()
-            raise SkipTest()
-        except OperationFailure:
-            pass
         self.conn.admin.authenticate("admin-user", "password")
         self.conn.auth_test.system.users.remove({})
         self.conn.auth_test.add_user("test-user", "password")
