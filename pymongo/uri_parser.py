@@ -62,7 +62,7 @@ def _rpartition(entity, sep):
 
 def parse_userinfo(userinfo):
     """Validates the format of user information in a MongoDB URI.
-    Reserved characters like ':', '/' and '@' must be escaped
+    Reserved characters like ':', '/', '+' and '@' must be escaped
     following RFC 2396.
 
     Returns a 2-tuple containing the unescaped username followed
@@ -70,6 +70,9 @@ def parse_userinfo(userinfo):
 
     :Paramaters:
         - `userinfo`: A string of the form <username>:<password>
+
+    .. versionchanged:: 2.1.1+
+       Now uses `urllib.unquote_plus` so `+` characters must be escaped.
     """
     if '@' in userinfo or userinfo.count(':') > 1:
         raise InvalidURI("':' or '@' characters in a username or password "
@@ -78,8 +81,8 @@ def parse_userinfo(userinfo):
     if not user or not passwd:
         raise InvalidURI("An empty string is not a "
                          "valid username or password.")
-    user = urllib.unquote(user)
-    passwd = urllib.unquote(passwd)
+    user = urllib.unquote_plus(user)
+    passwd = urllib.unquote_plus(passwd)
 
     return user, passwd
 
