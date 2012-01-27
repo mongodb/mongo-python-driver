@@ -21,6 +21,8 @@ import sys
 import time
 import thread
 import unittest
+from test.testutils import server_is_master_with_slave
+
 sys.path[0:0] = [""]
 
 from nose.plugins.skip import SkipTest
@@ -156,8 +158,11 @@ class TestConnection(unittest.TestCase):
 
         c.pymongo_test.test.insert({"foo": "bar"})
 
-        self.assertFalse("pymongo_test1" in c.database_names())
-        self.assertFalse("pymongo_test2" in c.database_names())
+        # Due to SERVER-2329, databases may not disappear from a master in a
+        # master-slave pair
+        if not server_is_master_with_slave(c):
+            self.assertFalse("pymongo_test1" in c.database_names())
+            self.assertFalse("pymongo_test2" in c.database_names())
 
         c.copy_database("pymongo_test", "pymongo_test1")
 
@@ -178,12 +183,15 @@ class TestConnection(unittest.TestCase):
             self.assertRaises(OperationFailure, c.copy_database,
                               "pymongo_test", "pymongo_test1",
                               username="foo", password="bar")
-            self.assertFalse("pymongo_test1" in c.database_names())
+            if not server_is_master_with_slave(c):
+                self.assertFalse("pymongo_test1" in c.database_names())
 
             self.assertRaises(OperationFailure, c.copy_database,
                               "pymongo_test", "pymongo_test1",
                               username="mike", password="bar")
-            self.assertFalse("pymongo_test1" in c.database_names())
+
+            if not server_is_master_with_slave(c):
+                self.assertFalse("pymongo_test1" in c.database_names())
 
             c.copy_database("pymongo_test", "pymongo_test1",
                             username="mike", password="password")
