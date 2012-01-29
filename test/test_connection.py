@@ -16,7 +16,6 @@
 
 import datetime
 import os
-import signal
 import sys
 import time
 import thread
@@ -505,53 +504,31 @@ with get_connection() as connection:
         db.drop_collection('foo')
         db.foo.insert({'_id': 1}, safe=True)
 
-        old_signal_handler = None
+        def interrupter():
+            # Raises KeyboardInterrupt in the main thread
+            time.sleep(0.25)
+            thread.interrupt_main()
 
+        thread.start_new_thread(interrupter, ())
+
+        raised = False
         try:
-            # Platform-specific hacks for raising a KeyboardInterrupt on the main
-            # thread while find() is in-progress: On Windows, SIGALRM is unavailable
-            # so we use second thread. In our Bamboo setup on Linux, the thread
-            # technique causes an error in the test at sock.recv():
-            #    TypeError: 'int' object is not callable
-            # We don't know what causes this in Bamboo, so we hack around it.
-            if sys.platform == 'win32':
-                def interrupter():
-                    time.sleep(0.25)
+            # Will be interrupted by a KeyboardInterrupt.
+            db.foo.find({'$where': where}).next()
+        except KeyboardInterrupt:
+            raised = True
 
-                    # Raises KeyboardInterrupt in the main thread
-                    thread.interrupt_main()
+        # Can't use self.assertRaises() because it doesn't catch system
+        # exceptions
+        self.assert_(raised, "Didn't raise expected KeyboardInterrupt")
 
-                thread.start_new_thread(interrupter, ())
-            else:
-                # Convert SIGALRM to SIGINT -- it's hard to schedule a SIGINT for one
-                # second in the future, but easy to schedule SIGALRM.
-                def sigalarm(num, frame):
-                    raise KeyboardInterrupt
-
-                old_signal_handler = signal.signal(signal.SIGALRM, sigalarm)
-                signal.alarm(1)
-
-            raised = False
-            try:
-                # Will be interrupted by a KeyboardInterrupt.
-                db.foo.find({'$where': where}).next()
-            except KeyboardInterrupt:
-                raised = True
-
-            # Can't use self.assertRaises() because it doesn't catch system
-            # exceptions
-            self.assert_(raised, "Didn't raise expected KeyboardInterrupt")
-
-            # Raises AssertionError due to PYTHON-294 -- Mongo's response to the
-            # previous find() is still waiting to be read on the socket, so the
-            # request id's don't match.
-            self.assertEqual(
-                {'_id': 1},
-                db.foo.find().next()
-            )
-        finally:
-            if old_signal_handler:
-                signal.signal(signal.SIGALRM, old_signal_handler)
+        # Raises AssertionError due to PYTHON-294 -- Mongo's response to the
+        # previous find() is still waiting to be read on the socket, so the
+        # request id's don't match.
+        self.assertEqual(
+            {'_id': 1},
+            db.foo.find().next()
+        )
 
 if __name__ == "__main__":
     unittest.main()
