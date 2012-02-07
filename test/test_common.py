@@ -23,7 +23,7 @@ from pymongo.connection import Connection
 from pymongo.errors import ConfigurationError, OperationFailure
 
 
-host = os.environ.get("DB_IP", socket.gethostname())
+host = os.environ.get("DB_IP", 'localhost')
 port = int(os.environ.get("DB_PORT", 27017))
 pair = '%s:%d' % (host, port)
 
