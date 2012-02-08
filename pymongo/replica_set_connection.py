@@ -24,7 +24,7 @@ attribute-style access:
 .. doctest::
 
   >>> from pymongo import ReplicaSetConnection
-  >>> c = ReplicaSetConnection('localhost:31017', replicaSet='repl0')
+  >>> c = ReplicaSetConnection('localhost:27017', replicaSet='repl0')
   >>> c.test_database
   Database(ReplicaSetConnection([u'...', u'...']), u'test_database')
   >>> c['test_database']

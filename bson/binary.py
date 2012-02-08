@@ -136,26 +136,28 @@ class UUIDLegacy(Binary):
     .. doctest::
 
       >>> import uuid
-      >>> from bson.binary import Binary, UUIDLegacy
+      >>> from bson.binary import Binary, UUIDLegacy, UUID_SUBTYPE
       >>> my_uuid = uuid.uuid4()
-      >>> db.test.insert({'uuid': Binary(my_uuid.bytes, 3)})
+      >>> coll = db.test
+      >>> coll.uuid_subtype = UUID_SUBTYPE
+      >>> coll.insert({'uuid': Binary(my_uuid.bytes, 3)})
       ObjectId('...')
-      >>> db.test.find({'uuid': my_uuid}).count()
+      >>> coll.find({'uuid': my_uuid}).count()
       0
-      >>> db.test.find({'uuid': UUIDLegacy(my_uuid)}).count()
+      >>> coll.find({'uuid': UUIDLegacy(my_uuid)}).count()
       1
-      >>> db.test.find({'uuid': UUIDLegacy(my_uuid)})[0]['uuid']
+      >>> coll.find({'uuid': UUIDLegacy(my_uuid)})[0]['uuid']
       UUID('...')
       >>>
       >>> # Convert from subtype 3 to subtype 4
-      >>> doc = db.test.find_one({'uuid': UUIDLegacy(my_uuid)})
-      >>> db.test.save(doc)
+      >>> doc = coll.find_one({'uuid': UUIDLegacy(my_uuid)})
+      >>> coll.save(doc)
       ObjectId('...')
-      >>> db.test.find({'uuid': UUIDLegacy(my_uuid)}).count()
+      >>> coll.find({'uuid': UUIDLegacy(my_uuid)}).count()
       0
-      >>> db.test.find({'uuid': {'$in': [UUIDLegacy(my_uuid), my_uuid]}}).count()
+      >>> coll.find({'uuid': {'$in': [UUIDLegacy(my_uuid), my_uuid]}}).count()
       1
-      >>> db.test.find_one({'uuid': my_uuid})['uuid']
+      >>> coll.find_one({'uuid': my_uuid})['uuid']
       UUID('...')
 
     Raises TypeError if `obj` is not an instance of :class:`~uuid.UUID`.
