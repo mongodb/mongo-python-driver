@@ -27,7 +27,8 @@ def get_command_line(connection):
     return command_line['argv']
 
 def server_started_with_auth(connection):
-    return '--auth' in get_command_line(connection)
+    argv = get_command_line(connection)
+    return '--auth' in argv or '--keyFile' in argv
 
 def server_is_master_with_slave(connection):
     return '--master' in get_command_line(connection)

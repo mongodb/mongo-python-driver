@@ -15,7 +15,6 @@
 """Test the pymongo common module."""
 
 import os
-import socket
 import unittest
 import warnings
 
