@@ -15,7 +15,7 @@
 """Test pairing support.
 
 These tests are skipped by nose by default (since they depend on having a
-paired setup. To run the tests just run this file manually.
+paired setup. To run the tests just run this file manually).
 
 Left and right nodes will be $DB_IP:$DB_PORT and $DB_IP2:$DB_PORT2 or
 localhost:27017 and localhost:27018 by default.
@@ -39,11 +39,11 @@ class TestPaired(unittest.TestCase):
     def setUp(self):
         left_host = os.environ.get("DB_IP", "localhost")
         left_port = int(os.environ.get("DB_PORT", 27017))
-        self.left = (left_host, left_port)
+        self.left = "%s:%s" % (left_host, left_port)
         right_host = os.environ.get("DB_IP2", "localhost")
         right_port = int(os.environ.get("DB_PORT2", 27018))
-        self.right = (right_host, right_port)
-        self.bad = ("somedomainthatdoesntexist.org", 12345)
+        self.right = "%s:%s" % (right_host, right_port)
+        self.bad = "%s:%s" % ("somedomainthatdoesntexist.org", 12345)
 
     def tearDown(self):
         pass
@@ -53,55 +53,40 @@ class TestPaired(unittest.TestCase):
             from nose.plugins.skip import SkipTest
             raise SkipTest()
 
-    def test_types(self):
-        self.skip()
-        self.assertRaises(TypeError, Connection.paired, 5)
-        self.assertRaises(TypeError, Connection.paired, "localhost")
-        self.assertRaises(TypeError, Connection.paired, None)
-        self.assertRaises(TypeError, Connection.paired, 5, self.right)
-        self.assertRaises(TypeError, Connection.paired,
-                          "localhost", self.right)
-        self.assertRaises(TypeError, Connection.paired, None, self.right)
-        self.assertRaises(TypeError, Connection.paired, self.left, 5)
-        self.assertRaises(TypeError, Connection.paired, self.left, "localhost")
-        self.assertRaises(TypeError, Connection.paired, self.left, "localhost")
 
     def test_connect(self):
         self.skip()
-        self.assertRaises(ConnectionFailure, Connection.paired,
-                          self.bad, self.bad)
+        self.assertRaises(ConnectionFailure, Connection,
+                          [self.bad, self.bad])
 
-        connection = Connection.paired(self.left, self.right)
+        connection = Connection([self.left, self.right])
         self.assert_(connection)
 
         host = connection.host
         port = connection.port
 
-        connection = Connection.paired(self.right, self.left)
+        connection = Connection([self.right, self.left])
         self.assert_(connection)
         self.assertEqual(host, connection.host)
         self.assertEqual(port, connection.port)
 
         slave = self.left == (host, port) and self.right or self.left
-        self.assertRaises(ConnectionFailure, Connection.paired,
-                          slave, self.bad)
-        self.assertRaises(ConnectionFailure, Connection.paired,
-                          self.bad, slave)
+        self.assertRaises(ConnectionFailure, Connection,
+                          [slave, self.bad])
+        self.assertRaises(ConnectionFailure, Connection,
+                          [self.bad, slave])
 
     def test_repr(self):
         self.skip()
-        connection = Connection.paired(self.left, self.right)
+        connection = Connection([self.left, self.right])
 
         self.assertEqual(repr(connection),
-                         "Connection(['%s:%s', '%s:%s'])" %
-                         (self.left[0],
-                          self.left[1],
-                          self.right[0],
-                          self.right[1]))
+                         "Connection(['%s', '%s'])" %
+                         (self.left, self.right))
 
     def test_basic(self):
         self.skip()
-        connection = Connection.paired(self.left, self.right)
+        connection = Connection([self.left, self.right])
 
         db = connection.pymongo_test
 
@@ -112,7 +97,7 @@ class TestPaired(unittest.TestCase):
 
     def test_end_request(self):
         self.skip()
-        connection = Connection.paired(self.left, self.right)
+        connection = Connection([self.left, self.right])
         db = connection.pymongo_test
 
         for _ in range(100):
