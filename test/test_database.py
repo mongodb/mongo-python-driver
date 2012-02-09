@@ -39,7 +39,7 @@ from pymongo.son_manipulator import (AutoReference,
                                      NamespaceInjector,
                                      ObjectIdShuffler)
 from test import version
-from utils import server_started_with_auth
+from test.utils import server_started_with_auth
 from test.test_connection import get_connection
 
 
