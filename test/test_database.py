@@ -19,6 +19,7 @@ import sys
 
 sys.path[0:0] = [""]
 import unittest
+
 from nose.plugins.skip import SkipTest
 
 from bson.code import Code
@@ -38,7 +39,7 @@ from pymongo.son_manipulator import (AutoReference,
                                      NamespaceInjector,
                                      ObjectIdShuffler)
 from test import version
-from testutils import server_started_with_auth
+from utils import server_started_with_auth
 from test.test_connection import get_connection
 
 

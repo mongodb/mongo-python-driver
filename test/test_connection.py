@@ -20,7 +20,6 @@ import sys
 import time
 import thread
 import unittest
-from test.testutils import server_is_master_with_slave
 
 sys.path[0:0] = [""]
 
@@ -37,6 +36,7 @@ from pymongo.errors import (AutoReconnect,
                             InvalidURI,
                             OperationFailure)
 from test import version
+from test.utils import server_is_master_with_slave
 
 
 def get_connection(*args, **kwargs):
