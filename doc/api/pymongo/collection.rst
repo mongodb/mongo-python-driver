@@ -8,7 +8,7 @@
    .. autodata:: pymongo.DESCENDING
    .. autodata:: pymongo.GEO2D
 
-   .. autoclass:: pymongo.collection.Collection(database, name,[, create=False[, **kwargs]]])
+   .. autoclass:: pymongo.collection.Collection(database, name[, create=False[, **kwargs]]])
 
       .. describe:: c[name] || c.name
 
