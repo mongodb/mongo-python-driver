@@ -475,7 +475,7 @@ class TestConnection(TestConnectionReplicaSetBase):
         # Try a few simple things
         connection = ReplicaSetConnection("mongodb://[::1]:%d" % (port,),
                                           replicaSet=self.name)
-        connection = ReplicaSetConnection("mongodb://[::1]:%d/?slaveOk=true;"
+        connection = ReplicaSetConnection("mongodb://[::1]:%d/?safe=true;"
                                           "replicaSet=%s" % (port, self.name))
         connection = ReplicaSetConnection("[::1]:%d,localhost:"
                                           "%d" % (port, port),
