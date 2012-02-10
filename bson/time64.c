@@ -56,7 +56,6 @@ gmtime64_r() is a 64-bit equivalent of gmtime_r().
 /* Spec says except for stftime() and the _r() functions, these
    all return static memory.  Stabbings! */
 static struct TM   Static_Return_Date;
-static char        Static_Return_String[35];
 
 static const int days_in_month[2][12] = {
     {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31},
@@ -784,31 +783,6 @@ int valid_tm_mon( const struct TM* date ) {
 }
 
 
-char *asctime64_r( const struct TM* date, char *result ) {
-    /* I figure everything else can be displayed, even hour 25, but if
-       these are out of range we walk off the name arrays */
-    if( !valid_tm_wday(date) || !valid_tm_mon(date) )
-        return NULL;
-
-    sprintf(result, TM64_ASCTIME_FORMAT,
-        wday_name[date->tm_wday],
-        mon_name[date->tm_mon],
-        date->tm_mday, date->tm_hour,
-        date->tm_min, date->tm_sec,
-        1900 + date->tm_year);
-
-    return result;
-}
-
-
-char *ctime64_r( const Time64_T* time, char* result ) {
-    struct TM date;
-
-    localtime64_r( time, &date );
-    return asctime64_r( &date, result );
-}
-
-
 /* Non-thread safe versions of the above */
 struct TM *localtime64(const Time64_T *time) {
 #ifdef _MSC_VER
@@ -821,17 +795,4 @@ struct TM *localtime64(const Time64_T *time) {
 
 struct TM *gmtime64(const Time64_T *time) {
     return gmtime64_r(time, &Static_Return_Date);
-}
-
-char *asctime64( const struct TM* date ) {
-    return asctime64_r( date, Static_Return_String );
-}
-
-char *ctime64( const Time64_T* time ) {
-#ifdef _MSC_VER
-    _tzset();
-#else
-    tzset();
-#endif
-    return asctime64(localtime64(time));
 }
