@@ -30,7 +30,7 @@
       .. automethod:: insert(doc_or_docs[, manipulate=True[, safe=False[, check_keys=True[, continue_on_error=False[, **kwargs]]]])
       .. automethod:: save(to_save[, manipulate=True[, safe=False[, **kwargs]]])
       .. automethod:: update(spec, document[, upsert=False[, manipulate=False[, safe=False[, multi=False[, **kwargs]]]]])
-      .. automethod:: remove([spec_or_object_id=None[, safe=False[, **kwargs]]])
+      .. automethod:: remove([spec_or_id=None[, safe=False[, **kwargs]]])
       .. automethod:: drop
       .. automethod:: find([spec=None[, fields=None[, skip=0[, limit=0[, timeout=True[, snapshot=False[, tailable=False[, sort=None[, max_scan=None[, as_class=None[, slave_okay=False[, await_data=False[, partial=False[, manipulate=True[, read_preference=ReadPreference.PRIMARY[, **kwargs]]]]]]]]]]]]]]]])
       .. automethod:: find_one([spec_or_id=None[, *args[, **kwargs]]])
