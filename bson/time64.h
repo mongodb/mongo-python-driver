@@ -37,45 +37,19 @@ struct TM64 {
 #define TM      TM64
 #else
 #define TM      tm
-#endif   
+#endif
 
 
 /* Declare public functions */
 struct TM *gmtime64_r    (const Time64_T *, struct TM *);
-struct TM *localtime64_r (const Time64_T *, struct TM *);
-struct TM *gmtime64      (const Time64_T *);
-struct TM *localtime64   (const Time64_T *);
-
-char *asctime64          (const struct TM *);
-char *asctime64_r        (const struct TM *, char *);
-
-char *ctime64            (const Time64_T*);
-char *ctime64_r          (const Time64_T*, char*);
 
 Time64_T   timegm64      (const struct TM *);
-Time64_T   mktime64      (const struct TM *);
-Time64_T   timelocal64   (const struct TM *);
 
-
-/* Not everyone has gm/localtime_r(), provide a replacement */
-#ifdef HAS_LOCALTIME_R
-#    define LOCALTIME_R(clock, result) localtime_r(clock, result)
-#else
-#    define LOCALTIME_R(clock, result) fake_localtime_r(clock, result)
-#endif
+/* Not everyone has gmtime_r(), provide a replacement */
 #ifdef HAS_GMTIME_R
 #    define GMTIME_R(clock, result)    gmtime_r(clock, result)
 #else
 #    define GMTIME_R(clock, result)    fake_gmtime_r(clock, result)
 #endif
-
-
-/* Use a different asctime format depending on how big the year is */
-#ifdef USE_TM64
-    #define TM64_ASCTIME_FORMAT "%.3s %.3s%3d %.2d:%.2d:%.2d %lld\n"
-#else
-    #define TM64_ASCTIME_FORMAT "%.3s %.3s%3d %.2d:%.2d:%.2d %d\n"
-#endif
-
 
 #endif
