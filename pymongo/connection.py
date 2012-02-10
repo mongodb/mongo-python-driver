@@ -118,19 +118,25 @@ class _Pool(threading.local):
     def connect(self, host, port):
         """Connect to Mongo and return a new (connected) socket.
         """
-        try:
-            # Prefer IPv4. If there is demand for an option
-            # to specify one or the other we can add it later.
-            s = socket.socket(socket.AF_INET)
-            s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        if '/' in host:
+            # Try to connect to UNIX socket, if host is a file path
+            s = socket.socket(socket.AF_UNIX)
             s.settimeout(self.conn_timeout or 20.0)
-            s.connect((host, port))
-        except socket.gaierror:
-            # If that fails try IPv6
-            s = socket.socket(socket.AF_INET6)
-            s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-            s.settimeout(self.conn_timeout or 20.0)
-            s.connect((host, port))
+            s.connect(host)
+        else:
+            try:
+                # Prefer IPv4. If there is demand for an option
+                # to specify one or the other we can add it later.
+                s = socket.socket(socket.AF_INET)
+                s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+                s.settimeout(self.conn_timeout or 20.0)
+                s.connect((host, port))
+            except socket.gaierror:
+                # If that fails try IPv6
+                s = socket.socket(socket.AF_INET6)
+                s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+                s.settimeout(self.conn_timeout or 20.0)
+                s.connect((host, port))
 
         if self.use_ssl:
             try:
