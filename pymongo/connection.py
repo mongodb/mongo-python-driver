@@ -120,6 +120,8 @@ class _Pool(threading.local):
         """
         if '/' in host:
             # Try to connect to UNIX socket, if host is a file path
+            if not hasattr(socket, "AF_UNIX"):
+                raise ConfigurationError("UNIX-sockets are not supported on this system")
             s = socket.socket(socket.AF_UNIX)
             s.settimeout(self.conn_timeout or 20.0)
             s.connect(host)
