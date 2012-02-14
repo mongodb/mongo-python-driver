@@ -26,6 +26,14 @@ needs. Even if you eventually come to the decision to use one of these
 layers, the time spent working directly with the driver will have
 increased your understanding of how MongoDB actually works.
 
+Humongolus
+   The name stems from the combination of Mongo and `Homunculus <http://en.wikipedia.org/wiki/Homunculus>`_.
+   With the idea being that you create your API based on your system requirements.
+   A framework for creating models/schemas on top of MongoDB. It ex
+   It helps enforce types and gives a more accessible API to Mongo 
+   through the use of the models. It tries to be as "pythonic" as possible 
+   and stays out of the way when you need it to. It includes a decent collection
+   of default field types
 
 MongoKit
   The `MongoKit <http://github.com/namlook/mongokit>`_ framework
