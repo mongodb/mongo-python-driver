@@ -27,12 +27,13 @@ layers, the time spent working directly with the driver will have
 increased your understanding of how MongoDB actually works.
 
 Humongolus
-   `Humongolus <https://github.com/entone/Humongolus>` is a lightweight ORM framework 
+   `Humongolus <https://github.com/entone/Humongolus>`_ is a lightweight ORM framework 
    for Python and MongoDB. The name comes from the combination of MongoDB 
-   and `Homunculus <http://en.wikipedia.org/wiki/Homunculus>`_(the concept of a miniature though fully formed human body). 
+   and `Homunculus <http://en.wikipedia.org/wiki/Homunculus>`_ (the concept of a miniature though fully formed human body). 
    Humongolus allows you to create models/schemas with robust validation. 
    It attempts to be as pythonic as possible and exposes the pymongo cursor objects whenever possible. 
-   There is also a fairly thorough field library. The code is available for download at `GitHub <https://github.com/entone/Humongolus>`_.
+   The code is available for download at `GitHub <https://github.com/entone/Humongolus>`_. 
+   Tutorials and usage examples are also available at GitHub.
 
 MongoKit
   The `MongoKit <http://github.com/namlook/mongokit>`_ framework
