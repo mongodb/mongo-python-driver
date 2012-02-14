@@ -400,14 +400,14 @@ static int _write_element_to_buffer(buffer_t buffer, int type_byte,
     } else if (PyObject_IsInstance(value, Code)) {
         int start_position,
             length_location,
-            length,
-            no_scope;
-        PyObject* scope;
+            length;
 
-        scope = PyObject_GetAttrString(value, "scope");
-        no_scope = PyObject_Not(scope);
+        PyObject* scope = PyObject_GetAttrString(value, "scope");
+        if (!scope) {
+            return 0;
+        }
 
-        if (no_scope) {
+        if (!PyObject_Size(scope)) {
             Py_DECREF(scope);
 
             *(buffer_get_buffer(buffer) + type_byte) = 0x0D;
@@ -428,9 +428,6 @@ static int _write_element_to_buffer(buffer_t buffer, int type_byte,
             return 0;
         }
 
-        if (!scope) {
-            return 0;
-        }
         if (!write_dict(buffer, scope, 0, uuid_subtype, 0)) {
             Py_DECREF(scope);
             return 0;
