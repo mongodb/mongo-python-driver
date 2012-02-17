@@ -28,6 +28,7 @@ from nose.plugins.skip import SkipTest
 
 from bson.son import SON
 from bson.tz_util import utc
+from mock import Mock, patch
 from pymongo import ReadPreference
 from pymongo.connection import Connection
 from pymongo.replica_set_connection import ReplicaSetConnection
@@ -156,6 +157,14 @@ class TestConnection(TestConnectionReplicaSetBase):
         self.assertEqual(connection.test, connection["test"])
         self.assertEqual(connection.test, Database(connection, "test"))
         connection.close()
+
+    def test_auto_reconnect_exception_when_read_preference_is_secondary(self):
+        c = self._get_connection()
+        db = c.pymongo_test
+
+        with patch('socket.socket.sendall', Mock(side_effect=socket.error)):
+            cursor = db.test.find(read_preference=ReadPreference.SECONDARY)
+            self.assertRaises(AutoReconnect, cursor.next)
 
     def test_operations(self):
         c = self._get_connection()
