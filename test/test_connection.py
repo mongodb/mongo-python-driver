@@ -16,6 +16,7 @@
 
 import datetime
 import os
+import socket
 import sys
 import time
 import thread
@@ -29,6 +30,7 @@ from bson.son import SON
 from bson.tz_util import utc
 from pymongo.connection import Connection
 from pymongo.database import Database
+from pymongo.pool import NO_REQUEST, NO_SOCKET_YET
 from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
                             ConnectionFailure,
@@ -492,24 +494,33 @@ with get_connection() as connection:
 
         # Calling conn.close() has reset the pool
         self.assertEqual(0, len(connection._Connection__pool.sockets))
+    
+    def get_sock(self, pool):
+        sock, from_pool = pool.get_socket((self.host, self.port))
+        return sock
 
+    def assertSameSock(self, pool):
+        self.assertEqual(self.get_sock(pool), self.get_sock(pool))
+
+    def assertDifferentSock(self, pool):
+        self.assertNotEqual(self.get_sock(pool), self.get_sock(pool))
+
+    def assertNoRequest(self, pool):
+        self.assertEqual(NO_REQUEST, pool._get_request_socket())
+
+    def assertNoSocketYet(self, pool):
+        self.assertEqual(NO_SOCKET_YET, pool._get_request_socket())
+
+    def assertRequestSocket(self, pool):
+        self.assert_(isinstance(pool._get_request_socket(), socket.socket))
+        
     def test_with_start_request(self):
         conn = get_connection()
         pool = conn._Connection__pool
 
-        def get_sock():
-            sock, from_pool = pool.get_socket((self.host, self.port))
-            return sock
-
-        def assertSameSock():
-            self.assertEqual(get_sock(), get_sock())
-
-        def assertDifferentSock():
-            self.assertNotEqual(get_sock(), get_sock())
-
         # No request started
-        self.assertEqual(0, len(pool.requests))
-        assertDifferentSock()
+        self.assertNoRequest(pool)
+        self.assertDifferentSock(pool)
 
         # Start a request
         request_context_mgr = conn.start_request()
@@ -517,13 +528,14 @@ with get_connection() as connection:
             isinstance(request_context_mgr, object)
         )
 
-        self.assertEqual(1, len(pool.requests))
-        assertSameSock()
+        self.assertNoSocketYet(pool)
+        self.assertSameSock(pool)
+        self.assertRequestSocket(pool)
 
         # End request
         request_context_mgr.__exit__(None, None, None)
-        self.assertEqual(0, len(pool.requests))
-        assertDifferentSock()
+        self.assertNoRequest(pool)
+        self.assertDifferentSock(pool)
 
         # Test the 'with' statement
         if sys.version_info >= (2, 6):
@@ -532,12 +544,41 @@ with get_connection() as connection:
             exec """
 with conn.start_request() as request:
     self.assertEqual(conn, request.connection)
-    self.assertEqual(1, len(pool.requests))
+    self.assertNoSocketYet(pool)
+    self.assertSameSock(pool)
+    self.assertRequestSocket(pool)
 """ in locals()
 
             # Request has ended
-            self.assertEqual(0, len(pool.requests))
-            assertDifferentSock()
+            self.assertNoRequest(pool)
+            self.assertDifferentSock(pool)
+    
+    def test_auto_start_request(self):
+        for bad_horrible_value in (None, 5, 'hi!'):
+            self.assertRaises(
+                (TypeError, ConfigurationError),
+                lambda: get_connection(auto_start_request=bad_horrible_value)
+            )
+            
+        # test_with_start_request() tests that auto_start_request defaults to
+        # False, so we needn't check that here
+        conn = get_connection(auto_start_request=True)
+        pool = conn._Connection__pool
+
+        # Request started already, just from Connection constructor - it's a
+        # bit weird, but Connection does some socket stuff when it initializes
+        # and ends up in a request
+        self.assertRequestSocket(pool)
+        self.assertSameSock(pool)
+
+        conn.end_request()
+        self.assertNoRequest(pool)
+        self.assertDifferentSock(pool)
+
+        # Trigger auto_start_request
+        conn.db.test.find_one()
+        self.assertRequestSocket(pool)
+        self.assertSameSock(pool)
 
     def test_interrupt_signal(self):
         # Test fix for PYTHON-294 -- make sure Connection closes its

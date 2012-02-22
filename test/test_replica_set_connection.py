@@ -39,7 +39,7 @@ from pymongo.errors import (AutoReconnect,
                             InvalidName,
                             OperationFailure)
 from test import version
-from testutils import delay
+from test.utils import delay
 
 
 host = os.environ.get("DB_IP", 'localhost')

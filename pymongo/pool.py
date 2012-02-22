@@ -26,9 +26,11 @@ except ImportError:
     have_ssl = False
 
 
-class Pool(object):
-    """A simple connection pool.
-    """
+NO_REQUEST    =  None
+NO_SOCKET_YET = -1
+
+
+class BasePool(object):
     def __init__(self, pair, max_size, net_timeout, conn_timeout, use_ssl):
         """
         :Parameters:
@@ -39,7 +41,6 @@ class Pool(object):
           - `use_ssl`: bool, if True use an encrypted connection
         """
         self._reset()
-
         self.pair = pair
         self.max_size = max_size
         self.net_timeout = net_timeout
@@ -53,13 +54,6 @@ class Pool(object):
         # Map socket -> set of (host, port, database) triples for which this
         # socket has been authorized
         self.authsets = {}
-
-        # Map thread -> socket, or (thread, greenlet) -> socket
-        self.requests = {}
-
-    def _request_key(self):
-        """Overridable"""
-        return id(threading.currentThread())
 
     def _check_pair_arg(self, pair):
         if not (self.pair or pair):
@@ -125,9 +119,8 @@ class Pool(object):
             self._reset()
 
         # Have we opened a socket for this request?
-        request_key = self._request_key()
-        sock = self.requests.get(request_key)
-        if sock:
+        sock = self._get_request_socket()
+        if sock not in (NO_SOCKET_YET, NO_REQUEST):
             return sock, True
 
         # We're not in a request, just get any free socket or create one
@@ -136,40 +129,37 @@ class Pool(object):
         except KeyError:
             sock, from_pool = self.connect(pair), False
 
-        if request_key in self.requests:
-            # self.requests[request_key] is None, so start_request has been
-            # called earlier. Let's use this socket for this request until
+        if self._get_request_socket() == NO_SOCKET_YET:
+            # start_request has been called but we haven't assigned a socket to
+            # the request yet. Let's use this socket for this request until
             # end_request.
-            self.requests[request_key] = sock
+            self._set_request_socket(sock)
 
         return sock, from_pool
 
     def start_request(self):
-        # If we're already in a request, do nothing, otherwise put None in the
-        # dict to indicate we're in a request. None will be replaced by a socket
-        # as soon as one is needed.
-        self.requests.setdefault(self._request_key(), None)
+        if self._get_request_socket() is NO_REQUEST:
+            # Add a placeholder value so we know we're in a request, but we
+            # have no socket assigned to the request yet.
+            self._set_request_socket(NO_SOCKET_YET)
 
     def end_request(self):
-        request_key = self._request_key()
-        request_sock = self.requests.get(request_key)
-
-        if request_key in self.requests:
-            del self.requests[request_key]
-
-        self.return_socket(request_sock)
+        sock = self._get_request_socket()
+        self._set_request_socket(NO_REQUEST)
+        self.return_socket(sock)
 
     def discard_socket(self, sock):
         """Close and discard the active socket.
         """
         if sock:
-            sock.close()
-            request_key = self._request_key()
-            request_sock = self.requests.get(request_key)
+            if sock in self.authsets:
+                del self.authsets[sock]
 
-            # We're ending the request
-            if request_sock == sock:
-                del self.requests[request_key]
+            if sock == self._get_request_socket():
+                # We're ending the request
+                self._set_request_socket(NO_REQUEST)
+
+            sock.close()
 
     def return_socket(self, sock):
         """Return the socket currently in use to the pool. If the
@@ -179,23 +169,45 @@ class Pool(object):
             self._reset()
         elif sock:
             # Don't really return a socket if we're in a request
-            request_key = self._request_key()
-            if sock is not self.requests.get(request_key):
+            if sock is not self._get_request_socket():
                 # There's a race condition here, but we deliberately
                 # ignore it.  It means that if the pool_size is 10 we
                 # might actually keep slightly more than that.
                 if len(self.sockets) < self.max_size:
-                    if sock in self.sockets:
-                        # Unexpected, but let it pass
-                        pass
                     self.sockets.add(sock)
                 else:
-                    sock.close()
+                    self.discard_socket(sock)
 
     def get_authset(self, sock):
         """Set of database names for which this socket has been authenticated
         """
         return self.authsets.setdefault(sock, set())
+
+    # Overridable methods for Pools. These methods must simply set and get an
+    # arbitrary value associated with the execution context (thread, greenlet,
+    # Tornado StackContext, ...) in which we want to use a single socket.
+    def _set_request_socket(self, sock):
+        raise NotImplementedError
+
+    def _get_request_socket(self):
+        raise NotImplementedError
+
+
+class Pool(BasePool):
+    """A simple connection pool.
+
+    Calling start_request() acquires a thread-local socket, which is returned
+    to the pool when the thread calls end_request() or dies.
+    """
+    def __init__(self, *args, **kwargs):
+        super(Pool, self).__init__(*args, **kwargs)
+        self.thread_local = threading.local()
+
+    def _set_request_socket(self, sock):
+        self.thread_local.sock = sock
+
+    def _get_request_socket(self):
+        return getattr(self.thread_local, 'sock', NO_REQUEST)
 
 
 class Request(object):

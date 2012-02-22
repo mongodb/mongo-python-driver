@@ -170,10 +170,15 @@ class Connection(common.BaseObject):
           - `ssl`: If True, create the connection to the server using SSL.
           - `read_preference`: The read preference for this connection.
             See :class:`~pymongo.ReadPreference` for available options.
+          - `auto_start_request`: If True, each thread that accesses this
+            connection
           - `slave_okay` or `slaveOk` (deprecated): Use `read_preference`
             instead.
 
         .. seealso:: :meth:`end_request`
+        .. versionchanged:: 2.1.1+
+           Stopped automatically starting requests by default and added
+           `auto_start_request` parameter back.
         .. versionchanged:: 2.1
            Support `w` = integer or string.
            Added `ssl` option.
@@ -275,6 +280,7 @@ class Connection(common.BaseObject):
 
         self.__document_class = document_class
         self.__tz_aware = tz_aware
+        self.__auto_start_request = options.get('auto_start_request', False)
 
         # cache of existing indexes used by ensure_index ops
         self.__index_cache = {}
@@ -596,6 +602,10 @@ class Connection(common.BaseObject):
             host, port = self.__find_node()
 
         try:
+            if self.__auto_start_request:
+                # No effect if a request already started
+                self.start_request()
+
             sock, from_pool = self.__pool.get_socket((host, port))
         except socket.error, why:
             self.disconnect()
