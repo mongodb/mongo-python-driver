@@ -815,7 +815,7 @@ class ReplicaSetConnection(common.BaseObject):
             except AutoReconnect, why:
                 self.disconnect()
                 errors.append(why)
-        raise AutoReconnect(', '.join(errors))
+        raise AutoReconnect(', '.join(map(str, errors)))
 
     def __cmp__(self, other):
         # XXX: Implement this?
