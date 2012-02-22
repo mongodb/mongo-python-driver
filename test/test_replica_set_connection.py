@@ -28,7 +28,6 @@ from nose.plugins.skip import SkipTest
 
 from bson.son import SON
 from bson.tz_util import utc
-from mock import Mock, patch
 from pymongo import ReadPreference
 from pymongo.connection import Connection
 from pymongo.replica_set_connection import ReplicaSetConnection
@@ -162,9 +161,17 @@ class TestConnection(TestConnectionReplicaSetBase):
         c = self._get_connection()
         db = c.pymongo_test
 
-        with patch('socket.socket.sendall', Mock(side_effect=socket.error)):
+        def raise_socket_error(*args, **kwargs):
+            raise socket.error
+
+        old_sendall = socket.socket.sendall
+        socket.socket.sendall = raise_socket_error
+
+        try:
             cursor = db.test.find(read_preference=ReadPreference.SECONDARY)
             self.assertRaises(AutoReconnect, cursor.next)
+        finally:
+            socket.socket.sendall = old_sendall
 
     def test_operations(self):
         c = self._get_connection()
