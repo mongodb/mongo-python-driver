@@ -14,9 +14,11 @@
 
 import os
 import socket
+import thread
 import threading
 
 from pymongo.errors import ConnectionFailure, OperationFailure
+import weakref
 
 
 have_ssl = True
@@ -56,13 +58,17 @@ class BasePool(object):
         self.use_ssl = use_ssl
 
     def reset(self):
+        in_request = self.in_request()
         self.pid = os.getpid()
         self.sockets = set()
+
+        # Reset subclass's data structures
+        self._reset()
 
         # If we were in a request before the reset, then delete the request
         # socket, but resume the request with a new socket the next time
         # get_socket() is called.
-        if self.in_request():
+        if in_request:
             self._set_request_socket(NO_SOCKET_YET)
 
     def _check_pair_arg(self, pair):
@@ -197,6 +203,16 @@ class BasePool(object):
     def _get_request_socket(self):
         raise NotImplementedError
 
+    def _reset(self):
+        raise NotImplementedError
+
+
+def try_pop(dct, key):
+    try:
+        return dct.pop(key)
+    except KeyError:
+        return None
+
 
 class Pool(BasePool):
     """A simple connection pool.
@@ -205,14 +221,47 @@ class Pool(BasePool):
     to the pool when the thread calls end_request() or dies.
     """
     def __init__(self, *args, **kwargs):
-        self.thread_local = threading.local()
+        self.tid_to_socket = {}
+        self.threadref_to_tid = {}
         super(Pool, self).__init__(*args, **kwargs)
 
     def _set_request_socket(self, sock_info):
-        self.thread_local.sock_info = sock_info
+        tid = thread.get_ident()
+        self.tid_to_socket[tid] = sock_info
+
+        if isinstance(sock_info, SocketInfo):
+            # We're binding a socket to a thread - this thread will use this
+            # socket until it calls end_request() or dies.  We need some way to
+            # know if this thread dies but doesn't call end_request(), so we
+            # can return this socket to the pool.  Make a weakref to the Thread
+            # object and set the weakref's callback to self.on_thread_dying.
+            current_thread = threading.currentThread()
+            threadref = weakref.ref(current_thread, self.on_thread_dying)
+            self.threadref_to_tid[threadref] = tid
+        else:
+            try_pop(self.threadref_to_tid, tid)
 
     def _get_request_socket(self):
-        return getattr(self.thread_local, 'sock_info', NO_REQUEST)
+        tid = thread.get_ident()
+        return self.tid_to_socket.get(tid, NO_REQUEST)
+
+    def _reset(self):
+        self.tid_to_socket = {}
+        self.threadref_to_tid = {}
+
+    def on_thread_dying(self, threadref):
+        # We're probably on the main thread here, not the thread to which
+        # threadref refers. Get its thread_id.
+        tid = try_pop(self.threadref_to_tid, threadref)
+        if tid is None:
+            # This thread didn't call start_request without a matching
+            # end_request.
+            return
+
+        # End the request
+        request_sock = try_pop(self.tid_to_socket, tid)
+        if request_sock:
+            self.return_socket(request_sock)
 
 
 class Request(object):

@@ -20,6 +20,8 @@ import socket
 import sys
 import threading
 import unittest
+import thread
+import time
 
 sys.path[0:0] = [""]
 
@@ -153,7 +155,7 @@ class OneOp(threading.Thread):
         # find_one() causes the socket to be used in the request, so now it's
         # bound to this thread
         assert len(pool.sockets) == 0
-        assert pool.thread_local.sock_info == sock_info
+        assert pool._get_request_socket() == sock_info
         self.c.end_request()
 
         # The socket is back in the pool
@@ -179,13 +181,13 @@ class CreateAndReleaseSocket(threading.Thread):
         # max_size configuration and closes extra sockets as they're returned.
         # We need a delay here to ensure that more than max_size sockets are
         # needed at once.
-        if self.start_request:
+        for i in range(self.start_request):
             self.c.start_request()
 
         # A reasonable number of docs here, depending on how many are inserted
         # in TestPooling.setUp()
         list(self.c[DB].test.find())
-        if self.end_request:
+        for i in range(self.end_request):
             self.c.end_request()
         self.passed = True
 
@@ -435,6 +437,15 @@ class TestPooling(unittest.TestCase):
         for t in threads:
             self.assert_(t.passed)
 
+        # Critical: release refs to threads, so thread-dying callback is
+        # executed. See Pool.on_thread_dying()
+        del threads
+
+        if end_request > start_request:
+            # Let all the thread-dying callbacks execute and return sockets to
+            # the pool
+            time.sleep(1)
+
         # There's a race condition, so be lenient
         nsock = len(c._Connection__pool.sockets)
         self.assert_(
@@ -443,30 +454,29 @@ class TestPooling(unittest.TestCase):
         )
 
     def test_max_pool_size(self):
-        c = get_connection(max_pool_size=4, auto_start_request=False)
-        self._test_max_pool_size(c, False, False)
+        c = get_connection(max_pool_size=4)
+        self._test_max_pool_size(c, 0, 0)
 
     def test_max_pool_size_with_request(self):
-        c = get_connection(max_pool_size=4, auto_start_request=False)
-        self._test_max_pool_size(c, True, True)
+        c = get_connection(max_pool_size=4)
+        self._test_max_pool_size(c, 1, 1)
+
+    def test_max_pool_size_with_redundant_request(self):
+        c = get_connection(max_pool_size=4)
+        self._test_max_pool_size(c, 2, 1)
+        self._test_max_pool_size(c, 20, 1)
 
     def test_max_pool_size_with_leaked_request(self):
-        # Call start_request() but not end_request() -- this will leak requests,
-        # meaning sockets are closed when the requests end, rather than being
-        # returned to the general pool.
-        c = get_connection(max_pool_size=4, auto_start_request=False)
-        self.assertRaises(
-            AssertionError,
-            self._test_max_pool_size,
-            c,
-            start_request=True,
-            end_request=False
-        )
+        # Call start_request() but not end_request() -- when threads die, they
+        # should return their request sockets to the pool.
+        c = get_connection(max_pool_size=4)
+        self._test_max_pool_size(c, 1, 0)
 
     def test_max_pool_size_with_end_request_only(self):
         # Call end_request() but not start_request()
-        c = get_connection(max_pool_size=4, auto_start_request=False)
-        self._test_max_pool_size(c, False, True)
+        c = get_connection(max_pool_size=4)
+        self._test_max_pool_size(c, 0, 1)
+
 
 if __name__ == "__main__":
     unittest.main()
