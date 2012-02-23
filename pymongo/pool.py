@@ -207,13 +207,6 @@ class BasePool(object):
         raise NotImplementedError
 
 
-def try_pop(dct, key):
-    try:
-        return dct.pop(key)
-    except KeyError:
-        return None
-
-
 class Pool(BasePool):
     """A simple connection pool.
 
@@ -239,7 +232,7 @@ class Pool(BasePool):
             threadref = weakref.ref(current_thread, self.on_thread_dying)
             self.threadref_to_tid[threadref] = tid
         else:
-            try_pop(self.threadref_to_tid, tid)
+            self.threadref_to_tid.pop(tid, None)
 
     def _get_request_socket(self):
         tid = thread.get_ident()
@@ -252,14 +245,14 @@ class Pool(BasePool):
     def on_thread_dying(self, threadref):
         # We're probably on the main thread here, not the thread to which
         # threadref refers. Get its thread_id.
-        tid = try_pop(self.threadref_to_tid, threadref)
+        tid = self.threadref_to_tid.pop(threadref, None)
         if tid is None:
             # This thread didn't call start_request without a matching
             # end_request.
             return
 
         # End the request
-        request_sock = try_pop(self.tid_to_socket, tid)
+        request_sock = self.tid_to_socket.pop(tid, None)
         if request_sock:
             self.return_socket(request_sock)
 
