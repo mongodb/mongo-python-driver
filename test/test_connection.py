@@ -36,7 +36,7 @@ from pymongo.errors import (AutoReconnect,
                             InvalidURI,
                             OperationFailure)
 from test import version
-from test.utils import server_is_master_with_slave
+from test.utils import server_is_master_with_slave, delay
 
 
 def get_connection(*args, **kwargs):
@@ -383,14 +383,7 @@ class TestConnection(unittest.TestCase):
         no_timeout.pymongo_test.test.insert({"x": 1}, safe=True)
 
         # A $where clause that takes a second longer than the timeout
-        where_func = """function (doc) {
-  var d = new Date().getTime() + (%f + 1) * 1000;;
-  var x = new Date().getTime();
-  while (x < d) {
-    x = new Date().getTime();
-  }
-  return true;
-}""" % timeout_sec
+        where_func = delay(timeout_sec+1)
 
         def get_x(db):
             return db.test.find().where(where_func).next()["x"]
@@ -489,16 +482,20 @@ with get_connection() as connection:
         self.assertEqual(0, len(connection._Connection__pool.sockets))
 
     def test_interrupt_signal(self):
+        if sys.platform.startswith('java'):
+            # We can't figure out how to raise an exception on a thread that's
+            # blocked on a socket, whether that's the main thread or a worker,
+            # without simply killing the whole thread in Jython. This suggests
+            # PYTHON-294 can't actually occur in Jython.
+            raise SkipTest("Can't test interrupts in Jython")
+
         # Test fix for PYTHON-294 -- make sure Connection closes its
         # socket if it gets an interrupt while waiting to recv() from it.
         c = get_connection()
         db = c.pymongo_test
 
         # A $where clause which takes 1.5 sec to execute
-        where = '''function() {
-            var d = new Date((new Date()).getTime() + 1.5 * 1000);
-            while (d > (new Date())) { }; return true;
-        }'''
+        where = delay(1.5)
 
         # Need exactly 1 document so find() will execute its $where clause once
         db.drop_collection('foo')
