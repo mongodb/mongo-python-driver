@@ -330,13 +330,15 @@ class TestPooling(unittest.TestCase):
                          one(a._Connection__pool.get_socket((a.host, a.port))))
 
     def test_pool_with_fork(self):
+        # Test that separate Connections have separate Pools, and that the
+        # driver can create a new Connection after forking
         if sys.platform == "win32":
-            raise SkipTest()
+            raise SkipTest("Can't test forking on Windows")
 
         try:
             from multiprocessing import Process, Pipe
         except ImportError:
-            raise SkipTest()
+            raise SkipTest("No multiprocessing module")
 
         a = get_connection()
         a.test.test.find_one()
@@ -378,6 +380,43 @@ class TestPooling(unittest.TestCase):
         self.assert_(b_sock != c_sock)
         self.assertEqual(a_sock,
                          one(a._Connection__pool.get_socket((a.host, a.port))))
+
+    def test_request_with_fork(self):
+        try:
+            from multiprocessing import Process, Pipe
+        except ImportError:
+            raise SkipTest("No multiprocessing module")
+
+        coll = self.c.test.test
+        coll.remove()
+        coll.insert({'_id': 1}, safe=True)
+        coll.find_one()
+        self.assert_pool_size(1)
+        self.c.start_request()
+        self.assert_pool_size(1)
+        coll.find_one()
+        self.assert_pool_size(0)
+        self.assert_request_with_socket()
+
+        def f(pipe):
+            self.assertEqual({'_id':1}, coll.find_one())
+
+            # Pool has detected that we forked, and it ended the request
+            self.assert_no_request()
+            pipe.send("success")
+
+        parent_conn, child_conn = Pipe()
+        p = Process(target=f, args=(child_conn,))
+        p.start()
+        p.join(1)
+        p.terminate()
+        child_conn.close()
+
+        # Child proc ended request
+        self.assertEqual("success", parent_conn.recv())
+
+        # This proc's request continues
+        self.assert_request_with_socket()
 
     def _test_max_pool_size(self, c, start_request, end_request):
         threads = []

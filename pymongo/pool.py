@@ -200,8 +200,13 @@ class Pool(BasePool):
     to the pool when the thread calls end_request() or dies.
     """
     def __init__(self, *args, **kwargs):
-        super(Pool, self).__init__(*args, **kwargs)
         self.thread_local = threading.local()
+        super(Pool, self).__init__(*args, **kwargs)
+
+    def _reset(self):
+        # End request if we're in one
+        self.thread_local.sock = NO_REQUEST
+        super(Pool, self)._reset()
 
     def _set_request_socket(self, sock):
         self.thread_local.sock = sock
