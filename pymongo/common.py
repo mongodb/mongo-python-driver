@@ -216,7 +216,7 @@ class BaseObject(object):
     read_preference = property(__get_read_pref, __set_read_pref)
 
     def __get_safe(self):
-        """Use getlasterrer with every write operation?
+        """Use getlasterror with every write operation?
 
         .. versionadded:: 2.0
         """
