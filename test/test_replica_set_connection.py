@@ -272,7 +272,7 @@ class TestConnection(TestConnectionReplicaSetBase):
             self.assertFalse("pymongo_test1" in c.database_names())
 
             c.copy_database("pymongo_test", "pymongo_test1",
-                             username="mike", password="password")
+                            username="mike", password="password")
             self.assert_("pymongo_test1" in c.database_names())
             time.sleep(2)
             self.assertEqual("bar", c.pymongo_test1.test.find_one()["foo"])

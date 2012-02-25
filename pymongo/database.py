@@ -603,7 +603,10 @@ class Database(common.BaseObject):
 
         .. warning::
 
-          The :class:`~socket.socket` used for authentication
+          Currently, calls to
+          :meth:`~pymongo.connection.Connection.end_request` will
+          lead to unpredictable behavior in combination with
+          auth. The :class:`~socket.socket` owned by the calling
           thread will be returned to the pool, so whichever thread
           uses that :class:`~socket.socket` next will have whatever
           permissions were granted to the calling thread.

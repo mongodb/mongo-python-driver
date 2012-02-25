@@ -171,14 +171,15 @@ class Connection(common.BaseObject):
           - `read_preference`: The read preference for this connection.
             See :class:`~pymongo.ReadPreference` for available options.
           - `auto_start_request`: If True, each thread that accesses this
-            connection
+            Connection has a socket allocated to it for the thread's lifetime.
+            This ensures consistent reads, even if you read after an unsafe
+            write.
           - `slave_okay` or `slaveOk` (deprecated): Use `read_preference`
             instead.
 
         .. seealso:: :meth:`end_request`
         .. versionchanged:: 2.1.1+
-           Stopped automatically starting requests by default and added
-           `auto_start_request` parameter back.
+           Added `auto_start_request` option back.
         .. versionchanged:: 2.1
            Support `w` = integer or string.
            Added `ssl` option.
@@ -280,7 +281,7 @@ class Connection(common.BaseObject):
 
         self.__document_class = document_class
         self.__tz_aware = tz_aware
-        self.__auto_start_request = options.get('auto_start_request', False)
+        self.__auto_start_request = options.get('auto_start_request', True)
 
         # cache of existing indexes used by ensure_index ops
         self.__index_cache = {}
@@ -374,14 +375,13 @@ class Connection(common.BaseObject):
         elif db_name in self.__auth_credentials:
             del self.__auth_credentials[db_name]
 
-    def __check_auth(self, sock, pool):
+    def __check_auth(self, sock, authset):
         """Authenticate using cached database credentials.
 
         If credentials for the 'admin' database are available only
         this database is authenticated, since this gives global access.
         """
         names = set(self.__auth_credentials.iterkeys())
-        authset = pool.get_authset(sock)
 
         # Logout from any databases no longer listed in the credentials cache.
         for dbname in authset - names:
@@ -606,7 +606,7 @@ class Connection(common.BaseObject):
                 # No effect if a request already started
                 self.start_request()
 
-            sock, from_pool = self.__pool.get_socket((host, port))
+            sock, from_pool, authset = self.__pool.get_socket((host, port))
         except socket.error, why:
             self.disconnect()
             raise AutoReconnect("could not connect to "
@@ -615,10 +615,10 @@ class Connection(common.BaseObject):
         if t - self.__last_checkout > 1:
             if _closed(sock):
                 self.disconnect()
-                sock, from_pool = self.__pool.get_socket((host, port))
+                sock, from_pool, authset = self.__pool.get_socket((host, port))
         self.__last_checkout = t
         if self.__auth_credentials:
-            self.__check_auth(sock, self.__pool)
+            self.__check_auth(sock, authset)
         return sock
 
     def disconnect(self):
@@ -634,14 +634,7 @@ class Connection(common.BaseObject):
         .. seealso:: :meth:`end_request`
         .. versionadded:: 1.3
         """
-        self.__pool = self.pool_class(
-            None,
-            self.__max_pool_size,
-            self.__net_timeout,
-            self.__conn_timeout,
-            self.__use_ssl
-        )
-
+        self.__pool.reset()
         self.__host = None
         self.__port = None
 
@@ -841,17 +834,20 @@ class Connection(common.BaseObject):
 
     def start_request(self):
         """Ensure the current thread or greenlet always uses the same socket
-           until it calls end_request().
+        until it calls :meth:`end_request`. This ensures consistent reads,
+        even if you read after an unsafe write.
 
-           In Python 2.6 and above, or in Python 2.5 with
-           "from __future__ import with_statement", start_request() can be used
-           as a context manager:
-        >>> connection = pymongo.Connection()
+        In Python 2.6 and above, or in Python 2.5 with
+        "from __future__ import with_statement", :meth:`end_request` can be
+        used as a context manager:
+
+        >>> connection = pymongo.Connection(auto_start_request=False)
         >>> db = connection.test
         >>> _id = db.test_collection.insert({}, safe=True)
         >>> with connection.start_request():
         ...     for i in range(100):
         ...         db.test_collection.update({'_id': _id}, {'$set': {'i':i}})
+        ...
         ...     # Definitely read the document after the final update completes
         ...     print db.test_collection.find({'_id': _id})
 
@@ -860,6 +856,9 @@ class Connection(common.BaseObject):
         """
         self.__pool.start_request()
         return pool.Request(self)
+
+    def in_request(self):
+        return self.__pool.in_request()
 
     def end_request(self):
         """Undo :meth:`start_request` and allow this thread's connection to
@@ -1014,8 +1013,11 @@ class Connection(common.BaseObject):
         if from_host is not None:
             command["fromhost"] = from_host
 
+        in_request = self.__pool.in_request()
         try:
-            self.start_request()
+            if not in_request:
+                self.start_request()
+
             if username is not None:
                 nonce = self.admin.command("copydbgetnonce",
                                            fromhost=from_host)["nonce"]
@@ -1025,7 +1027,8 @@ class Connection(common.BaseObject):
 
             return self.admin.command("copydb", **command)
         finally:
-            self.end_request()
+            if not in_request:
+                self.end_request()
 
     @property
     def is_locked(self):

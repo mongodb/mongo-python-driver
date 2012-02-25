@@ -176,9 +176,15 @@ class ReplicaSetConnection(common.BaseObject):
           - `ssl`: If True, create the connection to the servers using SSL.
           - `read_preference`: The read preference for this connection.
             See :class:`~pymongo.ReadPreference` for available options.
+          - `auto_start_request`: If True, each thread that accesses this
+            Connection has a socket allocated to it for the thread's lifetime.
+            This ensures consistent reads, even if you read after an unsafe
+            write.
           - `slave_okay` or `slaveOk` (deprecated): Use `read_preference`
             instead.
 
+        .. versionchanged:: 2.1.1+
+           Added `auto_start_request` option.
         .. versionadded:: 2.1
         """
         self.__max_pool_size = max_pool_size
@@ -213,6 +219,7 @@ class ReplicaSetConnection(common.BaseObject):
             option, value = common.validate(option, value)
             self.__opts[option] = value
 
+        self.__auto_start_request = self.__opts.get('auto_start_request', True)
         self.__name = self.__opts.get('replicaset')
         if not self.__name:
             raise ConfigurationError("the replicaSet "
@@ -318,14 +325,13 @@ class ReplicaSetConnection(common.BaseObject):
         elif db_name in self.__auth_credentials:
             del self.__auth_credentials[db_name]
 
-    def __check_auth(self, sock, pool):
+    def __check_auth(self, sock, authset):
         """Authenticate using cached database credentials.
 
         If credentials for the 'admin' database are available only
         this database is authenticated, since this gives global access.
         """
         names = set(self.__auth_credentials.iterkeys())
-        authset = pool.get_authset(sock)
 
         # Logout from any databases no longer listed in the credentials cache.
         for dbname in authset - names:
@@ -450,7 +456,7 @@ class ReplicaSetConnection(common.BaseObject):
         pool = self.pool_class(host, self.__max_pool_size,
                                self.__net_timeout, self.__conn_timeout,
                                self.__use_ssl)
-        sock, from_pool = pool.get_socket()
+        sock, from_pool, authset = pool.get_socket()
         response = self.__simple_command(sock, 'admin', {'ismaster': 1})
         pool.return_socket(sock)
         return response, pool
@@ -594,22 +600,23 @@ class ReplicaSetConnection(common.BaseObject):
         # Couldn't find the primary.
         raise AutoReconnect(', '.join(errors))
 
-    def __socket(self, mongo, start_request=False):
+    def __socket(self, mongo):
         """Get a socket from the pool.
 
         If it's been > 1 second since the last time we checked out a
         socket, we also check to see if the socket has been closed -
-        this let's us avoid seeing *some*
+        this lets us avoid seeing *some*
         :class:`~pymongo.errors.AutoReconnect` exceptions on server
         hiccups, etc. We only do this if it's been > 1 second since
         the last socket checkout, to keep performance reasonable - we
         can't avoid those completely anyway.
         """
         pool = mongo['pool']
-        if start_request:
+        if self.__auto_start_request:
+            # No effect if a request already started
             pool.start_request()
 
-        sock, from_pool = pool.get_socket()
+        sock, from_pool, authset = pool.get_socket()
 
         now = time.time()
         if from_pool and now - mongo['last_checkout'] > 1:
@@ -619,12 +626,12 @@ class ReplicaSetConnection(common.BaseObject):
                                                 self.__net_timeout,
                                                 self.__conn_timeout,
                                                 self.__use_ssl)
-                if start_request:
+                if self.__auto_start_request:
                     pool.start_request()
-                sock, from_pool = pool.get_socket()
+                sock, from_pool, authset = pool.get_socket()
         mongo['last_checkout'] = now
         if self.__auth_credentials:
-            self.__check_auth(sock, pool)
+            self.__check_auth(sock, authset)
         return sock
 
     def disconnect(self):
@@ -838,12 +845,15 @@ class ReplicaSetConnection(common.BaseObject):
 
     def start_request(self):
         """Ensure the current thread or greenlet always uses the same socket
-           until it calls end_request().
+        until it calls :meth:`end_request`. This ensures consistent reads,
+        even if you read after an unsafe write.
 
-           In Python 2.6 and above, or in Python 2.5 with
-           "from __future__ import with_statement", start_request() can be used
-           as a context manager:
-        >>> connection = pymongo.Connection()
+        In Python 2.6 and above, or in Python 2.5 with
+        "from __future__ import with_statement", :meth:`end_request` can be
+        used as a context manager:
+
+        >>> connection = pymongo.ReplicaSetConnection(
+        ...     'localhost:27017', replicaSet='repl0')
         >>> db = connection.test
         >>> _id = db.test_collection.insert({}, safe=True)
         >>> with connection.start_request():

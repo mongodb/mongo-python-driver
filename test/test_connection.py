@@ -146,6 +146,7 @@ class TestConnection(unittest.TestCase):
 
     def test_copy_db(self):
         c = Connection(self.host, self.port)
+        self.assert_(c.in_request())
 
         self.assertRaises(TypeError, c.copy_database, 4, "foo")
         self.assertRaises(TypeError, c.copy_database, "foo", 4)
@@ -165,12 +166,17 @@ class TestConnection(unittest.TestCase):
             self.assertFalse("pymongo_test2" in c.database_names())
 
         c.copy_database("pymongo_test", "pymongo_test1")
+        # copy_database() didn't accidentally end the request
+        self.assert_(c.in_request())
 
         self.assert_("pymongo_test1" in c.database_names())
         self.assertEqual("bar", c.pymongo_test1.test.find_one()["foo"])
 
+        c.end_request()
         c.copy_database("pymongo_test", "pymongo_test2",
                         "%s:%d" % (self.host, self.port))
+        # copy_database() didn't accidentally restart the request
+        self.assertFalse(c.in_request())
 
         self.assert_("pymongo_test2" in c.database_names())
         self.assertEqual("bar", c.pymongo_test2.test.find_one()["foo"])
@@ -463,9 +469,10 @@ class TestConnection(unittest.TestCase):
     def test_contextlib(self):
         if sys.version_info < (2, 6):
             raise SkipTest()
+
         import contextlib
 
-        conn = get_connection()
+        conn = get_connection(auto_start_request=False)
         conn.pymongo_test.drop_collection("test")
         conn.pymongo_test.test.insert({"foo": "bar"})
 
@@ -483,20 +490,15 @@ with contextlib.closing(conn):
         # Calling conn.close() has reset the pool
         self.assertEqual(0, len(conn._Connection__pool.sockets))
 
-        # Assign to 'connection' so my IDE stops complaining that it's
-        # unassigned
-        connection = None
-
         exec """
 with get_connection() as connection:
     self.assertEquals("bar", connection.pymongo_test.test.find_one()["foo"])
+    # Calling conn.close() has reset the pool
+    self.assertEqual(0, len(connection._Connection__pool.sockets))
 """
 
-        # Calling conn.close() has reset the pool
-        self.assertEqual(0, len(connection._Connection__pool.sockets))
-    
     def get_sock(self, pool):
-        sock, from_pool = pool.get_socket((self.host, self.port))
+        sock, from_pool, authset = pool.get_socket((self.host, self.port))
         return sock
 
     def assertSameSock(self, pool):
@@ -515,7 +517,7 @@ with get_connection() as connection:
         self.assert_(isinstance(pool._get_request_socket(), socket.socket))
         
     def test_with_start_request(self):
-        conn = get_connection()
+        conn = get_connection(auto_start_request=False)
         pool = conn._Connection__pool
 
         # No request started
@@ -547,7 +549,7 @@ with conn.start_request() as request:
     self.assertNoSocketYet(pool)
     self.assertSameSock(pool)
     self.assertRequestSocket(pool)
-""" in locals()
+"""
 
             # Request has ended
             self.assertNoRequest(pool)
@@ -559,10 +561,10 @@ with conn.start_request() as request:
                 (TypeError, ConfigurationError),
                 lambda: get_connection(auto_start_request=bad_horrible_value)
             )
-            
-        # test_with_start_request() tests that auto_start_request defaults to
-        # False, so we needn't check that here
-        conn = get_connection(auto_start_request=True)
+
+        # auto_start_request should default to True
+        conn = get_connection()
+        self.assert_(conn.in_request())
         pool = conn._Connection__pool
 
         # Request started already, just from Connection constructor - it's a
