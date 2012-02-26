@@ -16,7 +16,6 @@
 
 import datetime
 import os
-import socket
 import sys
 import time
 import thread

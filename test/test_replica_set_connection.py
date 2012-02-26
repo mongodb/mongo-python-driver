@@ -18,7 +18,6 @@ import datetime
 import os
 import signal
 import sys
-import socket
 import time
 import thread
 import unittest
@@ -230,6 +229,7 @@ class TestConnection(TestConnectionReplicaSetBase):
 
     def test_copy_db(self):
         c = self._get_connection()
+        self.assert_(c.in_request())
 
         self.assertRaises(TypeError, c.copy_database, 4, "foo")
         self.assertRaises(TypeError, c.copy_database, "foo", 4)
@@ -246,11 +246,17 @@ class TestConnection(TestConnectionReplicaSetBase):
         self.assertFalse("pymongo_test2" in c.database_names())
 
         c.copy_database("pymongo_test", "pymongo_test1")
+        # copy_database() didn't accidentally end the request
+        self.assert_(c.in_request())
 
         self.assert_("pymongo_test1" in c.database_names())
         self.assertEqual("bar", c.pymongo_test1.test.find_one()["foo"])
 
+        c.end_request()
         c.copy_database("pymongo_test", "pymongo_test2", pair)
+        # copy_database() didn't accidentally restart the request
+        self.assertFalse(c.in_request())
+
         time.sleep(1)
 
         self.assert_("pymongo_test2" in c.database_names())
@@ -537,10 +543,7 @@ class TestConnection(TestConnectionReplicaSetBase):
         db = c.pymongo_test
 
         # A $where clause which takes 1.5 sec to execute
-        where = '''function() {
-            var d = new Date((new Date()).getTime() + 1.5 * 1000);
-            while (d > (new Date())) { }; return true;
-        }'''
+        where = delay(1.5)
 
         # Need exactly 1 document so find() will execute its $where clause once
         db.drop_collection('foo')

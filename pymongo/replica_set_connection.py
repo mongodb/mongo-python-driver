@@ -220,6 +220,7 @@ class ReplicaSetConnection(common.BaseObject):
             self.__opts[option] = value
 
         self.__auto_start_request = self.__opts.get('auto_start_request', True)
+        self.__in_request = self.__auto_start_request
         self.__name = self.__opts.get('replicaset')
         if not self.__name:
             raise ConfigurationError("the replicaSet "
@@ -875,7 +876,12 @@ class ReplicaSetConnection(common.BaseObject):
         for mongo in self.__pools.values():
             mongo['pool'].start_request()
 
+        self.__in_request = True
+
         return pool.Request(self)
+
+    def in_request(self):
+        return self.__in_request
 
     def end_request(self):
         """Undo :meth:`start_request` and allow this thread's connection to
@@ -893,6 +899,8 @@ class ReplicaSetConnection(common.BaseObject):
         """
         for mongo in self.__pools.values():
             mongo['pool'].end_request()
+
+        self.__in_request = False
 
     def __cmp__(self, other):
         # XXX: Implement this?
@@ -1010,8 +1018,10 @@ class ReplicaSetConnection(common.BaseObject):
         if from_host is not None:
             command["fromhost"] = from_host
 
+        in_request = self.in_request()
         try:
-            self.start_request()
+            if not in_request:
+                self.start_request()
             if username is not None:
                 nonce = self.admin.command("copydbgetnonce",
                                            fromhost=from_host)["nonce"]
@@ -1021,4 +1031,5 @@ class ReplicaSetConnection(common.BaseObject):
 
             return self.admin.command("copydb", **command)
         finally:
-            self.end_request()
+            if not in_request:
+                self.end_request()

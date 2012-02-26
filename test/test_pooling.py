@@ -424,6 +424,21 @@ class TestPooling(unittest.TestCase):
         # This proc's request continues
         self.assert_request_with_socket()
 
+    def test_reset_and_request(self):
+        # reset() is called after a fork, or after a socket error. Ensure that
+        # a new request is begun if a request was in progress when the reset()
+        # occurred, otherwise no request is begun.
+        p = Pool((host, port), 10, None, None, False)
+        self.assertFalse(p.in_request())
+        p.start_request()
+        self.assertTrue(p.in_request())
+        p.reset()
+        self.assertTrue(p.in_request())
+        p.end_request()
+        self.assertFalse(p.in_request())
+        p.reset()
+        self.assertFalse(p.in_request())
+
     def _test_max_pool_size(self, c, start_request, end_request):
         threads = []
         for i in range(40):

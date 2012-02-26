@@ -1014,7 +1014,7 @@ class Connection(common.BaseObject):
         if from_host is not None:
             command["fromhost"] = from_host
 
-        in_request = self.__pool.in_request()
+        in_request = self.in_request()
         try:
             if not in_request:
                 self.start_request()
