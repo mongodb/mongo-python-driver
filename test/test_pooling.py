@@ -26,7 +26,7 @@ sys.path[0:0] = [""]
 from nose.plugins.skip import SkipTest
 
 from pymongo.connection import Connection
-from pymongo.pool import Pool, NO_REQUEST, NO_SOCKET_YET
+from pymongo.pool import Pool, NO_REQUEST, NO_SOCKET_YET, SocketInfo
 from pymongo.errors import ConfigurationError
 from test_connection import get_connection
 from test.utils import delay
@@ -139,26 +139,26 @@ class OneOp(threading.Thread):
             len(pool.sockets)
         )
 
-        sock = one(pool.sockets)
+        sock_info = one(pool.sockets)
 
         self.c.start_request()
 
         # start_request() hasn't yet moved the socket from the general pool into
         # the request
         assert len(pool.sockets) == 1
-        assert one(pool.sockets) == sock
+        assert one(pool.sockets) == sock_info
 
         self.c[DB].test.find_one()
 
         # find_one() causes the socket to be used in the request, so now it's
         # bound to this thread
         assert len(pool.sockets) == 0
-        assert pool.thread_local.sock == sock
+        assert pool.thread_local.sock_info == sock_info
         self.c.end_request()
 
         # The socket is back in the pool
         assert len(pool.sockets) == 1
-        assert one(pool.sockets) == sock
+        assert one(pool.sockets) == sock_info
 
         self.passed = True
 
@@ -214,7 +214,7 @@ class TestPooling(unittest.TestCase):
 
     def assert_request_with_socket(self):
         self.assert_(isinstance(
-            self.c._Connection__pool._get_request_socket(), socket.socket
+            self.c._Connection__pool._get_request_socket(), SocketInfo
         ))
 
     def assert_pool_size(self, pool_size):
@@ -352,7 +352,7 @@ class TestPooling(unittest.TestCase):
             self.assertEqual(1,len(c._Connection__pool.sockets))
             c.test.test.find_one()
             self.assertEqual(1,len(c._Connection__pool.sockets))
-            pipe.send(one(c._Connection__pool.sockets).getsockname())
+            pipe.send(one(c._Connection__pool.sockets).sock.getsockname())
 
         cp1, cc1 = Pipe()
         cp2, cc2 = Pipe()
@@ -377,8 +377,8 @@ class TestPooling(unittest.TestCase):
 
         b_sock = cp1.recv()
         c_sock = cp2.recv()
-        self.assert_(a_sock.getsockname() != b_sock)
-        self.assert_(a_sock.getsockname() != c_sock)
+        self.assert_(a_sock.sock.getsockname() != b_sock)
+        self.assert_(a_sock.sock.getsockname() != c_sock)
         self.assert_(b_sock != c_sock)
         self.assertEqual(a_sock,
                          one(a._Connection__pool.get_socket((a.host, a.port))))
@@ -401,10 +401,12 @@ class TestPooling(unittest.TestCase):
         self.assert_request_with_socket()
 
         def f(pipe):
+            # We can still query server without error
             self.assertEqual({'_id':1}, coll.find_one())
 
-            # Pool has detected that we forked, and it ended the request
-            self.assert_no_request()
+            # Pool has detected that we forked, but resumed the request
+            self.assert_request_with_socket()
+            self.assert_pool_size(0)
             pipe.send("success")
 
         parent_conn, child_conn = Pipe()

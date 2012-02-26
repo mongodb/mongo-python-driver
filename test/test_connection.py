@@ -30,7 +30,7 @@ from bson.son import SON
 from bson.tz_util import utc
 from pymongo.connection import Connection
 from pymongo.database import Database
-from pymongo.pool import NO_REQUEST, NO_SOCKET_YET
+from pymongo.pool import NO_REQUEST, NO_SOCKET_YET, SocketInfo
 from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
                             ConnectionFailure,
@@ -498,8 +498,8 @@ with get_connection() as connection:
 """
 
     def get_sock(self, pool):
-        sock, from_pool, authset = pool.get_socket((self.host, self.port))
-        return sock
+        sock_info, from_pool = pool.get_socket((self.host, self.port))
+        return sock_info.sock
 
     def assertSameSock(self, pool):
         self.assertEqual(self.get_sock(pool), self.get_sock(pool))
@@ -514,7 +514,7 @@ with get_connection() as connection:
         self.assertEqual(NO_SOCKET_YET, pool._get_request_socket())
 
     def assertRequestSocket(self, pool):
-        self.assert_(isinstance(pool._get_request_socket(), socket.socket))
+        self.assert_(isinstance(pool._get_request_socket(), SocketInfo))
         
     def test_with_start_request(self):
         conn = get_connection(auto_start_request=False)

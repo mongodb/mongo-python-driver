@@ -375,18 +375,19 @@ class Connection(common.BaseObject):
         elif db_name in self.__auth_credentials:
             del self.__auth_credentials[db_name]
 
-    def __check_auth(self, sock, authset):
+    def __check_auth(self, sock_info):
         """Authenticate using cached database credentials.
 
         If credentials for the 'admin' database are available only
         this database is authenticated, since this gives global access.
         """
+        authset = sock_info.authset
         names = set(self.__auth_credentials.iterkeys())
 
         # Logout from any databases no longer listed in the credentials cache.
         for dbname in authset - names:
             try:
-                self.__simple_command(sock, dbname, {'logout': 1})
+                self.__simple_command(sock_info, dbname, {'logout': 1})
             # TODO: We used this socket to logout. Fix logout so we don't
             # have to catch this.
             except OperationFailure:
@@ -399,12 +400,12 @@ class Connection(common.BaseObject):
 
         if "admin" in self.__auth_credentials:
             username, password = self.__auth_credentials["admin"]
-            self.__auth(sock, 'admin', username, password)
+            self.__auth(sock_info, 'admin', username, password)
             authset.add('admin')
         else:
             for db_name in names - authset:
                 user, pwd = self.__auth_credentials[db_name]
-                self.__auth(sock, db_name, user, pwd)
+                self.__auth(sock_info, db_name, user, pwd)
                 authset.add(db_name)
 
     @property
@@ -477,29 +478,29 @@ class Connection(common.BaseObject):
         """
         return self.__max_bson_size
 
-    def __simple_command(self, sock, dbname, spec):
+    def __simple_command(self, sock_info, dbname, spec):
         """Send a command to the server.
         """
         rqst_id, msg, _ = message.query(0, dbname + '.$cmd', 0, -1, spec)
-        sock.sendall(msg)
-        response = self.__receive_message_on_socket(1, rqst_id, sock)
+        sock_info.sock.sendall(msg)
+        response = self.__receive_message_on_socket(1, rqst_id, sock_info)
         response = helpers._unpack_response(response)['data'][0]
         msg = "command %r failed: %%s" % spec
         helpers._check_command_response(response, None, msg)
         return response
 
-    def __auth(self, sock, dbname, user, passwd):
-        """Authenticate socket `sock` against database `dbname`.
+    def __auth(self, sock_info, dbname, user, passwd):
+        """Authenticate socket against database `dbname`.
         """
         # Get a nonce
-        response = self.__simple_command(sock, dbname, {'getnonce': 1})
+        response = self.__simple_command(sock_info, dbname, {'getnonce': 1})
         nonce = response['nonce']
         key = helpers._auth_key(nonce, user, passwd)
 
         # Actually authenticate
         query = SON([('authenticate', 1),
             ('user', user), ('nonce', nonce), ('key', key)])
-        self.__simple_command(sock, dbname, query)
+        self.__simple_command(sock_info, dbname, query)
 
     def __try_node(self, node):
         """Try to connect to this node and see if it works
@@ -587,7 +588,7 @@ class Connection(common.BaseObject):
         raise AutoReconnect(', '.join(errors))
 
     def __socket(self):
-        """Get a socket from the pool.
+        """Get a SocketInfo from the pool.
 
         If it's been > 1 second since the last time we checked out a
         socket, we also check to see if the socket has been closed -
@@ -606,20 +607,20 @@ class Connection(common.BaseObject):
                 # No effect if a request already started
                 self.start_request()
 
-            sock, from_pool, authset = self.__pool.get_socket((host, port))
+            sock_info, from_pool = self.__pool.get_socket((host, port))
         except socket.error, why:
             self.disconnect()
             raise AutoReconnect("could not connect to "
                                 "%s:%d: %s" % (host, port, str(why)))
         t = time.time()
         if t - self.__last_checkout > 1:
-            if _closed(sock):
+            if _closed(sock_info.sock):
                 self.disconnect()
-                sock, from_pool, authset = self.__pool.get_socket((host, port))
+                sock_info, from_pool = self.__pool.get_socket((host, port))
         self.__last_checkout = t
         if self.__auth_credentials:
-            self.__check_auth(sock, authset)
-        return sock
+            self.__check_auth(sock_info)
+        return sock_info
 
     def disconnect(self):
         """Disconnect from MongoDB.
@@ -737,10 +738,10 @@ class Connection(common.BaseObject):
           - `with_last_error`: check getLastError status after sending the
             message
         """
-        sock = self.__socket()
+        sock_info = self.__socket()
         try:
             (request_id, data) = self.__check_bson_size(message)
-            sock.sendall(data)
+            sock_info.sock.sendall(data)
             # Safe mode. We pack the message together with a lastError
             # message and send both. We then get the response (to the
             # lastError) and raise OperationFailure if it is an error
@@ -748,16 +749,16 @@ class Connection(common.BaseObject):
             rv = None
             if with_last_error:
                 response = self.__receive_message_on_socket(1, request_id,
-                                                            sock)
+                                                            sock_info)
                 rv = self.__check_response_to_last_error(response)
 
-            self.__pool.return_socket(sock)
+            self.__pool.return_socket(sock_info)
             return rv
         except (ConnectionFailure, socket.error), e:
             self.disconnect()
             raise AutoReconnect(str(e))
 
-    def __receive_data_on_socket(self, length, sock):
+    def __receive_data_on_socket(self, length, sock_info):
         """Lowest level receive operation.
 
         Takes length to receive and repeatedly calls recv until able to
@@ -766,37 +767,37 @@ class Connection(common.BaseObject):
         message = ""
         while len(message) < length:
             try:
-                chunk = sock.recv(length - len(message))
+                chunk = sock_info.sock.recv(length - len(message))
             except:
                 # If recv was interrupted, discard the socket
                 # and re-raise the exception.
-                self.__pool.discard_socket(sock)
+                self.__pool.discard_socket(sock_info)
                 raise
             if chunk == "":
                 raise ConnectionFailure("connection closed")
             message += chunk
         return message
 
-    def __receive_message_on_socket(self, operation, request_id, sock):
+    def __receive_message_on_socket(self, operation, request_id, sock_info):
         """Receive a message in response to `request_id` on `sock`.
 
         Returns the response data with the header removed.
         """
-        header = self.__receive_data_on_socket(16, sock)
+        header = self.__receive_data_on_socket(16, sock_info)
         length = struct.unpack("<i", header[:4])[0]
         assert request_id == struct.unpack("<i", header[8:12])[0], \
             "ids don't match %r %r" % (request_id,
                                        struct.unpack("<i", header[8:12])[0])
         assert operation == struct.unpack("<i", header[12:])[0]
 
-        return self.__receive_data_on_socket(length - 16, sock)
+        return self.__receive_data_on_socket(length - 16, sock_info)
 
-    def __send_and_receive(self, message, sock):
+    def __send_and_receive(self, message, sock_info):
         """Send a message on the given socket and return the response data.
         """
         (request_id, data) = self.__check_bson_size(message)
-        sock.sendall(data)
-        return self.__receive_message_on_socket(1, request_id, sock)
+        sock_info.sock.sendall(data)
+        return self.__receive_message_on_socket(1, request_id, sock_info)
 
     # we just ignore _must_use_master here: it's only relevant for
     # MasterSlaveConnection instances.
@@ -809,13 +810,13 @@ class Connection(common.BaseObject):
         :Parameters:
           - `message`: (request_id, data) pair making up the message to send
         """
-        sock = self.__socket()
+        sock_info = self.__socket()
 
         try:
             try:
                 if "network_timeout" in kwargs:
-                    sock.settimeout(kwargs["network_timeout"])
-                return self.__send_and_receive(message, sock)
+                    sock_info.sock.settimeout(kwargs["network_timeout"])
+                return self.__send_and_receive(message, sock_info)
             except (ConnectionFailure, socket.error), e:
                 self.disconnect()
                 raise AutoReconnect(str(e))
@@ -824,13 +825,13 @@ class Connection(common.BaseObject):
                 try:
                     # Restore the socket's original timeout and return it to
                     # the pool
-                    sock.settimeout(self.__net_timeout)
-                    self.__pool.return_socket(sock)
+                    sock_info.sock.settimeout(self.__net_timeout)
+                    self.__pool.return_socket(sock_info)
                 except socket.error:
                     # There was an exception and we've closed the socket
                     pass
             else:
-                self.__pool.return_socket(sock)
+                self.__pool.return_socket(sock_info)
 
     def start_request(self):
         """Ensure the current thread or greenlet always uses the same socket
