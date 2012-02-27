@@ -418,6 +418,61 @@ class TestPooling(unittest.TestCase):
         p.terminate()
         child_conn.close()
 
+    def test_request(self):
+        # Check that Pool gives two different sockets in two calls to
+        # get_socket() -- doesn't automatically put us in a request any more
+        cx_pool = Pool(
+            pair=(host,port),
+            max_size=10,
+            net_timeout=1000,
+            conn_timeout=1000,
+            use_ssl=False
+        )
+
+        sock0, from_pool0 = cx_pool.get_socket()
+        sock1, from_pool1 = cx_pool.get_socket()
+
+        self.assertNotEqual(sock0, sock1)
+        self.assertFalse(from_pool0)
+        self.assertFalse(from_pool1)
+
+        # Now in a request, we'll get the same socket both times
+        cx_pool.start_request()
+
+        sock2, from_pool2 = cx_pool.get_socket()
+        sock3, from_pool3 = cx_pool.get_socket()
+
+        # Pool didn't keep reference to sock0 or sock1; sock2 and 3 are new
+        self.assertNotEqual(sock0, sock2)
+        self.assertNotEqual(sock1, sock2)
+
+        # We're in a request, so get_socket() returned same sock both times
+        self.assertEqual(sock2, sock3)
+        self.assertFalse(from_pool2)
+
+        # Second call to get_socket() returned from_pool=True
+        self.assert_(from_pool3)
+
+        # Return the sock to pool
+        cx_pool.end_request()
+
+        sock4, from_pool4 = cx_pool.get_socket()
+        sock5, from_pool5 = cx_pool.get_socket()
+
+        # Not in a request any more, we get different sockets
+        self.assertNotEqual(sock4, sock5)
+
+        # end_request() returned sock2 to pool
+        self.assert_(from_pool4)
+        self.assertEqual(sock4, sock2)
+
+        # But since there was only one sock in the pool after end_request(),
+        # the final call to get_socket() made a new sock
+        self.assertFalse(from_pool5)
+
+    def _test_max_pool_size(self, start_request, end_request):
+        c = get_connection(max_pool_size=4)
+
         # Child proc ended request
         self.assertEqual("success", parent_conn.recv())
 

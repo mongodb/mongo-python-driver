@@ -218,8 +218,13 @@ class Pool(BasePool):
         self.threadref_to_tid = {}
         super(Pool, self).__init__(*args, **kwargs)
 
+    # Overridable
+    def _current_thread(self):
+        return threading.currentThread()
+
     def _set_request_socket(self, sock_info):
-        tid = thread.get_ident()
+        current_thread = self._current_thread()
+        tid = id(current_thread)
         self.tid_to_socket[tid] = sock_info
 
         if isinstance(sock_info, SocketInfo):
@@ -228,14 +233,13 @@ class Pool(BasePool):
             # know if this thread dies but doesn't call end_request(), so we
             # can return this socket to the pool.  Make a weakref to the Thread
             # object and set the weakref's callback to self.on_thread_dying.
-            current_thread = threading.currentThread()
             threadref = weakref.ref(current_thread, self.on_thread_dying)
             self.threadref_to_tid[threadref] = tid
         else:
             self.threadref_to_tid.pop(tid, None)
 
     def _get_request_socket(self):
-        tid = thread.get_ident()
+        tid = id(self._current_thread())
         return self.tid_to_socket.get(tid, NO_REQUEST)
 
     def _reset(self):

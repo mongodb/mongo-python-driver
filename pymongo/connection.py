@@ -97,7 +97,7 @@ class Connection(common.BaseObject):
 
     def __init__(self, host=None, port=None, max_pool_size=10,
                  network_timeout=None, document_class=dict,
-                 tz_aware=False, _connect=True, **kwargs):
+                 tz_aware=False, use_greenlets=False, _connect=True, **kwargs):
         """Create a new connection to a single MongoDB instance at *host:port*.
 
         The resultant connection object has connection-pooling built
@@ -176,6 +176,9 @@ class Connection(common.BaseObject):
             write.
           - `slave_okay` or `slaveOk` (deprecated): Use `read_preference`
             instead.
+          - `use_greenlets` (optional): if ``True``, :meth:`start_request()`
+            will ensure that the current greenlet uses the same socket for all
+            requests until :meth:`end_request()`
 
         .. seealso:: :meth:`end_request`
         .. versionchanged:: 2.1.1+
@@ -268,7 +271,14 @@ class Connection(common.BaseObject):
                                      "are using a python version previous to "
                                      "2.6 you must install the ssl package "
                                      "from PyPI.")
-        self.pool_class = pool.Pool
+
+        common.validate('use_greenlets', use_greenlets)
+        if use_greenlets:
+            import greenlet_pool
+            self.pool_class = greenlet_pool.GreenletPool
+        else:
+            self.pool_class = pool.Pool
+
         self.__pool = self.pool_class(
             None,
             self.__max_pool_size,
