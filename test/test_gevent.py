@@ -72,7 +72,11 @@ class GeventTest(unittest.TestCase):
                     outcome.value = SKIP
                     return
     
-            cx = get_connection(use_greenlets=use_greenlets)
+            cx = get_connection(
+                use_greenlets=use_greenlets,
+                auto_start_request=False
+            )
+
             db = cx.pymongo_test
             db.test.remove(safe=True)
             db.test.insert({'_id': 1})
@@ -134,7 +138,7 @@ class GeventTest(unittest.TestCase):
                 'find_fast start',
                 'find_fast done',
                 'find_slow done',
-                ], history)
+            ], history)
 
             outcome.value = SUCCESS
 
@@ -220,9 +224,11 @@ class GeventTest(unittest.TestCase):
             use_ssl=False,
         )
 
-        for pool_class, expect_success in [
-            (greenlet_pool.GreenletPool, True),
-            (pool.Pool, False),
+        for pool_class, use_request, expect_success in [
+            (greenlet_pool.GreenletPool, True, True),
+            (greenlet_pool.GreenletPool, False, False),
+            (pool.Pool, True, False),
+            (pool.Pool, False, False),
         ]:
             cx_pool = pool_class(**pool_args)
 
@@ -232,11 +238,14 @@ class GeventTest(unittest.TestCase):
 
             def get_socket_in_request():
                 # Get a socket from the pool twice, switching contexts each time
-                cx_pool.start_request()
+                if use_request:
+                    cx_pool.start_request()
+
                 main.switch()
 
                 for i in range(2):
                     sock, from_pool = cx_pool.get_socket()
+                    cx_pool.return_socket(sock)
                     greenlet2socks.setdefault(
                         greenlet.getcurrent(), []
                     ).append(sock)
@@ -261,6 +270,13 @@ class GeventTest(unittest.TestCase):
             self.assertEqual(2, len(greenlet2socks))
             self.assertEqual(2, len(socks_for_gr0))
             self.assertEqual(2, len(socks_for_gr1))
+
+            # If we started a request, then there was a point at which we had
+            # 2 active sockets, otherwise we always used one.
+            if use_request and pool_class is greenlet_pool.GreenletPool:
+                self.assertEqual(2, len(cx_pool.sockets))
+            else:
+                self.assertEqual(1, len(cx_pool.sockets))
 
             # Again, regardless of whether requests work, a greenlet will get
             # the same socket each time it calls get_socket() within a request.
@@ -294,6 +310,45 @@ class GeventTest(unittest.TestCase):
                     socks_for_gr0[0], socks_for_gr1[0],
                     "Expected two greenlets to get same socket"
                 )
+
+    def test_socket_reclamation(self):
+        try:
+            import greenlet
+        except ImportError:
+            raise SkipTest('greenlet not installed')
+
+        from pymongo import greenlet_pool
+
+        # Check that if a greenlet starts a request and dies without ending
+        # the request, that the socket is reclaimed
+        cx_pool = greenlet_pool.GreenletPool(
+            pair=(host,port),
+            max_size=10,
+            net_timeout=1000,
+            conn_timeout=1000,
+            use_ssl=False,
+        )
+
+        self.assertEqual(0, len(cx_pool.sockets))
+
+        the_sock = [None]
+
+        def leak_request():
+            cx_pool.start_request()
+            sock, from_pool = cx_pool.get_socket()
+            the_sock[0] = sock
+
+        # Run the greenlet to completion
+        gr = greenlet.greenlet(leak_request)
+        gr.switch()
+
+        # Cause greenlet to be garbage-collected
+        del gr
+
+        # Pool reclaimed the socket
+        self.assertEqual(1, len(cx_pool.sockets))
+        self.assertEqual(the_sock[0], next(iter(cx_pool.sockets)))
+
 
 if __name__ == '__main__':
     unittest.main()
