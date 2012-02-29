@@ -417,6 +417,7 @@ class TestPooling(unittest.TestCase):
         p.join(1)
         p.terminate()
         child_conn.close()
+        self.assertEqual("success", parent_conn.recv())
 
     def test_request(self):
         # Check that Pool gives two different sockets in two calls to
@@ -493,6 +494,26 @@ class TestPooling(unittest.TestCase):
         self.assertFalse(p.in_request())
         p.reset()
         self.assertFalse(p.in_request())
+
+    def test_primitive_thread(self):
+        p = Pool((host, port), 10, None, None, False)
+
+        # Test that start/end_request work with a thread begun from thread
+        # module, rather than threading module
+        lock = thread.allocate_lock()
+        lock.acquire()
+
+        def run_in_request():
+            p.start_request()
+            sock = p.get_socket()
+            p.end_request()
+            lock.release()
+
+        tid = thread.start_new_thread(run_in_request, ())
+        time.sleep(0.5)
+        # Join thread
+        acquired = lock.acquire(0)
+        self.assertTrue(acquired, "Thread is hung")
 
     def _test_max_pool_size(self, c, start_request, end_request):
         threads = []

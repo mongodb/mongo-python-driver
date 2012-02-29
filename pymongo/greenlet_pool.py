@@ -20,6 +20,9 @@ as this thread, until end_request().
 import greenlet
 
 from pymongo.pool import Pool, NO_REQUEST, NO_SOCKET_YET, SocketInfo
+import weakref
+
+_refs = {}
 
 class GreenletPool(Pool):
     """A simple connection pool.
@@ -27,5 +30,19 @@ class GreenletPool(Pool):
     Calling start_request() acquires a greenlet-local socket, which is returned
     to the pool when the greenlet calls end_request() or dies.
     """
-    def _current_thread(self):
-        return greenlet.getcurrent()
+    # Override
+    def _current_thread_id(self):
+        return id(greenlet.getcurrent())
+
+    # Override
+    def _watch_current_thread(self, callback):
+        gr_id = self._current_thread_id()
+        if callback:
+            def _callback(ref):
+                callback(gr_id)
+
+            _refs[gr_id] = weakref.ref(greenlet.getcurrent(), _callback)
+        else:
+            # This ref will be garbage-collected soon, so its callback probably
+            # won't fire, but set "canceled" to be certain.
+            _refs.pop(gr_id, None)
