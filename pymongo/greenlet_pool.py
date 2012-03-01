@@ -19,30 +19,42 @@ as this thread, until end_request().
 
 import greenlet
 
-from pymongo.pool import Pool, NO_REQUEST, NO_SOCKET_YET, SocketInfo
+from pymongo.pool import BasePool, NO_REQUEST, NO_SOCKET_YET, SocketInfo
 import weakref
 
 _refs = {}
 
-class GreenletPool(Pool):
+class GreenletPool(BasePool):
     """A simple connection pool.
 
     Calling start_request() acquires a greenlet-local socket, which is returned
     to the pool when the greenlet calls end_request() or dies.
     """
-    # Override
-    def _current_thread_id(self):
-        return id(greenlet.getcurrent())
+    def __init__(self, *args, **kwargs):
+        self._gr_id_to_sock = {}
+        self._refs = {}
+        super(GreenletPool, self).__init__(*args, **kwargs)
 
-    # Override
-    def _watch_current_thread(self, callback):
-        gr_id = self._current_thread_id()
-        if callback:
-            def _callback(ref):
-                callback(gr_id)
+    # Overrides
+    def _set_request_socket(self, sock_info):
+        current = greenlet.getcurrent()
+        gr_id = id(current)
 
-            _refs[gr_id] = weakref.ref(greenlet.getcurrent(), _callback)
+        # TODO: comment, rename
+        def on_gr_died(ref):
+            self._refs.pop(gr_id, None)
+            self._gr_id_to_sock.pop(gr_id, None)
+
+        if sock_info == NO_REQUEST:
+            on_gr_died(None)
         else:
-            # This ref will be garbage-collected soon, so its callback probably
-            # won't fire, but set "canceled" to be certain.
-            _refs.pop(gr_id, None)
+            self._refs[gr_id] = weakref.ref(current, on_gr_died)
+            self._gr_id_to_sock[gr_id] = sock_info
+
+    def _get_request_socket(self):
+        gr_id = id(greenlet.getcurrent())
+        return self._gr_id_to_sock.get(gr_id, NO_REQUEST)
+
+    def _reset(self):
+        self._gr_id_to_sock.clear()
+        self._refs.clear()

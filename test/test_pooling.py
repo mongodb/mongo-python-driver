@@ -505,15 +505,58 @@ class TestPooling(unittest.TestCase):
 
         def run_in_request():
             p.start_request()
-            sock = p.get_socket()
+            p.get_socket()
             p.end_request()
             lock.release()
 
-        tid = thread.start_new_thread(run_in_request, ())
+        thread.start_new_thread(run_in_request, ())
+
+        # Join thread
+        for i in range(10):
+            time.sleep(0.1)
+            acquired = lock.acquire(0)
+            if acquired:
+                break
+
+        self.assertTrue(acquired, "Thread is hung")
+
+    def test_socket_reclamation(self):
+        # Check that if a greenlet starts a request and dies without ending
+        # the request, that the socket is reclaimed
+        cx_pool = Pool(
+            pair=(host,port),
+            max_size=10,
+            net_timeout=1000,
+            conn_timeout=1000,
+            use_ssl=False,
+        )
+
+        self.assertEqual(0, len(cx_pool.sockets))
+
+        lock = thread.allocate_lock()
+        lock.acquire()
+
+        the_sock = [None]
+
+        def leak_request():
+            cx_pool.start_request()
+            sock_info, from_pool = cx_pool.get_socket()
+            lock.release()
+            cx_pool._reset()
+            the_sock[0] = id(sock_info.sock)
+
+        # Start a thread WITHOUT a threading.Thread - important to test that
+        # Pool can deal with primitive threads.
+        thread.start_new_thread(leak_request, ())
+
         time.sleep(0.5)
         # Join thread
         acquired = lock.acquire(0)
         self.assertTrue(acquired, "Thread is hung")
+
+        # Pool reclaimed the socket
+        self.assertEqual(1, len(cx_pool.sockets))
+        self.assertEqual(the_sock[0], id((iter(cx_pool.sockets).next()).sock))
 
     def _test_max_pool_size(self, c, start_request, end_request):
         threads = []

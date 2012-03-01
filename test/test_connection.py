@@ -389,16 +389,10 @@ class TestConnection(unittest.TestCase):
         no_timeout.pymongo_test.test.insert({"x": 1}, safe=True)
 
         # A $where clause that takes a second longer than the timeout
-        where_func = """function (doc) {
-  var d = new Date().getTime() + (%f + 1) * 1000;;
-  var x = new Date().getTime();
-  while (x < d) {
-    x = new Date().getTime();
-  }
-  return true;
-}""" % timeout_sec
+        where_func = delay(timeout_sec + 1)
 
         def get_x(db):
+            print >> sys.stderr, "get_x"
             return db.test.find().where(where_func).next()["x"]
         self.assertEqual(1, get_x(no_timeout.pymongo_test))
         self.assertRaises(ConnectionFailure, get_x, timeout.pymongo_test)
@@ -498,13 +492,21 @@ with get_connection() as connection:
 
     def get_sock(self, pool):
         sock_info, from_pool = pool.get_socket((self.host, self.port))
-        return sock_info.sock
+        return sock_info
 
     def assertSameSock(self, pool):
-        self.assertEqual(self.get_sock(pool), self.get_sock(pool))
+        sock_info0 = self.get_sock(pool)
+        sock_info1 = self.get_sock(pool)
+        self.assertEqual(sock_info0, sock_info1)
 
     def assertDifferentSock(self, pool):
-        self.assertNotEqual(self.get_sock(pool), self.get_sock(pool))
+        # We have to hold both SocketInfos at the same time, otherwise the
+        # first will send its socket back to the pool as soon as its ref count
+        # goes to zero, in which case the second SocketInfo we get will have
+        # the same socket as the first.
+        sock_info0 = self.get_sock(pool)
+        sock_info1 = self.get_sock(pool)
+        self.assertNotEqual(sock_info0, sock_info1)
 
     def assertNoRequest(self, pool):
         self.assertEqual(NO_REQUEST, pool._get_request_socket())
@@ -568,7 +570,7 @@ with conn.start_request() as request:
 
         # Request started already, just from Connection constructor - it's a
         # bit weird, but Connection does some socket stuff when it initializes
-        # and ends up in a request
+        # and it ends up with a request socket
         self.assertRequestSocket(pool)
         self.assertSameSock(pool)
 

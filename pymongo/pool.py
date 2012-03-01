@@ -1,4 +1,4 @@
-# Copyright 2009-2011 10gen, Inc.
+# Copyright 2009-2012 10gen, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you
 # may not use this file except in compliance with the License.  You
@@ -14,11 +14,10 @@
 
 import os
 import socket
-import thread
 import threading
+import weakref
 
 from pymongo.errors import ConnectionFailure, OperationFailure
-import weakref
 
 
 have_ssl = True
@@ -31,13 +30,44 @@ except ImportError:
 NO_REQUEST    = None
 NO_SOCKET_YET = -1
 
-
 class SocketInfo(object):
     """Store a socket with some metadata
     """
-    def __init__(self, sock):
+    def __init__(self, sock, pool):
         self.sock = sock
+
+        # We can't strongly reference the Pool, because the Pool
+        # references this SocketInfo as long as it's in pool
+        self.poolref = weakref.ref(pool)
         self.authset = set()
+        self.closed = False
+
+    def close(self):
+        self.sock.close()
+        self.closed = True
+
+    def __del__(self):
+        if not self.closed:
+            # This socket was given out, but not explicitly returned. Perhaps
+            # the socket was assigned to a thread local for a request, but the
+            # request wasn't ended before the thread died. Reclaim the socket
+            # for the pool.
+            pool = self.poolref()
+            if pool:
+                copy = SocketInfo(self.sock, pool)
+                copy.authset = self.authset
+                pool.return_socket(copy)
+
+    def __eq__(self, other):
+        return hasattr(other, 'sock') and self.sock == other.sock
+
+    def __hash__(self):
+        return hash(self.sock)
+
+    def __repr__(self):
+        return "SocketInfo(%s, %s) at %s" % (
+            repr(self.sock), repr(self.poolref()), id(self)
+        )
 
 
 class BasePool(object):
@@ -50,6 +80,7 @@ class BasePool(object):
           - `conn_timeout`: timeout in seconds for establishing connection
           - `use_ssl`: bool, if True use an encrypted connection
         """
+        self.sockets = set()
         self.reset()
         self.pair = pair
         self.max_size = max_size
@@ -60,7 +91,11 @@ class BasePool(object):
     def reset(self):
         in_request = self.in_request()
         self.pid = os.getpid()
-        self.sockets = set()
+
+        # Close sockets before deleting them, otherwise they'll come
+        # running back.
+        sockets, self.sockets = self.sockets, set()
+        for sock_info in sockets: sock_info.close()
 
         # Reset subclass's data structures
         self._reset()
@@ -114,7 +149,7 @@ class BasePool(object):
                                         "not be configured with SSL support.")
 
         s.settimeout(self.net_timeout)
-        return SocketInfo(s)
+        return SocketInfo(s, self)
 
     def get_socket(self, pair=None):
         """Get a socket from the pool.
@@ -163,19 +198,18 @@ class BasePool(object):
         return self._get_request_socket() != NO_REQUEST
 
     def end_request(self):
-        sock = self._get_request_socket()
+        sock_info = self._get_request_socket()
         self._set_request_socket(NO_REQUEST)
-        self.return_socket(sock)
+        self.return_socket(sock_info)
 
     def discard_socket(self, sock_info):
         """Close and discard the active socket.
         """
         if sock_info:
-            if sock_info == self._get_request_socket():
-                # We're ending the request
-                self._set_request_socket(NO_REQUEST)
+            sock_info.close()
 
-            sock_info.sock.close()
+            if sock_info == self._get_request_socket():
+                self._set_request_socket(NO_SOCKET_YET)
 
     def return_socket(self, sock_info):
         """Return the socket currently in use to the pool. If the
@@ -183,19 +217,18 @@ class BasePool(object):
         """
         if self.pid != os.getpid():
             self.reset()
-        elif sock_info:
-            # Don't really return a socket if we're in a request
-            if sock_info is not self._get_request_socket():
-                # Avoid edge cases where end_request is called without a
-                # request socket
-                if sock_info not in (NO_REQUEST, NO_SOCKET_YET):
-                    # There's a race condition here, but we deliberately
-                    # ignore it.  It means that if the pool_size is 10 we
-                    # might actually keep slightly more than that.
-                    if len(self.sockets) < self.max_size:
-                        self.sockets.add(sock_info)
-                    else:
-                        self.discard_socket(sock_info)
+        elif sock_info not in (NO_REQUEST, NO_SOCKET_YET):
+            if sock_info.closed:
+                return
+
+            if sock_info != self._get_request_socket():
+                # There's a race condition here, but we deliberately
+                # ignore it.  It means that if the pool_size is 10 we
+                # might actually keep slightly more than that.
+                if len(self.sockets) < self.max_size:
+                    self.sockets.add(sock_info)
+                else:
+                    self.discard_socket(sock_info)
 
     # Overridable methods for Pools. These methods must simply set and get an
     # arbitrary value associated with the execution context (thread, greenlet,
@@ -207,24 +240,11 @@ class BasePool(object):
         raise NotImplementedError
 
     def _reset(self):
-        raise NotImplementedError
+        pass
 
 
-class ThreadReaper(object):
-    def __init__(self, callback, tid):
-        self.callback = callback
-        self.tid = tid
-
-    def __del__(self):
-        if self.callback:
-            self.callback(self.tid)
-
-
-class ThreadWatcher(threading.local):
-    reaper = None
-
-
-_thread_watcher = ThreadWatcher()
+class _Local(threading.local):
+    sock_info = NO_REQUEST
 
 
 class Pool(BasePool):
@@ -234,56 +254,17 @@ class Pool(BasePool):
     to the pool when the thread calls end_request() or dies.
     """
     def __init__(self, *args, **kwargs):
-        self.tid_to_socket = {}
+        self.local = _Local()
         super(Pool, self).__init__(*args, **kwargs)
 
-    # Overridable
-    def _current_thread_id(self):
-        return thread.get_ident()
-
-    # Overridable
-    def _watch_current_thread(self, callback):
-        if callback:
-            _thread_watcher.reaper = ThreadReaper(
-                callback, self._current_thread_id()
-            )
-        else:
-            if _thread_watcher.reaper:
-#                _thread_watcher.reaper.callback = None
-                _thread_watcher.reaper = None
-
     def _set_request_socket(self, sock_info):
-        tid = self._current_thread_id()
-        self.tid_to_socket[tid] = sock_info
+        self.local.sock_info = sock_info
 
-        if isinstance(sock_info, SocketInfo):
-            # TODO: update:
-            # We're binding a socket to a thread - this thread will use this
-            # socket until it calls end_request() or dies.  We need some way to
-            # know if this thread dies but doesn't call end_request(), so we
-            # can return this socket to the pool.  Make a weakref to the Thread
-            # object and set the weakref's callback to self.on_thread_dying.
-            self._watch_current_thread(self.on_thread_dying)
-        else:
-            self._watch_current_thread(None)
-
-    # TODO: rename?
     def _get_request_socket(self):
-        tid = self._current_thread_id()
-        rv = self.tid_to_socket.get(tid, NO_REQUEST)
-        return rv
+        return self.local.sock_info
 
     def _reset(self):
-        self.tid_to_socket = {}
-
-    def on_thread_dying(self, tid):
-        # TODO: update
-        # We're probably on the main thread here, not the thread to which
-        # threadref refers. If request_sock is not None, then the dying thread
-        # called start_request but not end_request. End the request now.
-        request_socket = self.tid_to_socket.get(tid, NO_REQUEST)
-        if request_socket not in (NO_REQUEST, NO_SOCKET_YET):
-            self.return_socket(self.tid_to_socket.pop(tid, NO_REQUEST))
+        self.local.sock_info = NO_REQUEST
 
 
 class Request(object):

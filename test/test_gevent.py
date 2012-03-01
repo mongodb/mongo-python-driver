@@ -248,7 +248,7 @@ class GeventTest(unittest.TestCase):
                     cx_pool.return_socket(sock)
                     greenlet2socks.setdefault(
                         greenlet.getcurrent(), []
-                    ).append(sock)
+                    ).append(id(sock))
 
                     main.switch()
 
@@ -335,8 +335,8 @@ class GeventTest(unittest.TestCase):
 
         def leak_request():
             cx_pool.start_request()
-            sock, from_pool = cx_pool.get_socket()
-            the_sock[0] = sock
+            sock_info, from_pool = cx_pool.get_socket()
+            the_sock[0] = id(sock_info.sock)
 
         # Run the greenlet to completion
         gr = greenlet.greenlet(leak_request)
@@ -347,7 +347,7 @@ class GeventTest(unittest.TestCase):
 
         # Pool reclaimed the socket
         self.assertEqual(1, len(cx_pool.sockets))
-        self.assertEqual(the_sock[0], next(iter(cx_pool.sockets)))
+        self.assertEqual(the_sock[0], id(next(iter(cx_pool.sockets)).sock))
 
 
 if __name__ == '__main__':
