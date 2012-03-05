@@ -392,7 +392,6 @@ class TestConnection(unittest.TestCase):
         where_func = delay(timeout_sec + 1)
 
         def get_x(db):
-            print >> sys.stderr, "get_x"
             return db.test.find().where(where_func).next()["x"]
         self.assertEqual(1, get_x(no_timeout.pymongo_test))
         self.assertRaises(ConnectionFailure, get_x, timeout.pymongo_test)
