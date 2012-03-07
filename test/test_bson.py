@@ -40,7 +40,8 @@ from bson.dbref import DBRef
 from bson.son import SON
 from bson.timestamp import Timestamp
 from bson.errors import (InvalidDocument,
-                         InvalidStringData)
+                         InvalidStringData,
+                         InvalidBSON)
 from bson.max_key import MaxKey
 from bson.min_key import MinKey
 from bson.tz_util import (FixedOffset,
@@ -402,6 +403,35 @@ class TestBSON(unittest.TestCase):
             raise SkipTest()
         d = OrderedDict([("one", 1), ("two", 2), ("three", 3), ("four", 4)])
         self.assertEqual(d, BSON.encode(d).decode(as_class=OrderedDict))
+
+    def test_validate_string_length(self):
+        # PYTHON-336: pure-Python BSON decoder should check string lengths
+        # against the actual length of the string
+        if bson.has_c():
+            raise SkipTest("This test is for pure Python, not C extension")
+
+        bson_str = (
+            "\x15\x00\x00\x00" # document length
+            "\x02" # string type
+            "\x24\x72\x65\x66\x00" # "$ref"
+            "%s" # length of following string
+            "\x65\x76\x65\x6E\x74\x00" # "event"
+            "\x00" # end
+            "\xff" # random non-null char
+        )
+
+        # Make sure we got the bson_str right
+        self.assertEqual({"$ref": "event"}, BSON.decode(BSON(
+            bson_str % '\x06\x00\x00\x00' # correct length, 6 chars incl. null
+        )))
+
+        # Now test with long length -- a length of 7 would actually be valid,
+        # since Python unicode strings can contain NULLs, but a length of 8
+        # is definitely wrong.
+        self.assertRaises(InvalidBSON, BSON.decode, BSON(
+            bson_str % '\x08\x00\x00\x00' # too long length
+        ))
+
 
 if __name__ == "__main__":
     unittest.main()

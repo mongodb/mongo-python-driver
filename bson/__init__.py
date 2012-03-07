@@ -108,7 +108,14 @@ def _get_number(data, position, as_class, tz_aware):
 def _get_string(data, position, as_class, tz_aware):
     length = struct.unpack("<i", data[position:position + 4])[0] - 1
     position += 4
-    return _get_c_string(data, position, length)
+    s, position = _get_c_string(data, position, length)
+    if len(s) != length:
+        raise InvalidBSON(
+            "string \"%s\" of length %d does not match header length %d" % (
+                s[:50], len(s), length
+            ))
+
+    return s, position
 
 
 def _get_object(data, position, as_class, tz_aware):
