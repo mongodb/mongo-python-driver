@@ -117,6 +117,8 @@ VALIDATORS = {
     'sockettimeoutms': validate_timeout_or_none,
     'ssl': validate_boolean,
     'read_preference': validate_read_preference,
+    'auto_start_request': validate_boolean,
+    'use_greenlets': validate_boolean,
 }
 
 
