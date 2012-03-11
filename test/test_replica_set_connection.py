@@ -17,10 +17,11 @@
 import datetime
 import os
 import signal
-import sys
 import socket
+import sys
 import time
 import thread
+import traceback
 import unittest
 sys.path[0:0] = [""]
 
@@ -28,7 +29,7 @@ from nose.plugins.skip import SkipTest
 
 from bson.son import SON
 from bson.tz_util import utc
-from pymongo import ReadPreference
+from pymongo import ReadPreference, pool
 from pymongo.connection import Connection
 from pymongo.replica_set_connection import ReplicaSetConnection
 from pymongo.replica_set_connection import _partition_node
@@ -39,8 +40,10 @@ from pymongo.errors import (AutoReconnect,
                             InvalidName,
                             OperationFailure)
 from test import version
+from test.utils import delay
 
-host = os.environ.get("DB_IP", socket.gethostname())
+
+host = os.environ.get("DB_IP", 'localhost')
 port = int(os.environ.get("DB_PORT", 27017))
 pair = '%s:%d' % (host, port)
 
@@ -189,7 +192,7 @@ class TestConnection(TestConnectionReplicaSetBase):
         )
 
         db = c.pymongo_test
-        db.test.remove({})
+        db.test.remove({}, safe=True)
         self.assertEqual(0, db.test.count())
         db.test.insert({'foo': 'x'}, safe=True, w=self.w)
         self.assertEqual(1, db.test.count())
@@ -205,7 +208,7 @@ class TestConnection(TestConnectionReplicaSetBase):
         self.assertTrue(cursor._Cursor__connection_id in c.secondaries)
 
         self.assertEqual(1, db.test.count())
-        db.test.remove({})
+        db.test.remove({}, safe=True)
         self.assertEqual(0, db.test.count())
         c.drop_database(db)
         c.close()
@@ -244,6 +247,7 @@ class TestConnection(TestConnectionReplicaSetBase):
 
     def test_copy_db(self):
         c = self._get_connection()
+        self.assert_(c.in_request())
 
         self.assertRaises(TypeError, c.copy_database, 4, "foo")
         self.assertRaises(TypeError, c.copy_database, "foo", 4)
@@ -260,11 +264,20 @@ class TestConnection(TestConnectionReplicaSetBase):
         self.assertFalse("pymongo_test2" in c.database_names())
 
         c.copy_database("pymongo_test", "pymongo_test1")
+        # copy_database() didn't accidentally end the request
+        self.assert_(c.in_request())
 
         self.assert_("pymongo_test1" in c.database_names())
         self.assertEqual("bar", c.pymongo_test1.test.find_one()["foo"])
 
+        c.end_request()
+
+        self.assertFalse(c.in_request())
         c.copy_database("pymongo_test", "pymongo_test2", pair)
+        # copy_database() didn't accidentally restart the request
+#        self.assertFalse(c.in_request())
+        self.assertFalse(c.in_request())
+
         time.sleep(1)
 
         self.assert_("pymongo_test2" in c.database_names())
@@ -301,7 +314,7 @@ class TestConnection(TestConnectionReplicaSetBase):
         self.assertRaises(TypeError, iterate)
         connection.close()
 
-    # TODO this test is probably very dependent on the machine its running on
+    # TODO this test is probably very dependent on the machine it's running on
     # due to timing issues, but I want to get something in here.
     def test_low_network_timeout(self):
         c = None
@@ -364,6 +377,7 @@ class TestConnection(TestConnectionReplicaSetBase):
                     for _ in db.test.find():
                         pass
                 except:
+                    traceback.print_exc()
                     pipe.send(True)
                     os._exit(1)
 
@@ -441,14 +455,7 @@ class TestConnection(TestConnectionReplicaSetBase):
         no_timeout.pymongo_test.test.insert({"x": 1}, safe=True)
 
         # A $where clause that takes a second longer than the timeout
-        where_func = """function (doc) {
-  var d = new Date().getTime() + (%f + 1) * 1000;;
-  var x = new Date().getTime();
-  while (x < d) {
-    x = new Date().getTime();
-  }
-  return true;
-}""" % timeout_sec
+        where_func = delay(1 + timeout_sec)
 
         def get_x(db):
             return db.test.find().where(where_func).next()["x"]
@@ -558,10 +565,7 @@ class TestConnection(TestConnectionReplicaSetBase):
         db = c.pymongo_test
 
         # A $where clause which takes 1.5 sec to execute
-        where = '''function() {
-            var d = new Date((new Date()).getTime() + 1.5 * 1000);
-            while (d > (new Date())) { }; return true;
-        }'''
+        where = delay(1.5)
 
         # Need exactly 1 document so find() will execute its $where clause once
         db.drop_collection('foo')
@@ -614,6 +618,28 @@ class TestConnection(TestConnectionReplicaSetBase):
         finally:
             if old_signal_handler:
                 signal.signal(signal.SIGALRM, old_signal_handler)
+
+    def test_auto_start_request(self):
+        for bad_horrible_value in (None, 5, 'hi!'):
+            self.assertRaises(
+                (TypeError, ConfigurationError),
+                lambda: self._get_connection(auto_start_request=bad_horrible_value)
+            )
+
+        # auto_start_request should default to True
+        conn = self._get_connection()
+        self.assertTrue(conn.in_request())
+        conn.end_request()
+        self.assertFalse(conn.in_request())
+        conn.start_request()
+        self.assertTrue(conn.in_request())
+
+        conn = self._get_connection(auto_start_request=False)
+        self.assertFalse(conn.in_request())
+        conn.start_request()
+        self.assertTrue(conn.in_request())
+        conn.end_request()
+        self.assertFalse(conn.in_request())
 
 
 if __name__ == "__main__":

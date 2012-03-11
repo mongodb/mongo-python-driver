@@ -37,6 +37,10 @@ class TestThreadsReplicaSet(TestConnectionReplicaSetBase, BaseTestThreads):
         TestConnectionReplicaSetBase.setUp(self)
         BaseTestThreads.setUp(self)
 
+    def tearDown(self):
+        TestConnectionReplicaSetBase.tearDown(self)
+        BaseTestThreads.tearDown(self)
+
     def _get_connection(self):
         """
         Override TestThreads, so its tests run on a ReplicaSetConnection
@@ -100,6 +104,10 @@ class TestThreadsAuthReplicaSet(TestConnectionReplicaSetBase, BaseTestThreadsAut
         """
         TestConnectionReplicaSetBase.setUp(self)
         BaseTestThreadsAuth.setUp(self)
+
+    def tearDown(self):
+        TestConnectionReplicaSetBase.tearDown(self)
+        BaseTestThreadsAuth.tearDown(self)
 
     def _get_connection(self):
         """

@@ -29,6 +29,7 @@ from bson.son import SON
 from bson.tz_util import utc
 from pymongo.connection import Connection
 from pymongo.database import Database
+from pymongo.pool import NO_REQUEST, NO_SOCKET_YET, SocketInfo
 from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
                             ConnectionFailure,
@@ -43,7 +44,6 @@ def get_connection(*args, **kwargs):
     host = os.environ.get("DB_IP", "localhost")
     port = int(os.environ.get("DB_PORT", 27017))
     return Connection(host, port, *args, **kwargs)
-
 
 class TestConnection(unittest.TestCase):
 
@@ -145,6 +145,7 @@ class TestConnection(unittest.TestCase):
 
     def test_copy_db(self):
         c = Connection(self.host, self.port)
+        self.assert_(c.in_request())
 
         self.assertRaises(TypeError, c.copy_database, 4, "foo")
         self.assertRaises(TypeError, c.copy_database, "foo", 4)
@@ -164,12 +165,17 @@ class TestConnection(unittest.TestCase):
             self.assertFalse("pymongo_test2" in c.database_names())
 
         c.copy_database("pymongo_test", "pymongo_test1")
+        # copy_database() didn't accidentally end the request
+        self.assert_(c.in_request())
 
         self.assert_("pymongo_test1" in c.database_names())
         self.assertEqual("bar", c.pymongo_test1.test.find_one()["foo"])
 
+        c.end_request()
         c.copy_database("pymongo_test", "pymongo_test2",
                         "%s:%d" % (self.host, self.port))
+        # copy_database() didn't accidentally restart the request
+        self.assertFalse(c.in_request())
 
         self.assert_("pymongo_test2" in c.database_names())
         self.assertEqual("bar", c.pymongo_test2.test.find_one()["foo"])
@@ -383,7 +389,7 @@ class TestConnection(unittest.TestCase):
         no_timeout.pymongo_test.test.insert({"x": 1}, safe=True)
 
         # A $where clause that takes a second longer than the timeout
-        where_func = delay(timeout_sec+1)
+        where_func = delay(timeout_sec + 1)
 
         def get_x(db):
             return db.test.find().where(where_func).next()["x"]
@@ -455,13 +461,16 @@ class TestConnection(unittest.TestCase):
     def test_contextlib(self):
         if sys.version_info < (2, 6):
             raise SkipTest()
+
         import contextlib
 
-        conn = get_connection()
+        conn = get_connection(auto_start_request=False)
         conn.pymongo_test.drop_collection("test")
         conn.pymongo_test.test.insert({"foo": "bar"})
-        self.assertNotEqual(None, conn._Connection__pool.sock)
-        self.assertEqual(0, len(conn._Connection__pool.sockets))
+
+        # The socket used for the previous commands has been returned to the
+        # pool
+        self.assertEqual(1, len(conn._Connection__pool.sockets))
 
         # We need exec here because if the Python version is less than 2.6
         # these with-statements won't even compile.
@@ -470,16 +479,108 @@ with contextlib.closing(conn):
     self.assertEquals("bar", conn.pymongo_test.test.find_one()["foo"])
 """
 
-        self.assertEqual(None, conn._Connection__pool.sock)
+        # Calling conn.close() has reset the pool
         self.assertEqual(0, len(conn._Connection__pool.sockets))
 
         exec """
 with get_connection() as connection:
     self.assertEquals("bar", connection.pymongo_test.test.find_one()["foo"])
+    # Calling conn.close() has reset the pool
+    self.assertEqual(0, len(connection._Connection__pool.sockets))
 """
 
-        self.assertEqual(None, connection._Connection__pool.sock)
-        self.assertEqual(0, len(connection._Connection__pool.sockets))
+    def get_sock(self, pool):
+        sock_info = pool.get_socket((self.host, self.port))
+        return sock_info
+
+    def assertSameSock(self, pool):
+        sock_info0 = self.get_sock(pool)
+        sock_info1 = self.get_sock(pool)
+        self.assertEqual(sock_info0, sock_info1)
+
+    def assertDifferentSock(self, pool):
+        # We have to hold both SocketInfos at the same time, otherwise the
+        # first will send its socket back to the pool as soon as its ref count
+        # goes to zero, in which case the second SocketInfo we get will have
+        # the same socket as the first.
+        sock_info0 = self.get_sock(pool)
+        sock_info1 = self.get_sock(pool)
+        self.assertNotEqual(sock_info0, sock_info1)
+
+    def assertNoRequest(self, pool):
+        self.assertEqual(NO_REQUEST, pool._get_request_state())
+
+    def assertNoSocketYet(self, pool):
+        self.assertEqual(NO_SOCKET_YET, pool._get_request_state())
+
+    def assertRequestSocket(self, pool):
+        self.assert_(isinstance(pool._get_request_state(), SocketInfo))
+        
+    def test_with_start_request(self):
+        conn = get_connection(auto_start_request=False)
+        pool = conn._Connection__pool
+
+        # No request started
+        self.assertNoRequest(pool)
+        self.assertDifferentSock(pool)
+
+        # Start a request
+        request_context_mgr = conn.start_request()
+        self.assert_(
+            isinstance(request_context_mgr, object)
+        )
+
+        self.assertNoSocketYet(pool)
+        self.assertSameSock(pool)
+        self.assertRequestSocket(pool)
+
+        # End request
+        request_context_mgr.__exit__(None, None, None)
+        self.assertNoRequest(pool)
+        self.assertDifferentSock(pool)
+
+        # Test the 'with' statement
+        if sys.version_info >= (2, 6):
+            # We need exec here because if the Python version is less than 2.6
+            # these with-statements won't even compile.
+            exec """
+with conn.start_request() as request:
+    self.assertEqual(conn, request.connection)
+    self.assertNoSocketYet(pool)
+    self.assertSameSock(pool)
+    self.assertRequestSocket(pool)
+"""
+
+            # Request has ended
+            self.assertNoRequest(pool)
+            self.assertDifferentSock(pool)
+    
+    def test_auto_start_request(self):
+        for bad_horrible_value in (None, 5, 'hi!'):
+            self.assertRaises(
+                (TypeError, ConfigurationError),
+                lambda: get_connection(auto_start_request=bad_horrible_value)
+            )
+
+        # auto_start_request should default to True
+        conn = get_connection()
+        self.assert_(conn.in_request())
+        pool = conn._Connection__pool
+
+        # Request started already, just from Connection constructor - it's a
+        # bit weird, but Connection does some socket stuff when it initializes
+        # and it ends up with a request socket
+        self.assertRequestSocket(pool)
+        self.assertSameSock(pool)
+
+        conn.end_request()
+        self.assertNoRequest(pool)
+        self.assertDifferentSock(pool)
+
+        # Trigger auto_start_request
+        conn.db.test.find_one()
+        self.assertRequestSocket(pool)
+        self.assertSameSock(pool)
 
     def test_interrupt_signal(self):
         if sys.platform.startswith('java'):
