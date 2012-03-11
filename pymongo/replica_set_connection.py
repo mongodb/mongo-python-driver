@@ -185,6 +185,9 @@ class ReplicaSetConnection(common.BaseObject):
             consistency guarantees. (The semantics of auto_start_request,
             :class:`~pymongo.ReadPreference`, and :class:`ReplicaSetConnection`
             may change in future releases of PyMongo.)
+          - `use_greenlets` (optional): if ``True``, :meth:`start_request()`
+            will ensure that the current greenlet uses the same socket for all
+            requests until :meth:`end_request()`
           - `slave_okay` or `slaveOk` (deprecated): Use `read_preference`
             instead.
 
@@ -223,7 +226,13 @@ class ReplicaSetConnection(common.BaseObject):
             option, value = common.validate(option, value)
             self.__opts[option] = value
 
-        self.pool_class = pool.Pool
+        if self.__opts.get('use_greenlets', False):
+            if not pool.have_greenlet:
+                raise ConfigurationError("The greenlet module is not available."
+                                         "Install the ssl package from PyPI.")
+            self.pool_class = pool.GreenletPool
+        else:
+            self.pool_class = pool.Pool
 
         self.__auto_start_request = self.__opts.get('auto_start_request', True)
         self.__in_request = self.__auto_start_request

@@ -29,6 +29,16 @@ except ImportError:
     have_ssl = False
 
 
+# PyMongo does not use greenlet-aware connection pools by default, but it will
+# attempt to do so if you pass use_greenlets=True to Connection or
+# ReplicaSetConnection
+have_greenlet = True
+try:
+    import greenlet
+except ImportError:
+    have_greenlet = False
+
+
 NO_REQUEST    = None
 NO_SOCKET_YET = -1
 
@@ -318,6 +328,44 @@ class Pool(BasePool):
 
     def _reset(self):
         self.local.sock_info = NO_REQUEST
+
+
+class GreenletPool(BasePool):
+    """A simple connection pool.
+
+    Calling start_request() acquires a greenlet-local socket, which is returned
+    to the pool when the greenlet calls end_request() or dies.
+    """
+    def __init__(self, *args, **kwargs):
+        self._gr_id_to_sock = {}
+        self._refs = {}
+        super(GreenletPool, self).__init__(*args, **kwargs)
+
+    # Overrides
+    def _set_request_state(self, sock_info):
+        current = greenlet.getcurrent()
+        gr_id = id(current)
+
+        # This function is used in two ways: first, to end a request for this
+        # greenlet, and second, as a weakref callback when the current greenlet
+        # dies.
+        def clear_request(dummy):
+            self._refs.pop(gr_id, None)
+            self._gr_id_to_sock.pop(gr_id, None)
+
+        if sock_info == NO_REQUEST:
+            clear_request(None)
+        else:
+            self._refs[gr_id] = weakref.ref(current, clear_request)
+            self._gr_id_to_sock[gr_id] = sock_info
+
+    def _get_request_state(self):
+        gr_id = id(greenlet.getcurrent())
+        return self._gr_id_to_sock.get(gr_id, NO_REQUEST)
+
+    def _reset(self):
+        self._gr_id_to_sock.clear()
+        self._refs.clear()
 
 
 class Request(object):

@@ -157,6 +157,9 @@ class Connection(common.BaseObject):
             accesses this Connection has a socket allocated to it for the
             thread's lifetime.  This ensures consistent reads, even if you read
             after an unsafe write.
+          - `use_greenlets` (optional): if ``True``, :meth:`start_request()`
+            will ensure that the current greenlet uses the same socket for all
+            requests until :meth:`end_request()`
           - `slave_okay` or `slaveOk` (deprecated): Use `read_preference`
             instead.
 
@@ -252,7 +255,13 @@ class Connection(common.BaseObject):
                                      "2.6 you must install the ssl package "
                                      "from PyPI.")
 
-        self.pool_class = pool.Pool
+        if options.get('use_greenlets', False):
+            if not pool.have_greenlet:
+                raise ConfigurationError("The greenlet module is not available."
+                                         "Install the ssl package from PyPI.")
+            self.pool_class = pool.GreenletPool
+        else:
+            self.pool_class = pool.Pool
 
         self.__pool = self.pool_class(
             None,
