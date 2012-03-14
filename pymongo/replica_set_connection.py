@@ -56,24 +56,7 @@ from pymongo.errors import (AutoReconnect,
                             OperationFailure)
 
 
-if sys.platform.startswith('java'):
-    from select import cpython_compatible_select as select
-else:
-    from select import select
-
-
 MAX_BSON_SIZE = 4 * 1024 * 1024
-
-
-def _closed(sock):
-    """Return True if we know socket has been closed, False otherwise.
-    """
-    try:
-        readers, _, _ = select([sock], [], [], 0)
-    # Any exception here is equally bad (select.error, ValueError, etc.).
-    except Exception:
-        return True
-    return len(readers) > 0
 
 
 def _partition_node(node):
