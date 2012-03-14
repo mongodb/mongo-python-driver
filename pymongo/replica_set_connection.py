@@ -129,7 +129,7 @@ class ReplicaSetConnection(common.BaseObject):
             documents returned from queries on this connection
           - `tz_aware` (optional): if ``True``,
             :class:`~datetime.datetime` instances returned as values
-            in a document by this :class:`Connection` will be timezone
+            in a document by this :class:`ReplicaSetConnection` will be timezone
             aware (otherwise they will be naive)
           - `replicaSet`: (required) The name of the replica set to connect to.
             The driver will verify that each host it connects to is a member of
@@ -849,7 +849,7 @@ class ReplicaSetConnection(common.BaseObject):
         "from __future__ import with_statement", :meth:`start_request` can be
         used as a context manager:
 
-        >>> connection = pymongo.Connection(auto_start_request=False)
+        >>> connection = pymongo.ReplicaSetConnection(auto_start_request=False)
         >>> db = connection.test
         >>> _id = db.test_collection.insert({}, safe=True)
         >>> with connection.start_request():
