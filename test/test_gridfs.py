@@ -36,12 +36,13 @@ from test_connection import get_connection
 
 class JustWrite(threading.Thread):
 
-    def __init__(self, fs):
+    def __init__(self, fs, n):
         threading.Thread.__init__(self)
         self.fs = fs
+        self.n = n
 
     def run(self):
-        for _ in range(10):
+        for _ in range(self.n):
             file = self.fs.new_file(filename="test")
             file.write("hello")
             file.close()
@@ -49,14 +50,18 @@ class JustWrite(threading.Thread):
 
 class JustRead(threading.Thread):
 
-    def __init__(self, fs):
+    def __init__(self, fs, n, results):
         threading.Thread.__init__(self)
         self.fs = fs
+        self.n = n
+        self.results = results
 
     def run(self):
-        for _ in range(10):
+        for _ in range(self.n):
             file = self.fs.get("test")
-            assert file.read() == "hello"
+            data = file.read()
+            self.results.append(data)
+            assert data == "hello"
 
 
 class TestGridfs(unittest.TestCase):
@@ -142,17 +147,23 @@ class TestGridfs(unittest.TestCase):
         self.fs.put("hello", _id="test")
 
         threads = []
+        results = []
         for i in range(10):
-            threads.append(JustRead(self.fs))
+            threads.append(JustRead(self.fs, 10, results))
             threads[i].start()
 
         for i in range(10):
             threads[i].join()
 
+        self.assertEqual(
+            100 * ['hello'],
+            results
+        )
+
     def test_threaded_writes(self):
         threads = []
         for i in range(10):
-            threads.append(JustWrite(self.fs))
+            threads.append(JustWrite(self.fs, 10))
             threads[i].start()
 
         for i in range(10):
@@ -160,6 +171,12 @@ class TestGridfs(unittest.TestCase):
 
         f = self.fs.get_last_version("test")
         self.assertEqual(f.read(), "hello")
+
+        # Should have created 100 versions of 'test' file
+        self.assertEqual(
+            100,
+            self.db.fs.files.find({'filename':'test'}).count()
+        )
 
     def test_get_last_version(self):
         a = self.fs.put("foo", filename="test")
@@ -303,6 +320,23 @@ class TestGridfs(unittest.TestCase):
             return True
 
         self.assertTrue(iterate_file(f))
+
+    def test_request(self):
+        c = self.db.connection
+        c.start_request()
+        n = 5
+        for i in range(n):
+            file = self.fs.new_file(filename="test")
+            file.write("hello")
+            file.close()
+
+        c.end_request()
+
+        self.assertEqual(
+            n,
+            self.db.fs.files.find({'filename':'test'}).count()
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
