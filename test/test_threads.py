@@ -16,6 +16,7 @@
 
 import unittest
 import threading
+import traceback
 
 from nose.plugins.skip import SkipTest
 
@@ -40,6 +41,7 @@ class AutoAuthenticateThreads(threading.Thread):
                 self.coll.insert({'num':i}, safe=True)
                 self.coll.find_one({'num':i})
         except Exception:
+            traceback.print_exc()
             self.success = False
 
 
@@ -127,6 +129,9 @@ class BaseTestThreads(object):
     """
     def setUp(self):
         self.db = self._get_connection().pymongo_test
+
+    def tearDown(self):
+        pass
 
     def _get_connection(self):
         """
@@ -252,8 +257,9 @@ class BaseTestThreadsAuth(object):
         conn = self._get_connection()
         conn.admin.authenticate("admin-user", "password")
 
+        nthreads = 10
         threads = []
-        for _ in xrange(10):
+        for _ in xrange(nthreads):
             t = AutoAuthenticateThreads(conn.auth_test.test, 100)
             t.start()
             threads.append(t)
@@ -266,7 +272,7 @@ class BaseTestThreadsAuth(object):
         conn.auth_test.authenticate("test-user", "password")
 
         threads = []
-        for _ in xrange(10):
+        for _ in xrange(nthreads):
             t = AutoAuthenticateThreads(conn.auth_test.test, 100)
             t.start()
             threads.append(t)
