@@ -16,7 +16,6 @@
 
 import os
 import random
-import socket
 import sys
 import threading
 import unittest
@@ -175,7 +174,7 @@ class CreateAndReleaseSocket(threading.Thread):
         self.passed = False
 
     def run(self):
-        # Do an operation that requires a socket for .25 seconds.
+        # Do an operation that requires a socket.
         # test_max_pool_size uses this to spin up lots of threads requiring
         # lots of simultaneous connections, to ensure that Pool obeys its
         # max_size configuration and closes extra sockets as they're returned.
@@ -458,15 +457,6 @@ class TestPooling(unittest.TestCase):
         # end_request() returned sock2 to pool
         self.assertEqual(sock4, sock2)
 
-    def _test_max_pool_size(self, start_request, end_request):
-        c = get_connection(max_pool_size=4)
-
-        # Child proc ended request
-        self.assertEqual("success", parent_conn.recv())
-
-        # This proc's request continues
-        self.assert_request_with_socket()
-
     def test_reset_and_request(self):
         # reset() is called after a fork, or after a socket error. Ensure that
         # a new request is begun if a request was in progress when the reset()
@@ -499,6 +489,7 @@ class TestPooling(unittest.TestCase):
         thread.start_new_thread(run_in_request, ())
 
         # Join thread
+        acquired = False
         for i in range(10):
             time.sleep(0.1)
             acquired = lock.acquire(0)
@@ -508,7 +499,7 @@ class TestPooling(unittest.TestCase):
         self.assertTrue(acquired, "Thread is hung")
 
     def test_socket_reclamation(self):
-        # Check that if a greenlet starts a request and dies without ending
+        # Check that if a thread starts a request and dies without ending
         # the request, that the socket is reclaimed
         cx_pool = Pool(
             pair=(host,port),
@@ -536,8 +527,8 @@ class TestPooling(unittest.TestCase):
         # Pool can deal with primitive threads.
         thread.start_new_thread(leak_request, ())
 
-        time.sleep(0.5)
         # Join thread
+        time.sleep(0.5)
         acquired = lock.acquire(0)
         self.assertTrue(acquired, "Thread is hung")
 
@@ -558,14 +549,15 @@ class TestPooling(unittest.TestCase):
         for t in threads:
             self.assert_(t.passed)
 
-        # Critical: release refs to threads, so thread-dying callback is
-        # executed. See Pool.on_thread_dying()
+        # Critical: release refs to threads, so SocketInfo.__del__() executes
+        import sys; print >> sys.stderr, "Deleting threads"
         del threads
+        t = None
+        import sys; print >> sys.stderr, "Deleted"
 
-        if end_request > start_request:
-            # Let all the thread-dying callbacks execute and return sockets to
-            # the pool
-            time.sleep(1)
+        # Let all the SocketInfo destructors execute and return sockets to
+        # the pool
+        time.sleep(1)
 
         # There's a race condition, so be lenient
         nsock = len(c._Connection__pool.sockets)
@@ -575,27 +567,27 @@ class TestPooling(unittest.TestCase):
         )
 
     def test_max_pool_size(self):
-        c = get_connection(max_pool_size=4)
+        c = get_connection(max_pool_size=4, auto_start_request=False)
         self._test_max_pool_size(c, 0, 0)
 
     def test_max_pool_size_with_request(self):
-        c = get_connection(max_pool_size=4)
+        c = get_connection(max_pool_size=4, auto_start_request=False)
         self._test_max_pool_size(c, 1, 1)
 
     def test_max_pool_size_with_redundant_request(self):
-        c = get_connection(max_pool_size=4)
+        c = get_connection(max_pool_size=4, auto_start_request=False)
         self._test_max_pool_size(c, 2, 1)
         self._test_max_pool_size(c, 20, 1)
 
     def test_max_pool_size_with_leaked_request(self):
         # Call start_request() but not end_request() -- when threads die, they
         # should return their request sockets to the pool.
-        c = get_connection(max_pool_size=4)
+        c = get_connection(max_pool_size=4, auto_start_request=False)
         self._test_max_pool_size(c, 1, 0)
 
     def test_max_pool_size_with_end_request_only(self):
         # Call end_request() but not start_request()
-        c = get_connection(max_pool_size=4)
+        c = get_connection(max_pool_size=4, auto_start_request=False)
         self._test_max_pool_size(c, 0, 1)
 
 

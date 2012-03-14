@@ -622,8 +622,11 @@ class Database(common.BaseObject):
         if not isinstance(password, basestring):
             raise TypeError("password must be an instance of basestring")
 
+        in_request = self.connection.in_request()
         try:
-            self.connection.start_request()
+            if not in_request:
+                self.connection.start_request()
+
             nonce = self.command("getnonce")["nonce"]
             key = helpers._auth_key(nonce, name, password)
             try:
@@ -636,7 +639,8 @@ class Database(common.BaseObject):
             except OperationFailure:
                 return False
         finally:
-            self.connection.end_request()
+            if not in_request:
+                self.connection.end_request()
 
     def logout(self):
         """Deauthorize use of this database for this connection

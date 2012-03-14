@@ -192,7 +192,7 @@ class ReplicaSetConnection(common.BaseObject):
             instead.
 
         .. versionchanged:: 2.1.1+
-           Added `auto_start_request` stub option.
+           Added `auto_start_request` option.
         .. versionadded:: 2.1
         """
         self.__max_pool_size = max_pool_size
@@ -228,8 +228,10 @@ class ReplicaSetConnection(common.BaseObject):
 
         if self.__opts.get('use_greenlets', False):
             if not pool.have_greenlet:
-                raise ConfigurationError("The greenlet module is not available."
-                                         "Install the ssl package from PyPI.")
+                raise ConfigurationError(
+                    "The greenlet module is not available. "
+                    "Install the greenlet package from PyPI."
+                )
             self.pool_class = pool.GreenletPool
         else:
             self.pool_class = pool.Pool
@@ -886,6 +888,10 @@ class ReplicaSetConnection(common.BaseObject):
         return pool.Request(self)
 
     def in_request(self):
+        """True if :meth:`start_request` has been called, but not
+        :meth:`end_request`, or if `auto_start_request` is True and
+        :meth:`end_request` has not been called in this thread or greenlet.
+        """
         return self.__in_request
 
     def end_request(self):

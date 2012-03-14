@@ -257,8 +257,10 @@ class Connection(common.BaseObject):
 
         if options.get('use_greenlets', False):
             if not pool.have_greenlet:
-                raise ConfigurationError("The greenlet module is not available."
-                                         "Install the ssl package from PyPI.")
+                raise ConfigurationError(
+                    "The greenlet module is not available. "
+                    "Install the greenlet package from PyPI."
+                )
             self.pool_class = pool.GreenletPool
         else:
             self.pool_class = pool.Pool
@@ -438,6 +440,10 @@ class Connection(common.BaseObject):
         """
         return self.__nodes
 
+    @property
+    def auto_start_request(self):
+        return self.__auto_start_request
+
     def get_document_class(self):
         return self.__document_class
 
@@ -469,30 +475,6 @@ class Connection(common.BaseObject):
         .. versionadded:: 1.10
         """
         return self.__max_bson_size
-
-    def __simple_command(self, sock_info, dbname, spec):
-        """Send a command to the server.
-        """
-        rqst_id, msg, _ = message.query(0, dbname + '.$cmd', 0, -1, spec)
-        sock_info.sock.sendall(msg)
-        response = self.__receive_message_on_socket(1, rqst_id, sock_info)
-        response = helpers._unpack_response(response)['data'][0]
-        msg = "command %r failed: %%s" % spec
-        helpers._check_command_response(response, None, msg)
-        return response
-
-    def __auth(self, sock_info, dbname, user, passwd):
-        """Authenticate socket against database `dbname`.
-        """
-        # Get a nonce
-        response = self.__simple_command(sock_info, dbname, {'getnonce': 1})
-        nonce = response['nonce']
-        key = helpers._auth_key(nonce, user, passwd)
-
-        # Actually authenticate
-        query = SON([('authenticate', 1),
-            ('user', user), ('nonce', nonce), ('key', key)])
-        self.__simple_command(sock_info, dbname, query)
 
     def __simple_command(self, sock_info, dbname, spec):
         """Send a command to the server.
@@ -862,6 +844,10 @@ class Connection(common.BaseObject):
         return pool.Request(self)
 
     def in_request(self):
+        """True if :meth:`start_request` has been called, but not
+        :meth:`end_request`, or if `auto_start_request` is True and
+        :meth:`end_request` has not been called in this thread or greenlet.
+        """
         return self.__pool.in_request()
 
     def end_request(self):

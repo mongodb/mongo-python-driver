@@ -564,7 +564,8 @@ with conn.start_request() as request:
 
         # auto_start_request should default to True
         conn = get_connection()
-        self.assert_(conn.in_request())
+        self.assertTrue(conn.auto_start_request)
+        self.assertTrue(conn.in_request())
         pool = conn._Connection__pool
 
         # Request started already, just from Connection constructor - it's a

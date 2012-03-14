@@ -275,7 +275,6 @@ class TestConnection(TestConnectionReplicaSetBase):
         self.assertFalse(c.in_request())
         c.copy_database("pymongo_test", "pymongo_test2", pair)
         # copy_database() didn't accidentally restart the request
-#        self.assertFalse(c.in_request())
         self.assertFalse(c.in_request())
 
         time.sleep(1)
@@ -628,6 +627,7 @@ class TestConnection(TestConnectionReplicaSetBase):
 
         # auto_start_request should default to True
         conn = self._get_connection()
+        self.assertTrue(conn.auto_start_request)
         self.assertTrue(conn.in_request())
         conn.end_request()
         self.assertFalse(conn.in_request())

@@ -307,6 +307,29 @@ class TestDatabase(unittest.TestCase):
         db.logout()
         db.logout()
 
+    def test_authenticate_and_request(self):
+        # Database.authenticate() needs to be in a request - check that it
+        # always runs in a request, and that it restores the request state
+        # (in or not in a request) properly when it's finished.
+        self.assertTrue(self.connection.auto_start_request)
+        db = self.connection.pymongo_test
+        db.system.users.remove({})
+        db.remove_user("mike")
+        db.add_user("mike", "password")
+        self.assertTrue(self.connection.in_request())
+        self.assertTrue(db.authenticate("mike", "password"))
+        self.assertTrue(self.connection.in_request())
+
+        no_request_cx = get_connection(auto_start_request=False)
+        no_request_db = no_request_cx.pymongo_test
+        self.assertFalse(no_request_cx.in_request())
+        self.assertTrue(no_request_db.authenticate("mike", "password"))
+        self.assertFalse(no_request_cx.in_request())
+
+        # just make sure there are no exceptions here
+        db.logout()
+        no_request_db.logout()
+
     def test_id_ordering(self):
         db = self.connection.pymongo_test
         db.test.remove({})
