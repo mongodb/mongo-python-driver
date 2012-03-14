@@ -34,7 +34,6 @@ attribute-style access:
 import datetime
 import socket
 import struct
-import sys
 import threading
 import time
 import warnings
@@ -608,14 +607,6 @@ class ReplicaSetConnection(common.BaseObject):
 
     def __socket(self, mongo):
         """Get a SocketInfo from the pool.
-
-        If it's been > 1 second since the last time we checked out a
-        socket, we also check to see if the socket has been closed -
-        this lets us avoid seeing *some*
-        :class:`~pymongo.errors.AutoReconnect` exceptions on server
-        hiccups, etc. We only do this if it's been > 1 second since
-        the last socket checkout, to keep performance reasonable - we
-        can't avoid those completely anyway.
         """
         pool = mongo['pool']
         if self.__auto_start_request:

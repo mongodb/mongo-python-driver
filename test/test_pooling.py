@@ -257,7 +257,6 @@ class TestPooling(unittest.TestCase):
         # SocketInfo.__del__
         start = time.time()
         while len(cx_pool.sockets) < n_expected and time.time() - start < 5:
-            import gc
             try:
                 gc.collect(2)
             except TypeError:
