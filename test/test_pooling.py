@@ -14,6 +14,7 @@
 
 """Test built in connection-pooling."""
 
+import gc
 import os
 import random
 import sys
@@ -235,6 +236,35 @@ class TestPooling(unittest.TestCase):
 
         c = Connection(host=host, port=port, max_pool_size=100)
         self.assertEqual(c.max_pool_size, 100)
+
+    def force_reclaim_sockets(self, cx_pool, n_expected):
+        # When a thread dies without ending its request, the SocketInfo it was
+        # using is deleted, and in its __del__ it returns the socket to the
+        # pool. However, when exactly that happens is unpredictable. Try
+        # various ways of forcing the issue.
+
+        if sys.platform.startswith('java'):
+            raise SkipTest("Jython can't reclaim sockets")
+
+        # Bizarre behavior in CPython 2.4, and possibly other CPython versions
+        # less than 2.7: the last dead thread's locals aren't cleaned up until
+        # the local attribute with the same name is accessed from a different
+        # thread. This assert checks that the thread-local is indeed local, and
+        # also triggers the cleanup so the socket is reclaimed.
+        self.assertEqual(None, cx_pool.local.sock_info)
+
+        # In PyPy, we need to try for a while to make garbage-collection call
+        # SocketInfo.__del__
+        start = time.time()
+        while len(cx_pool.sockets) < n_expected and time.time() - start < 5:
+            import gc
+            try:
+                gc.collect(2)
+            except TypeError:
+                # collect() didn't support 'generation' arg until 2.5
+                gc.collect()
+
+            time.sleep(0.5)
 
     def test_no_disconnect(self):
         run_cases(self, [NoRequest, NonUnique, Unique, SaveAndFind])
@@ -500,7 +530,7 @@ class TestPooling(unittest.TestCase):
 
     def test_socket_reclamation(self):
         # Check that if a thread starts a request and dies without ending
-        # the request, that the socket is reclaimed
+        # the request, that the socket is reclaimed into the pool.
         cx_pool = Pool(
             pair=(host,port),
             max_size=10,
@@ -517,20 +547,23 @@ class TestPooling(unittest.TestCase):
         the_sock = [None]
 
         def leak_request():
+            self.assertEqual(NO_REQUEST, cx_pool.local.sock_info)
             cx_pool.start_request()
+            self.assertEqual(NO_SOCKET_YET, cx_pool.local.sock_info)
             sock_info = cx_pool.get_socket()
-            lock.release()
-            cx_pool._reset()
+            self.assertEqual(sock_info, cx_pool.local.sock_info)
             the_sock[0] = id(sock_info.sock)
+            lock.release()
 
         # Start a thread WITHOUT a threading.Thread - important to test that
         # Pool can deal with primitive threads.
         thread.start_new_thread(leak_request, ())
 
         # Join thread
-        time.sleep(0.5)
-        acquired = lock.acquire(0)
+        acquired = lock.acquire(1)
         self.assertTrue(acquired, "Thread is hung")
+
+        self.force_reclaim_sockets(cx_pool, 1)
 
         # Pool reclaimed the socket
         self.assertEqual(1, len(cx_pool.sockets))
@@ -550,17 +583,14 @@ class TestPooling(unittest.TestCase):
             self.assert_(t.passed)
 
         # Critical: release refs to threads, so SocketInfo.__del__() executes
-        import sys; print >> sys.stderr, "Deleting threads"
         del threads
         t = None
-        import sys; print >> sys.stderr, "Deleted"
 
-        # Let all the SocketInfo destructors execute and return sockets to
-        # the pool
-        time.sleep(1)
+        cx_pool = c._Connection__pool
+        self.force_reclaim_sockets(cx_pool, 4)
 
         # There's a race condition, so be lenient
-        nsock = len(c._Connection__pool.sockets)
+        nsock = len(cx_pool.sockets)
         self.assert_(
             abs(4 - nsock) < 4,
             "Expected about 4 sockets in the pool, got %d" % nsock
