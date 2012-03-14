@@ -620,7 +620,7 @@ class ReplicaSetConnection(common.BaseObject):
         pool = mongo['pool']
         if self.__auto_start_request:
             # No effect if a request already started
-            pool.start_request()
+            self.start_request()
 
         sock_info = pool.get_socket()
 
@@ -863,7 +863,7 @@ class ReplicaSetConnection(common.BaseObject):
            The :class:`~pymongo.pool.Request` return value.
            :meth:`start_request` previously returned None
         """
-        for mongo in self.__hosts:
+        for mongo in self.__pools.values():
             if 'pool' in mongo:
                 mongo['pool'].start_request()
 
@@ -891,7 +891,7 @@ class ReplicaSetConnection(common.BaseObject):
         in the middle of a sequence of operations in which ordering is
         important. This could lead to unexpected results.
         """
-        for mongo in self.__hosts:
+        for mongo in self.__pools.values():
             if 'pool' in mongo:
                 mongo['pool'].end_request()
 

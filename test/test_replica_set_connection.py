@@ -627,10 +627,20 @@ class TestConnection(TestConnectionReplicaSetBase):
 
         # auto_start_request should default to True
         conn = self._get_connection()
+        pools = [mongo['pool'] for mongo in conn._ReplicaSetConnection__pools.values()]
         self.assertTrue(conn.auto_start_request)
         self.assertTrue(conn.in_request())
+
+        # Trigger the RSC to actually start a request
+        conn.test.test.find_one()
+
+        for pool in pools:
+            self.assertTrue(pool.in_request())
+
         conn.end_request()
         self.assertFalse(conn.in_request())
+        for pool in pools:
+            self.assertFalse(pool.in_request())
         conn.start_request()
         self.assertTrue(conn.in_request())
 
