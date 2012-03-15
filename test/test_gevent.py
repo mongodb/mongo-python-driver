@@ -356,7 +356,7 @@ class GeventTest(unittest.TestCase):
 
         # Pool reclaimed the socket
         self.assertEqual(1, len(cx_pool.sockets))
-        self.assertEqual(the_sock[0], id(next(iter(cx_pool.sockets)).sock))
+        self.assertEqual(the_sock[0], id(iter(cx_pool.sockets).next().sock))
 
 
 if __name__ == '__main__':
