@@ -32,11 +32,10 @@ def validate_boolean(option, value):
         return value
     elif isinstance(value, basestring):
         if value not in ('true', 'false'):
-            raise ConfigurationError("The value of '%s' must be "
+            raise ConfigurationError("The value of %s must be "
                                      "'true' or 'false'" % (option,))
         return value == 'true'
-    raise TypeError("Wrong type for %s, value must "
-                    "be a boolean or string representation" % (option,))
+    raise TypeError("Wrong type for %s, value must be a boolean" % (option,))
 
 
 def validate_integer(option, value):
@@ -46,11 +45,20 @@ def validate_integer(option, value):
         return value
     elif isinstance(value, basestring):
         if not value.isdigit():
-            raise ConfigurationError("The value of '%s' must be "
-                                     "an integer." % (option,))
+            raise ConfigurationError("The value of %s must be "
+                                     "an integer" % (option,))
         return int(value)
-    raise TypeError("Wrong type for %s, value must be an "
-                    "integer or string representation" % (option,))
+    raise TypeError("Wrong type for %s, value must be an integer" % (option,))
+
+
+def validate_positive_integer(option, value):
+    """Validate that 'value' is a positive integer.
+    """
+    val = validate_integer(option, value)
+    if val < 0:
+        raise ConfigurationError("The value of %s must be "
+                                 "a positive integer" % (option,))
+    return val
 
 
 def validate_basestring(option, value):
@@ -84,8 +92,8 @@ def validate_timeout_or_none(option, value):
     try:
         value = float(value)
     except (ValueError, TypeError):
-        raise ConfigurationError("%s must be an instance of int, float, "
-                                 "or a string representation" % (option,))
+        raise ConfigurationError("%s must be an "
+                                 "instance of int or float" % (option,))
     if value <= 0:
         raise ConfigurationError("%s must be a positive integer" % (option,))
     return value / 1000.0

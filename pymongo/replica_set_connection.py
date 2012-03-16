@@ -177,9 +177,6 @@ class ReplicaSetConnection(common.BaseObject):
            Added `auto_start_request` option.
         .. versionadded:: 2.1
         """
-        self.__max_pool_size = max_pool_size
-        self.__document_class = document_class
-        self.__tz_aware = tz_aware
         self.__opts = {}
         self.__seeds = set()
         self.__hosts = None
@@ -189,6 +186,11 @@ class ReplicaSetConnection(common.BaseObject):
         self.__pools = {}
         self.__index_cache = {}
         self.__auth_credentials = {}
+
+        self.__max_pool_size = common.validate_positive_integer(
+                                        'max_pool_size', max_pool_size)
+        self.__tz_aware = common.validate_boolean('tz_aware', tz_aware)
+        self.__document_class = document_class
 
         username = None
         db_name = None

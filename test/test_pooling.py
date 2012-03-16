@@ -226,7 +226,8 @@ class TestPooling(unittest.TestCase):
 
     def test_max_pool_size_validation(self):
         self.assertRaises(
-            ValueError, Connection, host=host, port=port, max_pool_size=-1
+            ConfigurationError, Connection, host=host, port=port,
+            max_pool_size=-1
         )
 
         self.assertRaises(

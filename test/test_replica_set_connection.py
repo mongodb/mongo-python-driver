@@ -471,6 +471,9 @@ class TestConnection(TestConnectionReplicaSetBase):
         timeout.close()
 
     def test_tz_aware(self):
+        self.assertRaises(ConfigurationError, ReplicaSetConnection,
+                          tz_aware='foo', replicaSet=self.name)
+
         aware = self._get_connection(tz_aware=True)
         naive = self._get_connection()
         aware.pymongo_test.drop_collection("test")

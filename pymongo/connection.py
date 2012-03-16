@@ -230,11 +230,8 @@ class Connection(common.BaseObject):
             option, value = common.validate(option, value)
             options[option] = value
 
-        if not isinstance(max_pool_size, int):
-            raise ConfigurationError("max_pool_size must be an integer")
-        if max_pool_size < 0:
-            raise ValueError("max_pool_size must be >= 0")
-        self.__max_pool_size = max_pool_size
+        self.__max_pool_size = common.validate_positive_integer(
+                                                'max_pool_size', max_pool_size)
 
         self.__cursor_manager = CursorManager(self)
 
@@ -274,7 +271,7 @@ class Connection(common.BaseObject):
         )
 
         self.__document_class = document_class
-        self.__tz_aware = tz_aware
+        self.__tz_aware = common.validate_boolean('tz_aware', tz_aware)
         self.__auto_start_request = options.get('auto_start_request', True)
 
         # cache of existing indexes used by ensure_index ops
