@@ -43,7 +43,8 @@ NO_REQUEST    = None
 NO_SOCKET_YET = -1
 
 
-if sys.platform.startswith('java'):
+is_jython = sys.platform.startswith('java')
+if is_jython:
     from select import cpython_compatible_select as select
 else:
     from select import select
@@ -106,6 +107,14 @@ class SocketInfo(object):
         )
 
 
+class NullLock(object):
+    def acquire(self):
+        pass
+
+    def release(self):
+        pass
+
+
 class BasePool(object):
     def __init__(self, pair, max_size, net_timeout, conn_timeout, use_ssl):
         """
@@ -124,6 +133,12 @@ class BasePool(object):
         self.conn_timeout = conn_timeout
         self.use_ssl = use_ssl
 
+        # Jython's set() isn't atomic, see http://bugs.jython.org/issue1854
+        if is_jython:
+            self.lock = threading.Lock()
+        else:
+            self.lock = NullLock()
+
     def reset(self):
         request_state = self._get_request_state()
         self.pid = os.getpid()
@@ -134,7 +149,13 @@ class BasePool(object):
             # request_state is a SocketInfo for this request
             request_state.close()
 
-        sockets, self.sockets = self.sockets, set()
+        sockets = None
+        try:
+            self.lock.acquire()
+            sockets, self.sockets = self.sockets, set()
+        finally:
+            self.lock.release()
+
         for sock_info in sockets: sock_info.close()
 
         # Reset subclass's data structures
@@ -229,8 +250,13 @@ class BasePool(object):
             return checked_sock
 
         # We're not in a request, just get any free socket or create one
+        sock_info, from_pool = None, None
         try:
-            sock_info, from_pool = self.sockets.pop(), True
+            try:
+                self.lock.acquire()
+                sock_info, from_pool = self.sockets.pop(), True
+            finally:
+                self.lock.release()
         except KeyError:
             sock_info, from_pool = self.connect(pair), False
 
@@ -283,7 +309,12 @@ class BasePool(object):
                 # ignore it.  It means that if the pool_size is 10 we
                 # might actually keep slightly more than that.
                 if len(self.sockets) < self.max_size:
-                    self.sockets.add(sock_info)
+                    try:
+                        self.lock.acquire()
+                        self.sockets.add(sock_info)
+                    finally:
+                        self.lock.release()
+
                     sock_info.last_checkout = time.time()
                 else:
                     self.discard_socket(sock_info)
