@@ -331,6 +331,8 @@ class TestDatabase(unittest.TestCase):
         no_request_db.logout()
 
     def test_id_ordering(self):
+        if sys.platform.startswith('java'):
+            raise SkipTest('No gaurantee of key ordering in Jython.')
         db = self.connection.pymongo_test
         db.test.remove({})
 

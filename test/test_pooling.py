@@ -117,9 +117,9 @@ def run_cases(ut, cases):
     threads = []
     for case in cases:
         for i in range(10):
-            thread = case(ut)
-            thread.start()
-            threads.append(thread)
+            t = case(ut)
+            t.start()
+            threads.append(t)
 
     for t in threads:
         t.join()

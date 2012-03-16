@@ -297,11 +297,17 @@ class TestMasterSlaveConnection(unittest.TestCase):
 
         self.assertEqual(before, cursor_count())
 
-        for _ in range(10):
-            for x in db.test.find():
-                break
+        # Cursors are killed here when the cursor's
+        # __del__ method is called before garbage
+        # collection. Only CPython's ref counting gc
+        # makes this part of the test reliable.
+        if not (sys.platform.startswith('java') or
+                'PyPy' in sys.version):
+            for _ in range(10):
+                for x in db.test.find():
+                    break
 
-        self.assertEqual(before, cursor_count())
+            self.assertEqual(before, cursor_count())
 
         a = db.test.find()
         for x in a:
@@ -309,7 +315,13 @@ class TestMasterSlaveConnection(unittest.TestCase):
 
         self.assertNotEqual(before, cursor_count())
 
-        del a
+        if (sys.platform.startswith('java') or
+            'PyPy' in sys.version):
+            # Explicitly kill cursors.
+            a.close()
+        else:
+            # Implicitly kill them in CPython.
+            del a
 
         self.assertEqual(before, cursor_count())
 

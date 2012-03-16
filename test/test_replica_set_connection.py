@@ -558,6 +558,9 @@ class TestConnection(TestConnectionReplicaSetBase):
         self.assertEqual(start, get_cursor_counts())
 
     def test_interrupt_signal(self):
+        if sys.platform.startswith('java'):
+            raise SkipTest("Can't test interrupts in Jython")
+
         # Test fix for PYTHON-294 -- make sure Connection closes its
         # socket if it gets an interrupt while waiting to recv() from it.
         c = self._get_connection()
