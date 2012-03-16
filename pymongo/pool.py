@@ -146,38 +146,59 @@ class BasePool(object):
         if request_state != NO_REQUEST:
             self._set_request_state(NO_SOCKET_YET)
 
+    def create_connection(self, pair):
+        """Connect to *pair* and return the socket object.
+
+        This is a modified version of create_connection from
+        CPython >=2.6.
+        """
+        # Don't try IPv6 if we don't support it.
+        family = socket.AF_INET
+        if socket.has_ipv6:
+            family = socket.AF_UNSPEC
+
+        host, port = pair or self.pair
+        err = None
+        for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+            af, socktype, proto, dummy, sa = res
+            sock = None
+            try:
+                sock = socket.socket(af, socktype, proto)
+                sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+                sock.settimeout(self.conn_timeout or 20.0)
+                sock.connect(sa)
+                return sock
+            except socket.error, e:
+                err = e
+                if sock is not None:
+                    sock.close()
+
+        if err is not None:
+            raise err
+        else:
+            # This likely means we tried to connect to an IPv6 only
+            # host with an OS/kernel or Python interpeter that doesn't
+            # support IPv6. The test case is Jython2.5.1 which doesn't
+            # support IPv6 at all.
+            raise socket.error('getaddrinfo failed')
+
     def connect(self, pair):
         """Connect to Mongo and return a new (connected) socket. Note that the
            pool does not keep a reference to the socket -- you must call
            return_socket() when you're done with it.
         """
-        # Prefer IPv4. If there is demand for an option
-        # to specify one or the other we can add it later.
-        socket_types = (socket.AF_INET, socket.AF_INET6)
-        for socket_type in socket_types:
-            try:
-                s = socket.socket(socket_type)
-                s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-                s.settimeout(self.conn_timeout or 20.0)
-                s.connect(pair or self.pair)
-                break
-            except socket.gaierror:
-                # If that fails try IPv6
-                continue
-        else:
-            # None of the socket types worked
-            raise
+        sock = self.create_connection(pair)
 
         if self.use_ssl:
             try:
-                s = ssl.wrap_socket(s)
+                sock = ssl.wrap_socket(sock)
             except ssl.SSLError:
-                s.close()
+                sock.close()
                 raise ConnectionFailure("SSL handshake failed. MongoDB may "
                                         "not be configured with SSL support.")
 
-        s.settimeout(self.net_timeout)
-        return SocketInfo(s, self)
+        sock.settimeout(self.net_timeout)
+        return SocketInfo(sock, self)
 
     def get_socket(self, pair=None):
         """Get a socket from the pool.
