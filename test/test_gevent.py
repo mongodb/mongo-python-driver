@@ -15,6 +15,7 @@
 """Tests for connection-pooling with greenlets and Gevent"""
 
 import os
+import time
 import threading
 import unittest
 
@@ -138,6 +139,7 @@ class GeventTest(unittest.TestCase):
                 gr0 = threading.Thread(target=find_slow)
                 gr1 = threading.Thread(target=find_fast)
                 gr0.start()
+                time.sleep(0.1)
                 gr1.start()
 
             gr0.join()
