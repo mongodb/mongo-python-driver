@@ -98,7 +98,7 @@ class TestConnection(TestConnectionReplicaSetBase):
                           connectTimeoutMS=600)
         self.assertRaises(ConfigurationError, ReplicaSetConnection,
                           pair, replicaSet='fdlksjfdslkjfd')
-        self.assert_(ReplicaSetConnection(pair, replicaSet=self.name))
+        self.assertTrue(ReplicaSetConnection(pair, replicaSet=self.name))
 
     def test_repr(self):
         connection = self._get_connection()
@@ -155,7 +155,7 @@ class TestConnection(TestConnectionReplicaSetBase):
         self.assertRaises(InvalidName, make_db, connection, "te/t")
         self.assertRaises(InvalidName, make_db, connection, "te st")
 
-        self.assert_(isinstance(connection.test, Database))
+        self.assertTrue(isinstance(connection.test, Database))
         self.assertEqual(connection.test, connection["test"])
         self.assertEqual(connection.test, Database(connection, "test"))
         connection.close()
@@ -220,8 +220,8 @@ class TestConnection(TestConnectionReplicaSetBase):
         connection.pymongo_test_mike.test.save({"dummy": u"object"})
 
         dbs = connection.database_names()
-        self.assert_("pymongo_test" in dbs)
-        self.assert_("pymongo_test_mike" in dbs)
+        self.assertTrue("pymongo_test" in dbs)
+        self.assertTrue("pymongo_test_mike" in dbs)
         connection.close()
 
     def test_drop_database(self):
@@ -232,22 +232,22 @@ class TestConnection(TestConnectionReplicaSetBase):
 
         connection.pymongo_test.test.save({"dummy": u"object"})
         dbs = connection.database_names()
-        self.assert_("pymongo_test" in dbs)
+        self.assertTrue("pymongo_test" in dbs)
         connection.drop_database("pymongo_test")
         dbs = connection.database_names()
-        self.assert_("pymongo_test" not in dbs)
+        self.assertTrue("pymongo_test" not in dbs)
 
         connection.pymongo_test.test.save({"dummy": u"object"})
         dbs = connection.database_names()
-        self.assert_("pymongo_test" in dbs)
+        self.assertTrue("pymongo_test" in dbs)
         connection.drop_database(connection.pymongo_test)
         dbs = connection.database_names()
-        self.assert_("pymongo_test" not in dbs)
+        self.assertTrue("pymongo_test" not in dbs)
         connection.close()
 
     def test_copy_db(self):
         c = self._get_connection()
-        self.assert_(c.in_request())
+        self.assertTrue(c.in_request())
 
         self.assertRaises(TypeError, c.copy_database, 4, "foo")
         self.assertRaises(TypeError, c.copy_database, "foo", 4)
@@ -265,9 +265,9 @@ class TestConnection(TestConnectionReplicaSetBase):
 
         c.copy_database("pymongo_test", "pymongo_test1")
         # copy_database() didn't accidentally end the request
-        self.assert_(c.in_request())
+        self.assertTrue(c.in_request())
 
-        self.assert_("pymongo_test1" in c.database_names())
+        self.assertTrue("pymongo_test1" in c.database_names())
         self.assertEqual("bar", c.pymongo_test1.test.find_one()["foo"])
 
         c.end_request()
@@ -279,7 +279,7 @@ class TestConnection(TestConnectionReplicaSetBase):
 
         time.sleep(1)
 
-        self.assert_("pymongo_test2" in c.database_names())
+        self.assertTrue("pymongo_test2" in c.database_names())
         self.assertEqual("bar", c.pymongo_test2.test.find_one()["foo"])
 
         if version.at_least(c, (1, 3, 3, 1)):
@@ -299,7 +299,7 @@ class TestConnection(TestConnectionReplicaSetBase):
 
             c.copy_database("pymongo_test", "pymongo_test1",
                             username="mike", password="password")
-            self.assert_("pymongo_test1" in c.database_names())
+            self.assertTrue("pymongo_test1" in c.database_names())
             time.sleep(2)
             self.assertEqual("bar", c.pymongo_test1.test.find_one()["foo"])
         c.close()
@@ -421,13 +421,13 @@ class TestConnection(TestConnectionReplicaSetBase):
         db.test.insert({"x": 1})
 
         self.assertEqual(dict, c.document_class)
-        self.assert_(isinstance(db.test.find_one(), dict))
+        self.assertTrue(isinstance(db.test.find_one(), dict))
         self.assertFalse(isinstance(db.test.find_one(), SON))
 
         c.document_class = SON
 
         self.assertEqual(SON, c.document_class)
-        self.assert_(isinstance(db.test.find_one(), SON))
+        self.assertTrue(isinstance(db.test.find_one(), SON))
         self.assertFalse(isinstance(db.test.find_one(as_class=dict), SON))
         c.close()
 
@@ -435,13 +435,13 @@ class TestConnection(TestConnectionReplicaSetBase):
         db = c.pymongo_test
 
         self.assertEqual(SON, c.document_class)
-        self.assert_(isinstance(db.test.find_one(), SON))
+        self.assertTrue(isinstance(db.test.find_one(), SON))
         self.assertFalse(isinstance(db.test.find_one(as_class=dict), SON))
 
         c.document_class = dict
 
         self.assertEqual(dict, c.document_class)
-        self.assert_(isinstance(db.test.find_one(), dict))
+        self.assertTrue(isinstance(db.test.find_one(), dict))
         self.assertFalse(isinstance(db.test.find_one(), SON))
         c.close()
 
@@ -512,8 +512,8 @@ class TestConnection(TestConnectionReplicaSetBase):
         connection.pymongo_test_bernie.test.save({"dummy": u"object"})
 
         dbs = connection.database_names()
-        self.assert_("pymongo_test" in dbs)
-        self.assert_("pymongo_test_bernie" in dbs)
+        self.assertTrue("pymongo_test" in dbs)
+        self.assertTrue("pymongo_test_bernie" in dbs)
         connection.close()
 
     def test_kill_cursors_explicit(self):
@@ -611,7 +611,7 @@ class TestConnection(TestConnectionReplicaSetBase):
 
             # Can't use self.assertRaises() because it doesn't catch system
             # exceptions
-            self.assert_(raised, "Didn't raise expected ConnectionFailure")
+            self.assertTrue(raised, "Didn't raise expected ConnectionFailure")
 
             # Raises AssertionError due to PYTHON-294 -- Mongo's response to the
             # previous find() is still waiting to be read on the socket, so the

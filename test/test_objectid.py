@@ -47,10 +47,10 @@ class TestObjectId(unittest.TestCase):
         self.assertRaises(InvalidId, ObjectId, "")
         self.assertRaises(InvalidId, ObjectId, "12345678901")
         self.assertRaises(InvalidId, ObjectId, "1234567890123")
-        self.assert_(ObjectId())
-        self.assert_(ObjectId("123456789012"))
+        self.assertTrue(ObjectId())
+        self.assertTrue(ObjectId("123456789012"))
         a = ObjectId()
-        self.assert_(ObjectId(a))
+        self.assertTrue(ObjectId(a))
 
     def test_unicode(self):
         a = ObjectId()
@@ -107,7 +107,7 @@ class TestObjectId(unittest.TestCase):
         map = {}
 
         for id in ids:
-            self.assert_(id not in map)
+            self.assertTrue(id not in map)
             map[id] = True
 
     def test_generation_time(self):
@@ -116,7 +116,7 @@ class TestObjectId(unittest.TestCase):
 
         self.assertEqual(utc, d2.tzinfo)
         d2 = d2.replace(tzinfo=None)
-        self.assert_(d2 - d1 < datetime.timedelta(seconds=2))
+        self.assertTrue(d2 - d1 < datetime.timedelta(seconds=2))
 
     def test_from_datetime(self):
         if 'PyPy 1.8.0' in sys.version:

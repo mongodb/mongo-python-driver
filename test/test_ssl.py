@@ -71,7 +71,7 @@ class TestSSL(unittest.TestCase):
                                         ssl=True)
 
         db = conn.pymongo_ssl_test
-        self.assert_(db.test.insert({'ssl': True}, safe=True))
+        self.assertTrue(db.test.insert({'ssl': True}, safe=True))
         self.assertTrue(db.test.find_one()['ssl'])
         conn.drop_database(db)
 

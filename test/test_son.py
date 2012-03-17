@@ -61,8 +61,8 @@ class TestSON(unittest.TestCase):
 
         for protocol in [0, 1, 2, -1]:
             pickled = pickle.loads(pickle.dumps(complex_son, protocol=protocol))
-            self.assertEquals(pickled['son'], pickled['list'][0])
-            self.assertEquals(pickled['son'], pickled['list'][1])
+            self.assertEqual(pickled['son'], pickled['list'][0])
+            self.assertEqual(pickled['son'], pickled['list'][1])
 
     def test_pickle_backwards_compatability(self):
 

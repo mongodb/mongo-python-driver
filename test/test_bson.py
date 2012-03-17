@@ -62,8 +62,8 @@ class TestBSON(unittest.TestCase):
         self.assertFalse(is_valid("test"))
 
         # the simplest valid BSON document
-        self.assert_(is_valid("\x05\x00\x00\x00\x00"))
-        self.assert_(is_valid(BSON("\x05\x00\x00\x00\x00")))
+        self.assertTrue(is_valid("\x05\x00\x00\x00\x00"))
+        self.assertTrue(is_valid(BSON("\x05\x00\x00\x00\x00")))
         self.assertFalse(is_valid("\x04\x00\x00\x00\x00"))
         self.assertFalse(is_valid("\x05\x00\x00\x00\x01"))
         self.assertFalse(is_valid("\x05\x00\x00\x00"))
@@ -166,7 +166,7 @@ class TestBSON(unittest.TestCase):
             self.assertEqual(dict, (BSON.encode(dict)).decode())
         helper({})
         helper({"test": u"hello"})
-        self.assert_(isinstance(BSON.encode({"hello": "world"})
+        self.assertTrue(isinstance(BSON.encode({"hello": "world"})
                                 .decode()["hello"],
                                 unicode))
         helper({"mike": -10120})
@@ -253,11 +253,11 @@ class TestBSON(unittest.TestCase):
             self.assertRaises(RuntimeError, BSON.encode, evil_data)
 
     def test_overflow(self):
-        self.assert_(BSON.encode({"x": 9223372036854775807L}))
+        self.assertTrue(BSON.encode({"x": 9223372036854775807L}))
         self.assertRaises(OverflowError, BSON.encode,
                           {"x": 9223372036854775808L})
 
-        self.assert_(BSON.encode({"x": -9223372036854775808L}))
+        self.assertTrue(BSON.encode({"x": -9223372036854775808L}))
         self.assertRaises(OverflowError, BSON.encode,
                           {"x": -9223372036854775809L})
 
@@ -285,7 +285,7 @@ class TestBSON(unittest.TestCase):
         id = uuid.uuid4()
         transformed_id = (BSON.encode({"id": id})).decode()["id"]
 
-        self.assert_(isinstance(transformed_id, uuid.UUID))
+        self.assertTrue(isinstance(transformed_id, uuid.UUID))
         self.assertEqual(id, transformed_id)
         self.assertNotEqual(uuid.uuid4(), transformed_id)
 
@@ -295,9 +295,9 @@ class TestBSON(unittest.TestCase):
 
         id = uuid.uuid4()
         legacy = UUIDLegacy(id)
-        self.assertEquals(3, legacy.subtype)
+        self.assertEqual(3, legacy.subtype)
         transformed = (BSON.encode({"uuid": legacy})).decode()["uuid"]
-        self.assert_(isinstance(transformed, uuid.UUID))
+        self.assertTrue(isinstance(transformed, uuid.UUID))
         self.assertEqual(id, transformed)
         self.assertNotEqual(UUIDLegacy(uuid.uuid4()), UUIDLegacy(transformed))
 
@@ -365,14 +365,14 @@ class TestBSON(unittest.TestCase):
                 raise
 
     def test_custom_class(self):
-        self.assert_(isinstance(BSON.encode({}).decode(), dict))
+        self.assertTrue(isinstance(BSON.encode({}).decode(), dict))
         self.assertFalse(isinstance(BSON.encode({}).decode(), SON))
-        self.assert_(isinstance(BSON.encode({}).decode(SON), SON))
+        self.assertTrue(isinstance(BSON.encode({}).decode(SON), SON))
 
         self.assertEqual(1, BSON.encode({"x": 1}).decode(SON)["x"])
 
         x = BSON.encode({"x": [{"y": 1}]})
-        self.assert_(isinstance(x.decode(SON)["x"][0], SON))
+        self.assertTrue(isinstance(x.decode(SON)["x"][0], SON))
 
     def test_subclasses(self):
         # make sure we can serialize subclasses of native Python types.

@@ -145,13 +145,13 @@ class TestCommon(unittest.TestCase):
         self.assertRaises(TypeError, coll._BaseObject__set_safe, 20)
 
         coll.remove()
-        self.assertEquals(None, coll.find_one(slave_okay=True))
+        self.assertEqual(None, coll.find_one(slave_okay=True))
         coll.unset_lasterror_options()
         coll.set_lasterror_options(w=4, wtimeout=10)
         # Fails if we don't have 4 active nodes or we don't have replication...
         self.assertRaises(OperationFailure, coll.insert, {'foo': 'bar'})
         # Succeeds since we override the lasterror settings per query.
-        self.assert_(coll.insert({'foo': 'bar'}, fsync=True))
+        self.assertTrue(coll.insert({'foo': 'bar'}, fsync=True))
         c.drop_database(db)
         warnings.resetwarnings()
 

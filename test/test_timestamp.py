@@ -34,7 +34,7 @@ class TestTimestamp(unittest.TestCase):
         t = Timestamp(123, 456)
         self.assertEqual(t.time, 123)
         self.assertEqual(t.inc, 456)
-        self.assert_(isinstance(t, Timestamp))
+        self.assertTrue(isinstance(t, Timestamp))
 
     def test_datetime(self):
         d = datetime.datetime(2010, 5, 5, tzinfo=utc)
@@ -62,7 +62,7 @@ class TestTimestamp(unittest.TestCase):
         self.assertRaises(TypeError, Timestamp, 123, 1.2)
         self.assertRaises(ValueError, Timestamp, 0, -1)
         self.assertRaises(ValueError, Timestamp, -1, 0)
-        self.assert_(Timestamp(0, 0))
+        self.assertTrue(Timestamp(0, 0))
 
     def test_equality(self):
         t = Timestamp(1, 1)

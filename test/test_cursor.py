@@ -49,7 +49,7 @@ class TestCursor(unittest.TestCase):
         del c["millis"]
         c.pop("oldPlan", None)
         self.assertEqual(b, c)
-        self.assert_("cursor" in b)
+        self.assertTrue("cursor" in b)
 
     def test_hint(self):
         db = self.db
@@ -184,27 +184,27 @@ class TestCursor(unittest.TestCase):
 
         curs = db.test.find().limit(0).batch_size(10)
         curs.next()
-        self.assertEquals(10, curs._Cursor__retrieved)
+        self.assertEqual(10, curs._Cursor__retrieved)
 
         curs = db.test.find().limit(-2).batch_size(0)
         curs.next()
-        self.assertEquals(2, curs._Cursor__retrieved)
+        self.assertEqual(2, curs._Cursor__retrieved)
 
         curs = db.test.find().limit(-4).batch_size(5)
         curs.next()
-        self.assertEquals(4, curs._Cursor__retrieved)
+        self.assertEqual(4, curs._Cursor__retrieved)
 
         curs = db.test.find().limit(50).batch_size(500)
         curs.next()
-        self.assertEquals(50, curs._Cursor__retrieved)
+        self.assertEqual(50, curs._Cursor__retrieved)
 
         curs = db.test.find().batch_size(500)
         curs.next()
-        self.assertEquals(500, curs._Cursor__retrieved)
+        self.assertEqual(500, curs._Cursor__retrieved)
 
         curs = db.test.find().limit(50)
         curs.next()
-        self.assertEquals(50, curs._Cursor__retrieved)
+        self.assertEqual(50, curs._Cursor__retrieved)
 
         # these two might be shaky, as the default
         # is set by the server. as of 2.0.0-rc0, 101
@@ -212,11 +212,11 @@ class TestCursor(unittest.TestCase):
         # for queries without ntoreturn
         curs = db.test.find()
         curs.next()
-        self.assertEquals(101, curs._Cursor__retrieved)
+        self.assertEqual(101, curs._Cursor__retrieved)
 
         curs = db.test.find().limit(0).batch_size(0)
         curs.next()
-        self.assertEquals(101, curs._Cursor__retrieved)
+        self.assertEqual(101, curs._Cursor__retrieved)
 
     def test_skip(self):
         db = self.db
@@ -327,7 +327,7 @@ class TestCursor(unittest.TestCase):
             db.test.save({"x": i})
 
         self.assertEqual(10, db.test.find().count())
-        self.assert_(isinstance(db.test.find().count(), int))
+        self.assertTrue(isinstance(db.test.find().count(), int))
         self.assertEqual(10, db.test.find().limit(5).count())
         self.assertEqual(10, db.test.find().skip(5).count())
 

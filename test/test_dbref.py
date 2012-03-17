@@ -39,10 +39,10 @@ class TestDBRef(unittest.TestCase):
         self.assertRaises(TypeError, DBRef, a, a)
         self.assertRaises(TypeError, DBRef, None, a)
         self.assertRaises(TypeError, DBRef, "coll", a, 5)
-        self.assert_(DBRef("coll", a))
-        self.assert_(DBRef(u"coll", a))
-        self.assert_(DBRef(u"coll", 5))
-        self.assert_(DBRef(u"coll", 5, "database"))
+        self.assertTrue(DBRef("coll", a))
+        self.assertTrue(DBRef(u"coll", a))
+        self.assertTrue(DBRef(u"coll", 5))
+        self.assertTrue(DBRef(u"coll", 5, "database"))
 
     def test_read_only(self):
         a = DBRef("coll", ObjectId())
@@ -133,11 +133,11 @@ class TestDBRef(unittest.TestCase):
     def test_dbref_hash(self):
         dbref_1a = DBRef('collection', 'id', 'database')
         dbref_1b = DBRef('collection', 'id', 'database')
-        self.assertEquals(hash(dbref_1a), hash(dbref_1b))
+        self.assertEqual(hash(dbref_1a), hash(dbref_1b))
 
         dbref_2a = DBRef('collection', 'id', 'database', custom='custom')
         dbref_2b = DBRef('collection', 'id', 'database', custom='custom')
-        self.assertEquals(hash(dbref_2a), hash(dbref_2b))
+        self.assertEqual(hash(dbref_2a), hash(dbref_2b))
 
         self.assertNotEqual(hash(dbref_1a), hash(dbref_2a))
 

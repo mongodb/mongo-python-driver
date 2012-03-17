@@ -31,10 +31,10 @@ class TestCode(unittest.TestCase):
         self.assertRaises(TypeError, Code, None)
         self.assertRaises(TypeError, Code, "aoeu", 5)
         self.assertRaises(TypeError, Code, u"aoeu", 5)
-        self.assert_(Code("aoeu"))
-        self.assert_(Code(u"aoeu"))
-        self.assert_(Code("aoeu", {}))
-        self.assert_(Code(u"aoeu", {}))
+        self.assertTrue(Code("aoeu"))
+        self.assertTrue(Code(u"aoeu"))
+        self.assertTrue(Code("aoeu", {}))
+        self.assertTrue(Code(u"aoeu", {}))
 
     def test_read_only(self):
         c = Code("blah")
@@ -46,9 +46,9 @@ class TestCode(unittest.TestCase):
     def test_code(self):
         a_string = "hello world"
         a_code = Code("hello world")
-        self.assert_(a_code.startswith("hello"))
-        self.assert_(a_code.endswith("world"))
-        self.assert_(isinstance(a_code, Code))
+        self.assertTrue(a_code.startswith("hello"))
+        self.assertTrue(a_code.endswith("world"))
+        self.assertTrue(isinstance(a_code, Code))
         self.assertFalse(isinstance(a_string, Code))
         self.assertEqual(a_code.scope, {})
         a_code.scope["my_var"] = 5

@@ -102,7 +102,7 @@ class TestGridFile(unittest.TestCase):
 
         a = GridIn(self.db.fs)
 
-        self.assert_(isinstance(a._id, ObjectId))
+        self.assertTrue(isinstance(a._id, ObjectId))
         self.assertRaises(AttributeError, setattr, a, "_id", 5)
 
         self.assertEqual(None, a.filename)
@@ -135,7 +135,7 @@ class TestGridFile(unittest.TestCase):
 
         a.close()
 
-        self.assert_(isinstance(a._id, ObjectId))
+        self.assertTrue(isinstance(a._id, ObjectId))
         self.assertRaises(AttributeError, setattr, a, "_id", 5)
 
         self.assertEqual("my_file", a.filename)
@@ -148,7 +148,7 @@ class TestGridFile(unittest.TestCase):
         self.assertEqual(256 * 1024, a.chunk_size)
         self.assertRaises(AttributeError, setattr, a, "chunk_size", 5)
 
-        self.assert_(isinstance(a.upload_date, datetime.datetime))
+        self.assertTrue(isinstance(a.upload_date, datetime.datetime))
         self.assertRaises(AttributeError, setattr, a, "upload_date", 5)
 
         self.assertEqual(["foo"], a.aliases)
@@ -195,7 +195,7 @@ class TestGridFile(unittest.TestCase):
         self.assertEqual(0, b.length)
         self.assertEqual(None, b.content_type)
         self.assertEqual(256 * 1024, b.chunk_size)
-        self.assert_(isinstance(b.upload_date, datetime.datetime))
+        self.assertTrue(isinstance(b.upload_date, datetime.datetime))
         self.assertEqual(None, b.aliases)
         self.assertEqual(None, b.metadata)
         self.assertEqual("d41d8cd98f00b204e9800998ecf8427e", b.md5)
@@ -217,7 +217,7 @@ class TestGridFile(unittest.TestCase):
         self.assertEqual(11, b.length)
         self.assertEqual("text/html", b.content_type)
         self.assertEqual(1000, b.chunk_size)
-        self.assert_(isinstance(b.upload_date, datetime.datetime))
+        self.assertTrue(isinstance(b.upload_date, datetime.datetime))
         self.assertEqual(["foo"], b.aliases)
         self.assertEqual({"foo": 1, "bar": 2}, b.metadata)
         self.assertEqual(3, b.bar)
@@ -464,7 +464,7 @@ Bye""")
         self.assertEqual("foo", f._id)
         self.assertEqual("foo", f.bar)
         self.assertEqual(5, f.baz)
-        self.assert_(f.uploadDate)
+        self.assertTrue(f.uploadDate)
 
         self.assertRaises(AttributeError, setattr, f, "_id", 5)
         f.bar = "a"

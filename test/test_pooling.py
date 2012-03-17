@@ -215,7 +215,7 @@ class TestPooling(unittest.TestCase):
         )
 
     def assert_request_with_socket(self):
-        self.assert_(isinstance(
+        self.assertTrue(isinstance(
             self.c._Connection__pool._get_request_state(), SocketInfo
         ))
 
@@ -321,7 +321,7 @@ class TestPooling(unittest.TestCase):
         t = OneOp(self.c)
         t.start()
         t.join()
-        self.assert_(t.passed, "OneOp.run() threw exception")
+        self.assertTrue(t.passed, "OneOp.run() threw exception")
 
         self.assert_pool_size(1)
         self.c.test.test.find_one()
@@ -408,9 +408,9 @@ class TestPooling(unittest.TestCase):
 
         b_sock = cp1.recv()
         c_sock = cp2.recv()
-        self.assert_(a_sock.sock.getsockname() != b_sock)
-        self.assert_(a_sock.sock.getsockname() != c_sock)
-        self.assert_(b_sock != c_sock)
+        self.assertTrue(a_sock.sock.getsockname() != b_sock)
+        self.assertTrue(a_sock.sock.getsockname() != c_sock)
+        self.assertTrue(b_sock != c_sock)
         self.assertEqual(a_sock,
                          a._Connection__pool.get_socket((a.host, a.port)))
 
@@ -580,7 +580,7 @@ class TestPooling(unittest.TestCase):
             t.join()
 
         for t in threads:
-            self.assert_(t.passed)
+            self.assertTrue(t.passed)
 
         # Critical: release refs to threads, so SocketInfo.__del__() executes
         del threads
@@ -591,7 +591,7 @@ class TestPooling(unittest.TestCase):
 
         # There's a race condition, so be lenient
         nsock = len(cx_pool.sockets)
-        self.assert_(
+        self.assertTrue(
             abs(4 - nsock) < 4,
             "Expected about 4 sockets in the pool, got %d" % nsock
         )

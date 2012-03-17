@@ -60,13 +60,13 @@ class TestPaired(unittest.TestCase):
                           [self.bad, self.bad])
 
         connection = Connection([self.left, self.right])
-        self.assert_(connection)
+        self.assertTrue(connection)
 
         host = connection.host
         port = connection.port
 
         connection = Connection([self.right, self.left])
-        self.assert_(connection)
+        self.assertTrue(connection)
         self.assertEqual(host, connection.host)
         self.assertEqual(port, connection.port)
 
@@ -103,7 +103,7 @@ class TestPaired(unittest.TestCase):
         for _ in range(100):
             db.test.remove({})
             db.test.insert({})
-            self.assert_(db.test.find_one())
+            self.assertTrue(db.test.find_one())
             connection.end_request()
 
 

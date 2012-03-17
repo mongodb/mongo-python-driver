@@ -116,9 +116,9 @@ class TestGridfs(unittest.TestCase):
         raw = self.db.fs.files.find_one()
         self.assertEqual(0, raw["length"])
         self.assertEqual(oid, raw["_id"])
-        self.assert_(isinstance(raw["uploadDate"], datetime.datetime))
+        self.assertTrue(isinstance(raw["uploadDate"], datetime.datetime))
         self.assertEqual(256 * 1024, raw["chunkSize"])
-        self.assert_(isinstance(raw["md5"], basestring))
+        self.assertTrue(isinstance(raw["md5"], basestring))
 
     def test_alt_collection(self):
         oid = self.alt.put("hello world")
@@ -272,23 +272,23 @@ class TestGridfs(unittest.TestCase):
 
     def test_exists(self):
         oid = self.fs.put("hello")
-        self.assert_(self.fs.exists(oid))
-        self.assert_(self.fs.exists({"_id": oid}))
-        self.assert_(self.fs.exists(_id=oid))
+        self.assertTrue(self.fs.exists(oid))
+        self.assertTrue(self.fs.exists({"_id": oid}))
+        self.assertTrue(self.fs.exists(_id=oid))
 
         self.assertFalse(self.fs.exists(filename="mike"))
         self.assertFalse(self.fs.exists("mike"))
 
         oid = self.fs.put("hello", filename="mike", foo=12)
-        self.assert_(self.fs.exists(oid))
-        self.assert_(self.fs.exists({"_id": oid}))
-        self.assert_(self.fs.exists(_id=oid))
-        self.assert_(self.fs.exists(filename="mike"))
-        self.assert_(self.fs.exists({"filename": "mike"}))
-        self.assert_(self.fs.exists(foo=12))
-        self.assert_(self.fs.exists({"foo": 12}))
-        self.assert_(self.fs.exists(foo={"$gt": 11}))
-        self.assert_(self.fs.exists({"foo": {"$gt": 11}}))
+        self.assertTrue(self.fs.exists(oid))
+        self.assertTrue(self.fs.exists({"_id": oid}))
+        self.assertTrue(self.fs.exists(_id=oid))
+        self.assertTrue(self.fs.exists(filename="mike"))
+        self.assertTrue(self.fs.exists({"filename": "mike"}))
+        self.assertTrue(self.fs.exists(foo=12))
+        self.assertTrue(self.fs.exists({"foo": 12}))
+        self.assertTrue(self.fs.exists(foo={"$gt": 11}))
+        self.assertTrue(self.fs.exists({"foo": {"$gt": 11}}))
 
         self.assertFalse(self.fs.exists(foo=13))
         self.assertFalse(self.fs.exists({"foo": 13}))
