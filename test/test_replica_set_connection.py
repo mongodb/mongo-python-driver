@@ -210,7 +210,7 @@ class TestConnection(TestConnectionReplicaSetBase):
         self.assertEqual(1, db.test.count())
         db.test.remove({}, safe=True)
         self.assertEqual(0, db.test.count())
-        c.drop_database(db)
+        db.test.drop()
         c.close()
 
     def test_database_names(self):

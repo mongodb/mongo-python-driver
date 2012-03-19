@@ -32,3 +32,8 @@ def server_started_with_auth(connection):
 
 def server_is_master_with_slave(connection):
     return '--master' in get_command_line(connection)
+
+def drop_collections(db):
+    for coll in db.collection_names():
+        if not coll.startswith('system'):
+            db.drop_collection(coll)

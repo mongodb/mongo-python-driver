@@ -224,7 +224,7 @@ class TestMasterSlaveConnection(unittest.TestCase):
 
     # This was failing because commands were being sent to the slaves
     def test_create_collection(self):
-        self.connection.drop_database('pymongo_test')
+        self.connection.pymongo_test.test.drop()
 
         collection = self.db.create_collection('test')
         self.assertTrue(isinstance(collection, Collection))
@@ -233,7 +233,7 @@ class TestMasterSlaveConnection(unittest.TestCase):
 
     # Believe this was failing for the same reason...
     def test_unique_index(self):
-        self.connection.drop_database('pymongo_test')
+        self.connection.pymongo_test.test.drop()
         self.db.test.create_index('username', unique=True)
 
         self.db.test.save({'username': 'mike'}, safe=True)
