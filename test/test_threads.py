@@ -247,7 +247,6 @@ class BaseTestThreadsAuth(object):
         self.conn.admin.authenticate("admin-user", "password")
         self.conn.admin.system.users.remove({})
         self.conn.auth_test.system.users.remove({})
-        self.conn.drop_database('auth_test')
 
     def test_auto_auth_login(self):
         conn = self._get_connection()

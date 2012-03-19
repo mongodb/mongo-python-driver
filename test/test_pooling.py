@@ -197,9 +197,11 @@ class TestPooling(unittest.TestCase):
         self.c = get_connection(auto_start_request=False)
 
         # reset the db
-        self.c.drop_database(DB)
-        self.c[DB].unique.insert({"_id": "mike"})
-        self.c[DB].test.insert([{} for i in range(1000)])
+        db = self.c[DB]
+        db.unique.drop()
+        db.test.drop()
+        db.unique.insert({"_id": "mike"})
+        db.test.insert([{} for i in range(1000)])
 
     def tearDown(self):
         self.c = None
