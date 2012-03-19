@@ -1431,7 +1431,7 @@ class TestCollection(unittest.TestCase):
             self.assertEqual(3, result.find_one({"_id": "cat"})["value"])
             self.assertEqual(2, result.find_one({"_id": "dog"})["value"])
             self.assertEqual(1, result.find_one({"_id": "mouse"})["value"])
-            self.connection.drop_database('mrtestdb')
+            self.connection.mrtestdb.mrunittests.drop()
 
         full_result = db.test.map_reduce(map, reduce,
                                          out='mrunittests', full_response=True)

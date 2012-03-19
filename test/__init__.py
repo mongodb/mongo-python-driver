@@ -11,19 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-"""Clean up databases after running `nosetests`.
-"""
-
-from test_connection import get_connection
-
-
-def teardown():
-    c = get_connection()
-
-    c.drop_database("pymongo-pooling-tests")
-    c.drop_database("pymongo_test")
-    c.drop_database("pymongo_test1")
-    c.drop_database("pymongo_test2")
-    c.drop_database("pymongo_test_mike")
-    c.drop_database("pymongo_test_bernie")

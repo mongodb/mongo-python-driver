@@ -20,6 +20,7 @@ import warnings
 
 from pymongo.connection import Connection
 from pymongo.errors import ConfigurationError, OperationFailure
+from test.utils import drop_collections
 
 
 host = os.environ.get("DB_IP", 'localhost')
@@ -152,7 +153,7 @@ class TestCommon(unittest.TestCase):
         self.assertRaises(OperationFailure, coll.insert, {'foo': 'bar'})
         # Succeeds since we override the lasterror settings per query.
         self.assertTrue(coll.insert({'foo': 'bar'}, fsync=True))
-        c.drop_database(db)
+        drop_collections(db)
         warnings.resetwarnings()
 
 
