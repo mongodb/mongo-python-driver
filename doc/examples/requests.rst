@@ -88,9 +88,9 @@ updates and queries. This third method looks like this:
 
 .. doctest::
 
+  >>> region, browser, os = 'US', 'Firefox', 'Mac OS X'
   >>> request = connection.start_request()
   >>> try:
-  ...   region, browser, os = 'US', 'Firefox', 'Mac OS X'
   ...   counts.update(
   ...     {'region': region, 'browser': browser, 'os': os},
   ...     {'$inc': {'n': 1 }},
@@ -101,3 +101,22 @@ updates and queries. This third method looks like this:
   ...   request.end()
   >>> print count
   1
+
+Requests can also be used as context managers, with the `with statement
+<http://docs.python.org/reference/compound_stmts.html#index-15>`_, which makes
+the previous example more terse:
+
+.. doctest::
+
+  >>> connection.in_request()
+  False
+  >>> with connection.start_request():
+  ...   # connection is now in request
+  ...   counts.update(
+  ...     {'region': region, 'browser': browser, 'os': os},
+  ...     {'$inc': {'n': 1 }},
+  ...     upsert=True, safe=False)
+  ...   print sum([p['n'] for p in counts.find({'region': region})])
+  2
+  >>> connection.in_request() # request automatically ended
+  False
