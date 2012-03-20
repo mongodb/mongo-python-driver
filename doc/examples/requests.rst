@@ -6,7 +6,7 @@ a single socket, which are guaranteed to be processed on the server in the same
 order as they ran on the client. This can be useful, for example, if you want
 to do a series of :meth:`~pymongo.collection.Collection.insert` or
 :meth:`~pymongo.collection.Collection.update` operations with ``safe=False``,
-and still be certain the next :meth:`~pymongo.collection.Collection.count` or
+and still be certain the next :meth:`~pymongo.collection.Collection.find` or
 :meth:`~pymongo.collection.Collection.count` is executed on the server after
 the inserts complete. This is called "read-your-writes consistency."
 (Another way to guarantee ordering is to pass ``safe=True`` to `insert` and
