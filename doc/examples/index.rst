@@ -22,3 +22,4 @@ MongoDB, you can start it like so:
    replica_set
    custom_type
    gevent
+   requests
