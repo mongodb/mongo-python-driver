@@ -23,7 +23,7 @@ from nose.plugins.skip import SkipTest
 
 from pymongo import pool
 from test_connection import get_connection
-from test.utils import delay
+from test.utils import delay, force_reclaim_sockets
 
 host = os.environ.get("DB_IP", "localhost")
 port = int(os.environ.get("DB_PORT", 27017))
@@ -355,6 +355,8 @@ class GeventTest(unittest.TestCase):
 
         # Cause greenlet to be garbage-collected
         del gr
+
+        force_reclaim_sockets(cx_pool, 1)
 
         # Pool reclaimed the socket
         self.assertEqual(1, len(cx_pool.sockets))

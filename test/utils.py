@@ -15,6 +15,14 @@
 """Utilities for testing pymongo
 """
 
+import gc
+import sys
+import time
+
+from nose.plugins.skip import SkipTest
+
+from pymongo import pool
+
 def delay(sec):
     return '''function() {
         var d = new Date((new Date()).getTime() + %s * 1000);
@@ -37,3 +45,32 @@ def drop_collections(db):
     for coll in db.collection_names():
         if not coll.startswith('system'):
             db.drop_collection(coll)
+
+def force_reclaim_sockets(cx_pool, n_expected):
+    # When a thread dies without ending its request, the SocketInfo it was
+    # using is deleted, and in its __del__ it returns the socket to the
+    # pool. However, when exactly that happens is unpredictable. Try
+    # various ways of forcing the issue.
+
+    if sys.platform.startswith('java'):
+        raise SkipTest("Jython can't reclaim sockets")
+
+    # Bizarre behavior in CPython 2.4, and possibly other CPython versions
+    # less than 2.7: the last dead thread's locals aren't cleaned up until
+    # the local attribute with the same name is accessed from a different
+    # thread. This assert checks that the thread-local is indeed local, and
+    # also triggers the cleanup so the socket is reclaimed.
+    if isinstance(cx_pool, pool.Pool):
+        assert cx_pool.local.sock_info is None
+
+    # In PyPy, we need to try for a while to make garbage-collection call
+    # SocketInfo.__del__
+    start = time.time()
+    while len(cx_pool.sockets) < n_expected and time.time() - start < 5:
+        try:
+            gc.collect(2)
+        except TypeError:
+            # collect() didn't support 'generation' arg until 2.5
+            gc.collect()
+
+        time.sleep(0.5)
