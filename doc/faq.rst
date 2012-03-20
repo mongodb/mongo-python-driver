@@ -27,24 +27,25 @@ instead of creating a new socket. Judicious use of this method is
 important for applications with many threads or with long running
 threads that make few calls to PyMongo operations.
 
-How can I use PyMongo with an asynchronous socket library like `twisted <http://twistedmatrix.com/>`_?
-------------------------------------------------------------------------------------------------------
+Does PyMongo support asynchronous frameworks like Gevent, Tornado, or Twisted?
+------------------------------------------------------------------------------
+The only async framework that PyMongo fully supports is `Gevent
+<http://www.gevent.org/>`_.
 
-Currently there is no great way to use PyMongo in conjunction with
-asynchronous socket frameworks like `twisted
-<http://twistedmatrix.com/>`_ or `tornado
-<http://www.tornadoweb.org/>`_. PyMongo provides built-in connection
-pooling, so some of the benefits of those frameworks can be achieved
-just by writing multi-threaded code that shares a
+Currently there is no great way to use PyMongo in conjunction with `Tornado
+<http://www.tornadoweb.org/>`_ or `Twisted <http://twistedmatrix.com/>`_.
+PyMongo provides built-in connection pooling, so some of the benefits of those
+frameworks can be achieved just by writing multi-threaded code that shares a
 :class:`~pymongo.connection.Connection`.
 
-There is work in progress towards creating an `asynchronous Python
-driver <http://github.com/fiorix/mongo-async-python-driver>`_ for
-MongoDB using the Twisted framework, this project is currently less
-stable than PyMongo however.
+There are asynchronous MongoDB drivers in Python: `AsyncMongo for Tornado
+<https://github.com/bitly/asyncmongo>`_ and `TxMongo for Twisted
+<http://github.com/fiorix/mongo-async-python-driver>`_. Compared to PyMongo,
+however, these projects are less stable, lack features, and are less actively
+maintained.
 
 What does *OperationFailure* cursor id not valid at server mean?
----------------------------------------------------------------------------------------
+----------------------------------------------------------------
 Cursors in MongoDB can timeout on the server if they've been open for
 a long time without any operations being performed on them. This can
 lead to an :class:`~pymongo.errors.OperationFailure` exception being
