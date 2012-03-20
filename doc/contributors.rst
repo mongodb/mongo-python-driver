@@ -49,7 +49,7 @@ The following is a list of people who have contributed to
 - Abhay Vardhan (abhayv)
 - Alexey Borzenkov (snaury)
 - Kostya Rybnikov (k-bx)
-- Jesse Davis (ajdavis)
+- A. Jesse Jiryu Davis (ajdavis)
 - Samuel Clay (samuelclay)
 - Ross Lawley (rozza)
 - Wouter Bolsterlee (wbolster)

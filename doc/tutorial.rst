@@ -289,7 +289,7 @@ than a certain date, but also sort the results by author:
 
   >>> d = datetime.datetime(2009, 11, 12, 12)
   >>> for post in posts.find({"date": {"$lt": d}}).sort("author"):
-  ...   post
+  ...   print post
   ...
   {u'date': datetime.datetime(2009, 11, 10, 10, 45), u'text': u'and pretty easy too!', u'_id': ObjectId('...'), u'author': u'Eliot', u'title': u'MongoDB is fun'}
   {u'date': datetime.datetime(2009, 11, 12, 11, 14), u'text': u'Another post!', u'_id': ObjectId('...'), u'author': u'Mike', u'tags': [u'bulk', u'insert']}
