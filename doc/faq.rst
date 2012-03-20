@@ -15,17 +15,22 @@ How does connection pooling work in PyMongo?
 --------------------------------------------
 
 Every :class:`~pymongo.connection.Connection` instance has built-in
-connection pooling. Each thread gets its own socket reserved on its
+connection pooling. By default, each thread gets its own socket reserved on its
 first operation. Those sockets are held until
 :meth:`~pymongo.connection.Connection.end_request` is called by that
-thread or :meth:`~pymongo.connection.Connection.disconnect` is called
-by any thread.
+thread.
 
 Calling :meth:`~pymongo.connection.Connection.end_request` allows the
 socket to be returned to the pool, and to be used by other threads
 instead of creating a new socket. Judicious use of this method is
 important for applications with many threads or with long running
 threads that make few calls to PyMongo operations.
+
+Alternatively, a :class:`~pymongo.connection.Connection` created with
+``auto_start_request=False`` will share sockets (safely) among all threads.
+
+When :meth:`~pymongo.connection.Connection.disconnect` is called by any thread,
+all sockets are closed. PyMongo will create new sockets as needed.
 
 Does PyMongo support asynchronous frameworks like Gevent, Tornado, or Twisted?
 ------------------------------------------------------------------------------
