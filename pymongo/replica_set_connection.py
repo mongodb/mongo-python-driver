@@ -169,7 +169,7 @@ class ReplicaSetConnection(common.BaseObject):
             may change in future releases of PyMongo.)
           - `use_greenlets` (optional): if ``True``, :meth:`start_request()`
             will ensure that the current greenlet uses the same socket for all
-            requests until :meth:`end_request()`
+            operations until :meth:`end_request()`
           - `slave_okay` or `slaveOk` (deprecated): Use `read_preference`
             instead.
 
