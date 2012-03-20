@@ -14,7 +14,6 @@
 
 """Test built in connection-pooling."""
 
-import gc
 import os
 import random
 import sys
@@ -31,7 +30,7 @@ from pymongo.connection import Connection
 from pymongo.pool import Pool, NO_REQUEST, NO_SOCKET_YET, SocketInfo
 from pymongo.errors import ConfigurationError
 from test_connection import get_connection
-from test.utils import delay
+from test.utils import delay, force_reclaim_sockets
 
 N = 50
 DB = "pymongo-pooling-tests"
@@ -204,7 +203,7 @@ class TestPooling(unittest.TestCase):
         db.test.insert([{} for i in range(1000)])
 
     def tearDown(self):
-        self.c = None
+        self.c.close()
 
     def assert_no_request(self):
         self.assertEqual(
@@ -239,34 +238,6 @@ class TestPooling(unittest.TestCase):
 
         c = Connection(host=host, port=port, max_pool_size=100)
         self.assertEqual(c.max_pool_size, 100)
-
-    def force_reclaim_sockets(self, cx_pool, n_expected):
-        # When a thread dies without ending its request, the SocketInfo it was
-        # using is deleted, and in its __del__ it returns the socket to the
-        # pool. However, when exactly that happens is unpredictable. Try
-        # various ways of forcing the issue.
-
-        if sys.platform.startswith('java'):
-            raise SkipTest("Jython can't reclaim sockets")
-
-        # Bizarre behavior in CPython 2.4, and possibly other CPython versions
-        # less than 2.7: the last dead thread's locals aren't cleaned up until
-        # the local attribute with the same name is accessed from a different
-        # thread. This assert checks that the thread-local is indeed local, and
-        # also triggers the cleanup so the socket is reclaimed.
-        self.assertEqual(None, cx_pool.local.sock_info)
-
-        # In PyPy, we need to try for a while to make garbage-collection call
-        # SocketInfo.__del__
-        start = time.time()
-        while len(cx_pool.sockets) < n_expected and time.time() - start < 5:
-            try:
-                gc.collect(2)
-            except TypeError:
-                # collect() didn't support 'generation' arg until 2.5
-                gc.collect()
-
-            time.sleep(0.5)
 
     def test_no_disconnect(self):
         run_cases(self, [NoRequest, NonUnique, Unique, SaveAndFind])
@@ -565,7 +536,7 @@ class TestPooling(unittest.TestCase):
         acquired = lock.acquire(1)
         self.assertTrue(acquired, "Thread is hung")
 
-        self.force_reclaim_sockets(cx_pool, 1)
+        force_reclaim_sockets(cx_pool, 1)
 
         # Pool reclaimed the socket
         self.assertEqual(1, len(cx_pool.sockets))
@@ -589,7 +560,7 @@ class TestPooling(unittest.TestCase):
         t = None
 
         cx_pool = c._Connection__pool
-        self.force_reclaim_sockets(cx_pool, 4)
+        force_reclaim_sockets(cx_pool, 4)
 
         # There's a race condition, so be lenient
         nsock = len(cx_pool.sockets)
