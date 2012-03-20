@@ -130,7 +130,7 @@ class SON(dict):
         return [v for _, v in self.iteritems()]
 
     def items(self):
-        return list(self.iteritems())
+        return list(SON.iteritems(self))
 
     def clear(self):
         for key in self.keys():

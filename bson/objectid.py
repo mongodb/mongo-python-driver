@@ -16,6 +16,7 @@
 <http://dochub.mongodb.org/core/objectids>`_.
 """
 
+import binascii
 import calendar
 import datetime
 try:
@@ -31,14 +32,18 @@ import threading
 import time
 
 from bson.errors import InvalidId
+from bson.py3compat import (b, binary_type, text_type,
+                            bytes_from_hex, string_types)
 from bson.tz_util import utc
 
+EMPTY = b("")
+ZERO  = b("\x00")
 
 def _machine_bytes():
     """Get the machine portion of an ObjectId.
     """
     machine_hash = _md5func()
-    machine_hash.update(socket.gethostname())
+    machine_hash.update(socket.gethostname().encode())
     return machine_hash.digest()[0:3]
 
 
@@ -114,13 +119,13 @@ class ObjectId(object):
         if generation_time.utcoffset() is not None:
             generation_time = generation_time - generation_time.utcoffset()
         ts = calendar.timegm(generation_time.timetuple())
-        oid = struct.pack(">i", int(ts)) + "\x00" * 8
+        oid = struct.pack(">i", int(ts)) + ZERO * 8
         return cls(oid)
 
     def __generate(self):
         """Generate a new value for this ObjectId.
         """
-        oid = ""
+        oid = EMPTY
 
         # 4 bytes current time
         oid += struct.pack(">i", int(time.time()))
@@ -150,19 +155,23 @@ class ObjectId(object):
         """
         if isinstance(oid, ObjectId):
             self.__id = oid.__id
-        elif isinstance(oid, basestring):
+        elif isinstance(oid, string_types):
             if len(oid) == 12:
-                self.__id = oid
+                if isinstance(oid, binary_type):
+                    self.__id = oid
+                else:
+                    raise InvalidId("%s is not a valid ObjectId" % oid)
             elif len(oid) == 24:
                 try:
-                    self.__id = oid.decode("hex")
-                except TypeError:
+                    self.__id = bytes_from_hex(oid)
+                except (TypeError, ValueError):
                     raise InvalidId("%s is not a valid ObjectId" % oid)
             else:
                 raise InvalidId("%s is not a valid ObjectId" % oid)
         else:
-            raise TypeError("id must be an instance of (str, ObjectId), "
-                            "not %s" % type(oid))
+            raise TypeError("id must be an instance of (%s, %s, ObjectId), "
+                            "not %s" % (binary_type.__name__,
+                                        text_type.__name__, type(oid)))
 
     @property
     def binary(self):
@@ -199,19 +208,27 @@ class ObjectId(object):
         # Provide backwards compatability with OIDs
         # pickled with pymongo-1.9.
         if isinstance(value, dict):
-            self.__id = value['_ObjectId__id']
+            try:
+                # Hack for unpickling ObjectIds created in python2
+                self.__id = value['_ObjectId__id'].encode('latin-1')
+            except UnicodeDecodeError:
+                self.__id = value['_ObjectId__id']
         else:
-            self.__id = value
+            try:
+                # Hack for unpickling ObjectIds created in python2
+                self.__id = value.encode('latin-1')
+            except (UnicodeDecodeError, AttributeError):
+                self.__id = value
 
     def __str__(self):
-        return self.__id.encode("hex")
+        return binascii.hexlify(self.__id).decode()
 
     def __repr__(self):
-        return "ObjectId('%s')" % self.__id.encode("hex")
+        return "ObjectId('%s')" % (str(self),)
 
-    def __cmp__(self, other):
+    def __eq__(self, other):
         if isinstance(other, ObjectId):
-            return cmp(self.__id, other.__id)
+            return self.__id == other.__id
         return NotImplemented
 
     def __hash__(self):

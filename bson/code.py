@@ -15,7 +15,6 @@
 """Tools for representing JavaScript code in BSON.
 """
 
-
 class Code(str):
     """BSON's JavaScript code type.
 
@@ -41,8 +40,10 @@ class Code(str):
     """
 
     def __new__(cls, code, scope=None, **kwargs):
-        if not isinstance(code, basestring):
-            raise TypeError("code must be an instance of basestring")
+        text_type = basestring
+        if not isinstance(code, text_type):
+            raise TypeError("code must be an "
+                            "instance of %s" % (text_type.__name__,))
 
         self = str.__new__(cls, code)
 

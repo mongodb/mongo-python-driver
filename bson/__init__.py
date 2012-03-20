@@ -19,6 +19,7 @@ import calendar
 import datetime
 import re
 import struct
+import sys
 import warnings
 
 from bson.binary import Binary, OLD_UUID_SUBTYPE
@@ -30,13 +31,14 @@ from bson.errors import (InvalidBSON,
 from bson.max_key import MaxKey
 from bson.min_key import MinKey
 from bson.objectid import ObjectId
+from bson.py3compat import b, binary_type
 from bson.son import SON
 from bson.timestamp import Timestamp
 from bson.tz_util import utc
 
 
 try:
-    import _cbson
+    from bson import _cbson
     _use_c = True
 except ImportError:
     _use_c = False
@@ -46,6 +48,8 @@ try:
     _use_uuid = True
 except ImportError:
     _use_uuid = False
+
+PY3 = sys.version_info[0] == 3
 
 
 # This sort of sucks, but seems to be as good as it gets...
@@ -58,6 +62,31 @@ MIN_INT64 = -9223372036854775808
 
 EPOCH_AWARE = datetime.datetime.fromtimestamp(0, utc)
 EPOCH_NAIVE = datetime.datetime.utcfromtimestamp(0)
+
+EMPTY = b("")
+ZERO  = b("\x00")
+ONE   = b("\x01")
+
+BSONNUM = b("\x01") # Floating point
+BSONSTR = b("\x02") # UTF-8 string
+BSONOBJ = b("\x03") # Embedded document
+BSONARR = b("\x04") # Array
+BSONBIN = b("\x05") # Binary
+BSONUND = b("\x06") # Undefined
+BSONOID = b("\x07") # ObjectId
+BSONBOO = b("\x08") # Boolean
+BSONDAT = b("\x09") # UTC Datetime
+BSONNUL = b("\x0A") # Null
+BSONRGX = b("\x0B") # Regex
+BSONREF = b("\x0C") # DBRef
+BSONCOD = b("\x0D") # Javascript code
+BSONSYM = b("\x0E") # Symbol
+BSONCWS = b("\x0F") # Javascript code with scope
+BSONINT = b("\x10") # 32bit int
+BSONTIM = b("\x11") # Timestamp
+BSONLON = b("\x12") # 64bit int
+BSONMIN = b("\xFF") # Min key
+BSONMAX = b("\x7F") # Max key
 
 
 def _get_int(data, position, as_class=None, tz_aware=False, unsigned=False):
@@ -73,27 +102,30 @@ def _get_int(data, position, as_class=None, tz_aware=False, unsigned=False):
 def _get_c_string(data, position, length=None):
     if length is None:
         try:
-            end = data.index("\x00", position)
+            end = data.index(ZERO, position)
         except ValueError:
             raise InvalidBSON()
     else:
         end = position + length
-    value = unicode(data[position:end], "utf-8")
+    value = data[position:end].decode("utf-8")
     position = end + 1
 
     return value, position
 
 
 def _make_c_string(string, check_null=False):
-    if check_null and "\x00" in string:
-        raise InvalidDocument("BSON keys / regex patterns must not "
-                              "contain a NULL character")
     if isinstance(string, unicode):
-        return string.encode("utf-8") + "\x00"
+        if check_null and "\x00" in string:
+            raise InvalidDocument("BSON keys / regex patterns must not "
+                                  "contain a NULL character")
+        return string.encode("utf-8") + ZERO
     else:
+        if check_null and ZERO in string:
+            raise InvalidDocument("BSON keys / regex patterns must not "
+                                  "contain a NULL character")
         try:
             string.decode("utf-8")
-            return string + "\x00"
+            return string + ZERO
         except UnicodeError:
             raise InvalidStringData("strings in documents must be valid "
                                     "UTF-8: %r" % string)
@@ -137,7 +169,7 @@ def _get_array(data, position, as_class, tz_aware):
 
 def _get_binary(data, position, as_class, tz_aware):
     length, position = _get_int(data, position)
-    subtype = ord(data[position])
+    subtype = ord(data[position:position + 1])
     position += 1
     if subtype == 2:
         length2, position = _get_int(data, position)
@@ -148,7 +180,11 @@ def _get_binary(data, position, as_class, tz_aware):
         value = uuid.UUID(bytes=data[position:position + length])
         position += length
         return (value, position)
-    value = Binary(data[position:position + length], subtype)
+    # Python3 special case. Decode subtype 0 to 'bytes'.
+    if PY3 and subtype == 0:
+        value = data[position:position + length]
+    else:
+        value = Binary(data[position:position + length], subtype)
     position += length
     return value, position
 
@@ -160,7 +196,7 @@ def _get_oid(data, position, as_class, tz_aware):
 
 
 def _get_boolean(data, position, as_class, tz_aware):
-    value = data[position] == "\x01"
+    value = data[position:position + 1] == ONE
     position += 1
     return value, position
 
@@ -223,36 +259,38 @@ def _get_timestamp(data, position, as_class, tz_aware):
 
 def _get_long(data, position, as_class, tz_aware):
     # Have to cast to long; on 32-bit unpack may return an int.
+    # 2to3 will change long to int. That's fine since long doesn't
+    # exist in python3.
     value = long(struct.unpack("<q", data[position:position + 8])[0])
     position += 8
     return value, position
 
 
 _element_getter = {
-    "\x01": _get_number,
-    "\x02": _get_string,
-    "\x03": _get_object,
-    "\x04": _get_array,
-    "\x05": _get_binary,
-    "\x06": _get_null,  # undefined
-    "\x07": _get_oid,
-    "\x08": _get_boolean,
-    "\x09": _get_date,
-    "\x0A": _get_null,
-    "\x0B": _get_regex,
-    "\x0C": _get_ref,
-    "\x0D": _get_code,  # code
-    "\x0E": _get_string,  # symbol
-    "\x0F": _get_code_w_scope,
-    "\x10": _get_int,  # number_int
-    "\x11": _get_timestamp,
-    "\x12": _get_long,
-    "\xFF": lambda w, x, y, z: (MinKey(), x),
-    "\x7F": lambda w, x, y, z: (MaxKey(), x)}
+    BSONNUM: _get_number,
+    BSONSTR: _get_string,
+    BSONOBJ: _get_object,
+    BSONARR: _get_array,
+    BSONBIN: _get_binary,
+    BSONUND: _get_null,  # undefined
+    BSONOID: _get_oid,
+    BSONBOO: _get_boolean,
+    BSONDAT: _get_date,
+    BSONNUL: _get_null,
+    BSONRGX: _get_regex,
+    BSONREF: _get_ref,
+    BSONCOD: _get_code,  # code
+    BSONSYM: _get_string,  # symbol
+    BSONCWS: _get_code_w_scope,
+    BSONINT: _get_int,  # number_int
+    BSONTIM: _get_timestamp,
+    BSONLON: _get_long, # Same as _get_int after 2to3 runs.
+    BSONMIN: lambda w, x, y, z: (MinKey(), x),
+    BSONMAX: lambda w, x, y, z: (MaxKey(), x)}
 
 
 def _element_to_dict(data, position, as_class, tz_aware):
-    element_type = data[position]
+    element_type = data[position:position + 1]
     position += 1
     element_name, position = _get_c_string(data, position)
     value, position = _element_getter[element_type](data, position,
@@ -273,7 +311,7 @@ def _bson_to_dict(data, as_class, tz_aware):
     obj_size = struct.unpack("<i", data[:4])[0]
     if len(data) < obj_size:
         raise InvalidBSON("objsize too large")
-    if data[obj_size - 1] != "\x00":
+    if data[obj_size - 1:obj_size] != ZERO:
         raise InvalidBSON("bad eoo")
     elements = data[4:obj_size - 1]
     return (_elements_to_dict(elements, as_class, tz_aware), data[obj_size:])
@@ -294,71 +332,78 @@ def _element_to_bson(key, value, check_keys, uuid_subtype):
 
     name = _make_c_string(key, True)
     if isinstance(value, float):
-        return "\x01" + name + struct.pack("<d", value)
+        return BSONNUM + name + struct.pack("<d", value)
 
-    # Use Binary w/ subtype 3 for UUID instances
     if _use_uuid:
         if isinstance(value, uuid.UUID):
-            value = Binary(value.bytes, subtype=uuid_subtype)
+            # Python 3.0(.1) returns a bytearray instance for bytes (3.1 and
+            # newer just return a bytes instance). Convert that to binary_type
+            # for compatibility.
+            value = Binary(binary_type(value.bytes), subtype=uuid_subtype)
 
     if isinstance(value, Binary):
         subtype = value.subtype
         if subtype == 2:
             value = struct.pack("<i", len(value)) + value
-        return "\x05%s%s%s%s" % (name, struct.pack("<i", len(value)),
-                                 chr(subtype), value)
+        return (BSONBIN + name +
+                struct.pack("<i", len(value)) + b(chr(subtype)) + value)
     if isinstance(value, Code):
         cstring = _make_c_string(value)
         if not value.scope:
             length = struct.pack("<i", len(cstring))
-            return "\x0D" + name + length + cstring
+            return BSONCOD + name + length + cstring
         scope = _dict_to_bson(value.scope, False, uuid_subtype, False)
         full_length = struct.pack("<i", 8 + len(cstring) + len(scope))
         length = struct.pack("<i", len(cstring))
-        return "\x0F" + name + full_length + length + cstring + scope
-    if isinstance(value, str):
+        return BSONCWS + name + full_length + length + cstring + scope
+    if isinstance(value, binary_type):
+        if PY3:
+            # Python3 special case. Store 'bytes' as BSON binary subtype 0.
+            return (BSONBIN + name +
+                    struct.pack("<i", len(value)) + ZERO + value)
         cstring = _make_c_string(value)
         length = struct.pack("<i", len(cstring))
-        return "\x02" + name + length + cstring
+        return BSONSTR + name + length + cstring
     if isinstance(value, unicode):
         cstring = _make_c_string(value)
         length = struct.pack("<i", len(cstring))
-        return "\x02" + name + length + cstring
+        return BSONSTR + name + length + cstring
     if isinstance(value, dict):
-        return "\x03" + name + _dict_to_bson(value, check_keys, uuid_subtype, False)
+        return BSONOBJ + name + _dict_to_bson(value, check_keys, uuid_subtype, False)
     if isinstance(value, (list, tuple)):
         as_dict = SON(zip([str(i) for i in range(len(value))], value))
-        return "\x04" + name + _dict_to_bson(as_dict, check_keys, uuid_subtype, False)
+        return BSONARR + name + _dict_to_bson(as_dict, check_keys, uuid_subtype, False)
     if isinstance(value, ObjectId):
-        return "\x07" + name + value.binary
+        return BSONOID + name + value.binary
     if value is True:
-        return "\x08" + name + "\x01"
+        return BSONBOO + name + ONE
     if value is False:
-        return "\x08" + name + "\x00"
+        return BSONBOO + name + ZERO
     if isinstance(value, int):
         # TODO this is an ugly way to check for this...
         if value > MAX_INT64 or value < MIN_INT64:
             raise OverflowError("BSON can only handle up to 8-byte ints")
         if value > MAX_INT32 or value < MIN_INT32:
-            return "\x12" + name + struct.pack("<q", value)
-        return "\x10" + name + struct.pack("<i", value)
+            return BSONLON + name + struct.pack("<q", value)
+        return BSONINT + name + struct.pack("<i", value)
+    # 2to3 will convert long to int here since there is no long in python3.
+    # That's OK. The previous if block will match instead.
     if isinstance(value, long):
-        # XXX No long type in Python 3
         if value > MAX_INT64 or value < MIN_INT64:
             raise OverflowError("BSON can only handle up to 8-byte ints")
-        return "\x12" + name + struct.pack("<q", value)
+        return BSONLON + name + struct.pack("<q", value)
     if isinstance(value, datetime.datetime):
         if value.utcoffset() is not None:
             value = value - value.utcoffset()
         millis = int(calendar.timegm(value.timetuple()) * 1000 +
                      value.microsecond / 1000)
-        return "\x09" + name + struct.pack("<q", millis)
+        return BSONDAT + name + struct.pack("<q", millis)
     if isinstance(value, Timestamp):
         time = struct.pack("<I", value.time)
         inc = struct.pack("<I", value.inc)
-        return "\x11" + name + inc + time
+        return BSONTIM + name + inc + time
     if value is None:
-        return "\x0A" + name
+        return BSONNUL + name
     if isinstance(value, RE_TYPE):
         pattern = value.pattern
         flags = ""
@@ -374,14 +419,14 @@ def _element_to_bson(key, value, check_keys, uuid_subtype):
             flags += "u"
         if value.flags & re.VERBOSE:
             flags += "x"
-        return "\x0B" + name + _make_c_string(pattern, True) + \
+        return BSONRGX + name + _make_c_string(pattern, True) + \
             _make_c_string(flags)
     if isinstance(value, DBRef):
         return _element_to_bson(key, value.as_doc(), False, uuid_subtype)
     if isinstance(value, MinKey):
-        return "\xFF" + name
+        return BSONMIN + name
     if isinstance(value, MaxKey):
-        return "\x7F" + name
+        return BSONMAX + name
 
     raise InvalidDocument("cannot convert value of type %s to bson" %
                           type(value))
@@ -398,9 +443,9 @@ def _dict_to_bson(dict, check_keys, uuid_subtype, top_level=True):
     except AttributeError:
         raise TypeError("encoder expected a mapping type but got: %r" % dict)
 
-    encoded = ''.join(elements)
+    encoded = EMPTY.join(elements)
     length = len(encoded) + 5
-    return struct.pack("<i", length) + encoded + "\x00"
+    return struct.pack("<i", length) + encoded + ZERO
 if _use_c:
     _dict_to_bson = _cbson._dict_to_bson
 
@@ -427,8 +472,8 @@ def decode_all(data, as_class=dict, tz_aware=True):
     while position < end:
         obj_size = struct.unpack("<i", data[position:position + 4])[0]
         if len(data) - position < obj_size:
-           raise InvalidBSON("objsize too large")
-        if data[position + obj_size - 1] != "\x00":
+            raise InvalidBSON("objsize too large")
+        if data[position + obj_size - 1:position + obj_size] != ZERO:
             raise InvalidBSON("bad eoo")
         elements = data[position + 4:position + obj_size - 1]
         position += obj_size
@@ -448,17 +493,18 @@ def is_valid(bson):
     :Parameters:
       - `bson`: the data to be validated
     """
-    if not isinstance(bson, str):
-        raise TypeError("BSON data must be an instance of a subclass of str")
+    if not isinstance(bson, binary_type):
+        raise TypeError("BSON data must be an instance "
+                        "of a subclass of %s" % (binary_type.__name__,))
 
     try:
         (_, remainder) = _bson_to_dict(bson, dict, True)
-        return remainder == ""
+        return remainder == EMPTY
     except:
         return False
 
 
-class BSON(str):
+class BSON(binary_type):
     """BSON (Binary JSON) data.
     """
 
