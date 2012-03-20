@@ -1,12 +1,6 @@
 Requests
 ===========================
 
-Because PyMongo has built-in connection pooling, a given thread may use two
-different sockets for two operations on MongoDB. This can lead to
-inconsistency. For example, if you make an unsafe insert on one socket, then
-count the number of documents using a different socket, MongoDB may not have
-processed the insert by the time it executes the count.
-
 PyMongo supports the idea of a *request*: a series of operations executed with
 a single socket, which are guaranteed to be processed on the server in the same
 order as they ran on the client. This can be useful, for example, if you want
@@ -14,19 +8,20 @@ to do a series of :meth:`~pymongo.collection.Collection.insert` or
 :meth:`~pymongo.collection.Collection.update` operations with ``safe=False``,
 and still be certain the next :meth:`~pymongo.collection.Collection.count` or
 :meth:`~pymongo.collection.Collection.count` is executed on the server after
-the inserts complete. This is called "read-your-own-writes consistency."
-(Another way to guarantee ordering is to pass ``safe=True`` to `insert`, with
+the inserts complete. This is called "read-your-writes consistency."
+(Another way to guarantee ordering is to pass ``safe=True`` to `insert` and
+`update`. This ensures your code will block until the write has completed, with
 the additional advantage that errors on the server will be reported to the
 client.)
 
 By default, PyMongo starts a request for each thread when the thread first runs
-an operation on MongoDB. This guarantees read-your-own-writes
-consistency. Within a request, the thread will continue to use the same socket
-exclusively, and no other thread will use this socket, until the thread calls
+an operation on MongoDB. This guarantees read-your-writes consistency. Within a
+request, the thread will continue to use the same socket exclusively, and no
+other thread will use this socket, until the thread calls
 :meth:`~pymongo.connection.Connection.end_request` or it terminates. At that
 point, the socket is returned to the connection pool for use by other threads.
 
-When to Turn Off auto_start_request
+When to turn off auto_start_request
 -----------------------------------
 
 If your application has many threads running simultaneously, but those threads
@@ -48,14 +43,14 @@ passing ``safe=True`` to each :meth:`~pymongo.connection.Connection.insert` or
 :meth:`~pymongo.connection.Connection.update`, or by executing only the series
 of operations in which ordering is important within a request.
 
-When to Use start_request Explicitly
+When to use start_request explicitly
 ------------------------------------
 
 If your application will benefit from turning off ``auto_start_request`` but
-still needs to make unsafe writes, and then read the result of those writes,
-then you should use :meth:`~pymongo.connection.Connection.start_request` and
-:meth:`~pymongo.connection.Connection.end_request` around the section of code
-that requires this form of consistency.
+still needs to do fire-and-forget writes, and then read the result of those
+writes, then you should use :meth:`~pymongo.connection.Connection.start_request`
+and :meth:`~pymongo.connection.Connection.end_request` around the section of
+code that requires this form of consistency.
 
 .. testsetup::
 
@@ -74,9 +69,9 @@ region, and OS, and then show the user the number of page views from his or her
 region, *including* the user's own visit. We have three ways to do so reliably:
 
 1. Simply update the counters with ``safe=True``, and then ``find`` all
-counters for the visitor's region. This will ensure PyMongo reports an error if
-any occurs, but it comes with a performance penalty that may be unacceptable
-for analytics.
+counters for the visitor's region. This will ensure that the `update` completes
+before the `find` begins, but it comes with a performance penalty that may be
+unacceptable for analytics.
 
 2. Create the :class:`~pymongo.connection.Connection` with
 ``auto_start_request=True`` to ensure each thread gets its own socket.
@@ -94,7 +89,8 @@ updates and queries. This third method looks like this:
   ...   counts.update(
   ...     {'region': region, 'browser': browser, 'os': os},
   ...     {'$inc': {'n': 1 }},
-  ...     upsert=True, safe=False)
+  ...     upsert=True,
+  ...     safe=False) # fire-and-forget write
   ...   # always runs after update has completed
   ...   count = sum([p['n'] for p in counts.find({'region': region})])
   ... finally:
@@ -115,7 +111,8 @@ the previous example more terse:
   ...   counts.update(
   ...     {'region': region, 'browser': browser, 'os': os},
   ...     {'$inc': {'n': 1 }},
-  ...     upsert=True, safe=False)
+  ...     upsert=True,
+  ...     safe=False)
   ...   print sum([p['n'] for p in counts.find({'region': region})])
   2
   >>> connection.in_request() # request automatically ended
