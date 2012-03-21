@@ -130,6 +130,8 @@ class SON(dict):
         return [v for _, v in self.iteritems()]
 
     def items(self):
+        # Use SON.iteritems here to avoid recursion issues
+        # in python 3.x.
         return list(SON.iteritems(self))
 
     def clear(self):

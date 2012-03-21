@@ -20,7 +20,6 @@ import datetime
 import re
 import struct
 import sys
-import warnings
 
 from bson.binary import Binary, OLD_UUID_SUBTYPE
 from bson.code import Code
@@ -63,6 +62,9 @@ MIN_INT64 = -9223372036854775808
 EPOCH_AWARE = datetime.datetime.fromtimestamp(0, utc)
 EPOCH_NAIVE = datetime.datetime.utcfromtimestamp(0)
 
+# Create constants compatible with all versions of
+# python from 2.4 forward. In 2.x b("foo") is just
+# "foo". In 3.x it becomes b"foo".
 EMPTY = b("")
 ZERO  = b("\x00")
 ONE   = b("\x01")

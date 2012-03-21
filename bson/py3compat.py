@@ -21,6 +21,13 @@ PY3 = sys.version_info[0] == 3
 if PY3:
     import codecs
     def b(s):
+        # BSON and socket operations deal in binary data. In
+        # python 3 take means instances of `bytes`. In python
+        # 2.6 and 2.7 you can create an alias for `bytes` using
+        # the b prefix (e.g. b'foo'). Python 2.4 and 2.5 don't
+        # provide this marker so we provide this compat function.
+        # In python 3.x b('foo') results in b'foo'.
+        # See http://python3porting.com/problems.html#nicer-solutions
         return codecs.latin_1_encode(s)[0]
 
     def bytes_from_hex(h):
@@ -31,6 +38,7 @@ if PY3:
 
 else:
     def b(s):
+        # See comments above. In python 2.x b('foo') is just 'foo'.
         return s
 
     def bytes_from_hex(h):
