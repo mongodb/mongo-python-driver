@@ -62,9 +62,9 @@ class ObjectId(object):
         """Initialize a new ObjectId.
 
         If `oid` is ``None``, create a new (unique) ObjectId. If `oid`
-        is an instance of (``basestring``, :class:`ObjectId`) validate
-        it and use that.  Otherwise, a :class:`TypeError` is
-        raised. If `oid` is invalid,
+        is an instance of (:class:`basestring` (:class:`str` or :class:`bytes`
+        in python 3), :class:`ObjectId`) validate it and use that.  Otherwise,
+        a :class:`TypeError` is raised. If `oid` is invalid,
         :class:`~bson.errors.InvalidId` is raised.
 
         :Parameters:
@@ -147,8 +147,10 @@ class ObjectId(object):
     def __validate(self, oid):
         """Validate and use the given id for this ObjectId.
 
-        Raises TypeError if id is not an instance of (str, ObjectId) and
-        InvalidId if it is not a valid ObjectId.
+        Raises TypeError if id is not an instance of
+        (:class:`basestring` (:class:`str` or :class:`bytes`
+        in python 3), ObjectId) and InvalidId if it is not a
+        valid ObjectId.
 
         :Parameters:
           - `oid`: a valid ObjectId
@@ -209,13 +211,15 @@ class ObjectId(object):
         # pickled with pymongo-1.9.
         if isinstance(value, dict):
             try:
-                # Hack for unpickling ObjectIds created in python2
+                # ObjectIds pickled in python 2.x used `str` for __id.
+                # In python 3.x this has to be converted to `bytes`
+                # by encoding latin-1.
                 self.__id = value['_ObjectId__id'].encode('latin-1')
             except UnicodeDecodeError:
                 self.__id = value['_ObjectId__id']
         else:
             try:
-                # Hack for unpickling ObjectIds created in python2
+                # See the previous comment about python 2/3 pickle issues.
                 self.__id = value.encode('latin-1')
             except (UnicodeDecodeError, AttributeError):
                 self.__id = value
@@ -229,6 +233,26 @@ class ObjectId(object):
     def __eq__(self, other):
         if isinstance(other, ObjectId):
             return self.__id == other.__id
+        return NotImplemented
+
+    def __lt__(self, other):
+        if isinstance(other, ObjectId):
+            return self.__id < other.__id
+        return NotImplemented
+
+    def __le__(self, other):
+        if isinstance(other, ObjectId):
+            return self.__id <= other.__id
+        return NotImplemented
+
+    def __gt__(self, other):
+        if isinstance(other, ObjectId):
+            return self.__id > other.__id
+        return NotImplemented
+
+    def __ge__(self, other):
+        if isinstance(other, ObjectId):
+            return self.__id >= other.__id
         return NotImplemented
 
     def __hash__(self):
