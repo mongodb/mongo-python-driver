@@ -200,7 +200,7 @@ class Cursor(object):
         self.__killed = True
 
     def close(self):
-        """Explicitly close this cursor. Required for PyPy, Jython and
+        """Explicitly close / kill this cursor. Required for PyPy, Jython and
         other Python implementations that don't use reference counting
         garbage collection.
         """
@@ -248,7 +248,7 @@ class Cursor(object):
 
     def add_option(self, mask):
         """Set arbitary query flags using a bitmask.
-        
+
         To set the tailable flag:
         cursor.add_option(2)
         """
@@ -261,7 +261,7 @@ class Cursor(object):
 
     def remove_option(self, mask):
         """Unset arbitrary query flags using a bitmask.
-        
+
         To unset the tailable flag:
         cursor.remove_option(2)
         """
@@ -692,6 +692,18 @@ class Cursor(object):
         .. versionadded:: 1.5
         """
         return bool(len(self.__data) or (not self.__killed))
+
+    @property
+    def id(self):
+        """Returns the id of the cursor
+
+        Useful if you need to manage cursor ids and want to handle killing
+        cursors manually using
+        :meth:`~pymongo.connection.Connection.kill_cursors`
+
+        .. versionadded:: 2.1.1+
+        """
+        return self.__id
 
     def __iter__(self):
         return self
