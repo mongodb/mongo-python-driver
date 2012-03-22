@@ -497,7 +497,7 @@ class Connection(common.BaseObject):
             ('user', user), ('nonce', nonce), ('key', key)])
         self.__simple_command(sock_info, dbname, query)
 
-    def __try_node(self, node):
+    def __try_node(self, node, arb_ok=False):
         """Try to connect to this node and see if it works
         for our connection type.
 
@@ -536,7 +536,7 @@ class Connection(common.BaseObject):
             raise AutoReconnect('%s:%d is not primary or master' % node)
 
         # Direct connection
-        if response.get("arbiterOnly", False):
+        if response.get("arbiterOnly", False) and not arb_ok:
             raise ConfigurationError("%s:%d is an arbiter" % node)
         return node
 
@@ -555,7 +555,7 @@ class Connection(common.BaseObject):
         behavior is still the same. We iterate through the list trying
         to find a host we can send write operations to.
 
-        In either case a connection to an arbiter will never succeed.
+        Only a direct connection to an arbiter will succeed.
 
         Sets __host and __port so that :attr:`host` and :attr:`port`
         will return the address of the connected host.
@@ -563,9 +563,10 @@ class Connection(common.BaseObject):
         errors = []
         # self.__nodes may change size as we iterate.
         seeds = self.__nodes.copy()
+        is_direct_cxn = (len(seeds) is 1)
         for candidate in seeds:
             try:
-                node = self.__try_node(candidate)
+                node = self.__try_node(candidate, arb_ok=is_direct_cxn)
                 if node:
                     return node
             except Exception, why:
