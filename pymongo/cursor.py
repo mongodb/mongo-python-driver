@@ -694,7 +694,7 @@ class Cursor(object):
         return bool(len(self.__data) or (not self.__killed))
 
     @property
-    def id(self):
+    def cursor_id(self):
         """Returns the id of the cursor
 
         Useful if you need to manage cursor ids and want to handle killing
