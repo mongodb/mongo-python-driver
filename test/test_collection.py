@@ -1527,6 +1527,17 @@ class TestCollection(unittest.TestCase):
                          c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
                                            new=True, fields={'i': 1}))
 
+        class ExtendedDict(dict):
+            pass
+
+        result = c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
+                                    new=True, fields={'i': 1})
+        self.assertFalse(isinstance(result, ExtendedDict))
+        result = c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
+                                    new=True, fields={'i': 1},
+                                    as_class=ExtendedDict)
+        self.assertTrue(isinstance(result, ExtendedDict))
+
     def test_find_with_nested(self):
         if not version.at_least(self.db.connection, (2, 0, 0)):
             raise SkipTest()
