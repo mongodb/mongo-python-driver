@@ -568,7 +568,7 @@ class Connection(common.BaseObject):
             raise AutoReconnect('%s:%d is not primary or master' % node)
 
         # Direct connection
-        if response.get("arbiterOnly", False):
+        if response.get("arbiterOnly", False) and not self.__direct:
             raise ConfigurationError("%s:%d is an arbiter" % node)
         return node, response['ismaster'], response.get('msg', '') == 'isdbgrid'
 
