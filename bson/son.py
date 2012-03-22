@@ -51,6 +51,7 @@ class SON(dict):
     unicode                              code           bson -> py
     `bson.code.Code`                     code           py -> bson
     unicode                              symbol         bson -> py
+    bytes (Python 3) [#bytes]_           binary         both
     ===================================  =============  ===================
 
     Note that to save binary data it must be wrapped as an instance of
@@ -58,12 +59,17 @@ class SON(dict):
     and retrieved as unicode.
 
     .. [#int] A Python int will be saved as a BSON int32 or BSON int64 depending
-       on its size. A BSON int32 will always decode to a Python int. A BSON int64
-       will always decode to a Python long.
+       on its size. A BSON int32 will always decode to a Python int. In Python 2.x
+       a BSON int64 will always decode to a Python long. In Python 3.x a BSON
+       int64 will decode to a Python int since there is no longer a long type.
     .. [#dt] datetime.datetime instances will be rounded to the nearest
        millisecond when saved
     .. [#dt2] all datetime.datetime instances are treated as *naive*. clients
        should always use UTC.
+    .. [#bytes] The bytes type from Python 3.x is encoded as BSON binary with
+       subtype 0. In Python 3.x it will be decoded back to bytes. In Python 2.x
+       it will be decoded to an instance of :class:`~bson.binary.Binary` with
+       subtype 0.
     """
 
     def __init__(self, data=None, **kwargs):

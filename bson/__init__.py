@@ -489,8 +489,8 @@ def is_valid(bson):
     """Check that the given string represents valid :class:`BSON` data.
 
     Raises :class:`TypeError` if `bson` is not an instance of
-    :class:`str`.  Returns ``True`` if `bson` is valid :class:`BSON`,
-    ``False`` otherwise.
+    :class:`str` (:class:`bytes` in python 3). Returns ``True``
+    if `bson` is valid :class:`BSON`, ``False`` otherwise.
 
     :Parameters:
       - `bson`: the data to be validated
@@ -518,7 +518,7 @@ class BSON(binary_type):
 
         Raises :class:`TypeError` if `document` is not a mapping type,
         or contains keys that are not instances of
-        :class:`basestring`.  Raises
+        :class:`basestring` (:class:`str` in python 3). Raises
         :class:`~bson.errors.InvalidDocument` if `document` cannot be
         converted to :class:`BSON`.
 

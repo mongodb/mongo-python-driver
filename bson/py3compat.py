@@ -22,7 +22,7 @@ if PY3:
     import codecs
     def b(s):
         # BSON and socket operations deal in binary data. In
-        # python 3 take means instances of `bytes`. In python
+        # python 3 that means instances of `bytes`. In python
         # 2.6 and 2.7 you can create an alias for `bytes` using
         # the b prefix (e.g. b'foo'). Python 2.4 and 2.5 don't
         # provide this marker so we provide this compat function.
