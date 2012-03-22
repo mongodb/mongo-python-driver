@@ -314,6 +314,9 @@ class Database(common.BaseObject):
           - `**kwargs` (optional): additional keyword arguments will
             be added to the command document before it is sent
 
+        .. versionchanged:: 2.1.1+
+           Added support for `as_class` - the class you want to use for
+           the resulting documents
         .. versionchanged:: 1.6
            Added the `value` argument for string commands, and keyword
            arguments for additional command options.
@@ -328,6 +331,7 @@ class Database(common.BaseObject):
             command = SON([(command, value)])
 
         extra_opts = {
+            'as_class': kwargs.pop('as_class', None),
             'read_preference': kwargs.pop('read_preference',
                                           self.read_preference),
             'slave_okay': kwargs.pop('slave_okay', self.slave_okay),
