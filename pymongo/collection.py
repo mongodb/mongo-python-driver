@@ -25,8 +25,6 @@ from pymongo import (common,
 from pymongo.cursor import Cursor
 from pymongo.errors import ConfigurationError, InvalidName, InvalidOperation
 
-_ZERO = "\x00\x00\x00\x00"
-
 
 def _gen_index_name(keys):
     """Generate an index name from the set of fields it is over.
@@ -42,7 +40,7 @@ class Collection(common.BaseObject):
         """Get / create a Mongo collection.
 
         Raises :class:`TypeError` if `name` is not an instance of
-        :class:`basestring`. Raises
+        :class:`basestring` (:class:`str` in python 3). Raises
         :class:`~pymongo.errors.InvalidName` if `name` is not a valid
         collection name. Any additional keyword arguments will be used
         as options passed to the create command. See
@@ -83,7 +81,8 @@ class Collection(common.BaseObject):
                              **(database.get_lasterror_options()))
 
         if not isinstance(name, basestring):
-            raise TypeError("name must be an instance of basestring")
+            raise TypeError("name must be an instance "
+                            "of %s" % (basestring.__name__,))
 
         if not name or ".." in name:
             raise InvalidName("collection names cannot be empty")
@@ -134,10 +133,11 @@ class Collection(common.BaseObject):
     def __repr__(self):
         return "Collection(%r, %r)" % (self.__database, self.__name)
 
-    def __cmp__(self, other):
+    def __eq__(self, other):
         if isinstance(other, Collection):
-            return cmp((self.__database, self.__name),
-                       (other.__database, other.__name))
+            us = (self.__database, self.__name)
+            them = (other.__database, other.__name)
+            return us == them
         return NotImplemented
 
     @property
@@ -629,10 +629,10 @@ class Collection(common.BaseObject):
         """Creates an index on this collection.
 
         Takes either a single key or a list of (key, direction) pairs.
-        The key(s) must be an instance of :class:`basestring`, and the
-        directions must be one of (:data:`~pymongo.ASCENDING`,
-        :data:`~pymongo.DESCENDING`, :data:`~pymongo.GEO2D`). Returns
-        the name of the created index.
+        The key(s) must be an instance of :class:`basestring`
+        (:class:`str` in python 3), and the directions must be one of
+        (:data:`~pymongo.ASCENDING`, :data:`~pymongo.DESCENDING`,
+        :data:`~pymongo.GEO2D`). Returns the name of the created index.
 
         To create a single key index on the key ``'mike'`` we just use
         a string argument:
@@ -712,10 +712,11 @@ class Collection(common.BaseObject):
         """Ensures that an index exists on this collection.
 
         Takes either a single key or a list of (key, direction) pairs.
-        The key(s) must be an instance of :class:`basestring`, and the
-        direction(s) must be one of (:data:`~pymongo.ASCENDING`,
-        :data:`~pymongo.DESCENDING`, :data:`~pymongo.GEO2D`). See
-        :meth:`create_index` for a detailed example.
+        The key(s) must be an instance of :class:`basestring`
+        (:class:`str` in python 3), and the direction(s) must be one of
+        (:data:`~pymongo.ASCENDING`, :data:`~pymongo.DESCENDING`,
+        :data:`~pymongo.GEO2D`). See :meth:`create_index` for a detailed
+        example.
 
         Unlike :meth:`create_index`, which attempts to create an index
         unconditionally, :meth:`ensure_index` takes advantage of some
@@ -898,10 +899,12 @@ class Collection(common.BaseObject):
         The `key` parameter can be:
 
           - ``None`` to use the entire document as a key.
-          - A :class:`list` of keys (each a :class:`basestring`) to group by.
-          - A :class:`basestring` or :class:`~bson.code.Code` instance
-            containing a JavaScript function to be applied to each
-            document, returning the key to group by.
+          - A :class:`list` of keys (each a :class:`basestring`
+            (:class:`str` in python 3)) to group by.
+          - A :class:`basestring` (:class:`str` in python 3), or
+            :class:`~bson.code.Code` instance containing a JavaScript
+            function to be applied to each document, returning the key
+            to group by.
 
         With :class:`~pymongo.replica_set_connection.ReplicaSetConnection`
         or :class:`~pymongo.master_slave_connection.MasterSlaveConnection`,
@@ -954,9 +957,9 @@ class Collection(common.BaseObject):
 
         If operating in auth mode, client must be authorized as an
         admin to perform this operation. Raises :class:`TypeError` if
-        `new_name` is not an instance of :class:`basestring`. Raises
-        :class:`~pymongo.errors.InvalidName` if `new_name` is not a
-        valid collection name.
+        `new_name` is not an instance of :class:`basestring`
+        (:class:`str` in python 3). Raises :class:`~pymongo.errors.InvalidName`
+        if `new_name` is not a valid collection name.
 
         :Parameters:
           - `new_name`: new name for this collection
@@ -968,7 +971,8 @@ class Collection(common.BaseObject):
            support for accepting keyword arguments for rename options
         """
         if not isinstance(new_name, basestring):
-            raise TypeError("new_name must be an instance of basestring")
+            raise TypeError("new_name must be an instance "
+                            "of %s" % (basestring.__name__,))
 
         if not new_name or ".." in new_name:
             raise InvalidName("collection names cannot be empty")
@@ -987,7 +991,7 @@ class Collection(common.BaseObject):
         in this collection.
 
         Raises :class:`TypeError` if `key` is not an instance of
-        :class:`basestring`.
+        :class:`basestring` (:class:`str` in python 3).
 
         To get the distinct values for a key in the result set of a
         query use :meth:`~pymongo.cursor.Cursor.distinct`.
@@ -1042,7 +1046,8 @@ class Collection(common.BaseObject):
         .. mongodoc:: mapreduce
         """
         if not isinstance(out, (basestring, dict)):
-            raise TypeError("'out' must be an instance of basestring or dict")
+            raise TypeError("'out' must be an instance of "
+                            "%s or dict" % (basestring.__name__,))
 
         response = self.__database.command("mapreduce", self.__name,
                                            uuid_subtype=self.__uuid_subtype,

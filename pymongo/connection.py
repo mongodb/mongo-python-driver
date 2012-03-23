@@ -38,6 +38,7 @@ import socket
 import struct
 import warnings
 
+from bson.py3compat import b
 from bson.son import SON
 from pymongo import (common,
                      database,
@@ -54,6 +55,7 @@ from pymongo.errors import (AutoReconnect,
                             InvalidURI,
                             OperationFailure)
 
+EMPTY = b("")
 
 def _partition_node(node):
     """Split a host:port string returned from mongod/s into
@@ -745,19 +747,20 @@ class Connection(common.BaseObject):
         Takes length to receive and repeatedly calls recv until able to
         return a buffer of that length, raising ConnectionFailure on error.
         """
-        message = ""
-        while len(message) < length:
+        chunks = []
+        while length:
             try:
-                chunk = sock_info.sock.recv(length - len(message))
+                chunk = sock_info.sock.recv(length)
             except:
                 # If recv was interrupted, discard the socket
                 # and re-raise the exception.
                 self.__pool.discard_socket(sock_info)
                 raise
-            if chunk == "":
+            if chunk == EMPTY:
                 raise ConnectionFailure("connection closed")
-            message += chunk
-        return message
+            length -= len(chunk)
+            chunks.append(chunk)
+        return EMPTY.join(chunks)
 
     def __receive_message_on_socket(self, operation, request_id, sock_info):
         """Receive a message in response to `request_id` on `sock`.
@@ -863,10 +866,11 @@ class Connection(common.BaseObject):
         """
         self.__pool.end_request()
 
-    def __cmp__(self, other):
+    def __eq__(self, other):
         if isinstance(other, Connection):
-            return cmp((self.__host, self.__port),
-                       (other.__host, other.__port))
+            us = (self.__host, self.__port)
+            them = (other.__host, other.__port)
+            return us == them
         return NotImplemented
 
     def __repr__(self):
@@ -943,7 +947,7 @@ class Connection(common.BaseObject):
         """Drop a database.
 
         Raises :class:`TypeError` if `name_or_database` is not an instance of
-        ``(str, unicode, Database)``
+        :class:`basestring` (:class:`str` in python 3) or Database.
 
         :Parameters:
           - `name_or_database`: the name of a database to drop, or a
@@ -956,7 +960,7 @@ class Connection(common.BaseObject):
 
         if not isinstance(name, basestring):
             raise TypeError("name_or_database must be an instance of "
-                            "(Database, str, unicode)")
+                            "%s or Database" % (basestring.__name__,))
 
         self._purge_index(name)
         self[name].command("dropDatabase")
@@ -966,9 +970,9 @@ class Connection(common.BaseObject):
         """Copy a database, potentially from another host.
 
         Raises :class:`TypeError` if `from_name` or `to_name` is not
-        an instance of :class:`basestring`. Raises
-        :class:`~pymongo.errors.InvalidName` if `to_name` is not a
-        valid database name.
+        an instance of :class:`basestring` (:class:`str` in python 3).
+        Raises :class:`~pymongo.errors.InvalidName` if `to_name` is
+        not a valid database name.
 
         If `from_host` is ``None`` the current host is used as the
         source. Otherwise the database is copied from `from_host`.
@@ -989,9 +993,11 @@ class Connection(common.BaseObject):
         .. versionadded:: 1.5
         """
         if not isinstance(from_name, basestring):
-            raise TypeError("from_name must be an instance of basestring")
+            raise TypeError("from_name must be an instance "
+                            "of %s" % (basestring.__name__,))
         if not isinstance(to_name, basestring):
-            raise TypeError("to_name must be an instance of basestring")
+            raise TypeError("to_name must be an instance "
+                            "of %s" % (basestring.__name__,))
 
         database._check_name(to_name)
 

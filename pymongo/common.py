@@ -67,7 +67,7 @@ def validate_basestring(option, value):
     if isinstance(value, basestring):
         return value
     raise TypeError("Wrong type for %s, value must be an "
-                    "instance of basestring" % (option,))
+                    "instance of %s" % (option, basestring.__name__))
 
 
 def validate_int_or_basestring(option, value):

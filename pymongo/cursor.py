@@ -498,7 +498,7 @@ class Cursor(object):
         in the result set of this query.
 
         Raises :class:`TypeError` if `key` is not an instance of
-        :class:`basestring`.
+        :class:`basestring` (:class:`str` in python 3).
 
         With :class:`~pymongo.replica_set_connection.ReplicaSetConnection`
         or :class:`~pymongo.master_slave_connection.MasterSlaveConnection`,
@@ -516,7 +516,8 @@ class Cursor(object):
         .. versionadded:: 1.2
         """
         if not isinstance(key, basestring):
-            raise TypeError("key must be an instance of basestring")
+            raise TypeError("key must be an instance "
+                            "of %s" % (basestring.__name__,))
 
         options = {"key": key}
         if self.__spec:
@@ -579,15 +580,15 @@ class Cursor(object):
         """Adds a $where clause to this query.
 
         The `code` argument must be an instance of :class:`basestring`
-        or :class:`~bson.code.Code` containing a JavaScript
-        expression. This expression will be evaluated for each
-        document scanned. Only those documents for which the
-        expression evaluates to *true* will be returned as
-        results. The keyword *this* refers to the object currently
+        (:class:`str` in python 3) or :class:`~bson.code.Code`
+        containing a JavaScript expression. This expression will be
+        evaluated for each document scanned. Only those documents
+        for which the expression evaluates to *true* will be returned
+        as results. The keyword *this* refers to the object currently
         being scanned.
 
         Raises :class:`TypeError` if `code` is not an instance of
-        :class:`basestring`. Raises
+        :class:`basestring` (:class:`str` in python 3). Raises
         :class:`~pymongo.errors.InvalidOperation` if this
         :class:`Cursor` has already been used. Only the last call to
         :meth:`where` applied to a :class:`Cursor` has any effect.

@@ -202,10 +202,11 @@ class MasterSlaveConnection(BaseObject):
         self.__in_request = False
         self.__master.end_request()
 
-    def __cmp__(self, other):
+    def __eq__(self, other):
         if isinstance(other, MasterSlaveConnection):
-            return cmp((self.__master, self.__slaves),
-                       (other.__master, other.__slaves))
+            us = (self.__master, self.slaves)
+            them = (other.__master, other.__slaves)
+            return us == them
         return NotImplemented
 
     def __repr__(self):

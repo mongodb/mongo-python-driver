@@ -24,8 +24,9 @@ import random
 import struct
 
 import bson
-from bson.son import SON
 import pymongo
+
+from bson.son import SON
 from pymongo.errors import (AutoReconnect,
                             OperationFailure,
                             TimeoutError)
@@ -132,13 +133,15 @@ def _password_digest(username, password):
     """Get a password digest to use for authentication.
     """
     if not isinstance(password, basestring):
-        raise TypeError("password must be an instance of basestring")
+        raise TypeError("password must be an instance "
+                        "of %s" % (basestring.__name__,))
     if not isinstance(username, basestring):
-        raise TypeError("username must be an instance of basestring")
+        raise TypeError("username must be an instance "
+                        "of %s" % (basestring.__name__,))
 
     md5hash = _md5func()
-    md5hash.update("%s:mongo:%s" % (username.encode('utf-8'),
-                                    password.encode('utf-8')))
+    data = "%s:mongo:%s" % (username, password)
+    md5hash.update(data.encode('utf-8'))
     return unicode(md5hash.hexdigest())
 
 
@@ -147,7 +150,8 @@ def _auth_key(nonce, username, password):
     """
     digest = _password_digest(username, password)
     md5hash = _md5func()
-    md5hash.update("%s%s%s" % (nonce, unicode(username), digest))
+    data = "%s%s%s" % (nonce, unicode(username), digest)
+    md5hash.update(data.encode('utf-8'))
     return unicode(md5hash.hexdigest())
 
 
@@ -163,8 +167,8 @@ def _fields_list_to_dict(fields):
     as_dict = {}
     for field in fields:
         if not isinstance(field, basestring):
-            raise TypeError("fields must be a list of key names as "
-                            "(string, unicode)")
+            raise TypeError("fields must be a list of key names, "
+                            "each an instance of %s" % (basestring.__name__,))
         as_dict[field] = 1
     return as_dict
 

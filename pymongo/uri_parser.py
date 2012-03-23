@@ -15,7 +15,7 @@
 
 """Tools to parse and validate a MongoDB URI."""
 
-import urllib
+from urllib import unquote_plus
 
 from pymongo.common import validate
 from pymongo.errors import (ConfigurationError,
@@ -81,8 +81,8 @@ def parse_userinfo(userinfo):
     if not user or not passwd:
         raise InvalidURI("An empty string is not a "
                          "valid username or password.")
-    user = urllib.unquote_plus(user)
-    passwd = urllib.unquote_plus(passwd)
+    user = unquote_plus(user)
+    passwd = unquote_plus(passwd)
 
     return user, passwd
 
@@ -280,3 +280,4 @@ if __name__ == '__main__':
     except (InvalidURI, UnsupportedOption), e:
         print e
     sys.exit(0)
+

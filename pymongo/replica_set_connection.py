@@ -39,6 +39,7 @@ import time
 import warnings
 import weakref
 
+from bson.py3compat import b
 from bson.son import SON
 from pymongo import (common,
                      database,
@@ -54,7 +55,7 @@ from pymongo.errors import (AutoReconnect,
                             InvalidDocument,
                             OperationFailure)
 
-
+EMPTY = b("")
 MAX_BSON_SIZE = 4 * 1024 * 1024
 
 
@@ -671,11 +672,11 @@ class ReplicaSetConnection(common.BaseObject):
         chunks = []
         while length:
             chunk = sock_info.sock.recv(length)
-            if chunk == "":
+            if chunk == EMPTY:
                 raise ConnectionFailure("connection closed")
             length -= len(chunk)
             chunks.append(chunk)
-        return "".join(chunks)
+        return EMPTY.join(chunks)
 
     def __recv_msg(self, operation, request_id, sock):
         """Receive a message in response to `request_id` on `sock`.
@@ -890,7 +891,7 @@ class ReplicaSetConnection(common.BaseObject):
 
         self.__in_request = False
 
-    def __cmp__(self, other):
+    def __eq__(self, other):
         # XXX: Implement this?
         return NotImplemented
 
@@ -951,7 +952,7 @@ class ReplicaSetConnection(common.BaseObject):
         """Drop a database.
 
         Raises :class:`TypeError` if `name_or_database` is not an instance of
-        ``(str, unicode, Database)``
+        :class:`basestring` (:class:`str` in python 3) or Database
 
         :Parameters:
           - `name_or_database`: the name of a database to drop, or a
@@ -964,7 +965,7 @@ class ReplicaSetConnection(common.BaseObject):
 
         if not isinstance(name, basestring):
             raise TypeError("name_or_database must be an instance of "
-                            "(Database, str, unicode)")
+                            "%s or Database" % (basestring.__name__,))
 
         self._purge_index(name)
         self[name].command("dropDatabase")
@@ -974,9 +975,9 @@ class ReplicaSetConnection(common.BaseObject):
         """Copy a database, potentially from another host.
 
         Raises :class:`TypeError` if `from_name` or `to_name` is not
-        an instance of :class:`basestring`. Raises
-        :class:`~pymongo.errors.InvalidName` if `to_name` is not a
-        valid database name.
+        an instance of :class:`basestring` (:class:`str` in python 3).
+        Raises :class:`~pymongo.errors.InvalidName` if `to_name` is
+        not a valid database name.
 
         If `from_host` is ``None`` the current host is used as the
         source. Otherwise the database is copied from `from_host`.
@@ -995,9 +996,11 @@ class ReplicaSetConnection(common.BaseObject):
            version **>= 1.3.3+**.
         """
         if not isinstance(from_name, basestring):
-            raise TypeError("from_name must be an instance of basestring")
+            raise TypeError("from_name must be an instance "
+                            "of %s" % (basestring.__name__,))
         if not isinstance(to_name, basestring):
-            raise TypeError("to_name must be an instance of basestring")
+            raise TypeError("to_name must be an instance "
+                            "of %s" % (basestring.__name__,))
 
         database._check_name(to_name)
 

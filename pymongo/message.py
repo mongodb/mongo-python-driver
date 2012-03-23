@@ -27,6 +27,7 @@ import struct
 
 import bson
 from bson.binary import OLD_UUID_SUBTYPE
+from bson.py3compat import b
 from bson.son import SON
 try:
     from pymongo import _cmessage
@@ -36,7 +37,9 @@ except ImportError:
 from pymongo.errors import InvalidOperation
 
 
-__ZERO = "\x00\x00\x00\x00"
+__ZERO = b("\x00\x00\x00\x00")
+
+EMPTY  = b("")
 
 MAX_INT32 = 2147483647
 MIN_INT32 = -2147483648
@@ -77,7 +80,7 @@ def insert(collection_name, docs, check_keys,
     if not encoded:
         raise InvalidOperation("cannot do an empty bulk insert")
     max_bson_size = max(map(len, encoded))
-    data += "".join(encoded)
+    data += EMPTY.join(encoded)
     if safe:
         (_, insert_message) = __pack_message(2002, data)
         (request_id, error_message, _) = __last_error(last_error_args)

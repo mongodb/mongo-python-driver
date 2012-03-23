@@ -48,7 +48,7 @@ class Database(common.BaseObject):
         """Get a database by connection and name.
 
         Raises :class:`TypeError` if `name` is not an instance of
-        :class:`basestring`. Raises
+        :class:`basestring` (:class:`str` in python 3). Raises
         :class:`~pymongo.errors.InvalidName` if `name` is not a valid
         database name.
 
@@ -66,7 +66,8 @@ class Database(common.BaseObject):
                              **(connection.get_lasterror_options()))
 
         if not isinstance(name, basestring):
-            raise TypeError("name must be an instance of basestring")
+            raise TypeError("name must be an instance "
+                            "of %s" % (basestring.__name__,))
 
         _check_name(name)
 
@@ -171,10 +172,11 @@ class Database(common.BaseObject):
         return [manipulator.__class__.__name__
                 for manipulator in self.__outgoing_copying_manipulators]
 
-    def __cmp__(self, other):
+    def __eq__(self, other):
         if isinstance(other, Database):
-            return cmp((self.__connection, self.__name),
-                       (other.__connection, other.__name))
+            us = (self.__connection, self.__name)
+            them = (other.__connection, other.__name)
+            return us == them
         return NotImplemented
 
     def __repr__(self):
@@ -271,9 +273,9 @@ class Database(common.BaseObject):
 
         Send command `command` to the database and return the
         response. If `command` is an instance of :class:`basestring`
-        then the command {`command`: `value`} will be sent. Otherwise,
-        `command` must be an instance of :class:`dict` and will be
-        sent as is.
+        (:class:`str` in python 3) then the command {`command`: `value`}
+        will be sent. Otherwise, `command` must be an instance of
+        :class:`dict` and will be sent as is.
 
         Any additional keyword arguments will be added to the final
         command document before it is sent.
@@ -378,7 +380,7 @@ class Database(common.BaseObject):
 
         if not isinstance(name, basestring):
             raise TypeError("name_or_collection must be an instance of "
-                            "(Collection, str, unicode)")
+                            "%s or Collection" % (basestring.__name__,))
 
         self.__connection._purge_index(self.__name, name)
 
@@ -417,7 +419,7 @@ class Database(common.BaseObject):
 
         if not isinstance(name, basestring):
             raise TypeError("name_or_collection must be an instance of "
-                            "(Collection, str, unicode)")
+                            "%s or Collection" % (basestring.__name__,))
 
         result = self.command("validate", unicode(name),
                               scandata=scandata, full=full)
@@ -580,10 +582,10 @@ class Database(common.BaseObject):
 
         Once authenticated, the user has full read and write access to
         this database. Raises :class:`TypeError` if either `name` or
-        `password` is not an instance of ``(str,
-        unicode)``. Authentication lasts for the life of the underlying
-        :class:`~pymongo.connection.Connection`, or until :meth:`logout`
-        is called.
+        `password` is not an instance of :class:`basestring`
+        (:class:`str` in python 3). Authentication lasts for the life
+        of the underlying :class:`~pymongo.connection.Connection`, or
+        until :meth:`logout` is called.
 
         The "admin" database is special. Authenticating on "admin"
         gives access to *all* databases. Effectively, "admin" access
@@ -622,9 +624,11 @@ class Database(common.BaseObject):
         .. mongodoc:: authenticate
         """
         if not isinstance(name, basestring):
-            raise TypeError("name must be an instance of basestring")
+            raise TypeError("name must be an instance "
+                            "of %s" % (basestring.__name__,))
         if not isinstance(password, basestring):
-            raise TypeError("password must be an instance of basestring")
+            raise TypeError("password must be an instance "
+                            "of %s" % (basestring.__name__,))
 
         in_request = self.connection.in_request()
         try:
@@ -689,8 +693,8 @@ class Database(common.BaseObject):
         that function when it is run on the server.
 
         Raises :class:`TypeError` if `code` is not an instance of
-        (str, unicode, `Code`). Raises
-        :class:`~pymongo.errors.OperationFailure` if the eval
+        :class:`basestring` (:class:`str` in python 3) or `Code`.
+        Raises :class:`~pymongo.errors.OperationFailure` if the eval
         fails. Returns the result of the evaluation.
 
         :Parameters:
