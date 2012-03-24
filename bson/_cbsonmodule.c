@@ -30,6 +30,13 @@
 #define _CBSON_MODULE
 #include "_cbsonmodule.h"
 
+/* New module state and initialization code.
+ * See the module-initialization-and-state
+ * section in the following doc:
+ * http://docs.python.org/release/3.1.3/howto/cporting.html
+ * which references the following pep:
+ * http://www.python.org/dev/peps/pep-3121/
+ * */
 struct module_state {
     PyObject* Binary;
     PyObject* Code;
@@ -1734,6 +1741,37 @@ static PyMethodDef _CBSONMethods[] = {
 };
 
 #if PY_MAJOR_VERSION >= 3
+#define INITERROR return NULL
+static int _cbson_traverse(PyObject *m, visitproc visit, void *arg) {
+    Py_VISIT(GETSTATE(m)->Binary);
+    Py_VISIT(GETSTATE(m)->Code);
+    Py_VISIT(GETSTATE(m)->ObjectId);
+    Py_VISIT(GETSTATE(m)->DBRef);
+    Py_VISIT(GETSTATE(m)->RECompile);
+    Py_VISIT(GETSTATE(m)->UUID);
+    Py_VISIT(GETSTATE(m)->Timestamp);
+    Py_VISIT(GETSTATE(m)->MinKey);
+    Py_VISIT(GETSTATE(m)->MaxKey);
+    Py_VISIT(GETSTATE(m)->UTC);
+    Py_VISIT(GETSTATE(m)->REType);
+    return 0;
+}
+
+static int _cbson_clear(PyObject *m) {
+    Py_CLEAR(GETSTATE(m)->Binary);
+    Py_CLEAR(GETSTATE(m)->Code);
+    Py_CLEAR(GETSTATE(m)->ObjectId);
+    Py_CLEAR(GETSTATE(m)->DBRef);
+    Py_CLEAR(GETSTATE(m)->RECompile);
+    Py_CLEAR(GETSTATE(m)->UUID);
+    Py_CLEAR(GETSTATE(m)->Timestamp);
+    Py_CLEAR(GETSTATE(m)->MinKey);
+    Py_CLEAR(GETSTATE(m)->MaxKey);
+    Py_CLEAR(GETSTATE(m)->UTC);
+    Py_CLEAR(GETSTATE(m)->REType);
+    return 0;
+}
+
 static struct PyModuleDef moduledef = {
     PyModuleDef_HEAD_INIT,
     "_cbson",
@@ -1741,18 +1779,15 @@ static struct PyModuleDef moduledef = {
     sizeof(struct module_state),
     _CBSONMethods,
     NULL,
-    NULL,
-    NULL,
+    _cbson_traverse,
+    _cbson_clear,
     NULL
 };
-
-#define INITERROR return NULL
 
 PyMODINIT_FUNC
 PyInit__cbson(void)
 #else
 #define INITERROR return
-
 PyMODINIT_FUNC
 init_cbson(void)
 #endif

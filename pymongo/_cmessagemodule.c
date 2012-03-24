@@ -29,6 +29,7 @@ struct module_state {
     PyObject* _cbson;
 };
 
+/* See comments about module initialization in _cbsonmodule.c */
 #if PY_MAJOR_VERSION >= 3
 #define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
 #else
@@ -222,12 +223,15 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
     /* objectify buffer */
 #if PY_MAJOR_VERSION >= 3
     result = Py_BuildValue("iy#i", request_id,
-#else
-    result = Py_BuildValue("is#i", request_id,
-#endif
                            buffer_get_buffer(buffer),
                            buffer_get_position(buffer),
                            max_size);
+#else
+    result = Py_BuildValue("is#i", request_id,
+                           buffer_get_buffer(buffer),
+                           buffer_get_position(buffer),
+                           max_size);
+#endif
     buffer_free(buffer);
     return result;
 }
@@ -330,12 +334,15 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
     /* objectify buffer */
 #if PY_MAJOR_VERSION >= 3
     result = Py_BuildValue("iy#i", request_id,
-#else
-    result = Py_BuildValue("is#i", request_id,
-#endif
                            buffer_get_buffer(buffer),
                            buffer_get_position(buffer),
                            max_size);
+#else
+    result = Py_BuildValue("is#i", request_id,
+                           buffer_get_buffer(buffer),
+                           buffer_get_position(buffer),
+                           max_size);
+#endif
     buffer_free(buffer);
     return result;
 }
@@ -420,12 +427,15 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
     /* objectify buffer */
 #if PY_MAJOR_VERSION >= 3
     result = Py_BuildValue("iy#i", request_id,
-#else
-    result = Py_BuildValue("is#i", request_id,
-#endif
                            buffer_get_buffer(buffer),
                            buffer_get_position(buffer),
                            max_size);
+#else
+    result = Py_BuildValue("is#i", request_id,
+                           buffer_get_buffer(buffer),
+                           buffer_get_position(buffer),
+                           max_size);
+#endif
     buffer_free(buffer);
     return result;
 }
@@ -486,11 +496,13 @@ static PyObject* _cbson_get_more_message(PyObject* self, PyObject* args) {
     /* objectify buffer */
 #if PY_MAJOR_VERSION >= 3
     result = Py_BuildValue("iy#", request_id,
-#else
-    result = Py_BuildValue("is#", request_id,
-#endif
                            buffer_get_buffer(buffer),
                            buffer_get_position(buffer));
+#else
+    result = Py_BuildValue("is#", request_id,
+                           buffer_get_buffer(buffer),
+                           buffer_get_position(buffer));
+#endif
     buffer_free(buffer);
     return result;
 }
@@ -508,6 +520,17 @@ static PyMethodDef _CMessageMethods[] = {
 };
 
 #if PY_MAJOR_VERSION >= 3
+#define INITERROR return NULL
+static int _cmessage_traverse(PyObject *m, visitproc visit, void *arg) {
+    Py_VISIT(GETSTATE(m)->_cbson);
+    return 0;
+}
+
+static int _cmessage_clear(PyObject *m) {
+    Py_CLEAR(GETSTATE(m)->_cbson);
+    return 0;
+}
+
 static struct PyModuleDef moduledef = {
         PyModuleDef_HEAD_INIT,
         "_cmessage",
@@ -515,18 +538,15 @@ static struct PyModuleDef moduledef = {
         sizeof(struct module_state),
         _CMessageMethods,
         NULL,
-        NULL,
-        NULL,
+        _cmessage_traverse,
+        _cmessage_clear,
         NULL
 };
-
-#define INITERROR return NULL
 
 PyMODINIT_FUNC
 PyInit__cmessage(void)
 #else
 #define INITERROR return
-
 PyMODINIT_FUNC
 init_cmessage(void)
 #endif
