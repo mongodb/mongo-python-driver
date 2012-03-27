@@ -192,6 +192,7 @@ class MasterSlaveConnection(BaseObject):
         that all operations performed within a request will be sent
         using the Master connection.
         """
+        self.master.start_request()
         self.__in_request = True
 
     def end_request(self):
