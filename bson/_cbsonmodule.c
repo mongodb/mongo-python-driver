@@ -415,13 +415,11 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer, int type_by
         {
 #if PY_MAJOR_VERSION >= 3
             const long long_subtype = PyLong_AsLong(subtype_object);
-#else
-            const long long_subtype = PyInt_AsLong(subtype_object);
-#endif
             const char subtype = (const char)long_subtype;
-#if PY_MAJOR_VERSION >= 3
             const int length = PyBytes_Size(value);
 #else
+            const long long_subtype = PyInt_AsLong(subtype_object);
+            const char subtype = (const char)long_subtype;
             const int length = PyString_Size(value);
 #endif
 
@@ -461,6 +459,8 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer, int type_by
     } else if (state->UUID && PyObject_IsInstance(value, state->UUID)) {
         // Just a special case of Binary above, but simpler to do as a separate case
 
+        // Could be bytes, bytearray, str...
+        const char* binarr;
         // UUID is always 16 bytes
         int length = 16;
         const char subtype = (const char)uuid_subtype;
@@ -482,15 +482,15 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer, int type_by
 #if PY_MAJOR_VERSION >= 3
         /* Work around http://bugs.python.org/issue7380 */
         if (PyByteArray_Check(bytes)) {
-            if (!buffer_write_bytes(buffer, PyByteArray_AsString(bytes), length)) {
-                Py_DECREF(bytes);
-                return 0;
-            }
+            binarr = PyByteArray_AsString(bytes);
         }
-        else if (!buffer_write_bytes(buffer, PyBytes_AsString(bytes), length)) {
+        else {
+            binarr = PyBytes_AsString(bytes);
+        }
 #else
-        if (!buffer_write_bytes(buffer, PyString_AsString(bytes), length)) {
+        binarr = PyString_AsString(bytes);
 #endif
+        if (!buffer_write_bytes(buffer, binarr, length)) {
             Py_DECREF(bytes);
             return 0;
         }
@@ -1203,14 +1203,13 @@ static PyObject* get_value(PyObject* self, const char* buffer, int* position, in
                 *position += length + 5;
                 break;
             }
-#endif
             if (subtype == 2) {
-#if PY_MAJOR_VERSION >= 3
                 data = PyBytes_FromStringAndSize(buffer + *position + 9, length - 4);
             } else {
                 data = PyBytes_FromStringAndSize(buffer + *position + 5, length);
             }
 #else
+            if (subtype == 2) {
                 data = PyString_FromStringAndSize(buffer + *position + 9, length - 4);
             } else {
                 data = PyString_FromStringAndSize(buffer + *position + 5, length);

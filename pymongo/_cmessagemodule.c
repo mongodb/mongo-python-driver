@@ -37,6 +37,12 @@ struct module_state {
 static struct module_state _state;
 #endif
 
+#if PY_MAJOR_VERSION >= 3
+#define BYTES_FORMAT_STRING "y#"
+#else
+#define BYTES_FORMAT_STRING "s#"
+#endif
+
 /* Get an error class from the pymongo.errors module.
  *
  * Returns a new ref */
@@ -221,17 +227,10 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
     }
 
     /* objectify buffer */
-#if PY_MAJOR_VERSION >= 3
-    result = Py_BuildValue("iy#i", request_id,
+    result = Py_BuildValue("i" BYTES_FORMAT_STRING "i", request_id,
                            buffer_get_buffer(buffer),
                            buffer_get_position(buffer),
                            max_size);
-#else
-    result = Py_BuildValue("is#i", request_id,
-                           buffer_get_buffer(buffer),
-                           buffer_get_position(buffer),
-                           max_size);
-#endif
     buffer_free(buffer);
     return result;
 }
@@ -332,17 +331,10 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
     }
 
     /* objectify buffer */
-#if PY_MAJOR_VERSION >= 3
-    result = Py_BuildValue("iy#i", request_id,
+    result = Py_BuildValue("i" BYTES_FORMAT_STRING "i", request_id,
                            buffer_get_buffer(buffer),
                            buffer_get_position(buffer),
                            max_size);
-#else
-    result = Py_BuildValue("is#i", request_id,
-                           buffer_get_buffer(buffer),
-                           buffer_get_position(buffer),
-                           max_size);
-#endif
     buffer_free(buffer);
     return result;
 }
@@ -425,17 +417,10 @@ static PyObject* _cbson_query_message(PyObject* self, PyObject* args) {
     memcpy(buffer_get_buffer(buffer) + length_location, &message_length, 4);
 
     /* objectify buffer */
-#if PY_MAJOR_VERSION >= 3
-    result = Py_BuildValue("iy#i", request_id,
+    result = Py_BuildValue("i" BYTES_FORMAT_STRING "i", request_id,
                            buffer_get_buffer(buffer),
                            buffer_get_position(buffer),
                            max_size);
-#else
-    result = Py_BuildValue("is#i", request_id,
-                           buffer_get_buffer(buffer),
-                           buffer_get_position(buffer),
-                           max_size);
-#endif
     buffer_free(buffer);
     return result;
 }
@@ -494,15 +479,9 @@ static PyObject* _cbson_get_more_message(PyObject* self, PyObject* args) {
     memcpy(buffer_get_buffer(buffer) + length_location, &message_length, 4);
 
     /* objectify buffer */
-#if PY_MAJOR_VERSION >= 3
-    result = Py_BuildValue("iy#", request_id,
+    result = Py_BuildValue("i" BYTES_FORMAT_STRING, request_id,
                            buffer_get_buffer(buffer),
                            buffer_get_position(buffer));
-#else
-    result = Py_BuildValue("is#", request_id,
-                           buffer_get_buffer(buffer),
-                           buffer_get_position(buffer));
-#endif
     buffer_free(buffer);
     return result;
 }
