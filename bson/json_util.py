@@ -14,25 +14,27 @@
 
 """Tools for using Python's :mod:`json` module with BSON documents.
 
-This module provides two methods: `object_hook` and `default`. These
-names are pretty terrible, but match the names used in Python's `json
-library <http://docs.python.org/library/json.html>`_. They allow for
-specialized encoding and decoding of BSON documents into `Mongo
-Extended JSON
+This module provides its own subclasses of the built-in `JSONEncoder`
+and `JSONDecoder` classes. They allow for specialized encoding and
+decoding of BSON documents into `Mongo Extended JSON
 <http://www.mongodb.org/display/DOCS/Mongo+Extended+JSON>`_'s *Strict*
 mode.  This lets you encode / decode BSON documents to JSON even when
 they use special BSON types.
 
 Example usage (serialization)::
 
->>> json.dumps(..., default=json_util.default)
+>>> json.dumps(..., cls=json_util.JSONEncoder)
 
 Example usage (deserialization)::
 
->>> json.loads(..., object_hook=json_util.object_hook)
+>>> json.loads(..., cls=json_util.JSONDecoder)
 
 Currently this does not handle special encoding and decoding for
-:class:`~bson.binary.Binary` and :class:`~bson.code.Code` instances.
+
+.. versionchanged:: 2.0.1+
+   Added `JSONEncoder` and `JSONDecoder` classes that handle encoding
+   and decoding for :class:`~bson.binary.Binary` and
+   :class:`~bson.code.Code` instances.
 
 .. versionchanged:: 1.9
    Handle :class:`uuid.UUID` instances, whenever possible.
@@ -53,6 +55,12 @@ Currently this does not handle special encoding and decoding for
 import calendar
 import datetime
 import re
+
+try:
+    import json
+except ImportError:
+    import simplejson as json
+
 try:
     import uuid
     _use_uuid = True
@@ -60,6 +68,8 @@ except ImportError:
     _use_uuid = False
 
 from bson import EPOCH_AWARE
+from bson.binary import Binary
+from bson.code import Code
 from bson.dbref import DBRef
 from bson.max_key import MaxKey
 from bson.min_key import MinKey
@@ -67,16 +77,51 @@ from bson.objectid import ObjectId
 from bson.timestamp import Timestamp
 from bson.tz_util import utc
 
-# TODO support Binary and Code
-# Binary and Code are tricky because they subclass str so json thinks it can
-# handle them. Not sure what the proper way to get around this is...
-#
-# One option is to just add some other method that users need to call _before_
-# calling json.dumps or json.loads. That is pretty terrible though...
-
 # TODO share this with bson.py?
 _RE_TYPE = type(re.compile("foo"))
 
+class JSONEncoder(json.JSONEncoder):
+    """
+    A `JSONEncoder` subclass that additionally handles encoding
+    BSON types into Mongo extended JSON.
+
+    ..versionadded:: 2.0.1+
+    """
+
+    def _iterencode(self, o, markers=None):
+        if isinstance(o, Binary):
+            return self._iterencode(
+                {'$binary': o.encode('base64'), '$type': o.subtype},
+                markers)
+        elif isinstance(o, Code):
+            return self._iterencode(
+                {'$code': str(o), '$scope': o.scope}, markers)
+        else:
+            return super(JSONEncoder, self)._iterencode(o, markers)
+
+    def default(self, o):
+        return default(o)
+
+class JSONDecoder(json.JSONDecoder):
+    """
+    A `JSONDecoder` subclass that additionally handles decoding
+    BSON types from Mongo extended JSON.
+
+    ..versionadded:: 2.0.1+
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(JSONDecoder, self).__init__(*args, **kwargs)
+
+        # A little hack that lets us substitute our own object hook
+        if self.object_hook is not None:
+            raise RuntimeError(
+                'When using bson.JSONDecoder, do not set object_hook.')
+
+        self.object_hook = self._object_hook
+
+    def _object_hook(self, dct):
+        return object_hook(dct)
 
 def object_hook(dct):
     if "$oid" in dct:
@@ -97,6 +142,10 @@ def object_hook(dct):
         return MinKey()
     if "$maxKey" in dct:
         return MaxKey()
+    if "$binary" in dct:
+        return Binary(dct["$binary"].decode("base64"), dct["$type"])
+    if "$code" in dct:
+        return Code(dct["$code"], dct.get("$scope"))
     if _use_uuid and "$uuid" in dct:
         return uuid.UUID(dct["$uuid"])
     return dct
