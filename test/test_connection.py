@@ -392,13 +392,14 @@ class TestConnection(unittest.TestCase):
         where_func = delay(timeout_sec + 1)
 
         def get_x(db):
-            return db.test.find().where(where_func).next()["x"]
+            doc = db.test.find().where(where_func).next()
+            return doc["x"]
         self.assertEqual(1, get_x(no_timeout.pymongo_test))
         self.assertRaises(ConnectionFailure, get_x, timeout.pymongo_test)
 
         def get_x_timeout(db, t):
-            return db.test.find(
-                        network_timeout=t).where(where_func).next()["x"]
+            doc = db.test.find(network_timeout=t).where(where_func).next()
+            return doc["x"]
         self.assertEqual(1, get_x_timeout(timeout.pymongo_test, None))
         self.assertRaises(ConnectionFailure, get_x_timeout,
                           no_timeout.pymongo_test, 0.1)
@@ -479,10 +480,8 @@ class TestConnection(unittest.TestCase):
         exec """
 with contextlib.closing(conn):
     self.assertEqual("bar", conn.pymongo_test.test.find_one()["foo"])
+self.assertEqual(0, len(conn._Connection__pool.sockets))
 """
-
-        # Calling conn.close() has reset the pool
-        self.assertEqual(0, len(conn._Connection__pool.sockets))
 
         exec """
 with get_connection() as connection:

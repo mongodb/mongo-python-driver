@@ -26,8 +26,8 @@ from pymongo.son_manipulator import (NamespaceInjector,
                                      ObjectIdInjector,
                                      ObjectIdShuffler,
                                      SONManipulator)
-from test_connection import get_connection
-import qcheck
+from test.test_connection import get_connection
+from test import qcheck
 
 
 class TestSONManipulator(unittest.TestCase):

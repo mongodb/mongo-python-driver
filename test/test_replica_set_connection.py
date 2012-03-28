@@ -194,16 +194,18 @@ class TestConnection(TestConnectionReplicaSetBase):
         db = c.pymongo_test
         db.test.remove({}, safe=True)
         self.assertEqual(0, db.test.count())
-        db.test.insert({'foo': 'x'}, safe=True, w=self.w)
+        db.test.insert({'foo': 'x'}, safe=True, w=self.w, wtimeout=10000)
         self.assertEqual(1, db.test.count())
 
         cursor = db.test.find()
-        self.assertEqual('x', cursor.next()['foo'])
+        doc = cursor.next()
+        self.assertEqual('x', doc['foo'])
         # Ensure we read from the primary
         self.assertEqual(c.primary, cursor._Cursor__connection_id)
 
         cursor = db.test.find(read_preference=ReadPreference.SECONDARY)
-        self.assertEqual('x', cursor.next()['foo'])
+        doc = cursor.next()
+        self.assertEqual('x', doc['foo'])
         # Ensure we didn't read from the primary
         self.assertTrue(cursor._Cursor__connection_id in c.secondaries)
 
@@ -457,13 +459,14 @@ class TestConnection(TestConnectionReplicaSetBase):
         where_func = delay(1 + timeout_sec)
 
         def get_x(db):
-            return db.test.find().where(where_func).next()["x"]
+            doc = db.test.find().where(where_func).next()
+            return doc["x"]
         self.assertEqual(1, get_x(no_timeout.pymongo_test))
         self.assertRaises(ConnectionFailure, get_x, timeout.pymongo_test)
 
         def get_x_timeout(db, t):
-            return db.test.find(
-                        network_timeout=t).where(where_func).next()["x"]
+            doc = db.test.find(network_timeout=t).where(where_func).next()
+            return doc["x"]
         self.assertEqual(1, get_x_timeout(timeout.pymongo_test, None))
         self.assertRaises(ConnectionFailure, get_x_timeout,
                           no_timeout.pymongo_test, 0.1)

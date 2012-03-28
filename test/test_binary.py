@@ -24,8 +24,9 @@ except ImportError:
 sys.path[0:0] = [""]
 
 from bson.binary import Binary, UUIDLegacy
+from bson.py3compat import b, binary_type
 from nose.plugins.skip import SkipTest
-from test_connection import get_connection
+from test.test_connection import get_connection
 
 
 class TestBinary(unittest.TestCase):
@@ -35,9 +36,9 @@ class TestBinary(unittest.TestCase):
 
     def test_binary(self):
         a_string = "hello world"
-        a_binary = Binary("hello world")
-        self.assertTrue(a_binary.startswith("hello"))
-        self.assertTrue(a_binary.endswith("world"))
+        a_binary = Binary(b("hello world"))
+        self.assertTrue(a_binary.startswith(b("hello")))
+        self.assertTrue(a_binary.endswith(b("world")))
         self.assertTrue(isinstance(a_binary, Binary))
         self.assertFalse(isinstance(a_string, Binary))
 
@@ -46,41 +47,46 @@ class TestBinary(unittest.TestCase):
         self.assertRaises(TypeError, Binary, u"hello")
         self.assertRaises(TypeError, Binary, 5)
         self.assertRaises(TypeError, Binary, 10.2)
-        self.assertRaises(TypeError, Binary, "hello", None)
-        self.assertRaises(TypeError, Binary, "hello", "100")
-        self.assertRaises(ValueError, Binary, "hello", -1)
-        self.assertRaises(ValueError, Binary, "hello", 256)
-        self.assertTrue(Binary("hello", 0))
-        self.assertTrue(Binary("hello", 255))
+        self.assertRaises(TypeError, Binary, b("hello"), None)
+        self.assertRaises(TypeError, Binary, b("hello"), "100")
+        self.assertRaises(ValueError, Binary, b("hello"), -1)
+        self.assertRaises(ValueError, Binary, b("hello"), 256)
+        self.assertTrue(Binary(b("hello"), 0))
+        self.assertTrue(Binary(b("hello"), 255))
 
     def test_subtype(self):
-        a = Binary("hello")
-        self.assertEqual(a.subtype, 0)
-        b = Binary("hello", 2)
-        self.assertEqual(b.subtype, 2)
-        c = Binary("hello", 100)
-        self.assertEqual(c.subtype, 100)
+        one = Binary(b("hello"))
+        self.assertEqual(one.subtype, 0)
+        two = Binary(b("hello"), 2)
+        self.assertEqual(two.subtype, 2)
+        three = Binary(b("hello"), 100)
+        self.assertEqual(three.subtype, 100)
 
     def test_equality(self):
-        b = Binary("hello")
-        c = Binary("hello", 100)
-        self.assertNotEqual(b, c)
-        self.assertEqual(c, Binary("hello", 100))
-        self.assertEqual(b, Binary("hello"))
-        self.assertNotEqual(b, Binary("hello "))
-        self.assertNotEqual("hello", Binary("hello"))
+        two = Binary(b("hello"))
+        three = Binary(b("hello"), 100)
+        self.assertNotEqual(two, three)
+        self.assertEqual(three, Binary(b("hello"), 100))
+        self.assertEqual(two, Binary(b("hello")))
+        self.assertNotEqual(two, Binary(b("hello ")))
+        self.assertNotEqual(b("hello"), Binary(b("hello")))
 
     def test_repr(self):
-        a = Binary("hello world")
-        self.assertEqual(repr(a), "Binary('hello world', 0)")
-        b = Binary("hello world", 2)
-        self.assertEqual(repr(b), "Binary('hello world', 2)")
-        c = Binary("\x08\xFF")
-        self.assertEqual(repr(c), "Binary('\\x08\\xff', 0)")
-        d = Binary("\x08\xFF", 2)
-        self.assertEqual(repr(d), "Binary('\\x08\\xff', 2)")
-        e = Binary("test", 100)
-        self.assertEqual(repr(e), "Binary('test', 100)")
+        one = Binary(b("hello world"))
+        self.assertEqual(repr(one),
+                         "Binary(%s, 0)" % (repr(b("hello world")),))
+        two = Binary(b("hello world"), 2)
+        self.assertEqual(repr(two),
+                         "Binary(%s, 2)" % (repr(b("hello world")),))
+        three = Binary(b("\x08\xFF"))
+        self.assertEqual(repr(three),
+                         "Binary(%s, 0)" % (repr(b("\x08\xFF")),))
+        four = Binary(b("\x08\xFF"), 2)
+        self.assertEqual(repr(four),
+                         "Binary(%s, 2)" % (repr(b("\x08\xFF")),))
+        five = Binary(b("test"), 100)
+        self.assertEqual(repr(five),
+                         "Binary(%s, 100)" % (repr(b("test")),))
 
     def test_uuid_queries(self):
         if not should_test_uuid:
@@ -91,7 +97,9 @@ class TestBinary(unittest.TestCase):
         coll.drop()
 
         uu = uuid.uuid4()
-        coll.insert({'uuid': Binary(uu.bytes, 3)})
+        # Wrap uu.bytes in binary_type to work
+        # around http://bugs.python.org/issue7380.
+        coll.insert({'uuid': Binary(binary_type(uu.bytes), 3)})
         self.assertEqual(1, coll.count())
 
         # Test UUIDLegacy queries.
@@ -99,15 +107,16 @@ class TestBinary(unittest.TestCase):
         self.assertEqual(0, coll.find({'uuid': uu}).count())
         cur = coll.find({'uuid': UUIDLegacy(uu)})
         self.assertEqual(1, cur.count())
-        retrieved = cur.next()['uuid']
-        self.assertEqual(uu, retrieved)
+        retrieved = cur.next()
+        self.assertEqual(uu, retrieved['uuid'])
 
         # Test regular UUID queries (using subtype 4).
         coll.insert({'uuid': uu})
         self.assertEqual(2, coll.count())
         cur = coll.find({'uuid': uu})
         self.assertEqual(1, cur.count())
-        self.assertEqual(uu, cur.next()['uuid'])
+        retrieved = cur.next()
+        self.assertEqual(uu, retrieved['uuid'])
 
         # Test both.
         cur = coll.find({'uuid': {'$in': [uu, UUIDLegacy(uu)]}})

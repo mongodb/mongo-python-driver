@@ -29,8 +29,8 @@ from pymongo.cursor import Cursor
 from pymongo.database import Database
 from pymongo.errors import (InvalidOperation,
                             OperationFailure)
-from test_connection import get_connection
-import version
+from test.test_connection import get_connection
+from test import version
 
 
 class TestCursor(unittest.TestCase):
@@ -630,24 +630,23 @@ class TestCursor(unittest.TestCase):
         for i in range(100):
             self.db.test.save({"i": i})
 
-        izip = itertools.izip
         count = itertools.count
 
         self.assertRaises(IndexError, lambda: self.db.test.find()[-1:])
         self.assertRaises(IndexError, lambda: self.db.test.find()[1:2:2])
 
-        for a, b in izip(count(0), self.db.test.find()):
+        for a, b in zip(count(0), self.db.test.find()):
             self.assertEqual(a, b['i'])
 
         self.assertEqual(100, len(list(self.db.test.find()[0:])))
-        for a, b in izip(count(0), self.db.test.find()[0:]):
+        for a, b in zip(count(0), self.db.test.find()[0:]):
             self.assertEqual(a, b['i'])
 
         self.assertEqual(80, len(list(self.db.test.find()[20:])))
-        for a, b in izip(count(20), self.db.test.find()[20:]):
+        for a, b in zip(count(20), self.db.test.find()[20:]):
             self.assertEqual(a, b['i'])
 
-        for a, b in izip(count(99), self.db.test.find()[99:]):
+        for a, b in zip(count(99), self.db.test.find()[99:]):
             self.assertEqual(a, b['i'])
 
         for i in self.db.test.find()[1000:]:
@@ -655,25 +654,25 @@ class TestCursor(unittest.TestCase):
 
         self.assertEqual(5, len(list(self.db.test.find()[20:25])))
         self.assertEqual(5, len(list(self.db.test.find()[20L:25L])))
-        for a, b in izip(count(20), self.db.test.find()[20:25]):
+        for a, b in zip(count(20), self.db.test.find()[20:25]):
             self.assertEqual(a, b['i'])
 
         self.assertEqual(80, len(list(self.db.test.find()[40:45][20:])))
-        for a, b in izip(count(20), self.db.test.find()[40:45][20:]):
+        for a, b in zip(count(20), self.db.test.find()[40:45][20:]):
             self.assertEqual(a, b['i'])
 
         self.assertEqual(80,
                          len(list(self.db.test.find()[40:45].limit(0).skip(20))
                             )
                         )
-        for a, b in izip(count(20),
+        for a, b in zip(count(20),
                          self.db.test.find()[40:45].limit(0).skip(20)):
             self.assertEqual(a, b['i'])
 
         self.assertEqual(80,
                          len(list(self.db.test.find().limit(10).skip(40)[20:]))
                         )
-        for a, b in izip(count(20),
+        for a, b in zip(count(20),
                          self.db.test.find().limit(10).skip(40)[20:]):
             self.assertEqual(a, b['i'])
 

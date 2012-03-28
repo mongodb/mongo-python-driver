@@ -21,7 +21,7 @@ import traceback
 from nose.plugins.skip import SkipTest
 
 from test.utils import server_started_with_auth
-from test_connection import get_connection
+from test.test_connection import get_connection
 from pymongo.errors import (AutoReconnect,
                             OperationFailure,
                             DuplicateKeyError)

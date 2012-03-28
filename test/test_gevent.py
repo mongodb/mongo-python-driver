@@ -22,7 +22,7 @@ import unittest
 from nose.plugins.skip import SkipTest
 
 from pymongo import pool
-from test_connection import get_connection
+from test.test_connection import get_connection
 from test.utils import delay, force_reclaim_sockets
 
 host = os.environ.get("DB_IP", "localhost")
@@ -360,7 +360,8 @@ class GeventTest(unittest.TestCase):
 
         # Pool reclaimed the socket
         self.assertEqual(1, len(cx_pool.sockets))
-        self.assertEqual(the_sock[0], id(iter(cx_pool.sockets).next().sock))
+        sock_info = iter(cx_pool.sockets).next()
+        self.assertEqual(the_sock[0], id(sock_info.sock))
 
 
 if __name__ == '__main__':

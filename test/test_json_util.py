@@ -36,13 +36,15 @@ from nose.plugins.skip import SkipTest
 
 sys.path[0:0] = [""]
 
-from bson.objectid import ObjectId
 from bson.dbref import DBRef
+from bson.json_util import default, object_hook
 from bson.min_key import MinKey
 from bson.max_key import MaxKey
+from bson.objectid import ObjectId
 from bson.timestamp import Timestamp
 from bson.tz_util import utc
-from bson.json_util import default, object_hook
+
+PY3 = sys.version_info[0] == 3
 
 
 class TestJsonUtil(unittest.TestCase):
@@ -88,7 +90,11 @@ class TestJsonUtil(unittest.TestCase):
     def test_regex(self):
         res = self.round_tripped({"r": re.compile("a*b", re.IGNORECASE)})["r"]
         self.assertEqual("a*b", res.pattern)
-        self.assertEqual(re.IGNORECASE, res.flags)
+        if PY3:
+            # re.UNICODE is a default in python 3.
+            self.assertEqual(re.IGNORECASE|re.UNICODE, res.flags)
+        else:
+            self.assertEqual(re.IGNORECASE, res.flags)
 
     def test_minkey(self):
         self.round_trip({"m": MinKey()})

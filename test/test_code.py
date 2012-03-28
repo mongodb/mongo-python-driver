@@ -62,7 +62,7 @@ class TestCode(unittest.TestCase):
         c = Code("hello world", {"blah": 3})
         self.assertEqual(repr(c), "Code('hello world', {'blah': 3})")
         c = Code("\x08\xFF")
-        self.assertEqual(repr(c), "Code('\\x08\\xff', {})")
+        self.assertEqual(repr(c), "Code(%s, {})" % (repr("\x08\xFF"),))
 
     def test_equality(self):
         b = Code("hello")

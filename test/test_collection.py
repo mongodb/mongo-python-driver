@@ -31,6 +31,7 @@ sys.path[0:0] = [""]
 from bson.binary import Binary, UUIDLegacy, OLD_UUID_SUBTYPE, UUID_SUBTYPE
 from bson.code import Code
 from bson.objectid import ObjectId
+from bson.py3compat import b
 from bson.son import SON
 from pymongo import ASCENDING, DESCENDING, GEO2D, GEOHAYSTACK
 from pymongo.collection import Collection
@@ -227,15 +228,15 @@ class TestCollection(unittest.TestCase):
     def test_index_on_binary(self):
         db = self.db
         db.drop_collection("test")
-        db.test.save({"bin": Binary("def")})
-        db.test.save({"bin": Binary("abc")})
-        db.test.save({"bin": Binary("ghi")})
+        db.test.save({"bin": Binary(b("def"))})
+        db.test.save({"bin": Binary(b("abc"))})
+        db.test.save({"bin": Binary(b("ghi"))})
 
-        self.assertEqual(db.test.find({"bin": Binary("abc")})
+        self.assertEqual(db.test.find({"bin": Binary(b("abc"))})
                          .explain()["nscanned"], 3)
 
         db.test.create_index("bin")
-        self.assertEqual(db.test.find({"bin": Binary("abc")})
+        self.assertEqual(db.test.find({"bin": Binary(b("abc"))})
                          .explain()["nscanned"], 1)
 
     def test_drop_index(self):
@@ -432,38 +433,50 @@ class TestCollection(unittest.TestCase):
         db.test.insert(doc)
 
         # Test field inclusion
-        self.assertEqual(db.test.find({}, ["_id"]).next().keys(), ["_id"])
-        l = db.test.find({}, ["a"]).next().keys()
+        doc = db.test.find({}, ["_id"]).next()
+        self.assertEqual(doc.keys(), ["_id"])
+        doc = db.test.find({}, ["a"]).next()
+        l = doc.keys()
         l.sort()
         self.assertEqual(l, ["_id", "a"])
-        l = db.test.find({}, ["b"]).next().keys()
+        doc = db.test.find({}, ["b"]).next()
+        l = doc.keys()
         l.sort()
         self.assertEqual(l, ["_id", "b"])
-        l = db.test.find({}, ["c"]).next().keys()
+        doc = db.test.find({}, ["c"]).next()
+        l = doc.keys()
         l.sort()
         self.assertEqual(l, ["_id", "c"])
-        self.assertEqual(db.test.find({}, ["a"]).next()["a"], 1)
-        self.assertEqual(db.test.find({}, ["b"]).next()["b"], 5)
-        self.assertEqual(db.test.find({}, ["c"]).next()["c"],
-                         {"d": 5, "e": 10})
+        doc = db.test.find({}, ["a"]).next()
+        self.assertEqual(doc["a"], 1)
+        doc = db.test.find({}, ["b"]).next()
+        self.assertEqual(doc["b"], 5)
+        doc = db.test.find({}, ["c"]).next()
+        self.assertEqual(doc["c"], {"d": 5, "e": 10})
 
         # Test inclusion of fields with dots
-        self.assertEqual(db.test.find({}, ["c.d"]).next()["c"], {"d": 5})
-        self.assertEqual(db.test.find({}, ["c.e"]).next()["c"], {"e": 10})
-        self.assertEqual(db.test.find({}, ["b", "c.e"]).next()["c"],
-                         {"e": 10})
+        doc = db.test.find({}, ["c.d"]).next()
+        self.assertEqual(doc["c"], {"d": 5})
+        doc = db.test.find({}, ["c.e"]).next()
+        self.assertEqual(doc["c"], {"e": 10})
+        doc = db.test.find({}, ["b", "c.e"]).next()
+        self.assertEqual(doc["c"], {"e": 10})
 
-        l = db.test.find({}, ["b", "c.e"]).next().keys()
+        doc = db.test.find({}, ["b", "c.e"]).next()
+        l = doc.keys()
         l.sort()
         self.assertEqual(l, ["_id", "b", "c"])
-        self.assertEqual(db.test.find({}, ["b", "c.e"]).next()["b"], 5)
+        doc = db.test.find({}, ["b", "c.e"]).next()
+        self.assertEqual(doc["b"], 5)
 
         # Test field exclusion
-        l = db.test.find({}, {"a": False, "b": 0}).next().keys()
+        doc = db.test.find({}, {"a": False, "b": 0}).next()
+        l = doc.keys()
         l.sort()
         self.assertEqual(l, ["_id", "c"])
 
-        l = db.test.find({}, {"_id": False}).next().keys()
+        doc = db.test.find({}, {"_id": False}).next()
+        l = doc.keys()
         self.assertFalse("_id" in l)
 
     def test_options(self):
@@ -527,16 +540,24 @@ class TestCollection(unittest.TestCase):
         db.test.insert({"x": 1, "mike": "awesome",
                         "extra thing": "abcdefghijklmnopqrstuvwxyz"})
         self.assertEqual(1, db.test.count())
-        self.assertTrue("x" in db.test.find({}).next())
-        self.assertTrue("mike" in db.test.find({}).next())
-        self.assertTrue("extra thing" in db.test.find({}).next())
-        self.assertTrue("x" in db.test.find({}, ["x", "mike"]).next())
-        self.assertTrue("mike" in db.test.find({}, ["x", "mike"]).next())
-        self.assertFalse("extra thing" in db.test.find({},
-                         ["x", "mike"]).next())
-        self.assertFalse("x" in db.test.find({}, ["mike"]).next())
-        self.assertTrue("mike" in db.test.find({}, ["mike"]).next())
-        self.assertFalse("extra thing" in db.test.find({}, ["mike"]).next())
+        doc = db.test.find({}).next()
+        self.assertTrue("x" in doc)
+        doc = db.test.find({}).next()
+        self.assertTrue("mike" in doc)
+        doc = db.test.find({}).next()
+        self.assertTrue("extra thing" in doc)
+        doc = db.test.find({}, ["x", "mike"]).next()
+        self.assertTrue("x" in doc)
+        doc = db.test.find({}, ["x", "mike"]).next()
+        self.assertTrue("mike" in doc)
+        doc = db.test.find({}, ["x", "mike"]).next()
+        self.assertFalse("extra thing" in doc)
+        doc = db.test.find({}, ["mike"]).next()
+        self.assertFalse("x" in doc)
+        doc = db.test.find({}, ["mike"]).next()
+        self.assertTrue("mike" in doc)
+        doc = db.test.find({}, ["mike"]).next()
+        self.assertFalse("extra thing" in doc)
 
     def test_fields_specifier_as_dict(self):
         db = self.db
@@ -1348,7 +1369,7 @@ class TestCollection(unittest.TestCase):
 
     def test_insert_large_document(self):
         max_size = self.db.connection.max_bson_size
-        half_size = max_size / 2
+        half_size = int(max_size / 2)
         if version.at_least(self.db.connection, (1, 7, 4)):
             self.assertEqual(max_size, 16777216)
         self.assertRaises(InvalidDocument, self.db.test.insert,
@@ -1485,16 +1506,20 @@ class TestCollection(unittest.TestCase):
         c.drop()
         c.insert({"x": 1})
 
-        self.assertTrue(isinstance(c.find().next(), dict))
-        self.assertFalse(isinstance(c.find().next(), SON))
-        self.assertTrue(isinstance(c.find(as_class=SON).next(), SON))
+        doc = c.find().next()
+        self.assertTrue(isinstance(doc, dict))
+        doc = c.find().next()
+        self.assertFalse(isinstance(doc, SON))
+        doc = c.find(as_class=SON).next()
+        self.assertTrue(isinstance(doc, SON))
 
         self.assertTrue(isinstance(c.find_one(), dict))
         self.assertFalse(isinstance(c.find_one(), SON))
         self.assertTrue(isinstance(c.find_one(as_class=SON), SON))
 
         self.assertEqual(1, c.find_one(as_class=SON)["x"])
-        self.assertEqual(1, c.find(as_class=SON).next()["x"])
+        doc = c.find(as_class=SON).next()
+        self.assertEqual(1, doc["x"])
 
     def test_find_and_modify(self):
         c = self.db.test

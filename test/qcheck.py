@@ -22,11 +22,14 @@ sys.path[0:0] = [""]
 from bson.binary import Binary
 from bson.dbref import DBRef
 from bson.objectid import ObjectId
+from bson.py3compat import b, binary_type
 from bson.son import SON
 
 gen_target = 100
 reduction_attempts = 10
 examples = 5
+
+PY3 = sys.version_info[0] == 3
 
 
 def lift(value):
@@ -37,7 +40,7 @@ def choose_lifted(generator_list):
     return lambda: random.choice(generator_list)
 
 
-def map(generator, function):
+def my_map(generator, function):
     return lambda: function(generator())
 
 
@@ -70,12 +73,16 @@ def gen_printable_string(gen_length):
     return lambda: "".join(gen_list(gen_printable_char(), gen_length)())
 
 
-def gen_char(set=None):
-    return lambda: chr(random.randint(0, 255))
+if PY3:
+    def gen_char(set=None):
+        return lambda: bytes([random.randint(0, 255)])
+else:
+    def gen_char(set=None):
+        return lambda: chr(random.randint(0, 255))
 
 
 def gen_string(gen_length):
-    return lambda: "".join(gen_list(gen_char(), gen_length)())
+    return lambda: b("").join(gen_list(gen_char(), gen_length)())
 
 
 def gen_unichar():
@@ -141,9 +148,17 @@ def gen_dbref():
 
 
 def gen_mongo_value(depth, ref):
+
+    bintype = Binary
+    if PY3:
+        # If we used Binary in python3 tests would fail since we
+        # decode BSON binary subtype 0 to bytes. Testing this with
+        # bytes in python3 makes a lot more sense.
+        # binary_type is `str` in python 2, `bytes` in python 3.
+        bintype = binary_type
     choices = [gen_unicode(gen_range(0, 50)),
                gen_printable_string(gen_range(0, 50)),
-               map(gen_string(gen_range(0, 1000)), Binary),
+               my_map(gen_string(gen_range(0, 1000)), bintype),
                gen_int(),
                gen_float(),
                gen_boolean(),
@@ -163,7 +178,7 @@ def gen_mongo_list(depth, ref):
 
 
 def gen_mongo_dict(depth, ref=True):
-    return map(gen_dict(gen_unicode(gen_range(0, 20)),
+    return my_map(gen_dict(gen_unicode(gen_range(0, 20)),
                         gen_mongo_value(depth - 1, ref),
                         gen_range(0, 10)), SON)
 

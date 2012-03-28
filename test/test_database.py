@@ -15,6 +15,7 @@
 """Test the database module."""
 
 import datetime
+import os
 import sys
 
 sys.path[0:0] = [""]
@@ -61,7 +62,8 @@ class TestDatabase(unittest.TestCase):
 
     def test_repr(self):
         self.assertEqual(repr(Database(self.connection, "pymongo_test")),
-                         "Database(%r, u'pymongo_test')" % self.connection)
+                         "Database(%r, %s)" % (self.connection,
+                                               repr(u"pymongo_test")))
 
     def test_get_coll(self):
         db = Database(self.connection, "pymongo_test")
@@ -331,15 +333,29 @@ class TestDatabase(unittest.TestCase):
         no_request_db.logout()
 
     def test_id_ordering(self):
-        if sys.platform.startswith('java'):
-            raise SkipTest('No gaurantee of key ordering in Jython.')
+        # PyMongo attempts to have _id show up first
+        # when you iterate key/value pairs in a document.
+        # This isn't reliable since python dicts don't
+        # guarantee any particular order. This will never
+        # work right in Jython or Python >= 3.3 with
+        # hash randomization enabled.
         db = self.connection.pymongo_test
         db.test.remove({})
 
         db.test.insert({"hello": "world", "_id": 5})
         db.test.insert(SON([("hello", "world"),
                             ("_id", 5)]))
-        for x in db.test.find():
+
+        if ((sys.version_info >= (3, 3) and
+             os.environ.get('PYTHONHASHSEED') != '0') or
+            sys.platform.startswith('java')):
+            # See http://bugs.python.org/issue13703 for why we
+            # use as_class=SON in certain environments.
+            cursor = db.test.find(as_class=SON)
+        else:
+            cursor = db.test.find()
+
+        for x in cursor:
             for (k, v) in x.items():
                 self.assertEqual(k, "_id")
                 break

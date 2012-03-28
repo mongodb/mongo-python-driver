@@ -123,7 +123,7 @@ class TestMasterSlaveConnection(unittest.TestCase):
 
         response = self.connection._send_message_with_response('message')
         self.assertEqual((NotRandomList.last_idx, 'sent'), response)
-        self.assertNotEquals(-1, NotRandomList.last_idx)
+        self.assertNotEqual(-1, NotRandomList.last_idx)
         self.assertEqual(3, Slave.calls)
 
     def test_raise_autoreconnect_if_all_slaves_fail(self):

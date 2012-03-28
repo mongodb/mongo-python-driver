@@ -29,7 +29,7 @@ from nose.plugins.skip import SkipTest
 from pymongo.connection import Connection
 from pymongo.pool import Pool, NO_REQUEST, NO_SOCKET_YET, SocketInfo
 from pymongo.errors import ConfigurationError
-from test_connection import get_connection
+from test.test_connection import get_connection
 from test.utils import delay, force_reclaim_sockets
 
 N = 50
