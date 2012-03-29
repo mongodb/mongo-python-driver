@@ -159,7 +159,7 @@ Debian/Ubuntu: python-dev
         # someplace like build/lib.<os>-<arch>-<python version>
         if PY3:
             ver = '.'.join(map(str, sys.version_info[:2]))
-            lib_dirs = glob.glob('build/lib*' + ver)
+            lib_dirs = glob.glob(os.path.join('build', 'lib*' + ver))
             if lib_dirs:
                 nose_config_options['py3where'] = lib_dirs[0]
         write_nose_config()
@@ -203,10 +203,6 @@ c_ext = Feature(
 if "--no_ext" in sys.argv:
     sys.argv = [x for x in sys.argv if x != "--no_ext"]
     features = {}
-    # If we are testing with C extensions write_nose_config
-    # will be called elsewhere.
-    if should_run_tests():
-        write_nose_config()
 elif (sys.platform.startswith("java") or
       sys.platform == "cli" or
       "PyPy" in sys.version):
@@ -249,6 +245,11 @@ if PY3:
             sys.argv.append("test")
             # All "nosetests" does is import and run nose.main.
             extra_opts["test_suite"] = "nose.main"
+
+# This may be called a second time if
+# we are testing with C extensions.
+if should_run_tests():
+    write_nose_config()
 
 setup(
     name="pymongo",
