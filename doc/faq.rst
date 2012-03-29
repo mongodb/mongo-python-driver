@@ -49,6 +49,27 @@ There are asynchronous MongoDB drivers in Python: `AsyncMongo for Tornado
 however, these projects are less stable, lack features, and are less actively
 maintained.
 
+It is possible to use PyMongo with Tornado, if some precautions are taken to
+avoid blocking the event loop:
+
+- Make sure all MongoDB operations are very fast. Use the
+  `MongoDB profiler <http://www.mongodb.org/display/DOCS/Database+Profiler>`_
+  to watch for slow queries.
+
+- Create a single :class:`~pymongo.connection.Connection` instance for your
+  application in your startup code, before starting the IOLoop.
+
+- Configure the :class:`~pymongo.connection.Connection` with a short
+  ``socketTimeoutMS`` so slow operations result in a
+  :class:`~pymongo.errors.TimeoutError`, rather than blocking the loop and
+  preventing your application from responding to other requests.
+
+- Start up extra Tornado processes. Tornado is typically deployed with one
+  process per CPU core, proxied behind a load-balancer such as
+  `Nginx <http://wiki.nginx.org/Main>`_ or `HAProxy <http://haproxy.1wt.eu/>`_;
+  when using Tornado with a blocking driver like PyMongo it's recommended you
+  start two or three processes per core instead of one.
+
 What does *OperationFailure* cursor id not valid at server mean?
 ----------------------------------------------------------------
 Cursors in MongoDB can timeout on the server if they've been open for
