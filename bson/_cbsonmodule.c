@@ -1792,6 +1792,8 @@ init_cbson(void)
 #endif
 {
     PyObject *m;
+    PyObject *c_api_object;
+    static void *_cbson_API[_cbson_API_POINTER_COUNT];
 
 #if PY_MAJOR_VERSION >= 3
     m = PyModule_Create(&moduledef);
@@ -1815,7 +1817,6 @@ init_cbson(void)
     }
 
     /* Export C API */
-    static void *_cbson_API[_cbson_API_POINTER_COUNT];
     _cbson_API[_cbson_buffer_write_bytes_INDEX] = (void *) buffer_write_bytes;
     _cbson_API[_cbson_write_dict_INDEX] = (void *) write_dict;
     _cbson_API[_cbson_write_pair_INDEX] = (void *) write_pair;
@@ -1823,9 +1824,9 @@ init_cbson(void)
 
 #if PY_VERSION_HEX >= 0x03010000
     /* PyCapsule is new in python 3.1 */
-    PyObject *c_api_object = PyCapsule_New((void *) _cbson_API, "_cbson._C_API", NULL);
+    c_api_object = PyCapsule_New((void *) _cbson_API, "_cbson._C_API", NULL);
 #else
-    PyObject *c_api_object = PyCObject_FromVoidPtr((void *) _cbson_API, NULL);
+    c_api_object = PyCObject_FromVoidPtr((void *) _cbson_API, NULL);
 #endif
 
     if (c_api_object != NULL) {
