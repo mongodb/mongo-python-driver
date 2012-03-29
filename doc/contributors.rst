@@ -53,3 +53,5 @@ The following is a list of people who have contributed to
 - Samuel Clay (samuelclay)
 - Ross Lawley (rozza)
 - Wouter Bolsterlee (wbolster)
+- Alex Grönholm (agronholm)
+- Christoph Simon (kalanzun)
