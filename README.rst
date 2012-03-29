@@ -29,8 +29,8 @@ get an answer on the list.
 Installation
 ============
 
-If you have `setuptools
-<http://peak.telecommunity.com/DevCenter/setuptools>`_ installed you
+If you have `distribute
+<http://packages.python.org/distribute/>`_ installed you
 should be able to do **easy_install pymongo** to install
 PyMongo. Otherwise you can download the project source and do **python
 setup.py install** to install.
@@ -38,9 +38,10 @@ setup.py install** to install.
 Dependencies
 ============
 
-The PyMongo distribution is supported and tested on Python 2.x, where
-x >= 4. PyMongo versions <= 1.3 also supported Python 2.3, but that is
-no longer supported. If you need to use Python 2.3 please contact us.
+The PyMongo distribution is supported and tested on Python 2.x (where
+x >= 4) and Python 3.x (where x >= 1). PyMongo versions <= 1.3 also
+supported Python 2.3, but that is no longer supported. If you need to
+use Python 2.3 please contact us.
 
 Additional dependencies are:
 
