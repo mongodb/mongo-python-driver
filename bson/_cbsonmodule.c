@@ -506,7 +506,7 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer, int type_by
             return 0;
         }
 
-        if (!PyObject_Size(scope)) {
+        if (!PyDict_Size(scope)) {
             Py_DECREF(scope);
 
             *(buffer_get_buffer(buffer) + type_byte) = 0x0D;
