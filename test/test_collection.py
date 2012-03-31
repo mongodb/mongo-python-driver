@@ -1149,6 +1149,7 @@ class TestCollection(unittest.TestCase):
 
     def test_large_limit(self):
         db = self.db
+        db.test.remove({}, safe=True)
         db.drop_collection("test")
 
         for i in range(2000):
