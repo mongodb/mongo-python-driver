@@ -392,8 +392,8 @@ class TestMasterSlaveConnection(unittest.TestCase):
     def test_document_class(self):
         c = MasterSlaveConnection(self.master, self.slaves)
         db = c.pymongo_test
-        db.test.insert({"x": 1})
-        time.sleep(1)
+        w = 1 + len(self.slaves)
+        db.test.insert({"x": 1}, safe=True, w=w)
 
         self.assertEqual(dict, c.document_class)
         self.assertTrue(isinstance(db.test.find_one(), dict))
@@ -423,22 +423,20 @@ class TestMasterSlaveConnection(unittest.TestCase):
         conn = MasterSlaveConnection(self.master, self.slaves)
         self.assertEqual(False, conn.tz_aware)
         db = conn.pymongo_test
-        db.tztest.insert({'dt': dt}, safe=True)
-        time.sleep(0.5)
+        w = 1 + len(self.slaves)
+        db.tztest.insert({'dt': dt}, safe=True, w=w)
         self.assertEqual(None, db.tztest.find_one()['dt'].tzinfo)
 
         conn = MasterSlaveConnection(self.master, self.slaves, tz_aware=True)
         self.assertEqual(True, conn.tz_aware)
         db = conn.pymongo_test
-        db.tztest.insert({'dt': dt}, safe=True)
-        time.sleep(0.5)
+        db.tztest.insert({'dt': dt}, safe=True, w=w)
         self.assertEqual(utc, db.tztest.find_one()['dt'].tzinfo)
 
         conn = MasterSlaveConnection(self.master, self.slaves, tz_aware=False)
         self.assertEqual(False, conn.tz_aware)
         db = conn.pymongo_test
-        db.tztest.insert({'dt': dt})
-        time.sleep(0.5)
+        db.tztest.insert({'dt': dt}, safe=True, w=w)
         self.assertEqual(None, db.tztest.find_one()['dt'].tzinfo)
 
 
