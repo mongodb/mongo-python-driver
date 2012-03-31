@@ -46,7 +46,7 @@ except ImportError:
             args = [quote(arg) for arg in args]
         return os.spawnl(os.P_WAIT, sys.executable, *args) == 0
 
-DEFAULT_VERSION = "0.6.24"
+DEFAULT_VERSION = "0.6.25"
 DEFAULT_URL = "http://pypi.python.org/packages/source/d/distribute/"
 SETUPTOOLS_FAKED_VERSION = "0.6c11"
 
@@ -63,7 +63,7 @@ Description: xxx
 """ % SETUPTOOLS_FAKED_VERSION
 
 
-def _install(tarball):
+def _install(tarball, install_args=()):
     # extracting the tarball
     tmpdir = tempfile.mkdtemp()
     log.warn('Extracting in %s', tmpdir)
@@ -81,7 +81,7 @@ def _install(tarball):
 
         # installing
         log.warn('Installing Distribute')
-        if not _python_cmd('setup.py', 'install'):
+        if not _python_cmd('setup.py', 'install', *install_args):
             log.warn('Something went wrong during the installation.')
             log.warn('See the error message above.')
     finally:
@@ -474,11 +474,20 @@ def _extractall(self, path=".", members=None):
             else:
                 self._dbg(1, "tarfile: %s" % e)
 
+def _build_install_args(argv):
+    install_args = []
+    user_install = '--user' in argv
+    if user_install and sys.version_info < (2,6):
+        log.warn("--user requires Python 2.6 or later")
+        raise SystemExit(1)
+    if user_install:
+        install_args.append('--user')
+    return install_args
 
 def main(argv, version=DEFAULT_VERSION):
     """Install or upgrade setuptools and EasyInstall"""
     tarball = download_setuptools()
-    _install(tarball)
+    _install(tarball, _build_install_args(argv))
 
 
 if __name__ == '__main__':
