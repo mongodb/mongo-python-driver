@@ -199,8 +199,14 @@ class TestBSON(unittest.TestCase):
         helper({"$field": Code("function(){ return true; }")})
         helper({"$field": Code("return function(){ return x; }", scope={'x': False})})
 
-        def encode_then_decode(dict):
-            return dict == (BSON.encode(dict)).decode()
+        doc_class = dict
+        # Work around http://bugs.jython.org/issue1728
+        if (sys.platform.startswith('java') and
+            sys.version_info[:3] == (2, 5, 2)):
+            doc_class = SON
+
+        def encode_then_decode(doc):
+            return doc == (BSON.encode(doc)).decode(as_class=doc_class)
 
         qcheck.check_unittest(self, encode_then_decode,
                               qcheck.gen_mongo_dict(3))
