@@ -136,9 +136,7 @@ class SON(dict):
         return [v for _, v in self.iteritems()]
 
     def items(self):
-        # Use SON.iteritems here to avoid recursion issues
-        # in python 3.x.
-        return list(SON.iteritems(self))
+        return [(key, self[key]) for key in self]
 
     def clear(self):
         for key in self.keys():
@@ -194,11 +192,11 @@ class SON(dict):
         except KeyError:
             return default
 
-    def __cmp__(self, other):
+    def __eq__(self, other):
         if isinstance(other, SON):
-            return cmp((dict(self.iteritems()), self.keys()),
-                       (dict(other.iteritems()), other.keys()))
-        return cmp(dict(self.iteritems()), other)
+            return (len(self) == len(other) and
+                    dict(self.items()) == dict(other.items()))
+        return dict(self.items()) == other
 
     def __len__(self):
         return len(self.keys())
