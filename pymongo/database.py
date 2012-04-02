@@ -444,10 +444,19 @@ class Database(common.BaseObject):
 
         return result
 
-    def current_op(self):
+    def current_op(self, include_idle=False):
         """Get information on operations currently running.
-        """
-        return self['$cmd.sys.inprog'].find_one()
+
+        :Parameters:
+          - `include_idle` (optional): if ``True`` also list currently
+            idle operations in the result
+         """
+        if include_idle:
+            return self['$cmd.sys.inprog'].find_one({"$all":True},
+                                                    _is_command=True)
+        else:
+            return self['$cmd.sys.inprog'].find_one()
+
 
     def profiling_level(self):
         """Get the database's current profiling level.
