@@ -200,14 +200,14 @@ class TestCollection(unittest.TestCase):
     def test_ensure_unique_index_threaded(self):
         db = self.db
         db.test.drop()
-        db.test.insert({'foo': i} for i in xrange(10000))
+        db.test.insert(({'foo': i} for i in xrange(10000)), safe=True)
 
         class Indexer(threading.Thread):
             def run(self):
                 try:
                     db.test.ensure_index('foo', unique=True)
-                    db.test.insert({'foo': 'bar'})
-                    db.test.insert({'foo': 'bar'})
+                    db.test.insert({'foo': 'bar'}, safe=True)
+                    db.test.insert({'foo': 'bar'}, safe=True)
                 except OperationFailure:
                     pass
 
