@@ -43,8 +43,7 @@ NO_REQUEST    = None
 NO_SOCKET_YET = -1
 
 
-is_jython = sys.platform.startswith('java')
-if is_jython:
+if sys.platform.startswith('java'):
     from select import cpython_compatible_select as select
 else:
     from select import select
@@ -106,15 +105,6 @@ class SocketInfo(object):
             id(self)
         )
 
-
-class NullLock(object):
-    def acquire(self):
-        pass
-
-    def release(self):
-        pass
-
-
 class BasePool(object):
     def __init__(self, pair, max_size, net_timeout, conn_timeout, use_ssl):
         """
@@ -132,12 +122,7 @@ class BasePool(object):
         self.net_timeout = net_timeout
         self.conn_timeout = conn_timeout
         self.use_ssl = use_ssl
-
-        # Jython's set() isn't atomic, see http://bugs.jython.org/issue1854
-        if is_jython:
-            self.lock = threading.Lock()
-        else:
-            self.lock = NullLock()
+        self.lock = threading.Lock()
 
     def reset(self):
         request_state = self._get_request_state()
@@ -151,6 +136,9 @@ class BasePool(object):
 
         sockets = None
         try:
+            # Swapping variables is not atomic. We need to ensure no other
+            # thread is modifying self.sockets, or replacing it, in this
+            # critical section.
             self.lock.acquire()
             sockets, self.sockets = self.sockets, set()
         finally:
@@ -253,6 +241,8 @@ class BasePool(object):
         sock_info, from_pool = None, None
         try:
             try:
+                # set.pop() isn't atomic in Jython, see
+                # http://bugs.jython.org/issue1854
                 self.lock.acquire()
                 sock_info, from_pool = self.sockets.pop(), True
             finally:
