@@ -295,16 +295,16 @@ class BasePool(object):
                 return
 
             if sock_info != self._get_request_state():
-                # There's a race condition here, but we deliberately
-                # ignore it.  It means that if the pool_size is 10 we
-                # might actually keep slightly more than that.
-                if len(self.sockets) < self.max_size:
-                    try:
-                        self.lock.acquire()
+                added = False
+                try:
+                    self.lock.acquire()
+                    if len(self.sockets) < self.max_size:
                         self.sockets.add(sock_info)
-                    finally:
-                        self.lock.release()
+                        added = True
+                finally:
+                    self.lock.release()
 
+                if added:
                     sock_info.last_checkout = time.time()
                 else:
                     self.discard_socket(sock_info)
