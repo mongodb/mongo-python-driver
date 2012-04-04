@@ -1324,30 +1324,33 @@ class TestCollection(unittest.TestCase):
 
         self.db.drop_collection("test")
 
-        self.db.test.save({"a": 1})
-        self.db.test.save({"a": 2})
-        self.db.test.save({"a": 2})
-        self.db.test.save({"a": 2})
-        self.db.test.save({"a": 3})
+        test = self.db.test
+        test.safe = True
 
-        distinct = self.db.test.distinct("a")
+        test.save({"a": 1})
+        test.save({"a": 2})
+        test.save({"a": 2})
+        test.save({"a": 2})
+        test.save({"a": 3})
+
+        distinct = test.distinct("a")
         distinct.sort()
 
         self.assertEqual([1, 2, 3], distinct)
 
-        distinct = self.db.test.find({'a': {'$gt': 1}}).distinct("a")
+        distinct = test.find({'a': {'$gt': 1}}).distinct("a")
         distinct.sort()
 
         self.assertEqual([2, 3], distinct)
 
         self.db.drop_collection("test")
 
-        self.db.test.save({"a": {"b": "a"}, "c": 12})
-        self.db.test.save({"a": {"b": "b"}, "c": 12})
-        self.db.test.save({"a": {"b": "c"}, "c": 12})
-        self.db.test.save({"a": {"b": "c"}, "c": 12})
+        test.save({"a": {"b": "a"}, "c": 12})
+        test.save({"a": {"b": "b"}, "c": 12})
+        test.save({"a": {"b": "c"}, "c": 12})
+        test.save({"a": {"b": "c"}, "c": 12})
 
-        distinct = self.db.test.distinct("a.b")
+        distinct = test.distinct("a.b")
         distinct.sort()
 
         self.assertEqual(["a", "b", "c"], distinct)
