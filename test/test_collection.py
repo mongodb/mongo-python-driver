@@ -498,10 +498,10 @@ class TestCollection(unittest.TestCase):
     def test_insert_find_one(self):
         db = self.db
         db.test.remove({}, safe=True)
-        self.assertEqual(db.test.find().count(), 0)
+        self.assertEqual(0, len(list(db.test.find())))
         doc = {"hello": u"world"}
         id = db.test.insert(doc, safe=True)
-        self.assertEqual(db.test.find().count(), 1)
+        self.assertEqual(1, len(list(db.test.find())))
         self.assertEqual(doc, db.test.find_one())
         self.assertEqual(doc["_id"], id)
         self.assertTrue(isinstance(id, ObjectId))
