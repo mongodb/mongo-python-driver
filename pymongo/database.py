@@ -444,11 +444,11 @@ class Database(common.BaseObject):
 
         return result
 
-    def current_op(self, include_idle=False):
+    def current_op(self, include_all=False):
         """Get information on operations currently running.
 
         :Parameters:
-          - `include_idle` (optional): if ``True`` also list currently
+          - `include_all` (optional): if ``True`` also list currently
             idle operations in the result
          """
         if include_idle:
