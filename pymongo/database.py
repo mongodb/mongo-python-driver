@@ -458,7 +458,7 @@ class Database(common.BaseObject):
           - `include_all` (optional): if ``True`` also list currently
             idle operations in the result
          """
-        if include_idle:
+        if include_all:
             return self['$cmd.sys.inprog'].find_one({"$all":True},
                                                     _is_command=True)
         else:
