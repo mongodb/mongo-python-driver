@@ -16,6 +16,7 @@
 
 import os
 import socket
+import sys
 import time
 import threading
 import unittest
@@ -26,6 +27,8 @@ from pymongo import pool
 from test.test_connection import get_connection
 from test.utils import delay, force_reclaim_sockets
 
+if sys.version_info[0] >= 3:
+    from imp import reload
 
 host = os.environ.get("DB_IP", "localhost")
 port = int(os.environ.get("DB_PORT", 27017))
@@ -232,7 +235,7 @@ class GeventTest(unittest.TestCase):
 
                 main.switch()
 
-                for i in range(2):
+                for _ in range(2):
                     sock = cx_pool.get_socket()
                     cx_pool.return_socket(sock)
                     greenlet2socks.setdefault(
