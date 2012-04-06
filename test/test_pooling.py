@@ -26,11 +26,12 @@ sys.path[0:0] = [""]
 
 from nose.plugins.skip import SkipTest
 
+import pymongo.pool
 from pymongo.connection import Connection
 from pymongo.pool import Pool, NO_REQUEST, NO_SOCKET_YET, SocketInfo
 from pymongo.errors import ConfigurationError
 from test.test_connection import get_connection
-from test.utils import delay, force_reclaim_sockets
+from test.utils import force_reclaim_sockets
 
 N = 50
 DB = "pymongo-pooling-tests"
@@ -541,6 +542,92 @@ class TestPooling(unittest.TestCase):
         # Pool reclaimed the socket
         self.assertEqual(1, len(cx_pool.sockets))
         self.assertEqual(the_sock[0], id((iter(cx_pool.sockets).next()).sock))
+
+    def test_pool_reuses_open_socket(self):
+        # Test Pool's _check_closed() method doesn't close a healthy socket
+        cx_pool = Pool((host,port), 10, None, None, False)
+        sock_info = cx_pool.get_socket()
+        cx_pool.return_socket(sock_info)
+
+        # trigger _check_closed, which only runs on sockets that haven't been
+        # used in a second
+        time.sleep(1)
+        new_sock_info = cx_pool.get_socket()
+        self.assertEqual(sock_info, new_sock_info)
+        del sock_info, new_sock_info
+
+        # Assert sock_info was returned to the pool *once*
+        force_reclaim_sockets(cx_pool, 1)
+        self.assertEqual(1, len(cx_pool.sockets))
+
+    def test_pool_removes_dead_socket(self):
+        # Test that Pool removes dead socket and the socket doesn't return
+        # itself PYTHON-344
+        cx_pool = Pool((host,port), 10, None, None, False)
+        sock_info = cx_pool.get_socket()
+
+        # Simulate a closed socket without telling the SocketInfo it's closed
+        sock_info.sock.close()
+        self.assertTrue(pymongo.pool._closed(sock_info.sock))
+        cx_pool.return_socket(sock_info)
+        time.sleep(1) # trigger _check_closed
+        new_sock_info = cx_pool.get_socket()
+        self.assertEqual(0, len(cx_pool.sockets))
+        self.assertNotEqual(sock_info, new_sock_info)
+        del sock_info, new_sock_info
+
+        # new_sock_info returned to the pool, but not the closed sock_info
+        force_reclaim_sockets(cx_pool, 1)
+        self.assertEqual(1, len(cx_pool.sockets))
+
+    def test_pool_removes_dead_request_socket(self):
+        # Test that Pool keeps request going even if a socket dies in request
+        cx_pool = Pool((host,port), 10, None, None, False)
+        cx_pool.start_request()
+
+        # Get the request socket
+        sock_info = cx_pool.get_socket()
+        self.assertEqual(0, len(cx_pool.sockets))
+        self.assertEqual(sock_info, cx_pool._get_request_state())
+        sock_info.sock.close()
+        cx_pool.return_socket(sock_info)
+        time.sleep(1) # trigger _check_closed
+
+        # Although the request socket died, we're still in a request with a
+        # new socket
+        new_sock_info = cx_pool.get_socket()
+        self.assertNotEqual(sock_info, new_sock_info)
+        self.assertEqual(new_sock_info, cx_pool._get_request_state())
+        cx_pool.return_socket(new_sock_info)
+        self.assertEqual(new_sock_info, cx_pool._get_request_state())
+        self.assertEqual(0, len(cx_pool.sockets))
+
+        cx_pool.end_request()
+        self.assertEqual(1, len(cx_pool.sockets))
+
+    def test_pool_removes_dead_socket_after_request(self):
+        # Test that Pool keeps handles a socket dying that *used* to be the
+        # request socket.
+        cx_pool = Pool((host,port), 10, None, None, False)
+        cx_pool.start_request()
+
+        # Get the request socket
+        sock_info = cx_pool.get_socket()
+        self.assertEqual(sock_info, cx_pool._get_request_state())
+
+        # End request
+        cx_pool.end_request()
+        self.assertEqual(1, len(cx_pool.sockets))
+
+        # Kill old request socket
+        sock_info.sock.close()
+        del sock_info
+        time.sleep(1) # trigger _check_closed
+
+        # Dead socket detected and removed
+        new_sock_info = cx_pool.get_socket()
+        self.assertEqual(0, len(cx_pool.sockets))
+        self.assertFalse(pymongo.pool._closed(new_sock_info.sock))
 
     def _test_max_pool_size(self, c, start_request, end_request):
         threads = []
