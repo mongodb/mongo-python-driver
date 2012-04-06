@@ -15,6 +15,7 @@
 """Tests for connection-pooling with greenlets and Gevent"""
 
 import os
+import socket
 import time
 import threading
 import unittest
@@ -25,8 +26,10 @@ from pymongo import pool
 from test.test_connection import get_connection
 from test.utils import delay, force_reclaim_sockets
 
+
 host = os.environ.get("DB_IP", "localhost")
 port = int(os.environ.get("DB_PORT", 27017))
+
 
 def looplet(greenlets):
     """World's smallest event loop; run until all greenlets are done
@@ -55,39 +58,23 @@ class GeventTest(unittest.TestCase):
         gr1: get results
         gr0: get results
         """
-        NOT_STARTED = 0
-        SUCCESS = 1
-        SKIP = 2
+        if use_greenlets:
+            try:
+                from gevent import monkey, Greenlet
+            except ImportError:
+                raise SkipTest('gevent not installed')
+
+            # Note we don't do patch_thread() or patch_all() - we're
+            # testing here that patch_thread() is unnecessary for
+            # the connection pool to work properly.
+            monkey.patch_socket()
 
         try:
-            from multiprocessing import Value, Process
-        except ImportError:
-            # Python < 2.6
-            raise SkipTest('No multiprocessing module')
-        
-        outcome = Value('i', NOT_STARTED)
+            results = {
+                'find_fast_result': None,
+                'find_slow_result': None,
+            }
 
-        results = {
-            'find_fast_result': None,
-            'find_slow_result': None,
-        }
-
-        # Do test in separate process so patch_socket() doesn't affect all
-        # subsequent unittests
-        def do_test():
-            if use_greenlets:
-                try:
-                    from gevent import Greenlet
-                    from gevent import monkey
-
-                    # Note we don't do patch_thread() or patch_all() - we're
-                    # testing here that patch_thread() is unnecessary for
-                    # the connection pool to work properly.
-                    monkey.patch_socket()
-                except ImportError:
-                    outcome.value = SKIP
-                    return
-    
             cx = get_connection(
                 use_greenlets=use_greenlets,
                 auto_start_request=False
@@ -120,8 +107,8 @@ class GeventTest(unittest.TestCase):
 
                 history.append('find_slow start')
 
-                # Javascript function that pauses for half a second
-                where = delay(0.5)
+                # Javascript function that pauses
+                where = delay(2)
                 results['find_slow_result'] = list(db.test.find(
                     {'$where': where}
                 ))
@@ -139,7 +126,7 @@ class GeventTest(unittest.TestCase):
                 gr0 = threading.Thread(target=find_slow)
                 gr1 = threading.Thread(target=find_fast)
                 gr0.start()
-                time.sleep(0.1)
+                time.sleep(.1)
                 gr1.start()
 
             gr0.join()
@@ -157,20 +144,9 @@ class GeventTest(unittest.TestCase):
                 'find_slow done',
             ], history)
 
-            outcome.value = SUCCESS
-
-        proc = Process(target=do_test)
-        proc.start()
-        proc.join()
-
-        if outcome.value == SKIP:
-            raise SkipTest('gevent not installed')
-
-        self.assertEqual(
-            SUCCESS,
-            outcome.value,
-            'test failed'
-        )
+        finally:
+            # Undo Gevent patching
+            reload(socket)
 
     def test_threads_pool(self):
         # Test the same sequence of calls as the gevent tests to ensure my test
