@@ -91,6 +91,9 @@ class SocketInfo(object):
                 copy = SocketInfo(self.sock, pool)
                 copy.authset = self.authset
                 pool.return_socket(copy)
+            else:
+                # Close socket now rather than awaiting garbage collector
+                self.close()
 
     def __eq__(self, other):
         return hasattr(other, 'sock') and self.sock == other.sock
@@ -330,6 +333,16 @@ class BasePool(object):
                     raise
 
         return sock_info
+
+    def __del__(self):
+        # Close sockets now rather than awaiting garbage collector
+        for sock_info in self.sockets: sock_info.close()
+
+        # If we're being deleted on a thread that started a request, then the
+        # request socket might still be in a thread-local; get it and close it
+        request_sock = self._get_request_state()
+        if request_sock not in (NO_REQUEST, NO_SOCKET_YET):
+            request_sock.close()
 
     # Overridable methods for Pools. These methods must simply set and get an
     # arbitrary value associated with the execution context (thread, greenlet,
