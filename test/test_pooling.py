@@ -388,6 +388,9 @@ class TestPooling(unittest.TestCase):
                          a._Connection__pool.get_socket((a.host, a.port)))
 
     def test_request_with_fork(self):
+        if sys.platform == "win32":
+            raise SkipTest("Can't test forking on Windows")
+
         try:
             from multiprocessing import Process, Pipe
         except ImportError:
