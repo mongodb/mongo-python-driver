@@ -233,7 +233,7 @@ class BasePool(object):
             checked_sock = self._check_closed(req_state, pair)
 
             if checked_sock != req_state:
-                self._set_request_state(req_state)
+                self._set_request_state(checked_sock)
 
             return checked_sock
 
@@ -323,6 +323,9 @@ class BasePool(object):
         """
         if time.time() - sock_info.last_checkout > 1:
             if _closed(sock_info.sock):
+                # Ensure sock_info doesn't return itself to pool
+                self.discard_socket(sock_info)
+
                 try:
                     return self.connect(pair)
                 except socket.error:
