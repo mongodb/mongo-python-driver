@@ -64,6 +64,10 @@ class TestCollection(unittest.TestCase):
         self.db = None
         self.connection = None
 
+        # Try to diagnose intermittent failure in tests on Jenkins
+        cx = get_connection()
+        self.assertEqual(0, cx.test.test_unique_threaded.count())
+
     def test_collection(self):
         self.assertRaises(TypeError, Collection, self.db, 5)
 
@@ -198,16 +202,16 @@ class TestCollection(unittest.TestCase):
         db.test.drop_indexes()
 
     def test_ensure_unique_index_threaded(self):
-        db = self.db
-        db.test.drop()
-        db.test.insert(({'foo': i} for i in xrange(10000)), safe=True)
+        coll = self.db.test_unique_threaded
+        coll.drop()
+        coll.insert(({'foo': i} for i in xrange(10000)), safe=True)
 
         class Indexer(threading.Thread):
             def run(self):
                 try:
-                    db.test.ensure_index('foo', unique=True)
-                    db.test.insert({'foo': 'bar'}, safe=True)
-                    db.test.insert({'foo': 'bar'}, safe=True)
+                    coll.ensure_index('foo', unique=True)
+                    coll.insert({'foo': 'bar'}, safe=True)
+                    coll.insert({'foo': 'bar'}, safe=True)
                 except OperationFailure:
                     pass
 
@@ -222,8 +226,8 @@ class TestCollection(unittest.TestCase):
         for i in xrange(10):
             threads[i].join()
 
-        self.assertEqual(10001, db.test.count())
-        db.test.drop()
+        self.assertEqual(10001, coll.count())
+        coll.drop()
 
     def test_index_on_binary(self):
         db = self.db
