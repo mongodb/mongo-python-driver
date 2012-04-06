@@ -84,7 +84,7 @@ class SocketInfo(object):
             # the socket was assigned to a thread local for a request, but the
             # request wasn't ended before the thread died. Reclaim the socket
             # for the pool.
-            pool = self.poolref()
+            pool = self.poolref and self.poolref()
             if pool:
                 # Return a copy of self rather than self -- the Python docs
                 # discourage postponing deletion by adding a reference to self.
