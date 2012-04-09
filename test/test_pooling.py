@@ -652,12 +652,9 @@ class TestPooling(unittest.TestCase):
         cx_pool = c._Connection__pool
         force_reclaim_sockets(cx_pool, 4)
 
-        # There's a race condition, so be lenient
         nsock = len(cx_pool.sockets)
-        self.assertTrue(
-            abs(4 - nsock) < 4,
-            "Expected about 4 sockets in the pool, got %d" % nsock
-        )
+        self.assertEqual(4, nsock,
+            "Expected about 4 sockets in the pool, got %d" % nsock)
 
     def test_max_pool_size(self):
         c = get_connection(max_pool_size=4, auto_start_request=False)
