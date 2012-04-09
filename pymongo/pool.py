@@ -344,7 +344,7 @@ class BasePool(object):
         # If we're being deleted on a thread that started a request, then the
         # request socket might still be in a thread-local; get it and close it
         request_sock = self._get_request_state()
-        if request_sock not in (NO_REQUEST, NO_SOCKET_YET):
+        if hasattr(request_sock, 'close'):
             request_sock.close()
 
     # Overridable methods for Pools. These methods must simply set and get an
@@ -396,6 +396,8 @@ class GreenletPool(BasePool):
     """
     def __init__(self, *args, **kwargs):
         self._gr_id_to_sock = {}
+
+        # Weakrefs to non-Gevent greenlets
         self._refs = {}
         super(GreenletPool, self).__init__(*args, **kwargs)
 
@@ -404,18 +406,32 @@ class GreenletPool(BasePool):
         current = greenlet.getcurrent()
         gr_id = id(current)
 
-        # This function is used in two ways: first, to end a request for this
-        # greenlet, and second, as a weakref callback when the current greenlet
-        # dies.
-        def clear_request(dummy):
+        if sock_info == NO_REQUEST:
             self._refs.pop(gr_id, None)
             self._gr_id_to_sock.pop(gr_id, None)
-
-        if sock_info == NO_REQUEST:
-            clear_request(None)
         else:
-            self._refs[gr_id] = weakref.ref(current, clear_request)
             self._gr_id_to_sock[gr_id] = sock_info
+
+            def delete_callback(dummy):
+                # End the request
+                self._refs.pop(gr_id, None)
+                request_sock = self._gr_id_to_sock.pop(gr_id, None)
+                self.return_socket(request_sock)
+
+            if gr_id not in self._refs:
+                if hasattr(current, 'link'):
+                    # This is a Gevent Greenlet (capital G), which inherits from
+                    # greenlet and provides a 'link' method to detect when the
+                    # Greenlet exits
+                    current.link(delete_callback)
+                    self._refs[gr_id] = None
+                else:
+                    # This is a non-Gevent greenlet (small g), or it's the main
+                    # greenlet. Since there's no link() method, we use a weakref
+                    # to detect when the greenlet is garbage-collected. Garbage-
+                    # collection is a later-firing and less reliable event than
+                    # Greenlet.link() so we prefer link() if available.
+                    self._refs[gr_id] = weakref.ref(current, delete_callback)
 
     def _get_request_state(self):
         gr_id = id(greenlet.getcurrent())
