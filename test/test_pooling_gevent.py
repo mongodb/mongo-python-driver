@@ -14,24 +14,14 @@
 
 """Tests for connection-pooling with greenlets and Gevent"""
 
-import os
-import socket
-import sys
-import time
-import threading
 import unittest
 
 from nose.plugins.skip import SkipTest
 
 from pymongo import pool
-from test.test_connection import get_connection
-from test.utils import delay, force_reclaim_sockets
-
-if sys.version_info[0] >= 3:
-    from imp import reload
-
-host = os.environ.get("DB_IP", "localhost")
-port = int(os.environ.get("DB_PORT", 27017))
+from test.test_connection import host, port
+from test.test_pooling_base import (
+    _TestPooling, _TestMaxPoolSize, _TestPoolSocketSharing)
 
 
 def looplet(greenlets):
@@ -49,124 +39,13 @@ def looplet(greenlets):
             return
 
 
-class GeventTest(unittest.TestCase):
-    def _test_pool(self, use_greenlets, use_request):
-        """
-        Test that the connection pool prevents both threads and greenlets from
-        using a socket at the same time.
+class TestPoolingGevent(_TestPooling, unittest.TestCase):
+    """Apply all the standard pool tests to GreenletPool with Gevent"""
+    use_greenlets = True
 
-        Sequence:
-        gr0: start a slow find()
-        gr1: start a fast find()
-        gr1: get results
-        gr0: get results
-        """
-        if use_greenlets:
-            try:
-                from gevent import monkey, Greenlet
-            except ImportError:
-                raise SkipTest('gevent not installed')
 
-            # Note we don't do patch_thread() or patch_all() - we're
-            # testing here that patch_thread() is unnecessary for
-            # the connection pool to work properly.
-            monkey.patch_socket()
-
-        try:
-            results = {
-                'find_fast_result': None,
-                'find_slow_result': None,
-            }
-
-            cx = get_connection(
-                use_greenlets=use_greenlets,
-                auto_start_request=False
-            )
-
-            db = cx.pymongo_test
-            db.test.remove(safe=True)
-            db.test.insert({'_id': 1})
-
-            history = []
-
-            def find_fast():
-                if use_request:
-                    cx.start_request()
-
-                history.append('find_fast start')
-
-                # With the old connection._Pool, this would throw
-                # AssertionError: "This event is already used by another
-                # greenlet"
-                results['find_fast_result'] = list(db.test.find())
-                history.append('find_fast done')
-
-                if use_request:
-                    cx.end_request()
-
-            def find_slow():
-                if use_request:
-                    cx.start_request()
-
-                history.append('find_slow start')
-
-                # Javascript function that pauses
-                where = delay(2)
-                results['find_slow_result'] = list(db.test.find(
-                    {'$where': where}
-                ))
-
-                history.append('find_slow done')
-
-                if use_request:
-                    cx.end_request()
-
-            if use_greenlets:
-                gr0, gr1 = Greenlet(find_slow), Greenlet(find_fast)
-                gr0.start()
-                gr1.start_later(.1)
-            else:
-                gr0 = threading.Thread(target=find_slow)
-                gr1 = threading.Thread(target=find_fast)
-                gr0.start()
-                time.sleep(.1)
-                gr1.start()
-
-            gr0.join()
-            gr1.join()
-
-            self.assertEqual([{'_id': 1}], results['find_slow_result'])
-
-            # Fails, since find_fast doesn't complete
-            self.assertEqual([{'_id': 1}], results['find_fast_result'])
-
-            self.assertEqual([
-                'find_slow start',
-                'find_fast start',
-                'find_fast done',
-                'find_slow done',
-            ], history)
-
-        finally:
-            # Undo Gevent patching
-            reload(socket)
-
-    def test_threads_pool(self):
-        # Test the same sequence of calls as the gevent tests to ensure my test
-        # is ok.
-        self._test_pool(use_greenlets=False, use_request=False)
-
-    def test_threads_pool_request(self):
-        # Test the same sequence of calls as the gevent tests to ensure my test
-        # is ok.
-        self._test_pool(use_greenlets=False, use_request=True)
-
-    def test_greenlets_pool(self):
-        self._test_pool(use_greenlets=True, use_request=False)
-
-    def test_greenlets_pool_request(self):
-        self._test_pool(use_greenlets=True, use_request=True)
-
+class TestPoolingGeventSpecial(unittest.TestCase):
+    """Do a few special GreenletPool tests that don't use TestPoolingBase"""
     def test_greenlet_sockets(self):
         # Check that Pool gives two sockets to two greenlets
         try:
@@ -303,44 +182,13 @@ class GeventTest(unittest.TestCase):
                     "Expected two greenlets to get same socket"
                 )
 
-    def test_socket_reclamation(self):
-        try:
-            import greenlet
-        except ImportError:
-            raise SkipTest('greenlet not installed')
 
-        # Check that if a greenlet starts a request and dies without ending
-        # the request, that the socket is reclaimed
-        cx_pool = pool.GreenletPool(
-            pair=(host,port),
-            max_size=10,
-            net_timeout=1000,
-            conn_timeout=1000,
-            use_ssl=False,
-        )
+class TestMaxPoolSizeGevent(_TestMaxPoolSize, unittest.TestCase):
+    use_greenlets = True
 
-        self.assertEqual(0, len(cx_pool.sockets))
 
-        the_sock = [None]
-
-        def leak_request():
-            cx_pool.start_request()
-            sock_info = cx_pool.get_socket()
-            the_sock[0] = id(sock_info.sock)
-
-        # Run the greenlet to completion
-        gr = greenlet.greenlet(leak_request)
-        gr.switch()
-
-        # Cause greenlet to be garbage-collected
-        del gr
-
-        force_reclaim_sockets(cx_pool, 1)
-
-        # Pool reclaimed the socket
-        self.assertEqual(1, len(cx_pool.sockets))
-        sock_info = iter(cx_pool.sockets).next()
-        self.assertEqual(the_sock[0], id(sock_info.sock))
+class TestPoolSocketSharingGevent(_TestPoolSocketSharing, unittest.TestCase):
+    use_greenlets = True
 
 
 if __name__ == '__main__':
