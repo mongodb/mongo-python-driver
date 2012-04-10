@@ -19,7 +19,7 @@ import time
 import threading
 import weakref
 
-from pymongo.errors import ConnectionFailure, OperationFailure
+from pymongo.errors import ConnectionFailure
 
 
 have_ssl = True
@@ -107,6 +107,7 @@ class SocketInfo(object):
             self.closed and " CLOSED" or "",
             id(self)
         )
+
 
 class BasePool(object):
     def __init__(self, pair, max_size, net_timeout, conn_timeout, use_ssl):
@@ -337,16 +338,6 @@ class BasePool(object):
 
         return sock_info
 
-    def __del__(self):
-        # Close sockets now rather than awaiting garbage collector
-        for sock_info in self.sockets: sock_info.close()
-
-        # If we're being deleted on a thread that started a request, then the
-        # request socket might still be in a thread-local; get it and close it
-        request_sock = self._get_request_state()
-        if hasattr(request_sock, 'close'):
-            request_sock.close()
-
     # Overridable methods for Pools. These methods must simply set and get an
     # arbitrary value associated with the execution context (thread, greenlet,
     # Tornado StackContext, ...) in which we want to use a single socket.
@@ -378,6 +369,18 @@ class Pool(BasePool):
         self.local = _Local()
         super(Pool, self).__init__(*args, **kwargs)
 
+    def __del__(self):
+        # If we're being deleted on a thread that started a request, then the
+        # request socket might still be in a thread-local; get it and close it.
+        # The 'hasattr' checks avoid TypeError during interpreter shutdown.
+        request_sock = self._get_request_state()
+        if hasattr(request_sock, 'close'):
+            request_sock.close()
+
+        for sock_info in self.sockets:
+            if hasattr(sock_info, 'close'):
+                sock_info.close()
+
     def _set_request_state(self, sock_info):
         self.local.sock_info = sock_info
 
@@ -400,6 +403,16 @@ class GreenletPool(BasePool):
         # Weakrefs to non-Gevent greenlets
         self._refs = {}
         super(GreenletPool, self).__init__(*args, **kwargs)
+
+    def __del__(self):
+        # The 'hasattr' checks avoid TypeError during interpreter shutdown.
+        for sock_info in self._gr_id_to_sock.values():
+            if hasattr(sock_info, 'close'):
+                sock_info.close()
+
+        for sock_info in self.sockets:
+            if hasattr(sock_info, 'close'):
+                sock_info.close()
 
     # Overrides
     def _set_request_state(self, sock_info):
