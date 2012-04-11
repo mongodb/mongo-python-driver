@@ -519,22 +519,35 @@ class TestConnection(TestConnectionReplicaSetBase):
         self.assertTrue("pymongo_test_bernie" in dbs)
         connection.close()
 
-    def test_kill_cursors_explicit(self):
+    def test_kill_cursor_explicit(self):
         c = self._get_connection()
         db = c.pymongo_test
         db.drop_collection("test")
 
         test = db.test
-        test.insert([{"i": i} for i in range(200)])
+        test.insert([{"i": i} for i in range(20)], safe=True)
 
         # Partially evaluate cursor so it's left alive, then kill it
-        cursor = db.test.find()
+        cursor = test.find().batch_size(10)
         cursor.next()
         self.assertNotEqual(0, cursor.cursor_id)
-        c.close_cursor(cursor.cursor_id, cursor._Cursor__connection_id)
 
-        # Cursor dead on server
-        self.assertRaises(OperationFailure, lambda: list(cursor))
+        cursor_id = cursor.cursor_id
+
+        # Cursor dead on server - trigger a getMore on the same cursor_id and
+        # check that the server returns an error.
+        cursor2 = cursor.clone()
+        cursor2._Cursor__id = cursor_id
+
+        if (sys.platform.startswith('java') or
+            'PyPy' in sys.version):
+            # Explicitly kill cursor.
+            cursor.close()
+        else:
+            # Implicitly kill it in CPython.
+            del cursor
+
+        self.assertRaises(OperationFailure, lambda: list(cursor2))
 
     def test_interrupt_signal(self):
         if sys.platform.startswith('java'):
