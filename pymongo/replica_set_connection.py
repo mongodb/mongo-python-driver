@@ -73,9 +73,8 @@ def _partition_node(node):
     return host, port
 
 
-class Monitor(threading.Thread):
+class Monitor(object):
     def __init__(self, obj, interval=5):
-        super(Monitor, self).__init__()
         self.obj = weakref.proxy(obj)
         self.interval = interval
 
@@ -89,7 +88,35 @@ class Monitor(threading.Thread):
                 break
             except:
                 pass
-            time.sleep(self.interval)
+            self.sleep(self.interval)
+
+
+class MonitorThread(Monitor, threading.Thread):
+    def __init__(self, obj, interval=5):
+        Monitor.__init__(self, obj, interval)
+        threading.Thread.__init__(self)
+        self.setName("ReplicaSetMonitorThread")
+        self.setDaemon(True)
+
+    def sleep(self, seconds):
+        time.sleep(seconds)
+
+
+have_gevent = False
+try:
+    import gevent
+    have_gevent = True
+
+    class MonitorGreenlet(Monitor, gevent.Greenlet):
+        def __init__(self, obj, interval=5):
+            Monitor.__init__(self, obj, interval)
+            gevent.Greenlet.__init__(self)
+
+        def sleep(self, seconds):
+            gevent.sleep(seconds)
+
+except ImportError:
+    pass
 
 
 class ReplicaSetConnection(common.BaseObject):
@@ -212,10 +239,10 @@ class ReplicaSetConnection(common.BaseObject):
             self.__opts[option] = value
 
         if self.__opts.get('use_greenlets', False):
-            if not pool.have_greenlet:
+            if not have_gevent:
                 raise ConfigurationError(
-                    "The greenlet module is not available. "
-                    "Install the greenlet package from PyPI."
+                    "The gevent module is not available. "
+                    "Install the gevent package from PyPI."
                 )
             self.pool_class = pool.GreenletPool
         else:
@@ -243,10 +270,11 @@ class ReplicaSetConnection(common.BaseObject):
 
         self.refresh()
 
-        monitor_thread = Monitor(self)
-        monitor_thread.setName("ReplicaSetMonitorThread")
-        monitor_thread.setDaemon(True)
-        monitor_thread.start()
+        if self.__opts.get('use_greenlets', False):
+            monitor = MonitorGreenlet(self)
+        else:
+            monitor = MonitorThread(self)
+        monitor.start()
 
         if db_name and username is None:
             warnings.warn("must provide a username and password "
