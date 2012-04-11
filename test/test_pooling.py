@@ -554,7 +554,7 @@ class TestPooling(unittest.TestCase):
 
         # trigger _check_closed, which only runs on sockets that haven't been
         # used in a second
-        time.sleep(1)
+        time.sleep(1.1)
         new_sock_info = cx_pool.get_socket()
         self.assertEqual(sock_info, new_sock_info)
         del sock_info, new_sock_info
@@ -573,7 +573,7 @@ class TestPooling(unittest.TestCase):
         sock_info.sock.close()
         self.assertTrue(pymongo.pool._closed(sock_info.sock))
         cx_pool.return_socket(sock_info)
-        time.sleep(1) # trigger _check_closed
+        time.sleep(1.1) # trigger _check_closed
         new_sock_info = cx_pool.get_socket()
         self.assertEqual(0, len(cx_pool.sockets))
         self.assertNotEqual(sock_info, new_sock_info)
@@ -594,7 +594,7 @@ class TestPooling(unittest.TestCase):
         self.assertEqual(sock_info, cx_pool._get_request_state())
         sock_info.sock.close()
         cx_pool.return_socket(sock_info)
-        time.sleep(1) # trigger _check_closed
+        time.sleep(1.1) # trigger _check_closed
 
         # Although the request socket died, we're still in a request with a
         # new socket
@@ -625,7 +625,7 @@ class TestPooling(unittest.TestCase):
         # Kill old request socket
         sock_info.sock.close()
         del sock_info
-        time.sleep(1) # trigger _check_closed
+        time.sleep(1.1) # trigger _check_closed
 
         # Dead socket detected and removed
         new_sock_info = cx_pool.get_socket()
