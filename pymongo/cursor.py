@@ -44,8 +44,7 @@ class Cursor(object):
                  max_scan=None, as_class=None, slave_okay=False,
                  await_data=False, partial=False, manipulate=True,
                  read_preference=ReadPreference.PRIMARY,
-                 _must_use_master=False, _is_command=False,
-                 _uuid_subtype=None, **kwargs):
+                 _must_use_master=False, _uuid_subtype=None, **kwargs):
         """Create a new cursor.
 
         Should not be called directly by application developers - see
@@ -116,7 +115,6 @@ class Cursor(object):
         self.__read_preference = read_preference
         self.__tz_aware = collection.database.connection.tz_aware
         self.__must_use_master = _must_use_master
-        self.__is_command = _is_command
         self.__uuid_subtype = _uuid_subtype or collection.uuid_subtype
         self.__query_flags = 0
 
@@ -182,7 +180,6 @@ class Cursor(object):
         copy.__manipulate = self.__manipulate
         copy.__read_preference = self.__read_preference
         copy.__must_use_master = self.__must_use_master
-        copy.__is_command = self.__is_command
         copy.__uuid_subtype = self.__uuid_subtype
         copy.__query_flags = self.__query_flags
         copy.__kwargs = self.__kwargs
@@ -209,20 +206,28 @@ class Cursor(object):
     def __query_spec(self):
         """Get the spec to use for a query.
         """
-        spec = self.__spec
-        if not self.__is_command and "$query" not in self.__spec:
-            spec = SON({"$query": self.__spec})
+        operators = {}
         if self.__ordering:
-            spec["$orderby"] = self.__ordering
+            operators["$orderby"] = self.__ordering
         if self.__explain:
-            spec["$explain"] = True
+            operators["$explain"] = True
         if self.__hint:
-            spec["$hint"] = self.__hint
+            operators["$hint"] = self.__hint
         if self.__snapshot:
-            spec["$snapshot"] = True
+            operators["$snapshot"] = True
         if self.__max_scan:
-            spec["$maxScan"] = self.__max_scan
-        return spec
+            operators["$maxScan"] = self.__max_scan
+
+        # If "query" is a top level key we must wrap the
+        # criteria in $query.
+        if operators or "query" in self.__spec:
+            spec = self.__spec
+            if "$query" not in spec:
+                # $query has to come first
+                spec = SON({"$query": self.__spec})
+            spec.update(operators)
+            return spec
+        return self.__spec
 
     def __query_options(self):
         """Get the query options string to use for this query.

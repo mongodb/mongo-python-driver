@@ -338,7 +338,6 @@ class Database(common.BaseObject):
                                           self.read_preference),
             'slave_okay': kwargs.pop('slave_okay', self.slave_okay),
             '_must_use_master': kwargs.pop('_use_master', True),
-            '_is_command': True,
             '_uuid_subtype': uuid_subtype
         }
 
@@ -459,8 +458,7 @@ class Database(common.BaseObject):
             idle operations in the result
          """
         if include_all:
-            return self['$cmd.sys.inprog'].find_one({"$all":True},
-                                                    _is_command=True)
+            return self['$cmd.sys.inprog'].find_one({"$all":True})
         else:
             return self['$cmd.sys.inprog'].find_one()
 
