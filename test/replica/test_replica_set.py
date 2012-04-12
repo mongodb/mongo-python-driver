@@ -94,8 +94,11 @@ class TestSecondaryConnection(unittest.TestCase):
 
         # Test direct connection to an arbiter
         secondary_host = replset_tools.get_arbiters()[0]
-        self.assertRaises(
-            ConnectionFailure, Connection, secondary_host, use_greenlets=use_greenlets)
+        host, port = replset_tools.arbiters()[0].split(':')
+        port = int(port)
+        conn = Connection(host, port)
+        self.assertEqual(host, conn.host)
+        self.assertEqual(port, conn.port)
 
     def tearDown(self):
         self.c.close()
