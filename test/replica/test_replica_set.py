@@ -58,8 +58,11 @@ class TestReadPreference(unittest.TestCase):
         self.assert_(conn.pymongo_test.test.find_one())
 
         # Test direct connection to an arbiter
-        host = replset_tools.get_arbiters()[0]
-        self.assertRaises(ConnectionFailure, Connection, host)
+        host, port = replset_tools.arbiters()[0].split(':')
+        port = int(port)
+        conn = Connection(host, port)
+        self.assertEqual(host, conn.host)
+        self.assertEqual(port, conn.port)
 
         # Test PRIMARY
         for _ in xrange(10):
