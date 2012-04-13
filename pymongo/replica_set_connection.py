@@ -653,6 +653,9 @@ class ReplicaSetConnection(common.BaseObject):
     def disconnect(self):
         """Disconnect from the replica set primary.
         """
+        mongo = self.__pools.get(self.__writer)
+        if mongo and 'pool' in mongo:
+            mongo['pool'].reset()
         self.__writer = None
 
     def close(self):
@@ -836,7 +839,7 @@ class ReplicaSetConnection(common.BaseObject):
                                                                    msg,
                                                                    **kwargs)
         except AutoReconnect:
-            if mongo == self.__writer:
+            if mongo == self.__pools.get(self.__writer):
                 self.disconnect()
             raise
 

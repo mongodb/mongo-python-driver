@@ -22,9 +22,23 @@ from nose.plugins.skip import SkipTest
 
 from test.utils import server_started_with_auth
 from test.test_connection import get_connection
+from pymongo.connection import Connection
+from pymongo.replica_set_connection import ReplicaSetConnection
+from pymongo.pool import SocketInfo, _closed
 from pymongo.errors import (AutoReconnect,
                             OperationFailure,
                             DuplicateKeyError)
+
+
+def get_pool(connection):
+    if isinstance(connection, Connection):
+        return connection._Connection__pool
+    elif isinstance(connection, ReplicaSetConnection):
+        writer = connection._ReplicaSetConnection__writer
+        pools = connection._ReplicaSetConnection__pools
+        return pools[writer]['pool']
+    else:
+        raise TypeError(str(connection))
 
 
 class AutoAuthenticateThreads(threading.Thread):
@@ -118,6 +132,85 @@ class IgnoreAutoReconnect(threading.Thread):
                 self.c.find_one()
             except AutoReconnect:
                 pass
+
+
+class FindPauseFind(threading.Thread):
+    """See test_server_disconnect() for details"""
+    @classmethod
+    def shared_state(cls, nthreads):
+        class SharedState(object):
+            pass
+
+        state = SharedState()
+
+        # Number of threads total
+        state.nthreads = nthreads
+
+        # Number of threads that have arrived at rendezvous point
+        state.arrived_threads = 0
+        state.arrived_threads_lock = threading.Lock()
+
+        # set when all threads reach rendezvous
+        state.ev_arrived = threading.Event()
+
+        # set from outside FindPauseFind to let threads resume after
+        # rendezvous
+        state.ev_resume = threading.Event()
+        return state
+
+    def __init__(self, collection, state):
+        """Params: A collection, an event to signal when all threads have
+        done the first find(), an event to signal when threads should resume,
+        and the total number of threads
+        """
+        super(FindPauseFind, self).__init__()
+        self.collection = collection
+        self.state = state
+        self.passed = False
+
+    def rendezvous(self):
+        # pause until all threads arrive here
+        s = self.state
+        s.arrived_threads_lock.acquire()
+        s.arrived_threads += 1
+        if s.arrived_threads == s.nthreads:
+            s.arrived_threads_lock.release()
+            s.ev_arrived.set()
+        else:
+            s.arrived_threads_lock.release()
+            s.ev_arrived.wait()
+
+    def run(self):
+        try:
+            # acquire a socket
+            list(self.collection.find())
+
+            pool = get_pool(self.collection.database.connection)
+            socket_info = pool._get_request_state()
+            assert isinstance(socket_info, SocketInfo)
+            self.request_sock = socket_info.sock
+            assert not _closed(self.request_sock)
+
+            # Dereference socket_info so it can potentially return to the pool
+            del socket_info
+        finally:
+            self.rendezvous()
+
+        # all threads have passed the rendezvous, wait for
+        # test_server_disconnect() to disconnect the connection
+        self.state.ev_resume.wait()
+
+        # test_server_disconnect() has closed this socket, but that's ok
+        # because it's not our request socket anymore
+        assert _closed(self.request_sock)
+
+        # if disconnect() properly closed all threads' request sockets, then
+        # this won't raise AutoReconnect because it will acquire a new socket
+        assert self.request_sock == pool._get_request_state().sock
+        list(self.collection.find())
+        assert self.collection.database.connection.in_request()
+        assert self.request_sock != pool._get_request_state().sock
+        self.passed = True
 
 
 class BaseTestThreads(object):
@@ -214,6 +307,70 @@ class BaseTestThreads(object):
 
         for t in threads:
             t.join()
+
+    def test_server_disconnect(self):
+        # PYTHON-345, we need to make sure that blocked threads' request
+        # sockets are closed by disconnect().
+        # 1. Create a connection with auto_start_request=True
+        # 2. Start N threads and do a find() in each to get a request socket
+        # 3. Pause all threads
+        # 4. In the main thread close all sockets, including threads' request
+        #       sockets
+        # 5. In main thread, do a find(), which raises AutoReconnect and resets
+        #       pool
+        # 6. Resume all threads, do a find() in them
+        #
+        # If we've fixed PYTHON-345, then only one AutoReconnect is raised,
+        # and all the threads get new request sockets.
+
+        cx = self.db.connection
+        self.assertTrue(cx.auto_start_request)
+        collection = self.db.pymongo_test
+
+        # acquire a request socket for the main thread
+        collection.find_one()
+        pool = get_pool(collection.database.connection)
+        socket_info = pool._get_request_state()
+        assert isinstance(socket_info, SocketInfo)
+        request_sock = socket_info.sock
+
+        state = FindPauseFind.shared_state(nthreads=40)
+
+        threads = [
+            FindPauseFind(collection, state)
+            for _ in range(state.nthreads)
+        ]
+
+        # Each thread does a find(), thus acquiring a request socket
+        for t in threads:
+            t.start()
+
+        # Wait for the threads to reach the rendezvous
+        self.assertTrue(state.ev_arrived.wait(1), "Thread timeout")
+
+        try:
+            self.assertEqual(state.nthreads, state.arrived_threads)
+
+            # Simulate an event that closes all sockets, e.g. primary stepdown
+            for t in threads:
+                t.request_sock.close()
+
+            request_sock.close()
+
+            # Doing an operation on the connection raises an AutoReconnect and
+            # resets the pool behind the scenes
+            self.assertRaises(AutoReconnect, collection.find_one)
+
+        finally:
+            # Let threads do a second find()
+            state.ev_resume.set()
+
+        for t in threads:
+            t.join(1)
+            self.assertFalse(t.isAlive(), "Thread timeout")
+
+        for t in threads:
+            self.assertTrue(t.passed, "%s threw exception" % t)
 
 
 class BaseTestThreadsAuth(object):

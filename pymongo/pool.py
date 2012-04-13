@@ -72,7 +72,8 @@ class SocketInfo(object):
 
         self.authset = set()
         self.closed = False
-        self.last_checkout = 0 # earliest time_t
+        self.last_checkout = time.time()
+        self.pool_id = pool.pool_id
 
     def close(self):
         self.sock.close()
@@ -120,15 +121,23 @@ class BasePool(object):
           - `use_ssl`: bool, if True use an encrypted connection
         """
         self.sockets = set()
+        self.lock = threading.Lock()
+
+        # Keep track of resets, so we notice sockets created before the most
+        # recent reset and close them.
+        self.pool_id = 0
         self.pid = os.getpid()
         self.pair = pair
         self.max_size = max_size
         self.net_timeout = net_timeout
         self.conn_timeout = conn_timeout
         self.use_ssl = use_ssl
-        self.lock = threading.Lock()
 
     def reset(self):
+        # Ignore this race condition -- if many threads are resetting at once,
+        # the pool_id will definitely change, which is all we care about.
+        self.pool_id += 1
+
         request_state = self._get_request_state()
         self.pid = os.getpid()
 
@@ -232,13 +241,12 @@ class BasePool(object):
         # Have we opened a socket for this request?
         req_state = self._get_request_state()
         if req_state not in (NO_SOCKET_YET, NO_REQUEST):
-
-            # There's a socket for this request; ensure it's still open
-            checked_sock = self._check_closed(req_state, pair)
-
+            # There's a socket for this request, check it and return it
+            checked_sock = self._check(req_state, pair)
             if checked_sock != req_state:
                 self._set_request_state(checked_sock)
 
+            checked_sock.last_checkout = time.time()
             return checked_sock
 
         # We're not in a request, just get any free socket or create one
@@ -255,7 +263,7 @@ class BasePool(object):
             sock_info, from_pool = self.connect(pair), False
 
         if from_pool:
-            sock_info = self._check_closed(sock_info, pair)
+            sock_info = self._check(sock_info, pair)
 
         if req_state == NO_SOCKET_YET:
             # start_request has been called but we haven't assigned a socket to
@@ -263,6 +271,7 @@ class BasePool(object):
             # end_request.
             self._set_request_state(sock_info)
 
+        sock_info.last_checkout = time.time()
         return sock_info
 
     def start_request(self):
@@ -308,13 +317,12 @@ class BasePool(object):
                 finally:
                     self.lock.release()
 
-                if added:
-                    sock_info.last_checkout = time.time()
-                else:
+                if not added:
                     self.discard_socket(sock_info)
 
-    def _check_closed(self, sock_info, pair):
-        """This side-effecty function checks if a socket has been closed by
+    def _check(self, sock_info, pair):
+        """This side-effecty function checks if this pool has been reset since
+        the last time this socket was used, or if the socket has been closed by
         some external network error if it's been > 1 second since the last time
         we used it, and if so, attempts to create a new socket. If this
         connection attempt fails we reset the pool and reraise the error.
@@ -325,18 +333,25 @@ class BasePool(object):
         the last socket checkout, to keep performance reasonable - we
         can't avoid AutoReconnects completely anyway.
         """
-        if time.time() - sock_info.last_checkout > 1:
+        error = False
+
+        if self.pool_id != sock_info.pool_id:
+            self.discard_socket(sock_info)
+            error = True
+
+        elif time.time() - sock_info.last_checkout > 1:
             if _closed(sock_info.sock):
-                # Ensure sock_info doesn't return itself to pool
                 self.discard_socket(sock_info)
+                error = True
 
-                try:
-                    return self.connect(pair)
-                except socket.error:
-                    self.reset()
-                    raise
-
-        return sock_info
+        if not error:
+            return sock_info
+        else:
+            try:
+                return self.connect(pair)
+            except socket.error:
+                self.reset()
+                raise
 
     # Overridable methods for Pools. These methods must simply set and get an
     # arbitrary value associated with the execution context (thread, greenlet,
