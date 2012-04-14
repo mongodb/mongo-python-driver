@@ -218,15 +218,23 @@ class Cursor(object):
         if self.__max_scan:
             operators["$maxScan"] = self.__max_scan
 
-        # If "query" is a top level key we must wrap the
-        # criteria in $query.
-        if operators or "query" in self.__spec:
-            spec = self.__spec
+        if operators:
+            # Make a shallow copy so we can cleanly rewind or clone.
+            spec = self.__spec.copy()
             if "$query" not in spec:
                 # $query has to come first
-                spec = SON({"$query": self.__spec})
+                spec = SON({"$query": spec})
             spec.update(operators)
             return spec
+        # Have to wrap with $query if "query" is the first key.
+        # We can't just use $query anytime "query" is a key as
+        # that breaks commands like count and find_and_modify.
+        # Checking spec.keys()[0] covers the case that the spec
+        # was passed as an instance of SON or OrderedDict.
+        elif ("query" in self.__spec and
+              (len(self.__spec) == 1 or self.__spec.keys()[0] == "query")):
+                return SON({"$query": self.__spec})
+
         return self.__spec
 
     def __query_options(self):
