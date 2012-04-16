@@ -69,6 +69,9 @@ def force_reclaim_sockets(cx_pool, n_expected):
     if sys.platform.startswith('java'):
         raise SkipTest("Jython can't reclaim sockets")
 
+    if 'PyPy' in sys.version:
+        raise SkipTest("Socket reclamation happens at unpredictable time in PyPy")
+
     # Bizarre behavior in CPython 2.4, and possibly other CPython versions
     # less than 2.7: the last dead thread's locals aren't cleaned up until
     # the local attribute with the same name is accessed from a different
@@ -77,8 +80,7 @@ def force_reclaim_sockets(cx_pool, n_expected):
     if isinstance(cx_pool, Pool):
         assert cx_pool.local.sock_info is None
 
-    # In PyPy, we need to try for a while to make garbage-collection call
-    # SocketInfo.__del__
+    # Try for a while to make garbage-collection call SocketInfo.__del__
     start = time.time()
     while len(cx_pool.sockets) < n_expected and time.time() - start < 5:
         try:
