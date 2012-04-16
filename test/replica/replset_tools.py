@@ -30,10 +30,11 @@ default_dbpath = os.path.join(home, 'data', 'pymongo_replica_set')
 dbpath = os.environ.get('DBPATH', default_dbpath)
 default_logpath = os.path.join(home, 'log', 'pymongo_replica_set')
 logpath = os.environ.get('LOGPATH', default_logpath)
-hostname = socket.gethostname()
+hostname = os.environ.get('HOSTNAME', socket.gethostname())
 port = int(os.environ.get('DBPORT', 27017))
 mongod = os.environ.get('MONGOD', 'mongod')
 set_name = os.environ.get('SETNAME', 'repl0')
+use_greenlets = bool(os.environ.get('GREENLETS'))
 
 nodes = {}
 
@@ -76,7 +77,11 @@ def wait_for(proc, port):
 def start_replica_set(members, fresh=True):
     if fresh:
         if os.path.exists(dbpath):
-            shutil.rmtree(dbpath)
+            try:
+                shutil.rmtree(dbpath)
+            except OSError:
+                pass
+
     for i in xrange(len(members)):
         cur_port = port + i
         host = '%s:%d' % (hostname, cur_port)
@@ -102,7 +107,7 @@ def start_replica_set(members, fresh=True):
             return None
     config = {'_id': set_name, 'members': members}
     primary = members[0]['host']
-    c = pymongo.Connection(primary)
+    c = pymongo.Connection(primary, use_greenlets=use_greenlets)
     try:
         c.admin.command('replSetInitiate', config)
     except:
@@ -129,7 +134,7 @@ def start_replica_set(members, fresh=True):
 
 
 def get_members_in_state(state):
-    c = pymongo.Connection(nodes.keys(), slave_okay=True)
+    c = pymongo.Connection(nodes.keys(), slave_okay=True, use_greenlets=use_greenlets)
     status = c.admin.command('replSetGetStatus')
     members = status['members']
     return [k['name'] for k in members if k['state'] == state]
@@ -155,12 +160,12 @@ def get_arbiters():
 
 
 def get_passives():
-    c = pymongo.Connection(nodes.keys(), slave_okay=True)
+    c = pymongo.Connection(nodes.keys(), slave_okay=True, use_greenlets=use_greenlets)
     return c.admin.command('ismaster').get('passives', [])
 
 
 def get_hosts():
-    c = pymongo.Connection(nodes.keys(), slave_okay=True)
+    c = pymongo.Connection(nodes.keys(), slave_okay=True, use_greenlets=use_greenlets)
     return c.admin.command('ismaster').get('hosts', [])
 
 
@@ -198,7 +203,7 @@ def kill_all_secondaries(sig=2):
 def stepdown_primary():
     primary = get_primary()
     if primary:
-        c = pymongo.Connection(primary)
+        c = pymongo.Connection(primary, use_greenlets=use_greenlets)
         # replSetStepDown causes mongod to close all connections
         try:
             c.admin.command('replSetStepDown', 20)

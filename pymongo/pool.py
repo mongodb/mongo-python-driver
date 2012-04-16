@@ -19,7 +19,7 @@ import time
 import threading
 import weakref
 
-from pymongo.errors import ConnectionFailure, OperationFailure
+from pymongo.errors import ConnectionFailure
 
 
 have_ssl = True
@@ -72,7 +72,8 @@ class SocketInfo(object):
 
         self.authset = set()
         self.closed = False
-        self.last_checkout = 0 # earliest time_t
+        self.last_checkout = time.time()
+        self.pool_id = pool.pool_id
 
     def close(self):
         self.sock.close()
@@ -108,6 +109,7 @@ class SocketInfo(object):
             id(self)
         )
 
+
 class BasePool(object):
     def __init__(self, pair, max_size, net_timeout, conn_timeout, use_ssl):
         """
@@ -119,15 +121,23 @@ class BasePool(object):
           - `use_ssl`: bool, if True use an encrypted connection
         """
         self.sockets = set()
+        self.lock = threading.Lock()
+
+        # Keep track of resets, so we notice sockets created before the most
+        # recent reset and close them.
+        self.pool_id = 0
         self.pid = os.getpid()
         self.pair = pair
         self.max_size = max_size
         self.net_timeout = net_timeout
         self.conn_timeout = conn_timeout
         self.use_ssl = use_ssl
-        self.lock = threading.Lock()
 
     def reset(self):
+        # Ignore this race condition -- if many threads are resetting at once,
+        # the pool_id will definitely change, which is all we care about.
+        self.pool_id += 1
+
         request_state = self._get_request_state()
         self.pid = os.getpid()
 
@@ -231,13 +241,12 @@ class BasePool(object):
         # Have we opened a socket for this request?
         req_state = self._get_request_state()
         if req_state not in (NO_SOCKET_YET, NO_REQUEST):
-
-            # There's a socket for this request; ensure it's still open
-            checked_sock = self._check_closed(req_state, pair)
-
+            # There's a socket for this request, check it and return it
+            checked_sock = self._check(req_state, pair)
             if checked_sock != req_state:
                 self._set_request_state(checked_sock)
 
+            checked_sock.last_checkout = time.time()
             return checked_sock
 
         # We're not in a request, just get any free socket or create one
@@ -254,7 +263,7 @@ class BasePool(object):
             sock_info, from_pool = self.connect(pair), False
 
         if from_pool:
-            sock_info = self._check_closed(sock_info, pair)
+            sock_info = self._check(sock_info, pair)
 
         if req_state == NO_SOCKET_YET:
             # start_request has been called but we haven't assigned a socket to
@@ -262,6 +271,7 @@ class BasePool(object):
             # end_request.
             self._set_request_state(sock_info)
 
+        sock_info.last_checkout = time.time()
         return sock_info
 
     def start_request(self):
@@ -307,13 +317,12 @@ class BasePool(object):
                 finally:
                     self.lock.release()
 
-                if added:
-                    sock_info.last_checkout = time.time()
-                else:
+                if not added:
                     self.discard_socket(sock_info)
 
-    def _check_closed(self, sock_info, pair):
-        """This side-effecty function checks if a socket has been closed by
+    def _check(self, sock_info, pair):
+        """This side-effecty function checks if this pool has been reset since
+        the last time this socket was used, or if the socket has been closed by
         some external network error if it's been > 1 second since the last time
         we used it, and if so, attempts to create a new socket. If this
         connection attempt fails we reset the pool and reraise the error.
@@ -324,28 +333,25 @@ class BasePool(object):
         the last socket checkout, to keep performance reasonable - we
         can't avoid AutoReconnects completely anyway.
         """
-        if time.time() - sock_info.last_checkout > 1:
+        error = False
+
+        if self.pool_id != sock_info.pool_id:
+            self.discard_socket(sock_info)
+            error = True
+
+        elif time.time() - sock_info.last_checkout > 1:
             if _closed(sock_info.sock):
-                # Ensure sock_info doesn't return itself to pool
                 self.discard_socket(sock_info)
+                error = True
 
-                try:
-                    return self.connect(pair)
-                except socket.error:
-                    self.reset()
-                    raise
-
-        return sock_info
-
-    def __del__(self):
-        # Close sockets now rather than awaiting garbage collector
-        for sock_info in self.sockets: sock_info.close()
-
-        # If we're being deleted on a thread that started a request, then the
-        # request socket might still be in a thread-local; get it and close it
-        request_sock = self._get_request_state()
-        if request_sock not in (NO_REQUEST, NO_SOCKET_YET):
-            request_sock.close()
+        if not error:
+            return sock_info
+        else:
+            try:
+                return self.connect(pair)
+            except socket.error:
+                self.reset()
+                raise
 
     # Overridable methods for Pools. These methods must simply set and get an
     # arbitrary value associated with the execution context (thread, greenlet,
@@ -378,6 +384,18 @@ class Pool(BasePool):
         self.local = _Local()
         super(Pool, self).__init__(*args, **kwargs)
 
+    def __del__(self):
+        # If we're being deleted on a thread that started a request, then the
+        # request socket might still be in a thread-local; get it and close it.
+        # The 'hasattr' checks avoid TypeError during interpreter shutdown.
+        request_sock = self._get_request_state()
+        if hasattr(request_sock, 'close'):
+            request_sock.close()
+
+        for sock_info in self.sockets:
+            if hasattr(sock_info, 'close'):
+                sock_info.close()
+
     def _set_request_state(self, sock_info):
         self.local.sock_info = sock_info
 
@@ -396,26 +414,52 @@ class GreenletPool(BasePool):
     """
     def __init__(self, *args, **kwargs):
         self._gr_id_to_sock = {}
+
+        # Weakrefs to non-Gevent greenlets
         self._refs = {}
         super(GreenletPool, self).__init__(*args, **kwargs)
+
+    def __del__(self):
+        # The 'hasattr' checks avoid TypeError during interpreter shutdown.
+        for sock_info in self._gr_id_to_sock.values():
+            if hasattr(sock_info, 'close'):
+                sock_info.close()
+
+        for sock_info in self.sockets:
+            if hasattr(sock_info, 'close'):
+                sock_info.close()
 
     # Overrides
     def _set_request_state(self, sock_info):
         current = greenlet.getcurrent()
         gr_id = id(current)
 
-        # This function is used in two ways: first, to end a request for this
-        # greenlet, and second, as a weakref callback when the current greenlet
-        # dies.
-        def clear_request(dummy):
+        if sock_info == NO_REQUEST:
             self._refs.pop(gr_id, None)
             self._gr_id_to_sock.pop(gr_id, None)
-
-        if sock_info == NO_REQUEST:
-            clear_request(None)
         else:
-            self._refs[gr_id] = weakref.ref(current, clear_request)
             self._gr_id_to_sock[gr_id] = sock_info
+
+            def delete_callback(dummy):
+                # End the request
+                self._refs.pop(gr_id, None)
+                request_sock = self._gr_id_to_sock.pop(gr_id, None)
+                self.return_socket(request_sock)
+
+            if gr_id not in self._refs:
+                if hasattr(current, 'link'):
+                    # This is a Gevent Greenlet (capital G), which inherits from
+                    # greenlet and provides a 'link' method to detect when the
+                    # Greenlet exits
+                    current.link(delete_callback)
+                    self._refs[gr_id] = None
+                else:
+                    # This is a non-Gevent greenlet (small g), or it's the main
+                    # greenlet. Since there's no link() method, we use a weakref
+                    # to detect when the greenlet is garbage-collected. Garbage-
+                    # collection is a later-firing and less reliable event than
+                    # Greenlet.link() so we prefer link() if available.
+                    self._refs[gr_id] = weakref.ref(current, delete_callback)
 
     def _get_request_state(self):
         gr_id = id(greenlet.getcurrent())

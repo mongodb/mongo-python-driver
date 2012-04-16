@@ -18,8 +18,8 @@ import time
 import unittest
 
 import replset_tools
+from replset_tools import use_greenlets
 
-from nose.plugins.skip import SkipTest
 
 from pymongo import (ReplicaSetConnection,
                      ReadPreference)
@@ -35,7 +35,8 @@ class TestReadPreference(unittest.TestCase):
         self.seed, self.name = res
 
     def test_read_preference(self):
-        c = ReplicaSetConnection(self.seed, replicaSet=self.name)
+        c = ReplicaSetConnection(
+            self.seed, replicaSet=self.name, use_greenlets=use_greenlets)
         self.assertTrue(bool(len(c.secondaries)))
         db = c.pymongo_test
         db.test.remove({}, safe=True, w=len(c.secondaries))
@@ -47,19 +48,23 @@ class TestReadPreference(unittest.TestCase):
         # Test direct connection to a secondary
         host, port = replset_tools.get_secondaries()[0].split(':')
         port = int(port)
-        conn = Connection(host, port, slave_okay=True)
+        conn = Connection(
+            host, port, slave_okay=True, use_greenlets=use_greenlets)
         self.assertEqual(host, conn.host)
         self.assertEqual(port, conn.port)
         self.assert_(conn.pymongo_test.test.find_one())
-        conn = Connection(host, port,
-                          read_preference=ReadPreference.SECONDARY)
+        conn = Connection(
+            host, port,
+            read_preference=ReadPreference.SECONDARY,
+            use_greenlets=use_greenlets)
         self.assertEqual(host, conn.host)
         self.assertEqual(port, conn.port)
         self.assert_(conn.pymongo_test.test.find_one())
 
         # Test direct connection to an arbiter
         host = replset_tools.get_arbiters()[0]
-        self.assertRaises(ConnectionFailure, Connection, host)
+        self.assertRaises(
+            ConnectionFailure, Connection, host, use_greenlets=use_greenlets)
 
         # Test PRIMARY
         for _ in xrange(10):
@@ -83,6 +88,7 @@ class TestReadPreference(unittest.TestCase):
 
         # Test SECONDARY with no secondary
         killed = replset_tools.kill_all_secondaries()
+        sleep(5) # Let monitor thread notice change
         self.assertTrue(bool(len(killed)))
         db.read_preference = ReadPreference.SECONDARY
         for _ in xrange(10):
@@ -119,7 +125,8 @@ class TestPassiveAndHidden(unittest.TestCase):
         self.seed, self.name = res
 
     def test_passive_and_hidden(self):
-        c = ReplicaSetConnection(self.seed, replicaSet=self.name)
+        c = ReplicaSetConnection(
+            self.seed, replicaSet=self.name, use_greenlets=use_greenlets)
         db = c.pymongo_test
         db.test.remove({}, safe=True, w=len(c.secondaries))
         w = len(c.secondaries) + 1
@@ -138,6 +145,7 @@ class TestPassiveAndHidden(unittest.TestCase):
             self.assertTrue(cursor._Cursor__connection_id not in hidden)
 
         replset_tools.kill_members(replset_tools.get_passives(), 2)
+        sleep(5) # Let monitor thread notice change
 
         for _ in xrange(10):
             cursor = db.test.find()
@@ -154,7 +162,8 @@ class TestHealthMonitor(unittest.TestCase):
         self.seed, self.name = res
 
     def test_primary_failure(self):
-        c = ReplicaSetConnection(self.seed, replicaSet=self.name)
+        c = ReplicaSetConnection(
+            self.seed, replicaSet=self.name, use_greenlets=use_greenlets)
         self.assertTrue(bool(len(c.secondaries)))
         primary = c.primary
         secondaries = c.secondaries
@@ -163,16 +172,18 @@ class TestHealthMonitor(unittest.TestCase):
             for _ in xrange(30):
                 if c.primary != primary:
                     return True
-                time.sleep(1)
+                sleep(1)
             return False
 
         killed = replset_tools.kill_primary()
+        sleep(5) # Let monitor thread notice change
         self.assertTrue(bool(len(killed)))
         self.assertTrue(primary_changed())
         self.assertTrue(secondaries != c.secondaries)
 
     def test_secondary_failure(self):
-        c = ReplicaSetConnection(self.seed, replicaSet=self.name)
+        c = ReplicaSetConnection(
+            self.seed, replicaSet=self.name, use_greenlets=use_greenlets)
         self.assertTrue(bool(len(c.secondaries)))
         primary = c.primary
         secondaries = c.secondaries
@@ -181,10 +192,12 @@ class TestHealthMonitor(unittest.TestCase):
             for _ in xrange(20):
                 if c.secondaries != secondaries:
                     return True
-                time.sleep(1)
+
+                sleep(1)
             return False
 
         killed = replset_tools.kill_secondary()
+        sleep(5) # Let monitor thread notice change
         self.assertTrue(bool(len(killed)))
         self.assertEqual(primary, c.primary)
         self.assertTrue(readers_changed())
@@ -195,7 +208,8 @@ class TestHealthMonitor(unittest.TestCase):
         self.assertTrue(readers_changed())
 
     def test_primary_stepdown(self):
-        c = ReplicaSetConnection(self.seed, replicaSet=self.name)
+        c = ReplicaSetConnection(
+            self.seed, replicaSet=self.name, use_greenlets=use_greenlets)
         self.assertTrue(bool(len(c.secondaries)))
         primary = c.primary
         secondaries = c.secondaries
@@ -204,7 +218,7 @@ class TestHealthMonitor(unittest.TestCase):
             for _ in xrange(30):
                 if c.primary != primary:
                     return True
-                time.sleep(1)
+                sleep(1)
             return False
 
         replset_tools.stepdown_primary()
@@ -222,7 +236,8 @@ class TestWritesWithFailover(unittest.TestCase):
         self.seed, self.name = res
 
     def test_writes_with_failover(self):
-        c = ReplicaSetConnection(self.seed, replicaSet=self.name)
+        c = ReplicaSetConnection(
+            self.seed, replicaSet=self.name, use_greenlets=use_greenlets)
         primary = c.primary
         db = c.pymongo_test
         w = len(c.secondaries) + 1
@@ -236,7 +251,7 @@ class TestWritesWithFailover(unittest.TestCase):
                     db.test.insert({'bar': 'baz'}, safe=True)
                     return True
                 except AutoReconnect:
-                    time.sleep(1)
+                    sleep(1)
             return False
 
         killed = replset_tools.kill_primary(9)
@@ -256,7 +271,8 @@ class TestReadWithFailover(unittest.TestCase):
         self.seed, self.name = res
 
     def test_read_with_failover(self):
-        c = ReplicaSetConnection(self.seed, replicaSet=self.name)
+        c = ReplicaSetConnection(
+            self.seed, replicaSet=self.name, use_greenlets=use_greenlets)
         self.assertTrue(bool(len(c.secondaries)))
 
         def iter_cursor(cursor):
@@ -285,4 +301,19 @@ class TestReadWithFailover(unittest.TestCase):
         replset_tools.kill_all_members()
 
 if __name__ == '__main__':
-        unittest.main()
+    if use_greenlets:
+        print 'Using Gevent'
+        import gevent
+        print 'gevent version', gevent.__version__
+
+        if gevent.__version__ == '0.13.6':
+            print 'method', gevent.core.get_method()
+        else:
+            print gevent.get_hub()
+        from gevent import monkey
+        monkey.patch_socket()
+        sleep = gevent.sleep
+    else:
+        sleep = time.sleep
+
+    unittest.main()

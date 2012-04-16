@@ -39,11 +39,13 @@ from pymongo.errors import (AutoReconnect,
 from test import version
 from test.utils import server_is_master_with_slave, delay
 
+host = os.environ.get("DB_IP", "localhost")
+port = int(os.environ.get("DB_PORT", 27017))
+
 
 def get_connection(*args, **kwargs):
-    host = os.environ.get("DB_IP", "localhost")
-    port = int(os.environ.get("DB_PORT", 27017))
     return Connection(host, port, *args, **kwargs)
+
 
 class TestConnection(unittest.TestCase):
 

@@ -270,66 +270,42 @@ class TestMasterSlaveConnection(unittest.TestCase):
                 count += 1
         self.assertFalse(count)
 
-    def test_kill_cursors(self):
+    def test_kill_cursor_explicit(self):
+        c = self.connection
+        c.slave_okay = True
+        db = c.pymongo_test
+        db.drop_collection("test")
 
-        def cursor_count():
-            count = 0
-            res = self.connection.master.test_pymongo.command("cursorInfo")
-            count += res["clientCursors_size"]
-            for slave in self.connection.slaves:
-                res = slave.test_pymongo.command("cursorInfo")
-                count += res["clientCursors_size"]
-            return count
+        test = db.test
+        test.insert(
+            [{"i": i} for i in range(20)], safe=True, w=1 + len(self.slaves))
 
-        self.connection.test_pymongo.drop_collection("test")
-        db = self.db
+        # Partially evaluate cursor so it's left alive, then kill it
+        cursor = test.find().batch_size(10)
+        self.assertNotEqual(
+            cursor._Cursor__connection_id,
+            -1,
+            "Expected cursor connected to a slave, not master")
 
-        before = cursor_count()
+        cursor.next()
+        self.assertNotEqual(0, cursor.cursor_id)
 
-        for i in range(10000):
-            db.test.insert({"i": i})
-        time.sleep(11)  # need to sleep to be sure this gets pulled...
+        cursor_id = cursor.cursor_id
 
-        self.assertEqual(before, cursor_count())
-
-        for _ in range(10):
-            db.test.find_one()
-
-        self.assertEqual(before, cursor_count())
-
-        # Cursors are killed here when the cursor's
-        # __del__ method is called before garbage
-        # collection. Only CPython's ref counting gc
-        # makes this part of the test reliable.
-        if not (sys.platform.startswith('java') or
-                'PyPy' in sys.version):
-            for _ in range(10):
-                for x in db.test.find():
-                    break
-
-            self.assertEqual(before, cursor_count())
-
-        a = db.test.find()
-        for x in a:
-            break
-
-        self.assertNotEqual(before, cursor_count())
+        # Cursor dead on server - trigger a getMore on the same cursor_id and
+        # check that the server returns an error.
+        cursor2 = cursor.clone()
+        cursor2._Cursor__id = cursor_id
 
         if (sys.platform.startswith('java') or
             'PyPy' in sys.version):
-            # Explicitly kill cursors.
-            a.close()
+            # Explicitly kill cursor.
+            cursor.close()
         else:
-            # Implicitly kill them in CPython.
-            del a
+            # Implicitly kill it in CPython.
+            del cursor
 
-        self.assertEqual(before, cursor_count())
-
-        a = db.test.find().limit(10)
-        for x in a:
-            break
-
-        self.assertEqual(before, cursor_count())
+        self.assertRaises(OperationFailure, lambda: list(cursor2))
 
     def test_base_object(self):
         c = self.connection
