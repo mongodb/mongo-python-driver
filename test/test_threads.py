@@ -168,6 +168,9 @@ class FindPauseFind(threading.Thread):
         self.state = state
         self.passed = False
 
+        # If this thread fails to terminate, don't hang the whole program
+        self.setDaemon(True)
+
     def rendezvous(self):
         # pause until all threads arrive here
         s = self.state
@@ -309,8 +312,9 @@ class BaseTestThreads(object):
             t.join()
 
     def test_server_disconnect(self):
-        # PYTHON-345, we need to make sure that blocked threads' request
-        # sockets are closed by disconnect().
+        # PYTHON-345, we need to make sure that threads' request sockets are
+        # closed by disconnect().
+        #
         # 1. Create a connection with auto_start_request=True
         # 2. Start N threads and do a find() in each to get a request socket
         # 3. Pause all threads
@@ -346,7 +350,8 @@ class BaseTestThreads(object):
             t.start()
 
         # Wait for the threads to reach the rendezvous
-        self.assertTrue(state.ev_arrived.wait(1), "Thread timeout")
+        state.ev_arrived.wait(1)
+        self.assertTrue(state.ev_arrived.isSet(), "Thread timeout")
 
         try:
             self.assertEqual(state.nthreads, state.arrived_threads)
