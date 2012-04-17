@@ -23,9 +23,6 @@ import thread
 import threading
 import time
 
-if sys.version_info[0] >= 3:
-    from imp import reload
-
 sys.path[0:0] = [""]
 
 from nose.plugins.skip import SkipTest
@@ -128,8 +125,8 @@ class SaveAndFind(MongoThread):
     def run_mongo_thread(self):
         for _ in xrange(N):
             rand = random.randint(0, N)
-            id = self.db.sf.save({"x": rand}, safe=True)
-            self.ut.assertEqual(rand, self.db.sf.find_one(id)["x"])
+            _id = self.db.sf.save({"x": rand}, safe=True)
+            self.ut.assertEqual(rand, self.db.sf.find_one(_id)["x"])
 
 
 class Unique(MongoThread):
@@ -147,7 +144,7 @@ class NonUnique(MongoThread):
     def run_mongo_thread(self):
         for _ in xrange(N):
             self.connection.start_request()
-            self.db.unique.insert({"_id": "mike"})
+            self.db.unique.insert({"_id": "jesse"})
             self.ut.assertNotEqual(None, self.db.error())
             self.connection.end_request()
 
@@ -165,8 +162,8 @@ class NoRequest(MongoThread):
         self.connection.start_request()
         errors = 0
         for _ in xrange(N):
-            self.db.unique.insert({"_id": "mike"})
-            if self.db.error() is None:
+            self.db.unique.insert({"_id": "jesse"})
+            if not self.db.error():
                 errors += 1
 
         self.connection.end_request()
@@ -279,7 +276,7 @@ class _TestPoolingBase(object):
         db = self.c[DB]
         db.unique.drop()
         db.test.drop()
-        db.unique.insert({"_id": "mike"})
+        db.unique.insert({"_id": "jesse"})
 
         # In tests like test_max_pool_size, we start some threads that will
         # perform simultaneous queries, forcing the pool to give out many
@@ -294,9 +291,9 @@ class _TestPoolingBase(object):
             reload(socket)
 
     def get_connection(self, *args, **kwargs):
-        kwargs = kwargs.copy()
-        kwargs['use_greenlets'] = self.use_greenlets
-        return get_connection(*args, **kwargs)
+        opts = kwargs.copy()
+        opts['use_greenlets'] = self.use_greenlets
+        return get_connection(*args, **opts)
 
     def get_pool(self, *args, **kwargs):
         if self.use_greenlets:
