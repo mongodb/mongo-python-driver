@@ -34,7 +34,7 @@ def _check_name(name):
     if not name:
         raise InvalidName("database name cannot be the empty string")
 
-    for invalid_char in [" ", ".", "$", "/", "\\"]:
+    for invalid_char in [" ", ".", "$", "/", "\\", "\x00"]:
         if invalid_char in name:
             raise InvalidName("database names cannot contain the "
                               "character %r" % invalid_char)
