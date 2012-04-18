@@ -711,7 +711,7 @@ class _TestPoolSocketSharing(_TestPoolingBase):
         results = {
             'find_fast_result': None,
             'find_slow_result': None,
-            }
+        }
 
         cx = get_connection(
             use_greenlets=self.use_greenlets,
@@ -720,7 +720,7 @@ class _TestPoolSocketSharing(_TestPoolingBase):
 
         db = cx.pymongo_test
         db.test.remove(safe=True)
-        db.test.insert({'_id': 1})
+        db.test.insert({'_id': 1}, safe=True)
 
         history = []
 
@@ -772,7 +772,8 @@ class _TestPoolSocketSharing(_TestPoolingBase):
 
         self.assertEqual([{'_id': 1}], results['find_slow_result'])
 
-        # Fails, since find_fast doesn't complete
+        # Fails if there's a bug in socket allocation, since find_fast won't
+        # complete
         self.assertEqual([{'_id': 1}], results['find_fast_result'])
 
         self.assertEqual([
@@ -780,7 +781,7 @@ class _TestPoolSocketSharing(_TestPoolingBase):
             'find_fast start',
             'find_fast done',
             'find_slow done',
-            ], history)
+        ], history)
 
     def test_pool(self):
         self._test_pool(use_request=False)

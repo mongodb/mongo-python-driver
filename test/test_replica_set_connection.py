@@ -541,7 +541,7 @@ class TestConnection(TestConnectionReplicaSetBase):
             self.assertEqual(connection_id, writer, msg)
         else:
             self.assertNotEqual(connection_id, writer,
-                "Expected cursor's connection_id not to be -1")
+                "Expected cursor's connection_id not to be primary")
 
         cursor_id = cursor.cursor_id
 
