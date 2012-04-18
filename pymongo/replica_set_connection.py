@@ -200,9 +200,21 @@ class ReplicaSetConnection(common.BaseObject):
             operations until :meth:`end_request()`
           - `slave_okay` or `slaveOk` (deprecated): Use `read_preference`
             instead.
+          - `host`: For compatibility with connection.Connection. If both
+            `host` and `hosts_or_uri` are specified `host` takes precedence.
+          - `port`: For compatibility with connection.Connection. The default
+            port number to use for hosts.
+          - `network_timeout`: For compatibility with connection.Connection.
+            The timeout (in seconds) to use for socket operations - default
+            is no timeout. If both `network_timeout` and `socketTimeoutMS` are
+            are specified `network_timeout` takes precedence, matching
+            connection.Connection.
+
 
         .. versionchanged:: 2.1.1+
            Added `auto_start_request` option.
+           Added support for `host`, `port`, and `network_timeout` keyword
+           arguments for compatibility with connection.Connection.
         .. versionadded:: 2.1
         """
         self.__opts = {}
@@ -220,19 +232,33 @@ class ReplicaSetConnection(common.BaseObject):
         self.__tz_aware = common.validate_boolean('tz_aware', tz_aware)
         self.__document_class = document_class
 
+        # Compatibility with connection.Connection
+        host = kwargs.pop('host', hosts_or_uri)
+
+        port = kwargs.pop('port', 27017)
+        if not isinstance(port, int):
+            raise TypeError("port must be an instance of int")
+
+        network_timeout = kwargs.pop('network_timeout', None)
+        if network_timeout is not None:
+            if (not isinstance(network_timeout, (int, float)) or
+                network_timeout <= 0):
+                raise ConfigurationError("network_timeout must "
+                                         "be a positive integer")
+
         username = None
         db_name = None
-        if hosts_or_uri is None:
-            self.__seeds.add(('localhost', 27017))
-        elif '://' in hosts_or_uri:
-            res = uri_parser.parse_uri(hosts_or_uri)
+        if host is None:
+            self.__seeds.add(('localhost', port))
+        elif '://' in host:
+            res = uri_parser.parse_uri(host, port)
             self.__seeds.update(res['nodelist'])
             username = res['username']
             password = res['password']
             db_name = res['database']
             self.__opts = res['options']
         else:
-            self.__seeds.update(uri_parser.split_hosts(hosts_or_uri))
+            self.__seeds.update(uri_parser.split_hosts(host, port))
 
         for option, value in kwargs.iteritems():
             option, value = common.validate(option, value)
@@ -254,7 +280,10 @@ class ReplicaSetConnection(common.BaseObject):
         if not self.__name:
             raise ConfigurationError("the replicaSet "
                                      "keyword parameter is required.")
-        self.__net_timeout = self.__opts.get('sockettimeoutms')
+
+
+        self.__net_timeout = (network_timeout or
+                              self.__opts.get('sockettimeoutms'))
         self.__conn_timeout = self.__opts.get('connecttimeoutms')
         self.__use_ssl = self.__opts.get('ssl', False)
         if self.__use_ssl and not pool.have_ssl:
