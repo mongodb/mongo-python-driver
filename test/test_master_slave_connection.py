@@ -278,7 +278,16 @@ class TestMasterSlaveConnection(unittest.TestCase):
 
         test = db.test
         test.insert(
-            [{"i": i} for i in range(20)], safe=True, w=1 + len(self.slaves))
+            [{"i": i} for i in range(20)], w=1 + len(self.slaves))
+
+        st = time.time()
+        while time.time() - st < 5:
+            # Wait for replication -- the 'w' parameter should obviate this
+            # loop but it's not working in Jenkins right now
+            if test.count() == 20:
+                break
+        else:
+            self.fail("Replication timeout")
 
         # Partially evaluate cursor so it's left alive, then kill it
         cursor = test.find().batch_size(10)

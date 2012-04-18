@@ -29,7 +29,7 @@ from nose.plugins.skip import SkipTest
 
 from bson.son import SON
 from bson.tz_util import utc
-from pymongo import ReadPreference, pool
+from pymongo import ReadPreference
 from pymongo.connection import Connection
 from pymongo.replica_set_connection import ReplicaSetConnection
 from pymongo.replica_set_connection import _partition_node
@@ -519,18 +519,29 @@ class TestConnection(TestConnectionReplicaSetBase):
         self.assertTrue("pymongo_test_bernie" in dbs)
         connection.close()
 
-    def test_kill_cursor_explicit(self):
-        c = self._get_connection()
+    def _test_kill_cursor_explicit(self, read_pref):
+        c = self._get_connection(read_preference=read_pref)
         db = c.pymongo_test
         db.drop_collection("test")
 
         test = db.test
-        test.insert([{"i": i} for i in range(20)], safe=True)
+        test.insert([{"i": i} for i in range(20)], w=1 + len(c.secondaries))
 
         # Partially evaluate cursor so it's left alive, then kill it
         cursor = test.find().batch_size(10)
         cursor.next()
         self.assertNotEqual(0, cursor.cursor_id)
+
+        connection_id = cursor._Cursor__connection_id
+        writer = c._ReplicaSetConnection__writer
+        if read_pref == ReadPreference.PRIMARY:
+            msg = "Expected cursor's connection_id to be %s, got %s" % (
+                writer, connection_id)
+
+            self.assertEqual(connection_id, writer, msg)
+        else:
+            self.assertNotEqual(connection_id, writer,
+                "Expected cursor's connection_id not to be -1")
 
         cursor_id = cursor.cursor_id
 
@@ -548,6 +559,12 @@ class TestConnection(TestConnectionReplicaSetBase):
             del cursor
 
         self.assertRaises(OperationFailure, lambda: list(cursor2))
+
+    def test_kill_cursor_explicit_primary(self):
+        self._test_kill_cursor_explicit(ReadPreference.PRIMARY)
+
+    def test_kill_cursor_explicit_secondary(self):
+        self._test_kill_cursor_explicit(ReadPreference.SECONDARY)
 
     def test_interrupt_signal(self):
         if sys.platform.startswith('java'):

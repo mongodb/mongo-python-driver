@@ -668,8 +668,10 @@ class _TestMaxPoolSize(_TestPoolingBase):
         force_reclaim_sockets(cx_pool, 4)
 
         nsock = len(cx_pool.sockets)
-        self.assertEqual(4, nsock,
-            "Expected 4 sockets in the pool, got %d" % nsock)
+
+        # Socket-reclamation depends on timely garbage-collection, so be lenient
+        self.assertTrue(2 <= nsock <= 4,
+            msg="Expected between 2 and 4 sockets in the pool, got %d" % nsock)
 
     def test_max_pool_size(self):
         self._test_max_pool_size(0, 0)
