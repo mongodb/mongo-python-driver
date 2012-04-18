@@ -487,6 +487,10 @@ class ReplicaSetConnection(common.BaseObject):
             return self.__pools[self.__writer]['max_bson_size']
         return 0
 
+    @property
+    def auto_start_request(self):
+        return self.__auto_start_request
+
     def __simple_command(self, sock_info, dbname, spec):
         """Send a command to the server.
         """
