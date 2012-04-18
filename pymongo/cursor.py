@@ -626,8 +626,16 @@ class Cursor(object):
             kwargs["_connection_to_use"] = self.__connection_id
         kwargs.update(self.__kwargs)
 
-        response = db.connection._send_message_with_response(message,
-                                                             **kwargs)
+        try:
+            response = db.connection._send_message_with_response(message,
+                                                                 **kwargs)
+        except AutoReconnect:
+            # Don't try to send kill cursors on another socket
+            # or to another server. It can cause a _pinValue
+            # assertion on some server releases if we get here
+            # due to a socket timeout.
+            self.__killed = True
+            raise
 
         if isinstance(response, tuple):
             (connection_id, response) = response
@@ -641,6 +649,9 @@ class Cursor(object):
                                                 self.__as_class,
                                                 self.__tz_aware)
         except AutoReconnect:
+            # Don't send kill cursors to another server after a "not master"
+            # error. It's completely pointless.
+            self.__killed = True
             db.connection.disconnect()
             raise
         self.__id = response["cursor_id"]
