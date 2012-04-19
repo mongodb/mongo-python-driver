@@ -219,7 +219,7 @@ class Collection(common.BaseObject):
            Support for passing `getLastError` options as keyword
            arguments.
 
-        .. mongodoc:: insert
+        .. mongodoc:: inserting
         """
         if not isinstance(to_save, dict):
             raise TypeError("cannot save object of type %s" % type(to_save))
@@ -284,7 +284,7 @@ class Collection(common.BaseObject):
         .. versionchanged:: 1.1
            Bulk insert works with any iterable
 
-        .. mongodoc:: insert
+        .. mongodoc:: inserting
         """
         docs = doc_or_docs
         return_one = False
@@ -379,7 +379,7 @@ class Collection(common.BaseObject):
 
         .. _update modifiers: http://www.mongodb.org/display/DOCS/Updating
 
-        .. mongodoc:: update
+        .. mongodoc:: updating
         """
         if not isinstance(spec, dict):
             raise TypeError("spec must be an instance of dict")
@@ -464,7 +464,7 @@ class Collection(common.BaseObject):
         .. versionadded:: 1.1
            The `safe` parameter.
 
-        .. mongodoc:: remove
+        .. mongodoc:: removing
         """
         if spec_or_id is None:
             spec_or_id = {}
@@ -609,7 +609,7 @@ class Collection(common.BaseObject):
         .. versionadded:: 1.1
            The `tailable` parameter.
 
-        .. mongodoc:: find
+        .. mongodoc:: querying
         """
         if not 'slave_okay' in kwargs:
             kwargs['slave_okay'] = self.slave_okay
@@ -1138,7 +1138,7 @@ class Collection(common.BaseObject):
               supports can be passed here.
 
 
-        .. mongodoc:: findAndModify
+        .. mongodoc:: findAndModify+Command
 
         .. _findAndModify: http://dochub.mongodb.org/core/findAndModify
 
