@@ -281,13 +281,16 @@ class TestMasterSlaveConnection(unittest.TestCase):
             [{"i": i} for i in range(20)], w=1 + len(self.slaves))
 
         st = time.time()
-        while time.time() - st < 30:
+        while time.time() - st < 120:
             # Wait for replication -- the 'w' parameter should obviate this
             # loop but it's not working in Jenkins right now
-            if len(list(test.find())) == 20:
+            if list(test.find({"i": 19})):
                 break
+            time.sleep(0.5)
         else:
-            self.fail("Replication timeout")
+            self.fail("Replication timeout, test coll has %s records" % (
+                len(list(test.find()))
+            ))
 
         # Partially evaluate cursor so it's left alive, then kill it
         cursor = test.find().batch_size(10)
