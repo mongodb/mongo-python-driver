@@ -2,21 +2,21 @@ Connecting to a Replica Set
 ===========================
 
 PyMongo makes working with `replica sets
-<http://www.mongodb.org/display/DOCS/Replica+Sets>`_ easy. Here we'll launch
-a new replica set and show how to handle both initialization and normal
+<http://dochub.mongodb.org/core/rs>`_ easy. Here we'll launch a new
+replica set and show how to handle both initialization and normal
 connections with PyMongo.
 
 .. note:: Replica sets require server version **>= 1.6.0**. Support
    for connecting to replica sets also requires PyMongo version **>=
    1.8.0**.
 
-.. mongodoc:: Replica+Sets
+.. mongodoc:: rs
 
 Starting a Replica Set
 ----------------------
 
 The main `replica set documentation
-<http://www.mongodb.org/display/DOCS/Replica+Sets>`_ contains extensive information
+<http://dochub.mongodb.org/core/rs>`_ contains extensive information
 about setting up a new replica set or migrating an existing MongoDB
 setup, be sure to check that out. Here, we'll just do the bare minimum
 to get a three node replica set setup locally.

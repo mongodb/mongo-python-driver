@@ -83,7 +83,7 @@ def process_mongodoc_nodes(app, doctree, fromdocname):
         for para in node.traverse(nodes.paragraph):
             tag = str(para.traverse()[1])
             link = mongoref("", "")
-            link["refuri"] = "http://www.mongodb.org/display/DOCS/%s" % tag
+            link["refuri"] = "http://dochub.mongodb.org/core/%s" % tag
             link["name"] = anchor
             link.append(nodes.emphasis(tag, tag))
             new_para = nodes.paragraph()
