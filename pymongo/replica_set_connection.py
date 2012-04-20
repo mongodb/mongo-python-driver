@@ -73,47 +73,29 @@ def _partition_node(node):
     return host, port
 
 
-class Monitor(object):
-    def __init__(self, obj, interval=5):
-        self.obj = weakref.proxy(obj)
-        self.interval = interval
-
-    def run(self):
-        while True:
-            try:
-                self.obj.refresh()
-            # The connection object has been
-            # collected so we should die.
-            except ReferenceError:
-                break
-            except:
-                pass
-            self.sleep(self.interval)
-
-
-class MonitorThread(Monitor, threading.Thread):
-    def __init__(self, obj, interval=5):
-        Monitor.__init__(self, obj, interval)
-        threading.Thread.__init__(self)
-        self.setName("ReplicaSetMonitorThread")
-        self.setDaemon(True)
-
-    def sleep(self, seconds):
-        time.sleep(seconds)
-
-
 have_gevent = False
 try:
     import gevent
+    from gevent import Greenlet
     have_gevent = True
 
-    class MonitorGreenlet(Monitor, gevent.Greenlet):
+    class GreenletMonitor(Greenlet):
         def __init__(self, obj, interval=5):
-            Monitor.__init__(self, obj, interval)
-            gevent.Greenlet.__init__(self)
+            Greenlet.__init__(self)
+            self.obj = weakref.proxy(obj)
+            self.interval = interval
 
-        def sleep(self, seconds):
-            gevent.sleep(seconds)
+        def _run(self):
+            while True:
+                try:
+                    self.obj.refresh()
+                # The connection object has been
+                # collected so we should die.
+                except ReferenceError:
+                    break
+                except:
+                    pass
+                gevent.sleep(self.interval)
 
 except ImportError:
     pass
@@ -226,6 +208,7 @@ class ReplicaSetConnection(common.BaseObject):
         self.__pools = {}
         self.__index_cache = {}
         self.__auth_credentials = {}
+        self.__done = False
 
         self.__max_pool_size = common.validate_positive_integer(
                                         'max_pool_size', max_pool_size)
@@ -300,9 +283,11 @@ class ReplicaSetConnection(common.BaseObject):
         self.refresh()
 
         if self.__opts.get('use_greenlets', False):
-            monitor = MonitorGreenlet(self)
+            monitor = GreenletMonitor(self)
         else:
-            monitor = MonitorThread(self)
+            monitor = threading.Thread(target=self.__refresh_loop)
+            monitor.setName("ReplicaSetMonitorThread")
+            monitor.setDaemon(True)
         monitor.start()
 
         if db_name and username is None:
@@ -312,6 +297,25 @@ class ReplicaSetConnection(common.BaseObject):
             db_name = db_name or 'admin'
             if not self[db_name].authenticate(username, password):
                 raise ConfigurationError("authentication failed")
+
+    def __del__(self):
+        """Shutdown the monitor thread.
+        """
+        self.__done = True
+
+    def __refresh_loop(self):
+        """Refresh loop used in the standard monitor thread.
+        """
+        while True:
+            if not self.__done:
+                try:
+                    self.refresh()
+                # Catch literally everything here to avoid
+                # exceptions when the interpreter shuts down.
+                except:
+                    pass
+                if time:
+                    time.sleep(5)
 
     def _cached(self, dbname, coll, index):
         """Test if `index` is cached.
