@@ -80,13 +80,13 @@ class GridFS(object):
     def put(self, data, **kwargs):
         """Put data in GridFS as a new file.
 
-        Equivalent to doing:
+        Equivalent to doing::
 
-        try:
-            f = new_file(**kwargs)
-            f.write(data)
-        finally
-            f.close()
+          try:
+              f = new_file(**kwargs)
+              f.write(data)
+          finally
+              f.close()
 
         `data` can be either an instance of :class:`str` (:class:`bytes`
         in python 3) or a file-like object providing a :meth:`read` method.
