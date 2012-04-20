@@ -1,6 +1,44 @@
 Changelog
 =========
 
+Changes in Version 2.2
+-----------------------
+
+Version 2.2 adds a few more frequently requested features and fixes a
+number of bugs.
+
+Special thanks go to Alex Grönholm for his contributions to Python 3
+support and maintaining the original pymongo3 port. Christoph Simon,
+Wouter Bolsterlee, Mike O'Brien, and Chris Tompkinson also contributed
+to this release.
+
+Important New Features:
+
+- Support for Python 3 -
+  See the :doc:`python3` for more information.
+- Support for Gevent -
+  See :doc:`examples/gevent` for more information.
+- Improved connection pooling -
+  See :doc:`examples/requests` for more information.
+
+.. warning::
+
+    A number of methods and method parameters that were deprecated in
+    PyMongo 1.9 and older versions have been removed in this release.
+    As a result of this cleanup some minor code changes may be required
+    to use this release. The full list of changes can be found in the
+    following JIRA ticket:
+
+    https://jira.mongodb.org/browse/PYTHON-305
+
+Issues Resolved
+...............
+
+See the `PyMongo 2.2 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 2.2 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/10584
+
 Changes in Version 2.1.1
 ------------------------
 
@@ -826,3 +864,10 @@ Changes in Version 0.9.7
   :class:`~pymongo.collection.Collection` names
 - add version as :attr:`pymongo.version`
 - add ``--no_ext`` command line option to *setup.py*
+
+.. toctree::
+   :hidden:
+
+   python3
+   examples/gevent
+   examples/requests
