@@ -14,8 +14,6 @@
 
 """Test replica set operations and failures."""
 
-from __future__ import print_function
-
 import time
 import unittest
 
@@ -311,7 +309,7 @@ if __name__ == '__main__':
         if gevent.__version__ == '0.13.6':
             print('method %s' % gevent.core.get_method())
         else:
-            print(gevent.get_hub())
+            print(gevent.hub.get_hub())
         from gevent import monkey
         monkey.patch_socket()
         sleep = gevent.sleep
