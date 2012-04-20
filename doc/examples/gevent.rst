@@ -6,10 +6,10 @@ Gevent
   from pymongo import Connection
 
 PyMongo supports `Gevent <http://www.gevent.org/>`_. Primarily, this means that
-:meth:`pymongo.connection.Connection.start_request()` can ensure that the
+:meth:`~pymongo.connection.Connection.start_request()` can ensure that the
 current greenlet (not merely the current thread) uses the same socket for all
-operations until `:meth:pymongo.connection.Connection.end_request()`. See the
-:doc:`requests documentation <requests>` for details.
+operations until :meth:`~pymongo.connection.Connection.end_request()` is called.
+See the :doc:`requests documentation <requests>` for details.
 
 Using Gevent Without Threads
 ----------------------------
@@ -34,8 +34,8 @@ Using Gevent With Threads
 
 If you need to use standard Python threads in the same process as Gevent and
 greenlets, you can run only ``monkey.patch_socket()``, and create a
-:class:`pymongo.connection.Connection` with ``use_greenlets=True``. The
-:class:`pymongo.connection.Connection` will use a special greenlet-aware
+:class:`~pymongo.connection.Connection` with ``use_greenlets=True``. The
+:class:`~pymongo.connection.Connection` will use a special greenlet-aware
 connection pool that allocates a socket for each greenlet, ensuring consistent
 reads in Gevent.
 
