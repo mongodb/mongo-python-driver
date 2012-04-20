@@ -22,6 +22,9 @@ everything you need to know to use **PyMongo**.
 :doc:`faq`
   Some questions that come up often.
 
+:doc:`python3`
+  Frequently asked questions about python 3 support.
+
 :doc:`api/index`
   The complete API documentation, organized by module.
 
@@ -84,4 +87,5 @@ Indices and tables
    tools
    contributors
    changelog
+   python3
 
