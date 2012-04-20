@@ -24,12 +24,19 @@ Important New Features:
 .. warning::
 
     A number of methods and method parameters that were deprecated in
-    PyMongo 1.9 and older versions have been removed in this release.
-    As a result of this cleanup some minor code changes may be required
-    to use this release. The full list of changes can be found in the
-    following JIRA ticket:
+    PyMongo 1.9 or older versions have been removed in this release.
+    The full list of changes can be found in the following JIRA ticket:
 
     https://jira.mongodb.org/browse/PYTHON-305
+
+    BSON module aliases from the pymongo package that were deprecated in
+    PyMongo 1.9 have also been removed in this release. See the following
+    JIRA ticket for details:
+
+    https://jira.mongodb.org/browse/PYTHON-304
+
+    As a result of this cleanup some minor code changes may be required
+    to use this release.
 
 Issues Resolved
 ...............
