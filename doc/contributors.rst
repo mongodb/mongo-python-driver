@@ -55,3 +55,5 @@ The following is a list of people who have contributed to
 - Wouter Bolsterlee (wbolster)
 - Alex Grönholm (agronholm)
 - Christoph Simon (kalanzun)
+- Chris Tompkinson (tompko)
+- Mike O'Brien (mpobrien)
