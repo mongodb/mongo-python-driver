@@ -1154,6 +1154,7 @@ class TestCollection(unittest.TestCase):
     def test_large_limit(self):
         db = self.db
         db.drop_collection("test")
+        db.test.create_index([('x', 1)])
 
         for i in range(2000):
             db.test.insert({"x": i, "y": "mongomongo" * 1000}, safe=True)
