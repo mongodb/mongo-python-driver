@@ -48,6 +48,7 @@ class AutoAuthenticateThreads(threading.Thread):
         self.coll = collection
         self.num = num
         self.success = True
+        self.setDaemon(True)
 
     def run(self):
         try:
@@ -64,6 +65,7 @@ class SaveAndFind(threading.Thread):
     def __init__(self, collection):
         threading.Thread.__init__(self)
         self.collection = collection
+        self.setDaemon(True)
 
     def run(self):
         sum = 0
@@ -79,6 +81,7 @@ class Insert(threading.Thread):
         self.collection = collection
         self.n = n
         self.expect_exception = expect_exception
+        self.setDaemon(True)
 
     def run(self):
         for _ in xrange(self.n):
@@ -102,6 +105,7 @@ class Update(threading.Thread):
         self.collection = collection
         self.n = n
         self.expect_exception = expect_exception
+        self.setDaemon(True)
 
     def run(self):
         for _ in xrange(self.n):
@@ -125,6 +129,7 @@ class IgnoreAutoReconnect(threading.Thread):
         threading.Thread.__init__(self)
         self.c = collection
         self.n = n
+        self.setDaemon(True)
 
     def run(self):
         for _ in range(self.n):
