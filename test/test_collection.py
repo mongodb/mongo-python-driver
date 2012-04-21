@@ -1153,22 +1153,26 @@ class TestCollection(unittest.TestCase):
 
     def test_large_limit(self):
         db = self.db
-        db.test.remove({}, safe=True)
         db.drop_collection("test")
 
         for i in range(2000):
             db.test.insert({"x": i, "y": "mongomongo" * 1000}, safe=True)
 
+        # Wait for insert to complete; often mysteriously failing in Jenkins
+        st = time.time()
+        while len(list(db.test.find())) < 2000 and time.time() - st < 30:
+            time.sleep(1)
+
         self.assertEqual(2000, len(list(db.test.find())))
 
         i = 0
         y = 0
-        for doc in db.test.find(limit=1900):
+        for doc in db.test.find(limit=1900).sort([('x', 1)]):
             i += 1
             y += doc["x"]
 
         self.assertEqual(1900, i)
-        self.assertEqual(1804050, y)
+        self.assertEqual((1900 * 1899) / 2, y)
 
     def test_find_kwargs(self):
         db = self.db
