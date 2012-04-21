@@ -166,7 +166,7 @@ class Connection(common.BaseObject):
             instead.
 
         .. seealso:: :meth:`end_request`
-        .. versionchanged:: 2.1.1+
+        .. versionchanged:: 2.2
            Added `auto_start_request` option back.
         .. versionchanged:: 2.1
            Support `w` = integer or string.
@@ -841,7 +841,7 @@ class Connection(common.BaseObject):
         ...     # Definitely read the document after the final update completes
         ...     print db.test_collection.find({'_id': _id})
 
-        .. versionadded:: 2.1.1+
+        .. versionadded:: 2.2
            The :class:`~pymongo.pool.Request` return value.
            :meth:`start_request` previously returned None
         """

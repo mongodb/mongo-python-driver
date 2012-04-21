@@ -193,7 +193,7 @@ class ReplicaSetConnection(common.BaseObject):
             connection.Connection.
 
 
-        .. versionchanged:: 2.1.1+
+        .. versionchanged:: 2.2
            Added `auto_start_request` option.
            Added support for `host`, `port`, and `network_timeout` keyword
            arguments for compatibility with connection.Connection.
@@ -921,7 +921,7 @@ class ReplicaSetConnection(common.BaseObject):
         ...     # Definitely read the document after the final update completes
         ...     print db.test_collection.find({'_id': _id})
 
-        .. versionadded:: 2.1.1+
+        .. versionadded:: 2.2
            The :class:`~pymongo.pool.Request` return value.
            :meth:`start_request` previously returned None
         """

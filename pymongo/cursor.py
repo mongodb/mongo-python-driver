@@ -726,7 +726,7 @@ class Cursor(object):
         cursors manually using
         :meth:`~pymongo.connection.Connection.kill_cursors`
 
-        .. versionadded:: 2.1.1+
+        .. versionadded:: 2.2
         """
         return self.__id
 

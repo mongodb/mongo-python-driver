@@ -226,7 +226,7 @@ class Database(common.BaseObject):
           - `**kwargs` (optional): additional keyword arguments will
             be passed as options for the create collection command
 
-        .. versionchanged:: 2.1.1+
+        .. versionchanged:: 2.2
            Removed deprecated argument: options
 
         .. versionchanged:: 1.5
@@ -316,7 +316,7 @@ class Database(common.BaseObject):
           - `**kwargs` (optional): additional keyword arguments will
             be added to the command document before it is sent
 
-        .. versionchanged:: 2.1.1+
+        .. versionchanged:: 2.2
            Added support for `as_class` - the class you want to use for
            the resulting documents
         .. versionchanged:: 1.6
@@ -559,7 +559,7 @@ class Database(common.BaseObject):
           - `password`: the password of the user to create
           - `read_only` (optional): if ``True`` it will make user read only
 
-        .. versionchanged:: 2.1.1+
+        .. versionchanged:: 2.2
            Added support for read only users
 
         .. versionadded:: 1.4
