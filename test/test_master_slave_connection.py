@@ -274,16 +274,17 @@ class TestMasterSlaveConnection(unittest.TestCase):
         c = self.connection
         c.slave_okay = True
         db = c.pymongo_test
-        db.drop_collection("test")
 
-        test = db.test
-        test.insert(
-            [{"i": i} for i in range(20)], w=1 + len(self.slaves))
+        test = db.master_slave_test_kill_cursor_explicit
+        test.drop()
+
+        for i in range(20):
+            test.insert({"i": i}, w=1 + len(self.slaves))
 
         st = time.time()
         while time.time() - st < 120:
             # Wait for replication -- the 'w' parameter should obviate this
-            # loop but it's not working in Jenkins right now
+            # loop but it's not working reliably in Jenkins right now
             if list(test.find({"i": 19})):
                 break
             time.sleep(0.5)

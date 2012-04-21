@@ -770,7 +770,10 @@ class _TestPoolSocketSharing(_TestPoolingBase):
             gr1.start_later(.1)
         else:
             gr0 = threading.Thread(target=find_slow)
+            gr0.setDaemon(True)
             gr1 = threading.Thread(target=find_fast)
+            gr1.setDaemon(True)
+
             gr0.start()
             time.sleep(.1)
             gr1.start()

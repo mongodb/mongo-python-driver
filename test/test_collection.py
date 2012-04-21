@@ -218,6 +218,7 @@ class TestCollection(unittest.TestCase):
         threads = []
         for _ in xrange(10):
             t = Indexer()
+            t.setDaemon(True)
             threads.append(t)
 
         for i in xrange(10):
