@@ -100,14 +100,22 @@ class MongoThread(object):
 
     def start(self):
         if self.use_greenlets:
+            # A Gevent extended Greenlet
             self.thread = Greenlet(self.run)
         else:
             self.thread = threading.Thread(target=self.run)
+            self.thread.setDaemon(True) # Don't hang whole test if thread hangs
+
 
         self.thread.start()
 
     def join(self):
-        self.thread.join()
+        self.thread.join(300)
+        if self.use_greenlets:
+            assert self.thread.dead, "Greenlet timeout"
+        else:
+            assert not self.thread.isAlive(), "Thread timeout"
+
         self.thread = None
 
     def run(self):
