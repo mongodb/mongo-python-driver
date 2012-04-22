@@ -125,21 +125,25 @@ class custom_build_ext(build_ext):
     """
 
     warning_message = """
-**************************************************************
+********************************************************************
 WARNING: %s could not
 be compiled. No C extensions are essential for PyMongo to run,
 although they do result in significant speed improvements.
 
 If you are seeing this message on Linux you probably need to
 install GCC and/or the Python development package for your
-version of Python. Python development package names for popular
-Linux distributions include:
+version of Python.
 
-RHEL/CentOS: python-devel
-Debian/Ubuntu: python-dev
+Debian and Ubuntu users should issue the following command:
+
+    $ sudo apt-get install build-essential python-dev
+
+RedHat, CentOS, and Fedora users should issue the following command:
+
+    $ sudo yum install gcc python-devel
 
 %s
-**************************************************************
+********************************************************************
 """
 
     def run(self):
