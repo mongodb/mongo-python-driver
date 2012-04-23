@@ -94,8 +94,8 @@ class ReadPreference:
 version_tuple = (2, 1, 1, '+')
 
 def get_version_string():
-    if version_tuple[-1] == '+':
-        return '.'.join(map(str, version_tuple[:-1])) + '+'
+    if isinstance(version_tuple[-1], basestring):
+        return '.'.join(map(str, version_tuple[:-1])) + version_tuple[-1]
     return '.'.join(map(str, version_tuple))
 
 version = get_version_string()
