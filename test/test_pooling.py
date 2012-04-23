@@ -86,8 +86,8 @@ class TestPoolingThreads(_TestPooling, unittest.TestCase):
 
         # Join thread
         acquired = False
-        for i in range(10):
-            time.sleep(0.1)
+        for i in range(30):
+            time.sleep(0.5)
             acquired = lock.acquire(0)
             if acquired:
                 break

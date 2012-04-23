@@ -355,7 +355,7 @@ class BaseTestThreads(object):
             t.start()
 
         # Wait for the threads to reach the rendezvous
-        state.ev_arrived.wait(1)
+        state.ev_arrived.wait(10)
         self.assertTrue(state.ev_arrived.isSet(), "Thread timeout")
 
         try:
@@ -365,6 +365,11 @@ class BaseTestThreads(object):
             for t in threads:
                 t.request_sock.close()
 
+            # Finally, ensure the main thread's socket's last_checkout is
+            # updated:
+            collection.find_one()
+
+            # ... and close it:
             request_sock.close()
 
             # Doing an operation on the connection raises an AutoReconnect and
@@ -376,7 +381,7 @@ class BaseTestThreads(object):
             state.ev_resume.set()
 
         for t in threads:
-            t.join(1)
+            t.join(10)
             self.assertFalse(t.isAlive(), "Thread timeout")
 
         for t in threads:
