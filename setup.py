@@ -31,7 +31,7 @@ from distutils.errors import CCompilerError
 from distutils.errors import DistutilsPlatformError, DistutilsExecError
 from distutils.core import Extension
 
-version = "2.1.1+"
+version = "2.2rc1"
 
 f = open("README.rst")
 try:
