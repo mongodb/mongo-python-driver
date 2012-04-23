@@ -177,3 +177,17 @@ package::
 
   $ sudo easy_install pymongo-2.2-py2.7-linux-x86_64.egg
 
+Installing a release candidate
+------------------------------
+
+10gen may occasionally tag a release candidate for testing by the community
+before final release. These releases will not be uploaded to pypi but can be
+found on the
+`github tags page <https://github.com/mongodb/mongo-python-driver/tags>`_.
+They can be installed by passing the full URL for the tag to easy_install or
+pip::
+
+  $ pip install https://github.com/mongodb/mongo-python-driver/tarball/2.2rc1
+
+  $ easy_install https://github.com/mongodb/mongo-python-driver/tarball/2.2rc1
+
