@@ -254,7 +254,7 @@ class CreateAndReleaseSocket(MongoThread):
         for i in range(self.start_request):
             self.connection.start_request()
 
-        list(self.connection[DB].test.find_one({'$where': delay(0.1)}))
+        self.connection[DB].test.find_one({'$where': delay(0.1)})
         for i in range(self.end_request):
             self.connection.end_request()
 
