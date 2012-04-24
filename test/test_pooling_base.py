@@ -46,7 +46,7 @@ if sys.version_info[0] >= 3:
 
 try:
     import gevent
-    from gevent import Greenlet, coros, monkey
+    from gevent import Greenlet, monkey
     has_gevent = True
 except ImportError:
     has_gevent = False
@@ -254,9 +254,7 @@ class CreateAndReleaseSocket(MongoThread):
         for i in range(self.start_request):
             self.connection.start_request()
 
-        # A reasonable number of docs here, depending on how many are inserted
-        # in TestPooling.setUp()
-        list(self.connection[DB].test.find())
+        list(self.connection[DB].test.find_one({'$where': delay(0.1)}))
         for i in range(self.end_request):
             self.connection.end_request()
 
@@ -286,11 +284,7 @@ class _TestPoolingBase(object):
         db.test.drop()
         db.unique.insert({"_id": "jesse"})
 
-        # In tests like test_max_pool_size, we start some threads that will
-        # perform simultaneous queries, forcing the pool to give out many
-        # sockets. We need enough docs here that some threads are still in
-        # progress when other threads start.
-        db.test.insert([{} for i in range(3000)])
+        db.test.insert([{} for i in range(10)])
 
     def tearDown(self):
         self.c.close()
@@ -642,7 +636,7 @@ class _TestMaxPoolSize(_TestPoolingBase):
     """
     def _test_max_pool_size(self, start_request, end_request):
         c = self.get_connection(max_pool_size=4, auto_start_request=False)
-        nthreads = 40
+        nthreads = 10
 
         if (
             self.use_greenlets and sys.platform == 'darwin'
@@ -756,7 +750,7 @@ class _TestPoolSocketSharing(_TestPoolingBase):
             # Javascript function that pauses
             where = delay(2)
             results['find_slow_result'] = list(db.test.find(
-                    {'$where': where}
+                {'$where': where}
             ))
 
             history.append('find_slow done')
