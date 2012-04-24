@@ -48,17 +48,16 @@ to :class:`~bson.binary.Binary`::
   {u'binary': Binary('this is a byte string', 0), u'_id': ObjectId('4f9086b1fba5222021000000')}
 
 
-Are there any issues migrating from Python 2 to Python 3?
----------------------------------------------------------
+Why can't I share pickled ObjectIds between some versions of Python 2 and 3?
+----------------------------------------------------------------------------
 
-There are some issues sharing pickled instances of
-:class:`~bson.objectid.ObjectId` between Python versions.
-:class:`~bson.objectid.ObjectId` instances are implemented
-internally as packed binary data (:class:`str` in Python 2,
-:class:`bytes` in Python 3).
+Instances of :class:`bytes` pickled in Python 3 versions older than 3.2.3
+can not be unpickled properly in Python 2. :class:`~bson.objectid.ObjectId`
+instances are implemented internally as packed binary data (:class:`str` in
+Python 2, :class:`bytes` in Python 3).
 
 Changes have been made to allow unpickling in Python 3 of instances
-pickled in Python 2. You just have to use the encoding parameter
+pickled in Python 2. You just have to use the ``encoding`` parameter
 to pickle.loads::
 
     Python 2.7.3 (default, Apr 12 2012, 10:35:17)
@@ -70,24 +69,78 @@ to pickle.loads::
     >>> oid
     ObjectId('4f919ba2fba5225b84000000')
     >>> pickle.dumps(oid)
-    'ccopy_reg\n_reconstructor\np0\n(cbson.objectid\nObjectId\np1\nc__builtin__\nobject\np2\nNtp3\nRp4\nS\'O\\x91\\x9b\\xa2\\xfb\\xa5"[\\x84\\x00\\x00\\x00\'\np5\nb.'
+    'ccopy_reg\n_reconstructor\np0\n(cbson.objectid\...'
 
     Python 3.1.4 (default, Mar 21 2012, 14:34:01)
     [GCC 4.5.3] on linux2
     Type "help", "copyright", "credits" or "license" for more information.
     >>> import pickle
-    >>> pickle.loads(b'ccopy_reg\n_reconstructor\np0\n(cbson.objectid\nObjectId\np1\nc__builtin__\nobject\np2\nNtp3\nRp4\nS\'O\\x91\\x9b\\xa2\\xfb\\xa5"[\\x84\\x00\\x00\\x00\'\np5\nb.', encoding='latin-1')
+    >>> pickle.loads(b'ccopy_reg\n_reconstructor\np0\n(cbson.objectid\...', encoding='latin-1')
     ObjectId('4f919ba2fba5225b84000000')
 
-Unfortunately there isn't currently a way to unpickle in Python 2
-instances of ObjectId pickled in Python 3. Python 2.4 and 2.5 will
-raise exceptions. Python 2.6 and 2.7 will decode the ObjectId to
-a garbage value. See the following links for an explanation and
-possible future work-arounds:
 
-http://bugs.python.org/issue6784
+If you pickled the ObjectId using Python 3.2.3 or newer you can unpickle the
+instance in Python 2. You just have to use ``protocol <= 2``::
 
-http://mail.python.org/pipermail/python-dev/2012-March/117536.html
+    Python 3.2.3 (v3.2.3:3d0686d90f55, Apr 10 2012, 11:25:50) 
+    [GCC 4.2.1 (Apple Inc. build 5666) (dot 3)] on darwin
+    Type "help", "copyright", "credits" or "license" for more information.
+    >>> import pickle
+    >>> from bson.objectid import ObjectId
+    >>> oid = ObjectId()
+    >>> oid
+    ObjectId('4f96f20c430ee6bd06000000')
+    >>> pickle.dumps(oid, protocol=2)
+    b'\x80\x02cbson.objectid\nObjectId\nq\x00)\x81q\x01c_codecs\nencode\...'
+
+    Python 2.4.4 (#1, Oct 18 2006, 10:34:39) 
+    [GCC 4.0.1 (Apple Computer, Inc. build 5341)] on darwin
+    Type "help", "copyright", "credits" or "license" for more information.
+    >>> import pickle
+    >>> pickle.loads('\x80\x02cbson.objectid\nObjectId\nq\x00)\x81q\x01c_codecs\nencode\...')
+    ObjectId('4f96f20c430ee6bd06000000')
+
+
+Unfortunately this won't work if you pickled the ObjectId in a Python 3 version
+older than 3.2.3::
+
+    Python 3.2.2 (default, Mar 21 2012, 14:32:23) 
+    [GCC 4.5.3] on linux2
+    Type "help", "copyright", "credits" or "license" for more information.
+    >>> import pickle
+    >>> from bson.objectid import ObjectId
+    >>> oid = ObjectId()
+    >>> pickle.dumps(oid, protocol=2)
+    b'\x80\x02cbson.objectid\nObjectId\nq\x00)\x81q\x01c__builtin__\nbytes\...'
+
+    Python 2.4.6 (#1, Apr 12 2012, 14:48:24) 
+    [GCC 4.5.3] on linux3
+    Type "help", "copyright", "credits" or "license" for more information.
+    >>> import pickle
+    >>> pickle.loads('\x80\x02cbson.objectid\nObjectId\nq\x00)\x81q\x01c__builtin__\nbytes\...')
+    Traceback (most recent call last):
+      File "<stdin>", line 1, in ?
+      File "/usr/lib/python2.4/pickle.py", line 1394, in loads
+        return Unpickler(file).load()
+      File "/usr/lib/python2.4/pickle.py", line 872, in load
+        dispatch[key](self)
+      File "/usr/lib/python2.4/pickle.py", line 1104, in load_global
+        klass = self.find_class(module, name)
+      File "/usr/lib/python2.4/pickle.py", line 1140, in find_class
+        klass = getattr(mod, name)
+      AttributeError: 'module' object has no attribute 'bytes'
+
+.. warning::
+
+  Unpickling in Python 2.6 or 2.7 an ObjectId pickled in a Python 3 version
+  older than 3.2.3 will seem to succeed but the resulting ObjectId instance
+  will contain garbage data.
+
+  >>> pickle.loads('\x80\x02cbson.objectid\nObjectId\nq\x00)\x81q\x01c__builtin__\nbytes\...)
+  ObjectId('5b37392c203135302c203234362c2034352c203235312c203136352c2033342c203532...')
+
+See `http://bugs.python.org/issue13505 <http://bugs.python.org/issue13505>`_
+for more information about this issue.
 
 
 Why do I get a syntax error importing pymongo after installing from source?
