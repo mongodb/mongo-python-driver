@@ -67,13 +67,6 @@ build the C extensions:
 
 **Snow Leopard** - Xcode 3 with 'UNIX Development Support'.
 
-**Lion** - As of the release of PyMongo 2.2 **Xcode 4.1** is required with
-'UNIX Development Support'. See the following for more information:
-
-http://bugs.python.org/issue13590
-
-http://mail.python.org/pipermail/python-dev/2012-February/116210.html
-
 **Snow Leopard Xcode 4 Users**: The Python versions shipped with OSX 10.6.x
 are universal binaries. They support i386, PPC, and (in the case of python2.6)
 x86_64. Since Xcode 4 removed support for PPC the distutils version shipped
@@ -90,6 +83,16 @@ from python.org. There is a workaround::
 
 See `http://bugs.python.org/issue11623 <http://bugs.python.org/issue11623>`_
 for a more detailed explanation.
+
+**Lion** - PyMongo's C extensions can be built against python.org versions of
+Python >= 3.2. Building against versions older than 3.2.3 requires **Xcode 4.1**.
+Any version of Xcode 4 can be used to build the C extensions against 3.2.3 and
+newer. In all cases Xcode must be installed with 'UNIX Development Support'.
+See the following for more information:
+
+http://bugs.python.org/issue13590
+
+http://hg.python.org/cpython/file/v3.2.3/Misc/NEWS#l198
 
 Installing from source
 ----------------------
@@ -184,10 +187,11 @@ Installing a release candidate
 before final release. These releases will not be uploaded to pypi but can be
 found on the
 `github tags page <https://github.com/mongodb/mongo-python-driver/tags>`_.
-They can be installed by passing the full URL for the tag to easy_install or
-pip::
+They can be installed by passing the full URL for the tag to pip::
 
   $ pip install https://github.com/mongodb/mongo-python-driver/tarball/2.2rc1
+
+or easy_install::
 
   $ easy_install https://github.com/mongodb/mongo-python-driver/tarball/2.2rc1
 
