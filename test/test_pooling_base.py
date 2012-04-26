@@ -22,6 +22,7 @@ import sys
 import thread
 import threading
 import time
+import bson
 
 sys.path[0:0] = [""]
 
@@ -32,9 +33,9 @@ from pymongo.connection import Connection
 from pymongo.pool import (
     Pool, GreenletPool, NO_REQUEST, NO_SOCKET_YET, SocketInfo)
 from pymongo.errors import ConfigurationError
+from test import version
 from test.test_connection import get_connection, host, port
 from test.utils import delay
-
 
 N = 50
 DB = "pymongo-pooling-tests"
@@ -710,17 +711,16 @@ class _TestPoolSocketSharing(_TestPoolingBase):
         gr1: get results
         gr0: get results
         """
-        results = {
-            'find_fast_result': None,
-            'find_slow_result': None,
-        }
-
         cx = get_connection(
             use_greenlets=self.use_greenlets,
             auto_start_request=False
         )
 
         db = cx.pymongo_test
+        if not version.at_least(db.connection, (1, 7, 2)):
+            raise SkipTest("Need at least MongoDB version 1.7.2 to use"
+                           " db.eval(nolock=True)")
+        
         db.test.remove(safe=True)
         db.test.insert({'_id': 1}, safe=True)
 
@@ -732,10 +732,10 @@ class _TestPoolSocketSharing(_TestPoolingBase):
 
             history.append('find_fast start')
 
-            # With the old connection._Pool, this would throw
+            # With greenlets and the old connection._Pool, this would throw
             # AssertionError: "This event is already used by another
             # greenlet"
-            results['find_fast_result'] = list(db.test.find())
+            self.assertEqual({'_id': 1}, db.test.find_one())
             history.append('find_fast done')
 
             if use_request:
@@ -747,11 +747,12 @@ class _TestPoolSocketSharing(_TestPoolingBase):
 
             history.append('find_slow start')
 
-            # Javascript function that pauses
-            where = delay(2)
-            results['find_slow_result'] = list(db.test.find(
-                {'$where': where}
-            ))
+            # Javascript function that pauses 5 sec. 'nolock' allows find_fast
+            # to start and finish while we're waiting for this.
+            fn = bson.code.Code('sleep(5000); return 17')
+            self.assertEqual(
+                {'ok': 1.0, 'retval': 17.0},
+                db.command('eval', fn, nolock=True))
 
             history.append('find_slow done')
 
@@ -774,12 +775,6 @@ class _TestPoolSocketSharing(_TestPoolingBase):
 
         gr0.join()
         gr1.join()
-
-        self.assertEqual([{'_id': 1}], results['find_slow_result'])
-
-        # Fails if there's a bug in socket allocation, since find_fast won't
-        # complete
-        self.assertEqual([{'_id': 1}], results['find_fast_result'])
 
         self.assertEqual([
             'find_slow start',
