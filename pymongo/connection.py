@@ -167,7 +167,8 @@ class Connection(common.BaseObject):
 
         .. seealso:: :meth:`end_request`
         .. versionchanged:: 2.2
-           Added `auto_start_request` option back.
+           Added `auto_start_request` option back. Added `use_greenlets`
+           option.
         .. versionchanged:: 2.1
            Support `w` = integer or string.
            Added `ssl` option.

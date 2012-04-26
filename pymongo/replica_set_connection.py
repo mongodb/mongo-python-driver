@@ -177,9 +177,12 @@ class ReplicaSetConnection(common.BaseObject):
             consistency guarantees. (The semantics of auto_start_request,
             :class:`~pymongo.ReadPreference`, and :class:`ReplicaSetConnection`
             may change in future releases of PyMongo.)
-          - `use_greenlets` (optional): if ``True``, :meth:`start_request()`
-            will ensure that the current greenlet uses the same socket for all
-            operations until :meth:`end_request()`
+          - `use_greenlets` (optional): if ``True``, use a background Greenlet
+            instead of a background thread to monitor state of replica set.
+            :meth:`start_request()` will ensure that the current greenlet uses
+            the same socket for all operations until :meth:`end_request()`.
+            `use_greenlets` with ReplicaSetConnection requires `Gevent
+            <http://gevent.org/>`_ to be installed.
           - `slave_okay` or `slaveOk` (deprecated): Use `read_preference`
             instead.
           - `host`: For compatibility with connection.Connection. If both
@@ -194,7 +197,7 @@ class ReplicaSetConnection(common.BaseObject):
 
 
         .. versionchanged:: 2.2
-           Added `auto_start_request` option.
+           Added `auto_start_request` and `use_greenlets` options.
            Added support for `host`, `port`, and `network_timeout` keyword
            arguments for compatibility with connection.Connection.
         .. versionadded:: 2.1
