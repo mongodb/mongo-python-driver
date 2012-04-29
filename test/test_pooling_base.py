@@ -749,9 +749,9 @@ class _TestPoolSocketSharing(_TestPoolingBase):
 
             # Javascript function that pauses 5 sec. 'nolock' allows find_fast
             # to start and finish while we're waiting for this.
-            fn = bson.code.Code('sleep(5000); return 17')
+            fn = delay(5)
             self.assertEqual(
-                {'ok': 1.0, 'retval': 17.0},
+                {'ok': 1.0, 'retval': True},
                 db.command('eval', fn, nolock=True))
 
             history.append('find_slow done')
