@@ -34,6 +34,7 @@ from bson.py3compat import b
 from gridfs.errors import (FileExists,
                            NoFile)
 from test.test_connection import get_connection
+from test.utils import joinall
 
 
 class JustWrite(threading.Thread):
@@ -156,8 +157,7 @@ class TestGridfs(unittest.TestCase):
             threads.append(JustRead(self.fs, 10, results))
             threads[i].start()
 
-        for i in range(10):
-            threads[i].join()
+        joinall(threads)
 
         self.assertEqual(
             100 * [b('hello')],
@@ -170,8 +170,7 @@ class TestGridfs(unittest.TestCase):
             threads.append(JustWrite(self.fs, 10))
             threads[i].start()
 
-        for i in range(10):
-            threads[i].join()
+        joinall(threads)
 
         f = self.fs.get_last_version("test")
         self.assertEqual(f.read(), b("hello"))

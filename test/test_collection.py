@@ -44,6 +44,7 @@ from pymongo.errors import (ConfigurationError,
                             OperationFailure,
                             TimeoutError)
 from test.test_connection import get_connection
+from test.utils import joinall
 from test import (qcheck,
                   version)
 
@@ -224,8 +225,7 @@ class TestCollection(unittest.TestCase):
         for i in xrange(10):
             threads[i].start()
 
-        for i in xrange(10):
-            threads[i].join()
+        joinall(threads)
 
         self.assertEqual(10001, coll.count())
         coll.drop()

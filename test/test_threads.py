@@ -20,7 +20,7 @@ import traceback
 
 from nose.plugins.skip import SkipTest
 
-from test.utils import server_started_with_auth
+from test.utils import server_started_with_auth, joinall
 from test.test_connection import get_connection
 from pymongo.connection import Connection
 from pymongo.replica_set_connection import ReplicaSetConnection
@@ -254,8 +254,7 @@ class BaseTestThreads(object):
             t.start()
             threads.append(t)
 
-        for t in threads:
-            t.join()
+        joinall(threads)
 
     def test_safe_insert(self):
         self.db.drop_collection("test1")
@@ -313,8 +312,7 @@ class BaseTestThreads(object):
             t.start()
             threads.append(t)
 
-        for t in threads:
-            t.join()
+        joinall(threads)
 
     def test_server_disconnect(self):
         # PYTHON-345, we need to make sure that threads' request sockets are
@@ -380,9 +378,7 @@ class BaseTestThreads(object):
             # Let threads do a second find()
             state.ev_resume.set()
 
-        for t in threads:
-            t.join(10)
-            self.assertFalse(t.isAlive(), "Thread timeout")
+        joinall(threads)
 
         for t in threads:
             self.assertTrue(t.passed, "%s threw exception" % t)
@@ -434,8 +430,10 @@ class BaseTestThreadsAuth(object):
             t = AutoAuthenticateThreads(conn.auth_test.test, 100)
             t.start()
             threads.append(t)
+
+        joinall(threads)
+
         for t in threads:
-            t.join()
             self.assertTrue(t.success)
 
         # Database-specific auth
@@ -447,8 +445,10 @@ class BaseTestThreadsAuth(object):
             t = AutoAuthenticateThreads(conn.auth_test.test, 100)
             t.start()
             threads.append(t)
+
+        joinall(threads)
+
         for t in threads:
-            t.join()
             self.assertTrue(t.success)
 
 class TestThreads(BaseTestThreads, unittest.TestCase):

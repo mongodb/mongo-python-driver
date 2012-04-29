@@ -16,6 +16,7 @@
 """
 
 def delay(sec):
+    # Javascript sleep() only available in MongoDB since version ~1.9
     return '''function() {
         var d = new Date((new Date()).getTime() + %s * 1000);
         while (d > (new Date())) { }; return true;
@@ -37,3 +38,9 @@ def drop_collections(db):
     for coll in db.collection_names():
         if not coll.startswith('system'):
             db.drop_collection(coll)
+
+def joinall(threads):
+    """Join threads with a 5-minute timeout, assert joins succeeded"""
+    for t in threads:
+        t.join(300)
+        assert not t.isAlive(), "Thread %s hung" % t
