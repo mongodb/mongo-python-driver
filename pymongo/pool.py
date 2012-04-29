@@ -63,21 +63,25 @@ def _closed(sock):
 class SocketInfo(object):
     """Store a socket with some metadata
     """
-    def __init__(self, sock, pool):
+    def __init__(self, sock, poolref):
         self.sock = sock
 
         # We can't strongly reference the Pool, because the Pool
         # references this SocketInfo as long as it's in pool
-        self.poolref = weakref.ref(pool)
+        self.poolref = poolref
 
         self.authset = set()
         self.closed = False
         self.last_checkout = time.time()
-        self.pool_id = pool.pool_id
+        self.pool_id = poolref().pool_id
 
     def close(self):
-        self.sock.close()
         self.closed = True
+        # Avoid exceptions on interpreter shutdown.
+        try:
+            self.sock.close()
+        except:
+            pass
 
     def __del__(self):
         if not self.closed:
@@ -85,11 +89,11 @@ class SocketInfo(object):
             # the socket was assigned to a thread local for a request, but the
             # request wasn't ended before the thread died. Reclaim the socket
             # for the pool.
-            pool = self.poolref and self.poolref()
+            pool = self.poolref()
             if pool:
                 # Return a copy of self rather than self -- the Python docs
                 # discourage postponing deletion by adding a reference to self.
-                copy = SocketInfo(self.sock, pool)
+                copy = SocketInfo(self.sock, self.poolref)
                 copy.authset = self.authset
                 pool.return_socket(copy)
             else:
@@ -220,7 +224,7 @@ class BasePool(object):
                                         "not be configured with SSL support.")
 
         sock.settimeout(self.net_timeout)
-        return SocketInfo(sock, self)
+        return SocketInfo(sock, weakref.ref(self))
 
     def get_socket(self, pair=None):
         """Get a socket from the pool.
@@ -384,18 +388,6 @@ class Pool(BasePool):
         self.local = _Local()
         super(Pool, self).__init__(*args, **kwargs)
 
-    def __del__(self):
-        # If we're being deleted on a thread that started a request, then the
-        # request socket might still be in a thread-local; get it and close it.
-        # The 'hasattr' checks avoid TypeError during interpreter shutdown.
-        request_sock = self._get_request_state()
-        if hasattr(request_sock, 'close'):
-            request_sock.close()
-
-        for sock_info in self.sockets:
-            if hasattr(sock_info, 'close'):
-                sock_info.close()
-
     def _set_request_state(self, sock_info):
         self.local.sock_info = sock_info
 
@@ -418,16 +410,6 @@ class GreenletPool(BasePool):
         # Weakrefs to non-Gevent greenlets
         self._refs = {}
         super(GreenletPool, self).__init__(*args, **kwargs)
-
-    def __del__(self):
-        # The 'hasattr' checks avoid TypeError during interpreter shutdown.
-        for sock_info in self._gr_id_to_sock.values():
-            if hasattr(sock_info, 'close'):
-                sock_info.close()
-
-        for sock_info in self.sockets:
-            if hasattr(sock_info, 'close'):
-                sock_info.close()
 
     # Overrides
     def _set_request_state(self, sock_info):
