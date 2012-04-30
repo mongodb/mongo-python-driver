@@ -307,7 +307,14 @@ class Cursor(object):
         return self
 
     def batch_size(self, batch_size):
-        """Set the size for batches of results returned by this cursor.
+        """Limits the number of documents returned in one batch. Each batch
+        requires a round trip to the server. It can be adjusted to optimize
+        performance and limit data transfer.
+
+        .. note:: batch_size can not override MongoDB's internal limits on the
+           amount of data it will return to the client in a single batch (i.e
+           if you set batch size to 1,000,000,000, MongoDB will currently only
+           return 4-16MB of results per batch).
 
         Raises :class:`TypeError` if `batch_size` is not an instance
         of :class:`int`. Raises :class:`ValueError` if `batch_size` is
