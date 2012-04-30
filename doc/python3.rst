@@ -51,14 +51,14 @@ to :class:`~bson.binary.Binary`::
 Why can't I share pickled ObjectIds between some versions of Python 2 and 3?
 ----------------------------------------------------------------------------
 
-Instances of :class:`bytes` pickled in Python 3 versions older than 3.2.3
-can not be unpickled properly in Python 2. :class:`~bson.objectid.ObjectId`
-instances are implemented internally as packed binary data (:class:`str` in
-Python 2, :class:`bytes` in Python 3).
+Instances of :class:`~bson.objectid.ObjectId` pickled using Python 2
+can always be unpickled using Python 3. Due to
+`http://bugs.python.org/issue13505 <http://bugs.python.org/issue13505>`_
+you must use Python 3.2.3 or newer to pickle instances of ObjectId if you
+need to unpickle them in Python 2.
 
-Changes have been made to allow unpickling in Python 3 of instances
-pickled in Python 2. You just have to use the ``encoding`` parameter
-to pickle.loads::
+If you pickled an ObjectId using Python 2 and want to unpickle it using
+Python 3 you must pass ``encoding='latin-1'`` to pickle.loads::
 
     Python 2.7.3 (default, Apr 12 2012, 10:35:17)
     [GCC 4.5.3] on linux2
@@ -79,8 +79,8 @@ to pickle.loads::
     ObjectId('4f919ba2fba5225b84000000')
 
 
-If you pickled the ObjectId using Python 3.2.3 or newer you can unpickle the
-instance in Python 2. You just have to use ``protocol <= 2``::
+If you need to pickle ObjectIds using Python 3 and unpickle them using Python 2
+you must use Python 3.2.3 or newer and ``protocol <= 2``::
 
     Python 3.2.3 (v3.2.3:3d0686d90f55, Apr 10 2012, 11:25:50) 
     [GCC 4.2.1 (Apple Inc. build 5666) (dot 3)] on darwin
@@ -101,8 +101,8 @@ instance in Python 2. You just have to use ``protocol <= 2``::
     ObjectId('4f96f20c430ee6bd06000000')
 
 
-Unfortunately this won't work if you pickled the ObjectId in a Python 3 version
-older than 3.2.3::
+Unfortunately this won't work if you pickled the ObjectId using a Python 3
+version older than 3.2.3::
 
     Python 3.2.2 (default, Mar 21 2012, 14:32:23) 
     [GCC 4.5.3] on linux2
@@ -138,9 +138,6 @@ older than 3.2.3::
 
   >>> pickle.loads('\x80\x02cbson.objectid\nObjectId\nq\x00)\x81q\x01c__builtin__\nbytes\...)
   ObjectId('5b37392c203135302c203234362c2034352c203235312c203136352c2033342c203532...')
-
-See `http://bugs.python.org/issue13505 <http://bugs.python.org/issue13505>`_
-for more information about this issue.
 
 
 Why do I get a syntax error importing pymongo after installing from source?
