@@ -3,13 +3,14 @@ Gevent
 
 .. testsetup::
 
-  from pymongo import Connection
+  from pymongo import Connection, ReplicaSetConnection
 
 PyMongo supports `Gevent <http://www.gevent.org/>`_. Primarily, this means that
 :meth:`~pymongo.connection.Connection.start_request()` can ensure that the
 current greenlet (not merely the current thread) uses the same socket for all
 operations until :meth:`~pymongo.connection.Connection.end_request()` is called.
-See the :doc:`requests documentation <requests>` for details.
+See the :doc:`requests documentation <requests>` for details on requests in
+PyMongo.
 
 Using Gevent Without Threads
 ----------------------------
@@ -33,9 +34,10 @@ Using Gevent With Threads
 -------------------------
 
 If you need to use standard Python threads in the same process as Gevent and
-greenlets, you can run only ``monkey.patch_socket()``, and create a
-:class:`~pymongo.connection.Connection` with ``use_greenlets=True``. The
-:class:`~pymongo.connection.Connection` will use a special greenlet-aware
+greenlets, you can run only ``monkey.patch_socket()``, rather than
+``monkey.patch_all()``, and create a
+:class:`~pymongo.connection.Connection` with ``use_greenlets=True``.
+The :class:`~pymongo.connection.Connection` will use a special greenlet-aware
 connection pool that allocates a socket for each greenlet, ensuring consistent
 reads in Gevent.
 
@@ -44,3 +46,22 @@ reads in Gevent.
   >>> from gevent import monkey; monkey.patch_socket()
   >>> connection = Connection(use_greenlets=True)
 
+:class:`~pymongo.replica_set_connection.ReplicaSetConnection` with
+``use_greenlets=True`` will also use a greenlet-aware pool. Additionally, it
+will use a background greenlet instead of a background thread to monitor the
+state of the replica set.
+
+:meth:`~pymongo.replica_set_connection.ReplicaSetConnection.start_request()`
+with :class:`~pymongo.ReadPreference` PRIMARY
+ensures that the current greenlet uses the same socket for all operations until
+a call to :meth:`end_request()`.
+
+`use_greenlets` with ReplicaSetConnection requires
+`Gevent <http://gevent.org/>`_ to be installed.
+
+.. doctest::
+
+  >>> from gevent import monkey; monkey.patch_socket()
+  >>> rsc = ReplicaSetConnection(
+  ...     'mongodb://localhost:27017,localhost:27018,localhost:27019',
+  ...     replicaSet='repl0', use_greenlets=True)
