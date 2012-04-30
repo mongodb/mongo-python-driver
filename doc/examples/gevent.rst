@@ -34,7 +34,7 @@ Using Gevent With Threads
 -------------------------
 
 If you need to use standard Python threads in the same process as Gevent and
-greenlets, you can run only ``monkey.patch_socket()``, rather than
+greenlets, you only need to run ``monkey.patch_socket()``, rather than
 ``monkey.patch_all()``, and create a
 :class:`~pymongo.connection.Connection` with ``use_greenlets=True``.
 The :class:`~pymongo.connection.Connection` will use a special greenlet-aware
@@ -46,18 +46,18 @@ reads in Gevent.
   >>> from gevent import monkey; monkey.patch_socket()
   >>> connection = Connection(use_greenlets=True)
 
-:class:`~pymongo.replica_set_connection.ReplicaSetConnection` with
-``use_greenlets=True`` will also use a greenlet-aware pool. Additionally, it
-will use a background greenlet instead of a background thread to monitor the
-state of the replica set.
+An instance of :class:`~pymongo.replica_set_connection.ReplicaSetConnection`
+created with ``use_greenlets=True`` will also use a greenlet-aware pool.
+Additionally, it will use a background greenlet instead of a background thread
+to monitor the state of the replica set.
 
-:meth:`~pymongo.replica_set_connection.ReplicaSetConnection.start_request()`
-with :class:`~pymongo.ReadPreference` PRIMARY
-ensures that the current greenlet uses the same socket for all operations until
-a call to :meth:`end_request()`.
+Using :meth:`~pymongo.replica_set_connection.ReplicaSetConnection.start_request()`
+with :class:`~pymongo.ReadPreference` PRIMARY ensures that the current greenlet
+uses the same socket for all operations until a call to :meth:`end_request()`.
 
-`use_greenlets` with ReplicaSetConnection requires
-`Gevent <http://gevent.org/>`_ to be installed.
+You must `install Gevent <http://gevent.org/>`_ to use
+:class:`~pymongo.replica_set_connection.ReplicaSetConnection`
+with ``use_greenlets=True``
 
 .. doctest::
 
