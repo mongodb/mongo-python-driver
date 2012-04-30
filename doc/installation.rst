@@ -62,23 +62,23 @@ OSX
 
 10gen provides pre-built egg packages for Apple provided Python versions on
 Snow Leopard (2.5, 2.6) and Lion (2.5, 2.6, 2.7). If you want to install
-PyMongo for other Python versions you may have to install the following to
-build the C extensions:
+PyMongo for other Python versions (or from source) you will have to install
+the following to build the C extensions:
 
 **Snow Leopard** - Xcode 3 with 'UNIX Development Support'.
 
-**Snow Leopard Xcode 4 Users**: The Python versions shipped with OSX 10.6.x
+**Snow Leopard Xcode 4**: The Python versions shipped with OSX 10.6.x
 are universal binaries. They support i386, PPC, and (in the case of python2.6)
-x86_64. Since Xcode 4 removed support for PPC the distutils version shipped
-with Apple's builds of Python will fail to build the C extensions if you have
-Xcode 4 installed. This issue may also affect builds of Python downloaded
-from python.org. There is a workaround::
+x86_64. Xcode 4 removed support for PPC, causing the distutils version shipped
+with Apple's builds of Python to fail to build the C extensions if you have
+Xcode 4 installed. There is a workaround::
 
-  # For Apple-supplied Python2.6 (installed at /usr/bin/python2.6)
+  # For Apple-supplied Python2.6 (installed at /usr/bin/python2.6) and
+  # some builds from python.org
   $ env ARCHFLAGS='-arch i386 -arch x86_64' python -m easy_install pymongo
 
-  # For 32-bit-only Python (/usr/bin/python2.5 and some builds
-  # from python.org)
+  # For 32-bit-only Python (/usr/bin/python2.5) and some builds
+  # from python.org
   $ env ARCHFLAGS='-arch i386' python -m easy_install pymongo
 
 See `http://bugs.python.org/issue11623 <http://bugs.python.org/issue11623>`_
