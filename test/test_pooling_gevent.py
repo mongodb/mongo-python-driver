@@ -116,7 +116,7 @@ class TestPoolingGeventSpecial(unittest.TestCase):
 
                 for _ in range(2):
                     sock = cx_pool.get_socket()
-                    cx_pool.return_socket(sock)
+                    cx_pool.maybe_return_socket(sock)
                     greenlet2socks.setdefault(
                         greenlet.getcurrent(), []
                     ).append(id(sock))

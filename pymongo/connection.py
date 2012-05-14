@@ -741,7 +741,7 @@ class Connection(common.BaseObject):
                                                             sock_info)
                 rv = self.__check_response_to_last_error(response)
 
-            self.__pool.return_socket(sock_info)
+            self.__pool.maybe_return_socket(sock_info)
             return rv
         except (ConnectionFailure, socket.error), e:
             self.disconnect()
@@ -758,8 +758,7 @@ class Connection(common.BaseObject):
             try:
                 chunk = sock_info.sock.recv(length)
             except:
-                # If recv was interrupted, discard the socket
-                # and re-raise the exception.
+                # recv was interrupted
                 self.__pool.discard_socket(sock_info)
                 raise
             if chunk == EMPTY:
@@ -816,12 +815,12 @@ class Connection(common.BaseObject):
                     # Restore the socket's original timeout and return it to
                     # the pool
                     sock_info.sock.settimeout(self.__net_timeout)
-                    self.__pool.return_socket(sock_info)
+                    self.__pool.maybe_return_socket(sock_info)
                 except socket.error:
                     # There was an exception and we've closed the socket
                     pass
             else:
-                self.__pool.return_socket(sock_info)
+                self.__pool.maybe_return_socket(sock_info)
 
     def start_request(self):
         """Ensure the current thread or greenlet always uses the same socket

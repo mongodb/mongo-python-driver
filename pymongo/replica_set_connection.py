@@ -533,7 +533,7 @@ class ReplicaSetConnection(common.BaseObject):
             sock_info, 'admin', {'ismaster': 1}
         )
 
-        pool.return_socket(sock_info)
+        pool.maybe_return_socket(sock_info)
         return response, pool
 
     def __update_pools(self):
@@ -547,7 +547,7 @@ class ReplicaSetConnection(common.BaseObject):
                     mongo = self.__pools[host]
                     sock_info = self.__socket(mongo)
                     res = self.__simple_command(sock_info, 'admin', {'ismaster': 1})
-                    mongo['pool'].return_socket(sock_info)
+                    mongo['pool'].maybe_return_socket(sock_info)
                 else:
                     res, conn = self.__is_master(host)
                     bson_max = res.get('maxBsonObjectSize', MAX_BSON_SIZE)
@@ -555,7 +555,7 @@ class ReplicaSetConnection(common.BaseObject):
                                           'last_checkout': time.time(),
                                           'max_bson_size': bson_max}
             except (ConnectionFailure, socket.error):
-                if mongo and sock_info:
+                if mongo:
                     mongo['pool'].discard_socket(sock_info)
                 continue
             # Only use hosts that are currently in 'secondary' state
@@ -583,7 +583,7 @@ class ReplicaSetConnection(common.BaseObject):
                     sock_info = self.__socket(mongo)
                     response = self.__simple_command(sock_info, 'admin',
                                                      {'ismaster': 1})
-                    mongo['pool'].return_socket(sock_info)
+                    mongo['pool'].maybe_return_socket(sock_info)
                 else:
                     response, conn = self.__is_master(node)
 
@@ -607,7 +607,7 @@ class ReplicaSetConnection(common.BaseObject):
                     hosts.update([_partition_node(h)
                                   for h in response["passives"]])
             except (ConnectionFailure, socket.error), why:
-                if mongo and sock_info:
+                if mongo:
                     mongo['pool'].discard_socket(sock_info)
                 errors.append("%s:%d: %s" % (node[0], node[1], str(why)))
             if hosts:
@@ -638,12 +638,12 @@ class ReplicaSetConnection(common.BaseObject):
                                       'last_checkout': time.time(),
                                       'max_bson_size': bson_max}
         except (ConnectionFailure, socket.error), why:
-            if mongo and sock_info:
+            if mongo:
                 mongo['pool'].discard_socket(sock_info)
             raise ConnectionFailure("%s:%d: %s" % (host[0], host[1], str(why)))
         
         if mongo and sock_info:
-            mongo['pool'].return_socket(sock_info)
+            mongo['pool'].maybe_return_socket(sock_info)
 
         if res["ismaster"]:
             return host
@@ -814,7 +814,7 @@ class ReplicaSetConnection(common.BaseObject):
             if safe:
                 response = self.__recv_msg(1, rqst_id, sock_info)
                 rv = self.__check_response_to_last_error(response)
-            mongo['pool'].return_socket(sock_info)
+            mongo['pool'].maybe_return_socket(sock_info)
             return rv
         except(ConnectionFailure, socket.error), why:
             mongo['pool'].discard_socket(sock_info)
@@ -842,7 +842,7 @@ class ReplicaSetConnection(common.BaseObject):
 
             if "network_timeout" in kwargs:
                 sock_info.sock.settimeout(self.__net_timeout)
-            mongo['pool'].return_socket(sock_info)
+            mongo['pool'].maybe_return_socket(sock_info)
 
             return response
         except (ConnectionFailure, socket.error), why:

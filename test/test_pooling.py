@@ -76,9 +76,15 @@ class TestPoolingThreads(_TestPooling, unittest.TestCase):
         lock = thread.allocate_lock()
         lock.acquire()
 
+        sock_ids = []
+
         def run_in_request():
             p.start_request()
-            p.get_socket()
+            sock0 = p.get_socket()
+            sock1 = p.get_socket()
+            sock_ids.extend([id(sock0), id(sock1)])
+            p.maybe_return_socket(sock0)
+            p.maybe_return_socket(sock1)
             p.end_request()
             lock.release()
 
@@ -93,6 +99,7 @@ class TestPoolingThreads(_TestPooling, unittest.TestCase):
                 break
 
         self.assertTrue(acquired, "Thread is hung")
+        self.assertEqual(sock_ids[0], sock_ids[1])
 
     def test_pool_with_fork(self):
         # Test that separate Connections have separate Pools, and that the
@@ -145,8 +152,11 @@ class TestPoolingThreads(_TestPooling, unittest.TestCase):
         self.assertTrue(a_sock.sock.getsockname() != b_sock)
         self.assertTrue(a_sock.sock.getsockname() != c_sock)
         self.assertTrue(b_sock != c_sock)
-        self.assertEqual(a_sock,
-                         a._Connection__pool.get_socket((a.host, a.port)))
+
+        # a_sock, created by parent process, is still in the pool
+        d_sock = a._Connection__pool.get_socket((a.host, a.port))
+        self.assertEqual(a_sock, d_sock)
+        d_sock.close()
 
 
 class TestMaxPoolSizeThreads(_TestMaxPoolSize, unittest.TestCase):

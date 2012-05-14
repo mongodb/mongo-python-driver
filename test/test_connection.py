@@ -502,6 +502,8 @@ with get_connection() as connection:
         sock_info0 = self.get_sock(pool)
         sock_info1 = self.get_sock(pool)
         self.assertEqual(sock_info0, sock_info1)
+        pool.maybe_return_socket(sock_info0)
+        pool.maybe_return_socket(sock_info1)
 
     def assertDifferentSock(self, pool):
         # We have to hold both SocketInfos at the same time, otherwise the
@@ -511,6 +513,8 @@ with get_connection() as connection:
         sock_info0 = self.get_sock(pool)
         sock_info1 = self.get_sock(pool)
         self.assertNotEqual(sock_info0, sock_info1)
+        pool.maybe_return_socket(sock_info0)
+        pool.maybe_return_socket(sock_info1)
 
     def assertNoRequest(self, pool):
         self.assertEqual(NO_REQUEST, pool._get_request_state())

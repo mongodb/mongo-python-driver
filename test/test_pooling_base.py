@@ -58,38 +58,6 @@ def one(s):
     return iter(s).next()
 
 
-def force_reclaim_sockets(cx_pool, n_expected):
-    # When a thread dies without ending its request, the SocketInfo it was
-    # using is deleted, and in its __del__ it returns the socket to the
-    # pool. However, when exactly that happens is unpredictable. Try
-    # various ways of forcing the issue.
-
-    if sys.platform.startswith('java'):
-        raise SkipTest("Jython can't reclaim sockets")
-
-    if 'PyPy' in sys.version:
-        raise SkipTest("Socket reclamation happens at unpredictable time in PyPy")
-
-    # Bizarre behavior in CPython 2.4, and possibly other CPython versions
-    # less than 2.7: the last dead thread's locals aren't cleaned up until
-    # the local attribute with the same name is accessed from a different
-    # thread. This assert checks that the thread-local is indeed local, and
-    # also triggers the cleanup so the socket is reclaimed.
-    if isinstance(cx_pool, Pool):
-        assert cx_pool.local.sock_info is None
-
-    # Try for a while to make garbage-collection call SocketInfo.__del__
-    start = time.time()
-    while len(cx_pool.sockets) < n_expected and time.time() - start < 5:
-        try:
-            gc.collect(2)
-        except TypeError:
-            # collect() didn't support 'generation' arg until 2.5
-            gc.collect()
-
-        time.sleep(0.5)
-
-
 class MongoThread(object):
     """A thread, or a greenlet, that uses a Connection"""
     def __init__(self, test_case):
@@ -379,10 +347,14 @@ class _TestPooling(_TestPoolingBase):
         run_cases(self, [SaveAndFind, Disconnect, Unique])
 
     def test_independent_pools(self):
+        # Test for regression of very early PyMongo bug: separate pools shared
+        # state.
         p = self.get_pool((host, port), 10, None, None, False)
         self.c.start_request()
+        self.c.pymongo_test.test.find_one()
         self.assertEqual(set(), p.sockets)
         self.c.end_request()
+        self.assert_pool_size(1)
         self.assertEqual(set(), p.sockets)
 
     def test_dependent_pools(self):
@@ -437,6 +409,9 @@ class _TestPooling(_TestPoolingBase):
         self.assertEqual(a_sock,
                          a._Connection__pool.get_socket((a.host, a.port)))
 
+        a_sock.close()
+        b_sock.close()
+
     def test_request(self):
         # Check that Pool gives two different sockets in two calls to
         # get_socket() -- doesn't automatically put us in a request any more
@@ -476,6 +451,9 @@ class _TestPooling(_TestPoolingBase):
         # end_request() returned sock2 to pool
         self.assertEqual(sock4, sock2)
 
+        for s in [sock0, sock1, sock2, sock3, sock4, sock5]:
+            s.close()
+
     def test_reset_and_request(self):
         # reset() is called after a fork, or after a socket error. Ensure that
         # a new request is begun if a request was in progress when the reset()
@@ -495,17 +473,14 @@ class _TestPooling(_TestPoolingBase):
         # Test Pool's _check_closed() method doesn't close a healthy socket
         cx_pool = self.get_pool((host,port), 10, None, None, False)
         sock_info = cx_pool.get_socket()
-        cx_pool.return_socket(sock_info)
+        cx_pool.maybe_return_socket(sock_info)
 
         # trigger _check_closed, which only runs on sockets that haven't been
         # used in a second
         time.sleep(1.1)
         new_sock_info = cx_pool.get_socket()
         self.assertEqual(sock_info, new_sock_info)
-        del sock_info, new_sock_info
-
-        # Assert sock_info was returned to the pool *once*
-        force_reclaim_sockets(cx_pool, 1)
+        cx_pool.maybe_return_socket(new_sock_info)
         self.assertEqual(1, len(cx_pool.sockets))
 
     def test_pool_removes_dead_socket(self):
@@ -517,15 +492,38 @@ class _TestPooling(_TestPoolingBase):
         # Simulate a closed socket without telling the SocketInfo it's closed
         sock_info.sock.close()
         self.assertTrue(pymongo.pool._closed(sock_info.sock))
-        cx_pool.return_socket(sock_info)
+        cx_pool.maybe_return_socket(sock_info)
         time.sleep(1.1) # trigger _check_closed
         new_sock_info = cx_pool.get_socket()
         self.assertEqual(0, len(cx_pool.sockets))
         self.assertNotEqual(sock_info, new_sock_info)
-        del sock_info, new_sock_info
+        cx_pool.maybe_return_socket(new_sock_info)
+        self.assertEqual(1, len(cx_pool.sockets))
 
-        # new_sock_info returned to the pool, but not the closed sock_info
-        force_reclaim_sockets(cx_pool, 1)
+    def test_pool_removes_dead_request_socket_after_1_sec(self):
+        # Test that Pool keeps request going even if a socket dies in request
+        cx_pool = self.get_pool((host,port), 10, None, None, False)
+        cx_pool.start_request()
+
+        # Get the request socket
+        sock_info = cx_pool.get_socket()
+        self.assertEqual(0, len(cx_pool.sockets))
+        self.assertEqual(sock_info, cx_pool._get_request_state())
+        sock_info.sock.close()
+        cx_pool.maybe_return_socket(sock_info)
+        time.sleep(1.1) # trigger _check_closed
+
+        # Although the request socket died, we're still in a request with a
+        # new socket
+        new_sock_info = cx_pool.get_socket()
+        self.assertTrue(cx_pool.in_request())
+        self.assertNotEqual(sock_info, new_sock_info)
+        self.assertEqual(new_sock_info, cx_pool._get_request_state())
+        cx_pool.maybe_return_socket(new_sock_info)
+        self.assertEqual(new_sock_info, cx_pool._get_request_state())
+        self.assertEqual(0, len(cx_pool.sockets))
+
+        cx_pool.end_request()
         self.assertEqual(1, len(cx_pool.sockets))
 
     def test_pool_removes_dead_request_socket(self):
@@ -537,16 +535,19 @@ class _TestPooling(_TestPoolingBase):
         sock_info = cx_pool.get_socket()
         self.assertEqual(0, len(cx_pool.sockets))
         self.assertEqual(sock_info, cx_pool._get_request_state())
-        sock_info.sock.close()
-        cx_pool.return_socket(sock_info)
-        time.sleep(1.1) # trigger _check_closed
+
+        # Unlike in test_pool_removes_dead_request_socket_after_1_sec, we
+        # set sock_info.closed and *don't* wait 1 second
+        sock_info.close()
+        cx_pool.maybe_return_socket(sock_info)
 
         # Although the request socket died, we're still in a request with a
         # new socket
         new_sock_info = cx_pool.get_socket()
+        self.assertTrue(cx_pool.in_request())
         self.assertNotEqual(sock_info, new_sock_info)
         self.assertEqual(new_sock_info, cx_pool._get_request_state())
-        cx_pool.return_socket(new_sock_info)
+        cx_pool.maybe_return_socket(new_sock_info)
         self.assertEqual(new_sock_info, cx_pool._get_request_state())
         self.assertEqual(0, len(cx_pool.sockets))
 
@@ -569,17 +570,22 @@ class _TestPooling(_TestPoolingBase):
 
         # Kill old request socket
         sock_info.sock.close()
-        old_sock_info_id = id(sock_info)
-        del sock_info
+        cx_pool.maybe_return_socket(sock_info)
         time.sleep(1.1) # trigger _check_closed
 
         # Dead socket detected and removed
         new_sock_info = cx_pool.get_socket()
-        self.assertNotEqual(id(new_sock_info), old_sock_info_id)
+        self.assertFalse(cx_pool.in_request())
+        self.assertNotEqual(sock_info, new_sock_info)
         self.assertEqual(0, len(cx_pool.sockets))
         self.assertFalse(pymongo.pool._closed(new_sock_info.sock))
+        cx_pool.maybe_return_socket(new_sock_info)
+        self.assertEqual(1, len(cx_pool.sockets))
 
     def test_socket_reclamation(self):
+        if sys.platform.startswith('java'):
+            raise SkipTest("Jython can't do socket reclamation")
+        
         # Check that if a thread starts a request and dies without ending
         # the request, that the socket is reclaimed into the pool.
         cx_pool = self.get_pool(
@@ -602,6 +608,7 @@ class _TestPooling(_TestPoolingBase):
             sock_info = cx_pool.get_socket()
             self.assertEqual(sock_info, cx_pool._get_request_state())
             the_sock[0] = id(sock_info.sock)
+            cx_pool.maybe_return_socket(sock_info)
 
             if not self.use_greenlets:
                 lock.release()
@@ -623,7 +630,23 @@ class _TestPooling(_TestPoolingBase):
             acquired = lock.acquire()
             self.assertTrue(acquired, "Thread is hung")
 
-        force_reclaim_sockets(cx_pool, 1)
+            # Make sure thread is really gone
+            time.sleep(1)
+
+            if 'PyPy' in sys.version:
+                gc.collect()
+
+            # Access the thread local from the main thread to trigger the
+            # ThreadVigil's delete callback, returning the request socket to
+            # the pool.
+            # In Python 2.6 and lesser, a dead thread's locals are deleted
+            # and those locals' weakref callbacks are fired only when another
+            # thread accesses the locals and finds the thread state is stale.
+            # This is more or less a bug in Python <= 2.6. Accessing the thread
+            # local from the main thread is a necessary part of this test, and
+            # realistic: in a multithreaded web server a new thread will access
+            # Pool._local soon after an old thread has died.
+            getattr(cx_pool._local, 'whatever', None)
 
         # Pool reclaimed the socket
         self.assertEqual(1, len(cx_pool.sockets))
@@ -637,16 +660,11 @@ class _TestMaxPoolSize(_TestPoolingBase):
     """
     def _test_max_pool_size(self, start_request, end_request):
         c = self.get_connection(max_pool_size=4, auto_start_request=False)
+        # If you increase nthreads over about 35, note a
+        # Gevent 0.13.6 bug on Mac, Greenlet.join() hangs if more than
+        # about 35 Greenlets share a Connection. Apparently fixed in
+        # recent Gevent development.
         nthreads = 10
-
-        if (
-            self.use_greenlets and sys.platform == 'darwin'
-            and gevent.version_info[0] < 1
-        ):
-            # Gevent 0.13.6 bug on Mac, Greenlet.join() hangs if more than
-            # about 35 Greenlets share a Connection. Apparently fixed in
-            # recent Gevent development.
-            nthreads = 30
 
         threads = []
         for i in range(nthreads):
@@ -662,19 +680,16 @@ class _TestMaxPoolSize(_TestPoolingBase):
         for t in threads:
             self.assertTrue(t.passed)
 
-        # Critical: release refs to threads, so SocketInfo.__del__() executes
-        # and reclaims sockets.
-        del threads
-        t = None
-
         cx_pool = c._Connection__pool
-        force_reclaim_sockets(cx_pool, 4)
-
         nsock = len(cx_pool.sockets)
 
-        # Socket-reclamation depends on timely garbage-collection, so be lenient
-        self.assertTrue(2 <= nsock <= 4,
-            msg="Expected between 2 and 4 sockets in the pool, got %d" % nsock)
+        # Socket-reclamation depends on timely garbage-collection
+        if 'PyPy' in sys.version:
+            import gc
+            gc.collect()
+
+        if not sys.platform.startswith('java'):
+            self.assertEqual(4, len(cx_pool.sockets))
 
     def test_max_pool_size(self):
         self._test_max_pool_size(0, 0)
