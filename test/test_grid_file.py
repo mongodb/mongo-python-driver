@@ -518,6 +518,24 @@ with GridOut(self.db.fs, infile._id) as outfile:
         # Custom
         write_me(s, 262300)
 
+    def test_context_manager_twice(self):
+        if sys.version_info < (2,6):
+            raise SkipTest()
+        contents = b("Imagine this is some important data...")
+        gfsin = GridIn(self.db.fs, filename="important_twice")
+        with gfsin as infile:
+            infile.write(contents)
+            infile.close()
+        
+        gfsout = GridOut(self.db.fs, gfsin._id)
+        # first context read
+        with gfsout as outfile:
+            self.assertEqual(contents, outfile.read())
+        # second context read
+        with gfsout as outfile:
+            self.assertEqual(contents, outfile.read())    
+
+
 
 if __name__ == "__main__":
     unittest.main()
