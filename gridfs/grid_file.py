@@ -479,7 +479,7 @@ class GridOut(object):
 
     def close(self):
         """Make GridOut more generically file-like."""
-        pass
+        self.seek(0)
 
     def __enter__(self):
         """Makes it possible to use :class:`GridOut` files
@@ -491,6 +491,7 @@ class GridOut(object):
         """Makes it possible to use :class:`GridOut` files
         with the context manager protocol.
         """
+        self.close()
         return False
 
 
