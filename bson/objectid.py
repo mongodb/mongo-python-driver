@@ -32,7 +32,7 @@ import threading
 import time
 
 from bson.errors import InvalidId
-from bson.py3compat import (b, binary_type, text_type,
+from bson.py3compat import (PY3, b, binary_type, text_type,
                             bytes_from_hex, string_types)
 from bson.tz_util import utc
 
@@ -208,21 +208,18 @@ class ObjectId(object):
         """explicit state set from pickling
         """
         # Provide backwards compatability with OIDs
-        # pickled with pymongo-1.9.
+        # pickled with pymongo-1.9 or older.
         if isinstance(value, dict):
-            try:
-                # ObjectIds pickled in python 2.x used `str` for __id.
-                # In python 3.x this has to be converted to `bytes`
-                # by encoding latin-1.
-                self.__id = value['_ObjectId__id'].encode('latin-1')
-            except UnicodeDecodeError:
-                self.__id = value['_ObjectId__id']
+            oid = value["_ObjectId__id"]
         else:
-            try:
-                # See the previous comment about python 2/3 pickle issues.
-                self.__id = value.encode('latin-1')
-            except (UnicodeDecodeError, AttributeError):
-                self.__id = value
+            oid = value
+        # ObjectIds pickled in python 2.x used `str` for __id.
+        # In python 3.x this has to be converted to `bytes`
+        # by encoding latin-1.
+        if PY3 and isinstance(oid, text_type):
+            self.__id = oid.encode('latin-1')
+        else:
+            self.__id = oid
 
     def __str__(self):
         return binascii.hexlify(self.__id).decode()
