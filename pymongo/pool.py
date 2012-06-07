@@ -178,12 +178,15 @@ class BasePool(object):
         This is a modified version of create_connection from
         CPython >=2.6.
         """
-        # Don't try IPv6 if we don't support it.
+        host, port = pair or self.pair
+
+        # Don't try IPv6 if we don't support it. Also skip it if host
+        # is 'localhost' (::1 is fine). Avoids slow connect issues
+        # like PYTHON-356.
         family = socket.AF_INET
-        if socket.has_ipv6:
+        if socket.has_ipv6 and host != 'localhost':
             family = socket.AF_UNSPEC
 
-        host, port = pair or self.pair
         err = None
         for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
             af, socktype, proto, dummy, sa = res
