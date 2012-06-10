@@ -26,6 +26,7 @@ except ImportError:  # for Python < 2.5
     import md5
     _md5func = md5.new
 import os
+import random
 import socket
 import struct
 import threading
@@ -51,7 +52,7 @@ class ObjectId(object):
     """A MongoDB ObjectId.
     """
 
-    _inc = 0
+    _inc = random.randint(0, 0xFFFFFF)
     _inc_lock = threading.Lock()
 
     _machine_bytes = _machine_bytes()
