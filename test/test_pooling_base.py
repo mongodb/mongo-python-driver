@@ -22,7 +22,6 @@ import sys
 import thread
 import threading
 import time
-import bson
 
 sys.path[0:0] = [""]
 
@@ -47,7 +46,7 @@ if sys.version_info[0] >= 3:
 
 try:
     import gevent
-    from gevent import Greenlet, monkey
+    from gevent import Greenlet, monkey, hub
     has_gevent = True
 except ImportError:
     has_gevent = False
@@ -680,15 +679,19 @@ class _TestMaxPoolSize(_TestPoolingBase):
         for t in threads:
             self.assertTrue(t.passed)
 
-        cx_pool = c._Connection__pool
-        nsock = len(cx_pool.sockets)
-
-        # Socket-reclamation depends on timely garbage-collection
-        if 'PyPy' in sys.version:
-            import gc
-            gc.collect()
-
+        # Socket-reclamation doesn't work in Jython
         if not sys.platform.startswith('java'):
+            cx_pool = c._Connection__pool
+            nsock = len(cx_pool.sockets)
+
+            # Socket-reclamation depends on timely garbage-collection
+            if 'PyPy' in sys.version:
+                gc.collect()
+
+            if self.use_greenlets:
+                # Wait for Greenlet.link() callbacks to execute
+                hub.get_hub().shutdown()
+
             self.assertEqual(4, len(cx_pool.sockets))
 
     def test_max_pool_size(self):
