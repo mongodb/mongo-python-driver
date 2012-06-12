@@ -633,17 +633,17 @@ class TestCollection(unittest.TestCase):
 
     def test_invalid_key_names(self):
         db = self.db
-        db.test.remove({})
+        db.test.drop()
 
-        db.test.insert({"hello": "world"})
-        db.test.insert({"hello": {"hello": "world"}})
+        db.test.insert({"hello": "world"}, safe=True)
+        db.test.insert({"hello": {"hello": "world"}}, safe=True)
 
         self.assertRaises(InvalidDocument, db.test.insert, {"$hello": "world"})
         self.assertRaises(InvalidDocument, db.test.insert,
                           {"hello": {"$hello": "world"}})
 
-        db.test.insert({"he$llo": "world"})
-        db.test.insert({"hello": {"hello$": "world"}})
+        db.test.insert({"he$llo": "world"}, safe=True)
+        db.test.insert({"hello": {"hello$": "world"}}, safe=True)
 
         self.assertRaises(InvalidDocument, db.test.insert,
                           {".hello": "world"})
@@ -666,7 +666,7 @@ class TestCollection(unittest.TestCase):
         doc1 = {"hello": u"world"}
         doc2 = {"hello": u"mike"}
         self.assertEqual(db.test.find().count(), 0)
-        ids = db.test.insert([doc1, doc2])
+        ids = db.test.insert([doc1, doc2], safe=True)
         self.assertEqual(db.test.find().count(), 2)
         self.assertEqual(doc1, db.test.find_one({"hello": u"world"}))
         self.assertEqual(doc2, db.test.find_one({"hello": u"mike"}))
@@ -691,7 +691,7 @@ class TestCollection(unittest.TestCase):
         db.test.remove()
 
         # No error
-        db.test.insert([{'i': 1}] * 2)
+        db.test.insert([{'i': 1}] * 2, safe=False)
         self.assertEqual(1, db.test.count())
 
         self.assertRaises(
