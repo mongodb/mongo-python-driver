@@ -62,6 +62,7 @@ class TestCollection(unittest.TestCase):
         self.db = self.connection.pymongo_test
 
     def tearDown(self):
+        self.db.drop_collection("test_large_limit")
         self.db = None
         self.connection = None
 
@@ -1154,7 +1155,7 @@ class TestCollection(unittest.TestCase):
 
     def test_large_limit(self):
         db = self.db
-        db.drop_collection("test")
+        db.drop_collection("test_large_limit")
         db.test_large_limit.create_index([('x', 1)])
 
         for i in range(2000):
