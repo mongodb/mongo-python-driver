@@ -665,7 +665,9 @@ class Cursor(object):
 
         # starting from doesn't get set on getmore's for tailable cursors
         if not self.__tailable:
-            assert response["starting_from"] == self.__retrieved
+            assert response["starting_from"] == self.__retrieved, (
+                "Result batch started from %s, expected %s" % (
+                    response['starting_from'], self.__retrieved))
 
         self.__retrieved += response["number_returned"]
         self.__data = response["data"]
