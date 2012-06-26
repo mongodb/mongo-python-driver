@@ -98,7 +98,9 @@ class SocketInfo(object):
         )
 
 
-class BasePool(object):
+# Do *not* explicitly inherit from object or Jython won't call __del__
+# http://bugs.jython.org/issue1057
+class BasePool:
     def __init__(self, pair, max_size, net_timeout, conn_timeout, use_ssl):
         """
         :Parameters:
@@ -410,7 +412,7 @@ class Pool(BasePool):
     to the pool when the thread calls end_request() or dies.
     """
     def __init__(self, *args, **kwargs):
-        super(Pool, self).__init__(*args, **kwargs)
+        BasePool.__init__(self, *args, **kwargs)
         self._local = threading.local()
 
     # Overrides
