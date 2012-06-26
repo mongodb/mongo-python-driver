@@ -15,7 +15,6 @@
 import os
 import socket
 import sys
-import thread
 import time
 import threading
 import weakref
@@ -415,29 +414,6 @@ class Pool(BasePool):
         BasePool.__init__(self, *args, **kwargs)
         self._local = threading.local()
 
-    # Overrides
-    def _get_request_state(self):
-        # In Python <= 2.6, a dead thread's locals aren't cleaned up until the
-        # next access. That can lead to a nasty race where a new thread with
-        # the same ident as a previous one does _get_request_state() and thinks
-        # it's still in the previous thread's request. Only when some thread
-        # next accesses self._local.vigil does the dead thread's vigil get
-        # destroyed, triggered on_thread_died and returning the request socket
-        # to self.sockets. At that point a different thread can acquire that
-        # socket, and with two threads using the same socket they'll read
-        # each other's data. A symptom is an AssertionError in
-        # Connection.__receive_message_on_socket().
-
-        # Accessing the thread local here guarantees that a previous thread's
-        # locals are cleaned up before we check request state, and so even if
-        # this thread has the same ident as a previous one, we don't think we're
-        # in the same request.
-        getattr(self._local, 'vigil', None)
-        return super(Pool, self)._get_request_state()
-
-    def _get_thread_ident(self):
-        return thread.get_ident()
-
     # After a thread calls start_request() and we assign it a socket, we must
     # watch the thread to know if it dies without calling end_request so we can
     # return its socket to the idle pool, self.sockets. We watch for
@@ -447,10 +423,14 @@ class Pool(BasePool):
     class ThreadVigil(object):
         pass
 
+    def _get_thread_ident(self):
+        if not hasattr(self._local, 'vigil'):
+            self._local.vigil = Pool.ThreadVigil()
+        return id(self._local.vigil)
+
     def _watch_current_thread(self, callback):
         tid = self._get_thread_ident()
-        self._local.vigil = vigil = Pool.ThreadVigil()
-        self._refs[tid] = weakref.ref(vigil, callback)
+        self._refs[tid] = weakref.ref(self._local.vigil, callback)
 
 
 class GreenletPool(BasePool):
