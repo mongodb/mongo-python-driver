@@ -690,7 +690,13 @@ class _TestMaxPoolSize(_TestPoolingBase):
 
             if self.use_greenlets:
                 # Wait for Greenlet.link() callbacks to execute
-                hub.get_hub().shutdown()
+                the_hub = hub.get_hub()
+                if hasattr(the_hub, 'join'):
+                    # Gevent 1.0
+                    the_hub.join()
+                else:
+                    # Gevent 0.13 and less
+                    the_hub.shutdown()
 
             self.assertEqual(4, len(cx_pool.sockets))
 
