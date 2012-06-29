@@ -529,12 +529,16 @@ class ReplicaSetConnection(common.BaseObject):
                                self.__net_timeout, self.__conn_timeout,
                                self.__use_ssl)
         sock_info = pool.get_socket()
-        response = self.__simple_command(
-            sock_info, 'admin', {'ismaster': 1}
-        )
+        try:
+            response = self.__simple_command(
+                sock_info, 'admin', {'ismaster': 1}
+            )
 
-        pool.maybe_return_socket(sock_info)
-        return response, pool
+            pool.maybe_return_socket(sock_info)
+            return response, pool
+        except (ConnectionFailure, socket.error):
+            pool.discard_socket(sock_info)
+            raise
 
     def __update_pools(self):
         """Update the mapping of (host, port) pairs to connection pools.
