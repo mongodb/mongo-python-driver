@@ -682,7 +682,6 @@ class _TestMaxPoolSize(_TestPoolingBase):
         # Socket-reclamation doesn't work in Jython
         if not sys.platform.startswith('java'):
             cx_pool = c._Connection__pool
-            nsock = len(cx_pool.sockets)
 
             # Socket-reclamation depends on timely garbage-collection
             if 'PyPy' in sys.version:
