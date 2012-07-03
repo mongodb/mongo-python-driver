@@ -48,52 +48,6 @@ class TestThreadsReplicaSet(TestConnectionReplicaSetBase, BaseTestThreads):
         """
         return ReplicaSetConnection(pair, replicaSet=self.name)
 
-    def test_low_network_timeout(self):
-        """
-        Override the similar test as TestThreads.test_low_connect_timeout(),
-        but use the newer connectTimeoutMS and socketTimeoutMS arguments instead
-        of the soon-to-be-deprecated network_timeout.
-        """
-        db = None
-        n = 10
-
-        # First test connection timeout
-        i = 0
-        while db is None and i < n:
-            try:
-                db = ReplicaSetConnection(
-                    pair,
-                    replicaSet=self.name,
-                    connectTimeoutMS=1
-                ).pymongo_test
-            except AutoReconnect:
-                i += 1
-        if i == n:
-            raise SkipTest()
-
-        # ... then test socket timeout
-        i = 0
-        while db is None and i < n:
-            try:
-                db = ReplicaSetConnection(
-                    pair,
-                    replicaSet=self.name,
-                    socketTimeoutMS=1
-                ).pymongo_test
-            except AutoReconnect:
-                i += 1
-        if i == n:
-            raise SkipTest()
-
-        threads = []
-        for _ in range(4):
-            t = IgnoreAutoReconnect(db.test, 100)
-            t.start()
-            threads.append(t)
-
-        for t in threads:
-            t.join()
-
 
 class TestThreadsAuthReplicaSet(TestConnectionReplicaSetBase, BaseTestThreadsAuth):
 

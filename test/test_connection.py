@@ -215,30 +215,6 @@ class TestConnection(unittest.TestCase):
 
         self.assertRaises(TypeError, iterate)
 
-    # TODO this test is probably very dependent on the machine its running on
-    # due to timing issues, but I want to get something in here.
-    def test_low_network_timeout(self):
-        c = None
-        i = 0
-        n = 10
-        while c is None and i < n:
-            try:
-                c = Connection(self.host, self.port, network_timeout=0.0001)
-            except AutoReconnect:
-                i += 1
-        if i == n:
-            raise SkipTest()
-
-        coll = c.pymongo_test.test
-
-        for _ in range(1000):
-            try:
-                coll.find_one()
-            except AutoReconnect:
-                pass
-            except AssertionError:
-                self.fail()
-
     def test_disconnect(self):
         c = Connection(self.host, self.port)
         coll = c.foo.bar

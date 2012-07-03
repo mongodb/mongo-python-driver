@@ -296,26 +296,6 @@ class BaseTestThreads(object):
         error.join()
         okay.join()
 
-    def test_low_network_timeout(self):
-        db = None
-        i = 0
-        n = 10
-        while db is None and i < n:
-            try:
-                db = get_connection(network_timeout=0.0001).pymongo_test
-            except AutoReconnect:
-                i += 1
-        if i == n:
-            raise SkipTest()
-
-        threads = []
-        for _ in range(4):
-            t = IgnoreAutoReconnect(db.test, 100)
-            t.start()
-            threads.append(t)
-
-        joinall(threads)
-
     def test_server_disconnect(self):
         # PYTHON-345, we need to make sure that threads' request sockets are
         # closed by disconnect().
