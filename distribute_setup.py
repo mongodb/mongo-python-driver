@@ -46,7 +46,7 @@ except ImportError:
             args = [quote(arg) for arg in args]
         return os.spawnl(os.P_WAIT, sys.executable, *args) == 0
 
-DEFAULT_VERSION = "0.6.26"
+DEFAULT_VERSION = "0.6.27"
 DEFAULT_URL = "http://pypi.python.org/packages/source/d/distribute/"
 SETUPTOOLS_FAKED_VERSION = "0.6c11"
 
@@ -305,6 +305,9 @@ def _create_fake_setuptools_pkg_info(placeholder):
     if os.path.exists(pkg_info):
         log.warn('%s already exists', pkg_info)
         return
+
+    if not os.access(pkg_info, os.W_OK):
+        log.warn("Don't have permissions to write %s, skipping", pkg_info)
 
     log.warn('Creating %s', pkg_info)
     f = open(pkg_info, 'w')
