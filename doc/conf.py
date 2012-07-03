@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+3# -*- coding: utf-8 -*-
 #
 # PyMongo documentation build configuration file
 #
@@ -80,7 +80,9 @@ db = connection.doctest_test
 
 # The theme to use for HTML and HTML Help pages.  Major themes that come with
 # Sphinx are currently 'default' and 'sphinxdoc'.
-html_theme = 'default'
+html_theme_path = ['_themes']
+html_theme = 'mongodb'
+html_logo = "logo-mongodb.png"
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
