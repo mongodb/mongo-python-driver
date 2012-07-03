@@ -232,7 +232,9 @@ class BaseTestThreads(object):
         self.db = self._get_connection().pymongo_test
 
     def tearDown(self):
-        pass
+        # Clear connection reference so that RSC's monitor thread
+        # dies.
+        self.db = None
 
     def _get_connection(self):
         """
@@ -329,7 +331,6 @@ class BaseTestThreads(object):
         #
         # If we've fixed PYTHON-345, then only one AutoReconnect is raised,
         # and all the threads get new request sockets.
-
         cx = self.db.connection
         self.assertTrue(cx.auto_start_request)
         collection = self.db.pymongo_test
@@ -401,9 +402,10 @@ class BaseTestThreadsAuth(object):
         return get_connection()
 
     def setUp(self):
-        self.conn = self._get_connection()
-        if not server_started_with_auth(self.conn):
+        conn = self._get_connection()
+        if not server_started_with_auth(conn):
             raise SkipTest("Authentication is not enabled on server")
+        self.conn = conn
         self.conn.admin.system.users.remove({})
         self.conn.admin.add_user('admin-user', 'password')
         self.conn.admin.authenticate("admin-user", "password")
@@ -415,6 +417,9 @@ class BaseTestThreadsAuth(object):
         self.conn.admin.authenticate("admin-user", "password")
         self.conn.admin.system.users.remove({})
         self.conn.auth_test.system.users.remove({})
+        # Clear connection reference so that RSC's monitor thread
+        # dies.
+        self.conn = None
 
     def test_auto_auth_login(self):
         conn = self._get_connection()

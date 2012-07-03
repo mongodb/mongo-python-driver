@@ -315,31 +315,6 @@ class TestConnection(TestConnectionReplicaSetBase):
         self.assertRaises(TypeError, iterate)
         connection.close()
 
-    # TODO this test is probably very dependent on the machine it's running on
-    # due to timing issues, but I want to get something in here.
-    def test_low_network_timeout(self):
-        c = None
-        i = 0
-        n = 10
-        while c is None and i < n:
-            try:
-                c = self._get_connection(socketTimeoutMS=0.1)
-            except AutoReconnect:
-                i += 1
-        if i == n:
-            raise SkipTest()
-
-        coll = c.pymongo_test.test
-
-        for _ in xrange(1000):
-            try:
-                coll.find_one()
-            except AutoReconnect:
-                pass
-            except AssertionError:
-                self.fail()
-        c.close()
-
     def test_close(self):
         c = self._get_connection()
         coll = c.foo.bar
