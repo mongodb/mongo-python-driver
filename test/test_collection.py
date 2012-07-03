@@ -1564,8 +1564,15 @@ class TestCollection(unittest.TestCase):
 
         self.assertEqual(None,
                          c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}}))
-        self.assertEqual({}, c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
-                                               upsert=True))
+        # The return value changed in 2.1.2. See SERVER-6226.
+        if version.at_least(self.db.connection, (2, 1, 2)):
+            self.assertEqual(None, c.find_and_modify({'_id': 1},
+                                                     {'$inc': {'i': 1}},
+                                                     upsert=True))
+        else:
+            self.assertEqual({}, c.find_and_modify({'_id': 1},
+                                                   {'$inc': {'i': 1}},
+                                                   upsert=True))
         self.assertEqual({'_id': 1, 'i': 2},
                          c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
                                            upsert=True, new=True))
