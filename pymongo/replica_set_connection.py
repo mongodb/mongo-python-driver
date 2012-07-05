@@ -170,6 +170,13 @@ class ReplicaSetConnection(common.BaseObject):
         a string of `host:port` pairs (e.g. 'host1:port1,host2:port2').
         If `hosts_or_uri` is None 'localhost:27017' will be used.
 
+        .. note:: Instances of :class:`~ReplicaSetConnection` start a
+           background task to monitor the state of the replica set. This allows
+           it to quickly respond to changes in replica set configuration.
+           Before discarding an instance of :class:`~ReplicaSetConnection` make
+           sure you call :meth:`~close` to ensure that the monitor task is
+           cleanly shut down.
+
         :Parameters:
           - `hosts_or_uri` (optional): A MongoDB URI or string of `host:port`
             pairs. If a host is an IPv6 literal it must be enclosed in '[' and
