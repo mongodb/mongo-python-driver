@@ -1,6 +1,22 @@
 Changelog
 =========
 
+Changes in Version 2.2.1
+------------------------
+
+Version 2.2.1 is a minor release that fixes issues discovered after the
+release of 2.2. Most importantly, this release fixes an incompatibility
+with mod_wsgi 2.x that could cause connections to leak. Users of mod_wsgi
+2.x are strongly encouraged to upgrade from PyMongo 2.2.
+
+Issues Resolved
+...............
+
+See the `PyMongo 2.2.1 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 2.2.1 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/11185
+
 Changes in Version 2.2
 -----------------------
 
