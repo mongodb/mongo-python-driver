@@ -27,7 +27,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'PyMongo'
-copyright = u'2008 - 2011, 10gen, Inc.'
+copyright = u'2008 - 2012, 10gen, Inc.'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the

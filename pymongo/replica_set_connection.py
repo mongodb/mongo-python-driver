@@ -747,6 +747,9 @@ class ReplicaSetConnection(common.BaseObject):
         This method first terminates the replica set monitor, then disconnects
         from all members of the replica set. Once called this instance of
         ReplicaSetConnection should not be reused.
+
+        .. versionchanged:: 2.2.1
+           The :meth:`~close` method now terminates the replica set monitor.
         """
         if self.__monitor:
             self.__monitor.shutdown(None)
