@@ -219,9 +219,15 @@ when encoding due to the way mod_wsgi handles module reloading with
 multiple sub interpreters. There are several possible ways to work
 around this issue:
 
-1. Force all WSGI applications to run in the same application group.
-2. Run mod_wsgi in daemon mode with different WSGI applications assigned to their own daemon processes.
-3. Install PyMongo :ref:`without the C extension <install-no-c>` (this will carry a performance penalty, but is the most immediate solution to this problem).
+1. Run mod_wsgi in daemon mode with each WSGI application assigned to its
+   own daemon process.
+
+2. Force all WSGI applications to run in the same application group.
+
+3. Install PyMongo :ref:`without the C extension <install-no-c>` (this will
+   carry a performance penalty, but is the most immediate solution to this
+   problem).
+
 
 How can I use something like Python's :mod:`json` module to encode my documents to JSON?
 ----------------------------------------------------------------------------------------
