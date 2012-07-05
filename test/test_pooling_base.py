@@ -205,24 +205,44 @@ class OneOp(MongoThread):
 
 
 class CreateAndReleaseSocket(MongoThread):
+    class Rendezvous(object):
+        def __init__(self, nthreads):
+            self.nthreads = nthreads
+            self.nthreads_run = 0
+            self.lock = threading.Lock()
+            self.ready = threading.Event()
 
-    def __init__(self, ut, connection, start_request, end_request):
+    def __init__(self, ut, connection, start_request, end_request, rendevous):
         super(CreateAndReleaseSocket, self).__init__(ut)
         self.connection = connection
         self.start_request = start_request
         self.end_request = end_request
+        self.rendevous = rendevous
 
     def run_mongo_thread(self):
         # Do an operation that requires a socket.
         # test_max_pool_size uses this to spin up lots of threads requiring
         # lots of simultaneous connections, to ensure that Pool obeys its
         # max_size configuration and closes extra sockets as they're returned.
-        # We need a delay here to ensure that more than max_size sockets are
-        # needed at once.
         for i in range(self.start_request):
             self.connection.start_request()
 
-        self.connection[DB].test.find_one({'$where': delay(0.1)})
+        # Use a socket
+        self.connection[DB].test.find_one()
+
+        # Don't finish until all threads reach this point
+        r = self.rendevous
+        r.lock.acquire()
+        r.nthreads_run += 1
+        if r.nthreads_run == r.nthreads:
+            # Everyone's here, let them finish
+            r.ready.set()
+            r.lock.release()
+        else:
+            r.lock.release()
+            r.ready.wait(2) # Wait two seconds
+            assert r.ready.isSet(), "Rendezvous timed out"
+
         for i in range(self.end_request):
             self.connection.end_request()
 
@@ -665,9 +685,12 @@ class _TestMaxPoolSize(_TestPoolingBase):
         # recent Gevent development.
         nthreads = 10
 
+        rendevous = CreateAndReleaseSocket.Rendezvous(nthreads)
+
         threads = []
         for i in range(nthreads):
-            t = CreateAndReleaseSocket(self, c, start_request, end_request)
+            t = CreateAndReleaseSocket(
+                self, c, start_request, end_request, rendevous)
             threads.append(t)
 
         for t in threads:
@@ -697,7 +720,14 @@ class _TestMaxPoolSize(_TestPoolingBase):
                     # Gevent 0.13 and less
                     the_hub.shutdown()
 
-            self.assertEqual(4, len(cx_pool.sockets))
+            if start_request:
+                self.assertEqual(4, len(cx_pool.sockets))
+            else:
+                # Without calling start_request(), threads can safely share
+                # sockets; the number running concurrently, and hence the number
+                # of sockets needed, is between 1 and 10, depending on thread-
+                # scheduling.
+                self.assertTrue(len(cx_pool.sockets) >= 1)
 
     def test_max_pool_size(self):
         self._test_max_pool_size(0, 0)
