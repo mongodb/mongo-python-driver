@@ -47,6 +47,7 @@ if sys.version_info[0] >= 3:
 try:
     import gevent
     from gevent import Greenlet, monkey, hub
+    import gevent.coros, gevent.event
     has_gevent = True
 except ImportError:
     has_gevent = False
@@ -206,11 +207,15 @@ class OneOp(MongoThread):
 
 class CreateAndReleaseSocket(MongoThread):
     class Rendezvous(object):
-        def __init__(self, nthreads):
+        def __init__(self, nthreads, use_greenlets):
             self.nthreads = nthreads
             self.nthreads_run = 0
-            self.lock = threading.Lock()
-            self.ready = threading.Event()
+            if use_greenlets:
+                self.lock = gevent.coros.RLock()
+                self.ready = gevent.event.Event()
+            else:
+                self.lock = threading.Lock()
+                self.ready = threading.Event()
 
     def __init__(self, ut, connection, start_request, end_request, rendevous):
         super(CreateAndReleaseSocket, self).__init__(ut)
@@ -685,7 +690,8 @@ class _TestMaxPoolSize(_TestPoolingBase):
         # recent Gevent development.
         nthreads = 10
 
-        rendevous = CreateAndReleaseSocket.Rendezvous(nthreads)
+        rendevous = CreateAndReleaseSocket.Rendezvous(
+            nthreads, self.use_greenlets)
 
         threads = []
         for i in range(nthreads):
