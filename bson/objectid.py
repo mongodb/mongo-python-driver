@@ -123,6 +123,21 @@ class ObjectId(object):
         oid = struct.pack(">i", int(ts)) + ZERO * 8
         return cls(oid)
 
+    @classmethod
+    def is_valid(cls, oid):
+        """Checks if a `oid` string is valid or not.
+
+        :Parameters:
+          - `oid`: the object id to validate
+
+        .. versionadded:: 2.2.1+
+        """
+        try:
+            ObjectId(oid)
+            return True
+        except (InvalidId, TypeError):
+            return False
+
     def __generate(self):
         """Generate a new value for this ObjectId.
         """
