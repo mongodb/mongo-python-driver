@@ -28,7 +28,8 @@ socket exclusively by default.
   >>> connection = Connection()
 
 Make sure you're using the latest version of Gevent to ensure that
-thread-locals are patched to act like greenlet-locals.
+thread-locals are patched to act like greenlet-locals, and be careful to call
+patch_all() before loading any other modules.
 
 Using Gevent With Threads
 -------------------------
