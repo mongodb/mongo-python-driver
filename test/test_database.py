@@ -312,6 +312,28 @@ class TestDatabase(unittest.TestCase):
         db.logout()
         db.logout()
 
+    def test_authenticate_and_safe(self):
+        db = self.connection.auth_test
+        db.system.users.remove({})
+        db.add_user("bernie", "password")
+        db.authenticate("bernie", "password")
+
+        db.test.remove({})
+        self.assertTrue(db.test.insert({"bim": "baz"}, safe=True))
+        self.assertEqual(1, db.test.count())
+
+        self.assertEqual(1,
+                         db.test.update({"bim": "baz"},
+                                        {"$set": {"bim": "bar"}},
+                                        safe=True).get('n'))
+
+        self.assertEqual(1,
+                         db.test.remove({}, safe=True).get('n'))
+
+        self.assertEqual(0, db.test.count())
+        self.connection.drop_database("auth_test")
+
+
     def test_authenticate_and_request(self):
         # Database.authenticate() needs to be in a request - check that it
         # always runs in a request, and that it restores the request state

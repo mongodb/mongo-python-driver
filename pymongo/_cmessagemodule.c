@@ -59,7 +59,8 @@ static PyObject* _error(char* name) {
 
 /* add a lastError message on the end of the buffer.
  * returns 0 on failure */
-static int add_last_error(PyObject* self, buffer_t buffer, int request_id, PyObject* args) {
+static int add_last_error(PyObject* self, buffer_t buffer,
+                          int request_id, char* ns, int nslen, PyObject* args) {
     struct module_state *state = GETSTATE(self);
 
     int message_start;
@@ -70,6 +71,9 @@ static int add_last_error(PyObject* self, buffer_t buffer, int request_id, PyObj
     PyObject* value;
     Py_ssize_t pos = 0;
     PyObject* one;
+    char *p = strchr(ns, '.');
+    /* Length of the database portion of ns. */
+    nslen = p ? (p - ns) : nslen;
 
     message_start = buffer_save_space(buffer, 4);
     if (message_start == -1) {
@@ -80,11 +84,15 @@ static int add_last_error(PyObject* self, buffer_t buffer, int request_id, PyObj
         !buffer_write_bytes(buffer,
                             "\x00\x00\x00\x00"  /* responseTo */
                             "\xd4\x07\x00\x00"  /* opcode */
-                            "\x00\x00\x00\x00"  /* options */
-                            "admin.$cmd\x00"    /* collection name */
+                            "\x00\x00\x00\x00", /* options */
+                            12) ||
+        !buffer_write_bytes(buffer,
+                            ns, nslen) ||       /* database */
+        !buffer_write_bytes(buffer,
+                            ".$cmd\x00"         /* collection name */
                             "\x00\x00\x00\x00"  /* skip */
                             "\xFF\xFF\xFF\xFF", /* limit (-1) */
-                            31)) {
+                            14)) {
         return 0;
     }
 
@@ -184,14 +192,13 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
         return NULL;
     }
 
-    PyMem_Free(collection_name);
-
     iterator = PyObject_GetIter(docs);
     if (iterator == NULL) {
         PyObject* InvalidOperation = _error("InvalidOperation");
         PyErr_SetString(InvalidOperation, "input is not iterable");
         Py_DECREF(InvalidOperation);
         buffer_free(buffer);
+        PyMem_Free(collection_name);
         return NULL;
     }
     while ((doc = PyIter_Next(iterator)) != NULL) {
@@ -200,6 +207,7 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
             Py_DECREF(doc);
             Py_DECREF(iterator);
             buffer_free(buffer);
+            PyMem_Free(collection_name);
             return NULL;
         }
         Py_DECREF(doc);
@@ -213,6 +221,7 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
         PyErr_SetString(InvalidOperation, "cannot do an empty bulk insert");
         Py_DECREF(InvalidOperation);
         buffer_free(buffer);
+        PyMem_Free(collection_name);
         return NULL;
     }
 
@@ -220,11 +229,15 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
     memcpy(buffer_get_buffer(buffer) + length_location, &message_length, 4);
 
     if (safe) {
-        if (!add_last_error(self, buffer, request_id, last_error_args)) {
+        if (!add_last_error(self, buffer, request_id, collection_name,
+                            collection_name_length, last_error_args)) {
             buffer_free(buffer);
+            PyMem_Free(collection_name);
             return NULL;
         }
     }
+
+    PyMem_Free(collection_name);
 
     /* objectify buffer */
     result = Py_BuildValue("i" BYTES_FORMAT_STRING "i", request_id,
@@ -318,17 +331,19 @@ static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
     cur_size = buffer_get_position(buffer) - before;
     max_size = (cur_size > max_size) ? cur_size : max_size;
 
-    PyMem_Free(collection_name);
-
     message_length = buffer_get_position(buffer) - length_location;
     memcpy(buffer_get_buffer(buffer) + length_location, &message_length, 4);
 
     if (safe) {
-        if (!add_last_error(self, buffer, request_id, last_error_args)) {
+        if (!add_last_error(self, buffer, request_id, collection_name,
+                            collection_name_length, last_error_args)) {
             buffer_free(buffer);
+            PyMem_Free(collection_name);
             return NULL;
         }
     }
+
+    PyMem_Free(collection_name);
 
     /* objectify buffer */
     result = Py_BuildValue("i" BYTES_FORMAT_STRING "i", request_id,

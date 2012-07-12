@@ -238,7 +238,12 @@ class TestConnection(unittest.TestCase):
         c.admin.system.users.remove({})
         c.pymongo_test.system.users.remove({})
 
-        c.admin.add_user("admin", "pass")
+        try:
+            # First admin user add fails gle in MongoDB >= 2.1.2
+            # See SERVER-4225 for more information.
+            c.admin.add_user("admin", "pass")
+        except OperationFailure:
+            pass
         c.admin.authenticate("admin", "pass")
         c.pymongo_test.add_user("user", "pass")
 
