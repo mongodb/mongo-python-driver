@@ -889,6 +889,42 @@ class Collection(common.BaseObject):
 
         return options
 
+    def aggregate(self, ops):
+        """Perform an aggregation using the aggregation framework on this
+        collection.
+
+        With :class:`~pymongo.replica_set_connection.ReplicaSetConnection`
+        or :class:`~pymongo.master_slave_connection.MasterSlaveConnection`,
+        if the `read_preference` attribute of this instance is not set to
+        :attr:`pymongo.ReadPreference.PRIMARY` or the (deprecated)
+        `slave_okay` attribute of this instance is set to `True` the
+        `aggregate command`_. will be sent to a secondary or slave.
+
+        :Parameters:
+          - `ops`: a single command or list of aggregation commands
+
+        .. note:: Requires server version **>= 2.1.1**
+
+        .. versionadded:: 2.2.1+
+
+        .. _aggregate command:
+            http://docs.mongodb.org/manual/applications/aggregation
+        """
+        if not isinstance(ops, (dict, list, tuple)):
+            raise TypeError("ops must be a dict, list or tuple")
+
+        if isinstance(ops, dict):
+            ops = [ops]
+
+        use_master = not self.slave_okay and not self.read_preference
+
+        return self.__database.command("aggregate", self.__name,
+                                        pipeline=ops,
+                                        read_preference=self.read_preference,
+                                        slave_okay=self.slave_okay,
+                                        _use_master=use_master)
+
+
     # TODO key and condition ought to be optional, but deprecation
     # could be painful as argument order would have to change.
     def group(self, key, condition, initial, reduce, finalize=None):
@@ -1031,7 +1067,7 @@ class Collection(common.BaseObject):
 
         .. note:: Requires server version **>= 1.1.1**
 
-        .. seealso:: :doc:`/examples/map_reduce`
+        .. seealso:: :doc:`/examples/aggregation`
 
         .. versionchanged:: 2.2
            Removed deprecated arguments: merge_output and reduce_output

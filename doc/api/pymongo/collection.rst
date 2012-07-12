@@ -42,6 +42,7 @@
       .. automethod:: reindex
       .. automethod:: index_information
       .. automethod:: options
+      .. automethod:: aggregate
       .. automethod:: group
       .. automethod:: rename
       .. automethod:: distinct

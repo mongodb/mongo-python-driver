@@ -706,7 +706,7 @@ Changes in Version 1.2
   get around some issues with queries on fields named ``query``
 - enforce 4MB document limit on the client side
 - added :meth:`~pymongo.collection.Collection.map_reduce` helper - see
-  :doc:`example <examples/map_reduce>`
+  :doc:`example <examples/aggregation>`
 - added :meth:`~pymongo.cursor.Cursor.distinct` method on
   :class:`~pymongo.cursor.Cursor` instances to allow distinct with
   queries

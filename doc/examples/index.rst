@@ -17,7 +17,7 @@ MongoDB, you can start it like so:
    :maxdepth: 1
 
    gridfs
-   map_reduce
+   aggregation
    geo
    replica_set
    custom_type
