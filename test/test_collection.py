@@ -1048,6 +1048,8 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(db.test.find({'foo': re.compile(r'ba.*')}).count(), 2)
 
     def test_aggregate(self):
+        if not version.at_least(self.db.connection, (2, 1, 0)):
+            raise SkipTest("The aggregate command requires MongoDB >= 2.1.0")
         db = self.db
         db.drop_collection("test")
         db.test.save({'foo': [1, 2]})
