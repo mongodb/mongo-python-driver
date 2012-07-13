@@ -1056,11 +1056,11 @@ class TestCollection(unittest.TestCase):
 
         self.assertRaises(TypeError, db.test.aggregate, "wow")
 
-        ops = {"$project": {"_id": False, "foo": True}}
+        pipeline = {"$project": {"_id": False, "foo": True}}
         expected = {'ok': 1.0, 'result': [{'foo': [1, 2]}]}
-        self.assertEqual(expected, db.test.aggregate(ops))
-        self.assertEqual(expected, db.test.aggregate([ops]))
-        self.assertEqual(expected, db.test.aggregate((ops,)))
+        self.assertEqual(expected, db.test.aggregate(pipeline))
+        self.assertEqual(expected, db.test.aggregate([pipeline]))
+        self.assertEqual(expected, db.test.aggregate((pipeline,)))
 
     def test_group(self):
         db = self.db

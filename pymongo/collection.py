@@ -889,7 +889,7 @@ class Collection(common.BaseObject):
 
         return options
 
-    def aggregate(self, ops):
+    def aggregate(self, pipeline):
         """Perform an aggregation using the aggregation framework on this
         collection.
 
@@ -901,7 +901,7 @@ class Collection(common.BaseObject):
         `aggregate command`_. will be sent to a secondary or slave.
 
         :Parameters:
-          - `ops`: a single command or list of aggregation commands
+          - `pipeline`: a single command or list of aggregation commands
 
         .. note:: Requires server version **>= 2.1.1**
 
@@ -910,16 +910,16 @@ class Collection(common.BaseObject):
         .. _aggregate command:
             http://docs.mongodb.org/manual/applications/aggregation
         """
-        if not isinstance(ops, (dict, list, tuple)):
-            raise TypeError("ops must be a dict, list or tuple")
+        if not isinstance(pipeline, (dict, list, tuple)):
+            raise TypeError("pipeline must be a dict, list or tuple")
 
-        if isinstance(ops, dict):
-            ops = [ops]
+        if isinstance(pipeline, dict):
+            pipeline = [pipeline]
 
         use_master = not self.slave_okay and not self.read_preference
 
         return self.__database.command("aggregate", self.__name,
-                                        pipeline=ops,
+                                        pipeline=pipeline,
                                         read_preference=self.read_preference,
                                         slave_okay=self.slave_okay,
                                         _use_master=use_master)
