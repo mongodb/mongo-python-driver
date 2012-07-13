@@ -565,3 +565,11 @@ def has_c():
     .. versionadded:: 1.9
     """
     return _use_c
+
+
+def has_uuid():
+    """Is the uuid module available?
+
+    .. versionadded:: 2.2.1+
+    """
+    return _use_uuid

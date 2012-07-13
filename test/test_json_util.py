@@ -18,31 +18,24 @@ import unittest
 import datetime
 import re
 import sys
-json_lib = True
-try:
-    import json
-except ImportError:
-    try:
-        import simplejson as json
-    except ImportError:
-        json_lib = False
-try:
-    import uuid
-    should_test_uuid = True
-except ImportError:
-    should_test_uuid = False
 
 from nose.plugins.skip import SkipTest
 
 sys.path[0:0] = [""]
 
+import bson
+from bson.py3compat import b
+from bson import json_util
+from bson.binary import Binary, MD5_SUBTYPE
+from bson.code import Code
 from bson.dbref import DBRef
-from bson.json_util import default, object_hook
-from bson.min_key import MinKey
 from bson.max_key import MaxKey
+from bson.min_key import MinKey
 from bson.objectid import ObjectId
 from bson.timestamp import Timestamp
 from bson.tz_util import utc
+
+from test.test_connection import get_connection
 
 PY3 = sys.version_info[0] == 3
 
@@ -50,12 +43,13 @@ PY3 = sys.version_info[0] == 3
 class TestJsonUtil(unittest.TestCase):
 
     def setUp(self):
-        if not json_lib:
+        if not json_util.json_lib:
             raise SkipTest()
 
+        self.db = get_connection().pymongo_test
+
     def round_tripped(self, doc):
-        return json.loads(json.dumps(doc, default=default),
-                          object_hook=object_hook)
+        return json_util.loads(json_util.dumps(doc))
 
     def round_trip(self, doc):
         self.assertEqual(doc, self.round_tripped(doc))
@@ -76,11 +70,11 @@ class TestJsonUtil(unittest.TestCase):
         #
         # self.assertEqual("{\"ref\": {\"$ref\": \"foo\", \"$id\": 5}}",
         #                  json.dumps({"ref": DBRef("foo", 5)},
-        #                  default=default))
+        #                  default=json_util.default))
         # self.assertEqual("{\"ref\": {\"$ref\": \"foo\",
         #                              \"$id\": 5, \"$db\": \"bar\"}}",
         #                  json.dumps({"ref": DBRef("foo", 5, "bar")},
-        #                  default=default))
+        #                  default=json_util.default))
 
     def test_datetime(self):
         # only millis, not micros
@@ -92,7 +86,7 @@ class TestJsonUtil(unittest.TestCase):
         self.assertEqual("a*b", res.pattern)
         if PY3:
             # re.UNICODE is a default in python 3.
-            self.assertEqual(re.IGNORECASE|re.UNICODE, res.flags)
+            self.assertEqual(re.IGNORECASE | re.UNICODE, res.flags)
         else:
             self.assertEqual(re.IGNORECASE, res.flags)
 
@@ -100,19 +94,47 @@ class TestJsonUtil(unittest.TestCase):
         self.round_trip({"m": MinKey()})
 
     def test_maxkey(self):
-        self.round_trip({"m": MinKey()})
+        self.round_trip({"m": MaxKey()})
 
     def test_timestamp(self):
-        res = json.dumps({"ts": Timestamp(4, 13)}, default=default)
-        dct = json.loads(res)
+        res = json_util.json.dumps({"ts": Timestamp(4, 13)},
+                                     default=json_util.default)
+        dct = json_util.json.loads(res)
         self.assertEqual(dct['ts']['t'], 4)
         self.assertEqual(dct['ts']['i'], 13)
 
     def test_uuid(self):
-        if not should_test_uuid:
+        if not bson.has_uuid():
             raise SkipTest()
         self.round_trip(
-                {'uuid': uuid.UUID('f47ac10b-58cc-4372-a567-0e02b2c3d479')})
+                {'uuid': bson.uuid.UUID(
+                            'f47ac10b-58cc-4372-a567-0e02b2c3d479')})
+
+    def test_binary(self):
+        self.round_trip({"bin": Binary(b("\x00\x01\x02\x03\x04"))})
+        self.round_trip({
+            "md5": Binary(b(' n7\x18\xaf\t/\xd1\xd1/\x80\xca\xe7q\xcc\xac'),
+                MD5_SUBTYPE)})
+
+    def test_code(self):
+        self.round_trip({"code": Code("function x() { return 1; }")})
+        self.round_trip({"code": Code("function y() { return z; }", z=2)})
+
+    def test_cursor(self):
+        db = self.db
+
+        db.drop_collection("test")
+        docs = [
+            {'foo': [1, 2]},
+            {'bar': {'hello': 'world'}},
+            {'code': Code("function x() { return 1; }")},
+            {'bin': Binary(b("\x00\x01\x02\x03\x04"))}
+        ]
+
+        db.test.insert(docs)
+        reloaded_docs = json_util.loads(json_util.dumps(db.test.find()))
+        for doc in docs:
+            self.assertTrue(doc in reloaded_docs)
 
 if __name__ == "__main__":
     unittest.main()

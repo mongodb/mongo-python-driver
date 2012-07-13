@@ -14,25 +14,43 @@
 
 """Tools for using Python's :mod:`json` module with BSON documents.
 
-This module provides two methods: `object_hook` and `default`. These
-names are pretty terrible, but match the names used in Python's `json
-library <http://docs.python.org/library/json.html>`_. They allow for
-specialized encoding and decoding of BSON documents into `Mongo
-Extended JSON
+This module provides two helper methods `dumps` and `loads` that wrap the
+native :mod:`json` methods and provide explicit BSON conversion to and from
+json.  This allows for specialized encoding and decoding of BSON documents
+into `Mongo Extended JSON
 <http://www.mongodb.org/display/DOCS/Mongo+Extended+JSON>`_'s *Strict*
 mode.  This lets you encode / decode BSON documents to JSON even when
 they use special BSON types.
 
 Example usage (serialization)::
 
->>> json.dumps(..., default=json_util.default)
+.. doctest::
+
+   >>> from bson import Binary, Code
+   >>> from bson.json_util import dumps
+   >>> dumps([{'foo': [1, 2]},
+   ...        {'bar': {'hello': 'world'}},
+   ...        {'code': Code("function x() { return 1; }")},
+   ...        {'bin': Binary("\x00\x01\x02\x03\x04")}])
+   '[{"foo": [1, 2]}, {"bar": {"hello": "world"}}, {"code": {"$scope": {}, "$code": "function x() { return 1; }"}}, {"bin": {"$type": 0, "$binary": "AAECAwQ=\\n"}}]'
 
 Example usage (deserialization)::
 
->>> json.loads(..., object_hook=json_util.object_hook)
+.. doctest::
 
-Currently this does not handle special encoding and decoding for
-:class:`~bson.binary.Binary` and :class:`~bson.code.Code` instances.
+   >>> from bson.json_util import loads
+   >>> loads('[{"foo": [1, 2]}, {"bar": {"hello": "world"}}, {"code": {"$scope": {}, "$code": "function x() { return 1; }"}}, {"bin": {"$type": 0, "$binary": "AAECAwQ=\\n"}}]')
+   [{u'foo': [1, 2]}, {u'bar': {u'hello': u'world'}}, {u'code': Code('function x() { return 1; }', {})}, {u'bin': Binary('\x00\x01\x02\x03\x04', 0)}]
+
+Alternatively, you can manually pass the `default` to :func:`json.dumps`.
+It won't handle :class:`~bson.binary.Binary` and :class:`~bson.code.Code`
+instances (as they are extended strings you can't provide custom defaults),
+but it will be faster as there is less recursion.
+
+.. versionchanged:: 2.2.1+
+   Added dumps and loads helpers to automatically handle conversion to and
+   from json and supports :class:`~bson.binary.Binary` and
+   :class:`~bson.code.Code`
 
 .. versionchanged:: 1.9
    Handle :class:`uuid.UUID` instances, whenever possible.
@@ -50,32 +68,70 @@ Currently this does not handle special encoding and decoding for
    Added support for encoding/decoding datetimes and regular expressions.
 """
 
+import base64
 import calendar
 import datetime
 import re
-try:
-    import uuid
-    _use_uuid = True
-except ImportError:
-    _use_uuid = False
 
+json_lib = True
+try:
+    import json
+except ImportError:
+    try:
+        import simplejson as json
+    except ImportError:
+        json_lib = False
+
+import bson
 from bson import EPOCH_AWARE
+from bson.binary import Binary
+from bson.code import Code
 from bson.dbref import DBRef
 from bson.max_key import MaxKey
 from bson.min_key import MinKey
 from bson.objectid import ObjectId
 from bson.timestamp import Timestamp
-from bson.tz_util import utc
 
-# TODO support Binary and Code
-# Binary and Code are tricky because they subclass str so json thinks it can
-# handle them. Not sure what the proper way to get around this is...
-#
-# One option is to just add some other method that users need to call _before_
-# calling json.dumps or json.loads. That is pretty terrible though...
+from bson.py3compat import PY3, binary_type, string_types
 
 # TODO share this with bson.py?
 _RE_TYPE = type(re.compile("foo"))
+
+
+def dumps(obj, *args, **kwargs):
+    """Helper function that wraps :class:`json.dumps`.
+
+    Recursive function that handles all BSON types incuding
+    :class:`~bson.binary.Binary` and :class:`~bson.code.Code`.
+    """
+    if not json_lib:
+        raise Exception("No json library available")
+    return json.dumps(_json_convert(obj), *args, **kwargs)
+
+
+def loads(s, *args, **kwargs):
+    """Helper function that wraps :class:`json.loads`.
+
+    Automatically passes the object_hook for BSON type conversion.
+    """
+    if not json_lib:
+        raise Exception("No json library available")
+    kwargs['object_hook'] = object_hook
+    return json.loads(s, *args, **kwargs)
+
+
+def _json_convert(obj):
+    """Recursive helper method that converts BSON types so they can be
+    converted into json.
+    """
+    if hasattr(obj, 'iteritems') or hasattr(obj, 'items'):  # PY3 support
+        return dict(((k, _json_convert(v)) for k, v in obj.iteritems()))
+    elif hasattr(obj, '__iter__') and not isinstance(obj, string_types):
+        return list((_json_convert(v) for v in obj))
+    try:
+        return default(obj)
+    except TypeError:
+        return obj
 
 
 def object_hook(dct):
@@ -97,8 +153,12 @@ def object_hook(dct):
         return MinKey()
     if "$maxKey" in dct:
         return MaxKey()
-    if _use_uuid and "$uuid" in dct:
-        return uuid.UUID(dct["$uuid"])
+    if "$binary" in dct:
+        return Binary(base64.b64decode(dct["$binary"].encode()), dct["$type"])
+    if "$code" in dct:
+        return Code(dct["$code"], dct.get("$scope"))
+    if bson.has_uuid() and "$uuid" in dct:
+        return bson.uuid.UUID(dct["$uuid"])
     return dct
 
 
@@ -128,6 +188,14 @@ def default(obj):
         return {"$maxKey": 1}
     if isinstance(obj, Timestamp):
         return {"t": obj.time, "i": obj.inc}
-    if _use_uuid and isinstance(obj, uuid.UUID):
+    if isinstance(obj, Code):
+        return {'$code': "%s" % obj, '$scope': obj.scope}
+    if isinstance(obj, Binary):
+        return {'$binary': base64.b64encode(obj).decode(),
+                '$type': obj.subtype}
+    if PY3 and isinstance(obj, binary_type):
+        return {'$binary': base64.b64encode(obj).decode(),
+                '$type': 0}
+    if bson.has_uuid() and isinstance(obj, bson.uuid.UUID):
         return {"$uuid": obj.hex}
     raise TypeError("%r is not JSON serializable" % obj)
