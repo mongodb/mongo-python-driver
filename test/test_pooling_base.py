@@ -34,7 +34,7 @@ from pymongo.pool import (
 from pymongo.errors import ConfigurationError
 from test import version
 from test.test_connection import get_connection, host, port
-from test.utils import delay
+from test.utils import delay, is_mongos
 
 N = 50
 DB = "pymongo-pooling-tests"
@@ -776,6 +776,9 @@ class _TestPoolSocketSharing(_TestPoolingBase):
         )
 
         db = cx.pymongo_test
+        if is_mongos(db.connection):
+            raise SkipTest("PYTHON-375")
+
         if not version.at_least(db.connection, (1, 7, 2)):
             raise SkipTest("Need at least MongoDB version 1.7.2 to use"
                            " db.eval(nolock=True)")

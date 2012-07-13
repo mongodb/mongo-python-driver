@@ -40,7 +40,7 @@ from pymongo.son_manipulator import (AutoReference,
                                      NamespaceInjector,
                                      ObjectIdShuffler)
 from test import version
-from test.utils import server_started_with_auth
+from test.utils import is_mongos, server_started_with_auth
 from test.test_connection import get_connection
 
 
@@ -159,6 +159,8 @@ class TestDatabase(unittest.TestCase):
         self.assertTrue(db.validate_collection(db.test, True, True))
 
     def test_profiling_levels(self):
+        if is_mongos(self.connection):
+            raise SkipTest('profile is not supported by mongos')
         db = self.connection.pymongo_test
         self.assertEqual(db.profiling_level(), OFF)  # default
 
@@ -176,6 +178,8 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(db.profiling_level(), OFF)
 
     def test_profiling_info(self):
+        if is_mongos(self.connection):
+            raise SkipTest('profile is not supported by mongos')
         db = self.connection.pymongo_test
 
         db.set_profiling_level(ALL)
@@ -216,6 +220,8 @@ class TestDatabase(unittest.TestCase):
         self.assertRaises(TypeError, iterate)
 
     def test_errors(self):
+        if is_mongos(self.connection):
+            raise SkipTest('getpreverror not supported by mongos')
         db = self.connection.pymongo_test
 
         db.reset_error_history()

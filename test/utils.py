@@ -44,3 +44,7 @@ def joinall(threads):
     for t in threads:
         t.join(300)
         assert not t.isAlive(), "Thread %s hung" % t
+
+def is_mongos(conn):
+    res = conn.admin.command('ismaster')
+    return res.get('msg', '') == 'isdbgrid'

@@ -37,7 +37,7 @@ from pymongo.errors import (AutoReconnect,
                             InvalidURI,
                             OperationFailure)
 from test import version
-from test.utils import server_is_master_with_slave, delay
+from test.utils import is_mongos, server_is_master_with_slave, delay
 
 host = os.environ.get("DB_IP", "localhost")
 port = int(os.environ.get("DB_PORT", 27017))
@@ -202,10 +202,12 @@ class TestConnection(unittest.TestCase):
             if not server_is_master_with_slave(c):
                 self.assertFalse("pymongo_test1" in c.database_names())
 
-            c.copy_database("pymongo_test", "pymongo_test1",
-                            username="mike", password="password")
-            self.assertTrue("pymongo_test1" in c.database_names())
-            self.assertEqual("bar", c.pymongo_test1.test.find_one()["foo"])
+            if not is_mongos(c):
+                # See SERVER-6427
+                c.copy_database("pymongo_test", "pymongo_test1",
+                                username="mike", password="password")
+                self.assertTrue("pymongo_test1" in c.database_names())
+                self.assertEqual("bar", c.pymongo_test1.test.find_one()["foo"])
 
     def test_iteration(self):
         connection = Connection(self.host, self.port)
@@ -430,6 +432,8 @@ class TestConnection(unittest.TestCase):
 
     def test_fsync_lock_unlock(self):
         c = get_connection()
+        if is_mongos(c):
+            raise SkipTest('fsync/lock not supported by mongos')
         self.assertFalse(c.is_locked)
         # async flushing not supported on windows...
         if sys.platform not in ('cygwin', 'win32'):
