@@ -684,13 +684,22 @@ class Connection(common.BaseObject):
             self.disconnect()
             raise AutoReconnect(error_msg)
 
-        if "code" in error:
-            if error["code"] in [11000, 11001, 12582]:
-                raise DuplicateKeyError(error["err"])
+        details = error
+        # mongos returns the error code in an error object
+        # for some errors.
+        if "errObjects" in error:
+            for errobj in error["errObjects"]:
+                if errobj["err"] == error_msg:
+                    details = errobj
+                    break
+
+        if "code" in details:
+            if details["code"] in [11000, 11001, 12582]:
+                raise DuplicateKeyError(details["err"])
             else:
-                raise OperationFailure(error["err"], error["code"])
+                raise OperationFailure(details["err"], details["code"])
         else:
-            raise OperationFailure(error["err"])
+            raise OperationFailure(details["err"])
 
     def __check_bson_size(self, message):
         """Make sure the message doesn't include BSON documents larger

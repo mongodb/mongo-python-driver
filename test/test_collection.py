@@ -870,8 +870,6 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(6, db.test.count())
 
     def test_error_code(self):
-        if is_mongos(self.db.connection):
-            raise SkipTest("PYTHON-374")
         try:
             self.db.test.update({}, {"$thismodifierdoesntexist": 1}, safe=True)
             self.fail()
@@ -1547,8 +1545,6 @@ class TestCollection(unittest.TestCase):
         list(db[u"Employés"].find())
 
     def test_drop_indexes_non_existant(self):
-        if is_mongos(self.db.connection):
-            raise SkipTest("PYTHON-374")
         self.db.drop_collection("test")
         self.db.test.drop_indexes()
 

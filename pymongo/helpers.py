@@ -111,22 +111,34 @@ def _unpack_response(response, cursor_id=None, as_class=dict, tz_aware=False):
 
 
 def _check_command_response(response, reset, msg="%s", allowable_errors=[]):
+
     if not response["ok"]:
         if "wtimeout" in response and response["wtimeout"]:
             raise TimeoutError(msg % response["errmsg"])
-        if not response["errmsg"] in allowable_errors:
-            if response["errmsg"] == "not master":
+
+        details = response
+        # Mongos returns the error details in a 'raw' object
+        # for some errors.
+        if "raw" in response:
+            for shard in response["raw"].itervalues():
+                if not shard.get("ok"):
+                    # Just grab the first error...
+                    details = shard
+                    break
+
+        if not details["errmsg"] in allowable_errors:
+            if details["errmsg"] == "not master":
                 if reset is not None:
                     reset()
                 raise AutoReconnect("not master")
-            if response["errmsg"] == "db assertion failure":
+            if details["errmsg"] == "db assertion failure":
                 ex_msg = ("db assertion failure, assertion: '%s'" %
-                          response.get("assertion", ""))
-                if "assertionCode" in response:
+                          details.get("assertion", ""))
+                if "assertionCode" in details:
                     ex_msg += (", assertionCode: %d" %
-                               (response["assertionCode"],))
-                raise OperationFailure(ex_msg, response.get("assertionCode"))
-            raise OperationFailure(msg % response["errmsg"])
+                               (details["assertionCode"],))
+                raise OperationFailure(ex_msg, details.get("assertionCode"))
+            raise OperationFailure(msg % details["errmsg"])
 
 
 def _password_digest(username, password):
