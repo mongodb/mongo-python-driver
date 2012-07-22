@@ -182,7 +182,8 @@ class Collection(common.BaseObject):
                             doc="""The BSON binary subtype for
                             a UUID used for this collection.""")
 
-    def save(self, to_save, manipulate=True, safe=False, **kwargs):
+    def save(self, to_save, manipulate=True,
+             safe=False, check_keys=True, **kwargs):
         """Save a document in this collection.
 
         If `to_save` already has an ``"_id"`` then an :meth:`update`
@@ -211,6 +212,9 @@ class Collection(common.BaseObject):
           - `manipulate` (optional): manipulate the document before
             saving it?
           - `safe` (optional): check that the save succeeded?
+          - `check_keys` (optional): check if keys start with '$' or
+            contain '.', raising :class:`~pymongo.errors.InvalidName`
+            in either case.
           - `**kwargs` (optional): any additional arguments imply
             ``safe=True``, and will be used as options for the
             `getLastError` command
@@ -225,10 +229,10 @@ class Collection(common.BaseObject):
             raise TypeError("cannot save object of type %s" % type(to_save))
 
         if "_id" not in to_save:
-            return self.insert(to_save, manipulate, safe, **kwargs)
+            return self.insert(to_save, manipulate, safe, check_keys, **kwargs)
         else:
             self.update({"_id": to_save["_id"]}, to_save, True,
-                        manipulate, safe, _check_keys=True, **kwargs)
+                        manipulate, safe, _check_keys=check_keys, **kwargs)
             return to_save.get("_id", None)
 
     def insert(self, doc_or_docs, manipulate=True,
