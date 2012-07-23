@@ -74,6 +74,7 @@ class TestBSON(unittest.TestCase):
         self.assertFalse(is_valid(b("\x05\x00\x00\x00\x00\x00")))
         self.assertFalse(is_valid(b("\x07\x00\x00\x00\x02a\x00\x78\x56\x34\x12")))
         self.assertFalse(is_valid(b("\x09\x00\x00\x00\x10a\x00\x05\x00")))
+        self.assertFalse(is_valid(b("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00")))
 
     def test_random_data_is_not_bson(self):
         qcheck.check_unittest(self, qcheck.isnt(is_valid),

@@ -1628,7 +1628,7 @@ static PyObject* _cbson_bson_to_dict(PyObject* self, PyObject* args) {
         return NULL;
     }
 
-    if (string[size - 1]) {
+    if (size != total_size || string[size - 1]) {
         PyObject* InvalidBSON = _error("InvalidBSON");
         PyErr_SetString(InvalidBSON,
                         "bad eoo");
