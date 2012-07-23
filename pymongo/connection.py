@@ -202,7 +202,7 @@ class Connection(common.BaseObject):
         if not isinstance(port, int):
             raise TypeError("port must be an instance of int")
 
-        nodes = set()
+        seeds = set()
         username = None
         password = None
         db = None
@@ -211,7 +211,7 @@ class Connection(common.BaseObject):
             if "://" in entity:
                 if entity.startswith("mongodb://"):
                     res = uri_parser.parse_uri(entity, port)
-                    nodes.update(res["nodelist"])
+                    seeds.update(res["nodelist"])
                     username = res["username"] or username
                     password = res["password"] or password
                     db = res["database"] or db
@@ -221,11 +221,11 @@ class Connection(common.BaseObject):
                     raise InvalidURI("Invalid URI scheme: "
                                      "%s" % (entity[:idx],))
             else:
-                nodes.update(uri_parser.split_hosts(entity, port))
-        if not nodes:
+                seeds.update(uri_parser.split_hosts(entity, port))
+        if not seeds:
             raise ConfigurationError("need to specify at least one host")
 
-        self.__nodes = nodes
+        self.__nodes = seeds
         self.__host = None
         self.__port = None
 
@@ -239,6 +239,11 @@ class Connection(common.BaseObject):
         self.__cursor_manager = CursorManager(self)
 
         self.__repl = options.get('replicaset')
+        if len(seeds) == 1 and not self.__repl:
+            self.__direct = True
+        else:
+            self.__direct = False
+            self.__nodes = set()
 
         if network_timeout is not None:
             if (not isinstance(network_timeout, (int, float)) or
@@ -287,7 +292,7 @@ class Connection(common.BaseObject):
                           "use read_preference instead.", DeprecationWarning)
 
         if _connect:
-            self.__find_node()
+            self.__find_node(seeds)
 
         if db and username is None:
             warnings.warn("must provide a username and password "
@@ -515,7 +520,7 @@ class Connection(common.BaseObject):
             self.__max_bson_size = response["maxBsonObjectSize"]
 
         # Replica Set?
-        if len(self.__nodes) > 1 or self.__repl:
+        if not self.__direct:
             # Check that this host is part of the given replica set.
             if self.__repl:
                 set_name = response.get('setName')
@@ -527,9 +532,13 @@ class Connection(common.BaseObject):
                                              "replica set %s"
                                              % (node[0], node[1], self.__repl))
             if "hosts" in response:
-                self.__nodes.update([_partition_node(h)
-                                     for h in response["hosts"]])
+                self.__nodes = set([_partition_node(h)
+                                    for h in response["hosts"]])
             if response["ismaster"]:
+                # The user passed a seed list of standalone or mongos instances.
+                # TODO: Rework this for PYTHON-368 (mongos high availability).
+                if not self.__nodes:
+                    self.__nodes = set([node])
                 return node
             elif "primary" in response:
                 candidate = _partition_node(response["primary"])
@@ -543,7 +552,7 @@ class Connection(common.BaseObject):
             raise ConfigurationError("%s:%d is an arbiter" % node)
         return node
 
-    def __find_node(self):
+    def __find_node(self, seeds=None):
         """Find a host, port pair suitable for our connection type.
 
         If only one host was supplied to __init__ see if we can connect
@@ -565,8 +574,8 @@ class Connection(common.BaseObject):
         """
         errors = []
         # self.__nodes may change size as we iterate.
-        seeds = self.__nodes.copy()
-        for candidate in seeds:
+        candidates = seeds or self.__nodes.copy()
+        for candidate in candidates:
             try:
                 node = self.__try_node(candidate)
                 if node:
@@ -574,7 +583,7 @@ class Connection(common.BaseObject):
             except Exception, why:
                 errors.append(str(why))
         # Try any hosts we discovered that were not in the seed list.
-        for candidate in self.__nodes - seeds:
+        for candidate in self.__nodes - candidates:
             try:
                 node = self.__try_node(candidate)
                 if node:
