@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Cursor class to iterate over Mongo query results."""
+from collections import deque
 
 from bson.code import Code
 from bson.son import SON
@@ -120,7 +121,7 @@ class Cursor(object):
         self.__uuid_subtype = _uuid_subtype or collection.uuid_subtype
         self.__query_flags = 0
 
-        self.__data = []
+        self.__data = deque()
         self.__connection_id = None
         self.__retrieved = 0
         self.__killed = False
@@ -151,7 +152,7 @@ class Cursor(object):
         be sent to the server, even if the resultant data has already been
         retrieved by this cursor.
         """
-        self.__data = []
+        self.__data = deque()
         self.__id = None
         self.__connection_id = None
         self.__retrieved = 0
@@ -697,7 +698,7 @@ class Cursor(object):
                     response['starting_from'], self.__retrieved))
 
         self.__retrieved += response["number_returned"]
-        self.__data = response["data"]
+        self.__data = deque(response["data"])
 
         if self.__limit and self.__id and self.__limit <= self.__retrieved:
             self.__die()
@@ -775,9 +776,10 @@ class Cursor(object):
         db = self.__collection.database
         if len(self.__data) or self._refresh():
             if self.__manipulate:
-                return db._fix_outgoing(self.__data.pop(0), self.__collection)
+                return db._fix_outgoing(self.__data.popleft(),
+                                        self.__collection)
             else:
-                return self.__data.pop(0)
+                return self.__data.popleft()
         else:
             raise StopIteration
 
@@ -786,4 +788,3 @@ class Cursor(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.__die()
-
