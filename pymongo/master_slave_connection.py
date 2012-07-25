@@ -39,8 +39,8 @@ class MasterSlaveConnection(BaseObject):
         to create this `MasterSlaveConnection` can themselves make use of
         connection pooling, etc. 'Connection' instances used as slaves should
         be created with the read_preference option set to
-        :attr:`~pymongo.ReadPreference.SECONDARY`. Safe options are
-        inherited from `master` and can be changed in this instance.
+        :attr:`~pymongo.read_preferences.ReadPreference.SECONDARY`. Safe
+        options are inherited from `master` and can be changed in this instance.
 
         Raises TypeError if `master` is not an instance of `Connection` or
         slaves is not a list of at least one `Connection` instances.
@@ -84,6 +84,14 @@ class MasterSlaveConnection(BaseObject):
     @property
     def slaves(self):
         return self.__slaves
+
+    @property
+    def is_mongos(self):
+        """If this MasterSlaveConnection is connected to mongos (always False)
+
+        .. versionadded:: 2.2.1+
+        """
+        return False
 
     def get_document_class(self):
         return self.__document_class

@@ -25,9 +25,7 @@ from test.test_connection import get_connection
 from pymongo.connection import Connection
 from pymongo.replica_set_connection import ReplicaSetConnection
 from pymongo.pool import SocketInfo, _closed
-from pymongo.errors import (AutoReconnect,
-                            OperationFailure,
-                            DuplicateKeyError)
+from pymongo.errors import AutoReconnect, OperationFailure
 
 
 def get_pool(connection):
@@ -35,8 +33,8 @@ def get_pool(connection):
         return connection._Connection__pool
     elif isinstance(connection, ReplicaSetConnection):
         writer = connection._ReplicaSetConnection__writer
-        pools = connection._ReplicaSetConnection__pools
-        return pools[writer]['pool']
+        pools = connection._ReplicaSetConnection__members
+        return pools[writer].pool
     else:
         raise TypeError(str(connection))
 
@@ -446,6 +444,7 @@ class TestThreads(BaseTestThreads, unittest.TestCase):
 
 class TestThreadsAuth(BaseTestThreadsAuth, unittest.TestCase):
     pass
+
 
 if __name__ == "__main__":
     unittest.main()

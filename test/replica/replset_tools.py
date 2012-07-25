@@ -120,35 +120,53 @@ def start_replica_set(members, fresh=True):
             expected_arbiters += 1
     expected_secondaries = len(members) - expected_arbiters - 1
 
-    while True:
+    # Wait for 5 minutes for replica set to come up
+    patience = 5
+    for _ in range(patience * 60 / 2):
         time.sleep(2)
         try:
-            if (len(get_primary()) == 1 and
+            if (get_primary() and
                 len(get_secondaries()) == expected_secondaries and
                 len(get_arbiters()) == expected_arbiters):
                 break
         except pymongo.errors.AutoReconnect:
             # Keep waiting
             pass
+    else:
+        kill_all_members()
+        raise Exception(
+            "Replica set still not initalized after %s minutes" % patience)
     return primary, set_name
 
 
+# Connect to a random member
+def get_connection():
+    return pymongo.Connection(nodes.keys(), slave_okay=True, use_greenlets=use_greenlets)
+
+
 def get_members_in_state(state):
-    c = pymongo.Connection(nodes.keys(), slave_okay=True, use_greenlets=use_greenlets)
-    status = c.admin.command('replSetGetStatus')
+    status = get_connection().admin.command('replSetGetStatus')
     members = status['members']
     return [k['name'] for k in members if k['state'] == state]
 
 
 def get_primary():
-    return get_members_in_state(1)
+    try:
+        primaries = get_members_in_state(1)
+        assert len(primaries) <= 1
+        if primaries:
+            return primaries[0]
+    except pymongo.errors.AutoReconnect:
+        pass
+
+    return None
 
 
 def get_random_secondary():
     secondaries = get_members_in_state(2)
     if len(secondaries):
-        return [secondaries[random.randrange(0, len(secondaries))]]
-    return secondaries
+        return random.choice(secondaries)
+    return None
 
 
 def get_secondaries():
@@ -160,13 +178,11 @@ def get_arbiters():
 
 
 def get_passives():
-    c = pymongo.Connection(nodes.keys(), slave_okay=True, use_greenlets=use_greenlets)
-    return c.admin.command('ismaster').get('passives', [])
+    return get_connection().admin.command('ismaster').get('passives', [])
 
 
 def get_hosts():
-    c = pymongo.Connection(nodes.keys(), slave_okay=True, use_greenlets=use_greenlets)
-    return c.admin.command('ismaster').get('hosts', [])
+    return get_connection().admin.command('ismaster').get('hosts', [])
 
 
 def get_hidden_members():
@@ -182,15 +198,24 @@ def get_hidden_members():
     return secondaries
 
 
+def get_tags(member):
+    config = get_connection().local.system.replset.find_one()
+    for m in config['members']:
+        if m['host'] == member:
+            return m.get('tags', {})
+
+    raise Exception('member %s not in config' % repr(member))
+
+
 def kill_primary(sig=2):
     primary = get_primary()
-    kill_members(primary, sig)
+    kill_members([primary], sig)
     return primary
 
 
 def kill_secondary(sig=2):
     secondary = get_random_secondary()
-    kill_members(secondary, sig)
+    kill_members([secondary], sig)
     return secondary
 
 

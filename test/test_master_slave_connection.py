@@ -62,6 +62,16 @@ class TestMasterSlaveConnection(unittest.TestCase):
         self.connection = MasterSlaveConnection(self.master, self.slaves)
         self.db = self.connection.pymongo_test
 
+    def tearDown(self):
+        try:
+            self.db.test.drop_indexes()
+        except Exception:
+            # Tests like test_disconnect can monkey with the connection in ways
+            # that make this fail
+            pass
+
+        super(TestMasterSlaveConnection, self).tearDown()
+
     def test_types(self):
         self.assertRaises(TypeError, MasterSlaveConnection, 1)
         self.assertRaises(TypeError, MasterSlaveConnection, self.master, 1)

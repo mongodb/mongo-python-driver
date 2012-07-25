@@ -26,6 +26,7 @@ from pymongo.errors import (CollectionInvalid,
                             InvalidName,
                             OperationFailure)
 from pymongo.son_manipulator import ObjectIdInjector
+from pymongo import read_preferences as rp
 
 
 def _check_name(name):
@@ -62,6 +63,9 @@ class Database(common.BaseObject):
         super(Database,
               self).__init__(slave_okay=connection.slave_okay,
                              read_preference=connection.read_preference,
+                             tag_sets=connection.tag_sets,
+                             secondary_acceptable_latency_ms=(
+                                 connection.secondary_acceptable_latency_ms),
                              safe=connection.safe,
                              **(connection.get_lasterror_options()))
 
@@ -313,9 +317,23 @@ class Database(common.BaseObject):
             in this list will be ignored by error-checking
           - `uuid_subtype` (optional): The BSON binary subtype to use
             for a UUID used in this command.
+          - `read_preference`: The read preference for this connection.
+            See :class:`~pymongo.read_preferences.ReadPreference` for available
+            options.
+          - `tag_sets`: Read from replica-set members with these tags.
+            To specify a priority-order for tag sets, provide a list of
+            tag sets: ``[{'dc': 'ny'}, {'dc': 'la'}, {}]``. A final, empty tag
+            set, ``{}``, means "read from any member that matches the mode,
+            ignoring tags." ReplicaSetConnection tries each set of tags in turn
+            until it finds a set of tags with at least one matching member.
+          - `secondary_acceptable_latency_ms`: Any replica-set member whose
+            ping time is within secondary_acceptable_latency_ms of the nearest
+            member may accept reads. Default 15 milliseconds.
           - `**kwargs` (optional): additional keyword arguments will
             be added to the command document before it is sent
 
+        .. versionchanged:: 2.2.1+
+           Added `tag_sets` and `secondary_acceptable_latency_ms` options.
         .. versionchanged:: 2.2
            Added support for `as_class` - the class you want to use for
            the resulting documents
@@ -332,14 +350,34 @@ class Database(common.BaseObject):
         if isinstance(command, basestring):
             command = SON([(command, value)])
 
+        command_name = command.keys()[0]
+        must_use_master = kwargs.pop('_use_master', False)
+        if command_name.lower() not in rp.secondary_ok_commands:
+            must_use_master = True
+
+        # Special-case: mapreduce can go to secondaries only if inline
+        if command_name == 'mapreduce':
+            out = command.get('out') or kwargs.get('out')
+            if not isinstance(out, dict) or not out.get('inline'):
+                must_use_master = True
+
         extra_opts = {
             'as_class': kwargs.pop('as_class', None),
-            'read_preference': kwargs.pop('read_preference',
-                                          self.read_preference),
             'slave_okay': kwargs.pop('slave_okay', self.slave_okay),
-            '_must_use_master': kwargs.pop('_use_master', True),
+            '_must_use_master': must_use_master,
             '_uuid_subtype': uuid_subtype
         }
+
+        if not must_use_master:
+            extra_opts['read_preference'] = kwargs.pop(
+                'read_preference',
+                self.read_preference)
+            extra_opts['tag_sets'] = kwargs.pop(
+                'tag_sets',
+                self.tag_sets)
+            extra_opts['secondary_acceptable_latency_ms'] = kwargs.pop(
+                'secondary_acceptable_latency_ms',
+                self.secondary_acceptable_latency_ms)
 
         fields = kwargs.get('fields')
         if fields is not None and not isinstance(fields, dict):

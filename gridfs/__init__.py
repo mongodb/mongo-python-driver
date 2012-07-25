@@ -54,7 +54,8 @@ class GridFS(object):
         self.__collection = database[collection]
         self.__files = self.__collection.files
         self.__chunks = self.__collection.chunks
-        if not database.slave_okay and not database.read_preference:
+        connection = database.connection
+        if not hasattr(connection, 'is_primary') or connection.is_primary:
             self.__chunks.ensure_index([("files_id", ASCENDING),
                                         ("n", ASCENDING)],
                                        unique=True)
@@ -158,7 +159,7 @@ class GridFS(object):
 
         :Parameters:
           - `filename`: ``"filename"`` of the file to get, or `None`
-          - `version` (optional): version of the file to get (defualts
+          - `version` (optional): version of the file to get (defaults
             to -1, the most recent version uploaded)
           - `**kwargs` (optional): find files by custom metadata.
 
@@ -168,8 +169,8 @@ class GridFS(object):
            Accept keyword arguments to find files by custom metadata.
         .. versionadded:: 1.9
         """
-        database = self.__database
-        if not database.slave_okay and not database.read_preference:
+        connection = self.__database.connection
+        if not hasattr(connection, 'is_primary') or connection.is_primary:
             self.__files.ensure_index([("filename", ASCENDING),
                                        ("uploadDate", DESCENDING)])
 

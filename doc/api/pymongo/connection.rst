@@ -17,11 +17,15 @@
 
       .. autoattribute:: host
       .. autoattribute:: port
+      .. autoattribute:: is_primary
+      .. autoattribute:: is_mongos
       .. autoattribute:: nodes
       .. autoattribute:: max_pool_size
       .. autoattribute:: document_class
       .. autoattribute:: tz_aware
       .. autoattribute:: read_preference
+      .. autoattribute:: tag_sets
+      .. autoattribute:: secondary_acceptable_latency_ms
       .. autoattribute:: slave_okay
       .. autoattribute:: safe
       .. autoattribute:: is_locked

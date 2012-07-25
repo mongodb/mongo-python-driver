@@ -100,7 +100,7 @@ Important New Features:
   automatic failover handling and periodically checks the state of the
   replica set to handle issues like primary stepdown or secondaries
   being removed for backup operations. Read preferences are defined through
-  :class:`~pymongo.ReadPreference`.
+  :class:`~pymongo.read_preferences.ReadPreference`.
 - PyMongo supports the new BSON binary subtype 4 for UUIDs. The default
   subtype to use can be set through
   :attr:`~pymongo.collection.Collection.uuid_subtype`

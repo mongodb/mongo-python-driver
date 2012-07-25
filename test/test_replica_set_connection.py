@@ -14,6 +14,7 @@
 
 """Test the replica_set_connection module."""
 
+import copy
 import datetime
 import os
 import signal
@@ -23,14 +24,15 @@ import time
 import thread
 import traceback
 import unittest
+
 sys.path[0:0] = [""]
 
 from nose.plugins.skip import SkipTest
 
 from bson.son import SON
 from bson.tz_util import utc
-from pymongo import ReadPreference
 from pymongo.connection import Connection
+from pymongo.read_preferences import ReadPreference
 from pymongo.replica_set_connection import ReplicaSetConnection
 from pymongo.replica_set_connection import _partition_node
 from pymongo.database import Database
@@ -40,7 +42,7 @@ from pymongo.errors import (AutoReconnect,
                             InvalidName,
                             OperationFailure)
 from test import version
-from test.utils import delay
+from test.utils import delay, assertReadFrom, assertReadFromAll, read_from_which_host
 
 
 host = os.environ.get("DB_IP", 'localhost')
@@ -82,6 +84,10 @@ class TestConnectionReplicaSetBase(unittest.TestCase):
             ][0]
 
             self.primary = _partition_node(primary_info['name'])
+            self.secondaries = [
+                _partition_node(m['name']) for m in repl_set_status['members']
+                if m['stateStr'] == 'SECONDARY'
+            ]
         else:
             raise SkipTest()
 
@@ -113,28 +119,65 @@ class TestConnection(TestConnectionReplicaSetBase):
         self.assertEqual(c.primary, self.primary)
         self.assertEqual(c.hosts, self.hosts)
         self.assertEqual(c.arbiters, self.arbiters)
-        self.assertEqual(c.read_preference, ReadPreference.PRIMARY)
         self.assertEqual(c.max_pool_size, 10)
         self.assertEqual(c.document_class, dict)
         self.assertEqual(c.tz_aware, False)
-        self.assertEqual(c.slave_okay, False)
-        self.assertEqual(c.safe, False)
+
+        # Make sure RSC's properties are copied to Database and Collection
+        for obj in c, c.pymongo_test, c.pymongo_test.test:
+            self.assertEqual(obj.read_preference, ReadPreference.PRIMARY)
+            self.assertEqual(obj.tag_sets, [{}])
+            self.assertEqual(obj.secondary_acceptable_latency_ms, 15)
+            self.assertEqual(obj.slave_okay, False)
+            self.assertEqual(obj.safe, False)
+
+        cursor = c.pymongo_test.test.find()
+        self.assertEqual(
+            ReadPreference.PRIMARY, cursor._Cursor__read_preference)
+        self.assertEqual([{}], cursor._Cursor__tag_sets)
+        self.assertEqual(15, cursor._Cursor__secondary_acceptable_latency_ms)
+        self.assertEqual(False, cursor._Cursor__slave_okay)
         c.close()
 
+        tag_sets = [{'dc': 'la', 'rack': '2'}, {'foo': 'bar'}]
         c = ReplicaSetConnection(pair, replicaSet=self.name, max_pool_size=25,
                                  document_class=SON, tz_aware=True,
                                  slaveOk=False, safe=True,
-                                 read_preference=ReadPreference.SECONDARY)
+                                 read_preference=ReadPreference.SECONDARY,
+                                 tag_sets=copy.deepcopy(tag_sets),
+                                 secondary_acceptable_latency_ms=77)
         c.admin.command('ping')
         self.assertEqual(c.primary, self.primary)
         self.assertEqual(c.hosts, self.hosts)
         self.assertEqual(c.arbiters, self.arbiters)
-        self.assertEqual(c.read_preference, ReadPreference.SECONDARY)
         self.assertEqual(c.max_pool_size, 25)
         self.assertEqual(c.document_class, SON)
         self.assertEqual(c.tz_aware, True)
-        self.assertEqual(c.slave_okay, False)
-        self.assertEqual(c.safe, True)
+
+        for obj in c, c.pymongo_test, c.pymongo_test.test:
+            self.assertEqual(obj.read_preference, ReadPreference.SECONDARY)
+            self.assertEqual(obj.tag_sets, tag_sets)
+            self.assertEqual(obj.secondary_acceptable_latency_ms, 77)
+            self.assertEqual(obj.slave_okay, False)
+            self.assertEqual(obj.safe, True)
+
+        cursor = c.pymongo_test.test.find()
+        self.assertEqual(
+            ReadPreference.SECONDARY, cursor._Cursor__read_preference)
+        self.assertEqual(tag_sets, cursor._Cursor__tag_sets)
+        self.assertEqual(77, cursor._Cursor__secondary_acceptable_latency_ms)
+        self.assertEqual(False, cursor._Cursor__slave_okay)
+
+        cursor = c.pymongo_test.test.find(
+            read_preference=ReadPreference.NEAREST,
+            tag_sets=[{'dc':'ny'}, {}],
+            secondary_acceptable_latency_ms=123)
+
+        self.assertEqual(
+            ReadPreference.NEAREST, cursor._Cursor__read_preference)
+        self.assertEqual([{'dc':'ny'}, {}], cursor._Cursor__tag_sets)
+        self.assertEqual(123, cursor._Cursor__secondary_acceptable_latency_ms)
+        self.assertEqual(False, cursor._Cursor__slave_okay)
 
         if version.at_least(c, (1, 7, 4)):
             self.assertEqual(c.max_bson_size, 16777216)
@@ -315,17 +358,17 @@ class TestConnection(TestConnectionReplicaSetBase):
         self.assertRaises(TypeError, iterate)
         connection.close()
 
-    def test_close(self):
+    def test_disconnect(self):
         c = self._get_connection()
         coll = c.foo.bar
 
-        c.close()
-        c.close()
+        c.disconnect()
+        c.disconnect()
 
         coll.count()
 
-        c.close()
-        c.close()
+        c.disconnect()
+        c.disconnect()
 
         coll.count()
 
@@ -614,7 +657,8 @@ class TestConnection(TestConnectionReplicaSetBase):
 
         # auto_start_request should default to True
         conn = self._get_connection()
-        pools = [mongo['pool'] for mongo in conn._ReplicaSetConnection__pools.values()]
+        pools = [mongo.pool for mongo in
+                 conn._ReplicaSetConnection__members.values()]
         self.assertTrue(conn.auto_start_request)
         self.assertTrue(conn.in_request())
 
@@ -630,6 +674,7 @@ class TestConnection(TestConnectionReplicaSetBase):
             self.assertFalse(pool.in_request())
         conn.start_request()
         self.assertTrue(conn.in_request())
+        conn.close()
 
         conn = self._get_connection(auto_start_request=False)
         self.assertFalse(conn.in_request())
@@ -637,6 +682,72 @@ class TestConnection(TestConnectionReplicaSetBase):
         self.assertTrue(conn.in_request())
         conn.end_request()
         self.assertFalse(conn.in_request())
+        conn.close()
+
+    def test_schedule_refresh(self):
+        # Monitor thread starts waiting for _refresh_interval, 30 seconds
+        conn = self._get_connection()
+
+        # Reconnect if necessary
+        conn.pymongo_test.test.find_one()
+
+        secondaries = conn.secondaries
+        for secondary in secondaries:
+            conn._ReplicaSetConnection__members[secondary].up = False
+
+        conn._ReplicaSetConnection__members[conn.primary].up = False
+
+        # Wake up monitor thread
+        conn._ReplicaSetConnection__schedule_refresh()
+
+        # Refresh interval is 30 seconds; scheduling a refresh tells the
+        # monitor thread / greenlet to start a refresh now. We still need to
+        # sleep a few seconds for it to complete.
+        time.sleep(5)
+        for secondary in secondaries:
+            self.assertTrue(conn._ReplicaSetConnection__members[secondary].up,
+                "ReplicaSetConnection didn't detect secondary is up")
+
+        self.assertTrue(conn._ReplicaSetConnection__members[conn.primary].up,
+            "ReplicaSetConnection didn't detect primary is up")
+
+        conn.close()
+
+    def test_pinned_member(self):
+        conn = self._get_connection(
+            auto_start_request=False, secondary_acceptable_latency_ms=1000*1000)
+
+        host = read_from_which_host(conn, ReadPreference.SECONDARY)
+        self.assertTrue(host in conn.secondaries)
+
+        # No pinning since we're not in a request
+        assertReadFromAll(
+            self, conn, conn.secondaries, ReadPreference.SECONDARY)
+
+        assertReadFromAll(
+            self, conn, list(conn.secondaries) + [conn.primary],
+            ReadPreference.NEAREST)
+
+        conn.start_request()
+        host = read_from_which_host(conn, ReadPreference.SECONDARY)
+        self.assertTrue(host in conn.secondaries)
+        assertReadFrom(self, conn, host, ReadPreference.SECONDARY)
+
+        # Repin
+        primary = read_from_which_host(conn, ReadPreference.PRIMARY)
+        self.assertEqual(conn.primary, primary)
+        assertReadFrom(self, conn, primary, ReadPreference.NEAREST)
+
+        # Repin again
+        host = read_from_which_host(conn, ReadPreference.SECONDARY)
+        self.assertTrue(host in conn.secondaries)
+        assertReadFrom(self, conn, host, ReadPreference.SECONDARY)
+
+        # Unpin
+        conn.end_request()
+        assertReadFromAll(
+            self, conn, list(conn.secondaries) + [conn.primary],
+            ReadPreference.NEAREST)
 
 
 if __name__ == "__main__":
