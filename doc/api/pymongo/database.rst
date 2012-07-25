@@ -20,6 +20,8 @@
 
       .. autoattribute:: slave_okay
       .. autoattribute:: read_preference
+      .. autoattribute:: tag_sets
+      .. autoattribute:: secondary_acceptable_latency_ms
       .. autoattribute:: safe
       .. automethod:: get_lasterror_options
       .. automethod:: set_lasterror_options

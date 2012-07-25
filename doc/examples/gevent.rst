@@ -53,8 +53,9 @@ Additionally, it will use a background greenlet instead of a background thread
 to monitor the state of the replica set.
 
 Using :meth:`~pymongo.replica_set_connection.ReplicaSetConnection.start_request()`
-with :class:`~pymongo.ReadPreference` PRIMARY ensures that the current greenlet
-uses the same socket for all operations until a call to :meth:`end_request()`.
+with :class:`~pymongo.read_preferences.ReadPreference` PRIMARY ensures that the
+current greenlet uses the same socket for all operations until a call to
+:meth:`end_request()`.
 
 You must `install Gevent <http://gevent.org/>`_ to use
 :class:`~pymongo.replica_set_connection.ReplicaSetConnection`

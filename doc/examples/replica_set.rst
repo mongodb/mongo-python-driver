@@ -155,31 +155,113 @@ the operation will succeed::
 ReplicaSetConnection
 --------------------
 
-In Pymongo-2.1 a new ReplicaSetConnection class was added that provides
-some new features not supported in the original Connection class. The most
-important of these is the ability to distribute queries to the secondary
-members of a replica set. To connect using ReplicaSetConnection just
-provide a host:port pair and the name of the replica set::
+Using a :class:`~pymongo.replica_set_connection.ReplicaSetConnection` instead
+of a simple :class:`~pymongo.connection.Connection` offers two key features:
+secondary reads and replica set health monitoring. To connect using
+`ReplicaSetConnection` just provide a host:port pair and the name of the
+replica set::
 
   >>> from pymongo import ReplicaSetConnection
   >>> ReplicaSetConnection("morton.local:27017", replicaSet='foo')
   ReplicaSetConnection([u'morton.local:27019', u'morton.local:27017', u'morton.local:27018'])
 
+Secondary Reads
+'''''''''''''''
+
 By default an instance of ReplicaSetConnection will only send queries to
-the primary member of the replica set. To use secondary members for queries
-we have to change the read preference::
+the primary member of the replica set. To use secondaries for queries
+we have to change the :class:`~pymongo.read_preference.ReadPreference`::
 
   >>> db = ReplicaSetConnection("morton.local:27017", replicaSet='foo').test
-  >>> from pymongo import ReadPreference
-  >>> db.read_preference = ReadPreference.SECONDARY
+  >>> from pymongo.read_preference import ReadPreference
+  >>> db.read_preference = ReadPreference.SECONDARY_PREFERRED
 
 Now all queries will be sent to the secondary members of the set. If there are
 no secondary members the primary will be used as a fallback. If you have
 queries you would prefer to never send to the primary you can specify that
-using the SECONDARY_ONLY read preference::
+using the ``SECONDARY`` read preference::
 
-  >>> db.read_preference = ReadPreference.SECONDARY_ONLY
+  >>> db.read_preference = ReadPreference.SECONDARY
 
 Read preference can be set on a connection, database, collection, or on a
-per-query basis.
+per-query basis, e.g.::
 
+  >>> db.collection.find_one(read_preference=ReadPreference.PRIMARY)
+
+Reads are configured using three options: **read_preference**, **tag_sets**,
+and **secondary_acceptable_latency_ms**.
+
+**read_preference**:
+
+- ``PRIMARY``: Read from the primary. This is the default, and provides the
+  strongest consistency. If no primary is available, raise
+  :class:`~pymongo.errors.AutoReconnect`.
+
+- ``PRIMARY_PREFERRED``: Read from the primary if available, or if there is
+  none, read from a secondary matching your choice of ``tag_sets`` and
+  ``secondary_acceptable_latency_ms``.
+
+- ``SECONDARY``: Read from a secondary matching your choice of ``tag_sets`` and
+  ``secondary_acceptable_latency_ms``. If no matching secondary is available,
+  raise :class:`~pymongo.errors.AutoReconnect`.
+
+- ``SECONDARY_PREFERRED``: Read from a secondary matching your choice of
+  ``tag_sets`` and ``secondary_acceptable_latency_ms`` if available, otherwise
+  from primary (regardless of the primary's tags and latency).
+
+- ``NEAREST``: Read from any member matching your choice of ``tag_sets`` and
+  ``secondary_acceptable_latency_ms``.
+
+**tag_sets**:
+
+Replica-set members can be `tagged
+<http://www.mongodb.org/display/DOCS/Data+Center+Awareness>`_ according to any
+criteria you choose. By default, ReplicaSetConnection ignores tags when
+choosing a member to read from, but it can be configured with the ``tag_sets``
+parameter. ``tag_sets`` must be a list of dictionaries, each dict providing tag
+values that the replica set member must match. ReplicaSetConnection tries each
+set of tags in turn until it finds a set of tags with at least one matching
+member. For example, to prefer reads from the New York data center, but fall
+back to the San Francisco data center, tag your replica set members according
+to their location and create a ReplicaSetConnection like so:
+
+  >>> rsc = ReplicaSetConnection(
+  ...     "morton.local:27017",
+  ...     replicaSet='foo'
+  ...     read_preference=ReadPreference.SECONDARY,
+  ...     tag_sets=[{'dc': 'ny'}, {'dc': 'sf'}]
+  ... )
+
+ReplicaSetConnection tries to find secondaries in New York, then San Francisco,
+and raises :class:`~pymongo.errors.AutoReconnect` if none are available. As an
+additional fallback, specify a final, empty tag set, ``{}``, which means "read
+from any member that matches the mode, ignoring tags."
+
+**secondary_acceptable_latency_ms**:
+
+If multiple members match the mode and tag sets, ReplicaSetConnection reads
+from among the nearest members, chosen according to ping time. By default,
+only members whose ping times are within 15 milliseconds of the nearest
+are used for queries. You can choose to distribute reads among members with
+higher latencies by setting ``secondary_acceptable_latency_ms`` to a larger
+number. In that case, ReplicaSetConnection distributes reads among matching
+members within ``secondary_acceptable_latency_ms`` of the closest member's
+ping time.
+
+Health Monitoring
+'''''''''''''''''
+
+When ReplicaSetConnection is initialized it launches a background task to
+monitor the replica set for changes in:
+
+* Health: detect when a member goes down or comes up, or if a different member
+  becomes primary
+* Configuration: detect changes in tags
+* Latency: track a moving average of each member's ping time
+
+Replica-set monitoring ensures queries are continually routed to the proper
+members as the state of the replica set changes.
+
+It is critical to call
+:meth:`~pymongo.replica_set_connection.ReplicaSetConnection.close` to terminate
+the monitoring task before your process exits.

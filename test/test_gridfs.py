@@ -16,6 +16,11 @@
 
 """Tests for the gridfs package.
 """
+from gridfs.grid_file import GridIn
+from pymongo.connection import Connection
+from pymongo.errors import AutoReconnect
+from pymongo.read_preferences import ReadPreference
+from test.test_replica_set_connection import TestConnectionReplicaSetBase
 
 try:
     from io import BytesIO as StringIO
@@ -339,6 +344,47 @@ class TestGridfs(unittest.TestCase):
             n,
             self.db.fs.files.find({'filename':'test'}).count()
         )
+
+
+class TestGridfsReplicaSet(TestConnectionReplicaSetBase):
+    def test_gridfs_replica_set(self):
+        rsc = self._get_connection(
+            w=self.w, wtimeout=5000,
+            read_preference=ReadPreference.SECONDARY)
+
+        try:
+            fs = gridfs.GridFS(rsc.pymongo_test)
+            oid = fs.put(b('foo'))
+            content = fs.get(oid).read()
+            self.assertEqual(b('foo'), content)
+        finally:
+            rsc.close()
+
+    def test_gridfs_secondary(self):
+        primary_host, primary_port = self.primary
+        primary_connection = Connection(primary_host, primary_port)
+
+        secondary_host, secondary_port = self.secondaries[0]
+        for secondary_connection in [
+            Connection(secondary_host, secondary_port, slave_okay=True),
+            Connection(secondary_host, secondary_port,
+                read_preference=ReadPreference.SECONDARY),
+            ]:
+            primary_connection.pymongo_test.drop_collection("fs.files")
+            primary_connection.pymongo_test.drop_collection("fs.chunks")
+
+            # Should detect it's connected to secondary and not attempt to
+            # create index
+            fs = gridfs.GridFS(secondary_connection.pymongo_test)
+
+            # This won't detect secondary, raises error
+            self.assertRaises(AutoReconnect, fs.put, b('foo'))
+
+    def tearDown(self):
+        rsc = self._get_connection()
+        rsc.pymongo_test.drop_collection('fs.files')
+        rsc.pymongo_test.drop_collection('fs.chunks')
+        rsc.close()
 
 
 if __name__ == "__main__":

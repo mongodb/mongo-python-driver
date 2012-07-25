@@ -15,18 +15,13 @@
 """Test that pymongo is thread safe."""
 
 import unittest
-import os
 
-from nose.plugins.skip import SkipTest
 from pymongo.replica_set_connection import ReplicaSetConnection
-from test.test_threads import (IgnoreAutoReconnect,
-                               BaseTestThreads,
-                               BaseTestThreadsAuth)
+from test.test_threads import BaseTestThreads, BaseTestThreadsAuth
 
 from test.test_replica_set_connection import (TestConnectionReplicaSetBase,
                                               pair)
 
-from pymongo.errors import AutoReconnect
 
 class TestThreadsReplicaSet(TestConnectionReplicaSetBase, BaseTestThreads):
     def setUp(self):
@@ -69,6 +64,7 @@ class TestThreadsAuthReplicaSet(TestConnectionReplicaSetBase, BaseTestThreadsAut
         instead of a regular Connection.
         """
         return ReplicaSetConnection(pair, replicaSet=self.name)
+
 
 if __name__ == "__main__":
     suite = unittest.TestSuite([

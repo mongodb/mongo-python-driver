@@ -21,6 +21,8 @@
       .. autoattribute:: primary
       .. autoattribute:: secondaries
       .. autoattribute:: read_preference
+      .. autoattribute:: tag_sets
+      .. autoattribute:: secondary_acceptable_latency_ms
       .. autoattribute:: max_pool_size
       .. autoattribute:: document_class
       .. autoattribute:: tz_aware

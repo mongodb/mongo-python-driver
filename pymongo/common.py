@@ -15,8 +15,9 @@
 
 """Functions and classes common to multiple pymongo modules."""
 import warnings
+from pymongo import read_preferences
 
-from pymongo import ReadPreference
+from pymongo.read_preferences import ReadPreference
 from pymongo.errors import ConfigurationError
 
 
@@ -83,28 +84,57 @@ def validate_int_or_basestring(option, value):
                     "integer or a string" % (option,))
 
 
+def validate_positive_float(option, value):
+    """Validates that 'value' is a float, or can be converted to one, and is
+       positive.
+    """
+    err = ConfigurationError("%s must be a positive int or float" % (option,))
+    try:
+        value = float(value)
+    except (ValueError, TypeError):
+        raise err
+    if value <= 0:
+        raise err
+
+    return value
+
+    
 def validate_timeout_or_none(option, value):
     """Validates a timeout specified in milliseconds returning
     a value in floating point seconds.
     """
     if value is None:
         return value
-    try:
-        value = float(value)
-    except (ValueError, TypeError):
-        raise ConfigurationError("%s must be an "
-                                 "instance of int or float" % (option,))
-    if value <= 0:
-        raise ConfigurationError("%s must be a positive integer" % (option,))
-    return value / 1000.0
+    return validate_positive_float(option, value) / 1000.0
 
 
 def validate_read_preference(dummy, value):
     """Validate read preference for a ReplicaSetConnection.
     """
-    if value not in range(ReadPreference.PRIMARY,
-                          ReadPreference.SECONDARY_ONLY + 1):
+    if value not in read_preferences.modes:
         raise ConfigurationError("Not a valid read preference")
+    return value
+
+
+def validate_tag_sets(dummy, value):
+    """Validate tag sets for a ReplicaSetConnection.
+    """
+    if value is None:
+        return [{}]
+
+    if not isinstance(value, list):
+        raise ConfigurationError((
+            "Tag sets %s invalid, must be a list" ) % repr(value))
+    if len(value) == 0:
+        raise ConfigurationError((
+            "Tag sets %s invalid, must be None or contain at least one set of"
+            " tags") % repr(value))
+
+    for tags in value:
+        if not isinstance(tags, dict):
+            raise ConfigurationError(
+                "Tag set %s invalid, must be a dict" % repr(tags))
+
     return value
 
 
@@ -125,6 +155,9 @@ VALIDATORS = {
     'sockettimeoutms': validate_timeout_or_none,
     'ssl': validate_boolean,
     'read_preference': validate_read_preference,
+    'tag_sets': validate_tag_sets,
+    'secondaryacceptablelatencyms': validate_positive_float,
+    'secondary_acceptable_latency_ms': validate_positive_float,
     'auto_start_request': validate_boolean,
     'use_greenlets': validate_boolean,
 }
@@ -160,9 +193,16 @@ class BaseObject(object):
 
         self.__slave_okay = False
         self.__read_pref = ReadPreference.PRIMARY
+        self.__tag_sets = [{}]
+        self.__secondary_acceptable_latency_ms = 15
         self.__safe = False
         self.__safe_opts = {}
         self.__set_options(options)
+        if (self.__read_pref == ReadPreference.PRIMARY
+            and self.__tag_sets != [{}]
+        ):
+            raise ConfigurationError(
+                "ReadPreference PRIMARY cannot be combined with tags")
 
     def __set_safe_option(self, option, value, check=False):
         """Validates and sets getlasterror options for this
@@ -183,6 +223,14 @@ class BaseObject(object):
                 self.__slave_okay = validate_boolean(option, value)
             elif option == 'read_preference':
                 self.__read_pref = validate_read_preference(option, value)
+            elif option == 'tag_sets':
+                self.__tag_sets = validate_tag_sets(option, value)
+            elif option in (
+                'secondaryAcceptableLatencyMS',
+                'secondary_acceptable_latency_ms'
+            ):
+                self.__secondary_acceptable_latency_ms = \
+                    validate_positive_float(option, value)
             elif option == 'safe':
                 self.__safe = validate_boolean(option, value)
             elif option in SAFE_OPTIONS:
@@ -211,9 +259,9 @@ class BaseObject(object):
     slave_okay = property(__get_slave_okay, __set_slave_okay)
 
     def __get_read_pref(self):
-        """The read preference for this instance.
+        """The read preference mode for this instance.
 
-        See :class:`~pymongo.ReadPreference` for available options.
+        See :class:`~pymongo.read_preferences.ReadPreference` for available options.
 
         .. versionadded:: 2.1
         """
@@ -224,6 +272,47 @@ class BaseObject(object):
         self.__read_pref = validate_read_preference('read_preference', value)
 
     read_preference = property(__get_read_pref, __set_read_pref)
+    
+    def __get_acceptable_latency(self):
+        """Any replica-set member whose ping time is within
+           secondary_acceptable_latency_ms of the nearest member may accept
+           reads. Defaults to 15 milliseconds.
+
+        See :class:`~pymongo.read_preferences.ReadPreference`.
+
+        .. versionadded:: 2.2.1+
+        """
+        return self.__secondary_acceptable_latency_ms
+
+    def __set_acceptable_latency(self, value):
+        """Property setter for secondary_acceptable_latency_ms"""
+        self.__secondary_acceptable_latency_ms = (validate_positive_float(
+            'secondary_acceptable_latency_ms', value))
+
+    secondary_acceptable_latency_ms = property(
+        __get_acceptable_latency, __set_acceptable_latency)
+
+    def __get_tag_sets(self):
+        """Set ``tag_sets`` to a list of dictionaries like [{'dc': 'ny'}] to
+           read only from members whose ``dc`` tag has the value ``"ny"``.
+           To specify a priority-order for tag sets, provide a list of
+           tag sets: ``[{'dc': 'ny'}, {'dc': 'la'}, {}]``. A final, empty tag
+           set, ``{}``, means "read from any member that matches the mode,
+           ignoring tags." ReplicaSetConnection tries each set of tags in turn
+           until it finds a set of tags with at least one matching member.
+
+           .. seealso:: `Data-Center Awareness
+               <http://www.mongodb.org/display/DOCS/Data+Center+Awareness>`_
+
+        .. versionadded:: 2.2.1+
+        """
+        return self.__tag_sets
+
+    def __set_tag_sets(self, value):
+        """Property setter for tag_sets"""
+        self.__tag_sets = validate_tag_sets('tag_sets', value)
+
+    tag_sets = property(__get_tag_sets, __set_tag_sets)
 
     def __get_safe(self):
         """Use getlasterror with every write operation?
