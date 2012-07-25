@@ -648,7 +648,7 @@ class ReplicaSetConnection(common.BaseObject):
         """Authenticate socket against database `dbname`.
         """
         # Get a nonce
-        response = self.__simple_command(sock_info, dbname, {'getnonce': 1})
+        response, _ = self.__simple_command(sock_info, dbname, {'getnonce': 1})
         nonce = response['nonce']
         key = helpers._auth_key(nonce, user, passwd)
 
