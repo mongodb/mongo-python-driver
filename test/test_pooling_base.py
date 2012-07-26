@@ -609,7 +609,7 @@ class _TestPooling(_TestPoolingBase):
     def test_socket_reclamation(self):
         if sys.platform.startswith('java'):
             raise SkipTest("Jython can't do socket reclamation")
-        
+
         # Check that if a thread starts a request and dies without ending
         # the request, that the socket is reclaimed into the pool.
         cx_pool = self.get_pool(
@@ -776,13 +776,10 @@ class _TestPoolSocketSharing(_TestPoolingBase):
         )
 
         db = cx.pymongo_test
-        if is_mongos(db.connection):
-            raise SkipTest("PYTHON-375")
-
         if not version.at_least(db.connection, (1, 7, 2)):
             raise SkipTest("Need at least MongoDB version 1.7.2 to use"
                            " db.eval(nolock=True)")
-        
+
         db.test.remove(safe=True)
         db.test.insert({'_id': 1}, safe=True)
 
@@ -809,12 +806,9 @@ class _TestPoolSocketSharing(_TestPoolingBase):
 
             history.append('find_slow start')
 
-            # Javascript function that pauses 5 sec. 'nolock' allows find_fast
-            # to start and finish while we're waiting for this.
+            # Javascript function that pauses 5 seconds.
             fn = delay(5)
-            self.assertEqual(
-                {'ok': 1.0, 'retval': True},
-                db.command('eval', fn, nolock=True))
+            self.assertEqual(1, db.test.find({"$where": fn}).count())
 
             history.append('find_slow done')
 
