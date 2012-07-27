@@ -696,6 +696,7 @@ class TestCollection(unittest.TestCase):
     def test_insert_multiple_with_duplicate(self):
         db = self.db
         db.drop_collection("test")
+        db.safe = True
         db.test.ensure_index([('i', ASCENDING)], unique=True)
 
         # No error
@@ -708,7 +709,34 @@ class TestCollection(unittest.TestCase):
 
         self.assertRaises(
             DuplicateKeyError,
+            lambda: db.test.insert([{'i': 2}] * 2),
+        )
+
+        # Test based on default setting as False
+        db.drop_collection("test")
+        db.safe = False
+        db.test.ensure_index([('i', ASCENDING)], unique=True)
+
+        # No error
+        db.test.insert([{'i': 1}] * 2)
+        self.assertEqual(1, db.test.count())
+
+        # Implied safe
+        self.assertRaises(
+            DuplicateKeyError,
+            lambda: db.test.insert([{'i': 2}] * 2, w=1),
+        )
+
+        # Explicit safe
+        self.assertRaises(
+            DuplicateKeyError,
             lambda: db.test.insert([{'i': 2}] * 2, safe=True),
+        )
+
+        # Misconfigured value for safe
+        self.assertRaises(
+            TypeError,
+            lambda: db.test.insert([{'i': 2}] * 2, safe=1),
         )
 
     def test_insert_iterables(self):

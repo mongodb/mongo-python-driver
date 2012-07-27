@@ -98,7 +98,7 @@ def validate_positive_float(option, value):
 
     return value
 
-    
+
 def validate_timeout_or_none(option, value):
     """Validates a timeout specified in milliseconds returning
     a value in floating point seconds.
@@ -195,7 +195,7 @@ class BaseObject(object):
         self.__read_pref = ReadPreference.PRIMARY
         self.__tag_sets = [{}]
         self.__secondary_acceptable_latency_ms = 15
-        self.__safe = False
+        self.__safe = None
         self.__safe_opts = {}
         self.__set_options(options)
         if (self.__read_pref == ReadPreference.PRIMARY
@@ -203,6 +203,14 @@ class BaseObject(object):
         ):
             raise ConfigurationError(
                 "ReadPreference PRIMARY cannot be combined with tags")
+
+        # If safe hasn't been implicitly set by write concerns then set it.
+        if self.__safe is None:
+            self.__safe = validate_boolean('safe', options.get("safe", False))
+        if self.__safe and not options.get("safe", True):
+            warnings.warn("Conflicting write concerns.  Safe set as False "
+                          "but write concerns have been set making safe True. "
+                          "Please set safe to True.", UserWarning)
 
     def __set_safe_option(self, option, value, check=False):
         """Validates and sets getlasterror options for this
@@ -231,8 +239,6 @@ class BaseObject(object):
             ):
                 self.__secondary_acceptable_latency_ms = \
                     validate_positive_float(option, value)
-            elif option == 'safe':
-                self.__safe = validate_boolean(option, value)
             elif option in SAFE_OPTIONS:
                 if option == 'journal':
                     self.__set_safe_option('j', value)
@@ -272,7 +278,7 @@ class BaseObject(object):
         self.__read_pref = validate_read_preference('read_preference', value)
 
     read_preference = property(__get_read_pref, __set_read_pref)
-    
+
     def __get_acceptable_latency(self):
         """Any replica-set member whose ping time is within
            secondary_acceptable_latency_ms of the nearest member may accept
@@ -366,3 +372,25 @@ class BaseObject(object):
                 self.__safe_opts.pop(option, None)
         else:
             self.__safe_opts = {}
+
+    def _get_safe_and_lasterror_options(self, safe=None, **options):
+        """Get the current safe mode and any getLastError options.
+
+        Determines if the current write is safe or not based on the
+        passed in or inherited safe value.  Passing any write concerns
+        automatically sets safe to True.
+
+        :Parameters:
+            - `safe`: check that the operation succeeded?
+            - `**options`: overriding getLastError options
+
+        .. versionadded:: 2.2.1+
+        """
+        if safe is None:
+            safe = self.safe
+        safe = validate_boolean('safe', safe)
+        if safe or options:
+            safe = True
+            if not options:
+                options.update(self.get_lasterror_options())
+        return safe, options

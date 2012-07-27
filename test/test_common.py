@@ -32,6 +32,24 @@ class TestCommon(unittest.TestCase):
 
     def test_baseobject(self):
 
+        # In Python 2.6+ we could use the catch_warnings context
+        # manager to test this warning nicely. As we can't do that
+        # we must test raising errors before the ignore filter is applied.
+        warnings.simplefilter("error", UserWarning)
+        self.assertRaises(UserWarning, lambda:
+                Connection(wtimeout=1000, safe=False))
+        try:
+            Connection(wtimeout=1000, safe=True)
+        except UserWarning:
+            self.assertFalse(True)
+
+        try:
+            Connection(wtimeout=1000)
+        except UserWarning:
+            self.assertFalse(True)
+
+        warnings.resetwarnings()
+
         warnings.simplefilter("ignore")
 
         c = Connection(pair)
@@ -39,6 +57,7 @@ class TestCommon(unittest.TestCase):
         self.assertFalse(c.safe)
         self.assertEqual({}, c.get_lasterror_options())
         db = c.test
+        db.drop_collection("test")
         self.assertFalse(db.slave_okay)
         self.assertFalse(db.safe)
         self.assertEqual({}, db.get_lasterror_options())
@@ -50,6 +69,9 @@ class TestCommon(unittest.TestCase):
         self.assertFalse(cursor._Cursor__slave_okay)
         cursor = coll.find(slave_okay=True)
         self.assertTrue(cursor._Cursor__slave_okay)
+
+        # Setting any safe operations overrides explicit safe
+        self.assertTrue(Connection(wtimeout=1000, safe=False).safe)
 
         c = Connection(pair, slaveok=True, w='majority',
                                      wtimeout=300, fsync=True, j=True)
@@ -154,6 +176,7 @@ class TestCommon(unittest.TestCase):
         # Succeeds since we override the lasterror settings per query.
         self.assertTrue(coll.insert({'foo': 'bar'}, fsync=True))
         drop_collections(db)
+
         warnings.resetwarnings()
 
 
