@@ -368,16 +368,16 @@ class Database(common.BaseObject):
             '_uuid_subtype': uuid_subtype
         }
 
-        if not must_use_master:
-            extra_opts['read_preference'] = kwargs.pop(
-                'read_preference',
-                self.read_preference)
-            extra_opts['tag_sets'] = kwargs.pop(
-                'tag_sets',
-                self.tag_sets)
-            extra_opts['secondary_acceptable_latency_ms'] = kwargs.pop(
-                'secondary_acceptable_latency_ms',
-                self.secondary_acceptable_latency_ms)
+
+        extra_opts['read_preference'] = kwargs.pop(
+            'read_preference',
+            self.read_preference)
+        extra_opts['tag_sets'] = kwargs.pop(
+            'tag_sets',
+            self.tag_sets)
+        extra_opts['secondary_acceptable_latency_ms'] = kwargs.pop(
+            'secondary_acceptable_latency_ms',
+            self.secondary_acceptable_latency_ms)
 
         fields = kwargs.get('fields')
         if fields is not None and not isinstance(fields, dict):
