@@ -1,4 +1,4 @@
-# Copyright 2009-2011 10gen, Inc.
+# Copyright 2009-2012 10gen, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,16 +17,15 @@
 import time
 import unittest
 
-import replset_tools
-from replset_tools import use_greenlets
+import ha_tools
+from ha_tools import use_greenlets
 
 
-from pymongo import (replica_set_connection,
-                     ReplicaSetConnection,
+from pymongo import (ReplicaSetConnection,
                      ReadPreference)
 from pymongo.replica_set_connection import Member, Monitor
 from pymongo.connection import Connection, _partition_node
-from pymongo.errors import AutoReconnect, ConnectionFailure
+from pymongo.errors import AutoReconnect
 
 from test import utils
 
@@ -39,7 +38,7 @@ class TestSecondaryConnection(unittest.TestCase):
 
     def setUp(self):
         members = [{}, {}, {'arbiterOnly': True}]
-        res = replset_tools.start_replica_set(members)
+        res = ha_tools.start_replica_set(members)
         self.seed, self.name = res
 
     def test_secondary_connection(self):
@@ -54,9 +53,10 @@ class TestSecondaryConnection(unittest.TestCase):
         db.test.insert({'foo': 'bar'}, safe=True, w=w)
 
         # Test direct connection to a primary or secondary
-        primary_host, primary_port = replset_tools.get_primary().split(':')
+        primary_host, primary_port = ha_tools.get_primary().split(':')
         primary_port = int(primary_port)
-        secondary_host, secondary_port = replset_tools.get_secondaries()[0].split(':')
+        (secondary_host,
+         secondary_port) = ha_tools.get_secondaries()[0].split(':')
         secondary_port = int(secondary_port)
 
         self.assertTrue(Connection(
@@ -85,16 +85,18 @@ class TestSecondaryConnection(unittest.TestCase):
             {'read_preference': ReadPreference.NEAREST},
             {'slave_okay': True},
         ]:
-            conn = Connection(
-                secondary_host, secondary_port, use_greenlets=use_greenlets, **kwargs)
+            conn = Connection(secondary_host,
+                              secondary_port,
+                              use_greenlets=use_greenlets,
+                              **kwargs)
             self.assertEqual(secondary_host, conn.host)
             self.assertEqual(secondary_port, conn.port)
             self.assertFalse(conn.is_primary)
             self.assert_(conn.pymongo_test.test.find_one())
 
         # Test direct connection to an arbiter
-        secondary_host = replset_tools.get_arbiters()[0]
-        host, port = replset_tools.arbiters()[0].split(':')
+        secondary_host = ha_tools.get_arbiters()[0]
+        host, port = ha_tools.get_arbiters()[0].split(':')
         port = int(port)
         conn = Connection(host, port)
         self.assertEqual(host, conn.host)
@@ -102,15 +104,19 @@ class TestSecondaryConnection(unittest.TestCase):
 
     def tearDown(self):
         self.c.close()
-        replset_tools.kill_all_members()
+        ha_tools.kill_all_members()
 
 
 class TestPassiveAndHidden(unittest.TestCase):
 
     def setUp(self):
-        members = [{}, {'priority': 0}, {'arbiterOnly': True},
-                   {'priority': 0, 'hidden': True}, {'priority': 0, 'slaveDelay': 5}]
-        res = replset_tools.start_replica_set(members)
+        members = [{},
+                   {'priority': 0},
+                   {'arbiterOnly': True},
+                   {'priority': 0, 'hidden': True},
+                   {'priority': 0, 'slaveDelay': 5}
+        ]
+        res = ha_tools.start_replica_set(members)
         self.seed, self.name = res
 
     def test_passive_and_hidden(self):
@@ -121,9 +127,9 @@ class TestPassiveAndHidden(unittest.TestCase):
         db.test.remove({}, safe=True, w=w)
         db.test.insert({'foo': 'bar'}, safe=True, w=w)
 
-        passives = replset_tools.get_passives()
+        passives = ha_tools.get_passives()
         passives = [_partition_node(member) for member in passives]
-        hidden = replset_tools.get_hidden_members()
+        hidden = ha_tools.get_hidden_members()
         hidden = [_partition_node(member) for member in hidden]
         self.assertEqual(self.c.secondaries, set(passives))
 
@@ -137,7 +143,7 @@ class TestPassiveAndHidden(unittest.TestCase):
                 self.assertTrue(cursor._Cursor__connection_id in passives)
                 self.assertTrue(cursor._Cursor__connection_id not in hidden)
 
-        replset_tools.kill_members(replset_tools.get_passives(), 2)
+        ha_tools.kill_members(ha_tools.get_passives(), 2)
         sleep(2 * MONITOR_INTERVAL)
         db.read_preference = ReadPreference.SECONDARY_PREFERRED
 
@@ -148,13 +154,13 @@ class TestPassiveAndHidden(unittest.TestCase):
 
     def tearDown(self):
         self.c.close()
-        replset_tools.kill_all_members()
+        ha_tools.kill_all_members()
 
 
 class TestHealthMonitor(unittest.TestCase):
 
     def setUp(self):
-        res = replset_tools.start_replica_set([{}, {}, {}])
+        res = ha_tools.start_replica_set([{}, {}, {}])
         self.seed, self.name = res
 
     def test_primary_failure(self):
@@ -172,7 +178,7 @@ class TestHealthMonitor(unittest.TestCase):
                 sleep(1)
             return False
 
-        killed = replset_tools.kill_primary()
+        killed = ha_tools.kill_primary()
         self.assertTrue(bool(len(killed)))
         self.assertTrue(primary_changed())
         self.assertNotEqual(secondaries, c.secondaries)
@@ -192,14 +198,14 @@ class TestHealthMonitor(unittest.TestCase):
                 sleep(1)
             return False
 
-        killed = replset_tools.kill_secondary()
+        killed = ha_tools.kill_secondary()
         sleep(2 * MONITOR_INTERVAL)
         self.assertTrue(bool(len(killed)))
         self.assertEqual(primary, c.primary)
         self.assertTrue(readers_changed())
         secondaries = c.secondaries
 
-        replset_tools.restart_members([killed])
+        ha_tools.restart_members([killed])
         self.assertEqual(primary, c.primary)
         self.assertTrue(readers_changed())
 
@@ -217,7 +223,7 @@ class TestHealthMonitor(unittest.TestCase):
                 sleep(1)
             return False
 
-        replset_tools.stepdown_primary()
+        ha_tools.stepdown_primary()
         self.assertTrue(primary_changed())
 
         # There can be a delay between finding the primary and updating
@@ -226,13 +232,13 @@ class TestHealthMonitor(unittest.TestCase):
         self.assertNotEqual(secondaries, c.secondaries)
 
     def tearDown(self):
-        replset_tools.kill_all_members()
+        ha_tools.kill_all_members()
 
 
 class TestWritesWithFailover(unittest.TestCase):
 
     def setUp(self):
-        res = replset_tools.start_replica_set([{}, {}, {}])
+        res = ha_tools.start_replica_set([{}, {}, {}])
         self.seed, self.name = res
 
     def test_writes_with_failover(self):
@@ -254,20 +260,20 @@ class TestWritesWithFailover(unittest.TestCase):
                     sleep(1)
             return False
 
-        killed = replset_tools.kill_primary(9)
+        killed = ha_tools.kill_primary(9)
         self.assertTrue(bool(len(killed)))
         self.assertTrue(try_write())
         self.assertTrue(primary != c.primary)
         self.assertEqual('baz', db.test.find_one({'bar': 'baz'})['bar'])
 
     def tearDown(self):
-        replset_tools.kill_all_members()
+        ha_tools.kill_all_members()
 
 
 class TestReadWithFailover(unittest.TestCase):
 
     def setUp(self):
-        res = replset_tools.start_replica_set([{}, {}, {}])
+        res = ha_tools.start_replica_set([{}, {}, {}])
         self.seed, self.name = res
 
     def test_read_with_failover(self):
@@ -277,7 +283,7 @@ class TestReadWithFailover(unittest.TestCase):
         self.assertTrue(bool(len(c.secondaries)))
 
         def iter_cursor(cursor):
-            for doc in cursor:
+            for _ in cursor:
                 pass
             return True
 
@@ -293,13 +299,13 @@ class TestReadWithFailover(unittest.TestCase):
         cursor.next()
         self.assertEqual(5, cursor._Cursor__retrieved)
         self.assertTrue(cursor._Cursor__connection_id in c.secondaries)
-        replset_tools.kill_primary()
+        ha_tools.kill_primary()
         # Primary failure shouldn't interrupt the cursor
         self.assertTrue(iter_cursor(cursor))
         self.assertEqual(10, cursor._Cursor__retrieved)
 
     def tearDown(self):
-        replset_tools.kill_all_members()
+        ha_tools.kill_all_members()
 
 
 class TestReadPreference(unittest.TestCase):
@@ -315,33 +321,33 @@ class TestReadPreference(unittest.TestCase):
             {'tags': {'dc': 'ny', 'name': 'other_secondary'}, 'priority': 0},
         ]
         
-        res = replset_tools.start_replica_set(members)
+        res = ha_tools.start_replica_set(members)
         self.seed, self.name = res
 
-        primary = replset_tools.get_primary()
+        primary = ha_tools.get_primary()
         self.primary = _partition_node(primary)
-        self.primary_tags = replset_tools.get_tags(primary)
+        self.primary_tags = ha_tools.get_tags(primary)
         # Make sure priority worked
         self.assertEqual('primary', self.primary_tags['name'])
 
         self.primary_dc = {'dc': self.primary_tags['dc']}
 
-        secondaries = replset_tools.get_secondaries()
+        secondaries = ha_tools.get_secondaries()
 
         (secondary, ) = [
             s for s in secondaries
-            if replset_tools.get_tags(s)['name'] == 'secondary']
+            if ha_tools.get_tags(s)['name'] == 'secondary']
 
         self.secondary = _partition_node(secondary)
-        self.secondary_tags = replset_tools.get_tags(secondary)
+        self.secondary_tags = ha_tools.get_tags(secondary)
         self.secondary_dc = {'dc': self.secondary_tags['dc']}
 
         (other_secondary, ) = [
             s for s in secondaries
-            if replset_tools.get_tags(s)['name'] == 'other_secondary']
+            if ha_tools.get_tags(s)['name'] == 'other_secondary']
 
         self.other_secondary = _partition_node(other_secondary)
-        self.other_secondary_tags = replset_tools.get_tags(other_secondary)
+        self.other_secondary_tags = ha_tools.get_tags(other_secondary)
         self.other_secondary_dc = {'dc': self.other_secondary_tags['dc']}
 
         self.c = ReplicaSetConnection(
@@ -480,7 +486,7 @@ class TestReadPreference(unittest.TestCase):
         assertReadFromAll([primary, other_secondary], NEAREST, [{'dc': 'ny'}])
 
         # 2. PRIMARY DOWN -----------------------------------------------------
-        killed = replset_tools.kill_primary()
+        killed = ha_tools.kill_primary()
 
         # Let monitor notice primary's gone
         sleep(2 * MONITOR_INTERVAL)
@@ -517,16 +523,16 @@ class TestReadPreference(unittest.TestCase):
         assertReadFromAll([secondary, other_secondary], NEAREST)
         
         # 3. PRIMARY UP, ONE SECONDARY DOWN -----------------------------------
-        replset_tools.restart_members([killed])
+        ha_tools.restart_members([killed])
 
         for _ in range(30):
-            if replset_tools.get_primary():
+            if ha_tools.get_primary():
                 break
             sleep(1)
         else:
             self.fail("Primary didn't come back up")
 
-        replset_tools.kill_members([unpartition_node(secondary)], 2)
+        ha_tools.kill_members([unpartition_node(secondary)], 2)
         self.assertTrue(Connection(
             unpartition_node(primary), use_greenlets=use_greenlets,
             slave_okay=True
@@ -561,7 +567,7 @@ class TestReadPreference(unittest.TestCase):
         assertReadFrom(primary, NEAREST, {'name': 'primary'})
 
         # 4. PRIMARY UP, ALL SECONDARIES DOWN ---------------------------------
-        replset_tools.kill_members([unpartition_node(other_secondary)], 2)
+        ha_tools.kill_members([unpartition_node(other_secondary)], 2)
         self.assertTrue(Connection(
             unpartition_node(primary), use_greenlets=use_greenlets,
             slave_okay=True
@@ -599,8 +605,51 @@ class TestReadPreference(unittest.TestCase):
 
     def tearDown(self):
         self.c.close()
-        replset_tools.kill_all_members()
+        ha_tools.kill_all_members()
         self.clear_ping_times()
+
+
+class TestMongosHighAvailability(unittest.TestCase):
+    def setUp(self):
+        seed_list = ha_tools.create_sharded_cluster()
+        self.dbname = 'pymongo_mongos_ha'
+        self.conn = Connection(seed_list)
+        self.conn.drop_database(self.dbname)
+
+    def test_mongos_ha(self):
+        coll = self.conn[self.dbname].test
+        self.assertTrue(coll.insert({'foo': 'bar'}, safe=True))
+
+        first = '%s:%d' % (self.conn.host, self.conn.port)
+        ha_tools.kill_mongos(first)
+        # Fail first attempt
+        self.assertRaises(AutoReconnect, coll.count)
+        # Find new mongos
+        self.assertEqual(1, coll.count())
+
+        second = '%s:%d' % (self.conn.host, self.conn.port)
+        self.assertNotEqual(first, second)
+        ha_tools.kill_mongos(second)
+        # Fail first attempt
+        self.assertRaises(AutoReconnect, coll.count)
+        # Find new mongos
+        self.assertEqual(1, coll.count())
+
+        third = '%s:%d' % (self.conn.host, self.conn.port)
+        self.assertNotEqual(second, third)
+        ha_tools.kill_mongos(third)
+        # Fail first attempt
+        self.assertRaises(AutoReconnect, coll.count)
+
+        # We've killed all three, restart one.
+        ha_tools.restart_mongos(first)
+
+        # Find new mongos
+        self.assertEqual(1, coll.count())
+
+    def tearDown(self):
+        self.conn.drop_database(self.dbname)
+        ha_tools.kill_all_members()
 
 
 if __name__ == '__main__':
@@ -609,8 +658,6 @@ if __name__ == '__main__':
         import gevent
         print('gevent version %s' % gevent.__version__)
 
-        if gevent.__version__ >= '0.13.6':
-            print('method %s' % gevent.core.get_method())
         from gevent import monkey
         monkey.patch_socket()
         sleep = gevent.sleep

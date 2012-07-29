@@ -1,4 +1,4 @@
-# Copyright 2009-2011 10gen, Inc.
+# Copyright 2009-2012 10gen, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tools for testing PyMongo with a replica set."""
+"""Tools for testing high availability in PyMongo."""
 
 import os
 import random
@@ -26,23 +26,26 @@ import time
 import pymongo
 
 home = os.environ.get('HOME')
-default_dbpath = os.path.join(home, 'data', 'pymongo_replica_set')
+default_dbpath = os.path.join(home, 'data', 'pymongo_high_availability')
 dbpath = os.environ.get('DBPATH', default_dbpath)
-default_logpath = os.path.join(home, 'log', 'pymongo_replica_set')
+default_logpath = os.path.join(home, 'log', 'pymongo_high_availability')
 logpath = os.environ.get('LOGPATH', default_logpath)
 hostname = os.environ.get('HOSTNAME', socket.gethostname())
 port = int(os.environ.get('DBPORT', 27017))
 mongod = os.environ.get('MONGOD', 'mongod')
+mongos = os.environ.get('MONGOS', 'mongos')
 set_name = os.environ.get('SETNAME', 'repl0')
 use_greenlets = bool(os.environ.get('GREENLETS'))
 
 nodes = {}
+routers = {}
+cur_port = port
 
 
-def kill_members(members, sig):
+def kill_members(members, sig, hosts=nodes):
     for member in members:
         try:
-            proc = nodes[member]['proc']
+            proc = hosts[member]['proc']
             # Not sure if cygwin makes sense here...
             if sys.platform in ('win32', 'cygwin'):
                 os.kill(proc.pid, signal.CTRL_C_EVENT)
@@ -53,17 +56,18 @@ def kill_members(members, sig):
 
 
 def kill_all_members():
-    kill_members(nodes.keys(), 2)
+    kill_members(nodes.keys(), 2, nodes)
+    kill_members(routers.keys(), 2, routers)
 
 
-def wait_for(proc, port):
+def wait_for(proc, port_num):
     trys = 0
-    while proc.poll() is None and trys < 40:  # ~10 seconds
+    while proc.poll() is None and trys < 160:
         trys += 1
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             try:
-                s.connect((hostname, port))
+                s.connect((hostname, port_num))
                 return True
             except (IOError, socket.error):
                 time.sleep(0.25)
@@ -75,6 +79,8 @@ def wait_for(proc, port):
 
 
 def start_replica_set(members, fresh=True):
+    global cur_port
+
     if fresh:
         if os.path.exists(dbpath):
             try:
@@ -82,8 +88,10 @@ def start_replica_set(members, fresh=True):
             except OSError:
                 pass
 
+    cur_port = port
+
     for i in xrange(len(members)):
-        cur_port = port + i
+        cur_port = cur_port + i
         host = '%s:%d' % (hostname, cur_port)
         members[i].update({'_id': i, 'host': host})
         path = os.path.join(dbpath, 'db' + str(i))
@@ -96,8 +104,8 @@ def start_replica_set(members, fresh=True):
                '--dbpath', path,
                '--port', str(cur_port),
                '--replSet', set_name,
-               '--journal', '--oplogSize', '1',
-               '--logpath', member_logpath]
+               '--nojournal', '--oplogSize', '64',
+               '--logappend', '--logpath', member_logpath]
         proc = subprocess.Popen(cmd,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT)
@@ -110,7 +118,7 @@ def start_replica_set(members, fresh=True):
     c = pymongo.Connection(primary, use_greenlets=use_greenlets)
     try:
         c.admin.command('replSetInitiate', config)
-    except:
+    except pymongo.errors.OperationFailure:
         # Already initialized from a previous run?
         pass
 
@@ -120,8 +128,8 @@ def start_replica_set(members, fresh=True):
             expected_arbiters += 1
     expected_secondaries = len(members) - expected_arbiters - 1
 
-    # Wait for 5 minutes for replica set to come up
-    patience = 5
+    # Wait for 8 minutes for replica set to come up
+    patience = 8
     for _ in range(patience * 60 / 2):
         time.sleep(2)
         try:
@@ -139,9 +147,96 @@ def start_replica_set(members, fresh=True):
     return primary, set_name
 
 
+def create_sharded_cluster(num_routers=3):
+    global cur_port
+
+    # Start a config server
+    cur_port = port
+    configdb_host = '%s:%d' % (hostname, cur_port)
+    path = os.path.join(dbpath, 'configdb')
+    if not os.path.exists(path):
+        os.makedirs(path)
+    configdb_logpath = os.path.join(logpath, 'configdb.log')
+    cmd = [mongod,
+           '--dbpath', path,
+           '--port', str(cur_port),
+           '--nojournal', '--logappend',
+           '--logpath', configdb_logpath]
+    proc = subprocess.Popen(cmd,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT)
+    nodes[configdb_host] = {'proc': proc, 'cmd': cmd}
+    res = wait_for(proc, cur_port)
+    if not res:
+        return None
+
+    # ...and a shard server
+    cur_port = cur_port + 1
+    shard_host = '%s:%d' % (hostname, cur_port)
+    path = os.path.join(dbpath, 'shard1')
+    if not os.path.exists(path):
+        os.makedirs(path)
+    db_logpath = os.path.join(logpath, 'shard1.log')
+    cmd = [mongod,
+           '--dbpath', path,
+           '--port', str(cur_port),
+           '--nojournal', '--logappend',
+           '--logpath', db_logpath]
+    proc = subprocess.Popen(cmd,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT)
+    nodes[shard_host] = {'proc': proc, 'cmd': cmd}
+    res = wait_for(proc, cur_port)
+    if not res:
+        return None
+
+    # ...and a few mongos instances
+    cur_port = cur_port + 1
+    for i in xrange(num_routers):
+        cur_port = cur_port + i
+        host = '%s:%d' % (hostname, cur_port)
+        mongos_logpath = os.path.join(logpath, 'mongos' + str(i) + '.log')
+        cmd = [mongos,
+               '--port', str(cur_port),
+               '--logappend',
+               '--logpath', mongos_logpath,
+               '--configdb', configdb_host]
+        proc = subprocess.Popen(cmd,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT)
+        routers[host] = {'proc': proc, 'cmd': cmd}
+        res = wait_for(proc, cur_port)
+        if not res:
+            return None
+
+    # Add the shard
+    conn = pymongo.Connection(host)
+    try:
+        conn.admin.command({'addshard': shard_host})
+    except pymongo.errors.OperationFailure:
+        # Already configured.
+        pass
+
+    return get_mongos_seed_list()
+
+
 # Connect to a random member
 def get_connection():
     return pymongo.Connection(nodes.keys(), slave_okay=True, use_greenlets=use_greenlets)
+
+
+def get_mongos_seed_list():
+    members = routers.keys()
+    return ','.join(members)
+
+
+def kill_mongos(host):
+    kill_members([host], 2, hosts=routers)
+    return host
+
+
+def restart_mongos(host):
+    restart_members([host], True)
 
 
 def get_members_in_state(state):
@@ -236,14 +331,20 @@ def stepdown_primary():
             pass
 
 
-def restart_members(members):
+def restart_members(members, router=False):
     restarted = []
     for member in members:
-        cmd = nodes[member]['cmd']
+        if router:
+            cmd = routers[member]['cmd']
+        else:
+            cmd = nodes[member]['cmd']
         proc = subprocess.Popen(cmd,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT)
-        nodes[member]['proc'] = proc
+        if router:
+            routers[member]['proc'] = proc
+        else:
+            nodes[member]['proc'] = proc
         res = wait_for(proc, int(member.split(':')[1]))
         if res:
             restarted.append(member)

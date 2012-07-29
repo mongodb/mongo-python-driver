@@ -34,8 +34,10 @@ access:
 """
 
 import datetime
+import random
 import socket
 import struct
+import time
 import warnings
 
 from bson.py3compat import b
@@ -505,18 +507,20 @@ class Connection(common.BaseObject):
         """Send a command to the server.
         """
         rqst_id, msg, _ = message.query(0, dbname + '.$cmd', 0, -1, spec)
+        start = time.time()
         sock_info.sock.sendall(msg)
         response = self.__receive_message_on_socket(1, rqst_id, sock_info)
+        end = time.time()
         response = helpers._unpack_response(response)['data'][0]
         msg = "command %r failed: %%s" % spec
         helpers._check_command_response(response, None, msg)
-        return response
+        return response, end - start
 
     def __auth(self, sock_info, dbname, user, passwd):
         """Authenticate socket against database `dbname`.
         """
         # Get a nonce
-        response = self.__simple_command(sock_info, dbname, {'getnonce': 1})
+        response, _ = self.__simple_command(sock_info, dbname, {'getnonce': 1})
         nonce = response['nonce']
         key = helpers._auth_key(nonce, user, passwd)
 
@@ -526,15 +530,24 @@ class Connection(common.BaseObject):
         self.__simple_command(sock_info, dbname, query)
 
     def __try_node(self, node):
-        """Try to connect to this node and see if it works
-        for our connection type. Returns ((host, port), is_primary, is_mongos).
+        """Try to connect to this node and see if it works for our connection
+        type. Returns ((host, port), ismaster, isdbgrid, res_time).
 
         :Parameters:
          - `node`: The (host, port) pair to try.
         """
         self.disconnect()
         self.__host, self.__port = node
-        response = self.admin.command("ismaster")
+
+        # Call 'ismaster' directly so we can get a response time.
+        sock_info = self.__socket()
+        response, res_time = self.__simple_command(sock_info,
+                                                   'admin',
+                                                   {'ismaster': 1})
+        self.__pool.maybe_return_socket(sock_info)
+
+        # Are we talking to a mongos?
+        isdbgrid = response.get('msg', '') == 'isdbgrid'
 
         if "maxBsonObjectSize" in response:
             self.__max_bson_size = response["maxBsonObjectSize"]
@@ -554,12 +567,12 @@ class Connection(common.BaseObject):
             if "hosts" in response:
                 self.__nodes = set([_partition_node(h)
                                     for h in response["hosts"]])
+            else:
+                # The user passed a seed list of standalone or
+                # mongos instances.
+                self.__nodes.add(node)
             if response["ismaster"]:
-                # The user passed a seed list of standalone or mongos instances.
-                # TODO: Rework this for PYTHON-368 (mongos high availability).
-                if not self.__nodes:
-                    self.__nodes = set([node])
-                return node, True, response.get('msg', '') == 'isdbgrid'
+                return node, True, isdbgrid, res_time
             elif "primary" in response:
                 candidate = _partition_node(response["primary"])
                 return self.__try_node(candidate)
@@ -570,46 +583,77 @@ class Connection(common.BaseObject):
         # Direct connection
         if response.get("arbiterOnly", False) and not self.__direct:
             raise ConfigurationError("%s:%d is an arbiter" % node)
-        return node, response['ismaster'], response.get('msg', '') == 'isdbgrid'
+        return node, response['ismaster'], isdbgrid, res_time
+
+    def __pick_nearest(self, candidates):
+        """Return the 'nearest' candidate based on response time.
+        """
+        # Only used for mongos high availability, res_time is in seconds.
+        fastest = min([res_time for candidate, res_time in candidates])
+        near_candidates = [
+            candidate for candidate, res_time in candidates
+            if res_time - fastest < 0.015
+        ]
+
+        node = random.choice(near_candidates)
+        # Clear the pool from the last choice.
+        self.disconnect()
+        self.__host, self.__port = node
+        return node
 
     def __find_node(self, seeds=None):
         """Find a host, port pair suitable for our connection type.
 
         If only one host was supplied to __init__ see if we can connect
         to it. Don't check if the host is a master/primary so we can make
-        a direct connection to read from a slave.
+        a direct connection to read from a secondary or send commands to
+        an arbiter.
 
         If more than one host was supplied treat them as a seed list for
-        connecting to a replica set. Try to find the primary and fail if
-        we can't. Possibly updates any replSet information on success.
+        connecting to a replica set or to support high availability for
+        mongos. If connecting to a replica set try to find the primary
+        and fail if we can't, possibly updating any replSet information
+        on success. If a mongos seed list was provided find the "nearest"
+        mongos and return it.
 
-        If the list of hosts is not a seed list for a replica set the
-        behavior is still the same. We iterate through the list trying
-        to find a host we can send write operations to.
-
-        In either case a connection to an arbiter will never succeed.
+        Otherwise we iterate through the list trying to find a host we can
+        send write operations to.
 
         Sets __host and __port so that :attr:`host` and :attr:`port`
         will return the address of the connected host. Sets __is_primary to
-        True if this is a primary or master, else False.
+        True if this is a primary or master, else False. Sets __is_mongos
+        to True if the connection is to a mongos.
         """
         errors = []
-        # self.__nodes may change size as we iterate.
+        mongos_candidates = []
         candidates = seeds or self.__nodes.copy()
         for candidate in candidates:
             try:
-                node, is_primary, is_mongos = self.__try_node(candidate)
-                self.__is_primary = is_primary
-                self.__is_mongos = is_mongos
+                node, ismaster, isdbgrid, res_time = self.__try_node(candidate)
+                self.__is_primary = ismaster
+                self.__is_mongos = isdbgrid
+                # No need to calculate nearest if we only have one mongos.
+                if isdbgrid and not self.__direct:
+                    mongos_candidates.append((node, res_time))
+                    continue
+                elif len(mongos_candidates):
+                    raise ConfigurationError("Seed list cannot contain a mix "
+                                             "of mongod and mongos instances.")
                 return node
             except Exception, why:
                 errors.append(str(why))
-        # Try any hosts we discovered that were not in the seed list.
+
+        # If we have a mongos seed list, pick the "nearest" member.
+        if len(mongos_candidates):
+            self.__is_mongos = True
+            return self.__pick_nearest(mongos_candidates)
+
+        # Otherwise, try any hosts we discovered that were not in the seed list.
         for candidate in self.__nodes - candidates:
             try:
-                node, is_primary, is_mongos = self.__try_node(candidate)
-                self.__is_primary = is_primary
-                self.__is_mongos = is_mongos
+                node, ismaster, isdbgrid, _ = self.__try_node(candidate)
+                self.__is_primary = ismaster
+                self.__is_mongos = isdbgrid
                 return node
             except Exception, why:
                 errors.append(str(why))
