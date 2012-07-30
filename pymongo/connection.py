@@ -588,11 +588,12 @@ class Connection(common.BaseObject):
     def __pick_nearest(self, candidates):
         """Return the 'nearest' candidate based on response time.
         """
+        latency = self.secondary_acceptable_latency_ms
         # Only used for mongos high availability, res_time is in seconds.
         fastest = min([res_time for candidate, res_time in candidates])
         near_candidates = [
             candidate for candidate, res_time in candidates
-            if res_time - fastest < 0.015
+            if res_time - fastest < latency / 1000.0
         ]
 
         node = random.choice(near_candidates)
