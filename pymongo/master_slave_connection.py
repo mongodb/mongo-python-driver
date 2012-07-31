@@ -89,7 +89,7 @@ class MasterSlaveConnection(BaseObject):
     def is_mongos(self):
         """If this MasterSlaveConnection is connected to mongos (always False)
 
-        .. versionadded:: 2.2.1+
+        .. versionadded:: 2.3
         """
         return False
 

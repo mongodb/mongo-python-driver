@@ -571,6 +571,6 @@ def has_c():
 def has_uuid():
     """Is the uuid module available?
 
-    .. versionadded:: 2.2.1+
+    .. versionadded:: 2.3
     """
     return _use_uuid

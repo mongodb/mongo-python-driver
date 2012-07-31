@@ -46,9 +46,9 @@ eg "$sort":
 
 .. note::
 
-    aggregate requires server version **>= 2.1.1**. The PyMongo
+    aggregate requires server version **>= 2.1.0**. The PyMongo
     :meth:`~pymongo.collection.Collection.aggregate` helper requires
-    PyMongo version **>= 2.2.1+**.
+    PyMongo version **>= 2.3**.
 
 .. doctest::
 

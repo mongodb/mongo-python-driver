@@ -593,7 +593,7 @@ class Collection(common.BaseObject):
         .. note:: The `max_scan` parameter requires server
            version **>= 1.5.1**
 
-        .. versionadded:: 2.2.1+
+        .. versionadded:: 2.3
            The `tag_sets` and `secondary_acceptable_latency_ms` parameters.
 
         .. versionadded:: 1.11+
@@ -911,9 +911,9 @@ class Collection(common.BaseObject):
         :Parameters:
           - `pipeline`: a single command or list of aggregation commands
 
-        .. note:: Requires server version **>= 2.1.1**
+        .. note:: Requires server version **>= 2.1.0**
 
-        .. versionadded:: 2.2.1+
+        .. versionadded:: 2.3
 
         .. _aggregate command:
             http://docs.mongodb.org/manual/applications/aggregation

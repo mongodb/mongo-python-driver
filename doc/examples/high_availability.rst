@@ -173,6 +173,8 @@ replica set::
   >>> ReplicaSetConnection("morton.local:27017", replicaSet='foo')
   ReplicaSetConnection([u'morton.local:27019', u'morton.local:27017', u'morton.local:27018'])
 
+.. _secondary-reads:
+
 Secondary Reads
 '''''''''''''''
 
@@ -274,7 +276,9 @@ It is critical to call
 :meth:`~pymongo.replica_set_connection.ReplicaSetConnection.close` to terminate
 the monitoring task before your process exits.
 
-High availability and mongos
+.. _mongos-high-availability:
+
+High Availability and mongos
 ----------------------------
 
 An instance of :class:`~pymongo.connection.Connection` can be configured
@@ -313,7 +317,7 @@ query again::
 As in the replica set example earlier in this document, we get
 an :class:`~pymongo.errors.AutoReconnect` exception. This means
 that the driver was not able to connect to the original mongos at port
-30000 (which makes sense, since we shut it down), but that it will
+30001 (which makes sense, since we shut it down), but that it will
 attempt to connect to a new mongos on subsequent operations. When this
 exception is raised our application code needs to decide whether to retry
 the operation or to simply continue, accepting the fact that the operation

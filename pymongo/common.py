@@ -286,7 +286,7 @@ class BaseObject(object):
 
         See :class:`~pymongo.read_preferences.ReadPreference`.
 
-        .. versionadded:: 2.2.1+
+        .. versionadded:: 2.3
         """
         return self.__secondary_acceptable_latency_ms
 
@@ -310,7 +310,7 @@ class BaseObject(object):
            .. seealso:: `Data-Center Awareness
                <http://www.mongodb.org/display/DOCS/Data+Center+Awareness>`_
 
-        .. versionadded:: 2.2.1+
+        .. versionadded:: 2.3
         """
         return self.__tag_sets
 
@@ -384,7 +384,7 @@ class BaseObject(object):
             - `safe`: check that the operation succeeded?
             - `**options`: overriding getLastError options
 
-        .. versionadded:: 2.2.1+
+        .. versionadded:: 2.3
         """
         if safe is None:
             safe = self.safe

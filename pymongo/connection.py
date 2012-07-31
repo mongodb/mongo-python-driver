@@ -438,7 +438,7 @@ class Connection(common.BaseObject):
         """If this Connection is connected to a standalone, a replica-set
            primary, or the master of a master-slave set.
 
-        .. versionadded:: 2.2.1+
+        .. versionadded:: 2.3
         """
         return self.__is_primary
 
@@ -446,7 +446,7 @@ class Connection(common.BaseObject):
     def is_mongos(self):
         """If this Connection is connected to mongos.
 
-        .. versionadded:: 2.2.1+
+        .. versionadded:: 2.3
         """
         return self.__is_mongos
 

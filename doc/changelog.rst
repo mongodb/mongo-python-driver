@@ -1,6 +1,40 @@
 Changelog
 =========
 
+Changes in Version 2.3
+----------------------
+
+Version 2.3 adds support for new features and behavior changes in MongoDB
+2.2.
+
+Important New Features:
+
+- Support for expanded read preferences including directing reads to tagged
+  servers - See :ref:`secondary-reads` for more information.
+- Support for mongos failover -
+  See :ref:`mongos-high-availability` for more information.
+- A new :meth:`~pymongo.collection.Collection.aggregate` method to support
+  MongoDB's new `aggregation framework
+  <http://docs.mongodb.org/manual/applications/aggregation/>`_.
+- Support for connecting directly to an arbiter.
+
+.. warning::
+
+    Starting with MongoDB 2.2 the getLastError command requires authentication
+    when the server's `authentication features
+    <http://www.mongodb.org/display/DOCS/Security+and+Authentication>`_ are enabled.
+    Changes to PyMongo were required to support this behavior change. Users of
+    authentication must upgrade to PyMongo 2.3 (or newer) for "safe" write operations
+    to function correctly.
+
+Issues Resolved
+...............
+
+See the `PyMongo 2.3 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 2.3 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/11146
+
 Changes in Version 2.2.1
 ------------------------
 

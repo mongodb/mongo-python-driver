@@ -47,7 +47,7 @@ It won't handle :class:`~bson.binary.Binary` and :class:`~bson.code.Code`
 instances (as they are extended strings you can't provide custom defaults),
 but it will be faster as there is less recursion.
 
-.. versionchanged:: 2.2.1+
+.. versionchanged:: 2.3
    Added dumps and loads helpers to automatically handle conversion to and
    from json and supports :class:`~bson.binary.Binary` and
    :class:`~bson.code.Code`
