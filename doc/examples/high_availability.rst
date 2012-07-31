@@ -1,5 +1,13 @@
+High Availability and PyMongo
+=============================
+
+PyMongo makes it easy to write highly available applications whether
+you use a `single replica set <http://dochub.mongodb.org/core/rs>`_
+or a `large sharded cluster
+<http://www.mongodb.org/display/DOCS/Sharding+Introduction>`_.
+
 Connecting to a Replica Set
-===========================
+---------------------------
 
 PyMongo makes working with `replica sets
 <http://dochub.mongodb.org/core/rs>`_ easy. Here we'll launch a new
@@ -13,7 +21,7 @@ connections with PyMongo.
 .. mongodoc:: rs
 
 Starting a Replica Set
-----------------------
+~~~~~~~~~~~~~~~~~~~~~~
 
 The main `replica set documentation
 <http://dochub.mongodb.org/core/rs>`_ contains extensive information
@@ -45,7 +53,7 @@ your hostname when running:
   $ mongod --port 27019 --dbpath /data/db2 --replSet foo/morton.local:27017 --rest
 
 Initializing the Set
---------------------
+~~~~~~~~~~~~~~~~~~~~
 
 At this point all of our nodes are up and running, but the set has yet
 to be initialized. Until the set is initialized no node will become
@@ -74,7 +82,7 @@ The three ``mongod`` servers we started earlier will now coordinate
 and come online as a replica set.
 
 Connecting to a Replica Set
----------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The initial connection as made above is a special case for an
 uninitialized replica set. Normally we'll want to connect
@@ -102,7 +110,7 @@ to "discover" all of the nodes in the set and make a connection to the
 current primary.
 
 Handling Failover
------------------
+~~~~~~~~~~~~~~~~~
 
 When a failover occurs, PyMongo will automatically attempt to find the
 new primary node and perform subsequent operations on that node. This
@@ -148,12 +156,12 @@ the operation will succeed::
   >>> db.test.find_one()
   {u'x': 1, u'_id': ObjectId('...')}
   >>> db.connection.host
-  u'morton.local'
+  'morton.local'
   >>> db.connection.port
   27018
 
 ReplicaSetConnection
---------------------
+~~~~~~~~~~~~~~~~~~~~
 
 Using a :class:`~pymongo.replica_set_connection.ReplicaSetConnection` instead
 of a simple :class:`~pymongo.connection.Connection` offers two key features:
@@ -265,3 +273,60 @@ members as the state of the replica set changes.
 It is critical to call
 :meth:`~pymongo.replica_set_connection.ReplicaSetConnection.close` to terminate
 the monitoring task before your process exits.
+
+High availability and mongos
+----------------------------
+
+An instance of :class:`~pymongo.connection.Connection` can be configured
+to automatically connect to a different mongos if the instance it is
+currently connected to fails. If a failure occurs, PyMongo will attempt
+to find the nearest mongos to perform subsequent operations. As with a
+replica set this can't happen completely transparently, Here we'll perform
+an example failover to illustrate how everything behaves. First, we'll
+connect to a sharded cluster, using a seed list, and perform a couple of
+basic operations::
+
+  >>> db = Connection('morton.local:30000,morton.local:30001,morton.local:30002').test
+  >>> db.test.save({"x": 1})
+  ObjectId('...')
+  >>> db.test.find_one()
+  {u'x': 1, u'_id': ObjectId('...')}
+
+Each member of the seed list passed to Connection must be a mongos. By checking
+the host, port, and is_mongos attributes we can see that we're connected to
+*morton.local:30001*, a mongos::
+
+  >>> db.connection.host
+  'morton.local'
+  >>> db.connection.port
+  30001
+  >>> db.connection.is_mongos
+  True
+
+Now let's shut down that mongos instance and see what happens when we run our
+query again::
+
+  >>> db.test.find_one()
+  Traceback (most recent call last):
+  pymongo.errors.AutoReconnect: ...
+
+As in the replica set example earlier in this document, we get
+an :class:`~pymongo.errors.AutoReconnect` exception. This means
+that the driver was not able to connect to the original mongos at port
+30000 (which makes sense, since we shut it down), but that it will
+attempt to connect to a new mongos on subsequent operations. When this
+exception is raised our application code needs to decide whether to retry
+the operation or to simply continue, accepting the fact that the operation
+might have failed.
+
+As long as one of the seed list members is still available the next
+operation will succeed::
+
+  >>> db.test.find_one()
+  {u'x': 1, u'_id': ObjectId('...')}
+  >>> db.connection.host
+  'morton.local'
+  >>> db.connection.port
+  30002
+  >>> db.connection.is_mongos
+  True

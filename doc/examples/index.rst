@@ -19,7 +19,7 @@ MongoDB, you can start it like so:
    gridfs
    aggregation
    geo
-   replica_set
+   high_availability
    custom_type
    gevent
    requests
