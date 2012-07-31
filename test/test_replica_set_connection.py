@@ -714,19 +714,21 @@ class TestConnection(TestConnectionReplicaSetBase):
         conn.close()
 
     def test_pinned_member(self):
+        latency = 1000 * 1000
         conn = self._get_connection(
-            auto_start_request=False, secondary_acceptable_latency_ms=1000*1000)
+            auto_start_request=False, secondary_acceptable_latency_ms=latency)
 
         host = read_from_which_host(conn, ReadPreference.SECONDARY)
         self.assertTrue(host in conn.secondaries)
 
         # No pinning since we're not in a request
         assertReadFromAll(
-            self, conn, conn.secondaries, ReadPreference.SECONDARY)
+            self, conn, conn.secondaries,
+            ReadPreference.SECONDARY, None, latency)
 
         assertReadFromAll(
             self, conn, list(conn.secondaries) + [conn.primary],
-            ReadPreference.NEAREST)
+            ReadPreference.NEAREST, None, latency)
 
         conn.start_request()
         host = read_from_which_host(conn, ReadPreference.SECONDARY)
@@ -747,7 +749,7 @@ class TestConnection(TestConnectionReplicaSetBase):
         conn.end_request()
         assertReadFromAll(
             self, conn, list(conn.secondaries) + [conn.primary],
-            ReadPreference.NEAREST)
+            ReadPreference.NEAREST, None, latency)
 
 
 if __name__ == "__main__":
