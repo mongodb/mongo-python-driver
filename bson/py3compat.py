@@ -20,6 +20,9 @@ PY3 = sys.version_info[0] == 3
 
 if PY3:
     import codecs
+
+    from  io import BytesIO as StringIO
+
     def b(s):
         # BSON and socket operations deal in binary data. In
         # python 3 that means instances of `bytes`. In python
@@ -37,6 +40,11 @@ if PY3:
     text_type   = str
 
 else:
+    try:
+        from cStringIO import StringIO
+    except ImportError:
+        from StringIO import StringIO
+
     def b(s):
         # See comments above. In python 2.x b('foo') is just 'foo'.
         return s

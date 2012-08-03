@@ -17,18 +17,10 @@
 import datetime
 import math
 import os
-import sys
-
-if sys.version_info[0] == 3:
-    from io import BytesIO as StringIO
-else:
-    # 2to3 will turn cStringIO into io. That's okay
-    # since we'll never get here under python3.
-    from cStringIO import StringIO
 
 from bson.binary import Binary
 from bson.objectid import ObjectId
-from bson.py3compat import b, binary_type, string_types, text_type
+from bson.py3compat import b, binary_type, string_types, text_type, StringIO
 from gridfs.errors import (CorruptGridFile,
                            FileExists,
                            NoFile,

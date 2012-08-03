@@ -22,10 +22,6 @@ from pymongo.errors import AutoReconnect
 from pymongo.read_preferences import ReadPreference
 from test.test_replica_set_connection import TestConnectionReplicaSetBase
 
-try:
-    from io import BytesIO as StringIO
-except ImportError:
-    from cStringIO import StringIO
 import datetime
 import unittest
 import threading
@@ -35,7 +31,7 @@ sys.path[0:0] = [""]
 
 import gridfs
 
-from bson.py3compat import b
+from bson.py3compat import b, StringIO
 from gridfs.errors import (FileExists,
                            NoFile)
 from test.test_connection import get_connection
