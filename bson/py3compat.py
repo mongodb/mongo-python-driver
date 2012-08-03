@@ -21,7 +21,7 @@ PY3 = sys.version_info[0] == 3
 if PY3:
     import codecs
 
-    from  io import BytesIO as StringIO
+    from io import BytesIO as StringIO
 
     def b(s):
         # BSON and socket operations deal in binary data. In
