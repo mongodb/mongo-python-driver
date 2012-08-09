@@ -20,6 +20,7 @@ import datetime
 
 from bson.tz_util import utc
 
+UPPERBOUND = 4294967296
 
 class Timestamp(object):
     """MongoDB internal timestamps used in the opLog.
@@ -54,9 +55,9 @@ class Timestamp(object):
             raise TypeError("time must be an instance of int")
         if not isinstance(inc, (int, long)):
             raise TypeError("inc must be an instance of int")
-        if not 0 <= time < 2 ** 32:
+        if not 0 <= time < UPPERBOUND:
             raise ValueError("time must be contained in [0, 2**32)")
-        if not 0 <= inc < 2 ** 32:
+        if not 0 <= inc < UPPERBOUND:
             raise ValueError("inc must be contained in [0, 2**32)")
 
         self.__time = time
