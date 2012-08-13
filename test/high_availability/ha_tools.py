@@ -23,6 +23,8 @@ import subprocess
 import sys
 import time
 
+from stat import S_IRUSR
+
 import pymongo
 
 home = os.environ.get('HOME')
@@ -78,7 +80,7 @@ def wait_for(proc, port_num):
     return False
 
 
-def start_replica_set(members, fresh=True):
+def start_replica_set(members, auth=False, fresh=True):
     global cur_port
 
     if fresh:
@@ -87,6 +89,17 @@ def start_replica_set(members, fresh=True):
                 shutil.rmtree(dbpath)
             except OSError:
                 pass
+        os.makedirs(dbpath)
+
+    if auth:
+        key_file = os.path.join(dbpath, 'key.txt')
+        if not os.path.exists(key_file):
+            f = open(key_file, 'w')
+            try:
+                f.write("my super secret system password")
+            finally:
+                f.close()
+            os.chmod(key_file, S_IRUSR)
 
     cur_port = port
 
@@ -106,6 +119,8 @@ def start_replica_set(members, fresh=True):
                '--replSet', set_name,
                '--nojournal', '--oplogSize', '64',
                '--logappend', '--logpath', member_logpath]
+        if auth:
+            cmd += ['--keyFile', key_file]
         proc = subprocess.Popen(cmd,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT)

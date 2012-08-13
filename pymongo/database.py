@@ -675,16 +675,22 @@ class Database(common.BaseObject):
             raise TypeError("password must be an instance "
                             "of %s" % (basestring.__name__,))
 
+        # So we can authenticate during a failover. The start_request()
+        # call below will pin the host used for getnonce so we use the
+        # same host for authenticate.
+        read_pref = rp.ReadPreference.PRIMARY_PREFERRED
+
         in_request = self.connection.in_request()
         try:
             if not in_request:
                 self.connection.start_request()
 
-            nonce = self.command("getnonce")["nonce"]
+            nonce = self.command("getnonce",
+                                 read_preference=read_pref)["nonce"]
             key = helpers._auth_key(nonce, name, password)
             try:
                 self.command("authenticate", user=unicode(name),
-                             nonce=nonce, key=key)
+                             nonce=nonce, key=key, read_preference=read_pref)
                 self.connection._cache_credentials(self.name,
                                                    unicode(name),
                                                    unicode(password))

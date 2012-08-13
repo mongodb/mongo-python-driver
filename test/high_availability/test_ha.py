@@ -25,7 +25,7 @@ from pymongo import (ReplicaSetConnection,
                      ReadPreference)
 from pymongo.replica_set_connection import Member, Monitor
 from pymongo.connection import Connection, _partition_node
-from pymongo.errors import AutoReconnect
+from pymongo.errors import AutoReconnect, OperationFailure
 
 from test import utils
 
@@ -608,6 +608,53 @@ class TestReadPreference(unittest.TestCase):
         ha_tools.kill_all_members()
         self.clear_ping_times()
 
+
+class TestReplicaSetAuth(unittest.TestCase):
+    def setUp(self):
+        members = [
+            {},
+            {'priority': 0},
+            {'priority': 0},
+        ]
+
+        res = ha_tools.start_replica_set(members, auth=True)
+        self.c = ReplicaSetConnection(res[0], replicaSet=res[1],
+                                      use_greenlets=use_greenlets)
+
+        # Add an admin user to enable auth
+        try:
+            self.c.admin.add_user('admin', 'adminpass')
+        except:
+            # SERVER-4225
+            pass
+        self.c.admin.authenticate('admin', 'adminpass')
+
+        self.db = self.c.pymongo_ha_auth
+        self.db.add_user('user', 'userpass')
+        self.c.admin.logout()
+
+    def test_auth_during_failover(self):
+        self.assertTrue(self.db.authenticate('user', 'userpass'))
+        self.assertTrue(self.db.foo.insert({'foo': 'bar'},
+                                           safe=True, w=3, wtimeout=1000))
+        self.db.logout()
+        self.assertRaises(OperationFailure, self.db.foo.find_one)
+
+        primary = '%s:%d' % self.c.primary
+        ha_tools.kill_members([primary], 2)
+
+        # Let monitor notice primary's gone
+        sleep(2 * MONITOR_INTERVAL)
+
+        # Make sure we can still authenticate
+        self.assertTrue(self.db.authenticate('user', 'userpass'))
+        # And still query.
+        self.db.read_preference = ReadPreference.PRIMARY_PREFERRED
+        self.assertEqual('bar', self.db.foo.find_one()['foo'])
+
+    def tearDown(self):
+        self.c.close()
+        ha_tools.kill_all_members()
 
 class TestMongosHighAvailability(unittest.TestCase):
     def setUp(self):

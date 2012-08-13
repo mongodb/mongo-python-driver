@@ -172,9 +172,9 @@ def select_member(
 """Commands that may be sent to replica-set secondaries, depending on
    ReadPreference and tags. All other commands are always run on the primary.
 """
-secondary_ok_commands = set([
+secondary_ok_commands = frozenset([
     "group", "aggregate", "collstats", "dbstats", "count", "distinct",
-    "geonear", "geosearch", "geowalk", "mapreduce",
+    "geonear", "geosearch", "geowalk", "mapreduce", "getnonce", "authenticate",
 ])
 
 
