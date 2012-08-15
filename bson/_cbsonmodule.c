@@ -476,6 +476,8 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer, int type_by
     } else if (state->UUID && PyObject_IsInstance(value, state->UUID)) {
         // Just a special case of Binary above, but simpler to do as a separate case
 
+        PyObject* bytes;
+
         // Could be bytes, bytearray, str...
         const char* binarr;
         // UUID is always 16 bytes
@@ -487,8 +489,6 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer, int type_by
         else {
             subtype = (char)uuid_subtype;
         }
-
-        PyObject* bytes;
 
         *(buffer_get_buffer(buffer) + type_byte) = 0x05;
         if (!buffer_write_bytes(buffer, (const char*)&length, 4)) {
