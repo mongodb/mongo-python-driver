@@ -1733,7 +1733,7 @@ class TestCollection(unittest.TestCase):
 
         # Test property
         self.assertEqual(OLD_UUID_SUBTYPE, coll.uuid_subtype)
-        self.assertRaises(ConfigurationError, change_subtype, coll, 5)
+        self.assertRaises(ConfigurationError, change_subtype, coll, 7)
         self.assertRaises(ConfigurationError, change_subtype, coll, 2)
 
         # Test basic query

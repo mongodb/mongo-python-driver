@@ -21,7 +21,8 @@ import re
 import struct
 import sys
 
-from bson.binary import Binary, OLD_UUID_SUBTYPE
+from bson.binary import (Binary, OLD_UUID_SUBTYPE,
+                         JAVA_LEGACY, CSHARP_LEGACY)
 from bson.code import Code
 from bson.dbref import DBRef
 from bson.errors import (InvalidBSON,
@@ -91,7 +92,8 @@ BSONMIN = b("\xFF") # Min key
 BSONMAX = b("\x7F") # Max key
 
 
-def _get_int(data, position, as_class=None, tz_aware=False, unsigned=False):
+def _get_int(data, position, as_class=None,
+             tz_aware=False, uuid_subtype=OLD_UUID_SUBTYPE, unsigned=False):
     format = unsigned and "I" or "i"
     try:
         value = struct.unpack("<%s" % format, data[position:position + 4])[0]
@@ -133,22 +135,22 @@ def _make_c_string(string, check_null=False):
                                     "UTF-8: %r" % string)
 
 
-def _get_number(data, position, as_class, tz_aware):
+def _get_number(data, position, as_class, tz_aware, uuid_subtype):
     num = struct.unpack("<d", data[position:position + 8])[0]
     position += 8
     return num, position
 
 
-def _get_string(data, position, as_class, tz_aware):
+def _get_string(data, position, as_class, tz_aware, uuid_subtype):
     length = struct.unpack("<i", data[position:position + 4])[0] - 1
     position += 4
     return _get_c_string(data, position, length)
 
 
-def _get_object(data, position, as_class, tz_aware):
+def _get_object(data, position, as_class, tz_aware, uuid_subtype):
     obj_size = struct.unpack("<i", data[position:position + 4])[0]
     encoded = data[position + 4:position + obj_size - 1]
-    object = _elements_to_dict(encoded, as_class, tz_aware)
+    object = _elements_to_dict(encoded, as_class, tz_aware, uuid_subtype)
     position += obj_size
     if "$ref" in object:
         return (DBRef(object.pop("$ref"), object.pop("$id"),
@@ -156,8 +158,9 @@ def _get_object(data, position, as_class, tz_aware):
     return object, position
 
 
-def _get_array(data, position, as_class, tz_aware):
-    obj, position = _get_object(data, position, as_class, tz_aware)
+def _get_array(data, position, as_class, tz_aware, uuid_subtype):
+    obj, position = _get_object(data, position,
+                                as_class, tz_aware, uuid_subtype)
     result = []
     i = 0
     while True:
@@ -169,7 +172,7 @@ def _get_array(data, position, as_class, tz_aware):
     return result, position
 
 
-def _get_binary(data, position, as_class, tz_aware):
+def _get_binary(data, position, as_class, tz_aware, uuid_subtype):
     length, position = _get_int(data, position)
     subtype = ord(data[position:position + 1])
     position += 1
@@ -179,7 +182,16 @@ def _get_binary(data, position, as_class, tz_aware):
             raise InvalidBSON("invalid binary (st 2) - lengths don't match!")
         length = length2
     if subtype in (3, 4) and _use_uuid:
-        value = uuid.UUID(bytes=data[position:position + length])
+        # Java Legacy
+        if uuid_subtype == JAVA_LEGACY:
+            java = data[position:position + length]
+            value = uuid.UUID(bytes=java[0:8][::-1] + java[8:16][::-1])
+        # C# legacy
+        elif uuid_subtype == CSHARP_LEGACY:
+            value = uuid.UUID(bytes_le=data[position:position + length])
+        # Python
+        else:
+            value = uuid.UUID(bytes=data[position:position + length])
         position += length
         return (value, position)
     # Python3 special case. Decode subtype 0 to 'bytes'.
@@ -191,19 +203,20 @@ def _get_binary(data, position, as_class, tz_aware):
     return value, position
 
 
-def _get_oid(data, position, as_class, tz_aware):
+def _get_oid(data, position, as_class=None,
+             tz_aware=False, uuid_subtype=OLD_UUID_SUBTYPE):
     value = ObjectId(data[position:position + 12])
     position += 12
     return value, position
 
 
-def _get_boolean(data, position, as_class, tz_aware):
+def _get_boolean(data, position, as_class, tz_aware, uuid_subtype):
     value = data[position:position + 1] == ONE
     position += 1
     return value, position
 
 
-def _get_date(data, position, as_class, tz_aware):
+def _get_date(data, position, as_class, tz_aware, uuid_subtype):
     seconds = float(struct.unpack("<q", data[position:position + 8])[0]) / 1000.0
     position += 8
     if tz_aware:
@@ -211,23 +224,26 @@ def _get_date(data, position, as_class, tz_aware):
     return EPOCH_NAIVE + datetime.timedelta(seconds=seconds), position
 
 
-def _get_code(data, position, as_class, tz_aware):
-    code, position = _get_string(data, position, as_class, tz_aware)
+def _get_code(data, position, as_class, tz_aware, uuid_subtype):
+    code, position = _get_string(data, position,
+                                 as_class, tz_aware, uuid_subtype)
     return Code(code), position
 
 
-def _get_code_w_scope(data, position, as_class, tz_aware):
+def _get_code_w_scope(data, position, as_class, tz_aware, uuid_subtype):
     _, position = _get_int(data, position)
-    code, position = _get_string(data, position, as_class, tz_aware)
-    scope, position = _get_object(data, position, as_class, tz_aware)
+    code, position = _get_string(data, position,
+                                 as_class, tz_aware, uuid_subtype)
+    scope, position = _get_object(data, position,
+                                  as_class, tz_aware, uuid_subtype)
     return Code(code, scope), position
 
 
-def _get_null(data, position, as_class, tz_aware):
+def _get_null(data, position, as_class, tz_aware, uuid_subtype):
     return None, position
 
 
-def _get_regex(data, position, as_class, tz_aware):
+def _get_regex(data, position, as_class, tz_aware, uuid_subtype):
     pattern, position = _get_c_string(data, position)
     bson_flags, position = _get_c_string(data, position)
     flags = 0
@@ -246,20 +262,20 @@ def _get_regex(data, position, as_class, tz_aware):
     return re.compile(pattern, flags), position
 
 
-def _get_ref(data, position, as_class, tz_aware):
+def _get_ref(data, position, as_class, tz_aware, uuid_subtype):
     position += 4
     collection, position = _get_c_string(data, position)
     oid, position = _get_oid(data, position)
     return DBRef(collection, oid), position
 
 
-def _get_timestamp(data, position, as_class, tz_aware):
+def _get_timestamp(data, position, as_class, tz_aware, uuid_subtype):
     inc, position = _get_int(data, position, unsigned=True)
     timestamp, position = _get_int(data, position, unsigned=True)
     return Timestamp(timestamp, inc), position
 
 
-def _get_long(data, position, as_class, tz_aware):
+def _get_long(data, position, as_class, tz_aware, uuid_subtype):
     # Have to cast to long; on 32-bit unpack may return an int.
     # 2to3 will change long to int. That's fine since long doesn't
     # exist in python3.
@@ -287,29 +303,30 @@ _element_getter = {
     BSONINT: _get_int,  # number_int
     BSONTIM: _get_timestamp,
     BSONLON: _get_long, # Same as _get_int after 2to3 runs.
-    BSONMIN: lambda w, x, y, z: (MinKey(), x),
-    BSONMAX: lambda w, x, y, z: (MaxKey(), x)}
+    BSONMIN: lambda v, w, x, y, z: (MinKey(), w),
+    BSONMAX: lambda v, w, x, y, z: (MaxKey(), w)}
 
 
-def _element_to_dict(data, position, as_class, tz_aware):
+def _element_to_dict(data, position, as_class, tz_aware, uuid_subtype):
     element_type = data[position:position + 1]
     position += 1
     element_name, position = _get_c_string(data, position)
-    value, position = _element_getter[element_type](data, position,
-                                                    as_class, tz_aware)
+    value, position = _element_getter[element_type](data, position, as_class,
+                                                    tz_aware, uuid_subtype)
     return element_name, value, position
 
 
-def _elements_to_dict(data, as_class, tz_aware):
+def _elements_to_dict(data, as_class, tz_aware, uuid_subtype):
     result = as_class()
     position = 0
     end = len(data) - 1
     while position < end:
-        (key, value, position) = _element_to_dict(data, position, as_class, tz_aware)
+        (key, value, position) = _element_to_dict(data, position, as_class,
+                                                  tz_aware, uuid_subtype)
         result[key] = value
     return result
 
-def _bson_to_dict(data, as_class, tz_aware):
+def _bson_to_dict(data, as_class, tz_aware, uuid_subtype):
     obj_size = struct.unpack("<i", data[:4])[0]
     length = len(data)
     if length < obj_size:
@@ -317,7 +334,8 @@ def _bson_to_dict(data, as_class, tz_aware):
     if obj_size != length or data[obj_size - 1:obj_size] != ZERO:
         raise InvalidBSON("bad eoo")
     elements = data[4:obj_size - 1]
-    return (_elements_to_dict(elements, as_class, tz_aware), data[obj_size:])
+    return (_elements_to_dict(elements, as_class,
+                              tz_aware, uuid_subtype), data[obj_size:])
 if _use_c:
     _bson_to_dict = _cbson._bson_to_dict
 
@@ -339,10 +357,22 @@ def _element_to_bson(key, value, check_keys, uuid_subtype):
 
     if _use_uuid:
         if isinstance(value, uuid.UUID):
-            # Python 3.0(.1) returns a bytearray instance for bytes (3.1 and
-            # newer just return a bytes instance). Convert that to binary_type
-            # for compatibility.
-            value = Binary(binary_type(value.bytes), subtype=uuid_subtype)
+            # Java Legacy
+            if uuid_subtype == JAVA_LEGACY:
+                # Python 3.0(.1) returns a bytearray instance for bytes (3.1
+                # and newer just return a bytes instance). Convert that to
+                # binary_type (here and below) for compatibility.
+                from_uuid = binary_type(value.bytes)
+                as_legacy_java = from_uuid[0:8][::-1] + from_uuid[8:16][::-1]
+                value = Binary(as_legacy_java, subtype=OLD_UUID_SUBTYPE)
+            # C# legacy
+            elif uuid_subtype == CSHARP_LEGACY:
+                # Microsoft GUID representation.
+                value = Binary(binary_type(value.bytes_le),
+                               subtype=OLD_UUID_SUBTYPE)
+            # Python
+            else:
+                value = Binary(binary_type(value.bytes), subtype=uuid_subtype)
 
     if isinstance(value, Binary):
         subtype = value.subtype
@@ -454,7 +484,8 @@ if _use_c:
 
 
 
-def decode_all(data, as_class=dict, tz_aware=True):
+def decode_all(data, as_class=dict,
+               tz_aware=True, uuid_subtype=OLD_UUID_SUBTYPE):
     """Decode BSON data to multiple documents.
 
     `data` must be a string of concatenated, valid, BSON-encoded
@@ -480,7 +511,8 @@ def decode_all(data, as_class=dict, tz_aware=True):
             raise InvalidBSON("bad eoo")
         elements = data[position + 4:position + obj_size - 1]
         position += obj_size
-        docs.append(_elements_to_dict(elements, as_class, tz_aware))
+        docs.append(_elements_to_dict(elements, as_class,
+                                      tz_aware, uuid_subtype))
     return docs
 if _use_c:
     decode_all = _cbson.decode_all
@@ -501,7 +533,7 @@ def is_valid(bson):
                         "of a subclass of %s" % (binary_type.__name__,))
 
     try:
-        (_, remainder) = _bson_to_dict(bson, dict, True)
+        (_, remainder) = _bson_to_dict(bson, dict, True, OLD_UUID_SUBTYPE)
         return remainder == EMPTY
     except:
         return False
@@ -533,7 +565,8 @@ class BSON(binary_type):
         """
         return cls(_dict_to_bson(document, check_keys, uuid_subtype))
 
-    def decode(self, as_class=dict, tz_aware=False):
+    def decode(self, as_class=dict,
+               tz_aware=False, uuid_subtype=OLD_UUID_SUBTYPE):
         """Decode this BSON data.
 
         The default type to use for the resultant document is
@@ -556,7 +589,7 @@ class BSON(binary_type):
 
         .. versionadded:: 1.9
         """
-        (document, _) = _bson_to_dict(self, as_class, tz_aware)
+        (document, _) = _bson_to_dict(self, as_class, tz_aware, uuid_subtype)
         return document
 
 

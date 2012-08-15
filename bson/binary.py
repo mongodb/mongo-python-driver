@@ -46,6 +46,15 @@ default is :data:`BINARY_SUBTYPE`.
 .. versionadded:: 1.7
 """
 
+OLD_UUID_SUBTYPE = 3
+"""Old BSON binary subtype for a UUID.
+
+:class:`uuid.UUID` instances will automatically be encoded
+by :mod:`bson` using this subtype.
+
+.. versionadded:: 2.1
+"""
+
 UUID_SUBTYPE = 4
 """BSON binary subtype for a UUID.
 
@@ -58,14 +67,27 @@ change to this in a future release.
 .. versionadded:: 1.5
 """
 
-OLD_UUID_SUBTYPE = 3
-"""Old BSON binary subtype for a UUID.
+JAVA_LEGACY = 5
+"""Specify that UUIDs should be stored in the legacy
+byte order used by the Java driver.
 
 :class:`uuid.UUID` instances will automatically be encoded
-by :mod:`bson` using this subtype.
+by :mod:`bson` using :data:`OLD_UUID_SUBTYPE`.
 
-.. versionadded:: 2.1
+.. versionadded:: 2.3
 """
+
+CSHARP_LEGACY = 6
+"""Specify that UUIDs should be stored in the legacy
+byte order used by the C# driver.
+
+:class:`uuid.UUID` instances will automatically be encoded
+by :mod:`bson` using :data:`OLD_UUID_SUBTYPE`.
+
+.. versionadded:: 2.3
+"""
+
+ALL_UUID_SUBTYPES = (OLD_UUID_SUBTYPE, UUID_SUBTYPE, JAVA_LEGACY, CSHARP_LEGACY)
 
 MD5_SUBTYPE = 5
 """BSON binary subtype for an MD5 hash.

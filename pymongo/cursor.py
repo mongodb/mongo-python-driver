@@ -682,7 +682,8 @@ class Cursor(object):
         try:
             response = helpers._unpack_response(response, self.__id,
                                                 self.__as_class,
-                                                self.__tz_aware)
+                                                self.__tz_aware,
+                                                self.__uuid_subtype)
         except AutoReconnect:
             # Don't send kill cursors to another server after a "not master"
             # error. It's completely pointless.
