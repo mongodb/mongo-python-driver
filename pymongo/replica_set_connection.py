@@ -454,11 +454,11 @@ class ReplicaSetConnection(common.BaseObject):
                 index in cache[dbname][coll] and
                 now < cache[dbname][coll][index])
 
-    def _cache_index(self, dbase, collection, index, ttl):
+    def _cache_index(self, dbase, collection, index, cache_for):
         """Add an index to the index cache for ensure_index operations.
         """
         now = datetime.datetime.utcnow()
-        expire = datetime.timedelta(seconds=ttl) + now
+        expire = datetime.timedelta(seconds=cache_for) + now
 
         if dbase not in self.__index_cache:
             self.__index_cache[dbase] = {}
@@ -815,7 +815,7 @@ class ReplicaSetConnection(common.BaseObject):
             if member:
                 member.pool.discard_socket(sock_info)
             raise ConnectionFailure("%s:%d: %s" % (host[0], host[1], str(why)))
-        
+
         if member and sock_info:
             member.pool.maybe_return_socket(sock_info)
 

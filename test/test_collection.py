@@ -186,22 +186,39 @@ class TestCollection(unittest.TestCase):
 
         db.test.drop_index("goodbye_1")
         self.assertEqual("goodbye_1",
-                         db.test.ensure_index("goodbye", ttl=1))
+                         db.test.ensure_index("goodbye", cache_for=1))
         time.sleep(1.1)
         self.assertEqual("goodbye_1",
                          db.test.ensure_index("goodbye"))
 
         db.test.drop_index("goodbye_1")
         self.assertEqual("goodbye_1",
-                         db.test.create_index("goodbye", ttl=1))
+                         db.test.create_index("goodbye", cache_for=1))
         time.sleep(1.1)
         self.assertEqual("goodbye_1",
                          db.test.ensure_index("goodbye"))
         # Make sure the expiration time is updated.
         self.assertEqual(None,
                          db.test.ensure_index("goodbye"))
+
         # Clean up indexes for later tests
         db.test.drop_indexes()
+
+    def test_deprecated_ttl_index_kwarg(self):
+        db = self.db
+
+        # In Python 2.6+ we could use the catch_warnings context
+        # manager to test this warning nicely. As we can't do that
+        # we must test raising errors before the ignore filter is applied.
+        warnings.simplefilter("error", DeprecationWarning)
+        self.assertRaises(DeprecationWarning, lambda:
+                        db.test.ensure_index("goodbye", ttl=10))
+        warnings.resetwarnings()
+        warnings.simplefilter("ignore")
+
+        self.assertEqual("goodbye_1",
+                         db.test.ensure_index("goodbye", ttl=10))
+        self.assertEqual(None, db.test.ensure_index("goodbye"))
 
     def test_ensure_unique_index_threaded(self):
         coll = self.db.test_unique_threaded

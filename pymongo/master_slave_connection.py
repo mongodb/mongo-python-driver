@@ -281,9 +281,10 @@ class MasterSlaveConnection(BaseObject):
         return self.__master._cached(database_name,
                                      collection_name, index_name)
 
-    def _cache_index(self, database_name, collection_name, index_name, ttl):
+    def _cache_index(self, database_name, collection_name,
+                     index_name, cache_for):
         return self.__master._cache_index(database_name, collection_name,
-                                          index_name, ttl)
+                                          index_name, cache_for)
 
     def _purge_index(self, database_name,
                      collection_name=None, index_name=None):

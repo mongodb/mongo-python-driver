@@ -320,11 +320,11 @@ class Connection(common.BaseObject):
                 index in cache[dbname][coll] and
                 now < cache[dbname][coll][index])
 
-    def _cache_index(self, database, collection, index, ttl):
+    def _cache_index(self, database, collection, index, cache_for):
         """Add an index to the index cache for ensure_index operations.
         """
         now = datetime.datetime.utcnow()
-        expire = datetime.timedelta(seconds=ttl) + now
+        expire = datetime.timedelta(seconds=cache_for) + now
 
         if database not in self.__index_cache:
             self.__index_cache[database] = {}

@@ -639,7 +639,7 @@ class Collection(common.BaseObject):
         """
         return self.find().count()
 
-    def create_index(self, key_or_list, ttl=300, **kwargs):
+    def create_index(self, key_or_list, cache_for=300, **kwargs):
         """Creates an index on this collection.
 
         Takes either a single key or a list of (key, direction) pairs.
@@ -676,13 +676,18 @@ class Collection(common.BaseObject):
         :Parameters:
           - `key_or_list`: a single key or a list of (key, direction)
             pairs specifying the index to create
-          - `ttl` (optional): time window (in seconds) during which
+          - `cache_for` (optional): time window (in seconds) during which
             this index will be recognized by subsequent calls to
             :meth:`ensure_index` - see documentation for
             :meth:`ensure_index` for details
           - `**kwargs` (optional): any additional index creation
             options (see the above list) should be passed as keyword
             arguments
+          - `ttl` (deprecated): Use `cache_for` instead.
+
+        .. versionchanged:: 2.2.1+
+            The `ttl` parameter has been deprecated to avoid confusion with
+            TTL collections.  Use `cache_for` instead.
 
         .. versionchanged:: 2.2
            Removed deprecated argument: deprecated_unique
@@ -697,6 +702,12 @@ class Collection(common.BaseObject):
 
         .. mongodoc:: indexes
         """
+
+        if 'ttl' in kwargs:
+            cache_for = kwargs.pop('ttl')
+            warnings.warn("ttl is deprecated. Please use cache_for instead.",
+                          DeprecationWarning)
+
         keys = helpers._index_list(key_or_list)
         index_doc = helpers._index_document(keys)
 
@@ -718,11 +729,11 @@ class Collection(common.BaseObject):
                                               safe=True)
 
         self.__database.connection._cache_index(self.__database.name,
-                                                self.__name, name, ttl)
+                                                self.__name, name, cache_for)
 
         return name
 
-    def ensure_index(self, key_or_list, ttl=300, **kwargs):
+    def ensure_index(self, key_or_list, cache_for=300, **kwargs):
         """Ensures that an index exists on this collection.
 
         Takes either a single key or a list of (key, direction) pairs.
@@ -768,12 +779,17 @@ class Collection(common.BaseObject):
         :Parameters:
           - `key_or_list`: a single key or a list of (key, direction)
             pairs specifying the index to create
-          - `ttl` (optional): time window (in seconds) during which
+          - `cache_for` (optional): time window (in seconds) during which
             this index will be recognized by subsequent calls to
             :meth:`ensure_index`
           - `**kwargs` (optional): any additional index creation
             options (see the above list) should be passed as keyword
             arguments
+          - `ttl` (deprecated): Use `cache_for` instead.
+
+        .. versionchanged:: 2.2.1+
+            The `ttl` parameter has been deprecated to avoid confusion with
+            TTL collections.  Use `cache_for` instead.
 
         .. versionchanged:: 2.2
            Removed deprecated argument: deprecated_unique
@@ -794,7 +810,7 @@ class Collection(common.BaseObject):
 
         if not self.__database.connection._cached(self.__database.name,
                                                   self.__name, name):
-            return self.create_index(key_or_list, ttl, **kwargs)
+            return self.create_index(key_or_list, cache_for, **kwargs)
         return None
 
     def drop_indexes(self):
