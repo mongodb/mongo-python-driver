@@ -129,6 +129,13 @@ class custom_build_ext(build_ext):
 WARNING: %s could not
 be compiled. No C extensions are essential for PyMongo to run,
 although they do result in significant speed improvements.
+%s
+
+Please see the installation docs for solutions to build issues:
+
+http://api.mongodb.org/python/current/installation.html
+
+Here are some hints for popular operating systems:
 
 If you are seeing this message on Linux you probably need to
 install GCC and/or the Python development package for your
@@ -142,7 +149,16 @@ RedHat, CentOS, and Fedora users should issue the following command:
 
     $ sudo yum install gcc python-devel
 
-%s
+If you are seeing this message on Microsoft Windows please install
+PyMongo using the MS Windows installer for your version of Python,
+available on pypi here:
+
+http://pypi.python.org/pypi/pymongo/#downloads
+
+If you are seeing this message on OSX please read the documentation
+here:
+
+http://api.mongodb.org/python/current/installation.html#osx
 ********************************************************************
 """
 
@@ -180,9 +196,10 @@ RedHat, CentOS, and Fedora users should issue the following command:
                 sys.stdout.write('%s\n' % str(e))
                 warnings.warn(self.warning_message % ("The %s extension "
                                                       "module" % (name,),
-                                                      "Above is the ouput "
-                                                      "showing how the "
-                                                      "compilation failed."))
+                                                      "The output above "
+                                                      "this warning shows how "
+                                                      "the compilation "
+                                                      "failed."))
         else:
             warnings.warn(self.warning_message % ("The %s extension "
                                                   "module" % (name,),
