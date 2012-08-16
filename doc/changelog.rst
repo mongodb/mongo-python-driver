@@ -16,6 +16,7 @@ Important New Features:
 - A new :meth:`~pymongo.collection.Collection.aggregate` method to support
   MongoDB's new `aggregation framework
   <http://docs.mongodb.org/manual/applications/aggregation/>`_.
+- Support for legacy Java and C# byte order when encoding and decoding UUIDs.
 - Support for connecting directly to an arbiter.
 
 .. warning::

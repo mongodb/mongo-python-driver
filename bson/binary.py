@@ -68,8 +68,9 @@ change to this in a future release.
 """
 
 JAVA_LEGACY = 5
-"""Specify that UUIDs should be stored in the legacy
-byte order used by the Java driver.
+"""Used with :attr:`pymongo.collection.Collection.uuid_subtype`
+to specify that UUIDs should be stored in the legacy byte order
+used by the Java driver.
 
 :class:`uuid.UUID` instances will automatically be encoded
 by :mod:`bson` using :data:`OLD_UUID_SUBTYPE`.
@@ -78,8 +79,9 @@ by :mod:`bson` using :data:`OLD_UUID_SUBTYPE`.
 """
 
 CSHARP_LEGACY = 6
-"""Specify that UUIDs should be stored in the legacy
-byte order used by the C# driver.
+"""Used with :attr:`pymongo.collection.Collection.uuid_subtype`
+to specify that UUIDs should be stored in the legacy byte order
+used by the C# driver.
 
 :class:`uuid.UUID` instances will automatically be encoded
 by :mod:`bson` using :data:`OLD_UUID_SUBTYPE`.

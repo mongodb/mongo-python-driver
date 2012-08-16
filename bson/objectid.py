@@ -130,7 +130,7 @@ class ObjectId(object):
         :Parameters:
           - `oid`: the object id to validate
 
-        .. versionadded:: 2.2.1+
+        .. versionadded:: 2.3
         """
         try:
             ObjectId(oid)

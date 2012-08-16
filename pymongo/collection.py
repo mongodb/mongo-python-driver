@@ -182,14 +182,14 @@ class Collection(common.BaseObject):
         self.__uuid_subtype = subtype
 
     uuid_subtype = property(__get_uuid_subtype, __set_uuid_subtype,
-                            doc="""This setting specifies which BSON Binary
+                            doc="""This attribute specifies which BSON Binary
                             subtype is used when storing UUIDs. Historically
                             UUIDs have been stored as BSON Binary subtype 3.
-                            This setting is used to switch to the newer BSON
-                            binary subtype 4. This setting can also be used to
-                            force legacy byte order and subtype compatibility
-                            with the Java and C# drivers. See the bson.binary
-                            module for all options.""")
+                            This attribute is used to switch to the newer BSON
+                            binary subtype 4. It can also be used to force
+                            legacy byte order and subtype compatibility with
+                            the Java and C# drivers. See the
+                            :mod:`bson.binary` module for all options.""")
 
     def save(self, to_save, manipulate=True,
              safe=None, check_keys=True, **kwargs):
@@ -685,7 +685,7 @@ class Collection(common.BaseObject):
             arguments
           - `ttl` (deprecated): Use `cache_for` instead.
 
-        .. versionchanged:: 2.2.1+
+        .. versionchanged:: 2.3
             The `ttl` parameter has been deprecated to avoid confusion with
             TTL collections.  Use `cache_for` instead.
 
@@ -787,7 +787,7 @@ class Collection(common.BaseObject):
             arguments
           - `ttl` (deprecated): Use `cache_for` instead.
 
-        .. versionchanged:: 2.2.1+
+        .. versionchanged:: 2.3
             The `ttl` parameter has been deprecated to avoid confusion with
             TTL collections.  Use `cache_for` instead.
 
