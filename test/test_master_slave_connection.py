@@ -57,7 +57,7 @@ class TestMasterSlaveConnection(unittest.TestCase):
             pass
 
         if not self.slaves:
-            raise SkipTest()
+            raise SkipTest("Not connected to master-slave set")
 
         self.connection = MasterSlaveConnection(self.master, self.slaves)
         self.db = self.connection.pymongo_test

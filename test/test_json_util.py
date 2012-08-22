@@ -44,7 +44,7 @@ class TestJsonUtil(unittest.TestCase):
 
     def setUp(self):
         if not json_util.json_lib:
-            raise SkipTest()
+            raise SkipTest("No json or simplejson module")
 
         self.db = get_connection().pymongo_test
 
@@ -105,7 +105,7 @@ class TestJsonUtil(unittest.TestCase):
 
     def test_uuid(self):
         if not bson.has_uuid():
-            raise SkipTest()
+            raise SkipTest("No uuid module")
         self.round_trip(
                 {'uuid': bson.uuid.UUID(
                             'f47ac10b-58cc-4372-a567-0e02b2c3d479')})

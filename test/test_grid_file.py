@@ -477,7 +477,7 @@ Bye"""))
 
     def test_context_manager(self):
         if sys.version_info < (2, 6):
-            raise SkipTest()
+            raise SkipTest("With statement requires Python >= 2.6")
 
         contents = b("Imagine this is some important data...")
         # Hack around python2.4 an 2.5 not supporting 'with' syntax

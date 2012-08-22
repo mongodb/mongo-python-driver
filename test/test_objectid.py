@@ -95,12 +95,12 @@ class TestObjectId(unittest.TestCase):
         # multiprocessing on windows is weird and I don't feel like figuring it
         # out right now. this should fix buildbot.
         if sys.platform == "win32":
-            raise SkipTest()
+            raise SkipTest("Can't fork on Windows")
 
         try:
             import multiprocessing
         except ImportError:
-            raise SkipTest()
+            raise SkipTest("Can't fork on Windows")
 
         pool = multiprocessing.Pool(2)
         ids = pool.map(oid, range(20))

@@ -57,7 +57,7 @@ class TestReplicaSetConnectionAgainstStandalone(unittest.TestCase):
         conn = Connection(pair)
         response = conn.admin.command('ismaster')
         if 'setName' in response:
-            raise SkipTest()
+            raise SkipTest("Not connected to a replica set")
 
     def test_connect(self):
         self.assertRaises(ConfigurationError, ReplicaSetConnection,
@@ -89,7 +89,7 @@ class TestConnectionReplicaSetBase(unittest.TestCase):
                 if m['stateStr'] == 'SECONDARY'
             ]
         else:
-            raise SkipTest()
+            raise SkipTest("Not connected to a replica set")
 
     def _get_connection(self, **kwargs):
         return ReplicaSetConnection(pair,
@@ -376,12 +376,12 @@ class TestConnection(TestConnectionReplicaSetBase):
         """Test using a connection before and after a fork.
         """
         if sys.platform == "win32":
-            raise SkipTest()
+            raise SkipTest("Can't fork on Windows")
 
         try:
             from multiprocessing import Process, Pipe
         except ImportError:
-            raise SkipTest()
+            raise SkipTest("No multiprocessing module")
 
         db = self._get_connection().pymongo_test
 
@@ -516,7 +516,7 @@ class TestConnection(TestConnectionReplicaSetBase):
         except:
             # Either mongod was started without --ipv6
             # or the OS doesn't support it (or both).
-            raise SkipTest()
+            raise SkipTest("Not connected to a replica set")
 
         # Try a few simple things
         connection = ReplicaSetConnection("mongodb://[::1]:%d" % (port,),

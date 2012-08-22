@@ -310,7 +310,7 @@ class TestBSON(unittest.TestCase):
 
     def test_uuid(self):
         if not should_test_uuid:
-            raise SkipTest()
+            raise SkipTest("No uuid module")
 
         id = uuid.uuid4()
         transformed_id = (BSON.encode({"id": id})).decode()["id"]
@@ -321,7 +321,7 @@ class TestBSON(unittest.TestCase):
 
     def test_uuid_legacy(self):
         if not should_test_uuid:
-            raise SkipTest()
+            raise SkipTest("No uuid module")
 
         id = uuid.uuid4()
         legacy = UUIDLegacy(id)
@@ -437,7 +437,7 @@ class TestBSON(unittest.TestCase):
         try:
             from collections import OrderedDict
         except ImportError:
-            raise SkipTest()
+            raise SkipTest("No OrderedDict")
         d = OrderedDict([("one", 1), ("two", 2), ("three", 3), ("four", 4)])
         self.assertEqual(d, BSON.encode(d).decode(as_class=OrderedDict))
 

@@ -48,7 +48,10 @@ class TestSSL(unittest.TestCase):
 
     def test_no_ssl(self):
         if have_ssl:
-            raise SkipTest()
+            raise SkipTest(
+                "We have SSL compiled into Python, can't test what happens "
+                "without SSL"
+            )
 
         self.assertRaises(ConfigurationError,
                           Connection, ssl=True)
@@ -57,13 +60,13 @@ class TestSSL(unittest.TestCase):
 
     def test_simple_ops(self):
         if not have_ssl:
-            raise SkipTest()
+            raise SkipTest("SSL not compiled into Python")
 
         try:
             conn = Connection(connectTimeoutMS=100, ssl=True)
         # MongoDB not configured for SSL?
         except ConnectionFailure:
-            raise SkipTest()
+            raise SkipTest("No mongod available over SSL")
         response = conn.admin.command('ismaster')
         if 'setName' in response:
             conn = ReplicaSetConnection(replicaSet=response['setName'],

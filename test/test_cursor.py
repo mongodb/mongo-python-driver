@@ -634,7 +634,7 @@ class TestCursor(unittest.TestCase):
 
     def test_count_with_limit_and_skip(self):
         if not version.at_least(self.db.connection, (1, 1, 4, -1)):
-            raise SkipTest()
+            raise SkipTest("count with limit / skip requires MongoDB >= 1.1.4")
 
         def check_len(cursor, length):
             self.assertEqual(len(list(cursor)), cursor.count(True))
@@ -707,7 +707,7 @@ class TestCursor(unittest.TestCase):
 
     def test_distinct(self):
         if not version.at_least(self.db.connection, (1, 1, 3, 1)):
-            raise SkipTest()
+            raise SkipTest("distinct with query requires MongoDB >= 1.1.3")
 
         self.db.drop_collection("test")
 
@@ -736,7 +736,7 @@ class TestCursor(unittest.TestCase):
 
     def test_max_scan(self):
         if not version.at_least(self.db.connection, (1, 5, 1)):
-            raise SkipTest()
+            raise SkipTest("maxScan requires MongoDB >= 1.5.1")
 
         self.db.drop_collection("test")
         for _ in range(100):
@@ -749,7 +749,7 @@ class TestCursor(unittest.TestCase):
 
     def test_with_statement(self):
         if sys.version_info < (2, 6):
-            raise SkipTest()
+            raise SkipTest("With statement requires Python >= 2.6")
 
         self.db.drop_collection("test")
         for _ in range(100):

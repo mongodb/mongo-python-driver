@@ -277,12 +277,12 @@ class TestConnection(unittest.TestCase):
     def test_fork(self):
         # Test using a connection before and after a fork.
         if sys.platform == "win32":
-            raise SkipTest()
+            raise SkipTest("Can't fork on windows")
 
         try:
             from multiprocessing import Process, Pipe
         except ImportError:
-            raise SkipTest()
+            raise SkipTest("No multiprocessing module")
 
         db = Connection(self.host, self.port).pymongo_test
 
@@ -452,7 +452,7 @@ class TestConnection(unittest.TestCase):
 
     def test_contextlib(self):
         if sys.version_info < (2, 6):
-            raise SkipTest()
+            raise SkipTest("With statement requires Python >= 2.6")
 
         import contextlib
 
