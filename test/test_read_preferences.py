@@ -139,7 +139,10 @@ class TestCommandAndReadPreference(TestConnectionReplicaSetBase):
         # Need auto_start_request False to avoid pinning members.
         self.c = ReadPrefTester(
             '%s:%s' % (host, port),
-            replicaSet=self.name, auto_start_request=False)
+            replicaSet=self.name, auto_start_request=False,
+            # Effectively ignore members' ping times so we can test the effect
+            # of ReadPreference modes only
+            secondary_acceptable_latency_ms=1000*1000)
 
     def tearDown(self):
         self.c.close()
