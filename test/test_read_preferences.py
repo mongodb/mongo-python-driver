@@ -209,7 +209,7 @@ class TestCommandAndReadPreference(TestConnectionReplicaSetBase):
         # most don't.
         # Disobedient commands, always go to primary
         self._test_fn(False, lambda: self.c.pymongo_test.command('ping'))
-        self._test_fn(False, lambda: self.c.pymongo_test.command('buildinfo'))
+        self._test_fn(False, lambda: self.c.admin.command('buildinfo'))
 
         # Obedient commands.
         self._test_fn(True, lambda: self.c.pymongo_test.command('group', {
