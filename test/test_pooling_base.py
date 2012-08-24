@@ -776,10 +776,6 @@ class _TestPoolSocketSharing(_TestPoolingBase):
         )
 
         db = cx.pymongo_test
-        if not version.at_least(db.connection, (1, 7, 2)):
-            raise SkipTest("Need at least MongoDB version 1.7.2 to use"
-                           " db.eval(nolock=True)")
-
         db.test.remove(safe=True)
         db.test.insert({'_id': 1}, safe=True)
 
@@ -806,8 +802,8 @@ class _TestPoolSocketSharing(_TestPoolingBase):
 
             history.append('find_slow start')
 
-            # Javascript function that pauses 5 seconds.
-            fn = delay(5)
+            # Javascript function that pauses N seconds per document
+            fn = delay(10)
             self.assertEqual(1, db.test.find({"$where": fn}).count())
 
             history.append('find_slow done')
