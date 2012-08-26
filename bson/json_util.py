@@ -97,6 +97,8 @@ from bson.py3compat import PY3, binary_type, string_types
 # TODO share this with bson.py?
 _RE_TYPE = type(re.compile("foo"))
 
+# EXCLUDES field for the find method on collections to ignore
+# sensitive data such as passwords.
 EXCLUDES = {'password': 0}
 
 
@@ -164,11 +166,20 @@ def object_hook(dct):
     return dct
 
 
-def default(obj, to_json=False):
+def default(obj, reference=False):
+    """
+    Default dumper for Mongo objects to JSONic dictionaries.
+    Added an argument to check if user wishes to do a complete
+    lookup on reference fields. Added the check here since the base
+    lookups remain with either during dump or otherwise but the
+    underlying data dict construction during JSON dumping is an overhead
+    on the operations downstream. If there is no reference argument
+    method returns the native object.as_doc() method's return data.
+    """
     if isinstance(obj, ObjectId):
         return {"$oid": str(obj)}
     if isinstance(obj, DBRef):
-        if to_json:
+        if reference:
             collection = db[obj.collection]
             return collection.find_one({'_id': obj._DBRef__id}, EXCLUDES)
         else:
