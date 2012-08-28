@@ -121,14 +121,17 @@ directions apply to both CPython and ActiveState's ActivePython:
 64-bit Windows
 ~~~~~~~~~~~~~~
 
-Install Visual Studio 2008. You must use the full version as Visual C++ 2008
-Express does not provide 64-bit compilers. Make sure that you check the
+For Python 3.3 install Visual Studio 2010. For Python 3.2 and older install
+Visual Studio 2008. In either case you must use the full version as Visual
+C++ Express does not provide 64-bit compilers. Make sure that you check the
 "x64 Compilers and Tools" option under Visual C++.
 
 32-bit Windows
 ~~~~~~~~~~~~~~
 
-For Python 2.6 and newer install Visual C++ 2008 Express SP1.
+For Python 3.3 install Visual C++ 2010 Express.
+
+For Python 2.6 through 3.2 install Visual C++ 2008 Express SP1.
 
 For Python 2.4 or 2.5 you must install
 `MingW32 <http://www.mingw.org/wiki/InstallationHOWTOforMinGW>`_ then run the
