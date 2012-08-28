@@ -57,7 +57,7 @@ class TestReplicaSetConnectionAgainstStandalone(unittest.TestCase):
         conn = Connection(pair)
         response = conn.admin.command('ismaster')
         if 'setName' in response:
-            raise SkipTest("Not connected to a replica set")
+            raise SkipTest("Connected to a replica set, not a standalone mongod")
 
     def test_connect(self):
         self.assertRaises(ConfigurationError, ReplicaSetConnection,
@@ -516,7 +516,7 @@ class TestConnection(TestConnectionReplicaSetBase):
         except:
             # Either mongod was started without --ipv6
             # or the OS doesn't support it (or both).
-            raise SkipTest("Not connected to a replica set")
+            raise SkipTest("No IPv6")
 
         # Try a few simple things
         connection = ReplicaSetConnection("mongodb://[::1]:%d" % (port,),
