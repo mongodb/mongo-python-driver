@@ -804,7 +804,15 @@ class _TestPoolSocketSharing(_TestPoolingBase):
 
             # Javascript function that pauses N seconds per document
             fn = delay(10)
-            self.assertEqual(1, db.test.find({"$where": fn}).count())
+            if is_mongos(db.connection):
+                # mongos doesn't support eval so we have to use $where
+                # which is less reliable in this context.
+                self.assertEqual(1, db.test.find({"$where": fn}).count())
+            else:
+                # 'nolock' allows find_fast to start and finish while we're
+                # waiting for this to complete.
+                self.assertEqual({'ok': 1.0, 'retval': True},
+                                 db.command('eval', fn, nolock=True))
 
             history.append('find_slow done')
 
