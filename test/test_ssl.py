@@ -49,8 +49,8 @@ class TestSSL(unittest.TestCase):
     def test_no_ssl(self):
         if have_ssl:
             raise SkipTest(
-                "We have SSL compiled into Python, can't test what happens "
-                "without SSL"
+                "The ssl module is available, can't test what happens "
+                "without it."
             )
 
         self.assertRaises(ConfigurationError,
@@ -60,7 +60,7 @@ class TestSSL(unittest.TestCase):
 
     def test_simple_ops(self):
         if not have_ssl:
-            raise SkipTest("SSL not compiled into Python")
+            raise SkipTest("The ssl module is not available.")
 
         try:
             conn = Connection(connectTimeoutMS=100, ssl=True)
