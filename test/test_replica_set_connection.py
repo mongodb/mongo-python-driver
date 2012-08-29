@@ -36,6 +36,7 @@ from pymongo.read_preferences import ReadPreference
 from pymongo.replica_set_connection import ReplicaSetConnection
 from pymongo.replica_set_connection import _partition_node
 from pymongo.database import Database
+from pymongo.pool import SocketInfo
 from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
                             ConnectionFailure,
@@ -647,6 +648,46 @@ class TestConnection(TestConnectionReplicaSetBase):
         finally:
             if old_signal_handler:
                 signal.signal(signal.SIGALRM, old_signal_handler)
+
+    def test_operation_failure_without_request(self):
+        # Ensure ReplicaSetConnection doesn't close socket after it gets an
+        # error response to getLastError. PYTHON-395.
+        c = self._get_connection(auto_start_request=False)
+        pool = c._ReplicaSetConnection__members[self.primary].pool
+        self.assertEqual(1, len(pool.sockets))
+        old_sock_info = iter(pool.sockets).next()
+        c.pymongo_test.test.drop()
+        c.pymongo_test.test.insert({'_id': 'foo'}, safe=True)
+        self.assertRaises(
+            OperationFailure,
+            c.pymongo_test.test.insert, {'_id': 'foo'}, safe=True)
+
+        self.assertEqual(1, len(pool.sockets))
+        new_sock_info = iter(pool.sockets).next()
+
+        self.assertEqual(old_sock_info, new_sock_info)
+        c.close()
+
+    def test_operation_failure_with_request(self):
+        # Ensure ReplicaSetConnection doesn't close socket after it gets an
+        # error response to getLastError. PYTHON-395.
+        c = self._get_connection(auto_start_request=True)
+        c.pymongo_test.test.find_one()
+        pool = c._ReplicaSetConnection__members[self.primary].pool
+
+        # Connection has reserved a socket for this thread
+        self.assertTrue(isinstance(pool._get_request_state(), SocketInfo))
+
+        old_sock_info = pool._get_request_state()
+        c.pymongo_test.test.drop()
+        c.pymongo_test.test.insert({'_id': 'foo'}, safe=True)
+        self.assertRaises(
+            OperationFailure,
+            c.pymongo_test.test.insert, {'_id': 'foo'}, safe=True)
+
+        # OperationFailure doesn't affect the request socket
+        self.assertEqual(old_sock_info, pool._get_request_state())
+        c.close()
 
     def test_auto_start_request(self):
         for bad_horrible_value in (None, 5, 'hi!'):

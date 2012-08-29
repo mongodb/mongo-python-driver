@@ -623,5 +623,42 @@ with conn.start_request() as request:
             db.foo.find().next()
         )
 
+    def test_operation_failure_without_request(self):
+        # Ensure Connection doesn't close socket after it gets an error
+        # response to getLastError. PYTHON-395.
+        c = get_connection(auto_start_request=False)
+        pool = c._Connection__pool
+        self.assertEqual(1, len(pool.sockets))
+        old_sock_info = iter(pool.sockets).next()
+        c.pymongo_test.test.drop()
+        c.pymongo_test.test.insert({'_id': 'foo'}, safe=True)
+        self.assertRaises(
+            OperationFailure,
+            c.pymongo_test.test.insert, {'_id': 'foo'}, safe=True)
+
+        self.assertEqual(1, len(pool.sockets))
+        new_sock_info = iter(pool.sockets).next()
+        self.assertEqual(old_sock_info, new_sock_info)
+
+    def test_operation_failure_with_request(self):
+        # Ensure Connection doesn't close socket after it gets an error
+        # response to getLastError. PYTHON-395.
+        c = get_connection(auto_start_request=True)
+        pool = c._Connection__pool
+
+        # Connection has reserved a socket for this thread
+        self.assertTrue(isinstance(pool._get_request_state(), SocketInfo))
+
+        old_sock_info = pool._get_request_state()
+        c.pymongo_test.test.drop()
+        c.pymongo_test.test.insert({'_id': 'foo'}, safe=True)
+        self.assertRaises(
+            OperationFailure,
+            c.pymongo_test.test.insert, {'_id': 'foo'}, safe=True)
+
+        # OperationFailure doesn't affect the request socket
+        self.assertEqual(old_sock_info, pool._get_request_state())
+
+
 if __name__ == "__main__":
     unittest.main()

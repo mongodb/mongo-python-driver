@@ -832,6 +832,9 @@ class Connection(common.BaseObject):
 
             self.__pool.maybe_return_socket(sock_info)
             return rv
+        except OperationFailure:
+            self.__pool.maybe_return_socket(sock_info)
+            raise
         except (ConnectionFailure, socket.error), e:
             self.disconnect()
             raise AutoReconnect(str(e))
