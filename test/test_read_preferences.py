@@ -105,7 +105,7 @@ class TestReadPreferences(TestReadPreferencesBase):
         # member
         c = self._get_connection(
             read_preference=ReadPreference.NEAREST,
-            secondaryAcceptableLatencyMS=1000,
+            secondaryAcceptableLatencyMS=1500,
             auto_start_request=False)
 
         used = set()
