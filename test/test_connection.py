@@ -491,10 +491,6 @@ with get_connection() as connection:
         pool.maybe_return_socket(sock_info1)
 
     def assertDifferentSock(self, pool):
-        # We have to hold both SocketInfos at the same time, otherwise the
-        # first will send its socket back to the pool as soon as its ref count
-        # goes to zero, in which case the second SocketInfo we get will have
-        # the same socket as the first.
         sock_info0 = self.get_sock(pool)
         sock_info1 = self.get_sock(pool)
         self.assertNotEqual(sock_info0, sock_info1)
