@@ -1073,7 +1073,7 @@ class TestCollection(unittest.TestCase):
             self.assertRaises(TimeoutError, self.db.test.update,
                               {"x": 1}, {"y": 2}, w=2, wtimeout=1)
             self.assertRaises(TimeoutError, self.db.test.remove,
-                              {"x": 1}, {"y": 2}, w=2, wtimeout=1)
+                              {"x": 1}, w=2, wtimeout=1)
 
         self.db.test.save({"x": 1}, w=1, wtimeout=1)
         self.db.test.insert({"x": 1}, w=1, wtimeout=1)
@@ -1846,16 +1846,18 @@ class TestCollection(unittest.TestCase):
 
         coll.uuid_subtype = UUID_SUBTYPE
         q = {"_id": uu}
-        result = coll.inline_map_reduce(map, reduce, query=q)
-        self.assertEqual([], result)
+        if version.at_least(self.db.connection, (1, 7, 4)):
+            result = coll.inline_map_reduce(map, reduce, query=q)
+            self.assertEqual([], result)
 
         result = coll.map_reduce(map, reduce, "results", query=q)
         self.assertEqual(0, db.results.count())
 
         coll.uuid_subtype = OLD_UUID_SUBTYPE
         q = {"_id": uu}
-        result = coll.inline_map_reduce(map, reduce, query=q)
-        self.assertEqual(2, len(result))
+        if version.at_least(self.db.connection, (1, 7, 4)):
+            result = coll.inline_map_reduce(map, reduce, query=q)
+            self.assertEqual(2, len(result))
 
         result = coll.map_reduce(map, reduce, "results", query=q)
         self.assertEqual(2, db.results.count())

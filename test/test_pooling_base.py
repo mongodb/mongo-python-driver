@@ -804,7 +804,8 @@ class _TestPoolSocketSharing(_TestPoolingBase):
 
             # Javascript function that pauses N seconds per document
             fn = delay(10)
-            if is_mongos(db.connection):
+            if (is_mongos(db.connection) or not
+                version.at_least(db.connection, (1, 7, 2))):
                 # mongos doesn't support eval so we have to use $where
                 # which is less reliable in this context.
                 self.assertEqual(1, db.test.find({"$where": fn}).count())
