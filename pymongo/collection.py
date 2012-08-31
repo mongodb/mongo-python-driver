@@ -666,12 +666,20 @@ class Collection(common.BaseObject):
             given, a name will be generated
           - `unique`: should this index guarantee uniqueness?
           - `dropDups` or `drop_dups`: should we drop duplicates
-          - `bucketSize` or `bucket_size`: size of buckets for geoHaystack indexes
-            during index creation when creating a unique index?
+          - `background`: if this index should be created in the
+            background
+          - `bucketSize` or `bucket_size`: size of buckets for geoHaystack
+            indexes during index creation when creating a unique index?
           - `min`: minimum value for keys in a :data:`~pymongo.GEO2D`
             index
           - `max`: maximum value for keys in a :data:`~pymongo.GEO2D`
             index
+          - `expireAfterSeconds`: <int> Used to create an expiring (TTL)
+            collection. MongoDB will automatically delete documents from
+            this collection after <int> seconds. The indexed field must
+            be a UTC datetime or the data will not expire.
+
+        .. note:: `expireAfterSeconds` requires server version **>= 2.1.2**
 
         :Parameters:
           - `key_or_list`: a single key or a list of (key, direction)
@@ -771,10 +779,18 @@ class Collection(common.BaseObject):
             during index creation when creating a unique index?
           - `background`: if this index should be created in the
             background
+          - `bucketSize` or `bucket_size`: size of buckets for geoHaystack
+            indexes during index creation when creating a unique index?
           - `min`: minimum value for keys in a :data:`~pymongo.GEO2D`
             index
           - `max`: maximum value for keys in a :data:`~pymongo.GEO2D`
             index
+          - `expireAfterSeconds`: <int> Used to create an expiring (TTL)
+            collection. MongoDB will automatically delete documents from
+            this collection after <int> seconds. The indexed field must
+            be a UTC datetime or the data will not expire.
+
+        .. note:: `expireAfterSeconds` requires server version **>= 2.1.2**
 
         :Parameters:
           - `key_or_list`: a single key or a list of (key, direction)
