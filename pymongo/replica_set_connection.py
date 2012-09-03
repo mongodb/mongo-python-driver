@@ -1002,6 +1002,9 @@ class ReplicaSetConnection(common.BaseObject):
                 rv = self.__check_response_to_last_error(response)
             member.pool.maybe_return_socket(sock_info)
             return rv
+        except OperationFailure:
+            member.pool.maybe_return_socket(sock_info)
+            raise
         except(ConnectionFailure, socket.error), why:
             member.pool.discard_socket(sock_info)
             if _connection_to_use in (None, -1):

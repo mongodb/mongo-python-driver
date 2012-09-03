@@ -491,10 +491,6 @@ with get_connection() as connection:
         pool.maybe_return_socket(sock_info1)
 
     def assertDifferentSock(self, pool):
-        # We have to hold both SocketInfos at the same time, otherwise the
-        # first will send its socket back to the pool as soon as its ref count
-        # goes to zero, in which case the second SocketInfo we get will have
-        # the same socket as the first.
         sock_info0 = self.get_sock(pool)
         sock_info1 = self.get_sock(pool)
         self.assertNotEqual(sock_info0, sock_info1)
@@ -622,6 +618,43 @@ with conn.start_request() as request:
             {'_id': 1},
             db.foo.find().next()
         )
+
+    def test_operation_failure_without_request(self):
+        # Ensure Connection doesn't close socket after it gets an error
+        # response to getLastError. PYTHON-395.
+        c = get_connection(auto_start_request=False)
+        pool = c._Connection__pool
+        self.assertEqual(1, len(pool.sockets))
+        old_sock_info = iter(pool.sockets).next()
+        c.pymongo_test.test.drop()
+        c.pymongo_test.test.insert({'_id': 'foo'}, safe=True)
+        self.assertRaises(
+            OperationFailure,
+            c.pymongo_test.test.insert, {'_id': 'foo'}, safe=True)
+
+        self.assertEqual(1, len(pool.sockets))
+        new_sock_info = iter(pool.sockets).next()
+        self.assertEqual(old_sock_info, new_sock_info)
+
+    def test_operation_failure_with_request(self):
+        # Ensure Connection doesn't close socket after it gets an error
+        # response to getLastError. PYTHON-395.
+        c = get_connection(auto_start_request=True)
+        pool = c._Connection__pool
+
+        # Connection has reserved a socket for this thread
+        self.assertTrue(isinstance(pool._get_request_state(), SocketInfo))
+
+        old_sock_info = pool._get_request_state()
+        c.pymongo_test.test.drop()
+        c.pymongo_test.test.insert({'_id': 'foo'}, safe=True)
+        self.assertRaises(
+            OperationFailure,
+            c.pymongo_test.test.insert, {'_id': 'foo'}, safe=True)
+
+        # OperationFailure doesn't affect the request socket
+        self.assertEqual(old_sock_info, pool._get_request_state())
+
 
 if __name__ == "__main__":
     unittest.main()
