@@ -944,7 +944,7 @@ class Collection(common.BaseObject):
         if the `read_preference` attribute of this instance is not set to
         :attr:`pymongo.ReadPreference.PRIMARY` or the (deprecated)
         `slave_okay` attribute of this instance is set to `True` the
-        `aggregate command`_. will be sent to a secondary or slave.
+        `aggregate command`_ will be sent to a secondary or slave.
 
         :Parameters:
           - `pipeline`: a single command or list of aggregation commands
