@@ -636,8 +636,13 @@ class ReplicaSetConnection(common.BaseObject):
         """
         rqst_id, msg, _ = message.query(0, dbname + '.$cmd', 0, -1, spec)
         start = time.time()
-        sock_info.sock.sendall(msg)
-        response = self.__recv_msg(1, rqst_id, sock_info)
+        try:
+            sock_info.sock.sendall(msg)
+            response = self.__recv_msg(1, rqst_id, sock_info)
+        except:
+            sock_info.close()
+            raise
+
         end = time.time()
         response = helpers._unpack_response(response)['data'][0]
         msg = "command %r failed: %%s" % spec
@@ -1011,7 +1016,7 @@ class ReplicaSetConnection(common.BaseObject):
                 self.disconnect()
             raise AutoReconnect(str(why))
         except:
-            member.pool.discard_socket(sock_info)
+            sock_info.close()
             raise
 
     def __send_and_receive(self, member, msg, **kwargs):
@@ -1038,7 +1043,7 @@ class ReplicaSetConnection(common.BaseObject):
             member.pool.discard_socket(sock_info)
             raise AutoReconnect("%s:%d: %s" % (host, port, str(why)))
         except:
-            member.pool.discard_socket(sock_info)
+            sock_info.close()
             raise
 
     def __try_read(self, member, msg, **kwargs):
