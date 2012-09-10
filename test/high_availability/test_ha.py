@@ -95,7 +95,6 @@ class TestSecondaryConnection(unittest.TestCase):
             self.assert_(conn.pymongo_test.test.find_one())
 
         # Test direct connection to an arbiter
-        secondary_host = ha_tools.get_arbiters()[0]
         host, port = ha_tools.get_arbiters()[0].split(':')
         port = int(port)
         conn = Connection(host, port)
@@ -320,7 +319,7 @@ class TestReadPreference(unittest.TestCase):
             # other_secondary
             {'tags': {'dc': 'ny', 'name': 'other_secondary'}, 'priority': 0},
         ]
-        
+
         res = ha_tools.start_replica_set(members)
         self.seed, self.name = res
 
@@ -398,13 +397,13 @@ class TestReadPreference(unittest.TestCase):
         SECONDARY = ReadPreference.SECONDARY
         SECONDARY_PREFERRED = ReadPreference.SECONDARY_PREFERRED
         NEAREST = ReadPreference.NEAREST
-        
+
         primary = self.primary
         secondary = self.secondary
         other_secondary = self.other_secondary
 
         bad_tag = {'bad': 'tag'}
-                
+
         # 1. THREE MEMBERS UP -------------------------------------------------
         #       PRIMARY
         assertReadFrom(primary, PRIMARY)
@@ -521,7 +520,7 @@ class TestReadPreference(unittest.TestCase):
         self.clear_ping_times()
 
         assertReadFromAll([secondary, other_secondary], NEAREST)
-        
+
         # 3. PRIMARY UP, ONE SECONDARY DOWN -----------------------------------
         ha_tools.restart_members([killed])
 
@@ -539,7 +538,7 @@ class TestReadPreference(unittest.TestCase):
         ).admin.command('ismaster')['ismaster'])
 
         sleep(2 * MONITOR_INTERVAL)
-        
+
         #       PRIMARY
         assertReadFrom(primary, PRIMARY)
 
