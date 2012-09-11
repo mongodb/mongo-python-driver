@@ -350,9 +350,9 @@ class Database(common.BaseObject):
         if isinstance(command, basestring):
             command = SON([(command, value)])
 
-        command_name = command.keys()[0]
+        command_name = command.keys()[0].lower()
         must_use_master = kwargs.pop('_use_master', False)
-        if command_name.lower() not in rp.secondary_ok_commands:
+        if command_name not in rp.secondary_ok_commands:
             must_use_master = True
 
         # Special-case: mapreduce can go to secondaries only if inline

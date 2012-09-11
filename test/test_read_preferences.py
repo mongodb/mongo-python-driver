@@ -18,11 +18,14 @@ import random
 import sys
 import unittest
 
+from nose.plugins.skip import SkipTest
+
 sys.path[0:0] = [""]
 
 from bson.son import SON
 from pymongo.replica_set_connection import ReplicaSetConnection
-from pymongo.read_preferences import ReadPreference, modes, MovingAverage
+from pymongo.read_preferences import (ReadPreference, modes, MovingAverage,
+                                      secondary_ok_commands)
 from pymongo.errors import ConfigurationError
 
 from test.test_replica_set_connection import TestConnectionReplicaSetBase
@@ -93,7 +96,7 @@ class TestReadPreferences(TestReadPreferencesBase):
     def test_secondary_preferred(self):
         self.assertReadsFrom('secondary',
             read_preference=ReadPreference.SECONDARY_PREFERRED)
-        
+
     def test_secondary_only(self):
         # Test deprecated mode SECONDARY_ONLY, which is now a synonym for
         # SECONDARY
@@ -135,7 +138,7 @@ class ReadPrefTester(ReplicaSetConnection):
 class TestCommandAndReadPreference(TestConnectionReplicaSetBase):
     def setUp(self):
         super(TestCommandAndReadPreference, self).setUp()
-        
+
         # Need auto_start_request False to avoid pinning members.
         self.c = ReadPrefTester(
             '%s:%s' % (host, port),
@@ -262,7 +265,7 @@ class TestCommandAndReadPreference(TestConnectionReplicaSetBase):
         self._test_fn(True, lambda: self.c.pymongo_test.command(
             'geoSearch', 'test', near=[33, 33], maxDistance=6,
             search={'type': 'restaurant' }, limit=30))
-        
+
         self._test_fn(True, lambda: self.c.pymongo_test.command(SON([
             ('geoSearch', 'test'), ('near', [33, 33]), ('maxDistance', 6),
             ('search', {'type': 'restaurant'}), ('limit', 30)])))
@@ -466,6 +469,37 @@ class TestMongosConnection(unittest.TestCase):
                     self.assertFalse(
                         '$readPreference' in cursor._Cursor__query_spec())
 
+    def test_only_secondary_ok_commands_have_read_prefs(self):
+        c = get_connection(read_preference=ReadPreference.SECONDARY)
+        is_mongos = utils.is_mongos(c)
+        if not is_mongos:
+            raise SkipTest("Only mongos have read_prefs added to the spec")
+
+        # Ensure secondary_ok_commands have readPreference
+        for cmd in secondary_ok_commands:
+            if cmd == 'mapreduce':  # map reduce is a special case
+                continue
+            command = SON([(cmd, 1)])
+            cursor = c.pymongo_test["$cmd"].find(command.copy())
+            command['$readPreference'] = {'mode': 'secondary'}
+            self.assertEqual(command, cursor._Cursor__query_spec())
+
+        # map_reduce inline should have read prefs
+        command = SON([('mapreduce', 'test'), ('out', {'inline': 1})])
+        cursor = c.pymongo_test["$cmd"].find(command.copy())
+        command['$readPreference'] = {'mode': 'secondary'}
+        self.assertEqual(command, cursor._Cursor__query_spec())
+
+        # map_reduce that outputs to a collection shouldn't have read prefs
+        command = SON([('mapreduce', 'test'), ('out', {'mrtest': 1})])
+        cursor = c.pymongo_test["$cmd"].find(command.copy())
+        self.assertEqual(command, cursor._Cursor__query_spec())
+
+        # Other commands shouldn't be changed
+        for cmd in ('drop', 'create', 'any-future-cmd'):
+            command = SON([(cmd, 1)])
+            cursor = c.pymongo_test["$cmd"].find(command.copy())
+            self.assertEqual(command, cursor._Cursor__query_spec())
 
 if __name__ == "__main__":
     unittest.main()

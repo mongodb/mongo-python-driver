@@ -18,7 +18,7 @@ from collections import deque
 from bson.code import Code
 from bson.son import SON
 from pymongo import helpers, message, read_preferences
-from pymongo.read_preferences import ReadPreference
+from pymongo.read_preferences import ReadPreference, secondary_ok_commands
 from pymongo.errors import (InvalidOperation,
                             AutoReconnect)
 
@@ -235,9 +235,30 @@ class Cursor(object):
         if operators:
             # Make a shallow copy so we can cleanly rewind or clone.
             spec = self.__spec.copy()
-            if "$query" not in spec:
+
+            # Only commands that can be run on secondaries should have any
+            # operators added to the spec.  Command queries can be issued
+            # by db.command or calling find_one on $cmd directly
+            is_cmd = self.collection.name == "$cmd"
+            if is_cmd:
+                # Don't change commands that can't be sent to secondaries
+                command_name = spec.keys()[0].lower()
+                if command_name not in secondary_ok_commands:
+                    return spec
+                elif command_name == 'mapreduce':
+                    # mapreduce shouldn't be changed if its not inline
+                    out = spec.get('out')
+                    if not isinstance(out, dict) or not out.get('inline'):
+                        return spec
+            elif "$query" not in spec:
                 # $query has to come first
                 spec = SON({"$query": spec})
+
+            if not isinstance(spec, SON):
+                # Ensure the spec is SON. As order is important this will
+                # ensure its set before merging in any extra operators.
+                spec = SON(spec)
+
             spec.update(operators)
             return spec
         # Have to wrap with $query if "query" is the first key.
