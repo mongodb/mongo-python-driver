@@ -39,6 +39,7 @@ import threading
 import time
 import warnings
 import weakref
+import atexit
 
 from bson.py3compat import b
 from bson.son import SON
@@ -60,6 +61,22 @@ from pymongo.errors import (AutoReconnect,
 EMPTY = b("")
 MAX_BSON_SIZE = 4 * 1024 * 1024
 MAX_RETRY = 3
+
+MONITORS = set()
+
+def register_monitor(monitor):
+    ref = weakref.ref(monitor, unregister_monitor)
+    MONITORS.add(ref)
+
+def unregister_monitor(monitor):
+    MONITORS.remove(monitor)
+
+@atexit.register
+def shutdown_monitors():
+    for ref in MONITORS:
+        monitor = ref()
+        if monitor:
+            monitor.shutdown()
 
 def _partition_node(node):
     """Split a host:port string returned from mongod/s into
@@ -84,7 +101,7 @@ class Monitor(object):
         self.event = event_class()
         self.stopped = False
 
-    def shutdown(self, dummy):
+    def shutdown(self, dummy=None):
         """Signal the monitor to shutdown.
         """
         self.stopped = True
@@ -432,16 +449,9 @@ class ReplicaSetConnection(common.BaseObject):
         if self.__opts.get('use_greenlets', False):
             self.__monitor = MonitorGreenlet(self)
         else:
-            # NOTE: Don't ever make this a daemon thread in CPython. Daemon
-            # threads in CPython cause serious issues when the interpreter is
-            # torn down. Symptoms range from random exceptions to the
-            # interpreter dumping core.
             self.__monitor = MonitorThread(self)
-            # Sadly, weakrefs aren't totally reliable in PyPy and Jython
-            # so use a daemon thread there.
-            if (sys.platform.startswith('java') or
-                'PyPy' in sys.version):
-                self.__monitor.setDaemon(True)
+            self.__monitor.setDaemon(True)
+        register_monitor(self.__monitor)
         self.__monitor.start()
 
     def _cached(self, dbname, coll, index):
