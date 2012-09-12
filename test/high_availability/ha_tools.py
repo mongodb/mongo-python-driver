@@ -101,10 +101,7 @@ def start_replica_set(members, auth=False, fresh=True):
                 f.close()
             os.chmod(key_file, S_IRUSR)
 
-    cur_port = port
-
     for i in xrange(len(members)):
-        cur_port = cur_port + i
         host = '%s:%d' % (hostname, cur_port)
         members[i].update({'_id': i, 'host': host})
         path = os.path.join(dbpath, 'db' + str(i))
@@ -126,8 +123,12 @@ def start_replica_set(members, auth=False, fresh=True):
                                 stderr=subprocess.STDOUT)
         nodes[host] = {'proc': proc, 'cmd': cmd}
         res = wait_for(proc, cur_port)
+
+        cur_port += 1
+
         if not res:
             return None
+
     config = {'_id': set_name, 'members': members}
     primary = members[0]['host']
     c = pymongo.Connection(primary, use_greenlets=use_greenlets)
@@ -166,7 +167,6 @@ def create_sharded_cluster(num_routers=3):
     global cur_port
 
     # Start a config server
-    cur_port = port
     configdb_host = '%s:%d' % (hostname, cur_port)
     path = os.path.join(dbpath, 'configdb')
     if not os.path.exists(path):
