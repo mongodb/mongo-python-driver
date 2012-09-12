@@ -65,18 +65,27 @@ MAX_RETRY = 3
 MONITORS = set()
 
 def register_monitor(monitor):
-    ref = weakref.ref(monitor, unregister_monitor)
+    ref = weakref.ref(monitor, _on_monitor_deleted)
     MONITORS.add(ref)
 
-def unregister_monitor(monitor):
-    MONITORS.remove(monitor)
+def _on_monitor_deleted(ref):
+    """Remove the weakreference from the set
+    of active MONITORS. We no longer
+    care about keeping track of it
+    """
+    MONITORS.remove(ref)
 
-@atexit.register
 def shutdown_monitors():
-    for ref in MONITORS:
+    # Keep a local copy of MONITORS as 
+    # shutting down threads has a side effect
+    # of removing them from the MONITORS set()
+    monitors = list(MONITORS)
+    for ref in monitors:
         monitor = ref()
         if monitor:
             monitor.shutdown()
+            monitor.join()
+atexit.register(shutdown_monitors)
 
 def _partition_node(node):
     """Split a host:port string returned from mongod/s into
