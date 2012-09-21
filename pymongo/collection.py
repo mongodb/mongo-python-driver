@@ -541,8 +541,10 @@ class Collection(common.BaseObject):
             must be present for a document to be included in the
             result set
           - `fields` (optional): a list of field names that should be
-            returned in the result set ("_id" will always be
-            included), or a dict specifying the fields to return
+            returned in the result set or a dict specifying the fields
+            to include or exclude. If `fields` is a list "_id" will
+            always be returned. Use a dict to exclude fields from
+            the result (e.g. fields={'_id': False}).
           - `skip` (optional): the number of documents to omit (from
             the start of the result set) when returning the results
           - `limit` (optional): the maximum number of results to
