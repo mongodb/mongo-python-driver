@@ -76,7 +76,7 @@ def _on_monitor_deleted(ref):
     MONITORS.remove(ref)
 
 def shutdown_monitors():
-    # Keep a local copy of MONITORS as 
+    # Keep a local copy of MONITORS as
     # shutting down threads has a side effect
     # of removing them from the MONITORS set()
     monitors = list(MONITORS)
