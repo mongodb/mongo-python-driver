@@ -35,6 +35,7 @@ access:
 """
 
 import datetime
+import io
 import random
 import socket
 import struct
@@ -853,14 +854,13 @@ class Connection(common.BaseObject):
         Takes length to receive and repeatedly calls recv until able to
         return a buffer of that length, raising ConnectionFailure on error.
         """
-        chunks = []
+        buffer = io.BytesIO()
         while length:
-            chunk = sock_info.sock.recv(length)
-            if chunk == EMPTY:
+            chunk_len = buffer.write(sock_info.sock.recv(length))
+            if chunk_len == 0:
                 raise ConnectionFailure("connection closed")
-            length -= len(chunk)
-            chunks.append(chunk)
-        return EMPTY.join(chunks)
+            length -= chunk_len
+        return buffer.getvalue()
 
     def __receive_message_on_socket(self, operation, request_id, sock_info):
         """Receive a message in response to `request_id` on `sock`.
