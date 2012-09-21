@@ -138,8 +138,9 @@ class Connection(common.BaseObject):
             Implies safe=True.
           - `w`: (integer or string) If this is a replica set write operations
             won't return until they have been replicated to the specified
-            number or tagged set of servers.
-            Implies safe=True.
+            number or tagged set of servers. `w` always includes the replica set
+            primary (e.g. w=3 means write to the primary and wait until replicated
+            to **two** secondaries). Implies safe=True.
           - `wtimeout`: Used in conjunction with `j` and/or `w`. Wait this many
             milliseconds for journal acknowledgement and/or write replication.
             Implies safe=True.
