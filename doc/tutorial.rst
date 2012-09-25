@@ -143,6 +143,36 @@ of the collections in our database:
 .. note:: The *system.indexes* collection is a special internal
    collection that was created automatically.
 
+Ensuring Your Insert Succeeded
+------------------------------
+
+PyMongo’s default behavior for :meth:`~pymongo.collection.Collection.insert`,
+:meth:`~pymongo.collection.Collection.update`,
+:meth:`~pymongo.collection.Collection.save`,
+and :meth:`~pymongo.collection.Collection.remove` is to perform unacknowledged
+writes: the driver does not request a response or wait for an acknowledgement
+that the operation was successful unless the method is passed safe=True or
+another `getLastError <http://www.mongodb.org/display/DOCS/getLastError+Command>`_
+option. For example, if two documents with the same ``_id`` are inserted:
+
+.. doctest::
+
+  >>> db.posts.insert({'_id': 1})
+  1
+  >>> db.posts.insert({'_id': 1})
+  1
+
+Both inserts appear to succeed, but the second failed on the server.
+To see why, we need to pass safe=True
+to :meth:`~pymongo.collection.Collection.insert`::
+
+  >>> db.posts.insert({'_id': 1}, safe=True)
+  Traceback (most recent call last):
+  pymongo.errors.DuplicateKeyError: E11000 duplicate key error index: test-database.posts.$_id_  dup key: { : 1 }
+
+Applications should generally set a default of safe=True when they first create a Connection::
+
+  >>> connection = Connection('localhost', 27017, safe=True)
 
 Getting a Single Document With :meth:`~pymongo.collection.Collection.find_one`
 ------------------------------------------------------------------------------
