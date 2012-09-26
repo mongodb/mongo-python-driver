@@ -152,6 +152,7 @@ class GridIn(object):
     _id = _create_property("_id", "The ``'_id'`` value for this file.",
                             read_only=True)
     filename = _create_property("filename", "Name of this file.")
+    name = _create_property("filename", "Alias for `filename`.")
     content_type = _create_property("contentType", "Mime-type for this file.")
     length = _create_property("length", "Length (in bytes) of this file.",
                                closed_only=True)
