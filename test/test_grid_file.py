@@ -205,6 +205,8 @@ class TestGridFile(unittest.TestCase):
         self.assertEqual(a._id, b._id)
         self.assertEqual(0, b.length)
         self.assertEqual(None, b.content_type)
+        self.assertEqual(None, b.name)
+        self.assertEqual(None, b.filename)
         self.assertEqual(256 * 1024, b.chunk_size)
         self.assertTrue(isinstance(b.upload_date, datetime.datetime))
         self.assertEqual(None, b.aliases)
@@ -224,6 +226,8 @@ class TestGridFile(unittest.TestCase):
 
         two = GridOut(self.db.fs, 5)
 
+        self.assertEqual("my_file", two.name)
+        self.assertEqual("my_file", two.filename)
         self.assertEqual(5, two._id)
         self.assertEqual(11, two.length)
         self.assertEqual("text/html", two.content_type)

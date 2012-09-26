@@ -356,7 +356,8 @@ class GridOut(object):
         self.__position = 0
 
     _id = _create_property("_id", "The ``'_id'`` value for this file.", True)
-    name = _create_property("filename", "Name of this file.", True)
+    filename = _create_property("filename", "Name of this file.", True)
+    name = _create_property("filename", "Alias for `filename`.", True)
     content_type = _create_property("contentType", "Mime-type for this file.",
                                      True)
     length = _create_property("length", "Length (in bytes) of this file.",
