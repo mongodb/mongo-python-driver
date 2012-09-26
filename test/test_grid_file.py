@@ -26,6 +26,7 @@ from nose.plugins.skip import SkipTest
 
 from bson.objectid import ObjectId
 from bson.py3compat import b, StringIO
+from gridfs import GridFS
 from gridfs.grid_file import (DEFAULT_CHUNK_SIZE,
                               _SEEK_CUR,
                               _SEEK_END,
@@ -131,6 +132,9 @@ class TestGridFile(unittest.TestCase):
 
         a.close()
 
+        a.forty_two = 42
+        self.assertEqual(42, a.forty_two)
+
         self.assertTrue(isinstance(a._id, ObjectId))
         self.assertRaises(AttributeError, setattr, a, "_id", 5)
 
@@ -153,6 +157,13 @@ class TestGridFile(unittest.TestCase):
 
         self.assertEqual("d41d8cd98f00b204e9800998ecf8427e", a.md5)
         self.assertRaises(AttributeError, setattr, a, "md5", 5)
+
+        # Make sure custom attributes that were set both before and after
+        # a.close() are reflected in b. PYTHON-411.
+        b = GridFS(self.db).get_last_version(filename=a.filename)
+        self.assertEqual(a.metadata, b.metadata)
+        self.assertEqual(a.aliases, b.aliases)
+        self.assertEqual(a.forty_two, b.forty_two)
 
     def test_grid_in_custom_opts(self):
         self.assertRaises(TypeError, GridIn, "foo")
