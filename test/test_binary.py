@@ -151,6 +151,7 @@ class TestBinary(unittest.TestCase):
 
         # Test insert and find
         conn = get_connection()
+        conn.pymongo_test.drop_collection('java_uuid')
         coll = conn.pymongo_test.java_uuid
         coll.uuid_subtype = JAVA_LEGACY
 
@@ -222,6 +223,7 @@ class TestBinary(unittest.TestCase):
 
         # Test insert and find
         conn = get_connection()
+        conn.pymongo_test.drop_collection('csharp_uuid')
         coll = conn.pymongo_test.csharp_uuid
         coll.uuid_subtype = CSHARP_LEGACY
 
