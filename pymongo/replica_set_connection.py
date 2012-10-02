@@ -313,10 +313,10 @@ class ReplicaSetConnection(common.BaseObject):
           - `fsync`: Force the database to fsync all files before returning
             When used with `j` the server awaits the next group commit before
             returning. Implies safe=True.
-          - `socketTimeoutMS`: How long a send or receive on a socket can take
-            before timing out.
-          - `connectTimeoutMS`: How long a connection can take to be opened
-            before timing out.
+          - `socketTimeoutMS`: How long (in milliseconds) a send or receive on
+            a socket can take before timing out.
+          - `connectTimeoutMS`: How long (in milliseconds) a connection can take
+            to be opened before timing out.
           - `ssl`: If True, create the connection to the servers using SSL.
           - `read_preference`: The read preference for this connection.
             See :class:`~pymongo.read_preferences.ReadPreference` for available

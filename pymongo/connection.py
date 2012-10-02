@@ -152,10 +152,10 @@ class Connection(common.BaseObject):
             will verify that the replica set it connects to matches this name.
             Implies that the hosts specified are a seed list and the driver should
             attempt to find all members of the set.
-          - `socketTimeoutMS`: How long a send or receive on a socket can take
-            before timing out.
-          - `connectTimeoutMS`: How long a connection can take to be opened
-            before timing out.
+          - `socketTimeoutMS`: How long (in milliseconds) a send or receive on a
+            socket can take before timing out.
+          - `connectTimeoutMS`: How long (in milliseconds) a connection can take
+            to be opened before timing out.
           - `ssl`: If True, create the connection to the server using SSL.
           - `read_preference`: The read preference for this connection.
             See :class:`~pymongo.read_preferences.ReadPreference` for available
