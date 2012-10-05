@@ -239,13 +239,7 @@ class TestConnection(unittest.TestCase):
 
         c.admin.system.users.remove({})
         c.pymongo_test.system.users.remove({})
-
-        try:
-            # First admin user add fails gle in MongoDB >= 2.1.2
-            # See SERVER-4225 for more information.
-            c.admin.add_user("admin", "pass")
-        except OperationFailure:
-            pass
+        c.admin.add_user("admin", "pass")
         c.admin.authenticate("admin", "pass")
         c.pymongo_test.add_user("user", "pass")
 
@@ -505,7 +499,7 @@ with get_connection() as connection:
 
     def assertRequestSocket(self, pool):
         self.assertTrue(isinstance(pool._get_request_state(), SocketInfo))
-        
+
     def test_with_start_request(self):
         conn = get_connection(auto_start_request=False)
         pool = conn._Connection__pool
@@ -544,7 +538,7 @@ with conn.start_request() as request:
             # Request has ended
             self.assertNoRequest(pool)
             self.assertDifferentSock(pool)
-    
+
     def test_auto_start_request(self):
         for bad_horrible_value in (None, 5, 'hi!'):
             self.assertRaises(

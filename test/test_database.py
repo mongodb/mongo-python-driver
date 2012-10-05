@@ -34,6 +34,7 @@ from pymongo import (ALL,
 from pymongo.collection import Collection
 from pymongo.database import Database
 from pymongo.errors import (CollectionInvalid,
+                            ConfigurationError,
                             InvalidName,
                             OperationFailure)
 from pymongo.son_manipulator import (AutoReference,
@@ -289,6 +290,13 @@ class TestDatabase(unittest.TestCase):
         db = self.connection.pymongo_test
         db.system.users.remove({})
         db.remove_user("mike")
+
+        self.assertRaises(TypeError, db.add_user, "user", None)
+        self.assertRaises(TypeError, db.add_user, "user", '')
+        self.assertRaises(TypeError, db.add_user, "user", 'password', None)
+        self.assertRaises(ConfigurationError, db.add_user,
+                          "user", 'password', 'True')
+
         db.add_user("mike", "password")
 
         self.assertRaises(TypeError, db.authenticate, 5, "password")

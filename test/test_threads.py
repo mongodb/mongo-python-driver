@@ -385,12 +385,7 @@ class BaseTestThreadsAuth(object):
             raise SkipTest("Authentication is not enabled on server")
         self.conn = conn
         self.conn.admin.system.users.remove({})
-        try:
-            # First admin user add fails gle in MongoDB >= 2.1.2
-            # See SERVER-4225 for more information.
-            self.conn.admin.add_user('admin-user', 'password')
-        except OperationFailure:
-            pass
+        self.conn.admin.add_user('admin-user', 'password')
         self.conn.admin.authenticate("admin-user", "password")
         self.conn.auth_test.system.users.remove({})
         self.conn.auth_test.add_user("test-user", "password")

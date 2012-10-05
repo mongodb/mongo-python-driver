@@ -368,7 +368,6 @@ class Database(common.BaseObject):
             '_uuid_subtype': uuid_subtype
         }
 
-
         extra_opts['read_preference'] = kwargs.pop(
             'read_preference',
             self.read_preference)
@@ -496,10 +495,9 @@ class Database(common.BaseObject):
             idle operations in the result
          """
         if include_all:
-            return self['$cmd.sys.inprog'].find_one({"$all":True})
+            return self['$cmd.sys.inprog'].find_one({"$all": True})
         else:
             return self['$cmd.sys.inprog'].find_one()
-
 
     def profiling_level(self):
         """Get the database's current profiling level.
@@ -602,12 +600,20 @@ class Database(common.BaseObject):
 
         .. versionadded:: 1.4
         """
-        pwd = helpers._password_digest(name, password)
-        self.system.users.update({"user": name},
-                                 {"user": name,
-                                  "pwd": pwd,
-                                  "readOnly": read_only},
-                                 upsert=True, safe=True)
+
+        user = self.system.users.find_one({"user": name}) or {"user": name}
+        user["pwd"] = helpers._password_digest(name, password)
+        user["readOnly"] = common.validate_boolean('read_only', read_only)
+
+        try:
+            self.system.users.save(user, safe=True)
+        except OperationFailure, e:
+            # First admin user add fails gle in MongoDB >= 2.1.2
+            # See SERVER-4225 for more information.
+            if 'login' in str(e):
+                pass
+            else:
+                raise
 
     def remove_user(self, name):
         """Remove user `name` from this :class:`Database`.

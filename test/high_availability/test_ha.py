@@ -621,11 +621,7 @@ class TestReplicaSetAuth(unittest.TestCase):
                                       use_greenlets=use_greenlets)
 
         # Add an admin user to enable auth
-        try:
-            self.c.admin.add_user('admin', 'adminpass')
-        except:
-            # SERVER-4225
-            pass
+        self.c.admin.add_user('admin', 'adminpass')
         self.c.admin.authenticate('admin', 'adminpass')
 
         self.db = self.c.pymongo_ha_auth
