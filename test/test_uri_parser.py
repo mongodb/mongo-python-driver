@@ -84,6 +84,8 @@ class TestURI(unittest.TestCase):
         self.assertRaises(ConfigurationError, split_options, 'socketTimeoutMS=0.0')
         self.assertRaises(ConfigurationError, split_options, 'connectTimeoutMS=foo')
         self.assertRaises(ConfigurationError, split_options, 'connectTimeoutMS=0.0')
+        self.assertRaises(ConfigurationError, split_options, 'connectTimeoutMS=inf')
+        self.assertRaises(ConfigurationError, split_options, 'connectTimeoutMS=-inf')
         self.assertTrue(split_options('socketTimeoutMS=300'))
         self.assertTrue(split_options('connectTimeoutMS=300'))
         self.assertEqual({'sockettimeoutms': 0.3}, split_options('socketTimeoutMS=300'))

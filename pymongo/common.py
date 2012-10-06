@@ -93,7 +93,7 @@ def validate_positive_float(option, value):
         value = float(value)
     except (ValueError, TypeError):
         raise err
-    if value <= 0:
+    if not 0 < value < float('inf'):
         raise err
 
     return value
