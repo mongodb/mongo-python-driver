@@ -20,10 +20,10 @@
       .. autoattribute:: full_name
       .. autoattribute:: name
       .. autoattribute:: database
-      .. autoattribute:: slave_okay
       .. autoattribute:: read_preference
       .. autoattribute:: tag_sets
       .. autoattribute:: secondary_acceptable_latency_ms
+      .. autoattribute:: slave_okay
       .. autoattribute:: safe
       .. autoattribute:: uuid_subtype
       .. automethod:: get_lasterror_options
