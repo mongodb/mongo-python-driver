@@ -1765,6 +1765,7 @@ static PyObject* _cbson_decode_all(PyObject* self, PyObject* args) {
             PyErr_SetString(InvalidBSON,
                             "not enough data for a BSON document");
             Py_DECREF(InvalidBSON);
+            Py_DECREF(result);
             return NULL;
         }
 
@@ -1775,6 +1776,7 @@ static PyObject* _cbson_decode_all(PyObject* self, PyObject* args) {
             PyErr_SetString(InvalidBSON,
                             "objsize too large");
             Py_DECREF(InvalidBSON);
+            Py_DECREF(result);
             return NULL;
         }
 
@@ -1783,12 +1785,14 @@ static PyObject* _cbson_decode_all(PyObject* self, PyObject* args) {
             PyErr_SetString(InvalidBSON,
                             "bad eoo");
             Py_DECREF(InvalidBSON);
+            Py_DECREF(result);
             return NULL;
         }
 
         dict = elements_to_dict(self, string + 4, size - 5,
                                 as_class, tz_aware, uuid_subtype);
         if (!dict) {
+            Py_DECREF(result);
             return NULL;
         }
         PyList_Append(result, dict);
