@@ -1615,16 +1615,20 @@ static PyObject* elements_to_dict(PyObject* self, const char* string, int max,
             PyObject* InvalidBSON = _error("InvalidBSON");
             PyErr_SetNone(InvalidBSON);
             Py_DECREF(InvalidBSON);
+            Py_DECREF(dict);
             return NULL;
         }
         name = PyUnicode_DecodeUTF8(string + position, name_length, "strict");
         if (!name) {
+            Py_DECREF(dict);
             return NULL;
         }
         position += name_length + 1;
         value = get_value(self, string, &position, type,
                           max - position, as_class, tz_aware, uuid_subtype);
         if (!value) {
+            Py_DECREF(name);
+            Py_DECREF(dict);
             return NULL;
         }
 
