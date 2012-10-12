@@ -423,6 +423,14 @@ class TestConnection(unittest.TestCase):
         dbs = connection.database_names()
         self.assertTrue("pymongo_test" in dbs)
         self.assertTrue("pymongo_test_bernie" in dbs)
+        
+    def test_unix_domain_socket(self):
+        try:
+            connection = Connection("/tmp/mongodb-27017.sock")
+            connection.database_names()
+        except:
+            # Possibly the OS doesn't support unix domain sockets
+            raise SkipTest("No Unix domain sockets")
 
     def test_fsync_lock_unlock(self):
         c = get_connection()
