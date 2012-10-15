@@ -195,7 +195,12 @@ class GridIn(object):
                  "n": self._chunk_number,
                  "data": Binary(data)}
 
-        self._chunks.insert(chunk)
+        # See PYTHON-417, "Sharded GridFS fails with exception: chunks out of
+        # order": inserts via mongos, even though they're using a single
+        # connection, can succeed out-of-order due to the writebackListener.
+        # We mustn't call "filemd5" until all inserts are complete, which we
+        # ensure by calling getLastError.
+        self._chunks.insert(chunk, safe=True)
         self._chunk_number += 1
         self._position += len(data)
 
