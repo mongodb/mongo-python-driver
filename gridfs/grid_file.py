@@ -214,16 +214,16 @@ class GridIn(object):
     def __flush(self):
         """Flush the file to the database.
         """
-        self.__flush_buffer()
-
-        md5 = self._coll.database.command("filemd5", self._id,
-                                          root=self._coll.name)["md5"]
-
-        self._file["md5"] = md5
-        self._file["length"] = self._position
-        self._file["uploadDate"] = datetime.datetime.utcnow()
-
         try:
+            self.__flush_buffer()
+
+            md5 = self._coll.database.command("filemd5", self._id,
+                                              root=self._coll.name)["md5"]
+
+            self._file["md5"] = md5
+            self._file["length"] = self._position
+            self._file["uploadDate"] = datetime.datetime.utcnow()
+
             return self._coll.files.insert(self._file, safe=True)
         except DuplicateKeyError:
             raise FileExists("file with _id %r already exists" % self._id)
