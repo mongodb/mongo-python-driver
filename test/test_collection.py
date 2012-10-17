@@ -1023,6 +1023,45 @@ class TestCollection(unittest.TestCase):
                                            {"$inc": {"x": 2}},
                                            safe=True)["n"])
 
+    def test_update_with_invalid_keys(self):
+        self.db.drop_collection("test")
+        self.assertTrue(self.db.test.insert({"hello": "world"}, safe=True))
+        doc = self.db.test.find_one()
+        doc['a.b'] = 'c'
+
+        # Replace
+        self.assertRaises(InvalidDocument,
+                          self.db.test.update, {"hello": "world"}, doc)
+        # Upsert
+        self.assertRaises(InvalidDocument,
+                          self.db.test.update, {"foo": "bar"}, doc, upsert=True)
+
+        # Check that the last two ops didn't actually modify anything
+        self.assertTrue('a.b' not in self.db.test.find_one())
+
+        # Modify shouldn't check keys...
+        self.assertTrue(self.db.test.update({"hello": "world"},
+                                            {"$set": {"foo.bar": "baz"}},
+                                            upsert=True, safe=True))
+
+        # I know this seems like testing the server but I'd like to be notified
+        # by CI if the server's behavior changes here.
+        doc = SON([("$set", {"foo.bar": "bim"}), ("hello", "world")])
+        self.assertRaises(OperationFailure, self.db.test.update,
+                          {"hello": "world"}, doc, upsert=True, safe=True)
+
+        # This is going to cause keys to be checked and raise InvalidDocument.
+        # That's OK assuming the server's behavior in the previous assert
+        # doesn't change. If the behavior changes checking the first key for
+        # '$' in update won't be good enough anymore.
+        doc = SON([("hello", "world"), ("$set", {"foo.bar": "bim"})])
+        self.assertRaises(InvalidDocument, self.db.test.update,
+                          {"hello": "world"}, doc, upsert=True, safe=True)
+
+        # Replace with empty document
+        self.assertNotEqual(0, self.db.test.update({"hello": "world"},
+                            {}, safe=True)['n'])
+
     def test_safe_save(self):
         db = self.db
         db.drop_collection("test")

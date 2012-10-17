@@ -241,7 +241,7 @@ class Collection(common.BaseObject):
             return self.insert(to_save, manipulate, safe, check_keys, **kwargs)
         else:
             self.update({"_id": to_save["_id"]}, to_save, True,
-                        manipulate, safe, _check_keys=check_keys, **kwargs)
+                        manipulate, safe, check_keys=check_keys, **kwargs)
             return to_save.get("_id", None)
 
     def insert(self, doc_or_docs, manipulate=True,
@@ -318,7 +318,7 @@ class Collection(common.BaseObject):
         return return_one and ids[0] or ids
 
     def update(self, spec, document, upsert=False, manipulate=False,
-               safe=None, multi=False, _check_keys=False, **kwargs):
+               safe=None, multi=False, check_keys=True, **kwargs):
         """Update a document(s) in this collection.
 
         Raises :class:`TypeError` if either `spec` or `document` is
@@ -367,6 +367,11 @@ class Collection(common.BaseObject):
             :mod:`~pymongo.son_manipulator.SONManipulator` added to
             this :class:`~pymongo.database.Database` will be applied
             to the document before performing the update.
+          - `check_keys` (optional): check if keys in `document` start
+            with '$' or contain '.', raising
+            :class:`~pymongo.errors.InvalidName`. Only applies to
+            document replacement, not modification through $
+            operators.
           - `safe` (optional): check that the update succeeded?
           - `multi` (optional): update all documents that match
             `spec`, rather than just the first matching document. The
@@ -402,13 +407,20 @@ class Collection(common.BaseObject):
 
         safe, options = self._get_safe_and_lasterror_options(safe, **kwargs)
 
-        # _check_keys is used by save() so we don't upsert pre-existing
-        # documents after adding an invalid key like 'a.b'. It can't really
-        # be used for any other update operations.
+        if document:
+            # If a top level key begins with '$' this is a modify operation
+            # and we should skip key validation. It doesn't matter which key
+            # we check here. Passing a document with a mix of top level keys
+            # starting with and without a '$' is invalid and the server will
+            # raise an appropriate exception.
+            first = document.iterkeys().next()
+            if first.startswith('$'):
+                check_keys = False
+
         return self.__database.connection._send_message(
             message.update(self.__full_name, upsert, multi,
                            spec, document, safe, options,
-                           _check_keys, self.__uuid_subtype), safe)
+                           check_keys, self.__uuid_subtype), safe)
 
     def drop(self):
         """Alias for :meth:`~pymongo.database.Database.drop_collection`.
