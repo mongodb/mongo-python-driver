@@ -34,7 +34,6 @@ attribute-style access:
 import datetime
 import socket
 import struct
-import sys
 import threading
 import time
 import warnings
