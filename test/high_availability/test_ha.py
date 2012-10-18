@@ -34,7 +34,7 @@ from test import utils
 Monitor._refresh_interval = MONITOR_INTERVAL = 0.5
 
 
-class TestSecondaryConnection(unittest.TestCase):
+class TestDirectConnection(unittest.TestCase):
 
     def setUp(self):
         members = [{}, {}, {'arbiterOnly': True}]
@@ -48,9 +48,9 @@ class TestSecondaryConnection(unittest.TestCase):
         db = self.c.pymongo_test
         db.test.remove({}, safe=True, w=len(self.c.secondaries))
 
-        # Force replication...
+        # Wait for replication...
         w = len(self.c.secondaries) + 1
-        db.test.insert({'foo': 'bar'}, safe=True, w=w)
+        db.test.insert({'foo': 'bar'}, w=w)
 
         # Test direct connection to a primary or secondary
         primary_host, primary_port = ha_tools.get_primary().split(':')
@@ -59,32 +59,27 @@ class TestSecondaryConnection(unittest.TestCase):
          secondary_port) = ha_tools.get_secondaries()[0].split(':')
         secondary_port = int(secondary_port)
 
-        self.assertTrue(Connection(
-            primary_host, primary_port, use_greenlets=use_greenlets).is_primary)
-
-        self.assertTrue(Connection(
-            primary_host, primary_port, use_greenlets=use_greenlets,
-            read_preference=ReadPreference.PRIMARY_PREFERRED).is_primary)
-
-        self.assertTrue(Connection(
-            primary_host, primary_port, use_greenlets=use_greenlets,
-            read_preference=ReadPreference.SECONDARY_PREFERRED).is_primary)
-
-        self.assertTrue(Connection(
-            primary_host, primary_port, use_greenlets=use_greenlets,
-            read_preference=ReadPreference.NEAREST).is_primary)
-
-        self.assertTrue(Connection(
-            primary_host, primary_port, use_greenlets=use_greenlets,
-            read_preference=ReadPreference.SECONDARY).is_primary)
-
+        # A Connection succeeds no matter the read preference (although a
+        # secondary Connection with preference PRIMARY can't be queried)
         for kwargs in [
+            {'read_preference': ReadPreference.PRIMARY},
             {'read_preference': ReadPreference.PRIMARY_PREFERRED},
             {'read_preference': ReadPreference.SECONDARY},
             {'read_preference': ReadPreference.SECONDARY_PREFERRED},
             {'read_preference': ReadPreference.NEAREST},
-            {'slave_okay': True},
+            {'slave_okay': True}
         ]:
+            conn = Connection(primary_host,
+                              primary_port,
+                              use_greenlets=use_greenlets,
+                              **kwargs)
+            self.assertEqual(primary_host, conn.host)
+            self.assertEqual(primary_port, conn.port)
+            self.assertTrue(conn.is_primary)
+
+            if kwargs.get('read_preference') != ReadPreference.SECONDARY:
+                self.assert_(conn.pymongo_test.test.find_one())
+
             conn = Connection(secondary_host,
                               secondary_port,
                               use_greenlets=use_greenlets,
@@ -92,8 +87,13 @@ class TestSecondaryConnection(unittest.TestCase):
             self.assertEqual(secondary_host, conn.host)
             self.assertEqual(secondary_port, conn.port)
             self.assertFalse(conn.is_primary)
-            self.assert_(conn.pymongo_test.test.find_one())
 
+            if kwargs.get('read_preference') != ReadPreference.PRIMARY:
+                self.assert_(conn.pymongo_test.test.find_one())
+            else:
+                self.assertRaises(
+                    AutoReconnect, conn.pymongo_test.test.find_one)
+            
         # Test direct connection to an arbiter
         host, port = ha_tools.get_arbiters()[0].split(':')
         port = int(port)
