@@ -14,6 +14,11 @@
 
 """Test replica set operations and failures."""
 
+# These test methods exuberantly violate the "one assert per test" rule, because
+# each method requires running setUp, which takes about 30 seconds to bring up
+# a replica set. Thus each method asserts everything we want to assert for a
+# given replica-set configuration.
+
 import time
 import unittest
 
@@ -366,8 +371,6 @@ class TestReadPreference(unittest.TestCase):
         Member._host_to_ping_time.clear()
 
     def test_read_preference(self):
-        # This is long, but we put all the tests in one function to save time
-        # on setUp, which takes about 30 seconds to bring up a replica set.
         # We pass through four states:
         #
         #       1. A primary and two secondaries
