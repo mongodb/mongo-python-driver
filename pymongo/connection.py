@@ -822,6 +822,10 @@ class Connection(common.BaseObject):
           - `with_last_error`: check getLastError status after sending the
             message
         """
+        if not with_last_error and not self.is_primary:
+            # The write won't succeed, bail as if we'd done a getLastError
+            raise AutoReconnect("not master")
+
         sock_info = self.__socket()
         try:
             (request_id, data) = self.__check_bson_size(message)
