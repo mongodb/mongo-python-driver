@@ -195,12 +195,7 @@ class GridIn(object):
                  "n": self._chunk_number,
                  "data": Binary(data)}
 
-        # See PYTHON-417, "Sharded GridFS fails with exception: chunks out of
-        # order": inserts via mongos, even though they're using a single
-        # connection, can succeed out-of-order due to the writebackListener.
-        # We mustn't call "filemd5" until all inserts are complete, which we
-        # ensure by calling getLastError.
-        self._chunks.insert(chunk, safe=True)
+        self._chunks.insert(chunk)
         self._chunk_number += 1
         self._position += len(data)
 
@@ -217,8 +212,17 @@ class GridIn(object):
         try:
             self.__flush_buffer()
 
-            md5 = self._coll.database.command("filemd5", self._id,
-                                              root=self._coll.name)["md5"]
+            db = self._coll.database
+
+            # See PYTHON-417, "Sharded GridFS fails with exception: chunks out
+            # of order." Inserts via mongos, even if they use a single
+            # connection, can succeed out-of-order due to the writebackListener.
+            # We mustn't call "filemd5" until all inserts are complete, which
+            # we ensure by calling getLastError (and ignoring the result).
+            db.error()
+
+            md5 = db.command(
+                "filemd5", self._id, root=self._coll.name)["md5"]
 
             self._file["md5"] = md5
             self._file["length"] = self._position
