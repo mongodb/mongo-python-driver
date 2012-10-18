@@ -63,6 +63,8 @@ class TestDirectConnection(unittest.TestCase):
         (secondary_host,
          secondary_port) = ha_tools.get_secondaries()[0].split(':')
         secondary_port = int(secondary_port)
+        arbiter_host, arbiter_port = ha_tools.get_arbiters()[0].split(':')
+        arbiter_port = int(arbiter_port)
 
         # A Connection succeeds no matter the read preference (although a
         # secondary Connection with preference PRIMARY can't be queried)
@@ -83,7 +85,7 @@ class TestDirectConnection(unittest.TestCase):
             self.assertTrue(conn.is_primary)
 
             if kwargs.get('read_preference') != ReadPreference.SECONDARY:
-                self.assert_(conn.pymongo_test.test.find_one())
+                self.assertTrue(conn.pymongo_test.test.find_one())
 
             conn = Connection(secondary_host,
                               secondary_port,
@@ -94,18 +96,39 @@ class TestDirectConnection(unittest.TestCase):
             self.assertFalse(conn.is_primary)
 
             if kwargs.get('read_preference') != ReadPreference.PRIMARY:
-                self.assert_(conn.pymongo_test.test.find_one())
+                self.assertTrue(conn.pymongo_test.test.find_one())
             else:
                 self.assertRaises(
                     AutoReconnect, conn.pymongo_test.test.find_one)
-            
-        # Test direct connection to an arbiter
-        host, port = ha_tools.get_arbiters()[0].split(':')
-        port = int(port)
-        conn = Connection(host, port)
-        self.assertEqual(host, conn.host)
-        self.assertEqual(port, conn.port)
 
+            # Since an attempt at an acknowledged write to a secondary from a
+            # direct connection raises AutoReconnect('not master'), Connection
+            # should do the same for unacknowledged writes.
+            try:
+                conn.pymongo_test.test.insert({}, safe=False)
+            except AutoReconnect, e:
+                self.assertEqual('not master', e.message)
+            else:
+                self.fail(
+                    'Unacknowledged insert into secondary connection %s should'
+                    'have raised exception' % conn)
+
+            # Test direct connection to an arbiter
+            conn = Connection(arbiter_host, arbiter_port, **kwargs)
+            self.assertEqual(arbiter_host, conn.host)
+            self.assertEqual(arbiter_port, conn.port)
+            self.assertFalse(conn.is_primary)
+            
+            # See explanation above
+            try:
+                conn.pymongo_test.test.insert({}, safe=False)
+            except AutoReconnect, e:
+                self.assertEqual('not master', e.message)
+            else:
+                self.fail(
+                    'Unacknowledged insert into arbiter connection %s should'
+                    'have raised exception' % conn)
+        
     def tearDown(self):
         self.c.close()
         ha_tools.kill_all_members()
