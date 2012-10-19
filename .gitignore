@@ -13,3 +13,5 @@ pymongo.egg-info/
 *.so
 nosetests.xml
 setup.cfg
+*.egg
+.tox
