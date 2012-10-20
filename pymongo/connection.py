@@ -808,7 +808,7 @@ class Connection(common.BaseObject):
             # don't include BSON documents.
             return message
 
-    def _send_message(self, message, with_last_error=False):
+    def _send_message(self, message, with_last_error=False, check_primary=True):
         """Say something to Mongo.
 
         Raises ConnectionFailure if the message cannot be sent. Raises
@@ -821,8 +821,10 @@ class Connection(common.BaseObject):
           - `message`: message to send
           - `with_last_error`: check getLastError status after sending the
             message
+          - `check_primary`: don't try to write to a non-primary; see
+            kill_cursors for an exception to this rule
         """
-        if not with_last_error and not self.is_primary:
+        if check_primary and not with_last_error and not self.is_primary:
             # The write won't succeed, bail as if we'd done a getLastError
             raise AutoReconnect("not master")
 
@@ -1039,7 +1041,8 @@ class Connection(common.BaseObject):
         """
         if not isinstance(cursor_ids, list):
             raise TypeError("cursor_ids must be a list")
-        return self._send_message(message.kill_cursors(cursor_ids))
+        return self._send_message(
+            message.kill_cursors(cursor_ids), check_primary=False)
 
     def server_info(self):
         """Get information about the MongoDB server we're connected to.

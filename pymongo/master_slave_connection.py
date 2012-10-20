@@ -149,7 +149,8 @@ class MasterSlaveConnection(BaseObject):
         """
         if _connection_to_use is None or _connection_to_use == -1:
             return self.__master._send_message(message, safe)
-        return self.__slaves[_connection_to_use]._send_message(message, safe)
+        return self.__slaves[_connection_to_use]._send_message(
+            message, safe, check_primary=False)
 
     # _connection_to_use is a hack that we need to include to make sure
     # that getmore operations can be sent to the same instance on which
