@@ -37,7 +37,8 @@ from pymongo.errors import (AutoReconnect,
                             InvalidURI,
                             OperationFailure)
 from test import version
-from test.utils import is_mongos, server_is_master_with_slave, delay
+from test.utils import (
+    is_mongos, server_is_master_with_slave, delay, assertRaisesExactly)
 
 host = os.environ.get("DB_IP", "localhost")
 port = int(os.environ.get("DB_PORT", 27017))
@@ -69,7 +70,7 @@ class TestConnection(unittest.TestCase):
 
         Connection.HOST = "somedomainthatdoesntexist.org"
         Connection.PORT = 123456789
-        self.assertRaises(ConnectionFailure, Connection, connectTimeoutMS=600)
+        assertRaisesExactly(ConnectionFailure, Connection, connectTimeoutMS=600)
         self.assertTrue(Connection(self.host, self.port))
 
         Connection.HOST = self.host
@@ -77,15 +78,20 @@ class TestConnection(unittest.TestCase):
         self.assertTrue(Connection())
 
     def test_connect(self):
-        self.assertRaises(ConnectionFailure, Connection,
-                          "somedomainthatdoesntexist.org", connectTimeoutMS=600)
-        self.assertRaises(ConnectionFailure, Connection, self.host, 123456789)
+        # Check that the exception is a ConnectionFailure, not a subclass like
+        # AutoReconnect
+        assertRaisesExactly(
+            ConnectionFailure, Connection,
+            "somedomainthatdoesntexist.org", connectTimeoutMS=600)
+
+        assertRaisesExactly(
+            ConnectionFailure, Connection, self.host, 123456789)
 
         self.assertTrue(Connection(self.host, self.port))
 
     def test_host_w_port(self):
         self.assertTrue(Connection("%s:%d" % (self.host, self.port)))
-        self.assertRaises(ConnectionFailure, Connection,
+        assertRaisesExactly(ConnectionFailure, Connection,
                           "%s:1234567" % (self.host,), self.port)
 
     def test_repr(self):

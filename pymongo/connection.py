@@ -301,7 +301,11 @@ class Connection(common.BaseObject):
                           "use read_preference instead.", DeprecationWarning)
 
         if _connect:
-            self.__find_node(seeds)
+            try:
+                self.__find_node(seeds)
+            except AutoReconnect, e:
+                # ConnectionFailure makes more sense here than AutoReconnect
+                raise ConnectionFailure(str(e))
 
         if db and username is None:
             warnings.warn("must provide a username and password "

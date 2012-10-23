@@ -1,6 +1,16 @@
 Changelog
 =========
 
+Changes in Version 2.3+
+-----------------------
+
+The constructors for :class:`~pymongo.connection.Connection` and
+:class:`~pymongo.replica_set_connection.ReplicaSetConnection` now raise
+:exc:`~pymongo.errors.ConnectionFailure` instead of its subclass
+:exc:`~pymongo.errors.AutoReconnect` if the server is unavailable. Applications
+that expect to catch :exc:`~pymongo.errors.AutoReconnect` should now catch
+:exc:`~pymongo.errors.ConnectionFailure` while creating a new connection.
+
 Changes in Version 2.3
 ----------------------
 

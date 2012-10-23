@@ -444,7 +444,11 @@ class ReplicaSetConnection(common.BaseObject):
             warnings.warn("slave_okay is deprecated. Please "
                           "use read_preference instead.", DeprecationWarning)
 
-        self.refresh()
+        try:
+            self.refresh()
+        except AutoReconnect, e:
+            # ConnectionFailure makes more sense here than AutoReconnect
+            raise ConnectionFailure(str(e))
 
         if db_name and username is None:
             warnings.warn("must provide a username and password "
@@ -1089,7 +1093,7 @@ class ReplicaSetConnection(common.BaseObject):
         # If we've disconnected since last read, trigger refresh
         try:
             self.__find_primary()
-        except AutoReconnect:
+        except ConnectionFailure:
             # We'll throw an error later
             pass
 

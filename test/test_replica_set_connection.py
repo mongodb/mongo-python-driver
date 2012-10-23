@@ -43,7 +43,9 @@ from pymongo.errors import (AutoReconnect,
                             InvalidName,
                             OperationFailure)
 from test import version
-from test.utils import delay, assertReadFrom, assertReadFromAll, read_from_which_host
+from test.utils import (
+    delay, assertReadFrom, assertReadFromAll, read_from_which_host,
+    assertRaisesExactly)
 
 
 host = os.environ.get("DB_IP", 'localhost')
@@ -99,7 +101,7 @@ class TestConnectionReplicaSetBase(unittest.TestCase):
 
 class TestConnection(TestConnectionReplicaSetBase):
     def test_connect(self):
-        self.assertRaises(ConnectionFailure, ReplicaSetConnection,
+        assertRaisesExactly(ConnectionFailure, ReplicaSetConnection,
                           "somedomainthatdoesntexist.org:27017",
                           replicaSet=self.name,
                           connectTimeoutMS=600)

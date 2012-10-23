@@ -52,6 +52,20 @@ def is_mongos(conn):
     res = conn.admin.command('ismaster')
     return res.get('msg', '') == 'isdbgrid'
 
+def assertRaisesExactly(cls, fn, *args, **kwargs):
+    """
+    Unlike the standard assertRaises, this checks that a function raises a
+    specific class of exception, and not a subclass. E.g., check that
+    Connection() raises ConnectionFailure but not its subclass, AutoReconnect.
+    """
+    try:
+        fn(*args, **kwargs)
+    except Exception, e:
+        assert e.__class__ == cls, "got %s, expected %s" % (
+            e.__class__.__name__, cls.__name__)
+    else:
+        raise AssertionError("%s not raised" % cls)
+
 def read_from_which_host(
     rsc,
     mode,
