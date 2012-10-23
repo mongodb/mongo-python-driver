@@ -761,6 +761,8 @@ class Cursor(object):
             self.__send_message(
                 message.get_more(self.__collection.full_name,
                                  limit, self.__id))
+        else:  # Cursor id is zero nothing else to return
+            self.__killed = True
 
         return len(self.__data)
 
