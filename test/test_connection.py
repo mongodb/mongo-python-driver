@@ -16,10 +16,12 @@
 
 import datetime
 import os
+import socket
 import sys
 import time
 import thread
 import unittest
+
 
 sys.path[0:0] = [""]
 
@@ -273,6 +275,27 @@ class TestConnection(unittest.TestCase):
                                 (self.host, self.port)).slave_okay)
         c.admin.system.users.remove({})
         c.pymongo_test.system.users.remove({})
+
+    def test_unix_socket(self):
+        if not hasattr(socket, "AF_UNIX"):
+            raise SkipTest("UNIX-sockets are not supported on this system")
+
+        mongodb_socket = '/tmp/mongodb-27017.sock'
+        if not os.access(mongodb_socket, os.R_OK):
+            raise SkipTest("Socket file is not accessable")
+
+        self.assertTrue(Connection("mongodb://%s" % mongodb_socket))
+
+        connection = Connection("mongodb://%s" % mongodb_socket)
+        connection.pymongo_test.test.save({"dummy": "object"})
+
+        # Confirm we can read via the socket
+        dbs = connection.database_names()
+        self.assertTrue("pymongo_test" in dbs)
+
+        # Confirm it fails with a missing socket
+        self.assertRaises(ConnectionFailure, Connection,
+                          "mongodb:///tmp/none-existent.sock")
 
     def test_fork(self):
         # Test using a connection before and after a fork.

@@ -679,7 +679,7 @@ class Connection(common.BaseObject):
         """Get a SocketInfo from the pool.
         """
         host, port = (self.__host, self.__port)
-        if host is None or port is None:
+        if host is None and port is None:
             host, port = self.__find_node()
 
         try:
@@ -690,8 +690,14 @@ class Connection(common.BaseObject):
             sock_info = self.__pool.get_socket((host, port))
         except socket.error, why:
             self.disconnect()
+
+            # Check if a unix domain socket
+            if host.endswith('.sock'):
+                host_details = "%s:" % host
+            else:
+                host_details = "%s:%d:" % (host, port)
             raise AutoReconnect("could not connect to "
-                                "%s:%d: %s" % (host, port, str(why)))
+                                "%s %s" % (host_details, str(why)))
         if self.__auth_credentials:
             self.__check_auth(sock_info)
         return sock_info

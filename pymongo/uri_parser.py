@@ -138,6 +138,7 @@ def parse_host(entity, default_port=DEFAULT_PORT):
         port = int(port)
     return host, port
 
+
 def validate_options(opts):
     """Validates and normalizes options passed in a MongoDB URI.
 
@@ -198,7 +199,11 @@ def split_hosts(hosts, default_port=DEFAULT_PORT):
         if not entity:
             raise ConfigurationError("Empty host "
                                      "(or extra comma in host list).")
-        nodes.append(parse_host(entity, default_port))
+        port = default_port
+        # Unix socket entities don't have ports
+        if entity.endswith('.sock'):
+            port = None
+        nodes.append(parse_host(entity, port))
     return nodes
 
 
@@ -237,7 +242,17 @@ def parse_uri(uri, default_port=DEFAULT_PORT):
     collection = None
     options = {}
 
-    host_part, _, path_part = _partition(scheme_free, '/')
+    # Check for unix domain sockets in the uri
+    if '.sock' in scheme_free:
+        host_part, _, path_part = _rpartition(scheme_free, '/')
+        try:
+            parse_uri('%s%s' % (SCHEME, host_part))
+        except (ConfigurationError, InvalidURI):
+            host_part = "%s%s%s" % (host_part, _, path_part)
+            path_part = ""
+    else:
+        host_part, _, path_part = _partition(scheme_free, '/')
+
     if not path_part and '?' in host_part:
         raise InvalidURI("A '/' is required between "
                          "the host list and any options.")

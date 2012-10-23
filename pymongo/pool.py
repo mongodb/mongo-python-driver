@@ -121,7 +121,7 @@ class BasePool:
         self.net_timeout = net_timeout
         self.conn_timeout = conn_timeout
         self.use_ssl = use_ssl
-        
+
         # Map self._get_thread_ident() -> request socket
         self._tid_to_sock = {}
 
@@ -156,6 +156,20 @@ class BasePool:
         CPython >=2.6.
         """
         host, port = pair or self.pair
+
+        # Check if dealing with a unix domain socket
+        if host.endswith('.sock'):
+            if not hasattr(socket, "AF_UNIX"):
+                raise ConnectionFailure("UNIX-sockets are not supported "
+                                        "on this system")
+            sock = socket.socket(socket.AF_UNIX)
+            try:
+                sock.connect(host)
+                return sock
+            except socket.error, e:
+                if sock is not None:
+                    sock.close()
+                raise e
 
         # Don't try IPv6 if we don't support it. Also skip it if host
         # is 'localhost' (::1 is fine). Avoids slow connect issues
