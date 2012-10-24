@@ -679,7 +679,7 @@ class Connection(common.BaseObject):
         """Get a SocketInfo from the pool.
         """
         host, port = (self.__host, self.__port)
-        if host is None and port is None:
+        if host is None or (port is None and '/' not in host):
             host, port = self.__find_node()
 
         try:
