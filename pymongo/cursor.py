@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Cursor class to iterate over Mongo query results."""
+import copy
 from collections import deque
 
 from bson.code import Code
@@ -168,28 +169,24 @@ class Cursor(object):
         unevaluated, even if the current instance has been partially or
         completely evaluated.
         """
-        copy = Cursor(self.__collection, self.__spec, self.__fields,
-                      self.__skip, self.__limit, self.__timeout,
-                      self.__snapshot, self.__tailable)
-        copy.__ordering = self.__ordering
-        copy.__explain = self.__explain
-        copy.__hint = self.__hint
-        copy.__batch_size = self.__batch_size
-        copy.__max_scan = self.__max_scan
-        copy.__as_class = self.__as_class
-        copy.__slave_okay = self.__slave_okay
-        copy.__await_data = self.__await_data
-        copy.__partial = self.__partial
-        copy.__manipulate = self.__manipulate
-        copy.__read_preference = self.__read_preference
-        copy.__tag_sets = self.__tag_sets
-        copy.__secondary_acceptable_latency_ms = (
-            self.__secondary_acceptable_latency_ms)
-        copy.__must_use_master = self.__must_use_master
-        copy.__uuid_subtype = self.__uuid_subtype
-        copy.__query_flags = self.__query_flags
-        copy.__kwargs = self.__kwargs
-        return copy
+        return self.__clone(True)
+
+    def __clone(self, deepcopy=True):
+        clone = Cursor(self.__collection)
+        values_to_clone = ("spec", "fields", "skip", "limit",
+                           "timeout", "snapshot", "tailable",
+                           "ordering", "explain", "hint", "batch_size",
+                           "max_scan", "as_class",  "slave_okay", "await_data",
+                           "partial", "manipulate", "read_preference",
+                           "tag_sets", "secondary_acceptable_latency_ms",
+                           "must_use_master", "uuid_subtype", "query_flags",
+                           "kwargs")
+        data = dict((k, v) for k, v in self.__dict__.iteritems()
+                    if k.startswith('_Cursor__') and k[9:] in values_to_clone)
+        if deepcopy:
+            data = copy.deepcopy(data)
+        clone.__dict__.update(data)
+        return clone
 
     def __die(self):
         """Closes this cursor.
@@ -549,7 +546,7 @@ class Cursor(object):
         database = self.__collection.database
         r = database.command("count", self.__collection.name,
                              allowable_errors=["ns missing"],
-                             uuid_subtype = self.__uuid_subtype,
+                             uuid_subtype=self.__uuid_subtype,
                              **command)
         if r.get("errmsg", "") == "ns missing":
             return 0
@@ -597,7 +594,7 @@ class Cursor(object):
         database = self.__collection.database
         return database.command("distinct",
                                 self.__collection.name,
-                                uuid_subtype = self.__uuid_subtype,
+                                uuid_subtype=self.__uuid_subtype,
                                 **options)["values"]
 
     def explain(self):
@@ -812,3 +809,17 @@ class Cursor(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.__die()
+
+    def __copy__(self):
+        """Support function for `copy.copy()`.
+
+        .. versionadded:: 2.3+
+        """
+        return self.__clone(deepcopy=False)
+
+    def __deepcopy__(self, memo):
+        """Support function for `copy.deepcopy()`.
+
+        .. versionadded:: 2.3+
+        """
+        return self.__clone(deepcopy=True)

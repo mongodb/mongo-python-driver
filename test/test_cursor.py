@@ -13,10 +13,11 @@
 # limitations under the License.
 
 """Test the cursor module."""
-import unittest
+import copy
+import itertools
 import random
 import sys
-import itertools
+import unittest
 sys.path[0:0] = [""]
 
 from nose.plugins.skip import SkipTest
@@ -471,7 +472,8 @@ class TestCursor(unittest.TestCase):
                                    slave_okay=True,
                                    await_data=True,
                                    partial=True,
-                                   manipulate=False).limit(2)
+                                   manipulate=False,
+                                   fields={'_id': False}).limit(2)
         cursor.add_option(64)
 
         cursor2 = cursor.clone()
@@ -491,6 +493,20 @@ class TestCursor(unittest.TestCase):
                          cursor2._Cursor__manipulate)
         self.assertEqual(cursor._Cursor__query_flags,
                          cursor2._Cursor__query_flags)
+
+        # Shallow copies can so can mutate
+        cursor2 = copy.copy(cursor)
+        cursor2._Cursor__fields['cursor2'] = False
+        self.assertTrue('cursor2' in cursor._Cursor__fields)
+
+        # Deepcopies and shouldn't mutate
+        cursor3 = copy.deepcopy(cursor)
+        cursor3._Cursor__fields['cursor3'] = False
+        self.assertFalse('cursor3' in cursor._Cursor__fields)
+
+        cursor4 = cursor.clone()
+        cursor4._Cursor__fields['cursor4'] = False
+        self.assertFalse('cursor4' in cursor._Cursor__fields)
 
     def test_add_remove_option(self):
         cursor = self.db.test.find()
