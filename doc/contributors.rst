@@ -59,3 +59,5 @@ The following is a list of people who have contributed to
 - Mike O'Brien (mpobrien)
 - T Dampier (dampier)
 - Michael Henson (hensom)
+- Devaev Maxim (mdevaev)
+- James Blackburn (jamesblackburn)

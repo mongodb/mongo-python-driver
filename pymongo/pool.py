@@ -19,7 +19,7 @@ import time
 import threading
 import weakref
 
-from pymongo.errors import ConnectionFailure
+from pymongo.errors import ConnectionFailure, ConfigurationError
 
 
 have_ssl = True
@@ -175,6 +175,17 @@ class BasePool:
         # is 'localhost' (::1 is fine). Avoids slow connect issues
         # like PYTHON-356.
         family = socket.AF_INET
+
+        # Unix domain sockets
+        if '/' in host:
+            if not hasattr(socket, "AF_UNIX"):
+                raise ConfigurationError(
+                            "UNIX-sockets are not supported on this system")
+            sock = socket.socket(socket.AF_UNIX)
+            sock.settimeout(self.conn_timeout or 20.0)
+            sock.connect(host)
+            return sock
+
         if socket.has_ipv6 and host != 'localhost':
             family = socket.AF_UNSPEC
 
