@@ -248,7 +248,7 @@ def parse_uri(uri, default_port=DEFAULT_PORT):
         try:
             parse_uri('%s%s' % (SCHEME, host_part))
         except (ConfigurationError, InvalidURI):
-            host_part = "%s%s%s" % (host_part, _, path_part)
+            host_part = scheme_free
             path_part = ""
     else:
         host_part, _, path_part = _partition(scheme_free, '/')
