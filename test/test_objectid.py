@@ -100,7 +100,7 @@ class TestObjectId(unittest.TestCase):
         try:
             import multiprocessing
         except ImportError:
-            raise SkipTest("Can't fork on Windows")
+            raise SkipTest("No multiprocessing module")
 
         pool = multiprocessing.Pool(2)
         ids = pool.map(oid, range(20))
