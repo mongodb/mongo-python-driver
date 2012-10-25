@@ -168,6 +168,8 @@ class TestDatabase(unittest.TestCase):
         self.assertRaises(ValueError, db.set_profiling_level, 5.5)
         self.assertRaises(ValueError, db.set_profiling_level, None)
         self.assertRaises(ValueError, db.set_profiling_level, -1)
+        self.assertRaises(TypeError, db.set_profiling_level, SLOW_ONLY, 5.5)
+        self.assertRaises(TypeError, db.set_profiling_level, SLOW_ONLY, '1')
 
         db.set_profiling_level(SLOW_ONLY)
         self.assertEqual(db.profiling_level(), SLOW_ONLY)
@@ -177,6 +179,15 @@ class TestDatabase(unittest.TestCase):
 
         db.set_profiling_level(OFF)
         self.assertEqual(db.profiling_level(), OFF)
+
+        db.set_profiling_level(SLOW_ONLY, 50)
+        self.assertEqual(50, db.command("profile", -1)['slowms'])
+
+        db.set_profiling_level(ALL, -1)
+        self.assertEqual(-1, db.command("profile", -1)['slowms'])
+
+        db.set_profiling_level(OFF, 100)  # back to default
+        self.assertEqual(100, db.command("profile", -1)['slowms'])
 
     def test_profiling_info(self):
         if is_mongos(self.connection):
