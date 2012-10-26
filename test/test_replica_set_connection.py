@@ -778,10 +778,18 @@ class TestConnection(TestConnectionReplicaSetBase):
         self.assertTrue(host in conn.secondaries)
         assertReadFrom(self, conn, host, ReadPreference.SECONDARY)
 
+        # Oddly, we expect PRIMARY_PREFERRED to keep reading from secondary,
+        # since the secondary is pinned and "matches" the preference.
+        assertReadFrom(self, conn, host, ReadPreference.PRIMARY_PREFERRED)
+
         # Repin
         primary = read_from_which_host(conn, ReadPreference.PRIMARY)
         self.assertEqual(conn.primary, primary)
         assertReadFrom(self, conn, primary, ReadPreference.NEAREST)
+        assertReadFrom(self, conn, primary, ReadPreference.PRIMARY_PREFERRED)
+
+        # Since the we're pinned to primary we still use it
+        assertReadFrom(self, conn, primary, ReadPreference.SECONDARY_PREFERRED)
 
         # Repin again
         host = read_from_which_host(conn, ReadPreference.SECONDARY)
