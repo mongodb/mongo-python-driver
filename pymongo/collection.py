@@ -26,6 +26,13 @@ from pymongo.cursor import Cursor
 from pymongo.errors import ConfigurationError, InvalidName
 
 
+try:
+    from collections import OrderedDict
+    ordered_types = (SON, OrderedDict)
+except ImportError:
+    ordered_types = SON
+
+
 def _gen_index_name(keys):
     """Generate an index name from the set of fields it is over.
     """
@@ -1228,7 +1235,8 @@ class Collection(common.BaseObject):
         else:
             return res.get("results")
 
-    def find_and_modify(self, query={}, update=None, upsert=False, **kwargs):
+    def find_and_modify(self, query={}, update=None,
+                        upsert=False, sort=None, **kwargs):
         """Update and return an object.
 
         This is a thin wrapper around the findAndModify_ command. The
@@ -1243,13 +1251,15 @@ class Collection(common.BaseObject):
 
         :Parameters:
             - `query`: filter for the update (default ``{}``)
-            - `sort`: priority if multiple objects match (default ``{}``)
             - `update`: see second argument to :meth:`update` (no default)
+            - `upsert`: insert if object doesn't exist (default ``False``)
+            - `sort`: a list of (key, direction) pairs specifying the sort
+              order for this query. See :meth:`~pymongo.cursor.Cursor.sort`
+              for details.
             - `remove`: remove rather than updating (default ``False``)
             - `new`: return updated rather than original object
               (default ``False``)
             - `fields`: see second argument to :meth:`find` (default all)
-            - `upsert`: insert if object doesn't exist (default ``False``)
             - `**kwargs`: any other options the findAndModify_ command
               supports can be passed here.
 
@@ -1259,6 +1269,9 @@ class Collection(common.BaseObject):
         .. _findAndModify: http://dochub.mongodb.org/core/findAndModify
 
         .. note:: Requires server version **>= 1.3.0**
+
+        .. versionchanged:: 2.3+
+           Deprecated the use of mapping types for the sort parameter
 
         .. versionadded:: 1.10
         """
@@ -1275,6 +1288,22 @@ class Collection(common.BaseObject):
             kwargs['update'] = update
         if upsert:
             kwargs['upsert'] = upsert
+        if sort:
+            # Accept a list of tuples to match Cursor's sort parameter.
+            if isinstance(sort, list):
+                kwargs['sort'] = helpers._index_document(sort)
+            # Accept OrderedDict, SON, and dict with len == 1 so we
+            # don't break existing code already using find_and_modify.
+            elif (isinstance(sort, ordered_types) or
+                  isinstance(sort, dict) and len(sort) == 1):
+                warnings.warn("Passing mapping types for `sort` is deprecated,"
+                              " use a list of (key, direction) pairs instead",
+                              DeprecationWarning)
+                kwargs['sort'] = sort
+            else:
+                raise TypeError("sort must be a list of (key, direction) "
+                                 "pairs, a dict of len 1, or an instance of "
+                                 "SON or OrderedDict")
 
         no_obj_error = "No matching object found"
 

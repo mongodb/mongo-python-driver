@@ -1709,6 +1709,54 @@ class TestCollection(unittest.TestCase):
                                     as_class=ExtendedDict)
         self.assertTrue(isinstance(result, ExtendedDict))
 
+    def test_find_and_modify_with_sort(self):
+        c = self.db.test
+        c.drop()
+        for j in xrange(5):
+            c.insert({'j': j, 'i': 0}, safe=True)
+
+        sort={'j': DESCENDING}
+        self.assertEqual(4, c.find_and_modify({},
+                                              {'$inc': {'i': 1}},
+                                              sort=sort)['j'])
+        sort={'j': ASCENDING}
+        self.assertEqual(0, c.find_and_modify({},
+                                              {'$inc': {'i': 1}},
+                                              sort=sort)['j'])
+        sort=[('j', DESCENDING)]
+        self.assertEqual(4, c.find_and_modify({},
+                                              {'$inc': {'i': 1}},
+                                              sort=sort)['j'])
+        sort=[('j', ASCENDING)]
+        self.assertEqual(0, c.find_and_modify({},
+                                              {'$inc': {'i': 1}},
+                                              sort=sort)['j'])
+        sort=SON([('j', DESCENDING)])
+        self.assertEqual(4, c.find_and_modify({},
+                                              {'$inc': {'i': 1}},
+                                              sort=sort)['j'])
+        sort=SON([('j', ASCENDING)])
+        self.assertEqual(0, c.find_and_modify({},
+                                              {'$inc': {'i': 1}},
+                                              sort=sort)['j'])
+        try:
+            from collections import OrderedDict
+            sort=OrderedDict([('j', DESCENDING)])
+            self.assertEqual(4, c.find_and_modify({},
+                                                  {'$inc': {'i': 1}},
+                                                  sort=sort)['j'])
+            sort=OrderedDict([('j', ASCENDING)])
+            self.assertEqual(0, c.find_and_modify({},
+                                                  {'$inc': {'i': 1}},
+                                                  sort=sort)['j'])
+        except ImportError:
+            pass
+        # Test that a standard dict with two keys is rejected.
+        sort={'j': DESCENDING, 'foo': DESCENDING}
+        self.assertRaises(TypeError, c.find_and_modify, {},
+                                                         {'$inc': {'i': 1}},
+                                                         sort=sort)
+
     def test_find_with_nested(self):
         if not version.at_least(self.db.connection, (2, 0, 0)):
             raise SkipTest("nested $and and $or requires MongoDB >= 2.0")
