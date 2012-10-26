@@ -16,6 +16,7 @@
 
 import datetime
 import os
+import threading
 import socket
 import sys
 import time
@@ -31,16 +32,17 @@ from bson.son import SON
 from bson.tz_util import utc
 from pymongo.connection import Connection
 from pymongo.database import Database
-from pymongo.pool import NO_REQUEST, NO_SOCKET_YET, SocketInfo
-from pymongo.errors import (AutoReconnect,
-                            ConfigurationError,
+from pymongo.pool import SocketInfo
+from pymongo.errors import (ConfigurationError,
                             ConnectionFailure,
                             InvalidName,
-                            InvalidURI,
                             OperationFailure)
 from test import version
-from test.utils import (
-    is_mongos, server_is_master_with_slave, delay, assertRaisesExactly)
+from test.utils import (is_mongos,
+                        server_is_master_with_slave,
+                        delay,
+                        assertRaisesExactly,
+                        TestRequestMixin)
 
 host = os.environ.get("DB_IP", "localhost")
 port = int(os.environ.get("DB_PORT", 27017))
@@ -50,8 +52,7 @@ def get_connection(*args, **kwargs):
     return Connection(host, port, *args, **kwargs)
 
 
-class TestConnection(unittest.TestCase):
-
+class TestConnection(unittest.TestCase, TestRequestMixin):
     def setUp(self):
         self.host = os.environ.get("DB_IP", "localhost")
         self.port = int(os.environ.get("DB_PORT", 27017))
@@ -184,6 +185,7 @@ class TestConnection(unittest.TestCase):
         self.assertEqual("bar", c.pymongo_test1.test.find_one()["foo"])
 
         c.end_request()
+        self.assertFalse(c.in_request())
         c.copy_database("pymongo_test", "pymongo_test2",
                         "%s:%d" % (self.host, self.port))
         # copy_database() didn't accidentally restart the request
@@ -502,33 +504,6 @@ with get_connection() as connection:
     self.assertEqual(0, len(connection._Connection__pool.sockets))
 """
 
-    def get_sock(self, pool):
-        sock_info = pool.get_socket((self.host, self.port))
-        return sock_info
-
-    def assertSameSock(self, pool):
-        sock_info0 = self.get_sock(pool)
-        sock_info1 = self.get_sock(pool)
-        self.assertEqual(sock_info0, sock_info1)
-        pool.maybe_return_socket(sock_info0)
-        pool.maybe_return_socket(sock_info1)
-
-    def assertDifferentSock(self, pool):
-        sock_info0 = self.get_sock(pool)
-        sock_info1 = self.get_sock(pool)
-        self.assertNotEqual(sock_info0, sock_info1)
-        pool.maybe_return_socket(sock_info0)
-        pool.maybe_return_socket(sock_info1)
-
-    def assertNoRequest(self, pool):
-        self.assertEqual(NO_REQUEST, pool._get_request_state())
-
-    def assertNoSocketYet(self, pool):
-        self.assertEqual(NO_SOCKET_YET, pool._get_request_state())
-
-    def assertRequestSocket(self, pool):
-        self.assertTrue(isinstance(pool._get_request_state(), SocketInfo))
-
     def test_with_start_request(self):
         conn = get_connection(auto_start_request=False)
         pool = conn._Connection__pool
@@ -595,6 +570,79 @@ with conn.start_request() as request:
         conn.db.test.find_one()
         self.assertRequestSocket(pool)
         self.assertSameSock(pool)
+
+    def test_nested_request(self):
+        # auto_start_request is True
+        conn = get_connection()
+        pool = conn._Connection__pool
+        self.assertTrue(conn.in_request())
+
+        # Start and end request - we're still in "outer" original request
+        conn.start_request()
+        self.assertInRequestAndSameSock(conn, pool)
+        conn.end_request()
+        self.assertInRequestAndSameSock(conn, pool)
+
+        # Double-nesting
+        conn.start_request()
+        conn.start_request()
+        conn.end_request()
+        conn.end_request()
+        self.assertInRequestAndSameSock(conn, pool)
+
+        # Finally, end original request
+        conn.end_request()
+        self.assertNotInRequestAndDifferentSock(conn, pool)
+
+        # Extra end_request calls have no effect - count stays at zero
+        conn.end_request()
+        self.assertNotInRequestAndDifferentSock(conn, pool)
+
+        conn.start_request()
+        self.assertInRequestAndSameSock(conn, pool)
+        conn.end_request()
+        self.assertNotInRequestAndDifferentSock(conn, pool)
+
+    def test_request_threads(self):
+        conn = get_connection(auto_start_request=False)
+        pool = conn._Connection__pool
+        self.assertNotInRequestAndDifferentSock(conn, pool)
+
+        started_request, ended_request = threading.Event(), threading.Event()
+        checked_request = threading.Event()
+        thread_done = [False]
+
+        # Starting a request in one thread doesn't put the other thread in a
+        # request
+        def f():
+            self.assertNotInRequestAndDifferentSock(conn, pool)
+            conn.start_request()
+            self.assertInRequestAndSameSock(conn, pool)
+            started_request.set()
+            checked_request.wait()
+            checked_request.clear()
+            self.assertInRequestAndSameSock(conn, pool)
+            conn.end_request()
+            self.assertNotInRequestAndDifferentSock(conn, pool)
+            ended_request.set()
+            checked_request.wait()
+            thread_done[0] = True
+
+        t = threading.Thread(target=f)
+        t.setDaemon(True)
+        t.start()
+        # It doesn't matter in what order the main thread or t initially get
+        # to started_request.set() / wait(); by waiting here we ensure that t
+        # has called conn.start_request() before we assert on the next line.
+        started_request.wait()
+        self.assertNotInRequestAndDifferentSock(conn, pool)
+        checked_request.set()
+        ended_request.wait()
+        self.assertNotInRequestAndDifferentSock(conn, pool)
+        checked_request.set()
+        t.join()
+        self.assertNotInRequestAndDifferentSock(conn, pool)
+        self.assertTrue(thread_done[0], "Thread didn't complete")
 
     def test_interrupt_signal(self):
         if sys.platform.startswith('java'):

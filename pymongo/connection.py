@@ -683,8 +683,7 @@ class Connection(common.BaseObject):
             host, port = self.__find_node()
 
         try:
-            if self.__auto_start_request:
-                # No effect if a request already started
+            if self.auto_start_request and not self.in_request():
                 self.start_request()
 
             sock_info = self.__pool.get_socket((host, port))
@@ -957,6 +956,13 @@ class Connection(common.BaseObject):
         ...     # Definitely read the document after the final update completes
         ...     print db.test_collection.find({'_id': _id})
 
+        If a thread or greenlet calls start_request multiple times, an equal
+        number of calls to :meth:`end_request` is required to end the request.
+
+        .. versionchanged:: 2.3+
+           Now counts the number of calls to start_request and doesn't end
+           request until an equal number of calls to end_request.
+
         .. versionadded:: 2.2
            The :class:`~pymongo.pool.Request` return value.
            :meth:`start_request` previously returned None
@@ -965,17 +971,18 @@ class Connection(common.BaseObject):
         return pool.Request(self)
 
     def in_request(self):
-        """True if :meth:`start_request` has been called, but not
-        :meth:`end_request`, or if `auto_start_request` is True and
-        :meth:`end_request` has not been called in this thread or greenlet.
+        """True if this thread is in a request, meaning it has a socket
+        reserved for its exclusive use.
         """
         return self.__pool.in_request()
 
     def end_request(self):
-        """Undo :meth:`start_request` and allow this thread's connection to
-        return to the pool.
+        """Undo :meth:`start_request`. If :meth:`end_request` is called as many
+        times as :meth:`start_request`, the request is over and this thread's
+        connection returns to the pool. Extra calls to :meth:`end_request` have
+        no effect.
 
-        Calling :meth:`end_request` allows the :class:`~socket.socket` that has
+        Ending a request allows the :class:`~socket.socket` that has
         been reserved for this thread by :meth:`start_request` to be returned to
         the pool. Other threads will then be able to re-use that
         :class:`~socket.socket`. If your application uses many threads, or has
@@ -1128,10 +1135,8 @@ class Connection(common.BaseObject):
         if from_host is not None:
             command["fromhost"] = from_host
 
-        in_request = self.in_request()
         try:
-            if not in_request:
-                self.start_request()
+            self.start_request()
 
             if username is not None:
                 nonce = self.admin.command("copydbgetnonce",
@@ -1142,8 +1147,7 @@ class Connection(common.BaseObject):
 
             return self.admin.command("copydb", **command)
         finally:
-            if not in_request:
-                self.end_request()
+            self.end_request()
 
     @property
     def is_locked(self):

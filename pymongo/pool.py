@@ -131,6 +131,9 @@ class BasePool:
         # fire.
         self._refs = {}
 
+        # Map self._get_thread_ident() -> # times start_request called
+        self._tid_to_request_count = {}
+
     def reset(self):
         # Ignore this race condition -- if many threads are resetting at once,
         # the pool_id will definitely change, which is all we care about.
@@ -278,14 +281,31 @@ class BasePool:
             # have no socket assigned to the request yet.
             self._set_request_state(NO_SOCKET_YET)
 
+        tid = self._get_thread_ident()
+        if tid in self._tid_to_request_count:
+            self._tid_to_request_count[tid] += 1
+        else:
+            self._tid_to_request_count[tid] = 1
+
     def in_request(self):
         return self._get_request_state() != NO_REQUEST
 
     def end_request(self):
-        sock_info = self._get_request_state()
-        self._set_request_state(NO_REQUEST)
-        if sock_info not in (NO_REQUEST, NO_SOCKET_YET):
-            self._return_socket(sock_info)
+        tid = self._get_thread_ident()
+
+        # Check if start_request has ever been called in this thread / greenlet
+        count = self._tid_to_request_count.get(tid)
+        if count is not None:
+            if count > 1:
+                # Decrement start_request counter
+                self._tid_to_request_count[tid] -= 1
+            else:
+                # End request
+                self._tid_to_request_count.pop(tid)
+                sock_info = self._get_request_state()
+                self._set_request_state(NO_REQUEST)
+                if sock_info not in (NO_REQUEST, NO_SOCKET_YET):
+                    self._return_socket(sock_info)
 
     def discard_socket(self, sock_info):
         """Close and discard the active socket.

@@ -16,6 +16,7 @@
 """
 
 from pymongo.errors import AutoReconnect
+from pymongo.pool import NO_REQUEST, NO_SOCKET_YET, SocketInfo
 
 
 def delay(sec):
@@ -135,3 +136,57 @@ def assertReadFromAll(testcase, rsc, members, *args, **kwargs):
         used.add(read_from_which_host(rsc, *args, **kwargs))
 
     testcase.assertEqual(members, used)
+
+class TestRequestMixin(object):
+    """Inherit from this class and from unittest.TestCase to get some
+    convenient methods for testing connection-pools and requests
+    """
+    def get_sock(self, pool):
+        # Connection calls Pool.get_socket((host, port)), whereas RSC sets
+        # Pool.pair at construction-time and just calls Pool.get_socket().
+        # Deal with either case so we can use TestRequestMixin to test pools
+        # from Connection and from RSC.
+        if not pool.pair:
+            # self is test_connection.TestConnection
+            self.assertTrue(hasattr(self, 'host') and hasattr(self, 'port'))
+            sock_info = pool.get_socket((self.host, self.port))
+        else:
+            sock_info = pool.get_socket()
+        return sock_info
+
+    def assertSameSock(self, pool):
+        sock_info0 = self.get_sock(pool)
+        sock_info1 = self.get_sock(pool)
+        self.assertEqual(sock_info0, sock_info1)
+        pool.maybe_return_socket(sock_info0)
+        pool.maybe_return_socket(sock_info1)
+
+    def assertDifferentSock(self, pool):
+        sock_info0 = self.get_sock(pool)
+        sock_info1 = self.get_sock(pool)
+        self.assertNotEqual(sock_info0, sock_info1)
+        pool.maybe_return_socket(sock_info0)
+        pool.maybe_return_socket(sock_info1)
+
+    def assertNoRequest(self, pool):
+        self.assertEqual(NO_REQUEST, pool._get_request_state())
+
+    def assertNoSocketYet(self, pool):
+        self.assertEqual(NO_SOCKET_YET, pool._get_request_state())
+
+    def assertRequestSocket(self, pool):
+        self.assertTrue(isinstance(pool._get_request_state(), SocketInfo))
+
+    def assertInRequestAndSameSock(self, conn, pools):
+        self.assertTrue(conn.in_request())
+        if not isinstance(pools, list):
+            pools = [pools]
+        for pool in pools:
+            self.assertSameSock(pool)
+
+    def assertNotInRequestAndDifferentSock(self, conn, pools):
+        self.assertFalse(conn.in_request())
+        if not isinstance(pools, list):
+            pools = [pools]
+        for pool in pools:
+            self.assertDifferentSock(pool)
