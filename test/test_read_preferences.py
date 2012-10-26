@@ -108,15 +108,22 @@ class TestReadPreferences(TestReadPreferencesBase):
         # member
         c = self._get_connection(
             read_preference=ReadPreference.NEAREST,
-            secondaryAcceptableLatencyMS=1500,
+            secondaryAcceptableLatencyMS=10000, # 10 seconds
             auto_start_request=False)
 
+        data_members = set(self.hosts).difference(set(self.arbiters))
+
+        # This is a probabilistic test; track which members we've read from so
+        # far, and keep reading until we've used all the members or give up.
+        # Chance of using only 2 of 3 members 10k times if there's no bug =
+        # 3 * (2/3)**10000, very low.
         used = set()
-        for i in range(1000):
+        i = 0
+        while data_members.difference(used) and i < 10000:
             host = self.read_from_which_host(c)
             used.add(host)
+            i += 1
 
-        data_members = set(self.hosts).difference(set(self.arbiters))
         not_used = data_members.difference(used)
         self.assertFalse(not_used,
             "Expected to use primary and all secondaries for mode NEAREST,"
