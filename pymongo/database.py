@@ -520,7 +520,7 @@ class Database(common.BaseObject):
                     below.
           - `slow_ms`: Optionally modify the threshold for the profile to
                        consider a query or operation.  Even if the profiler is
-                       off queries slower than the :atttr:`slow_ms` level will
+                       off queries slower than the :attr:`slow_ms` level will
                        get written to the logs.
 
         Possible :attr:`level` values:
