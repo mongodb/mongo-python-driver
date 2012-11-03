@@ -517,13 +517,12 @@ class Database(common.BaseObject):
 
         :Parameters:
           - `level`: Specifies a profiling level, see list of possible values
-                    below.
+            below.
           - `slow_ms`: Optionally modify the threshold for the profile to
-                       consider a query or operation.  Even if the profiler is
-                       off queries slower than the :attr:`slow_ms` level will
-                       get written to the logs.
+            consider a query or operation.  Even if the profiler is off queries
+            slower than the `slow_ms` level will get written to the logs.
 
-        Possible :attr:`level` values:
+        Possible `level` values:
 
         +----------------------------+------------------------------------+
         | Level                      | Setting                            |
