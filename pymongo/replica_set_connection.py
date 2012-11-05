@@ -921,6 +921,36 @@ class ReplicaSetConnection(common.BaseObject):
         self.__writer = None
         self.__members = {}
 
+    def alive(self):
+        """Return ``False`` if there has been an error communicating with the
+        primary, else ``True``.
+
+        This method attempts to check the status of the primary with minimal
+        I/O. The current thread / greenlet retrieves a socket (its request
+        socket if it's in a request, or a random idle socket if it's not in a
+        request) from the primary's connection pool and checks whether calling
+        select_ on it raises an error. If there are currently no idle sockets,
+        or if there is no known primary, :meth:`alive` will attempt to actually
+        find and connect to the primary.
+
+        A more certain way to determine primary availability is to ping it::
+
+            connection.admin.command('ping')
+
+        .. _select: http://docs.python.org/2/library/select.html#select.select
+        """
+        # In the common case, a socket is available and was used recently, so
+        # calling select() on it is a reasonable attempt to see if the OS has
+        # reported an error. Note this can be wasteful: __socket implicitly
+        # calls select() if the socket hasn't been checked in the last second,
+        # or it may create a new socket, in which case calling select() is
+        # redundant.
+        try:
+            sock_info = self.__socket(self.__find_primary())
+            return not pool._closed(sock_info.sock)
+        except (socket.error, ConnectionFailure):
+            return False
+
     def __check_response_to_last_error(self, response):
         """Check a response to a lastError message for errors.
 

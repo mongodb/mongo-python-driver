@@ -735,6 +735,35 @@ class Connection(common.BaseObject):
         """
         self.disconnect()
 
+    def alive(self):
+        """Return ``False`` if there has been an error communicating with the
+        server, else ``True``.
+
+        This method attempts to check the status of the server with minimal I/O.
+        The current thread / greenlet retrieves a socket from the pool (its
+        request socket if it's in a request, or a random idle socket if it's not
+        in a request) and checks whether calling `select`_ on it raises an
+        error. If there are currently no idle sockets, :meth:`alive` will
+        attempt to actually connect to the server.
+
+        A more certain way to determine server availability is::
+
+            connection.admin.command('ping')
+
+        .. _select: http://docs.python.org/2/library/select.html#select.select
+        """
+        # In the common case, a socket is available and was used recently, so
+        # calling select() on it is a reasonable attempt to see if the OS has
+        # reported an error. Note this can be wasteful: __socket implicitly
+        # calls select() if the socket hasn't been checked in the last second,
+        # or it may create a new socket, in which case calling select() is
+        # redundant.
+        try:
+            sock_info = self.__socket()
+            return not pool._closed(sock_info.sock)
+        except (socket.error, ConnectionFailure):
+            return False
+
     def set_cursor_manager(self, manager_class):
         """Set this connection's cursor manager.
 

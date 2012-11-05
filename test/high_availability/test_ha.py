@@ -677,6 +677,45 @@ class TestReplicaSetAuth(unittest.TestCase):
         self.c.close()
         ha_tools.kill_all_members()
 
+
+class TestAlive(unittest.TestCase):
+    def setUp(self):
+        members = [{}, {}]
+        self.seed, self.name = ha_tools.start_replica_set(members)
+
+    def test_alive(self):
+        primary = ha_tools.get_primary()
+        secondary = ha_tools.get_random_secondary()
+        primary_cx = Connection(primary, use_greenlets=use_greenlets)
+        secondary_cx = Connection(secondary, use_greenlets=use_greenlets)
+        rsc = ReplicaSetConnection(
+            self.seed, replicaSet=self.name, use_greenlets=use_greenlets)
+
+        try:
+            self.assertTrue(primary_cx.alive())
+            self.assertTrue(secondary_cx.alive())
+            self.assertTrue(rsc.alive())
+    
+            ha_tools.kill_primary()
+            time.sleep(0.5)
+
+            self.assertFalse(primary_cx.alive())
+            self.assertTrue(secondary_cx.alive())
+            self.assertFalse(rsc.alive())
+            
+            ha_tools.kill_members([secondary], 2)
+            time.sleep(0.5)
+
+            self.assertFalse(primary_cx.alive())
+            self.assertFalse(secondary_cx.alive())
+            self.assertFalse(rsc.alive())
+        finally:
+            rsc.close()
+
+    def tearDown(self):
+        ha_tools.kill_all_members()
+        
+        
 class TestMongosHighAvailability(unittest.TestCase):
     def setUp(self):
         seed_list = ha_tools.create_sharded_cluster()
