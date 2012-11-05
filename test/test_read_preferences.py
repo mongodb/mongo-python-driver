@@ -125,9 +125,13 @@ class TestReadPreferences(TestReadPreferencesBase):
             i += 1
 
         not_used = data_members.difference(used)
+        latencies = ', '.join(
+            '%s: %dms' % (member.host, member.ping_time.get())
+            for member in c._ReplicaSetConnection__members.values())
+
         self.assertFalse(not_used,
             "Expected to use primary and all secondaries for mode NEAREST,"
-            " but didn't use %s" % not_used)
+            " but didn't use %s\nlatencies: %s" % (not_used, latencies))
 
 
 class ReadPrefTester(ReplicaSetConnection):
