@@ -441,7 +441,7 @@ class Connection(common.BaseObject):
     @property
     def is_primary(self):
         """If this Connection is connected to a standalone, a replica-set
-           primary, or the master of a master-slave set.
+        primary, or the master of a master-slave set.
 
         .. versionadded:: 2.3
         """
@@ -477,6 +477,8 @@ class Connection(common.BaseObject):
 
     @property
     def auto_start_request(self):
+        """Is auto_start_request enabled?
+        """
         return self.__auto_start_request
 
     def get_document_class(self):

@@ -19,10 +19,12 @@
       .. autoattribute:: port
       .. autoattribute:: is_primary
       .. autoattribute:: is_mongos
-      .. autoattribute:: nodes
       .. autoattribute:: max_pool_size
+      .. autoattribute:: nodes
+      .. autoattribute:: auto_start_request
       .. autoattribute:: document_class
       .. autoattribute:: tz_aware
+      .. autoattribute:: max_bson_size
       .. autoattribute:: read_preference
       .. autoattribute:: tag_sets
       .. autoattribute:: secondary_acceptable_latency_ms

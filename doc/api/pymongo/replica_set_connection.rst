@@ -17,15 +17,18 @@
 
       .. autoattribute:: seeds
       .. autoattribute:: hosts
-      .. autoattribute:: arbiters
       .. autoattribute:: primary
       .. autoattribute:: secondaries
-      .. autoattribute:: read_preference
-      .. autoattribute:: tag_sets
-      .. autoattribute:: secondary_acceptable_latency_ms
+      .. autoattribute:: arbiters
+      .. autoattribute:: is_mongos
       .. autoattribute:: max_pool_size
       .. autoattribute:: document_class
       .. autoattribute:: tz_aware
+      .. autoattribute:: max_bson_size
+      .. autoattribute:: auto_start_request
+      .. autoattribute:: read_preference
+      .. autoattribute:: tag_sets
+      .. autoattribute:: secondary_acceptable_latency_ms
       .. autoattribute:: safe
       .. automethod:: get_lasterror_options
       .. automethod:: set_lasterror_options

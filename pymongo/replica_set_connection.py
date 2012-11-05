@@ -651,6 +651,8 @@ class ReplicaSetConnection(common.BaseObject):
 
     @property
     def auto_start_request(self):
+        """Is auto_start_request enabled?
+        """
         return self.__auto_start_request
 
     def __simple_command(self, sock_info, dbname, spec):
