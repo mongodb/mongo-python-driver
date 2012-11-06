@@ -88,7 +88,7 @@ class Collection(common.BaseObject):
             secondary_acceptable_latency_ms=(
                 database.secondary_acceptable_latency_ms),
             safe=database.safe,
-            **(database.get_lasterror_options()))
+            **database.write_concern)
 
         if not isinstance(name, basestring):
             raise TypeError("name must be an instance "

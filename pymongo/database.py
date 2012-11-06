@@ -67,7 +67,7 @@ class Database(common.BaseObject):
                              secondary_acceptable_latency_ms=(
                                  connection.secondary_acceptable_latency_ms),
                              safe=connection.safe,
-                             **(connection.get_lasterror_options()))
+                             **connection.write_concern)
 
         if not isinstance(name, basestring):
             raise TypeError("name must be an instance "

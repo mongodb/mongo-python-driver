@@ -15,9 +15,13 @@
 """Test the pymongo common module."""
 
 import os
+import sys
 import unittest
 import warnings
 
+sys.path[0:0] = [""]
+
+from bson.son import SON
 from pymongo.connection import Connection
 from pymongo.errors import ConfigurationError, OperationFailure
 from test.utils import drop_collections
@@ -106,14 +110,17 @@ class TestCommon(unittest.TestCase):
         self.assertTrue(c.safe)
         d = {'w': 1, 'wtimeout': 300, 'fsync': True, 'j': True}
         self.assertEqual(d, c.get_lasterror_options())
+        self.assertEqual(d, c.write_concern)
         db = c.test
         self.assertTrue(db.slave_okay)
         self.assertTrue(db.safe)
         self.assertEqual(d, db.get_lasterror_options())
+        self.assertEqual(d, db.write_concern)
         coll = db.test
         self.assertTrue(coll.slave_okay)
         self.assertTrue(coll.safe)
         self.assertEqual(d, coll.get_lasterror_options())
+        self.assertEqual(d, coll.write_concern)
         cursor = coll.find()
         self.assertTrue(cursor._Cursor__slave_okay)
         cursor = coll.find(slave_okay=False)
@@ -127,14 +134,17 @@ class TestCommon(unittest.TestCase):
         c.slave_okay = False
         self.assertFalse(c.slave_okay)
         self.assertEqual({}, c.get_lasterror_options())
+        self.assertEqual({}, c.write_concern)
         db = c.test
         self.assertFalse(db.slave_okay)
         self.assertFalse(db.safe)
         self.assertEqual({}, db.get_lasterror_options())
+        self.assertEqual({}, db.write_concern)
         coll = db.test
         self.assertFalse(coll.slave_okay)
         self.assertFalse(coll.safe)
         self.assertEqual({}, coll.get_lasterror_options())
+        self.assertEqual({}, coll.write_concern)
         cursor = coll.find()
         self.assertFalse(cursor._Cursor__slave_okay)
         cursor = coll.find(slave_okay=True)
@@ -142,15 +152,21 @@ class TestCommon(unittest.TestCase):
 
         coll.set_lasterror_options(j=True)
         self.assertEqual({'j': True}, coll.get_lasterror_options())
+        self.assertEqual({'j': True}, coll.write_concern)
         self.assertEqual({}, db.get_lasterror_options())
+        self.assertEqual({}, db.write_concern)
         self.assertFalse(db.safe)
         self.assertEqual({}, c.get_lasterror_options())
+        self.assertEqual({}, c.write_concern)
         self.assertFalse(c.safe)
 
         db.set_lasterror_options(w='majority')
         self.assertEqual({'j': True}, coll.get_lasterror_options())
+        self.assertEqual({'j': True}, coll.write_concern)
         self.assertEqual({'w': 'majority'}, db.get_lasterror_options())
+        self.assertEqual({'w': 'majority'}, db.write_concern)
         self.assertEqual({}, c.get_lasterror_options())
+        self.assertEqual({}, c.write_concern)
         self.assertFalse(c.safe)
         db.slave_okay = True
         self.assertTrue(db.slave_okay)
@@ -178,6 +194,51 @@ class TestCommon(unittest.TestCase):
         drop_collections(db)
 
         warnings.resetwarnings()
+
+    def test_write_concern(self):
+        c = Connection(pair)
+
+        self.assertEqual({}, c.write_concern)
+        wc = {'w': 2, 'wtimeout': 1000}
+        c.write_concern = wc
+        self.assertEqual(wc, c.write_concern)
+        wc = {'w': 3, 'wtimeout': 1000}
+        c.write_concern['w'] = 3
+        self.assertEqual(wc, c.write_concern)
+        wc = {'w': 3}
+        del c.write_concern['wtimeout']
+        self.assertEqual(wc, c.write_concern)
+
+        wc = {'w': 3, 'wtimeout': 1000}
+        c = Connection(w=3, wtimeout=1000)
+        self.assertEqual(wc, c.write_concern)
+        wc = {'w': 2, 'wtimeout': 1000}
+        c.write_concern = wc
+        self.assertEqual(wc, c.write_concern)
+
+        db = c.test
+        self.assertEqual(wc, db.write_concern)
+        coll = db.test
+        self.assertEqual(wc, coll.write_concern)
+        coll.write_concern = {'j': True}
+        self.assertEqual({'j': True}, coll.write_concern)
+        self.assertEqual(wc, db.write_concern)
+
+        wc = SON([('w', 2)])
+        coll.write_concern = wc
+        self.assertEqual(wc.to_dict(), coll.write_concern)
+
+        def f():
+            c.write_concern = {'foo': 'bar'}
+        self.assertRaises(ConfigurationError, f)
+
+        def f():
+            c.write_concern['foo'] = 'bar'
+        self.assertRaises(ConfigurationError, f)
+
+        def f():
+            c.write_concern = [('foo', 'bar')]
+        self.assertRaises(ConfigurationError, f)
 
 
 if __name__ == "__main__":

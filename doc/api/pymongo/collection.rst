@@ -23,12 +23,10 @@
       .. autoattribute:: read_preference
       .. autoattribute:: tag_sets
       .. autoattribute:: secondary_acceptable_latency_ms
+      .. autoattribute:: write_concern
       .. autoattribute:: slave_okay
       .. autoattribute:: safe
       .. autoattribute:: uuid_subtype
-      .. automethod:: get_lasterror_options
-      .. automethod:: set_lasterror_options
-      .. automethod:: unset_lasterror_options
       .. automethod:: insert(doc_or_docs[, manipulate=True[, safe=False[, check_keys=True[, continue_on_error=False[, **kwargs]]]]])
       .. automethod:: save(to_save[, manipulate=True[, safe=False[, check_keys=True[, **kwargs]]]])
       .. automethod:: update(spec, document[, upsert=False[, manipulate=False[, safe=False[, multi=False[, check_keys=True[, **kwargs]]]]]])
@@ -51,4 +49,7 @@
       .. automethod:: map_reduce
       .. automethod:: inline_map_reduce
       .. automethod:: find_and_modify
+      .. automethod:: get_lasterror_options
+      .. automethod:: set_lasterror_options
+      .. automethod:: unset_lasterror_options
 

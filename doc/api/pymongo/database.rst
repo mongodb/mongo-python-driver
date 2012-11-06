@@ -21,6 +21,7 @@
       .. autoattribute:: read_preference
       .. autoattribute:: tag_sets
       .. autoattribute:: secondary_acceptable_latency_ms
+      .. autoattribute:: write_concern
       .. autoattribute:: slave_okay
       .. autoattribute:: safe
       .. automethod:: get_lasterror_options
