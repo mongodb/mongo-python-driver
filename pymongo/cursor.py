@@ -43,7 +43,7 @@ class Cursor(object):
     def __init__(self, collection, spec=None, fields=None, skip=0, limit=0,
                  timeout=True, snapshot=False, tailable=False, sort=None,
                  max_scan=None, as_class=None, slave_okay=False,
-                 await_data=False, partial=False, manipulate=True,
+                 await_data=False, partial=False, oplog_replay=False, manipulate=True,
                  read_preference=ReadPreference.PRIMARY, tag_sets=[{}],
                  secondary_acceptable_latency_ms=None,
                  _must_use_master=False, _uuid_subtype=None, **kwargs):
@@ -75,6 +75,8 @@ class Cursor(object):
             raise TypeError("slave_okay must be an instance of bool")
         if not isinstance(await_data, bool):
             raise TypeError("await_data must be an instance of bool")
+        if not isinstance(oplog_replay, bool):
+            raise TypeError("oplog_replay must be an instance of bool")
         if not isinstance(partial, bool):
             raise TypeError("partial must be an instance of bool")
 
@@ -104,6 +106,7 @@ class Cursor(object):
 
         self.__timeout = timeout
         self.__tailable = tailable
+        self.__oplog_replay = oplog_replay
         self.__await_data = tailable and await_data
         self.__partial = partial
         self.__snapshot = snapshot
@@ -176,7 +179,7 @@ class Cursor(object):
         values_to_clone = ("spec", "fields", "skip", "limit",
                            "timeout", "snapshot", "tailable",
                            "ordering", "explain", "hint", "batch_size",
-                           "max_scan", "as_class",  "slave_okay", "await_data",
+                           "max_scan", "as_class",  "slave_okay", "await_data", "oplog_replay",
                            "partial", "manipulate", "read_preference",
                            "tag_sets", "secondary_acceptable_latency_ms",
                            "must_use_master", "uuid_subtype", "query_flags",
@@ -283,6 +286,8 @@ class Cursor(object):
             options |= _QUERY_OPTIONS["no_timeout"]
         if self.__await_data:
             options |= _QUERY_OPTIONS["await_data"]
+        if self.__oplog_replay:
+            options |= _QUERY_OPTIONS["oplog_replay"]
         if self.__partial:
             options |= _QUERY_OPTIONS["partial"]
         return options
