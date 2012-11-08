@@ -83,7 +83,7 @@ except ImportError:
         json_lib = False
 
 import bson
-from bson import EPOCH_AWARE
+from bson import EPOCH_AWARE, RE_TYPE
 from bson.binary import Binary
 from bson.code import Code
 from bson.dbref import DBRef
@@ -93,9 +93,6 @@ from bson.objectid import ObjectId
 from bson.timestamp import Timestamp
 
 from bson.py3compat import PY3, binary_type, string_types
-
-# TODO share this with bson.py?
-_RE_TYPE = type(re.compile("foo"))
 
 
 def dumps(obj, *args, **kwargs):
@@ -174,7 +171,7 @@ def default(obj):
         millis = int(calendar.timegm(obj.timetuple()) * 1000 +
                      obj.microsecond / 1000)
         return {"$date": millis}
-    if isinstance(obj, _RE_TYPE):
+    if isinstance(obj, RE_TYPE):
         flags = ""
         if obj.flags & re.IGNORECASE:
             flags += "i"

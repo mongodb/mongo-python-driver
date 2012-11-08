@@ -16,6 +16,7 @@
 import copy
 from collections import deque
 
+from bson import RE_TYPE
 from bson.code import Code
 from bson.son import SON
 from pymongo import helpers, message, read_preferences
@@ -184,7 +185,7 @@ class Cursor(object):
         data = dict((k, v) for k, v in self.__dict__.iteritems()
                     if k.startswith('_Cursor__') and k[9:] in values_to_clone)
         if deepcopy:
-            data = copy.deepcopy(data)
+            data = self.__deepcopy(data)
         clone.__dict__.update(data)
         return clone
 
@@ -823,3 +824,24 @@ class Cursor(object):
         .. versionadded:: 2.3+
         """
         return self.__clone(deepcopy=True)
+
+    def __deepcopy(self, x, memo=None):
+        """Deepcopy helper for the data dictionary.
+
+        Regular expressions cannot be deep copied but as they are immutable we
+        don't have to copy them when cloning.
+        """
+        y = {}
+        if memo is None:
+            memo = {}
+        val_id = id(x)
+        if val_id in memo:
+            return memo.get(val_id)
+        memo[val_id] = y
+        for key, value in x.iteritems():
+            if isinstance(value, dict):
+                value = self.__deepcopy(value, memo)
+            elif not isinstance(value, RE_TYPE):
+                value = copy.deepcopy(value, memo)
+            y[copy.deepcopy(key, memo)] = value
+        return y

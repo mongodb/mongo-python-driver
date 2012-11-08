@@ -16,6 +16,7 @@
 import copy
 import itertools
 import random
+import re
 import sys
 import unittest
 sys.path[0:0] = [""]
@@ -464,7 +465,8 @@ class TestCursor(unittest.TestCase):
         self.assertEqual(type(MyClass()), type(cursor[0]))
 
         # Just test attributes
-        cursor = self.db.test.find(skip=1,
+        cursor = self.db.test.find({"x": re.compile("^hello.*")},
+                                   skip=1,
                                    timeout=False,
                                    snapshot=True,
                                    tailable=True,
@@ -507,6 +509,19 @@ class TestCursor(unittest.TestCase):
         cursor4 = cursor.clone()
         cursor4._Cursor__fields['cursor4'] = False
         self.assertFalse('cursor4' in cursor._Cursor__fields)
+
+        # Test memo when deepcopying queries
+        query = {"hello": "world"}
+        query["reflexive"] = query
+        cursor = self.db.test.find(query)
+
+        cursor2 = copy.deepcopy(cursor)
+
+        self.assertNotEqual(id(cursor._Cursor__spec),
+                            id(cursor2._Cursor__spec))
+        self.assertEqual(id(cursor2._Cursor__spec['reflexive']),
+                         id(cursor2._Cursor__spec))
+        self.assertEqual(len(cursor2._Cursor__spec), 2)
 
     def test_add_remove_option(self):
         cursor = self.db.test.find()
