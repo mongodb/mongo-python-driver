@@ -44,7 +44,13 @@ def _machine_bytes():
     """Get the machine portion of an ObjectId.
     """
     machine_hash = _md5func()
-    machine_hash.update(socket.gethostname().encode())
+    if PY3:
+        # gethostname() returns a unicode string in python 3.x
+        # while update() requires a byte string.
+        machine_hash.update(socket.gethostname().encode())
+    else:
+        # Calling encode() here will fail with non-ascii hostnames
+        machine_hash.update(socket.gethostname())
     return machine_hash.digest()[0:3]
 
 
