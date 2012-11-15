@@ -40,8 +40,7 @@ Dependencies
 
 The PyMongo distribution is supported and tested on Python 2.x (where
 x >= 4) and Python 3.x (where x >= 1). PyMongo versions <= 1.3 also
-supported Python 2.3, but that is no longer supported. If you need to
-use Python 2.3 please contact us.
+supported Python 2.3, but that is no longer supported.
 
 Additional dependencies are:
 
