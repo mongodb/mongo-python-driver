@@ -21,6 +21,8 @@ import warnings
 
 sys.path[0:0] = [""]
 
+from nose.plugins.skip import SkipTest
+
 from bson.objectid import ObjectId
 from bson.son import SON
 from pymongo.connection import Connection
@@ -305,8 +307,9 @@ class TestCommon(unittest.TestCase):
     def test_replica_set_connection(self):
         c = Connection(pair)
         ismaster = c.admin.command('ismaster')
-        setname = str(ismaster.get('setName'))
-        if not setname:
+        if 'setName' in ismaster:
+            setname = str(ismaster.get('setName'))
+        else:
             raise SkipTest("Not connected to a replica set.")
         c = ReplicaSetConnection(pair, replicaSet=setname)
         coll = c.pymongo_test.write_concern_test
@@ -339,8 +342,9 @@ class TestCommon(unittest.TestCase):
     def test_mongo_replica_set_client(self):
         c = Connection(pair)
         ismaster = c.admin.command('ismaster')
-        setname = str(ismaster.get('setName'))
-        if not setname:
+        if 'setName' in ismaster:
+            setname = str(ismaster.get('setName'))
+        else:
             raise SkipTest("Not connected to a replica set.")
         m = MongoReplicaSetClient(pair, replicaSet=setname, w=0)
         coll = m.pymongo_test.write_concern_test
