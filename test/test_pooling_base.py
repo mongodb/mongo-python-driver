@@ -178,7 +178,7 @@ class OneOp(MongoThread):
         super(OneOp, self).__init__(ut)
 
     def run_mongo_thread(self):
-        pool = self.connection._Connection__pool
+        pool = self.connection._MongoClient__pool
         assert len(pool.sockets) == 1, "Expected 1 socket, found %d" % (
             len(pool.sockets)
         )
@@ -300,22 +300,22 @@ class _TestPoolingBase(object):
 
     def assert_no_request(self):
         self.assertEqual(
-            NO_REQUEST, self.c._Connection__pool._get_request_state()
+            NO_REQUEST, self.c._MongoClient__pool._get_request_state()
         )
 
     def assert_request_without_socket(self):
         self.assertEqual(
-            NO_SOCKET_YET, self.c._Connection__pool._get_request_state()
+            NO_SOCKET_YET, self.c._MongoClient__pool._get_request_state()
         )
 
     def assert_request_with_socket(self):
         self.assertTrue(isinstance(
-            self.c._Connection__pool._get_request_state(), SocketInfo
+            self.c._MongoClient__pool._get_request_state(), SocketInfo
         ))
 
     def assert_pool_size(self, pool_size):
         self.assertEqual(
-            pool_size, len(self.c._Connection__pool.sockets)
+            pool_size, len(self.c._MongoClient__pool.sockets)
         )
 
 
@@ -403,35 +403,35 @@ class _TestPooling(_TestPoolingBase):
     def test_multiple_connections(self):
         a = self.get_connection(auto_start_request=False)
         b = self.get_connection(auto_start_request=False)
-        self.assertEqual(1, len(a._Connection__pool.sockets))
-        self.assertEqual(1, len(b._Connection__pool.sockets))
+        self.assertEqual(1, len(a._MongoClient__pool.sockets))
+        self.assertEqual(1, len(b._MongoClient__pool.sockets))
 
         a.start_request()
         a.test.test.find_one()
-        self.assertEqual(0, len(a._Connection__pool.sockets))
+        self.assertEqual(0, len(a._MongoClient__pool.sockets))
         a.end_request()
-        self.assertEqual(1, len(a._Connection__pool.sockets))
-        self.assertEqual(1, len(b._Connection__pool.sockets))
-        a_sock = one(a._Connection__pool.sockets)
+        self.assertEqual(1, len(a._MongoClient__pool.sockets))
+        self.assertEqual(1, len(b._MongoClient__pool.sockets))
+        a_sock = one(a._MongoClient__pool.sockets)
 
         b.end_request()
-        self.assertEqual(1, len(a._Connection__pool.sockets))
-        self.assertEqual(1, len(b._Connection__pool.sockets))
+        self.assertEqual(1, len(a._MongoClient__pool.sockets))
+        self.assertEqual(1, len(b._MongoClient__pool.sockets))
 
         b.start_request()
         b.test.test.find_one()
-        self.assertEqual(1, len(a._Connection__pool.sockets))
-        self.assertEqual(0, len(b._Connection__pool.sockets))
+        self.assertEqual(1, len(a._MongoClient__pool.sockets))
+        self.assertEqual(0, len(b._MongoClient__pool.sockets))
 
         b.end_request()
-        b_sock = one(b._Connection__pool.sockets)
+        b_sock = one(b._MongoClient__pool.sockets)
         b.test.test.find_one()
         a.test.test.find_one()
 
         self.assertEqual(b_sock,
-                         b._Connection__pool.get_socket((b.host, b.port)))
+                         b._MongoClient__pool.get_socket((b.host, b.port)))
         self.assertEqual(a_sock,
-                         a._Connection__pool.get_socket((a.host, a.port)))
+                         a._MongoClient__pool.get_socket((a.host, a.port)))
 
         a_sock.close()
         b_sock.close()
@@ -710,7 +710,7 @@ class _TestMaxPoolSize(_TestPoolingBase):
 
         # Socket-reclamation doesn't work in Jython
         if not sys.platform.startswith('java'):
-            cx_pool = c._Connection__pool
+            cx_pool = c._MongoClient__pool
 
             # Socket-reclamation depends on timely garbage-collection
             if 'PyPy' in sys.version:

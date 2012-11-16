@@ -5,13 +5,13 @@
    :synopsis: Python driver for MongoDB
 
    .. autodata:: version
-   .. data:: Connection
+   .. data:: MongoClient
 
-      Alias for :class:`pymongo.connection.Connection`.
+      Alias for :class:`pymongo.mongo_client.MongoClient`.
 
    .. data:: ReplicaSetConnection
 
-      Alias for :class:`pymongo.replica_set_connection.ReplicaSetConnection`.
+      Alias for :class:`pymongo.mongo_replica_set_client.MongoReplicaSetClient`.
 
    .. autoclass:: pymongo.read_preferences.ReadPreference
    .. autofunction:: has_c
@@ -28,6 +28,8 @@ Sub-modules:
    errors
    master_slave_connection
    message
+   mongo_client
+   mongo_replica_set_client
    pool
    replica_set_connection
    son_manipulator

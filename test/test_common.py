@@ -21,8 +21,12 @@ import warnings
 
 sys.path[0:0] = [""]
 
+from bson.objectid import ObjectId
 from bson.son import SON
 from pymongo.connection import Connection
+from pymongo.mongo_client import MongoClient
+from pymongo.replica_set_connection import ReplicaSetConnection
+from pymongo.mongo_replica_set_client import MongoReplicaSetClient
 from pymongo.errors import ConfigurationError, OperationFailure
 from test.utils import drop_collections
 
@@ -41,16 +45,16 @@ class TestCommon(unittest.TestCase):
         # we must test raising errors before the ignore filter is applied.
         warnings.simplefilter("error", UserWarning)
         self.assertRaises(UserWarning, lambda:
-                Connection(host, port, wtimeout=1000, safe=False))
+                MongoClient(host, port, wtimeout=1000, w=0))
         try:
-            Connection(host, port, wtimeout=1000, safe=True)
+            MongoClient(host, port, wtimeout=1000, w=1)
         except UserWarning:
-            self.assertFalse(True)
+            self.fail()
 
         try:
-            Connection(host, port, wtimeout=1000)
+            MongoClient(host, port, wtimeout=1000)
         except UserWarning:
-            self.assertFalse(True)
+            self.fail()
 
         warnings.resetwarnings()
 
@@ -239,6 +243,132 @@ class TestCommon(unittest.TestCase):
         def f():
             c.write_concern = [('foo', 'bar')]
         self.assertRaises(ConfigurationError, f)
+
+    def test_connection(self):
+        c = Connection(pair)
+        coll = c.pymongo_test.write_concern_test
+        coll.drop()
+        doc = {"_id": ObjectId()}
+        coll.insert(doc)
+        self.assertTrue(coll.insert(doc, safe=False))
+        self.assertTrue(coll.insert(doc, w=0))
+        self.assertTrue(coll.insert(doc))
+        self.assertRaises(OperationFailure, coll.insert, doc, safe=True)
+        self.assertRaises(OperationFailure, coll.insert, doc, w=1)
+
+        c = Connection(pair, safe=True)
+        coll = c.pymongo_test.write_concern_test
+        self.assertTrue(coll.insert(doc, safe=False))
+        self.assertTrue(coll.insert(doc, w=0))
+        self.assertRaises(OperationFailure, coll.insert, doc)
+        self.assertRaises(OperationFailure, coll.insert, doc, safe=True)
+        self.assertRaises(OperationFailure, coll.insert, doc, w=1)
+
+        c = Connection("mongodb://%s/" % (pair,))
+        self.assertFalse(c.safe)
+        coll = c.pymongo_test.write_concern_test
+        self.assertTrue(coll.insert(doc))
+        c = Connection("mongodb://%s/?safe=true" % (pair,))
+        self.assertTrue(c.safe)
+        coll = c.pymongo_test.write_concern_test
+        self.assertRaises(OperationFailure, coll.insert, doc)
+
+    def test_mongo_client(self):
+        m = MongoClient(pair, w=0)
+        coll = m.pymongo_test.write_concern_test
+        coll.drop()
+        doc = {"_id": ObjectId()}
+        coll.insert(doc)
+        self.assertTrue(coll.insert(doc, safe=False))
+        self.assertTrue(coll.insert(doc, w=0))
+        self.assertTrue(coll.insert(doc))
+        self.assertRaises(OperationFailure, coll.insert, doc, safe=True)
+        self.assertRaises(OperationFailure, coll.insert, doc, w=1)
+
+        m = MongoClient(pair)
+        coll = m.pymongo_test.write_concern_test
+        self.assertTrue(coll.insert(doc, safe=False))
+        self.assertTrue(coll.insert(doc, w=0))
+        self.assertRaises(OperationFailure, coll.insert, doc)
+        self.assertRaises(OperationFailure, coll.insert, doc, safe=True)
+        self.assertRaises(OperationFailure, coll.insert, doc, w=1)
+
+        m = MongoClient("mongodb://%s/" % (pair,))
+        self.assertTrue(m.safe)
+        coll = m.pymongo_test.write_concern_test
+        self.assertRaises(OperationFailure, coll.insert, doc)
+        m = MongoClient("mongodb://%s/?w=0" % (pair,))
+        self.assertFalse(m.safe)
+        coll = m.pymongo_test.write_concern_test
+        self.assertTrue(coll.insert(doc))
+
+    def test_replica_set_connection(self):
+        c = Connection(pair)
+        ismaster = c.admin.command('ismaster')
+        setname = str(ismaster.get('setName'))
+        if not setname:
+            raise SkipTest("Not connected to a replica set.")
+        c = ReplicaSetConnection(pair, replicaSet=setname)
+        coll = c.pymongo_test.write_concern_test
+        coll.drop()
+        doc = {"_id": ObjectId()}
+        coll.insert(doc)
+        self.assertTrue(coll.insert(doc, safe=False))
+        self.assertTrue(coll.insert(doc, w=0))
+        self.assertTrue(coll.insert(doc))
+        self.assertRaises(OperationFailure, coll.insert, doc, safe=True)
+        self.assertRaises(OperationFailure, coll.insert, doc, w=1)
+
+        c = ReplicaSetConnection(pair, replicaSet=setname, safe=True)
+        coll = c.pymongo_test.write_concern_test
+        self.assertTrue(coll.insert(doc, safe=False))
+        self.assertTrue(coll.insert(doc, w=0))
+        self.assertRaises(OperationFailure, coll.insert, doc)
+        self.assertRaises(OperationFailure, coll.insert, doc, safe=True)
+        self.assertRaises(OperationFailure, coll.insert, doc, w=1)
+
+        c = ReplicaSetConnection("mongodb://%s/?replicaSet=%s" % (pair, setname))
+        self.assertFalse(c.safe)
+        coll = c.pymongo_test.write_concern_test
+        self.assertTrue(coll.insert(doc))
+        c = ReplicaSetConnection("mongodb://%s/?replicaSet=%s;safe=true" % (pair, setname))
+        self.assertTrue(c.safe)
+        coll = c.pymongo_test.write_concern_test
+        self.assertRaises(OperationFailure, coll.insert, doc)
+
+    def test_mongo_replica_set_client(self):
+        c = Connection(pair)
+        ismaster = c.admin.command('ismaster')
+        setname = str(ismaster.get('setName'))
+        if not setname:
+            raise SkipTest("Not connected to a replica set.")
+        m = MongoReplicaSetClient(pair, replicaSet=setname, w=0)
+        coll = m.pymongo_test.write_concern_test
+        coll.drop()
+        doc = {"_id": ObjectId()}
+        coll.insert(doc)
+        self.assertTrue(coll.insert(doc, safe=False))
+        self.assertTrue(coll.insert(doc, w=0))
+        self.assertTrue(coll.insert(doc))
+        self.assertRaises(OperationFailure, coll.insert, doc, safe=True)
+        self.assertRaises(OperationFailure, coll.insert, doc, w=1)
+
+        m = MongoReplicaSetClient(pair, replicaSet=setname)
+        coll = m.pymongo_test.write_concern_test
+        self.assertTrue(coll.insert(doc, safe=False))
+        self.assertTrue(coll.insert(doc, w=0))
+        self.assertRaises(OperationFailure, coll.insert, doc)
+        self.assertRaises(OperationFailure, coll.insert, doc, safe=True)
+        self.assertRaises(OperationFailure, coll.insert, doc, w=1)
+
+        m = MongoReplicaSetClient("mongodb://%s/?replicaSet=%s" % (pair, setname))
+        self.assertTrue(m.safe)
+        coll = m.pymongo_test.write_concern_test
+        self.assertRaises(OperationFailure, coll.insert, doc)
+        m = MongoReplicaSetClient("mongodb://%s/?replicaSet=%s;w=0" % (pair, setname))
+        self.assertFalse(m.safe)
+        coll = m.pymongo_test.write_concern_test
+        self.assertTrue(coll.insert(doc))
 
 
 if __name__ == "__main__":

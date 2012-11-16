@@ -59,6 +59,8 @@ version = get_version_string()
 """Current version of PyMongo."""
 
 from pymongo.connection import Connection
+from pymongo.mongo_client import MongoClient
+from pymongo.mongo_replica_set_client import MongoReplicaSetClient
 from pymongo.replica_set_connection import ReplicaSetConnection
 from pymongo.read_preferences import ReadPreference
 

@@ -116,15 +116,15 @@ class TestPoolingThreads(_TestPooling, unittest.TestCase):
         a.test.test.remove(safe=True)
         a.test.test.insert({'_id':1}, safe=True)
         a.test.test.find_one()
-        self.assertEqual(1, len(a._Connection__pool.sockets))
-        a_sock = one(a._Connection__pool.sockets)
+        self.assertEqual(1, len(a._MongoClient__pool.sockets))
+        a_sock = one(a._MongoClient__pool.sockets)
 
         def loop(pipe):
             c = self.get_connection(auto_start_request=False)
-            self.assertEqual(1,len(c._Connection__pool.sockets))
+            self.assertEqual(1,len(c._MongoClient__pool.sockets))
             c.test.test.find_one()
-            self.assertEqual(1,len(c._Connection__pool.sockets))
-            pipe.send(one(c._Connection__pool.sockets).sock.getsockname())
+            self.assertEqual(1,len(c._MongoClient__pool.sockets))
+            pipe.send(one(c._MongoClient__pool.sockets).sock.getsockname())
 
         cp1, cc1 = Pipe()
         cp2, cc2 = Pipe()
@@ -154,7 +154,7 @@ class TestPoolingThreads(_TestPooling, unittest.TestCase):
         self.assertTrue(b_sock != c_sock)
 
         # a_sock, created by parent process, is still in the pool
-        d_sock = a._Connection__pool.get_socket((a.host, a.port))
+        d_sock = a._MongoClient__pool.get_socket((a.host, a.port))
         self.assertEqual(a_sock, d_sock)
         d_sock.close()
 

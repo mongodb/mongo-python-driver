@@ -127,7 +127,7 @@ class TestReadPreferences(TestReadPreferencesBase):
         not_used = data_members.difference(used)
         latencies = ', '.join(
             '%s: %dms' % (member.host, member.ping_time.get())
-            for member in c._ReplicaSetConnection__members.values())
+            for member in c._MongoReplicaSetClient__members.values())
 
         self.assertFalse(not_used,
             "Expected to use primary and all secondaries for mode NEAREST,"
@@ -139,10 +139,10 @@ class ReadPrefTester(ReplicaSetConnection):
         self.has_read_from = set()
         super(ReadPrefTester, self).__init__(*args, **kwargs)
 
-    def _ReplicaSetConnection__send_and_receive(self, member, *args, **kwargs):
+    def _MongoReplicaSetClient__send_and_receive(self, member, *args, **kwargs):
         self.has_read_from.add(member)
         rsc = super(ReadPrefTester, self)
-        return rsc._ReplicaSetConnection__send_and_receive(
+        return rsc._MongoReplicaSetClient__send_and_receive(
             member, *args, **kwargs)
 
 

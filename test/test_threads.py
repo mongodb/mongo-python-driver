@@ -30,10 +30,10 @@ from pymongo.errors import AutoReconnect, OperationFailure
 
 def get_pool(connection):
     if isinstance(connection, Connection):
-        return connection._Connection__pool
+        return connection._MongoClient__pool
     elif isinstance(connection, ReplicaSetConnection):
-        writer = connection._ReplicaSetConnection__writer
-        pools = connection._ReplicaSetConnection__members
+        writer = connection._MongoReplicaSetClient__writer
+        pools = connection._MongoReplicaSetClient__members
         return pools[writer].pool
     else:
         raise TypeError(str(connection))

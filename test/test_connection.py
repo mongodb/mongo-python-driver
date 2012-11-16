@@ -388,9 +388,9 @@ class TestConnection(unittest.TestCase, TestRequestMixin):
 
     def test_timeouts(self):
         conn = Connection(self.host, self.port, connectTimeoutMS=10500)
-        self.assertEqual(10.5, conn._Connection__pool.conn_timeout)
+        self.assertEqual(10.5, conn._MongoClient__pool.conn_timeout)
         conn = Connection(self.host, self.port, socketTimeoutMS=10500)
-        self.assertEqual(10.5, conn._Connection__pool.net_timeout)
+        self.assertEqual(10.5, conn._MongoClient__pool.net_timeout)
 
     def test_network_timeout(self):
         no_timeout = Connection(self.host, self.port)
@@ -487,26 +487,26 @@ class TestConnection(unittest.TestCase, TestRequestMixin):
 
         # The socket used for the previous commands has been returned to the
         # pool
-        self.assertEqual(1, len(conn._Connection__pool.sockets))
+        self.assertEqual(1, len(conn._MongoClient__pool.sockets))
 
         # We need exec here because if the Python version is less than 2.6
         # these with-statements won't even compile.
         exec """
 with contextlib.closing(conn):
     self.assertEqual("bar", conn.pymongo_test.test.find_one()["foo"])
-self.assertEqual(0, len(conn._Connection__pool.sockets))
+self.assertEqual(0, len(conn._MongoClient__pool.sockets))
 """
 
         exec """
 with get_connection() as connection:
     self.assertEqual("bar", connection.pymongo_test.test.find_one()["foo"])
     # Calling conn.close() has reset the pool
-    self.assertEqual(0, len(connection._Connection__pool.sockets))
+    self.assertEqual(0, len(connection._MongoClient__pool.sockets))
 """
 
     def test_with_start_request(self):
         conn = get_connection(auto_start_request=False)
-        pool = conn._Connection__pool
+        pool = conn._MongoClient__pool
 
         # No request started
         self.assertNoRequest(pool)
@@ -554,7 +554,7 @@ with conn.start_request() as request:
         conn = get_connection()
         self.assertTrue(conn.auto_start_request)
         self.assertTrue(conn.in_request())
-        pool = conn._Connection__pool
+        pool = conn._MongoClient__pool
 
         # Request started already, just from Connection constructor - it's a
         # bit weird, but Connection does some socket stuff when it initializes
@@ -574,7 +574,7 @@ with conn.start_request() as request:
     def test_nested_request(self):
         # auto_start_request is True
         conn = get_connection()
-        pool = conn._Connection__pool
+        pool = conn._MongoClient__pool
         self.assertTrue(conn.in_request())
 
         # Start and end request - we're still in "outer" original request
@@ -605,7 +605,7 @@ with conn.start_request() as request:
 
     def test_request_threads(self):
         conn = get_connection(auto_start_request=False)
-        pool = conn._Connection__pool
+        pool = conn._MongoClient__pool
         self.assertNotInRequestAndDifferentSock(conn, pool)
 
         started_request, ended_request = threading.Event(), threading.Event()
@@ -694,7 +694,7 @@ with conn.start_request() as request:
         # Ensure Connection doesn't close socket after it gets an error
         # response to getLastError. PYTHON-395.
         c = get_connection(auto_start_request=False)
-        pool = c._Connection__pool
+        pool = c._MongoClient__pool
         self.assertEqual(1, len(pool.sockets))
         old_sock_info = iter(pool.sockets).next()
         c.pymongo_test.test.drop()
@@ -711,7 +711,7 @@ with conn.start_request() as request:
         # Ensure Connection doesn't close socket after it gets an error
         # response to getLastError. PYTHON-395.
         c = get_connection(auto_start_request=True)
-        pool = c._Connection__pool
+        pool = c._MongoClient__pool
 
         # Connection has reserved a socket for this thread
         self.assertTrue(isinstance(pool._get_request_state(), SocketInfo))
