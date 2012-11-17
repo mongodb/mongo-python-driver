@@ -180,7 +180,7 @@ Secondary Reads
 
 By default an instance of MongoReplicaSetClient will only send queries to
 the primary member of the replica set. To use secondaries for queries
-we have to change the :class:`~pymongo.read_preference.ReadPreference`::
+we have to change the :class:`~pymongo.read_preferences.ReadPreference`::
 
   >>> db = MongoReplicaSetClient("morton.local:27017", replicaSet='foo').test
   >>> from pymongo.read_preference import ReadPreference

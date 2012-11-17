@@ -1010,9 +1010,9 @@ class Collection(common.BaseObject):
         With :class:`~pymongo.replica_set_connection.ReplicaSetConnection`
         or :class:`~pymongo.master_slave_connection.MasterSlaveConnection`,
         if the `read_preference` attribute of this instance is not set to
-        :attr:`pymongo.ReadPreference.PRIMARY` or the (deprecated)
-        `slave_okay` attribute of this instance is set to `True` the
-        `aggregate command`_ will be sent to a secondary or slave.
+        :attr:`pymongo.read_preferences.ReadPreference.PRIMARY` or the
+        (deprecated) `slave_okay` attribute of this instance is set to `True`
+        the `aggregate command`_ will be sent to a secondary or slave.
 
         :Parameters:
           - `pipeline`: a single command or list of aggregation commands
