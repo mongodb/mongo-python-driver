@@ -3,8 +3,8 @@ Tutorial
 
 .. testsetup::
 
-  from pymongo import Connection
-  connection = Connection()
+  from pymongo import MongoClient
+  connection = MongoClient()
   connection.drop_database('test-database')
 
 This tutorial is intended as an introduction to working with
@@ -32,27 +32,27 @@ can start it like so:
 Making a Connection
 -------------------
 The first step when working with **PyMongo** is to create a
-:class:`~pymongo.connection.Connection` to the running **mongod**
+:class:`~pymongo.mongo_client.MongoClient` to the running **mongod**
 instance. Doing so is easy:
 
 .. doctest::
 
-  >>> from pymongo import Connection
-  >>> connection = Connection()
+  >>> from pymongo import MongoClient
+  >>> connection = MongoClient()
 
 The above code will connect on the default host and port. We can also
 specify the host and port explicitly, as follows:
 
 .. doctest::
 
-  >>> connection = Connection('localhost', 27017)
+  >>> connection = MongoClient('localhost', 27017)
 
 Getting a Database
 ------------------
 A single instance of MongoDB can support multiple independent
 `databases <http://www.mongodb.org/display/DOCS/Databases>`_. When
 working with PyMongo you access databases using attribute style access
-on :class:`~pymongo.connection.Connection` instances:
+on :class:`~pymongo.mongo_client.MongoClient` instances:
 
 .. doctest::
 
@@ -142,37 +142,6 @@ of the collections in our database:
 
 .. note:: The *system.indexes* collection is a special internal
    collection that was created automatically.
-
-Ensuring Your Insert Succeeded
-------------------------------
-
-PyMongo’s default behavior for :meth:`~pymongo.collection.Collection.insert`,
-:meth:`~pymongo.collection.Collection.update`,
-:meth:`~pymongo.collection.Collection.save`,
-and :meth:`~pymongo.collection.Collection.remove` is to perform unacknowledged
-writes: the driver does not request a response or wait for an acknowledgement
-that the operation was successful unless the method is passed safe=True or
-another `getLastError <http://www.mongodb.org/display/DOCS/getLastError+Command>`_
-option. For example, if two documents with the same ``_id`` are inserted:
-
-.. doctest::
-
-  >>> db.posts.insert({'_id': 1})
-  1
-  >>> db.posts.insert({'_id': 1})
-  1
-
-Both inserts appear to succeed, but the second failed on the server.
-To see why, we need to pass safe=True
-to :meth:`~pymongo.collection.Collection.insert`::
-
-  >>> db.posts.insert({'_id': 1}, safe=True)
-  Traceback (most recent call last):
-  pymongo.errors.DuplicateKeyError: E11000 duplicate key error index: test-database.posts.$_id_  dup key: { : 1 }
-
-Applications should generally set a default of safe=True when they first create a Connection::
-
-  >>> connection = Connection('localhost', 27017, safe=True)
 
 Getting a Single Document With :meth:`~pymongo.collection.Collection.find_one`
 ------------------------------------------------------------------------------
