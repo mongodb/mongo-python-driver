@@ -823,7 +823,7 @@ class Collection(common.BaseObject):
         unconditionally, :meth:`ensure_index` takes advantage of some
         caching within the driver such that it only attempts to create
         indexes that might not already exist. When an index is created
-        (or ensured) by PyMongo it is "remembered" for `ttl`
+        (or ensured) by PyMongo it is "remembered" for `cache_for`
         seconds. Repeated calls to :meth:`ensure_index` within that
         time limit will be lightweight - they will not attempt to
         actually create the index.
