@@ -774,6 +774,8 @@ class _TestPoolSocketSharing(_TestPoolingBase):
             use_greenlets=self.use_greenlets,
             auto_start_request=False
         )
+        if version.at_least(cx, (2, 3, 0)):
+            raise SkipTest("V8 Problem")
 
         db = cx.pymongo_test
         db.test.remove(safe=True)

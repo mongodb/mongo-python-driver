@@ -433,6 +433,8 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(obj, db.dereference(DBRef("test", 4)))
 
     def test_eval(self):
+        if version.at_least(self.connection, (2, 3, 0)):
+            raise SkipTest("V8 Problem")
         db = self.connection.pymongo_test
         db.test.remove({})
 
@@ -597,6 +599,8 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual("bar", db.users.find_one()["messages"][1]["title"])
 
     def test_system_js(self):
+        if version.at_least(self.connection, (2, 3, 0)):
+            raise SkipTest("V8 Problem")
         db = self.connection.pymongo_test
         db.system.js.remove()
 
