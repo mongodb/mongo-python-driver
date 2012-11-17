@@ -9,7 +9,7 @@
 
       Alias for :class:`pymongo.mongo_client.MongoClient`.
 
-   .. data:: ReplicaSetConnection
+   .. data:: MongoReplicaSetClient
 
       Alias for :class:`pymongo.mongo_replica_set_client.MongoReplicaSetClient`.
 
