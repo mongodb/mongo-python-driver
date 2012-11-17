@@ -15,8 +15,8 @@ We'll start by getting a clean database to use for the example:
 
 .. doctest::
 
-  >>> from pymongo.connection import Connection
-  >>> connection = Connection()
+  >>> from pymongo.mongo_client import MongoClient
+  >>> connection = MongoClient()
   >>> connection.drop_database("custom_type_example")
   >>> db = connection.custom_type_example
 
@@ -119,6 +119,7 @@ After doing so we can save and restore :class:`Custom` instances seamlessly:
 .. doctest::
 
   >>> db.test.remove() # remove whatever has already been saved
+  {...}
   >>> db.test.insert({"custom": Custom(5)})
   ObjectId('...')
   >>> db.test.find_one()
@@ -198,6 +199,7 @@ new manipulator:
 .. doctest::
 
   >>> db.test.remove()
+  {...}
   >>> db.add_son_manipulator(TransformToBinary())
 
 After doing so we can save and restore :class:`Custom` instances

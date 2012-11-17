@@ -7,8 +7,8 @@ group method.
 
 .. testsetup::
 
-  from pymongo import Connection
-  connection = Connection()
+  from pymongo import MongoClient
+  connection = MongoClient()
   connection.drop_database('aggregation_example')
 
 Setup
@@ -18,8 +18,8 @@ aggregations on:
 
 .. doctest::
 
-  >>> from pymongo import Connection
-  >>> db = Connection().aggregation_example
+  >>> from pymongo import MongoClient
+  >>> db = MongoClient().aggregation_example
   >>> db.things.insert({"x": 1, "tags": ["dog", "cat"]})
   ObjectId('...')
   >>> db.things.insert({"x": 2, "tags": ["cat"]})

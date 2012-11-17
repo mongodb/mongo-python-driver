@@ -63,8 +63,8 @@ To initialize the set we need to connect to a single node and run the
 initiate command. Since we don't have a primary yet, we'll need to
 tell PyMongo that it's okay to connect to a slave/secondary::
 
-  >>> from pymongo import Connection
-  >>> c = Connection("morton.local:27017", slave_okay=True)
+  >>> from pymongo import MongoClient
+  >>> c = MongoClient("morton.local:27017", slave_okay=True)
 
 .. note:: We could have connected to any of the other nodes instead,
    but only the node we initiate from is allowed to contain any
@@ -87,22 +87,22 @@ Connecting to a Replica Set
 The initial connection as made above is a special case for an
 uninitialized replica set. Normally we'll want to connect
 differently. A connection to a replica set can be made using the
-normal :meth:`~pymongo.connection.Connection` constructor, specifying
+normal :meth:`~pymongo.mongo_client.MongoClient` constructor, specifying
 one or more members of the set. For example, any of the following
 will create a connection to the set we just created::
 
-  >>> Connection("morton.local", replicaset='foo')
-  Connection([u'morton.local:27019', 'morton.local:27017', u'morton.local:27018'])
-  >>> Connection("morton.local:27018", replicaset='foo')
-  Connection([u'morton.local:27019', u'morton.local:27017', 'morton.local:27018'])
-  >>> Connection("morton.local", 27019, replicaset='foo')
-  Connection(['morton.local:27019', u'morton.local:27017', u'morton.local:27018'])
-  >>> Connection(["morton.local:27018", "morton.local:27019"])
-  Connection(['morton.local:27019', u'morton.local:27017', 'morton.local:27018'])
-  >>> Connection("mongodb://morton.local:27017,morton.local:27018,morton.local:27019")
-  Connection(['morton.local:27019', 'morton.local:27017', 'morton.local:27018'])
+  >>> MongoClient("morton.local", replicaset='foo')
+  MongoClient([u'morton.local:27019', 'morton.local:27017', u'morton.local:27018'])
+  >>> MongoClient("morton.local:27018", replicaset='foo')
+  MongoClient([u'morton.local:27019', u'morton.local:27017', 'morton.local:27018'])
+  >>> MongoClient("morton.local", 27019, replicaset='foo')
+  MongoClient(['morton.local:27019', u'morton.local:27017', u'morton.local:27018'])
+  >>> MongoClient(["morton.local:27018", "morton.local:27019"])
+  MongoClient(['morton.local:27019', u'morton.local:27017', 'morton.local:27018'])
+  >>> MongoClient("mongodb://morton.local:27017,morton.local:27018,morton.local:27019")
+  MongoClient(['morton.local:27019', 'morton.local:27017', 'morton.local:27018'])
 
-The nodes passed to :meth:`~pymongo.connection.Connection` are called
+The nodes passed to :meth:`~pymongo.mongo_client.MongoClient` are called
 the *seeds*. If only one host is specified the `replicaset` parameter
 must be used to indicate this isn't a connection to a single node.
 As long as at least one of the seeds is online, the driver will be able
@@ -118,7 +118,7 @@ can't happen completely transparently, however. Here we'll perform an
 example failover to illustrate how everything behaves. First, we'll
 connect to the replica set and perform a couple of basic operations::
 
-  >>> db = Connection("morton.local", replicaSet='foo').test
+  >>> db = MongoClient("morton.local", replicaSet='foo').test
   >>> db.test.save({"x": 1})
   ObjectId('...')
   >>> db.test.find_one()
@@ -160,29 +160,29 @@ the operation will succeed::
   >>> db.connection.port
   27018
 
-ReplicaSetConnection
-~~~~~~~~~~~~~~~~~~~~
+MongoReplicaSetClient
+~~~~~~~~~~~~~~~~~~~~~
 
-Using a :class:`~pymongo.replica_set_connection.ReplicaSetConnection` instead
-of a simple :class:`~pymongo.connection.Connection` offers two key features:
+Using a :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient` instead
+of a simple :class:`~pymongo.mongo_client.MongoClient` offers two key features:
 secondary reads and replica set health monitoring. To connect using
-`ReplicaSetConnection` just provide a host:port pair and the name of the
-replica set::
+:class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient` just provide a
+host:port pair and the name of the replica set::
 
-  >>> from pymongo import ReplicaSetConnection
-  >>> ReplicaSetConnection("morton.local:27017", replicaSet='foo')
-  ReplicaSetConnection([u'morton.local:27019', u'morton.local:27017', u'morton.local:27018'])
+  >>> from pymongo import MongoReplicaSetClient
+  >>> MongoReplicaSetClient("morton.local:27017", replicaSet='foo')
+  MongoReplicaSetClient([u'morton.local:27019', u'morton.local:27017', u'morton.local:27018'])
 
 .. _secondary-reads:
 
 Secondary Reads
 '''''''''''''''
 
-By default an instance of ReplicaSetConnection will only send queries to
+By default an instance of MongoReplicaSetClient will only send queries to
 the primary member of the replica set. To use secondaries for queries
 we have to change the :class:`~pymongo.read_preference.ReadPreference`::
 
-  >>> db = ReplicaSetConnection("morton.local:27017", replicaSet='foo').test
+  >>> db = MongoReplicaSetClient("morton.local:27017", replicaSet='foo').test
   >>> from pymongo.read_preference import ReadPreference
   >>> db.read_preference = ReadPreference.SECONDARY_PREFERRED
 
@@ -226,42 +226,42 @@ and **secondary_acceptable_latency_ms**.
 
 Replica-set members can be `tagged
 <http://www.mongodb.org/display/DOCS/Data+Center+Awareness>`_ according to any
-criteria you choose. By default, ReplicaSetConnection ignores tags when
+criteria you choose. By default, MongoReplicaSetClient ignores tags when
 choosing a member to read from, but it can be configured with the ``tag_sets``
 parameter. ``tag_sets`` must be a list of dictionaries, each dict providing tag
-values that the replica set member must match. ReplicaSetConnection tries each
+values that the replica set member must match. MongoReplicaSetClient tries each
 set of tags in turn until it finds a set of tags with at least one matching
 member. For example, to prefer reads from the New York data center, but fall
 back to the San Francisco data center, tag your replica set members according
-to their location and create a ReplicaSetConnection like so:
+to their location and create a MongoReplicaSetClient like so:
 
-  >>> rsc = ReplicaSetConnection(
+  >>> rsc = MongoReplicaSetClient(
   ...     "morton.local:27017",
   ...     replicaSet='foo'
   ...     read_preference=ReadPreference.SECONDARY,
   ...     tag_sets=[{'dc': 'ny'}, {'dc': 'sf'}]
   ... )
 
-ReplicaSetConnection tries to find secondaries in New York, then San Francisco,
+MongoReplicaSetClient tries to find secondaries in New York, then San Francisco,
 and raises :class:`~pymongo.errors.AutoReconnect` if none are available. As an
 additional fallback, specify a final, empty tag set, ``{}``, which means "read
 from any member that matches the mode, ignoring tags."
 
 **secondary_acceptable_latency_ms**:
 
-If multiple members match the mode and tag sets, ReplicaSetConnection reads
+If multiple members match the mode and tag sets, MongoReplicaSetClient reads
 from among the nearest members, chosen according to ping time. By default,
 only members whose ping times are within 15 milliseconds of the nearest
 are used for queries. You can choose to distribute reads among members with
 higher latencies by setting ``secondary_acceptable_latency_ms`` to a larger
-number. In that case, ReplicaSetConnection distributes reads among matching
+number. In that case, MongoReplicaSetClient distributes reads among matching
 members within ``secondary_acceptable_latency_ms`` of the closest member's
 ping time.
 
 Health Monitoring
 '''''''''''''''''
 
-When ReplicaSetConnection is initialized it launches a background task to
+When MongoReplicaSetClient is initialized it launches a background task to
 monitor the replica set for changes in:
 
 * Health: detect when a member goes down or comes up, or if a different member
@@ -273,7 +273,7 @@ Replica-set monitoring ensures queries are continually routed to the proper
 members as the state of the replica set changes.
 
 It is critical to call
-:meth:`~pymongo.replica_set_connection.ReplicaSetConnection.close` to terminate
+:meth:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient.close` to terminate
 the monitoring task before your process exits.
 
 .. _mongos-high-availability:
@@ -281,7 +281,7 @@ the monitoring task before your process exits.
 High Availability and mongos
 ----------------------------
 
-An instance of :class:`~pymongo.connection.Connection` can be configured
+An instance of :class:`~pymongo.mongo_client.MongoClient` can be configured
 to automatically connect to a different mongos if the instance it is
 currently connected to fails. If a failure occurs, PyMongo will attempt
 to find the nearest mongos to perform subsequent operations. As with a
@@ -290,13 +290,13 @@ an example failover to illustrate how everything behaves. First, we'll
 connect to a sharded cluster, using a seed list, and perform a couple of
 basic operations::
 
-  >>> db = Connection('morton.local:30000,morton.local:30001,morton.local:30002').test
+  >>> db = MongoClient('morton.local:30000,morton.local:30001,morton.local:30002').test
   >>> db.test.save({"x": 1})
   ObjectId('...')
   >>> db.test.find_one()
   {u'x': 1, u'_id': ObjectId('...')}
 
-Each member of the seed list passed to Connection must be a mongos. By checking
+Each member of the seed list passed to MongoClient must be a mongos. By checking
 the host, port, and is_mongos attributes we can see that we're connected to
 *morton.local:30001*, a mongos::
 
