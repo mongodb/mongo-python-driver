@@ -67,8 +67,8 @@ It's also possible to query for all items within a given rectangle
   >>> for doc in db.places.find({"loc": {"$within": {"$box": [[2, 2], [5, 6]]}}}):
   ...   repr(doc)
   ...
-  "{u'loc': [2, 5], u'_id': ObjectId('...')}"
   "{u'loc': [4, 4], u'_id': ObjectId('...')}"
+  "{u'loc': [2, 5], u'_id': ObjectId('...')}"
 
 Or circle (specified by center point and radius):
 

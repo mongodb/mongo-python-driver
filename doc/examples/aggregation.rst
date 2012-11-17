@@ -7,9 +7,9 @@ group method.
 
 .. testsetup::
 
-  >>> from pymongo import Connection
-  >>> connection = Connection()
-  >>> connection.drop_database('aggregation_example')
+  from pymongo import Connection
+  connection = Connection()
+  connection.drop_database('aggregation_example')
 
 Setup
 -----
@@ -59,7 +59,7 @@ eg "$sort":
   ...         {"$sort": SON([("count", -1), ("_id", -1)])}
   ...     ])
   ...
-  {u'ok': 1.0, u'result': [{u'count': 3, u'_id': u'cat'}, {u'count': 2, u'_id': u'dog'}, {u'count': 1, u'_id': u'mouse'}, {u'count': 1, u'_id': None}]}
+  {u'ok': 1.0, u'result': [{u'count': 3, u'_id': u'cat'}, {u'count': 2, u'_id': u'dog'}, {u'count': 1, u'_id': u'mouse'}]}
 
 
 As well as simple aggregations the aggregation framework provides projection

@@ -138,7 +138,7 @@ of the collections in our database:
 .. doctest::
 
   >>> db.collection_names()
-  [u'posts', u'system.indexes']
+  [u'system.indexes', u'posts']
 
 .. note:: The *system.indexes* collection is a special internal
    collection that was created automatically.

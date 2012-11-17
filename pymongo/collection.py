@@ -381,6 +381,7 @@ class Collection(common.BaseObject):
           >>> list(db.test.find())
           [{u'a': u'b', u'x': u'y', u'_id': ObjectId('...')}]
           >>> db.test.update({"x": "y"}, {"$set": {"a": "c"}})
+          {...}
           >>> list(db.test.find())
           [{u'a': u'c', u'x': u'y', u'_id': ObjectId('...')}]
 
