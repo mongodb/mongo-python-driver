@@ -14,22 +14,22 @@ for threaded applications.
 How does connection pooling work in PyMongo?
 --------------------------------------------
 
-Every :class:`~pymongo.connection.Connection` instance has built-in
+Every :class:`~pymongo.mongo_client.MongoClient` instance has built-in
 connection pooling. By default, each thread gets its own socket reserved on its
 first operation. Those sockets are held until
-:meth:`~pymongo.connection.Connection.end_request` is called by that
+:meth:`~pymongo.mongo_client.MongoClient.end_request` is called by that
 thread.
 
-Calling :meth:`~pymongo.connection.Connection.end_request` allows the
+Calling :meth:`~pymongo.mongo_client.MongoClient.end_request` allows the
 socket to be returned to the pool, and to be used by other threads
 instead of creating a new socket. Judicious use of this method is
 important for applications with many threads or with long running
 threads that make few calls to PyMongo operations.
 
-Alternatively, a :class:`~pymongo.connection.Connection` created with
+Alternatively, a :class:`~pymongo.mongo_client.MongoClient` created with
 ``auto_start_request=False`` will share sockets (safely) among all threads.
 
-When :meth:`~pymongo.connection.Connection.disconnect` is called by any thread,
+When :meth:`~pymongo.mongo_client.MongoClient.disconnect` is called by any thread,
 all sockets are closed. PyMongo will create new sockets as needed.
 
 Does PyMongo support Python 3?
@@ -47,7 +47,7 @@ Currently there is no great way to use PyMongo in conjunction with `Tornado
 <http://www.tornadoweb.org/>`_ or `Twisted <http://twistedmatrix.com/>`_.
 PyMongo provides built-in connection pooling, so some of the benefits of those
 frameworks can be achieved just by writing multi-threaded code that shares a
-:class:`~pymongo.connection.Connection`.
+:class:`~pymongo.mongo_client.MongoClient`.
 
 There are asynchronous MongoDB drivers in Python: `AsyncMongo for Tornado
 <https://github.com/bitly/asyncmongo>`_ and `TxMongo for Twisted
@@ -62,10 +62,10 @@ avoid blocking the event loop:
   `MongoDB profiler <http://www.mongodb.org/display/DOCS/Database+Profiler>`_
   to watch for slow queries.
 
-- Create a single :class:`~pymongo.connection.Connection` instance for your
+- Create a single :class:`~pymongo.mongo_client.MongoClient` instance for your
   application in your startup code, before starting the IOLoop.
 
-- Configure the :class:`~pymongo.connection.Connection` with a short
+- Configure the :class:`~pymongo.mongo_client.MongoClient` with a short
   ``socketTimeoutMS`` so slow operations result in a
   :class:`~pymongo.errors.TimeoutError`, rather than blocking the loop and
   preventing your application from responding to other requests.
@@ -145,9 +145,9 @@ UTC. In versions >= 1.7, the driver will automatically convert aware
 datetimes to UTC before saving them. By default, datetimes retrieved
 from the server (no matter what version of the driver you're using)
 will be naive and represent UTC. In newer versions of the driver you
-can set the :class:`~pymongo.connection.Connection` `tz_aware`
+can set the :class:`~pymongo.mongo_client.MongoClient` `tz_aware`
 parameter to ``True``, which will cause all
-:class:`~datetime.datetime` instances returned from that Connection to
+:class:`~datetime.datetime` instances returned from that MongoClient to
 be aware (UTC). This setting is recommended, as it can force
 application code to handle timezones properly.
 

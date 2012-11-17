@@ -30,7 +30,7 @@ read it back. Notice the byte string is decoded back to :class:`bytes`::
   [GCC 4.5.3] on linux2
   Type "help", "copyright", "credits" or "license" for more information.
   >>> import pymongo
-  >>> c = pymongo.Connection()
+  >>> c = pymongo.MongoClient()
   >>> c.test.bintest.insert({'binary': b'this is a byte string'})
   ObjectId('4f9086b1fba5222021000000')
   >>> c.test.bintest.find_one()
@@ -43,7 +43,7 @@ to :class:`~bson.binary.Binary`::
   [GCC 4.5.3] on linux2
   Type "help", "copyright", "credits" or "license" for more information.
   >>> import pymongo
-  >>> c = pymongo.Connection()
+  >>> c = pymongo.MongoClient()
   >>> c.test.bintest.find_one()
   {u'binary': Binary('this is a byte string', 0), u'_id': ObjectId('4f9086b1fba5222021000000')}
 
@@ -151,26 +151,25 @@ directory after running ``python setup.py install`` the untranslated modules
 will be the first thing in your path. Importing pymongo will result in an
 exception similar to::
 
-  Python 3.1.4 (default, Mar 21 2012, 14:34:01)
-  [GCC 4.5.3] on linux2
+  Python 3.1.5 (default, Jun  2 2012, 12:24:49)
+  [GCC 4.6.3] on linux2
   Type "help", "copyright", "credits" or "license" for more information.
   >>> import pymongo
   Traceback (most recent call last):
     File "<stdin>", line 1, in <module>
-    File "pymongo/__init__.py", line 104, in <module>
-      from pymongo.connection import Connection
-    File "pymongo/connection.py", line 573
-      except Exception, why:
-                      ^
-  SyntaxError: invalid syntax
+    File "pymongo/__init__.py", line 58, in <module>
+      version = get_version_string()
+    File "pymongo/__init__.py", line 54, in get_version_string
+      if isinstance(version_tuple[-1], basestring):
+  NameError: global name 'basestring' is not defined
 
 Note the path in the traceback (``pymongo/__init__.py``). Changing out of the
 source directory takes the untranslated modules out of your path::
 
   $ cd ..
   $ python
-  Python 3.1.4 (default, Mar 21 2012, 14:34:01) 
-  [GCC 4.5.3] on linux2
+  Python 3.1.5 (default, Jun  2 2012, 12:24:49)
+  [GCC 4.6.3] on linux2
   Type "help", "copyright", "credits" or "license" for more information.
   >>> import pymongo
   >>> pymongo.__file__

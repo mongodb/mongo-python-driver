@@ -70,8 +70,8 @@ doctest_path = os.path.abspath('..')
 doctest_test_doctest_blocks = False
 
 doctest_global_setup = """
-from pymongo.connection import Connection
-connection = Connection()
+from pymongo.mongo_client import MongoClient
+connection = MongoClient()
 connection.drop_database("doctest_test")
 db = connection.doctest_test
 """

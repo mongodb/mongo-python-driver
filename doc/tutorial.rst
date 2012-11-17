@@ -29,8 +29,8 @@ can start it like so:
 
   $ mongod
 
-Making a Connection
--------------------
+Making a Connection with MongoClient
+------------------------------------
 The first step when working with **PyMongo** is to create a
 :class:`~pymongo.mongo_client.MongoClient` to the running **mongod**
 instance. Doing so is easy:
