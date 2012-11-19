@@ -15,6 +15,7 @@
 """Tests for the Binary wrapper."""
 
 import base64
+import copy
 import pickle
 import sys
 import unittest
@@ -23,6 +24,7 @@ try:
     should_test_uuid = True
 except ImportError:
     should_test_uuid = False
+
 sys.path[0:0] = [""]
 
 import bson
@@ -292,6 +294,15 @@ class TestBinary(unittest.TestCase):
         for proto in xrange(pickle.HIGHEST_PROTOCOL + 1):
             self.assertEqual(b1, pickle.loads(pickle.dumps(b1, proto)))
 
+        if should_test_uuid:
+            uu = uuid.uuid4()
+            uul = UUIDLegacy(uu)
+
+            self.assertEqual(uul, copy.copy(uul))
+            self.assertEqual(uul, copy.deepcopy(uul))
+
+            for proto in xrange(pickle.HIGHEST_PROTOCOL + 1):
+                self.assertEqual(uul, pickle.loads(pickle.dumps(uul, proto)))
 
 if __name__ == "__main__":
     unittest.main()

@@ -214,6 +214,10 @@ class UUIDLegacy(Binary):
         self.__uuid = obj
         return self
 
+    def __getnewargs__(self):
+        # Support copy and deepcopy
+        return (self.__uuid,)
+
     @property
     def uuid(self):
         """UUID instance wrapped by this UUIDLegacy instance.
