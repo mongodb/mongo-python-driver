@@ -248,6 +248,9 @@ class Collection(common.BaseObject):
           - `fsync` (optional): If ``True`` force the database to fsync all
             files before returning. When used with `j` the server awaits the
             next group commit before returning.
+        :Returns:
+          - The ``'_id'`` value of `to_save` or ``[None]`` if `manipulate` is
+            ``False`` and `to_save` has no '_id' field.
 
         .. versionadded:: 1.8
            Support for passing `getLastError` options as keyword
@@ -320,6 +323,10 @@ class Collection(common.BaseObject):
           - `fsync` (optional): If ``True`` force the database to fsync all
             files before returning. When used with `j` the server awaits the
             next group commit before returning.
+        :Returns:
+          - The ``'_id'`` value (or list of '_id' values) of `doc_or_docs` or
+            ``[None]`` if manipulate is ``False`` and the documents passed
+            as `doc_or_docs` do not include an '_id' field.
 
         .. note:: `continue_on_error` requires server version **>= 1.9.1**
 
@@ -427,6 +434,9 @@ class Collection(common.BaseObject):
           - `fsync` (optional): If ``True`` force the database to fsync all
             files before returning. When used with `j` the server awaits the
             next group commit before returning.
+        :Returns:
+          - A document (dict) describing the effect of the update or ``None``
+            if write acknowledgement is disabled.
 
         .. versionadded:: 1.8
            Support for passing `getLastError` options as keyword
@@ -521,6 +531,9 @@ class Collection(common.BaseObject):
           - `fsync` (optional): If ``True`` force the database to fsync all
             files before returning. When used with `j` the server awaits the
             next group commit before returning.
+        :Returns:
+          - A document (dict) describing the effect of the remove or ``None``
+            if write acknowledgement is disabled.
 
         .. versionadded:: 1.8
            Support for passing `getLastError` options as keyword arguments.
