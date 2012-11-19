@@ -1213,7 +1213,7 @@ class MongoReplicaSetClient(common.BaseObject):
         "from __future__ import with_statement", :meth:`start_request` can be
         used as a context manager:
 
-        >>> connection = pymongo.MongoReplicaSetClient(auto_start_request=False)
+        >>> connection = pymongo.MongoReplicaSetClient()
         >>> db = connection.test
         >>> _id = db.test_collection.insert({})
         >>> with connection.start_request():
