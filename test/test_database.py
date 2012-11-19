@@ -433,8 +433,6 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(obj, db.dereference(DBRef("test", 4)))
 
     def test_eval(self):
-        if version.at_least(self.connection, (2, 3, 0)):
-            raise SkipTest("V8 Problem")
         db = self.connection.pymongo_test
         db.test.remove({})
 
@@ -599,8 +597,6 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual("bar", db.users.find_one()["messages"][1]["title"])
 
     def test_system_js(self):
-        if version.at_least(self.connection, (2, 3, 0)):
-            raise SkipTest("V8 Problem")
         db = self.connection.pymongo_test
         db.system.js.remove()
 
@@ -628,18 +624,20 @@ class TestDatabase(unittest.TestCase):
 
         self.assertRaises(OperationFailure, db.system_js.non_existant)
 
-        db.system_js.no_param = Code("return 5;")
-        self.assertEqual(5, db.system_js.no_param())
+        # XXX: Broken in V8, works in SpiderMonkey
+        if not version.at_least(db.connection, (2, 3, 0)):
+            db.system_js.no_param = Code("return 5;")
+            self.assertEqual(5, db.system_js.no_param())
 
     def test_system_js_list(self):
         db = self.connection.pymongo_test
         db.system.js.remove()
         self.assertEqual([], db.system_js.list())
 
-        db.system_js.foo = "blah"
+        db.system_js.foo = "function() { return 'blah'; }"
         self.assertEqual(["foo"], db.system_js.list())
 
-        db.system_js.bar = "baz"
+        db.system_js.bar = "function() { return 'baz'; }"
         self.assertEqual(set(["foo", "bar"]), set(db.system_js.list()))
 
         del db.system_js.foo
