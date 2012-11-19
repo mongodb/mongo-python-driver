@@ -1,5 +1,5 @@
 Requests
-===========================
+========
 
 PyMongo supports the idea of a *request*: a series of operations executed with
 a single socket, which are guaranteed to be processed on the server in the same
