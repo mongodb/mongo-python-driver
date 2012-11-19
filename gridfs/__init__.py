@@ -113,10 +113,17 @@ class GridFS(object):
         .. versionadded:: 1.6
         """
         grid_file = GridIn(self.__collection, **kwargs)
+
+        # Start a request - necessary if w=0, harmless otherwise
+        request = self.__collection.database.connection.start_request()
         try:
-            grid_file.write(data)
+            try:
+                grid_file.write(data)
+            finally:
+                grid_file.close()
         finally:
-            grid_file.close()
+            # Ensure request is ended even if close() throws error
+            request.end()
         return grid_file._id
 
     def get(self, file_id):

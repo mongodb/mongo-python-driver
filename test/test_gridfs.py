@@ -342,6 +342,27 @@ class TestGridfs(unittest.TestCase):
         )
 
 
+class TestGridfsRequest(unittest.TestCase):
+
+    def setUp(self):
+        # TODO: merge this into TestGridfs as we update all tests to use
+        #   MongoClient instead of Connection
+        from pymongo.mongo_client import MongoClient
+        from test.test_connection import host, port
+
+        # MongoClient defaults to w=1, auto_start_request=False
+        self.db = MongoClient(host, port, w=0).pymongo_test
+        self.db.drop_collection("fs.files")
+        self.db.drop_collection("fs.chunks")
+        self.fs = gridfs.GridFS(self.db)
+
+    def test_gridfs_request(self):
+        self.assertFalse(self.db.connection.in_request())
+        self.fs.put(b("hello world"))
+        # Request started and ended by put(), we're back to original state
+        self.assertFalse(self.db.connection.in_request())
+
+
 class TestGridfsReplicaSet(TestConnectionReplicaSetBase):
     def test_gridfs_replica_set(self):
         rsc = self._get_connection(
