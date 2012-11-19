@@ -7,7 +7,8 @@ order as they ran on the client.
 
 Requests are not usually necessary with PyMongo.
 By default, the methods :meth:`~pymongo.collection.Collection.insert`,
-:meth:`~pymongo.collection.Collection.update`, and
+:meth:`~pymongo.collection.Collection.update`,
+:meth:`~pymongo.collection.Collection.save`, and
 :meth:`~pymongo.collection.Collection.remove` block until they receive
 acknowledgment from the server, so ordered execution is already guaranteed. You
 can be certain the next :meth:`~pymongo.collection.Collection.find` or
