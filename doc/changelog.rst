@@ -1,15 +1,49 @@
 Changelog
 =========
 
-Changes in Version 2.3+
------------------------
+Changes in Version 2.4
+----------------------
 
-The constructors for :class:`~pymongo.connection.Connection` and
-:class:`~pymongo.replica_set_connection.ReplicaSetConnection` now raise
-:exc:`~pymongo.errors.ConnectionFailure` instead of its subclass
-:exc:`~pymongo.errors.AutoReconnect` if the server is unavailable. Applications
-that expect to catch :exc:`~pymongo.errors.AutoReconnect` should now catch
-:exc:`~pymongo.errors.ConnectionFailure` while creating a new connection.
+Version 2.4 includes a few important new features and a large number of bug
+fixes.
+
+Important new features:
+
+- New :class:`~pymongo.mongo_client.MongoClient` and
+  :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient` classes -
+  these connection classes do acknowledged write operations (previously referred
+  to as 'safe' writes) by default. :class:`~pymongo.connection.Connection` and
+  :class:`~pymongo.replica_set_connection.ReplicaSetConnection` are deprecated
+  but still support the old default fire-and-forget behavior.
+- A new write concern API implemented as a
+  :attr:`~pymongo.collection.Collection.write_concern` attribute on the connection,
+  :class:`~pymongo.database.Database`, or :class:`~pymongo.collection.Collection`
+  classes.
+- :class:`~pymongo.mongo_client.MongoClient` (and :class:`~pymongo.connection.Connection`)
+  now support Unix Domain Sockets.
+- :class:`~pymongo.cursor.Cursor` can be copied with functions from the :mod:`copy`
+  module.
+- The :meth:`~pymongo.database.Database.set_profiling_level` method now supports
+  a `slow_ms` option.
+
+.. warning::
+
+    The constructors for :class:`~pymongo.mongo_client.MongoClient`,
+    :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`,
+    :class:`~pymongo.connection.Connection`, and
+    :class:`~pymongo.replica_set_connection.ReplicaSetConnection` now raise
+    :exc:`~pymongo.errors.ConnectionFailure` instead of its subclass
+    :exc:`~pymongo.errors.AutoReconnect` if the server is unavailable. Applications
+    that expect to catch :exc:`~pymongo.errors.AutoReconnect` should now catch
+    :exc:`~pymongo.errors.ConnectionFailure` while creating a new connection.
+
+Issues Resolved
+...............
+
+See the `PyMongo 2.4 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 2.4 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/11485
 
 Changes in Version 2.3
 ----------------------
