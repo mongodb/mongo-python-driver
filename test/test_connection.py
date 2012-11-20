@@ -459,6 +459,11 @@ class TestConnection(unittest.TestCase, TestRequestMixin):
         c = get_connection()
         if is_mongos(c):
             raise SkipTest('fsync/lock not supported by mongos')
+
+        res = c.admin.command('getCmdLineOpts')
+        if '--master' in res['argv'] and version.at_least(c, (2, 3, 0)):
+            raise SkipTest('SERVER-7714')
+
         self.assertFalse(c.is_locked)
         # async flushing not supported on windows...
         if sys.platform not in ('cygwin', 'win32'):
