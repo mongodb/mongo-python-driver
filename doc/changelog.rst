@@ -25,6 +25,12 @@ Important new features:
   module.
 - The :meth:`~pymongo.database.Database.set_profiling_level` method now supports
   a `slow_ms` option.
+- The replica set monitor task (used by
+  :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient` and
+  :class:`~pymongo.replica_set_connection.ReplicaSetConnection`) is a daemon thread
+  once again, meaning you won't have to call
+  :meth:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient.close` before
+  exiting the python interactive shell.
 
 .. warning::
 

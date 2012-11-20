@@ -889,7 +889,7 @@ class MongoReplicaSetClient(common.BaseObject):
         """Close this connection instance.
 
         This method first terminates the replica set monitor, then disconnects
-        from all members of the replica set. Once called this instance of
+        from all members of the replica set. Once called this instance
         should not be reused.
 
         .. versionchanged:: 2.2.1
