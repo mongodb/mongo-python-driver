@@ -628,7 +628,7 @@ class Database(common.BaseObject):
         user["readOnly"] = common.validate_boolean('read_only', read_only)
 
         try:
-            self.system.users.save(user, safe=True)
+            self.system.users.save(user, **self._get_wc_override())
         except OperationFailure, e:
             # First admin user add fails gle in MongoDB >= 2.1.2
             # See SERVER-4225 for more information.
@@ -648,7 +648,7 @@ class Database(common.BaseObject):
 
         .. versionadded:: 1.4
         """
-        self.system.users.remove({"user": name}, safe=True)
+        self.system.users.remove({"user": name}, **self._get_wc_override())
 
     def authenticate(self, name, password):
         """Authenticate to use this database.
@@ -830,13 +830,14 @@ class SystemJS(object):
         object.__setattr__(self, "_db", database)
 
     def __setattr__(self, name, code):
-        self._db.system.js.save({"_id": name, "value": Code(code)}, safe=True)
+        self._db.system.js.save({"_id": name, "value": Code(code)},
+                                **self._db._get_wc_override())
 
     def __setitem__(self, name, code):
         self.__setattr__(name, code)
 
     def __delattr__(self, name):
-        self._db.system.js.remove({"_id": name}, safe=True)
+        self._db.system.js.remove({"_id": name}, **self._db._get_wc_override())
 
     def __delitem__(self, name):
         self.__delattr__(name)

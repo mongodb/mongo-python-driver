@@ -477,6 +477,17 @@ class BaseObject(object):
         else:
             self.__write_concern = WriteConcern()
 
+    def _get_wc_override(self):
+        """Get write concern override.
+
+        Used in internal methods that **must** do acknowledged write ops.
+        We don't want to override user write concern options if write concern
+        is already enabled.
+        """
+        if self.safe and self.__write_concern.get('w') != 0:
+            return {}
+        return {'w': 1}
+
     def _get_write_mode(self, safe=None, **options):
         """Get the current write mode.
 

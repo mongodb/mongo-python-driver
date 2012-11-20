@@ -815,7 +815,7 @@ class Collection(common.BaseObject):
 
         self.__database.system.indexes.insert(index, manipulate=False,
                                               check_keys=False,
-                                              safe=True)
+                                              **self._get_wc_override())
 
         self.__database.connection._cache_index(self.__database.name,
                                                 self.__name, name, cache_for)

@@ -62,7 +62,8 @@ def _create_property(field_name, docstring,
     def setter(self, value):
         if self._closed:
             self._coll.files.update({"_id": self._file["_id"]},
-                                    {"$set": {field_name: value}}, safe=True)
+                                    {"$set": {field_name: value}},
+                                    **self._coll._get_wc_override())
         self._file[field_name] = value
 
     if read_only:
@@ -202,7 +203,8 @@ class GridIn(object):
             self._file[name] = value
             if self._closed:
                 self._coll.files.update({"_id": self._file["_id"]},
-                                        {"$set": {name: value}}, safe=True)
+                                        {"$set": {name: value}},
+                                        **self._coll._get_wc_override())
 
     def __flush_data(self, data):
         """Flush `data` to a chunk.
@@ -248,7 +250,8 @@ class GridIn(object):
             self._file["length"] = self._position
             self._file["uploadDate"] = datetime.datetime.utcnow()
 
-            return self._coll.files.insert(self._file, safe=True)
+            return self._coll.files.insert(self._file,
+                                           **self._coll._get_wc_override())
         except DuplicateKeyError:
             raise FileExists("file with _id %r already exists" % self._id)
 

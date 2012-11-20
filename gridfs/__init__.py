@@ -237,7 +237,8 @@ class GridFS(object):
 
         .. versionadded:: 1.6
         """
-        self.__files.remove({"_id": file_id}, safe=True)
+        self.__files.remove({"_id": file_id},
+                            **self.__files._get_wc_override())
         self.__chunks.remove({"files_id": file_id})
 
     def list(self):
