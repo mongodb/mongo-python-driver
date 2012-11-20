@@ -814,14 +814,14 @@ class Cursor(object):
     def __copy__(self):
         """Support function for `copy.copy()`.
 
-        .. versionadded:: 2.3+
+        .. versionadded:: 2.4
         """
         return self.__clone(deepcopy=False)
 
     def __deepcopy__(self, memo):
         """Support function for `copy.deepcopy()`.
 
-        .. versionadded:: 2.3+
+        .. versionadded:: 2.4
         """
         return self.__clone(deepcopy=True)
 

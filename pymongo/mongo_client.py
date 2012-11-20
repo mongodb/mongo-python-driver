@@ -167,6 +167,8 @@ class MongoClient(common.BaseObject):
         .. seealso:: :meth:`end_request`
 
         .. mongodoc:: connections
+
+        .. versionadded:: 2.4
         """
         if host is None:
             host = self.HOST
@@ -950,7 +952,7 @@ class MongoClient(common.BaseObject):
         If a thread or greenlet calls start_request multiple times, an equal
         number of calls to :meth:`end_request` is required to end the request.
 
-        .. versionchanged:: 2.3+
+        .. versionchanged:: 2.4
            Now counts the number of calls to start_request and doesn't end
            request until an equal number of calls to end_request.
 

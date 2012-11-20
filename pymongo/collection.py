@@ -1330,7 +1330,7 @@ class Collection(common.BaseObject):
 
         .. note:: Requires server version **>= 1.3.0**
 
-        .. versionchanged:: 2.3+
+        .. versionchanged:: 2.4
            Deprecated the use of mapping types for the sort parameter
 
         .. versionadded:: 1.10

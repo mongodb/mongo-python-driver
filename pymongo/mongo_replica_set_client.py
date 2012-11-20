@@ -348,7 +348,7 @@ class MongoReplicaSetClient(common.BaseObject):
           - `port`: For compatibility with :class:`~mongo_client.MongoClient`.
             The default port number to use for hosts.
 
-        .. versionadded:: 2.3+
+        .. versionadded:: 2.4
         """
         self.__opts = {}
         self.__seeds = set()

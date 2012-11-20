@@ -425,7 +425,7 @@ class BaseObject(object):
 
         Returns a dict of the getlasterror options set on this instance.
 
-        .. versionchanged:: 2.3+
+        .. versionchanged:: 2.4
            Deprecated get_lasterror_options.
         .. versionadded:: 2.0
         """
@@ -445,7 +445,7 @@ class BaseObject(object):
             - `**kwargs`: Options should be passed as keyword
                           arguments (e.g. w=2, fsync=True)
 
-        .. versionchanged:: 2.3+
+        .. versionchanged:: 2.4
            Deprecated set_lasterror_options.
         .. versionadded:: 2.0
         """
@@ -465,7 +465,7 @@ class BaseObject(object):
         :Parameters:
             - `*options`: The list of options to unset.
 
-        .. versionchanged:: 2.3+
+        .. versionchanged:: 2.4
            Deprecated unset_lasterror_options.
         .. versionadded:: 2.0
         """
