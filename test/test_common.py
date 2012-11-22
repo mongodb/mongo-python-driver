@@ -386,10 +386,6 @@ class TestCommon(unittest.TestCase):
         coll = m.pymongo_test.write_concern_test
         self.assertTrue(coll.insert(doc))
 
-        # Equality tests
-        self.assertEqual(m, MongoReplicaSetClient("mongodb://%s/?replicaSet=%s;w=0" % (pair, setname)))
-        self.assertFalse(m != MongoReplicaSetClient("mongodb://%s/?replicaSet=%s;w=0" % (pair, setname)))
-
 
 if __name__ == "__main__":
     unittest.main()
