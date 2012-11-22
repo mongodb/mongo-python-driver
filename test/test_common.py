@@ -347,10 +347,6 @@ class TestCommon(unittest.TestCase):
         coll = c.pymongo_test.write_concern_test
         self.assertRaises(OperationFailure, coll.insert, doc)
 
-        # Equality tests
-        self.assertEqual(c, ReplicaSetConnection("mongodb://%s/?replicaSet=%s;safe=true" % (pair, setname)))
-        self.assertFalse(c != ReplicaSetConnection("mongodb://%s/?replicaSet=%s;safe=true" % (pair, setname)))
-
     def test_mongo_replica_set_client(self):
         c = Connection(pair)
         ismaster = c.admin.command('ismaster')
