@@ -254,7 +254,7 @@ class ObjectId(object):
             return self.__id == other.__id
         return NotImplemented
 
-    def __ne__(self,other):
+    def __ne__(self, other):
         if isinstance(other, ObjectId):
             return self.__id != other.__id
         return NotImplemented

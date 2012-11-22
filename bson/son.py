@@ -198,6 +198,9 @@ class SON(dict):
                     dict(self.items()) == dict(other.items()))
         return dict(self.items()) == other
 
+    def __ne__(self, other):
+        return not self == other
+
     def __len__(self):
         return len(self.keys())
 

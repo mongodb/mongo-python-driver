@@ -115,12 +115,15 @@ class DBRef(object):
 
     def __eq__(self, other):
         if isinstance(other, DBRef):
-            us = [self.__database, self.__collection,
-                  self.__id, self.__kwargs]
-            them = [other.__database, other.__collection,
-                    other.__id, other.__kwargs]
+            us = (self.__database, self.__collection,
+                  self.__id, self.__kwargs)
+            them = (other.__database, other.__collection,
+                    other.__id, other.__kwargs)
             return us == them
         return NotImplemented
+
+    def __ne__(self, other):
+        return not self == other
 
     def __hash__(self):
         """Get a hash value for this :class:`DBRef`.

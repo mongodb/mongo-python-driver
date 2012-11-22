@@ -196,7 +196,7 @@ class TestMasterSlaveConnection(unittest.TestCase):
         self.assertRaises(TypeError, self.connection.drop_database, None)
 
         raise SkipTest("This test often fails due to SERVER-2329")
-        
+
         self.connection.pymongo_test.test.save({"dummy": u"object"}, safe=True)
         dbs = self.connection.database_names()
         self.assertTrue("pymongo_test" in dbs)

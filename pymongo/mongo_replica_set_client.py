@@ -1264,6 +1264,9 @@ class MongoReplicaSetClient(common.BaseObject):
         # XXX: Implement this?
         return NotImplemented
 
+    def __ne__(self, other):
+        return NotImplemented
+
     def __repr__(self):
         return "MongoReplicaSetClient(%r)" % (["%s:%d" % n
                                                for n in self.__hosts],)

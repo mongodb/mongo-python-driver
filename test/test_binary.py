@@ -78,6 +78,10 @@ class TestBinary(unittest.TestCase):
         self.assertNotEqual(two, Binary(b("hello ")))
         self.assertNotEqual(b("hello"), Binary(b("hello")))
 
+        # Explicitly test inequality
+        self.assertFalse(three != Binary(b("hello"), 100))
+        self.assertFalse(two != Binary(b("hello")))
+
     def test_repr(self):
         one = Binary(b("hello world"))
         self.assertEqual(repr(one),

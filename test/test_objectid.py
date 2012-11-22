@@ -79,12 +79,18 @@ class TestObjectId(unittest.TestCase):
         self.assertEqual(str(ObjectId(b('\x124Vx\x90\xab\xcd\xef\x124Vx'))),
                          "1234567890abcdef12345678")
 
-    def test_cmp(self):
+    def test_equality(self):
         a = ObjectId()
         self.assertEqual(a, ObjectId(a))
-        self.assertEqual(ObjectId(b("123456789012")), ObjectId(b("123456789012")))
+        self.assertEqual(ObjectId(b("123456789012")),
+                         ObjectId(b("123456789012")))
         self.assertNotEqual(ObjectId(), ObjectId())
         self.assertNotEqual(ObjectId(b("123456789012")), b("123456789012"))
+
+        # Explicitly test inequality
+        self.assertFalse(a != ObjectId(a))
+        self.assertFalse(ObjectId(b("123456789012")) !=
+                         ObjectId(b("123456789012")))
 
     def test_binary_str_equivalence(self):
         a = ObjectId()

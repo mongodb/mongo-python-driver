@@ -994,6 +994,9 @@ class MongoClient(common.BaseObject):
             return us == them
         return NotImplemented
 
+    def __ne__(self, other):
+        return not self == other
+
     def __repr__(self):
         if len(self.__nodes) == 1:
             return "MongoClient(%r, %r)" % (self.__host, self.__port)

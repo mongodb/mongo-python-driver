@@ -39,9 +39,33 @@ class TestSON(unittest.TestCase):
                                      ("mike", "awesome"),
                                      ("hello_", "mike")])
 
-        b = SON({"hello": "world"})
-        self.assertEqual(b["hello"], "world")
-        self.assertRaises(KeyError, lambda: b["goodbye"])
+        c = SON({"hello": "world"})
+        self.assertEqual(c["hello"], "world")
+        self.assertRaises(KeyError, lambda: c["goodbye"])
+
+    def test_equality(self):
+        a = SON({"hello": "world"})
+        c = SON((('hello', 'world'), ('mike', 'awesome'), ('hello_', 'mike')))
+
+        self.assertEqual(a, SON({"hello": "world"}))
+        self.assertEqual(c, SON((('hello', 'world'),
+                                 ('mike', 'awesome'),
+                                 ('hello_', 'mike'))))
+        self.assertEqual(c, SON((('hello', 'world'),
+                                 ('hello_', 'mike'),
+                                 ('mike', 'awesome'))))
+
+        self.assertNotEqual(c, a)
+
+        # Explicitly test inequality
+        self.assertFalse(a != SON({"hello": "world"}))
+        self.assertFalse(c != SON((('hello', 'world'),
+                                   ('mike', 'awesome'),
+                                   ('hello_', 'mike'))))
+        self.assertFalse(c != SON((('hello', 'world'),
+                                 ('hello_', 'mike'),
+                                 ('mike', 'awesome'))))
+
 
     def test_to_dict(self):
         a = SON()

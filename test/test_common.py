@@ -275,6 +275,10 @@ class TestCommon(unittest.TestCase):
         coll = c.pymongo_test.write_concern_test
         self.assertRaises(OperationFailure, coll.insert, doc)
 
+        # Equality tests
+        self.assertEqual(c, Connection("mongodb://%s/?safe=true" % (pair,)))
+        self.assertFalse(c != Connection("mongodb://%s/?safe=true" % (pair,)))
+
     def test_mongo_client(self):
         m = MongoClient(pair, w=0)
         coll = m.pymongo_test.write_concern_test
@@ -303,6 +307,10 @@ class TestCommon(unittest.TestCase):
         self.assertFalse(m.safe)
         coll = m.pymongo_test.write_concern_test
         self.assertTrue(coll.insert(doc))
+
+        # Equality tests
+        self.assertEqual(m, MongoClient("mongodb://%s/?w=0" % (pair,)))
+        self.assertFalse(m != MongoClient("mongodb://%s/?w=0" % (pair,)))
 
     def test_replica_set_connection(self):
         c = Connection(pair)
@@ -339,6 +347,10 @@ class TestCommon(unittest.TestCase):
         coll = c.pymongo_test.write_concern_test
         self.assertRaises(OperationFailure, coll.insert, doc)
 
+        # Equality tests
+        self.assertEqual(c, ReplicaSetConnection("mongodb://%s/?replicaSet=%s;safe=true" % (pair, setname)))
+        self.assertFalse(c != ReplicaSetConnection("mongodb://%s/?replicaSet=%s;safe=true" % (pair, setname)))
+
     def test_mongo_replica_set_client(self):
         c = Connection(pair)
         ismaster = c.admin.command('ismaster')
@@ -373,6 +385,10 @@ class TestCommon(unittest.TestCase):
         self.assertFalse(m.safe)
         coll = m.pymongo_test.write_concern_test
         self.assertTrue(coll.insert(doc))
+
+        # Equality tests
+        self.assertEqual(m, MongoReplicaSetClient("mongodb://%s/?replicaSet=%s;w=0" % (pair, setname)))
+        self.assertFalse(m != MongoReplicaSetClient("mongodb://%s/?replicaSet=%s;w=0" % (pair, setname)))
 
 
 if __name__ == "__main__":

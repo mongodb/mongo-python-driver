@@ -150,6 +150,9 @@ class Collection(common.BaseObject):
             return us == them
         return NotImplemented
 
+    def __ne__(self, other):
+        return not self == other
+
     @property
     def full_name(self):
         """The full name of this :class:`Collection`.

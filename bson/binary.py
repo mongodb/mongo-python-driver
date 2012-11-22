@@ -154,7 +154,8 @@ class Binary(binary_type):
 
     def __eq__(self, other):
         if isinstance(other, Binary):
-            return (self.__subtype, binary_type(self)) == (other.subtype, binary_type(other))
+            return ((self.__subtype, binary_type(self)) ==
+                    (other.subtype, binary_type(other)))
         # We don't return NotImplemented here because if we did then
         # Binary("foo") == "foo" would return True, since Binary is a
         # subclass of str...

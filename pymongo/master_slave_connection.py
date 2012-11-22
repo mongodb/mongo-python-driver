@@ -220,6 +220,9 @@ class MasterSlaveConnection(BaseObject):
             return us == them
         return NotImplemented
 
+    def __ne__(self, other):
+        return not self == other
+
     def __repr__(self):
         return "MasterSlaveConnection(%r, %r)" % (self.__master, self.__slaves)
 

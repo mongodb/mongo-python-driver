@@ -75,6 +75,11 @@ class TestCode(unittest.TestCase):
         self.assertNotEqual(b, Code("hello "))
         self.assertNotEqual("hello", Code("hello"))
 
+        # Explicitly test inequality
+        self.assertFalse(c != Code("hello", {"foo": 5}))
+        self.assertFalse(b != Code("hello"))
+        self.assertFalse(b != Code("hello", {}))
+
     def test_scope_preserved(self):
         a = Code("hello")
         b = Code("hello", {"foo": 5})

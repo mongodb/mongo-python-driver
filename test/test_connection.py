@@ -92,6 +92,12 @@ class TestConnection(unittest.TestCase, TestRequestMixin):
 
         self.assertTrue(Connection(self.host, self.port))
 
+    def test_equality(self):
+        connection = Connection(self.host, self.port)
+        self.assertEqual(connection, Connection(self.host, self.port))
+        # Explicity test inequality
+        self.assertFalse(connection != Connection(self.host, self.port))
+
     def test_host_w_port(self):
         self.assertTrue(Connection("%s:%d" % (self.host, self.port)))
         assertRaisesExactly(ConnectionFailure, Connection,

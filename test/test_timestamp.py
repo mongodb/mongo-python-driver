@@ -70,6 +70,9 @@ class TestTimestamp(unittest.TestCase):
         self.assertNotEqual(t, Timestamp(1, 0))
         self.assertEqual(t, Timestamp(1, 1))
 
+        # Explicitly test inequality
+        self.assertFalse(t != Timestamp(1, 1))
+
     def test_repr(self):
         t = Timestamp(0, 0)
         self.assertEqual(repr(t), "Timestamp(0, 0)")

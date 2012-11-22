@@ -86,6 +86,9 @@ class SocketInfo(object):
         # if its sock is the same as ours
         return hasattr(other, 'sock') and self.sock == other.sock
 
+    def __ne__(self, other):
+        return not self == other
+
     def __hash__(self):
         return hash(self.sock)
 

@@ -58,10 +58,14 @@ class TestDatabase(unittest.TestCase):
                           self.connection, u"my\u0000db")
         self.assertEqual("name", Database(self.connection, "name").name)
 
-    def test_cmp(self):
+    def test_equality(self):
         self.assertNotEqual(Database(self.connection, "test"),
                             Database(self.connection, "mike"))
         self.assertEqual(Database(self.connection, "test"),
+                         Database(self.connection, "test"))
+
+        # Explicitly test inequality
+        self.assertFalse(Database(self.connection, "test") !=
                          Database(self.connection, "test"))
 
     def test_repr(self):

@@ -183,6 +183,9 @@ class Database(common.BaseObject):
             return us == them
         return NotImplemented
 
+    def __ne__(self, other):
+        return not self == other
+
     def __repr__(self):
         return "Database(%r, %r)" % (self.__connection, self.__name)
 
