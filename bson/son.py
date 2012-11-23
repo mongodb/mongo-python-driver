@@ -198,7 +198,7 @@ class SON(dict):
         """
         if isinstance(other, SON):
             return len(self) == len(other) and self.items() == other.items()
-        return dict.__eq__(self, other)
+        return self.to_dict() == other
 
     def __ne__(self, other):
         return not self == other

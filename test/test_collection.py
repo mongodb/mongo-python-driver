@@ -543,13 +543,14 @@ class TestCollection(unittest.TestCase):
         doc_class = None
         # Work around http://bugs.jython.org/issue1728
         if (sys.platform.startswith('java') and
-            sys.version_info[:3] == (2, 5, 2)):
+            sys.version_info[:3] >= (2, 5, 2)):
             doc_class = SON
 
         def remove_insert_find_one(doc):
             db.test.remove({}, safe=True)
             db.test.insert(doc, safe=True)
-            return db.test.find_one(as_class=doc_class) == doc
+            # SON equality is order sensitive.
+            return db.test.find_one(as_class=doc_class) == doc.to_dict()
 
         qcheck.check_unittest(self, remove_insert_find_one,
                               qcheck.gen_mongo_dict(3))

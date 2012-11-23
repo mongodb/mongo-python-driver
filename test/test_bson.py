@@ -203,7 +203,7 @@ class TestBSON(unittest.TestCase):
         doc_class = dict
         # Work around http://bugs.jython.org/issue1728
         if (sys.platform.startswith('java') and
-            sys.version_info[:3] == (2, 5, 2)):
+            sys.version_info[:3] >= (2, 5, 2)):
             doc_class = SON
 
         def encode_then_decode(doc):
