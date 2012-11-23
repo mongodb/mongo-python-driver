@@ -76,6 +76,10 @@ class TestSONManipulator(unittest.TestCase):
             for (k, v) in son.items():
                 self.assertEqual(k, "_id")
                 break
+            # Key order matters in SON equality test,
+            # matching collections.OrderedDict
+            if isinstance(son_in, SON):
+                return son_in.to_dict() == son.to_dict()
             return son_in == son
 
         self.assertTrue(incoming_moves_id({}))
