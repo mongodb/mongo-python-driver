@@ -31,63 +31,67 @@ class TestSON(unittest.TestCase):
         pass
 
     def test_ordered_dict(self):
-        a = SON()
-        a["hello"] = "world"
-        a["mike"] = "awesome"
-        a["hello_"] = "mike"
-        self.assertEqual(a.items(), [("hello", "world"),
+        a1 = SON()
+        a1["hello"] = "world"
+        a1["mike"] = "awesome"
+        a1["hello_"] = "mike"
+        self.assertEqual(a1.items(), [("hello", "world"),
                                      ("mike", "awesome"),
                                      ("hello_", "mike")])
 
-        c = SON({"hello": "world"})
-        self.assertEqual(c["hello"], "world")
-        self.assertRaises(KeyError, lambda: c["goodbye"])
+        b2 = SON({"hello": "world"})
+        self.assertEqual(b2["hello"], "world")
+        self.assertRaises(KeyError, lambda: b2["goodbye"])
 
     def test_equality(self):
-        a = SON({"hello": "world"})
-        c = SON((('hello', 'world'), ('mike', 'awesome'), ('hello_', 'mike')))
+        a1 = SON({"hello": "world"})
+        b2 = SON((('hello', 'world'), ('mike', 'awesome'), ('hello_', 'mike')))
 
-        self.assertEqual(a, SON({"hello": "world"}))
-        self.assertEqual(c, SON((('hello', 'world'),
-                                 ('mike', 'awesome'),
-                                 ('hello_', 'mike'))))
-        self.assertEqual(c, SON((('hello', 'world'),
-                                 ('hello_', 'mike'),
-                                 ('mike', 'awesome'))))
+        self.assertEqual(a1, SON({"hello": "world"}))
+        self.assertEqual(b2, SON((('hello', 'world'),
+                                  ('mike', 'awesome'),
+                                  ('hello_', 'mike'))))
+        self.assertEqual(b2, dict((('hello_', 'mike'),
+                                   ('mike', 'awesome'),
+                                   ('hello', 'world'))))
 
-        self.assertNotEqual(c, a)
+        self.assertNotEqual(a1, b2)
+        self.assertNotEqual(b2, SON((('hello_', 'mike'),
+                                     ('mike', 'awesome'),
+                                     ('hello', 'world'))))
 
         # Explicitly test inequality
-        self.assertFalse(a != SON({"hello": "world"}))
-        self.assertFalse(c != SON((('hello', 'world'),
-                                   ('mike', 'awesome'),
-                                   ('hello_', 'mike'))))
-        self.assertFalse(c != SON((('hello', 'world'),
-                                 ('hello_', 'mike'),
-                                 ('mike', 'awesome'))))
-
+        self.assertFalse(a1 != SON({"hello": "world"}))
+        self.assertFalse(b2 != SON((('hello', 'world'),
+                                    ('mike', 'awesome'),
+                                    ('hello_', 'mike'))))
+        self.assertFalse(b2 != dict((('hello_', 'mike'),
+                                     ('mike', 'awesome'),
+                                     ('hello', 'world'))))
 
     def test_to_dict(self):
-        a = SON()
-        b = SON([("blah", SON())])
-        c = SON([("blah", [SON()])])
-        d = SON([("blah", {"foo": SON()})])
-        self.assertEqual({}, a.to_dict())
-        self.assertEqual({"blah": {}}, b.to_dict())
-        self.assertEqual({"blah": [{}]}, c.to_dict())
-        self.assertEqual({"blah": {"foo": {}}}, d.to_dict())
-        self.assertEqual(dict, a.to_dict().__class__)
-        self.assertEqual(dict, b.to_dict()["blah"].__class__)
-        self.assertEqual(dict, c.to_dict()["blah"][0].__class__)
-        self.assertEqual(dict, d.to_dict()["blah"]["foo"].__class__)
+        a1 = SON()
+        b2 = SON([("blah", SON())])
+        c3 = SON([("blah", [SON()])])
+        d4 = SON([("blah", {"foo": SON()})])
+        self.assertEqual({}, a1.to_dict())
+        self.assertEqual({"blah": {}}, b2.to_dict())
+        self.assertEqual({"blah": [{}]}, c3.to_dict())
+        self.assertEqual({"blah": {"foo": {}}}, d4.to_dict())
+        self.assertEqual(dict, a1.to_dict().__class__)
+        self.assertEqual(dict, b2.to_dict()["blah"].__class__)
+        self.assertEqual(dict, c3.to_dict()["blah"][0].__class__)
+        self.assertEqual(dict, d4.to_dict()["blah"]["foo"].__class__)
 
     def test_pickle(self):
 
         simple_son = SON([])
-        complex_son = SON([('son', simple_son), ('list', [simple_son, simple_son])])
+        complex_son = SON([('son', simple_son),
+                           ('list', [simple_son, simple_son])])
 
-        for protocol in [0, 1, 2, -1]:
-            pickled = pickle.loads(pickle.dumps(complex_son, protocol=protocol))
+        for protocol in xrange(pickle.HIGHEST_PROTOCOL + 1):
+            pickled = pickle.loads(pickle.dumps(complex_son,
+                                                protocol=protocol))
             self.assertEqual(pickled['son'], pickled['list'][0])
             self.assertEqual(pickled['son'], pickled['list'][1])
 
