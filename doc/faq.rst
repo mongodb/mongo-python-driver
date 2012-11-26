@@ -166,8 +166,43 @@ driver enforce a convention for converting :mod:`datetime.date`
 instances to :mod:`datetime.datetime` instances for you, any
 conversion should be performed in your client code.
 
-How can I use PyMongo from a web framework like Django?
--------------------------------------------------------
+.. _web-application-querying-by-objectid:
+
+When I query for a document by ObjectId in my web application I get no result
+-----------------------------------------------------------------------------
+It's common in web applications to encode documents' ObjectIds in URLs, like::
+
+  "/posts/50b3bda58a02fb9a84d8991e"
+
+Your web framework will pass the ObjectId portion of the URL to your request
+handler as a string, so it must be converted to :class:`~bson.objectid.ObjectId`
+before it is passed to :meth:`~pymongo.collection.Collection.find_one`. It is a
+common mistake to forget to do this conversion. Here's how to do it correctly
+in Flask_ (other web frameworks are similar)::
+
+  from pymongo import MongoClient
+  from bson.objectid import ObjectId
+
+  from flask import Flask, render_template
+
+  connection = MongoClient()
+  app = Flask(__name__)
+
+  @app.route("/posts/<_id>")
+  def show_post(_id):
+     # NOTE!: converting _id from string to ObjectId before passing to find_one
+     post = connection.db.posts.find_one({'_id': ObjectId(_id)})
+     return render_template('post.html', post=post)
+
+  if __name__ == "__main__":
+      app.run()
+
+.. _Flask: http://flask.pocoo.org/
+
+.. seealso:: :ref:`querying-by-objectid`
+
+How can I use PyMongo from Django?
+----------------------------------
 `Django <http://www.djangoproject.com/>`_ is a popular Python web
 framework. Django includes an ORM, :mod:`django.db`. Currently,
 there's no official MongoDB backend for Django.

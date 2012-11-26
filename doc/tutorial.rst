@@ -118,7 +118,8 @@ To insert a document into a collection we can use the
 .. doctest::
 
   >>> posts = db.posts
-  >>> posts.insert(post)
+  >>> post_id = posts.insert(post)
+  >>> post_id
   ObjectId('...')
 
 When a document is inserted a special key, ``"_id"``, is automatically
@@ -177,6 +178,42 @@ If we try with a different author, like "Eliot", we'll get no result:
 .. doctest::
 
   >>> posts.find_one({"author": "Eliot"})
+  >>>
+
+.. _querying-by-objectid:
+
+Querying By ObjectId
+--------------------
+We can also find a post by its ``_id``, which in our example is an ObjectId:
+
+.. doctest::
+
+  >>> post_id
+  ObjectId(...)
+  >>> posts.find_one({"_id": post_id})
+  {u'date': datetime.datetime(...), u'text': u'My first blog post!', u'_id': ObjectId('...'), u'author': u'Mike', u'tags': [u'mongodb', u'python', u'pymongo']}
+
+Note that an ObjectId is not the same as its string representation:
+
+.. doctest::
+
+  >>> post_id_as_str = str(post_id)
+  >>> posts.find_one({"_id": post_id_as_str}) # No result
+  >>>
+
+A common task in web applications is to get an ObjectId from the
+request URL and find the matching document. It's necessary in this
+case to **convert the ObjectId from a string** before passing it to
+``find_one``::
+
+  from bson.objectid import ObjectId
+
+  # The web framework gets post_id from the URL and passes it as a string
+  def get(post_id):
+      # Convert from string to ObjectId:
+      document = connection.db.collection.find_one({'_id': ObjectId(post_id)})
+
+.. seealso:: :ref:`web-application-querying-by-objectid`
 
 A Note On Unicode Strings
 -------------------------
