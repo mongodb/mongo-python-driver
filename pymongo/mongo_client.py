@@ -118,8 +118,8 @@ class MongoClient(common.BaseObject):
             it must be enclosed in '[' and ']' characters following
             the RFC2732 URL syntax (e.g. '[::1]' for localhost)
           - `port` (optional): port number on which to connect
-          - `max_pool_size` (optional): The maximum size limit for
-            the connection pool.
+          - `max_pool_size` (optional): The maximum number of idle connections
+            to keep open in the pool for future use
           - `document_class` (optional): default class to use for
             documents returned from queries on this connection
           - `tz_aware` (optional): if ``True``,
@@ -423,7 +423,13 @@ class MongoClient(common.BaseObject):
 
     @property
     def max_pool_size(self):
-        """The maximum pool size limit set for this connection.
+        """The maximum number of idle connections kept open in the pool for
+        future use.
+
+        .. note:: ``max_pool_size`` does not cap the number of concurrent
+          connections to the server; there is currently no way to limit the
+          number of connections. ``max_pool_size`` only limits the number of
+          **idle** connections kept open when they are returned to the pool.
 
         .. versionadded:: 1.11
         """

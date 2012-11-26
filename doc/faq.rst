@@ -14,23 +14,21 @@ for threaded applications.
 How does connection pooling work in PyMongo?
 --------------------------------------------
 
-Every :class:`~pymongo.mongo_client.MongoClient` instance has built-in
-connection pooling. By default, each thread gets its own socket reserved on its
-first operation. Those sockets are held until
-:meth:`~pymongo.mongo_client.MongoClient.end_request` is called by that
-thread.
-
-Calling :meth:`~pymongo.mongo_client.MongoClient.end_request` allows the
-socket to be returned to the pool, and to be used by other threads
-instead of creating a new socket. Judicious use of this method is
-important for applications with many threads or with long running
-threads that make few calls to PyMongo operations.
-
-Alternatively, a :class:`~pymongo.mongo_client.MongoClient` created with
-``auto_start_request=False`` will share sockets (safely) among all threads.
+Every :class:`~pymongo.mongo_client.MongoClient` instance has a built-in
+connection pool. The pool begins with one open connection. Note that
+:attr:`~pymongo.mongo_client.MongoClient.max_pool_size` does not cap the number
+of connections; it only caps the number of idle connections kept open in
+the pool for future use. Thus, if 500 threads simultaneously launch long-running
+queries, PyMongo opens up to 500 connections to MongoDB, then closes all but
+``max_pool_size`` of them as the queries complete.
 
 When :meth:`~pymongo.mongo_client.MongoClient.disconnect` is called by any thread,
 all sockets are closed. PyMongo will create new sockets as needed.
+
+:class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient` maintains one
+connection pool per server in your replica set.
+
+.. seealso:: :doc:`examples/requests`
 
 Does PyMongo support Python 3?
 ------------------------------
