@@ -237,8 +237,9 @@ class Cursor(object):
             # Only commands that can be run on secondaries should have any
             # operators added to the spec.  Command queries can be issued
             # by db.command or calling find_one on $cmd directly
-            is_cmd = self.collection.name == "$cmd"
-            if is_cmd:
+            if self.collection.name == "$cmd":
+                if not spec:
+                    return spec
                 # Don't change commands that can't be sent to secondaries
                 command_name = spec.keys()[0].lower()
                 if command_name not in secondary_ok_commands:
@@ -266,7 +267,7 @@ class Cursor(object):
         # was passed as an instance of SON or OrderedDict.
         elif ("query" in self.__spec and
               (len(self.__spec) == 1 or self.__spec.keys()[0] == "query")):
-                return SON({"$query": self.__spec})
+            return SON({"$query": self.__spec})
 
         return self.__spec
 
