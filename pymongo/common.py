@@ -93,7 +93,9 @@ def validate_positive_float(option, value):
         value = float(value)
     except (ValueError, TypeError):
         raise err
-    if not 0 < value < float('inf'):
+
+    # float('inf') doesn't work in 2.4 or 2.5 on Windows, but this does
+    if not 0 < value < 1e100000:
         raise err
 
     return value

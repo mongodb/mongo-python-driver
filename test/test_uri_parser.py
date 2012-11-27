@@ -16,6 +16,7 @@
 
 import copy
 import unittest
+import sys
 
 from pymongo.uri_parser import (_partition,
                                 _rpartition,
@@ -92,8 +93,16 @@ class TestURI(unittest.TestCase):
         self.assertRaises(ConfigurationError, split_options, 'socketTimeoutMS=0.0')
         self.assertRaises(ConfigurationError, split_options, 'connectTimeoutMS=foo')
         self.assertRaises(ConfigurationError, split_options, 'connectTimeoutMS=0.0')
-        self.assertRaises(ConfigurationError, split_options, 'connectTimeoutMS=inf')
-        self.assertRaises(ConfigurationError, split_options, 'connectTimeoutMS=-inf')
+        self.assertRaises(ConfigurationError, split_options, 'connectTimeoutMS=1e100000')
+        self.assertRaises(ConfigurationError, split_options, 'connectTimeoutMS=-1e100000')
+
+        # On most platforms float('inf') and float('-inf') represent
+        # +/- infinity, although on Python 2.4 and 2.5 on Windows those
+        # expressions are invalid
+        if not (sys.platform == "win32" and sys.version_info <= (2, 5)):
+            self.assertRaises(ConfigurationError, split_options, 'connectTimeoutMS=inf')
+            self.assertRaises(ConfigurationError, split_options, 'connectTimeoutMS=-inf')
+
         self.assertTrue(split_options('socketTimeoutMS=300'))
         self.assertTrue(split_options('connectTimeoutMS=300'))
         self.assertEqual({'sockettimeoutms': 0.3}, split_options('socketTimeoutMS=300'))
