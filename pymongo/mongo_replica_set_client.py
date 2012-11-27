@@ -152,33 +152,52 @@ class MonitorThread(Monitor, threading.Thread):
         """
         self.monitor()
 
+# Lazy import is needed if gevent is *not* used by pymongo,
+# but by application code in other threads
+class LazyGeventImport(object):
+    def __init__(self):
+        self._init_status = None
+        self.gevent_local = None
+        self.MonitorGreenlet = None
 
-have_gevent = False
-try:
-    from gevent import Greenlet
-    from gevent.event import Event
+    def import_gevent(self):
+        if self._init_status == 'import_failed':
+            return False
 
-    # Used by ReplicaSetConnection
-    from gevent.local import local as gevent_local
-    have_gevent = True
+        if self._init_status == 'import_success':
+            return True
 
-    class MonitorGreenlet(Monitor, Greenlet):
-        """Greenlet based replica set monitor.
-        """
-        def __init__(self, rsc):
-            Monitor.__init__(self, rsc, Event)
-            Greenlet.__init__(self)
+        try:
+            from gevent import Greenlet
+            from gevent.event import Event
 
-        # Don't override `run` in a Greenlet. Add _run instead.
-        # Refer to gevent's Greenlet docs and source for more
-        # information.
-        def _run(self):
-            """Define Greenlet's _run method.
-            """
-            self.monitor()
+            # Used by ReplicaSetConnection
+            from gevent.local import local as gevent_local
 
-except ImportError:
-    pass
+            class MonitorGreenlet(Monitor, Greenlet):
+                """Greenlet based replica set monitor.
+                """
+                def __init__(self, rsc):
+                    Monitor.__init__(self, rsc, Event)
+                    Greenlet.__init__(self)
+
+                # Don't override `run` in a Greenlet. Add _run instead.
+                # Refer to gevent's Greenlet docs and source for more
+                # information.
+                def _run(self):
+                    """Define Greenlet's _run method.
+                    """
+                    self.monitor()
+
+            self.gevent_local = gevent_local
+            self.MonitorGreenlet = MonitorGreenlet
+            self._init_status = 'import_success'
+
+        except ImportError:
+            self._init_status = 'import_failed'
+            return False
+
+_lazy_gevent = LazyGeventImport()
 
 
 class Member(object):
@@ -394,7 +413,7 @@ class MongoReplicaSetClient(common.BaseObject):
         self.__opts.update(options)
 
         if self.__opts.get('use_greenlets', False):
-            if not have_gevent:
+            if _lazy_gevent.import_gevent() is False:
                 raise ConfigurationError(
                     "The gevent module is not available. "
                     "Install the gevent package from PyPI."
@@ -443,7 +462,7 @@ class MongoReplicaSetClient(common.BaseObject):
 
         # Start the monitor after we know the configuration is correct.
         if self.__opts.get('use_greenlets', False):
-            self.__monitor = MonitorGreenlet(self)
+            self.__monitor = _lazy_gevent.MonitorGreenlet(self)
         else:
             self.__monitor = MonitorThread(self)
             self.__monitor.setDaemon(True)
@@ -755,7 +774,7 @@ class MongoReplicaSetClient(common.BaseObject):
 
     def __reset_pinned_hosts(self):
         if self.__opts.get('use_greenlets', False):
-            self.__threadlocal = gevent_local()
+            self.__threadlocal = _lazy_gevent.gevent_local()
         else:
             self.__threadlocal = threading.local()
 
