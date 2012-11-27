@@ -31,6 +31,7 @@ connection pool.
 .. doctest::
 
   >>> from gevent import monkey; monkey.patch_socket()
+  >>> from pymongo import MongoClient
   >>> connection = MongoClient(use_greenlets=True)
 
 An instance of :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`
@@ -41,6 +42,7 @@ to monitor the state of the replica set.
 .. doctest::
 
   >>> from gevent import monkey; monkey.patch_socket()
+  >>> from pymongo.mongo_replica_set_client import MongoReplicaSetClient
   >>> rsc = MongoReplicaSetClient(
   ...     'mongodb://localhost:27017,localhost:27018,localhost:27019',
   ...     replicaSet='repl0', use_greenlets=True)
