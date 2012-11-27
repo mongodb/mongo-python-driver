@@ -274,8 +274,8 @@ class MongoClient(common.BaseObject):
                 raise ConnectionFailure(str(e))
 
         if db and username is None:
-            warnings.warn("must provide a username and password "
-                          "to authenticate to %s" % (db,))
+            warnings.warn("database name in URI is being ignored. if you wish to authenticate to %s, "
+                          "you must provide a username and password" % (db,))
         if username:
             db = db or "admin"
             if not self[db].authenticate(username, password):
