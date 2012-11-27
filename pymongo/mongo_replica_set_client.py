@@ -433,8 +433,9 @@ class MongoReplicaSetClient(common.BaseObject):
             raise ConnectionFailure(str(e))
 
         if db_name and username is None:
-            warnings.warn("must provide a username and password "
-                          "to authenticate to %s" % (db_name,))
+            warnings.warn("database name in URI is being ignored. If you wish "
+                          "to authenticate to %s, you must provide a username "
+                          "and password." % (db_name,))
         if username:
             db_name = db_name or 'admin'
             if not self[db_name].authenticate(username, password):
