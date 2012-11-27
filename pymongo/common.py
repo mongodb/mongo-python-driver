@@ -94,8 +94,9 @@ def validate_positive_float(option, value):
     except (ValueError, TypeError):
         raise err
 
-    # float('inf') doesn't work in 2.4 or 2.5 on Windows, but this does
-    if not 0 < value < 1e100000:
+    # float('inf') doesn't work in 2.4 or 2.5 on Windows, so just cap floats at
+    # one billion - this is a reasonable approximation for infinity
+    if not 0 < value < 1e9:
         raise err
 
     return value
