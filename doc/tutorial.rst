@@ -311,7 +311,7 @@ or just of those documents that match a specific query:
 
 .. doctest::
 
-  >>> posts.find({"author": "Mike"}).count()
+  >>> posts.count({"author": "Mike"})
   2
 
 Range Queries
