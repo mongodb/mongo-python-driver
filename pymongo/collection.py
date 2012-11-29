@@ -715,13 +715,13 @@ class Collection(common.BaseObject):
                 self.secondary_acceptable_latency_ms)
         return Cursor(self, *args, **kwargs)
 
-    def count(self):
+    def count(self, *args, **kwargs):
         """Get the number of documents in this collection.
 
         To get the number of documents matching a specific query use
         :meth:`pymongo.cursor.Cursor.count`.
         """
-        return self.find().count()
+        return self.find(*args, **kwargs).count()
 
     def create_index(self, key_or_list, cache_for=300, **kwargs):
         """Creates an index on this collection.
