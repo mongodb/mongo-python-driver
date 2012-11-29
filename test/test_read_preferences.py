@@ -76,6 +76,58 @@ class TestReadPreferencesBase(TestConnectionReplicaSetBase):
 
 
 class TestReadPreferences(TestReadPreferencesBase):
+    def test_mode_validation(self):
+        # 'modes' are imported from read_preferences.py
+        for mode in modes:
+            self.assertEqual(mode, self._get_connection(
+                read_preference=mode).read_preference)
+
+        self.assertRaises(ConfigurationError, self._get_connection,
+            read_preference='foo')
+
+    def test_tag_sets_validation(self):
+        # Can't use tags with PRIMARY
+        self.assertRaises(ConfigurationError, self._get_connection,
+            tag_sets=[{'k': 'v'}])
+
+        # ... but empty tag sets are ok with PRIMARY
+        self.assertEqual([{}], self._get_connection(tag_sets=[{}]).tag_sets)
+
+        S = ReadPreference.SECONDARY
+        self.assertEqual([{}], self._get_connection(read_preference=S).tag_sets)
+
+        self.assertEqual([{'k': 'v'}], self._get_connection(
+            read_preference=S, tag_sets=[{'k': 'v'}]).tag_sets)
+
+        self.assertEqual([{'k': 'v'}, {}], self._get_connection(
+            read_preference=S, tag_sets=[{'k': 'v'}, {}]).tag_sets)
+
+        self.assertRaises(ConfigurationError, self._get_connection,
+            read_preference=S, tag_sets=[])
+
+        # One dict not ok, must be a list of dicts
+        self.assertRaises(ConfigurationError, self._get_connection,
+            read_preference=S, tag_sets={'k': 'v'})
+
+        self.assertRaises(ConfigurationError, self._get_connection,
+            read_preference=S, tag_sets='foo')
+
+        self.assertRaises(ConfigurationError, self._get_connection,
+            read_preference=S, tag_sets=['foo'])
+
+    def test_latency_validation(self):
+        self.assertEqual(17, self._get_connection(
+            secondary_acceptable_latency_ms=17
+        ).secondary_acceptable_latency_ms)
+
+        self.assertEqual(42, self._get_connection(
+            secondaryAcceptableLatencyMS=42
+        ).secondary_acceptable_latency_ms)
+
+        self.assertEqual(666, self._get_connection(
+            secondaryacceptablelatencyms=666
+        ).secondary_acceptable_latency_ms)
+
     def test_primary(self):
         self.assertReadsFrom('primary',
             read_preference=ReadPreference.PRIMARY)
