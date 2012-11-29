@@ -34,6 +34,7 @@ attribute-style access:
   Database(ReplicaSetConnection([u'...', u'...']), u'test_database')
 """
 from pymongo.mongo_replica_set_client import MongoReplicaSetClient
+from pymongo.errors import ConfigurationError
 
 
 class ReplicaSetConnection(MongoReplicaSetClient):

@@ -37,6 +37,8 @@ access:
   Database(Connection('localhost', 27017), u'test-database')
 """
 from pymongo.mongo_client import MongoClient
+from pymongo.errors import ConfigurationError
+
 
 class Connection(MongoClient):
     """Connection to MongoDB.

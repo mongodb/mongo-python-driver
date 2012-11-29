@@ -468,6 +468,25 @@ class TestConnection(TestConnectionReplicaSetBase):
         self.assertFalse(isinstance(db.test.find_one(), SON))
         c.close()
 
+    def test_network_timeout_validation(self):
+        c = self._get_connection(network_timeout=10)
+        self.assertEqual(10, c._MongoReplicaSetClient__net_timeout)
+
+        c = self._get_connection(network_timeout=None)
+        self.assertEqual(None, c._MongoReplicaSetClient__net_timeout)
+
+        self.assertRaises(ConfigurationError,
+            self._get_connection, network_timeout=0)
+
+        self.assertRaises(ConfigurationError,
+            self._get_connection, network_timeout=-1)
+
+        self.assertRaises(ConfigurationError,
+            self._get_connection, network_timeout=1e10)
+
+        self.assertRaises(ConfigurationError,
+            self._get_connection, network_timeout='foo')
+
     def test_network_timeout(self):
         no_timeout = self._get_connection()
         timeout_sec = 1

@@ -398,6 +398,25 @@ class TestConnection(unittest.TestCase, TestRequestMixin):
         conn = Connection(self.host, self.port, socketTimeoutMS=10500)
         self.assertEqual(10.5, conn._MongoClient__pool.net_timeout)
 
+    def test_network_timeout_validation(self):
+        c = get_connection(network_timeout=10)
+        self.assertEqual(10, c._MongoClient__net_timeout)
+
+        c = get_connection(network_timeout=None)
+        self.assertEqual(None, c._MongoClient__net_timeout)
+
+        self.assertRaises(ConfigurationError,
+            get_connection, network_timeout=0)
+
+        self.assertRaises(ConfigurationError,
+            get_connection, network_timeout=-1)
+
+        self.assertRaises(ConfigurationError,
+            get_connection, network_timeout=1e10)
+
+        self.assertRaises(ConfigurationError,
+            get_connection, network_timeout='foo')
+
     def test_network_timeout(self):
         no_timeout = Connection(self.host, self.port)
         timeout_sec = 1
