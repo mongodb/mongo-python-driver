@@ -258,7 +258,7 @@ class BaseObject(object):
             elif option == 'tag_sets':
                 self.__tag_sets = validate_tag_sets(option, value)
             elif option in (
-                'secondaryAcceptableLatencyMS',
+                'secondaryacceptablelatencyms',
                 'secondary_acceptable_latency_ms'
             ):
                 self.__secondary_acceptable_latency_ms = \
