@@ -24,7 +24,7 @@ class ReadPreference:
     """An enum that defines the read preferences supported by PyMongo. Used in
     three cases:
 
-    :class:`~pymongo.connection.Connection` to a single host:
+    :class:`~pymongo.mongo_client.MongoClient` to a single host:
 
     * `PRIMARY`: Queries are allowed if the connection is to the replica set
       primary.
@@ -34,8 +34,8 @@ class ReadPreference:
     * `SECONDARY_PREFERRED`: Same as `PRIMARY_PREFERRED`.
     * `NEAREST`: Same as `PRIMARY_PREFERRED`.
 
-    :class:`~pymongo.connection.Connection` to a mongos, with a sharded cluster
-    of replica sets:
+    :class:`~pymongo.mongo_client.MongoClient` to a mongos, with a sharded
+    cluster of replica sets:
 
     * `PRIMARY`: Queries are sent to the primary of a shard.
     * `PRIMARY_PREFERRED`: Queries are sent to the primary if available,
@@ -46,7 +46,7 @@ class ReadPreference:
       or the primary if no secondary is available.
     * `NEAREST`: Queries are distributed among all members of a shard.
 
-    :class:`~pymongo.replica_set_connection.ReplicaSetConnection`:
+    :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`:
 
     * `PRIMARY`: Queries are sent to the primary of the replica set.
     * `PRIMARY_PREFERRED`: Queries are sent to the primary if available,
@@ -73,6 +73,18 @@ modes = {
     ReadPreference.SECONDARY_PREFERRED: 'SECONDARY_PREFERRED',
     ReadPreference.NEAREST:             'NEAREST',
 }
+
+_mongos_modes = [
+    'primary',
+    'primaryPreferred',
+    'secondary',
+    'secondaryPreferred',
+    'nearest',
+]
+
+def mongos_mode(mode):
+    return _mongos_modes[mode]
+
 
 def select_primary(members):
     for member in members:
@@ -198,11 +210,3 @@ class MovingAverage(object):
         else:
             return None
 
-def mongos_mode(mode):
-    return {
-        ReadPreference.PRIMARY:             'primary',
-        ReadPreference.PRIMARY_PREFERRED:   'primaryPreferred',
-        ReadPreference.SECONDARY:           'secondary',
-        ReadPreference.SECONDARY_PREFERRED: 'secondaryPreferred',
-        ReadPreference.NEAREST:             'nearest',
-    }[mode]

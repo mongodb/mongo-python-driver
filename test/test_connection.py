@@ -253,6 +253,18 @@ class TestConnection(unittest.TestCase, TestRequestMixin):
         self.assertEqual(c, Connection("mongodb://%s:%d" %
                                        (self.host, self.port)))
 
+        self.assertTrue(Connection("mongodb://%s:%d" %
+                                (self.host, self.port),
+                                slave_okay=True).slave_okay)
+        self.assertTrue(Connection("mongodb://%s:%d/?slaveok=true;w=2" %
+                                (self.host, self.port)).slave_okay)
+
+    def test_auth_from_uri(self):
+        c = Connection(self.host, self.port)
+        # Sharded auth not supported before MongoDB 2.0
+        if is_mongos(c) and not version.at_least(c, (2, 0, 0)):
+            raise SkipTest("Auth with sharding requires MongoDB >= 2.0.0")
+
         c.admin.system.users.remove({})
         c.pymongo_test.system.users.remove({})
         c.admin.add_user("admin", "pass")
@@ -276,11 +288,6 @@ class TestConnection(unittest.TestCase, TestRequestMixin):
         Connection("mongodb://user:pass@%s:%d/pymongo_test" %
                    (self.host, self.port))
 
-        self.assertTrue(Connection("mongodb://%s:%d" %
-                                (self.host, self.port),
-                                slave_okay=True).slave_okay)
-        self.assertTrue(Connection("mongodb://%s:%d/?slaveok=true;w=2" %
-                                (self.host, self.port)).slave_okay)
         c.admin.system.users.remove({})
         c.pymongo_test.system.users.remove({})
 

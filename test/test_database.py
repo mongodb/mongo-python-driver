@@ -302,6 +302,9 @@ class TestDatabase(unittest.TestCase):
                          u"81e0e2364499209f466e75926a162d73")
 
     def test_authenticate_add_remove_user(self):
+        if (is_mongos(self.connection) and not
+            version.at_least(self.connection, (2, 0, 0))):
+            raise SkipTest("Auth with sharding requires MongoDB >= 2.0.0")
         db = self.connection.pymongo_test
         db.system.users.remove({})
         db.remove_user("mike")
@@ -342,6 +345,9 @@ class TestDatabase(unittest.TestCase):
         db.logout()
 
     def test_authenticate_and_safe(self):
+        if (is_mongos(self.connection) and not
+            version.at_least(self.connection, (2, 0, 0))):
+            raise SkipTest("Auth with sharding requires MongoDB >= 2.0.0")
         db = self.connection.auth_test
         db.system.users.remove({})
         db.add_user("bernie", "password")
@@ -364,6 +370,9 @@ class TestDatabase(unittest.TestCase):
 
 
     def test_authenticate_and_request(self):
+        if (is_mongos(self.connection) and not
+            version.at_least(self.connection, (2, 0, 0))):
+            raise SkipTest("Auth with sharding requires MongoDB >= 2.0.0")
         # Database.authenticate() needs to be in a request - check that it
         # always runs in a request, and that it restores the request state
         # (in or not in a request) properly when it's finished.

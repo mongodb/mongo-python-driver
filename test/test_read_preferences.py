@@ -480,8 +480,11 @@ class TestMongosConnection(unittest.TestCase):
         # Test default mode, PRIMARY
         cursor = c.pymongo_test.test.find()
         if is_mongos:
+            # We only set $readPreference if it's something other than
+            # PRIMARY to avoid problems with mongos versions that don't
+            # support read preferences.
             self.assertEqual(
-                {'mode': 'primary'},
+                None,
                 cursor._Cursor__query_spec().get('$readPreference')
             )
         else:
@@ -505,10 +508,18 @@ class TestMongosConnection(unittest.TestCase):
                 self.assertEqual(is_mongos, c.is_mongos)
                 cursor = c.pymongo_test.test.find()
                 if is_mongos:
-                    self.assertEqual(
-                        {'mode': mongos_mode},
-                        cursor._Cursor__query_spec().get('$readPreference')
-                    )
+                    # We don't set $readPreference for SECONDARY_PREFERRED
+                    # unless tags are in use. slaveOkay has the same effect.
+                    if mode == ReadPreference.SECONDARY_PREFERRED:
+                        self.assertEqual(
+                            None,
+                            cursor._Cursor__query_spec().get('$readPreference')
+                        )
+                    else:
+                        self.assertEqual(
+                            {'mode': mongos_mode},
+                            cursor._Cursor__query_spec().get('$readPreference')
+                        )
                 else:
                     self.assertFalse(
                         '$readPreference' in cursor._Cursor__query_spec())
@@ -544,12 +555,16 @@ class TestMongosConnection(unittest.TestCase):
                 continue
             command = SON([(cmd, 1)])
             cursor = c.pymongo_test["$cmd"].find(command.copy())
+            # White-listed commands also have to be wrapped in $query
+            command = SON([('$query', command)])
             command['$readPreference'] = {'mode': 'secondary'}
             self.assertEqual(command, cursor._Cursor__query_spec())
 
         # map_reduce inline should have read prefs
         command = SON([('mapreduce', 'test'), ('out', {'inline': 1})])
         cursor = c.pymongo_test["$cmd"].find(command.copy())
+        # White-listed commands also have to be wrapped in $query
+        command = SON([('$query', command)])
         command['$readPreference'] = {'mode': 'secondary'}
         self.assertEqual(command, cursor._Cursor__query_spec())
 

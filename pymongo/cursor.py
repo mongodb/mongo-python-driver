@@ -221,14 +221,28 @@ class Cursor(object):
             operators["$snapshot"] = True
         if self.__max_scan:
             operators["$maxScan"] = self.__max_scan
-        if self.__collection.database.connection.is_mongos:
-            read_pref = {
-                'mode': read_preferences.mongos_mode(self.__read_preference)}
+        # Only set $readPreference if it's something other than
+        # PRIMARY to avoid problems with mongos versions that
+        # don't support read preferences.
+        if (self.__collection.database.connection.is_mongos and
+            self.__read_preference != ReadPreference.PRIMARY):
 
-            if self.__tag_sets and self.__tag_sets != [{}]:
-                read_pref['tags'] = self.__tag_sets
+            has_tags = self.__tag_sets and self.__tag_sets != [{}]
 
-            operators['$readPreference'] = read_pref
+            # For maximum backwards compatibility, don't set $readPreference
+            # for SECONDARY_PREFERRED unless tags are in use. Just rely on
+            # the slaveOkay bit (set automatically if read preference is not
+            # PRIMARY), which has the same behavior.
+            if (self.__read_preference != ReadPreference.SECONDARY_PREFERRED or
+                has_tags):
+
+                read_pref = {
+                    'mode': read_preferences.mongos_mode(self.__read_preference)
+                }
+                if has_tags:
+                    read_pref['tags'] = self.__tag_sets
+
+                operators['$readPreference'] = read_pref
 
         if operators:
             # Make a shallow copy so we can cleanly rewind or clone.
@@ -238,10 +252,8 @@ class Cursor(object):
             # operators added to the spec.  Command queries can be issued
             # by db.command or calling find_one on $cmd directly
             if self.collection.name == "$cmd":
-                if not spec:
-                    return spec
                 # Don't change commands that can't be sent to secondaries
-                command_name = spec.keys()[0].lower()
+                command_name = spec and spec.keys()[0].lower() or ""
                 if command_name not in secondary_ok_commands:
                     return spec
                 elif command_name == 'mapreduce':
@@ -249,9 +261,11 @@ class Cursor(object):
                     out = spec.get('out')
                     if not isinstance(out, dict) or not out.get('inline'):
                         return spec
-            elif "$query" not in spec:
+
+            # White-listed commands must be wrapped in $query.
+            if "$query" not in spec:
                 # $query has to come first
-                spec = SON({"$query": spec})
+                spec = SON([("$query", spec)])
 
             if not isinstance(spec, SON):
                 # Ensure the spec is SON. As order is important this will
