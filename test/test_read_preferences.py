@@ -23,6 +23,7 @@ from nose.plugins.skip import SkipTest
 sys.path[0:0] = [""]
 
 from bson.son import SON
+from pymongo.cursor import _QUERY_OPTIONS
 from pymongo.replica_set_connection import ReplicaSetConnection
 from pymongo.read_preferences import (ReadPreference, modes, MovingAverage,
                                       secondary_ok_commands)
@@ -491,35 +492,57 @@ class TestMongosConnection(unittest.TestCase):
             self.assertFalse(
                 '$readPreference' in cursor._Cursor__query_spec())
 
+        # Copy these constants for brevity
+        PRIMARY_PREFERRED = ReadPreference.PRIMARY_PREFERRED
+        SECONDARY = ReadPreference.SECONDARY
+        SECONDARY_PREFERRED = ReadPreference.SECONDARY_PREFERRED
+        NEAREST = ReadPreference.NEAREST
+        SLAVE_OKAY = _QUERY_OPTIONS['slave_okay']
+
         # Test non-PRIMARY modes which can be combined with tags
-        for mode, mongos_mode in (
-            (ReadPreference.PRIMARY_PREFERRED, 'primaryPreferred'),
-            (ReadPreference.SECONDARY, 'secondary'),
-            (ReadPreference.SECONDARY_PREFERRED, 'secondaryPreferred'),
-            (ReadPreference.NEAREST, 'nearest'),
+        for kwarg, value, mongos_mode in (
+            ('read_preference', PRIMARY_PREFERRED, 'primaryPreferred'),
+            ('read_preference', SECONDARY, 'secondary'),
+            ('read_preference', SECONDARY_PREFERRED, 'secondaryPreferred'),
+            ('read_preference', NEAREST, 'nearest'),
+            ('slave_okay', True, 'secondaryPreferred'),
+            ('slave_okay', False, 'primary')
         ):
             for tag_sets in (
                 None, [{}]
             ):
-                c = get_connection(
-                    read_preference=mode,
-                    tag_sets=tag_sets)
+                # Create a connection e.g. with read_preference=NEAREST or
+                # slave_okay=True
+                c = get_connection(tag_sets=tag_sets, **{kwarg: value})
 
                 self.assertEqual(is_mongos, c.is_mongos)
                 cursor = c.pymongo_test.test.find()
                 if is_mongos:
                     # We don't set $readPreference for SECONDARY_PREFERRED
                     # unless tags are in use. slaveOkay has the same effect.
-                    if mode == ReadPreference.SECONDARY_PREFERRED:
+                    if mongos_mode == 'secondaryPreferred':
                         self.assertEqual(
                             None,
-                            cursor._Cursor__query_spec().get('$readPreference')
-                        )
+                            cursor._Cursor__query_spec().get('$readPreference'))
+
+                        self.assertTrue(
+                            cursor._Cursor__query_options() & SLAVE_OKAY)
+
+                    # Don't send $readPreference for PRIMARY either
+                    elif mongos_mode == 'primary':
+                        self.assertEqual(
+                            None,
+                            cursor._Cursor__query_spec().get('$readPreference'))
+
+                        self.assertFalse(
+                            cursor._Cursor__query_options() & SLAVE_OKAY)
                     else:
                         self.assertEqual(
                             {'mode': mongos_mode},
-                            cursor._Cursor__query_spec().get('$readPreference')
-                        )
+                            cursor._Cursor__query_spec().get('$readPreference'))
+
+                        self.assertTrue(
+                            cursor._Cursor__query_options() & SLAVE_OKAY)
                 else:
                     self.assertFalse(
                         '$readPreference' in cursor._Cursor__query_spec())
@@ -529,9 +552,16 @@ class TestMongosConnection(unittest.TestCase):
                 [{'dc': 'la'}, {'dc': 'sf'}],
                 [{'dc': 'la'}, {'dc': 'sf'}, {}],
             ):
-                c = get_connection(
-                    read_preference=mode,
-                    tag_sets=tag_sets)
+                if kwarg == 'slave_okay':
+                    # Can't use tags with slave_okay True or False, need a
+                    # real read preference
+                    self.assertRaises(
+                        ConfigurationError,
+                        get_connection, tag_sets=tag_sets, **{kwarg: value})
+
+                    continue
+
+                c = get_connection(tag_sets=tag_sets, **{kwarg: value})
 
                 self.assertEqual(is_mongos, c.is_mongos)
                 cursor = c.pymongo_test.test.find()
