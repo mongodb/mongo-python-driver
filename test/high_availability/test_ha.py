@@ -68,8 +68,7 @@ class TestDirectConnection(unittest.TestCase):
         arbiter_host, arbiter_port = ha_tools.get_arbiters()[0].split(':')
         arbiter_port = int(arbiter_port)
 
-        # A Connection succeeds no matter the read preference (although a
-        # secondary Connection with preference PRIMARY can't be queried)
+        # A Connection succeeds no matter the read preference
         for kwargs in [
             {'read_preference': ReadPreference.PRIMARY},
             {'read_preference': ReadPreference.PRIMARY_PREFERRED},
@@ -86,8 +85,8 @@ class TestDirectConnection(unittest.TestCase):
             self.assertEqual(primary_port, conn.port)
             self.assertTrue(conn.is_primary)
 
-            if kwargs.get('read_preference') != ReadPreference.SECONDARY:
-                self.assertTrue(conn.pymongo_test.test.find_one())
+            # Direct connection to primary can be queried with any read pref
+            self.assertTrue(conn.pymongo_test.test.find_one())
 
             conn = Connection(secondary_host,
                               secondary_port,
@@ -97,6 +96,8 @@ class TestDirectConnection(unittest.TestCase):
             self.assertEqual(secondary_port, conn.port)
             self.assertFalse(conn.is_primary)
 
+            # Direct connection to secondary can be queried with any read pref
+            # but PRIMARY
             if kwargs.get('read_preference') != ReadPreference.PRIMARY:
                 self.assertTrue(conn.pymongo_test.test.find_one())
             else:
