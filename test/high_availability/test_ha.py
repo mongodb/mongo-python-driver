@@ -19,6 +19,7 @@
 # a replica set. Thus each method asserts everything we want to assert for a
 # given replica-set configuration.
 
+import itertools
 import time
 import unittest
 
@@ -28,10 +29,12 @@ from ha_tools import use_greenlets
 
 from pymongo import (ReplicaSetConnection,
                      ReadPreference)
-from pymongo.mongo_replica_set_client import Member, Monitor
+from pymongo.mongo_replica_set_client import (
+    Member, Monitor, MongoReplicaSetClient)
 from pymongo.mongo_client import _partition_node
 from pymongo.connection import Connection
 from pymongo.errors import AutoReconnect, OperationFailure, ConnectionFailure
+from pymongo.read_preferences import modes
 
 from test import utils
 from test.utils import one
@@ -725,6 +728,63 @@ class TestReadPreference(unittest.TestCase):
         assertReadFrom(None, NEAREST, self.secondary_dc)
 
         self.clear_ping_times()
+
+    def test_pinning(self):
+        # To make the code terser, copy modes into local scope
+        PRIMARY = ReadPreference.PRIMARY
+        PRIMARY_PREFERRED = ReadPreference.PRIMARY_PREFERRED
+        SECONDARY = ReadPreference.SECONDARY
+        SECONDARY_PREFERRED = ReadPreference.SECONDARY_PREFERRED
+        NEAREST = ReadPreference.NEAREST
+
+        c = MongoReplicaSetClient(
+            self.seed, replicaSet=self.name, use_greenlets=use_greenlets,
+            auto_start_request=True)
+
+        # Verify that changing the mode unpins the member. We'll try it for
+        # every relevant change of mode.
+        for mode0, mode1 in itertools.permutations(
+            (PRIMARY, SECONDARY, SECONDARY_PREFERRED, NEAREST), 2
+        ):
+            # Try reading and then changing modes and reading again, see if we
+            # read from a different host
+            for _ in range(1000):
+                # pin to this host
+                host = utils.read_from_which_host(c, mode0)
+                # unpin?
+                new_host = utils.read_from_which_host(c, mode1)
+                if host != new_host:
+                    # Reading with a different mode unpinned, hooray!
+                    break
+            else:
+                self.fail(
+                    "Changing from mode %s to mode %s never unpinned" % (
+                        modes[mode0], modes[mode1]))
+
+        # Now verify changing the tag_sets unpins the member.
+        tags0 = [{'a': 'a'}, {}]
+        tags1 = [{'a': 'x'}, {}]
+        for _ in range(10000):
+            host = utils.read_from_which_host(c, NEAREST, tags0)
+            new_host = utils.read_from_which_host(c, NEAREST, tags1)
+            if host != new_host:
+                break
+        else:
+            self.fail(
+                "Changing from tags %s to tags %s never unpinned" % (
+                    tags0, tags1))
+
+        # Finally, verify changing the secondary_acceptable_latency_ms unpins
+        # the member.
+        for _ in range(10000):
+            host = utils.read_from_which_host(c, SECONDARY, None, 15)
+            new_host = utils.read_from_which_host(c, SECONDARY, None, 20)
+            if host != new_host:
+                break
+        else:
+            self.fail(
+                "Changing secondary_acceptable_latency_ms from 15 to 20"
+                " never unpinned")
 
     def tearDown(self):
         self.c.close()

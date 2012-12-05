@@ -905,23 +905,19 @@ class TestConnection(TestConnectionReplicaSetBase, TestRequestMixin):
         self.assertTrue(host in conn.secondaries)
         assertReadFrom(self, conn, host, ReadPreference.SECONDARY)
 
-        # Oddly, we expect PRIMARY_PREFERRED to keep reading from secondary,
-        # since the secondary is pinned and "matches" the preference.
-        assertReadFrom(self, conn, host, ReadPreference.PRIMARY_PREFERRED)
-
-        # Repin
-        primary = read_from_which_host(conn, ReadPreference.PRIMARY)
-        self.assertEqual(conn.primary, primary)
-        assertReadFrom(self, conn, primary, ReadPreference.NEAREST)
+        # Changing any part of read preference (mode, tag_sets, latency)
+        # unpins the current host and pins to a new one
+        primary = conn.primary
         assertReadFrom(self, conn, primary, ReadPreference.PRIMARY_PREFERRED)
 
-        # Since the we're pinned to primary we still use it
-        assertReadFrom(self, conn, primary, ReadPreference.SECONDARY_PREFERRED)
+        host = read_from_which_host(conn, ReadPreference.NEAREST)
+        assertReadFrom(self, conn, host, ReadPreference.NEAREST)
 
-        # Repin again
-        host = read_from_which_host(conn, ReadPreference.SECONDARY)
+        assertReadFrom(self, conn, primary, ReadPreference.PRIMARY_PREFERRED)
+
+        host = read_from_which_host(conn, ReadPreference.SECONDARY_PREFERRED)
         self.assertTrue(host in conn.secondaries)
-        assertReadFrom(self, conn, host, ReadPreference.SECONDARY)
+        assertReadFrom(self, conn, host, ReadPreference.SECONDARY_PREFERRED)
 
         # Unpin
         conn.end_request()

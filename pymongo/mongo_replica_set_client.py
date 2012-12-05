@@ -770,18 +770,24 @@ class MongoReplicaSetClient(common.BaseObject):
     def __schedule_refresh(self):
         self.__monitor.schedule_refresh()
 
-    def __pin_host(self, host):
+    def __pin_host(self, host, mode, tag_sets, latency):
         # After first successful read in a request, continue reading from same
         # member until read preferences change, host goes down, or
         # end_request(). This offers a small assurance that reads won't jump
         # around in time.
         self.__threadlocal.host = host
+        self.__threadlocal.read_preference = (mode, tag_sets, latency)
+
+    def __keep_pinned_host(self, mode, tag_sets, latency):
+        # If read preferences have changed, return False
+        return getattr(self.__threadlocal, 'read_preference', None) == (
+            mode, tag_sets, latency)
 
     def __pinned_host(self):
         return getattr(self.__threadlocal, 'host', None)
 
     def __unpin_host(self):
-        self.__threadlocal.host = None
+        self.__threadlocal.host = self.__threadlocal.read_preference = None
 
     def __reset_pinned_hosts(self):
         if self.__use_greenlets:
@@ -1158,7 +1164,7 @@ class MongoReplicaSetClient(common.BaseObject):
             mode = ReadPreference.PRIMARY
             tag_sets = [{}]
 
-        secondary_acceptable_latency_ms = kwargs.get(
+        latency = kwargs.get(
             'secondary_acceptable_latency_ms',
             self.secondary_acceptable_latency_ms)
 
@@ -1176,12 +1182,18 @@ class MongoReplicaSetClient(common.BaseObject):
                 self.disconnect()
             raise
 
+        # To provide some monotonic consistency, we use the same member as
+        # long as this thread is in a request and all reads use the same
+        # mode, tags, and latency. The member gets unpinned if pref changes,
+        # if member changes state, if we detect a failover and call
+        # __reset_pinned_hosts(), or if this thread calls end_request().
         errors = []
         pinned_member = self.__members.get(self.__pinned_host())
         if (pinned_member
             and pinned_member.matches_mode(mode)
             and pinned_member.matches_tag_sets(tag_sets)
             and pinned_member.up
+            and self.__keep_pinned_host(mode, tag_sets, latency)
         ):
             try:
                 return (
@@ -1204,7 +1216,7 @@ class MongoReplicaSetClient(common.BaseObject):
                 members=members,
                 mode=mode,
                 tag_sets=tag_sets,
-                latency=secondary_acceptable_latency_ms)
+                latency=latency)
 
             if not member:
                 # Ran out of members to try
@@ -1218,7 +1230,8 @@ class MongoReplicaSetClient(common.BaseObject):
                 # Success
                 if self.in_request():
                     # Keep reading from this member in this thread / greenlet
-                    self.__pin_host(member.host)
+                    # unless read preference changes
+                    self.__pin_host(member.host, mode, tag_sets, latency)
                 return member.host, response
             except AutoReconnect, why:
                 errors.append(str(why))
