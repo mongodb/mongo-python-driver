@@ -26,7 +26,7 @@ sys.path[0:0] = [""]
 import bson
 from bson.py3compat import b
 from bson import json_util
-from bson.binary import Binary, MD5_SUBTYPE
+from bson.binary import Binary, MD5_SUBTYPE, USER_DEFINED_SUBTYPE
 from bson.code import Code
 from bson.dbref import DBRef
 from bson.max_key import MaxKey
@@ -101,10 +101,42 @@ class TestJsonUtil(unittest.TestCase):
                             'f47ac10b-58cc-4372-a567-0e02b2c3d479')})
 
     def test_binary(self):
-        self.round_trip({"bin": Binary(b("\x00\x01\x02\x03\x04"))})
-        self.round_trip({
+        bin_type_dict = {"bin": Binary(b("\x00\x01\x02\x03\x04"))}
+        md5_type_dict = {
             "md5": Binary(b(' n7\x18\xaf\t/\xd1\xd1/\x80\xca\xe7q\xcc\xac'),
-                MD5_SUBTYPE)})
+                MD5_SUBTYPE)}
+        custom_type_dict = {"custom": Binary(b("hello"), USER_DEFINED_SUBTYPE)}
+
+        self.round_trip(bin_type_dict)
+        self.round_trip(md5_type_dict)
+        self.round_trip(custom_type_dict)
+
+        # PYTHON-443 ensure old type formats are supported
+        json_bin_dump = json_util.dumps(bin_type_dict)
+        self.assertTrue('"$type": "00"' in json_bin_dump)
+        self.assertEqual(bin_type_dict,
+            json_util.loads('{"bin": {"$type": 0, "$binary": "AAECAwQ="}}'))
+
+        json_bin_dump = json_util.dumps(md5_type_dict)
+        self.assertTrue('"$type": "05"' in json_bin_dump)
+        self.assertEqual(md5_type_dict,
+            json_util.loads('{"md5": {"$type": 5, "$binary":'
+                            ' "IG43GK8JL9HRL4DK53HMrA=="}}'))
+
+        json_bin_dump = json_util.dumps(custom_type_dict)
+        self.assertTrue('"$type": "80"' in json_bin_dump)
+        self.assertEqual(custom_type_dict,
+            json_util.loads('{"custom": {"$type": 128, "$binary":'
+                            ' "aGVsbG8="}}'))
+
+        # Handle mongoexport where subtype >= 128
+        self.assertEqual(128,
+            json_util.loads('{"custom": {"$type": "ffffff80", "$binary":'
+                            ' "aGVsbG8="}}')['custom'].subtype)
+
+        self.assertEqual(255,
+            json_util.loads('{"custom": {"$type": "ffffffff", "$binary":'
+                            ' "aGVsbG8="}}')['custom'].subtype)
 
     def test_code(self):
         self.round_trip({"code": Code("function x() { return 1; }")})
