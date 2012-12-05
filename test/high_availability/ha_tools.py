@@ -267,7 +267,7 @@ def get_primary():
         assert len(primaries) <= 1
         if primaries:
             return primaries[0]
-    except pymongo.errors.AutoReconnect:
+    except pymongo.errors.ConnectionFailure:
         pass
 
     return None
