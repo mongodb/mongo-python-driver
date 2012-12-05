@@ -21,21 +21,18 @@ from pymongo.errors import ConfigurationError
 
 
 class ReadPreference:
-    """An enum that defines the read preferences supported by PyMongo. Used in
-    three cases:
+    """An enum that defines the read preference modes supported by PyMongo.
+    Used in three cases:
 
-    :class:`~pymongo.mongo_client.MongoClient` to a single host:
+    :class:`~pymongo.mongo_client.MongoClient` connected to a single host:
 
-    * `PRIMARY`: Queries are allowed if the connection is to the replica set
-      primary.
-    * `PRIMARY_PREFERRED`: Queries are allowed if the connection is to the
-      primary or a secondary.
-    * `SECONDARY`: Queries are allowed if the connection is to a secondary.
-    * `SECONDARY_PREFERRED`: Same as `PRIMARY_PREFERRED`.
-    * `NEAREST`: Same as `PRIMARY_PREFERRED`.
+    * `PRIMARY`: Queries are allowed if the host is standalone or the replica
+      set primary.
+    * All other modes allow queries to standalone servers, to the primary, or
+      to secondaries.
 
-    :class:`~pymongo.mongo_client.MongoClient` to a mongos, with a sharded
-    cluster of replica sets:
+    :class:`~pymongo.mongo_client.MongoClient` connected to a mongos, with a
+    sharded cluster of replica sets:
 
     * `PRIMARY`: Queries are sent to the primary of a shard.
     * `PRIMARY_PREFERRED`: Queries are sent to the primary if available,
