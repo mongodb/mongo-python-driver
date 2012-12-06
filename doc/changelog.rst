@@ -1,6 +1,22 @@
 Changelog
 =========
 
+Changes in Version 2.4.1
+------------------------
+
+Version 2.4.1 is a minor release that fixes issues discovered after the
+release of 2.4. Most importantly, this release fixes a regression using
+:meth:`~pymongo.collection.Collection.aggregate`, and possibly other commands,
+with mongos.
+
+Issues Resolved
+...............
+
+See the `PyMongo 2.4.1 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 2.4.1 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/12286
+
 Changes in Version 2.4
 ----------------------
 
