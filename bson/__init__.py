@@ -217,11 +217,15 @@ def _get_boolean(data, position, as_class, tz_aware, uuid_subtype):
 
 
 def _get_date(data, position, as_class, tz_aware, uuid_subtype):
-    seconds = float(struct.unpack("<q", data[position:position + 8])[0]) / 1000.0
+    millis = struct.unpack("<q", data[position:position + 8])[0]
+    diff = millis % 1000
+    seconds = (millis - diff) / 1000
     position += 8
     if tz_aware:
-        return EPOCH_AWARE + datetime.timedelta(seconds=seconds), position
-    return EPOCH_NAIVE + datetime.timedelta(seconds=seconds), position
+        dt = EPOCH_AWARE + datetime.timedelta(seconds=seconds)
+    else:
+        dt = EPOCH_NAIVE + datetime.timedelta(seconds=seconds)
+    return dt.replace(microsecond=diff * 1000), position
 
 
 def _get_code(data, position, as_class, tz_aware, uuid_subtype):

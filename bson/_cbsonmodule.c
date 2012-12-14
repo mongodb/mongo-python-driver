@@ -117,8 +117,37 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer, int type_by
 
 /* Date stuff */
 static PyObject* datetime_from_millis(long long millis) {
-    int microseconds = (millis % 1000) * 1000;
-    Time64_T seconds = millis / 1000;
+    /* To encode a datetime instance like datetime(9999, 12, 31, 23, 59, 59, 999999)
+     * we follow these steps:
+     * 1. Calculate a timestamp in seconds:       253402300799
+     * 2. Multiply that by 1000:                  253402300799000
+     * 3. Add in microseconds divided by 1000     253402300799999
+     *
+     * (Note: BSON doesn't support microsecond accuracy, hence the rounding.)
+     *
+     * To decode we could do:
+     * 1. Get seconds: timestamp / 1000:          253402300799
+     * 2. Get micros: (timestamp % 1000) * 1000:  999000
+     * Resulting in datetime(9999, 12, 31, 23, 59, 59, 999000) -- the expected result
+     *
+     * Now what if the we encode (1, 1, 1, 1, 1, 1, 111111)?
+     * 1. and 2. gives:                           -62135593139000
+     * 3. Gives us:                               -62135593138889
+     *
+     * Now decode:
+     * 1. Gives us:                               -62135593138
+     * 2. Gives us:                               -889000
+     * Resulting in datetime(1, 1, 1, 1, 1, 2, 15888216) -- an invalid result
+     *
+     * If instead to decode we do:
+     * diff = ((millis % 1000) + 1000) % 1000:    111
+     * seconds = (millis - diff) / 1000:          -62135593139
+     * micros = diff * 1000                       111000
+     * Resulting in datetime(1, 1, 1, 1, 1, 1, 111000) -- the expected result
+     */
+    int diff = (int)(((millis % 1000) + 1000) % 1000);
+    int microseconds = diff * 1000;
+    Time64_T seconds = (millis - diff) / 1000;
     struct TM timeinfo;
     gmtime64_r(&seconds, &timeinfo);
 
