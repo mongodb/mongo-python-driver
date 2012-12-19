@@ -29,8 +29,7 @@ from nose.plugins.skip import SkipTest
 
 import pymongo.pool
 from pymongo.connection import Connection
-from pymongo.pool import (
-    Pool, GreenletPool, NO_REQUEST, NO_SOCKET_YET, SocketInfo)
+from pymongo.pool import Pool, NO_REQUEST, NO_SOCKET_YET, SocketInfo
 from pymongo.errors import ConfigurationError
 from test import version
 from test.test_connection import get_connection, host, port
@@ -291,12 +290,8 @@ class _TestPoolingBase(object):
         return get_connection(*args, **opts)
 
     def get_pool(self, *args, **kwargs):
-        if self.use_greenlets:
-            klass = GreenletPool
-        else:
-            klass = Pool
-
-        return klass(*args, **kwargs)
+        kwargs['use_greenlets'] = self.use_greenlets
+        return Pool(*args, **kwargs)
 
     def assert_no_request(self):
         self.assertEqual(
@@ -320,7 +315,7 @@ class _TestPoolingBase(object):
 
 
 class _TestPooling(_TestPoolingBase):
-    """Basic pool tests, to be applied both to Pool and GreenletPool"""
+    """Basic pool tests, to be run both with threads and with greenlets."""
     def test_max_pool_size_validation(self):
         self.assertRaises(
             ConfigurationError, Connection, host=host, port=port,
@@ -669,8 +664,8 @@ class _TestPooling(_TestPoolingBase):
             # This is more or less a bug in Python <= 2.6. Accessing the thread
             # local from the main thread is a necessary part of this test, and
             # realistic: in a multithreaded web server a new thread will access
-            # Pool._local soon after an old thread has died.
-            getattr(cx_pool._local, 'whatever', None)
+            # Pool._ident._local soon after an old thread has died.
+            cx_pool._ident.get()
 
         # Pool reclaimed the socket
         self.assertEqual(1, len(cx_pool.sockets))
@@ -679,8 +674,8 @@ class _TestPooling(_TestPoolingBase):
 
 class _TestMaxPoolSize(_TestPoolingBase):
     """Test that connection pool keeps proper number of idle sockets open,
-    no matter how start/end_request are called. To be applied both to Pool and
-    GreenletPool.
+    no matter how start/end_request are called. To be run both with threads and
+    with greenlets.
     """
     def _test_max_pool_size(self, start_request, end_request):
         c = self.get_connection(max_pool_size=4, auto_start_request=False)
@@ -757,7 +752,7 @@ class _TestMaxPoolSize(_TestPoolingBase):
 
 class _TestPoolSocketSharing(_TestPoolingBase):
     """Directly test that two simultaneous operations don't share a socket. To
-    be applied both to Pool and GreenletPool.
+    be run both with threads and with greenlets.
     """
     def _test_pool(self, use_request):
         """

@@ -19,33 +19,19 @@ import unittest
 from nose.plugins.skip import SkipTest
 
 from pymongo import pool
+from test.utils import looplet
 from test.test_connection import host, port
 from test.test_pooling_base import (
     _TestPooling, _TestMaxPoolSize, _TestPoolSocketSharing)
 
 
-def looplet(greenlets):
-    """World's smallest event loop; run until all greenlets are done
-    """
-    while True:
-        done = True
-
-        for g in greenlets:
-            if not g.dead:
-                done = False
-                g.switch()
-
-        if done:
-            return
-
-
 class TestPoolingGevent(_TestPooling, unittest.TestCase):
-    """Apply all the standard pool tests to GreenletPool with Gevent"""
+    """Apply all the standard pool tests with greenlets and Gevent"""
     use_greenlets = True
 
 
 class TestPoolingGeventSpecial(unittest.TestCase):
-    """Do a few special GreenletPool tests that don't use TestPoolingBase"""
+    """Do a few special greenlet tests that don't use TestPoolingBase"""
     def test_greenlet_sockets(self):
         # Check that Pool gives two sockets to two greenlets
         try:
@@ -53,13 +39,13 @@ class TestPoolingGeventSpecial(unittest.TestCase):
         except ImportError:
             raise SkipTest('greenlet not installed')
 
-        cx_pool = pool.GreenletPool(
+        cx_pool = pool.Pool(
             pair=(host,port),
             max_size=10,
             net_timeout=1000,
             conn_timeout=1000,
-            use_ssl=False
-        )
+            use_ssl=False,
+            use_greenlets=True)
 
         socks = []
 
@@ -76,11 +62,10 @@ class TestPoolingGeventSpecial(unittest.TestCase):
         self.assertNotEqual(socks[0], socks[1])
 
     def test_greenlet_sockets_with_request(self):
-        # Verify two assumptions: that start_request() with two greenlets and
-        # the regular pool will fail, meaning that the two greenlets will
-        # share one socket. Also check that start_request() with GreenletPool
-        # succeeds, meaning that two greenlets will get different sockets (this
-        # is exactly the reason for creating GreenletPool).
+        # Verify two assumptions: that start_request() with two greenlets but
+        # not use_greenlets fails, meaning that the two greenlets will
+        # share one socket. Also check that start_request() with use_greenlets
+        # succeeds, meaning that two greenlets will get different sockets.
 
         try:
             import greenlet
@@ -95,13 +80,15 @@ class TestPoolingGeventSpecial(unittest.TestCase):
             use_ssl=False,
         )
 
-        for pool_class, use_request, expect_success in [
-            (pool.GreenletPool, True, True),
-            (pool.GreenletPool, False, False),
-            (pool.Pool, True, False),
-            (pool.Pool, False, False),
+        for use_greenlets, use_request, expect_success in [
+            (True, True, True),
+            (True, False, False),
+            (False, True, False),
+            (False, False, False),
         ]:
-            cx_pool = pool_class(**pool_args)
+            pool_args_cp = pool_args.copy()
+            pool_args_cp['use_greenlets'] = use_greenlets
+            cx_pool = pool.Pool(**pool_args_cp)
 
             # Map: greenlet -> socket
             greenlet2socks = {}
@@ -144,7 +131,7 @@ class TestPoolingGeventSpecial(unittest.TestCase):
 
             # If we started a request, then there was a point at which we had
             # 2 active sockets, otherwise we always used one.
-            if use_request and pool_class is pool.GreenletPool:
+            if use_request and use_greenlets:
                 self.assertEqual(2, len(cx_pool.sockets))
             else:
                 self.assertEqual(1, len(cx_pool.sockets))
@@ -166,7 +153,7 @@ class TestPoolingGeventSpecial(unittest.TestCase):
             )
 
             if expect_success:
-                # We used the proper pool class, so start_request successfully
+                # We passed use_greenlets=True, so start_request successfully
                 # distinguished between the two greenlets.
                 self.assertNotEqual(
                     socks_for_gr0[0], socks_for_gr1[0],
@@ -174,7 +161,7 @@ class TestPoolingGeventSpecial(unittest.TestCase):
                 )
 
             else:
-                # We used the wrong pool class, so start_request didn't
+                # We passed use_greenlets=False, so start_request didn't
                 # distinguish between the two greenlets, and it gave them both
                 # the same socket.
                 self.assertEqual(

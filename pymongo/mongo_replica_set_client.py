@@ -413,15 +413,11 @@ class MongoReplicaSetClient(common.BaseObject):
             self.__opts[option] = value
         self.__opts.update(options)
 
-        if self.__opts.get('use_greenlets', False):
-            if not have_gevent:
-                raise ConfigurationError(
-                    "The gevent module is not available. "
-                    "Install the gevent package from PyPI."
-                )
-            self.pool_class = pool.GreenletPool
-        else:
-            self.pool_class = pool.Pool
+        self.__use_greenlets = options.get('use_greenlets', False)
+        if self.__use_greenlets and not have_gevent:
+            raise ConfigurationError(
+                "The gevent module is not available. "
+                "Install the gevent package from PyPI.")
 
         self.__auto_start_request = self.__opts.get('auto_start_request', False)
         self.__in_request = self.__auto_start_request
@@ -703,9 +699,9 @@ class MongoReplicaSetClient(common.BaseObject):
         """Directly call ismaster.
            Returns (response, connection_pool, ping_time in seconds).
         """
-        connection_pool = self.pool_class(
+        connection_pool = pool.Pool(
             host, self.__max_pool_size, self.__net_timeout, self.__conn_timeout,
-            self.__use_ssl)
+            self.__use_ssl, self.__use_greenlets)
 
         sock_info = connection_pool.get_socket()
         try:
