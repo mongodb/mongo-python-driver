@@ -104,6 +104,10 @@ def select_member_with_tags(members, tags, secondary_only, latency):
         if secondary_only and candidate.is_primary:
             continue
 
+        if not (candidate.is_primary or candidate.is_secondary):
+            # In RECOVERING or similar state
+            continue
+
         if candidate.matches_tags(tags):
             candidates.append(candidate)
 

@@ -61,6 +61,11 @@ EMPTY = b("")
 MAX_BSON_SIZE = 4 * 1024 * 1024
 MAX_RETRY = 3
 
+# Member states
+PRIMARY = 1
+SECONDARY = 2
+OTHER = 3
+
 MONITORS = set()
 
 def register_monitor(monitor):
@@ -194,12 +199,26 @@ class Member(object):
         self.update(ismaster_response, ping_time)
 
     def update(self, ismaster_response, ping_time):
-        self.is_primary = ismaster_response['ismaster']
+        if ismaster_response['ismaster']:
+            self.state = PRIMARY
+        elif ismaster_response.get('secondary'):
+            self.state = SECONDARY
+        else:
+            self.state = OTHER
+
         self.max_bson_size = ismaster_response.get(
             'maxBsonObjectSize', MAX_BSON_SIZE)
         self.tags = ismaster_response.get('tags', {})
         self.record_ping_time(ping_time)
         self.up = True
+
+    @property
+    def is_primary(self):
+        return self.state == PRIMARY
+
+    @property
+    def is_secondary(self):
+        return self.state == SECONDARY
 
     def get_avg_ping_time(self):
         """Get a moving average of this member's ping times
@@ -217,10 +236,12 @@ class Member(object):
         if mode == ReadPreference.PRIMARY and not self.is_primary:
             return False
 
-        if mode == ReadPreference.SECONDARY and self.is_primary:
+        if mode == ReadPreference.SECONDARY and not self.is_secondary:
             return False
 
-        return True
+        # If we're not primary or secondary, then we're in a state like
+        # RECOVERING and we don't match any mode
+        return self.is_primary or self.is_secondary
 
     def matches_tags(self, tags):
         """Return True if this member's tags are a superset of the passed-in
@@ -355,7 +376,6 @@ class MongoReplicaSetClient(common.BaseObject):
         self.__hosts = None
         self.__arbiters = set()
         self.__writer = None
-        self.__readers = []
         self.__members = {}
         self.__index_cache = {}
         self.__auth_credentials = {}
@@ -581,7 +601,9 @@ class MongoReplicaSetClient(common.BaseObject):
     def secondaries(self):
         """The secondary members known to this connection.
         """
-        return set(self.__readers)
+        return set([
+            host for host, member in self.__members.items()
+            if member.is_secondary])
 
     @property
     def arbiters(self):
@@ -701,7 +723,6 @@ class MongoReplicaSetClient(common.BaseObject):
         """Update the mapping of (host, port) pairs to connection pools.
         """
         primary = None
-        secondaries = []
         for host in self.__hosts:
             member, sock_info = None, None
             try:
@@ -724,18 +745,14 @@ class MongoReplicaSetClient(common.BaseObject):
                     member.pool.discard_socket(sock_info)
                     self.__members.pop(member.host, None)
                 continue
-            # Only use hosts that are currently in 'secondary' state
-            # as readers.
-            if res['secondary']:
-                secondaries.append(host)
-            elif res['ismaster']:
+
+            if res['ismaster']:
                 primary = host
 
         if primary != self.__writer:
             self.__reset_pinned_hosts()
 
         self.__writer = primary
-        self.__readers = secondaries
 
     def __schedule_refresh(self):
         self.__monitor.schedule_refresh()
