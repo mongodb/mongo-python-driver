@@ -288,6 +288,10 @@ def get_arbiters():
     return get_members_in_state(7)
 
 
+def get_recovering():
+    return get_members_in_state(3)
+
+
 def get_passives():
     return get_connection().admin.command('ismaster').get('passives', [])
 
@@ -345,6 +349,19 @@ def stepdown_primary():
             c.admin.command('replSetStepDown', 20)
         except:
             pass
+
+
+def set_maintenance(member, value):
+    """Put a member into RECOVERING state if value is True, else normal state.
+    """
+    c = pymongo.Connection(member, use_greenlets=use_greenlets)
+    c.admin.command('replSetMaintenance', value)
+    start = time.time()
+    while value != (member in get_recovering()):
+        assert (time.time() - start) <= 10, (
+            "Member %s never switched state" % member)
+
+        time.sleep(0.25)
 
 
 def restart_members(members, router=False):

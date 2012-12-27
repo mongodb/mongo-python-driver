@@ -187,6 +187,43 @@ class TestPassiveAndHidden(unittest.TestCase):
         ha_tools.kill_all_members()
 
 
+class TestRecovering(unittest.TestCase):
+    # Members in STARTUP2 or RECOVERING states are shown in the primary's
+    # isMaster response, but aren't secondaries and shouldn't be read from
+
+    def setUp(self):
+        members = [{}, {'priority': 0}, {'priority': 0}]
+        res = ha_tools.start_replica_set(members)
+        self.seed, self.name = res
+
+    def test_recovering(self):
+        self.c = ReplicaSetConnection(
+            self.seed, replicaSet=self.name, use_greenlets=use_greenlets,
+            auto_start_request=False)
+
+        secondaries = ha_tools.get_secondaries()
+
+        for mode in (
+            ReadPreference.SECONDARY, ReadPreference.SECONDARY_PREFERRED
+        ):
+            partitioned_secondaries = [_partition_node(s) for s in secondaries]
+            utils.assertReadFromAll(self, self.c, partitioned_secondaries, mode)
+
+        secondary, recovering_secondary = secondaries
+        ha_tools.set_maintenance(recovering_secondary, True)
+        sleep(2 * MONITOR_INTERVAL)
+
+        for mode in (
+            ReadPreference.SECONDARY, ReadPreference.SECONDARY_PREFERRED
+        ):
+            # Don't read from recovering member
+            utils.assertReadFrom(self, self.c, _partition_node(secondary), mode)
+
+    def tearDown(self):
+        self.c.close()
+        ha_tools.kill_all_members()
+
+
 class TestHealthMonitor(unittest.TestCase):
 
     def setUp(self):
