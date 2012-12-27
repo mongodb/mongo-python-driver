@@ -20,7 +20,7 @@ import traceback
 
 from nose.plugins.skip import SkipTest
 
-from test.utils import server_started_with_auth, joinall
+from test.utils import server_started_with_auth, joinall, RendezvousThread
 from test.test_connection import get_connection
 from pymongo.connection import Connection
 from pymongo.replica_set_connection import ReplicaSetConnection
@@ -137,86 +137,37 @@ class IgnoreAutoReconnect(threading.Thread):
                 pass
 
 
-class FindPauseFind(threading.Thread):
+class FindPauseFind(RendezvousThread):
     """See test_server_disconnect() for details"""
-    @classmethod
-    def shared_state(cls, nthreads):
-        class SharedState(object):
-            pass
-
-        state = SharedState()
-
-        # Number of threads total
-        state.nthreads = nthreads
-
-        # Number of threads that have arrived at rendezvous point
-        state.arrived_threads = 0
-        state.arrived_threads_lock = threading.Lock()
-
-        # set when all threads reach rendezvous
-        state.ev_arrived = threading.Event()
-
-        # set from outside FindPauseFind to let threads resume after
-        # rendezvous
-        state.ev_resume = threading.Event()
-        return state
-
     def __init__(self, collection, state):
-        """Params: A collection, an event to signal when all threads have
-        done the first find(), an event to signal when threads should resume,
-        and the total number of threads
+        """Params:
+          `collection`: A collection for testing
+          `state`: A shared state object from RendezvousThread.shared_state()
         """
-        super(FindPauseFind, self).__init__()
+        super(FindPauseFind, self).__init__(state)
         self.collection = collection
-        self.state = state
-        self.passed = False
 
-        # If this thread fails to terminate, don't hang the whole program
-        self.setDaemon(True)
+    def before_rendezvous(self):
+        # acquire a socket
+        list(self.collection.find())
 
-    def rendezvous(self):
-        # pause until all threads arrive here
-        s = self.state
-        s.arrived_threads_lock.acquire()
-        s.arrived_threads += 1
-        if s.arrived_threads == s.nthreads:
-            s.arrived_threads_lock.release()
-            s.ev_arrived.set()
-        else:
-            s.arrived_threads_lock.release()
-            s.ev_arrived.wait()
+        self.pool = get_pool(self.collection.database.connection)
+        socket_info = self.pool._get_request_state()
+        assert isinstance(socket_info, SocketInfo)
+        self.request_sock = socket_info.sock
+        assert not _closed(self.request_sock)
 
-    def run(self):
-        try:
-            # acquire a socket
-            list(self.collection.find())
-
-            pool = get_pool(self.collection.database.connection)
-            socket_info = pool._get_request_state()
-            assert isinstance(socket_info, SocketInfo)
-            self.request_sock = socket_info.sock
-            assert not _closed(self.request_sock)
-
-            # Dereference socket_info so it can potentially return to the pool
-            del socket_info
-        finally:
-            self.rendezvous()
-
-        # all threads have passed the rendezvous, wait for
-        # test_server_disconnect() to disconnect the connection
-        self.state.ev_resume.wait()
-
+    def after_rendezvous(self):
         # test_server_disconnect() has closed this socket, but that's ok
         # because it's not our request socket anymore
         assert _closed(self.request_sock)
 
         # if disconnect() properly closed all threads' request sockets, then
         # this won't raise AutoReconnect because it will acquire a new socket
-        assert self.request_sock == pool._get_request_state().sock
+        assert self.request_sock == self.pool._get_request_state().sock
         list(self.collection.find())
         assert self.collection.database.connection.in_request()
-        assert self.request_sock != pool._get_request_state().sock
-        self.passed = True
+        assert self.request_sock != self.pool._get_request_state().sock
 
 
 class BaseTestThreads(object):
@@ -320,7 +271,7 @@ class BaseTestThreads(object):
         assert isinstance(socket_info, SocketInfo)
         request_sock = socket_info.sock
 
-        state = FindPauseFind.shared_state(nthreads=40)
+        state = FindPauseFind.create_shared_state(nthreads=40)
 
         threads = [
             FindPauseFind(collection, state)
@@ -332,12 +283,9 @@ class BaseTestThreads(object):
             t.start()
 
         # Wait for the threads to reach the rendezvous
-        state.ev_arrived.wait(10)
-        self.assertTrue(state.ev_arrived.isSet(), "Thread timeout")
+        FindPauseFind.wait_for_rendezvous(state)
 
         try:
-            self.assertEqual(state.nthreads, state.arrived_threads)
-
             # Simulate an event that closes all sockets, e.g. primary stepdown
             for t in threads:
                 t.request_sock.close()
@@ -355,7 +303,7 @@ class BaseTestThreads(object):
 
         finally:
             # Let threads do a second find()
-            state.ev_resume.set()
+            FindPauseFind.resume_after_rendezvous(state)
 
         joinall(threads)
 

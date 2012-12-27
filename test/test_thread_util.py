@@ -29,68 +29,108 @@ from pymongo import thread_util
 if thread_util.have_greenlet:
     import greenlet
 
-from test.utils import looplet
+from test.utils import looplet, RendezvousThread
 
 
 class TestIdent(unittest.TestCase):
+    """Ensure thread_util.Ident works for threads and greenlets. This has
+    gotten intricate from refactoring: we have classes, Watched and Unwatched,
+    that implement the logic for the two child threads / greenlets. For the
+    greenlet case it's easy to ensure the two children are alive at once, so
+    we run the Watched and Unwatched logic directly. For the thread case we
+    mix in the RendezvousThread class so we're sure both children are alive
+    when they call Ident.get().
+
+    1. Store main thread's / greenlet's id
+    2. Start 2 child threads / greenlets
+    3. Store their values for Ident.get()
+    4. Children reach rendezvous point
+    5. Children call Ident.watch()
+    6. One of the children calls Ident.unwatch()
+    7. Children terminate
+    8. Assert that children got different ids from each other and from main,
+      and assert watched child's callback was executed, and that unwatched
+      child's callback was not
+    """
     def _test_ident(self, use_greenlets):
         ident = thread_util.create_ident(use_greenlets)
 
         ids = set([ident.get()])
         unwatched_id = []
-        done = set([ident.get()]) # Start with main thread's id
+        done = set([ident.get()]) # Start with main thread's / greenlet's id
         died = set()
 
-        def watched_thread():
-            my_id = ident.get()
-            time.sleep(.1) # Ensure other thread starts so we don't recycle ids
-            ids.add(my_id)
-            self.assertFalse(ident.watching())
+        class Watched(object):
+            def __init__(self, ident):
+                self._ident = ident
 
-            def on_died(ref):
-                died.add(my_id)
+            def before_rendezvous(self):
+                self.my_id = self._ident.get()
+                ids.add(self.my_id)
 
-            ident.watch(on_died)
-            self.assertTrue(ident.watching())
-            done.add(my_id)
+            def after_rendezvous(self):
+                assert not self._ident.watching()
+                self._ident.watch(lambda ref: died.add(self.my_id))
+                assert self._ident.watching()
+                done.add(self.my_id)
 
-        def unwatched_thread():
-            my_id = ident.get()
-            time.sleep(.1) # Ensure other thread starts so we don't recycle ids
-            unwatched_id.append(my_id)
-            ids.add(my_id)
-            self.assertFalse(ident.watching())
+        class Unwatched(Watched):
+            def before_rendezvous(self):
+                Watched.before_rendezvous(self)
+                unwatched_id.append(self.my_id)
 
-            def on_died(ref):
-                died.add(my_id)
-
-            ident.watch(on_died)
-            self.assertTrue(ident.watching())
-            ident.unwatch()
-            self.assertFalse(ident.watching())
-            done.add(my_id)
+            def after_rendezvous(self):
+                Watched.after_rendezvous(self)
+                self._ident.unwatch()
+                assert not self._ident.watching()
 
         if use_greenlets:
-            t_watched = greenlet.greenlet(watched_thread)
-            t_unwatched = greenlet.greenlet(unwatched_thread)
+            class WatchedGreenlet(Watched):
+                def run(self):
+                    self.before_rendezvous()
+                    self.after_rendezvous()
+
+            class UnwatchedGreenlet(Unwatched):
+                def run(self):
+                    self.before_rendezvous()
+                    self.after_rendezvous()
+
+            t_watched = greenlet.greenlet(WatchedGreenlet(ident).run)
+            t_unwatched = greenlet.greenlet(UnwatchedGreenlet(ident).run)
             looplet([t_watched, t_unwatched])
         else:
-            t_watched = threading.Thread(target=watched_thread)
-            t_watched.setDaemon(True)
+            class WatchedThread(Watched, RendezvousThread):
+                def __init__(self, ident, state):
+                    Watched.__init__(self, ident)
+                    RendezvousThread.__init__(self, state)
+
+            class UnwatchedThread(Unwatched, RendezvousThread):
+                def __init__(self, ident, state):
+                    Unwatched.__init__(self, ident)
+                    RendezvousThread.__init__(self, state)
+
+            state = RendezvousThread.create_shared_state(2)
+            t_watched = WatchedThread(ident, state)
             t_watched.start()
 
-            t_unwatched = threading.Thread(target=unwatched_thread)
-            t_unwatched.setDaemon(True)
+            t_unwatched = UnwatchedThread(ident, state)
             t_unwatched.start()
+
+            RendezvousThread.wait_for_rendezvous(state)
+            RendezvousThread.resume_after_rendezvous(state)
 
             t_watched.join()
             t_unwatched.join()
+
+            self.assertTrue(t_watched.passed)
+            self.assertTrue(t_unwatched.passed)
 
         # Remove references, let weakref callbacks run
         del t_watched
         del t_unwatched
 
         # Accessing the thread-local triggers cleanup in Python <= 2.6
+        # http://bugs.python.org/issue1868
         ident.get()
         self.assertEqual(3, len(ids))
         self.assertEqual(3, len(done))
@@ -127,11 +167,11 @@ class TestCounter(unittest.TestCase):
         done = set()
 
         def f(n):
-            for i in range(n):
+            for i in xrange(n):
                 self.assertEqual(i, counter.get())
                 self.assertEqual(i + 1, counter.inc())
 
-            for i in range(n, 0, -1):
+            for i in xrange(n, 0, -1):
                 self.assertEqual(i, counter.get())
                 self.assertEqual(i - 1, counter.dec())
 
@@ -147,11 +187,11 @@ class TestCounter(unittest.TestCase):
 
         if use_greenlets:
             greenlets = [
-                greenlet.greenlet(partial(f, i)) for i in range(10)]
+                greenlet.greenlet(partial(f, i)) for i in xrange(10)]
             looplet(greenlets)
         else:
             threads = [
-                threading.Thread(target=partial(f, i)) for i in range(10)]
+                threading.Thread(target=partial(f, i)) for i in xrange(10)]
             for t in threads:
                 t.start()
             for t in threads:
