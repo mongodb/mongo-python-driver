@@ -41,6 +41,14 @@ from test import utils
 Monitor._refresh_interval = MONITOR_INTERVAL = 0.5
 
 
+# To make the code terser, copy modes into module scope
+PRIMARY = ReadPreference.PRIMARY
+PRIMARY_PREFERRED = ReadPreference.PRIMARY_PREFERRED
+SECONDARY = ReadPreference.SECONDARY
+SECONDARY_PREFERRED = ReadPreference.SECONDARY_PREFERRED
+NEAREST = ReadPreference.NEAREST
+
+
 class TestDirectConnection(unittest.TestCase):
 
     def setUp(self):
@@ -70,11 +78,11 @@ class TestDirectConnection(unittest.TestCase):
 
         # A Connection succeeds no matter the read preference
         for kwargs in [
-            {'read_preference': ReadPreference.PRIMARY},
-            {'read_preference': ReadPreference.PRIMARY_PREFERRED},
-            {'read_preference': ReadPreference.SECONDARY},
-            {'read_preference': ReadPreference.SECONDARY_PREFERRED},
-            {'read_preference': ReadPreference.NEAREST},
+            {'read_preference': PRIMARY},
+            {'read_preference': PRIMARY_PREFERRED},
+            {'read_preference': SECONDARY},
+            {'read_preference': SECONDARY_PREFERRED},
+            {'read_preference': NEAREST},
             {'slave_okay': True}
         ]:
             conn = Connection(primary_host,
@@ -98,7 +106,7 @@ class TestDirectConnection(unittest.TestCase):
 
             # Direct connection to secondary can be queried with any read pref
             # but PRIMARY
-            if kwargs.get('read_preference') != ReadPreference.PRIMARY:
+            if kwargs.get('read_preference') != PRIMARY:
                 self.assertTrue(conn.pymongo_test.test.find_one())
             else:
                 self.assertRaises(
@@ -163,9 +171,7 @@ class TestPassiveAndHidden(unittest.TestCase):
         hidden = [_partition_node(member) for member in hidden]
         self.assertEqual(self.c.secondaries, set(passives))
 
-        for mode in (
-            ReadPreference.SECONDARY, ReadPreference.SECONDARY_PREFERRED
-        ):
+        for mode in SECONDARY, SECONDARY_PREFERRED:
             db.read_preference = mode
             for _ in xrange(10):
                 cursor = db.test.find()
@@ -175,7 +181,7 @@ class TestPassiveAndHidden(unittest.TestCase):
 
         ha_tools.kill_members(ha_tools.get_passives(), 2)
         sleep(2 * MONITOR_INTERVAL)
-        db.read_preference = ReadPreference.SECONDARY_PREFERRED
+        db.read_preference = SECONDARY_PREFERRED
 
         for _ in xrange(10):
             cursor = db.test.find()
@@ -203,9 +209,7 @@ class TestRecovering(unittest.TestCase):
 
         secondaries = ha_tools.get_secondaries()
 
-        for mode in (
-            ReadPreference.SECONDARY, ReadPreference.SECONDARY_PREFERRED
-        ):
+        for mode in SECONDARY, SECONDARY_PREFERRED:
             partitioned_secondaries = [_partition_node(s) for s in secondaries]
             utils.assertReadFromAll(self, self.c, partitioned_secondaries, mode)
 
@@ -213,9 +217,7 @@ class TestRecovering(unittest.TestCase):
         ha_tools.set_maintenance(recovering_secondary, True)
         sleep(2 * MONITOR_INTERVAL)
 
-        for mode in (
-            ReadPreference.SECONDARY, ReadPreference.SECONDARY_PREFERRED
-        ):
+        for mode in SECONDARY, SECONDARY_PREFERRED:
             # Don't read from recovering member
             utils.assertReadFrom(self, self.c, _partition_node(secondary), mode)
 
@@ -361,7 +363,7 @@ class TestReadWithFailover(unittest.TestCase):
         db.test.insert([{'foo': i} for i in xrange(10)], safe=True, w=w)
         self.assertEqual(10, db.test.count())
 
-        db.read_preference = ReadPreference.SECONDARY_PREFERRED
+        db.read_preference = SECONDARY_PREFERRED
         cursor = db.test.find().batch_size(5)
         cursor.next()
         self.assertEqual(5, cursor._Cursor__retrieved)
@@ -457,13 +459,7 @@ class TestReadPreference(unittest.TestCase):
             host, port = node
             return '%s:%s' % (host, port)
 
-        # To make the code terser, copy modes and hosts into local scope
-        PRIMARY = ReadPreference.PRIMARY
-        PRIMARY_PREFERRED = ReadPreference.PRIMARY_PREFERRED
-        SECONDARY = ReadPreference.SECONDARY
-        SECONDARY_PREFERRED = ReadPreference.SECONDARY_PREFERRED
-        NEAREST = ReadPreference.NEAREST
-
+        # To make the code terser, copy hosts into local scope
         primary = self.primary
         secondary = self.secondary
         other_secondary = self.other_secondary
@@ -710,7 +706,7 @@ class TestReplicaSetAuth(unittest.TestCase):
         # Make sure we can still authenticate
         self.assertTrue(self.db.authenticate('user', 'userpass'))
         # And still query.
-        self.db.read_preference = ReadPreference.PRIMARY_PREFERRED
+        self.db.read_preference = PRIMARY_PREFERRED
         self.assertEqual('bar', self.db.foo.find_one()['foo'])
 
     def tearDown(self):
