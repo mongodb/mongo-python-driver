@@ -134,6 +134,9 @@ def assertReadFromAll(testcase, rsc, members, *args, **kwargs):
     used = set()
     for _ in range(100):
         used.add(read_from_which_host(rsc, *args, **kwargs))
+        if used == members:
+            # Early success
+            break
 
     testcase.assertEqual(members, used)
 
