@@ -28,7 +28,6 @@ from ha_tools import use_greenlets
 
 from pymongo import (ReplicaSetConnection,
                      ReadPreference)
-from pymongo.read_preferences import modes
 from pymongo.mongo_replica_set_client import Member, Monitor
 from pymongo.mongo_client import _partition_node
 from pymongo.connection import Connection
