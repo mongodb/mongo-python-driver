@@ -127,8 +127,8 @@ def assertReadFromAll(testcase, rsc, members, *args, **kwargs):
       - `rsc`: A ReplicaSetConnection
       - `members`: Sequence of replica_set_connection.Member expected to be used
       - `mode`: A ReadPreference
-      - `tag_sets`: List of dicts of tags for data-center-aware reads
-      - `secondary_acceptable_latency_ms`: a float
+      - `tag_sets` (optional): List of dicts of tags for data-center-aware reads
+      - `secondary_acceptable_latency_ms` (optional): a float
     """
     members = set(members)
     used = set()
