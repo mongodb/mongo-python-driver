@@ -159,33 +159,17 @@ class TestPassiveAndHidden(unittest.TestCase):
     def test_passive_and_hidden(self):
         self.c = ReplicaSetConnection(
             self.seed, replicaSet=self.name, use_greenlets=use_greenlets)
-        db = self.c.pymongo_test
-        w = len(self.c.secondaries) + 1
-        db.test.remove({}, safe=True, w=w)
-        db.test.insert({'foo': 'bar'}, safe=True, w=w)
 
         passives = ha_tools.get_passives()
         passives = [_partition_node(member) for member in passives]
-        hidden = ha_tools.get_hidden_members()
-        hidden = [_partition_node(member) for member in hidden]
         self.assertEqual(self.c.secondaries, set(passives))
 
         for mode in SECONDARY, SECONDARY_PREFERRED:
-            db.read_preference = mode
-            for _ in xrange(10):
-                cursor = db.test.find()
-                cursor.next()
-                self.assertTrue(cursor._Cursor__connection_id in passives)
-                self.assertTrue(cursor._Cursor__connection_id not in hidden)
+            utils.assertReadFromAll(self, self.c, passives, mode)
 
         ha_tools.kill_members(ha_tools.get_passives(), 2)
         sleep(2 * MONITOR_INTERVAL)
-        db.read_preference = SECONDARY_PREFERRED
-
-        for _ in xrange(10):
-            cursor = db.test.find()
-            cursor.next()
-            self.assertEqual(cursor._Cursor__connection_id, self.c.primary)
+        utils.assertReadFrom(self, self.c, self.c.primary, SECONDARY_PREFERRED)
 
     def tearDown(self):
         self.c.close()
