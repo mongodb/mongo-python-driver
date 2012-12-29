@@ -15,6 +15,7 @@
 """Utilities for choosing which member of a replica set to read from."""
 
 import random
+import threading
 from collections import deque
 
 from pymongo.errors import ConfigurationError
@@ -192,22 +193,32 @@ secondary_ok_commands = frozenset([
 
 
 class MovingAverage(object):
-    """Tracks a moving average. Not thread-safe.
+    """Tracks a moving average.
     """
     def __init__(self, window_sz):
         self.window_sz = window_sz
         self.samples = deque()
         self.total = 0
+        self.lock = threading.Lock()
 
     def update(self, sample):
-        self.samples.append(sample)
-        self.total += sample
-        if len(self.samples) > self.window_sz:
-            self.total -= self.samples.popleft()
+        # One reason we synchronize MovingAverage is that Jython's
+        # popleft isn't safe: http://bugs.jython.org/issue2001
+        self.lock.acquire()
+        try:
+            self.samples.append(sample)
+            self.total += sample
+            if len(self.samples) > self.window_sz:
+                self.total -= self.samples.popleft()
+        finally:
+            self.lock.release()
 
     def get(self):
-        if self.samples:
-            return self.total / float(len(self.samples))
-        else:
-            return None
-
+        self.lock.acquire()
+        try:
+            if self.samples:
+                return self.total / float(len(self.samples))
+            else:
+                return None
+        finally:
+            self.lock.release()
