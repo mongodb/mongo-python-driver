@@ -119,8 +119,8 @@ def assertReadFrom(testcase, rsc, member, *args, **kwargs):
 
 def assertReadFromAll(testcase, rsc, members, *args, **kwargs):
     """Check that a query with the given mode, tag_sets, and
-       secondary_acceptable_latency_ms can read from any of a set of
-       replica-set members.
+    secondary_acceptable_latency_ms reads from all members in a set, and
+    only members in that set.
 
     :Parameters:
       - `testcase`: A unittest.TestCase
@@ -134,9 +134,6 @@ def assertReadFromAll(testcase, rsc, members, *args, **kwargs):
     used = set()
     for _ in range(100):
         used.add(read_from_which_host(rsc, *args, **kwargs))
-        if used == members:
-            # Early success
-            break
 
     testcase.assertEqual(members, used)
 
