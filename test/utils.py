@@ -21,6 +21,10 @@ from pymongo.errors import AutoReconnect
 from pymongo.pool import NO_REQUEST, NO_SOCKET_YET, SocketInfo
 
 
+def one(s):
+    """Get one element of a set"""
+    return iter(s).next()
+
 def delay(sec):
     # Javascript sleep() only available in MongoDB since version ~1.9
     return '''function() {

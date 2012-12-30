@@ -33,7 +33,7 @@ from pymongo.pool import Pool, NO_REQUEST, NO_SOCKET_YET, SocketInfo
 from pymongo.errors import ConfigurationError
 from test import version
 from test.test_connection import get_connection, host, port
-from test.utils import delay, is_mongos
+from test.utils import delay, is_mongos, one
 
 N = 50
 DB = "pymongo-pooling-tests"
@@ -50,11 +50,6 @@ try:
     has_gevent = True
 except ImportError:
     has_gevent = False
-
-
-def one(s):
-    """Get one element of a set"""
-    return iter(s).next()
 
 
 class MongoThread(object):
