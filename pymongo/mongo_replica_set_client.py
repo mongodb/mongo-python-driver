@@ -904,6 +904,7 @@ class MongoReplicaSetClient(common.BaseObject):
         member = self.__members.get(self.__writer)
         if member:
             member.pool.reset()
+        self.__schedule_refresh()
         self.__writer = None
 
     def close(self):

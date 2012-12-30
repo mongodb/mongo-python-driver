@@ -34,6 +34,7 @@ from pymongo.connection import Connection
 from pymongo.errors import AutoReconnect, OperationFailure
 
 from test import utils
+from test.utils import one
 
 
 # Override default 30-second interval for faster testing
@@ -176,16 +177,18 @@ class TestPassiveAndHidden(unittest.TestCase):
         ha_tools.kill_all_members()
 
 
-class TestRecovering(unittest.TestCase):
+class TestMonitorRemovesRecoveringMember(unittest.TestCase):
     # Members in STARTUP2 or RECOVERING states are shown in the primary's
-    # isMaster response, but aren't secondaries and shouldn't be read from
+    # isMaster response, but aren't secondaries and shouldn't be read from.
+    # Verify that if a secondary goes into RECOVERING mode, the Monitor removes
+    # it from the set of readers.
 
     def setUp(self):
         members = [{}, {'priority': 0}, {'priority': 0}]
         res = ha_tools.start_replica_set(members)
         self.seed, self.name = res
 
-    def test_recovering(self):
+    def test_monitor_removes_recovering_member(self):
         self.c = ReplicaSetConnection(
             self.seed, replicaSet=self.name, use_greenlets=use_greenlets,
             auto_start_request=False)
@@ -205,6 +208,76 @@ class TestRecovering(unittest.TestCase):
             utils.assertReadFrom(self, self.c, _partition_node(secondary), mode)
 
     def tearDown(self):
+        self.c.close()
+        ha_tools.kill_all_members()
+
+
+class TestTriggeredRefresh(unittest.TestCase):
+    # Verify that if a secondary goes into RECOVERING mode or if the primary
+    # changes, the next exception triggers an immediate refresh.
+
+    def setUp(self):
+        members = [{}, {}]
+        res = ha_tools.start_replica_set(members)
+        self.seed, self.name = res
+
+        # Disable periodic refresh
+        Monitor._refresh_interval = 1e6
+
+    def test_recovering_member_triggers_refresh(self):
+        self.c = ReplicaSetConnection(
+            self.seed, replicaSet=self.name, use_greenlets=use_greenlets,
+            auto_start_request=False)
+
+        # We've started the primary and one secondary
+        primary = ha_tools.get_primary()
+        secondary = ha_tools.get_secondaries()[0]
+        self.assertEqual(one(self.c.secondaries), _partition_node(secondary))
+        ha_tools.set_maintenance(secondary, True)
+
+        # Trigger a refresh
+        self.assertRaises(
+            AutoReconnect,
+            self.c.test.test.find_one, read_preference=SECONDARY)
+
+        # Wait for the immediate refresh to complete - we're not waiting for
+        # the periodic refresh, which has been disabled
+        sleep(1)
+
+        self.assertFalse(self.c.secondaries)
+        self.assertEqual(_partition_node(primary), self.c.primary)
+
+    def test_stepdown_triggers_refresh(self):
+        self.c = ReplicaSetConnection(
+            self.seed, replicaSet=self.name, use_greenlets=use_greenlets,
+            auto_start_request=False)
+
+        # We've started the primary and one secondary
+        primary = ha_tools.get_primary()
+        secondary = ha_tools.get_secondaries()[0]
+        self.assertEqual(one(self.c.secondaries), _partition_node(secondary))
+
+        ha_tools.stepdown_primary()
+
+        # Make sure the stepdown completes
+        sleep(1)
+
+        # Trigger a refresh
+        self.assertRaises(
+            AutoReconnect,
+            self.c.test.test.find_one, read_preference=PRIMARY)
+
+        # Wait for the immediate refresh to complete - we're not waiting for
+        # the periodic refresh, which has been disabled
+        sleep(1)
+
+        # We've detected the stepdown
+        self.assertTrue(
+            not self.c.primary or primary != _partition_node(self.c.primary))
+
+    def tearDown(self):
+        Monitor._refresh_interval = MONITOR_INTERVAL
+
         self.c.close()
         ha_tools.kill_all_members()
 
