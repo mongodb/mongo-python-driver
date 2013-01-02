@@ -117,7 +117,7 @@ class TestDirectConnection(unittest.TestCase):
             try:
                 conn.pymongo_test.test.insert({}, safe=False)
             except AutoReconnect, e:
-                self.assertEqual('not master', e.message)
+                self.assertEqual('not master', e.args[0])
             else:
                 self.fail(
                     'Unacknowledged insert into secondary connection %s should'
@@ -133,7 +133,7 @@ class TestDirectConnection(unittest.TestCase):
             try:
                 conn.pymongo_test.test.insert({}, safe=False)
             except AutoReconnect, e:
-                self.assertEqual('not master', e.message)
+                self.assertEqual('not master', e.args[0])
             else:
                 self.fail(
                     'Unacknowledged insert into arbiter connection %s should'
