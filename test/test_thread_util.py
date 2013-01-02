@@ -19,7 +19,6 @@ import sys
 import threading
 import time
 import unittest
-from functools import partial
 
 sys.path[0:0] = [""]
 
@@ -155,6 +154,16 @@ class TestIdent(unittest.TestCase):
         self._test_ident(True)
 
 
+# No functools in Python 2.4
+def my_partial(f, *args, **kwargs):
+    def _f(*new_args, **new_kwargs):
+        final_kwargs = kwargs.copy()
+        final_kwargs.update(new_kwargs)
+        return f(*(args + new_args), **final_kwargs)
+
+    return _f
+
+
 class TestCounter(unittest.TestCase):
     def _test_counter(self, use_greenlets):
         counter = thread_util.Counter(use_greenlets)
@@ -187,11 +196,11 @@ class TestCounter(unittest.TestCase):
 
         if use_greenlets:
             greenlets = [
-                greenlet.greenlet(partial(f, i)) for i in xrange(10)]
+                greenlet.greenlet(my_partial(f, i)) for i in xrange(10)]
             looplet(greenlets)
         else:
             threads = [
-                threading.Thread(target=partial(f, i)) for i in xrange(10)]
+                threading.Thread(target=my_partial(f, i)) for i in xrange(10)]
             for t in threads:
                 t.start()
             for t in threads:
