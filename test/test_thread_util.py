@@ -61,16 +61,16 @@ class TestIdent(unittest.TestCase):
 
         class Watched(object):
             def __init__(self, ident):
-                self._ident = ident
+                self._my_ident = ident
 
             def before_rendezvous(self):
-                self.my_id = self._ident.get()
+                self.my_id = self._my_ident.get()
                 ids.add(self.my_id)
 
             def after_rendezvous(self):
-                assert not self._ident.watching()
-                self._ident.watch(lambda ref: died.add(self.my_id))
-                assert self._ident.watching()
+                assert not self._my_ident.watching()
+                self._my_ident.watch(lambda ref: died.add(self.my_id))
+                assert self._my_ident.watching()
                 done.add(self.my_id)
 
         class Unwatched(Watched):
@@ -80,8 +80,8 @@ class TestIdent(unittest.TestCase):
 
             def after_rendezvous(self):
                 Watched.after_rendezvous(self)
-                self._ident.unwatch()
-                assert not self._ident.watching()
+                self._my_ident.unwatch()
+                assert not self._my_ident.watching()
 
         if use_greenlets:
             class WatchedGreenlet(Watched):
