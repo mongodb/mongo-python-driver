@@ -458,7 +458,7 @@ class MongoReplicaSetClient(common.BaseObject):
                 raise ConfigurationError("authentication failed")
 
         # Start the monitor after we know the configuration is correct.
-        if self.__opts.get('use_greenlets', False):
+        if self.__use_greenlets:
             self.__monitor = MonitorGreenlet(self)
         else:
             self.__monitor = MonitorThread(self)
@@ -767,7 +767,7 @@ class MongoReplicaSetClient(common.BaseObject):
         self.__threadlocal.host = None
 
     def __reset_pinned_hosts(self):
-        if self.__opts.get('use_greenlets', False):
+        if self.__use_greenlets:
             self.__threadlocal = gevent_local()
         else:
             self.__threadlocal = threading.local()
