@@ -225,37 +225,46 @@ class TestTriggeredRefresh(unittest.TestCase):
         Monitor._refresh_interval = 1e6
 
     def test_recovering_member_triggers_refresh(self):
-        self.c = ReplicaSetConnection(
-            self.seed, replicaSet=self.name, use_greenlets=use_greenlets,
-            auto_start_request=False)
+        # To test that find_one() and count() trigger immediate refreshes,
+        # we'll create a separate connection for each
+        self.c_find_one, self.c_count = [
+            ReplicaSetConnection(
+                self.seed, replicaSet=self.name, use_greenlets=use_greenlets,
+                auto_start_request=False, read_preference=SECONDARY)
+            for _ in xrange(2)]
 
         # We've started the primary and one secondary
         primary = ha_tools.get_primary()
         secondary = ha_tools.get_secondaries()[0]
-        self.assertEqual(one(self.c.secondaries), _partition_node(secondary))
+
+        # Pre-condition: just make sure they all connected OK
+        for c in self.c_find_one, self.c_count:
+            self.assertEqual(one(c.secondaries), _partition_node(secondary))
+
         ha_tools.set_maintenance(secondary, True)
 
-        # Trigger a refresh
-        self.assertRaises(
-            AutoReconnect,
-            self.c.test.test.find_one, read_preference=SECONDARY)
+        # Trigger a refresh in various ways
+        self.assertRaises(AutoReconnect, self.c_find_one.test.test.find_one)
+        self.assertRaises(AutoReconnect, self.c_count.test.test.count)
 
         # Wait for the immediate refresh to complete - we're not waiting for
         # the periodic refresh, which has been disabled
         sleep(1)
 
-        self.assertFalse(self.c.secondaries)
-        self.assertEqual(_partition_node(primary), self.c.primary)
+        for c in self.c_find_one, self.c_count:
+            self.assertFalse(c.secondaries)
+            self.assertEqual(_partition_node(primary), c.primary)
 
     def test_stepdown_triggers_refresh(self):
-        self.c = ReplicaSetConnection(
+        c_find_one = ReplicaSetConnection(
             self.seed, replicaSet=self.name, use_greenlets=use_greenlets,
             auto_start_request=False)
 
         # We've started the primary and one secondary
         primary = ha_tools.get_primary()
         secondary = ha_tools.get_secondaries()[0]
-        self.assertEqual(one(self.c.secondaries), _partition_node(secondary))
+        self.assertEqual(
+            one(c_find_one.secondaries), _partition_node(secondary))
 
         ha_tools.stepdown_primary()
 
@@ -263,9 +272,7 @@ class TestTriggeredRefresh(unittest.TestCase):
         sleep(1)
 
         # Trigger a refresh
-        self.assertRaises(
-            AutoReconnect,
-            self.c.test.test.find_one, read_preference=PRIMARY)
+        self.assertRaises(AutoReconnect, c_find_one.test.test.find_one)
 
         # Wait for the immediate refresh to complete - we're not waiting for
         # the periodic refresh, which has been disabled
@@ -273,12 +280,11 @@ class TestTriggeredRefresh(unittest.TestCase):
 
         # We've detected the stepdown
         self.assertTrue(
-            not self.c.primary or primary != _partition_node(self.c.primary))
+            not c_find_one.primary
+            or primary != _partition_node(c_find_one.primary))
 
     def tearDown(self):
         Monitor._refresh_interval = MONITOR_INTERVAL
-
-        self.c.close()
         ha_tools.kill_all_members()
 
 

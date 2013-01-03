@@ -899,13 +899,14 @@ class MongoReplicaSetClient(common.BaseObject):
         return sock_info
 
     def disconnect(self):
-        """Disconnect from the replica set primary.
+        """Disconnect from the replica set primary and refresh our view of
+        the replica set.
         """
         member = self.__members.get(self.__writer)
         if member:
             member.pool.reset()
-        self.__schedule_refresh()
         self.__writer = None
+        self.__schedule_refresh()
 
     def close(self):
         """Close this connection instance.

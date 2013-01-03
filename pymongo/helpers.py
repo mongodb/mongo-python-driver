@@ -130,7 +130,8 @@ def _check_command_response(response, reset, msg="%s", allowable_errors=[]):
                     break
 
         if not details["errmsg"] in allowable_errors:
-            if details["errmsg"] == "not master":
+            if (details["errmsg"].startswith("not master")
+                or details["errmsg"].startswith("node is recovering")):
                 if reset is not None:
                     reset()
                 raise AutoReconnect("not master")
