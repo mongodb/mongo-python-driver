@@ -225,7 +225,7 @@ def assertReadFrom(testcase, rsc, member, *args, **kwargs):
     :Parameters:
       - `testcase`: A unittest.TestCase
       - `rsc`: A ReplicaSetConnection
-      - `member`: replica_set_connection.Member expected to be used
+      - `member`: A host:port expected to be used
       - `mode`: A ReadPreference
       - `tag_sets`: List of dicts of tags for data-center-aware reads
       - `secondary_acceptable_latency_ms`: a float
@@ -241,7 +241,7 @@ def assertReadFromAll(testcase, rsc, members, *args, **kwargs):
     :Parameters:
       - `testcase`: A unittest.TestCase
       - `rsc`: A ReplicaSetConnection
-      - `members`: Sequence of replica_set_connection.Member expected to be used
+      - `members`: Sequence of host:port expected to be used
       - `mode`: A ReadPreference
       - `tag_sets` (optional): List of dicts of tags for data-center-aware reads
       - `secondary_acceptable_latency_ms` (optional): a float
