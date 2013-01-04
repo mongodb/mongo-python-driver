@@ -271,7 +271,6 @@ class TestCursor(unittest.TestCase):
         self.assertRaises(TypeError, db.test.find().sort, [], ASCENDING)
         self.assertRaises(TypeError, db.test.find().sort,
                           [("hello", DESCENDING)], DESCENDING)
-        self.assertRaises(TypeError, db.test.find().sort, "hello", "world")
 
         db.test.drop()
 

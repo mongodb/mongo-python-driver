@@ -33,7 +33,7 @@ from bson.code import Code
 from bson.objectid import ObjectId
 from bson.py3compat import b
 from bson.son import SON
-from pymongo import ASCENDING, DESCENDING, GEO2D, GEOHAYSTACK
+from pymongo import ASCENDING, DESCENDING, GEO2D, GEOHAYSTACK, TEXT
 from pymongo.collection import Collection
 from pymongo.son_manipulator import SONManipulator
 from pymongo.errors import (ConfigurationError,
@@ -385,6 +385,23 @@ class TestCollection(unittest.TestCase):
             "pos": {"long": 34.2, "lat": 33.3},
             "type": "restaurant"
         }, results[0])
+
+    def test_index_text(self):
+        if not version.at_least(self.connection, (2, 3, 2, -1)):
+            raise SkipTest("Text search requires server >=2.3.2.")
+
+        self.connection.admin.command('setParameter', '*',
+                                      textSearchEnabled=True)
+
+        db = self.db
+        db.test.drop_indexes()
+        self.assertEqual("t_text", db.test.create_index([("t", TEXT)]))
+        index_info = db.test.index_information()["t_text"]
+        self.assertTrue("weights" in index_info)
+        db.test.drop_indexes()
+
+        self.connection.admin.command('setParameter', '*',
+                                      textSearchEnabled=False)
 
     def test_index_sparse(self):
         db = self.db

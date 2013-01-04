@@ -25,9 +25,9 @@ GEO2D = "2d"
 
 .. versionadded:: 1.5.1
 
-.. note:: Geo-spatial indexing requires server version **>= 1.3.3+**.
+.. note:: Geo-spatial indexing requires server version **>= 1.3.3**.
 
-.. _geospatial index: http://www.mongodb.org/display/DOCS/Geospatial+Indexing
+.. _geospatial index: http://docs.mongodb.org/manual/core/geospatial-indexes/
 """
 
 GEOHAYSTACK = "geoHaystack"
@@ -35,9 +35,17 @@ GEOHAYSTACK = "geoHaystack"
 
 .. versionadded:: 2.1
 
-.. note:: Geo-spatial indexing requires server version **>= 1.5.6+**.
+.. note:: Geo-spatial indexing requires server version **>= 1.5.6**.
 
-.. _geospatial index: http://www.mongodb.org/display/DOCS/Geospatial+Haystack+Indexing
+.. _haystack index: http://docs.mongodb.org/manual/core/geospatial-indexes/#haystack-indexes
+"""
+
+TEXT = "text"
+"""Index specifier for text search.
+
+.. versionadded:: 2.4.2
+
+.. note:: Text search requires server version **>= 2.3.2**.
 """
 
 
