@@ -100,7 +100,7 @@ def _unpack_response(response, cursor_id=None,
     elif response_flag & 2:
         error_object = bson.BSON(response[20:]).decode()
         if error_object["$err"].startswith("not master"):
-            raise AutoReconnect("master has changed")
+            raise AutoReconnect(error_object["$err"])
         raise OperationFailure("database error: %s" %
                                error_object["$err"])
 
@@ -130,20 +130,21 @@ def _check_command_response(response, reset, msg="%s", allowable_errors=[]):
                     details = shard
                     break
 
-        if not details["errmsg"] in allowable_errors:
-            if (details["errmsg"].startswith("not master")
-                or details["errmsg"].startswith("node is recovering")):
+        errmsg = details["errmsg"]
+        if not errmsg in allowable_errors:
+            if (errmsg.startswith("not master")
+                or errmsg.startswith("node is recovering")):
                 if reset is not None:
                     reset()
-                raise AutoReconnect("not master")
-            if details["errmsg"] == "db assertion failure":
+                raise AutoReconnect(errmsg)
+            if errmsg == "db assertion failure":
                 ex_msg = ("db assertion failure, assertion: '%s'" %
                           details.get("assertion", ""))
                 if "assertionCode" in details:
                     ex_msg += (", assertionCode: %d" %
                                (details["assertionCode"],))
                 raise OperationFailure(ex_msg, details.get("assertionCode"))
-            raise OperationFailure(msg % details["errmsg"])
+            raise OperationFailure(msg % errmsg)
 
 
 def _password_digest(username, password):
