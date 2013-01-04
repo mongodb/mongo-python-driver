@@ -269,9 +269,9 @@ class _TestPoolingBase(object):
         db = self.c[DB]
         db.unique.drop()
         db.test.drop()
-        db.unique.insert({"_id": "jesse"})
+        db.unique.insert({"_id": "jesse"}, safe=True)
 
-        db.test.insert([{} for i in range(10)])
+        db.test.insert([{} for i in range(10)], safe=True)
 
     def tearDown(self):
         self.c.close()
