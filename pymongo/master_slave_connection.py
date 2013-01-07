@@ -22,7 +22,7 @@ or all slaves failed.
 from pymongo import helpers, thread_util
 from pymongo import ReadPreference
 from pymongo.common import BaseObject
-from pymongo.connection import Connection
+from pymongo.mongo_client import MongoClient
 from pymongo.database import Database
 from pymongo.errors import AutoReconnect
 
@@ -35,19 +35,20 @@ class MasterSlaveConnection(BaseObject):
         """Create a new Master-Slave connection.
 
         The resultant connection should be interacted with using the same
-        mechanisms as a regular `Connection`. The `Connection` instances used
+        mechanisms as a regular `MongoClient`. The `MongoClient` instances used
         to create this `MasterSlaveConnection` can themselves make use of
-        connection pooling, etc. 'Connection' instances used as slaves should
+        connection pooling, etc. `MongoClient` instances used as slaves should
         be created with the read_preference option set to
-        :attr:`~pymongo.read_preferences.ReadPreference.SECONDARY`. Safe
-        options are inherited from `master` and can be changed in this instance.
+        :attr:`~pymongo.read_preferences.ReadPreference.SECONDARY`. Write
+        concerns are inherited from `master` and can be changed in this
+        instance.
 
-        Raises TypeError if `master` is not an instance of `Connection` or
-        slaves is not a list of at least one `Connection` instances.
+        Raises TypeError if `master` is not an instance of `MongoClient` or
+        slaves is not a list of at least one `MongoClient` instances.
 
         :Parameters:
-          - `master`: `Connection` instance for the writable Master
-          - `slaves` (optional): list of `Connection` instances for the
+          - `master`: `MongoClient` instance for the writable Master
+          - `slaves` (optional): list of `MongoClient` instances for the
             read-only slaves
           - `document_class` (optional): default class to use for
             documents returned from queries on this connection
@@ -56,14 +57,14 @@ class MasterSlaveConnection(BaseObject):
             in a document by this :class:`MasterSlaveConnection` will be timezone
             aware (otherwise they will be naive)
         """
-        if not isinstance(master, Connection):
-            raise TypeError("master must be a Connection instance")
+        if not isinstance(master, MongoClient):
+            raise TypeError("master must be a MongoClient instance")
         if not isinstance(slaves, list) or len(slaves) == 0:
             raise TypeError("slaves must be a list of length >= 1")
 
         for slave in slaves:
-            if not isinstance(slave, Connection):
-                raise TypeError("slave %r is not an instance of Connection" %
+            if not isinstance(slave, MongoClient):
+                raise TypeError("slave %r is not an instance of MongoClient" %
                                 slave)
 
         super(MasterSlaveConnection,
@@ -122,7 +123,7 @@ class MasterSlaveConnection(BaseObject):
         Disconnecting will call disconnect on all master and slave
         connections.
 
-        .. seealso:: Module :mod:`~pymongo.connection`
+        .. seealso:: Module :mod:`~pymongo.mongo_client`
         .. versionadded:: 1.10.1
         """
         self.__master.disconnect()
@@ -132,7 +133,7 @@ class MasterSlaveConnection(BaseObject):
     def set_cursor_manager(self, manager_class):
         """Set the cursor manager for this connection.
 
-        Helper to set cursor manager for each individual `Connection` instance
+        Helper to set cursor manager for each individual `MongoClient` instance
         that make up this `MasterSlaveConnection`.
         """
         self.__master.set_cursor_manager(manager_class)
@@ -220,7 +221,7 @@ class MasterSlaveConnection(BaseObject):
     def end_request(self):
         """End the current "request".
 
-        See documentation for `Connection.end_request`.
+        See documentation for `MongoClient.end_request`.
         """
         self.__request_counter.dec()
         self.master.end_request()
@@ -267,7 +268,7 @@ class MasterSlaveConnection(BaseObject):
 
         :Parameters:
           - `cursor_id`: cursor id to close
-          - `connection_id`: id of the `Connection` instance where the cursor
+          - `connection_id`: id of the `MongoClient` instance where the cursor
             was opened
         """
         if connection_id == -1:
