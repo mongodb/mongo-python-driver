@@ -217,7 +217,10 @@ class GridIn(object):
                  "n": self._chunk_number,
                  "data": Binary(data)}
 
-        self._chunks.insert(chunk)
+        try:
+            self._chunks.insert(chunk)
+        except DuplicateKeyError:
+            self._raise_file_exists(self._file['_id'])
         self._chunk_number += 1
         self._position += len(data)
 
@@ -253,7 +256,11 @@ class GridIn(object):
             return self._coll.files.insert(self._file,
                                            **self._coll._get_wc_override())
         except DuplicateKeyError:
-            raise FileExists("file with _id %r already exists" % self._id)
+            self._raise_file_exists(self._id)
+
+    def _raise_file_exists(self, file_id):
+        """Raise a FileExists exception for the given file_id."""
+        raise FileExists("file with _id %r already exists" % file_id)
 
     def close(self):
         """Flush the file and close it.
