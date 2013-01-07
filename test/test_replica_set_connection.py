@@ -22,6 +22,7 @@ import socket
 import sys
 import time
 import thread
+import threading
 import traceback
 import unittest
 
@@ -45,7 +46,7 @@ from pymongo.errors import (AutoReconnect,
 from test import version
 from test.utils import (
     delay, assertReadFrom, assertReadFromAll, read_from_which_host,
-    assertRaisesExactly)
+    assertRaisesExactly, TestRequestMixin)
 
 
 host = os.environ.get("DB_IP", 'localhost')
@@ -99,7 +100,7 @@ class TestConnectionReplicaSetBase(unittest.TestCase):
             replicaSet=self.name,
             **kwargs)
 
-class TestConnection(TestConnectionReplicaSetBase):
+class TestConnection(TestConnectionReplicaSetBase, TestRequestMixin):
     def test_connect(self):
         assertRaisesExactly(ConnectionFailure, ReplicaSetConnection,
                           "somedomainthatdoesntexist.org:27017",
@@ -717,18 +718,30 @@ class TestConnection(TestConnectionReplicaSetBase):
                 lambda: self._get_connection(auto_start_request=bad_horrible_value)
             )
 
-        # auto_start_request should default to True
         conn = self._get_connection()
+        self.assertTrue(conn.auto_start_request)
         pools = [mongo.pool for mongo in
                  conn._MongoReplicaSetClient__members.values()]
+
+        primary_pool = conn._MongoReplicaSetClient__members[conn.primary].pool
         self.assertTrue(conn.auto_start_request)
         self.assertTrue(conn.in_request())
 
-        # Trigger the RSC to actually start a request
+        # Trigger the RSC to actually start a request on primary pool
         conn.test.test.find_one()
+        self.assertTrue(primary_pool.in_request())
 
-        for pool in pools:
-            self.assertTrue(pool.in_request())
+        # Trigger the RSC to actually start a request on secondary pool
+        cursor = conn.test.test.find(read_preference=ReadPreference.SECONDARY)
+        try:
+            cursor.next()
+        except StopIteration:
+            # No results, no problem
+            pass
+
+        secondary = cursor._Cursor__connection_id
+        secondary_pool = conn._MongoReplicaSetClient__members[secondary].pool
+        self.assertTrue(secondary_pool.in_request())
 
         conn.end_request()
         self.assertFalse(conn.in_request())
@@ -745,6 +758,92 @@ class TestConnection(TestConnectionReplicaSetBase):
         conn.end_request()
         self.assertFalse(conn.in_request())
         conn.close()
+
+    def test_nested_request(self):
+        # auto_start_request is True
+        conn = self._get_connection()
+        try:
+            pools = [member.pool for member in
+                conn._MongoReplicaSetClient__members.values()]
+            self.assertTrue(conn.in_request())
+
+            # Start and end request - we're still in "outer" original request
+            conn.start_request()
+            self.assertInRequestAndSameSock(conn, pools)
+            conn.end_request()
+            self.assertInRequestAndSameSock(conn, pools)
+
+            # Double-nesting
+            conn.start_request()
+            conn.start_request()
+            self.assertEqual(
+                3, conn._MongoReplicaSetClient__request_counter.get())
+
+            for pool in pools:
+                # MRSC only called start_request() once per pool, although its
+                # own counter is 2.
+                self.assertEqual(1, pool._request_counter.get())
+
+            conn.end_request()
+            conn.end_request()
+            self.assertInRequestAndSameSock(conn, pools)
+
+            self.assertEqual(
+                1, conn._MongoReplicaSetClient__request_counter.get())
+
+            for pool in pools:
+                self.assertEqual(1, pool._request_counter.get())
+
+            # Finally, end original request
+            conn.end_request()
+            for pool in pools:
+                self.assertFalse(pool.in_request())
+
+            self.assertNotInRequestAndDifferentSock(conn, pools)
+        finally:
+            conn.close()
+
+    def test_request_threads(self):
+        conn = self._get_connection(auto_start_request=False)
+        try:
+            pools = [member.pool for member in
+                conn._MongoReplicaSetClient__members.values()]
+            self.assertNotInRequestAndDifferentSock(conn, pools)
+
+            started_request, ended_request = threading.Event(), threading.Event()
+            checked_request = threading.Event()
+            thread_done = [False]
+
+            # Starting a request in one thread doesn't put the other thread in a
+            # request
+            def f():
+                self.assertNotInRequestAndDifferentSock(conn, pools)
+                conn.start_request()
+                self.assertInRequestAndSameSock(conn, pools)
+                started_request.set()
+                checked_request.wait()
+                checked_request.clear()
+                self.assertInRequestAndSameSock(conn, pools)
+                conn.end_request()
+                self.assertNotInRequestAndDifferentSock(conn, pools)
+                ended_request.set()
+                checked_request.wait()
+                thread_done[0] = True
+
+            t = threading.Thread(target=f)
+            t.setDaemon(True)
+            t.start()
+            started_request.wait()
+            self.assertNotInRequestAndDifferentSock(conn, pools)
+            checked_request.set()
+            ended_request.wait()
+            self.assertNotInRequestAndDifferentSock(conn, pools)
+            checked_request.set()
+            t.join()
+            self.assertNotInRequestAndDifferentSock(conn, pools)
+            self.assertTrue(thread_done[0], "Thread didn't complete")
+        finally:
+            conn.close()
 
     def test_schedule_refresh(self):
         # Monitor thread starts waiting for _refresh_interval, 30 seconds

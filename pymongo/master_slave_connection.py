@@ -19,7 +19,7 @@ slaves. Reads are tried on each slave in turn until the read succeeds
 or all slaves failed.
 """
 
-from pymongo import helpers
+from pymongo import helpers, thread_util
 from pymongo import ReadPreference
 from pymongo.common import BaseObject
 from pymongo.connection import Connection
@@ -71,11 +71,11 @@ class MasterSlaveConnection(BaseObject):
                              safe=master.safe,
                              **(master.get_lasterror_options()))
 
-        self.__in_request = False
         self.__master = master
         self.__slaves = slaves
         self.__document_class = document_class
         self.__tz_aware = tz_aware
+        self.__request_counter = thread_util.Counter(master.use_greenlets)
 
     @property
     def master(self):
@@ -92,6 +92,15 @@ class MasterSlaveConnection(BaseObject):
         .. versionadded:: 2.3
         """
         return False
+
+    @property
+    def use_greenlets(self):
+        """Whether calling :meth:`start_request` assigns greenlet-local,
+        rather than thread-local, sockets.
+
+        .. versionadded:: 2.4.1+
+        """
+        return self.master.use_greenlets
 
     def get_document_class(self):
         return self.__document_class
@@ -179,7 +188,7 @@ class MasterSlaveConnection(BaseObject):
         # _must_use_master is set for commands, which must be sent to the
         # master instance. any queries in a request must be sent to the
         # master since that is where writes go.
-        if _must_use_master or self.__in_request:
+        if _must_use_master or self.in_request():
             return (-1, self.__master._send_message_with_response(message,
                                                                   **kwargs))
 
@@ -202,16 +211,19 @@ class MasterSlaveConnection(BaseObject):
         that all operations performed within a request will be sent
         using the Master connection.
         """
+        self.__request_counter.inc()
         self.master.start_request()
-        self.__in_request = True
+
+    def in_request(self):
+        return bool(self.__request_counter.get())
 
     def end_request(self):
         """End the current "request".
 
         See documentation for `Connection.end_request`.
         """
-        self.__in_request = False
-        self.__master.end_request()
+        self.__request_counter.dec()
+        self.master.end_request()
 
     def __eq__(self, other):
         if isinstance(other, MasterSlaveConnection):

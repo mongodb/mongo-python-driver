@@ -31,7 +31,7 @@ from pymongo import (ReplicaSetConnection,
 from pymongo.mongo_replica_set_client import Member, Monitor
 from pymongo.mongo_client import _partition_node
 from pymongo.connection import Connection
-from pymongo.errors import AutoReconnect, OperationFailure
+from pymongo.errors import AutoReconnect, OperationFailure, ConnectionFailure
 
 from test import utils
 from test.utils import one
@@ -854,6 +854,60 @@ class TestMongosHighAvailability(unittest.TestCase):
 
     def tearDown(self):
         self.conn.drop_database(self.dbname)
+        ha_tools.kill_all_members()
+
+
+class TestReplicaSetRequest(unittest.TestCase):
+    def setUp(self):
+        members = [{}, {}, {'arbiterOnly': True}]
+        res = ha_tools.start_replica_set(members)
+        self.c = ReplicaSetConnection(res[0], replicaSet=res[1],
+                                      use_greenlets=use_greenlets)
+
+    def test_request_during_failover(self):
+        primary = _partition_node(ha_tools.get_primary())
+        secondary = _partition_node(ha_tools.get_random_secondary())
+
+        self.assertTrue(self.c.auto_start_request)
+        self.assertTrue(self.c.in_request())
+
+        primary_pool = self.c._MongoReplicaSetClient__members[primary].pool
+        secondary_pool = self.c._MongoReplicaSetClient__members[secondary].pool
+
+        # Trigger start_request on primary pool
+        utils.assertReadFrom(self, self.c, primary, PRIMARY)
+        self.assertTrue(primary_pool.in_request())
+
+        # Fail over
+        ha_tools.kill_primary()
+        patience_seconds = 60
+        for _ in range(patience_seconds):
+            sleep(1)
+            try:
+                if ha_tools.get_primary():
+                    # We have a new primary
+                    break
+            except ConnectionFailure:
+                pass
+        else:
+            self.fail("Problem with test: No new primary after %s seconds"
+                % patience_seconds)
+
+        try:
+            # Trigger start_request on secondary_pool, which is becoming new
+            # primary
+            self.c.test.test.find_one()
+        except AutoReconnect:
+            # We've noticed the failover now
+            pass
+
+        # The old secondary is now primary
+        utils.assertReadFrom(self, self.c, secondary, PRIMARY)
+        self.assertTrue(self.c.in_request())
+        self.assertTrue(secondary_pool.in_request())
+
+    def tearDown(self):
+        self.c.close()
         ha_tools.kill_all_members()
 
 

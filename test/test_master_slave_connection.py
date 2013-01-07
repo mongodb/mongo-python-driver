@@ -17,6 +17,7 @@
 import datetime
 import os
 import sys
+import threading
 import time
 import unittest
 sys.path[0:0] = [""]
@@ -33,13 +34,17 @@ from pymongo.database import Database
 from pymongo.connection import Connection
 from pymongo.collection import Collection
 from pymongo.master_slave_connection import MasterSlaveConnection
+from test.utils import TestRequestMixin
+from test.test_connection import host, port
 
-
-class TestMasterSlaveConnection(unittest.TestCase):
+class TestMasterSlaveConnection(unittest.TestCase, TestRequestMixin):
 
     def setUp(self):
-        host = os.environ.get("DB_IP", "localhost")
-        self.master = Connection(host, int(os.environ.get("DB_PORT", 27017)))
+        # For TestRequestMixin:
+        self.host = host
+        self.port = port
+
+        self.master = Connection(host, port)
 
         self.slaves = []
         try:
@@ -231,6 +236,75 @@ class TestMasterSlaveConnection(unittest.TestCase):
                 count += 1
             self.connection.end_request()
         self.assertFalse(count)
+
+    def test_nested_request(self):
+        conn = self.connection
+
+        def assertRequest(in_request):
+            self.assertEqual(in_request, conn.in_request())
+            self.assertEqual(in_request, conn.master.in_request())
+
+        # MasterSlaveConnection is special, alas - it has no auto_start_request
+        # and it begins *not* in a request. When it's in a request, it sends
+        # all queries to primary.
+        self.assertFalse(conn.in_request())
+        self.assertTrue(conn.master.in_request())
+        conn.master.end_request()
+
+        # Start and end request
+        conn.start_request()
+        assertRequest(True)
+        conn.end_request()
+        assertRequest(False)
+
+        # Double-nesting
+        conn.start_request()
+        conn.start_request()
+        conn.end_request()
+        assertRequest(True)
+        conn.end_request()
+        assertRequest(False)
+
+    def test_request_threads(self):
+        conn = self.connection
+
+        # In a request, all ops go through master
+        pool = conn.master._MongoClient__pool
+        conn.master.end_request()
+        self.assertNotInRequestAndDifferentSock(conn, pool)
+
+        started_request, ended_request = threading.Event(), threading.Event()
+        checked_request = threading.Event()
+        thread_done = [False]
+
+        # Starting a request in one thread doesn't put the other thread in a
+        # request
+        def f():
+            self.assertNotInRequestAndDifferentSock(conn, pool)
+            conn.start_request()
+            self.assertInRequestAndSameSock(conn, pool)
+            started_request.set()
+            checked_request.wait()
+            checked_request.clear()
+            self.assertInRequestAndSameSock(conn, pool)
+            conn.end_request()
+            self.assertNotInRequestAndDifferentSock(conn, pool)
+            ended_request.set()
+            checked_request.wait()
+            thread_done[0] = True
+
+        t = threading.Thread(target=f)
+        t.setDaemon(True)
+        t.start()
+        started_request.wait()
+        self.assertNotInRequestAndDifferentSock(conn, pool)
+        checked_request.set()
+        ended_request.wait()
+        self.assertNotInRequestAndDifferentSock(conn, pool)
+        checked_request.set()
+        t.join()
+        self.assertNotInRequestAndDifferentSock(conn, pool)
+        self.assertTrue(thread_done[0], "Thread didn't complete")
 
     # This was failing because commands were being sent to the slaves
     def test_create_collection(self):

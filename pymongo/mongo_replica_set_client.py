@@ -47,6 +47,7 @@ from pymongo import (common,
                      helpers,
                      message,
                      pool,
+                     thread_util,
                      uri_parser)
 from pymongo.read_preferences import (
     ReadPreference, select_member, modes, MovingAverage)
@@ -419,8 +420,12 @@ class MongoReplicaSetClient(common.BaseObject):
                 "The gevent module is not available. "
                 "Install the gevent package from PyPI.")
 
+        self.__request_counter = thread_util.Counter(self.__use_greenlets)
+
         self.__auto_start_request = self.__opts.get('auto_start_request', False)
-        self.__in_request = self.__auto_start_request
+        if self.__auto_start_request:
+            self.start_request()
+
         self.__reset_pinned_hosts()
         self.__name = self.__opts.get('replicaset')
         if not self.__name:
@@ -628,6 +633,15 @@ class MongoReplicaSetClient(common.BaseObject):
         """
         return self.__max_pool_size
 
+    @property
+    def use_greenlets(self):
+        """Whether calling :meth:`start_request` assigns greenlet-local,
+        rather than thread-local, sockets.
+
+        .. versionadded:: 2.4.1+
+        """
+        return self.__use_greenlets
+
     def get_document_class(self):
         """document_class getter"""
         return self.__document_class
@@ -702,6 +716,9 @@ class MongoReplicaSetClient(common.BaseObject):
         connection_pool = pool.Pool(
             host, self.__max_pool_size, self.__net_timeout, self.__conn_timeout,
             self.__use_ssl, self.__use_greenlets)
+
+        if self.in_request():
+            connection_pool.start_request()
 
         sock_info = connection_pool.get_socket()
         try:
@@ -888,8 +905,7 @@ class MongoReplicaSetClient(common.BaseObject):
     def __socket(self, member):
         """Get a SocketInfo from the pool.
         """
-        if self.__auto_start_request:
-            # No effect if a request already started
+        if self.auto_start_request and not self.in_request():
             self.start_request()
 
         sock_info = member.pool.get_socket()
@@ -1250,10 +1266,16 @@ class MongoReplicaSetClient(common.BaseObject):
            The :class:`~pymongo.pool.Request` return value.
            :meth:`start_request` previously returned None
         """
-        for member in self.__members.values():
-            member.pool.start_request()
+        # We increment our request counter's thread- or greenlet-local value
+        # for every call to start_request; however, we only call each pool's
+        # start_request once to start a request, and call each pool's
+        # end_request once to end it. We don't let pools' request counters
+        # exceed 1. This keeps things sane when we create and delete pools
+        # within a request.
+        if 1 == self.__request_counter.inc():
+            for member in self.__members.values():
+                member.pool.start_request()
 
-        self.__in_request = True
         return pool.Request(self)
 
     def in_request(self):
@@ -1261,7 +1283,7 @@ class MongoReplicaSetClient(common.BaseObject):
         :meth:`end_request`, or if `auto_start_request` is True and
         :meth:`end_request` has not been called in this thread or greenlet.
         """
-        return self.__in_request
+        return bool(self.__request_counter.get())
 
     def end_request(self):
         """Undo :meth:`start_request` and allow this thread's connections to
@@ -1277,11 +1299,12 @@ class MongoReplicaSetClient(common.BaseObject):
         in the middle of a sequence of operations in which ordering is
         important. This could lead to unexpected results.
         """
-        for member in self.__members.values():
-            member.pool.end_request()
+        if 0 == self.__request_counter.dec():
+            for member in self.__members.values():
+                # No effect if not in a request
+                member.pool.end_request()
 
-        self.__in_request = False
-        self.__unpin_host()
+            self.__unpin_host()
 
     def __eq__(self, other):
         # XXX: Implement this?
@@ -1404,10 +1427,9 @@ class MongoReplicaSetClient(common.BaseObject):
         if from_host is not None:
             command["fromhost"] = from_host
 
-        in_request = self.in_request()
         try:
-            if not in_request:
-                self.start_request()
+            self.start_request()
+
             if username is not None:
                 nonce = self.admin.command("copydbgetnonce",
                                            fromhost=from_host)["nonce"]
@@ -1417,5 +1439,4 @@ class MongoReplicaSetClient(common.BaseObject):
 
             return self.admin.command("copydb", **command)
         finally:
-            if not in_request:
-                self.end_request()
+            self.end_request()

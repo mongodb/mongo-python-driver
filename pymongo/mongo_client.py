@@ -428,6 +428,15 @@ class MongoClient(common.BaseObject):
         return self.__max_pool_size
 
     @property
+    def use_greenlets(self):
+        """Whether calling :meth:`start_request` assigns greenlet-local,
+        rather than thread-local, sockets.
+
+        .. versionadded:: 2.4.1+
+        """
+        return self.__use_greenlets
+
+    @property
     def nodes(self):
         """List of all known nodes.
 
