@@ -24,6 +24,7 @@ sys.path[0:0] = [""]
 from nose.plugins.skip import SkipTest
 
 from bson.code import Code
+from bson.son import SON
 from pymongo import (ASCENDING,
                      DESCENDING)
 from pymongo.database import Database
@@ -521,6 +522,12 @@ class TestCursor(unittest.TestCase):
         self.assertEqual(id(cursor2._Cursor__spec['reflexive']),
                          id(cursor2._Cursor__spec))
         self.assertEqual(len(cursor2._Cursor__spec), 2)
+
+        # Ensure hints are cloned as the correct type
+        cursor = self.db.test.find().hint([('z', 1), ("a", 1)])
+        cursor2 = copy.deepcopy(cursor)
+        self.assertTrue(isinstance(cursor2._Cursor__hint, SON))
+        self.assertEqual(cursor._Cursor__hint, cursor2._Cursor__hint)
 
     def test_add_remove_option(self):
         cursor = self.db.test.find()

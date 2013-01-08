@@ -14,9 +14,11 @@
 
 """Tests for the son module."""
 
-import unittest
-import sys
+import copy
 import pickle
+import re
+import sys
+import unittest
 sys.path[0:0] = [""]
 
 from nose.plugins.skip import SkipTest
@@ -110,6 +112,41 @@ class TestSON(unittest.TestCase):
         )
         son_2_1_1 = pickle.loads(pickled_with_2_1_1)
         self.assertEqual(son_2_1_1, SON([]))
+
+    def test_copying(self):
+        simple_son = SON([])
+        complex_son = SON([('son', simple_son),
+                           ('list', [simple_son, simple_son])])
+        regex_son = SON([("x", re.compile("^hello.*"))])
+        reflexive_son = SON([('son', simple_son)])
+        reflexive_son["reflexive"] = reflexive_son
+
+        simple_son1 = copy.copy(simple_son)
+        self.assertEqual(simple_son, simple_son1)
+
+        complex_son1 = copy.copy(complex_son)
+        self.assertEqual(complex_son, complex_son1)
+
+        regex_son1 = copy.copy(regex_son)
+        self.assertEqual(regex_son, regex_son1)
+
+        reflexive_son1 = copy.copy(reflexive_son)
+        self.assertEqual(reflexive_son, reflexive_son1)
+
+        # Test deepcopying
+        simple_son1 = copy.deepcopy(simple_son)
+        self.assertEqual(simple_son, simple_son1)
+
+        regex_son1 = copy.deepcopy(regex_son)
+        self.assertEqual(regex_son, regex_son1)
+
+        complex_son1 = copy.deepcopy(complex_son)
+        self.assertEqual(complex_son, complex_son1)
+
+        reflexive_son1 = copy.deepcopy(reflexive_son)
+        self.assertEqual(reflexive_son.keys(), reflexive_son1.keys())
+        self.assertEqual(id(reflexive_son1), id(reflexive_son1["reflexive"]))
+
 
 if __name__ == "__main__":
     unittest.main()

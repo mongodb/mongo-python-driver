@@ -32,7 +32,7 @@ from bson.max_key import MaxKey
 from bson.min_key import MinKey
 from bson.objectid import ObjectId
 from bson.py3compat import b, binary_type
-from bson.son import SON
+from bson.son import SON, RE_TYPE
 from bson.timestamp import Timestamp
 from bson.tz_util import utc
 
@@ -51,9 +51,6 @@ except ImportError:
 
 PY3 = sys.version_info[0] == 3
 
-
-# This sort of sucks, but seems to be as good as it gets...
-RE_TYPE = type(re.compile(""))
 
 MAX_INT32 = 2147483647
 MIN_INT32 = -2147483648

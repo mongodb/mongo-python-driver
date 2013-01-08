@@ -19,6 +19,10 @@ of keys is important. A SON object can be used just like a normal Python
 dictionary."""
 
 import copy
+import re
+
+# This sort of sucks, but seems to be as good as it gets...
+RE_TYPE = type(re.compile(""))
 
 
 class SON(dict):
@@ -227,6 +231,12 @@ class SON(dict):
 
     def __deepcopy__(self, memo):
         out = SON()
+        val_id = id(self)
+        if val_id in memo:
+            return memo.get(val_id)
+        memo[val_id] = out
         for k, v in self.iteritems():
-            out[k] = copy.deepcopy(v, memo)
+            if not isinstance(v, RE_TYPE):
+                v = copy.deepcopy(v, memo)
+            out[k] = v
         return out

@@ -854,7 +854,7 @@ class Cursor(object):
             return memo.get(val_id)
         memo[val_id] = y
         for key, value in x.iteritems():
-            if isinstance(value, dict):
+            if isinstance(value, dict) and not isinstance(value, SON):
                 value = self.__deepcopy(value, memo)
             elif not isinstance(value, RE_TYPE):
                 value = copy.deepcopy(value, memo)
