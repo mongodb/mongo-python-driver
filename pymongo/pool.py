@@ -36,8 +36,12 @@ NO_SOCKET_YET = -1
 
 if sys.platform.startswith('java'):
     from select import cpython_compatible_select as select
+    from java.lang.management import ManagementFactory
+    def _os_getpid():
+        return ManagementFactory.getRuntimeMXBean().getName()
 else:
     from select import select
+    _os_getpid = os.getpid
 
 
 def _closed(sock):
@@ -119,7 +123,7 @@ class Pool:
         # Keep track of resets, so we notice sockets created before the most
         # recent reset and close them.
         self.pool_id = 0
-        self.pid = os.getpid()
+        self.pid = _os_getpid()
         self.pair = pair
         self.max_size = max_size
         self.net_timeout = net_timeout
@@ -137,7 +141,7 @@ class Pool:
         # Ignore this race condition -- if many threads are resetting at once,
         # the pool_id will definitely change, which is all we care about.
         self.pool_id += 1
-        self.pid = os.getpid()
+        self.pid = _os_getpid()
 
         sockets = None
         try:
@@ -235,7 +239,7 @@ class Pool:
         # We use the pid here to avoid issues with fork / multiprocessing.
         # See test.test_connection:TestConnection.test_fork for an example of
         # what could go wrong otherwise
-        if self.pid != os.getpid():
+        if self.pid != _os_getpid():
             self.reset()
 
         # Have we opened a socket for this request?
@@ -313,7 +317,7 @@ class Pool:
     def maybe_return_socket(self, sock_info):
         """Return the socket to the pool unless it's the request socket.
         """
-        if self.pid != os.getpid():
+        if self.pid != _os_getpid():
             self.reset()
         elif sock_info not in (NO_REQUEST, NO_SOCKET_YET):
             if sock_info.closed:

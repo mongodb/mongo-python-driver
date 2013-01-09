@@ -26,6 +26,7 @@ except ImportError:  # for Python < 2.5
     import md5
     _md5func = md5.new
 import os
+import sys
 import random
 import socket
 import struct
@@ -36,6 +37,19 @@ from bson.errors import InvalidId
 from bson.py3compat import (PY3, b, binary_type, text_type,
                             bytes_from_hex, string_types)
 from bson.tz_util import utc
+
+if sys.platform.startswith('java'):
+    from java.lang.management import ManagementFactory
+    def _os_getpid():
+        name = ManagementFactory.getRuntimeMXBean().getName()
+        _id, _at, _name = name.partition('@')
+        try:
+            return int(_id)
+        except ValueError:
+            return 1
+else:
+    _os_getpid = os.getpid
+
 
 EMPTY = b("")
 ZERO  = b("\x00")
@@ -156,7 +170,7 @@ class ObjectId(object):
         oid += ObjectId._machine_bytes
 
         # 2 bytes pid
-        oid += struct.pack(">H", os.getpid() % 0xFFFF)
+        oid += struct.pack(">H", _os_getpid() % 0xFFFF)
 
         # 3 bytes inc
         ObjectId._inc_lock.acquire()
