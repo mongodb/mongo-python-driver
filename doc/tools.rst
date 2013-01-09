@@ -99,7 +99,7 @@ various Python frameworks and libraries.
   working to support a plugin for using MongoDB as a backend for
   :mod:`repoze.what`.
 * `mongobox <http://github.com/theorm/mongobox>`_ is a tool to run a sandboxed
-   MongoDB instance from within a python app.
+  MongoDB instance from within a python app.
 
 Alternative Drivers
 -------------------
