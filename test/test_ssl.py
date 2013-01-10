@@ -33,7 +33,9 @@ except ImportError:
 class TestSSL(unittest.TestCase):
 
     def setUp(self):
-        pass
+        if sys.version.startswith('3.0'):
+            raise SkipTest("Python 3.0.x has problems "
+                           "with SSL and socket timeouts.")
 
     def test_config_ssl(self):
         self.assertRaises(ConfigurationError, Connection, ssl='foo')
