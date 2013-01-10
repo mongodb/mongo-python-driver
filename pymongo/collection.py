@@ -471,7 +471,7 @@ class Collection(common.BaseObject):
             # we check here. Passing a document with a mix of top level keys
             # starting with and without a '$' is invalid and the server will
             # raise an appropriate exception.
-            first = document.iterkeys().next()
+            first = (document.iterkeys()).next()
             if first.startswith('$'):
                 check_keys = False
 
