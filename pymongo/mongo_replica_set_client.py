@@ -409,6 +409,11 @@ class MongoReplicaSetClient(common.BaseObject):
         else:
             self.__seeds.update(uri_parser.split_hosts(host, port))
 
+        # _pool_class and _monitor_class are for deep customization of PyMongo,
+        # e.g. Motor. SHOULD NOT BE USED BY DEVELOPERS EXTERNAL TO 10GEN.
+        self.pool_class = kwargs.pop('_pool_class', pool.Pool)
+        monitor_class = kwargs.pop('_monitor_class', None)
+
         for option, value in kwargs.iteritems():
             option, value = common.validate(option, value)
             self.__opts[option] = value
@@ -463,7 +468,9 @@ class MongoReplicaSetClient(common.BaseObject):
                 raise ConfigurationError("authentication failed")
 
         # Start the monitor after we know the configuration is correct.
-        if self.__use_greenlets:
+        if monitor_class:
+            self.__monitor = monitor_class(self)
+        elif self.__use_greenlets:
             self.__monitor = MonitorGreenlet(self)
         else:
             self.__monitor = MonitorThread(self)
@@ -713,9 +720,9 @@ class MongoReplicaSetClient(common.BaseObject):
         """Directly call ismaster.
            Returns (response, connection_pool, ping_time in seconds).
         """
-        connection_pool = pool.Pool(
+        connection_pool = self.pool_class(
             host, self.__max_pool_size, self.__net_timeout, self.__conn_timeout,
-            self.__use_ssl, self.__use_greenlets)
+            self.__use_ssl, use_greenlets=self.__use_greenlets)
 
         if self.in_request():
             connection_pool.start_request()
