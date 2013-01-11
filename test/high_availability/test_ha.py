@@ -884,6 +884,8 @@ class TestReplicaSetRequest(unittest.TestCase):
         for _ in range(patience_seconds):
             sleep(1)
             try:
+                if ha_tools.ha_tools_debug:
+                    print 'Waiting for failover'
                 if ha_tools.get_primary():
                     # We have a new primary
                     break

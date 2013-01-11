@@ -39,6 +39,8 @@ mongod = os.environ.get('MONGOD', 'mongod')
 mongos = os.environ.get('MONGOS', 'mongos')
 set_name = os.environ.get('SETNAME', 'repl0')
 use_greenlets = bool(os.environ.get('GREENLETS'))
+ha_tools_debug = bool(os.environ.get('HA_TOOLS_DEBUG'))
+
 
 nodes = {}
 routers = {}
@@ -48,6 +50,8 @@ cur_port = port
 def kill_members(members, sig, hosts=nodes):
     for member in members:
         try:
+            if ha_tools_debug:
+                print 'killing', member
             proc = hosts[member]['proc']
             # Not sure if cygwin makes sense here...
             if sys.platform in ('win32', 'cygwin'):
@@ -55,6 +59,8 @@ def kill_members(members, sig, hosts=nodes):
             else:
                 os.kill(proc.pid, sig)
         except OSError:
+            if ha_tools_debug:
+                print member, 'already dead?'
             pass  # already dead
 
 
@@ -119,6 +125,10 @@ def start_replica_set(members, auth=False, fresh=True):
                '--logappend', '--logpath', member_logpath]
         if auth:
             cmd += ['--keyFile', key_file]
+
+        if ha_tools_debug:
+            print 'starting', ' '.join(cmd)
+
         proc = subprocess.Popen(cmd,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT)
@@ -134,10 +144,14 @@ def start_replica_set(members, auth=False, fresh=True):
     primary = members[0]['host']
     c = pymongo.Connection(primary, use_greenlets=use_greenlets)
     try:
+        if ha_tools_debug:
+            print 'rs.initiate(%s)' % config
+
         c.admin.command('replSetInitiate', config)
-    except pymongo.errors.OperationFailure:
+    except pymongo.errors.OperationFailure, e:
         # Already initialized from a previous run?
-        pass
+        if ha_tools_debug:
+            print e
 
     expected_arbiters = 0
     for member in members:
@@ -147,7 +161,7 @@ def start_replica_set(members, auth=False, fresh=True):
 
     # Wait for 8 minutes for replica set to come up
     patience = 8
-    for _ in range(patience * 60 / 2):
+    for i in range(patience * 60 / 2):
         time.sleep(2)
         try:
             if (get_primary() and
@@ -157,6 +171,9 @@ def start_replica_set(members, auth=False, fresh=True):
         except pymongo.errors.ConnectionFailure:
             # Keep waiting
             pass
+
+        if ha_tools_debug:
+            print 'waiting for RS', i
     else:
         kill_all_members()
         raise Exception(
