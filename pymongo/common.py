@@ -62,6 +62,14 @@ def validate_positive_integer(option, value):
     return val
 
 
+def validate_positive_integer_or_none(option, value):
+    """Validate that 'value' is a positive integer or None.
+    """
+    if value is None:
+        return value
+    return validate_positive_integer(option, value)
+
+
 def validate_basestring(option, value):
     """Validates that 'value' is an instance of `basestring`.
     """
