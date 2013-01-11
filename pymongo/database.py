@@ -438,14 +438,14 @@ class Database(common.BaseObject):
         are split into individual fields in the result dict.
 
         :Parameters:
-            `name_or_collection`: A Collection object or the name of a
-                                  collection to validate.
-            `scandata`: Do extra checks beyond checking the overall
-                        structure of the collection.
-            `full`: Have the server do a more thorough scan of the
-                    collection. Use with `scandata` for a thorough scan
-                    of the structure of the collection and the individual
-                    documents. Ignored in MongoDB versions before 1.9.
+          - `name_or_collection`: A Collection object or the name of a
+            collection to validate.
+          - `scandata`: Do extra checks beyond checking the overall
+            structure of the collection.
+          - `full`: Have the server do a more thorough scan of the
+            collection. Use with `scandata` for a thorough scan
+            of the structure of the collection and the individual
+            documents. Ignored in MongoDB versions before 1.9.
 
         .. versionchanged:: 1.11
            validate_collection previously returned a string.

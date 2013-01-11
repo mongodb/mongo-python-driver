@@ -48,7 +48,7 @@ class MasterSlaveConnection(BaseObject):
 
         :Parameters:
           - `master`: `MongoClient` instance for the writable Master
-          - `slaves` (optional): list of `MongoClient` instances for the
+          - `slaves`: list of `MongoClient` instances for the
             read-only slaves
           - `document_class` (optional): default class to use for
             documents returned from queries on this connection
