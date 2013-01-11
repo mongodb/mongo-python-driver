@@ -416,7 +416,7 @@ class Cursor(object):
 
         An :class:`IndexError` will be raised if the index is negative
         or greater than the amount of documents in this cursor. Any
-        limit applied to this cursor will be ignored.
+        limit previously applied to this cursor will be ignored.
 
         To get a slice of documents use a slice index, e.g.::
 

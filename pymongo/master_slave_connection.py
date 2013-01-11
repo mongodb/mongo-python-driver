@@ -47,7 +47,7 @@ class MasterSlaveConnection(BaseObject):
 
         :Parameters:
           - `master`: `Connection` instance for the writable Master
-          - `slaves` (optional): list of `Connection` instances for the
+          - `slaves`: list of `Connection` instances for the
             read-only slaves
           - `document_class` (optional): default class to use for
             documents returned from queries on this connection
