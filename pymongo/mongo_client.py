@@ -208,6 +208,10 @@ class MongoClient(common.BaseObject):
         self.__is_primary = False
         self.__is_mongos = False
 
+        # _pool_class option is for deep customization of PyMongo, e.g. Motor.
+        # SHOULD NOT BE USED BY DEVELOPERS EXTERNAL TO 10GEN.
+        pool_class = kwargs.pop('_pool_class', pool.Pool)
+
         options = {}
         for option, value in kwargs.iteritems():
             option, value = common.validate(option, value)
@@ -236,13 +240,13 @@ class MongoClient(common.BaseObject):
                                      "from PyPI.")
 
         use_greenlets = options.get('use_greenlets', False)
-        self.__pool = pool.Pool(
+        self.__pool = pool_class(
             None,
             self.__max_pool_size,
             self.__net_timeout,
             self.__conn_timeout,
             self.__use_ssl,
-            use_greenlets)
+            use_greenlets=use_greenlets)
 
         self.__document_class = document_class
         self.__tz_aware = common.validate_boolean('tz_aware', tz_aware)
