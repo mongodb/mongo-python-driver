@@ -122,7 +122,7 @@ class AutoReference(SONManipulator):
     """
 
     def __init__(self, db):
-        self.__database = db
+        self.database = db
 
     def will_copy(self):
         """We need to copy so the user's document doesn't get transformed refs.
@@ -156,7 +156,7 @@ class AutoReference(SONManipulator):
 
         def transform_value(value):
             if isinstance(value, DBRef):
-                return self.__database.dereference(value)
+                return self.database.dereference(value)
             elif isinstance(value, list):
                 return [transform_value(v) for v in value]
             elif isinstance(value, dict):
