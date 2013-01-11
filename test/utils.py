@@ -227,8 +227,8 @@ def assertReadFrom(testcase, rsc, member, *args, **kwargs):
       - `rsc`: A ReplicaSetConnection
       - `member`: A host:port expected to be used
       - `mode`: A ReadPreference
-      - `tag_sets`: List of dicts of tags for data-center-aware reads
-      - `secondary_acceptable_latency_ms`: a float
+      - `tag_sets` (optional): List of dicts of tags for data-center-aware reads
+      - `secondary_acceptable_latency_ms` (optional): a float
     """
     for _ in range(10):
         testcase.assertEqual(member, read_from_which_host(rsc, *args, **kwargs))
