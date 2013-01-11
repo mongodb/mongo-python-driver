@@ -50,6 +50,8 @@ NEAREST = ReadPreference.NEAREST
 
 
 class TestDirectConnection(unittest.TestCase):
+    # Prevent Nose from automatically running this test
+    __test__ = False
 
     def setUp(self):
         members = [{}, {}, {'arbiterOnly': True}]
@@ -146,6 +148,8 @@ class TestDirectConnection(unittest.TestCase):
 
 
 class TestPassiveAndHidden(unittest.TestCase):
+    # Prevent Nose from automatically running this test
+    __test__ = False
 
     def setUp(self):
         members = [{},
@@ -183,6 +187,9 @@ class TestMonitorRemovesRecoveringMember(unittest.TestCase):
     # Verify that if a secondary goes into RECOVERING mode, the Monitor removes
     # it from the set of readers.
 
+    # Prevent Nose from automatically running this test
+    __test__ = False
+
     def setUp(self):
         members = [{}, {'priority': 0}, {'priority': 0}]
         res = ha_tools.start_replica_set(members)
@@ -215,6 +222,9 @@ class TestMonitorRemovesRecoveringMember(unittest.TestCase):
 class TestTriggeredRefresh(unittest.TestCase):
     # Verify that if a secondary goes into RECOVERING mode or if the primary
     # changes, the next exception triggers an immediate refresh.
+
+    # Prevent Nose from automatically running this test
+    __test__ = False
 
     def setUp(self):
         members = [{}, {}]
@@ -289,6 +299,8 @@ class TestTriggeredRefresh(unittest.TestCase):
 
 
 class TestHealthMonitor(unittest.TestCase):
+    # Prevent Nose from automatically running this test
+    __test__ = False
 
     def setUp(self):
         res = ha_tools.start_replica_set([{}, {}, {}])
@@ -367,6 +379,8 @@ class TestHealthMonitor(unittest.TestCase):
 
 
 class TestWritesWithFailover(unittest.TestCase):
+    # Prevent Nose from automatically running this test
+    __test__ = False
 
     def setUp(self):
         res = ha_tools.start_replica_set([{}, {}, {}])
@@ -402,6 +416,8 @@ class TestWritesWithFailover(unittest.TestCase):
 
 
 class TestReadWithFailover(unittest.TestCase):
+    # Prevent Nose from automatically running this test
+    __test__ = False
 
     def setUp(self):
         res = ha_tools.start_replica_set([{}, {}, {}])
@@ -440,6 +456,9 @@ class TestReadWithFailover(unittest.TestCase):
 
 
 class TestReadPreference(unittest.TestCase):
+    # Prevent Nose from automatically running this test
+    __test__ = False
+
     def setUp(self):
         members = [
             # primary
@@ -733,6 +752,9 @@ class TestReadPreference(unittest.TestCase):
 
 
 class TestReplicaSetAuth(unittest.TestCase):
+    # Prevent Nose from automatically running this test
+    __test__ = False
+
     def setUp(self):
         members = [
             {},
@@ -777,6 +799,9 @@ class TestReplicaSetAuth(unittest.TestCase):
 
 
 class TestAlive(unittest.TestCase):
+    # Prevent Nose from automatically running this test
+    __test__ = False
+
     def setUp(self):
         members = [{}, {}]
         self.seed, self.name = ha_tools.start_replica_set(members)
@@ -815,6 +840,9 @@ class TestAlive(unittest.TestCase):
         
         
 class TestMongosHighAvailability(unittest.TestCase):
+    # Prevent Nose from automatically running this test
+    __test__ = False
+
     def setUp(self):
         seed_list = ha_tools.create_sharded_cluster()
         self.dbname = 'pymongo_mongos_ha'
