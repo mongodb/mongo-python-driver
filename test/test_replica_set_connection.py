@@ -32,11 +32,10 @@ from nose.plugins.skip import SkipTest
 
 from bson.son import SON
 from bson.tz_util import utc
-from pymongo import thread_util
 from pymongo.connection import Connection
 from pymongo.read_preferences import ReadPreference
 from pymongo.replica_set_connection import ReplicaSetConnection
-from pymongo.mongo_replica_set_client import _partition_node
+from pymongo.mongo_replica_set_client import _partition_node, have_gevent
 from pymongo.database import Database
 from pymongo.pool import SocketInfo
 from pymongo.errors import (AutoReconnect,
@@ -194,7 +193,7 @@ class TestConnection(TestConnectionReplicaSetBase, TestRequestMixin):
         self.assertFalse(
             ReplicaSetConnection(pair, replicaSet=self.name).use_greenlets)
 
-        if thread_util.have_greenlet:
+        if have_gevent:
             self.assertTrue(ReplicaSetConnection(
                 pair, replicaSet=self.name, use_greenlets=True).use_greenlets)
 
