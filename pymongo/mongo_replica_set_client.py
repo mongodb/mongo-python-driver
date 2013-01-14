@@ -360,8 +360,8 @@ class MongoReplicaSetClient(common.BaseObject):
             there are no consistency guarantees. Default to ``False``.
           - `use_greenlets`: If ``True``, use a background Greenlet instead of
             a background thread to monitor state of replica set. Additionally,
-            :meth:`start_request()` will ensure that the current greenlet uses
-            the same socket for all operations until :meth:`end_request()`.
+            :meth:`start_request()` assigns a greenlet-local, rather than
+            thread-local, socket.
             `use_greenlets` with :class:`MongoReplicaSetClient` requires
             `Gevent <http://gevent.org/>`_ to be installed.
           - `host`: For compatibility with :class:`~mongo_client.MongoClient`.
