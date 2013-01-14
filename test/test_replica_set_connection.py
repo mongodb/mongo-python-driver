@@ -32,6 +32,7 @@ from nose.plugins.skip import SkipTest
 
 from bson.son import SON
 from bson.tz_util import utc
+from pymongo import thread_util
 from pymongo.connection import Connection
 from pymongo.read_preferences import ReadPreference
 from pymongo.replica_set_connection import ReplicaSetConnection
@@ -188,6 +189,14 @@ class TestConnection(TestConnectionReplicaSetBase, TestRequestMixin):
         else:
             self.assertEqual(c.max_bson_size, 4194304)
         c.close()
+
+    def test_use_greenlets(self):
+        self.assertFalse(
+            ReplicaSetConnection(pair, replicaSet=self.name).use_greenlets)
+
+        if thread_util.have_greenlet:
+            self.assertTrue(ReplicaSetConnection(
+                pair, replicaSet=self.name, use_greenlets=True).use_greenlets)
 
     def test_get_db(self):
         connection = self._get_connection()

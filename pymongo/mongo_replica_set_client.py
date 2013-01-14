@@ -414,7 +414,7 @@ class MongoReplicaSetClient(common.BaseObject):
             self.__opts[option] = value
         self.__opts.update(options)
 
-        self.__use_greenlets = options.get('use_greenlets', False)
+        self.__use_greenlets = self.__opts.get('use_greenlets', False)
         if self.__use_greenlets and not have_gevent:
             raise ConfigurationError(
                 "The gevent module is not available. "

@@ -26,7 +26,7 @@ from nose.plugins.skip import SkipTest
 
 from bson.son import SON
 from bson.tz_util import utc
-from pymongo import ReadPreference
+from pymongo import ReadPreference, thread_util
 from pymongo.errors import ConnectionFailure, InvalidName
 from pymongo.errors import CollectionInvalid, OperationFailure
 from pymongo.errors import AutoReconnect
@@ -81,6 +81,18 @@ class TestMasterSlaveConnection(unittest.TestCase, TestRequestMixin):
         self.assertRaises(TypeError, MasterSlaveConnection, 1)
         self.assertRaises(TypeError, MasterSlaveConnection, self.master, 1)
         self.assertRaises(TypeError, MasterSlaveConnection, self.master, [1])
+
+    def test_use_greenlets(self):
+        self.assertFalse(self.connection.use_greenlets)
+
+        if thread_util.have_greenlet:
+            master = Connection(self.host, self.port, use_greenlets=True)
+            slaves = [
+                Connection(slave.host, slave.port, use_greenlets=True)
+                for slave in self.slaves]
+
+            self.assertTrue(
+                MasterSlaveConnection(master, slaves).use_greenlets)
 
     def test_repr(self):
         self.assertEqual(repr(self.connection),

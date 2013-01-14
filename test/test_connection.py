@@ -33,6 +33,7 @@ from bson.tz_util import utc
 from pymongo.connection import Connection
 from pymongo.database import Database
 from pymongo.pool import SocketInfo
+from pymongo import thread_util
 from pymongo.errors import (ConfigurationError,
                             ConnectionFailure,
                             InvalidName,
@@ -112,6 +113,13 @@ class TestConnection(unittest.TestCase, TestRequestMixin):
         self.assertEqual(Connection(self.host, self.port).port, self.port)
         self.assertEqual(set([(self.host, self.port)]),
                          Connection(self.host, self.port).nodes)
+
+    def test_use_greenlets(self):
+        self.assertFalse(Connection(self.host, self.port).use_greenlets)
+        if thread_util.have_greenlet:
+            self.assertTrue(
+                Connection(
+                    self.host, self.port, use_greenlets=True).use_greenlets)
 
     def test_get_db(self):
         connection = Connection(self.host, self.port)

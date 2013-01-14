@@ -235,14 +235,14 @@ class MongoClient(common.BaseObject):
                                      "2.6 you must install the ssl package "
                                      "from PyPI.")
 
-        use_greenlets = options.get('use_greenlets', False)
+        self.__use_greenlets = options.get('use_greenlets', False)
         self.__pool = pool.Pool(
             None,
             self.__max_pool_size,
             self.__net_timeout,
             self.__conn_timeout,
             self.__use_ssl,
-            use_greenlets)
+            self.__use_greenlets)
 
         self.__document_class = document_class
         self.__tz_aware = common.validate_boolean('tz_aware', tz_aware)
