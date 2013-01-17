@@ -36,7 +36,8 @@ from pymongo.database import Database
 from pymongo.errors import (CollectionInvalid,
                             ConfigurationError,
                             InvalidName,
-                            OperationFailure)
+                            OperationFailure,
+                            UnsupportedOption)
 from pymongo.son_manipulator import (AutoReference,
                                      NamespaceInjector,
                                      ObjectIdShuffler)
@@ -91,6 +92,7 @@ class TestDatabase(unittest.TestCase):
         self.assertRaises(TypeError, db.create_collection, 5)
         self.assertRaises(TypeError, db.create_collection, None)
         self.assertRaises(InvalidName, db.create_collection, "coll..ection")
+        self.assertRaises(UnsupportedOption, db.create_collection, "test", options={})
 
         test = db.create_collection("test")
         test.save({"hello": u"world"})

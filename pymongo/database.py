@@ -24,7 +24,8 @@ from pymongo import common, helpers
 from pymongo.collection import Collection
 from pymongo.errors import (CollectionInvalid,
                             InvalidName,
-                            OperationFailure)
+                            OperationFailure,
+                            UnsupportedOption)
 from pymongo.son_manipulator import ObjectIdInjector
 from pymongo import read_preferences as rp
 
@@ -239,6 +240,10 @@ class Database(common.BaseObject):
         .. versionchanged:: 1.5
            deprecating `options` in favor of kwargs
         """
+        if 'options' in kwargs:
+            raise UnsupportedOption('The options kwarg has been deprecated. '
+                                    'Please pass options as kwargs')
+
         opts = {"create": True}
         opts.update(kwargs)
 
