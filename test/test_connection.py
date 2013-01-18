@@ -545,8 +545,8 @@ self.assertEqual(0, len(conn._MongoClient__pool.sockets))
         exec """
 with get_connection() as connection:
     self.assertEqual("bar", connection.pymongo_test.test.find_one()["foo"])
-    # Calling conn.close() has reset the pool
-    self.assertEqual(0, len(connection._MongoClient__pool.sockets))
+# Calling conn.close() has reset the pool
+self.assertEqual(0, len(connection._MongoClient__pool.sockets))
 """
 
     def test_with_start_request(self):
