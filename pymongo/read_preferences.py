@@ -83,6 +83,9 @@ _mongos_modes = [
 def mongos_mode(mode):
     return _mongos_modes[mode]
 
+def mongos_enum(enum):
+    return _mongos_modes.index(enum)
+
 
 def select_primary(members):
     for member in members:

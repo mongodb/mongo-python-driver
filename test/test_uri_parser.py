@@ -25,6 +25,7 @@ from pymongo.uri_parser import (_partition,
                                 split_options,
                                 parse_uri)
 from pymongo.errors import ConfigurationError, InvalidURI
+from pymongo import ReadPreference
 
 
 class TestURI(unittest.TestCase):
@@ -267,6 +268,11 @@ class TestURI(unittest.TestCase):
         self.assertEqual(res,
                          parse_uri("mongodb://fred:foobar@localhost/"
                                    "test.yield_historical.in?slaveok=true"))
+
+        res = copy.deepcopy(orig)
+        res['options'] = {'read_preference': ReadPreference.SECONDARY}
+        self.assertEqual(res,
+                         parse_uri("mongodb://localhost/?read_preference=secondary"))
 
 if __name__ == "__main__":
     unittest.main()

@@ -114,9 +114,14 @@ def validate_timeout_or_none(option, value):
 def validate_read_preference(dummy, value):
     """Validate read preference for a ReplicaSetConnection.
     """
-    if value not in read_preferences.modes:
+    if value in read_preferences.modes:
+        return value
+
+    # Also allow string form of enum for uri_parser
+    try:
+        return read_preferences.mongos_enum(value)
+    except ValueError:
         raise ConfigurationError("Not a valid read preference")
-    return value
 
 
 def validate_tag_sets(dummy, value):
