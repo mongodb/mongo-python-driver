@@ -246,7 +246,7 @@ class MongoClient(common.BaseObject):
             self.__net_timeout,
             self.__conn_timeout,
             self.__use_ssl,
-            self.__use_greenlets)
+            use_greenlets=self.__use_greenlets)
 
         self.__document_class = document_class
         self.__tz_aware = common.validate_boolean('tz_aware', tz_aware)
