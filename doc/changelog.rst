@@ -1,6 +1,21 @@
 Changelog
 =========
 
+Changes in Version 2.4.2
+------------------------
+
+Version 2.4.2 is a minor release that fixes issues discovered after the
+release of 2.4.1. Most importantly, PyMongo will no longer select a replica
+set member for read operations that is not in primary or secondary state.
+
+Issues Resolved
+...............
+
+See the `PyMongo 2.4.2 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 2.4.2 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/12299
+
 Changes in Version 2.4.1
 ------------------------
 
