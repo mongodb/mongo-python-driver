@@ -40,15 +40,6 @@ GEOHAYSTACK = "geoHaystack"
 .. _haystack index: http://docs.mongodb.org/manual/core/geospatial-indexes/#haystack-indexes
 """
 
-TEXT = "text"
-"""Index specifier for text search.
-
-.. versionadded:: 2.4.2
-
-.. note:: Text search requires server version **>= 2.3.2**.
-"""
-
-
 OFF = 0
 """No database profiling."""
 SLOW_ONLY = 1
