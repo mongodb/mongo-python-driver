@@ -183,7 +183,7 @@ the primary member of the replica set. To use secondaries for queries
 we have to change the :class:`~pymongo.read_preferences.ReadPreference`::
 
   >>> db = MongoReplicaSetClient("morton.local:27017", replicaSet='foo').test
-  >>> from pymongo.read_preference import ReadPreference
+  >>> from pymongo.read_preferences import ReadPreference
   >>> db.read_preference = ReadPreference.SECONDARY_PREFERRED
 
 Now all queries will be sent to the secondary members of the set. If there are
