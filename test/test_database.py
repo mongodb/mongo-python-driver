@@ -406,7 +406,7 @@ class TestDatabase(unittest.TestCase):
         # Setup
         users_db = conn.pymongo_test
         admin_db = conn.admin
-        other_db = conn.other
+        other_db = conn.pymongo_test1
         users_db.system.users.remove(safe=True)
         admin_db.system.users.remove(safe=True)
         users_db.test.remove(safe=True)

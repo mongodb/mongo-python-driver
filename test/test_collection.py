@@ -66,10 +66,6 @@ class TestCollection(unittest.TestCase):
         self.db = None
         self.connection = None
 
-        # Try to diagnose intermittent failure in tests on Jenkins
-        cx = get_connection()
-        self.assertEqual(0, cx.test.test_unique_threaded.count())
-
     def test_collection(self):
         self.assertRaises(TypeError, Collection, self.db, 5)
 
@@ -1609,7 +1605,7 @@ class TestCollection(unittest.TestCase):
                 self.assertEqual(3, result.find_one({"_id": "cat"})["value"])
                 self.assertEqual(2, result.find_one({"_id": "dog"})["value"])
                 self.assertEqual(1, result.find_one({"_id": "mouse"})["value"])
-                self.connection.mrtestdb.mrunittests.drop()
+                self.connection.drop_database('mrtestdb')
 
         full_result = db.test.map_reduce(map, reduce,
                                          out='mrunittests', full_response=True)

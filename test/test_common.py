@@ -66,7 +66,7 @@ class TestCommon(unittest.TestCase):
         self.assertFalse(c.slave_okay)
         self.assertFalse(c.safe)
         self.assertEqual({}, c.get_lasterror_options())
-        db = c.test
+        db = c.pymongo_test
         db.drop_collection("test")
         self.assertFalse(db.slave_okay)
         self.assertFalse(db.safe)
@@ -89,7 +89,7 @@ class TestCommon(unittest.TestCase):
         self.assertTrue(c.safe)
         d = {'w': 'majority', 'wtimeout': 300, 'fsync': True, 'j': True}
         self.assertEqual(d, c.get_lasterror_options())
-        db = c.test
+        db = c.pymongo_test
         self.assertTrue(db.slave_okay)
         self.assertTrue(db.safe)
         self.assertEqual(d, db.get_lasterror_options())
@@ -117,7 +117,7 @@ class TestCommon(unittest.TestCase):
         d = {'w': 1, 'wtimeout': 300, 'fsync': True, 'j': True}
         self.assertEqual(d, c.get_lasterror_options())
         self.assertEqual(d, c.write_concern)
-        db = c.test
+        db = c.pymongo_test
         self.assertTrue(db.slave_okay)
         self.assertTrue(db.safe)
         self.assertEqual(d, db.get_lasterror_options())
@@ -141,7 +141,7 @@ class TestCommon(unittest.TestCase):
         self.assertFalse(c.slave_okay)
         self.assertEqual({}, c.get_lasterror_options())
         self.assertEqual({}, c.write_concern)
-        db = c.test
+        db = c.pymongo_test
         self.assertFalse(db.slave_okay)
         self.assertFalse(db.safe)
         self.assertEqual({}, db.get_lasterror_options())
@@ -222,7 +222,7 @@ class TestCommon(unittest.TestCase):
         c.write_concern = wc
         self.assertEqual(wc, c.write_concern)
 
-        db = c.test
+        db = c.pymongo_test
         self.assertEqual(wc, db.write_concern)
         coll = db.test
         self.assertEqual(wc, coll.write_concern)

@@ -375,7 +375,7 @@ class _TestPooling(_TestPoolingBase):
         self.assert_pool_size(1)
         self.c.start_request()
         self.assert_request_without_socket()
-        self.c.test.test.find_one()
+        self.c.pymongo_test.test.find_one()
         self.assert_request_with_socket()
         self.assert_pool_size(0)
         self.c.end_request()
@@ -387,7 +387,7 @@ class _TestPooling(_TestPoolingBase):
         self.assertTrue(t.passed, "OneOp.run() threw exception")
 
         self.assert_pool_size(1)
-        self.c.test.test.find_one()
+        self.c.pymongo_test.test.find_one()
         self.assert_pool_size(1)
 
     def test_multiple_connections(self):
@@ -397,7 +397,7 @@ class _TestPooling(_TestPoolingBase):
         self.assertEqual(1, len(b._MongoClient__pool.sockets))
 
         a.start_request()
-        a.test.test.find_one()
+        a.pymongo_test.test.find_one()
         self.assertEqual(0, len(a._MongoClient__pool.sockets))
         a.end_request()
         self.assertEqual(1, len(a._MongoClient__pool.sockets))
@@ -409,14 +409,14 @@ class _TestPooling(_TestPoolingBase):
         self.assertEqual(1, len(b._MongoClient__pool.sockets))
 
         b.start_request()
-        b.test.test.find_one()
+        b.pymongo_test.test.find_one()
         self.assertEqual(1, len(a._MongoClient__pool.sockets))
         self.assertEqual(0, len(b._MongoClient__pool.sockets))
 
         b.end_request()
         b_sock = one(b._MongoClient__pool.sockets)
-        b.test.test.find_one()
-        a.test.test.find_one()
+        b.pymongo_test.test.find_one()
+        a.pymongo_test.test.find_one()
 
         self.assertEqual(b_sock,
                          b._MongoClient__pool.get_socket((b.host, b.port)))

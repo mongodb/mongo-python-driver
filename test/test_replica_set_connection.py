@@ -372,7 +372,7 @@ class TestConnection(TestConnectionReplicaSetBase, TestRequestMixin):
 
     def test_disconnect(self):
         c = self._get_connection()
-        coll = c.foo.bar
+        coll = c.pymongo_test.bar
 
         c.disconnect()
         c.disconnect()
@@ -736,11 +736,12 @@ class TestConnection(TestConnectionReplicaSetBase, TestRequestMixin):
         self.assertTrue(conn.in_request())
 
         # Trigger the RSC to actually start a request on primary pool
-        conn.test.test.find_one()
+        conn.pymongo_test.test.find_one()
         self.assertTrue(primary_pool.in_request())
 
         # Trigger the RSC to actually start a request on secondary pool
-        cursor = conn.test.test.find(read_preference=ReadPreference.SECONDARY)
+        cursor = conn.pymongo_test.test.find(
+                read_preference=ReadPreference.SECONDARY)
         try:
             cursor.next()
         except StopIteration:

@@ -243,7 +243,7 @@ class TestConnection(unittest.TestCase, TestRequestMixin):
 
     def test_disconnect(self):
         c = Connection(self.host, self.port)
-        coll = c.foo.bar
+        coll = c.pymongo_test.bar
 
         c.disconnect()
         c.disconnect()
@@ -612,7 +612,7 @@ with conn.start_request() as request:
         self.assertDifferentSock(pool)
 
         # Trigger auto_start_request
-        conn.db.test.find_one()
+        conn.pymongo_test.test.find_one()
         self.assertRequestSocket(pool)
         self.assertSameSock(pool)
 

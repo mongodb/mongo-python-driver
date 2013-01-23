@@ -343,6 +343,7 @@ class BaseTestThreadsAuth(object):
         self.conn.admin.authenticate("admin-user", "password")
         self.conn.admin.system.users.remove({})
         self.conn.auth_test.system.users.remove({})
+        self.conn.drop_database('auth_test')
         # Clear connection reference so that RSC's monitor thread
         # dies.
         self.conn = None

@@ -40,7 +40,7 @@ class TestPoolingThreads(_TestPooling, unittest.TestCase):
         except ImportError:
             raise SkipTest("No multiprocessing module")
 
-        coll = self.c.test.test
+        coll = self.c.pymongo_test.test
         coll.remove(safe=True)
         coll.insert({'_id': 1}, safe=True)
         coll.find_one()
@@ -122,7 +122,7 @@ class TestPoolingThreads(_TestPooling, unittest.TestCase):
         def loop(pipe):
             c = self.get_connection(auto_start_request=False)
             self.assertEqual(1,len(c._MongoClient__pool.sockets))
-            c.test.test.find_one()
+            c.pymongo_test.test.find_one()
             self.assertEqual(1,len(c._MongoClient__pool.sockets))
             pipe.send(one(c._MongoClient__pool.sockets).sock.getsockname())
 

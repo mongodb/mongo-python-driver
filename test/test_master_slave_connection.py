@@ -422,7 +422,7 @@ class TestMasterSlaveConnection(unittest.TestCase, TestRequestMixin):
         self.assertTrue(bool(c.read_preference))
         self.assertFalse(c.safe)
         self.assertEqual({}, c.get_lasterror_options())
-        db = c.test
+        db = c.pymongo_test
         self.assertFalse(db.slave_okay)
         self.assertTrue(bool(c.read_preference))
         self.assertFalse(db.safe)
@@ -445,7 +445,7 @@ class TestMasterSlaveConnection(unittest.TestCase, TestRequestMixin):
         self.assertTrue(bool(c.read_preference))
         self.assertTrue(c.safe)
         self.assertEqual({'w': w, 'wtimeout': wtimeout}, c.get_lasterror_options())
-        db = c.test
+        db = c.pymongo_test
         self.assertFalse(db.slave_okay)
         self.assertTrue(bool(c.read_preference))
         self.assertTrue(db.safe)
