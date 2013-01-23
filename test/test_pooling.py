@@ -113,9 +113,9 @@ class TestPoolingThreads(_TestPooling, unittest.TestCase):
             raise SkipTest("No multiprocessing module")
 
         a = self.get_connection(auto_start_request=False)
-        a.test.test.remove(safe=True)
-        a.test.test.insert({'_id':1}, safe=True)
-        a.test.test.find_one()
+        a.pymongo_test.test.remove(safe=True)
+        a.pymongo_test.test.insert({'_id':1}, safe=True)
+        a.pymongo_test.test.find_one()
         self.assertEqual(1, len(a._MongoClient__pool.sockets))
         a_sock = one(a._MongoClient__pool.sockets)
 
