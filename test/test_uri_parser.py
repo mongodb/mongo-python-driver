@@ -270,9 +270,9 @@ class TestURI(unittest.TestCase):
                                    "test.yield_historical.in?slaveok=true"))
 
         res = copy.deepcopy(orig)
-        res['options'] = {'read_preference': ReadPreference.SECONDARY}
+        res['options'] = {'readpreference': ReadPreference.SECONDARY}
         self.assertEqual(res,
-                         parse_uri("mongodb://localhost/?read_preference=secondary"))
+                         parse_uri("mongodb://localhost/?readPreference=secondary"))
 
 if __name__ == "__main__":
     unittest.main()

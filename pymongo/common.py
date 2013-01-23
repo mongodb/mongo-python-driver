@@ -170,6 +170,7 @@ VALIDATORS = {
     'connecttimeoutms': validate_timeout_or_none,
     'sockettimeoutms': validate_timeout_or_none,
     'ssl': validate_boolean,
+    'readpreference': validate_read_preference,
     'read_preference': validate_read_preference,
     'tag_sets': validate_tag_sets,
     'secondaryacceptablelatencyms': validate_positive_float,
@@ -266,7 +267,7 @@ class BaseObject(object):
         for option, value in options.iteritems():
             if option in ('slave_okay', 'slaveok'):
                 self.__slave_okay = validate_boolean(option, value)
-            elif option == 'read_preference':
+            elif option in ('read_preference', "readpreference"):
                 self.__read_pref = validate_read_preference(option, value)
             elif option == 'tag_sets':
                 self.__tag_sets = validate_tag_sets(option, value)
