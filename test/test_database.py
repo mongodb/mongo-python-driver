@@ -395,6 +395,64 @@ class TestDatabase(unittest.TestCase):
         db.logout()
         no_request_db.logout()
 
+    def test_authenticate_multiple(self):
+        conn = get_connection()
+        if (is_mongos(conn) and not
+            version.at_least(self.connection, (2, 0, 0))):
+            raise SkipTest("Auth with sharding requires MongoDB >= 2.0.0")
+        if not server_started_with_auth(conn):
+            raise SkipTest("Authentication is not enabled on server")
+
+        # Setup
+        users_db = conn.pymongo_test
+        admin_db = conn.admin
+        other_db = conn.other
+        users_db.system.users.remove(safe=True)
+        admin_db.system.users.remove(safe=True)
+        users_db.test.remove(safe=True)
+        other_db.test.remove(safe=True)
+
+        admin_db.add_user('admin', 'pass')
+        self.assertTrue(admin_db.authenticate('admin', 'pass'))
+
+        admin_db.add_user('ro-admin', 'pass', read_only=True)
+        users_db.add_user('user', 'pass')
+
+        admin_db.logout()
+        self.assertRaises(OperationFailure, users_db.test.find_one)
+
+        # Regular user should be able to query its own db, but
+        # no other.
+        users_db.authenticate('user', 'pass')
+        self.assertEqual(0, users_db.test.count())
+        self.assertRaises(OperationFailure, other_db.test.find_one)
+
+        # Admin read-only user should be able to query any db,
+        # but not write.
+        admin_db.authenticate('ro-admin', 'pass')
+        self.assertEqual(0, other_db.test.count())
+        self.assertRaises(OperationFailure,
+                          other_db.test.insert, {}, safe=True)
+
+        # Force close all sockets
+        conn.disconnect()
+
+        # We should still be able to write to the regular user's db
+        self.assertTrue(users_db.test.remove(safe=True))
+        # And read from other dbs...
+        self.assertEqual(0, other_db.test.count())
+        # But still not write to other dbs...
+        self.assertRaises(OperationFailure,
+                          other_db.test.insert, {}, safe=True)
+
+        # Cleanup
+        admin_db.logout()
+        users_db.logout()
+        self.assertTrue(admin_db.authenticate('admin', 'pass'))
+        self.assertTrue(admin_db.system.users.remove(safe=True))
+        self.assertEqual(0, admin_db.system.users.count())
+        self.assertTrue(users_db.system.users.remove(safe=True))
+
     def test_id_ordering(self):
         # PyMongo attempts to have _id show up first
         # when you iterate key/value pairs in a document.

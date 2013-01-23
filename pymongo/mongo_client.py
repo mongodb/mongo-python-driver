@@ -351,9 +351,6 @@ class MongoClient(common.BaseObject):
 
     def __check_auth(self, sock_info):
         """Authenticate using cached database credentials.
-
-        If credentials for the 'admin' database are available only
-        this database is authenticated, since this gives global access.
         """
         authset = sock_info.authset
         names = set(self.__auth_credentials.iterkeys())
@@ -368,19 +365,10 @@ class MongoClient(common.BaseObject):
                 pass
             authset.discard(dbname)
 
-        # Once logged into the admin database we can access anything.
-        if "admin" in authset:
-            return
-
-        if "admin" in self.__auth_credentials:
-            username, password = self.__auth_credentials["admin"]
-            self.__auth(sock_info, 'admin', username, password)
-            authset.add('admin')
-        else:
-            for db_name in names - authset:
-                user, pwd = self.__auth_credentials[db_name]
-                self.__auth(sock_info, db_name, user, pwd)
-                authset.add(db_name)
+        for db_name in names - authset:
+            user, pwd = self.__auth_credentials[db_name]
+            self.__auth(sock_info, db_name, user, pwd)
+            authset.add(db_name)
 
     @property
     def host(self):
