@@ -633,7 +633,7 @@ class MongoReplicaSetClient(common.BaseObject):
         """Whether calling :meth:`start_request` assigns greenlet-local,
         rather than thread-local, sockets.
 
-        .. versionadded:: 2.4.1+
+        .. versionadded:: 2.4.2
         """
         return self.__use_greenlets
 
