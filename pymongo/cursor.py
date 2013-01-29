@@ -146,7 +146,7 @@ class Cursor(object):
             self.__die()
 
     def rewind(self):
-        """Rewind this cursor to it's unevaluated state.
+        """Rewind this cursor to its unevaluated state.
 
         Reset this cursor if it has been partially or completely evaluated.
         Any options that are present on the cursor will remain in effect.
