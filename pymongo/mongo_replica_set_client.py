@@ -41,8 +41,8 @@ import weakref
 import atexit
 
 from bson.py3compat import b
-from bson.son import SON
-from pymongo import (common,
+from pymongo import (auth,
+                     common,
                      database,
                      helpers,
                      message,
@@ -531,45 +531,55 @@ class MongoReplicaSetClient(common.BaseObject):
         if index_name in self.__index_cache[database_name][collection_name]:
             del self.__index_cache[database_name][collection_name][index_name]
 
-    def _cache_credentials(self, db_name, username, password):
+    def _cache_credentials(self, source, credentials):
         """Add credentials to the database authentication cache
         for automatic login when a socket is created.
 
         If credentials are already cached for `db_name` they
         will be replaced.
         """
-        self.__auth_credentials[db_name] = (username, password)
+        if source in self.__auth_credentials:
+            # Nothing to do if we already have these credentials.
+            if credentials == self.__auth_credentials[source]:
+                return
+            raise OperationFailure('Another user is already authenticated '
+                                   'to this database. You must logout first.')
 
-    def _purge_credentials(self, db_name=None):
+        # Try to authenticate even during failover.
+        members = self.__members.copy().values()
+        member = select_member(members, ReadPreference.PRIMARY_PREFERRED)
+        sock_info = self.__socket(member)
+        # Logout any previous user for this source database
+        self.__check_auth(sock_info)
+        auth.authenticate(credentials, sock_info, self.__simple_command)
+        sock_info.authset.add(credentials)
+        member.pool.maybe_return_socket(sock_info)
+
+        self.__auth_credentials[source] = credentials
+
+    def _purge_credentials(self, source):
         """Purge credentials from the database authentication cache.
-
-        If `db_name` is None purge credentials for all databases.
         """
-        if db_name is None:
-            self.__auth_credentials.clear()
-        elif db_name in self.__auth_credentials:
-            del self.__auth_credentials[db_name]
+        if source in self.__auth_credentials:
+            del self.__auth_credentials[source]
 
     def __check_auth(self, sock_info):
         """Authenticate using cached database credentials.
         """
-        authset = sock_info.authset
-        names = set(self.__auth_credentials.iterkeys())
+        if self.__auth_credentials or sock_info.authset:
+            cached = set(self.__auth_credentials.itervalues())
 
-        # Logout from any databases no longer listed in the credentials cache.
-        for dbname in authset - names:
-            try:
-                self.__simple_command(sock_info, dbname, {'logout': 1})
-            # TODO: We used this socket to logout. Fix logout so we don't
-            # have to catch this.
-            except OperationFailure:
-                pass
-            authset.discard(dbname)
+            authset = sock_info.authset.copy()
 
-        for db_name in names - authset:
-            user, pwd = self.__auth_credentials[db_name]
-            self.__auth(sock_info, db_name, user, pwd)
-            authset.add(db_name)
+            # Logout any credentials that no longer exist in the cache.
+            for credentials in authset - cached:
+                self.__simple_command(sock_info, credentials[0], {'logout': 1})
+                sock_info.authset.discard(credentials)
+
+            for credentials in cached - authset:
+                auth.authenticate(credentials,
+                                  sock_info, self.__simple_command)
+                sock_info.authset.add(credentials)
 
     @property
     def seeds(self):
@@ -690,19 +700,6 @@ class MongoReplicaSetClient(common.BaseObject):
         msg = "command %r failed: %%s" % spec
         helpers._check_command_response(response, None, msg)
         return response, end - start
-
-    def __auth(self, sock_info, dbname, user, passwd):
-        """Authenticate socket against database `dbname`.
-        """
-        # Get a nonce
-        response, _ = self.__simple_command(sock_info, dbname, {'getnonce': 1})
-        nonce = response['nonce']
-        key = helpers._auth_key(nonce, user, passwd)
-
-        # Actually authenticate
-        query = SON([('authenticate', 1),
-                     ('user', user), ('nonce', nonce), ('key', key)])
-        self.__simple_command(sock_info, dbname, query)
 
     def __is_master(self, host):
         """Directly call ismaster.
@@ -905,8 +902,7 @@ class MongoReplicaSetClient(common.BaseObject):
 
         sock_info = member.pool.get_socket()
 
-        if self.__auth_credentials:
-            self.__check_auth(sock_info)
+        self.__check_auth(sock_info)
         return sock_info
 
     def disconnect(self):
@@ -1430,7 +1426,7 @@ class MongoReplicaSetClient(common.BaseObject):
                                            fromhost=from_host)["nonce"]
                 command["username"] = username
                 command["nonce"] = nonce
-                command["key"] = helpers._auth_key(nonce, username, password)
+                command["key"] = auth._auth_key(nonce, username, password)
 
             return self.admin.command("copydb", **command)
         finally:

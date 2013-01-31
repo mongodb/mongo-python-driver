@@ -28,6 +28,7 @@ from bson.dbref import DBRef
 from bson.objectid import ObjectId
 from bson.son import SON
 from pymongo import (ALL,
+                     auth,
                      helpers,
                      OFF,
                      SLOW_ONLY)
@@ -288,17 +289,17 @@ class TestDatabase(unittest.TestCase):
         self.assertFalse(db.last_status()["updatedExisting"])
 
     def test_password_digest(self):
-        self.assertRaises(TypeError, helpers._password_digest, 5)
-        self.assertRaises(TypeError, helpers._password_digest, True)
-        self.assertRaises(TypeError, helpers._password_digest, None)
+        self.assertRaises(TypeError, auth._password_digest, 5)
+        self.assertRaises(TypeError, auth._password_digest, True)
+        self.assertRaises(TypeError, auth._password_digest, None)
 
-        self.assertTrue(isinstance(helpers._password_digest("mike", "password"),
+        self.assertTrue(isinstance(auth._password_digest("mike", "password"),
                                 unicode))
-        self.assertEqual(helpers._password_digest("mike", "password"),
+        self.assertEqual(auth._password_digest("mike", "password"),
                          u"cd7e45b3b2767dc2fa9b6b548457ed00")
-        self.assertEqual(helpers._password_digest("mike", "password"),
-                         helpers._password_digest(u"mike", u"password"))
-        self.assertEqual(helpers._password_digest("Gustave", u"Dor\xe9"),
+        self.assertEqual(auth._password_digest("mike", "password"),
+                         auth._password_digest(u"mike", u"password"))
+        self.assertEqual(auth._password_digest("Gustave", u"Dor\xe9"),
                          u"81e0e2364499209f466e75926a162d73")
 
     def test_authenticate_add_remove_user(self):
@@ -324,6 +325,7 @@ class TestDatabase(unittest.TestCase):
         self.assertFalse(db.authenticate("faker", "password"))
         self.assertTrue(db.authenticate("mike", "password"))
         self.assertTrue(db.authenticate(u"mike", u"password"))
+        db.logout()
 
         db.remove_user("mike")
         self.assertFalse(db.authenticate("mike", "password"))
@@ -331,17 +333,16 @@ class TestDatabase(unittest.TestCase):
         self.assertFalse(db.authenticate("Gustave", u"Dor\xe9"))
         db.add_user("Gustave", u"Dor\xe9")
         self.assertTrue(db.authenticate("Gustave", u"Dor\xe9"))
+        db.logout()
 
         db.add_user("Gustave", "password")
         self.assertFalse(db.authenticate("Gustave", u"Dor\xe9"))
         self.assertTrue(db.authenticate("Gustave", u"password"))
+        db.logout()
 
         db.add_user("Ross", "password", read_only=True)
         self.assertTrue(db.authenticate("Ross", u"password"))
         self.assertTrue(db.system.users.find({"readOnly": True}).count())
-
-        # just make sure there are no exceptions here
-        db.logout()
         db.logout()
 
     def test_authenticate_and_safe(self):

@@ -14,12 +14,6 @@
 
 """Bits and pieces used by the driver that don't really fit elsewhere."""
 
-try:
-    import hashlib
-    _md5func = hashlib.md5
-except:  # for Python < 2.5
-    import md5
-    _md5func = md5.new
 import random
 import struct
 
@@ -76,8 +70,8 @@ def _index_document(index_list):
     return index
 
 
-def _unpack_response(response, cursor_id=None,
-                     as_class=dict, tz_aware=False, uuid_subtype=OLD_UUID_SUBTYPE):
+def _unpack_response(response, cursor_id=None, as_class=dict,
+                     tz_aware=False, uuid_subtype=OLD_UUID_SUBTYPE):
     """Unpack a response from the database.
 
     Check the response for errors and unpack, returning a dictionary
@@ -115,7 +109,8 @@ def _unpack_response(response, cursor_id=None,
 
 
 def _check_command_response(response, reset, msg="%s", allowable_errors=[]):
-
+    """Check the response to a command for errors.
+    """
     if not response["ok"]:
         if "wtimeout" in response and response["wtimeout"]:
             raise TimeoutError(msg % response["errmsg"])
@@ -147,34 +142,6 @@ def _check_command_response(response, reset, msg="%s", allowable_errors=[]):
             raise OperationFailure(msg % errmsg)
 
 
-def _password_digest(username, password):
-    """Get a password digest to use for authentication.
-    """
-    if not isinstance(password, basestring):
-        raise TypeError("password must be an instance "
-                        "of %s" % (basestring.__name__,))
-    if len(password) == 0:
-        raise TypeError("password can't be empty")
-    if not isinstance(username, basestring):
-        raise TypeError("username must be an instance "
-                        "of %s" % (basestring.__name__,))
-
-    md5hash = _md5func()
-    data = "%s:mongo:%s" % (username, password)
-    md5hash.update(data.encode('utf-8'))
-    return unicode(md5hash.hexdigest())
-
-
-def _auth_key(nonce, username, password):
-    """Get an auth key to use for authentication.
-    """
-    digest = _password_digest(username, password)
-    md5hash = _md5func()
-    data = "%s%s%s" % (nonce, unicode(username), digest)
-    md5hash.update(data.encode('utf-8'))
-    return unicode(md5hash.hexdigest())
-
-
 def _fields_list_to_dict(fields):
     """Takes a list of field names and returns a matching dictionary.
 
@@ -191,6 +158,7 @@ def _fields_list_to_dict(fields):
                             "each an instance of %s" % (basestring.__name__,))
         as_dict[field] = 1
     return as_dict
+
 
 def shuffled(sequence):
     """Returns a copy of the sequence (as a :class:`list`) which has been
