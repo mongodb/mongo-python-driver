@@ -1033,9 +1033,6 @@ class MongoClient(common.BaseObject):
 
         :Parameters:
           - `cursor_id`: id of cursor to close
-
-        .. seealso:: :meth:`set_cursor_manager` and
-           the :mod:`~pymongo.cursor_manager` module
         """
         if not isinstance(cursor_id, (int, long)):
             raise TypeError("cursor_id must be an instance of (int, long)")
