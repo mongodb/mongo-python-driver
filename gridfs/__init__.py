@@ -253,7 +253,7 @@ class GridFS(object):
     def exists(self, document_or_id=None, **kwargs):
         """Check if a file exists in this instance of :class:`GridFS`.
 
-        The file to check for can be specified by the value of it's
+        The file to check for can be specified by the value of its
         ``_id`` key, or by passing in a query document. A query
         document can be passed in as dictionary, or by using keyword
         arguments. Thus, the following three calls are equivalent:
