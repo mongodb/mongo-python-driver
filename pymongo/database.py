@@ -56,8 +56,7 @@ class Database(common.BaseObject):
         database name.
 
         :Parameters:
-          - `connection`: a :class:`~pymongo.connection.Connection`
-            instance
+          - `connection`: a client instance
           - `name`: database name
 
         .. mongodoc:: databases
@@ -121,8 +120,7 @@ class Database(common.BaseObject):
 
     @property
     def connection(self):
-        """The :class:`~pymongo.connection.Connection` instance for this
-        :class:`Database`.
+        """The client instance for this :class:`Database`.
 
         .. versionchanged:: 1.3
            ``connection`` is now a property rather than a method.

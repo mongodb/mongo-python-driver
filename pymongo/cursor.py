@@ -522,7 +522,7 @@ class Cursor(object):
         `with_limit_and_skip` to ``True`` if that is the desired behavior.
         Raises :class:`~pymongo.errors.OperationFailure` on a database error.
 
-        With :class:`~pymongo.replica_set_connection.ReplicaSetConnection`
+        With :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`
         or :class:`~pymongo.master_slave_connection.MasterSlaveConnection`,
         if `read_preference` is not
         :attr:`pymongo.read_preferences.ReadPreference.PRIMARY` or
@@ -575,7 +575,7 @@ class Cursor(object):
         Raises :class:`TypeError` if `key` is not an instance of
         :class:`basestring` (:class:`str` in python 3).
 
-        With :class:`~pymongo.replica_set_connection.ReplicaSetConnection`
+        With :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`
         or :class:`~pymongo.master_slave_connection.MasterSlaveConnection`,
         if `read_preference` is
         not :attr:`pymongo.read_preferences.ReadPreference.PRIMARY` or
@@ -798,7 +798,7 @@ class Cursor(object):
 
         Useful if you need to manage cursor ids and want to handle killing
         cursors manually using
-        :meth:`~pymongo.connection.Connection.kill_cursors`
+        :meth:`~pymongo.mongo_client.MongoClient.kill_cursors`
 
         .. versionadded:: 2.2
         """

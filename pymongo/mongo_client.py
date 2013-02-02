@@ -87,7 +87,7 @@ class MongoClient(common.BaseObject):
                  document_class=dict, tz_aware=False, _connect=True, **kwargs):
         """Create a new connection to a single MongoDB instance at *host:port*.
 
-        The resultant connection object has connection-pooling built
+        The resultant client object has connection-pooling built
         in. It also performs auto-reconnection when necessary. If an
         operation fails because of a connection error,
         :class:`~pymongo.errors.ConnectionFailure` is raised. If
@@ -121,7 +121,7 @@ class MongoClient(common.BaseObject):
           - `max_pool_size` (optional): The maximum number of idle connections
             to keep open in the pool for future use
           - `document_class` (optional): default class to use for
-            documents returned from queries on this connection
+            documents returned from queries on this client
           - `tz_aware` (optional): if ``True``,
             :class:`~datetime.datetime` instances returned as values
             in a document by this :class:`MongoClient` will be timezone
@@ -153,7 +153,7 @@ class MongoClient(common.BaseObject):
           - `connectTimeoutMS`: (integer) How long (in milliseconds) a
             connection can take to be opened before timing out.
           - `ssl`: If ``True``, create the connection to the server using SSL.
-          - `read_preference`: The read preference for this connection.
+          - `read_preference`: The read preference for this client.
             See :class:`~pymongo.read_preferences.ReadPreference` for available
             options.
           - `auto_start_request`: If ``True``, each thread that accesses
@@ -465,14 +465,14 @@ class MongoClient(common.BaseObject):
 
     document_class = property(get_document_class, set_document_class,
                               doc="""Default class to use for documents
-                              returned on this connection.
+                              returned from this client.
 
                               .. versionadded:: 1.7
                               """)
 
     @property
     def tz_aware(self):
-        """Does this connection return timezone-aware datetimes?
+        """Does this client return timezone-aware datetimes?
 
         .. versionadded:: 1.8
         """
@@ -706,7 +706,7 @@ class MongoClient(common.BaseObject):
 
         A more certain way to determine server availability is::
 
-            connection.admin.command('ping')
+            client.admin.command('ping')
 
         .. _select: http://docs.python.org/2/library/select.html#select.select
         """
@@ -723,7 +723,7 @@ class MongoClient(common.BaseObject):
             return False
 
     def set_cursor_manager(self, manager_class):
-        """Set this connection's cursor manager.
+        """Set this client's cursor manager.
 
         Raises :class:`TypeError` if `manager_class` is not a subclass of
         :class:`~pymongo.cursor_manager.CursorManager`. A cursor manager
@@ -935,10 +935,10 @@ class MongoClient(common.BaseObject):
         "from __future__ import with_statement", :meth:`start_request` can be
         used as a context manager:
 
-        >>> connection = pymongo.MongoClient(auto_start_request=False)
-        >>> db = connection.test
+        >>> client = pymongo.MongoClient(auto_start_request=False)
+        >>> db = client.test
         >>> _id = db.test_collection.insert({})
-        >>> with connection.start_request():
+        >>> with client.start_request():
         ...     for i in range(100):
         ...         db.test_collection.update({'_id': _id}, {'$set': {'i':i}})
         ...
@@ -1026,7 +1026,7 @@ class MongoClient(common.BaseObject):
 
         Raises :class:`TypeError` if `cursor_id` is not an instance of
         ``(int, long)``. What closing the cursor actually means
-        depends on this connection's cursor manager.
+        depends on this client's cursor manager.
 
         :Parameters:
           - `cursor_id`: id of cursor to close

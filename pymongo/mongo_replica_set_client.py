@@ -274,7 +274,7 @@ class MongoReplicaSetClient(common.BaseObject):
                  document_class=dict, tz_aware=False, **kwargs):
         """Create a new connection to a MongoDB replica set.
 
-        The resultant connection object has connection-pooling built
+        The resultant client object has connection-pooling built
         in. It also performs auto-reconnection when necessary. If an
         operation fails because of a connection error,
         :class:`~pymongo.errors.ConnectionFailure` is raised. If
@@ -307,7 +307,7 @@ class MongoReplicaSetClient(common.BaseObject):
           - `max_pool_size` (optional): The maximum number of idle connections
             to keep open in each pool for future use
           - `document_class` (optional): default class to use for
-            documents returned from queries on this connection
+            documents returned from queries on this client
           - `tz_aware` (optional): if ``True``,
             :class:`~datetime.datetime` instances returned as values
             in a document by this :class:`MongoReplicaSetClient` will be timezone
@@ -339,7 +339,7 @@ class MongoReplicaSetClient(common.BaseObject):
           - `connectTimeoutMS`: (integer) How long (in milliseconds) a
             connection can take to be opened before timing out.
           - `ssl`: If ``True``, create the connection to the servers using SSL.
-          - `read_preference`: The read preference for this connection.
+          - `read_preference`: The read preference for this client.
             See :class:`~pymongo.read_preferences.ReadPreference` for available
           - `tag_sets`: Read from replica-set members with these tags.
             To specify a priority-order for tag sets, provide a list of
@@ -598,7 +598,7 @@ class MongoReplicaSetClient(common.BaseObject):
     @property
     def hosts(self):
         """All active and passive (priority 0) replica set
-        members known to this connection. This does not include
+        members known to this client. This does not include
         hidden or slaveDelay members, or arbiters.
         """
         return self.__hosts
@@ -613,7 +613,7 @@ class MongoReplicaSetClient(common.BaseObject):
 
     @property
     def secondaries(self):
-        """The secondary members known to this connection.
+        """The secondary members known to this client.
         """
         return set([
             host for host, member in self.__members.items()
@@ -621,7 +621,7 @@ class MongoReplicaSetClient(common.BaseObject):
 
     @property
     def arbiters(self):
-        """The arbiters known to this connection.
+        """The arbiters known to this client.
         """
         return self.__arbiters
 
@@ -665,12 +665,12 @@ class MongoReplicaSetClient(common.BaseObject):
 
     document_class = property(get_document_class, set_document_class,
                               doc="""Default class to use for documents
-                              returned on this connection.
+                              returned from this client.
                               """)
 
     @property
     def tz_aware(self):
-        """Does this connection return timezone-aware datetimes?
+        """Does this client return timezone-aware datetimes?
         """
         return self.__tz_aware
 
@@ -930,7 +930,7 @@ class MongoReplicaSetClient(common.BaseObject):
         self.__schedule_refresh()
 
     def close(self):
-        """Close this connection instance.
+        """Close this client instance.
 
         This method first terminates the replica set monitor, then disconnects
         from all members of the replica set. Once called this instance
@@ -961,7 +961,7 @@ class MongoReplicaSetClient(common.BaseObject):
 
         A more certain way to determine primary availability is to ping it::
 
-            connection.admin.command('ping')
+            client.admin.command('ping')
 
         .. _select: http://docs.python.org/2/library/select.html#select.select
         """
@@ -1264,10 +1264,10 @@ class MongoReplicaSetClient(common.BaseObject):
         "from __future__ import with_statement", :meth:`start_request` can be
         used as a context manager:
 
-        >>> connection = pymongo.MongoReplicaSetClient()
-        >>> db = connection.test
+        >>> client = pymongo.MongoReplicaSetClient()
+        >>> db = client.test
         >>> _id = db.test_collection.insert({})
-        >>> with connection.start_request():
+        >>> with client.start_request():
         ...     for i in range(100):
         ...         db.test_collection.update({'_id': _id}, {'$set': {'i':i}})
         ...
@@ -1356,7 +1356,7 @@ class MongoReplicaSetClient(common.BaseObject):
 
         Raises :class:`TypeError` if `cursor_id` is not an instance of
         ``(int, long)``. What closing the cursor actually means
-        depends on this connection's cursor manager.
+        depends on this client's cursor manager.
 
         :Parameters:
           - `cursor_id`: id of cursor to close

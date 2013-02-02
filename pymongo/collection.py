@@ -657,7 +657,7 @@ class Collection(common.BaseObject):
             examined when performing the query
           - `as_class` (optional): class to use for documents in the
             query result (default is
-            :attr:`~pymongo.connection.Connection.document_class`)
+            :attr:`~pymongo.mongo_client.MongoClient.document_class`)
           - `slave_okay` (optional): if True, allows this query to
             be run against a replica secondary.
           - `await_data` (optional): if True, the server will block for
@@ -669,7 +669,7 @@ class Collection(common.BaseObject):
             outgoing SON manipulators before returning.
           - `network_timeout` (optional): specify a timeout to use for
             this query, which will override the
-            :class:`~pymongo.connection.Connection`-level default
+            :class:`~pymongo.mongo_client.MongoClient`-level default
           - `read_preference` (optional): The read preference for
             this query.
           - `tag_sets` (optional): The tag sets for this query.
@@ -845,8 +845,8 @@ class Collection(common.BaseObject):
         actually create the index.
 
         Care must be taken when the database is being accessed through
-        multiple connections at once. If an index is created using
-        PyMongo and then deleted using another connection any call to
+        multiple clients at once. If an index is created using
+        this client and deleted using another, any call to
         :meth:`ensure_index` within the cache window will fail to
         re-create the missing index.
 
@@ -1023,7 +1023,7 @@ class Collection(common.BaseObject):
         """Perform an aggregation using the aggregation framework on this
         collection.
 
-        With :class:`~pymongo.replica_set_connection.ReplicaSetConnection`
+        With :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`
         or :class:`~pymongo.master_slave_connection.MasterSlaveConnection`,
         if the `read_preference` attribute of this instance is not set to
         :attr:`pymongo.read_preferences.ReadPreference.PRIMARY` or the
@@ -1074,7 +1074,7 @@ class Collection(common.BaseObject):
             function to be applied to each document, returning the key
             to group by.
 
-        With :class:`~pymongo.replica_set_connection.ReplicaSetConnection`
+        With :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`
         or :class:`~pymongo.master_slave_connection.MasterSlaveConnection`,
         if the `read_preference` attribute of this instance is not set to
         :attr:`pymongo.read_preferences.ReadPreference.PRIMARY` or
@@ -1256,7 +1256,7 @@ class Collection(common.BaseObject):
         result documents in a list. Otherwise, returns the full
         response from the server to the `map reduce command`_.
 
-        With :class:`~pymongo.replica_set_connection.ReplicaSetConnection`
+        With :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`
         or :class:`~pymongo.master_slave_connection.MasterSlaveConnection`,
         if the `read_preference` attribute of this instance is not set to
         :attr:`pymongo.read_preferences.ReadPreference.PRIMARY` or
