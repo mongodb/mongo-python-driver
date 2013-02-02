@@ -42,46 +42,46 @@ from pymongo.son_manipulator import (AutoReference,
                                      ObjectIdShuffler)
 from test import version
 from test.utils import is_mongos, server_started_with_auth
-from test.test_connection import get_connection
+from test.test_connection import get_client
 
 
 class TestDatabase(unittest.TestCase):
 
     def setUp(self):
-        self.connection = get_connection()
+        self.client = get_client()
 
     def test_name(self):
-        self.assertRaises(TypeError, Database, self.connection, 4)
-        self.assertRaises(InvalidName, Database, self.connection, "my db")
-        self.assertRaises(InvalidName, Database, self.connection, "my\x00db")
+        self.assertRaises(TypeError, Database, self.client, 4)
+        self.assertRaises(InvalidName, Database, self.client, "my db")
+        self.assertRaises(InvalidName, Database, self.client, "my\x00db")
         self.assertRaises(InvalidName, Database,
-                          self.connection, u"my\u0000db")
-        self.assertEqual("name", Database(self.connection, "name").name)
+                          self.client, u"my\u0000db")
+        self.assertEqual("name", Database(self.client, "name").name)
 
     def test_equality(self):
-        self.assertNotEqual(Database(self.connection, "test"),
-                            Database(self.connection, "mike"))
-        self.assertEqual(Database(self.connection, "test"),
-                         Database(self.connection, "test"))
+        self.assertNotEqual(Database(self.client, "test"),
+                            Database(self.client, "mike"))
+        self.assertEqual(Database(self.client, "test"),
+                         Database(self.client, "test"))
 
         # Explicitly test inequality
-        self.assertFalse(Database(self.connection, "test") !=
-                         Database(self.connection, "test"))
+        self.assertFalse(Database(self.client, "test") !=
+                         Database(self.client, "test"))
 
     def test_repr(self):
-        self.assertEqual(repr(Database(self.connection, "pymongo_test")),
-                         "Database(%r, %s)" % (self.connection,
+        self.assertEqual(repr(Database(self.client, "pymongo_test")),
+                         "Database(%r, %s)" % (self.client,
                                                repr(u"pymongo_test")))
 
     def test_get_coll(self):
-        db = Database(self.connection, "pymongo_test")
+        db = Database(self.client, "pymongo_test")
         self.assertEqual(db.test, db["test"])
         self.assertEqual(db.test, Collection(db, "test"))
         self.assertNotEqual(db.test, Collection(db, "mike"))
         self.assertEqual(db.test.mike, db["test.mike"])
 
     def test_create_collection(self):
-        db = Database(self.connection, "pymongo_test")
+        db = Database(self.client, "pymongo_test")
 
         db.test.insert({"hello": "world"})
         self.assertRaises(CollectionInvalid, db.create_collection, "test")
@@ -104,7 +104,7 @@ class TestDatabase(unittest.TestCase):
         self.assertRaises(CollectionInvalid, db.create_collection, "test.foo")
 
     def test_collection_names(self):
-        db = Database(self.connection, "pymongo_test")
+        db = Database(self.client, "pymongo_test")
         db.test.save({"dummy": u"object"})
         db.test.mike.save({"dummy": u"object"})
 
@@ -115,7 +115,7 @@ class TestDatabase(unittest.TestCase):
             self.assertTrue("$" not in coll)
 
     def test_drop_collection(self):
-        db = Database(self.connection, "pymongo_test")
+        db = Database(self.client, "pymongo_test")
 
         self.assertRaises(TypeError, db.drop_collection, 5)
         self.assertRaises(TypeError, db.drop_collection, None)
@@ -144,7 +144,7 @@ class TestDatabase(unittest.TestCase):
         db.drop_collection(db.test.doesnotexist)
 
     def test_validate_collection(self):
-        db = self.connection.pymongo_test
+        db = self.client.pymongo_test
 
         self.assertRaises(TypeError, db.validate_collection, 5)
         self.assertRaises(TypeError, db.validate_collection, None)
@@ -164,9 +164,9 @@ class TestDatabase(unittest.TestCase):
         self.assertTrue(db.validate_collection(db.test, True, True))
 
     def test_profiling_levels(self):
-        if is_mongos(self.connection):
+        if is_mongos(self.client):
             raise SkipTest('profile is not supported by mongos')
-        db = self.connection.pymongo_test
+        db = self.client.pymongo_test
         self.assertEqual(db.profiling_level(), OFF)  # default
 
         self.assertRaises(ValueError, db.set_profiling_level, 5.5)
@@ -194,9 +194,9 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(100, db.command("profile", -1)['slowms'])
 
     def test_profiling_info(self):
-        if is_mongos(self.connection):
+        if is_mongos(self.client):
             raise SkipTest('profile is not supported by mongos')
-        db = self.connection.pymongo_test
+        db = self.client.pymongo_test
 
         db.set_profiling_level(ALL)
         db.test.find()
@@ -207,7 +207,7 @@ class TestDatabase(unittest.TestCase):
 
         # Check if we're going to fail because of SERVER-4754, in which
         # profiling info isn't collected if mongod was started with --auth
-        if server_started_with_auth(self.connection):
+        if server_started_with_auth(self.client):
             raise SkipTest(
                 "We need SERVER-4754 fixed for the rest of this test to pass"
             )
@@ -228,7 +228,7 @@ class TestDatabase(unittest.TestCase):
         self.assertTrue(isinstance(info[0]["ts"], datetime.datetime))
 
     def test_iteration(self):
-        db = self.connection.pymongo_test
+        db = self.client.pymongo_test
 
         def iterate():
             [a for a in db]
@@ -236,9 +236,9 @@ class TestDatabase(unittest.TestCase):
         self.assertRaises(TypeError, iterate)
 
     def test_errors(self):
-        if is_mongos(self.connection):
+        if is_mongos(self.client):
             raise SkipTest('getpreverror not supported by mongos')
-        db = self.connection.pymongo_test
+        db = self.client.pymongo_test
 
         db.reset_error_history()
         self.assertEqual(None, db.error())
@@ -271,12 +271,12 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(None, db.previous_error())
 
     def test_command(self):
-        db = self.connection.admin
+        db = self.client.admin
 
         self.assertEqual(db.command("buildinfo"), db.command({"buildinfo": 1}))
 
     def test_last_status(self):
-        db = self.connection.pymongo_test
+        db = self.client.pymongo_test
 
         db.test.remove({})
         db.test.save({"i": 1})
@@ -302,10 +302,10 @@ class TestDatabase(unittest.TestCase):
                          u"81e0e2364499209f466e75926a162d73")
 
     def test_authenticate_add_remove_user(self):
-        if (is_mongos(self.connection) and not
-            version.at_least(self.connection, (2, 0, 0))):
+        if (is_mongos(self.client) and not
+            version.at_least(self.client, (2, 0, 0))):
             raise SkipTest("Auth with sharding requires MongoDB >= 2.0.0")
-        db = self.connection.pymongo_test
+        db = self.client.pymongo_test
         db.system.users.remove({})
         db.remove_user("mike")
 
@@ -345,72 +345,74 @@ class TestDatabase(unittest.TestCase):
         db.logout()
 
     def test_authenticate_and_safe(self):
-        if (is_mongos(self.connection) and not
-            version.at_least(self.connection, (2, 0, 0))):
+        if (is_mongos(self.client) and not
+            version.at_least(self.client, (2, 0, 0))):
             raise SkipTest("Auth with sharding requires MongoDB >= 2.0.0")
-        db = self.connection.auth_test
+        db = self.client.auth_test
         db.system.users.remove({})
         db.add_user("bernie", "password")
         db.authenticate("bernie", "password")
 
         db.test.remove({})
-        self.assertTrue(db.test.insert({"bim": "baz"}, safe=True))
+        self.assertTrue(db.test.insert({"bim": "baz"}))
         self.assertEqual(1, db.test.count())
 
         self.assertEqual(1,
                          db.test.update({"bim": "baz"},
-                                        {"$set": {"bim": "bar"}},
-                                        safe=True).get('n'))
+                                        {"$set": {"bim": "bar"}}).get('n'))
 
         self.assertEqual(1,
-                         db.test.remove({}, safe=True).get('n'))
+                         db.test.remove({}).get('n'))
 
         self.assertEqual(0, db.test.count())
-        self.connection.drop_database("auth_test")
+        self.client.drop_database("auth_test")
 
 
     def test_authenticate_and_request(self):
-        if (is_mongos(self.connection) and not
-            version.at_least(self.connection, (2, 0, 0))):
+        if (is_mongos(self.client) and not
+            version.at_least(self.client, (2, 0, 0))):
             raise SkipTest("Auth with sharding requires MongoDB >= 2.0.0")
+
         # Database.authenticate() needs to be in a request - check that it
         # always runs in a request, and that it restores the request state
         # (in or not in a request) properly when it's finished.
-        self.assertTrue(self.connection.auto_start_request)
-        db = self.connection.pymongo_test
+        self.assertFalse(self.client.auto_start_request)
+        db = self.client.pymongo_test
         db.system.users.remove({})
         db.remove_user("mike")
         db.add_user("mike", "password")
-        self.assertTrue(self.connection.in_request())
+        self.assertFalse(self.client.in_request())
         self.assertTrue(db.authenticate("mike", "password"))
-        self.assertTrue(self.connection.in_request())
+        self.assertFalse(self.client.in_request())
 
-        no_request_cx = get_connection(auto_start_request=False)
-        no_request_db = no_request_cx.pymongo_test
-        self.assertFalse(no_request_cx.in_request())
-        self.assertTrue(no_request_db.authenticate("mike", "password"))
-        self.assertFalse(no_request_cx.in_request())
+        request_cx = get_client(auto_start_request=True)
+        request_db = request_cx.pymongo_test
+        self.assertTrue(request_cx.in_request())
+        self.assertTrue(request_db.authenticate("mike", "password"))
+        self.assertTrue(request_cx.in_request())
 
         # just make sure there are no exceptions here
         db.logout()
-        no_request_db.logout()
+        db.collection.find_one()
+        request_db.logout()
+        request_db.collection.find_one()
 
     def test_authenticate_multiple(self):
-        conn = get_connection()
-        if (is_mongos(conn) and not
-            version.at_least(self.connection, (2, 0, 0))):
+        client = get_client()
+        if (is_mongos(client) and not
+            version.at_least(self.client, (2, 0, 0))):
             raise SkipTest("Auth with sharding requires MongoDB >= 2.0.0")
-        if not server_started_with_auth(conn):
+        if not server_started_with_auth(client):
             raise SkipTest("Authentication is not enabled on server")
 
         # Setup
-        users_db = conn.pymongo_test
-        admin_db = conn.admin
-        other_db = conn.pymongo_test1
-        users_db.system.users.remove(safe=True)
-        admin_db.system.users.remove(safe=True)
-        users_db.test.remove(safe=True)
-        other_db.test.remove(safe=True)
+        users_db = client.pymongo_test
+        admin_db = client.admin
+        other_db = client.pymongo_test1
+        users_db.system.users.remove()
+        admin_db.system.users.remove()
+        users_db.test.remove()
+        other_db.test.remove()
 
         admin_db.add_user('admin', 'pass')
         self.assertTrue(admin_db.authenticate('admin', 'pass'))
@@ -432,26 +434,26 @@ class TestDatabase(unittest.TestCase):
         admin_db.authenticate('ro-admin', 'pass')
         self.assertEqual(0, other_db.test.count())
         self.assertRaises(OperationFailure,
-                          other_db.test.insert, {}, safe=True)
+                          other_db.test.insert, {})
 
         # Force close all sockets
-        conn.disconnect()
+        client.disconnect()
 
         # We should still be able to write to the regular user's db
-        self.assertTrue(users_db.test.remove(safe=True))
+        self.assertTrue(users_db.test.remove())
         # And read from other dbs...
         self.assertEqual(0, other_db.test.count())
         # But still not write to other dbs...
         self.assertRaises(OperationFailure,
-                          other_db.test.insert, {}, safe=True)
+                          other_db.test.insert, {})
 
         # Cleanup
         admin_db.logout()
         users_db.logout()
         self.assertTrue(admin_db.authenticate('admin', 'pass'))
-        self.assertTrue(admin_db.system.users.remove(safe=True))
+        self.assertTrue(admin_db.system.users.remove())
         self.assertEqual(0, admin_db.system.users.count())
-        self.assertTrue(users_db.system.users.remove(safe=True))
+        self.assertTrue(users_db.system.users.remove())
 
     def test_id_ordering(self):
         # PyMongo attempts to have _id show up first
@@ -460,10 +462,8 @@ class TestDatabase(unittest.TestCase):
         # guarantee any particular order. This will never
         # work right in Jython or Python >= 3.3 with
         # hash randomization enabled.
-        db = self.connection.pymongo_test
+        db = self.client.pymongo_test
         db.test.remove({})
-
-        db.test.insert({"hello": "world", "_id": 5})
         db.test.insert(SON([("hello", "world"),
                             ("_id", 5)]))
 
@@ -482,7 +482,7 @@ class TestDatabase(unittest.TestCase):
                 break
 
     def test_deref(self):
-        db = self.connection.pymongo_test
+        db = self.client.pymongo_test
         db.test.remove({})
 
         self.assertRaises(TypeError, db.dereference, 5)
@@ -504,7 +504,7 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(obj, db.dereference(DBRef("test", 4)))
 
     def test_eval(self):
-        db = self.connection.pymongo_test
+        db = self.client.pymongo_test
         db.test.remove({})
 
         self.assertRaises(TypeError, db.eval, None)
@@ -531,7 +531,7 @@ class TestDatabase(unittest.TestCase):
 
     # TODO some of these tests belong in the collection level testing.
     def test_save_find_one(self):
-        db = Database(self.connection, "pymongo_test")
+        db = Database(self.client, "pymongo_test")
         db.test.remove({})
 
         a_doc = SON({"hello": u"world"})
@@ -558,13 +558,13 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(count, 1)
 
     def test_long(self):
-        db = self.connection.pymongo_test
+        db = self.client.pymongo_test
         db.test.remove({})
         db.test.save({"x": 9223372036854775807L})
         self.assertEqual(9223372036854775807L, db.test.find_one()["x"])
 
     def test_remove(self):
-        db = self.connection.pymongo_test
+        db = self.client.pymongo_test
         db.test.remove({})
 
         one = db.test.save({"x": 1})
@@ -598,7 +598,7 @@ class TestDatabase(unittest.TestCase):
         self.assertFalse(db.test.find_one())
 
     def test_save_a_bunch(self):
-        db = self.connection.pymongo_test
+        db = self.client.pymongo_test
         db.test.remove({})
 
         for i in xrange(1000):
@@ -616,7 +616,7 @@ class TestDatabase(unittest.TestCase):
                 break
 
     def test_auto_ref_and_deref(self):
-        db = self.connection.pymongo_test
+        db = self.client.pymongo_test
         db.add_son_manipulator(AutoReference(db))
         db.add_son_manipulator(NamespaceInjector())
 
@@ -645,7 +645,7 @@ class TestDatabase(unittest.TestCase):
 
     # some stuff the user marc wanted to be able to do, make sure it works
     def test_marc(self):
-        db = self.connection.pymongo_test
+        db = self.client.pymongo_test
         db.add_son_manipulator(AutoReference(db))
         db.add_son_manipulator(NamespaceInjector())
 
@@ -668,7 +668,7 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual("bar", db.users.find_one()["messages"][1]["title"])
 
     def test_system_js(self):
-        db = self.connection.pymongo_test
+        db = self.client.pymongo_test
         db.system.js.remove()
 
         self.assertEqual(0, db.system.js.count())
@@ -701,7 +701,7 @@ class TestDatabase(unittest.TestCase):
             self.assertEqual(5, db.system_js.no_param())
 
     def test_system_js_list(self):
-        db = self.connection.pymongo_test
+        db = self.client.pymongo_test
         db.system.js.remove()
         self.assertEqual([], db.system_js.list())
 
@@ -715,7 +715,7 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(["bar"], db.system_js.list())
 
     def test_manipulator_properties(self):
-        db = self.connection.foo
+        db = self.client.foo
         self.assertEqual(['ObjectIdInjector'], db.incoming_manipulators)
         self.assertEqual([], db.incoming_copying_manipulators)
         self.assertEqual([], db.outgoing_manipulators)

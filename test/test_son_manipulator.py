@@ -26,14 +26,14 @@ from pymongo.son_manipulator import (NamespaceInjector,
                                      ObjectIdInjector,
                                      ObjectIdShuffler,
                                      SONManipulator)
-from test.test_connection import get_connection
+from test.test_connection import get_client
 from test import qcheck
 
 
 class TestSONManipulator(unittest.TestCase):
 
     def setUp(self):
-        self.db = Database(get_connection(), "pymongo_test")
+        self.db = Database(get_client(), "pymongo_test")
 
     def test_basic(self):
         manip = SONManipulator()

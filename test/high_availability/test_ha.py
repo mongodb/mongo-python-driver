@@ -116,7 +116,7 @@ class TestDirectConnection(unittest.TestCase):
                     AutoReconnect, conn.pymongo_test.test.find_one)
 
             # Since an attempt at an acknowledged write to a secondary from a
-            # direct connection raises AutoReconnect('not master'), Connection
+            # direct connection raises AutoReconnect('not master'), MongoClient
             # should do the same for unacknowledged writes.
             try:
                 conn.pymongo_test.test.insert({}, safe=False)

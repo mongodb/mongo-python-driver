@@ -234,7 +234,7 @@ class Pool:
           - `pair`: optional (hostname, port) tuple
         """
         # We use the pid here to avoid issues with fork / multiprocessing.
-        # See test.test_connection:TestConnection.test_fork for an example of
+        # See test.test_connection:TestClient.test_fork for an example of
         # what could go wrong otherwise
         if self.pid != os.getpid():
             self.reset()

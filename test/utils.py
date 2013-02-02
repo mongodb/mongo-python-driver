@@ -32,17 +32,17 @@ def delay(sec):
         while (d > (new Date())) { }; return true;
     }''' % sec
 
-def get_command_line(connection):
-    command_line = connection.admin.command('getCmdLineOpts')
+def get_command_line(client):
+    command_line = client.admin.command('getCmdLineOpts')
     assert command_line['ok'] == 1, "getCmdLineOpts() failed"
     return command_line['argv']
 
-def server_started_with_auth(connection):
-    argv = get_command_line(connection)
+def server_started_with_auth(client):
+    argv = get_command_line(client)
     return '--auth' in argv or '--keyFile' in argv
 
-def server_is_master_with_slave(connection):
-    return '--master' in get_command_line(connection)
+def server_is_master_with_slave(client):
+    return '--master' in get_command_line(client)
 
 def drop_collections(db):
     for coll in db.collection_names():
@@ -55,15 +55,15 @@ def joinall(threads):
         t.join(300)
         assert not t.isAlive(), "Thread %s hung" % t
 
-def is_mongos(conn):
-    res = conn.admin.command('ismaster')
+def is_mongos(client):
+    res = client.admin.command('ismaster')
     return res.get('msg', '') == 'isdbgrid'
 
 def assertRaisesExactly(cls, fn, *args, **kwargs):
     """
     Unlike the standard assertRaises, this checks that a function raises a
     specific class of exception, and not a subclass. E.g., check that
-    Connection() raises ConnectionFailure but not its subclass, AutoReconnect.
+    MongoClient() raises ConnectionFailure but not its subclass, AutoReconnect.
     """
     try:
         fn(*args, **kwargs)
@@ -189,11 +189,11 @@ def read_from_which_host(
     tag_sets=None,
     secondary_acceptable_latency_ms=15
 ):
-    """Read from a ReplicaSetConnection with the given Read Preference mode,
+    """Read from a MongoReplicaSetClient with the given Read Preference mode,
        tags, and acceptable latency. Return the 'host:port' which was read from.
 
     :Parameters:
-      - `rsc`: A ReplicaSetConnection
+      - `rsc`: A MongoReplicaSetClient
       - `mode`: A ReadPreference
       - `tag_sets`: List of dicts of tags for data-center-aware reads
       - `secondary_acceptable_latency_ms`: a float
@@ -224,7 +224,7 @@ def assertReadFrom(testcase, rsc, member, *args, **kwargs):
 
     :Parameters:
       - `testcase`: A unittest.TestCase
-      - `rsc`: A ReplicaSetConnection
+      - `rsc`: A MongoReplicaSetClient
       - `member`: A host:port expected to be used
       - `mode`: A ReadPreference
       - `tag_sets` (optional): List of dicts of tags for data-center-aware reads
@@ -240,7 +240,7 @@ def assertReadFromAll(testcase, rsc, members, *args, **kwargs):
 
     :Parameters:
       - `testcase`: A unittest.TestCase
-      - `rsc`: A ReplicaSetConnection
+      - `rsc`: A MongoReplicaSetClient
       - `members`: Sequence of host:port expected to be used
       - `mode`: A ReadPreference
       - `tag_sets` (optional): List of dicts of tags for data-center-aware reads
@@ -255,15 +255,15 @@ def assertReadFromAll(testcase, rsc, members, *args, **kwargs):
 
 class TestRequestMixin(object):
     """Inherit from this class and from unittest.TestCase to get some
-    convenient methods for testing connection-pools and requests
+    convenient methods for testing connection pools and requests
     """
     def get_sock(self, pool):
-        # Connection calls Pool.get_socket((host, port)), whereas RSC sets
+        # MongoClient calls Pool.get_socket((host, port)), whereas RSC sets
         # Pool.pair at construction-time and just calls Pool.get_socket().
         # Deal with either case so we can use TestRequestMixin to test pools
-        # from Connection and from RSC.
+        # from MongoClient and from RSC.
         if not pool.pair:
-            # self is test_connection.TestConnection
+            # self is test_connection.TestClient
             self.assertTrue(hasattr(self, 'host') and hasattr(self, 'port'))
             sock_info = pool.get_socket((self.host, self.port))
         else:
@@ -293,16 +293,18 @@ class TestRequestMixin(object):
     def assertRequestSocket(self, pool):
         self.assertTrue(isinstance(pool._get_request_state(), SocketInfo))
 
-    def assertInRequestAndSameSock(self, conn, pools):
-        self.assertTrue(conn.in_request())
+    def assertInRequestAndSameSock(self, client, pools):
+        self.assertTrue(client.in_request())
         if not isinstance(pools, list):
             pools = [pools]
         for pool in pools:
+            self.assertTrue(pool.in_request())
             self.assertSameSock(pool)
 
-    def assertNotInRequestAndDifferentSock(self, conn, pools):
-        self.assertFalse(conn.in_request())
+    def assertNotInRequestAndDifferentSock(self, client, pools):
+        self.assertFalse(client.in_request())
         if not isinstance(pools, list):
             pools = [pools]
         for pool in pools:
+            self.assertFalse(pool.in_request())
             self.assertDifferentSock(pool)

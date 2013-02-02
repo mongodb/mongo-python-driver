@@ -35,14 +35,14 @@ from gridfs.grid_file import (DEFAULT_CHUNK_SIZE,
                               GridOut)
 from gridfs.errors import (NoFile,
                            UnsupportedAPI)
-from test.test_connection import get_connection
+from test.test_connection import get_client
 from test import qcheck
 
 
 class TestGridFile(unittest.TestCase):
 
     def setUp(self):
-        self.db = get_connection().pymongo_test
+        self.db = get_client().pymongo_test
         self.db.fs.files.remove({})
         self.db.fs.chunks.remove({})
 

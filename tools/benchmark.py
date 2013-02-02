@@ -21,7 +21,7 @@ sys.path[0:0] = [""]
 import datetime
 import cProfile
 
-from pymongo import connection
+from pymongo import mongo_client
 from pymongo import ASCENDING
 
 trials = 2
@@ -93,8 +93,7 @@ def timed(name, function, args=[], setup=None):
 
 
 def main():
-    connection._TIMEOUT = 60  # jack up the timeout
-    c = connection.Connection()
+    c = mongo_client.MongoClient(connectTimeoutMS=60*1000)  # jack up timeout
     c.drop_database("benchmark")
     db = c.benchmark
 

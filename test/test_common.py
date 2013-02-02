@@ -25,9 +25,7 @@ from nose.plugins.skip import SkipTest
 
 from bson.objectid import ObjectId
 from bson.son import SON
-from pymongo.connection import Connection
 from pymongo.mongo_client import MongoClient
-from pymongo.replica_set_connection import ReplicaSetConnection
 from pymongo.mongo_replica_set_client import MongoReplicaSetClient
 from pymongo.errors import ConfigurationError, OperationFailure
 from test.utils import drop_collections
@@ -62,18 +60,18 @@ class TestCommon(unittest.TestCase):
 
         warnings.simplefilter("ignore")
 
-        c = Connection(pair)
+        c = MongoClient(pair)
         self.assertFalse(c.slave_okay)
-        self.assertFalse(c.safe)
+        self.assertTrue(c.safe)
         self.assertEqual({}, c.get_lasterror_options())
         db = c.pymongo_test
         db.drop_collection("test")
         self.assertFalse(db.slave_okay)
-        self.assertFalse(db.safe)
+        self.assertTrue(db.safe)
         self.assertEqual({}, db.get_lasterror_options())
         coll = db.test
         self.assertFalse(coll.slave_okay)
-        self.assertFalse(coll.safe)
+        self.assertTrue(coll.safe)
         self.assertEqual({}, coll.get_lasterror_options())
         cursor = coll.find()
         self.assertFalse(cursor._Cursor__slave_okay)
@@ -81,10 +79,10 @@ class TestCommon(unittest.TestCase):
         self.assertTrue(cursor._Cursor__slave_okay)
 
         # Setting any safe operations overrides explicit safe
-        self.assertTrue(Connection(host, port, wtimeout=1000, safe=False).safe)
+        self.assertTrue(MongoClient(host, port, wtimeout=1000, safe=False).safe)
 
-        c = Connection(pair, slaveok=True, w='majority',
-                                     wtimeout=300, fsync=True, j=True)
+        c = MongoClient(pair, slaveok=True, w='majority',
+                        wtimeout=300, fsync=True, j=True)
         self.assertTrue(c.slave_okay)
         self.assertTrue(c.safe)
         d = {'w': 'majority', 'wtimeout': 300, 'fsync': True, 'j': True}
@@ -102,14 +100,14 @@ class TestCommon(unittest.TestCase):
         cursor = coll.find(slave_okay=False)
         self.assertFalse(cursor._Cursor__slave_okay)
 
-        c = Connection('mongodb://%s/?'
+        c = MongoClient('mongodb://%s/?'
                        'w=2;wtimeoutMS=300;fsync=true;'
                        'journal=true' % (pair,))
         self.assertTrue(c.safe)
         d = {'w': 2, 'wtimeout': 300, 'fsync': True, 'j': True}
         self.assertEqual(d, c.get_lasterror_options())
 
-        c = Connection('mongodb://%s/?'
+        c = MongoClient('mongodb://%s/?'
                        'slaveok=true;w=1;wtimeout=300;'
                        'fsync=true;j=true' % (pair,))
         self.assertTrue(c.slave_okay)
@@ -202,7 +200,7 @@ class TestCommon(unittest.TestCase):
         warnings.resetwarnings()
 
     def test_write_concern(self):
-        c = Connection(pair)
+        c = MongoClient(pair)
 
         self.assertEqual({}, c.write_concern)
         wc = {'w': 2, 'wtimeout': 1000}
@@ -216,7 +214,7 @@ class TestCommon(unittest.TestCase):
         self.assertEqual(wc, c.write_concern)
 
         wc = {'w': 3, 'wtimeout': 1000}
-        c = Connection(w=3, wtimeout=1000)
+        c = MongoClient(w=3, wtimeout=1000)
         self.assertEqual(wc, c.write_concern)
         wc = {'w': 2, 'wtimeout': 1000}
         c.write_concern = wc
@@ -245,39 +243,6 @@ class TestCommon(unittest.TestCase):
         def f():
             c.write_concern = [('foo', 'bar')]
         self.assertRaises(ConfigurationError, f)
-
-    def test_connection(self):
-        c = Connection(pair)
-        coll = c.pymongo_test.write_concern_test
-        coll.drop()
-        doc = {"_id": ObjectId()}
-        coll.insert(doc)
-        self.assertTrue(coll.insert(doc, safe=False))
-        self.assertTrue(coll.insert(doc, w=0))
-        self.assertTrue(coll.insert(doc))
-        self.assertRaises(OperationFailure, coll.insert, doc, safe=True)
-        self.assertRaises(OperationFailure, coll.insert, doc, w=1)
-
-        c = Connection(pair, safe=True)
-        coll = c.pymongo_test.write_concern_test
-        self.assertTrue(coll.insert(doc, safe=False))
-        self.assertTrue(coll.insert(doc, w=0))
-        self.assertRaises(OperationFailure, coll.insert, doc)
-        self.assertRaises(OperationFailure, coll.insert, doc, safe=True)
-        self.assertRaises(OperationFailure, coll.insert, doc, w=1)
-
-        c = Connection("mongodb://%s/" % (pair,))
-        self.assertFalse(c.safe)
-        coll = c.pymongo_test.write_concern_test
-        self.assertTrue(coll.insert(doc))
-        c = Connection("mongodb://%s/?safe=true" % (pair,))
-        self.assertTrue(c.safe)
-        coll = c.pymongo_test.write_concern_test
-        self.assertRaises(OperationFailure, coll.insert, doc)
-
-        # Equality tests
-        self.assertEqual(c, Connection("mongodb://%s/?safe=true" % (pair,)))
-        self.assertFalse(c != Connection("mongodb://%s/?safe=true" % (pair,)))
 
     def test_mongo_client(self):
         m = MongoClient(pair, w=0)
@@ -312,43 +277,8 @@ class TestCommon(unittest.TestCase):
         self.assertEqual(m, MongoClient("mongodb://%s/?w=0" % (pair,)))
         self.assertFalse(m != MongoClient("mongodb://%s/?w=0" % (pair,)))
 
-    def test_replica_set_connection(self):
-        c = Connection(pair)
-        ismaster = c.admin.command('ismaster')
-        if 'setName' in ismaster:
-            setname = str(ismaster.get('setName'))
-        else:
-            raise SkipTest("Not connected to a replica set.")
-        c = ReplicaSetConnection(pair, replicaSet=setname)
-        coll = c.pymongo_test.write_concern_test
-        coll.drop()
-        doc = {"_id": ObjectId()}
-        coll.insert(doc)
-        self.assertTrue(coll.insert(doc, safe=False))
-        self.assertTrue(coll.insert(doc, w=0))
-        self.assertTrue(coll.insert(doc))
-        self.assertRaises(OperationFailure, coll.insert, doc, safe=True)
-        self.assertRaises(OperationFailure, coll.insert, doc, w=1)
-
-        c = ReplicaSetConnection(pair, replicaSet=setname, safe=True)
-        coll = c.pymongo_test.write_concern_test
-        self.assertTrue(coll.insert(doc, safe=False))
-        self.assertTrue(coll.insert(doc, w=0))
-        self.assertRaises(OperationFailure, coll.insert, doc)
-        self.assertRaises(OperationFailure, coll.insert, doc, safe=True)
-        self.assertRaises(OperationFailure, coll.insert, doc, w=1)
-
-        c = ReplicaSetConnection("mongodb://%s/?replicaSet=%s" % (pair, setname))
-        self.assertFalse(c.safe)
-        coll = c.pymongo_test.write_concern_test
-        self.assertTrue(coll.insert(doc))
-        c = ReplicaSetConnection("mongodb://%s/?replicaSet=%s;safe=true" % (pair, setname))
-        self.assertTrue(c.safe)
-        coll = c.pymongo_test.write_concern_test
-        self.assertRaises(OperationFailure, coll.insert, doc)
-
     def test_mongo_replica_set_client(self):
-        c = Connection(pair)
+        c = MongoClient(pair)
         ismaster = c.admin.command('ismaster')
         if 'setName' in ismaster:
             setname = str(ismaster.get('setName'))

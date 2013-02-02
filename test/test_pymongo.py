@@ -28,11 +28,12 @@ class TestPyMongo(unittest.TestCase):
         self.host = os.environ.get("DB_IP", "localhost")
         self.port = int(os.environ.get("DB_PORT", 27017))
 
-    def test_connection_alias(self):
-        c = pymongo.Connection(self.host, self.port)
-        self.assertTrue(c)
+    def test_mongo_client_alias(self):
+        # Testing that pymongo module imports mongo_client.MongoClient
+        c = pymongo.MongoClient(self.host, self.port)
         self.assertEqual(c.host, self.host)
         self.assertEqual(c.port, self.port)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Minimal test of PyMongo in a WSGI application with ReplicaSetConnection, see
-   bug PYTHON-353.
+"""Minimal test of PyMongo in a WSGI application with MongoReplicaSetClient,
+   see bug PYTHON-353.
 """
 
 import os
@@ -26,16 +26,17 @@ repository_path = os.path.normpath(os.path.join(this_path, '..', '..'))
 sys.path.insert(0, repository_path)
 
 import pymongo
-from pymongo.replica_set_connection import ReplicaSetConnection
+from pymongo.mongo_replica_set_client import MongoReplicaSetClient
 
-connection = ReplicaSetConnection(replicaSet='repl0')
-collection = connection.test.test
+# auto_start_request is part of the PYTHON-353 pathology
+client = MongoReplicaSetClient(replicaSet='repl0', auto_start_request=True)
+collection = client.test.test
 
 ndocs = 20
 
 collection.drop()
-collection.insert([{'i': i} for i in range(ndocs)], safe=True)
-connection.disconnect() # discard main thread's request socket
+collection.insert([{'i': i} for i in range(ndocs)])
+client.disconnect() # discard main thread's request socket
 
 try:
     from mod_wsgi import version as mod_wsgi_version

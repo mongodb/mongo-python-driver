@@ -22,14 +22,12 @@ localhost:27017 and localhost:27018 by default.
 """
 
 import unittest
-import logging
 import os
 import sys
-import warnings
 sys.path[0:0] = [""]
 
 from pymongo.errors import ConnectionFailure
-from pymongo.connection import Connection
+from pymongo.mongo_client import MongoClient
 
 skip_tests = True
 
@@ -53,42 +51,43 @@ class TestPaired(unittest.TestCase):
             from nose.plugins.skip import SkipTest
             raise SkipTest()
 
-
     def test_connect(self):
         self.skip()
-        self.assertRaises(ConnectionFailure, Connection,
-                          [self.bad, self.bad])
 
-        connection = Connection([self.left, self.right])
-        self.assertTrue(connection)
+        # Use a timeout so the test is reasonably fast
+        self.assertRaises(ConnectionFailure, MongoClient,
+                          [self.bad, self.bad], connectTimeoutMS=500)
 
-        host = connection.host
-        port = connection.port
+        client = MongoClient([self.left, self.right])
+        self.assertTrue(client)
 
-        connection = Connection([self.right, self.left])
-        self.assertTrue(connection)
-        self.assertEqual(host, connection.host)
-        self.assertEqual(port, connection.port)
+        host = client.host
+        port = client.port
 
-        slave = self.left == (host, port) and self.right or self.left
-        self.assertRaises(ConnectionFailure, Connection,
-                          [slave, self.bad])
-        self.assertRaises(ConnectionFailure, Connection,
-                          [self.bad, slave])
+        client = MongoClient([self.right, self.left], connectTimeoutMS=500)
+        self.assertTrue(client)
+        self.assertEqual(host, client.host)
+        self.assertEqual(port, client.port)
 
-    def test_repr(self):
-        self.skip()
-        connection = Connection([self.left, self.right])
+        if self.left == '%s:%s' % (host, port):
+            slave = self.right
+        else:
+            slave = self.left
 
-        self.assertEqual(repr(connection),
-                         "Connection(['%s', '%s'])" %
-                         (self.left, self.right))
+        # Refuse to connect if master absent
+        self.assertRaises(ConnectionFailure, MongoClient,
+                          [slave, self.bad], connectTimeoutMS=500)
+        self.assertRaises(ConnectionFailure, MongoClient,
+                          [self.bad, slave], connectTimeoutMS=500)
+
+        # No error
+        MongoClient([self.left, self.bad], connectTimeoutMS=500)
 
     def test_basic(self):
         self.skip()
-        connection = Connection([self.left, self.right])
+        client = MongoClient([self.left, self.right])
 
-        db = connection.pymongo_test
+        db = client.pymongo_test
 
         db.drop_collection("test")
         a = {"x": 1}
@@ -97,14 +96,14 @@ class TestPaired(unittest.TestCase):
 
     def test_end_request(self):
         self.skip()
-        connection = Connection([self.left, self.right])
-        db = connection.pymongo_test
+        client = MongoClient([self.left, self.right])
+        db = client.pymongo_test
 
         for _ in range(100):
             db.test.remove({})
             db.test.insert({})
             self.assertTrue(db.test.find_one())
-            connection.end_request()
+            client.end_request()
 
 
 if __name__ == "__main__":

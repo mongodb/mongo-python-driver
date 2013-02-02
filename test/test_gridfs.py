@@ -19,11 +19,10 @@
 import sys
 sys.path[0:0] = [""]
 
-from gridfs.grid_file import GridIn
-from pymongo.connection import Connection
+from pymongo.mongo_client import MongoClient
 from pymongo.errors import AutoReconnect
 from pymongo.read_preferences import ReadPreference
-from test.test_replica_set_connection import TestConnectionReplicaSetBase
+from test.test_replica_set_connection import TestReplicaSetClientBase
 
 import datetime
 import unittest
@@ -34,7 +33,7 @@ import gridfs
 from bson.py3compat import b, StringIO
 from gridfs.errors import (FileExists,
                            NoFile)
-from test.test_connection import get_connection
+from test.test_connection import get_client
 from test.utils import joinall
 
 
@@ -73,7 +72,7 @@ class JustRead(threading.Thread):
 class TestGridfs(unittest.TestCase):
 
     def setUp(self):
-        self.db = get_connection().pymongo_test
+        self.db = get_client().pymongo_test
         self.db.drop_collection("fs.files")
         self.db.drop_collection("fs.chunks")
         self.db.drop_collection("alt.files")
@@ -271,7 +270,7 @@ class TestGridfs(unittest.TestCase):
         self.assertEqual(b("hello world"), self.fs.get(oid).read())
 
     def test_file_exists(self):
-        db = get_connection(w=1).pymongo_test
+        db = get_client(w=1).pymongo_test
         fs = gridfs.GridFS(db)
 
         oid = fs.put(b("hello"))
@@ -351,21 +350,6 @@ class TestGridfs(unittest.TestCase):
             self.db.fs.files.find({'filename':'test'}).count()
         )
 
-
-class TestGridfsRequest(unittest.TestCase):
-
-    def setUp(self):
-        # TODO: merge this into TestGridfs as we update all tests to use
-        #   MongoClient instead of Connection
-        from pymongo.mongo_client import MongoClient
-        from test.test_connection import host, port
-
-        # MongoClient defaults to w=1, auto_start_request=False
-        self.db = MongoClient(host, port, w=0).pymongo_test
-        self.db.drop_collection("fs.files")
-        self.db.drop_collection("fs.chunks")
-        self.fs = gridfs.GridFS(self.db)
-
     def test_gridfs_request(self):
         self.assertFalse(self.db.connection.in_request())
         self.fs.put(b("hello world"))
@@ -373,9 +357,9 @@ class TestGridfsRequest(unittest.TestCase):
         self.assertFalse(self.db.connection.in_request())
 
 
-class TestGridfsReplicaSet(TestConnectionReplicaSetBase):
+class TestGridfsReplicaSet(TestReplicaSetClientBase):
     def test_gridfs_replica_set(self):
-        rsc = self._get_connection(
+        rsc = self._get_client(
             w=self.w, wtimeout=5000,
             read_preference=ReadPreference.SECONDARY)
 
@@ -389,14 +373,14 @@ class TestGridfsReplicaSet(TestConnectionReplicaSetBase):
 
     def test_gridfs_secondary(self):
         primary_host, primary_port = self.primary
-        primary_connection = Connection(primary_host, primary_port)
+        primary_connection = MongoClient(primary_host, primary_port)
 
         secondary_host, secondary_port = self.secondaries[0]
         for secondary_connection in [
-            Connection(secondary_host, secondary_port, slave_okay=True),
-            Connection(secondary_host, secondary_port,
-                read_preference=ReadPreference.SECONDARY),
-            ]:
+            MongoClient(secondary_host, secondary_port, slave_okay=True),
+            MongoClient(secondary_host, secondary_port,
+                        read_preference=ReadPreference.SECONDARY),
+        ]:
             primary_connection.pymongo_test.drop_collection("fs.files")
             primary_connection.pymongo_test.drop_collection("fs.chunks")
 
@@ -408,7 +392,7 @@ class TestGridfsReplicaSet(TestConnectionReplicaSetBase):
             self.assertRaises(AutoReconnect, fs.put, b('foo'))
 
     def tearDown(self):
-        rsc = self._get_connection()
+        rsc = self._get_client()
         rsc.pymongo_test.drop_collection('fs.files')
         rsc.pymongo_test.drop_collection('fs.chunks')
         rsc.close()

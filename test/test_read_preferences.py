@@ -24,53 +24,53 @@ sys.path[0:0] = [""]
 
 from bson.son import SON
 from pymongo.cursor import _QUERY_OPTIONS
-from pymongo.replica_set_connection import ReplicaSetConnection
+from pymongo.mongo_replica_set_client import MongoReplicaSetClient
 from pymongo.read_preferences import (ReadPreference, modes, MovingAverage,
                                       secondary_ok_commands)
 from pymongo.errors import ConfigurationError
 
-from test.test_replica_set_connection import TestConnectionReplicaSetBase
-from test.test_connection import get_connection, host, port
+from test.test_replica_set_connection import TestReplicaSetClientBase
+from test.test_connection import get_client, host, port
 from test import version, utils
 
 
-class TestReadPreferencesBase(TestConnectionReplicaSetBase):
+class TestReadPreferencesBase(TestReplicaSetClientBase):
     def setUp(self):
         super(TestReadPreferencesBase, self).setUp()
         # Insert some data so we can use cursors in read_from_which_host
-        c = self._get_connection()
+        c = self._get_client()
         c.pymongo_test.test.drop()
         c.pymongo_test.test.insert([{'_id': i} for i in range(10)], w=self.w)
 
     def tearDown(self):
         super(TestReadPreferencesBase, self).tearDown()
-        c = self._get_connection()
+        c = self._get_client()
         c.pymongo_test.test.drop()
 
-    def read_from_which_host(self, connection):
-        """Do a find() on the connection and return which host was used
+    def read_from_which_host(self, client):
+        """Do a find() on the client and return which host was used
         """
-        cursor = connection.pymongo_test.test.find()
+        cursor = client.pymongo_test.test.find()
         cursor.next()
         return cursor._Cursor__connection_id
 
-    def read_from_which_kind(self, connection):
-        """Do a find() on the connection and return 'primary' or 'secondary'
-           depending on which the connection used.
+    def read_from_which_kind(self, client):
+        """Do a find() on the client and return 'primary' or 'secondary'
+           depending on which the client used.
         """
-        connection_id = self.read_from_which_host(connection)
-        if connection_id == connection.primary:
+        connection_id = self.read_from_which_host(client)
+        if connection_id == client.primary:
             return 'primary'
-        elif connection_id in connection.secondaries:
+        elif connection_id in client.secondaries:
             return 'secondary'
         else:
             self.fail(
                 'Cursor used connection id %s, expected either primary '
                 '%s or secondaries %s' % (
-                    connection_id, connection.primary, connection.secondaries))
+                    connection_id, client.primary, client.secondaries))
 
     def assertReadsFrom(self, expected, **kwargs):
-        c = self._get_connection(**kwargs)
+        c = self._get_client(**kwargs)
         used = self.read_from_which_kind(c)
         self.assertEqual(expected, used, 'Cursor used %s, expected %s' % (
             expected, used))
@@ -80,52 +80,52 @@ class TestReadPreferences(TestReadPreferencesBase):
     def test_mode_validation(self):
         # 'modes' are imported from read_preferences.py
         for mode in modes:
-            self.assertEqual(mode, self._get_connection(
+            self.assertEqual(mode, self._get_client(
                 read_preference=mode).read_preference)
 
-        self.assertRaises(ConfigurationError, self._get_connection,
+        self.assertRaises(ConfigurationError, self._get_client,
             read_preference='foo')
 
     def test_tag_sets_validation(self):
         # Can't use tags with PRIMARY
-        self.assertRaises(ConfigurationError, self._get_connection,
+        self.assertRaises(ConfigurationError, self._get_client,
             tag_sets=[{'k': 'v'}])
 
         # ... but empty tag sets are ok with PRIMARY
-        self.assertEqual([{}], self._get_connection(tag_sets=[{}]).tag_sets)
+        self.assertEqual([{}], self._get_client(tag_sets=[{}]).tag_sets)
 
         S = ReadPreference.SECONDARY
-        self.assertEqual([{}], self._get_connection(read_preference=S).tag_sets)
+        self.assertEqual([{}], self._get_client(read_preference=S).tag_sets)
 
-        self.assertEqual([{'k': 'v'}], self._get_connection(
+        self.assertEqual([{'k': 'v'}], self._get_client(
             read_preference=S, tag_sets=[{'k': 'v'}]).tag_sets)
 
-        self.assertEqual([{'k': 'v'}, {}], self._get_connection(
+        self.assertEqual([{'k': 'v'}, {}], self._get_client(
             read_preference=S, tag_sets=[{'k': 'v'}, {}]).tag_sets)
 
-        self.assertRaises(ConfigurationError, self._get_connection,
+        self.assertRaises(ConfigurationError, self._get_client,
             read_preference=S, tag_sets=[])
 
         # One dict not ok, must be a list of dicts
-        self.assertRaises(ConfigurationError, self._get_connection,
+        self.assertRaises(ConfigurationError, self._get_client,
             read_preference=S, tag_sets={'k': 'v'})
 
-        self.assertRaises(ConfigurationError, self._get_connection,
+        self.assertRaises(ConfigurationError, self._get_client,
             read_preference=S, tag_sets='foo')
 
-        self.assertRaises(ConfigurationError, self._get_connection,
+        self.assertRaises(ConfigurationError, self._get_client,
             read_preference=S, tag_sets=['foo'])
 
     def test_latency_validation(self):
-        self.assertEqual(17, self._get_connection(
+        self.assertEqual(17, self._get_client(
             secondary_acceptable_latency_ms=17
         ).secondary_acceptable_latency_ms)
 
-        self.assertEqual(42, self._get_connection(
+        self.assertEqual(42, self._get_client(
             secondaryAcceptableLatencyMS=42
         ).secondary_acceptable_latency_ms)
 
-        self.assertEqual(666, self._get_connection(
+        self.assertEqual(666, self._get_client(
             secondaryacceptablelatencyms=666
         ).secondary_acceptable_latency_ms)
 
@@ -136,7 +136,7 @@ class TestReadPreferences(TestReadPreferencesBase):
     def test_primary_with_tags(self):
         # Tags not allowed with PRIMARY
         self.assertRaises(ConfigurationError,
-            self._get_connection, tag_sets=[{'dc': 'ny'}])
+            self._get_client, tag_sets=[{'dc': 'ny'}])
 
     def test_primary_preferred(self):
         self.assertReadsFrom('primary',
@@ -159,7 +159,7 @@ class TestReadPreferences(TestReadPreferencesBase):
     def test_nearest(self):
         # With high secondaryAcceptableLatencyMS, expect to read from any
         # member
-        c = self._get_connection(
+        c = self._get_client(
             read_preference=ReadPreference.NEAREST,
             secondaryAcceptableLatencyMS=10000, # 10 seconds
             auto_start_request=False)
@@ -187,7 +187,7 @@ class TestReadPreferences(TestReadPreferencesBase):
             " but didn't use %s\nlatencies: %s" % (not_used, latencies))
 
 
-class ReadPrefTester(ReplicaSetConnection):
+class ReadPrefTester(MongoReplicaSetClient):
     def __init__(self, *args, **kwargs):
         self.has_read_from = set()
         super(ReadPrefTester, self).__init__(*args, **kwargs)
@@ -199,7 +199,7 @@ class ReadPrefTester(ReplicaSetConnection):
             member, *args, **kwargs)
 
 
-class TestCommandAndReadPreference(TestConnectionReplicaSetBase):
+class TestCommandAndReadPreference(TestReplicaSetClientBase):
     def setUp(self):
         super(TestCommandAndReadPreference, self).setUp()
 
@@ -216,18 +216,18 @@ class TestCommandAndReadPreference(TestConnectionReplicaSetBase):
 
         # We create a lot of collections and indexes in these tests, so drop
         # the database
-        self._get_connection().drop_database('pymongo_test')
+        self._get_client().drop_database('pymongo_test')
         super(TestCommandAndReadPreference, self).tearDown()
 
-    def executed_on_which_member(self, connection, fn, *args, **kwargs):
-        connection.has_read_from.clear()
+    def executed_on_which_member(self, client, fn, *args, **kwargs):
+        client.has_read_from.clear()
         fn(*args, **kwargs)
-        self.assertEqual(1, len(connection.has_read_from))
-        member, = connection.has_read_from
+        self.assertEqual(1, len(client.has_read_from))
+        member, = client.has_read_from
         return member
 
-    def assertExecutedOn(self, state, connection, fn, *args, **kwargs):
-        member = self.executed_on_which_member(connection, fn, *args, **kwargs)
+    def assertExecutedOn(self, state, client, fn, *args, **kwargs):
+        member = self.executed_on_which_member(client, fn, *args, **kwargs)
         if state == 'primary':
             self.assertTrue(member.is_primary)
         elif state == 'secondary':
@@ -475,7 +475,7 @@ class TestMovingAverage(unittest.TestCase):
 
 class TestMongosConnection(unittest.TestCase):
     def test_mongos_connection(self):
-        c = get_connection()
+        c = get_client()
         is_mongos = utils.is_mongos(c)
 
         # Test default mode, PRIMARY
@@ -511,9 +511,9 @@ class TestMongosConnection(unittest.TestCase):
             for tag_sets in (
                 None, [{}]
             ):
-                # Create a connection e.g. with read_preference=NEAREST or
+                # Create a client e.g. with read_preference=NEAREST or
                 # slave_okay=True
-                c = get_connection(tag_sets=tag_sets, **{kwarg: value})
+                c = get_client(tag_sets=tag_sets, **{kwarg: value})
 
                 self.assertEqual(is_mongos, c.is_mongos)
                 cursor = c.pymongo_test.test.find()
@@ -557,11 +557,11 @@ class TestMongosConnection(unittest.TestCase):
                     # real read preference
                     self.assertRaises(
                         ConfigurationError,
-                        get_connection, tag_sets=tag_sets, **{kwarg: value})
+                        get_client, tag_sets=tag_sets, **{kwarg: value})
 
                     continue
 
-                c = get_connection(tag_sets=tag_sets, **{kwarg: value})
+                c = get_client(tag_sets=tag_sets, **{kwarg: value})
 
                 self.assertEqual(is_mongos, c.is_mongos)
                 cursor = c.pymongo_test.test.find()
@@ -574,7 +574,7 @@ class TestMongosConnection(unittest.TestCase):
                         '$readPreference' in cursor._Cursor__query_spec())
 
     def test_only_secondary_ok_commands_have_read_prefs(self):
-        c = get_connection(read_preference=ReadPreference.SECONDARY)
+        c = get_client(read_preference=ReadPreference.SECONDARY)
         is_mongos = utils.is_mongos(c)
         if not is_mongos:
             raise SkipTest("Only mongos have read_prefs added to the spec")

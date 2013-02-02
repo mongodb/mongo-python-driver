@@ -46,7 +46,6 @@ from bson.max_key import MaxKey
 from bson.min_key import MinKey
 from bson.tz_util import (FixedOffset,
                           utc)
-import pymongo
 
 from test import qcheck
 

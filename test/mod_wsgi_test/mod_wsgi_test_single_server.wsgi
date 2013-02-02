@@ -25,16 +25,17 @@ repository_path = os.path.normpath(os.path.join(this_path, '..', '..'))
 sys.path.insert(0, repository_path)
 
 import pymongo
-from pymongo.connection import Connection
+from pymongo.mongo_client import MongoClient
 
-connection = Connection()
-collection = connection.test.test
+# auto_start_request is part of the PYTHON-353 pathology
+client = MongoClient(auto_start_request=True)
+collection = client.test.test
 
 ndocs = 20
 
 collection.drop()
-collection.insert([{'i': i} for i in range(ndocs)], safe=True)
-connection.disconnect() # discard main thread's request socket
+collection.insert([{'i': i} for i in range(ndocs)])
+client.disconnect() # discard main thread's request socket
 
 try:
     from mod_wsgi import version as mod_wsgi_version

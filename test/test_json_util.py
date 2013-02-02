@@ -35,7 +35,7 @@ from bson.objectid import ObjectId
 from bson.timestamp import Timestamp
 from bson.tz_util import utc
 
-from test.test_connection import get_connection
+from test.test_connection import get_client
 
 PY3 = sys.version_info[0] == 3
 
@@ -46,7 +46,7 @@ class TestJsonUtil(unittest.TestCase):
         if not json_util.json_lib:
             raise SkipTest("No json or simplejson module")
 
-        self.db = get_connection().pymongo_test
+        self.db = get_client().pymongo_test
 
     def round_tripped(self, doc):
         return json_util.loads(json_util.dumps(doc))

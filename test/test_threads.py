@@ -21,22 +21,22 @@ import traceback
 from nose.plugins.skip import SkipTest
 
 from test.utils import server_started_with_auth, joinall, RendezvousThread
-from test.test_connection import get_connection
-from pymongo.connection import Connection
-from pymongo.replica_set_connection import ReplicaSetConnection
+from test.test_connection import get_client
+from pymongo.mongo_client import MongoClient
+from pymongo.replica_set_connection import MongoReplicaSetClient
 from pymongo.pool import SocketInfo, _closed
 from pymongo.errors import AutoReconnect, OperationFailure
 
 
-def get_pool(connection):
-    if isinstance(connection, Connection):
-        return connection._MongoClient__pool
-    elif isinstance(connection, ReplicaSetConnection):
-        writer = connection._MongoReplicaSetClient__writer
-        pools = connection._MongoReplicaSetClient__members
+def get_pool(client):
+    if isinstance(client, MongoClient):
+        return client._MongoClient__pool
+    elif isinstance(client, MongoReplicaSetClient):
+        writer = client._MongoReplicaSetClient__writer
+        pools = client._MongoReplicaSetClient__members
         return pools[writer].pool
     else:
-        raise TypeError(str(connection))
+        raise TypeError(str(client))
 
 
 class AutoAuthenticateThreads(threading.Thread):
@@ -51,7 +51,7 @@ class AutoAuthenticateThreads(threading.Thread):
     def run(self):
         try:
             for i in xrange(self.num):
-                self.coll.insert({'num':i}, safe=True)
+                self.coll.insert({'num':i})
                 self.coll.find_one({'num':i})
         except Exception:
             traceback.print_exc()
@@ -86,7 +86,7 @@ class Insert(threading.Thread):
             error = True
 
             try:
-                self.collection.insert({"test": "insert"}, safe=True)
+                self.collection.insert({"test": "insert"})
                 error = False
             except:
                 if not self.expect_exception:
@@ -111,7 +111,7 @@ class Update(threading.Thread):
 
             try:
                 self.collection.update({"test": "unique"},
-                                       {"$set": {"test": "update"}}, safe=True)
+                                       {"$set": {"test": "update"}})
                 error = False
             except:
                 if not self.expect_exception:
@@ -178,26 +178,26 @@ class BaseTestThreads(object):
     test_threads_replica_set_connection.py, which imports this module.)
     """
     def setUp(self):
-        self.db = self._get_connection().pymongo_test
+        self.db = self._get_client().pymongo_test
 
     def tearDown(self):
-        # Clear connection reference so that RSC's monitor thread
+        # Clear client reference so that RSC's monitor thread
         # dies.
         self.db = None
 
-    def _get_connection(self):
+    def _get_client(self):
         """
         Intended for overriding in TestThreadsReplicaSet. This method
-        returns a Connection here, and a ReplicaSetConnection in
+        returns a MongoClient here, and a MongoReplicaSetClient in
         test_threads_replica_set_connection.py.
         """
-        # Regular test connection
-        return get_connection()
+        # Regular test client
+        return get_client()
 
     def test_threading(self):
         self.db.drop_collection("test")
         for i in xrange(1000):
-            self.db.test.save({"x": i}, safe=True)
+            self.db.test.save({"x": i})
 
         threads = []
         for i in range(10):
@@ -249,7 +249,7 @@ class BaseTestThreads(object):
         # PYTHON-345, we need to make sure that threads' request sockets are
         # closed by disconnect().
         #
-        # 1. Create a connection with auto_start_request=True
+        # 1. Create a client with auto_start_request=True
         # 2. Start N threads and do a find() in each to get a request socket
         # 3. Pause all threads
         # 4. In the main thread close all sockets, including threads' request
@@ -260,9 +260,8 @@ class BaseTestThreads(object):
         #
         # If we've fixed PYTHON-345, then only one AutoReconnect is raised,
         # and all the threads get new request sockets.
-        cx = self.db.connection
-        self.assertTrue(cx.auto_start_request)
-        collection = self.db.pymongo_test
+        cx = get_client(auto_start_request=True)
+        collection = cx.db.pymongo_test
 
         # acquire a request socket for the main thread
         collection.find_one()
@@ -297,7 +296,7 @@ class BaseTestThreads(object):
             # ... and close it:
             request_sock.close()
 
-            # Doing an operation on the connection raises an AutoReconnect and
+            # Doing an operation on the client raises an AutoReconnect and
             # resets the pool behind the scenes
             self.assertRaises(AutoReconnect, collection.find_one)
 
@@ -318,48 +317,48 @@ class BaseTestThreadsAuth(object):
     nose imports this module, and once when nose imports
     test_threads_replica_set_connection.py, which imports this module.)
     """
-    def _get_connection(self):
+    def _get_client(self):
         """
         Intended for overriding in TestThreadsAuthReplicaSet. This method
-        returns a Connection here, and a ReplicaSetConnection in
+        returns a MongoClient here, and a MongoReplicaSetClient in
         test_threads_replica_set_connection.py.
         """
-        # Regular test connection
-        return get_connection()
+        # Regular test client
+        return get_client()
 
     def setUp(self):
-        conn = self._get_connection()
-        if not server_started_with_auth(conn):
+        client = self._get_client()
+        if not server_started_with_auth(client):
             raise SkipTest("Authentication is not enabled on server")
-        self.conn = conn
-        self.conn.admin.system.users.remove({})
-        self.conn.admin.add_user('admin-user', 'password')
-        self.conn.admin.authenticate("admin-user", "password")
-        self.conn.auth_test.system.users.remove({})
-        self.conn.auth_test.add_user("test-user", "password")
+        self.client = client
+        self.client.admin.system.users.remove({})
+        self.client.admin.add_user('admin-user', 'password')
+        self.client.admin.authenticate("admin-user", "password")
+        self.client.auth_test.system.users.remove({})
+        self.client.auth_test.add_user("test-user", "password")
 
     def tearDown(self):
         # Remove auth users from databases
-        self.conn.admin.authenticate("admin-user", "password")
-        self.conn.admin.system.users.remove({})
-        self.conn.auth_test.system.users.remove({})
-        self.conn.drop_database('auth_test')
-        # Clear connection reference so that RSC's monitor thread
+        self.client.admin.authenticate("admin-user", "password")
+        self.client.admin.system.users.remove({})
+        self.client.auth_test.system.users.remove({})
+        self.client.drop_database('auth_test')
+        # Clear client reference so that RSC's monitor thread
         # dies.
-        self.conn = None
+        self.client = None
 
     def test_auto_auth_login(self):
-        conn = self._get_connection()
-        self.assertRaises(OperationFailure, conn.auth_test.test.find_one)
+        client = self._get_client()
+        self.assertRaises(OperationFailure, client.auth_test.test.find_one)
 
         # Admin auth
-        conn = self._get_connection()
-        conn.admin.authenticate("admin-user", "password")
+        client = self._get_client()
+        client.admin.authenticate("admin-user", "password")
 
         nthreads = 10
         threads = []
         for _ in xrange(nthreads):
-            t = AutoAuthenticateThreads(conn.auth_test.test, 100)
+            t = AutoAuthenticateThreads(client.auth_test.test, 100)
             t.start()
             threads.append(t)
 
@@ -369,12 +368,12 @@ class BaseTestThreadsAuth(object):
             self.assertTrue(t.success)
 
         # Database-specific auth
-        conn = self._get_connection()
-        conn.auth_test.authenticate("test-user", "password")
+        client = self._get_client()
+        client.auth_test.authenticate("test-user", "password")
 
         threads = []
         for _ in xrange(nthreads):
-            t = AutoAuthenticateThreads(conn.auth_test.test, 100)
+            t = AutoAuthenticateThreads(client.auth_test.test, 100)
             t.start()
             threads.append(t)
 

@@ -15,11 +15,11 @@
 """Clean up databases after running `nosetests`.
 """
 
-from test.test_connection import get_connection
+from test.test_connection import get_client
 
 
 def teardown():
-    c = get_connection()
+    c = get_client()
 
     c.drop_database("pymongo-pooling-tests")
     c.drop_database("pymongo_test")

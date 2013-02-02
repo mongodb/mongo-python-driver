@@ -20,7 +20,7 @@ sys.path[0:0] = [""]
 
 from nose.plugins.skip import SkipTest
 
-from pymongo import Connection, ReplicaSetConnection
+from pymongo import MongoClient, MongoReplicaSetClient
 from pymongo.errors import ConfigurationError, ConnectionFailure
 
 have_ssl = True
@@ -38,15 +38,15 @@ class TestSSL(unittest.TestCase):
                            "with SSL and socket timeouts.")
 
     def test_config_ssl(self):
-        self.assertRaises(ConfigurationError, Connection, ssl='foo')
-        self.assertRaises(TypeError, Connection, ssl=0)
-        self.assertRaises(TypeError, Connection, ssl=5.5)
-        self.assertRaises(TypeError, Connection, ssl=[])
+        self.assertRaises(ConfigurationError, MongoClient, ssl='foo')
+        self.assertRaises(TypeError, MongoClient, ssl=0)
+        self.assertRaises(TypeError, MongoClient, ssl=5.5)
+        self.assertRaises(TypeError, MongoClient, ssl=[])
 
-        self.assertRaises(ConfigurationError, ReplicaSetConnection, ssl='foo')
-        self.assertRaises(TypeError, ReplicaSetConnection, ssl=0)
-        self.assertRaises(TypeError, ReplicaSetConnection, ssl=5.5)
-        self.assertRaises(TypeError, ReplicaSetConnection, ssl=[])
+        self.assertRaises(ConfigurationError, MongoReplicaSetClient, ssl='foo')
+        self.assertRaises(TypeError, MongoReplicaSetClient, ssl=0)
+        self.assertRaises(TypeError, MongoReplicaSetClient, ssl=5.5)
+        self.assertRaises(TypeError, MongoReplicaSetClient, ssl=[])
 
     def test_no_ssl(self):
         if have_ssl:
@@ -56,28 +56,28 @@ class TestSSL(unittest.TestCase):
             )
 
         self.assertRaises(ConfigurationError,
-                          Connection, ssl=True)
+                          MongoClient, ssl=True)
         self.assertRaises(ConfigurationError,
-                          ReplicaSetConnection, ssl=True)
+                          MongoReplicaSetClient, ssl=True)
 
     def test_simple_ops(self):
         if not have_ssl:
             raise SkipTest("The ssl module is not available.")
 
         try:
-            conn = Connection(connectTimeoutMS=100, ssl=True)
+            client = MongoClient(connectTimeoutMS=100, ssl=True)
         # MongoDB not configured for SSL?
         except ConnectionFailure:
             raise SkipTest("No mongod available over SSL")
-        response = conn.admin.command('ismaster')
+        response = client.admin.command('ismaster')
         if 'setName' in response:
-            conn = ReplicaSetConnection(replicaSet=response['setName'],
+            client = MongoReplicaSetClient(replicaSet=response['setName'],
                                         w=len(response['hosts']),
                                         ssl=True)
 
-        db = conn.pymongo_ssl_test
+        db = client.pymongo_ssl_test
         db.test.drop()
-        self.assertTrue(db.test.insert({'ssl': True}, safe=True))
+        self.assertTrue(db.test.insert({'ssl': True}))
         self.assertTrue(db.test.find_one()['ssl'])
 
 

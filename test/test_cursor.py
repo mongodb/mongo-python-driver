@@ -31,13 +31,13 @@ from pymongo.database import Database
 from pymongo.errors import (InvalidOperation,
                             OperationFailure)
 from test import version
-from test.test_connection import get_connection
+from test.test_connection import get_client
 
 
 class TestCursor(unittest.TestCase):
 
     def setUp(self):
-        self.db = Database(get_connection(), "pymongo_test")
+        self.db = Database(get_client(), "pymongo_test")
 
     def test_explain(self):
         a = self.db.test.find()
@@ -716,21 +716,21 @@ class TestCursor(unittest.TestCase):
 
         cursor = db.test.find(tailable=True)
 
-        db.test.insert({"x": 1}, safe=True)
+        db.test.insert({"x": 1})
         count = 0
         for doc in cursor:
             count += 1
             self.assertEqual(1, doc["x"])
         self.assertEqual(1, count)
 
-        db.test.insert({"x": 2}, safe=True)
+        db.test.insert({"x": 2})
         count = 0
         for doc in cursor:
             count += 1
             self.assertEqual(2, doc["x"])
         self.assertEqual(1, count)
 
-        db.test.insert({"x": 3}, safe=True)
+        db.test.insert({"x": 3})
         count = 0
         for doc in cursor:
             count += 1

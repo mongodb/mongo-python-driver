@@ -18,14 +18,14 @@ import unittest
 import sys
 sys.path[0:0] = [""]
 
-from pymongo import Connection
+from pymongo import MongoClient
 from pymongo.errors import PyMongoError
 
 
 class TestErrors(unittest.TestCase):
 
     def test_base_exception(self):
-        self.assertRaises(PyMongoError, Connection, port=0)
+        self.assertRaises(PyMongoError, MongoClient, port=0)
 
 
 if __name__ == '__main__':

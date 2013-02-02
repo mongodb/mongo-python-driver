@@ -243,9 +243,9 @@ def create_sharded_cluster(num_routers=3):
             return None
 
     # Add the shard
-    conn = pymongo.Connection(host)
+    client = pymongo.Connection(host)
     try:
-        conn.admin.command({'addshard': shard_host})
+        client.admin.command({'addshard': shard_host})
     except pymongo.errors.OperationFailure:
         # Already configured.
         pass

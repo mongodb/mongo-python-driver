@@ -16,54 +16,50 @@
 
 import unittest
 
-from pymongo.replica_set_connection import ReplicaSetConnection
-from test.test_threads import BaseTestThreads, BaseTestThreadsAuth
+from pymongo.mongo_replica_set_client import MongoReplicaSetClient
 
-from test.test_replica_set_connection import (TestConnectionReplicaSetBase,
+from test.test_threads import BaseTestThreads, BaseTestThreadsAuth
+from test.test_replica_set_connection import (TestReplicaSetClientBase,
                                               pair)
 
 
-class TestThreadsReplicaSet(TestConnectionReplicaSetBase, BaseTestThreads):
+class TestThreadsReplicaSet(TestReplicaSetClientBase, BaseTestThreads):
     def setUp(self):
         """
         Prepare to test all the same things that TestThreads tests, but do it
-        with a replica-set connection
+        with a replica-set client
         """
-        TestConnectionReplicaSetBase.setUp(self)
+        TestReplicaSetClientBase.setUp(self)
         BaseTestThreads.setUp(self)
 
     def tearDown(self):
-        TestConnectionReplicaSetBase.tearDown(self)
+        TestReplicaSetClientBase.tearDown(self)
         BaseTestThreads.tearDown(self)
 
-    def _get_connection(self):
-        """
-        Override TestThreads, so its tests run on a ReplicaSetConnection
-        instead of a regular Connection.
-        """
-        return ReplicaSetConnection(pair, replicaSet=self.name)
+    def _get_client(self, **kwargs):
+        return TestReplicaSetClientBase._get_client(self, **kwargs)
 
 
-class TestThreadsAuthReplicaSet(TestConnectionReplicaSetBase, BaseTestThreadsAuth):
+class TestThreadsAuthReplicaSet(TestReplicaSetClientBase, BaseTestThreadsAuth):
 
     def setUp(self):
         """
         Prepare to test all the same things that TestThreads tests, but do it
-        with a replica-set connection
+        with a replica-set client
         """
-        TestConnectionReplicaSetBase.setUp(self)
+        TestReplicaSetClientBase.setUp(self)
         BaseTestThreadsAuth.setUp(self)
 
     def tearDown(self):
-        TestConnectionReplicaSetBase.tearDown(self)
+        TestReplicaSetClientBase.tearDown(self)
         BaseTestThreadsAuth.tearDown(self)
 
-    def _get_connection(self):
+    def _get_client(self):
         """
-        Override TestThreadsAuth, so its tests run on a ReplicaSetConnection
-        instead of a regular Connection.
+        Override TestThreadsAuth, so its tests run on a MongoReplicaSetClient
+        instead of a regular MongoClient.
         """
-        return ReplicaSetConnection(pair, replicaSet=self.name)
+        return MongoReplicaSetClient(pair, replicaSet=self.name)
 
 
 if __name__ == "__main__":

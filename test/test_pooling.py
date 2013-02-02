@@ -41,8 +41,8 @@ class TestPoolingThreads(_TestPooling, unittest.TestCase):
             raise SkipTest("No multiprocessing module")
 
         coll = self.c.pymongo_test.test
-        coll.remove(safe=True)
-        coll.insert({'_id': 1}, safe=True)
+        coll.remove()
+        coll.insert({'_id': 1})
         coll.find_one()
         self.assert_pool_size(1)
         self.c.start_request()
@@ -102,8 +102,8 @@ class TestPoolingThreads(_TestPooling, unittest.TestCase):
         self.assertEqual(sock_ids[0], sock_ids[1])
 
     def test_pool_with_fork(self):
-        # Test that separate Connections have separate Pools, and that the
-        # driver can create a new Connection after forking
+        # Test that separate MongoClients have separate Pools, and that the
+        # driver can create a new MongoClient after forking
         if sys.platform == "win32":
             raise SkipTest("Can't test forking on Windows")
 
@@ -112,15 +112,15 @@ class TestPoolingThreads(_TestPooling, unittest.TestCase):
         except ImportError:
             raise SkipTest("No multiprocessing module")
 
-        a = self.get_connection(auto_start_request=False)
-        a.pymongo_test.test.remove(safe=True)
-        a.pymongo_test.test.insert({'_id':1}, safe=True)
+        a = self.get_client(auto_start_request=False)
+        a.pymongo_test.test.remove()
+        a.pymongo_test.test.insert({'_id':1})
         a.pymongo_test.test.find_one()
         self.assertEqual(1, len(a._MongoClient__pool.sockets))
         a_sock = one(a._MongoClient__pool.sockets)
 
         def loop(pipe):
-            c = self.get_connection(auto_start_request=False)
+            c = self.get_client(auto_start_request=False)
             self.assertEqual(1,len(c._MongoClient__pool.sockets))
             c.pymongo_test.test.find_one()
             self.assertEqual(1,len(c._MongoClient__pool.sockets))
