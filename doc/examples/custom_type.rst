@@ -16,9 +16,9 @@ We'll start by getting a clean database to use for the example:
 .. doctest::
 
   >>> from pymongo.mongo_client import MongoClient
-  >>> connection = MongoClient()
-  >>> connection.drop_database("custom_type_example")
-  >>> db = connection.custom_type_example
+  >>> client = MongoClient()
+  >>> client.drop_database("custom_type_example")
+  >>> db = client.custom_type_example
 
 Since the purpose of the example is to demonstrate working with custom
 types, we'll need a custom datatype to use. Here we define the aptly
@@ -133,7 +133,7 @@ instance we added:
 
 .. doctest::
 
-  >>> db = connection.custom_type_example
+  >>> db = client.custom_type_example
 
 This allows us to see what was actually saved to the database:
 
@@ -221,6 +221,6 @@ clearing out the manipulators and repeating our
 
 .. doctest::
 
-  >>> db = connection.custom_type_example
+  >>> db = client.custom_type_example
   >>> db.test.find_one()
   {u'_id': ObjectId('...'), u'custom': Binary('5', 128)}

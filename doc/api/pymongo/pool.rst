@@ -1,6 +1,6 @@
-:mod:`pool` -- Pool module for use with a MongoDB connection.
+:mod:`pool` -- Pool module for use with a MongoDB client.
 ==============================================================
 
 .. automodule:: pymongo.pool
-   :synopsis: Pool module for use with a MongoDB connection.
+   :synopsis: Pool module for use with a MongoDB client.
    :members:

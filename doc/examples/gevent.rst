@@ -9,7 +9,7 @@ PyMongo supports `Gevent <http://www.gevent.org/>`_. Simply call Gevent's
   >>> # You must call patch_all() *before* importing any other modules
   >>> from gevent import monkey; monkey.patch_all()
   >>> from pymongo import MongoClient
-  >>> connection = MongoClient()
+  >>> client = MongoClient()
 
 PyMongo's Gevent support means
 that :meth:`~pymongo.mongo_client.MongoClient.start_request()` ensures the
@@ -32,7 +32,7 @@ connection pool.
 
   >>> from gevent import monkey; monkey.patch_socket()
   >>> from pymongo import MongoClient
-  >>> connection = MongoClient(use_greenlets=True)
+  >>> client = MongoClient(use_greenlets=True)
 
 An instance of :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`
 created with ``use_greenlets=True`` will also use a greenlet-aware pool.

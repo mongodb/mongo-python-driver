@@ -193,7 +193,7 @@ using the ``SECONDARY`` read preference::
 
   >>> db.read_preference = ReadPreference.SECONDARY
 
-Read preference can be set on a connection, database, collection, or on a
+Read preference can be set on a client, database, collection, or on a
 per-query basis, e.g.::
 
   >>> db.collection.find_one(read_preference=ReadPreference.PRIMARY)

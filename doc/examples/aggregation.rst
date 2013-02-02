@@ -8,8 +8,8 @@ group method.
 .. testsetup::
 
   from pymongo import MongoClient
-  connection = MongoClient()
-  connection.drop_database('aggregation_example')
+  client = MongoClient()
+  client.drop_database('aggregation_example')
 
 Setup
 -----

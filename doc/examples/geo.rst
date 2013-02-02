@@ -4,8 +4,8 @@ Geospatial Indexing Example
 .. testsetup::
 
   from pymongo import MongoClient
-  connection = MongoClient()
-  connection.drop_database('geo_example')
+  client = MongoClient()
+  client.drop_database('geo_example')
 
 This example shows how to create and use a :data:`~pymongo.GEO2D`
 index in PyMongo.

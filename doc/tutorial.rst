@@ -4,8 +4,8 @@ Tutorial
 .. testsetup::
 
   from pymongo import MongoClient
-  connection = MongoClient()
-  connection.drop_database('test-database')
+  client = MongoClient()
+  client.drop_database('test-database')
 
 This tutorial is intended as an introduction to working with
 **MongoDB** and **PyMongo**.
@@ -38,14 +38,14 @@ instance. Doing so is easy:
 .. doctest::
 
   >>> from pymongo import MongoClient
-  >>> connection = MongoClient()
+  >>> client = MongoClient()
 
 The above code will connect on the default host and port. We can also
 specify the host and port explicitly, as follows:
 
 .. doctest::
 
-  >>> connection = MongoClient('localhost', 27017)
+  >>> client = MongoClient('localhost', 27017)
 
 Getting a Database
 ------------------
@@ -56,7 +56,7 @@ on :class:`~pymongo.mongo_client.MongoClient` instances:
 
 .. doctest::
 
-  >>> db = connection.test_database
+  >>> db = client.test_database
 
 If your database name is such that using attribute style access won't
 work (like ``test-database``), you can use dictionary style access
@@ -64,7 +64,7 @@ instead:
 
 .. doctest::
 
-  >>> db = connection['test-database']
+  >>> db = client['test-database']
 
 Getting a Collection
 --------------------
@@ -211,7 +211,7 @@ case to **convert the ObjectId from a string** before passing it to
   # The web framework gets post_id from the URL and passes it as a string
   def get(post_id):
       # Convert from string to ObjectId:
-      document = connection.db.collection.find_one({'_id': ObjectId(post_id)})
+      document = client.db.collection.find_one({'_id': ObjectId(post_id)})
 
 .. seealso:: :ref:`web-application-querying-by-objectid`
 

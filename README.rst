@@ -52,8 +52,8 @@ Examples
 Here's a basic example (for more see the *examples* section of the docs):
 
 >>> import pymongo
->>> connection = pymongo.MongoClient("localhost", 27017)
->>> db = connection.test
+>>> client = pymongo.MongoClient("localhost", 27017)
+>>> db = client.test
 >>> db.name
 u'test'
 >>> db.my_collection

@@ -71,9 +71,9 @@ doctest_test_doctest_blocks = False
 
 doctest_global_setup = """
 from pymongo.mongo_client import MongoClient
-connection = MongoClient()
-connection.drop_database("doctest_test")
-db = connection.doctest_test
+client = MongoClient()
+client.drop_database("doctest_test")
+db = client.doctest_test
 """
 
 # -- Options for HTML output ---------------------------------------------------
