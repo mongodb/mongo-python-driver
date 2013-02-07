@@ -71,7 +71,6 @@ def insert(collection_name, docs, check_keys,
            safe, last_error_args, continue_on_error, uuid_subtype):
     """Get an **insert** message.
     """
-    max_bson_size = 0
     options = 0
     if continue_on_error:
         options += 1

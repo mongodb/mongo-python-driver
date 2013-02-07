@@ -62,7 +62,6 @@ def kill_members(members, sig, hosts=nodes):
         except OSError:
             if ha_tools_debug:
                 print member, 'already dead?'
-            pass  # already dead
 
 
 def kill_all_members():
