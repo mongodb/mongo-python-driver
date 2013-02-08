@@ -39,10 +39,11 @@ from pymongo.errors import (ConfigurationError,
                             InvalidName,
                             OperationFailure)
 from test import version
-from test.utils import (is_mongos,
-                        server_is_master_with_slave,
+from test.utils import (assertRaisesExactly,
                         delay,
-                        assertRaisesExactly,
+                        is_mongos,
+                        server_is_master_with_slave,
+                        server_started_with_auth,
                         TestRequestMixin)
 
 host = os.environ.get("DB_IP", "localhost")
@@ -302,6 +303,9 @@ class TestConnection(unittest.TestCase, TestRequestMixin):
     def test_unix_socket(self):
         if not hasattr(socket, "AF_UNIX"):
             raise SkipTest("UNIX-sockets are not supported on this system")
+        if (sys.platform == 'darwin' and
+            server_started_with_auth(Connection(self.host, self.port))):
+            raise SkipTest("SERVER-8492")
 
         mongodb_socket = '/tmp/mongodb-27017.sock'
         if not os.access(mongodb_socket, os.R_OK):
@@ -310,7 +314,7 @@ class TestConnection(unittest.TestCase, TestRequestMixin):
         self.assertTrue(Connection("mongodb://%s" % mongodb_socket))
 
         connection = Connection("mongodb://%s" % mongodb_socket)
-        connection.pymongo_test.test.save({"dummy": "object"})
+        connection.pymongo_test.test.save({"dummy": "object"}, safe=True)
 
         # Confirm we can read via the socket
         dbs = connection.database_names()
