@@ -350,6 +350,6 @@ or using :meth:`~pymongo.database.Database.authenticate`::
   >>> db = client.test
   >>> db.authenticate('mongodbuser@EXAMPLE.COM',
   ...                 mechanism=MongoAuthenticationMechanism.GSSAPI)
-  >>> True
+  True
 
 .. _kerberos module: http://pypi.python.org/pypi/kerberos
