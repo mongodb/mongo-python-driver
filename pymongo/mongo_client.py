@@ -182,7 +182,7 @@ class MongoClient(common.BaseObject):
         seeds = set()
         username = None
         password = None
-        db = None
+        db_name = None
         opts = {}
         for entity in host:
             if "://" in entity:
@@ -191,7 +191,7 @@ class MongoClient(common.BaseObject):
                     seeds.update(res["nodelist"])
                     username = res["username"] or username
                     password = res["password"] or password
-                    db = res["database"] or db
+                    db_name = res["database"] or db_name
                     opts = res["options"]
                 else:
                     idx = entity.find("://")
@@ -268,13 +268,20 @@ class MongoClient(common.BaseObject):
                 # ConnectionFailure makes more sense here than AutoReconnect
                 raise ConnectionFailure(str(e))
 
-        if db and username is None:
-            warnings.warn("database name in URI is being ignored. If you wish "
-                          "to authenticate to %s, you must provide a username "
-                          "and password." % (db,))
+        db_name = options.get('authsource', db_name)
+        if db_name and username is None:
+            warnings.warn("database name or authSource in URI is being "
+                          "ignored. If you wish to authenticate to %s, you "
+                          "must provide a username and password." % (db_name,))
         if username:
-            db = db or "admin"
-            if not self[db].authenticate(username, password):
+            mechanism = options.get('authmechanism',
+                                    auth.MECHANISMS.index('MONGO-CR'))
+            if mechanism == auth.MECHANISMS.index('GSSAPI'):
+                source = '$external'
+            else:
+                source = db_name or 'admin'
+            if not self[source].authenticate(username,
+                                             password, source, mechanism):
                 raise ConfigurationError("authentication failed")
 
     def _cached(self, dbname, coll, index):

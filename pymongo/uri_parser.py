@@ -78,9 +78,9 @@ def parse_userinfo(userinfo):
         raise InvalidURI("':' or '@' characters in a username or password "
                          "must be escaped according to RFC 2396.")
     user, _, passwd = _partition(userinfo, ":")
-    if not user or not passwd:
-        raise InvalidURI("An empty string is not a "
-                         "valid username or password.")
+    # No password is expected with GSSAPI authentication.
+    if not user:
+        raise InvalidURI("The empty string is not valid username.")
     user = unquote_plus(user)
     passwd = unquote_plus(passwd)
 

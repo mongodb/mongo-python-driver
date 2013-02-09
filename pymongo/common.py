@@ -17,6 +17,7 @@
 import warnings
 from pymongo import read_preferences
 
+from pymongo.auth import MECHANISMS
 from pymongo.read_preferences import ReadPreference
 from pymongo.errors import ConfigurationError
 
@@ -154,6 +155,16 @@ def validate_tag_sets(dummy, value):
     return value
 
 
+def validate_auth_mechanism(dummy, value):
+    """Validate the authMechanism URI option.
+    """
+    try:
+        return MECHANISMS.index(value)
+    except ValueError:
+        raise ConfigurationError("%s is not a supported "
+                                 "value for authMechanism" % (value,))
+
+
 # jounal is an alias for j,
 # wtimeoutms is an alias for wtimeout
 VALIDATORS = {
@@ -177,6 +188,8 @@ VALIDATORS = {
     'secondary_acceptable_latency_ms': validate_positive_float,
     'auto_start_request': validate_boolean,
     'use_greenlets': validate_boolean,
+    'authmechanism': validate_auth_mechanism,
+    'authsource': validate_basestring,
 }
 
 

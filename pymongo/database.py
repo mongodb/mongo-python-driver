@@ -19,6 +19,7 @@ from bson.code import Code
 from bson.dbref import DBRef
 from bson.son import SON
 from pymongo import auth, common, helpers
+from pymongo.auth import MECHANISMS, MongoAuthenticationMechanism
 from pymongo.collection import Collection
 from pymongo.errors import (CollectionInvalid,
                             InvalidName,
@@ -33,10 +34,13 @@ def _check_name(name):
     if not name:
         raise InvalidName("database name cannot be the empty string")
 
-    for invalid_char in [" ", ".", "$", "/", "\\", "\x00"]:
-        if invalid_char in name:
-            raise InvalidName("database names cannot contain the "
-                              "character %r" % invalid_char)
+    # '$' is an illegal character in database names but $external
+    # is required for GSSAPI authentication.
+    if name != '$external':
+        for invalid_char in [" ", ".", "$", "/", "\\", "\x00"]:
+            if invalid_char in name:
+                raise InvalidName("database names cannot contain the "
+                                  "character %r" % invalid_char)
 
 
 class Database(common.BaseObject):
@@ -651,7 +655,8 @@ class Database(common.BaseObject):
         """
         self.system.users.remove({"user": name}, **self._get_wc_override())
 
-    def authenticate(self, name, password):
+    def authenticate(self, name, password=None, source=None,
+                     mechanism=MongoAuthenticationMechanism.MONGO_CR):
         """Authenticate to use this database.
 
         Raises :class:`TypeError` if either `name` or `password` is not
@@ -682,20 +687,35 @@ class Database(common.BaseObject):
            sockets using :meth:`~pymongo.mongo_client.MongoClient.disconnect`.
 
         :Parameters:
-          - `name`: the name of the user to authenticate
-          - `password`: the password of the user to authenticate
+          - `name`: the name of the user to authenticate.
+          - `password` (optional): the password of the user to authenticate.
+            Not used with GSSAPI authentication.
+          - `source` (optional): the database to authenticate on. If not
+            specified the current database is used.
+          - `mechanism` (optional): See
+            :class:`pymongo.auth.MongoAuthenticationMechanism` for options.
+            Defaults to MONGO-CR (Mongo Challenge Response protocol)
 
         .. mongodoc:: authenticate
         """
         if not isinstance(name, basestring):
             raise TypeError("name must be an instance "
                             "of %s" % (basestring.__name__,))
-        if not isinstance(password, basestring):
+        if password is not None and not isinstance(password, basestring):
             raise TypeError("password must be an instance "
                             "of %s" % (basestring.__name__,))
+        if source is not None and not isinstance(source, basestring):
+            raise TypeError("source must be an instance "
+                            "of %s" % (basestring.__name__,))
+        try:
+            MECHANISMS[mechanism]
+        except IndexError:
+            raise ValueError("mechanism must be a member of "
+                             "MongoAuthenticationMechanism")
 
         try:
-            credentials = (self.name, unicode(name), unicode(password))
+            credentials = (source or self.name, unicode(name),
+                           password and unicode(password) or None, mechanism)
             self.connection._cache_credentials(self.name, credentials)
             return True
         except OperationFailure:

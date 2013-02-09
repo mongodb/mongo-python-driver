@@ -54,8 +54,9 @@ def _closed(sock):
 class SocketInfo(object):
     """Store a socket with some metadata
     """
-    def __init__(self, sock, pool_id):
+    def __init__(self, sock, pool_id, host=None):
         self.sock = sock
+        self.host = host
         self.authset = set()
         self.closed = False
         self.last_checkout = time.time()
@@ -220,7 +221,7 @@ class Pool:
                                         "not be configured with SSL support.")
 
         sock.settimeout(self.net_timeout)
-        return SocketInfo(sock, self.pool_id)
+        return SocketInfo(sock, self.pool_id, pair and pair[0] or self.pair[0])
 
     def get_socket(self, pair=None):
         """Get a socket from the pool.
