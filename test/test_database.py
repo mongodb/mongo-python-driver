@@ -29,7 +29,6 @@ from bson.objectid import ObjectId
 from bson.son import SON
 from pymongo import (ALL,
                      auth,
-                     helpers,
                      OFF,
                      SLOW_ONLY)
 from pymongo.collection import Collection
