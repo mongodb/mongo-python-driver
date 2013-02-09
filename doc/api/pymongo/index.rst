@@ -21,6 +21,7 @@ Sub-modules:
 .. toctree::
    :maxdepth: 2
 
+   auth
    connection
    database
    collection
