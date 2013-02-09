@@ -244,7 +244,9 @@ class ObjectId(object):
             self.__id = oid
 
     def __str__(self):
-        return binascii.hexlify(self.__id).decode()
+        if PY3:
+            return binascii.hexlify(self.__id).decode()
+        return binascii.hexlify(self.__id)
 
     def __repr__(self):
         return "ObjectId('%s')" % (str(self),)
