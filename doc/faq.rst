@@ -316,3 +316,40 @@ Another option, assuming you don't need the datetime field, is to filter out
 just that field::
 
   >>> cur = coll.find({}, fields={'dt': False})
+
+How do I use Kerberos authentication with PyMongo?
+--------------------------------------------------
+
+GSSAPI (Kerberos) authentication is available in the subscriber addition of
+MongoDB, version 2.4 and newer. To authenticate using GSSAPI you must first
+install the python `kerberos module`_ using easy_install or pip. Make sure
+you run kinit before using the following authentication methods::
+
+  $ kinit mongodbuser@EXAMPLE.COM
+  mongodbuser@EXAMPLE.COM's Password: 
+  $ klist
+  Credentials cache: FILE:/tmp/krb5cc_1000
+          Principal: mongodbuser@EXAMPLE.COM
+
+    Issued                Expires               Principal
+  Feb  9 13:48:51 2013  Feb  9 23:48:51 2013  krbtgt/EXAMPLE.COM@EXAMPLE.COM
+
+Now authenticate using the MongoDB URI::
+
+  >>> # Note: the kerberos principle must be url encoded.
+  >>> import pymongo
+  >>> uri = "mongodb://mongodbuser%40EXAMPLE.COM@example.com/?authMechanism=GSSAPI"
+  >>> client = pymongo.MongoClient(uri)
+  >>>
+
+or using :meth:`~pymongo.database.Database.authenticate`::
+
+  >>> import pymongo
+  >>> from pymongo.auth import MongoAuthenticationMechanism
+  >>> client = pymongo.MongoClient('example.com')
+  >>> db = client.test
+  >>> db.authenticate('mongodbuser@EXAMPLE.COM',
+  ...                 mechanism=MongoAuthenticationMechanism.GSSAPI)
+  >>> True
+
+.. _kerberos module: http://pypi.python.org/pypi/kerberos
