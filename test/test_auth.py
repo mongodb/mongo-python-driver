@@ -35,7 +35,7 @@ from pymongo import MongoClient, MongoReplicaSetClient
 from pymongo.auth import MongoAuthenticationMechanism
 from pymongo.errors import OperationFailure
 from pymongo.read_preferences import ReadPreference
-from test.utils import is_mongos
+from test.utils import is_mongos, server_started_with_auth
 from test import version
 
 HOST = os.environ.get("DB_IP", "localhost")
@@ -128,6 +128,8 @@ class TestAuthURIOptions(unittest.TestCase):
         # Sharded auth not supported before MongoDB 2.0
         if is_mongos(client) and not version.at_least(client, (2, 0, 0)):
             raise SkipTest("Auth with sharding requires MongoDB >= 2.0.0")
+        if not server_started_with_auth(client):
+            raise SkipTest('Authentication is not enabled on server')
         self.set_name = client.admin.command('ismaster').get('setName')
         client.pymongo_test.add_user('user', 'pass')
         client.admin.add_user('admin', 'pass')
