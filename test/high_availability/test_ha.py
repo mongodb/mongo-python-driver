@@ -764,7 +764,7 @@ class TestReadPreference(unittest.TestCase):
         # Now verify changing the tag_sets unpins the member.
         tags0 = [{'a': 'a'}, {}]
         tags1 = [{'a': 'x'}, {}]
-        for _ in range(10000):
+        for _ in range(1000):
             host = utils.read_from_which_host(c, NEAREST, tags0)
             new_host = utils.read_from_which_host(c, NEAREST, tags1)
             if host != new_host:
@@ -776,7 +776,7 @@ class TestReadPreference(unittest.TestCase):
 
         # Finally, verify changing the secondary_acceptable_latency_ms unpins
         # the member.
-        for _ in range(10000):
+        for _ in range(1000):
             host = utils.read_from_which_host(c, SECONDARY, None, 15)
             new_host = utils.read_from_which_host(c, SECONDARY, None, 20)
             if host != new_host:
