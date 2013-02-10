@@ -428,11 +428,11 @@ class Request(object):
     A context manager returned by :meth:`start_request`, so you can do
     `with client.start_request(): do_something()` in Python 2.5+.
     """
-    def __init__(self, client):
-        self.client = client
+    def __init__(self, connection):
+        self.connection = connection
 
     def end(self):
-        self.client.end_request()
+        self.connection.end_request()
 
     def __enter__(self):
         return self
