@@ -19,8 +19,7 @@ import unittest
 from pymongo.mongo_replica_set_client import MongoReplicaSetClient
 
 from test.test_threads import BaseTestThreads, BaseTestThreadsAuth
-from test.test_replica_set_client import (TestReplicaSetClientBase,
-                                              pair)
+from test.test_replica_set_client import TestReplicaSetClientBase, pair
 
 
 class TestThreadsReplicaSet(TestReplicaSetClientBase, BaseTestThreads):
