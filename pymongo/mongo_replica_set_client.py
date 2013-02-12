@@ -1122,12 +1122,15 @@ class MongoReplicaSetClient(common.BaseObject):
             member.pool.maybe_return_socket(sock_info)
 
             return response
+        except OperationFailure:
+            raise
         except (ConnectionFailure, socket.error), why:
             host, port = member.pool.pair
             member.pool.discard_socket(sock_info)
             raise AutoReconnect("%s:%d: %s" % (host, port, str(why)))
         except:
-            sock_info.close()
+            if sock_info:
+                sock_info.close()
             raise
 
     def __try_read(self, member, msg, **kwargs):
