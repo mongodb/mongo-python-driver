@@ -280,8 +280,11 @@ class MongoClient(common.BaseObject):
                 source = '$external'
             else:
                 source = db_name or 'admin'
-            if not self[source].authenticate(username,
-                                             password, source, mechanism):
+            credentials = (source, unicode(username),
+                           unicode(password), mechanism)
+            try:
+                self._cache_credentials(source, credentials)
+            except OperationFailure:
                 raise ConfigurationError("authentication failed")
 
     def _cached(self, dbname, coll, index):
