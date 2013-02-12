@@ -19,7 +19,6 @@ from bson.code import Code
 from bson.dbref import DBRef
 from bson.son import SON
 from pymongo import auth, common, helpers
-from pymongo.auth import MECHANISMS, MongoAuthenticationMechanism
 from pymongo.collection import Collection
 from pymongo.errors import (CollectionInvalid,
                             InvalidName,
@@ -650,8 +649,8 @@ class Database(common.BaseObject):
         """
         self.system.users.remove({"user": name}, **self._get_wc_override())
 
-    def authenticate(self, name, password=None, source=None,
-                     mechanism=MongoAuthenticationMechanism.MONGO_CR):
+    def authenticate(self, name, password=None,
+                     source=None, mechanism='MONGO-CR'):
         """Authenticate to use this database.
 
         Raises :class:`TypeError` if either `name` or `password` is not
@@ -688,7 +687,7 @@ class Database(common.BaseObject):
           - `source` (optional): the database to authenticate on. If not
             specified the current database is used.
           - `mechanism` (optional): See
-            :class:`pymongo.auth.MongoAuthenticationMechanism` for options.
+            :data:`~pymongo.auth.MECHANISMS` for options.
             Defaults to MONGO-CR (Mongo Challenge Response protocol)
 
         .. mongodoc:: authenticate
@@ -702,11 +701,7 @@ class Database(common.BaseObject):
         if source is not None and not isinstance(source, basestring):
             raise TypeError("source must be an instance "
                             "of %s" % (basestring.__name__,))
-        try:
-            MECHANISMS[mechanism]
-        except IndexError:
-            raise ValueError("mechanism must be a member of "
-                             "MongoAuthenticationMechanism")
+        common.validate_auth_mechanism('mechanism', mechanism)
 
         try:
             credentials = (source or self.name, unicode(name),

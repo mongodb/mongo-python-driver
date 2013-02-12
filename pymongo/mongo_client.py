@@ -274,9 +274,8 @@ class MongoClient(common.BaseObject):
                           "ignored. If you wish to authenticate to %s, you "
                           "must provide a username and password." % (db_name,))
         if username:
-            mechanism = options.get('authmechanism',
-                                    auth.MECHANISMS.index('MONGO-CR'))
-            if mechanism == auth.MECHANISMS.index('GSSAPI'):
+            mechanism = options.get('authmechanism', 'MONGO-CR')
+            if mechanism == 'GSSAPI':
                 source = '$external'
             else:
                 source = db_name or 'admin'

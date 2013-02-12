@@ -26,7 +26,6 @@ from pymongo.uri_parser import (_partition,
                                 split_hosts,
                                 split_options,
                                 parse_uri)
-from pymongo.auth import MECHANISMS
 from pymongo.errors import ConfigurationError, InvalidURI
 from pymongo import ReadPreference
 
@@ -127,9 +126,9 @@ class TestURI(unittest.TestCase):
         self.assertRaises(ConfigurationError, split_options, 'fsync=5.5')
         self.assertEqual({'fsync': True}, split_options('fsync=true'))
         self.assertEqual({'fsync': False}, split_options('fsync=false'))
-        self.assertEqual({'authmechanism': MECHANISMS.index('GSSAPI')},
+        self.assertEqual({'authmechanism': 'GSSAPI'},
                          split_options('authMechanism=GSSAPI'))
-        self.assertEqual({'authmechanism': MECHANISMS.index('MONGO-CR')},
+        self.assertEqual({'authmechanism': 'MONGO-CR'},
                          split_options('authMechanism=MONGO-CR'))
         self.assertEqual({'authsource': 'foobar'}, split_options('authSource=foobar'))
         # maxPoolSize isn't yet a documented URI option.
@@ -286,7 +285,7 @@ class TestURI(unittest.TestCase):
 
         # Various authentication tests
         res = copy.deepcopy(orig)
-        res['options'] = {'authmechanism': MECHANISMS.index('MONGO-CR')}
+        res['options'] = {'authmechanism': 'MONGO-CR'}
         res['username'] = 'user'
         res['password'] = 'password'
         self.assertEqual(res,
@@ -294,8 +293,7 @@ class TestURI(unittest.TestCase):
                                    "?authMechanism=MONGO-CR"))
 
         res = copy.deepcopy(orig)
-        res['options'] = {'authmechanism': MECHANISMS.index('MONGO-CR'),
-                          'authsource': 'bar'}
+        res['options'] = {'authmechanism': 'MONGO-CR', 'authsource': 'bar'}
         res['username'] = 'user'
         res['password'] = 'password'
         res['database'] = 'foo'
@@ -304,7 +302,7 @@ class TestURI(unittest.TestCase):
                                    "?authSource=bar;authMechanism=MONGO-CR"))
 
         res = copy.deepcopy(orig)
-        res['options'] = {'authmechanism': MECHANISMS.index('MONGO-CR')}
+        res['options'] = {'authmechanism': 'MONGO-CR'}
         res['username'] = 'user'
         res['password'] = ''
         self.assertEqual(res,
@@ -320,7 +318,7 @@ class TestURI(unittest.TestCase):
                                    "@localhost/foo"))
 
         res = copy.deepcopy(orig)
-        res['options'] = {'authmechanism': MECHANISMS.index('GSSAPI')}
+        res['options'] = {'authmechanism': 'GSSAPI'}
         res['username'] = 'user@domain.com'
         res['password'] = 'password'
         res['database'] = 'foo'
@@ -329,7 +327,7 @@ class TestURI(unittest.TestCase):
                                    "@localhost/foo?authMechanism=GSSAPI"))
 
         res = copy.deepcopy(orig)
-        res['options'] = {'authmechanism': MECHANISMS.index('GSSAPI')}
+        res['options'] = {'authmechanism': 'GSSAPI'}
         res['username'] = 'user@domain.com'
         res['password'] = ''
         res['database'] = 'foo'

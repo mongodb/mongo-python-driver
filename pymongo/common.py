@@ -155,14 +155,13 @@ def validate_tag_sets(dummy, value):
     return value
 
 
-def validate_auth_mechanism(dummy, value):
+def validate_auth_mechanism(option, value):
     """Validate the authMechanism URI option.
     """
-    try:
-        return MECHANISMS.index(value)
-    except ValueError:
-        raise ConfigurationError("%s is not a supported "
-                                 "value for authMechanism" % (value,))
+    if value not in MECHANISMS:
+        raise ConfigurationError("%s must be in "
+                                 "%s" % (option, MECHANISMS))
+    return value
 
 
 # jounal is an alias for j,

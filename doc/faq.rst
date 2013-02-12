@@ -336,7 +336,7 @@ you run kinit before using the following authentication methods::
 
 Now authenticate using the MongoDB URI::
 
-  >>> # Note: the kerberos principle must be url encoded.
+  >>> # Note: the kerberos principal must be url encoded.
   >>> import pymongo
   >>> uri = "mongodb://mongodbuser%40EXAMPLE.COM@example.com/?authMechanism=GSSAPI"
   >>> client = pymongo.MongoClient(uri)
@@ -345,11 +345,9 @@ Now authenticate using the MongoDB URI::
 or using :meth:`~pymongo.database.Database.authenticate`::
 
   >>> import pymongo
-  >>> from pymongo.auth import MongoAuthenticationMechanism
   >>> client = pymongo.MongoClient('example.com')
   >>> db = client.test
-  >>> db.authenticate('mongodbuser@EXAMPLE.COM',
-  ...                 mechanism=MongoAuthenticationMechanism.GSSAPI)
+  >>> db.authenticate('mongodbuser@EXAMPLE.COM', mechanism='GSSAPI')
   True
 
 .. _kerberos module: http://pypi.python.org/pypi/kerberos

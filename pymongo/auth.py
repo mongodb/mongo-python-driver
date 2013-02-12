@@ -31,19 +31,8 @@ from bson.son import SON
 from pymongo.errors import OperationFailure
 
 
-MECHANISMS = ['MONGO-CR', 'GSSAPI']
-
-
-class MongoAuthenticationMechanism:
-    """An enum that defines the authentication mechanisms supported by
-    this release of Pymongo.
-
-    * `MONGO_CR`: MongoDB Challenge Response protocol.
-    * `GSSAPI`: Generic Security Services Application Programming Interface
-      (Called SSPI on Microsoft Windows) - Kerberos authentication.
-    """
-    MONGO_CR = MECHANISMS.index('MONGO-CR')
-    GSSAPI = MECHANISMS.index('GSSAPI')
+MECHANISMS = ('MONGO-CR', 'GSSAPI')
+"""The authentication mechanisms supported by PyMongo."""
 
 
 def _password_digest(username, password):
@@ -91,7 +80,8 @@ def _authenticate_gssapi(username, sock_info, cmd_func):
             # 0 == continue, 1 == complete, -1 == error
             # Only authGSSClientStep can return 0.
             if kerberos.authGSSClientStep(ctx, '') != 0:
-                raise OperationFailure('Unknown kerberos failure in step function.')
+                raise OperationFailure('Unknown kerberos '
+                                       'failure in step function.')
 
             # Start a SASL conversation with mongod/s
             # Note: pykerberos deals with base64 encoded byte strings.
@@ -172,7 +162,7 @@ def authenticate(credentials, sock_info, cmd_func):
     """
     source, username, password, mechanism = credentials
     # Use a dict for this when we support more mechanisms.
-    if mechanism:
+    if mechanism == 'GSSAPI':
         if not HAVE_KERBEROS:
             raise OperationFailure('The "kerberos" module must be '
                                    'installed to use GSSAPI authentication.')
