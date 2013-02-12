@@ -32,7 +32,7 @@ from pymongo.mongo_client import MongoClient
 from pymongo.pool import Pool, NO_REQUEST, NO_SOCKET_YET, SocketInfo
 from pymongo.errors import ConfigurationError
 from test import version
-from test.test_connection import get_client, host, port
+from test.test_client import get_client, host, port
 from test.utils import delay, is_mongos, one
 
 N = 50

@@ -20,7 +20,7 @@ from nose.plugins.skip import SkipTest
 
 from pymongo import pool
 from test.utils import looplet
-from test.test_connection import host, port
+from test.test_client import host, port
 from test.test_pooling_base import (
     _TestPooling, _TestMaxPoolSize, _TestPoolSocketSharing)
 

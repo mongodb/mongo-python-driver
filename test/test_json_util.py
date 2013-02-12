@@ -35,7 +35,7 @@ from bson.objectid import ObjectId
 from bson.timestamp import Timestamp
 from bson.tz_util import utc
 
-from test.test_connection import get_client
+from test.test_client import get_client
 
 PY3 = sys.version_info[0] == 3
 

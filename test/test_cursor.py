@@ -31,7 +31,7 @@ from pymongo.database import Database
 from pymongo.errors import (InvalidOperation,
                             OperationFailure)
 from test import version
-from test.test_connection import get_client
+from test.test_client import get_client
 
 
 class TestCursor(unittest.TestCase):

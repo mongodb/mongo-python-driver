@@ -15,7 +15,7 @@
 """Clean up databases after running `nosetests`.
 """
 
-from test.test_connection import get_client
+from test.test_client import get_client
 
 
 def teardown():

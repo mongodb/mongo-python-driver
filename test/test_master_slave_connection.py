@@ -35,7 +35,7 @@ from pymongo.mongo_client import MongoClient
 from pymongo.collection import Collection
 from pymongo.master_slave_connection import MasterSlaveConnection
 from test.utils import TestRequestMixin
-from test.test_connection import host, port
+from test.test_client import host, port
 
 class TestMasterSlaveConnection(unittest.TestCase, TestRequestMixin):
 

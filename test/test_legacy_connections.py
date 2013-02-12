@@ -26,8 +26,8 @@ from pymongo.connection import Connection
 from pymongo.replica_set_connection import ReplicaSetConnection
 from pymongo.errors import ConfigurationError
 
-from test.test_replica_set_connection import TestReplicaSetClientBase
-from test.test_connection import host, port
+from test.test_replica_set_client import TestReplicaSetClientBase
+from test.test_client import host, port
 
 
 class TestConnection(unittest.TestCase):

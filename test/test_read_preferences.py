@@ -29,8 +29,8 @@ from pymongo.read_preferences import (ReadPreference, modes, MovingAverage,
                                       secondary_ok_commands)
 from pymongo.errors import ConfigurationError
 
-from test.test_replica_set_connection import TestReplicaSetClientBase
-from test.test_connection import get_client, host, port
+from test.test_replica_set_client import TestReplicaSetClientBase
+from test.test_client import get_client, host, port
 from test import version, utils
 
 

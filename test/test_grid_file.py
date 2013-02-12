@@ -35,7 +35,7 @@ from gridfs.grid_file import (DEFAULT_CHUNK_SIZE,
                               GridOut)
 from gridfs.errors import (NoFile,
                            UnsupportedAPI)
-from test.test_connection import get_client
+from test.test_client import get_client
 from test import qcheck
 
 

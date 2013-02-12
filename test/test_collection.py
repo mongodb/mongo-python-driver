@@ -43,7 +43,7 @@ from pymongo.errors import (ConfigurationError,
                             InvalidOperation,
                             OperationFailure,
                             TimeoutError)
-from test.test_connection import get_client
+from test.test_client import get_client
 from test.utils import is_mongos, joinall
 from test import (qcheck,
                   version)

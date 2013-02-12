@@ -42,7 +42,7 @@ from pymongo.son_manipulator import (AutoReference,
                                      ObjectIdShuffler)
 from test import version
 from test.utils import is_mongos, server_started_with_auth
-from test.test_connection import get_client
+from test.test_client import get_client
 
 
 class TestDatabase(unittest.TestCase):

@@ -22,7 +22,7 @@ sys.path[0:0] = [""]
 from pymongo.mongo_client import MongoClient
 from pymongo.errors import AutoReconnect
 from pymongo.read_preferences import ReadPreference
-from test.test_replica_set_connection import TestReplicaSetClientBase
+from test.test_replica_set_client import TestReplicaSetClientBase
 
 import datetime
 import unittest
@@ -33,7 +33,7 @@ import gridfs
 from bson.py3compat import b, StringIO
 from gridfs.errors import (FileExists,
                            NoFile)
-from test.test_connection import get_client
+from test.test_client import get_client
 from test.utils import joinall
 
 

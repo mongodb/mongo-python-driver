@@ -21,7 +21,7 @@ import traceback
 from nose.plugins.skip import SkipTest
 
 from test.utils import server_started_with_auth, joinall, RendezvousThread
-from test.test_connection import get_client
+from test.test_client import get_client
 from pymongo.mongo_client import MongoClient
 from pymongo.replica_set_connection import MongoReplicaSetClient
 from pymongo.pool import SocketInfo, _closed
