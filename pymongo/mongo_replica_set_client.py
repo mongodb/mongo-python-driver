@@ -558,11 +558,13 @@ class MongoReplicaSetClient(common.BaseObject):
         members = self.__members.copy().values()
         member = select_member(members, ReadPreference.PRIMARY_PREFERRED)
         sock_info = self.__socket(member)
-        # Logout any previous user for this source database
-        self.__check_auth(sock_info)
-        auth.authenticate(credentials, sock_info, self.__simple_command)
-        sock_info.authset.add(credentials)
-        member.pool.maybe_return_socket(sock_info)
+        try:
+            # Since __check_auth was called in __socket
+            # there is no need to call it here.
+            auth.authenticate(credentials, sock_info, self.__simple_command)
+            sock_info.authset.add(credentials)
+        finally:
+            member.pool.maybe_return_socket(sock_info)
 
         self.__auth_credentials[source] = credentials
 
@@ -917,7 +919,11 @@ class MongoReplicaSetClient(common.BaseObject):
 
         sock_info = member.pool.get_socket()
 
-        self.__check_auth(sock_info)
+        try:
+            self.__check_auth(sock_info)
+        except OperationFailure:
+            member.pool.maybe_return_socket(sock_info)
+            raise
         return sock_info
 
     def disconnect(self):
@@ -1123,8 +1129,6 @@ class MongoReplicaSetClient(common.BaseObject):
             member.pool.maybe_return_socket(sock_info)
 
             return response
-        except OperationFailure:
-            raise
         except (ConnectionFailure, socket.error), why:
             host, port = member.pool.pair
             member.pool.discard_socket(sock_info)

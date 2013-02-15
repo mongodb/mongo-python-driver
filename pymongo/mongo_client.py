@@ -351,11 +351,13 @@ class MongoClient(common.BaseObject):
                                    'to this database. You must logout first.')
 
         sock_info = self.__socket()
-        # Logout any previous user for this source database
-        self.__check_auth(sock_info)
-        auth.authenticate(credentials, sock_info, self.__simple_command)
-        sock_info.authset.add(credentials)
-        self.__pool.maybe_return_socket(sock_info)
+        try:
+            # Since __check_auth was called in __socket
+            # there is no need to call it here.
+            auth.authenticate(credentials, sock_info, self.__simple_command)
+            sock_info.authset.add(credentials)
+        finally:
+            self.__pool.maybe_return_socket(sock_info)
 
         self.__auth_credentials[source] = credentials
 
@@ -662,7 +664,11 @@ class MongoClient(common.BaseObject):
                 host_details = "%s:%d:" % (host, port)
             raise AutoReconnect("could not connect to "
                                 "%s %s" % (host_details, str(why)))
-        self.__check_auth(sock_info)
+        try:
+            self.__check_auth(sock_info)
+        except OperationFailure:
+            self.__pool.maybe_return_socket(sock_info)
+            raise
         return sock_info
 
     def disconnect(self):
