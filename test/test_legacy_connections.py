@@ -17,9 +17,10 @@
 
 import sys
 import unittest
-from bson import ObjectId
 
 sys.path[0:0] = [""]
+
+from bson import ObjectId
 
 import pymongo
 from pymongo.connection import Connection
@@ -97,3 +98,5 @@ class TestReplicaSetConnection(TestReplicaSetClientBase):
         # Testing that pymongo module imports ReplicaSetConnection
         self.assertEqual(ReplicaSetConnection, pymongo.ReplicaSetConnection)
 
+if __name__ == "__main__":
+    unittest.main()
