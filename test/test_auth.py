@@ -128,9 +128,17 @@ class TestAuthURIOptions(unittest.TestCase):
             raise SkipTest("Auth with sharding requires MongoDB >= 2.0.0")
         if not server_started_with_auth(client):
             raise SkipTest('Authentication is not enabled on server')
-        self.set_name = client.admin.command('ismaster').get('setName')
+        response = client.admin.command('ismaster')
+        self.set_name = str(response.get('setName', ''))
         client.pymongo_test.add_user('user', 'pass')
         client.admin.add_user('admin', 'pass')
+        if self.set_name:
+            # GLE requires authentication.
+            client.admin.authenticate('admin', 'pass')
+            # Make sure the admin user is replicated after calling add_user
+            # above. This avoids a race in the MRSC tests below. Adding a
+            # user is just an insert into system.users.
+            client.admin.command('getLastError', w=len(response['hosts']))
         self.client = client
 
     def tearDown(self):
