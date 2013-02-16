@@ -31,7 +31,7 @@ from bson.son import SON
 from pymongo.errors import OperationFailure
 
 
-MECHANISMS = ('MONGO-CR', 'GSSAPI')
+MECHANISMS = ('MONGODB-CR', 'GSSAPI')
 """The authentication mechanisms supported by PyMongo."""
 
 
@@ -142,7 +142,7 @@ def _authenticate_gssapi(username, sock_info, cmd_func):
 
 
 def _authenticate_mongo_cr(username, password, source, sock_info, cmd_func):
-    """Authenticate using MONGO-CR.
+    """Authenticate using MONGODB-CR.
     """
     # Get a nonce
     response, _ = cmd_func(sock_info, source, {'getnonce': 1})

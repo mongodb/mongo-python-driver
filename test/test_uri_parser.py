@@ -128,8 +128,8 @@ class TestURI(unittest.TestCase):
         self.assertEqual({'fsync': False}, split_options('fsync=false'))
         self.assertEqual({'authmechanism': 'GSSAPI'},
                          split_options('authMechanism=GSSAPI'))
-        self.assertEqual({'authmechanism': 'MONGO-CR'},
-                         split_options('authMechanism=MONGO-CR'))
+        self.assertEqual({'authmechanism': 'MONGODB-CR'},
+                         split_options('authMechanism=MONGODB-CR'))
         self.assertEqual({'authsource': 'foobar'}, split_options('authSource=foobar'))
         # maxPoolSize isn't yet a documented URI option.
         self.assertRaises(ConfigurationError, split_options, 'maxpoolsize=50')
@@ -285,29 +285,29 @@ class TestURI(unittest.TestCase):
 
         # Various authentication tests
         res = copy.deepcopy(orig)
-        res['options'] = {'authmechanism': 'MONGO-CR'}
+        res['options'] = {'authmechanism': 'MONGODB-CR'}
         res['username'] = 'user'
         res['password'] = 'password'
         self.assertEqual(res,
                          parse_uri("mongodb://user:password@localhost/"
-                                   "?authMechanism=MONGO-CR"))
+                                   "?authMechanism=MONGODB-CR"))
 
         res = copy.deepcopy(orig)
-        res['options'] = {'authmechanism': 'MONGO-CR', 'authsource': 'bar'}
+        res['options'] = {'authmechanism': 'MONGODB-CR', 'authsource': 'bar'}
         res['username'] = 'user'
         res['password'] = 'password'
         res['database'] = 'foo'
         self.assertEqual(res,
                          parse_uri("mongodb://user:password@localhost/foo"
-                                   "?authSource=bar;authMechanism=MONGO-CR"))
+                                   "?authSource=bar;authMechanism=MONGODB-CR"))
 
         res = copy.deepcopy(orig)
-        res['options'] = {'authmechanism': 'MONGO-CR'}
+        res['options'] = {'authmechanism': 'MONGODB-CR'}
         res['username'] = 'user'
         res['password'] = ''
         self.assertEqual(res,
                          parse_uri("mongodb://user:@localhost/"
-                                   "?authMechanism=MONGO-CR"))
+                                   "?authMechanism=MONGODB-CR"))
 
         res = copy.deepcopy(orig)
         res['username'] = 'user@domain.com'

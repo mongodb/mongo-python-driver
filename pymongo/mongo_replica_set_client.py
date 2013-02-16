@@ -464,7 +464,7 @@ class MongoReplicaSetClient(common.BaseObject):
                           "ignored. If you wish to authenticate to %s, you "
                           "must provide a username and password." % (db_name,))
         if username:
-            mechanism = options.get('authmechanism', 'MONGO-CR')
+            mechanism = options.get('authmechanism', 'MONGODB-CR')
             if mechanism == 'GSSAPI':
                 source = '$external'
             else:

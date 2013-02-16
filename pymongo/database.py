@@ -650,7 +650,7 @@ class Database(common.BaseObject):
         self.system.users.remove({"user": name}, **self._get_wc_override())
 
     def authenticate(self, name, password=None,
-                     source=None, mechanism='MONGO-CR'):
+                     source=None, mechanism='MONGODB-CR'):
         """Authenticate to use this database.
 
         Raises :class:`TypeError` if either `name` or `password` is not
@@ -688,7 +688,7 @@ class Database(common.BaseObject):
             specified the current database is used.
           - `mechanism` (optional): See
             :data:`~pymongo.auth.MECHANISMS` for options.
-            Defaults to MONGO-CR (Mongo Challenge Response protocol)
+            Defaults to MONGODB-CR (MongoDB Challenge Response protocol)
 
         .. mongodoc:: authenticate
         """
