@@ -88,7 +88,7 @@ various Python frameworks and libraries.
   project to enable using MongoDB as a backend for `beaker's
   <http://beaker.groovie.org/>`_ caching / session system.
   `The source is on github <http://github.com/bwmcadams/mongodb_beaker>`_.
-* `MongoLog <http://github.com/andreisavu/mongodb-log/>`_ is a Python logging
+* `MongoLog <http://github.com/puentesarrin/mongodb-log/>`_ is a Python logging
   handler that stores logs in MongoDB using a capped collection.
 * `c5t <http://bitbucket.org/percious/c5t/>`_ is a content-management system
   using TurboGears and MongoDB.
