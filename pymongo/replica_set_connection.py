@@ -154,8 +154,26 @@ class ReplicaSetConnection(MongoReplicaSetClient):
             is no timeout. If both `network_timeout` and `socketTimeoutMS` are
             are specified `network_timeout` takes precedence, matching
             connection.Connection.
+          - `ssl_keyfile`: The private keyfile used to identify the local
+            connection against mongod.  If included with the ``certfile` then
+            only the ``ssl_certfile`` is needed.  Implies ``ssl=True``.
+          - `ssl_certfile`: The certificate file used to identify the local
+            connection against mongod. Implies ``ssl=True``.
+          - `ssl_cert_reqs`: Specifies whether a certificate is required from
+            the other side of the connection, and whether it will be validated
+            if provided. It must be one of the three values ``ssl.CERT_NONE``
+            (certificates ignored), ``ssl.CERT_OPTIONAL``
+            (not required, but validated if provided), or ``ssl.CERT_REQUIRED``
+            (required and validated). If the value of this parameter is not
+            ``ssl.CERT_NONE``, then the ``ssl_ca_certs`` parameter must point
+            to a file of CA certificates. Implies ``ssl=True``.
+          - `ssl_ca_certs`: The ca_certs file contains a set of concatenated
+            "certification authority" certificates, which are used to validate
+            certificates passed from the other end of the connection.
+            Implies ``ssl=True``.
 
-
+        .. versionchanged:: 2.4.2+
+           Added addtional ssl options
         .. versionchanged:: 2.3
            Added `tag_sets` and `secondary_acceptable_latency_ms` options.
         .. versionchanged:: 2.2

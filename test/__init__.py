@@ -14,12 +14,17 @@
 
 """Clean up databases after running `nosetests`.
 """
-
+from pymongo.errors import ConnectionFailure
 from test.test_client import get_client
 
 
 def teardown():
-    c = get_client()
+    try:
+        c = get_client()
+    except ConnectionFailure:
+        # Tests where ssl=True can cause connection failures here.
+        # Ignore and continue.
+        return
 
     c.drop_database("pymongo-pooling-tests")
     c.drop_database("pymongo_test")

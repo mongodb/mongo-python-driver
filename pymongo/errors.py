@@ -16,6 +16,11 @@
 
 from bson.errors import *
 
+try:
+    from ssl import CertificateError
+except ImportError:
+    from pymongo.ssl_match_hostname import CertificateError
+
 
 class PyMongoError(Exception):
     """Base class for all PyMongo exceptions.
@@ -97,6 +102,7 @@ class InvalidURI(ConfigurationError):
 
     .. versionadded:: 1.5
     """
+
 
 class UnsupportedOption(ConfigurationError):
     """Exception for unsupported options.

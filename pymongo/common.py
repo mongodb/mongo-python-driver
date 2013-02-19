@@ -21,6 +21,12 @@ from pymongo.auth import MECHANISMS
 from pymongo.read_preferences import ReadPreference
 from pymongo.errors import ConfigurationError
 
+HAS_SSL = True
+try:
+    import ssl
+except ImportError:
+    HAS_SSL = False
+
 
 def raise_config_error(key, dummy):
     """Raise ConfigurationError with the given key name."""
@@ -61,6 +67,33 @@ def validate_positive_integer(option, value):
         raise ConfigurationError("The value of %s must be "
                                  "a positive integer" % (option,))
     return val
+
+
+def validate_readable(option, value):
+    """Validates that 'value' is file-like and readable.
+    """
+    # First make sure its a string py3.3 open(True, 'r') succeeds
+    # Used in ssl cert checking due to poor ssl module error reporting
+    value = validate_basestring(option, value)
+    open(value, 'r').close()
+    return value
+
+
+def validate_cert_reqs(option, value):
+    """Validate the cert reqs are valid. It must be None or one of the three
+    values ``ssl.CERT_NONE``, ``ssl.CERT_OPTIONAL`` or ``ssl.CERT_REQUIRED``"""
+    if value is None:
+        return value
+    if HAS_SSL:
+        if value in (ssl.CERT_NONE, ssl.CERT_OPTIONAL, ssl.CERT_REQUIRED):
+            return value
+        raise ConfigurationError("The value of %s must be one of: "
+                                 "`ssl.CERT_NONE`, `ssl.CERT_OPTIONAL` or "
+                                 "`ssl.CERT_REQUIRED" % (option,))
+    else:
+        raise ConfigurationError("The value of %s is set but can't be "
+                                 "validated. The ssl module is not available"
+                                 % (option,))
 
 
 def validate_positive_integer_or_none(option, value):
@@ -180,6 +213,10 @@ VALIDATORS = {
     'connecttimeoutms': validate_timeout_or_none,
     'sockettimeoutms': validate_timeout_or_none,
     'ssl': validate_boolean,
+    'ssl_keyfile': validate_readable,
+    'ssl_certfile': validate_readable,
+    'ssl_cert_reqs': validate_cert_reqs,
+    'ssl_ca_certs': validate_readable,
     'readpreference': validate_read_preference,
     'read_preference': validate_read_preference,
     'tag_sets': validate_tag_sets,
