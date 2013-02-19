@@ -23,7 +23,7 @@ sys.path[0:0] = [""]
 
 from nose.plugins.skip import SkipTest
 
-from test.test_client import host, port
+from test import host, port
 from test.test_pooling_base import (
     _TestPooling, _TestMaxPoolSize, _TestPoolSocketSharing, one)
 

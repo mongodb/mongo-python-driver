@@ -26,9 +26,8 @@ import pymongo
 from pymongo.connection import Connection
 from pymongo.replica_set_connection import ReplicaSetConnection
 from pymongo.errors import ConfigurationError
-
+from test import host, port, pair
 from test.test_replica_set_client import TestReplicaSetClientBase
-from test.test_client import host, port
 
 
 class TestConnection(unittest.TestCase):
@@ -55,7 +54,8 @@ class TestConnection(unittest.TestCase):
             host, port, network_timeout=123)._MongoClient__net_timeout)
 
         for network_timeout in 'foo', 0, -1:
-            self.assertRaises(ConfigurationError,
+            self.assertRaises(
+                ConfigurationError,
                 Connection, host, port, network_timeout=network_timeout)
 
     def test_connection_alias(self):
@@ -65,7 +65,7 @@ class TestConnection(unittest.TestCase):
 
 class TestReplicaSetConnection(TestReplicaSetClientBase):
     def test_replica_set_connection(self):
-        c = ReplicaSetConnection(host, port, replicaSet=self.name)
+        c = ReplicaSetConnection(pair, replicaSet=self.name)
         self.assertTrue(c.auto_start_request)
         self.assertFalse(c.slave_okay)
         self.assertFalse(c.safe)
@@ -86,12 +86,12 @@ class TestReplicaSetConnection(TestReplicaSetClientBase):
         # ReplicaSetConnection's network_timeout argument is translated into
         # socketTimeoutMS
         self.assertEqual(123, ReplicaSetConnection(
-            host, port, replicaSet=self.name, network_timeout=123
+            pair, replicaSet=self.name, network_timeout=123
         )._MongoReplicaSetClient__net_timeout)
 
         for network_timeout in 'foo', 0, -1:
             self.assertRaises(ConfigurationError,
-                ReplicaSetConnection, host, port, replicaSet=self.name,
+                ReplicaSetConnection, pair, replicaSet=self.name,
                 network_timeout=network_timeout)
 
     def test_replica_set_connection_alias(self):

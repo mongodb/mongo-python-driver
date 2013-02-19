@@ -28,12 +28,8 @@ from bson.son import SON
 from pymongo.mongo_client import MongoClient
 from pymongo.mongo_replica_set_client import MongoReplicaSetClient
 from pymongo.errors import ConfigurationError, OperationFailure
+from test import host, port, pair
 from test.utils import drop_collections
-
-
-host = os.environ.get("DB_IP", 'localhost')
-port = int(os.environ.get("DB_PORT", 27017))
-pair = '%s:%d' % (host, port)
 
 
 class TestCommon(unittest.TestCase):
@@ -214,7 +210,7 @@ class TestCommon(unittest.TestCase):
         self.assertEqual(wc, c.write_concern)
 
         wc = {'w': 3, 'wtimeout': 1000}
-        c = MongoClient(w=3, wtimeout=1000)
+        c = MongoClient(pair, w=3, wtimeout=1000)
         self.assertEqual(wc, c.write_concern)
         wc = {'w': 2, 'wtimeout': 1000}
         c.write_concern = wc

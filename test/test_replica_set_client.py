@@ -43,15 +43,11 @@ from pymongo.errors import (AutoReconnect,
                             ConnectionFailure,
                             InvalidName,
                             OperationFailure)
-from test import version
+from test import version, port, pair
 from test.utils import (
     delay, assertReadFrom, assertReadFromAll, read_from_which_host,
     assertRaisesExactly, TestRequestMixin)
 
-
-host = os.environ.get("DB_IP", 'localhost')
-port = int(os.environ.get("DB_PORT", 27017))
-pair = '%s:%d' % (host, port)
 
 class TestReplicaSetClientAgainstStandalone(unittest.TestCase):
     """This is a funny beast -- we want to run tests for MongoReplicaSetClient

@@ -14,11 +14,11 @@
 
 """Utilities for testing pymongo
 """
-
 import threading
 
 from pymongo.errors import AutoReconnect
 from pymongo.pool import NO_REQUEST, NO_SOCKET_YET, SocketInfo
+from test import host, port
 
 
 def one(s):
@@ -263,9 +263,7 @@ class TestRequestMixin(object):
         # Deal with either case so we can use TestRequestMixin to test pools
         # from MongoClient and from RSC.
         if not pool.pair:
-            # self is test_connection.TestClient
-            self.assertTrue(hasattr(self, 'host') and hasattr(self, 'port'))
-            sock_info = pool.get_socket((self.host, self.port))
+            sock_info = pool.get_socket((host, port))
         else:
             sock_info = pool.get_socket()
         return sock_info

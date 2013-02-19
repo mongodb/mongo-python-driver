@@ -34,30 +34,24 @@ from pymongo.database import Database
 from pymongo.mongo_client import MongoClient
 from pymongo.collection import Collection
 from pymongo.master_slave_connection import MasterSlaveConnection
+from test import host, port, host2, port2, host3, port3
 from test.utils import TestRequestMixin
-from test.test_client import host, port
 
 class TestMasterSlaveConnection(unittest.TestCase, TestRequestMixin):
 
     def setUp(self):
-        # For TestRequestMixin:
-        self.host = host
-        self.port = port
-
         self.master = MongoClient(host, port)
 
         self.slaves = []
         try:
-            self.slaves.append(MongoClient(os.environ.get("DB_IP2", host),
-                               int(os.environ.get("DB_PORT2", 27018)),
-                               read_preference=ReadPreference.SECONDARY))
+            self.slaves.append(MongoClient(
+                host2, port2, read_preference=ReadPreference.SECONDARY))
         except ConnectionFailure:
             pass
 
         try:
-            self.slaves.append(MongoClient(os.environ.get("DB_IP3", host),
-                               int(os.environ.get("DB_PORT3", 27019)),
-                               read_preference=ReadPreference.SECONDARY))
+            self.slaves.append(MongoClient(
+                host3, port3, read_preference=ReadPreference.SECONDARY))
         except ConnectionFailure:
             pass
 
@@ -86,7 +80,7 @@ class TestMasterSlaveConnection(unittest.TestCase, TestRequestMixin):
         self.assertFalse(self.client.use_greenlets)
 
         if thread_util.have_greenlet:
-            master = MongoClient(self.host, self.port, use_greenlets=True)
+            master = MongoClient(host, port, use_greenlets=True)
             slaves = [
                 MongoClient(slave.host, slave.port, use_greenlets=True)
                 for slave in self.slaves]

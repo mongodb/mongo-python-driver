@@ -38,7 +38,7 @@ from pymongo.errors import (ConfigurationError,
                             ConnectionFailure,
                             InvalidName,
                             OperationFailure)
-from test import version
+from test import version, host, port
 from test.utils import (assertRaisesExactly,
                         delay,
                         is_mongos,
@@ -46,19 +46,12 @@ from test.utils import (assertRaisesExactly,
                         server_started_with_auth,
                         TestRequestMixin)
 
-host = os.environ.get("DB_IP", "localhost")
-port = int(os.environ.get("DB_PORT", 27017))
-
 
 def get_client(*args, **kwargs):
     return MongoClient(host, port, *args, **kwargs)
 
 
 class TestClient(unittest.TestCase, TestRequestMixin):
-    def setUp(self):
-        self.host = os.environ.get("DB_IP", "localhost")
-        self.port = int(os.environ.get("DB_PORT", 27017))
-
     def test_types(self):
         self.assertRaises(TypeError, MongoClient, 1)
         self.assertRaises(TypeError, MongoClient, 1.14)
@@ -69,18 +62,18 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         self.assertRaises(ConfigurationError, MongoClient, [])
 
     def test_constants(self):
-        MongoClient.HOST = self.host
-        MongoClient.PORT = self.port
+        MongoClient.HOST = host
+        MongoClient.PORT = port
         self.assertTrue(MongoClient())
 
         MongoClient.HOST = "somedomainthatdoesntexist.org"
         MongoClient.PORT = 123456789
         assertRaisesExactly(
             ConnectionFailure, MongoClient, connectTimeoutMS=600)
-        self.assertTrue(MongoClient(self.host, self.port))
+        self.assertTrue(MongoClient(host, port))
 
-        MongoClient.HOST = self.host
-        MongoClient.PORT = self.port
+        MongoClient.HOST = host
+        MongoClient.PORT = port
         self.assertTrue(MongoClient())
 
     def test_connect(self):
@@ -91,40 +84,40 @@ class TestClient(unittest.TestCase, TestRequestMixin):
             "somedomainthatdoesntexist.org", connectTimeoutMS=600)
 
         assertRaisesExactly(
-            ConnectionFailure, MongoClient, self.host, 123456789)
+            ConnectionFailure, MongoClient, host, 123456789)
 
-        self.assertTrue(MongoClient(self.host, self.port))
+        self.assertTrue(MongoClient(host, port))
 
     def test_equality(self):
-        client = MongoClient(self.host, self.port)
-        self.assertEqual(client, MongoClient(self.host, self.port))
+        client = MongoClient(host, port)
+        self.assertEqual(client, MongoClient(host, port))
         # Explicity test inequality
-        self.assertFalse(client != MongoClient(self.host, self.port))
+        self.assertFalse(client != MongoClient(host, port))
 
     def test_host_w_port(self):
-        self.assertTrue(MongoClient("%s:%d" % (self.host, self.port)))
-        assertRaisesExactly(ConnectionFailure, MongoClient,
-                          "%s:1234567" % (self.host,), self.port)
+        self.assertTrue(MongoClient("%s:%d" % (host, port)))
+        assertRaisesExactly(
+            ConnectionFailure, MongoClient, "%s:1234567" % (host,), port)
 
     def test_repr(self):
-        self.assertEqual(repr(MongoClient(self.host, self.port)),
-                         "MongoClient('%s', %d)" % (self.host, self.port))
+        self.assertEqual(repr(MongoClient(host, port)),
+                         "MongoClient('%s', %d)" % (host, port))
 
     def test_getters(self):
-        self.assertEqual(MongoClient(self.host, self.port).host, self.host)
-        self.assertEqual(MongoClient(self.host, self.port).port, self.port)
-        self.assertEqual(set([(self.host, self.port)]),
-                         MongoClient(self.host, self.port).nodes)
+        self.assertEqual(MongoClient(host, port).host, host)
+        self.assertEqual(MongoClient(host, port).port, port)
+        self.assertEqual(set([(host, port)]),
+                         MongoClient(host, port).nodes)
 
     def test_use_greenlets(self):
-        self.assertFalse(MongoClient(self.host, self.port).use_greenlets)
+        self.assertFalse(MongoClient(host, port).use_greenlets)
         if thread_util.have_greenlet:
             self.assertTrue(
                 MongoClient(
-                    self.host, self.port, use_greenlets=True).use_greenlets)
+                    host, port, use_greenlets=True).use_greenlets)
 
     def test_get_db(self):
-        client = MongoClient(self.host, self.port)
+        client = MongoClient(host, port)
 
         def make_db(base, name):
             return base[name]
@@ -141,7 +134,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         self.assertEqual(client.test, Database(client, "test"))
 
     def test_database_names(self):
-        client = MongoClient(self.host, self.port)
+        client = MongoClient(host, port)
 
         client.pymongo_test.test.save({"dummy": u"object"})
         client.pymongo_test_mike.test.save({"dummy": u"object"})
@@ -151,7 +144,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         self.assertTrue("pymongo_test_mike" in dbs)
 
     def test_drop_database(self):
-        client = MongoClient(self.host, self.port)
+        client = MongoClient(host, port)
 
         self.assertRaises(TypeError, client.drop_database, 5)
         self.assertRaises(TypeError, client.drop_database, None)
@@ -173,7 +166,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         self.assertTrue("pymongo_test" not in dbs)
 
     def test_copy_db(self):
-        c = MongoClient(self.host, self.port)
+        c = MongoClient(host, port)
         # We test copy twice; once starting in a request and once not. In
         # either case the copy should succeed (because it starts a request
         # internally) and should leave us in the same state as before the copy.
@@ -206,7 +199,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         c.end_request()
         self.assertFalse(c.in_request())
         c.copy_database("pymongo_test", "pymongo_test2",
-                        "%s:%d" % (self.host, self.port))
+                        "%s:%d" % (host, port))
         # copy_database() didn't accidentally restart the request
         self.assertFalse(c.in_request())
 
@@ -239,7 +232,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
                 self.assertEqual("bar", c.pymongo_test1.test.find_one()["foo"])
 
     def test_iteration(self):
-        client = MongoClient(self.host, self.port)
+        client = MongoClient(host, port)
 
         def iterate():
             [a for a in client]
@@ -247,7 +240,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         self.assertRaises(TypeError, iterate)
 
     def test_disconnect(self):
-        c = MongoClient(self.host, self.port)
+        c = MongoClient(host, port)
         coll = c.pymongo_test.bar
 
         c.disconnect()
@@ -261,19 +254,16 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         coll.count()
 
     def test_from_uri(self):
-        c = MongoClient(self.host, self.port)
+        c = MongoClient(host, port)
 
-        self.assertEqual(c, MongoClient("mongodb://%s:%d" %
-                                       (self.host, self.port)))
-
-        self.assertTrue(MongoClient("mongodb://%s:%d" %
-                                (self.host, self.port),
-                                slave_okay=True).slave_okay)
-        self.assertTrue(MongoClient("mongodb://%s:%d/?slaveok=true;w=2" %
-                                (self.host, self.port)).slave_okay)
+        self.assertEqual(c, MongoClient("mongodb://%s:%d" % (host, port)))
+        self.assertTrue(MongoClient(
+            "mongodb://%s:%d" % (host, port), slave_okay=True).slave_okay)
+        self.assertTrue(MongoClient(
+            "mongodb://%s:%d/?slaveok=true;w=2" % (host, port)).slave_okay)
 
     def test_auth_from_uri(self):
-        c = MongoClient(self.host, self.port)
+        c = MongoClient(host, port)
         # Sharded auth not supported before MongoDB 2.0
         if is_mongos(c) and not version.at_least(c, (2, 0, 0)):
             raise SkipTest("Auth with sharding requires MongoDB >= 2.0.0")
@@ -285,21 +275,21 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         c.pymongo_test.add_user("user", "pass")
 
         self.assertRaises(ConfigurationError, MongoClient,
-                          "mongodb://foo:bar@%s:%d" % (self.host, self.port))
+                          "mongodb://foo:bar@%s:%d" % (host, port))
         self.assertRaises(ConfigurationError, MongoClient,
-                          "mongodb://admin:bar@%s:%d" % (self.host, self.port))
+                          "mongodb://admin:bar@%s:%d" % (host, port))
         self.assertRaises(ConfigurationError, MongoClient,
-                          "mongodb://user:pass@%s:%d" % (self.host, self.port))
-        MongoClient("mongodb://admin:pass@%s:%d" % (self.host, self.port))
+                          "mongodb://user:pass@%s:%d" % (host, port))
+        MongoClient("mongodb://admin:pass@%s:%d" % (host, port))
 
         self.assertRaises(ConfigurationError, MongoClient,
                           "mongodb://admin:pass@%s:%d/pymongo_test" %
-                          (self.host, self.port))
+                          (host, port))
         self.assertRaises(ConfigurationError, MongoClient,
                           "mongodb://user:foo@%s:%d/pymongo_test" %
-                          (self.host, self.port))
+                          (host, port))
         MongoClient("mongodb://user:pass@%s:%d/pymongo_test" %
-                   (self.host, self.port))
+                   (host, port))
 
         c.admin.system.users.remove({})
         c.pymongo_test.system.users.remove({})
@@ -308,7 +298,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         if not hasattr(socket, "AF_UNIX"):
             raise SkipTest("UNIX-sockets are not supported on this system")
         if (sys.platform == 'darwin' and
-            server_started_with_auth(MongoClient(self.host, self.port))):
+            server_started_with_auth(MongoClient(host, port))):
             raise SkipTest("SERVER-8492")
 
         mongodb_socket = '/tmp/mongodb-27017.sock'
@@ -338,7 +328,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         except ImportError:
             raise SkipTest("No multiprocessing module")
 
-        db = MongoClient(self.host, self.port).pymongo_test
+        db = MongoClient(host, port).pymongo_test
 
         # Failure occurs if the client is used before the fork
         db.test.find_one()
@@ -388,7 +378,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
             pass
 
     def test_document_class(self):
-        c = MongoClient(self.host, self.port)
+        c = MongoClient(host, port)
         db = c.pymongo_test
         db.test.insert({"x": 1})
 
@@ -402,7 +392,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         self.assertTrue(isinstance(db.test.find_one(), SON))
         self.assertFalse(isinstance(db.test.find_one(as_class=dict), SON))
 
-        c = MongoClient(self.host, self.port, document_class=SON)
+        c = MongoClient(host, port, document_class=SON)
         db = c.pymongo_test
 
         self.assertEqual(SON, c.document_class)
@@ -416,9 +406,9 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         self.assertFalse(isinstance(db.test.find_one(), SON))
 
     def test_timeouts(self):
-        client = MongoClient(self.host, self.port, connectTimeoutMS=10500)
+        client = MongoClient(host, port, connectTimeoutMS=10500)
         self.assertEqual(10.5, client._MongoClient__pool.conn_timeout)
-        client = MongoClient(self.host, self.port, socketTimeoutMS=10500)
+        client = MongoClient(host, port, socketTimeoutMS=10500)
         self.assertEqual(10.5, client._MongoClient__pool.net_timeout)
 
     def test_network_timeout_validation(self):
@@ -446,10 +436,10 @@ class TestClient(unittest.TestCase, TestRequestMixin):
             get_client, network_timeout=10)
 
     def test_network_timeout(self):
-        no_timeout = MongoClient(self.host, self.port)
+        no_timeout = MongoClient(host, port)
         timeout_sec = 1
         timeout = MongoClient(
-            self.host, self.port, socketTimeoutMS=1000 * timeout_sec)
+            host, port, socketTimeoutMS=1000 * timeout_sec)
 
         no_timeout.pymongo_test.drop_collection("test")
         no_timeout.pymongo_test.test.insert({"x": 1})
@@ -473,8 +463,8 @@ class TestClient(unittest.TestCase, TestRequestMixin):
     def test_tz_aware(self):
         self.assertRaises(ConfigurationError, MongoClient, tz_aware='foo')
 
-        aware = MongoClient(self.host, self.port, tz_aware=True)
-        naive = MongoClient(self.host, self.port)
+        aware = MongoClient(host, port, tz_aware=True)
+        naive = MongoClient(host, port)
         aware.pymongo_test.drop_collection("test")
 
         now = datetime.datetime.utcnow()
@@ -495,13 +485,11 @@ class TestClient(unittest.TestCase, TestRequestMixin):
             raise SkipTest("No IPv6")
 
         # Try a few simple things
-        client = MongoClient("mongodb://[::1]:%d" % (self.port,))
-        client = MongoClient("mongodb://[::1]:%d/"
-                                "?slaveOk=true" % (self.port,))
-        client = MongoClient("[::1]:%d,"
-                                "localhost:%d" % (self.port, self.port))
-        client = MongoClient("localhost:%d,"
-                                "[::1]:%d" % (self.port, self.port))
+        MongoClient("mongodb://[::1]:%d" % (port,))
+        MongoClient("mongodb://[::1]:%d/?slaveOk=true" % (port,))
+        MongoClient("[::1]:%d,localhost:%d" % (port, port))
+
+        client = MongoClient("localhost:%d,[::1]:%d" % (port, port))
         client.pymongo_test.test.save({"dummy": u"object"})
         client.pymongo_test_bernie.test.save({"dummy": u"object"})
 

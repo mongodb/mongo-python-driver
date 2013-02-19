@@ -20,19 +20,14 @@ import sys
 sys.path[0:0] = [""]
 
 import pymongo
-
+from test import host, port
 
 class TestPyMongo(unittest.TestCase):
-
-    def setUp(self):
-        self.host = os.environ.get("DB_IP", "localhost")
-        self.port = int(os.environ.get("DB_PORT", 27017))
-
     def test_mongo_client_alias(self):
         # Testing that pymongo module imports mongo_client.MongoClient
-        c = pymongo.MongoClient(self.host, self.port)
-        self.assertEqual(c.host, self.host)
-        self.assertEqual(c.port, self.port)
+        c = pymongo.MongoClient(host, port)
+        self.assertEqual(c.host, host)
+        self.assertEqual(c.port, port)
 
 
 if __name__ == "__main__":

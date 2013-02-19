@@ -29,11 +29,9 @@ from pymongo import MongoClient, MongoReplicaSetClient
 from pymongo.auth import HAVE_KERBEROS
 from pymongo.errors import OperationFailure
 from pymongo.read_preferences import ReadPreference
+from test import version, host, port
 from test.utils import is_mongos, server_started_with_auth
-from test import version
 
-HOST = os.environ.get("DB_IP", "localhost")
-PORT = int(os.environ.get("DB_PORT", 27017))
 # YOU MUST RUN KINIT BEFORE RUNNING GSSAPI TESTS.
 GSSAPI_HOST = os.environ.get('GSSAPI_HOST')
 GSSAPI_PORT = int(os.environ.get('GSSAPI_PORT', '27017'))
@@ -122,7 +120,7 @@ class TestGSSAPI(unittest.TestCase):
 class TestAuthURIOptions(unittest.TestCase):
 
     def setUp(self):
-        client = MongoClient(HOST, PORT)
+        client = MongoClient(host, port)
         # Sharded auth not supported before MongoDB 2.0
         if is_mongos(client) and not version.at_least(client, (2, 0, 0)):
             raise SkipTest("Auth with sharding requires MongoDB >= 2.0.0")
@@ -149,26 +147,26 @@ class TestAuthURIOptions(unittest.TestCase):
 
     def test_uri_options(self):
         # Test default to admin
-        client = MongoClient('mongodb://admin:pass@%s:%d' % (HOST, PORT))
+        client = MongoClient('mongodb://admin:pass@%s:%d' % (host, port))
         self.assertTrue(client.admin.command('dbstats'))
 
         if self.set_name:
             uri = ('mongodb://admin:pass'
-                   '@%s:%d/?replicaSet=%s' % (HOST, PORT, self.set_name))
+                   '@%s:%d/?replicaSet=%s' % (host, port, self.set_name))
             client = MongoReplicaSetClient(uri)
             self.assertTrue(client.admin.command('dbstats'))
             client.read_preference = ReadPreference.SECONDARY
             self.assertTrue(client.admin.command('dbstats'))
 
         # Test explicit database
-        uri = 'mongodb://user:pass@%s:%d/pymongo_test' % (HOST, PORT)
+        uri = 'mongodb://user:pass@%s:%d/pymongo_test' % (host, port)
         client = MongoClient(uri)
         self.assertRaises(OperationFailure, client.admin.command, 'dbstats')
         self.assertTrue(client.pymongo_test.command('dbstats'))
 
         if self.set_name:
             uri = ('mongodb://user:pass@%s:%d'
-                   '/pymongo_test?replicaSet=%s' % (HOST, PORT, self.set_name))
+                   '/pymongo_test?replicaSet=%s' % (host, port, self.set_name))
             client = MongoReplicaSetClient(uri)
             self.assertRaises(OperationFailure,
                               client.admin.command, 'dbstats')
@@ -178,7 +176,7 @@ class TestAuthURIOptions(unittest.TestCase):
 
         # Test authSource
         uri = ('mongodb://user:pass@%s:%d'
-               '/pymongo_test2?authSource=pymongo_test' % (HOST, PORT))
+               '/pymongo_test2?authSource=pymongo_test' % (host, port))
         client = MongoClient(uri)
         self.assertRaises(OperationFailure,
                           client.pymongo_test2.command, 'dbstats')
@@ -186,7 +184,7 @@ class TestAuthURIOptions(unittest.TestCase):
 
         if self.set_name:
             uri = ('mongodb://user:pass@%s:%d/pymongo_test2?replicaSet='
-                   '%s;authSource=pymongo_test' % (HOST, PORT, self.set_name))
+                   '%s;authSource=pymongo_test' % (host, port, self.set_name))
             client = MongoReplicaSetClient(uri)
             self.assertRaises(OperationFailure,
                               client.pymongo_test2.command, 'dbstats')

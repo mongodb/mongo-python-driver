@@ -14,13 +14,26 @@
 
 """Clean up databases after running `nosetests`.
 """
+
+import os
+
+import pymongo
 from pymongo.errors import ConnectionFailure
-from test.test_client import get_client
+
+host = os.environ.get("DB_IP", 'localhost')
+port = int(os.environ.get("DB_PORT", 27017))
+pair = '%s:%d' % (host, port)
+
+host2 = os.environ.get("DB_IP2", 'localhost')
+port2 = int(os.environ.get("DB_PORT2", 27018))
+
+host3 = os.environ.get("DB_IP3", 'localhost')
+port3 = int(os.environ.get("DB_PORT3", 27019))
 
 
 def teardown():
     try:
-        c = get_client()
+        c = pymongo.MongoClient(host, port)
     except ConnectionFailure:
         # Tests where ssl=True can cause connection failures here.
         # Ignore and continue.
