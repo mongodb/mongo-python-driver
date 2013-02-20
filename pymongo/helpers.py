@@ -26,11 +26,6 @@ from pymongo.errors import (AutoReconnect,
                             OperationFailure,
                             TimeoutError)
 
-try:
-    from ssl import match_hostname
-except ImportError:
-    from pymongo.ssl_match_hostname import match_hostname
-
 
 def _index_list(key_or_list, direction=None):
     """Helper to generate a list of (key, direction) pairs.

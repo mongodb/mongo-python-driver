@@ -23,7 +23,11 @@ from pymongo import thread_util
 from pymongo.common import HAS_SSL
 from pymongo.errors import (CertificateError, ConnectionFailure,
                             ConfigurationError)
-from pymongo.helpers import match_hostname
+
+try:
+    from ssl import match_hostname
+except ImportError:
+    from pymongo.ssl_match_hostname import match_hostname
 
 if HAS_SSL:
     import ssl
