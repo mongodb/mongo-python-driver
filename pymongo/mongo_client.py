@@ -259,12 +259,6 @@ class MongoClient(common.BaseObject):
         self.__ssl_cert_reqs = options.get('ssl_cert_reqs', None)
         self.__ssl_ca_certs = options.get('ssl_ca_certs', None)
 
-        if self.__use_ssl and not HAS_SSL:
-            raise ConfigurationError("The ssl module is not available. If you "
-                                     "are using a python version previous to "
-                                     "2.6 you must install the ssl package "
-                                     "from PyPI.")
-
         ssl_kwarg_keys = [k for k in kwargs.keys() if k.startswith('ssl_')]
         if self.__use_ssl == False and ssl_kwarg_keys:
             raise ConfigurationError("ssl has not been enabled but the "
@@ -281,6 +275,12 @@ class MongoClient(common.BaseObject):
         if ssl_kwarg_keys and self.__use_ssl is None:
             # ssl options imply ssl = True
             self.__use_ssl = True
+
+        if self.__use_ssl and not HAS_SSL:
+            raise ConfigurationError("The ssl module is not available. If you "
+                                     "are using a python version previous to "
+                                     "2.6 you must install the ssl package "
+                                     "from PyPI.")
 
         self.__use_greenlets = options.get('use_greenlets', False)
         self.__pool = pool_class(

@@ -467,12 +467,6 @@ class MongoReplicaSetClient(common.BaseObject):
         self.__ssl_cert_reqs = self.__opts.get('ssl_cert_reqs', None)
         self.__ssl_ca_certs = self.__opts.get('ssl_ca_certs', None)
 
-        if self.__use_ssl and not common.HAS_SSL:
-            raise ConfigurationError("The ssl module is not available. If you "
-                                     "are using a python version previous to "
-                                     "2.6 you must install the ssl package "
-                                     "from PyPI.")
-
         ssl_kwarg_keys = [k for k in kwargs.keys() if k.startswith('ssl_')]
         if self.__use_ssl == False and ssl_kwarg_keys:
             raise ConfigurationError("ssl has not been enabled but the "
@@ -489,6 +483,12 @@ class MongoReplicaSetClient(common.BaseObject):
         if ssl_kwarg_keys and self.__use_ssl is None:
             # ssl options imply ssl = True
             self.__use_ssl = True
+
+        if self.__use_ssl and not common.HAS_SSL:
+            raise ConfigurationError("The ssl module is not available. If you "
+                                     "are using a python version previous to "
+                                     "2.6 you must install the ssl package "
+                                     "from PyPI.")
 
         super(MongoReplicaSetClient, self).__init__(**self.__opts)
         if self.slave_okay:

@@ -40,6 +40,7 @@ SERVER_IS_RESOLVABLE = False
 # mongod --dbpath /path/to/data/directory --sslOnNormalPorts \
 # --sslPEMKeyFile /path/to/mongo/jstests/libs/server.pem \
 # --sslCAFile /path/to/mongo/jstests/libs/ca.pem \
+# --sslCRLFile /path/to/mongo/jstests/libs/crl.pem \
 # --sslWeakCertificateValidation
 # Also, make sure you have 'server' as an alias for localhost in /etc/hosts
 #
@@ -73,7 +74,7 @@ if HAS_SSL:
         pass
 
     if SIMPLE_SSL:
-        # Is MongoDB configured with server.pem and ca.pem from
+        # Is MongoDB configured with server.pem, ca.pem, and crl.pem from
         # mongodb jstests/lib?
         try:
             MongoClient(host, port, connectTimeoutMS=100, ssl=True,
@@ -97,10 +98,16 @@ class TestNoSSLModule(unittest.TestCase):
                 "without it."
             )
 
+        # Explicit
         self.assertRaises(ConfigurationError,
                           MongoClient, ssl=True)
         self.assertRaises(ConfigurationError,
                           MongoReplicaSetClient, ssl=True)
+        # Implied
+        self.assertRaises(ConfigurationError,
+                          MongoClient, ssl_certfile=CLIENT_PEM)
+        self.assertRaises(ConfigurationError,
+                          MongoReplicaSetClient, ssl_certfile=CLIENT_PEM)
 
 
 class TestSSL(unittest.TestCase):
