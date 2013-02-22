@@ -228,6 +228,7 @@ class MongoClient(common.BaseObject):
         self.__port = None
         self.__is_primary = False
         self.__is_mongos = False
+        self.__db_cache = {}
 
         # _pool_class option is for deep customization of PyMongo, e.g. Motor.
         # SHOULD NOT BE USED BY DEVELOPERS EXTERNAL TO 10GEN.
@@ -1063,7 +1064,11 @@ class MongoClient(common.BaseObject):
         :Parameters:
           - `name`: the name of the database to get
         """
-        return database.Database(self, name)
+        if name in self.__db_cache.keys():
+            return self.__db_cache[name]
+
+        db = self.__db_cache[name] = database.Database(self, name)
+        return db
 
     def __getitem__(self, name):
         """Get a database by name.
