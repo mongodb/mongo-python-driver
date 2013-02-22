@@ -8,6 +8,8 @@
    .. autodata:: pymongo.DESCENDING
    .. autodata:: pymongo.GEO2D
    .. autodata:: pymongo.GEOHAYSTACK
+   .. autodata:: pymongo.GEOSPHERE
+   .. autodata:: pymongo.HASHED
 
    .. autoclass:: pymongo.collection.Collection(database, name[, create=False[, **kwargs]]])
 

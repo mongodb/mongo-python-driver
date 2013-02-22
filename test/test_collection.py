@@ -33,7 +33,8 @@ from bson.code import Code
 from bson.objectid import ObjectId
 from bson.py3compat import b
 from bson.son import SON
-from pymongo import ASCENDING, DESCENDING, GEO2D, GEOHAYSTACK
+from pymongo import (ASCENDING, DESCENDING, GEO2D,
+                     GEOHAYSTACK, GEOSPHERE, HASHED)
 from pymongo.collection import Collection
 from pymongo.son_manipulator import SONManipulator
 from pymongo.errors import (ConfigurationError,
@@ -401,6 +402,36 @@ class TestCollection(unittest.TestCase):
 
         self.client.admin.command('setParameter', '*',
                                   textSearchEnabled=False)
+
+    def test_index_2dsphere(self):
+        if not version.at_least(self.client, (2, 3, 2)):
+            raise SkipTest("2dsphere indexing requires server >=2.3.2.")
+
+        db = self.db
+        db.test.drop_indexes()
+        self.assertEqual("geo_2dsphere",
+                         db.test.create_index([("geo", GEOSPHERE)]))
+
+        poly = {"type": "Polygon",
+                "coordinates": [[[40,5], [40,6], [41,6], [41,5], [40,5]]]}
+        query = {"geo": {"$within": {"$geometry": poly}}}
+
+        self.assertEqual("S2Cursor",
+                         db.test.find(query).explain()['cursor'])
+        db.test.drop_indexes()
+
+    def test_index_hashed(self):
+        if not version.at_least(self.client, (2, 3, 2)):
+            raise SkipTest("hashed indexing requires server >=2.3.2.")
+
+        db = self.db
+        db.test.drop_indexes()
+        self.assertEqual("a_hashed",
+                         db.test.create_index([("a", HASHED)]))
+
+        self.assertEqual("BtreeCursor a_hashed",
+                db.test.find({'a': 1}).explain()['cursor'])
+        db.test.drop_indexes()
 
     def test_index_sparse(self):
         db = self.db

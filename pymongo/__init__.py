@@ -40,6 +40,26 @@ GEOHAYSTACK = "geoHaystack"
 .. _haystack index: http://docs.mongodb.org/manual/core/geospatial-indexes/#haystack-indexes
 """
 
+GEOSPHERE = "2dsphere"
+"""Index specifier for a `spherical geospatial index`_.
+
+.. versionadded:: 2.4.2+
+
+.. note:: 2dsphere indexing requires server version **>= 2.4.0**.
+
+.. _spherical geospatial index: http://docs.mongodb.org/manual/release-notes/2.4/#new-geospatial-indexes-with-geojson-and-improved-spherical-geometry
+"""
+
+HASHED = "hashed"
+"""Index specifier for a `hashed index`_.
+
+.. versionadded:: 2.4.2+
+
+.. note:: hashed indexing requires server version **>= 2.4.0**.
+
+.. _hashed index: http://docs.mongodb.org/manual/release-notes/2.4/#new-hashed-index-and-sharding-with-a-hashed-shard-key
+"""
+
 OFF = 0
 """No database profiling."""
 SLOW_ONLY = 1
