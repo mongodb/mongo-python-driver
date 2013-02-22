@@ -386,6 +386,9 @@ class TestCollection(unittest.TestCase):
         if not version.at_least(self.client, (2, 3, 2)):
             raise SkipTest("Text search requires server >=2.3.2.")
 
+        if is_mongos(self.client):
+            raise SkipTest("setParameter does not work through mongos")
+
         self.client.admin.command('setParameter', '*',
                                   textSearchEnabled=True)
 
