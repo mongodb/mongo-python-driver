@@ -1158,7 +1158,7 @@ class Collection(common.BaseObject):
                                                  self.__full_name,
                                                  to=new_name, **kwargs)
 
-    def distinct(self, key):
+    def distinct(self, key, query={}):
         """Get a list of distinct values for `key` among all documents
         in this collection.
 
@@ -1170,12 +1170,13 @@ class Collection(common.BaseObject):
 
         :Parameters:
           - `key`: name of key for which we want to get the distinct values
+          - `query`: filter for the distinct values (default ``{}``)
 
         .. note:: Requires server version **>= 1.1.0**
 
         .. versionadded:: 1.1.1
         """
-        return self.find().distinct(key)
+        return self.find(query).distinct(key)
 
     def map_reduce(self, map, reduce, out, full_response=False, **kwargs):
         """Perform a map/reduce operation on this collection.
