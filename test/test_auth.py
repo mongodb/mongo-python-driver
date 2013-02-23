@@ -35,7 +35,7 @@ from test.utils import is_mongos, server_started_with_auth
 # YOU MUST RUN KINIT BEFORE RUNNING GSSAPI TESTS.
 GSSAPI_HOST = os.environ.get('GSSAPI_HOST')
 GSSAPI_PORT = int(os.environ.get('GSSAPI_PORT', '27017'))
-PRINCIPLE = os.environ.get('PRINCIPLE')
+PRINCIPAL = os.environ.get('PRINCIPAL')
 
 class TestGSSAPI(unittest.TestCase):
 
@@ -43,18 +43,18 @@ class TestGSSAPI(unittest.TestCase):
         if not HAVE_KERBEROS:
             raise SkipTest('Kerberos module not available.')
         if not GSSAPI_HOST:
-            raise SkipTest('Must set GSSAPI_HOST and PRINCIPLE to test GSSAPI')
+            raise SkipTest('Must set GSSAPI_HOST and PRINCIPAL to test GSSAPI')
 
     def test_gssapi_simple(self):
 
         client = MongoClient(GSSAPI_HOST, GSSAPI_PORT)
-        self.assertTrue(client.test.authenticate(PRINCIPLE,
+        self.assertTrue(client.test.authenticate(PRINCIPAL,
                                                  mechanism='GSSAPI'))
         # Just test that we can run a simple command.
         self.assertTrue(client.database_names())
 
         uri = ('mongodb://%s@%s:%d/?authMechanism='
-               'GSSAPI' % (quote_plus(PRINCIPLE), GSSAPI_HOST, GSSAPI_PORT))
+               'GSSAPI' % (quote_plus(PRINCIPAL), GSSAPI_HOST, GSSAPI_PORT))
         client = MongoClient(uri)
         self.assertTrue(client.database_names())
 
@@ -63,11 +63,11 @@ class TestGSSAPI(unittest.TestCase):
             client = MongoReplicaSetClient(GSSAPI_HOST,
                                            port=GSSAPI_PORT,
                                            replicaSet=set_name)
-            self.assertTrue(client.test.authenticate(PRINCIPLE,
+            self.assertTrue(client.test.authenticate(PRINCIPAL,
                                                      mechanism='GSSAPI'))
             self.assertTrue(client.database_names())
             uri = ('mongodb://%s@%s:%d/?authMechanism=GSSAPI;replicaSet'
-                   '=%s' % (quote_plus(PRINCIPLE),
+                   '=%s' % (quote_plus(PRINCIPAL),
                             GSSAPI_HOST, GSSAPI_PORT, set_name))
             client = MongoReplicaSetClient(uri)
             self.assertTrue(client.database_names())
@@ -77,7 +77,7 @@ class TestGSSAPI(unittest.TestCase):
         # Use auto_start_request=True to make sure each thread
         # uses a different socket.
         client = MongoClient(GSSAPI_HOST, auto_start_request=True)
-        self.assertTrue(client.test.authenticate(PRINCIPLE,
+        self.assertTrue(client.test.authenticate(PRINCIPAL,
                                                  mechanism='GSSAPI'))
 
         result = True
@@ -103,7 +103,7 @@ class TestGSSAPI(unittest.TestCase):
             client = MongoReplicaSetClient(GSSAPI_HOST,
                                            replicaSet=set_name,
                                            read_preference=preference)
-            self.assertTrue(client.test.authenticate(PRINCIPLE,
+            self.assertTrue(client.test.authenticate(PRINCIPAL,
                                                      mechanism='GSSAPI'))
             self.assertTrue(client.foo.command('dbstats'))
 
