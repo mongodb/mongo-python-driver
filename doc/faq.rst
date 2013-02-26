@@ -320,7 +320,7 @@ just that field::
 How do I use Kerberos authentication with PyMongo?
 --------------------------------------------------
 
-GSSAPI (Kerberos) authentication is available in the subscriber addition of
+GSSAPI (Kerberos) authentication is available in the subscriber edition of
 MongoDB, version 2.4 and newer. To authenticate using GSSAPI you must first
 install the python `kerberos module`_ using easy_install or pip. Make sure
 you run kinit before using the following authentication methods::
@@ -349,5 +349,10 @@ or using :meth:`~pymongo.database.Database.authenticate`::
   >>> db = client.test
   >>> db.authenticate('mongodbuser@EXAMPLE.COM', mechanism='GSSAPI')
   True
+
+.. note::
+   Kerberos support is only provided in environments supported by the python
+   `kerberos module`_. This currently limits support to CPython 2.x and Unix
+   environments.
 
 .. _kerberos module: http://pypi.python.org/pypi/kerberos
