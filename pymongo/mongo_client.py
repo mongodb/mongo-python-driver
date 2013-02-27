@@ -306,7 +306,8 @@ class MongoClient(common.BaseObject):
         super(MongoClient, self).__init__(**options)
         if self.slave_okay:
             warnings.warn("slave_okay is deprecated. Please "
-                          "use read_preference instead.", DeprecationWarning)
+                          "use read_preference instead.", DeprecationWarning,
+                          stacklevel=2)
 
         if _connect:
             try:
@@ -793,7 +794,8 @@ class MongoClient(common.BaseObject):
            Deprecated support for external cursor managers.
         """
         warnings.warn("Support for external cursor managers is deprecated "
-                      "and will be removed in PyMongo 3.0.", DeprecationWarning)
+                      "and will be removed in PyMongo 3.0.",
+                      DeprecationWarning, stacklevel=2)
         manager = manager_class(self)
         if not isinstance(manager, CursorManager):
             raise TypeError("manager_class must be a subclass of "

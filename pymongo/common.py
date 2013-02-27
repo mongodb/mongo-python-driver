@@ -407,7 +407,8 @@ class BaseObject(object):
     def __set_slave_okay(self, value):
         """Property setter for slave_okay"""
         warnings.warn("slave_okay is deprecated. Please use "
-                      "read_preference instead.", DeprecationWarning)
+                      "read_preference instead.", DeprecationWarning,
+                      stacklevel=2)
         self.__slave_okay = validate_boolean('slave_okay', value)
 
     slave_okay = property(__get_slave_okay, __set_slave_okay)
@@ -481,7 +482,7 @@ class BaseObject(object):
         """Property setter for safe"""
         warnings.warn("safe is deprecated. Please use the"
                       " 'w' write_concern option instead.",
-                      DeprecationWarning)
+                      DeprecationWarning, stacklevel=2)
         self.__safe = validate_boolean('safe', value)
 
     safe = property(__get_safe, __set_safe)
@@ -496,7 +497,8 @@ class BaseObject(object):
         .. versionadded:: 2.0
         """
         warnings.warn("get_lasterror_options is deprecated. Please use "
-                      "write_concern instead.", DeprecationWarning)
+                      "write_concern instead.", DeprecationWarning,
+                      stacklevel=2)
         return self.__write_concern.copy()
 
     def set_lasterror_options(self, **kwargs):
@@ -516,7 +518,8 @@ class BaseObject(object):
         .. versionadded:: 2.0
         """
         warnings.warn("set_lasterror_options is deprecated. Please use "
-                      "write_concern instead.", DeprecationWarning)
+                      "write_concern instead.", DeprecationWarning,
+                      stacklevel=2)
         for key, value in kwargs.iteritems():
             self.__set_safe_option(key, value)
 
@@ -536,7 +539,8 @@ class BaseObject(object):
         .. versionadded:: 2.0
         """
         warnings.warn("unset_lasterror_options is deprecated. Please use "
-                      "write_concern instead.", DeprecationWarning)
+                      "write_concern instead.", DeprecationWarning,
+                      stacklevel=2)
         if len(options):
             for option in options:
                 self.__write_concern.pop(option, None)
@@ -575,7 +579,8 @@ class BaseObject(object):
 
         if safe is not None:
             warnings.warn("The safe parameter is deprecated. Please use "
-                          "write concern options instead.", DeprecationWarning)
+                          "write concern options instead.", DeprecationWarning,
+                          stacklevel=3)
             validate_boolean('safe', safe)
 
         # Passed options override collection level defaults.
