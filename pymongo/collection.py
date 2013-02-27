@@ -14,6 +14,7 @@
 
 """Collection level utilities for Mongo."""
 
+import uuid
 import warnings
 
 from bson.binary import ALL_UUID_SUBTYPES, OLD_UUID_SUBTYPE
@@ -33,10 +34,15 @@ except ImportError:
     ordered_types = SON
 
 
+IDX_MAX_LEN = 108
+
 def _gen_index_name(keys):
     """Generate an index name from the set of fields it is over.
     """
-    return u"_".join([u"%s_%s" % item for item in keys])
+    name = u"_".join([u"%s_%s" % item for item in keys])
+    if len(name) > IDX_MAX_LEN:
+        name = name[:IDX_MAX_LEN][:-32] + unicode(uuid.uuid4()).replace("-", "")
+    return name
 
 
 class Collection(common.BaseObject):

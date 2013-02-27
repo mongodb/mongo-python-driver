@@ -143,6 +143,11 @@ class TestCollection(unittest.TestCase):
         self.assertRaises(DuplicateKeyError, db.test.create_index,
                                                     'a', unique=True)
 
+        # index name auto-generation should be aware of name length limit
+        sentence = "this_should_generate_an index_name_that is_more_than_128_characters_long which_would_raise an_error foobarblubberdiflubber_lalalalalalalalalalalalallalalalalalal".split()
+        name = db.test.create_index([(word, ASCENDING) for word in sentence])
+        self.assertTrue(len(name) == 108)
+
     def test_ensure_index(self):
         db = self.db
 
@@ -197,6 +202,13 @@ class TestCollection(unittest.TestCase):
         # Make sure the expiration time is updated.
         self.assertEqual(None,
                          db.test.ensure_index("goodbye"))
+
+
+        db.test.drop()
+        # index name auto-generation should be aware of name length limit
+        sentence = "this_should_generate_an index_name_that is_more_than_128_characters_long which_would_raise an_error foobarblubberdiflubber_lalalalalalalalalalalalallalalalalalal".split()
+        name = db.test.ensure_index([(word, ASCENDING) for word in sentence])
+        self.assertTrue(len(name) == 108)
 
         # Clean up indexes for later tests
         db.test.drop_indexes()
