@@ -68,7 +68,7 @@ class TestGSSAPI(unittest.TestCase):
             self.assertTrue(client.database_names())
             uri = ('mongodb://%s@%s:%d/?authMechanism=GSSAPI;replicaSet'
                    '=%s' % (quote_plus(PRINCIPAL),
-                            GSSAPI_HOST, GSSAPI_PORT, set_name))
+                            GSSAPI_HOST, GSSAPI_PORT, str(set_name)))
             client = MongoReplicaSetClient(uri)
             self.assertTrue(client.database_names())
 
