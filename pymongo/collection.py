@@ -800,7 +800,7 @@ class Collection(common.BaseObject):
         if 'ttl' in kwargs:
             cache_for = kwargs.pop('ttl')
             warnings.warn("ttl is deprecated. Please use cache_for instead.",
-                          DeprecationWarning)
+                          DeprecationWarning, stacklevel=2)
 
         keys = helpers._index_list(key_or_list)
         index_doc = helpers._index_document(keys)
@@ -1375,7 +1375,7 @@ class Collection(common.BaseObject):
                   isinstance(sort, dict) and len(sort) == 1):
                 warnings.warn("Passing mapping types for `sort` is deprecated,"
                               " use a list of (key, direction) pairs instead",
-                              DeprecationWarning)
+                              DeprecationWarning, stacklevel=2)
                 kwargs['sort'] = sort
             else:
                 raise TypeError("sort must be a list of (key, direction) "
