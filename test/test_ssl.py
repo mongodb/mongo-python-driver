@@ -87,7 +87,7 @@ if HAS_SSL:
             SERVER_IS_RESOLVABLE = is_server_resolvable()
 
 
-class TestNoSSLModule(unittest.TestCase):
+class TestClientSSL(unittest.TestCase):
 
     def test_no_ssl_module(self):
         # Test that ConfigurationError is raised if the ssl
@@ -108,20 +108,6 @@ class TestNoSSLModule(unittest.TestCase):
                           MongoClient, ssl_certfile=CLIENT_PEM)
         self.assertRaises(ConfigurationError,
                           MongoReplicaSetClient, ssl_certfile=CLIENT_PEM)
-
-
-class TestSSL(unittest.TestCase):
-
-    def setUp(self):
-        if not HAS_SSL:
-            raise SkipTest("The ssl module is not available.")
-
-        if sys.version.startswith('3.0'):
-            raise SkipTest("Python 3.0.x has problems "
-                           "with SSL and socket timeouts.")
-
-        if not SIMPLE_SSL:
-            raise SkipTest("No simple mongod available over SSL")
 
     def test_config_ssl(self):
         """Tests various ssl configurations"""
@@ -186,6 +172,20 @@ class TestSSL(unittest.TestCase):
                           ssl=False,
                           ssl_keyfile=CLIENT_PEM,
                           ssl_certfile=CLIENT_PEM)
+
+
+class TestSSL(unittest.TestCase):
+
+    def setUp(self):
+        if not HAS_SSL:
+            raise SkipTest("The ssl module is not available.")
+
+        if sys.version.startswith('3.0'):
+            raise SkipTest("Python 3.0.x has problems "
+                           "with SSL and socket timeouts.")
+
+        if not SIMPLE_SSL:
+            raise SkipTest("No simple mongod available over SSL")
 
     def test_simple_ssl(self):
         # Expects the server to be running with ssl and with
@@ -279,6 +279,10 @@ class TestSSL(unittest.TestCase):
                              ssl_ca_certs=CA_PEM)
         response = client.admin.command('ismaster')
         if 'setName' in response:
+            if response['primary'].split(":")[0] != 'server':
+                raise SkipTest("No hosts in the replicaset for 'server'. "
+                               "Cannot validate hostname in the certificate")
+
             client = MongoReplicaSetClient('server',
                                            replicaSet=response['setName'],
                                            w=len(response['hosts']),
@@ -314,8 +318,13 @@ class TestSSL(unittest.TestCase):
                              ssl_certfile=CLIENT_PEM,
                              ssl_cert_reqs=ssl.CERT_OPTIONAL,
                              ssl_ca_certs=CA_PEM)
+
         response = client.admin.command('ismaster')
         if 'setName' in response:
+            if response['primary'].split(":")[0] != 'server':
+                raise SkipTest("No hosts in the replicaset for 'server'. "
+                               "Cannot validate hostname in the certificate")
+
             client = MongoReplicaSetClient('server',
                                            replicaSet=response['setName'],
                                            w=len(response['hosts']),

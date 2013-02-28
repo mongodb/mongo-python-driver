@@ -250,11 +250,8 @@ class Pool:
                                        ca_certs=self.ssl_ca_certs,
                                        cert_reqs=self.ssl_cert_reqs)
                 if self.ssl_cert_reqs:
-                    try:
-                        match_hostname(sock.getpeercert(), hostname)
-                    except CertificateError, e:
-                        raise ConnectionFailure("SSL certificate validation "
-                                                "failed: %s" % e)
+                    match_hostname(sock.getpeercert(), hostname)
+
             except ssl.SSLError:
                 sock.close()
                 raise ConnectionFailure("SSL handshake failed. MongoDB may "
