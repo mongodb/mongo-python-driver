@@ -34,7 +34,7 @@ except ImportError:
     ordered_types = SON
 
 
-IDX_MAX_LEN = 108
+IDX_MAX_LEN = 88
 
 def _gen_index_name(keys):
     """Generate an index name from the set of fields it is over.
