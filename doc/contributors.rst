@@ -60,3 +60,4 @@ The following is a list of people who have contributed to
 - T Dampier (dampier)
 - Michael Henson (hensom)
 - Craig Hobbs (craigahobbs)
+- Emily Stolfo (estolfo)
