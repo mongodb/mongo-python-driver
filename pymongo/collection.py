@@ -752,8 +752,9 @@ class Collection(common.BaseObject):
           - `dropDups` or `drop_dups`: should we drop duplicates
           - `background`: if this index should be created in the
             background
-          - `bucketSize` or `bucket_size`: size of buckets for geoHaystack
-            indexes during index creation when creating a unique index?
+          - `bucketSize` or `bucket_size`: for use with geoHaystack indexes.
+            Number of documents to group together within a certain proximity
+            to a given longitude and latitude.
           - `min`: minimum value for keys in a :data:`~pymongo.GEO2D`
             index
           - `max`: maximum value for keys in a :data:`~pymongo.GEO2D`
@@ -863,8 +864,9 @@ class Collection(common.BaseObject):
             during index creation when creating a unique index?
           - `background`: if this index should be created in the
             background
-          - `bucketSize` or `bucket_size`: size of buckets for geoHaystack
-            indexes during index creation when creating a unique index?
+          - `bucketSize` or `bucket_size`: for use with geoHaystack indexes.
+            Number of documents to group together within a certain proximity
+            to a given longitude and latitude.
           - `min`: minimum value for keys in a :data:`~pymongo.GEO2D`
             index
           - `max`: maximum value for keys in a :data:`~pymongo.GEO2D`
