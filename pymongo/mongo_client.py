@@ -129,14 +129,28 @@ class MongoClient(common.BaseObject):
             in a document by this :class:`MongoClient` will be timezone
             aware (otherwise they will be naive)
 
-          **Other optional parameters can be passed as keyword arguments:**
+          | **Other optional parameters can be passed as keyword arguments:**
+
+          - `socketTimeoutMS`: (integer) How long (in milliseconds) a send or
+            receive on a socket can take before timing out.
+          - `connectTimeoutMS`: (integer) How long (in milliseconds) a
+            connection can take to be opened before timing out.
+          - `auto_start_request`: If ``True``, each thread that accesses
+            this :class:`MongoClient` has a socket allocated to it for the
+            thread's lifetime.  This ensures consistent reads, even if you
+            read after an unacknowledged write. Defaults to ``False``
+          - `use_greenlets`: If ``True``, :meth:`start_request()` will ensure
+            that the current greenlet uses the same socket for all
+            operations until :meth:`end_request()`
+
+          | **Write Concern options:**
 
           - `w`: (integer or string) If this is a replica set, write operations
             will block until they have been replicated to the specified number
             or tagged set of servers. `w=<int>` always includes the replica set
             primary (e.g. w=3 means write to the primary and wait until
-            replicated to **two** secondaries). **Passing w=0 disables write
-            acknowledgement and all other write concern options.**
+            replicated to **two** secondaries). Passing w=0 **disables write
+            acknowledgement** and all other write concern options.
           - `wtimeout`: (integer) Used in conjunction with `w`. Specify a value
             in milliseconds to control how long to wait for write propagation
             to complete. If replication does not complete in the given
@@ -146,25 +160,31 @@ class MongoClient(common.BaseObject):
           - `fsync`: If ``True`` force the database to fsync all files before
             returning. When used with `j` the server awaits the next group
             commit before returning.
+
+          | **Replica set keyword arguments for connecting with a replica set
+            - either directly or via a mongos:**
+          | (ignored by standalone mongod instances)
+
           - `replicaSet`: (string) The name of the replica set to connect to.
             The driver will verify that the replica set it connects to matches
             this name. Implies that the hosts specified are a seed list and the
-            driver should attempt to find all members of the set.
-          - `socketTimeoutMS`: (integer) How long (in milliseconds) a send or
-            receive on a socket can take before timing out.
-          - `connectTimeoutMS`: (integer) How long (in milliseconds) a
-            connection can take to be opened before timing out.
+            driver should attempt to find all members of the set. *Ignored by
+            mongos*.
+          - `read_preference`: The read preference for this client. If
+            connecting to a secondary then a read preference mode *other* than
+            PRIMARY is required - otherwise all queries will throw
+            :class:`~pymongo.errors.AutoReconnect` "not master".
+            See :class:`~pymongo.read_preferences.ReadPreference` for all
+            available read preference options.
+          - `tag_sets`: Ignored unless connecting to a replica set via mongos.
+            Specify a priority-order for tag sets, provide a list of
+            tag sets: ``[{'dc': 'ny'}, {'dc': 'la'}, {}]``. A final, empty tag
+            set, ``{}``, means "read from any member that matches the mode,
+            ignoring tags.
+
+          | **SSL configuration:**
+
           - `ssl`: If ``True``, create the connection to the server using SSL.
-          - `read_preference`: The read preference for this client.
-            See :class:`~pymongo.read_preferences.ReadPreference` for available
-            options.
-          - `auto_start_request`: If ``True``, each thread that accesses
-            this :class:`MongoClient` has a socket allocated to it for the
-            thread's lifetime.  This ensures consistent reads, even if you
-            read after an unacknowledged write. Defaults to ``False``
-          - `use_greenlets`: If ``True``, :meth:`start_request()` will ensure
-            that the current greenlet uses the same socket for all
-            operations until :meth:`end_request()`
           - `ssl_keyfile`: The private keyfile used to identify the local
             connection against mongod.  If included with the ``certfile` then
             only the ``ssl_certfile`` is needed.  Implies ``ssl=True``.
@@ -452,7 +472,7 @@ class MongoClient(common.BaseObject):
 
     @property
     def is_primary(self):
-        """If this instance is connected to a standalone, a replica-set
+        """If this instance is connected to a standalone, a replica set
         primary, or the master of a master-slave set.
 
         .. versionadded:: 2.3

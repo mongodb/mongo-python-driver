@@ -435,6 +435,12 @@ class BaseObject(object):
         See :class:`~pymongo.read_preferences.ReadPreference`.
 
         .. versionadded:: 2.3
+
+        .. note:: ``secondary_acceptable_latency_ms`` is ignored when talking to a
+          replica set *through* a mongos. The equivalent is the localThreshold_ command
+          line option.
+
+        .. _localThreshold: http://docs.mongodb.org/manual/reference/mongos/#cmdoption-mongos--localThreshold
         """
         return self.__secondary_acceptable_latency_ms
 

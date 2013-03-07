@@ -676,6 +676,8 @@ class Collection(common.BaseObject):
           - `secondary_acceptable_latency_ms` (optional): Any replica-set
             member whose ping time is within secondary_acceptable_latency_ms of
             the nearest member may accept reads. Default 15 milliseconds.
+            **Ignored by mongos** and must be configured on the command line.
+            See the localThreshold_ option for more information.
 
         .. note:: The `manipulate` parameter may default to False in
            a future release.
@@ -703,6 +705,7 @@ class Collection(common.BaseObject):
            The `tailable` parameter.
 
         .. mongodoc:: find
+        .. _localThreshold: http://docs.mongodb.org/manual/reference/mongos/#cmdoption-mongos--localThreshold
         """
         if not 'slave_okay' in kwargs:
             kwargs['slave_okay'] = self.slave_okay

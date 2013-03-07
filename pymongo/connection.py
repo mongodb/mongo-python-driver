@@ -95,7 +95,21 @@ class Connection(MongoClient):
             in a document by this :class:`Connection` will be timezone
             aware (otherwise they will be naive)
 
-          **Other optional parameters can be passed as keyword arguments:**
+          | **Other optional parameters can be passed as keyword arguments:**
+
+          - `socketTimeoutMS`: (integer) How long (in milliseconds) a send or
+            receive on a socket can take before timing out.
+          - `connectTimeoutMS`: (integer) How long (in milliseconds) a
+            connection can take to be opened before timing out.
+          - `auto_start_request`: If ``True`` (the default), each thread that
+            accesses this Connection has a socket allocated to it for the
+            thread's lifetime.  This ensures consistent reads, even if you read
+            after an unsafe write.
+          - `use_greenlets`: if ``True``, :meth:`start_request()` will ensure
+            that the current greenlet uses the same socket for all operations
+            until :meth:`end_request()`
+
+          | **Write Concern options:**
 
           - `safe`: :class:`Connection` **disables** acknowledgement of write
             operations. Use ``safe=True`` to enable write acknowledgement.
@@ -114,27 +128,33 @@ class Connection(MongoClient):
           - `fsync`: If ``True`` force the database to fsync all files before
             returning. When used with `j` the server awaits the next group
             commit before returning. Implies safe=True.
-          - `replicaSet`: (string) The name of the replica set to connect to.
-            The driver will verify that the replica set it connects to matches
-            this name. Implies that the hosts specified are a seed list and the
-            driver should attempt to find all members of the set.
-          - `socketTimeoutMS`: (integer) How long (in milliseconds) a send or
-            receive on a socket can take before timing out.
-          - `connectTimeoutMS`: (integer) How long (in milliseconds) a
-            connection can take to be opened before timing out.
-          - `ssl`: If ``True``, create the connection to the server using SSL.
-          - `read_preference`: The read preference for this connection.
-            See :class:`~pymongo.read_preferences.ReadPreference` for available
-            options.
-          - `auto_start_request`: If ``True`` (the default), each thread that
-            accesses this Connection has a socket allocated to it for the
-            thread's lifetime.  This ensures consistent reads, even if you read
-            after an unsafe write.
-          - `use_greenlets`: if ``True``, :meth:`start_request()` will ensure
-            that the current greenlet uses the same socket for all operations
-            until :meth:`end_request()`
+
+          | **Replica-set keyword arguments for connecting with a replica-set
+            - either directly or via a mongos:**
+          | (ignored by standalone mongod instances)
+
           - `slave_okay` or `slaveOk` (deprecated): Use `read_preference`
             instead.
+          - `replicaSet`: (string) The name of the replica-set to connect to.
+            The driver will verify that the replica-set it connects to matches
+            this name. Implies that the hosts specified are a seed list and the
+            driver should attempt to find all members of the set. *Ignored by
+            mongos*.
+          - `read_preference`: The read preference for this client. If
+            connecting to a secondary then a read preference mode *other* than
+            PRIMARY is required - otherwise all queries will throw a
+            :class:`~pymongo.errors.AutoReconnect` "not master" error.
+            See :class:`~pymongo.read_preferences.ReadPreference` for all
+            available read preference options.
+          - `tag_sets`: Ignored unless connecting to a replica-set via mongos.
+            Specify a priority-order for tag sets, provide a list of
+            tag sets: ``[{'dc': 'ny'}, {'dc': 'la'}, {}]``. A final, empty tag
+            set, ``{}``, means "read from any member that matches the mode,
+            ignoring tags.
+
+          | **SSL configuration:**
+
+          - `ssl`: If ``True``, create the connection to the server using SSL.
           - `ssl_keyfile`: The private keyfile used to identify the local
             connection against mongod.  If included with the ``certfile` then
             only the ``ssl_certfile`` is needed.  Implies ``ssl=True``.

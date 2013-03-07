@@ -258,6 +258,12 @@ number. In that case, MongoReplicaSetClient distributes reads among matching
 members within ``secondary_acceptable_latency_ms`` of the closest member's
 ping time.
 
+.. note:: ``secondary_acceptable_latency_ms`` is ignored when talking to a
+  replica set *through* a mongos. The equivalent is the localThreshold_ command
+  line option.
+
+.. _localThreshold: http://docs.mongodb.org/manual/reference/mongos/#cmdoption-mongos--localThreshold
+
 Health Monitoring
 '''''''''''''''''
 

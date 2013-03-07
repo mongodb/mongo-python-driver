@@ -320,14 +320,39 @@ class MongoReplicaSetClient(common.BaseObject):
             this replica set. Can be passed as a keyword argument or as a
             MongoDB URI option.
 
-          **Other optional parameters can be passed as keyword arguments:**
+          | **Other optional parameters can be passed as keyword arguments:**
+
+          - `host`: For compatibility with :class:`~mongo_client.MongoClient`.
+            If both `host` and `hosts_or_uri` are specified `host` takes
+            precedence.
+          - `port`: For compatibility with :class:`~mongo_client.MongoClient`.
+            The default port number to use for hosts.
+          - `socketTimeoutMS`: (integer) How long (in milliseconds) a send or
+            receive on a socket can take before timing out.
+          - `connectTimeoutMS`: (integer) How long (in milliseconds) a
+            connection can take to be opened before timing out.
+          - `auto_start_request`: If ``True``, each thread that accesses
+            this :class:`MongoReplicaSetClient` has a socket allocated to it
+            for the thread's lifetime, for each member of the set. For
+            :class:`~pymongo.read_preferences.ReadPreference` PRIMARY,
+            auto_start_request=True ensures consistent reads, even if you read
+            after an unacknowledged write. For read preferences other than
+            PRIMARY, there are no consistency guarantees. Default to ``False``.
+          - `use_greenlets`: If ``True``, use a background Greenlet instead of
+            a background thread to monitor state of replica set. Additionally,
+            :meth:`start_request()` assigns a greenlet-local, rather than
+            thread-local, socket.
+            `use_greenlets` with :class:`MongoReplicaSetClient` requires
+            `Gevent <http://gevent.org/>`_ to be installed.
+
+          | **Write Concern options:**
 
           - `w`: (integer or string) Write operations will block until they have
             been replicated to the specified number or tagged set of servers.
             `w=<int>` always includes the replica set primary (e.g. w=3 means
             write to the primary and wait until replicated to **two**
-            secondaries). **Passing w=0 disables write acknowledgement and all
-            other write concern options.**
+            secondaries). Passing w=0 **disables write acknowledgement** and all
+            other write concern options.
           - `wtimeout`: (integer) Used in conjunction with `w`. Specify a value
             in milliseconds to control how long to wait for write propagation
             to complete. If replication does not complete in the given
@@ -337,13 +362,12 @@ class MongoReplicaSetClient(common.BaseObject):
           - `fsync`: If ``True`` force the database to fsync all files before
             returning. When used with `j` the server awaits the next group
             commit before returning.
-          - `socketTimeoutMS`: (integer) How long (in milliseconds) a send or
-            receive on a socket can take before timing out.
-          - `connectTimeoutMS`: (integer) How long (in milliseconds) a
-            connection can take to be opened before timing out.
-          - `ssl`: If ``True``, create the connection to the servers using SSL.
+
+          | **Read preference options:**
+
           - `read_preference`: The read preference for this client.
             See :class:`~pymongo.read_preferences.ReadPreference` for available
+            options.
           - `tag_sets`: Read from replica-set members with these tags.
             To specify a priority-order for tag sets, provide a list of
             tag sets: ``[{'dc': 'ny'}, {'dc': 'la'}, {}]``. A final, empty tag
@@ -354,24 +378,12 @@ class MongoReplicaSetClient(common.BaseObject):
           - `secondary_acceptable_latency_ms`: (integer) Any replica-set member
             whose ping time is within secondary_acceptable_latency_ms of the
             nearest member may accept reads. Default 15 milliseconds.
-          - `auto_start_request`: If ``True`, each thread that accesses
-            this :class:`MongoReplicaSetClient` has a socket allocated to it
-            for the thread's lifetime, for each member of the set. For
-            :class:`~pymongo.read_preferences.ReadPreference` PRIMARY,
-            auto_start_request=True ensures consistent reads, even if you read
-            after an unacknowledged write. For read preferences other than PRIMARY,
-            there are no consistency guarantees. Default to ``False``.
-          - `use_greenlets`: If ``True``, use a background Greenlet instead of
-            a background thread to monitor state of replica set. Additionally,
-            :meth:`start_request()` assigns a greenlet-local, rather than
-            thread-local, socket.
-            `use_greenlets` with :class:`MongoReplicaSetClient` requires
-            `Gevent <http://gevent.org/>`_ to be installed.
-          - `host`: For compatibility with :class:`~mongo_client.MongoClient`.
-            If both `host` and `hosts_or_uri` are specified `host` takes
-            precedence.
-          - `port`: For compatibility with :class:`~mongo_client.MongoClient`.
-            The default port number to use for hosts.
+            **Ignored by mongos** and must be configured on the command line.
+            See the localThreshold_ option for more information.
+
+          | **SSL configuration:**
+
+          - `ssl`: If ``True``, create the connection to the servers using SSL.
           - `ssl_keyfile`: The private keyfile used to identify the local
             connection against mongod.  If included with the ``certfile` then
             only the ``ssl_certfile`` is needed.  Implies ``ssl=True``.
@@ -393,6 +405,8 @@ class MongoReplicaSetClient(common.BaseObject):
         .. versionchanged:: 2.4.2+
            Added addtional ssl options
         .. versionadded:: 2.4
+
+        .. _localThreshold: http://docs.mongodb.org/manual/reference/mongos/#cmdoption-mongos--localThreshold
         """
         self.__opts = {}
         self.__seeds = set()

@@ -328,6 +328,8 @@ class Database(common.BaseObject):
           - `secondary_acceptable_latency_ms`: Any replica-set member whose
             ping time is within secondary_acceptable_latency_ms of the nearest
             member may accept reads. Default 15 milliseconds.
+            **Ignored by mongos** and must be configured on the command line.
+            See the localThreshold_ option for more information.
           - `**kwargs` (optional): additional keyword arguments will
             be added to the command document before it is sent
 
@@ -344,6 +346,7 @@ class Database(common.BaseObject):
         .. versionadded:: 1.4
 
         .. mongodoc:: commands
+        .. _localThreshold: http://docs.mongodb.org/manual/reference/mongos/#cmdoption-mongos--localThreshold
         """
 
         if isinstance(command, basestring):
