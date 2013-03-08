@@ -349,8 +349,8 @@ def _element_to_bson(key, value, check_keys, uuid_subtype):
     if check_keys:
         if key.startswith("$"):
             raise InvalidDocument("key %r must not start with '$'" % key)
-        if "." in key:
-            raise InvalidDocument("key %r must not contain '.'" % key)
+        # if "." in key:
+        #    raise InvalidDocument("key %r must not contain '.'" % key)
 
     name = _make_c_string(key, True)
     if isinstance(value, float):
