@@ -100,9 +100,12 @@ various Python frameworks and libraries.
   :mod:`repoze.what`.
 * `mongobox <http://github.com/theorm/mongobox>`_ is a tool to run a sandboxed
   MongoDB instance from within a python app.
-* `Flask-MongoAlchemy <http://github.com/cobrateam/flask-mongoalchemy/>` Add Flask support for MongoDB using MongoAlchemy.
-* `Flask-MongoKit <http://github.com/jarus/flask-mongokit/>` Flask extension to better integrate MongoKit into Flask
-* `Flask-PyMongo <http://github.com/dcrosta/flask-pymongo/>` Flask-PyMongo bridges Flask and PyMongo.
+* `Flask-MongoAlchemy <http://github.com/cobrateam/flask-mongoalchemy/>`_ Add
+  Flask support for MongoDB using MongoAlchemy.
+* `Flask-MongoKit <http://github.com/jarus/flask-mongokit/>`_ Flask extension
+  to better integrate MongoKit into Flask.
+* `Flask-PyMongo <http://github.com/dcrosta/flask-pymongo/>`_ Flask-PyMongo
+  bridges Flask and PyMongo.
 
 Alternative Drivers
 -------------------
