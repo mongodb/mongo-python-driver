@@ -1732,6 +1732,21 @@ class TestCollection(unittest.TestCase):
                          c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
                                            new=True, fields={'i': 1}))
 
+        # Test with full_response=True (version > 2.4.2)
+        result = c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
+                                           new=True, upsert=True, 
+                                           full_response=True,
+                                           fields={'i': 1})
+        self.assertEqual({'_id': 1, 'i': 5}, result["value"])
+        self.assertEqual(True, result["lastErrorObject"]["updatedExisting"])
+        
+        result = c.find_and_modify({'_id': 2}, {'$inc': {'i': 1}},
+                                           new=True, upsert=True, 
+                                           full_response=True,
+                                           fields={'i': 1})
+        self.assertEqual({'_id': 2, 'i': 1}, result["value"])
+        self.assertEqual(False, result["lastErrorObject"]["updatedExisting"])
+
         class ExtendedDict(dict):
             pass
 

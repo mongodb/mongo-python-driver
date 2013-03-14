@@ -1302,7 +1302,7 @@ class Collection(common.BaseObject):
             return res.get("results")
 
     def find_and_modify(self, query={}, update=None,
-                        upsert=False, sort=None, **kwargs):
+                        upsert=False, sort=None, full_response=False, **kwargs):
         """Update and return an object.
 
         This is a thin wrapper around the findAndModify_ command. The
@@ -1315,6 +1315,12 @@ class Collection(common.BaseObject):
         parameter. If no objects match the `query` and `upsert` is false,
         returns ``None``. If upserting and `new` is false, returns ``{}``.
 
+        If the full_response parameter is true, the return value will be 
+        the entire response object from the server, including the 'ok' and
+        'lastErrorObject' fields, rather than just the modified object.
+        This is useful mainly because the 'lastErrorObject' document holds 
+        information about the command's execution.
+
         :Parameters:
             - `query`: filter for the update (default ``{}``)
             - `update`: see second argument to :meth:`update` (no default)
@@ -1322,6 +1328,8 @@ class Collection(common.BaseObject):
             - `sort`: a list of (key, direction) pairs specifying the sort
               order for this query. See :meth:`~pymongo.cursor.Cursor.sort`
               for details.
+            - `full_response`: return the entire response object from the
+              server
             - `remove`: remove rather than updating (default ``False``)
             - `new`: return updated rather than original object
               (default ``False``)
@@ -1335,6 +1343,9 @@ class Collection(common.BaseObject):
         .. _findAndModify: http://dochub.mongodb.org/core/findAndModify
 
         .. note:: Requires server version **>= 1.3.0**
+
+        .. versionchanged:: 2.5
+           Added the optional full_response parameter
 
         .. versionchanged:: 2.4
            Deprecated the use of mapping types for the sort parameter
@@ -1385,7 +1396,10 @@ class Collection(common.BaseObject):
                 # Should never get here b/c of allowable_errors
                 raise ValueError("Unexpected Error: %s" % (out,))
 
-        return out.get('value')
+        if full_response:
+            return out
+        else:
+            return out.get('value')
 
     def __iter__(self):
         return self
