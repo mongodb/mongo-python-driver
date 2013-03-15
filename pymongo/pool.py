@@ -13,6 +13,7 @@
 # permissions and limitations under the License.
 
 import os
+import Queue
 import socket
 import sys
 import time
@@ -99,7 +100,7 @@ class SocketInfo(object):
 class Pool:
     def __init__(self, pair, max_size, net_timeout, conn_timeout, use_ssl,
                  use_greenlets, ssl_keyfile=None, ssl_certfile=None,
-                 ssl_cert_reqs=None, ssl_ca_certs=None):
+                 ssl_cert_reqs=None, ssl_ca_certs=None, max_open_sockets=None):
         """
         :Parameters:
           - `pair`: a (hostname, port) tuple
@@ -127,6 +128,9 @@ class Pool:
             "certification authority" certificates, which are used to validate
             certificates passed from the other end of the connection.
             Implies ``ssl=True``.
+          - `max_open_sockets`: The maximum number of open sockets allowed,
+            defaults to None. Calls to `get_socket` will block if this is set,
+            this pool has opened this many sockets, and there are none idle.
         """
         if use_greenlets and not thread_util.have_greenlet:
             raise ConfigurationError(
@@ -134,7 +138,7 @@ class Pool:
                 "Install the greenlet package from PyPI."
             )
 
-        self.sockets = set()
+        self.sockets = Queue.LifoQueue()
         self.lock = threading.Lock()
 
         # Keep track of resets, so we notice sockets created before the most
@@ -143,6 +147,7 @@ class Pool:
         self.pid = os.getpid()
         self.pair = pair
         self.max_size = max_size
+        self.max_open_sockets = max_open_sockets
         self.net_timeout = net_timeout
         self.conn_timeout = conn_timeout
         self.use_ssl = use_ssl
@@ -162,6 +167,13 @@ class Pool:
         # Count the number of calls to start_request() per thread or greenlet
         self._request_counter = thread_util.Counter(use_greenlets)
 
+        if self.max_open_sockets is None:
+            self._socket_semaphore = thread_util.NoopSemaphore()
+        else:
+            self._socket_semaphore = thread_util.BoundedSemaphore(
+                self.max_open_sockets)
+        self._num_forced_sockets = thread_util.SynchronizedCounter()
+
     def reset(self):
         # Ignore this race condition -- if many threads are resetting at once,
         # the pool_id will definitely change, which is all we care about.
@@ -174,12 +186,19 @@ class Pool:
             # thread is modifying self.sockets, or replacing it, in this
             # critical section.
             self.lock.acquire()
-            sockets, self.sockets = self.sockets, set()
+            sockets, self.sockets = self.sockets, Queue.LifoQueue()
         finally:
             self.lock.release()
 
-        for sock_info in sockets:
-            sock_info.close()
+        try:
+            while True:
+                sock_info = sockets.get(False)
+                sock_info.close()
+                # TODO(reversefold): should this be reset?
+                #  there could be outstanding sockets...
+                #self._socket_semaphore
+        except Queue.Empty:
+            pass
 
     def create_connection(self, pair):
         """Connect to *pair* and return the socket object.
@@ -260,7 +279,7 @@ class Pool:
         sock.settimeout(self.net_timeout)
         return SocketInfo(sock, self.pool_id, hostname)
 
-    def get_socket(self, pair=None):
+    def get_socket(self, pair=None, force=False):
         """Get a socket from the pool.
 
         Returns a :class:`SocketInfo` object wrapping a connected
@@ -269,6 +288,8 @@ class Pool:
 
         :Parameters:
           - `pair`: optional (hostname, port) tuple
+          - `force`: optional boolean, forces a connection to be returned
+              without blocking, even if `max_open_sockets` has been reached.
         """
         # We use the pid here to avoid issues with fork / multiprocessing.
         # See test.test_client:TestClient.test_fork for an example of
@@ -288,16 +309,25 @@ class Pool:
             return checked_sock
 
         # We're not in a request, just get any free socket or create one
+        if force:
+            # If we're doing an internal operation, attempt to play nicely with
+            # max_open_sockets, but if there is no open "slot" force the connection
+            # and keep track of it for later.
+            if not self._socket_semaphore.acquire(False):
+                self._num_forced_sockets.inc()
+        elif not self._socket_semaphore.acquire(True, self.conn_timeout):
+            raise socket.timeout()
         sock_info, from_pool = None, None
         try:
             try:
-                # set.pop() isn't atomic in Jython less than 2.7, see
-                # http://bugs.jython.org/issue1854
+                # TODO(reversefold): lock still needed here?
                 self.lock.acquire()
-                sock_info, from_pool = self.sockets.pop(), True
+                sock_info, from_pool = self.sockets.get(False), True
             finally:
                 self.lock.release()
-        except KeyError:
+        except Queue.Empty:
+            # TODO(reversefold): call settimeout with the remainder of conn_timeout?
+            # would need to pass it into connect and create_connection
             sock_info, from_pool = self.connect(pair), False
 
         if from_pool:
@@ -355,6 +385,16 @@ class Pool:
             self.reset()
         elif sock_info not in (NO_REQUEST, NO_SOCKET_YET):
             if sock_info.closed:
+                try:
+                    # Lock needed here to make sure we don't double-dec
+                    # _num_forced_sockets.
+                    self.lock.acquire()
+                    if self._num_forced_sockets.get() > 0:
+                        self._num_forced_sockets.dec()
+                    else:
+                        self._socket_semaphore.release()
+                finally:
+                    self.lock.release()
                 return
 
             if sock_info != self._get_request_state():
@@ -364,11 +404,17 @@ class Pool:
         """Return socket to the pool. If pool is full the socket is discarded.
         """
         try:
+            # Lock needed here to make sure we don't double-dec
+            # _num_forced_sockets.
             self.lock.acquire()
-            if len(self.sockets) < self.max_size:
-                self.sockets.add(sock_info)
+            if self.sockets.qsize() < self.max_size:
+                self.sockets.put(sock_info)
             else:
                 sock_info.close()
+            if self._num_forced_sockets.get() > 0:
+                self._num_forced_sockets.dec()
+            else:
+                self._socket_semaphore.release()
         finally:
             self.lock.release()
 
@@ -452,13 +498,18 @@ class Pool:
 
     def __del__(self):
         # Avoid ResourceWarnings in Python 3
-        for sock_info in self.sockets:
-            sock_info.close()
+        try:
+            while True:
+                sock_info = self.sockets.get(False)
+                sock_info.close()
+        except Queue.Empty:
+            pass
 
         for request_sock in self._tid_to_sock.values():
             if request_sock not in (NO_REQUEST, NO_SOCKET_YET):
                 request_sock.close()
-
+                # TODO(reversefold): Is this needed?
+                # self._socket_semaphore.release()
 
 class Request(object):
     """

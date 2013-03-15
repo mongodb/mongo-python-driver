@@ -15,6 +15,7 @@
 """Utilities to abstract the differences between threads and greenlets."""
 
 import threading
+import time
 import weakref
 
 have_greenlet = True
@@ -116,3 +117,61 @@ class Counter(object):
 
     def get(self):
         return self._counters.get(self.ident.get(), 0)
+
+
+class SynchronizedCounter(object):
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.__value = 0
+
+    def inc(self):
+        try:
+            self.lock.acquire()
+            self.__value += 1
+        finally:
+            self.lock.release()
+
+    def dec(self):
+        try:
+            self.lock.acquire()
+            self.__value -= 1
+        finally:
+            self.lock.release()
+
+    def get(self):
+        # NOTE(reversefold): I don't believe a simple return of a value needs
+        # to use the lock. The copy of __value for the return should be atomic.
+        return self.__value
+
+
+# TODO(reversefold): use native implementation if it supports timeout
+# i.e. CPython 3.2, perhaps others
+class BoundedSemaphore(object):
+    def __init__(self, value):
+        # Wrapping instead of extending as threading.BoundedSemaphore is
+        # a factory for the internal class threading._BoundedSemaphore.
+        self.wrapped = threading.BoundedSemaphore(value)
+
+    def acquire(self, blocking=True, timeout=None):
+        if timeout is None or not blocking:
+            return self.wrapped.acquire(blocking)
+        started = time.time()
+        while True:
+            result = super(BoundedSemaphore, self).acquire(False)
+            if result or time.time() - started >= timeout:
+                return result
+            time.sleep(0.1)
+
+    def release(self):
+        return self.wrapped.release()
+
+
+class NoopSemaphore(object):
+    def __init__(self, value=None):
+        pass
+
+    def acquire(self, blocking=True, timeout=None):
+        return True
+
+    def release(self):
+        pass

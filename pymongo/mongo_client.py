@@ -588,10 +588,12 @@ class MongoClient(common.BaseObject):
 
         # Call 'ismaster' directly so we can get a response time.
         sock_info = self.__socket()
-        response, res_time = self.__simple_command(sock_info,
-                                                   'admin',
-                                                   {'ismaster': 1})
-        self.__pool.maybe_return_socket(sock_info)
+        try:
+            response, res_time = self.__simple_command(sock_info,
+                                                       'admin',
+                                                       {'ismaster': 1})
+        finally:
+            self.__pool.maybe_return_socket(sock_info)
 
         # Are we talking to a mongos?
         isdbgrid = response.get('msg', '') == 'isdbgrid'
@@ -791,11 +793,13 @@ class MongoClient(common.BaseObject):
         # calls select() if the socket hasn't been checked in the last second,
         # or it may create a new socket, in which case calling select() is
         # redundant.
+        sock_info = self.__socket()
         try:
-            sock_info = self.__socket()
             return not pool._closed(sock_info.sock)
         except (socket.error, ConnectionFailure):
             return False
+        finally:
+            self.__pool.maybe_return_socket(sock_info)
 
     def set_cursor_manager(self, manager_class):
         """Set this client's cursor manager.
@@ -918,7 +922,6 @@ class MongoClient(common.BaseObject):
             self.__pool.maybe_return_socket(sock_info)
             return rv
         except OperationFailure:
-            self.__pool.maybe_return_socket(sock_info)
             raise
         except (ConnectionFailure, socket.error), e:
             self.disconnect()
@@ -926,6 +929,8 @@ class MongoClient(common.BaseObject):
         except:
             sock_info.close()
             raise
+        finally:
+            self.__pool.maybe_return_socket(sock_info)
 
     def __receive_data_on_socket(self, length, sock_info):
         """Lowest level receive operation.
@@ -949,9 +954,9 @@ class MongoClient(common.BaseObject):
         """
         header = self.__receive_data_on_socket(16, sock_info)
         length = struct.unpack("<i", header[:4])[0]
-        assert request_id == struct.unpack("<i", header[8:12])[0], \
-            "ids don't match %r %r" % (request_id,
-                                       struct.unpack("<i", header[8:12])[0])
+        msg_req_id = struct.unpack("<i", header[8:12])[0]
+        assert request_id == msg_req_id, \
+            "ids don't match %r %r" % (request_id, msg_req_id)
         assert operation == struct.unpack("<i", header[12:])[0]
 
         return self.__receive_data_on_socket(length - 16, sock_info)
