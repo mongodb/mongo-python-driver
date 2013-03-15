@@ -919,7 +919,6 @@ class MongoClient(common.BaseObject):
                                                             sock_info)
                 rv = self.__check_response_to_last_error(response)
 
-            self.__pool.maybe_return_socket(sock_info)
             return rv
         except OperationFailure:
             raise
