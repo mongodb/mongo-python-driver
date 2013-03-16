@@ -158,7 +158,7 @@ class BoundedSemaphore(object):
             return self.wrapped.acquire(blocking)
         started = time.time()
         while True:
-            result = super(BoundedSemaphore, self).acquire(False)
+            result = self.wrapped.acquire(False)
             if result or time.time() - started >= timeout:
                 return result
             time.sleep(0.1)
