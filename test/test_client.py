@@ -100,7 +100,9 @@ class TestClient(unittest.TestCase, TestRequestMixin):
             ConnectionFailure, MongoClient, "%s:1234567" % (host,), port)
 
     def test_repr(self):
-        self.assertEqual(repr(MongoClient(host, port)),
+        # Making host a str avoids the 'u' prefix in Python 2, so the repr is
+        # the same in Python 2 and 3.
+        self.assertEqual(repr(MongoClient(str(host), port)),
                          "MongoClient('%s', %d)" % (host, port))
 
     def test_getters(self):
