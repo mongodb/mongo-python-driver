@@ -86,7 +86,8 @@ class MongoClient(common.BaseObject):
     __max_bson_size = 4 * 1024 * 1024
 
     def __init__(self, host=None, port=None, max_pool_size=10,
-                 document_class=dict, tz_aware=False, _connect=True, **kwargs):
+                 document_class=dict, tz_aware=False, _connect=True,
+                 max_open_sockets=None, **kwargs):
         """Create a new connection to a single MongoDB instance at *host:port*.
 
         The resultant client object has connection-pooling built
@@ -128,6 +129,10 @@ class MongoClient(common.BaseObject):
             :class:`~datetime.datetime` instances returned as values
             in a document by this :class:`MongoClient` will be timezone
             aware (otherwise they will be naive)
+          - `max_open_sockets` (optional): The maximum number of connections
+            that the pool will open simultaneously. If this is set, queries
+            will block if there are `max_open_sockets` outstanding connections
+            from the pool.
 
           | **Other optional parameters can be passed as keyword arguments:**
 
@@ -261,6 +266,11 @@ class MongoClient(common.BaseObject):
 
         self.__max_pool_size = common.validate_positive_integer(
                                                 'max_pool_size', max_pool_size)
+        if max_open_sockets is None:
+            self.__max_open_sockets = None
+        else:
+            self.__max_open_sockets = common.validate_positive_integer(
+                                          'max_open_sockets', max_open_sockets)
 
         self.__cursor_manager = CursorManager(self)
 
@@ -313,7 +323,8 @@ class MongoClient(common.BaseObject):
             ssl_keyfile=self.__ssl_keyfile,
             ssl_certfile=self.__ssl_certfile,
             ssl_cert_reqs=self.__ssl_cert_reqs,
-            ssl_ca_certs=self.__ssl_ca_certs)
+            ssl_ca_certs=self.__ssl_ca_certs,
+            max_open_sockets=self.__max_open_sockets)
 
         self.__document_class = document_class
         self.__tz_aware = common.validate_boolean('tz_aware', tz_aware)
@@ -500,6 +511,19 @@ class MongoClient(common.BaseObject):
         .. versionadded:: 1.11
         """
         return self.__max_pool_size
+
+    @property
+    def max_open_sockets(self):
+        """The maximum number of sockets the pool will open concurrently.
+
+        .. note:: ``max_open_sockets`` caps the number of concurrent
+          connections to the server. Connection or query attempts when the pool
+          has reached max_open_sockets will block until conn_timeout or a
+          connection has been returned to the pool.
+
+        .. versionadded:: 2.4.2+
+        """
+        return self.__max_open_sockets
 
     @property
     def use_greenlets(self):
