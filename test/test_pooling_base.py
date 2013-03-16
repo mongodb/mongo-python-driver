@@ -750,6 +750,63 @@ class _TestMaxPoolSize(_TestPoolingBase):
         self._test_max_pool_size(0, 1)
 
 
+class _TestMaxOpenSockets(_TestPoolingBase):
+    """Test that connection pool doesn't open more than max_open_sockets.
+    To be run both with threads and with greenlets.
+    """
+    def get_pool(self, conn_timeout, net_timeout):
+        return pymongo.pool.Pool(('127.0.0.1', 27017),
+                                 2, net_timeout, conn_timeout,
+                                 False, False, max_open_sockets=2)
+
+    def test_over_max_times_out(self):
+        conn_timeout = 2
+        pool = self.get_pool(conn_timeout, conn_timeout + 5)
+        s1 = pool.get_socket()
+        self.assertIsNotNone(s1)
+        s2 = pool.get_socket()
+        self.assertIsNotNone(s2)
+        self.assertNotEqual(s1, s2)
+        start = time.time()
+        with self.assertRaises(socket.timeout):
+            pool.get_socket()
+        end = time.time()
+        self.assertTrue(end - start > conn_timeout)
+        self.assertTrue(end - start < conn_timeout + 5)
+
+    def test_over_max_no_timeout_blocks(self):
+        class Thread(threading.Thread):
+            def __init__(self, pool):
+                super(Thread, self).__init__()
+                self.state = 'init'
+                self.pool = pool
+                self.sock = None
+
+            def run(self):
+                self.state = 'get_socket'
+                self.sock = self.pool.get_socket()
+                self.state = 'sock'
+
+        pool = self.get_pool(None, 2)
+        s1 = pool.get_socket()
+        self.assertIsNotNone(s1)
+        s2 = pool.get_socket()
+        self.assertIsNotNone(s2)
+        self.assertNotEqual(s1, s2)
+        t = Thread(pool)
+        t.start()
+        while t.state != 'get_socket':
+            time.sleep(0.1)
+        self.assertEqual(t.state, 'get_socket')
+        time.sleep(5)
+        self.assertEqual(t.state, 'get_socket')
+        pool.maybe_return_socket(s1)
+        while t.state != 'sock':
+            time.sleep(0.1)
+        self.assertEqual(t.state, 'sock')
+        self.assertEqual(t.sock, s1)
+
+
 class _TestPoolSocketSharing(_TestPoolingBase):
     """Directly test that two simultaneous operations don't share a socket. To
     be run both with threads and with greenlets.
