@@ -28,6 +28,13 @@ from test.test_pooling_base import (
     _TestPooling, _TestMaxPoolSize, _TestPoolSocketSharing, one)
 
 
+def getput(q):
+    r = q.get(False)
+    if r:
+        q.put(r)
+    return r
+
+
 class TestPoolingThreads(_TestPooling, unittest.TestCase):
     use_greenlets = False
 
@@ -116,15 +123,15 @@ class TestPoolingThreads(_TestPooling, unittest.TestCase):
         a.pymongo_test.test.remove()
         a.pymongo_test.test.insert({'_id':1})
         a.pymongo_test.test.find_one()
-        self.assertEqual(1, len(a._MongoClient__pool.sockets))
-        a_sock = one(a._MongoClient__pool.sockets)
+        self.assertEqual(1, a._MongoClient__pool.sockets.qsize())
+        a_sock = getput(a._MongoClient__pool.sockets)
 
         def loop(pipe):
             c = self.get_client(auto_start_request=False)
-            self.assertEqual(1,len(c._MongoClient__pool.sockets))
+            self.assertEqual(1, c._MongoClient__pool.sockets.qsize())
             c.pymongo_test.test.find_one()
-            self.assertEqual(1,len(c._MongoClient__pool.sockets))
-            pipe.send(one(c._MongoClient__pool.sockets).sock.getsockname())
+            self.assertEqual(1, c._MongoClient__pool.sockets.qsize())
+            pipe.send(getput(c._MongoClient__pool.sockets).sock.getsockname())
 
         cp1, cc1 = Pipe()
         cp2, cc2 = Pipe()

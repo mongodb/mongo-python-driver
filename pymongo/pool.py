@@ -138,7 +138,7 @@ class Pool:
                 "Install the greenlet package from PyPI."
             )
 
-        self.sockets = thread_util.LifoQueue()
+        self.sockets = Queue.LifoQueue()
         self.lock = threading.Lock()
 
         # Keep track of resets, so we notice sockets created before the most
@@ -186,7 +186,7 @@ class Pool:
             # thread is modifying self.sockets, or replacing it, in this
             # critical section.
             self.lock.acquire()
-            sockets, self.sockets = self.sockets, thread_util.LifoQueue()
+            sockets, self.sockets = self.sockets, Queue.LifoQueue()
         finally:
             self.lock.release()
 
