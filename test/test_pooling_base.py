@@ -365,10 +365,10 @@ class _TestPooling(_TestPoolingBase):
         p = self.get_pool((host, port), 10, None, None, False)
         self.c.start_request()
         self.c.pymongo_test.test.find_one()
-        self.assertEqual(set(), p.sockets)
+        self.assertEqual(set(), set(p.sockets))
         self.c.end_request()
         self.assert_pool_size(1)
-        self.assertEqual(set(), p.sockets)
+        self.assertEqual(set(), set(p.sockets))
 
     def test_dependent_pools(self):
         self.assert_pool_size(1)

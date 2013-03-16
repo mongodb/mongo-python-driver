@@ -14,6 +14,7 @@
 
 """Utilities to abstract the differences between threads and greenlets."""
 
+import Queue
 import threading
 import time
 import weakref
@@ -175,3 +176,28 @@ class NoopSemaphore(object):
 
     def release(self):
         pass
+
+
+class LifoQueue(Queue.LifoQueue):
+    def get(self, *args, **kwargs):
+        return Queue.LifoQueue.get(self, *args, **kwargs)
+
+    def put(self, *args, **kwargs):
+        return Queue.LifoQueue.put(self, *args, **kwargs)
+
+    # This is to make validating existing tests easier ONLY, not for real use
+    def __len__(self):
+        vals = list(iter(self))
+        return len(vals)
+
+    # This is to make validating existing tests easier ONLY, not for real use
+    def __iter__(self):
+        vals = []
+        while True:
+            try:
+                vals.append(self.get(False))
+            except Queue.Empty:
+                break
+        for val in vals:
+            self.put(val)
+        return iter(vals)
