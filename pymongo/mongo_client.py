@@ -817,8 +817,9 @@ class MongoClient(common.BaseObject):
         # calls select() if the socket hasn't been checked in the last second,
         # or it may create a new socket, in which case calling select() is
         # redundant.
-        sock_info = self.__socket()
+        sock_info = None
         try:
+            sock_info = self.__socket()
             return not pool._closed(sock_info.sock)
         except (socket.error, ConnectionFailure):
             return False
