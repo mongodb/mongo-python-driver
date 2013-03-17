@@ -118,8 +118,6 @@ class Collection(common.BaseObject):
         """Sends a create command with the given options.
         """
 
-        # Send size as a float, not an int/long. BSON can only handle 32-bit
-        # ints which conflicts w/ max collection size of 10000000000.
         if options:
             if "size" in options:
                 options["size"] = float(options["size"])
