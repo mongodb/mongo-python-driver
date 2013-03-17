@@ -52,13 +52,6 @@ except ImportError:
     has_gevent = False
 
 
-def getput(q):
-    r = q.get(False)
-    if r:
-        q.put(r)
-    return r
-
-
 class MongoThread(object):
     """A thread, or a greenlet, that uses a MongoClient"""
     def __init__(self, test_case):
@@ -179,30 +172,30 @@ class OneOp(MongoThread):
 
     def run_mongo_thread(self):
         pool = self.client._MongoClient__pool
-        assert pool.sockets.qsize() == 1, "Expected 1 socket, found %d" % (
-            pool.sockets.qsize()
+        assert len(pool.sockets) == 1, "Expected 1 socket, found %d" % (
+            len(pool.sockets)
         )
 
-        sock_info = getput(pool.sockets)
+        sock_info = one(pool.sockets)
 
         self.client.start_request()
 
         # start_request() hasn't yet moved the socket from the general pool into
         # the request
-        assert pool.sockets.qsize() == 1
-        assert getput(pool.sockets) == sock_info
+        assert len(pool.sockets) == 1
+        assert one(pool.sockets) == sock_info
 
         self.client[DB].test.find_one()
 
         # find_one() causes the socket to be used in the request, so now it's
         # bound to this thread
-        assert pool.sockets.qsize() == 0
+        assert len(pool.sockets) == 0
         assert pool._get_request_state() == sock_info
         self.client.end_request()
 
         # The socket is back in the pool
-        assert pool.sockets.qsize() == 1
-        assert getput(pool.sockets) == sock_info
+        assert len(pool.sockets) == 1
+        assert one(pool.sockets) == sock_info
 
 
 class CreateAndReleaseSocket(MongoThread):
@@ -311,7 +304,7 @@ class _TestPoolingBase(object):
 
     def assert_pool_size(self, pool_size):
         self.assertEqual(
-            pool_size, self.c._MongoClient__pool.sockets.qsize()
+            pool_size, len(self.c._MongoClient__pool.sockets)
         )
 
 
@@ -372,10 +365,10 @@ class _TestPooling(_TestPoolingBase):
         p = self.get_pool((host, port), 10, None, None, False)
         self.c.start_request()
         self.c.pymongo_test.test.find_one()
-        self.assertEqual(0, p.sockets.qsize())
+        self.assertEqual(set(), p.sockets)
         self.c.end_request()
         self.assert_pool_size(1)
-        self.assertEqual(0, p.sockets.qsize())
+        self.assertEqual(set(), p.sockets)
 
     def test_dependent_pools(self):
         self.assert_pool_size(1)
@@ -399,28 +392,28 @@ class _TestPooling(_TestPoolingBase):
     def test_multiple_connections(self):
         a = self.get_client(auto_start_request=False)
         b = self.get_client(auto_start_request=False)
-        self.assertEqual(1, a._MongoClient__pool.sockets.qsize())
-        self.assertEqual(1, b._MongoClient__pool.sockets.qsize())
+        self.assertEqual(1, len(a._MongoClient__pool.sockets))
+        self.assertEqual(1, len(b._MongoClient__pool.sockets))
 
         a.start_request()
         a.pymongo_test.test.find_one()
-        self.assertEqual(0, a._MongoClient__pool.sockets.qsize())
+        self.assertEqual(0, len(a._MongoClient__pool.sockets))
         a.end_request()
-        self.assertEqual(1, a._MongoClient__pool.sockets.qsize())
-        self.assertEqual(1, b._MongoClient__pool.sockets.qsize())
-        a_sock = getput(a._MongoClient__pool.sockets)
+        self.assertEqual(1, len(a._MongoClient__pool.sockets))
+        self.assertEqual(1, len(b._MongoClient__pool.sockets))
+        a_sock = one(a._MongoClient__pool.sockets)
 
         b.end_request()
-        self.assertEqual(1, a._MongoClient__pool.sockets.qsize())
-        self.assertEqual(1, b._MongoClient__pool.sockets.qsize())
+        self.assertEqual(1, len(a._MongoClient__pool.sockets))
+        self.assertEqual(1, len(b._MongoClient__pool.sockets))
 
         b.start_request()
         b.pymongo_test.test.find_one()
-        self.assertEqual(1, a._MongoClient__pool.sockets.qsize())
-        self.assertEqual(0, b._MongoClient__pool.sockets.qsize())
+        self.assertEqual(1, len(a._MongoClient__pool.sockets))
+        self.assertEqual(0, len(b._MongoClient__pool.sockets))
 
         b.end_request()
-        b_sock = getput(b._MongoClient__pool.sockets)
+        b_sock = one(b._MongoClient__pool.sockets)
         b.pymongo_test.test.find_one()
         a.pymongo_test.test.find_one()
 
@@ -501,7 +494,7 @@ class _TestPooling(_TestPoolingBase):
         new_sock_info = cx_pool.get_socket()
         self.assertEqual(sock_info, new_sock_info)
         cx_pool.maybe_return_socket(new_sock_info)
-        self.assertEqual(1, cx_pool.sockets.qsize())
+        self.assertEqual(1, len(cx_pool.sockets))
 
     def test_pool_removes_dead_socket(self):
         # Test that Pool removes dead socket and the socket doesn't return
@@ -515,10 +508,10 @@ class _TestPooling(_TestPoolingBase):
         cx_pool.maybe_return_socket(sock_info)
         time.sleep(1.1) # trigger _check_closed
         new_sock_info = cx_pool.get_socket()
-        self.assertEqual(0, cx_pool.sockets.qsize())
+        self.assertEqual(0, len(cx_pool.sockets))
         self.assertNotEqual(sock_info, new_sock_info)
         cx_pool.maybe_return_socket(new_sock_info)
-        self.assertEqual(1, cx_pool.sockets.qsize())
+        self.assertEqual(1, len(cx_pool.sockets))
 
     def test_pool_removes_dead_request_socket_after_1_sec(self):
         # Test that Pool keeps request going even if a socket dies in request
@@ -527,7 +520,7 @@ class _TestPooling(_TestPoolingBase):
 
         # Get the request socket
         sock_info = cx_pool.get_socket()
-        self.assertEqual(0, cx_pool.sockets.qsize())
+        self.assertEqual(0, len(cx_pool.sockets))
         self.assertEqual(sock_info, cx_pool._get_request_state())
         sock_info.sock.close()
         cx_pool.maybe_return_socket(sock_info)
@@ -541,10 +534,10 @@ class _TestPooling(_TestPoolingBase):
         self.assertEqual(new_sock_info, cx_pool._get_request_state())
         cx_pool.maybe_return_socket(new_sock_info)
         self.assertEqual(new_sock_info, cx_pool._get_request_state())
-        self.assertEqual(0, cx_pool.sockets.qsize())
+        self.assertEqual(0, len(cx_pool.sockets))
 
         cx_pool.end_request()
-        self.assertEqual(1, cx_pool.sockets.qsize())
+        self.assertEqual(1, len(cx_pool.sockets))
 
     def test_pool_removes_dead_request_socket(self):
         # Test that Pool keeps request going even if a socket dies in request
@@ -553,7 +546,7 @@ class _TestPooling(_TestPoolingBase):
 
         # Get the request socket
         sock_info = cx_pool.get_socket()
-        self.assertEqual(0, cx_pool.sockets.qsize())
+        self.assertEqual(0, len(cx_pool.sockets))
         self.assertEqual(sock_info, cx_pool._get_request_state())
 
         # Unlike in test_pool_removes_dead_request_socket_after_1_sec, we
@@ -569,10 +562,10 @@ class _TestPooling(_TestPoolingBase):
         self.assertEqual(new_sock_info, cx_pool._get_request_state())
         cx_pool.maybe_return_socket(new_sock_info)
         self.assertEqual(new_sock_info, cx_pool._get_request_state())
-        self.assertEqual(0, cx_pool.sockets.qsize())
+        self.assertEqual(0, len(cx_pool.sockets))
 
         cx_pool.end_request()
-        self.assertEqual(1, cx_pool.sockets.qsize())
+        self.assertEqual(1, len(cx_pool.sockets))
 
     def test_pool_removes_dead_socket_after_request(self):
         # Test that Pool handles a socket dying that *used* to be the request
@@ -586,7 +579,7 @@ class _TestPooling(_TestPoolingBase):
 
         # End request
         cx_pool.end_request()
-        self.assertEqual(1, cx_pool.sockets.qsize())
+        self.assertEqual(1, len(cx_pool.sockets))
 
         # Kill old request socket
         sock_info.sock.close()
@@ -596,10 +589,10 @@ class _TestPooling(_TestPoolingBase):
         new_sock_info = cx_pool.get_socket()
         self.assertFalse(cx_pool.in_request())
         self.assertNotEqual(sock_info, new_sock_info)
-        self.assertEqual(0, cx_pool.sockets.qsize())
+        self.assertEqual(0, len(cx_pool.sockets))
         self.assertFalse(pymongo.pool._closed(new_sock_info.sock))
         cx_pool.maybe_return_socket(new_sock_info)
-        self.assertEqual(1, cx_pool.sockets.qsize())
+        self.assertEqual(1, len(cx_pool.sockets))
 
     def test_socket_reclamation(self):
         if sys.platform.startswith('java'):
@@ -615,7 +608,7 @@ class _TestPooling(_TestPoolingBase):
             use_ssl=False,
         )
 
-        self.assertEqual(0, cx_pool.sockets.qsize())
+        self.assertEqual(0, len(cx_pool.sockets))
 
         lock = None
         the_sock = [None]
@@ -668,8 +661,8 @@ class _TestPooling(_TestPoolingBase):
             cx_pool._ident.get()
 
         # Pool reclaimed the socket
-        self.assertEqual(1, cx_pool.sockets.qsize())
-        self.assertEqual(the_sock[0], id(getput(cx_pool.sockets).sock))
+        self.assertEqual(1, len(cx_pool.sockets))
+        self.assertEqual(the_sock[0], id(one(cx_pool.sockets).sock))
 
 
 class _TestMaxPoolSize(_TestPoolingBase):
@@ -722,13 +715,13 @@ class _TestMaxPoolSize(_TestPoolingBase):
                     the_hub.shutdown()
 
             if start_request:
-                self.assertEqual(4, cx_pool.sockets.qsize())
+                self.assertEqual(4, len(cx_pool.sockets))
             else:
                 # Without calling start_request(), threads can safely share
                 # sockets; the number running concurrently, and hence the number
                 # of sockets needed, is between 1 and 10, depending on thread-
                 # scheduling.
-                self.assertTrue(cx_pool.sockets.qsize() >= 1)
+                self.assertTrue(len(cx_pool.sockets) >= 1)
 
     def test_max_pool_size(self):
         self._test_max_pool_size(0, 0)

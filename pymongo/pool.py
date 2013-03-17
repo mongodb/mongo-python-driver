@@ -13,7 +13,6 @@
 # permissions and limitations under the License.
 
 import os
-import Queue
 import socket
 import sys
 import time
@@ -138,7 +137,7 @@ class Pool:
                 "Install the greenlet package from PyPI."
             )
 
-        self.sockets = Queue.LifoQueue()
+        self.sockets = set()
         self.lock = threading.Lock()
 
         # Keep track of resets, so we notice sockets created before the most
@@ -186,19 +185,12 @@ class Pool:
             # thread is modifying self.sockets, or replacing it, in this
             # critical section.
             self.lock.acquire()
-            sockets, self.sockets = self.sockets, Queue.LifoQueue()
+            sockets, self.sockets = self.sockets, set()
         finally:
             self.lock.release()
 
-        try:
-            while True:
-                sock_info = sockets.get(False)
-                sock_info.close()
-                # TODO(reversefold): should this be reset?
-                #  there could be outstanding sockets...
-                #self._socket_semaphore
-        except Queue.Empty:
-            pass
+        for sock_info in sockets:
+            sock_info.close()
 
     def create_connection(self, pair):
         """Connect to *pair* and return the socket object.
@@ -320,14 +312,13 @@ class Pool:
         sock_info, from_pool = None, None
         try:
             try:
-                # TODO(reversefold): lock still needed here?
+                # set.pop() isn't atomic in Jython less than 2.7, see
+                # http://bugs.jython.org/issue1854
                 self.lock.acquire()
-                sock_info, from_pool = self.sockets.get(False), True
+                sock_info, from_pool = self.sockets.pop(), True
             finally:
                 self.lock.release()
-        except Queue.Empty:
-            # TODO(reversefold): call settimeout with the remainder of conn_timeout?
-            # would need to pass it into connect and create_connection
+        except KeyError:
             sock_info, from_pool = self.connect(pair), False
 
         if from_pool:
@@ -407,8 +398,8 @@ class Pool:
             # Lock needed here to make sure we don't double-dec
             # _num_forced_sockets.
             self.lock.acquire()
-            if self.sockets.qsize() < self.max_size:
-                self.sockets.put(sock_info)
+            if len(self.sockets) < self.max_size:
+                self.sockets.add(sock_info)
             else:
                 sock_info.close()
             if self._num_forced_sockets.get() > 0:
@@ -498,12 +489,8 @@ class Pool:
 
     def __del__(self):
         # Avoid ResourceWarnings in Python 3
-        try:
-            while True:
-                sock_info = self.sockets.get(False)
-                sock_info.close()
-        except Queue.Empty:
-            pass
+        for sock_info in self.sockets:
+            sock_info.close()
 
         for request_sock in self._tid_to_sock.values():
             if request_sock not in (NO_REQUEST, NO_SOCKET_YET):

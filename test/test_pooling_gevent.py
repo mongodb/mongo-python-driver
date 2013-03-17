@@ -133,9 +133,9 @@ class TestPoolingGeventSpecial(unittest.TestCase):
             # If we started a request, then there was a point at which we had
             # 2 active sockets, otherwise we always used one.
             if use_request and use_greenlets:
-                self.assertEqual(2, cx_pool.sockets.qsize())
+                self.assertEqual(2, len(cx_pool.sockets))
             else:
-                self.assertEqual(1, cx_pool.sockets.qsize())
+                self.assertEqual(1, len(cx_pool.sockets))
 
             # Again, regardless of whether requests work, a greenlet will get
             # the same socket each time it calls get_socket() within a request.

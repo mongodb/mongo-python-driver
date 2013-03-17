@@ -47,13 +47,6 @@ from test.utils import (assertRaisesExactly,
                         TestRequestMixin)
 
 
-def getput(q):
-    r = q.get(False)
-    if r:
-        q.put(r)
-    return r
-
-
 def get_client(*args, **kwargs):
     return MongoClient(host, port, *args, **kwargs)
 
@@ -541,21 +534,21 @@ class TestClient(unittest.TestCase, TestRequestMixin):
 
         # The socket used for the previous commands has been returned to the
         # pool
-        self.assertEqual(1, client._MongoClient__pool.sockets.qsize())
+        self.assertEqual(1, len(client._MongoClient__pool.sockets))
 
         # We need exec here because if the Python version is less than 2.6
         # these with-statements won't even compile.
         exec """
 with contextlib.closing(client):
     self.assertEqual("bar", client.pymongo_test.test.find_one()["foo"])
-self.assertEqual(0, client._MongoClient__pool.sockets.qsize())
+self.assertEqual(0, len(client._MongoClient__pool.sockets))
 """
 
         exec """
 with get_client() as client:
     self.assertEqual("bar", client.pymongo_test.test.find_one()["foo"])
 # Calling client.close() has reset the pool
-self.assertEqual(0, client._MongoClient__pool.sockets.qsize())
+self.assertEqual(0, len(client._MongoClient__pool.sockets))
 """
 
     def test_with_start_request(self):
@@ -749,16 +742,16 @@ with client.start_request() as request:
         # response to getLastError. PYTHON-395.
         c = get_client()
         pool = c._MongoClient__pool
-        self.assertEqual(1, pool.sockets.qsize())
-        old_sock_info = getput(pool.sockets)
+        self.assertEqual(1, len(pool.sockets))
+        old_sock_info = iter(pool.sockets).next()
         c.pymongo_test.test.drop()
         c.pymongo_test.test.insert({'_id': 'foo'})
         self.assertRaises(
             OperationFailure,
             c.pymongo_test.test.insert, {'_id': 'foo'})
 
-        self.assertEqual(1, pool.sockets.qsize())
-        new_sock_info = getput(pool.sockets)
+        self.assertEqual(1, len(pool.sockets))
+        new_sock_info = iter(pool.sockets).next()
         self.assertEqual(old_sock_info, new_sock_info)
 
     def test_operation_failure_with_request(self):
