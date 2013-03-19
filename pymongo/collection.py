@@ -1315,7 +1315,7 @@ class Collection(common.BaseObject):
         parameter. If no objects match the `query` and `upsert` is false,
         returns ``None``. If upserting and `new` is false, returns ``{}``.
 
-        If the full_response parameter is true, the return value will be 
+        If the full_response parameter is ``True``, the return value will be
         the entire response object from the server, including the 'ok' and
         'lastErrorObject' fields, rather than just the modified object.
         This is useful mainly because the 'lastErrorObject' document holds 
@@ -1329,7 +1329,7 @@ class Collection(common.BaseObject):
               order for this query. See :meth:`~pymongo.cursor.Cursor.sort`
               for details.
             - `full_response`: return the entire response object from the
-              server
+              server (default ``False``)
             - `remove`: remove rather than updating (default ``False``)
             - `new`: return updated rather than original object
               (default ``False``)
