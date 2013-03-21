@@ -309,9 +309,8 @@ class TestDatabase(unittest.TestCase):
         db.system.users.remove({})
         db.remove_user("mike")
 
-        self.assertRaises(TypeError, db.add_user, "user", None)
         self.assertRaises(TypeError, db.add_user, "user", '')
-        self.assertRaises(TypeError, db.add_user, "user", 'password', None)
+        self.assertRaises(TypeError, db.add_user, "user", 'password', 15)
         self.assertRaises(ConfigurationError, db.add_user,
                           "user", 'password', 'True')
 

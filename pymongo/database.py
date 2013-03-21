@@ -606,7 +606,7 @@ class Database(common.BaseObject):
     def next(self):
         raise TypeError("'Database' object is not iterable")
 
-    def add_user(self, name, password, read_only=False):
+    def add_user(self, name, password=None, read_only=None, **kwargs):
         """Create user `name` with password `password`.
 
         Add a new user with permissions for this :class:`Database`.
@@ -615,8 +615,17 @@ class Database(common.BaseObject):
 
         :Parameters:
           - `name`: the name of the user to create
-          - `password`: the password of the user to create
-          - `read_only` (optional): if ``True`` it will make user read only
+          - `password` (optional): the password of the user to create. Can not
+            be used with the ``userSource`` argument.
+          - `read_only` (optional): if ``True`` the user will be read only
+          - `**kwargs` (optional): optional parameters for the user document
+            (e.g. ``userSource``, ``otherDBRoles``, or ``roles``)
+
+        .. note:: The use of optional keyword arguments like ``userSource``,
+           ``otherDBRoles``, or ``roles`` requires MongoDB >= 2.4.0
+
+        .. versionchanged:: 2.5
+           Added kwargs support for optional fields introduced in MongoDB 2.4
 
         .. versionchanged:: 2.2
            Added support for read only users
@@ -625,8 +634,11 @@ class Database(common.BaseObject):
         """
 
         user = self.system.users.find_one({"user": name}) or {"user": name}
-        user["pwd"] = auth._password_digest(name, password)
-        user["readOnly"] = common.validate_boolean('read_only', read_only)
+        if password is not None:
+            user["pwd"] = auth._password_digest(name, password)
+        if read_only is not None:
+            user["readOnly"] = common.validate_boolean('read_only', read_only)
+        user.update(kwargs)
 
         try:
             self.system.users.save(user, **self._get_wc_override())
