@@ -317,6 +317,8 @@ just that field::
 
   >>> cur = coll.find({}, fields={'dt': False})
 
+.. _use_kerberos:
+
 How do I use Kerberos authentication with PyMongo?
 --------------------------------------------------
 
