@@ -51,37 +51,39 @@ Examples
 ========
 Here's a basic example (for more see the *examples* section of the docs):
 
->>> import pymongo
->>> client = pymongo.MongoClient("localhost", 27017)
->>> db = client.test
->>> db.name
-u'test'
->>> db.my_collection
-Collection(Database(MongoClient('localhost', 27017), u'test'), u'my_collection')
->>> db.my_collection.save({"x": 10})
-ObjectId('4aba15ebe23f6b53b0000000')
->>> db.my_collection.save({"x": 8})
-ObjectId('4aba160ee23f6b543e000000')
->>> db.my_collection.save({"x": 11})
-ObjectId('4aba160ee23f6b543e000002')
->>> db.my_collection.find_one()
-{u'x': 10, u'_id': ObjectId('4aba15ebe23f6b53b0000000')}
->>> for item in db.my_collection.find():
-...     print item["x"]
-...
-10
-8
-11
->>> db.my_collection.create_index("x")
-u'x_1'
->>> for item in db.my_collection.find().sort("x", pymongo.ASCENDING):
-...     print item["x"]
-...
-8
-10
-11
->>> [item["x"] for item in db.my_collection.find().limit(2).skip(1)]
-[8, 11]
+.. code-block:: pycon
+
+  >>> import pymongo
+  >>> client = pymongo.MongoClient("localhost", 27017)
+  >>> db = client.test
+  >>> db.name
+  u'test'
+  >>> db.my_collection
+  Collection(Database(MongoClient('localhost', 27017), u'test'), u'my_collection')
+  >>> db.my_collection.save({"x": 10})
+  ObjectId('4aba15ebe23f6b53b0000000')
+  >>> db.my_collection.save({"x": 8})
+  ObjectId('4aba160ee23f6b543e000000')
+  >>> db.my_collection.save({"x": 11})
+  ObjectId('4aba160ee23f6b543e000002')
+  >>> db.my_collection.find_one()
+  {u'x': 10, u'_id': ObjectId('4aba15ebe23f6b53b0000000')}
+  >>> for item in db.my_collection.find():
+  ...     print item["x"]
+  ...
+  10
+  8
+  11
+  >>> db.my_collection.create_index("x")
+  u'x_1'
+  >>> for item in db.my_collection.find().sort("x", pymongo.ASCENDING):
+  ...     print item["x"]
+  ...
+  8
+  10
+  11
+  >>> [item["x"] for item in db.my_collection.find().limit(2).skip(1)]
+  [8, 11]
 
 Documentation
 =============
