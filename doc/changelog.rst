@@ -13,6 +13,10 @@ Important new features:
 - Support for delegated and role based authentication.
 - New GEOSPHERE (2dsphere) and HASHED index constants.
 
+.. note:: :meth:`~pymongo.database.Database.authenticate` now raises a
+    subclass of :class:`~pymongo.errors.PyMongoError` if authentication
+    fails due to invalid credentials or configuration issues.
+
 Issues Resolved
 ...............
 

@@ -704,6 +704,12 @@ class Database(common.BaseObject):
             :data:`~pymongo.auth.MECHANISMS` for options.
             Defaults to MONGODB-CR (MongoDB Challenge Response protocol)
 
+        .. versionchanged:: 2.5
+           Added the `source` and `mechanism` parameters. :meth:`authenticate`
+           now raises a subclass of :class:`~pymongo.errors.PyMongoError` if
+           authentication fails due to invalid credentials or configuration
+           issues.
+
         .. mongodoc:: authenticate
         """
         if not isinstance(name, basestring):
@@ -717,13 +723,10 @@ class Database(common.BaseObject):
                             "of %s" % (basestring.__name__,))
         common.validate_auth_mechanism('mechanism', mechanism)
 
-        try:
-            credentials = (source or self.name, unicode(name),
-                           password and unicode(password) or None, mechanism)
-            self.connection._cache_credentials(self.name, credentials)
-            return True
-        except OperationFailure:
-            return False
+        credentials = (source or self.name, unicode(name),
+                       password and unicode(password) or None, mechanism)
+        self.connection._cache_credentials(self.name, credentials)
+        return True
 
     def logout(self):
         """Deauthorize use of this database for this client instance.

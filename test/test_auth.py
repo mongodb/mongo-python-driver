@@ -240,8 +240,9 @@ class TestDelegatedAuth(unittest.TestCase):
         self.assertRaises(OperationFailure,
                           self.client.pymongo_test2.foo.find_one)
         # Auth must occur on the db where the user is defined.
-        self.assertFalse(self.client.pymongo_test2.authenticate('user',
-                                                                'pass'))
+        self.assertRaises(OperationFailure,
+                          self.client.pymongo_test2.authenticate,
+                          'user', 'pass')
         # Auth directly
         self.assertTrue(self.client.pymongo_test.authenticate('user', 'pass'))
         self.assertTrue(self.client.pymongo_test2.foo.find_one())

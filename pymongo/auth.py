@@ -28,7 +28,7 @@ except ImportError:
     HAVE_KERBEROS = False
 
 from bson.son import SON
-from pymongo.errors import OperationFailure
+from pymongo.errors import ConfigurationError, OperationFailure
 
 
 MECHANISMS = ('MONGODB-CR', 'GSSAPI')
@@ -164,8 +164,8 @@ def authenticate(credentials, sock_info, cmd_func):
     # Use a dict for this when we support more mechanisms.
     if mechanism == 'GSSAPI':
         if not HAVE_KERBEROS:
-            raise OperationFailure('The "kerberos" module must be '
-                                   'installed to use GSSAPI authentication.')
+            raise ConfigurationError('The "kerberos" module must be '
+                                     'installed to use GSSAPI authentication.')
         _authenticate_gssapi(username, sock_info, cmd_func)
     else:
         _authenticate_mongo_cr(username, password, source, sock_info, cmd_func)

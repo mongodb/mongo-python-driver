@@ -530,8 +530,8 @@ class MongoReplicaSetClient(common.BaseObject):
                            unicode(password), mechanism)
             try:
                 self._cache_credentials(source, credentials)
-            except OperationFailure:
-                raise ConfigurationError("authentication failed")
+            except OperationFailure, exc:
+                raise ConfigurationError(str(exc))
 
         # Start the monitor after we know the configuration is correct.
         if monitor_class:
