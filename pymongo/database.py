@@ -618,8 +618,10 @@ class Database(common.BaseObject):
           - `password` (optional): the password of the user to create. Can not
             be used with the ``userSource`` argument.
           - `read_only` (optional): if ``True`` the user will be read only
-          - `**kwargs` (optional): optional parameters for the user document
-            (e.g. ``userSource``, ``otherDBRoles``, or ``roles``)
+          - `**kwargs` (optional): optional fields for the user document
+            (e.g. ``userSource``, ``otherDBRoles``, or ``roles``). See
+            `<http://docs.mongodb.org/manual/reference/privilege-documents>`_
+            for more information.
 
         .. note:: The use of optional keyword arguments like ``userSource``,
            ``otherDBRoles``, or ``roles`` requires MongoDB >= 2.4.0
