@@ -47,8 +47,8 @@ PyMongo provides built-in connection pooling, so some of the benefits of those
 frameworks can be achieved just by writing multi-threaded code that shares a
 :class:`~pymongo.mongo_client.MongoClient`.
 
-There are asynchronous MongoDB drivers in Python: `AsyncMongo for Tornado
-<https://github.com/bitly/asyncmongo>`_ and `TxMongo for Twisted
+There are asynchronous MongoDB drivers in Python: `Motor for Tornado
+<https://github.com/mongodb/motor>`_ and `TxMongo for Twisted
 <http://github.com/fiorix/mongo-async-python-driver>`_. Compared to PyMongo,
 however, these projects are less stable, lack features, and are less actively
 maintained.
