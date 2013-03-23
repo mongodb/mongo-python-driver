@@ -113,9 +113,6 @@ These are alternatives to PyMongo.
 
 * `Motor <https://github.com/mongodb/motor>`_ is a full-featured, non-blocking
   MongoDB driver for Python Tornado applications.
-* `asyncmongo <https://github.com/bitly/asyncmongo>`_ is an asynchronous library
-  for accessing mongo which is built on the Tornado IOLoop, but doesn't support
-  to replica sets.
 * `TxMongo <http://github.com/fiorix/mongo-async-python-driver>`_ is an
   asynchronous Python driver for MongoDB, although it is not currently
   recommended for production use.
