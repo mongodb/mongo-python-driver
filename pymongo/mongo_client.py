@@ -85,7 +85,7 @@ class MongoClient(common.BaseObject):
 
     __max_bson_size = 4 * 1024 * 1024
 
-    def __init__(self, host=None, port=None, max_pool_size=10,
+    def __init__(self, host=None, port=None, max_pool_size=100,
                  document_class=dict, tz_aware=False, _connect=True, **kwargs):
         """Create a new connection to a single MongoDB instance at *host:port*.
 
@@ -259,8 +259,8 @@ class MongoClient(common.BaseObject):
             options[option] = value
         options.update(opts)
 
-        self.__max_pool_size = common.validate_positive_integer(
-                                                'max_pool_size', max_pool_size)
+        self.__max_pool_size = options.get('maxpoolsize',
+            common.validate_positive_integer('max_pool_size', max_pool_size))
 
         self.__cursor_manager = CursorManager(self)
 

@@ -212,6 +212,7 @@ VALIDATORS = {
     'journal': validate_boolean,
     'connecttimeoutms': validate_timeout_or_none,
     'sockettimeoutms': validate_timeout_or_none,
+    'maxpoolsize': validate_positive_integer,
     'ssl': validate_boolean,
     'ssl_keyfile': validate_readable,
     'ssl_certfile': validate_readable,
