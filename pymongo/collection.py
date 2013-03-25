@@ -34,14 +34,15 @@ except ImportError:
     ordered_types = SON
 
 
-IDX_MAX_LEN = 88
+IDX_MAX_LEN = 128
 
-def _gen_index_name(keys):
+def _gen_index_name(keys, ns=None):
     """Generate an index name from the set of fields it is over.
     """
+    max_len = IDX_MAX_LEN if (ns is None) else len(ns)
     name = u"_".join([u"%s_%s" % item for item in keys])
-    if len(name) > IDX_MAX_LEN:
-        name = name[:IDX_MAX_LEN][:-32] + unicode(uuid.uuid4()).replace("-", "")
+    if len(name) > max_len:
+        name = name[:max_len][:-32] + unicode(uuid.uuid4()).replace("-", "")
     return name
 
 
@@ -811,7 +812,7 @@ class Collection(common.BaseObject):
 
         index = {"key": index_doc, "ns": self.__full_name}
 
-        name = "name" in kwargs and kwargs["name"] or _gen_index_name(keys)
+        name = "name" in kwargs and kwargs["name"] or _gen_index_name(keys, self.__full_name)
         index["name"] = name
 
         if "drop_dups" in kwargs:
@@ -912,7 +913,7 @@ class Collection(common.BaseObject):
             name = kwargs["name"]
         else:
             keys = helpers._index_list(key_or_list)
-            name = kwargs["name"] = _gen_index_name(keys)
+            name = kwargs["name"] = _gen_index_name(keys, self.__full_name)
 
         if not self.__database.connection._cached(self.__database.name,
                                                   self.__name, name):
@@ -950,7 +951,7 @@ class Collection(common.BaseObject):
         """
         name = index_or_name
         if isinstance(index_or_name, list):
-            name = _gen_index_name(index_or_name)
+            name = _gen_index_name(index_or_name, self.__full_name)
 
         if not isinstance(name, basestring):
             raise TypeError("index_or_name must be an index name or list")
