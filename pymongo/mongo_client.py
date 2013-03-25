@@ -259,8 +259,8 @@ class MongoClient(common.BaseObject):
             options[option] = value
         options.update(opts)
 
-        self.__max_pool_size = common.validate_positive_integer(
-                                                'max_pool_size', max_pool_size)
+        self.__max_pool_size = options.get('maxpoolsize',
+            common.validate_positive_integer('max_pool_size', max_pool_size))
 
         self.__cursor_manager = CursorManager(self)
 
