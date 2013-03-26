@@ -14,6 +14,7 @@
 
 
 """Functions and classes common to multiple pymongo modules."""
+import sys
 import warnings
 from pymongo import read_preferences
 
@@ -25,6 +26,11 @@ HAS_SSL = True
 try:
     import ssl
 except ImportError:
+    HAS_SSL = False
+
+
+# Jython 2.7 includes an incomplete ssl module. See PYTHON-498.
+if sys.platform.startswith('java'):
     HAS_SSL = False
 
 
