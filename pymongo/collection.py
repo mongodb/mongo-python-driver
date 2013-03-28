@@ -629,11 +629,11 @@ class Collection(common.BaseObject):
             the start of the result set) when returning the results
           - `limit` (optional): the maximum number of results to
             return
-          - `timeout` (optional): if True, any returned cursor will be
-            subject to the normal timeout behavior of the mongod
-            process. Otherwise, the returned cursor will never timeout
-            at the server. Care should be taken to ensure that cursors
-            with timeout turned off are properly closed.
+          - `timeout` (optional): if True (the default), any returned
+            cursor is closed by the server after 10 minutes of
+            inactivity. If set to False, the returned cursor will never
+            time out on the server. Care should be taken to ensure that
+            cursors with timeout turned off are properly closed.
           - `snapshot` (optional): if True, snapshot mode will be used
             for this query. Snapshot mode assures no duplicates are
             returned, or objects missed, which were present at both
