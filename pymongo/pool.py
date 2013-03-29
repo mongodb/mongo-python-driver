@@ -291,7 +291,7 @@ class Pool:
         req_state = self._get_request_state()
         if req_state not in (NO_SOCKET_YET, NO_REQUEST):
             # There's a socket for this request, check it and return it
-            checked_sock = self._check(req_state, pair)
+            checked_sock = self._check(req_state, pair, acquire_on_connect=True)
             if checked_sock != req_state:
                 self._set_request_state(checked_sock)
 
@@ -407,7 +407,7 @@ class Pool:
         finally:
             self.lock.release()
 
-    def _check(self, sock_info, pair):
+    def _check(self, sock_info, pair, acquire_on_connect=False):
         """This side-effecty function checks if this pool has been reset since
         the last time this socket was used, or if the socket has been closed by
         some external network error, and if so, attempts to create a new socket.
@@ -438,6 +438,9 @@ class Pool:
             return sock_info
         else:
             try:
+                if acquire_on_connect:
+                    if not self._socket_semaphore.acquire(True, self.conn_timeout):
+                        raise socket.timeout()
                 return self.connect(pair)
             except socket.error:
                 self.reset()
