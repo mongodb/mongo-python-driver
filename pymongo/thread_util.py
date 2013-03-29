@@ -14,7 +14,6 @@
 
 """Utilities to abstract the differences between threads and greenlets."""
 
-import Queue
 import threading
 import time
 import weakref
