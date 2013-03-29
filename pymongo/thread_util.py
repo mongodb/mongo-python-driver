@@ -15,8 +15,11 @@
 """Utilities to abstract the differences between threads and greenlets."""
 
 import threading
-import time
 import weakref
+try:
+    from time import monotonic as _time
+except ImportError:
+    from time import time as _time
 
 have_greenlet = True
 try:
@@ -144,26 +147,63 @@ class SynchronizedCounter(object):
         return self.__value
 
 
-# TODO(reversefold): use native implementation if it supports timeout
-# i.e. CPython 3.2, perhaps others
-class BoundedSemaphore(object):
-    def __init__(self, value):
-        # Wrapping instead of extending as threading.BoundedSemaphore is
-        # a factory for the internal class threading._BoundedSemaphore.
-        self.wrapped = threading.BoundedSemaphore(value)
+### Begin backport from CPython 3.2 for timeout support for acquire
+class Semaphore:
+
+    # After Tim Peters' semaphore class, but not quite the same (no maximum)
+
+    def __init__(self, value=1):
+        if value < 0:
+            raise ValueError("semaphore initial value must be >= 0")
+        self._cond = threading.Condition(threading.Lock())
+        self._value = value
 
     def acquire(self, blocking=True, timeout=None):
-        if timeout is None or not blocking:
-            return self.wrapped.acquire(blocking)
-        started = time.time()
-        while True:
-            result = self.wrapped.acquire(False)
-            if result or time.time() - started >= timeout:
-                return result
-            time.sleep(0.1)
+        if not blocking and timeout is not None:
+            raise ValueError("can't specify timeout for non-blocking acquire")
+        rc = False
+        endtime = None
+        self._cond.acquire()
+        while self._value == 0:
+            if not blocking:
+                break
+            if timeout is not None:
+                if endtime is None:
+                    endtime = _time() + timeout
+                else:
+                    timeout = endtime - _time()
+                    if timeout <= 0:
+                        break
+            self._cond.wait(timeout)
+        else:
+            self._value = self._value - 1
+            rc = True
+        self._cond.release()
+        return rc
+
+    __enter__ = acquire
 
     def release(self):
-        return self.wrapped.release()
+        self._cond.acquire()
+        self._value = self._value + 1
+        self._cond.notify()
+        self._cond.release()
+
+    def __exit__(self, t, v, tb):
+        self.release()
+
+
+class BoundedSemaphore(Semaphore):
+    """Semaphore that checks that # releases is <= # acquires"""
+    def __init__(self, value=1):
+        Semaphore.__init__(self, value)
+        self._initial_value = value
+
+    def release(self):
+        if self._value >= self._initial_value:
+            raise ValueError("Semaphore released too many times")
+        return Semaphore.release(self)
+### End backport from CPython 3.2
 
 
 class NoopSemaphore(object):
