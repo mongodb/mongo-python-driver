@@ -21,8 +21,7 @@ import weakref
 
 from pymongo import thread_util
 from pymongo.common import HAS_SSL
-from pymongo.errors import (CertificateError, ConnectionFailure,
-                            ConfigurationError)
+from pymongo.errors import ConnectionFailure, ConfigurationError
 
 try:
     from ssl import match_hostname
