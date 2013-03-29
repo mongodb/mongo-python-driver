@@ -494,9 +494,10 @@ class MongoClient(common.BaseObject):
     def max_pool_size(self):
         """The maximum number of sockets the pool will open concurrently.
 
-        .. SIGNIFICANT BEHAVIOR CHANGE in 2.4.2+. Previously, this parameter
-          would limit only the idle connections the pool would hold onto, not
-          the number of open sockets. The default has also changed to 100.
+        .. warning:: SIGNIFICANT BEHAVIOR CHANGE in 2.5+. Previously, this
+          parameter would limit only the idle connections the pool would hold
+          onto, not the number of open sockets. The default has also changed
+          to 100.
 
         .. note:: ``max_pool_size`` caps the number of concurrent
           connections to the server. Connection or query attempts when the pool
@@ -504,7 +505,7 @@ class MongoClient(common.BaseObject):
           connection has been returned to the pool.
 
         .. versionadded:: 1.11
-        .. behavior change: 2.4.2+
+        .. behavior change: 2.5+
         """
         return self.__max_pool_size
 
