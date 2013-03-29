@@ -175,7 +175,7 @@ class Connection(MongoClient):
             Implies ``ssl=True``.
 
         .. seealso:: :meth:`end_request`
-        .. versionchanged:: 2.4.2+
+        .. versionchanged:: 2.5
            Added addtional ssl options
         .. versionchanged:: 2.3
            Added support for failover between mongos seed list members.

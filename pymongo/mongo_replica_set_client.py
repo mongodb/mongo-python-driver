@@ -402,7 +402,7 @@ class MongoReplicaSetClient(common.BaseObject):
             certificates passed from the other end of the connection.
             Implies ``ssl=True``.
 
-        .. versionchanged:: 2.4.2+
+        .. versionchanged:: 2.5
            Added addtional ssl options
         .. versionadded:: 2.4
 
@@ -530,8 +530,8 @@ class MongoReplicaSetClient(common.BaseObject):
                            unicode(password), mechanism)
             try:
                 self._cache_credentials(source, credentials)
-            except OperationFailure:
-                raise ConfigurationError("authentication failed")
+            except OperationFailure, exc:
+                raise ConfigurationError(str(exc))
 
         # Start the monitor after we know the configuration is correct.
         if monitor_class:

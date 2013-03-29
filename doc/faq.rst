@@ -38,41 +38,15 @@ Starting with version 2.2 PyMongo supports Python 3.x where x >= 1. See the
 
 Does PyMongo support asynchronous frameworks like Gevent, Tornado, or Twisted?
 ------------------------------------------------------------------------------
-The only async framework that PyMongo fully supports is `Gevent
-<http://www.gevent.org/>`_.
 
-Currently there is no great way to use PyMongo in conjunction with `Tornado
-<http://www.tornadoweb.org/>`_ or `Twisted <http://twistedmatrix.com/>`_.
-PyMongo provides built-in connection pooling, so some of the benefits of those
-frameworks can be achieved just by writing multi-threaded code that shares a
-:class:`~pymongo.mongo_client.MongoClient`.
+PyMongo fully supports :doc:`Gevent <examples/gevent>`.
 
-There are asynchronous MongoDB drivers in Python: `AsyncMongo for Tornado
-<https://github.com/bitly/asyncmongo>`_ and `TxMongo for Twisted
+To use MongoDB with `Tornado <http://www.tornadoweb.org/>`_ see the
+`Motor <https://github.com/mongodb/motor>`_ project.
+
+For `Twisted <http://twistedmatrix.com/>`_, see `TxMongo
 <http://github.com/fiorix/mongo-async-python-driver>`_. Compared to PyMongo,
-however, these projects are less stable, lack features, and are less actively
-maintained.
-
-It is possible to use PyMongo with Tornado, if some precautions are taken to
-avoid blocking the event loop:
-
-- Make sure all MongoDB operations are very fast. Use the
-  `MongoDB profiler <http://www.mongodb.org/display/DOCS/Database+Profiler>`_
-  to watch for slow queries.
-
-- Create a single :class:`~pymongo.mongo_client.MongoClient` instance for your
-  application in your startup code, before starting the IOLoop.
-
-- Configure the :class:`~pymongo.mongo_client.MongoClient` with a short
-  ``socketTimeoutMS`` so slow operations result in a
-  :class:`~pymongo.errors.TimeoutError`, rather than blocking the loop and
-  preventing your application from responding to other requests.
-
-- Start up extra Tornado processes. Tornado is typically deployed with one
-  process per CPU core, proxied behind a load-balancer such as
-  `Nginx <http://wiki.nginx.org/Main>`_ or `HAProxy <http://haproxy.1wt.eu/>`_;
-  when using Tornado with a blocking driver like PyMongo it's recommended you
-  start two or three processes per core instead of one.
+TxMongo is less stable, lack features, and is less actively maintained.
 
 What does *OperationFailure* cursor id not valid at server mean?
 ----------------------------------------------------------------
@@ -316,6 +290,8 @@ Another option, assuming you don't need the datetime field, is to filter out
 just that field::
 
   >>> cur = coll.find({}, fields={'dt': False})
+
+.. _use_kerberos:
 
 How do I use Kerberos authentication with PyMongo?
 --------------------------------------------------

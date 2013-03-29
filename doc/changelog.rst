@@ -1,6 +1,30 @@
 Changelog
 =========
 
+Changes in Version 2.5
+----------------------
+
+Version 2.5 includes changes to support new features in MongoDB 2.4.
+
+Important new features:
+
+- Support for :ref:`GSSAPI (Kerberos) authentication <use_kerberos>`.
+- Support for SSL certificate validation with hostname matching.
+- Support for delegated and role based authentication.
+- New GEOSPHERE (2dsphere) and HASHED index constants.
+
+.. note:: :meth:`~pymongo.database.Database.authenticate` now raises a
+    subclass of :class:`~pymongo.errors.PyMongoError` if authentication
+    fails due to invalid credentials or configuration issues.
+
+Issues Resolved
+...............
+
+See the `PyMongo 2.5 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 2.5 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/11981
+
 Changes in Version 2.4.2
 ------------------------
 

@@ -43,7 +43,7 @@ GEOHAYSTACK = "geoHaystack"
 GEOSPHERE = "2dsphere"
 """Index specifier for a `spherical geospatial index`_.
 
-.. versionadded:: 2.4.2+
+.. versionadded:: 2.5
 
 .. note:: 2dsphere indexing requires server version **>= 2.4.0**.
 
@@ -53,7 +53,7 @@ GEOSPHERE = "2dsphere"
 HASHED = "hashed"
 """Index specifier for a `hashed index`_.
 
-.. versionadded:: 2.4.2+
+.. versionadded:: 2.5
 
 .. note:: hashed indexing requires server version **>= 2.4.0**.
 
@@ -67,7 +67,7 @@ SLOW_ONLY = 1
 ALL = 2
 """Profile all operations."""
 
-version_tuple = (2, 4, 2, '+')
+version_tuple = (2, 5, '+')
 
 def get_version_string():
     if isinstance(version_tuple[-1], basestring):

@@ -183,7 +183,7 @@ class ReplicaSetConnection(MongoReplicaSetClient):
             certificates passed from the other end of the connection.
             Implies ``ssl=True``.
 
-        .. versionchanged:: 2.4.2+
+        .. versionchanged:: 2.5
            Added addtional ssl options
         .. versionchanged:: 2.3
            Added `tag_sets` and `secondary_acceptable_latency_ms` options.

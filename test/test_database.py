@@ -309,9 +309,8 @@ class TestDatabase(unittest.TestCase):
         db.system.users.remove({})
         db.remove_user("mike")
 
-        self.assertRaises(TypeError, db.add_user, "user", None)
         self.assertRaises(TypeError, db.add_user, "user", '')
-        self.assertRaises(TypeError, db.add_user, "user", 'password', None)
+        self.assertRaises(TypeError, db.add_user, "user", 'password', 15)
         self.assertRaises(ConfigurationError, db.add_user,
                           "user", 'password', 'True')
 
@@ -320,22 +319,27 @@ class TestDatabase(unittest.TestCase):
         self.assertRaises(TypeError, db.authenticate, 5, "password")
         self.assertRaises(TypeError, db.authenticate, "mike", 5)
 
-        self.assertFalse(db.authenticate("mike", "not a real password"))
-        self.assertFalse(db.authenticate("faker", "password"))
+        self.assertRaises(OperationFailure,
+                          db.authenticate, "mike", "not a real password")
+        self.assertRaises(OperationFailure,
+                          db.authenticate, "faker", "password")
         self.assertTrue(db.authenticate("mike", "password"))
         self.assertTrue(db.authenticate(u"mike", u"password"))
         db.logout()
 
         db.remove_user("mike")
-        self.assertFalse(db.authenticate("mike", "password"))
+        self.assertRaises(OperationFailure,
+                          db.authenticate, "mike", "password")
 
-        self.assertFalse(db.authenticate("Gustave", u"Dor\xe9"))
+        self.assertRaises(OperationFailure,
+                          db.authenticate, "Gustave", u"Dor\xe9")
         db.add_user("Gustave", u"Dor\xe9")
         self.assertTrue(db.authenticate("Gustave", u"Dor\xe9"))
         db.logout()
 
         db.add_user("Gustave", "password")
-        self.assertFalse(db.authenticate("Gustave", u"Dor\xe9"))
+        self.assertRaises(OperationFailure,
+                          db.authenticate, "Gustave", u"Dor\xe9")
         self.assertTrue(db.authenticate("Gustave", u"password"))
         db.logout()
 

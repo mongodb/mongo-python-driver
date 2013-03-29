@@ -14,6 +14,7 @@
 
 
 """Functions and classes common to multiple pymongo modules."""
+import sys
 import warnings
 from pymongo import read_preferences
 
@@ -25,6 +26,11 @@ HAS_SSL = True
 try:
     import ssl
 except ImportError:
+    HAS_SSL = False
+
+
+# Jython 2.7 includes an incomplete ssl module. See PYTHON-498.
+if sys.platform.startswith('java'):
     HAS_SSL = False
 
 
@@ -388,6 +394,14 @@ class BaseObject(object):
 
         .. note:: Accessing :attr:`write_concern` returns its value
            (a subclass of :class:`dict`), not a copy.
+
+        .. warning:: If you are using :class:`~pymongo.connection.Connection`
+           or :class:`~pymongo.replica_set_connection.ReplicaSetConnection`
+           make sure you explicitly set ``w`` to 1 (or a greater value) or
+           :attr:`safe` to ``True``. Unlike calling
+           :meth:`set_lasterror_options`, setting an option in
+           :attr:`write_concern` does not implicitly set :attr:`safe`
+           to ``True``.
         """
         # To support dict style access we have to return the actual
         # WriteConcern here, not a copy.
@@ -603,7 +617,9 @@ class BaseObject(object):
 
         # Fall back to collection level defaults.
         # w=0 takes precedence over self.safe = True
-        if self.safe and self.__write_concern.get('w') != 0:
+        if self.__write_concern.get('w') == 0:
+            return False, {}
+        elif self.safe or self.__write_concern.get('w', 0) != 0:
             return True, pop1(self.__write_concern.copy())
 
         return False, {}

@@ -37,6 +37,23 @@ GSSAPI_HOST = os.environ.get('GSSAPI_HOST')
 GSSAPI_PORT = int(os.environ.get('GSSAPI_PORT', '27017'))
 PRINCIPAL = os.environ.get('PRINCIPAL')
 
+
+class AutoAuthenticateThread(threading.Thread):
+    """Used in testing threaded authentication.
+    """
+
+    def __init__(self, database):
+        super(AutoAuthenticateThread, self).__init__()
+        self.database = database
+        self.success = True
+
+    def run(self):
+        try:
+            self.database.command('dbstats')
+        except OperationFailure:
+            self.success = False
+
+
 class TestGSSAPI(unittest.TestCase):
 
     def setUp(self):
@@ -80,25 +97,17 @@ class TestGSSAPI(unittest.TestCase):
         self.assertTrue(client.test.authenticate(PRINCIPAL,
                                                  mechanism='GSSAPI'))
 
-        result = True
-        def try_command():
-            try:
-                client.foo.command('dbstats')
-            except OperationFailure:
-                result = False
-
         threads = []
-        for _ in xrange(2):
-            threads.append(threading.Thread(target=try_command))
+        for _ in xrange(4):
+            threads.append(AutoAuthenticateThread(client.foo))
         for thread in threads:
             thread.start()
         for thread in threads:
             thread.join()
-        self.assertTrue(result)
+            self.assertTrue(thread.success)
 
         set_name = client.admin.command('ismaster').get('setName')
         if set_name:
-            result = True
             preference = ReadPreference.SECONDARY
             client = MongoReplicaSetClient(GSSAPI_HOST,
                                            replicaSet=set_name,
@@ -108,13 +117,13 @@ class TestGSSAPI(unittest.TestCase):
             self.assertTrue(client.foo.command('dbstats'))
 
             threads = []
-            for _ in xrange(2):
-                threads.append(threading.Thread(target=try_command))
+            for _ in xrange(4):
+                threads.append(AutoAuthenticateThread(client.foo))
             for thread in threads:
                 thread.start()
             for thread in threads:
                 thread.join()
-            self.assertTrue(result)
+                self.assertTrue(thread.success)
 
 
 class TestAuthURIOptions(unittest.TestCase):
@@ -191,6 +200,63 @@ class TestAuthURIOptions(unittest.TestCase):
             self.assertTrue(client.pymongo_test.command('dbstats'))
             client.read_preference = ReadPreference.SECONDARY
             self.assertTrue(client.pymongo_test.command('dbstats'))
+
+
+class TestDelegatedAuth(unittest.TestCase):
+
+    def setUp(self):
+        self.client = MongoClient(host, port)
+        if not version.at_least(self.client, (2, 4, 0)):
+            raise SkipTest('Delegated authentication requires MongoDB >= 2.4.0')
+        if not server_started_with_auth(self.client):
+            raise SkipTest('Authentication is not enabled on server')
+        # Give admin all priviledges.
+        self.client.admin.add_user('admin', 'pass',
+                                   roles=['readAnyDatabase',
+                                          'readWriteAnyDatabase',
+                                          'userAdminAnyDatabase',
+                                          'dbAdminAnyDatabase',
+                                          'clusterAdmin'])
+
+    def tearDown(self):
+        self.client.admin.authenticate('admin', 'pass')
+        self.client.pymongo_test.system.users.remove()
+        self.client.pymongo_test2.system.users.remove()
+        self.client.pymongo_test2.foo.remove()
+        self.client.admin.system.users.remove()
+        self.client.admin.logout()
+
+    def test_delegated_auth(self):
+        self.client.admin.authenticate('admin', 'pass')
+        self.client.pymongo_test2.foo.remove()
+        self.client.pymongo_test2.foo.insert({})
+        # User definition with no roles in pymongo_test.
+        self.client.pymongo_test.add_user('user', 'pass', roles=[])
+        # Delegate auth to pymongo_test.
+        self.client.pymongo_test2.add_user('user',
+                                           userSource='pymongo_test',
+                                           roles=['read'])
+        self.client.admin.logout()
+        self.assertRaises(OperationFailure,
+                          self.client.pymongo_test2.foo.find_one)
+        # Auth must occur on the db where the user is defined.
+        self.assertRaises(OperationFailure,
+                          self.client.pymongo_test2.authenticate,
+                          'user', 'pass')
+        # Auth directly
+        self.assertTrue(self.client.pymongo_test.authenticate('user', 'pass'))
+        self.assertTrue(self.client.pymongo_test2.foo.find_one())
+        self.client.pymongo_test.logout()
+        self.assertRaises(OperationFailure,
+                          self.client.pymongo_test2.foo.find_one)
+        # Auth using source
+        self.assertTrue(self.client.pymongo_test2.authenticate(
+            'user', 'pass', source='pymongo_test'))
+        self.assertTrue(self.client.pymongo_test2.foo.find_one())
+        # Must logout from the db authenticate was called on.
+        self.client.pymongo_test2.logout()
+        self.assertRaises(OperationFailure,
+                          self.client.pymongo_test2.foo.find_one)
 
 
 if __name__ == "__main__":

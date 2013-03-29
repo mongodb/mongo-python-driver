@@ -61,4 +61,5 @@ The following is a list of people who have contributed to
 - Michael Henson (hensom)
 - Craig Hobbs (craigahobbs)
 - Emily Stolfo (estolfo)
+- Sam Helman (shelman)
 - Justin Patrin (reversefold)

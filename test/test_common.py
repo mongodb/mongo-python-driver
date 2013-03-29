@@ -25,6 +25,7 @@ from nose.plugins.skip import SkipTest
 
 from bson.objectid import ObjectId
 from bson.son import SON
+from pymongo.connection import Connection
 from pymongo.mongo_client import MongoClient
 from pymongo.mongo_replica_set_client import MongoReplicaSetClient
 from pymongo.errors import ConfigurationError, OperationFailure
@@ -56,6 +57,39 @@ class TestCommon(unittest.TestCase):
 
         warnings.simplefilter("ignore")
 
+        # Connection tests
+        c = Connection(pair)
+        self.assertFalse(c.slave_okay)
+        self.assertFalse(c.safe)
+        self.assertEqual({}, c.get_lasterror_options())
+        db = c.pymongo_test
+        db.drop_collection("test")
+        self.assertFalse(db.slave_okay)
+        self.assertFalse(db.safe)
+        self.assertEqual({}, db.get_lasterror_options())
+        coll = db.test
+        self.assertFalse(coll.slave_okay)
+        self.assertFalse(coll.safe)
+        self.assertEqual({}, coll.get_lasterror_options())
+
+        self.assertEqual((False, {}), coll._get_write_mode())
+        coll.safe = False
+        coll.write_concern.update(w=1)
+        self.assertEqual((True, {}), coll._get_write_mode())
+        coll.write_concern.update(w=3)
+        self.assertEqual((True, {'w': 3}), coll._get_write_mode())
+
+        coll.safe = True
+        coll.write_concern.update(w=0)
+        self.assertEqual((False, {}), coll._get_write_mode())
+
+        coll = db.test
+        cursor = coll.find()
+        self.assertFalse(cursor._Cursor__slave_okay)
+        cursor = coll.find(slave_okay=True)
+        self.assertTrue(cursor._Cursor__slave_okay)
+
+        # MongoClient test
         c = MongoClient(pair)
         self.assertFalse(c.slave_okay)
         self.assertTrue(c.safe)
@@ -69,6 +103,19 @@ class TestCommon(unittest.TestCase):
         self.assertFalse(coll.slave_okay)
         self.assertTrue(coll.safe)
         self.assertEqual({}, coll.get_lasterror_options())
+
+        self.assertEqual((True, {}), coll._get_write_mode())
+        coll.safe = False
+        coll.write_concern.update(w=1)
+        self.assertEqual((True, {}), coll._get_write_mode())
+        coll.write_concern.update(w=3)
+        self.assertEqual((True, {'w': 3}), coll._get_write_mode())
+
+        coll.safe = True
+        coll.write_concern.update(w=0)
+        self.assertEqual((False, {}), coll._get_write_mode())
+
+        coll = db.test
         cursor = coll.find()
         self.assertFalse(cursor._Cursor__slave_okay)
         cursor = coll.find(slave_okay=True)

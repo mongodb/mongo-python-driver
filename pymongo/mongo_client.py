@@ -212,7 +212,7 @@ class MongoClient(common.BaseObject):
 
         .. mongodoc:: connections
 
-        .. versionchanged:: 2.4.2+
+        .. versionchanged:: 2.5
            Added addtional ssl options
         .. versionadded:: 2.4
         """
@@ -361,8 +361,8 @@ class MongoClient(common.BaseObject):
                            unicode(password), mechanism)
             try:
                 self._cache_credentials(source, credentials)
-            except OperationFailure:
-                raise ConfigurationError("authentication failed")
+            except OperationFailure, exc:
+                raise ConfigurationError(str(exc))
 
     def _cached(self, dbname, coll, index):
         """Test if `index` is cached.
