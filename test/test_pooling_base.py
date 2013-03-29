@@ -756,9 +756,9 @@ class _TestMaxOpenSockets(_TestPoolingBase):
         conn_timeout = 2
         pool = self.get_pool(conn_timeout, conn_timeout + 5)
         s1 = pool.get_socket()
-        self.assert_(None is not s1)
+        self.assertTrue(None is not s1)
         s2 = pool.get_socket()
-        self.assert_(None is not s2)
+        self.assertTrue(None is not s2)
         self.assertNotEqual(s1, s2)
         start = time.time()
         self.assertRaises(socket.timeout, pool.get_socket)
@@ -781,9 +781,9 @@ class _TestMaxOpenSockets(_TestPoolingBase):
 
         pool = self.get_pool(None, 2)
         s1 = pool.get_socket()
-        self.assert_(None is not s1)
+        self.assertTrue(None is not s1)
         s2 = pool.get_socket()
-        self.assert_(None is not s2)
+        self.assertTrue(None is not s2)
         self.assertNotEqual(s1, s2)
         t = Thread(pool)
         t.start()
