@@ -98,11 +98,14 @@ class SocketInfo(object):
 class Pool:
     def __init__(self, pair, max_size, net_timeout, conn_timeout, use_ssl,
                  use_greenlets, ssl_keyfile=None, ssl_certfile=None,
-                 ssl_cert_reqs=None, ssl_ca_certs=None, max_open_sockets=None):
+                 ssl_cert_reqs=None, ssl_ca_certs=None):
         """
         :Parameters:
           - `pair`: a (hostname, port) tuple
-          - `max_size`: approximate number of idle connections to keep open
+          - `max_size`: The maximum number of open sockets. Calls to
+            `get_socket` will block if this is set, this pool has opened
+            `max_size` sockets, and there are none idle. Set to `None` to
+             disable.
           - `net_timeout`: timeout in seconds for operations on open connection
           - `conn_timeout`: timeout in seconds for establishing connection
           - `use_ssl`: bool, if True use an encrypted connection
@@ -126,9 +129,6 @@ class Pool:
             "certification authority" certificates, which are used to validate
             certificates passed from the other end of the connection.
             Implies ``ssl=True``.
-          - `max_open_sockets`: The maximum number of open sockets allowed,
-            defaults to None. Calls to `get_socket` will block if this is set,
-            this pool has opened this many sockets, and there are none idle.
         """
         if use_greenlets and not thread_util.have_greenlet:
             raise ConfigurationError(
@@ -145,7 +145,6 @@ class Pool:
         self.pid = os.getpid()
         self.pair = pair
         self.max_size = max_size
-        self.max_open_sockets = max_open_sockets
         self.net_timeout = net_timeout
         self.conn_timeout = conn_timeout
         self.use_ssl = use_ssl
@@ -165,11 +164,11 @@ class Pool:
         # Count the number of calls to start_request() per thread or greenlet
         self._request_counter = thread_util.Counter(use_greenlets)
 
-        if self.max_open_sockets is None:
+        if self.max_size is None:
             self._socket_semaphore = thread_util.NoopSemaphore()
         else:
             self._socket_semaphore = thread_util.BoundedSemaphore(
-                self.max_open_sockets)
+                self.max_size)
         self._num_forced_sockets = thread_util.SynchronizedCounter()
 
     def reset(self):
@@ -280,7 +279,7 @@ class Pool:
         :Parameters:
           - `pair`: optional (hostname, port) tuple
           - `force`: optional boolean, forces a connection to be returned
-              without blocking, even if `max_open_sockets` has been reached.
+              without blocking, even if `max_size` has been reached.
         """
         # We use the pid here to avoid issues with fork / multiprocessing.
         # See test.test_client:TestClient.test_fork for an example of
@@ -302,7 +301,7 @@ class Pool:
         # We're not in a request, just get any free socket or create one
         if force:
             # If we're doing an internal operation, attempt to play nicely with
-            # max_open_sockets, but if there is no open "slot" force the connection
+            # max_size, but if there is no open "slot" force the connection
             # and keep track of it for later.
             if not self._socket_semaphore.acquire(False):
                 self._num_forced_sockets.inc()

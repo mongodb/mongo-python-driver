@@ -744,13 +744,13 @@ class _TestMaxPoolSize(_TestPoolingBase):
 
 
 class _TestMaxOpenSockets(_TestPoolingBase):
-    """Test that connection pool doesn't open more than max_open_sockets.
+    """Test that connection pool doesn't open more than max_size sockets.
     To be run both with threads and with greenlets.
     """
     def get_pool(self, conn_timeout, net_timeout):
         return pymongo.pool.Pool(('127.0.0.1', 27017),
                                  2, net_timeout, conn_timeout,
-                                 False, False, max_open_sockets=2)
+                                 False, False)
 
     def test_over_max_times_out(self):
         conn_timeout = 2

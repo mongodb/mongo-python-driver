@@ -85,9 +85,9 @@ class MongoClient(common.BaseObject):
 
     __max_bson_size = 4 * 1024 * 1024
 
-    def __init__(self, host=None, port=None, max_pool_size=10,
+    def __init__(self, host=None, port=None, max_pool_size=100,
                  document_class=dict, tz_aware=False, _connect=True,
-                 max_open_sockets=None, **kwargs):
+                 **kwargs):
         """Create a new connection to a single MongoDB instance at *host:port*.
 
         The resultant client object has connection-pooling built
@@ -121,18 +121,16 @@ class MongoClient(common.BaseObject):
             it must be enclosed in '[' and ']' characters following
             the RFC2732 URL syntax (e.g. '[::1]' for localhost)
           - `port` (optional): port number on which to connect
-          - `max_pool_size` (optional): The maximum number of idle connections
-            to keep open in the pool for future use
+          - `max_pool_size` (optional): The maximum number of connections
+            that the pool will open simultaneously. If this is set, queries
+            will block if there are `max_pool_size` outstanding connections
+            from the pool. Defaults to 100.
           - `document_class` (optional): default class to use for
             documents returned from queries on this client
           - `tz_aware` (optional): if ``True``,
             :class:`~datetime.datetime` instances returned as values
             in a document by this :class:`MongoClient` will be timezone
             aware (otherwise they will be naive)
-          - `max_open_sockets` (optional): The maximum number of connections
-            that the pool will open simultaneously. If this is set, queries
-            will block if there are `max_open_sockets` outstanding connections
-            from the pool.
 
           | **Other optional parameters can be passed as keyword arguments:**
 
@@ -266,11 +264,6 @@ class MongoClient(common.BaseObject):
 
         self.__max_pool_size = common.validate_positive_integer(
                                                 'max_pool_size', max_pool_size)
-        if max_open_sockets is None:
-            self.__max_open_sockets = None
-        else:
-            self.__max_open_sockets = common.validate_positive_integer(
-                                          'max_open_sockets', max_open_sockets)
 
         self.__cursor_manager = CursorManager(self)
 
@@ -323,8 +316,7 @@ class MongoClient(common.BaseObject):
             ssl_keyfile=self.__ssl_keyfile,
             ssl_certfile=self.__ssl_certfile,
             ssl_cert_reqs=self.__ssl_cert_reqs,
-            ssl_ca_certs=self.__ssl_ca_certs,
-            max_open_sockets=self.__max_open_sockets)
+            ssl_ca_certs=self.__ssl_ca_certs)
 
         self.__document_class = document_class
         self.__tz_aware = common.validate_boolean('tz_aware', tz_aware)
@@ -500,30 +492,21 @@ class MongoClient(common.BaseObject):
 
     @property
     def max_pool_size(self):
-        """The maximum number of idle connections kept open in the pool for
-        future use.
-
-        .. note:: ``max_pool_size`` does not cap the number of concurrent
-          connections to the server; there is currently no way to limit the
-          number of connections. ``max_pool_size`` only limits the number of
-          **idle** connections kept open when they are returned to the pool.
-
-        .. versionadded:: 1.11
-        """
-        return self.__max_pool_size
-
-    @property
-    def max_open_sockets(self):
         """The maximum number of sockets the pool will open concurrently.
 
-        .. note:: ``max_open_sockets`` caps the number of concurrent
+        .. SIGNIFICANT BEHAVIOR CHANGE in 2.4.2+. Previously, this parameter
+          would limit only the idle connections the pool would hold onto, not
+          the number of open sockets. The default has also changed to 100.
+
+        .. note:: ``max_pool_size`` caps the number of concurrent
           connections to the server. Connection or query attempts when the pool
-          has reached max_open_sockets will block until conn_timeout or a
+          has reached `max_pool_size` will block until conn_timeout or a
           connection has been returned to the pool.
 
-        .. versionadded:: 2.4.2+
+        .. versionadded:: 1.11
+        .. behavior change: 2.4.2+
         """
-        return self.__max_open_sockets
+        return self.__max_pool_size
 
     @property
     def use_greenlets(self):
