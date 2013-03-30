@@ -165,11 +165,12 @@ class Pool:
         self._request_counter = thread_util.Counter(use_greenlets)
 
         if self.max_size is None:
-            self._socket_semaphore = thread_util.NoopSemaphore()
+            self._socket_semaphore = thread_util.DummySemaphore()
         else:
             self._socket_semaphore = thread_util.BoundedSemaphore(
-                self.max_size)
-        self._num_forced_sockets = thread_util.SynchronizedCounter()
+                self.max_size, use_greenlets)
+        self._num_forced_sockets = thread_util.SynchronizedCounter(
+            use_greenlets)
 
     def reset(self):
         # Ignore this race condition -- if many threads are resetting at once,
