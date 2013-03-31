@@ -46,7 +46,7 @@ if sys.version_info[0] >= 3:
 try:
     import gevent
     from gevent import Greenlet, monkey, hub
-    import gevent.coros, gevent.event
+    import gevent.event, gevent.thread
     has_gevent = True
 except ImportError:
     has_gevent = False
@@ -204,7 +204,7 @@ class CreateAndReleaseSocket(MongoThread):
             self.nthreads = nthreads
             self.nthreads_run = 0
             if use_greenlets:
-                self.lock = gevent.coros.RLock()
+                self.lock = gevent.thread.allocate_lock()
                 self.ready = gevent.event.Event()
             else:
                 self.lock = threading.Lock()
