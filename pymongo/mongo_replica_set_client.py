@@ -139,7 +139,7 @@ class Monitor(object):
                 break
             self.event.clear()
             try:
-                self.rsc.refresh()
+                self.rsc.refresh(force=True)
             except AutoReconnect:
                 pass
             # RSC has been collected or there
@@ -800,7 +800,7 @@ class MongoReplicaSetClient(common.BaseObject):
             connection_pool.discard_socket(sock_info)
             raise
 
-    def __update_pools(self):
+    def __update_pools(self, force=False):
         """Update the mapping of (host, port) pairs to connection pools.
         """
         primary = None
@@ -809,7 +809,7 @@ class MongoReplicaSetClient(common.BaseObject):
             try:
                 if host in self.__members:
                     member = self.__members[host]
-                    sock_info = self.__socket(member, force=True)
+                    sock_info = self.__socket(member, force=force)
                     try:
                         res, ping_time = self.__simple_command(
                             sock_info, 'admin', {'ismaster': 1})
@@ -865,7 +865,7 @@ class MongoReplicaSetClient(common.BaseObject):
         else:
             self.__threadlocal = threading.local()
 
-    def refresh(self):
+    def refresh(self, force=False):
         """Iterate through the existing host list, or possibly the
         seed list, to update the list of hosts and arbiters in this
         replica set.
@@ -879,7 +879,7 @@ class MongoReplicaSetClient(common.BaseObject):
             try:
                 if node in self.__members:
                     member = self.__members[node]
-                    sock_info = self.__socket(member, force=True)
+                    sock_info = self.__socket(member, force=force)
                     try:
                         response, _ = self.__simple_command(
                             sock_info, 'admin', {'ismaster': 1})
@@ -919,7 +919,7 @@ class MongoReplicaSetClient(common.BaseObject):
                 raise AutoReconnect(', '.join(errors))
             raise ConfigurationError('No suitable hosts found')
 
-        self.__update_pools()
+        self.__update_pools(force=force)
 
     def __check_is_primary(self, host):
         """Checks if this host is the primary for the replica set.
