@@ -131,34 +131,6 @@ class Counter(object):
         return self._counters.get(self.ident.get(), 0)
 
 
-class SynchronizedCounter(object):
-    def __init__(self, use_greenlets=False):
-        if use_greenlets:
-            self.lock = gevent.thread.allocate_lock()
-        else:
-            self.lock = threading.Lock()
-        self.__value = 0
-
-    def inc(self):
-        try:
-            self.lock.acquire()
-            self.__value += 1
-        finally:
-            self.lock.release()
-
-    def dec(self):
-        try:
-            self.lock.acquire()
-            self.__value -= 1
-        finally:
-            self.lock.release()
-
-    def get(self):
-        # NOTE(reversefold): I don't believe a simple return of a value needs
-        # to use the lock. The copy of __value for the return should be atomic.
-        return self.__value
-
-
 ### Begin backport from CPython 3.2 for timeout support for acquire
 class Condition:
 

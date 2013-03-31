@@ -61,6 +61,7 @@ class SocketInfo(object):
         self.authset = set()
         self.closed = False
         self.last_checkout = time.time()
+        self.forced = False
 
         # The pool's pool_id changes with each reset() so we can close sockets
         # created before the last reset.
@@ -169,8 +170,6 @@ class Pool:
         else:
             self._socket_semaphore = thread_util.BoundedSemaphore(
                 self.max_size, use_greenlets)
-        self._num_forced_sockets = thread_util.SynchronizedCounter(
-            use_greenlets)
 
     def reset(self):
         # Ignore this race condition -- if many threads are resetting at once,
@@ -299,13 +298,15 @@ class Pool:
             checked_sock.last_checkout = time.time()
             return checked_sock
 
+        forced = False
         # We're not in a request, just get any free socket or create one
         if force:
             # If we're doing an internal operation, attempt to play nicely with
             # max_size, but if there is no open "slot" force the connection
-            # and keep track of it for later.
+            # and mark it as forced so we don't release the semaphore without
+            # having acquired it for this socket.
             if not self._socket_semaphore.acquire(False):
-                self._num_forced_sockets.inc()
+                forced = True
         elif not self._socket_semaphore.acquire(True, self.conn_timeout):
             raise socket.timeout()
         sock_info, from_pool = None, None
@@ -322,6 +323,8 @@ class Pool:
 
         if from_pool:
             sock_info = self._check(sock_info, pair)
+
+        sock_info.forced = forced
 
         if req_state == NO_SOCKET_YET:
             # start_request has been called but we haven't assigned a socket to
@@ -375,16 +378,8 @@ class Pool:
             self.reset()
         elif sock_info not in (NO_REQUEST, NO_SOCKET_YET):
             if sock_info.closed:
-                try:
-                    # Lock needed here to make sure we don't double-dec
-                    # _num_forced_sockets.
-                    self.lock.acquire()
-                    if self._num_forced_sockets.get() > 0:
-                        self._num_forced_sockets.dec()
-                    else:
-                        self._socket_semaphore.release()
-                finally:
-                    self.lock.release()
+                if not sock_info.forced:
+                    self._socket_semaphore.release()
                 return
 
             if sock_info != self._get_request_state():
@@ -393,20 +388,14 @@ class Pool:
     def _return_socket(self, sock_info):
         """Return socket to the pool. If pool is full the socket is discarded.
         """
-        try:
-            # Lock needed here to make sure we don't double-dec
-            # _num_forced_sockets.
-            self.lock.acquire()
-            if len(self.sockets) < self.max_size:
-                self.sockets.add(sock_info)
-            else:
-                sock_info.close()
-            if self._num_forced_sockets.get() > 0:
-                self._num_forced_sockets.dec()
-            else:
-                self._socket_semaphore.release()
-        finally:
-            self.lock.release()
+        if len(self.sockets) < self.max_size:
+            self.sockets.add(sock_info)
+        else:
+            sock_info.close()
+        if sock_info.forced:
+            sock_info.forced = False
+        else:
+            self._socket_semaphore.release()
 
     def _check(self, sock_info, pair, acquire_on_connect=False):
         """This side-effecty function checks if this pool has been reset since
