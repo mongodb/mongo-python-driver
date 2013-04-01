@@ -347,6 +347,7 @@ class Pool:
         return bool(self._request_counter.get())
 
     def end_request(self):
+        # TODO(reversefold): Is this needed? tid is never used
         tid = self._ident.get()
 
         # Check if start_request has ever been called in this thread / greenlet
