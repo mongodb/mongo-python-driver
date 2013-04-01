@@ -93,7 +93,9 @@ def _unpack_response(response, cursor_id=None, as_class=dict,
                                cursor_id)
     elif response_flag & 2:
         error_object = bson.BSON(response[20:]).decode()
-        if error_object["$err"].startswith("not master"):
+        if (error_object["$err"].startswith("not master") or
+            error_object["$err"].startswith("ReplicaSetMonitor no master found") or
+            error_object["$err"].startswith("can't connect to new replica set master")):
             raise AutoReconnect(error_object["$err"])
         raise OperationFailure("database error: %s" %
                                error_object["$err"])
