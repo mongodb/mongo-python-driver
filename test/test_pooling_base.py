@@ -738,6 +738,9 @@ class _TestMaxPoolSize(_TestPoolingBase):
     def test_max_pool_size_with_request(self):
         self._test_max_pool_size(1, 1)
 
+    def test_max_pool_size_with_multiple_request(self):
+        self._test_max_pool_size(10, 10)
+
     def test_max_pool_size_with_redundant_request(self):
         self._test_max_pool_size(2, 1)
         self._test_max_pool_size(20, 1)
