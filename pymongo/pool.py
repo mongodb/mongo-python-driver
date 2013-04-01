@@ -386,7 +386,9 @@ class Pool:
             self.reset()
         elif sock_info not in (NO_REQUEST, NO_SOCKET_YET):
             if sock_info.closed:
-                if not sock_info.forced:
+                if (not sock_info.forced
+                    and sock_info.pool_id == self.pool_id
+                ):
                     self._socket_semaphore.release()
                 return
 
@@ -396,7 +398,9 @@ class Pool:
     def _return_socket(self, sock_info):
         """Return socket to the pool. If pool is full the socket is discarded.
         """
-        if len(self.sockets) < self.max_size:
+        if (len(self.sockets) < self.max_size
+            and sock_info.pool_id == self.pool_id
+        ):
             self.sockets.add(sock_info)
         else:
             sock_info.close()
