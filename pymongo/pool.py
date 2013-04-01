@@ -137,6 +137,7 @@ class Pool:
                 "Install the greenlet package from PyPI."
             )
 
+        self.use_greenlets = use_greenlets
         self.sockets = set()
         self.lock = threading.Lock()
 
@@ -157,19 +158,19 @@ class Pool:
         if HAS_SSL and use_ssl and not ssl_cert_reqs:
             self.ssl_cert_reqs = ssl.CERT_NONE
 
-        self._ident = thread_util.create_ident(use_greenlets)
+        self._ident = thread_util.create_ident(self.use_greenlets)
 
         # Map self._ident.get() -> request socket
         self._tid_to_sock = {}
 
         # Count the number of calls to start_request() per thread or greenlet
-        self._request_counter = thread_util.Counter(use_greenlets)
+        self._request_counter = thread_util.Counter(self.use_greenlets)
 
         if self.max_size is None:
             self._socket_semaphore = thread_util.DummySemaphore()
         else:
             self._socket_semaphore = thread_util.BoundedSemaphore(
-                self.max_size, use_greenlets)
+                self.max_size, self.use_greenlets)
 
     def reset(self):
         # Ignore this race condition -- if many threads are resetting at once,
@@ -189,6 +190,12 @@ class Pool:
 
         for sock_info in sockets:
             sock_info.close()
+
+        if self.max_size is None:
+            self._socket_semaphore = thread_util.DummySemaphore()
+        else:
+            self._socket_semaphore = thread_util.BoundedSemaphore(
+                self.max_size, self.use_greenlets)
 
     def create_connection(self, pair):
         """Connect to *pair* and return the socket object.
