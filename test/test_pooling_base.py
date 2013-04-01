@@ -723,7 +723,7 @@ class _TestMaxPoolSize(_TestPoolingBase):
             # leaked when end_request is not properly called, but only
             # sometimes. I suspect that the thread death code is not always
             # called but am not sure why.
-            if False and start_request:
+            if start_request:
                 self.assertEqual(pool_size, len(cx_pool.sockets))
             else:
                 # Without calling start_request(), threads can safely share
