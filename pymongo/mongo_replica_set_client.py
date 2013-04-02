@@ -1049,11 +1049,12 @@ class MongoReplicaSetClient(common.BaseObject):
         # redundant.
         member, sock_info = None, None
         try:
-            member = self.__find_primary()
-            sock_info = self.__socket(member)
-            return not pool._closed(sock_info.sock)
-        except (socket.error, ConnectionFailure):
-            return False
+            try:
+                member = self.__find_primary()
+                sock_info = self.__socket(member)
+                return not pool._closed(sock_info.sock)
+            except (socket.error, ConnectionFailure):
+                return False
         finally:
             if sock_info is not None:
                 member.pool.maybe_return_socket(sock_info)
@@ -1159,28 +1160,29 @@ class MongoReplicaSetClient(common.BaseObject):
 
         sock_info = None
         try:
-            sock_info = self.__socket(member)
-            rqst_id, data = self.__check_bson_size(msg, member.max_bson_size)
-            sock_info.sock.sendall(data)
-            # Safe mode. We pack the message together with a lastError
-            # message and send both. We then get the response (to the
-            # lastError) and raise OperationFailure if it is an error
-            # response.
-            rv = None
-            if with_last_error:
-                response = self.__recv_msg(1, rqst_id, sock_info)
-                rv = self.__check_response_to_last_error(response)
-            return rv
-        except OperationFailure:
-            raise
-        except(ConnectionFailure, socket.error), why:
-            member.pool.discard_socket(sock_info)
-            if _connection_to_use in (None, -1):
-                self.disconnect()
-            raise AutoReconnect(str(why))
-        except:
-            sock_info.close()
-            raise
+            try:
+                sock_info = self.__socket(member)
+                rqst_id, data = self.__check_bson_size(msg, member.max_bson_size)
+                sock_info.sock.sendall(data)
+                # Safe mode. We pack the message together with a lastError
+                # message and send both. We then get the response (to the
+                # lastError) and raise OperationFailure if it is an error
+                # response.
+                rv = None
+                if with_last_error:
+                    response = self.__recv_msg(1, rqst_id, sock_info)
+                    rv = self.__check_response_to_last_error(response)
+                return rv
+            except OperationFailure:
+                raise
+            except(ConnectionFailure, socket.error), why:
+                member.pool.discard_socket(sock_info)
+                if _connection_to_use in (None, -1):
+                    self.disconnect()
+                raise AutoReconnect(str(why))
+            except:
+                sock_info.close()
+                raise
         finally:
             if sock_info is not None:
                 member.pool.maybe_return_socket(sock_info)
@@ -1190,27 +1192,28 @@ class MongoReplicaSetClient(common.BaseObject):
         """
         sock_info = None
         try:
-            sock_info = self.__socket(member)
+            try:
+                sock_info = self.__socket(member)
 
-            if "network_timeout" in kwargs:
-                sock_info.sock.settimeout(kwargs['network_timeout'])
+                if "network_timeout" in kwargs:
+                    sock_info.sock.settimeout(kwargs['network_timeout'])
 
-            rqst_id, data = self.__check_bson_size(msg, member.max_bson_size)
-            sock_info.sock.sendall(data)
-            response = self.__recv_msg(1, rqst_id, sock_info)
+                rqst_id, data = self.__check_bson_size(msg, member.max_bson_size)
+                sock_info.sock.sendall(data)
+                response = self.__recv_msg(1, rqst_id, sock_info)
 
-            if "network_timeout" in kwargs:
-                sock_info.sock.settimeout(self.__net_timeout)
+                if "network_timeout" in kwargs:
+                    sock_info.sock.settimeout(self.__net_timeout)
 
-            return response
-        except (ConnectionFailure, socket.error), why:
-            host, port = member.pool.pair
-            member.pool.discard_socket(sock_info)
-            raise AutoReconnect("%s:%d: %s" % (host, port, str(why)))
-        except:
-            if sock_info is not None:
-                sock_info.close()
-            raise
+                return response
+            except (ConnectionFailure, socket.error), why:
+                host, port = member.pool.pair
+                member.pool.discard_socket(sock_info)
+                raise AutoReconnect("%s:%d: %s" % (host, port, str(why)))
+            except:
+                if sock_info is not None:
+                    sock_info.close()
+                raise
         finally:
             if sock_info is not None:
                 member.pool.maybe_return_socket(sock_info)
