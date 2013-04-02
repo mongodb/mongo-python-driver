@@ -27,8 +27,6 @@ try:
 except ImportError:
     have_greenlet = False
 
-lock_acquire_has_timeout = False
-
 
 class Ident(object):
     def __init__(self):
