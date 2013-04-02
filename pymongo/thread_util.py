@@ -78,6 +78,15 @@ class ThreadIdent(Ident):
         tid = self.get()
         self._refs[tid] = weakref.ref(self._local.vigil, callback)
 
+    def watching(self):
+        """Is the current thread being watched for death?"""
+        tid = self.get()
+        if tid not in self._refs:
+            return False
+        # Check that the weakref is active, if not the thread has died
+        # This fixes the case where a thread id gets reused
+        return self._refs[tid]()
+
 
 class GreenletIdent(Ident):
     def get(self):
