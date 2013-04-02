@@ -36,6 +36,11 @@ if sys.platform.startswith('java'):
 else:
     from select import select
 
+try:
+    import gevent.coros
+except ImportError:
+    pass
+
 
 NO_REQUEST = None
 NO_SOCKET_YET = -1
@@ -168,9 +173,12 @@ class Pool:
 
         if self.max_size is None:
             self._socket_semaphore = thread_util.DummySemaphore()
+        elif self.use_greenlets:
+            self._socket_semaphore = gevent.coros.BoundedSemaphore(
+                self.max_size)
         else:
             self._socket_semaphore = thread_util.BoundedSemaphore(
-                self.max_size, self.use_greenlets)
+                self.max_size)
 
     def reset(self):
         # Ignore this race condition -- if many threads are resetting at once,
