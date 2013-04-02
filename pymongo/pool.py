@@ -191,12 +191,6 @@ class Pool:
         for sock_info in sockets:
             sock_info.close()
 
-        if self.max_size is None:
-            self._socket_semaphore = thread_util.DummySemaphore()
-        else:
-            self._socket_semaphore = thread_util.BoundedSemaphore(
-                self.max_size, self.use_greenlets)
-
     def create_connection(self, pair):
         """Connect to *pair* and return the socket object.
 
@@ -383,12 +377,14 @@ class Pool:
         """Return the socket to the pool unless it's the request socket.
         """
         if self.pid != os.getpid():
+            if not sock_info.forced:
+                self._socket_semaphore.release()
             self.reset()
         elif sock_info not in (NO_REQUEST, NO_SOCKET_YET):
             if sock_info.closed:
-                if (not sock_info.forced
-                    and sock_info.pool_id == self.pool_id
-                ):
+                if sock_info.forced:
+                    sock_info.forced = False
+                else:
                     self._socket_semaphore.release()
                 return
 
