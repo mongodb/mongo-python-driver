@@ -509,8 +509,7 @@ class Pool:
         for request_sock in self._tid_to_sock.values():
             if request_sock not in (NO_REQUEST, NO_SOCKET_YET):
                 request_sock.close()
-                # TODO(reversefold): Is this needed?
-                # self._socket_semaphore.release()
+
 
 class Request(object):
     """
