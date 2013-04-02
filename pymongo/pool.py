@@ -505,7 +505,7 @@ class Pool:
                 poolref = weakref.ref(self)
                 def on_thread_died(ref):
                     try:
-                        ident.unwatch()
+                        ident.unwatch(tid)
                         pool = poolref()
                         if pool:
                             # End the request
