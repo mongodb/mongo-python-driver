@@ -449,18 +449,19 @@ class Pool:
                 raise
 
     def _set_request_state(self, sock_info):
-        tid = self._ident.get()
+        ident = self._ident
+        tid = ident.get()
 
         if sock_info == NO_REQUEST:
             # Ending a request
-            self._ident.unwatch()
+            ident.unwatch()
             self._tid_to_sock.pop(tid, None)
         else:
             self._tid_to_sock[tid] = sock_info
 
-            if not self._ident.watching():
-                # Closure over tid and poolref. Don't refer directly to self,
-                # otherwise there's a cycle.
+            if not ident.watching():
+                # Closure over tid, poolref, and ident. Don't refer directly to
+                # self, otherwise there's a cycle.
 
                 # Do not access threadlocals in this function, or any
                 # function it calls! In the case of the Pool subclass and
@@ -472,6 +473,7 @@ class Pool:
                 poolref = weakref.ref(self)
                 def on_thread_died(ref):
                     try:
+                        ident.unwatch()
                         pool = poolref()
                         if pool:
                             # End the request
@@ -484,7 +486,7 @@ class Pool:
                         # Random exceptions on interpreter shutdown.
                         pass
 
-                self._ident.watch(on_thread_died)
+                ident.watch(on_thread_died)
 
     def _get_request_state(self):
         tid = self._ident.get()
