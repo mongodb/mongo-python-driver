@@ -105,7 +105,7 @@ class Pool:
     def __init__(self, pair, max_size, net_timeout, conn_timeout, use_ssl,
                  use_greenlets, ssl_keyfile=None, ssl_certfile=None,
                  ssl_cert_reqs=None, ssl_ca_certs=None,
-                 wait_queue_timeout=None):
+                 wait_queue_timeout=None, wait_queue_multiple=None):
         """
         :Parameters:
           - `pair`: a (hostname, port) tuple
@@ -136,6 +136,11 @@ class Pool:
             "certification authority" certificates, which are used to validate
             certificates passed from the other end of the connection.
             Implies ``ssl=True``.
+          - `wait_queue_timeout`: (integer) How long (in milliseconds) a
+            thread will wait for a socket from the pool if the pool has no
+            free sockets.
+          - `wait_queue_multiple`: (integer) Multiplied by max_pool_size to give
+            the number of threads allowed to wait for a socket at one time.
         """
         if use_greenlets and not thread_util.have_greenlet:
             raise ConfigurationError(
@@ -156,6 +161,7 @@ class Pool:
         self.net_timeout = net_timeout
         self.conn_timeout = conn_timeout
         self.wait_queue_timeout = wait_queue_timeout
+        self.wait_queue_multiple = wait_queue_multiple
         self.use_ssl = use_ssl
         self.ssl_keyfile = ssl_keyfile
         self.ssl_certfile = ssl_certfile
@@ -173,14 +179,29 @@ class Pool:
         # Count the number of calls to start_request() per thread or greenlet
         self._request_counter = thread_util.Counter(self.use_greenlets)
 
+        if self.wait_queue_multiple is None:
+            max_waiters = None
+        else:
+            max_waiters = self.max_size * self.wait_queue_multiple
+
         if self.max_size is None:
             self._socket_semaphore = thread_util.DummySemaphore()
         elif self.use_greenlets:
-            self._socket_semaphore = gevent.coros.BoundedSemaphore(
-                self.max_size)
+            if max_waiters is None:
+                self._socket_semaphore = gevent.coros.BoundedSemaphore(
+                    self.max_size)
+            else:
+                self._socket_semaphore = (
+                    thread_util.MaxWaitersBoundedSemaphoreGevent(
+                    self.max_size, max_waiters))
         else:
-            self._socket_semaphore = thread_util.BoundedSemaphore(
-                self.max_size)
+            if max_waiters is None:
+                self._socket_semaphore = thread_util.BoundedSemaphore(
+                    self.max_size)
+            else:
+                self._socket_semaphore = (
+                    thread_util.MaxWaitersBoundedSemaphoreThread(
+                        self.max_size, max_waiters))
 
     def reset(self):
         # Ignore this race condition -- if many threads are resetting at once,

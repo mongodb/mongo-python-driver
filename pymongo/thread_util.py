@@ -24,6 +24,8 @@ except ImportError:
 have_greenlet = True
 try:
     import greenlet
+    import gevent.coros
+    import gevent.thread
 except ImportError:
     have_greenlet = False
 
@@ -199,3 +201,58 @@ class DummySemaphore(object):
 
     def release(self):
         pass
+
+
+class ExceededMaxWaiters(Exception):
+    pass
+
+
+class MaxWaitersBoundedSemaphoreThread(BoundedSemaphore):
+    def __init__(self, value=1, max_waiters=1):
+        BoundedSemaphore.__init__(self, value)
+        self.max_waiters = max_waiters
+        self.num_waiters_lock = threading.Lock()
+        self.num_waiters = 0
+
+    def acquire(self, blocking=True, timeout=None):
+        try:
+            self.num_waiters_lock.acquire()
+            if self.num_waiters == self.max_waiters:
+                raise ExceededMaxWaiters()
+            self.num_waiters += 1
+        finally:
+            self.num_waiters_lock.release()
+        try:
+            return BoundedSemaphore.acquire(self, blocking, timeout)
+        finally:
+            try:
+                self.num_waiters_lock.acquire()
+                self.num_waiters -= 1
+            finally:
+                self.num_waiters_lock.release()
+
+
+if have_greenlet:
+    class MaxWaitersBoundedSemaphoreGevent(gevent.coros.BoundedSemaphore):
+        def __init__(self, lockClass, value=1, max_waiters=1):
+            BoundedSemaphore.__init__(self, value)
+            self.max_waiters = max_waiters
+            self.num_waiters_lock = gevent.thread.allocate_lock()
+            self.num_waiters = 0
+
+        def acquire(self, blocking=True, timeout=None):
+            try:
+                self.num_waiters_lock.acquire()
+                if self.num_waiters == self.max_waiters:
+                    raise ExceededMaxWaiters()
+                self.num_waiters += 1
+            finally:
+                self.num_waiters_lock.release()
+            try:
+                return BoundedSemaphore.acquire(self, blocking, timeout)
+            finally:
+                try:
+                    self.num_waiters_lock.acquire()
+                    self.num_waiters -= 1
+                finally:
+                    self.num_waiters_lock.release()

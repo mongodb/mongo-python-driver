@@ -26,7 +26,7 @@ from nose.plugins.skip import SkipTest
 from test import host, port
 from test.test_pooling_base import (
     _TestPooling, _TestMaxPoolSize, _TestMaxOpenSockets,
-    _TestPoolSocketSharing, one)
+    _TestPoolSocketSharing, _TestWaitQueueMultiple, one)
 
 
 class TestPoolingThreads(_TestPooling, unittest.TestCase):
@@ -169,6 +169,10 @@ class TestPoolSocketSharingThreads(_TestPoolSocketSharing, unittest.TestCase):
 
 
 class TestMaxOpenSocketsThreads(_TestMaxOpenSockets, unittest.TestCase):
+    use_greenlets = False
+
+
+class TestWaitQueueMultipleThreads(_TestWaitQueueMultiple, unittest.TestCase):
     use_greenlets = False
 
 

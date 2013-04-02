@@ -31,6 +31,7 @@ import pymongo.pool
 from pymongo.mongo_client import MongoClient
 from pymongo.pool import Pool, NO_REQUEST, NO_SOCKET_YET, SocketInfo
 from pymongo.errors import ConfigurationError
+from pymongo.thread_util import ExceededMaxWaiters
 from test import version, host, port
 from test.test_client import get_client
 from test.utils import delay, is_mongos, one
@@ -810,6 +811,95 @@ class _TestMaxOpenSockets(_TestPoolingBase):
             time.sleep(0.1)
         self.assertEqual(t.state, 'sock')
         self.assertEqual(t.sock, s1)
+
+
+class _TestWaitQueueMultiple(_TestPoolingBase):
+    """Test that connection pool doesn't allow more than
+    waitQueueMultiple * max_size waiters.
+    To be run both with threads and with greenlets.
+    """
+    def get_pool(self, conn_timeout, net_timeout, wait_queue_timeout,
+                 wait_queue_multiple):
+        return pymongo.pool.Pool(('127.0.0.1', 27017),
+                                 2, net_timeout, conn_timeout,
+                                 False, False,
+                                 wait_queue_timeout=wait_queue_timeout,
+                                 wait_queue_multiple=wait_queue_multiple)
+
+    def test_wait_queue_multiple(self):
+        class Thread(threading.Thread):
+            def __init__(self, pool):
+                super(Thread, self).__init__()
+                self.state = 'init'
+                self.pool = pool
+                self.sock = None
+
+            def run(self):
+                self.state = 'get_socket'
+                self.sock = self.pool.get_socket()
+                self.state = 'sock'
+
+        pool = self.get_pool(None, None, None, 3)
+        socks = []
+        for _ in xrange(2):
+            sock = pool.get_socket()
+            self.assertTrue(sock is not None)
+            socks.append(sock)
+        threads = []
+        for _ in xrange(6):
+            thread = Thread(pool)
+            thread.start()
+            threads.append(thread)
+        time.sleep(1)
+        for thread in threads:
+            self.assertEqual(thread.state, 'get_socket')
+        self.assertRaises(ExceededMaxWaiters, pool.get_socket)
+        while threads:
+            for sock in socks:
+                pool.maybe_return_socket(sock)
+            socks = []
+            for thread in list(threads):
+                if thread.sock is not None:
+                    socks.append(thread.sock)
+                    thread.join()
+                    threads.remove(thread)
+
+    def test_wait_queue_multiple_unset(self):
+        class Thread(threading.Thread):
+            def __init__(self, pool):
+                super(Thread, self).__init__()
+                self.state = 'init'
+                self.pool = pool
+                self.sock = None
+
+            def run(self):
+                self.state = 'get_socket'
+                self.sock = self.pool.get_socket()
+                self.state = 'sock'
+
+        pool = self.get_pool(None, None, None, None)
+        socks = []
+        for _ in xrange(2):
+            sock = pool.get_socket()
+            self.assertTrue(sock is not None)
+            socks.append(sock)
+        threads = []
+        for _ in xrange(30):
+            thread = Thread(pool)
+            thread.start()
+            threads.append(thread)
+        time.sleep(1)
+        for thread in threads:
+            self.assertEqual(thread.state, 'get_socket')
+        while threads:
+            for sock in socks:
+                pool.maybe_return_socket(sock)
+            socks = []
+            for thread in list(threads):
+                if thread.sock is not None:
+                    socks.append(thread.sock)
+                    thread.join()
+                    threads.remove(thread)
 
 
 class _TestPoolSocketSharing(_TestPoolingBase):
