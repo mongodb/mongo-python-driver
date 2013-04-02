@@ -402,12 +402,17 @@ class Pool:
     def _return_socket(self, sock_info):
         """Return socket to the pool. If pool is full the socket is discarded.
         """
-        if (len(self.sockets) < self.max_size
-            and sock_info.pool_id == self.pool_id
-        ):
-            self.sockets.add(sock_info)
-        else:
-            sock_info.close()
+        try:
+            self.lock.acquire()
+            if (len(self.sockets) < self.max_size
+                and sock_info.pool_id == self.pool_id
+            ):
+                self.sockets.add(sock_info)
+            else:
+                sock_info.close()
+        finally:
+            self.lock.release()
+
         if sock_info.forced:
             sock_info.forced = False
         else:
