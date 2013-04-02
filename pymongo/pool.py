@@ -104,7 +104,8 @@ class SocketInfo(object):
 class Pool:
     def __init__(self, pair, max_size, net_timeout, conn_timeout, use_ssl,
                  use_greenlets, ssl_keyfile=None, ssl_certfile=None,
-                 ssl_cert_reqs=None, ssl_ca_certs=None):
+                 ssl_cert_reqs=None, ssl_ca_certs=None,
+                 wait_queue_timeout=None):
         """
         :Parameters:
           - `pair`: a (hostname, port) tuple
@@ -154,6 +155,7 @@ class Pool:
         self.max_size = max_size
         self.net_timeout = net_timeout
         self.conn_timeout = conn_timeout
+        self.wait_queue_timeout = wait_queue_timeout
         self.use_ssl = use_ssl
         self.ssl_keyfile = ssl_keyfile
         self.ssl_certfile = ssl_certfile
@@ -316,7 +318,7 @@ class Pool:
             # having acquired it for this socket.
             if not self._socket_semaphore.acquire(False):
                 forced = True
-        elif not self._socket_semaphore.acquire(True, self.conn_timeout):
+        elif not self._socket_semaphore.acquire(True, self.wait_queue_timeout):
             raise socket.timeout()
         sock_info, from_pool = None, None
         try:
@@ -450,7 +452,7 @@ class Pool:
         else:
             try:
                 if acquire_on_connect:
-                    if not self._socket_semaphore.acquire(True, self.conn_timeout):
+                    if not self._socket_semaphore.acquire(True, self.wait_queue_timeout):
                         raise socket.timeout()
                 return self.connect(pair)
             except socket.error:

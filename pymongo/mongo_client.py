@@ -138,6 +138,9 @@ class MongoClient(common.BaseObject):
             receive on a socket can take before timing out.
           - `connectTimeoutMS`: (integer) How long (in milliseconds) a
             connection can take to be opened before timing out.
+          - `waitQueueTimeoutMS`: (integer) How long (in milliseconds) a
+            thread will wait for a socket from the pool if the pool has no
+            free sockets.
           - `auto_start_request`: If ``True``, each thread that accesses
             this :class:`MongoClient` has a socket allocated to it for the
             thread's lifetime.  This ensures consistent reads, even if you
@@ -276,6 +279,8 @@ class MongoClient(common.BaseObject):
 
         self.__net_timeout = options.get('sockettimeoutms')
         self.__conn_timeout = options.get('connecttimeoutms')
+        self.__wait_queue_timeout = options.get('waitqueuetimeoutms')
+
         self.__use_ssl = options.get('ssl', None)
         self.__ssl_keyfile = options.get('ssl_keyfile', None)
         self.__ssl_certfile = options.get('ssl_certfile', None)
@@ -316,7 +321,8 @@ class MongoClient(common.BaseObject):
             ssl_keyfile=self.__ssl_keyfile,
             ssl_certfile=self.__ssl_certfile,
             ssl_cert_reqs=self.__ssl_cert_reqs,
-            ssl_ca_certs=self.__ssl_ca_certs)
+            ssl_ca_certs=self.__ssl_ca_certs,
+            wait_queue_timeout=self.__wait_queue_timeout)
 
         self.__document_class = document_class
         self.__tz_aware = common.validate_boolean('tz_aware', tz_aware)
