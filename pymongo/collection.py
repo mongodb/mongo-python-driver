@@ -593,7 +593,7 @@ class Collection(common.BaseObject):
         if spec_or_id is not None and not isinstance(spec_or_id, dict):
             spec_or_id = {"_id": spec_or_id}
 
-        for result in self.find(spec_or_id, *args, **kwargs).limit(-1):
+        for result in self.find(spec_or_id, limit=-1, *args, **kwargs):
             return result
         return None
 
@@ -714,7 +714,10 @@ class Collection(common.BaseObject):
         if not 'secondary_acceptable_latency_ms' in kwargs:
             kwargs['secondary_acceptable_latency_ms'] = (
                 self.secondary_acceptable_latency_ms)
-        return Cursor(self, *args, **kwargs)
+
+        a = Cursor(self, *args, **kwargs)
+        print "[cursor]: ", a, type(a)
+        return a
 
     def count(self):
         """Get the number of documents in this collection.
@@ -1318,7 +1321,7 @@ class Collection(common.BaseObject):
         If the full_response parameter is ``True``, the return value will be
         the entire response object from the server, including the 'ok' and
         'lastErrorObject' fields, rather than just the modified object.
-        This is useful mainly because the 'lastErrorObject' document holds 
+        This is useful mainly because the 'lastErrorObject' document holds
         information about the command's execution.
 
         :Parameters:
