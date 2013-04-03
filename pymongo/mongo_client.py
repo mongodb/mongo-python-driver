@@ -813,10 +813,11 @@ class MongoClient(common.BaseObject):
         # redundant.
         sock_info = None
         try:
-            sock_info = self.__socket()
-            return not pool._closed(sock_info.sock)
-        except (socket.error, ConnectionFailure):
-            return False
+            try:
+                sock_info = self.__socket()
+                return not pool._closed(sock_info.sock)
+            except (socket.error, ConnectionFailure):
+                return False
         finally:
             self.__pool.maybe_return_socket(sock_info)
 
@@ -926,27 +927,28 @@ class MongoClient(common.BaseObject):
 
         sock_info = self.__socket()
         try:
-            (request_id, data) = self.__check_bson_size(message)
-            sock_info.sock.sendall(data)
-            # Safe mode. We pack the message together with a lastError
-            # message and send both. We then get the response (to the
-            # lastError) and raise OperationFailure if it is an error
-            # response.
-            rv = None
-            if with_last_error:
-                response = self.__receive_message_on_socket(1, request_id,
-                                                            sock_info)
-                rv = self.__check_response_to_last_error(response)
+            try:
+                (request_id, data) = self.__check_bson_size(message)
+                sock_info.sock.sendall(data)
+                # Safe mode. We pack the message together with a lastError
+                # message and send both. We then get the response (to the
+                # lastError) and raise OperationFailure if it is an error
+                # response.
+                rv = None
+                if with_last_error:
+                    response = self.__receive_message_on_socket(1, request_id,
+                                                                sock_info)
+                    rv = self.__check_response_to_last_error(response)
 
-            return rv
-        except OperationFailure:
-            raise
-        except (ConnectionFailure, socket.error), e:
-            self.disconnect()
-            raise AutoReconnect(str(e))
-        except:
-            sock_info.close()
-            raise
+                return rv
+            except OperationFailure:
+                raise
+            except (ConnectionFailure, socket.error), e:
+                self.disconnect()
+                raise AutoReconnect(str(e))
+            except:
+                sock_info.close()
+                raise
         finally:
             self.__pool.maybe_return_socket(sock_info)
 

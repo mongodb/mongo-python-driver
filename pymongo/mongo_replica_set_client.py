@@ -926,23 +926,24 @@ class MongoReplicaSetClient(common.BaseObject):
         """
         member, sock_info = None, None
         try:
-            if host in self.__members:
-                member = self.__members[host]
-                sock_info = self.__socket(member)
-                res, ping_time = self.__simple_command(
-                    sock_info, 'admin', {'ismaster': 1}
-                )
-            else:
-                res, connection_pool, ping_time = self.__is_master(host)
-                self.__members[host] = Member(
-                    host=host,
-                    ismaster_response=res,
-                    ping_time=ping_time,
-                    connection_pool=connection_pool)
-        except (ConnectionFailure, socket.error), why:
-            if member:
-                member.pool.discard_socket(sock_info)
-            raise ConnectionFailure("%s:%d: %s" % (host[0], host[1], str(why)))
+            try:
+                if host in self.__members:
+                    member = self.__members[host]
+                    sock_info = self.__socket(member)
+                    res, ping_time = self.__simple_command(
+                        sock_info, 'admin', {'ismaster': 1}
+                    )
+                else:
+                    res, connection_pool, ping_time = self.__is_master(host)
+                    self.__members[host] = Member(
+                        host=host,
+                        ismaster_response=res,
+                        ping_time=ping_time,
+                        connection_pool=connection_pool)
+            except (ConnectionFailure, socket.error), why:
+                if member:
+                    member.pool.discard_socket(sock_info)
+                raise ConnectionFailure("%s:%d: %s" % (host[0], host[1], str(why)))
         finally:
             if member and sock_info:
                 member.pool.maybe_return_socket(sock_info)
