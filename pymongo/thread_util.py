@@ -41,7 +41,7 @@ class Ident(object):
     def unwatch(self, tid=None):
         if tid is None:
             tid = self.get()
-        self._refs.pop(self.get(), None)
+        self._refs.pop(tid, None)
 
     def get(self):
         """An id for this thread or greenlet"""
