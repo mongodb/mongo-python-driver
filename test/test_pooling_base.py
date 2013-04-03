@@ -720,10 +720,6 @@ class _TestMaxPoolSize(_TestPoolingBase):
                     # Gevent 0.13 and less
                     the_hub.shutdown()
 
-            # NOTE(reversefold): When running these tests sockets are getting
-            # leaked when end_request is not properly called, but only
-            # sometimes. I suspect that the thread death code is not always
-            # called but am not sure why.
             if start_request:
                 self.assertEqual(pool_size, len(cx_pool.sockets))
             else:
