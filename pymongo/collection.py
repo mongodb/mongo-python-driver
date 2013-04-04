@@ -43,6 +43,8 @@ class Collection(common.BaseObject):
     """A Mongo collection.
     """
 
+    cursor = Cursor
+
     def __init__(self, database, name, create=False, **kwargs):
         """Get / create a Mongo collection.
 
@@ -714,7 +716,8 @@ class Collection(common.BaseObject):
         if not 'secondary_acceptable_latency_ms' in kwargs:
             kwargs['secondary_acceptable_latency_ms'] = (
                 self.secondary_acceptable_latency_ms)
-        return Cursor(self, *args, **kwargs)
+
+        return self.cursor(self, *args, **kwargs)
 
     def count(self):
         """Get the number of documents in this collection.
@@ -1318,7 +1321,7 @@ class Collection(common.BaseObject):
         If the full_response parameter is ``True``, the return value will be
         the entire response object from the server, including the 'ok' and
         'lastErrorObject' fields, rather than just the modified object.
-        This is useful mainly because the 'lastErrorObject' document holds 
+        This is useful mainly because the 'lastErrorObject' document holds
         information about the command's execution.
 
         :Parameters:
