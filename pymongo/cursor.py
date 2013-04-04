@@ -173,7 +173,7 @@ class Cursor(object):
         return self.__clone(True)
 
     def __clone(self, deepcopy=True):
-        clone = Cursor(self.__collection)
+        clone = self.__class__(self.__collection)
         values_to_clone = ("spec", "fields", "skip", "limit",
                            "timeout", "snapshot", "tailable",
                            "ordering", "explain", "hint", "batch_size",
@@ -182,11 +182,15 @@ class Cursor(object):
                            "tag_sets", "secondary_acceptable_latency_ms",
                            "must_use_master", "uuid_subtype", "query_flags",
                            "kwargs")
+        prefix = '_%s__' % self.__class__.__name__
         data = dict((k, v) for k, v in self.__dict__.iteritems()
-                    if k.startswith('_Cursor__') and k[9:] in values_to_clone)
+                    if k.startswith(prefix) and k[len(prefix):] in values_to_clone)
+
         if deepcopy:
             data = self.__deepcopy(data)
+
         clone.__dict__.update(data)
+
         return clone
 
     def __die(self):
