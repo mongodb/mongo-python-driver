@@ -677,7 +677,7 @@ class _TestMaxPoolSize(_TestPoolingBase):
     """
     def _test_max_pool_size(self, start_request, end_request):
         pool_size = 4
-        c = self.get_client(max_pool_size=pool_size, auto_start_request=False)
+        c = self.get_client(max_pool_size=pool_size, auto_start_request=False, socketTimeoutMS=5000, connectTimeoutMS=5000)
         # If you increase nthreads over about 35, note a
         # Gevent 0.13.6 bug on Mac, Greenlet.join() hangs if more than
         # about 35 Greenlets share a MongoClient. Apparently fixed in
@@ -698,6 +698,8 @@ class _TestMaxPoolSize(_TestPoolingBase):
 
         for t in threads:
             t.join()
+
+        time.sleep(10)
 
         for t in threads:
             self.assertTrue(t.passed)

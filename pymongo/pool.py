@@ -12,6 +12,7 @@
 # implied.  See the License for the specific language governing
 # permissions and limitations under the License.
 
+import atexit
 import os
 import socket
 import sys
@@ -21,7 +22,7 @@ import weakref
 
 from pymongo import thread_util
 from pymongo.common import HAS_SSL
-from pymongo.errors import ConnectionFailure, ConfigurationError
+from pymongo.errors import AutoReconnect, ConnectionFailure, ConfigurationError
 
 try:
     from ssl import match_hostname
@@ -44,6 +45,115 @@ except ImportError:
 
 NO_REQUEST = None
 NO_SOCKET_YET = -1
+
+MONITORS = set()
+
+
+def register_monitor(monitor):
+    ref = weakref.ref(monitor, _on_monitor_deleted)
+    MONITORS.add(ref)
+
+
+def _on_monitor_deleted(ref):
+    """Remove the weakreference from the set
+    of active MONITORS. We no longer
+    care about keeping track of it
+    """
+    MONITORS.remove(ref)
+
+
+def shutdown_monitors():
+    # Keep a local copy of MONITORS as
+    # shutting down threads has a side effect
+    # of removing them from the MONITORS set()
+    monitors = list(MONITORS)
+    for ref in monitors:
+        monitor = ref()
+        if monitor:
+            monitor.shutdown()
+            monitor.join()
+atexit.register(shutdown_monitors)
+
+
+class Monitor(object):
+    """Base class for pool monitors.
+    """
+    def __init__(self, pool, event_class, refresh_interval):
+        self.pool = weakref.proxy(pool, self.shutdown)
+        self.event = event_class()
+        self.stopped = False
+        self.refresh_interval = refresh_interval
+
+    def shutdown(self, dummy=None):
+        """Signal the monitor to shutdown.
+        """
+        self.stopped = True
+        self.event.set()
+
+    def schedule_refresh(self):
+        """Refresh immediately
+        """
+        self.event.set()
+
+    def monitor(self):
+        """Run until the Pool is collected or an
+        unexpected error occurs.
+        """
+        while True:
+            self.event.wait(self.refresh_interval)
+            if self.stopped:
+                break
+            self.event.clear()
+            try:
+                self.pool.check_request_socks(force=True)
+            except AutoReconnect:
+                pass
+            # Pool has been collected or there
+            # was an unexpected error.
+            except:
+                break
+
+
+class MonitorThread(Monitor, threading.Thread):
+    """Thread based replica set monitor.
+    """
+    def __init__(self, pool, refresh_interval):
+        Monitor.__init__(self, pool, threading.Event, refresh_interval)
+        threading.Thread.__init__(self)
+        self.setName("PoolMonitorThread")
+
+    def run(self):
+        """Override Thread's run method.
+        """
+        self.monitor()
+
+
+have_gevent = False
+try:
+    from gevent import Greenlet
+    from gevent.event import Event
+
+    # Used by ReplicaSetConnection
+    from gevent.local import local as gevent_local
+    have_gevent = True
+
+    class MonitorGreenlet(Monitor, Greenlet):
+        """Greenlet based replica set monitor.
+        """
+        def __init__(self, pool, refresh_interval):
+            Monitor.__init__(self, pool, Event, refresh_interval)
+            Greenlet.__init__(self)
+
+        # Don't override `run` in a Greenlet. Add _run instead.
+        # Refer to gevent's Greenlet docs and source for more
+        # information.
+        def _run(self):
+            """Define Greenlet's _run method.
+            """
+            self.monitor()
+
+except ImportError:
+    pass
 
 
 def _closed(sock):
@@ -202,6 +312,18 @@ class Pool:
                 self._socket_semaphore = (
                     thread_util.MaxWaitersBoundedSemaphoreThread(
                         self.max_size, max_waiters))
+
+        if self.net_timeout:
+            # Start the monitor after we know the configuration is correct.
+            if self.use_greenlets:
+                self.__monitor = MonitorGreenlet(self, self.net_timeout / 2)
+            else:
+                self.__monitor = MonitorThread(self, 0.2)#self.net_timeout / 2)
+                self.__monitor.setDaemon(True)
+            register_monitor(self.__monitor)
+            self.__monitor.start()
+        else:
+            self.__monitor = None
 
     def reset(self):
         # Ignore this race condition -- if many threads are resetting at once,
@@ -392,6 +514,18 @@ class Pool:
                 self._set_request_state(NO_REQUEST)
                 if sock_info not in (NO_REQUEST, NO_SOCKET_YET):
                     self._return_socket(sock_info)
+
+    def check_request_socks(self, force=False):
+        now = time.time()
+        for tid in self._tid_to_sock.keys():
+            sock_info = self._tid_to_sock.get(tid, None)
+            if sock_info is None:
+                continue
+            if now - sock_info.last_checkout > self.net_timeout:
+                # Assuming that the thread has died but is failing to call
+                # on_thread_died, close and return its socket to the pool
+                sock_info.close()
+                self.maybe_return_socket(sock_info)
 
     def discard_socket(self, sock_info):
         """Close and discard the active socket.
