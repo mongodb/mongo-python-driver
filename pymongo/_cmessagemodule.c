@@ -216,6 +216,12 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
     }
     Py_DECREF(iterator);
 
+    if (PyErr_Occurred()) {
+        buffer_free(buffer);
+        PyMem_Free(collection_name);
+        return NULL;
+    }
+
     if (!max_size) {
         PyObject* InvalidOperation = _error("InvalidOperation");
         PyErr_SetString(InvalidOperation, "cannot do an empty bulk insert");
