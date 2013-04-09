@@ -504,6 +504,7 @@ class Pool:
                 # on_thread_died, close and return its socket to the pool
                 sock_info.close()
                 self.maybe_return_socket(sock_info)
+                self._tid_to_sock[tid] = NO_SOCKET_YET
 
     def discard_socket(self, sock_info):
         """Close and discard the active socket.
