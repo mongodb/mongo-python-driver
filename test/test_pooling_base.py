@@ -200,51 +200,23 @@ class OneOp(MongoThread):
 
 
 class CreateAndReleaseSocket(MongoThread):
-    class Rendezvous(object):
-        def __init__(self, nthreads, use_greenlets):
-            self.nthreads = nthreads
-            self.nthreads_run = 0
-            if use_greenlets:
-                self.lock = gevent.thread.allocate_lock()
-                self.ready = gevent.event.Event()
-            else:
-                self.lock = threading.Lock()
-                self.ready = threading.Event()
-
-    def __init__(self, ut, client, start_request, end_request, pool_size,
-                 rendevous):
+    def __init__(self, ut, client, start_request, end_request, pool_size):
         super(CreateAndReleaseSocket, self).__init__(ut)
         self.client = client
         self.start_request = start_request
         self.end_request = end_request
         self.pool_size = pool_size
-        self.rendevous = rendevous
 
     def run_mongo_thread(self):
         # Do an operation that requires a socket.
         # test_max_pool_size uses this to spin up lots of threads requiring
         # lots of simultaneous connections, to ensure that Pool obeys its
-        # max_size configuration and closes extra sockets as they're returned.
+        # max_size configuration.
         for i in range(self.start_request):
             self.client.start_request()
 
         # Use a socket
         self.client[DB].test.find_one()
-
-        # Don't finish until pool_size threads reach this point
-        r = self.rendevous
-        r.lock.acquire()
-        r.nthreads_run += 1
-        if ((r.nthreads_run % self.pool_size) == 0
-            or r.nthreads_run == r.nthreads
-        ):
-            # Everyone's here, let them finish
-            r.ready.set()
-            r.lock.release()
-        else:
-            r.lock.release()
-            r.ready.wait(2) # Wait two seconds
-            assert r.ready.isSet(), "Rendezvous timed out"
 
         for i in range(self.end_request):
             self.client.end_request()
@@ -684,13 +656,10 @@ class _TestMaxPoolSize(_TestPoolingBase):
         # recent Gevent development.
         nthreads = 10
 
-        rendevous = CreateAndReleaseSocket.Rendezvous(
-            nthreads, self.use_greenlets)
-
         threads = []
         for i in range(nthreads):
             t = CreateAndReleaseSocket(
-                self, c, start_request, end_request, pool_size, rendevous)
+                self, c, start_request, end_request, pool_size)
             threads.append(t)
 
         for t in threads:
@@ -734,13 +703,30 @@ class _TestMaxPoolSize(_TestPoolingBase):
             # Pool._ident._local soon after an old thread has died.
             cx_pool._ident.get()
 
-            if start_request:
-                self.assertEqual(pool_size, len(cx_pool.sockets))
-            else:
-                # Without calling start_request(), threads can safely share
-                # sockets; the number running concurrently, and hence the number
-                # of sockets needed, is between 1 and pool_size, depending on
-                # thread-scheduling.
+            # In order for the request socket monitor and thread death code to
+            # be run, we need to sleep to let those other threads run. This
+            # loop ensures we only sleep until we've reached a good state
+            # (or ~30s).
+            i = 0
+            while i < 60:
+                cx_pool.refresh()
+                if not any(ref() for ref in cx_pool._ident._refs.values()):
+                    break
+                if len(cx_pool.sockets) == pool_size:
+                    break
+                if cx_pool._socket_semaphore._value == pool_size:
+                    break
+                i += 1
+                time.sleep(0.5)
+
+
+            time.sleep(1)
+
+            # the semaphore should always be back to its initial value
+            self.assertEqual(pool_size, cx_pool._socket_semaphore.counter)
+            if not start_request:
+                # Threads can share sockets and hence we the number of socket
+                # should be between 1 and pool_size
                 self.assertTrue(len(cx_pool.sockets) >= 1)
 
     def test_max_pool_size(self):
