@@ -710,7 +710,7 @@ class _TestMaxPoolSize(_TestPoolingBase):
             i = 0
             while i < 60:
                 cx_pool.refresh()
-                if not any(ref() for ref in cx_pool._ident._refs.values()):
+                if not [ref for ref in cx_pool._ident._refs.values() if ref()]:
                     break
                 if len(cx_pool.sockets) == pool_size:
                     break
