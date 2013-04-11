@@ -765,7 +765,8 @@ class _TestMaxPoolSize(_TestPoolingBase):
                 # This is fixable with a monitor thread which checks for stale
                 # request sockets, but this situation is hopefully unlikely to
                 # happen in the real world.
-                raise SkipTest('Python < 2.7 threadlocal bug')
+                raise SkipTest('Python < 2.7 threadlocal race condition usually'
+                               ' breaks this test')
             else:
                 raise
 
@@ -786,7 +787,8 @@ class _TestMaxPoolSize(_TestPoolingBase):
                 # This is fixable with a monitor thread which checks for stale
                 # request sockets, but this situation is hopefully unlikely to
                 # happen in the real world.
-                raise SkipTest('Python < 2.7 threadlocal bug')
+                raise SkipTest('Python < 2.7 threadlocal race condition usually'
+                               ' breaks this test')
             else:
                 raise
 
@@ -850,6 +852,140 @@ class _TestMaxOpenSockets(_TestPoolingBase):
             time.sleep(0.1)
         self.assertEqual(t.state, 'sock')
         self.assertEqual(t.sock, s1)
+
+    def test_serial_threads(self):
+        class Thread(threading.Thread):
+            def __init__(self, pool):
+                super(Thread, self).__init__()
+                self.state = 'init'
+                self.pool = pool
+                self.sock = None
+
+            def run(self):
+                self.state = 'get_socket'
+                self.sock = self.pool.get_socket()
+                self.state = 'sock'
+                time.sleep(0.1)
+                self.pool.maybe_return_socket(self.sock)
+                self.state = 'sock_returned'
+
+        pool = pymongo.pool.Pool(('127.0.0.1', 27017),
+                                 1, None, None,
+                                 False, False)
+        for _ in xrange(10):
+            t = Thread(pool)
+            t.start()
+            t.join()
+            self.assertEqual(t.state, 'sock_returned')
+
+        pool._ident.get()
+
+        self.assertEqual(pool._socket_semaphore.counter, 1)
+        self.assertEqual(len(pool.sockets), 1)
+
+    def test_threads_random(self):
+        class Thread(threading.Thread):
+            def __init__(self, pool):
+                super(Thread, self).__init__()
+                self.state = 'init'
+                self.pool = pool
+                self.sock = None
+
+            def run(self):
+                self.state = 'get_socket'
+                time.sleep(random.random() * 0.1)
+                self.sock = self.pool.get_socket()
+                self.state = 'sock'
+                time.sleep(random.random() * 0.1)
+                self.pool.maybe_return_socket(self.sock)
+                self.state = 'sock_returned'
+
+        pool = pymongo.pool.Pool(('127.0.0.1', 27017),
+                                 4, None, None,
+                                 False, False)
+
+        threads = []
+        for _ in xrange(30):
+            t = Thread(pool)
+            t.start()
+            threads.append(t)
+        for t in threads:
+            t.join()
+            self.assertEqual(t.state, 'sock_returned')
+
+        pool._ident.get()
+
+        self.assertEqual(pool._socket_semaphore.counter, 4)
+#        self.assertEqual(len(pool.sockets), 1)
+
+    def test_serial_threads_leaked(self):
+        class Thread(threading.Thread):
+            def __init__(self, pool):
+                super(Thread, self).__init__()
+                self.state = 'init'
+                self.pool = pool
+                self.sock = None
+
+            def run(self):
+                self.state = 'get_socket'
+                self.pool.start_request()
+                self.sock = self.pool.get_socket()
+                self.state = 'sock'
+                time.sleep(0.1)
+                self.pool.maybe_return_socket(self.sock)
+                self.state = 'sock_returned'
+
+        pool = pymongo.pool.Pool(('127.0.0.1', 27017),
+                                 1, None, None,
+                                 False, False)
+
+        for _ in xrange(10):
+            t = Thread(pool)
+            t.start()
+            t.join()
+            self.assertEqual(t.state, 'sock_returned')
+
+        pool._ident.get()
+
+        self.assertEqual(pool._socket_semaphore.counter, 1)
+        self.assertEqual(len(pool.sockets), 1)
+
+    def test_threads_leaked_random(self):
+        class Thread(threading.Thread):
+            def __init__(self, pool):
+                super(Thread, self).__init__()
+                self.state = 'init'
+                self.pool = pool
+                self.sock = None
+
+            def run(self):
+                self.state = 'get_socket'
+                self.pool.start_request()
+                time.sleep(random.random() * 0.1)
+                self.sock = self.pool.get_socket()
+                self.state = 'sock'
+                time.sleep(random.random() * 0.1)
+                self.pool.maybe_return_socket(self.sock)
+                self.state = 'sock_returned'
+                time.sleep(0.1)
+
+        pool = pymongo.pool.Pool(('127.0.0.1', 27017),
+                                 4, None, None,
+                                 False, False)
+
+        threads = []
+        for _ in xrange(30):
+            t = Thread(pool)
+            t.start()
+            threads.append(t)
+        for t in threads:
+            t.join()
+            self.assertEqual(t.state, 'sock_returned')
+
+        pool._ident.get()
+
+        self.assertEqual(pool._socket_semaphore.counter, 4)
+#        self.assertEqual(len(pool.sockets), 4)
 
 
 class _TestWaitQueueMultiple(_TestPoolingBase):
