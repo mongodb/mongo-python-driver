@@ -380,8 +380,10 @@ class Pool:
         return bool(self._request_counter.get())
 
     def end_request(self):
-        # TODO(reversefold): Is this needed? tid is never used
-        tid = self._ident.get()
+        # The value of this call is not used but the call is needed to ensure
+        # that the threadlocal is accessed to help with request socket
+        # reclamation in Python 2.6.
+        self._ident.get()
 
         # Check if start_request has ever been called in this thread / greenlet
         count = self._request_counter.get()
