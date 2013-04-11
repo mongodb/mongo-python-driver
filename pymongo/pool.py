@@ -285,17 +285,7 @@ class Pool:
                     thread_util.MaxWaitersBoundedSemaphoreThread(
                         self.max_size, max_waiters))
 
-        if self.net_timeout:
-            # Start the monitor after we know the configuration is correct.
-            if self.use_greenlets:
-                self.__monitor = None
-            else:
-                self.__monitor = MonitorThread(self, self.net_timeout / 2)
-                self.__monitor.setDaemon(True)
-                register_monitor(self.__monitor)
-                self.__monitor.start()
-        else:
-            self.__monitor = None
+        self.__monitor = None
 
     def reset(self):
         # Ignore this race condition -- if many threads are resetting at once,
@@ -486,25 +476,6 @@ class Pool:
                 self._set_request_state(NO_REQUEST)
                 if sock_info not in (NO_REQUEST, NO_SOCKET_YET):
                     self._return_socket(sock_info)
-
-    def refresh(self):
-        if self.__monitor is None:
-            self.check_request_socks()
-        else:
-            self.__monitor.schedule_refresh()
-
-    def check_request_socks(self):
-        now = time.time()
-        for tid in self._tid_to_sock.keys():
-            sock_info = self._tid_to_sock.get(tid, None)
-            if sock_info in (None, NO_REQUEST, NO_SOCKET_YET):
-                continue
-            if now - sock_info.last_checkout > self.net_timeout:
-                # Assuming that the thread has died but is failing to call
-                # on_thread_died, close and return its socket to the pool
-                sock_info.close()
-                self.maybe_return_socket(sock_info)
-                self._tid_to_sock[tid] = NO_SOCKET_YET
 
     def discard_socket(self, sock_info):
         """Close and discard the active socket.

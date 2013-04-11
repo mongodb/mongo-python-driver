@@ -200,23 +200,47 @@ class OneOp(MongoThread):
 
 
 class CreateAndReleaseSocket(MongoThread):
-    def __init__(self, ut, client, start_request, end_request, pool_size):
+    class Rendezvous(object):
+        def __init__(self, nthreads, use_greenlets):
+            self.nthreads = nthreads
+            self.nthreads_run = 0
+            if use_greenlets:
+                self.lock = gevent.coros.RLock()
+                self.ready = gevent.event.Event()
+            else:
+                self.lock = threading.Lock()
+                self.ready = threading.Event()
+
+    def __init__(self, ut, client, start_request, end_request, rendevous):
         super(CreateAndReleaseSocket, self).__init__(ut)
         self.client = client
         self.start_request = start_request
         self.end_request = end_request
-        self.pool_size = pool_size
+        self.rendevous = rendevous
 
     def run_mongo_thread(self):
         # Do an operation that requires a socket.
         # test_max_pool_size uses this to spin up lots of threads requiring
         # lots of simultaneous connections, to ensure that Pool obeys its
-        # max_size configuration.
+        # max_size configuration and closes extra sockets as they're returned.
         for i in range(self.start_request):
             self.client.start_request()
 
         # Use a socket
         self.client[DB].test.find_one()
+
+        # Don't finish until all threads reach this point
+        r = self.rendevous
+        r.lock.acquire()
+        r.nthreads_run += 1
+        if r.nthreads_run == r.nthreads:
+            # Everyone's here, let them finish
+            r.ready.set()
+            r.lock.release()
+        else:
+            r.lock.release()
+            r.ready.wait(2) # Wait two seconds
+            assert r.ready.isSet(), "Rendezvous timed out"
 
         for i in range(self.end_request):
             self.client.end_request()
@@ -648,18 +672,20 @@ class _TestMaxPoolSize(_TestPoolingBase):
     with greenlets.
     """
     def _test_max_pool_size(self, start_request, end_request):
-        pool_size = 4
-        c = self.get_client(max_pool_size=pool_size, auto_start_request=False, socketTimeoutMS=5000, connectTimeoutMS=5000)
+        c = self.get_client(max_pool_size=10, auto_start_request=False)
         # If you increase nthreads over about 35, note a
         # Gevent 0.13.6 bug on Mac, Greenlet.join() hangs if more than
         # about 35 Greenlets share a MongoClient. Apparently fixed in
         # recent Gevent development.
         nthreads = 10
 
+        rendevous = CreateAndReleaseSocket.Rendezvous(
+            nthreads, self.use_greenlets)
+
         threads = []
         for i in range(nthreads):
             t = CreateAndReleaseSocket(
-                self, c, start_request, end_request, pool_size)
+                self, c, start_request, end_request, rendevous)
             threads.append(t)
 
         for t in threads:
@@ -667,8 +693,6 @@ class _TestMaxPoolSize(_TestPoolingBase):
 
         for t in threads:
             t.join()
-
-        time.sleep(10)
 
         for t in threads:
             self.assertTrue(t.passed)
@@ -691,42 +715,14 @@ class _TestMaxPoolSize(_TestPoolingBase):
                     # Gevent 0.13 and less
                     the_hub.shutdown()
 
-            # Access the thread local from the main thread to trigger the
-            # ThreadVigil's delete callback, returning the request socket to
-            # the pool.
-            # In Python 2.6 and lesser, a dead thread's locals are deleted
-            # and those locals' weakref callbacks are fired only when another
-            # thread accesses the locals and finds the thread state is stale.
-            # This is more or less a bug in Python <= 2.6. Accessing the thread
-            # local from the main thread is a necessary part of this test, and
-            # realistic: in a multithreaded web server a new thread will access
-            # Pool._ident._local soon after an old thread has died.
-            cx_pool._ident.get()
-
-            # In order for the request socket monitor and thread death code to
-            # be run, we need to sleep to let those other threads run. This
-            # loop ensures we only sleep until we've reached a good state
-            # (or ~30s).
-            i = 0
-            while i < 60:
-                cx_pool.refresh()
-                if not [ref for ref in cx_pool._ident._refs.values() if ref()]:
-                    break
-                if len(cx_pool.sockets) == pool_size:
-                    break
-                if cx_pool._socket_semaphore._value == pool_size:
-                    break
-                i += 1
-                time.sleep(0.5)
-
-
-            time.sleep(1)
-
-            # the semaphore should always be back to its initial value
-            self.assertEqual(pool_size, cx_pool._socket_semaphore.counter)
-            if not start_request:
-                # Threads can share sockets and hence we the number of socket
-                # should be between 1 and pool_size
+            if start_request:
+                cx_pool._ident.get()
+                self.assertEqual(10, len(cx_pool.sockets))
+            else:
+                # Without calling start_request(), threads can safely share
+                # sockets; the number running concurrently, and hence the number
+                # of sockets needed, is between 1 and 10, depending on thread-
+                # scheduling.
                 self.assertTrue(len(cx_pool.sockets) >= 1)
 
     def test_max_pool_size(self):
