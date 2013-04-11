@@ -213,52 +213,31 @@ class ExceededMaxWaiters(Exception):
     pass
 
 
-class MaxWaitersBoundedSemaphoreThread(BoundedSemaphore):
-    def __init__(self, value=1, max_waiters=1):
-        BoundedSemaphore.__init__(self, value)
-        self.max_waiters = max_waiters
-        self.num_waiters_lock = threading.Lock()
-        self.num_waiters = 0
+class MaxWaitersBoundedSemaphore(object):
+    def __init__(self, semaphore_class, value=1, max_waiters=1):
+        self.waiter_semaphore = semaphore_class(max_waiters)
+        self.semaphore = semaphore_class(value)
 
     def acquire(self, blocking=True, timeout=None):
+        if not self.waiter_semaphore.acquire(False):
+            raise ExceededMaxWaiters()
         try:
-            self.num_waiters_lock.acquire()
-            if self.num_waiters == self.max_waiters:
-                raise ExceededMaxWaiters()
-            self.num_waiters += 1
+            return self.semaphore.acquire(blocking, timeout)
         finally:
-            self.num_waiters_lock.release()
-        try:
-            return BoundedSemaphore.acquire(self, blocking, timeout)
-        finally:
-            try:
-                self.num_waiters_lock.acquire()
-                self.num_waiters -= 1
-            finally:
-                self.num_waiters_lock.release()
+            self.waiter_semaphore.release()
+
+    def __getattr__(self, name):
+        return getattr(self.semaphore, name)
+
+
+class MaxWaitersBoundedSemaphoreThread(MaxWaitersBoundedSemaphore):
+    def __init__(self, value=1, max_waiters=1):
+        MaxWaitersBoundedSemaphore.__init__(
+            self, BoundedSemaphore, value, max_waiters)
 
 
 if have_greenlet:
-    class MaxWaitersBoundedSemaphoreGevent(gevent.coros.BoundedSemaphore):
-        def __init__(self, lockClass, value=1, max_waiters=1):
-            BoundedSemaphore.__init__(self, value)
-            self.max_waiters = max_waiters
-            self.num_waiters_lock = gevent.thread.allocate_lock()
-            self.num_waiters = 0
-
-        def acquire(self, blocking=True, timeout=None):
-            try:
-                self.num_waiters_lock.acquire()
-                if self.num_waiters == self.max_waiters:
-                    raise ExceededMaxWaiters()
-                self.num_waiters += 1
-            finally:
-                self.num_waiters_lock.release()
-            try:
-                return BoundedSemaphore.acquire(self, blocking, timeout)
-            finally:
-                try:
-                    self.num_waiters_lock.acquire()
-                    self.num_waiters -= 1
-                finally:
-                    self.num_waiters_lock.release()
+    class MaxWaitersBoundedSemaphoreGevent(MaxWaitersBoundedSemaphore):
+        def __init__(self, value=1, max_waiters=1):
+            MaxWaitersBoundedSemaphore.__init__(
+                self, gevent.coros.BoundedSemaphore, value, max_waiters)
