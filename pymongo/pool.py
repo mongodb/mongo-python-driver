@@ -22,7 +22,7 @@ import weakref
 
 from pymongo import thread_util
 from pymongo.common import HAS_SSL
-from pymongo.errors import AutoReconnect, ConnectionFailure, ConfigurationError
+from pymongo.errors import ConnectionFailure, ConfigurationError
 
 try:
     from ssl import match_hostname
@@ -45,87 +45,6 @@ except ImportError:
 
 NO_REQUEST = None
 NO_SOCKET_YET = -1
-
-MONITORS = set()
-
-
-def register_monitor(monitor):
-    ref = weakref.ref(monitor, _on_monitor_deleted)
-    MONITORS.add(ref)
-
-
-def _on_monitor_deleted(ref):
-    """Remove the weakreference from the set
-    of active MONITORS. We no longer
-    care about keeping track of it
-    """
-    MONITORS.remove(ref)
-
-
-def shutdown_monitors():
-    # Keep a local copy of MONITORS as
-    # shutting down threads has a side effect
-    # of removing them from the MONITORS set()
-    monitors = list(MONITORS)
-    for ref in monitors:
-        monitor = ref()
-        if monitor:
-            monitor.shutdown()
-            monitor.join()
-atexit.register(shutdown_monitors)
-
-
-class Monitor(object):
-    """Base class for pool monitors.
-    """
-    def __init__(self, pool, event_class, refresh_interval):
-        self.pool = weakref.proxy(pool, self.shutdown)
-        self.event = event_class()
-        self.stopped = False
-        self.refresh_interval = refresh_interval
-
-    def shutdown(self, dummy=None):
-        """Signal the monitor to shutdown.
-        """
-        self.stopped = True
-        self.event.set()
-
-    def schedule_refresh(self):
-        """Refresh immediately
-        """
-        self.event.set()
-
-    def monitor(self):
-        """Run until the Pool is collected or an
-        unexpected error occurs.
-        """
-        while True:
-            self.event.wait(self.refresh_interval)
-            if self.stopped:
-                break
-            self.event.clear()
-            try:
-                self.pool.check_request_socks()
-            except AutoReconnect:
-                pass
-            # Pool has been collected or there
-            # was an unexpected error.
-            except:
-                break
-
-
-class MonitorThread(Monitor, threading.Thread):
-    """Thread based replica set monitor.
-    """
-    def __init__(self, pool, refresh_interval):
-        Monitor.__init__(self, pool, threading.Event, refresh_interval)
-        threading.Thread.__init__(self)
-        self.setName("PoolMonitorThread")
-
-    def run(self):
-        """Override Thread's run method.
-        """
-        self.monitor()
 
 
 def _closed(sock):
@@ -284,8 +203,6 @@ class Pool:
                 self._socket_semaphore = (
                     thread_util.MaxWaitersBoundedSemaphoreThread(
                         self.max_size, max_waiters))
-
-        self.__monitor = None
 
     def reset(self):
         # Ignore this race condition -- if many threads are resetting at once,
