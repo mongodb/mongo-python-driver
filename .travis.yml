@@ -16,7 +16,7 @@ install:
     #Temporary solution for Travis CI mutiprocessing issue #155
     - sudo rm -rf /dev/shm && sudo ln -s /run/shm /dev/shm
     - sudo apt-get update
-    - mv /etc/mongodb.conf /etc/mongodb.conf.bak
+    - sudo mv /etc/mongodb.conf /etc/mongodb.conf.bak
     - DEBIAN_FRONTEND=noninteractive sudo apt-get install -y mongodb
-    - mv /etc/mongodb.conf.bak /etc/mongodb.conf
+    - sudo mv /etc/mongodb.conf.bak /etc/mongodb.conf
     - sudo service mongodb start || true
