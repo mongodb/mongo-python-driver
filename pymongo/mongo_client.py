@@ -515,7 +515,7 @@ class MongoClient(common.BaseObject):
           has reached `max_pool_size` will block until conn_timeout or a
           connection has been returned to the pool.
 
-        .. versionchanged: 2.5+
+        .. versionchanged:: 2.5+
         .. versionadded:: 1.11
         """
         return self.__max_pool_size
