@@ -70,7 +70,7 @@ class MasterSlaveConnection(BaseObject):
         super(MasterSlaveConnection,
               self).__init__(read_preference=ReadPreference.SECONDARY,
                              safe=master.safe,
-                             **(master.get_lasterror_options()))
+                             **master.write_concern)
 
         self.__master = master
         self.__slaves = slaves
