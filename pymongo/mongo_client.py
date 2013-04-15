@@ -122,7 +122,7 @@ class MongoClient(common.BaseObject):
             the RFC2732 URL syntax (e.g. '[::1]' for localhost)
           - `port` (optional): port number on which to connect
           - `max_pool_size` (optional): The maximum number of connections
-            that the pool will open simultaneously. If this is set, queries
+            that the pool will open simultaneously. If this is set, operations
             will block if there are `max_pool_size` outstanding connections
             from the pool. Defaults to 100.
           - `document_class` (optional): default class to use for
