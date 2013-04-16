@@ -466,8 +466,9 @@ class TestClient(unittest.TestCase, TestRequestMixin):
 
     def test_waitQueueMultiple(self):
         client = MongoClient(host, port, max_pool_size=3, waitQueueMultiple=2)
-        self.assertEqual(client._MongoClient__pool.wait_queue_multiple, 2)
-        self.assertEqual(client._MongoClient__pool._socket_semaphore.waiter_semaphore.counter, 6)
+        pool = client._MongoClient__pool
+        self.assertEqual(pool.wait_queue_multiple, 2)
+        self.assertEqual(pool._socket_semaphore.waiter_semaphore.counter, 6)
 
     def test_tz_aware(self):
         self.assertRaises(ConfigurationError, MongoClient, tz_aware='foo')
