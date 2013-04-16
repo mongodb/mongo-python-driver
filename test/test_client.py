@@ -460,6 +460,15 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         self.assertRaises(ConnectionFailure, get_x_timeout,
                           no_timeout.pymongo_test, 0.1)
 
+    def test_waitQueueTimeoutMS(self):
+        client = MongoClient(host, port, waitQueueTimeoutMS=2000)
+        self.assertEqual(client._MongoClient__pool.wait_queue_timeout, 2)
+
+    def test_waitQueueMultiple(self):
+        client = MongoClient(host, port, max_pool_size=3, waitQueueMultiple=2)
+        self.assertEqual(client._MongoClient__pool.wait_queue_multiple, 2)
+        self.assertEqual(client._MongoClient__pool._socket_semaphore.waiter_semaphore.counter, 6)
+
     def test_tz_aware(self):
         self.assertRaises(ConfigurationError, MongoClient, tz_aware='foo')
 
