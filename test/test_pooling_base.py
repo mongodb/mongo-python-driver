@@ -31,6 +31,7 @@ import pymongo.pool
 from pymongo.mongo_client import MongoClient
 from pymongo.pool import Pool, NO_REQUEST, NO_SOCKET_YET, SocketInfo
 from pymongo.errors import ConfigurationError
+from pymongo.thread_util import ExceededMaxWaiters
 from test import version, host, port
 from test.test_client import get_client
 from test.utils import delay, is_mongos, one
@@ -46,7 +47,7 @@ if sys.version_info[0] >= 3:
 try:
     import gevent
     from gevent import Greenlet, monkey, hub
-    import gevent.coros, gevent.event
+    import gevent.event, gevent.thread
     has_gevent = True
 except ImportError:
     has_gevent = False
@@ -210,7 +211,7 @@ class CreateAndReleaseSocket(MongoThread):
                 self.lock = threading.Lock()
                 self.ready = threading.Event()
 
-    def __init__(self, ut, client, start_request, end_request, rendevous):
+    def __init__(self, ut, client, start_request, end_request, rendevous=None):
         super(CreateAndReleaseSocket, self).__init__(ut)
         self.client = client
         self.start_request = start_request
@@ -230,16 +231,17 @@ class CreateAndReleaseSocket(MongoThread):
 
         # Don't finish until all threads reach this point
         r = self.rendevous
-        r.lock.acquire()
-        r.nthreads_run += 1
-        if r.nthreads_run == r.nthreads:
-            # Everyone's here, let them finish
-            r.ready.set()
-            r.lock.release()
-        else:
-            r.lock.release()
-            r.ready.wait(timeout=60)
-            assert r.ready.isSet(), "Rendezvous timed out"
+        if r is not None:
+            r.lock.acquire()
+            r.nthreads_run += 1
+            if r.nthreads_run == r.nthreads:
+                # Everyone's here, let them finish
+                r.ready.set()
+                r.lock.release()
+            else:
+                r.lock.release()
+                r.ready.wait(2) # Wait two seconds
+                assert r.ready.isSet(), "Rendezvous timed out"
 
         for i in range(self.end_request):
             self.client.end_request()
@@ -583,7 +585,6 @@ class _TestPooling(_TestPoolingBase):
 
         # Kill old request socket
         sock_info.sock.close()
-        cx_pool.maybe_return_socket(sock_info)
         time.sleep(1.1) # trigger _check_closed
 
         # Dead socket detected and removed
@@ -673,7 +674,8 @@ class _TestMaxPoolSize(_TestPoolingBase):
     with greenlets.
     """
     def _test_max_pool_size(
-        self, start_request, end_request, max_pool_size=4, nthreads=10):
+        self, start_request, end_request, max_pool_size=4, nthreads=10,
+        use_rendezvous=True):
         """Start `nthreads` threads. Each calls start_request `start_request`
         times, then find_one and waits at a barrier; once all reach the barrier
         each calls end_request `end_request` times. The test asserts that the
@@ -693,13 +695,21 @@ class _TestMaxPoolSize(_TestPoolingBase):
         c = self.get_client(
             max_pool_size=max_pool_size, auto_start_request=False)
 
-        rendevous = CreateAndReleaseSocket.Rendezvous(
-            nthreads, self.use_greenlets)
+        # If you increase nthreads over about 35, note a
+        # Gevent 0.13.6 bug on Mac, Greenlet.join() hangs if more than
+        # about 35 Greenlets share a MongoClient. Apparently fixed in
+        # recent Gevent development.
+
+        if use_rendezvous:
+            rendezvous = CreateAndReleaseSocket.Rendezvous(
+                nthreads, self.use_greenlets)
+        else:
+            rendezvous = None
 
         threads = []
         for i in range(nthreads):
             t = CreateAndReleaseSocket(
-                self, c, start_request, end_request, rendevous)
+                self, c, start_request, end_request, rendezvous)
             threads.append(t)
 
         for t in threads:
@@ -732,26 +742,30 @@ class _TestMaxPoolSize(_TestPoolingBase):
                     # Gevent 0.13 and less
                     the_hub.shutdown()
 
-            if start_request:
-                # Trigger final cleanup in Python <= 2.7.0.
-                cx_pool._ident.get()
+            if use_rendezvous:
+                if start_request:
+                    # Trigger final cleanup in Python <= 2.7.0.
+                    cx_pool._ident.get()
+                    time.sleep(0.1)
+                    self.assertEqual(10, len(cx_pool.sockets))
+                    expected_idle = min(max_pool_size, nthreads)
+                    message = (
+                        '%d idle sockets (expected %d) and %d request sockets'
+                        ' (expected 0)' % (
+                            len(cx_pool.sockets), expected_idle,
+                            len(cx_pool._tid_to_sock)))
 
-                expected_idle = min(max_pool_size, nthreads)
-                message = (
-                    '%d idle sockets (expected %d) and %d request sockets'
-                    ' (expected 0)' % (
-                        len(cx_pool.sockets), expected_idle,
-                        len(cx_pool._tid_to_sock)))
+                    self.assertEqual(
+                        expected_idle, len(cx_pool.sockets), message)
+                else:
+                    # Without calling start_request(), threads can safely share
+                    # sockets; the number running concurrently, and hence the number
+                    # of sockets needed, is between 1 and 10, depending on thread-
+                    # scheduling.
+                    self.assertTrue(len(cx_pool.sockets) >= 1)
 
-                self.assertEqual(
-                    expected_idle, len(cx_pool.sockets), message)
-            else:
-                # Without calling start_request(), threads can safely share
-                # sockets; the number running concurrently, and hence the number
-                # of sockets needed, is between 1 and
-                # min(max_pool_size, nthreads), depending on thread-scheduling.
-                self.assertTrue(len(cx_pool.sockets) >= 1)
-
+            time.sleep(0.1)
+            self.assertEqual(max_pool_size, cx_pool._socket_semaphore.counter)
             self.assertEqual(0, len(cx_pool._tid_to_sock))
 
     def test_max_pool_size(self):
@@ -760,20 +774,204 @@ class _TestMaxPoolSize(_TestPoolingBase):
     def test_max_pool_size_with_request(self):
         self._test_max_pool_size(1, 1)
 
+    def test_max_pool_size_with_multiple_request(self):
+        self._test_max_pool_size(10, 10)
+
     def test_max_pool_size_with_redundant_request(self):
         self._test_max_pool_size(2, 1)
 
     def test_max_pool_size_with_redundant_request2(self):
         self._test_max_pool_size(20, 1)
 
+    def test_max_pool_size_with_redundant_request_no_rendezvous(self):
+        try:
+            self._test_max_pool_size(2, 1, False)
+            self._test_max_pool_size(20, 1, False)
+        except AssertionError:
+            if sys.version_info[0] == 2 and sys.version_info[1] < 7:
+                # Python < 2.7 has a threadlocal bug which sometimes leaks
+                # sockets due to the threadlocal being accessed too close
+                # to thread death, causing on_thread_died not to get called.
+                #
+                # This is fixable with a monitor thread which checks for stale
+                # request sockets, but this situation is hopefully unlikely to
+                # happen in the real world.
+                raise SkipTest('Python < 2.7 threadlocal race condition usually'
+                               ' breaks this test')
+            else:
+                raise
+
     def test_max_pool_size_with_leaked_request(self):
         # Call start_request() but not end_request() -- when threads die, they
         # should return their request sockets to the pool.
         self._test_max_pool_size(1, 0)
 
+    def test_max_pool_size_with_leaked_request_no_rendezvous(self):
+        try:
+            self._test_max_pool_size(1, 0, False)
+        except AssertionError:
+            if sys.version_info[0] == 2 and sys.version_info[1] < 7:
+                # Python < 2.7 has a threadlocal bug which sometimes leaks
+                # sockets due to the threadlocal being accessed too close
+                # to thread death, causing on_thread_died not to get called.
+                #
+                # This is fixable with a monitor thread which checks for stale
+                # request sockets, but this situation is hopefully unlikely to
+                # happen in the real world.
+                raise SkipTest('Python < 2.7 threadlocal race condition usually'
+                               ' breaks this test')
+            else:
+                raise
+
     def test_max_pool_size_with_end_request_only(self):
         # Call end_request() but not start_request()
         self._test_max_pool_size(0, 1)
+
+
+class _TestMaxOpenSockets(_TestPoolingBase):
+    """Test that connection pool doesn't open more than max_size sockets.
+    To be run both with threads and with greenlets.
+    """
+    def get_pool(self, conn_timeout, net_timeout, wait_queue_timeout):
+        return pymongo.pool.Pool(('127.0.0.1', 27017),
+                                 2, net_timeout, conn_timeout,
+                                 False, False,
+                                 wait_queue_timeout=wait_queue_timeout)
+
+    def test_over_max_times_out(self):
+        conn_timeout = 2
+        pool = self.get_pool(conn_timeout, conn_timeout + 5, conn_timeout)
+        s1 = pool.get_socket()
+        self.assertTrue(None is not s1)
+        s2 = pool.get_socket()
+        self.assertTrue(None is not s2)
+        self.assertNotEqual(s1, s2)
+        start = time.time()
+        self.assertRaises(socket.timeout, pool.get_socket)
+        end = time.time()
+        self.assertTrue(end - start > conn_timeout)
+        self.assertTrue(end - start < conn_timeout + 5)
+
+    def test_over_max_no_timeout_blocks(self):
+        class Thread(threading.Thread):
+            def __init__(self, pool):
+                super(Thread, self).__init__()
+                self.state = 'init'
+                self.pool = pool
+                self.sock = None
+
+            def run(self):
+                self.state = 'get_socket'
+                self.sock = self.pool.get_socket()
+                self.state = 'sock'
+
+        pool = self.get_pool(None, 2, None)
+        s1 = pool.get_socket()
+        self.assertTrue(None is not s1)
+        s2 = pool.get_socket()
+        self.assertTrue(None is not s2)
+        self.assertNotEqual(s1, s2)
+        t = Thread(pool)
+        t.start()
+        while t.state != 'get_socket':
+            time.sleep(0.1)
+        self.assertEqual(t.state, 'get_socket')
+        time.sleep(5)
+        self.assertEqual(t.state, 'get_socket')
+        pool.maybe_return_socket(s1)
+        while t.state != 'sock':
+            time.sleep(0.1)
+        self.assertEqual(t.state, 'sock')
+        self.assertEqual(t.sock, s1)
+
+
+class _TestWaitQueueMultiple(_TestPoolingBase):
+    """Test that connection pool doesn't allow more than
+    waitQueueMultiple * max_size waiters.
+    To be run both with threads and with greenlets.
+    """
+    def get_pool(self, conn_timeout, net_timeout, wait_queue_timeout,
+                 wait_queue_multiple):
+        return pymongo.pool.Pool(('127.0.0.1', 27017),
+                                 2, net_timeout, conn_timeout,
+                                 False, False,
+                                 wait_queue_timeout=wait_queue_timeout,
+                                 wait_queue_multiple=wait_queue_multiple)
+
+    def test_wait_queue_multiple(self):
+        class Thread(threading.Thread):
+            def __init__(self, pool):
+                super(Thread, self).__init__()
+                self.state = 'init'
+                self.pool = pool
+                self.sock = None
+
+            def run(self):
+                self.state = 'get_socket'
+                self.sock = self.pool.get_socket()
+                self.state = 'sock'
+
+        pool = self.get_pool(None, None, None, 3)
+        socks = []
+        for _ in xrange(2):
+            sock = pool.get_socket()
+            self.assertTrue(sock is not None)
+            socks.append(sock)
+        threads = []
+        for _ in xrange(6):
+            thread = Thread(pool)
+            thread.start()
+            threads.append(thread)
+        time.sleep(1)
+        for thread in threads:
+            self.assertEqual(thread.state, 'get_socket')
+        self.assertRaises(ExceededMaxWaiters, pool.get_socket)
+        while threads:
+            for sock in socks:
+                pool.maybe_return_socket(sock)
+            socks = []
+            for thread in list(threads):
+                if thread.sock is not None:
+                    socks.append(thread.sock)
+                    thread.join()
+                    threads.remove(thread)
+
+    def test_wait_queue_multiple_unset(self):
+        class Thread(threading.Thread):
+            def __init__(self, pool):
+                super(Thread, self).__init__()
+                self.state = 'init'
+                self.pool = pool
+                self.sock = None
+
+            def run(self):
+                self.state = 'get_socket'
+                self.sock = self.pool.get_socket()
+                self.state = 'sock'
+
+        pool = self.get_pool(None, None, None, None)
+        socks = []
+        for _ in xrange(2):
+            sock = pool.get_socket()
+            self.assertTrue(sock is not None)
+            socks.append(sock)
+        threads = []
+        for _ in xrange(30):
+            thread = Thread(pool)
+            thread.start()
+            threads.append(thread)
+        time.sleep(1)
+        for thread in threads:
+            self.assertEqual(thread.state, 'get_socket')
+        while threads:
+            for sock in socks:
+                pool.maybe_return_socket(sock)
+            socks = []
+            for thread in list(threads):
+                if thread.sock is not None:
+                    socks.append(thread.sock)
+                    thread.join()
+                    threads.remove(thread)
 
 
 class _TestPoolSocketSharing(_TestPoolingBase):

@@ -85,8 +85,9 @@ class MongoClient(common.BaseObject):
 
     __max_bson_size = 4 * 1024 * 1024
 
-    def __init__(self, host=None, port=None, max_pool_size=10,
-                 document_class=dict, tz_aware=False, _connect=True, **kwargs):
+    def __init__(self, host=None, port=None, max_pool_size=100,
+                 document_class=dict, tz_aware=False, _connect=True,
+                 **kwargs):
         """Create a new connection to a single MongoDB instance at *host:port*.
 
         The resultant client object has connection-pooling built
@@ -120,8 +121,10 @@ class MongoClient(common.BaseObject):
             it must be enclosed in '[' and ']' characters following
             the RFC2732 URL syntax (e.g. '[::1]' for localhost)
           - `port` (optional): port number on which to connect
-          - `max_pool_size` (optional): The maximum number of idle connections
-            to keep open in the pool for future use
+          - `max_pool_size` (optional): The maximum number of connections
+            that the pool will open simultaneously. If this is set, operations
+            will block if there are `max_pool_size` outstanding connections
+            from the pool. Defaults to 100.
           - `document_class` (optional): default class to use for
             documents returned from queries on this client
           - `tz_aware` (optional): if ``True``,
@@ -135,6 +138,11 @@ class MongoClient(common.BaseObject):
             receive on a socket can take before timing out.
           - `connectTimeoutMS`: (integer) How long (in milliseconds) a
             connection can take to be opened before timing out.
+          - `waitQueueTimeoutMS`: (integer) How long (in milliseconds) a
+            thread will wait for a socket from the pool if the pool has no
+            free sockets.
+          - `waitQueueMultiple`: (integer) Multiplied by max_pool_size to give
+            the number of threads allowed to wait for a socket at one time.
           - `auto_start_request`: If ``True``, each thread that accesses
             this :class:`MongoClient` has a socket allocated to it for the
             thread's lifetime.  This ensures consistent reads, even if you
@@ -273,6 +281,9 @@ class MongoClient(common.BaseObject):
 
         self.__net_timeout = options.get('sockettimeoutms')
         self.__conn_timeout = options.get('connecttimeoutms')
+        self.__wait_queue_timeout = options.get('waitqueuetimeoutms')
+        self.__wait_queue_multiple = options.get('waitqueuemultiple')
+
         self.__use_ssl = options.get('ssl', None)
         self.__ssl_keyfile = options.get('ssl_keyfile', None)
         self.__ssl_certfile = options.get('ssl_certfile', None)
@@ -313,7 +324,9 @@ class MongoClient(common.BaseObject):
             ssl_keyfile=self.__ssl_keyfile,
             ssl_certfile=self.__ssl_certfile,
             ssl_cert_reqs=self.__ssl_cert_reqs,
-            ssl_ca_certs=self.__ssl_ca_certs)
+            ssl_ca_certs=self.__ssl_ca_certs,
+            wait_queue_timeout=self.__wait_queue_timeout,
+            wait_queue_multiple=self.__wait_queue_multiple)
 
         self.__document_class = document_class
         self.__tz_aware = common.validate_boolean('tz_aware', tz_aware)
@@ -492,14 +505,19 @@ class MongoClient(common.BaseObject):
 
     @property
     def max_pool_size(self):
-        """The maximum number of idle connections kept open in the pool for
-        future use.
+        """The maximum number of sockets the pool will open concurrently.
 
-        .. note:: ``max_pool_size`` does not cap the number of concurrent
-          connections to the server; there is currently no way to limit the
-          number of connections. ``max_pool_size`` only limits the number of
-          **idle** connections kept open when they are returned to the pool.
+        .. warning:: SIGNIFICANT BEHAVIOR CHANGE in 2.5+. Previously, this
+          parameter would limit only the idle connections the pool would hold
+          onto, not the number of open sockets. The default has also changed
+          to 100.
 
+        .. note:: ``max_pool_size`` caps the number of concurrent
+          connections to the server. Connection or query attempts when the pool
+          has reached `max_pool_size` will block until conn_timeout or a
+          connection has been returned to the pool.
+
+        .. versionchanged:: 2.5+
         .. versionadded:: 1.11
         """
         return self.__max_pool_size
@@ -591,10 +609,12 @@ class MongoClient(common.BaseObject):
 
         # Call 'ismaster' directly so we can get a response time.
         sock_info = self.__socket()
-        response, res_time = self.__simple_command(sock_info,
-                                                   'admin',
-                                                   {'ismaster': 1})
-        self.__pool.maybe_return_socket(sock_info)
+        try:
+            response, res_time = self.__simple_command(sock_info,
+                                                       'admin',
+                                                       {'ismaster': 1})
+        finally:
+            self.__pool.maybe_return_socket(sock_info)
 
         # Are we talking to a mongos?
         isdbgrid = response.get('msg', '') == 'isdbgrid'
@@ -794,11 +814,15 @@ class MongoClient(common.BaseObject):
         # calls select() if the socket hasn't been checked in the last second,
         # or it may create a new socket, in which case calling select() is
         # redundant.
+        sock_info = None
         try:
-            sock_info = self.__socket()
-            return not pool._closed(sock_info.sock)
-        except (socket.error, ConnectionFailure):
-            return False
+            try:
+                sock_info = self.__socket()
+                return not pool._closed(sock_info.sock)
+            except (socket.error, ConnectionFailure):
+                return False
+        finally:
+            self.__pool.maybe_return_socket(sock_info)
 
     def set_cursor_manager(self, manager_class):
         """Set this client's cursor manager.
@@ -907,29 +931,30 @@ class MongoClient(common.BaseObject):
 
         sock_info = self.__socket()
         try:
-            (request_id, data) = self.__check_bson_size(message)
-            sock_info.sock.sendall(data)
-            # Safe mode. We pack the message together with a lastError
-            # message and send both. We then get the response (to the
-            # lastError) and raise OperationFailure if it is an error
-            # response.
-            rv = None
-            if with_last_error:
-                response = self.__receive_message_on_socket(1, request_id,
-                                                            sock_info)
-                rv = self.__check_response_to_last_error(response)
+            try:
+                (request_id, data) = self.__check_bson_size(message)
+                sock_info.sock.sendall(data)
+                # Safe mode. We pack the message together with a lastError
+                # message and send both. We then get the response (to the
+                # lastError) and raise OperationFailure if it is an error
+                # response.
+                rv = None
+                if with_last_error:
+                    response = self.__receive_message_on_socket(1, request_id,
+                                                                sock_info)
+                    rv = self.__check_response_to_last_error(response)
 
+                return rv
+            except OperationFailure:
+                raise
+            except (ConnectionFailure, socket.error), e:
+                self.disconnect()
+                raise AutoReconnect(str(e))
+            except:
+                sock_info.close()
+                raise
+        finally:
             self.__pool.maybe_return_socket(sock_info)
-            return rv
-        except OperationFailure:
-            self.__pool.maybe_return_socket(sock_info)
-            raise
-        except (ConnectionFailure, socket.error), e:
-            self.disconnect()
-            raise AutoReconnect(str(e))
-        except:
-            sock_info.close()
-            raise
 
     def __receive_data_on_socket(self, length, sock_info):
         """Lowest level receive operation.
@@ -953,9 +978,9 @@ class MongoClient(common.BaseObject):
         """
         header = self.__receive_data_on_socket(16, sock_info)
         length = struct.unpack("<i", header[:4])[0]
-        assert request_id == struct.unpack("<i", header[8:12])[0], \
-            "ids don't match %r %r" % (request_id,
-                                       struct.unpack("<i", header[8:12])[0])
+        msg_req_id = struct.unpack("<i", header[8:12])[0]
+        assert request_id == msg_req_id, \
+            "ids don't match %r %r" % (request_id, msg_req_id)
         assert operation == struct.unpack("<i", header[12:])[0]
 
         return self.__receive_data_on_socket(length - 16, sock_info)

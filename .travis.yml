@@ -11,3 +11,7 @@ services:
   - mongodb
 
 script: python setup.py test
+
+install:
+    #Temporary solution for Travis CI mutiprocessing issue #155
+    - sudo rm -rf /dev/shm && sudo ln -s /run/shm /dev/shm

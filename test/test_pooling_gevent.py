@@ -22,7 +22,8 @@ from pymongo import pool
 from test import host, port
 from test.utils import looplet
 from test.test_pooling_base import (
-    _TestPooling, _TestMaxPoolSize, _TestPoolSocketSharing)
+    _TestPooling, _TestMaxPoolSize, _TestMaxOpenSockets,
+    _TestPoolSocketSharing, _TestWaitQueueMultiple)
 
 
 class TestPoolingGevent(_TestPooling, unittest.TestCase):
@@ -175,6 +176,14 @@ class TestMaxPoolSizeGevent(_TestMaxPoolSize, unittest.TestCase):
 
 
 class TestPoolSocketSharingGevent(_TestPoolSocketSharing, unittest.TestCase):
+    use_greenlets = True
+
+
+class TestMaxOpenSocketsGevent(_TestMaxOpenSockets, unittest.TestCase):
+    use_greenlets = True
+
+
+class TestWaitQueueMultipleGevent(_TestWaitQueueMultiple, unittest.TestCase):
     use_greenlets = True
 
 
