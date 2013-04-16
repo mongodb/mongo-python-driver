@@ -416,8 +416,9 @@ class TestCollection(unittest.TestCase):
                 "coordinates": [[[40,5], [40,6], [41,6], [41,5], [40,5]]]}
         query = {"geo": {"$within": {"$geometry": poly}}}
 
-        self.assertEqual("S2Cursor",
-                         db.test.find(query).explain()['cursor'])
+        self.assertTrue(
+            db.test.find(query).explain()['cursor'].startswith('S2Cursor'))
+
         db.test.drop_indexes()
 
     def test_index_hashed(self):
