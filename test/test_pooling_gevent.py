@@ -37,11 +37,12 @@ class TestPoolingGeventSpecial(unittest.TestCase):
         # Check that Pool gives two sockets to two greenlets
         try:
             import greenlet
+            import gevent
         except ImportError:
-            raise SkipTest('greenlet not installed')
+            raise SkipTest('Gevent not installed')
 
         cx_pool = pool.Pool(
-            pair=(host,port),
+            pair=(host, port),
             max_size=10,
             net_timeout=1000,
             conn_timeout=1000,
@@ -70,8 +71,9 @@ class TestPoolingGeventSpecial(unittest.TestCase):
 
         try:
             import greenlet
+            import gevent
         except ImportError:
-            raise SkipTest('greenlet not installed')
+            raise SkipTest('Gevent not installed')
 
         pool_args = dict(
             pair=(host,port),
