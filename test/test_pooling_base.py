@@ -211,12 +211,12 @@ class CreateAndReleaseSocket(MongoThread):
                 self.lock = threading.Lock()
                 self.ready = threading.Event()
 
-    def __init__(self, ut, client, start_request, end_request, rendevous):
+    def __init__(self, ut, client, start_request, end_request, rendezvous):
         super(CreateAndReleaseSocket, self).__init__(ut)
         self.client = client
         self.start_request = start_request
         self.end_request = end_request
-        self.rendevous = rendevous
+        self.rendezvous = rendezvous
 
     def run_mongo_thread(self):
         # Do an operation that requires a socket.
@@ -230,7 +230,7 @@ class CreateAndReleaseSocket(MongoThread):
         self.client[DB].test.find_one()
 
         # Don't finish until all threads reach this point
-        r = self.rendevous
+        r = self.rendezvous
         r.lock.acquire()
         r.nthreads_run += 1
         if r.nthreads_run == r.nthreads:
