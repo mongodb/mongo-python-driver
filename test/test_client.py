@@ -143,7 +143,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
 
     def test_use_greenlets(self):
         self.assertFalse(MongoClient(host, port).use_greenlets)
-        if thread_util.have_greenlet:
+        if thread_util.have_gevent:
             self.assertTrue(
                 MongoClient(
                     host, port, use_greenlets=True).use_greenlets)

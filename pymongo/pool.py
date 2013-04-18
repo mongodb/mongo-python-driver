@@ -142,9 +142,9 @@ class Pool:
           - `wait_queue_multiple`: (integer) Multiplied by max_pool_size to give
             the number of threads allowed to wait for a socket at one time.
         """
-        if use_greenlets and not thread_util.have_greenlet:
+        if use_greenlets and not thread_util.have_gevent:
             raise ConfigurationError(
-                "The greenlet module is not available. "
+                "The Gevent module is not available. "
                 "Install the greenlet package from PyPI."
             )
 

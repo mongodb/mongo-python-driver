@@ -25,7 +25,7 @@ sys.path[0:0] = [""]
 from nose.plugins.skip import SkipTest
 
 from pymongo import thread_util
-if thread_util.have_greenlet:
+if thread_util.have_gevent:
     import greenlet
 
 from test.utils import looplet, RendezvousThread
@@ -148,7 +148,7 @@ class TestIdent(unittest.TestCase):
         self._test_ident(False)
 
     def test_greenlet_ident(self):
-        if not thread_util.have_greenlet:
+        if not thread_util.have_gevent:
             raise SkipTest('greenlet not installed')
 
         self._test_ident(True)
@@ -212,7 +212,7 @@ class TestCounter(unittest.TestCase):
         self._test_counter(False)
 
     def test_greenlet_counter(self):
-        if not thread_util.have_greenlet:
+        if not thread_util.have_gevent:
             raise SkipTest('greenlet not installed')
 
         self._test_counter(True)

@@ -79,7 +79,7 @@ class TestMasterSlaveConnection(unittest.TestCase, TestRequestMixin):
     def test_use_greenlets(self):
         self.assertFalse(self.client.use_greenlets)
 
-        if thread_util.have_greenlet:
+        if thread_util.have_gevent:
             master = MongoClient(host, port, use_greenlets=True)
             slaves = [
                 MongoClient(slave.host, slave.port, use_greenlets=True)

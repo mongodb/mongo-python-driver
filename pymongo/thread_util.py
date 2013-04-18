@@ -22,13 +22,13 @@ try:
 except ImportError:
     from time import time as _time
 
-have_greenlet = True
+have_gevent = True
 try:
     import greenlet
     import gevent.coros
     import gevent.thread
 except ImportError:
-    have_greenlet = False
+    have_gevent = False
 
 
 # Do we have to work around http://bugs.python.org/issue1868?
@@ -264,7 +264,7 @@ class MaxWaitersBoundedSemaphoreThread(MaxWaitersBoundedSemaphore):
             self, BoundedSemaphore, value, max_waiters)
 
 
-if have_greenlet:
+if have_gevent:
     class MaxWaitersBoundedSemaphoreGevent(MaxWaitersBoundedSemaphore):
         def __init__(self, value=1, max_waiters=1):
             MaxWaitersBoundedSemaphore.__init__(
