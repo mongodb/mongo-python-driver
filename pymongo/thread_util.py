@@ -269,3 +269,18 @@ if have_gevent:
         def __init__(self, value=1, max_waiters=1):
             MaxWaitersBoundedSemaphore.__init__(
                 self, gevent.coros.BoundedSemaphore, value, max_waiters)
+
+
+def create_semaphore(max_size, max_waiters, use_greenlets):
+    if max_size is None:
+        return DummySemaphore()
+    elif use_greenlets:
+        if max_waiters is None:
+            return gevent.coros.BoundedSemaphore(max_size)
+        else:
+            return MaxWaitersBoundedSemaphoreGevent(max_size, max_waiters)
+    else:
+        if max_waiters is None:
+            return BoundedSemaphore(max_size)
+        else:
+            return MaxWaitersBoundedSemaphoreThread(max_size, max_waiters)

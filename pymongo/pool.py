@@ -184,24 +184,8 @@ class Pool:
         else:
             max_waiters = self.max_size * self.wait_queue_multiple
 
-        if self.max_size is None:
-            self._socket_semaphore = thread_util.DummySemaphore()
-        elif self.use_greenlets:
-            if max_waiters is None:
-                self._socket_semaphore = gevent.coros.BoundedSemaphore(
-                    self.max_size)
-            else:
-                self._socket_semaphore = (
-                    thread_util.MaxWaitersBoundedSemaphoreGevent(
-                    self.max_size, max_waiters))
-        else:
-            if max_waiters is None:
-                self._socket_semaphore = thread_util.BoundedSemaphore(
-                    self.max_size)
-            else:
-                self._socket_semaphore = (
-                    thread_util.MaxWaitersBoundedSemaphoreThread(
-                        self.max_size, max_waiters))
+        self._socket_semaphore = thread_util.create_semaphore(
+            self.max_size, max_waiters, self.use_greenlets)
 
     def reset(self):
         # Ignore this race condition -- if many threads are resetting at once,
