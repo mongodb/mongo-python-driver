@@ -47,7 +47,7 @@ if sys.version_info[0] >= 3:
 try:
     import gevent
     from gevent import Greenlet, monkey, hub
-    import gevent.event, gevent.thread
+    import gevent.coros, gevent.event
     has_gevent = True
 except ImportError:
     has_gevent = False
@@ -211,7 +211,7 @@ class CreateAndReleaseSocket(MongoThread):
                 self.lock = threading.Lock()
                 self.ready = threading.Event()
 
-    def __init__(self, ut, client, start_request, end_request, rendevous=None):
+    def __init__(self, ut, client, start_request, end_request, rendevous):
         super(CreateAndReleaseSocket, self).__init__(ut)
         self.client = client
         self.start_request = start_request
@@ -231,18 +231,49 @@ class CreateAndReleaseSocket(MongoThread):
 
         # Don't finish until all threads reach this point
         r = self.rendevous
-        if r is not None:
-            r.lock.acquire()
-            r.nthreads_run += 1
-            if r.nthreads_run == r.nthreads:
-                # Everyone's here, let them finish
-                r.ready.set()
-                r.lock.release()
-            else:
-                r.lock.release()
-                r.ready.wait(2) # Wait two seconds
-                assert r.ready.isSet(), "Rendezvous timed out"
+        r.lock.acquire()
+        r.nthreads_run += 1
+        if r.nthreads_run == r.nthreads:
+            # Everyone's here, let them finish
+            r.ready.set()
+            r.lock.release()
+        else:
+            r.lock.release()
+            r.ready.wait(2) # Wait two seconds
+            assert r.ready.isSet(), "Rendezvous timed out"
 
+        for i in range(self.end_request):
+            self.client.end_request()
+
+
+class CreateAndReleaseSocketNoRendezvous(MongoThread):
+    class Rendezvous(object):
+        def __init__(self, nthreads, use_greenlets):
+            self.nthreads = nthreads
+            self.nthreads_run = 0
+            if use_greenlets:
+                self.lock = gevent.coros.RLock()
+                self.ready = gevent.event.Event()
+            else:
+                self.lock = threading.Lock()
+                self.ready = threading.Event()
+
+    def __init__(self, ut, client, start_request, end_request):
+        super(CreateAndReleaseSocketNoRendezvous, self).__init__(ut)
+        self.client = client
+        self.start_request = start_request
+        self.end_request = end_request
+
+    def run_mongo_thread(self):
+        # Do an operation that requires a socket.
+        # test_max_pool_size uses this to spin up lots of threads requiring
+        # lots of simultaneous connections, to ensure that Pool obeys its
+        # max_size configuration and closes extra sockets as they're returned.
+        for i in range(self.start_request):
+            self.client.start_request()
+
+        # Use a socket
+        self.client[DB].test.find_one()
         for i in range(self.end_request):
             self.client.end_request()
 
@@ -675,8 +706,7 @@ class _TestMaxPoolSize(_TestPoolingBase):
     with greenlets.
     """
     def _test_max_pool_size(
-        self, start_request, end_request, max_pool_size=4, nthreads=10,
-        use_rendezvous=True):
+            self, start_request, end_request, max_pool_size=4, nthreads=10):
         """Start `nthreads` threads. Each calls start_request `start_request`
         times, then find_one and waits at a barrier; once all reach the barrier
         each calls end_request `end_request` times. The test asserts that the
@@ -700,12 +730,8 @@ class _TestMaxPoolSize(_TestPoolingBase):
         # Gevent 0.13.6 bug on Mac, Greenlet.join() hangs if more than
         # about 35 Greenlets share a MongoClient. Apparently fixed in
         # recent Gevent development.
-
-        if use_rendezvous:
-            rendezvous = CreateAndReleaseSocket.Rendezvous(
-                nthreads, self.use_greenlets)
-        else:
-            rendezvous = None
+        rendezvous = CreateAndReleaseSocket.Rendezvous(
+            nthreads, self.use_greenlets)
 
         threads = []
         for i in range(nthreads):
@@ -743,12 +769,12 @@ class _TestMaxPoolSize(_TestPoolingBase):
                     # Gevent 0.13 and less
                     the_hub.shutdown()
 
-            if use_rendezvous:
                 if start_request:
+                    # thread.join completes slightly *before* thread locals are
+                    # cleaned up.
+                    time.sleep(1)
                     # Trigger final cleanup in Python <= 2.7.0.
                     cx_pool._ident.get()
-                    time.sleep(0.1)
-                    self.assertEqual(10, len(cx_pool.sockets))
                     expected_idle = min(max_pool_size, nthreads)
                     message = (
                         '%d idle sockets (expected %d) and %d request sockets'
@@ -769,6 +795,58 @@ class _TestMaxPoolSize(_TestPoolingBase):
             self.assertEqual(max_pool_size, cx_pool._socket_semaphore.counter)
             self.assertEqual(0, len(cx_pool._tid_to_sock))
 
+    def _test_max_pool_size_no_rendezvous(self, start_request, end_request):
+        max_pool_size = 5
+        c = self.get_client(
+            max_pool_size=max_pool_size, auto_start_request=False)
+
+        # If you increase nthreads over about 35, note a
+        # Gevent 0.13.6 bug on Mac, Greenlet.join() hangs if more than
+        # about 35 Greenlets share a MongoClient. Apparently fixed in
+        # recent Gevent development.
+        nthreads = 30
+
+        threads = []
+        for i in range(nthreads):
+            t = CreateAndReleaseSocketNoRendezvous(
+                self, c, start_request, end_request)
+            threads.append(t)
+
+        for t in threads:
+            t.start()
+
+        for t in threads:
+            t.join()
+
+        for t in threads:
+            self.assertTrue(t.passed)
+
+        # Socket-reclamation doesn't work in Jython
+        if not sys.platform.startswith('java'):
+            cx_pool = c._MongoClient__pool
+
+            # Socket-reclamation depends on timely garbage-collection
+            if 'PyPy' in sys.version:
+                gc.collect()
+
+            if self.use_greenlets:
+                # Wait for Greenlet.link() callbacks to execute
+                the_hub = hub.get_hub()
+                if hasattr(the_hub, 'join'):
+                    # Gevent 1.0
+                    the_hub.join()
+                else:
+                    # Gevent 0.13 and less
+                    the_hub.shutdown()
+
+            cx_pool._ident.get()
+            # Adding a time.sleep here allows Python 2.7+ to reclaim the
+            # sockets. Without it the test usually succeeds, but sometimes
+            # fails due to a socket not being reclaimed in time.
+            time.sleep(0.1)
+            self.assertTrue(len(cx_pool.sockets) >= 1)
+            self.assertEqual(max_pool_size, cx_pool._socket_semaphore.counter)
+
     def test_max_pool_size(self):
         self._test_max_pool_size(0, 0)
 
@@ -786,8 +864,8 @@ class _TestMaxPoolSize(_TestPoolingBase):
 
     def test_max_pool_size_with_redundant_request_no_rendezvous(self):
         try:
-            self._test_max_pool_size(2, 1, False)
-            self._test_max_pool_size(20, 1, False)
+            self._test_max_pool_size_no_rendezvous(2, 1)
+            self._test_max_pool_size_no_rendezvous(20, 1)
         except AssertionError:
             if sys.version_info[0] == 2 and sys.version_info[1] < 7:
                 # Python < 2.7 has a threadlocal bug which sometimes leaks
@@ -809,7 +887,7 @@ class _TestMaxPoolSize(_TestPoolingBase):
 
     def test_max_pool_size_with_leaked_request_no_rendezvous(self):
         try:
-            self._test_max_pool_size(1, 0, False)
+            self._test_max_pool_size(1, 0)
         except AssertionError:
             if sys.version_info[0] == 2 and sys.version_info[1] < 7:
                 # Python < 2.7 has a threadlocal bug which sometimes leaks
