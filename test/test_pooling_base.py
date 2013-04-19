@@ -200,6 +200,9 @@ class OneOp(MongoThread):
 
 
 class CreateAndReleaseSocket(MongoThread):
+    """A thread or greenlet that acquires a socket, waits for all other threads
+    to reach rendezvous point, then terminates.
+    """
     class Rendezvous(object):
         def __init__(self, nthreads, use_greenlets):
             self.nthreads = nthreads
@@ -239,7 +242,7 @@ class CreateAndReleaseSocket(MongoThread):
             r.lock.release()
         else:
             r.lock.release()
-            r.ready.wait(2) # Wait two seconds
+            r.ready.wait(2)  # Wait two seconds
             assert r.ready.isSet(), "Rendezvous timed out"
 
         for i in range(self.end_request):
@@ -247,6 +250,9 @@ class CreateAndReleaseSocket(MongoThread):
 
 
 class CreateAndReleaseSocketNoRendezvous(MongoThread):
+    """A thread or greenlet that acquires a socket and terminates without
+    waiting for other threads to reach rendezvous point.
+    """
     class Rendezvous(object):
         def __init__(self, nthreads, use_greenlets):
             self.nthreads = nthreads
@@ -786,9 +792,9 @@ class _TestMaxPoolSize(_TestPoolingBase):
                         expected_idle, len(cx_pool.sockets), message)
                 else:
                     # Without calling start_request(), threads can safely share
-                    # sockets; the number running concurrently, and hence the number
-                    # of sockets needed, is between 1 and 10, depending on thread-
-                    # scheduling.
+                    # sockets; the number running concurrently, and hence the
+                    # number of sockets needed, is between 1 and 10, depending
+                    # on thread-scheduling.
                     self.assertTrue(len(cx_pool.sockets) >= 1)
 
             time.sleep(0.1)
@@ -804,6 +810,10 @@ class _TestMaxPoolSize(_TestPoolingBase):
         # Gevent 0.13.6 bug on Mac, Greenlet.join() hangs if more than
         # about 35 Greenlets share a MongoClient. Apparently fixed in
         # recent Gevent development.
+
+        # On the other hand, nthreads had better be much larger than
+        # max_pool_size to ensure that max_pool_size sockets are actually
+        # required at some point in this test's execution.
         nthreads = 30
 
         threads = []
@@ -840,10 +850,12 @@ class _TestMaxPoolSize(_TestPoolingBase):
                     the_hub.shutdown()
 
             cx_pool._ident.get()
-            # Adding a time.sleep here allows Python 2.7+ to reclaim the
-            # sockets. Without it the test usually succeeds, but sometimes
-            # fails due to a socket not being reclaimed in time.
-            time.sleep(0.1)
+            # thread.join completes slightly *before* thread locals are
+            # cleaned up, so wait up to 5 seconds for them.
+            start = time.time()
+            while len(cx_pool.sockets) < 1 and (time.time() - start) < 5:
+                time.sleep(0.1)
+
             self.assertTrue(len(cx_pool.sockets) >= 1)
             self.assertEqual(max_pool_size, cx_pool._socket_semaphore.counter)
 
