@@ -146,10 +146,23 @@ class Counter(object):
         self._counters = {}
 
     def inc(self):
-        tid = self.ident.get()
-        self._counters.setdefault(tid, 0)
-        self._counters[tid] += 1
-        return self._counters[tid]
+        # Copy these references so on_thread_died needn't close over self
+        ident = self.ident
+        _counters = self._counters
+
+        tid = ident.get()
+        _counters.setdefault(tid, 0)
+        _counters[tid] += 1
+
+        if not ident.watching():
+            # Before the tid is possibly reused, remove it from _counters
+            def on_thread_died(ref):
+                ident.unwatch(tid)
+                _counters.pop(tid, None)
+
+            ident.watch(on_thread_died)
+
+        return _counters[tid]
 
     def dec(self):
         tid = self.ident.get()
