@@ -43,9 +43,7 @@ class Ident(object):
         """Is the current thread or greenlet being watched for death?"""
         return self.get() in self._refs
 
-    def unwatch(self, tid=None):
-        if tid is None:
-            tid = self.get()
+    def unwatch(self, tid):
         self._refs.pop(tid, None)
 
     def get(self):

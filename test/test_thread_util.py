@@ -80,7 +80,7 @@ class TestIdent(unittest.TestCase):
 
             def after_rendezvous(self):
                 Watched.after_rendezvous(self)
-                self._my_ident.unwatch()
+                self._my_ident.unwatch(self.my_id)
                 assert not self._my_ident.watching()
 
         if use_greenlets:

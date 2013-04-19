@@ -467,7 +467,7 @@ class Pool:
 
         if sock_info == NO_REQUEST:
             # Ending a request
-            ident.unwatch()
+            ident.unwatch(tid)
             self._tid_to_sock.pop(tid, None)
         else:
             self._tid_to_sock[tid] = sock_info
