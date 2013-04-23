@@ -128,7 +128,7 @@ class TestIdent(unittest.TestCase):
         del t_watched
         del t_unwatched
 
-        # Accessing the thread-local triggers cleanup in Python <= 2.6
+        # Trigger final cleanup in Python <= 2.7.0.
         # http://bugs.python.org/issue1868
         ident.get()
         self.assertEqual(3, len(ids))

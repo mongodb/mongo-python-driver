@@ -15,6 +15,7 @@
 """Utilities to abstract the differences between threads and greenlets."""
 
 import threading
+import sys
 import weakref
 
 have_greenlet = True
@@ -22,6 +23,10 @@ try:
     import greenlet
 except ImportError:
     have_greenlet = False
+
+
+# Do we have to work around http://bugs.python.org/issue1868?
+issue1868 = (sys.version_info[:3] <= (2, 7, 1))
 
 
 class Ident(object):
@@ -47,23 +52,42 @@ class Ident(object):
 
 
 class ThreadIdent(Ident):
+    class _DummyLock(object):
+        def acquire(self):
+            pass
+
+        def release(self):
+            pass
+
     def __init__(self):
         super(ThreadIdent, self).__init__()
         self._local = threading.local()
+        if issue1868:
+            self._lock = threading.Lock()
+        else:
+            self._lock = ThreadIdent._DummyLock()
 
     # We watch for thread-death using a weakref callback to a thread local.
     # Weakrefs are permitted on subclasses of object but not object() itself.
     class ThreadVigil(object):
         pass
 
+    def _make_vigil(self):
+        # Assigning to a threadlocal isn't thread-safe in Python <= 2.7.0
+        self._lock.acquire()
+        vigil = getattr(self._local, 'vigil', None)
+        if not vigil:
+            self._local.vigil = vigil = ThreadIdent.ThreadVigil()
+
+        self._lock.release()
+        return vigil
+
     def get(self):
-        if not hasattr(self._local, 'vigil'):
-            self._local.vigil = ThreadIdent.ThreadVigil()
-        return id(self._local.vigil)
+        return id(self._make_vigil())
 
     def watch(self, callback):
-        tid = self.get()
-        self._refs[tid] = weakref.ref(self._local.vigil, callback)
+        vigil = self._make_vigil()
+        self._refs[id(vigil)] = weakref.ref(vigil, callback)
 
 
 class GreenletIdent(Ident):
