@@ -324,8 +324,6 @@ class Pool:
         return bool(self._request_counter.get())
 
     def end_request(self):
-        tid = self._ident.get()
-
         # Check if start_request has ever been called in this thread / greenlet
         count = self._request_counter.get()
         if count:
