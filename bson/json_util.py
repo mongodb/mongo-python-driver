@@ -141,9 +141,9 @@ def object_hook(dct):
         return EPOCH_AWARE + datetime.timedelta(seconds=secs)
     if "$regex" in dct:
         flags = 0
-        if "i" in dct["$options"]:
+        if "i" in dct.get("$options", ""):
             flags |= re.IGNORECASE
-        if "m" in dct["$options"]:
+        if "m" in dct.get("$options", ""):
             flags |= re.MULTILINE
         return re.compile(dct["$regex"], flags)
     if "$minKey" in dct:
