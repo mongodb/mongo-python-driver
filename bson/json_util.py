@@ -95,7 +95,7 @@ from bson.timestamp import Timestamp
 from bson.py3compat import PY3, binary_type, string_types
 
 
-RE_OPT_TABLE = {
+_RE_OPT_TABLE = {
     "i": re.I,
     "l": re.L,
     "m": re.M,
@@ -153,7 +153,7 @@ def object_hook(dct):
         flags = 0
         # PyMongo always adds $options but some other tools may not.
         for opt in dct.get("$options", ""):
-            flags |= RE_OPT_TABLE.get(opt, 0)
+            flags |= _RE_OPT_TABLE.get(opt, 0)
         return re.compile(dct["$regex"], flags)
     if "$minKey" in dct:
         return MinKey()
