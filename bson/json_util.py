@@ -95,6 +95,16 @@ from bson.timestamp import Timestamp
 from bson.py3compat import PY3, binary_type, string_types
 
 
+RE_OPT_TABLE = {
+    "i": re.I,
+    "l": re.L,
+    "m": re.M,
+    "s": re.S,
+    "u": re.U,
+    "x": re.X,
+}
+
+
 def dumps(obj, *args, **kwargs):
     """Helper function that wraps :class:`json.dumps`.
 
@@ -141,10 +151,9 @@ def object_hook(dct):
         return EPOCH_AWARE + datetime.timedelta(seconds=secs)
     if "$regex" in dct:
         flags = 0
-        if "i" in dct["$options"]:
-            flags |= re.IGNORECASE
-        if "m" in dct["$options"]:
-            flags |= re.MULTILINE
+        # PyMongo always adds $options but some other tools may not.
+        for opt in dct.get("$options", ""):
+            flags |= RE_OPT_TABLE.get(opt, 0)
         return re.compile(dct["$regex"], flags)
     if "$minKey" in dct:
         return MinKey()
@@ -180,8 +189,16 @@ def default(obj):
         flags = ""
         if obj.flags & re.IGNORECASE:
             flags += "i"
+        if obj.flags & re.LOCALE:
+            flags += "l"
         if obj.flags & re.MULTILINE:
             flags += "m"
+        if obj.flags & re.DOTALL:
+            flags += "s"
+        if obj.flags & re.UNICODE:
+            flags += "u"
+        if obj.flags & re.VERBOSE:
+            flags += "x"
         return {"$regex": obj.pattern,
                 "$options": flags}
     if isinstance(obj, MinKey):
