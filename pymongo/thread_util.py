@@ -26,7 +26,7 @@ except ImportError:
 
 
 # Do we have to work around http://bugs.python.org/issue1868?
-issue1868 = (sys.version_info[:3] <= (2, 7, 1))
+issue1868 = (sys.version_info[:3] <= (2, 7, 0))
 
 
 class Ident(object):
