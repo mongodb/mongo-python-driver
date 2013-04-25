@@ -27,8 +27,7 @@ import ha_tools
 from ha_tools import use_greenlets
 
 
-from pymongo import (MongoReplicaSetClient,
-                     ReadPreference)
+from pymongo import ReadPreference
 from pymongo.mongo_replica_set_client import (
     Member, Monitor, MongoReplicaSetClient)
 from pymongo.mongo_client import _partition_node
@@ -132,7 +131,7 @@ class TestDirectConnection(unittest.TestCase):
             self.assertEqual(arbiter_host, client.host)
             self.assertEqual(arbiter_port, client.port)
             self.assertFalse(client.is_primary)
-            
+
             # See explanation above
             try:
                 client.pymongo_test.test.insert({}, w=0)
@@ -142,7 +141,7 @@ class TestDirectConnection(unittest.TestCase):
                 self.fail(
                     'Unacknowledged insert into arbiter client %s should'
                     'have raised exception' % (client,))
-        
+
     def tearDown(self):
         self.c.close()
         ha_tools.kill_all_members()
@@ -849,14 +848,14 @@ class TestAlive(unittest.TestCase):
             self.assertTrue(primary_cx.alive())
             self.assertTrue(secondary_cx.alive())
             self.assertTrue(rsc.alive())
-    
+
             ha_tools.kill_primary()
             time.sleep(0.5)
 
             self.assertFalse(primary_cx.alive())
             self.assertTrue(secondary_cx.alive())
             self.assertFalse(rsc.alive())
-            
+
             ha_tools.kill_members([secondary], 2)
             time.sleep(0.5)
 
@@ -868,8 +867,8 @@ class TestAlive(unittest.TestCase):
 
     def tearDown(self):
         ha_tools.kill_all_members()
-        
-        
+
+
 class TestMongosHighAvailability(unittest.TestCase):
     def setUp(self):
         seed_list = ha_tools.create_sharded_cluster()
