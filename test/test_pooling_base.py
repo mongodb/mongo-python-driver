@@ -240,7 +240,7 @@ class CreateAndReleaseSocket(MongoThread):
                 r.lock.release()
             else:
                 r.lock.release()
-                r.ready.wait(2) # Wait two seconds
+                r.ready.wait(timeout=60)
                 assert r.ready.isSet(), "Rendezvous timed out"
 
         for i in range(self.end_request):
@@ -653,10 +653,10 @@ class _TestPooling(_TestPoolingBase):
             # Access the thread local from the main thread to trigger the
             # ThreadVigil's delete callback, returning the request socket to
             # the pool.
-            # In Python 2.6 and lesser, a dead thread's locals are deleted
+            # In Python 2.7.0 and lesser, a dead thread's locals are deleted
             # and those locals' weakref callbacks are fired only when another
-            # thread accesses the locals and finds the thread state is stale.
-            # This is more or less a bug in Python <= 2.6. Accessing the thread
+            # thread accesses the locals and finds the thread state is stale,
+            # see http://bugs.python.org/issue1868. Accessing the thread
             # local from the main thread is a necessary part of this test, and
             # realistic: in a multithreaded web server a new thread will access
             # Pool._ident._local soon after an old thread has died.
@@ -665,6 +665,7 @@ class _TestPooling(_TestPoolingBase):
         # Pool reclaimed the socket
         self.assertEqual(1, len(cx_pool.sockets))
         self.assertEqual(the_sock[0], id(one(cx_pool.sockets).sock))
+        self.assertEqual(0, len(cx_pool._tid_to_sock))
 
 
 class _TestMaxPoolSize(_TestPoolingBase):
@@ -672,13 +673,27 @@ class _TestMaxPoolSize(_TestPoolingBase):
     no matter how start/end_request are called. To be run both with threads and
     with greenlets.
     """
-    def _test_max_pool_size(self, start_request, end_request, use_rendezvous=True):
-        c = self.get_client(max_pool_size=10, auto_start_request=False)
-        # If you increase nthreads over about 35, note a
-        # Gevent 0.13.6 bug on Mac, Greenlet.join() hangs if more than
-        # about 35 Greenlets share a MongoClient. Apparently fixed in
-        # recent Gevent development.
-        nthreads = 10
+    def _test_max_pool_size(
+        self, start_request, end_request, max_pool_size=4, nthreads=10,
+        use_rendezvous=True):
+        """Start `nthreads` threads. Each calls start_request `start_request`
+        times, then find_one and waits at a barrier; once all reach the barrier
+        each calls end_request `end_request` times. The test asserts that the
+        pool ends with min(max_pool_size, nthreads) sockets or, if
+        start_request wasn't called, at least one socket.
+
+        This tests both max_pool_size enforcement and that leaked request
+        sockets are eventually returned to the pool when their threads end.
+
+        You may need to increase ulimit -n on Mac.
+
+        If you increase nthreads over about 35, note a
+        Gevent 0.13.6 bug on Mac: Greenlet.join() hangs if more than
+        about 35 Greenlets share a MongoClient. Apparently fixed in
+        recent Gevent development.
+        """
+        c = self.get_client(
+            max_pool_size=max_pool_size, auto_start_request=False)
 
         if use_rendezvous:
             rendezvous = CreateAndReleaseSocket.Rendezvous(
@@ -721,14 +736,23 @@ class _TestMaxPoolSize(_TestPoolingBase):
 
             if use_rendezvous:
                 if start_request:
+                    # Trigger final cleanup in Python <= 2.7.0.
                     cx_pool._ident.get()
-                    time.sleep(0.1)
-                    self.assertEqual(10, len(cx_pool.sockets))
+
+                    expected_idle = min(max_pool_size, nthreads)
+                    message = (
+                        '%d idle sockets (expected %d) and %d request sockets'
+                        ' (expected 0)' % (
+                            len(cx_pool.sockets), expected_idle,
+                            len(cx_pool._tid_to_sock)))
+
+                    self.assertEqual(
+                        expected_idle, len(cx_pool.sockets), message)
                 else:
                     # Without calling start_request(), threads can safely share
                     # sockets; the number running concurrently, and hence the number
-                    # of sockets needed, is between 1 and 10, depending on thread-
-                    # scheduling.
+                    # of sockets needed, is between 1 and
+                    # min(max_pool_size, nthreads), depending on thread-scheduling.
                     self.assertTrue(len(cx_pool.sockets) >= 1)
             else:
                 cx_pool._ident.get()
@@ -736,8 +760,8 @@ class _TestMaxPoolSize(_TestPoolingBase):
                 # sockets. Without it the test usually succeeds, but sometimes
                 # fails due to a socket not being reclaimed in time.
                 time.sleep(0.1)
-                self.assertTrue(len(cx_pool.sockets) >= 1)
                 self.assertEqual(10, cx_pool._socket_semaphore.counter)
+                self.assertEqual(0, len(cx_pool._tid_to_sock))
 
     def test_max_pool_size(self):
         self._test_max_pool_size(0, 0)
@@ -750,12 +774,14 @@ class _TestMaxPoolSize(_TestPoolingBase):
 
     def test_max_pool_size_with_redundant_request(self):
         self._test_max_pool_size(2, 1)
+
+    def test_max_pool_size_with_redundant_request2(self):
         self._test_max_pool_size(20, 1)
 
     def test_max_pool_size_with_redundant_request_no_rendezvous(self):
         try:
-            self._test_max_pool_size(2, 1, False)
-            self._test_max_pool_size(20, 1, False)
+            self._test_max_pool_size(2, 1, use_rendezvous=False)
+            self._test_max_pool_size(20, 1, use_rendezvous=False)
         except AssertionError:
             if sys.version_info[0] == 2 and sys.version_info[1] < 7:
                 # Python < 2.7 has a threadlocal bug which sometimes leaks
@@ -777,7 +803,7 @@ class _TestMaxPoolSize(_TestPoolingBase):
 
     def test_max_pool_size_with_leaked_request_no_rendezvous(self):
         try:
-            self._test_max_pool_size(1, 0, False)
+            self._test_max_pool_size(1, 0, use_rendezvous=False)
         except AssertionError:
             if sys.version_info[0] == 2 and sys.version_info[1] < 7:
                 # Python < 2.7 has a threadlocal bug which sometimes leaks
@@ -791,6 +817,11 @@ class _TestMaxPoolSize(_TestPoolingBase):
                                ' breaks this test')
             else:
                 raise
+
+    def test_max_pool_size_with_leaked_request_massive(self):
+        nthreads = 100
+        self._test_max_pool_size(
+            2, 1, max_pool_size=2 * nthreads, nthreads=nthreads)
 
     def test_max_pool_size_with_end_request_only(self):
         # Call end_request() but not start_request()
