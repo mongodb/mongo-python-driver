@@ -211,12 +211,13 @@ class CreateAndReleaseSocket(MongoThread):
                 self.lock = threading.Lock()
                 self.ready = threading.Event()
 
-    def __init__(self, ut, client, start_request, end_request, rendevous=None):
+    def __init__(self, ut, client, start_request, end_request, rendevous=None, max_pool_size=None):
         super(CreateAndReleaseSocket, self).__init__(ut)
         self.client = client
         self.start_request = start_request
         self.end_request = end_request
         self.rendevous = rendevous
+        self.max_pool_size = max_pool_size
 
     def run_mongo_thread(self):
         # Do an operation that requires a socket.
@@ -234,7 +235,12 @@ class CreateAndReleaseSocket(MongoThread):
         if r is not None:
             r.lock.acquire()
             r.nthreads_run += 1
-            if r.nthreads_run == r.nthreads:
+            if (r.nthreads_run == r.nthreads or
+                # when max_pool_size < nthreads, we can only wait on
+                # max_pool_size threads at once before letting sockets
+                # get returned to the pool or we'll block.
+                (self.max_pool_size and
+                 r.nthreads_run % min(r.nthreads, self.max_pool_size) == 0)):
                 # Everyone's here, let them finish
                 r.ready.set()
                 r.lock.release()
@@ -704,7 +710,7 @@ class _TestMaxPoolSize(_TestPoolingBase):
         threads = []
         for i in range(nthreads):
             t = CreateAndReleaseSocket(
-                self, c, start_request, end_request, rendezvous)
+                self, c, start_request, end_request, rendezvous, max_pool_size)
             threads.append(t)
 
         for t in threads:
@@ -734,12 +740,12 @@ class _TestMaxPoolSize(_TestPoolingBase):
                     # Gevent 0.13 and less
                     the_hub.shutdown()
 
+            expected_idle = min(max_pool_size, nthreads)
             if use_rendezvous:
                 if start_request:
                     # Trigger final cleanup in Python <= 2.7.0.
                     cx_pool._ident.get()
 
-                    expected_idle = min(max_pool_size, nthreads)
                     message = (
                         '%d idle sockets (expected %d) and %d request sockets'
                         ' (expected 0)' % (
@@ -760,7 +766,8 @@ class _TestMaxPoolSize(_TestPoolingBase):
                 # sockets. Without it the test usually succeeds, but sometimes
                 # fails due to a socket not being reclaimed in time.
                 time.sleep(0.1)
-                self.assertEqual(10, cx_pool._socket_semaphore.counter)
+                self.assertEqual(expected_idle,
+                                 cx_pool._socket_semaphore.counter)
                 self.assertEqual(0, len(cx_pool._tid_to_sock))
 
     def test_max_pool_size(self):
