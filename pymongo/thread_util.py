@@ -73,13 +73,17 @@ class ThreadIdent(Ident):
         pass
 
     def _make_vigil(self):
-        # Assigning to a threadlocal isn't thread-safe in Python <= 2.7.0
+        # Threadlocals in Python <= 2.7.0 have race conditions when setting
+        # attributes and possibly when getting them, too, leading to weakref
+        # callbacks not getting called later.
         self._lock.acquire()
-        vigil = getattr(self._local, 'vigil', None)
-        if not vigil:
-            self._local.vigil = vigil = ThreadIdent.ThreadVigil()
+        try:
+            vigil = getattr(self._local, 'vigil', None)
+            if not vigil:
+                self._local.vigil = vigil = ThreadIdent.ThreadVigil()
+        finally:
+            self._lock.release()
 
-        self._lock.release()
         return vigil
 
     def get(self):
