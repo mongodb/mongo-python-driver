@@ -1047,7 +1047,7 @@ class TestCollection(unittest.TestCase):
             None, db.test.update({"_id": id}, {"$inc": {"x": 1}}, w=0))
 
         if v19:
-            self.assertTrue(db.error()["err"].startswith("E11000"))
+            self.assertTrue("E11000" in db.error()["err"])
         elif v113minus:
             self.assertTrue(db.error()["err"].startswith("E11001"))
         else:
