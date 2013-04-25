@@ -786,22 +786,8 @@ class _TestMaxPoolSize(_TestPoolingBase):
         self._test_max_pool_size(20, 1)
 
     def test_max_pool_size_with_redundant_request_no_rendezvous(self):
-        try:
-            self._test_max_pool_size(2, 1, use_rendezvous=False)
-            self._test_max_pool_size(20, 1, use_rendezvous=False)
-        except AssertionError:
-            if sys.version_info[0] == 2 and sys.version_info[1] < 7:
-                # Python < 2.7 has a threadlocal bug which sometimes leaks
-                # sockets due to the threadlocal being accessed too close
-                # to thread death, causing on_thread_died not to get called.
-                #
-                # This is fixable with a monitor thread which checks for stale
-                # request sockets, but this situation is hopefully unlikely to
-                # happen in the real world.
-                raise SkipTest('Python < 2.7 threadlocal race condition usually'
-                               ' breaks this test')
-            else:
-                raise
+        self._test_max_pool_size(2, 1, use_rendezvous=False)
+        self._test_max_pool_size(20, 1, use_rendezvous=False)
 
     def test_max_pool_size_with_leaked_request(self):
         # Call start_request() but not end_request() -- when threads die, they
@@ -809,21 +795,7 @@ class _TestMaxPoolSize(_TestPoolingBase):
         self._test_max_pool_size(1, 0)
 
     def test_max_pool_size_with_leaked_request_no_rendezvous(self):
-        try:
-            self._test_max_pool_size(1, 0, use_rendezvous=False)
-        except AssertionError:
-            if sys.version_info[0] == 2 and sys.version_info[1] < 7:
-                # Python < 2.7 has a threadlocal bug which sometimes leaks
-                # sockets due to the threadlocal being accessed too close
-                # to thread death, causing on_thread_died not to get called.
-                #
-                # This is fixable with a monitor thread which checks for stale
-                # request sockets, but this situation is hopefully unlikely to
-                # happen in the real world.
-                raise SkipTest('Python < 2.7 threadlocal race condition usually'
-                               ' breaks this test')
-            else:
-                raise
+        self._test_max_pool_size(1, 0, use_rendezvous=False)
 
     def test_max_pool_size_with_leaked_request_massive(self):
         nthreads = 100
