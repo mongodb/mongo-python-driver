@@ -292,7 +292,12 @@ class _TestPoolingBase(object):
         return get_client(*args, **opts)
 
     def get_pool(self, *args, **kwargs):
-        kwargs['use_greenlets'] = self.use_greenlets
+        if self.use_greenlets:
+            from pymongo import thread_util_gevent
+            kwargs['thread_support_module'] = thread_util_gevent
+        else:
+            from pymongo import thread_util_threading
+            kwargs['thread_support_module'] = thread_util_threading
         return Pool(*args, **kwargs)
 
     def assert_no_request(self):
@@ -812,9 +817,10 @@ class _TestMaxOpenSockets(_TestPoolingBase):
     To be run both with threads and with greenlets.
     """
     def get_pool(self, conn_timeout, net_timeout, wait_queue_timeout):
+        from pymongo import thread_util_threading
         return pymongo.pool.Pool(('127.0.0.1', 27017),
                                  2, net_timeout, conn_timeout,
-                                 False, False,
+                                 False, thread_util_threading,
                                  wait_queue_timeout=wait_queue_timeout)
 
     def test_over_max_times_out(self):
@@ -871,9 +877,10 @@ class _TestWaitQueueMultiple(_TestPoolingBase):
     """
     def get_pool(self, conn_timeout, net_timeout, wait_queue_timeout,
                  wait_queue_multiple):
+        from pymongo import thread_util_threading
         return pymongo.pool.Pool(('127.0.0.1', 27017),
                                  2, net_timeout, conn_timeout,
-                                 False, False,
+                                 False, thread_util_threading,
                                  wait_queue_timeout=wait_queue_timeout,
                                  wait_queue_multiple=wait_queue_multiple)
 

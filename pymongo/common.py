@@ -203,6 +203,33 @@ def validate_auth_mechanism(option, value):
     return value
 
 
+def validate_thread_support_module(option, value):
+    # imports are here to avoid import errors for gevent/greenlet and to limit
+    # loaded dependencies
+    if value == 'threading':
+        import pymongo.thread_util_threading
+        return pymongo.thread_util_threading
+    if value == 'gevent':
+        try:
+            import gevent
+            import pymongo.thread_util_gevent
+        except ImportError:
+            raise ConfigurationError("The gevent module is not available. "
+                                     "Install the gevent package from PyPI.")
+        return pymongo.thread_util_gevent
+    for attr in ['BoundedSemaphore', 'MaxWaitersBoundedSemaphore',
+                 'ReplSetMonitor', 'local']:
+        assert hasattr(value, attr)
+        assert callable(getattr(value, attr))
+    try:
+        sem = value.BoundedSemaphore(1)
+        sem.acquire(timeout=1)
+    except TypeError:
+        raise ConfigurationError('BoundedSemaphore must have support for '
+                                 'timeout in acquire()')
+    return value
+
+
 # jounal is an alias for j,
 # wtimeoutms is an alias for wtimeout
 VALIDATORS = {
@@ -234,6 +261,7 @@ VALIDATORS = {
     'use_greenlets': validate_boolean,
     'authmechanism': validate_auth_mechanism,
     'authsource': validate_basestring,
+    'thread_support_module': validate_thread_support_module,
 }
 
 

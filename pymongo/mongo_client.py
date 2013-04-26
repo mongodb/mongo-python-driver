@@ -149,7 +149,14 @@ class MongoClient(common.BaseObject):
             read after an unacknowledged write. Defaults to ``False``
           - `use_greenlets`: If ``True``, :meth:`start_request()` will ensure
             that the current greenlet uses the same socket for all
-            operations until :meth:`end_request()`
+            operations until :meth:`end_request()` and the pool will use
+            greenlet-compatible synchronization primitives.
+            `use_greenlets` with :class:`MongoClient` requires
+            `Gevent <http://gevent.org/>`_ to be installed.
+            DEPRECATED in favor of `thread_support_module`.
+          - `thread_support_module`: ``threading``, ``gevent``, or a module
+            which implements the necessary interface. Defaults to ``threading``.
+            See :module: `~pymongo.thread_util_threading`.
 
           | **Write Concern options:**
 
@@ -261,6 +268,18 @@ class MongoClient(common.BaseObject):
         # SHOULD NOT BE USED BY DEVELOPERS EXTERNAL TO 10GEN.
         pool_class = kwargs.pop('_pool_class', pool.Pool)
 
+        if 'use_greenlets' in kwargs and 'thread_support_module' in kwargs:
+            raise ConfigurationError('Only one of use_greenlets and '
+                                     'thread_module_support may be used')
+
+        if kwargs.get('use_greenlets') is not None:
+            if kwargs['use_greenlets']:
+                kwargs['thread_support_module'] = 'gevent'
+            else:
+                kwargs['thread_support_module'] = 'threading'
+        else:
+            kwargs.setdefault('thread_support_module', 'threading')
+
         options = {}
         for option, value in kwargs.iteritems():
             option, value = common.validate(option, value)
@@ -313,14 +332,16 @@ class MongoClient(common.BaseObject):
                                      "2.6 you must install the ssl package "
                                      "from PyPI.")
 
-        self.__use_greenlets = options.get('use_greenlets', False)
+        self.__use_greenlets = options.get('use_greenlets', None)
+        # default is set above
+        self.__thread_support_module = options['thread_support_module']
         self.__pool = pool_class(
             None,
             self.__max_pool_size,
             self.__net_timeout,
             self.__conn_timeout,
             self.__use_ssl,
-            use_greenlets=self.__use_greenlets,
+            thread_support_module=self.__thread_support_module,
             ssl_keyfile=self.__ssl_keyfile,
             ssl_certfile=self.__ssl_certfile,
             ssl_cert_reqs=self.__ssl_cert_reqs,
@@ -525,9 +546,20 @@ class MongoClient(common.BaseObject):
         """Whether calling :meth:`start_request` assigns greenlet-local,
         rather than thread-local, sockets.
 
+        .. versionchanged:: 2.6+
+           Deprecated in favor of `thread_support_module`.
         .. versionadded:: 2.4.2
         """
         return self.__use_greenlets
+
+    @property
+    def thread_support_module(self):
+        """A module which implements the necessary interface.
+           See :module: `~pymongo.thread_util_threading`.
+
+        .. versionadded:: 2.6+
+        """
+        return self.__thread_support_module
 
     @property
     def nodes(self):
@@ -835,7 +867,7 @@ class MongoClient(common.BaseObject):
           - `manager_class`: cursor manager to use
 
         .. versionchanged:: 2.1+
-           Deprecated support for external cursor managers.
+           Deprectaed support for external cursor managers.
         """
         warnings.warn("Support for external cursor managers is deprecated "
                       "and will be removed in PyMongo 3.0.",

@@ -15,7 +15,6 @@
 """Test for master slave connections."""
 
 import datetime
-import os
 import sys
 import threading
 import time
@@ -36,6 +35,13 @@ from pymongo.collection import Collection
 from pymongo.master_slave_connection import MasterSlaveConnection
 from test import host, port, host2, port2, host3, port3
 from test.utils import TestRequestMixin
+
+try:
+    import greenlet
+    have_greenlet = True
+except ImportError:
+    have_greenlet = False
+
 
 class TestMasterSlaveConnection(unittest.TestCase, TestRequestMixin):
 
@@ -79,7 +85,7 @@ class TestMasterSlaveConnection(unittest.TestCase, TestRequestMixin):
     def test_use_greenlets(self):
         self.assertFalse(self.client.use_greenlets)
 
-        if thread_util.have_greenlet:
+        if have_greenlet:
             master = MongoClient(host, port, use_greenlets=True)
             slaves = [
                 MongoClient(slave.host, slave.port, use_greenlets=True)

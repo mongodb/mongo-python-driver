@@ -33,7 +33,6 @@ from bson.tz_util import utc
 from pymongo.mongo_client import MongoClient
 from pymongo.database import Database
 from pymongo.pool import SocketInfo
-from pymongo import thread_util
 from pymongo.errors import (ConfigurationError,
                             ConnectionFailure,
                             InvalidName,
@@ -45,6 +44,12 @@ from test.utils import (assertRaisesExactly,
                         server_is_master_with_slave,
                         server_started_with_auth,
                         TestRequestMixin)
+
+try:
+    import greenlet
+    have_greenlet = True
+except ImportError:
+    have_greenlet = False
 
 
 def get_client(*args, **kwargs):
@@ -111,7 +116,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
 
     def test_use_greenlets(self):
         self.assertFalse(MongoClient(host, port).use_greenlets)
-        if thread_util.have_greenlet:
+        if have_greenlet:
             self.assertTrue(
                 MongoClient(
                     host, port, use_greenlets=True).use_greenlets)

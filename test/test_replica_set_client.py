@@ -35,7 +35,7 @@ from bson.tz_util import utc
 from pymongo.mongo_client import MongoClient
 from pymongo.read_preferences import ReadPreference
 from pymongo.mongo_replica_set_client import MongoReplicaSetClient
-from pymongo.mongo_replica_set_client import _partition_node, have_gevent
+from pymongo.mongo_replica_set_client import _partition_node
 from pymongo.database import Database
 from pymongo.pool import SocketInfo
 from pymongo.errors import (AutoReconnect,
@@ -47,6 +47,13 @@ from test import version, port, pair
 from test.utils import (
     delay, assertReadFrom, assertReadFromAll, read_from_which_host,
     assertRaisesExactly, TestRequestMixin)
+
+have_gevent = False
+try:
+    import gevent
+    have_gevent = True
+except ImportError:
+    pass
 
 
 class TestReplicaSetClientAgainstStandalone(unittest.TestCase):
@@ -110,7 +117,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         client = self._get_client()
         self.assertEqual(repr(client),
                          "MongoReplicaSetClient(%r)" % (["%s:%d" % n
-                                                         for n in 
+                                                         for n in
                                                          self.hosts],))
 
     def test_properties(self):
