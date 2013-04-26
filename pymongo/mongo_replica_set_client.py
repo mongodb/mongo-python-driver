@@ -403,7 +403,7 @@ class MongoReplicaSetClient(common.BaseObject):
             Implies ``ssl=True``.
 
         .. versionchanged:: 2.5
-           Added addtional ssl options
+           Added additional ssl options
         .. versionadded:: 2.4
 
         .. _localThreshold: http://docs.mongodb.org/manual/reference/mongos/#cmdoption-mongos--localThreshold
