@@ -208,7 +208,7 @@ class MongoClient(common.BaseObject):
         .. mongodoc:: connections
 
         .. versionchanged:: 2.5
-           Added addtional ssl options
+           Added additional ssl options
         .. versionadded:: 2.4
         """
         if host is None:
