@@ -361,7 +361,7 @@ class MongoReplicaSetClient(common.BaseObject):
             Implies ``ssl=True``.
 
         .. versionchanged:: 2.5
-           Added addtional ssl options
+           Added additional ssl options
         .. versionadded:: 2.4
 
         .. _localThreshold: http://docs.mongodb.org/manual/reference/mongos/#cmdoption-mongos--localThreshold
@@ -1045,8 +1045,8 @@ class MongoReplicaSetClient(common.BaseObject):
             raise AutoReconnect(error_msg)
 
         if "code" in error:
-            if error["code"] in [11000, 11001, 12582]:
-                raise DuplicateKeyError(error["err"])
+            if error["code"] in (11000, 11001, 12582):
+                raise DuplicateKeyError(error["err"], error["code"])
             else:
                 raise OperationFailure(error["err"], error["code"])
         else:

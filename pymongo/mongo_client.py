@@ -223,7 +223,7 @@ class MongoClient(common.BaseObject):
         .. mongodoc:: connections
 
         .. versionchanged:: 2.5
-           Added addtional ssl options
+           Added additional ssl options
         .. versionadded:: 2.4
         """
         if host is None:
@@ -911,8 +911,8 @@ class MongoClient(common.BaseObject):
                     break
 
         if "code" in details:
-            if details["code"] in [11000, 11001, 12582]:
-                raise DuplicateKeyError(details["err"])
+            if details["code"] in (11000, 11001, 12582):
+                raise DuplicateKeyError(details["err"], details["code"])
             else:
                 raise OperationFailure(details["err"], details["code"])
         else:
