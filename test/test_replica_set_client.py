@@ -38,7 +38,7 @@ from pymongo.mongo_client import MongoClient
 from pymongo.read_preferences import ReadPreference
 from pymongo.mongo_replica_set_client import MongoReplicaSetClient
 from pymongo.mongo_replica_set_client import PRIMARY, SECONDARY, OTHER
-from pymongo.mongo_replica_set_client import _partition_node, have_gevent
+from pymongo.mongo_replica_set_client import _partition_node
 from pymongo.database import Database
 from pymongo.pool import SocketInfo
 from pymongo.errors import (AutoReconnect,
@@ -50,6 +50,13 @@ from test import version, port, pair
 from test.utils import (
     delay, assertReadFrom, assertReadFromAll, read_from_which_host,
     assertRaisesExactly, TestRequestMixin, one)
+
+have_gevent = False
+try:
+    import gevent
+    have_gevent = True
+except ImportError:
+    pass
 
 
 class TestReplicaSetClientAgainstStandalone(unittest.TestCase):

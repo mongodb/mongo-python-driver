@@ -76,7 +76,13 @@ class MasterSlaveConnection(BaseObject):
         self.__slaves = slaves
         self.__document_class = document_class
         self.__tz_aware = tz_aware
-        self.__request_counter = thread_util.Counter(master.use_greenlets)
+        if master.use_greenlets:
+            from pymongo import thread_util_gevent
+            thread_support_module = thread_util_gevent
+        else:
+            from pymongo import thread_util_threading
+            thread_support_module = thread_util_threading
+        self.__request_counter = thread_util.Counter(thread_support_module)
 
     @property
     def master(self):

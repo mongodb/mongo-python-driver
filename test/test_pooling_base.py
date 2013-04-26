@@ -347,7 +347,12 @@ class _TestPoolingBase(object):
         return get_client(*args, **opts)
 
     def get_pool(self, *args, **kwargs):
-        kwargs['use_greenlets'] = self.use_greenlets
+        if self.use_greenlets:
+            from pymongo import thread_util_gevent
+            kwargs['thread_support_module'] = thread_util_gevent
+        else:
+            from pymongo import thread_util_threading
+            kwargs['thread_support_module'] = thread_util_threading
         return Pool(*args, **kwargs)
 
     def sleep(self, seconds):

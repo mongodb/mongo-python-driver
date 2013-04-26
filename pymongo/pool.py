@@ -21,7 +21,7 @@ import weakref
 
 from pymongo import thread_util
 from pymongo.common import HAS_SSL
-from pymongo.errors import ConnectionFailure, ConfigurationError
+from pymongo.errors import ConnectionFailure
 
 try:
     from ssl import match_hostname
@@ -98,7 +98,7 @@ class SocketInfo(object):
 # http://bugs.jython.org/issue1057
 class Pool:
     def __init__(self, pair, max_size, net_timeout, conn_timeout, use_ssl,
-                 use_greenlets, ssl_keyfile=None, ssl_certfile=None,
+                 thread_support_module, ssl_keyfile=None, ssl_certfile=None,
                  ssl_cert_reqs=None, ssl_ca_certs=None,
                  wait_queue_timeout=None, wait_queue_multiple=None):
         """
@@ -111,9 +111,9 @@ class Pool:
           - `net_timeout`: timeout in seconds for operations on open connection
           - `conn_timeout`: timeout in seconds for establishing connection
           - `use_ssl`: bool, if True use an encrypted connection
-          - `use_greenlets`: bool, if True then start_request() assigns a
-              socket to the current greenlet - otherwise it is assigned to the
-              current thread
+          - `thread_support_module`: a module which implements the necessary
+            interface.
+            See :module: `~pymongo.thread_util_threading`.
           - `ssl_keyfile`: The private keyfile used to identify the local
             connection against mongod.  If included with the ``certfile` then
             only the ``ssl_certfile`` is needed.  Implies ``ssl=True``.
@@ -137,12 +137,7 @@ class Pool:
           - `wait_queue_multiple`: (integer) Multiplied by max_pool_size to give
             the number of threads allowed to wait for a socket at one time.
         """
-        if use_greenlets and not thread_util.have_gevent:
-            raise ConfigurationError(
-                "The Gevent module is not available. "
-                "Install the gevent package from PyPI."
-            )
-
+        self.thread_support_module = thread_support_module
         self.sockets = set()
         self.lock = threading.Lock()
 
@@ -165,13 +160,13 @@ class Pool:
         if HAS_SSL and use_ssl and not ssl_cert_reqs:
             self.ssl_cert_reqs = ssl.CERT_NONE
 
-        self._ident = thread_util.create_ident(use_greenlets)
+        self._ident = self.thread_support_module.Ident()
 
         # Map self._ident.get() -> request socket
         self._tid_to_sock = {}
 
         # Count the number of calls to start_request() per thread or greenlet
-        self._request_counter = thread_util.Counter(use_greenlets)
+        self._request_counter = thread_util.Counter(self.thread_support_module)
 
         if self.wait_queue_multiple is None:
             max_waiters = None
@@ -179,7 +174,7 @@ class Pool:
             max_waiters = self.max_size * self.wait_queue_multiple
 
         self._socket_semaphore = thread_util.create_semaphore(
-            self.max_size, max_waiters, use_greenlets)
+            self.max_size, max_waiters, self.thread_support_module)
 
     def reset(self):
         # Ignore this race condition -- if many threads are resetting at once,

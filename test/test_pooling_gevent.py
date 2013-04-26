@@ -39,7 +39,9 @@ class TestPoolingGeventSpecial(unittest.TestCase):
             import greenlet
             import gevent
         except ImportError:
-            raise SkipTest('Gevent not installed')
+            raise SkipTest('gevent not installed')
+
+        from pymongo import thread_util_gevent
 
         cx_pool = pool.Pool(
             pair=(host, port),
@@ -47,7 +49,7 @@ class TestPoolingGeventSpecial(unittest.TestCase):
             net_timeout=1000,
             conn_timeout=1000,
             use_ssl=False,
-            use_greenlets=True)
+            thread_support_module=thread_util_gevent)
 
         socks = []
 
@@ -73,7 +75,9 @@ class TestPoolingGeventSpecial(unittest.TestCase):
             import greenlet
             import gevent
         except ImportError:
-            raise SkipTest('Gevent not installed')
+            raise SkipTest('gevent not installed')
+
+        from pymongo import thread_util_threading, thread_util_gevent
 
         pool_args = dict(
             pair=(host,port),
@@ -90,7 +94,11 @@ class TestPoolingGeventSpecial(unittest.TestCase):
             (False, False, False),
         ]:
             pool_args_cp = pool_args.copy()
-            pool_args_cp['use_greenlets'] = use_greenlets
+            if use_greenlets:
+                pool_args_cp['thread_support_module'] = thread_util_gevent
+            else:
+                pool_args_cp['thread_support_module'] = thread_util_threading
+
             cx_pool = pool.Pool(**pool_args_cp)
 
             # Map: greenlet -> socket

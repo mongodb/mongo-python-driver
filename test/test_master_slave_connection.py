@@ -15,7 +15,6 @@
 """Test for master slave connections."""
 
 import datetime
-import os
 import sys
 import threading
 import time
@@ -26,7 +25,7 @@ from nose.plugins.skip import SkipTest
 
 from bson.son import SON
 from bson.tz_util import utc
-from pymongo import ReadPreference, thread_util
+from pymongo import ReadPreference, thread_util_threading
 from pymongo.errors import ConnectionFailure, InvalidName
 from pymongo.errors import CollectionInvalid, OperationFailure
 from pymongo.errors import AutoReconnect
@@ -36,6 +35,13 @@ from pymongo.collection import Collection
 from pymongo.master_slave_connection import MasterSlaveConnection
 from test import host, port, host2, port2, host3, port3
 from test.utils import TestRequestMixin
+
+try:
+    import gevent
+    have_gevent = True
+except ImportError:
+    have_gevent = False
+
 
 class TestMasterSlaveConnection(unittest.TestCase, TestRequestMixin):
 
@@ -78,15 +84,32 @@ class TestMasterSlaveConnection(unittest.TestCase, TestRequestMixin):
 
     def test_use_greenlets(self):
         self.assertFalse(self.client.use_greenlets)
-
-        if thread_util.have_gevent:
+        if have_gevent:
             master = MongoClient(host, port, use_greenlets=True)
             slaves = [
                 MongoClient(slave.host, slave.port, use_greenlets=True)
-                for slave in self.slaves]
+                 for slave in self.slaves]
 
             self.assertTrue(
                 MasterSlaveConnection(master, slaves).use_greenlets)
+
+    def test_thread_support_module(self):
+        self.assertEqual(self.client._MongoClient__thread_support_module,
+                         thread_util_threading)
+
+        if have_gevent:
+            from pymongo import thread_util_gevent
+            master = MongoClient(host, port,
+                                 thread_support_module=thread_util_gevent)
+            slaves = [
+                MongoClient(slave.host, slave.port,
+                            thread_support_module=thread_util_gevent)
+                for slave in self.slaves]
+
+            self.assertEqual(
+                MasterSlaveConnection(
+                    master, slaves)._MongoClient__thread_support_module,
+                thread_util_gevent)
 
     def test_repr(self):
         self.assertEqual(repr(self.client),

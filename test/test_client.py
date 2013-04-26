@@ -30,10 +30,10 @@ from nose.plugins.skip import SkipTest
 
 from bson.son import SON
 from bson.tz_util import utc
+from pymongo import thread_util_threading
 from pymongo.mongo_client import MongoClient
 from pymongo.database import Database
 from pymongo.pool import SocketInfo
-from pymongo import thread_util
 from pymongo.errors import (ConfigurationError,
                             ConnectionFailure,
                             InvalidName,
@@ -46,6 +46,12 @@ from test.utils import (assertRaisesExactly,
                         server_is_master_with_slave,
                         server_started_with_auth,
                         TestRequestMixin)
+
+try:
+    import gevent
+    have_gevent = True
+except ImportError:
+    have_gevent = False
 
 
 def get_client(*args, **kwargs):
@@ -84,7 +90,6 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         c.is_primary
         c.is_mongos
         c.max_pool_size
-        c.use_greenlets
         c.nodes
         c.auto_start_request
         c.get_document_class()
@@ -143,10 +148,21 @@ class TestClient(unittest.TestCase, TestRequestMixin):
 
     def test_use_greenlets(self):
         self.assertFalse(MongoClient(host, port).use_greenlets)
-        if thread_util.have_gevent:
+        if have_gevent:
             self.assertTrue(
                 MongoClient(
                     host, port, use_greenlets=True).use_greenlets)
+
+    def test_thread_support_module(self):
+        self.assertEqual(
+            MongoClient(host, port)._MongoClient__thread_support_module,
+            thread_util_threading)
+        if have_gevent:
+            from pymongo import thread_util_gevent
+            self.assertEqual(
+                MongoClient(
+                    host, port, thread_support_module=thread_util_gevent
+                )._MongoClient__thread_support_module, thread_util_gevent)
 
     def test_get_db(self):
         client = MongoClient(host, port)
