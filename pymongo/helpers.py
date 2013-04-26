@@ -23,6 +23,7 @@ import pymongo
 from bson.binary import OLD_UUID_SUBTYPE
 from bson.son import SON
 from pymongo.errors import (AutoReconnect,
+                            DuplicateKeyError,
                             OperationFailure,
                             TimeoutError)
 
@@ -139,7 +140,11 @@ def _check_command_response(response, reset, msg="%s", allowable_errors=[]):
                     ex_msg += (", assertionCode: %d" %
                                (details["assertionCode"],))
                 raise OperationFailure(ex_msg, details.get("assertionCode"))
-            raise OperationFailure(msg % errmsg)
+            code = details.get("code")
+            # findAndModify with upsert can raise duplicate key error
+            if code in (11000, 11001, 12582):
+                raise DuplicateKeyError(errmsg, code)
+            raise OperationFailure(msg % errmsg, code)
 
 
 def _fields_list_to_dict(fields):

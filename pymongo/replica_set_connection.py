@@ -184,7 +184,7 @@ class ReplicaSetConnection(MongoReplicaSetClient):
             Implies ``ssl=True``.
 
         .. versionchanged:: 2.5
-           Added addtional ssl options
+           Added additional ssl options
         .. versionchanged:: 2.3
            Added `tag_sets` and `secondary_acceptable_latency_ms` options.
         .. versionchanged:: 2.2

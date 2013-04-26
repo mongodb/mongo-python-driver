@@ -176,7 +176,7 @@ class Connection(MongoClient):
 
         .. seealso:: :meth:`end_request`
         .. versionchanged:: 2.5
-           Added addtional ssl options
+           Added additional ssl options
         .. versionchanged:: 2.3
            Added support for failover between mongos seed list members.
         .. versionchanged:: 2.2
