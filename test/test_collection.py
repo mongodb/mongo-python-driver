@@ -1700,6 +1700,14 @@ class TestCollection(unittest.TestCase):
         c.drop()
         c.insert({'_id': 1, 'i': 1})
 
+        # Test that we raise DuplicateKeyError when appropriate.
+        c.ensure_index('i', unique=True)
+        self.assertRaises(DuplicateKeyError,
+                          c.find_and_modify, query={'i': 1, 'j': 1},
+                          update={'$set': {'k': 1}}, upsert=True)
+        c.drop_indexes()
+
+        # Test correct findAndModify
         self.assertEqual({'_id': 1, 'i': 1},
                          c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}}))
         self.assertEqual({'_id': 1, 'i': 3},

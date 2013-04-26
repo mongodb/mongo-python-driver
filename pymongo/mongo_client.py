@@ -855,8 +855,8 @@ class MongoClient(common.BaseObject):
                     break
 
         if "code" in details:
-            if details["code"] in [11000, 11001, 12582]:
-                raise DuplicateKeyError(details["err"])
+            if details["code"] in (11000, 11001, 12582):
+                raise DuplicateKeyError(details["err"], details["code"])
             else:
                 raise OperationFailure(details["err"], details["code"])
         else:

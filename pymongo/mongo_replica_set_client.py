@@ -1073,8 +1073,8 @@ class MongoReplicaSetClient(common.BaseObject):
             raise AutoReconnect(error_msg)
 
         if "code" in error:
-            if error["code"] in [11000, 11001, 12582]:
-                raise DuplicateKeyError(error["err"])
+            if error["code"] in (11000, 11001, 12582):
+                raise DuplicateKeyError(error["err"], error["code"])
             else:
                 raise OperationFailure(error["err"], error["code"])
         else:
