@@ -91,7 +91,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
     def test_equality(self):
         client = MongoClient(host, port)
         self.assertEqual(client, MongoClient(host, port))
-        # Explicity test inequality
+        # Explicitly test inequality
         self.assertFalse(client != MongoClient(host, port))
 
     def test_host_w_port(self):
