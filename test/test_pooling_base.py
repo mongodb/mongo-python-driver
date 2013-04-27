@@ -768,11 +768,6 @@ class _TestMaxPoolSize(_TestPoolingBase):
         # should return their request sockets to the pool.
         self._test_max_pool_size(1, 0)
 
-    def test_max_pool_size_with_leaked_request_massive(self):
-        nthreads = 100
-        self._test_max_pool_size(
-            2, 1, max_pool_size=2 * nthreads, nthreads=nthreads)
-
     def test_max_pool_size_with_end_request_only(self):
         # Call end_request() but not start_request()
         self._test_max_pool_size(0, 1)
