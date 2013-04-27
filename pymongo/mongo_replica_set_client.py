@@ -58,9 +58,6 @@ from pymongo.errors import (AutoReconnect,
                             InvalidDocument,
                             OperationFailure)
 
-if common.HAS_SSL:
-    import ssl
-
 EMPTY = b("")
 MAX_BSON_SIZE = 4 * 1024 * 1024
 MAX_RETRY = 3
