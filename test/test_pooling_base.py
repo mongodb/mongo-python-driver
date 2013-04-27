@@ -905,22 +905,22 @@ class _TestWaitQueueMultiple(_TestPoolingBase):
             socks.append(sock)
         threads = []
         for _ in xrange(6):
-            thread = Thread(pool)
-            thread.start()
-            threads.append(thread)
+            t = Thread(pool)
+            t.start()
+            threads.append(t)
         time.sleep(1)
-        for thread in threads:
-            self.assertEqual(thread.state, 'get_socket')
+        for t in threads:
+            self.assertEqual(t.state, 'get_socket')
         self.assertRaises(ExceededMaxWaiters, pool.get_socket)
         while threads:
             for sock in socks:
                 pool.maybe_return_socket(sock)
             socks = []
-            for thread in list(threads):
-                if thread.sock is not None:
-                    socks.append(thread.sock)
-                    thread.join()
-                    threads.remove(thread)
+            for t in list(threads):
+                if t.sock is not None:
+                    socks.append(t.sock)
+                    t.join()
+                    threads.remove(t)
 
     def test_wait_queue_multiple_unset(self):
         class Thread(threading.Thread):
@@ -943,21 +943,21 @@ class _TestWaitQueueMultiple(_TestPoolingBase):
             socks.append(sock)
         threads = []
         for _ in xrange(30):
-            thread = Thread(pool)
-            thread.start()
-            threads.append(thread)
+            t = Thread(pool)
+            t.start()
+            threads.append(t)
         time.sleep(1)
-        for thread in threads:
-            self.assertEqual(thread.state, 'get_socket')
+        for t in threads:
+            self.assertEqual(t.state, 'get_socket')
         while threads:
             for sock in socks:
                 pool.maybe_return_socket(sock)
             socks = []
-            for thread in list(threads):
-                if thread.sock is not None:
-                    socks.append(thread.sock)
-                    thread.join()
-                    threads.remove(thread)
+            for t in list(threads):
+                if t.sock is not None:
+                    socks.append(t.sock)
+                    t.join()
+                    threads.remove(t)
 
 
 class _TestPoolSocketSharing(_TestPoolingBase):
