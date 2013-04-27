@@ -28,9 +28,10 @@ from pymongo import thread_util
 
 try:
     import greenlet
-    have_greenlet = True
+    import gevent
+    have_gevent = True
 except ImportError:
-    have_greenlet = False
+    have_gevent = False
 
 from test.utils import looplet, RendezvousThread
 
@@ -158,8 +159,8 @@ class TestIdent(unittest.TestCase):
         self._test_ident(False)
 
     def test_greenlet_ident(self):
-        if not have_greenlet:
-            raise SkipTest('greenlet not installed')
+        if not have_gevent:
+            raise SkipTest('gevent not installed')
 
         self._test_ident(True)
 
@@ -228,8 +229,8 @@ class TestCounter(unittest.TestCase):
         self._test_counter(False)
 
     def test_greenlet_counter(self):
-        if not have_greenlet:
-            raise SkipTest('greenlet not installed')
+        if not have_gevent:
+            raise SkipTest('gevent not installed')
 
         self._test_counter(True)
 

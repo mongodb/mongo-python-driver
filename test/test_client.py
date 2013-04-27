@@ -47,9 +47,10 @@ from test.utils import (assertRaisesExactly,
 
 try:
     import greenlet
-    have_greenlet = True
+    import gevent
+    have_gevent = True
 except ImportError:
-    have_greenlet = False
+    have_gevent = False
 
 
 def get_client(*args, **kwargs):
@@ -116,7 +117,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
 
     def test_use_greenlets(self):
         self.assertFalse(MongoClient(host, port).use_greenlets)
-        if have_greenlet:
+        if have_gevent:
             self.assertTrue(
                 MongoClient(
                     host, port, use_greenlets=True).use_greenlets)
