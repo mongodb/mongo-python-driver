@@ -39,7 +39,7 @@ class TestPoolingGeventSpecial(unittest.TestCase):
             import greenlet
             import gevent
         except ImportError:
-            raise SkipTest('greenlet or gevent not installed')
+            raise SkipTest('gevent not installed')
 
         from pymongo import thread_util_gevent
 
@@ -75,7 +75,7 @@ class TestPoolingGeventSpecial(unittest.TestCase):
             import greenlet
             import gevent
         except ImportError:
-            raise SkipTest('greenlet or gevent not installed')
+            raise SkipTest('gevent not installed')
 
         from pymongo import thread_util_threading, thread_util_gevent
 
