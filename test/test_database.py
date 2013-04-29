@@ -114,6 +114,10 @@ class TestDatabase(unittest.TestCase):
         for coll in colls:
             self.assertTrue("$" not in coll)
 
+        colls_without_systems = db.collection_names(False)
+        for coll in colls_without_systems:
+            self.assertTrue(not coll.startswith("system."))
+
     def test_drop_collection(self):
         db = Database(self.client, "pymongo_test")
 

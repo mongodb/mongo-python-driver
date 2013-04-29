@@ -397,14 +397,19 @@ class Database(common.BaseObject):
 
         return result
 
-    def collection_names(self):
+    def collection_names(self, include_system_collections=True):
         """Get a list of all the collection names in this database.
+
+        :Parameters:
+          - `include_system_collections` (optional): if ``False`` list
+            will not include system collections (e.g ``system.indexes``)
         """
         results = self["system.namespaces"].find(_must_use_master=True)
         names = [r["name"] for r in results]
         names = [n[len(self.__name) + 1:] for n in names
-                 if n.startswith(self.__name + ".")]
-        names = [n for n in names if "$" not in n]
+                 if n.startswith(self.__name + ".") and "$" not in n]
+        if not include_system_collections:
+            names = [n for n in names if not n.startswith("system.")]
         return names
 
     def drop_collection(self, name_or_collection):
