@@ -777,6 +777,10 @@ class _TestMaxPoolSize(_TestPoolingBase):
                     # Trigger final cleanup in Python <= 2.7.0.
                     cx_pool._ident.get()
 
+                    # Allow Python 3 <= 3.2.3 to clean up the dangling thread locals
+                    # Needed for the massive leaked request test
+                    time.sleep(0.01)
+
                     message = (
                         '%d idle sockets (expected %d) and %d request sockets'
                         ' (expected 0)' % (
