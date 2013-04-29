@@ -1003,8 +1003,12 @@ class MongoReplicaSetClient(common.BaseObject):
         """Close this client instance.
 
         This method first terminates the replica set monitor, then disconnects
-        from all members of the replica set. Once called this instance
-        should not be reused.
+        from all members of the replica set.
+        
+        .. warning:: This method stops the replica set monitor task. The
+           replica set monitor is required to properly handle replica set
+           configuration changes, including a failure of the primary.
+           Once :meth:`~close` is called this client instance must not be reused.
 
         .. versionchanged:: 2.2.1
            The :meth:`close` method now terminates the replica set monitor.
