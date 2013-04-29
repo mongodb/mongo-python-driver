@@ -70,16 +70,19 @@ class MongoThread(object):
             self.thread = threading.Thread(target=self.run)
             self.thread.setDaemon(True) # Don't hang whole test if thread hangs
 
-
         self.thread.start()
+
+    @property
+    def alive(self):
+        if self.use_greenlets:
+            return not self.thread.dead
+        else:
+            return self.thread.isAlive()
 
     def join(self):
         self.thread.join(300)
-        if self.use_greenlets:
-            assert self.thread.dead, "Greenlet timeout"
-        else:
-            assert not self.thread.isAlive(), "Thread timeout"
-
+        assert not self.alive, ("Greenlet timeout" if self.use_greenlets
+                                else "Thread timeout")
         self.thread = None
 
     def run(self):
@@ -204,11 +207,17 @@ class CreateAndReleaseSocket(MongoThread):
         def __init__(self, nthreads, use_greenlets):
             self.nthreads = nthreads
             self.nthreads_run = 0
+            self.use_greenlets = use_greenlets
             if use_greenlets:
                 self.lock = gevent.coros.RLock()
-                self.ready = gevent.event.Event()
             else:
                 self.lock = threading.Lock()
+            self.reset_ready()
+
+        def reset_ready(self):
+            if self.use_greenlets:
+                self.ready = gevent.event.Event()
+            else:
                 self.ready = threading.Event()
 
     def __init__(self, ut, client, start_request, end_request, rendevous=None, max_pool_size=None):
@@ -243,11 +252,13 @@ class CreateAndReleaseSocket(MongoThread):
                  r.nthreads_run % min(r.nthreads, self.max_pool_size) == 0)):
                 # Everyone's here, let them finish
                 r.ready.set()
+                r.reset_ready()
                 r.lock.release()
             else:
+                ready = r.ready
                 r.lock.release()
-                r.ready.wait(timeout=60)
-                assert r.ready.isSet(), "Rendezvous timed out"
+                ready.wait(timeout=60)
+                assert ready.isSet(), "Rendezvous timed out"
 
         for i in range(self.end_request):
             self.client.end_request()
@@ -721,8 +732,23 @@ class _TestMaxPoolSize(_TestPoolingBase):
         for t in threads:
             t.start()
 
-        for t in threads:
-            t.join()
+        if 'PyPy' in sys.version:
+            # With PyPy we need to kick off the gc whenever the threads hit the
+            # rendezvous since nthreads > max_pool_size.
+            start = time.time()
+            running = list(threads)
+            while running:
+                assert (time.time() - start) < 60, "Threads timed out"
+                for t in running:
+                    t.thread.join(0.1)
+                    if not t.alive:
+                        running.remove(t)
+                if (len(threads) - len(running)) % min(nthreads, max_pool_size) == 0:
+                    gc.collect()
+            gc.collect()
+        else:
+            for t in threads:
+                t.join()
 
         for t in threads:
             self.assertTrue(t.passed)
