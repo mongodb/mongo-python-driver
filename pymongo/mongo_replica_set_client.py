@@ -784,8 +784,8 @@ class MongoReplicaSetClient(common.BaseObject):
         """Add credentials to the database authentication cache
         for automatic login when a socket is created.
 
-        If credentials are already cached for `db_name` they
-        will be replaced.
+        Raises OperationFailure if other credentials are already stored for
+        this source.
         """
         if source in self.__auth_credentials:
             # Nothing to do if we already have these credentials.
