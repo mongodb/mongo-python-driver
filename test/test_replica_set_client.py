@@ -111,10 +111,16 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
 
     def test_repr(self):
         client = self._get_client()
+
+        # Quirk: the RS client makes a frozenset of hosts from a dict's keys,
+        # so we must do the same to achieve the same order.
+        host_dict = dict([(host, 1) for host in self.hosts])
+        hosts_set = frozenset(host_dict)
+        hosts_repr = ', '.join([
+            repr(unicode('%s:%s' % host)) for host in hosts_set])
+
         self.assertEqual(repr(client),
-                         "MongoReplicaSetClient(%r)" % (["%s:%d" % n
-                                                         for n in 
-                                                         self.hosts],))
+                         "MongoReplicaSetClient([%s])" % hosts_repr)
 
     def test_properties(self):
         c = MongoReplicaSetClient(pair, replicaSet=self.name)
