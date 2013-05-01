@@ -363,12 +363,19 @@ def kill_all_secondaries(sig=2):
 def stepdown_primary():
     primary = get_primary()
     if primary:
+        if ha_tools_debug:
+            print 'stepping down primary:', primary
         c = pymongo.MongoClient(primary, use_greenlets=use_greenlets)
         # replSetStepDown causes mongod to close all connections
         try:
             c.admin.command('replSetStepDown', 20)
-        except:
-            pass
+        except Exception, e:
+            if ha_tools_debug:
+                print 'Exception from replSetStepDown:', e
+        if ha_tools_debug:
+            print '\tcalled replSetStepDown'
+    elif ha_tools_debug:
+        print 'stepdown_primary() found no primary'
 
 
 def set_maintenance(member, value):
