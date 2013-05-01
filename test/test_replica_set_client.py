@@ -387,8 +387,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         coll.count()
 
     def test_fork(self):
-        """Test using a client before and after a fork.
-        """
+        # Test using a client before and after a fork.
         if sys.platform == "win32":
             raise SkipTest("Can't fork on Windows")
 
