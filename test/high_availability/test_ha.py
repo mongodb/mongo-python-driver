@@ -360,18 +360,24 @@ class TestHealthMonitor(HATestCase):
             self.seed, replicaSet=self.name, use_greenlets=use_greenlets)
         self.assertTrue(bool(len(c.secondaries)))
         primary = c.primary
-        secondaries = c.secondaries.copy()
-
-        def primary_changed():
-            for _ in xrange(30):
-                if c.primary != primary:
-                    return True
-                sleep(1)
-            return False
-
         ha_tools.stepdown_primary()
-        self.assertTrue(primary_changed())
-        self.assertNotEqual(secondaries, c.secondaries)
+
+        # Wait for new primary
+        patience_seconds = 30
+        for _ in xrange(patience_seconds):
+            sleep(1)
+            rs_state = c._MongoReplicaSetClient__rs_state
+            if rs_state.writer and rs_state.writer != primary:
+                # New primary stepped up
+                new_primary = _partition_node(ha_tools.get_primary())
+                self.assertEqual(new_primary, rs_state.writer)
+                new_secondaries = partition_nodes(ha_tools.get_secondaries())
+                self.assertEqual(set(new_secondaries), rs_state.secondaries)
+                break
+        else:
+            self.fail(
+                "No new primary after %s seconds. Old primary was %s, current"
+                " is %s" % (patience_seconds, primary, ha_tools.get_primary()))
 
 
 class TestWritesWithFailover(HATestCase):
