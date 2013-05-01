@@ -37,6 +37,10 @@ from test import utils
 from test.utils import one
 
 
+# Will be imported from time or gevent, below
+sleep = None
+
+
 # Override default 30-second interval for faster testing
 Monitor._refresh_interval = MONITOR_INTERVAL = 0.5
 
@@ -47,6 +51,11 @@ PRIMARY_PREFERRED = ReadPreference.PRIMARY_PREFERRED
 SECONDARY = ReadPreference.SECONDARY
 SECONDARY_PREFERRED = ReadPreference.SECONDARY_PREFERRED
 NEAREST = ReadPreference.NEAREST
+
+
+def partition_nodes(nodes):
+    """Translate from ['host:port', ...] to [(host, port), ...]"""
+    return [_partition_node(node) for node in nodes]
 
 
 class HATestCase(unittest.TestCase):
@@ -170,7 +179,7 @@ class TestPassiveAndHidden(HATestCase):
             self.seed, replicaSet=self.name, use_greenlets=use_greenlets)
 
         passives = ha_tools.get_passives()
-        passives = [_partition_node(member) for member in passives]
+        passives = partition_nodes(passives)
         self.assertEqual(self.c.secondaries, set(passives))
 
         for mode in SECONDARY, SECONDARY_PREFERRED:
@@ -203,7 +212,7 @@ class TestMonitorRemovesRecoveringMember(HATestCase):
         secondaries = ha_tools.get_secondaries()
 
         for mode in SECONDARY, SECONDARY_PREFERRED:
-            partitioned_secondaries = [_partition_node(s) for s in secondaries]
+            partitioned_secondaries = partition_nodes(secondaries)
             utils.assertReadFromAll(self, self.c, partitioned_secondaries, mode)
 
         secondary, recovering_secondary = secondaries
