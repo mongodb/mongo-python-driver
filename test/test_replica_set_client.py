@@ -577,7 +577,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
 
     def test_timeout_does_not_mark_member_down(self):
         # If a query times out, the RS client shouldn't mark the member "down".
-        c = self._get_client(socketTimeoutMS=1000)
+        c = self._get_client(socketTimeoutMS=3000)
         collection = c.pymongo_test.test
         collection.insert({}, w=self.w)
 
