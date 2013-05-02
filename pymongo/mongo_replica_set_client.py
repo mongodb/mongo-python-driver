@@ -1053,9 +1053,6 @@ class MongoReplicaSetClient(common.BaseObject):
                     new_member = Member(
                         node, pool, response, MovingAverage([ping_time]), True)
 
-                if response['ismaster']:
-                    writer = node
-
                 # Check that this host is part of the given replica set.
                 set_name = response.get('setName')
                 # The 'setName' field isn't returned by mongod before 1.6.2
@@ -1076,8 +1073,13 @@ class MongoReplicaSetClient(common.BaseObject):
                     hosts.update([_partition_node(h)
                                   for h in response["passives"]])
 
-                # Start off the new 'members' dict with this member.
-                members[node] = new_member
+                # Start off the new 'members' dict with this member
+                # but don't add seed list members.
+                if node in hosts:
+                    members[node] = new_member
+                    if response['ismaster']:
+                        writer = node
+
             except (ConnectionFailure, socket.error), why:
                 if member:
                     member.pool.discard_socket(sock_info)
