@@ -853,8 +853,11 @@ class Cursor(object):
         if val_id in memo:
             return memo.get(val_id)
         memo[val_id] = y
-        for key, value in x.iteritems():
+        # Fixed to allow deep copy of lists to solve "cannot deepcopy this pattern object". -Juan
+        for key, value in x.iteritems() if isinstance(x, dict) else dict(zip(range(len(x)),x)).iteritems():
             if isinstance(value, dict) and not isinstance(value, SON):
+                value = self.__deepcopy(value, memo)
+            elif isinstance(value, list) and not isinstance(value, SON):
                 value = self.__deepcopy(value, memo)
             elif not isinstance(value, RE_TYPE):
                 value = copy.deepcopy(value, memo)
