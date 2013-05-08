@@ -861,5 +861,10 @@ class Cursor(object):
                 value = self.__deepcopy(value, memo)
             elif not isinstance(value, RE_TYPE):
                 value = copy.deepcopy(value, memo)
-            y[copy.deepcopy(key, memo)] = value
+            if isinstance(x, dict) :
+                y[copy.deepcopy(key, memo)] = value
+            else : # list case
+                if key == 0 :
+                    y = []
+                y += value
         return y
