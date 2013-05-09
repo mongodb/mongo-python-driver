@@ -64,6 +64,7 @@ class HATestCase(unittest.TestCase):
     def tearDown(self):
         ha_tools.kill_all_members()
         ha_tools.nodes.clear()
+        ha_tools.routers.clear()
         sleep(1)  # Let members really die.
 
 
