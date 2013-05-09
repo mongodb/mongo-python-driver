@@ -744,7 +744,7 @@ class Collection(common.BaseObject):
         >>> my_collection.create_index([("mike", pymongo.DESCENDING),
         ...                             ("eliot", pymongo.ASCENDING)])
 
-        All optional index creation paramaters should be passed as
+        All optional index creation parameters should be passed as
         keyword arguments to this method. Valid options include:
 
           - `name`: custom name to use for this index - if none is
@@ -855,7 +855,7 @@ class Collection(common.BaseObject):
         Returns the name of the created index if an index is actually
         created. Returns ``None`` if the index already exists.
 
-        All optional index creation paramaters should be passed as
+        All optional index creation parameters should be passed as
         keyword arguments to this method. Valid options include:
 
           - `name`: custom name to use for this index - if none is
