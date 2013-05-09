@@ -819,7 +819,7 @@ class TestReplicaSetAuth(HATestCase):
     def test_auth_during_failover(self):
         self.assertTrue(self.db.authenticate('user', 'userpass'))
         self.assertTrue(self.db.foo.insert({'foo': 'bar'},
-                                           safe=True, w=3, wtimeout=1000))
+                                           safe=True, w=3, wtimeout=3000))
         self.db.logout()
         self.assertRaises(OperationFailure, self.db.foo.find_one)
 
