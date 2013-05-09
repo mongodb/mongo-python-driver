@@ -49,7 +49,7 @@ cur_port = port
 
 
 def kill_members(members, sig, hosts=nodes):
-    for member in members:
+    for member in sorted(members):
         try:
             if ha_tools_debug:
                 print 'killing', member
@@ -96,7 +96,12 @@ def start_replica_set(members, auth=False, fresh=True):
                 shutil.rmtree(dbpath)
             except OSError:
                 pass
-        os.makedirs(dbpath)
+
+        try:
+            os.makedirs(dbpath)
+        except OSError, e:
+            print e
+            print "\tWhile creating", dbpath
 
     if auth:
         key_file = os.path.join(dbpath, 'key.txt')
