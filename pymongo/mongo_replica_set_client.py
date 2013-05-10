@@ -322,6 +322,13 @@ class MonitorThread(Monitor, threading.Thread):
         threading.Thread.__init__(self)
         self.setName("ReplicaSetMonitorThread")
 
+        # Track whether the thread has started. (Greenlets track this already.)
+        self.started = False
+
+    def start(self):
+        self.started = True
+        super(MonitorThread, self).start()
+
     def run(self):
         """Override Thread's run method.
         """
@@ -459,7 +466,7 @@ class MongoReplicaSetClient(common.BaseObject):
     """
 
     def __init__(self, hosts_or_uri=None, max_pool_size=10,
-                 document_class=dict, tz_aware=False, **kwargs):
+                 document_class=dict, tz_aware=False, _connect=True, **kwargs):
         """Create a new connection to a MongoDB replica set.
 
         The resultant client object has connection-pooling built
@@ -692,11 +699,12 @@ class MongoReplicaSetClient(common.BaseObject):
                           "use read_preference instead.", DeprecationWarning,
                           stacklevel=2)
 
-        try:
-            self.refresh()
-        except AutoReconnect, e:
-            # ConnectionFailure makes more sense here than AutoReconnect
-            raise ConnectionFailure(str(e))
+        if _connect:
+            try:
+                self.refresh()
+            except AutoReconnect, e:
+                # ConnectionFailure makes more sense here than AutoReconnect
+                raise ConnectionFailure(str(e))
 
         db_name = options.get('authsource', db_name)
         if db_name and username is None:
@@ -712,7 +720,7 @@ class MongoReplicaSetClient(common.BaseObject):
             credentials = (source, unicode(username),
                            unicode(password), mechanism)
             try:
-                self._cache_credentials(source, credentials)
+                self._cache_credentials(source, credentials, _connect)
             except OperationFailure, exc:
                 raise ConfigurationError(str(exc))
 
@@ -725,7 +733,9 @@ class MongoReplicaSetClient(common.BaseObject):
             self.__monitor = MonitorThread(self)
             self.__monitor.setDaemon(True)
         register_monitor(self.__monitor)
-        self.__monitor.start()
+
+        if _connect:
+            self.__monitor.start()
 
     def _cached(self, dbname, coll, index):
         """Test if `index` is cached.
@@ -780,9 +790,10 @@ class MongoReplicaSetClient(common.BaseObject):
         if index_name in self.__index_cache[database_name][collection_name]:
             del self.__index_cache[database_name][collection_name][index_name]
 
-    def _cache_credentials(self, source, credentials):
+    def _cache_credentials(self, source, credentials, connect=True):
         """Add credentials to the database authentication cache
-        for automatic login when a socket is created.
+        for automatic login when a socket is created. If `connect` is True,
+        verify the credentials on the server first.
 
         Raises OperationFailure if other credentials are already stored for
         this source.
@@ -794,22 +805,23 @@ class MongoReplicaSetClient(common.BaseObject):
             raise OperationFailure('Another user is already authenticated '
                                    'to this database. You must logout first.')
 
-        # Try to authenticate even during failover.
-        member = select_member(
-            self.__rs_state.members, ReadPreference.PRIMARY_PREFERRED)
+        if connect:
+            # Try to authenticate even during failover.
+            member = select_member(
+                self.__rs_state.members, ReadPreference.PRIMARY_PREFERRED)
 
-        if not member:
-            raise AutoReconnect(
-                "No replica set members available for authentication")
+            if not member:
+                raise AutoReconnect(
+                    "No replica set members available for authentication")
 
-        sock_info = self.__socket(member)
-        try:
-            # Since __check_auth was called in __socket
-            # there is no need to call it here.
-            auth.authenticate(credentials, sock_info, self.__simple_command)
-            sock_info.authset.add(credentials)
-        finally:
-            member.pool.maybe_return_socket(sock_info)
+            sock_info = self.__socket(member)
+            try:
+                # Since __check_auth was called in __socket
+                # there is no need to call it here.
+                auth.authenticate(credentials, sock_info, self.__simple_command)
+                sock_info.authset.add(credentials)
+            finally:
+                member.pool.maybe_return_socket(sock_info)
 
         self.__auth_credentials[source] = credentials
 
@@ -1324,6 +1336,10 @@ class MongoReplicaSetClient(common.BaseObject):
           - `with_last_error`: check getLastError status after sending the
             message
         """
+        # This may be the first time we're connecting to the set.
+        if self.__monitor and not self.__monitor.started:
+            self.__monitor.start()
+
         if _connection_to_use in (None, -1):
             member = self.__find_primary()
         else:
@@ -1417,6 +1433,10 @@ class MongoReplicaSetClient(common.BaseObject):
             used by Cursor for getMore and killCursors messages.
           - `_must_use_master`: If True, send to primary.
         """
+        # This may be the first time we're connecting to the set.
+        if self.__monitor and not self.__monitor.started:
+            self.__monitor.start()
+
         rs_state = self.__rs_state
         tag_sets = kwargs.get('tag_sets', [{}])
         mode = kwargs.get('read_preference', ReadPreference.PRIMARY)

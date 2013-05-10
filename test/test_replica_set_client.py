@@ -99,7 +99,77 @@ class TestReplicaSetClientBase(unittest.TestCase):
             replicaSet=self.name,
             **kwargs)
 
+
 class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
+    def test_init_disconnected(self):
+        c = self._get_client(_connect=False)
+
+        # No errors
+        c.seeds
+        c.hosts
+        c.arbiters
+        c.is_mongos
+        c.max_pool_size
+        c.use_greenlets
+        c.get_document_class
+        c.tz_aware
+        c.max_bson_size
+        c.auto_start_request
+        self.assertFalse(c.primary)
+        self.assertFalse(c.secondaries)
+
+        c.pymongo_test.test.find_one()  # Auto-connect for read.
+        self.assertTrue(c.primary)
+        self.assertTrue(c.secondaries)
+
+        c = self._get_client(_connect=False)
+        c.pymongo_test.test.insert({})  # Auto-connect for write.
+        self.assertTrue(c.primary)
+
+        c = MongoReplicaSetClient(
+            "somedomainthatdoesntexist.org", replicaSet="rs",
+            connectTimeoutMS=1, _connect=False)
+
+        self.assertRaises(ConnectionFailure, c.pymongo_test.test.find_one)
+
+    def test_init_disconnected_with_auth_failure(self):
+        c = MongoReplicaSetClient(
+            "mongodb://user:pass@somedomainthatdoesntexist", replicaSet="rs",
+            connectTimeoutMS=1, _connect=False)
+
+        self.assertRaises(ConnectionFailure, c.pymongo_test.test.find_one)
+
+    def test_init_disconnected_with_auth(self):
+        c = self._get_client()
+        c.admin.system.users.remove({})
+        c.pymongo_test.system.users.remove({})
+
+        try:
+            c.admin.add_user("admin", "pass")
+            c.admin.authenticate("admin", "pass")
+            c.pymongo_test.add_user("user", "pass")
+
+            # Auth with lazy connection.
+            host = one(self.hosts)
+            uri = "mongodb://user:pass@%s:%d/pymongo_test?replicaSet=%s" % (
+                host[0], host[1], self.name)
+
+            authenticated_client = MongoReplicaSetClient(uri, _connect=False)
+            authenticated_client.pymongo_test.test.find_one()
+
+            # Wrong password.
+            bad_uri = "mongodb://user:wrong@%s:%d/pymongo_test?replicaSet=%s" % (
+                host[0], host[1], self.name)
+
+            bad_client = MongoReplicaSetClient(bad_uri, _connect=False)
+            self.assertRaises(
+                OperationFailure, bad_client.pymongo_test.test.find_one)
+
+        finally:
+            # Clean up.
+            c.admin.system.users.remove({})
+            c.pymongo_test.system.users.remove({})
+
     def test_connect(self):
         assertRaisesExactly(ConnectionFailure, MongoReplicaSetClient,
                           "somedomainthatdoesntexist.org:27017",
