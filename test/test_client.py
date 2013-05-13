@@ -36,7 +36,8 @@ from pymongo.pool import SocketInfo
 from pymongo.errors import (ConfigurationError,
                             ConnectionFailure,
                             InvalidName,
-                            OperationFailure)
+                            OperationFailure,
+                            PyMongoError)
 from test import version, host, port
 from test.utils import (assertRaisesExactly,
                         delay,
@@ -82,6 +83,35 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         MongoClient.PORT = port
         self.assertTrue(MongoClient())
 
+    def test_init_disconnected(self):
+        c = MongoClient(host, port, _connect=False)
+
+        # No errors
+        c.is_primary
+        c.is_mongos
+        c.max_pool_size
+        c.use_greenlets
+        c.nodes
+        c.auto_start_request
+        c.get_document_class()
+        c.tz_aware
+        c.max_bson_size
+        self.assertEqual(None, c.host)
+        self.assertEqual(None, c.port)
+
+        c.pymongo_test.test.find_one()  # Auto-connect.
+        self.assertEqual(host, c.host)
+        self.assertEqual(port, c.port)
+
+        bad_host = "somedomainthatdoesntexist.org"
+        c = MongoClient(bad_host, port, connectTimeoutMS=1,_connect=False)
+        self.assertRaises(ConnectionFailure, c.pymongo_test.test.find_one)
+
+    def test_init_disconnected_with_auth(self):
+        uri = "mongodb://user:pass@somedomainthatdoesntexist"
+        c = MongoClient(uri, connectTimeoutMS=1, _connect=False)
+        self.assertRaises(ConnectionFailure, c.pymongo_test.test.find_one)
+
     def test_connect(self):
         # Check that the exception is a ConnectionFailure, not a subclass like
         # AutoReconnect
@@ -97,7 +127,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
     def test_equality(self):
         client = MongoClient(host, port)
         self.assertEqual(client, MongoClient(host, port))
-        # Explicity test inequality
+        # Explicitly test inequality
         self.assertFalse(client != MongoClient(host, port))
 
     def test_host_w_port(self):
@@ -106,7 +136,9 @@ class TestClient(unittest.TestCase, TestRequestMixin):
             ConnectionFailure, MongoClient, "%s:1234567" % (host,), port)
 
     def test_repr(self):
-        self.assertEqual(repr(MongoClient(host, port)),
+        # Making host a str avoids the 'u' prefix in Python 2, so the repr is
+        # the same in Python 2 and 3.
+        self.assertEqual(repr(MongoClient(str(host), port)),
                          "MongoClient('%s', %d)" % (host, port))
 
     def test_getters(self):
@@ -276,29 +308,49 @@ class TestClient(unittest.TestCase, TestRequestMixin):
 
         c.admin.system.users.remove({})
         c.pymongo_test.system.users.remove({})
-        c.admin.add_user("admin", "pass")
-        c.admin.authenticate("admin", "pass")
-        c.pymongo_test.add_user("user", "pass")
 
-        self.assertRaises(ConfigurationError, MongoClient,
-                          "mongodb://foo:bar@%s:%d" % (host, port))
-        self.assertRaises(ConfigurationError, MongoClient,
-                          "mongodb://admin:bar@%s:%d" % (host, port))
-        self.assertRaises(ConfigurationError, MongoClient,
-                          "mongodb://user:pass@%s:%d" % (host, port))
-        MongoClient("mongodb://admin:pass@%s:%d" % (host, port))
+        try:
+            c.admin.add_user("admin", "pass")
+            c.admin.authenticate("admin", "pass")
+            c.pymongo_test.add_user("user", "pass")
 
-        self.assertRaises(ConfigurationError, MongoClient,
-                          "mongodb://admin:pass@%s:%d/pymongo_test" %
-                          (host, port))
-        self.assertRaises(ConfigurationError, MongoClient,
-                          "mongodb://user:foo@%s:%d/pymongo_test" %
-                          (host, port))
-        MongoClient("mongodb://user:pass@%s:%d/pymongo_test" %
-                   (host, port))
+            self.assertRaises(ConfigurationError, MongoClient,
+                              "mongodb://foo:bar@%s:%d" % (host, port))
+            self.assertRaises(ConfigurationError, MongoClient,
+                              "mongodb://admin:bar@%s:%d" % (host, port))
+            self.assertRaises(ConfigurationError, MongoClient,
+                              "mongodb://user:pass@%s:%d" % (host, port))
+            MongoClient("mongodb://admin:pass@%s:%d" % (host, port))
 
-        c.admin.system.users.remove({})
-        c.pymongo_test.system.users.remove({})
+            self.assertRaises(ConfigurationError, MongoClient,
+                              "mongodb://admin:pass@%s:%d/pymongo_test" %
+                              (host, port))
+            self.assertRaises(ConfigurationError, MongoClient,
+                              "mongodb://user:foo@%s:%d/pymongo_test" %
+                              (host, port))
+            MongoClient("mongodb://user:pass@%s:%d/pymongo_test" %
+                       (host, port))
+
+            # Auth with lazy connection.
+            MongoClient(
+                "mongodb://user:pass@%s:%d/pymongo_test" % (host, port),
+                _connect=False).pymongo_test.test.find_one()
+
+            # Wrong password.
+            bad_client = MongoClient(
+                "mongodb://user:wrong@%s:%d/pymongo_test" % (host, port),
+                _connect=False)
+
+            # If auth fails with lazy connection, MongoClient raises
+            # AutoReconnect instead of the more appropriate OperationFailure,
+            # PYTHON-517.
+            self.assertRaises(
+                PyMongoError, bad_client.pymongo_test.test.find_one)
+
+        finally:
+            # Clean up.
+            c.admin.system.users.remove({})
+            c.pymongo_test.system.users.remove({})
 
     def test_unix_socket(self):
         if not hasattr(socket, "AF_UNIX"):

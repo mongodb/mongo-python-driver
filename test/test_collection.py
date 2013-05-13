@@ -184,14 +184,14 @@ class TestCollection(unittest.TestCase):
         db.test.drop_index("goodbye_1")
         self.assertEqual("goodbye_1",
                          db.test.ensure_index("goodbye", cache_for=1))
-        time.sleep(1.1)
+        time.sleep(1.2)
         self.assertEqual("goodbye_1",
                          db.test.ensure_index("goodbye"))
 
         db.test.drop_index("goodbye_1")
         self.assertEqual("goodbye_1",
                          db.test.create_index("goodbye", cache_for=1))
-        time.sleep(1.1)
+        time.sleep(1.2)
         self.assertEqual("goodbye_1",
                          db.test.ensure_index("goodbye"))
         # Make sure the expiration time is updated.

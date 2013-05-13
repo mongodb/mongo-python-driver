@@ -750,6 +750,9 @@ class _TestMaxPoolSize(_TestPoolingBase):
             for t in threads:
                 t.join()
 
+        # join() returns before the thread state is cleared; give it time.
+        time.sleep(1)
+
         for t in threads:
             self.assertTrue(t.passed)
 

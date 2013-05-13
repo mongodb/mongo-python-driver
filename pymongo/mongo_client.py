@@ -384,7 +384,7 @@ class MongoClient(common.BaseObject):
             credentials = (source, unicode(username),
                            unicode(password), mechanism)
             try:
-                self._cache_credentials(source, credentials)
+                self._cache_credentials(source, credentials, _connect)
             except OperationFailure, exc:
                 raise ConfigurationError(str(exc))
 
@@ -441,9 +441,10 @@ class MongoClient(common.BaseObject):
         if index_name in self.__index_cache[database_name][collection_name]:
             del self.__index_cache[database_name][collection_name][index_name]
 
-    def _cache_credentials(self, source, credentials):
+    def _cache_credentials(self, source, credentials, connect=True):
         """Add credentials to the database authentication cache
-        for automatic login when a socket is created.
+        for automatic login when a socket is created. If `connect` is True,
+        verify the credentials on the server first.
         """
         if source in self.__auth_credentials:
             # Nothing to do if we already have these credentials.
@@ -452,14 +453,15 @@ class MongoClient(common.BaseObject):
             raise OperationFailure('Another user is already authenticated '
                                    'to this database. You must logout first.')
 
-        sock_info = self.__socket()
-        try:
-            # Since __check_auth was called in __socket
-            # there is no need to call it here.
-            auth.authenticate(credentials, sock_info, self.__simple_command)
-            sock_info.authset.add(credentials)
-        finally:
-            self.__pool.maybe_return_socket(sock_info)
+        if connect:
+            sock_info = self.__socket()
+            try:
+                # Since __check_auth was called in __socket
+                # there is no need to call it here.
+                auth.authenticate(credentials, sock_info, self.__simple_command)
+                sock_info.authset.add(credentials)
+            finally:
+                self.__pool.maybe_return_socket(sock_info)
 
         self.__auth_credentials[source] = credentials
 

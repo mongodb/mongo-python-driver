@@ -150,7 +150,10 @@ def validate_options(opts):
     normalized = {}
     for option, value in opts.iteritems():
         option, value = validate(option, value)
-        normalized[option] = value
+        # str(option) to ensure that a unicode URI results in plain 'str'
+        # option names. 'normalized' is then suitable to be passed as kwargs
+        # in all Python versions.
+        normalized[str(option)] = value
     return normalized
 
 
