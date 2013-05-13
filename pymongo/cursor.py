@@ -841,22 +841,33 @@ class Cursor(object):
         return self.__clone(deepcopy=True)
 
     def __deepcopy(self, x, memo=None):
-        """Deepcopy helper for the data dictionary.
+        """Deepcopy helper for the data dictionary or list.
 
         Regular expressions cannot be deep copied but as they are immutable we
         don't have to copy them when cloning.
         """
-        y = {}
+        if not hasattr(x, 'items'):
+            y, is_list, iterator = [], True, enumerate(x)
+        else:
+            y, is_list, iterator = {}, False, x.iteritems()
+
         if memo is None:
             memo = {}
         val_id = id(x)
         if val_id in memo:
             return memo.get(val_id)
         memo[val_id] = y
-        for key, value in x.iteritems():
-            if isinstance(value, dict) and not isinstance(value, SON):
+
+        for key, value in iterator:
+            if isinstance(value, (dict, list)) and not isinstance(value, SON):
                 value = self.__deepcopy(value, memo)
             elif not isinstance(value, RE_TYPE):
                 value = copy.deepcopy(value, memo)
-            y[copy.deepcopy(key, memo)] = value
+
+            if is_list:
+                y.append(value)
+            else:
+                if not isinstance(key, RE_TYPE):
+                    key = copy.deepcopy(key, memo)
+                y[key] = value
         return y

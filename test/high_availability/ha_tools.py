@@ -49,7 +49,7 @@ cur_port = port
 
 
 def kill_members(members, sig, hosts=nodes):
-    for member in members:
+    for member in sorted(members):
         try:
             if ha_tools_debug:
                 print 'killing', member
@@ -96,7 +96,12 @@ def start_replica_set(members, auth=False, fresh=True):
                 shutil.rmtree(dbpath)
             except OSError:
                 pass
-        os.makedirs(dbpath)
+
+        try:
+            os.makedirs(dbpath)
+        except OSError, e:
+            print e
+            print "\tWhile creating", dbpath
 
     if auth:
         key_file = os.path.join(dbpath, 'key.txt')
@@ -363,12 +368,19 @@ def kill_all_secondaries(sig=2):
 def stepdown_primary():
     primary = get_primary()
     if primary:
+        if ha_tools_debug:
+            print 'stepping down primary:', primary
         c = pymongo.MongoClient(primary, use_greenlets=use_greenlets)
         # replSetStepDown causes mongod to close all connections
         try:
             c.admin.command('replSetStepDown', 20)
-        except:
-            pass
+        except Exception, e:
+            if ha_tools_debug:
+                print 'Exception from replSetStepDown:', e
+        if ha_tools_debug:
+            print '\tcalled replSetStepDown'
+    elif ha_tools_debug:
+        print 'stepdown_primary() found no primary'
 
 
 def set_maintenance(member, value):

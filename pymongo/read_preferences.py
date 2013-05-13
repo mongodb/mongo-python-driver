@@ -15,8 +15,6 @@
 """Utilities for choosing which member of a replica set to read from."""
 
 import random
-import threading
-from collections import deque
 
 from pymongo.errors import ConfigurationError
 
@@ -86,7 +84,6 @@ def mongos_mode(mode):
 def mongos_enum(enum):
     return _mongos_modes.index(enum)
 
-
 def select_primary(members):
     for member in members:
         if member.is_primary:
@@ -151,6 +148,7 @@ def select_member(
         return select_primary(members)
 
     elif mode == PRIMARY_PREFERRED:
+        # Recurse.
         candidate_primary = select_member(members, PRIMARY, [{}], latency)
         if candidate_primary:
             return candidate_primary
@@ -166,6 +164,7 @@ def select_member(
         return None
 
     elif mode == SECONDARY_PREFERRED:
+        # Recurse.
         candidate_secondary = select_member(
             members, SECONDARY, tag_sets, latency)
         if candidate_secondary:
@@ -196,32 +195,16 @@ secondary_ok_commands = frozenset([
 
 
 class MovingAverage(object):
-    """Tracks a moving average.
-    """
-    def __init__(self, window_sz):
-        self.window_sz = window_sz
-        self.samples = deque()
-        self.total = 0
-        self.lock = threading.Lock()
+    def __init__(self, samples):
+        """Immutable structure to track a 5-sample moving average.
+        """
+        self.samples = samples[-5:]
+        assert self.samples
+        self.average = sum(self.samples) / float(len(self.samples))
 
-    def update(self, sample):
-        # One reason we synchronize MovingAverage is that Jython's
-        # popleft isn't safe: http://bugs.jython.org/issue2001
-        self.lock.acquire()
-        try:
-            self.samples.append(sample)
-            self.total += sample
-            if len(self.samples) > self.window_sz:
-                self.total -= self.samples.popleft()
-        finally:
-            self.lock.release()
+    def clone_with(self, sample):
+        """Get a copy of this instance plus a new sample"""
+        return MovingAverage(self.samples + [sample])
 
     def get(self):
-        self.lock.acquire()
-        try:
-            if self.samples:
-                return self.total / float(len(self.samples))
-            else:
-                return None
-        finally:
-            self.lock.release()
+        return self.average

@@ -27,16 +27,18 @@ import ha_tools
 from ha_tools import use_greenlets
 
 
-from pymongo import ReadPreference
-from pymongo.mongo_replica_set_client import (
-    Member, Monitor, MongoReplicaSetClient)
-from pymongo.mongo_client import _partition_node
-from pymongo.mongo_client import MongoClient
 from pymongo.errors import AutoReconnect, OperationFailure, ConnectionFailure
-from pymongo.read_preferences import modes
+from pymongo.mongo_replica_set_client import Member, Monitor
+from pymongo.mongo_replica_set_client import MongoReplicaSetClient
+from pymongo.mongo_client import MongoClient, _partition_node
+from pymongo.read_preferences import ReadPreference, modes
 
 from test import utils
 from test.utils import one
+
+
+# Will be imported from time or gevent, below
+sleep = None
 
 
 # Override default 30-second interval for faster testing
@@ -51,7 +53,22 @@ SECONDARY_PREFERRED = ReadPreference.SECONDARY_PREFERRED
 NEAREST = ReadPreference.NEAREST
 
 
-class TestDirectConnection(unittest.TestCase):
+def partition_nodes(nodes):
+    """Translate from ['host:port', ...] to [(host, port), ...]"""
+    return [_partition_node(node) for node in nodes]
+
+
+class HATestCase(unittest.TestCase):
+    """A test case for connections to replica sets or mongos."""
+
+    def tearDown(self):
+        ha_tools.kill_all_members()
+        ha_tools.nodes.clear()
+        ha_tools.routers.clear()
+        sleep(1)  # Let members really die.
+
+
+class TestDirectConnection(HATestCase):
 
     def setUp(self):
         members = [{}, {}, {'arbiterOnly': True}]
@@ -144,10 +161,10 @@ class TestDirectConnection(unittest.TestCase):
 
     def tearDown(self):
         self.c.close()
-        ha_tools.kill_all_members()
+        super(TestDirectConnection, self).tearDown()
 
 
-class TestPassiveAndHidden(unittest.TestCase):
+class TestPassiveAndHidden(HATestCase):
 
     def setUp(self):
         members = [{},
@@ -164,7 +181,7 @@ class TestPassiveAndHidden(unittest.TestCase):
             self.seed, replicaSet=self.name, use_greenlets=use_greenlets)
 
         passives = ha_tools.get_passives()
-        passives = [_partition_node(member) for member in passives]
+        passives = partition_nodes(passives)
         self.assertEqual(self.c.secondaries, set(passives))
 
         for mode in SECONDARY, SECONDARY_PREFERRED:
@@ -176,10 +193,10 @@ class TestPassiveAndHidden(unittest.TestCase):
 
     def tearDown(self):
         self.c.close()
-        ha_tools.kill_all_members()
+        super(TestPassiveAndHidden, self).tearDown()
 
 
-class TestMonitorRemovesRecoveringMember(unittest.TestCase):
+class TestMonitorRemovesRecoveringMember(HATestCase):
     # Members in STARTUP2 or RECOVERING states are shown in the primary's
     # isMaster response, but aren't secondaries and shouldn't be read from.
     # Verify that if a secondary goes into RECOVERING mode, the Monitor removes
@@ -197,7 +214,7 @@ class TestMonitorRemovesRecoveringMember(unittest.TestCase):
         secondaries = ha_tools.get_secondaries()
 
         for mode in SECONDARY, SECONDARY_PREFERRED:
-            partitioned_secondaries = [_partition_node(s) for s in secondaries]
+            partitioned_secondaries = partition_nodes(secondaries)
             utils.assertReadFromAll(self, self.c, partitioned_secondaries, mode)
 
         secondary, recovering_secondary = secondaries
@@ -210,10 +227,10 @@ class TestMonitorRemovesRecoveringMember(unittest.TestCase):
 
     def tearDown(self):
         self.c.close()
-        ha_tools.kill_all_members()
+        super(TestMonitorRemovesRecoveringMember, self).tearDown()
 
 
-class TestTriggeredRefresh(unittest.TestCase):
+class TestTriggeredRefresh(HATestCase):
     # Verify that if a secondary goes into RECOVERING mode or if the primary
     # changes, the next exception triggers an immediate refresh.
 
@@ -281,14 +298,14 @@ class TestTriggeredRefresh(unittest.TestCase):
         # We've detected the stepdown
         self.assertTrue(
             not c_find_one.primary
-            or primary != _partition_node(c_find_one.primary))
+            or _partition_node(primary) != c_find_one.primary)
 
     def tearDown(self):
         Monitor._refresh_interval = MONITOR_INTERVAL
-        ha_tools.kill_all_members()
+        super(TestTriggeredRefresh, self).tearDown()
 
 
-class TestHealthMonitor(unittest.TestCase):
+class TestHealthMonitor(HATestCase):
 
     def setUp(self):
         res = ha_tools.start_replica_set([{}, {}, {}])
@@ -345,28 +362,27 @@ class TestHealthMonitor(unittest.TestCase):
             self.seed, replicaSet=self.name, use_greenlets=use_greenlets)
         self.assertTrue(bool(len(c.secondaries)))
         primary = c.primary
-        secondaries = c.secondaries.copy()
-
-        def primary_changed():
-            for _ in xrange(30):
-                if c.primary != primary:
-                    return True
-                sleep(1)
-            return False
-
         ha_tools.stepdown_primary()
-        self.assertTrue(primary_changed())
 
-        # There can be a delay between finding the primary and updating
-        # secondaries
-        sleep(5)
-        self.assertNotEqual(secondaries, c.secondaries)
+        # Wait for new primary
+        patience_seconds = 30
+        for _ in xrange(patience_seconds):
+            sleep(1)
+            rs_state = c._MongoReplicaSetClient__rs_state
+            if rs_state.writer and rs_state.writer != primary:
+                # New primary stepped up
+                new_primary = _partition_node(ha_tools.get_primary())
+                self.assertEqual(new_primary, rs_state.writer)
+                new_secondaries = partition_nodes(ha_tools.get_secondaries())
+                self.assertEqual(set(new_secondaries), rs_state.secondaries)
+                break
+        else:
+            self.fail(
+                "No new primary after %s seconds. Old primary was %s, current"
+                " is %s" % (patience_seconds, primary, ha_tools.get_primary()))
 
-    def tearDown(self):
-        ha_tools.kill_all_members()
 
-
-class TestWritesWithFailover(unittest.TestCase):
+class TestWritesWithFailover(HATestCase):
 
     def setUp(self):
         res = ha_tools.start_replica_set([{}, {}, {}])
@@ -397,11 +413,8 @@ class TestWritesWithFailover(unittest.TestCase):
         self.assertTrue(primary != c.primary)
         self.assertEqual('baz', db.test.find_one({'bar': 'baz'})['bar'])
 
-    def tearDown(self):
-        ha_tools.kill_all_members()
 
-
-class TestReadWithFailover(unittest.TestCase):
+class TestReadWithFailover(HATestCase):
 
     def setUp(self):
         res = ha_tools.start_replica_set([{}, {}, {}])
@@ -434,11 +447,8 @@ class TestReadWithFailover(unittest.TestCase):
         self.assertTrue(iter_cursor(cursor))
         self.assertEqual(10, cursor._Cursor__retrieved)
 
-    def tearDown(self):
-        ha_tools.kill_all_members()
 
-
-class TestReadPreference(unittest.TestCase):
+class TestReadPreference(HATestCase):
     def setUp(self):
         members = [
             # primary
@@ -783,11 +793,10 @@ class TestReadPreference(unittest.TestCase):
 
     def tearDown(self):
         self.c.close()
-        ha_tools.kill_all_members()
-        self.clear_ping_times()
+        super(TestReadPreference, self).tearDown()
 
 
-class TestReplicaSetAuth(unittest.TestCase):
+class TestReplicaSetAuth(HATestCase):
     def setUp(self):
         members = [
             {},
@@ -810,7 +819,7 @@ class TestReplicaSetAuth(unittest.TestCase):
     def test_auth_during_failover(self):
         self.assertTrue(self.db.authenticate('user', 'userpass'))
         self.assertTrue(self.db.foo.insert({'foo': 'bar'},
-                                           safe=True, w=3, wtimeout=1000))
+                                           safe=True, w=3, wtimeout=3000))
         self.db.logout()
         self.assertRaises(OperationFailure, self.db.foo.find_one)
 
@@ -828,10 +837,10 @@ class TestReplicaSetAuth(unittest.TestCase):
 
     def tearDown(self):
         self.c.close()
-        ha_tools.kill_all_members()
+        super(TestReplicaSetAuth, self).tearDown()
 
 
-class TestAlive(unittest.TestCase):
+class TestAlive(HATestCase):
     def setUp(self):
         members = [{}, {}]
         self.seed, self.name = ha_tools.start_replica_set(members)
@@ -865,11 +874,8 @@ class TestAlive(unittest.TestCase):
         finally:
             rsc.close()
 
-    def tearDown(self):
-        ha_tools.kill_all_members()
 
-
-class TestMongosHighAvailability(unittest.TestCase):
+class TestMongosHighAvailability(HATestCase):
     def setUp(self):
         seed_list = ha_tools.create_sharded_cluster()
         self.dbname = 'pymongo_mongos_ha'
@@ -909,10 +915,10 @@ class TestMongosHighAvailability(unittest.TestCase):
 
     def tearDown(self):
         self.client.drop_database(self.dbname)
-        ha_tools.kill_all_members()
+        super(TestMongosHighAvailability, self).tearDown()
 
 
-class TestReplicaSetRequest(unittest.TestCase):
+class TestReplicaSetRequest(HATestCase):
     def setUp(self):
         members = [{}, {}, {'arbiterOnly': True}]
         res = ha_tools.start_replica_set(members)
@@ -927,8 +933,9 @@ class TestReplicaSetRequest(unittest.TestCase):
         self.assertTrue(self.c.auto_start_request)
         self.assertTrue(self.c.in_request())
 
-        primary_pool = self.c._MongoReplicaSetClient__members[primary].pool
-        secondary_pool = self.c._MongoReplicaSetClient__members[secondary].pool
+        rs_state = self.c._MongoReplicaSetClient__rs_state
+        primary_pool = rs_state.get(primary).pool
+        secondary_pool = rs_state.get(secondary).pool
 
         # Trigger start_request on primary pool
         utils.assertReadFrom(self, self.c, primary, PRIMARY)
@@ -966,7 +973,7 @@ class TestReplicaSetRequest(unittest.TestCase):
 
     def tearDown(self):
         self.c.close()
-        ha_tools.kill_all_members()
+        super(TestReplicaSetRequest, self).tearDown()
 
 
 if __name__ == '__main__':

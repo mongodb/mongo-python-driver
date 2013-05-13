@@ -32,9 +32,8 @@ def get_pool(client):
     if isinstance(client, MongoClient):
         return client._MongoClient__pool
     elif isinstance(client, MongoReplicaSetClient):
-        writer = client._MongoReplicaSetClient__writer
-        pools = client._MongoReplicaSetClient__members
-        return pools[writer].pool
+        rs_state = client._MongoReplicaSetClient__rs_state
+        return rs_state[rs_state.writer].pool
     else:
         raise TypeError(str(client))
 

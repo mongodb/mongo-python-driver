@@ -102,7 +102,7 @@ class ReplicaSetConnection(MongoReplicaSetClient):
           - `network_timeout`: For compatibility with connection.Connection.
             The timeout (in seconds) to use for socket operations - default
             is no timeout. If both `network_timeout` and `socketTimeoutMS` are
-            are specified `network_timeout` takes precedence, matching
+            specified `network_timeout` takes precedence, matching
             connection.Connection.
           - `socketTimeoutMS`: (integer) How long (in milliseconds) a send or
             receive on a socket can take before timing out.

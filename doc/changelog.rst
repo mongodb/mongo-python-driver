@@ -1,6 +1,21 @@
 Changelog
 =========
 
+Changes in Version 2.5.1
+------------------------
+
+Version 2.5.1 is a minor release that fixes issues discovered after the
+release of 2.5. Most importantly, this release addresses some race
+conditions in replica set monitoring.
+
+Issues Resolved
+...............
+
+See the `PyMongo 2.5.1 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 2.5.1 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/12484
+
 Changes in Version 2.5
 ----------------------
 
