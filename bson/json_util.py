@@ -108,7 +108,7 @@ _RE_OPT_TABLE = {
 def dumps(obj, *args, **kwargs):
     """Helper function that wraps :class:`json.dumps`.
 
-    Recursive function that handles all BSON types incuding
+    Recursive function that handles all BSON types including
     :class:`~bson.binary.Binary` and :class:`~bson.code.Code`.
     """
     if not json_lib:
