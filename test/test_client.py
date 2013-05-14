@@ -33,7 +33,6 @@ from bson.tz_util import utc
 from pymongo.mongo_client import MongoClient
 from pymongo.database import Database
 from pymongo.pool import SocketInfo
-from pymongo import thread_util
 from pymongo.errors import (ConfigurationError,
                             ConnectionFailure,
                             InvalidName,
@@ -46,6 +45,13 @@ from test.utils import (assertRaisesExactly,
                         server_is_master_with_slave,
                         server_started_with_auth,
                         TestRequestMixin)
+
+try:
+    import greenlet
+    import gevent
+    have_gevent = True
+except ImportError:
+    have_gevent = False
 
 
 def get_client(*args, **kwargs):
@@ -143,7 +149,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
 
     def test_use_greenlets(self):
         self.assertFalse(MongoClient(host, port).use_greenlets)
-        if thread_util.have_greenlet:
+        if have_gevent:
             self.assertTrue(
                 MongoClient(
                     host, port, use_greenlets=True).use_greenlets)
@@ -511,6 +517,16 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         self.assertEqual(1, get_x_timeout(timeout.pymongo_test, None))
         self.assertRaises(ConnectionFailure, get_x_timeout,
                           no_timeout.pymongo_test, 0.1)
+
+    def test_waitQueueTimeoutMS(self):
+        client = MongoClient(host, port, waitQueueTimeoutMS=2000)
+        self.assertEqual(client._MongoClient__pool.wait_queue_timeout, 2)
+
+    def test_waitQueueMultiple(self):
+        client = MongoClient(host, port, max_pool_size=3, waitQueueMultiple=2)
+        pool = client._MongoClient__pool
+        self.assertEqual(pool.wait_queue_multiple, 2)
+        self.assertEqual(pool._socket_semaphore.waiter_semaphore.counter, 6)
 
     def test_tz_aware(self):
         self.assertRaises(ConfigurationError, MongoClient, tz_aware='foo')

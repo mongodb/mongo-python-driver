@@ -148,7 +148,7 @@ class TestDirectConnection(HATestCase):
             self.assertEqual(arbiter_host, client.host)
             self.assertEqual(arbiter_port, client.port)
             self.assertFalse(client.is_primary)
-            
+
             # See explanation above
             try:
                 client.pymongo_test.test.insert({}, w=0)
@@ -158,7 +158,7 @@ class TestDirectConnection(HATestCase):
                 self.fail(
                     'Unacknowledged insert into arbiter client %s should'
                     'have raised exception' % (client,))
-        
+
     def tearDown(self):
         self.c.close()
         super(TestDirectConnection, self).tearDown()
@@ -857,14 +857,14 @@ class TestAlive(HATestCase):
             self.assertTrue(primary_cx.alive())
             self.assertTrue(secondary_cx.alive())
             self.assertTrue(rsc.alive())
-    
+
             ha_tools.kill_primary()
             time.sleep(0.5)
 
             self.assertFalse(primary_cx.alive())
             self.assertTrue(secondary_cx.alive())
             self.assertFalse(rsc.alive())
-            
+
             ha_tools.kill_members([secondary], 2)
             time.sleep(0.5)
 
@@ -874,7 +874,7 @@ class TestAlive(HATestCase):
         finally:
             rsc.close()
 
-        
+
 class TestMongosHighAvailability(HATestCase):
     def setUp(self):
         seed_list = ha_tools.create_sharded_cluster()

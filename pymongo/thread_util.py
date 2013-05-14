@@ -14,22 +14,7 @@
 
 """Utilities to abstract the differences between threads and greenlets."""
 
-import threading
-import sys
-import weakref
-
-have_greenlet = True
-try:
-    import greenlet
-except ImportError:
-    have_greenlet = False
-
-
-# Do we have to work around http://bugs.python.org/issue1868?
-issue1868 = (sys.version_info[:3] <= (2, 7, 0))
-
-
-class Ident(object):
+class IdentBase(object):
     def __init__(self):
         self._refs = {}
 
@@ -37,8 +22,10 @@ class Ident(object):
         """Is the current thread or greenlet being watched for death?"""
         return self.get() in self._refs
 
-    def unwatch(self):
-        self._refs.pop(self.get(), None)
+    def unwatch(self, tid=None):
+        if tid is None:
+            tid = self.get()
+        self._refs.pop(tid, None)
 
     def get(self):
         """An id for this thread or greenlet"""
@@ -51,81 +38,11 @@ class Ident(object):
         raise NotImplementedError
 
 
-class ThreadIdent(Ident):
-    class _DummyLock(object):
-        def acquire(self):
-            pass
-
-        def release(self):
-            pass
-
-    def __init__(self):
-        super(ThreadIdent, self).__init__()
-        self._local = threading.local()
-        if issue1868:
-            self._lock = threading.Lock()
-        else:
-            self._lock = ThreadIdent._DummyLock()
-
-    # We watch for thread-death using a weakref callback to a thread local.
-    # Weakrefs are permitted on subclasses of object but not object() itself.
-    class ThreadVigil(object):
-        pass
-
-    def _make_vigil(self):
-        # Threadlocals in Python <= 2.7.0 have race conditions when setting
-        # attributes and possibly when getting them, too, leading to weakref
-        # callbacks not getting called later.
-        self._lock.acquire()
-        try:
-            vigil = getattr(self._local, 'vigil', None)
-            if not vigil:
-                self._local.vigil = vigil = ThreadIdent.ThreadVigil()
-        finally:
-            self._lock.release()
-
-        return vigil
-
-    def get(self):
-        return id(self._make_vigil())
-
-    def watch(self, callback):
-        vigil = self._make_vigil()
-        self._refs[id(vigil)] = weakref.ref(vigil, callback)
-
-
-class GreenletIdent(Ident):
-    def get(self):
-        return id(greenlet.getcurrent())
-
-    def watch(self, callback):
-        current = greenlet.getcurrent()
-        tid = self.get()
-
-        if hasattr(current, 'link'):
-            # This is a Gevent Greenlet (capital G), which inherits from
-            # greenlet and provides a 'link' method to detect when the
-            # Greenlet exits.
-            current.link(callback)
-            self._refs[tid] = None
-        else:
-            # This is a non-Gevent greenlet (small g), or it's the main
-            # greenlet.
-            self._refs[tid] = weakref.ref(current, callback)
-
-
-def create_ident(use_greenlets):
-    if use_greenlets:
-        return GreenletIdent()
-    else:
-        return ThreadIdent()
-
-
 class Counter(object):
     """A thread- or greenlet-local counter.
     """
-    def __init__(self, use_greenlets):
-        self.ident = create_ident(use_greenlets)
+    def __init__(self, thread_support_module):
+        self.ident = thread_support_module.Ident()
         self._counters = {}
 
     def inc(self):
@@ -144,3 +61,35 @@ class Counter(object):
 
     def get(self):
         return self._counters.get(self.ident.get(), 0)
+
+
+class DummySemaphore(object):
+    def __init__(self, value=None):
+        pass
+
+    def acquire(self, blocking=True, timeout=None):
+        return True
+
+    def release(self):
+        pass
+
+
+class ExceededMaxWaiters(Exception):
+    pass
+
+
+class MaxWaitersBoundedSemaphore(object):
+    def __init__(self, semaphore_class, value=1, max_waiters=1):
+        self.waiter_semaphore = semaphore_class(max_waiters)
+        self.semaphore = semaphore_class(value)
+
+    def acquire(self, blocking=True, timeout=None):
+        if not self.waiter_semaphore.acquire(False):
+            raise ExceededMaxWaiters()
+        try:
+            return self.semaphore.acquire(blocking, timeout)
+        finally:
+            self.waiter_semaphore.release()
+
+    def __getattr__(self, name):
+        return getattr(self.semaphore, name)

@@ -22,7 +22,8 @@ from pymongo import pool
 from test import host, port
 from test.utils import looplet
 from test.test_pooling_base import (
-    _TestPooling, _TestMaxPoolSize, _TestPoolSocketSharing)
+    _TestPooling, _TestMaxPoolSize, _TestMaxOpenSockets,
+    _TestPoolSocketSharing, _TestWaitQueueMultiple)
 
 
 class TestPoolingGevent(_TestPooling, unittest.TestCase):
@@ -36,8 +37,11 @@ class TestPoolingGeventSpecial(unittest.TestCase):
         # Check that Pool gives two sockets to two greenlets
         try:
             import greenlet
+            import gevent
         except ImportError:
-            raise SkipTest('greenlet not installed')
+            raise SkipTest('gevent not installed')
+
+        from pymongo import thread_util_gevent
 
         cx_pool = pool.Pool(
             pair=(host,port),
@@ -45,7 +49,7 @@ class TestPoolingGeventSpecial(unittest.TestCase):
             net_timeout=1000,
             conn_timeout=1000,
             use_ssl=False,
-            use_greenlets=True)
+            thread_support_module=thread_util_gevent)
 
         socks = []
 
@@ -69,8 +73,11 @@ class TestPoolingGeventSpecial(unittest.TestCase):
 
         try:
             import greenlet
+            import gevent
         except ImportError:
-            raise SkipTest('greenlet not installed')
+            raise SkipTest('gevent not installed')
+
+        from pymongo import thread_util_threading, thread_util_gevent
 
         pool_args = dict(
             pair=(host,port),
@@ -87,7 +94,11 @@ class TestPoolingGeventSpecial(unittest.TestCase):
             (False, False, False),
         ]:
             pool_args_cp = pool_args.copy()
-            pool_args_cp['use_greenlets'] = use_greenlets
+            if use_greenlets:
+                pool_args_cp['thread_support_module'] = thread_util_gevent
+            else:
+                pool_args_cp['thread_support_module'] = thread_util_threading
+
             cx_pool = pool.Pool(**pool_args_cp)
 
             # Map: greenlet -> socket
@@ -175,6 +186,14 @@ class TestMaxPoolSizeGevent(_TestMaxPoolSize, unittest.TestCase):
 
 
 class TestPoolSocketSharingGevent(_TestPoolSocketSharing, unittest.TestCase):
+    use_greenlets = True
+
+
+class TestMaxOpenSocketsGevent(_TestMaxOpenSockets, unittest.TestCase):
+    use_greenlets = True
+
+
+class TestWaitQueueMultipleGevent(_TestWaitQueueMultiple, unittest.TestCase):
     use_greenlets = True
 
 
