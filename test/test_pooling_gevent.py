@@ -22,7 +22,8 @@ from pymongo import pool
 from test import host, port
 from test.utils import looplet
 from test.test_pooling_base import (
-    _TestPooling, _TestMaxPoolSize, _TestPoolSocketSharing)
+    _TestPooling, _TestMaxPoolSize, _TestMaxOpenSockets,
+    _TestPoolSocketSharing, _TestWaitQueueMultiple)
 
 
 class TestPoolingGevent(_TestPooling, unittest.TestCase):
@@ -36,8 +37,9 @@ class TestPoolingGeventSpecial(unittest.TestCase):
         # Check that Pool gives two sockets to two greenlets
         try:
             import greenlet
+            import gevent
         except ImportError:
-            raise SkipTest('greenlet not installed')
+            raise SkipTest('gevent not installed')
 
         cx_pool = pool.Pool(
             pair=(host,port),
@@ -69,8 +71,9 @@ class TestPoolingGeventSpecial(unittest.TestCase):
 
         try:
             import greenlet
+            import gevent
         except ImportError:
-            raise SkipTest('greenlet not installed')
+            raise SkipTest('gevent not installed')
 
         pool_args = dict(
             pair=(host,port),
@@ -175,6 +178,14 @@ class TestMaxPoolSizeGevent(_TestMaxPoolSize, unittest.TestCase):
 
 
 class TestPoolSocketSharingGevent(_TestPoolSocketSharing, unittest.TestCase):
+    use_greenlets = True
+
+
+class TestMaxOpenSocketsGevent(_TestMaxOpenSockets, unittest.TestCase):
+    use_greenlets = True
+
+
+class TestWaitQueueMultipleGevent(_TestWaitQueueMultiple, unittest.TestCase):
     use_greenlets = True
 
 

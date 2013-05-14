@@ -302,7 +302,7 @@ class Monitor(object):
 
             try:
                 try:
-                    self.rsc.refresh()
+                    self.rsc.refresh(force=True)
                 finally:
                     self.refreshed.set()
             except AutoReconnect:
@@ -1026,7 +1026,7 @@ class MongoReplicaSetClient(common.BaseObject):
         else:
             return threading.local()
 
-    def refresh(self):
+    def refresh(self, force=False):
         """Iterate through the existing host list, or possibly the
         seed list, to update the list of hosts and arbiters in this
         replica set.
@@ -1054,48 +1054,52 @@ class MongoReplicaSetClient(common.BaseObject):
         for node in nodes:
             member, sock_info = rs_state.get(node), None
             try:
-                if member:
-                    sock_info = self.__socket(member)
-                    response, ping_time = self.__simple_command(
-                        sock_info, 'admin', {'ismaster': 1})
+                try:
+                    if member:
+                        sock_info = self.__socket(member, force=force)
+                        response, ping_time = self.__simple_command(
+                            sock_info, 'admin', {'ismaster': 1})
+                        new_member = member.clone_with(response, ping_time)
+                    else:
+                        response, pool, ping_time = self.__is_master(node)
+                        new_member = Member(
+                            node, pool, response, MovingAverage([ping_time]), True)
+
+                    # Check that this host is part of the given replica set.
+                    set_name = response.get('setName')
+                    # The 'setName' field isn't returned by mongod before 1.6.2
+                    # so we can't assume that if it's missing this host isn't in
+                    # the specified set.
+                    if set_name and set_name != self.__name:
+                        host, port = node
+                        raise ConfigurationError("%s:%d is not a member of "
+                                                 "replica set %s"
+                                                 % (host, port, self.__name))
+                    if "arbiters" in response:
+                        arbiters = set([
+                            _partition_node(h) for h in response["arbiters"]])
+                    if "hosts" in response:
+                        hosts.update([_partition_node(h)
+                                      for h in response["hosts"]])
+                    if "passives" in response:
+                        hosts.update([_partition_node(h)
+                                      for h in response["passives"]])
+
+                    # Start off the new 'members' dict with this member
+                    # but don't add seed list members.
+                    if node in hosts:
+                        members[node] = new_member
+                        if response['ismaster']:
+                            writer = node
+
+                except (ConnectionFailure, socket.error), why:
+                    if member:
+                        member.pool.discard_socket(sock_info)
+                        sock_info = None
+                    errors.append("%s:%d: %s" % (node[0], node[1], str(why)))
+            finally:
+                if member and sock_info:
                     member.pool.maybe_return_socket(sock_info)
-                    new_member = member.clone_with(response, ping_time)
-                else:
-                    response, pool, ping_time = self.__is_master(node)
-                    new_member = Member(
-                        node, pool, response, MovingAverage([ping_time]), True)
-
-                # Check that this host is part of the given replica set.
-                set_name = response.get('setName')
-                # The 'setName' field isn't returned by mongod before 1.6.2
-                # so we can't assume that if it's missing this host isn't in
-                # the specified set.
-                if set_name and set_name != self.__name:
-                    host, port = node
-                    raise ConfigurationError("%s:%d is not a member of "
-                                             "replica set %s"
-                                             % (host, port, self.__name))
-                if "arbiters" in response:
-                    arbiters = set([
-                        _partition_node(h) for h in response["arbiters"]])
-                if "hosts" in response:
-                    hosts.update([_partition_node(h)
-                                  for h in response["hosts"]])
-                if "passives" in response:
-                    hosts.update([_partition_node(h)
-                                  for h in response["passives"]])
-
-                # Start off the new 'members' dict with this member
-                # but don't add seed list members.
-                if node in hosts:
-                    members[node] = new_member
-                    if response['ismaster']:
-                        writer = node
-
-            except (ConnectionFailure, socket.error), why:
-                if member:
-                    member.pool.discard_socket(sock_info)
-                errors.append("%s:%d: %s" % (node[0], node[1], str(why)))
             if hosts:
                 break
         else:
@@ -1111,24 +1115,27 @@ class MongoReplicaSetClient(common.BaseObject):
 
             member, sock_info = rs_state.get(host), None
             try:
-                if member:
-                    sock_info = self.__socket(member)
-                    res, ping_time = self.__simple_command(
-                        sock_info, 'admin', {'ismaster': 1})
+                try:
+                    if member:
+                        sock_info = self.__socket(member)
+                        res, ping_time = self.__simple_command(
+                            sock_info, 'admin', {'ismaster': 1})
+                        new_member = member.clone_with(res, ping_time)
+                    else:
+                        res, connection_pool, ping_time = self.__is_master(host)
+                        new_member = Member(
+                            host, connection_pool, res, MovingAverage([ping_time]),
+                            True)
+
+                    members[host] = new_member
+
+                except (ConnectionFailure, socket.error):
+                    if member:
+                        member.pool.discard_socket(sock_info)
+                    continue
+            finally:
+                if member and sock_info:
                     member.pool.maybe_return_socket(sock_info)
-                    new_member = member.clone_with(res, ping_time)
-                else:
-                    res, connection_pool, ping_time = self.__is_master(host)
-                    new_member = Member(
-                        host, connection_pool, res, MovingAverage([ping_time]),
-                        True)
-
-                members[host] = new_member
-
-            except (ConnectionFailure, socket.error):
-                if member:
-                    member.pool.discard_socket(sock_info)
-                continue
 
             if res['ismaster']:
                 writer = host
@@ -1163,13 +1170,13 @@ class MongoReplicaSetClient(common.BaseObject):
         # Couldn't find the primary.
         raise AutoReconnect(rs_state.error_message)
 
-    def __socket(self, member):
+    def __socket(self, member, force=False):
         """Get a SocketInfo from the pool.
         """
         if self.auto_start_request and not self.in_request():
             self.start_request()
 
-        sock_info = member.pool.get_socket()
+        sock_info = member.pool.get_socket(force=force)
 
         try:
             self.__check_auth(sock_info)
@@ -1195,7 +1202,7 @@ class MongoReplicaSetClient(common.BaseObject):
 
         This method first terminates the replica set monitor, then disconnects
         from all members of the replica set.
-        
+
         .. warning:: This method stops the replica set monitor task. The
            replica set monitor is required to properly handle replica set
            configuration changes, including a failure of the primary.
@@ -1236,11 +1243,17 @@ class MongoReplicaSetClient(common.BaseObject):
         # calls select() if the socket hasn't been checked in the last second,
         # or it may create a new socket, in which case calling select() is
         # redundant.
+        member, sock_info = None, None
         try:
-            sock_info = self.__socket(self.__find_primary())
-            return not pool._closed(sock_info.sock)
-        except (socket.error, ConnectionFailure):
-            return False
+            try:
+                member = self.__find_primary()
+                sock_info = self.__socket(member)
+                return not pool._closed(sock_info.sock)
+            except (socket.error, ConnectionFailure):
+                return False
+        finally:
+            if sock_info is not None:
+                member.pool.maybe_return_socket(sock_info)
 
     def __check_response_to_last_error(self, response):
         """Check a response to a lastError message for errors.
@@ -1347,30 +1360,32 @@ class MongoReplicaSetClient(common.BaseObject):
 
         sock_info = None
         try:
-            sock_info = self.__socket(member)
-            rqst_id, data = self.__check_bson_size(msg, member.max_bson_size)
-            sock_info.sock.sendall(data)
-            # Safe mode. We pack the message together with a lastError
-            # message and send both. We then get the response (to the
-            # lastError) and raise OperationFailure if it is an error
-            # response.
-            rv = None
-            if with_last_error:
-                response = self.__recv_msg(1, rqst_id, sock_info)
-                rv = self.__check_response_to_last_error(response)
-            member.pool.maybe_return_socket(sock_info)
-            return rv
-        except OperationFailure:
-            member.pool.maybe_return_socket(sock_info)
-            raise
-        except(ConnectionFailure, socket.error), why:
-            member.pool.discard_socket(sock_info)
-            if _connection_to_use in (None, -1):
-                self.disconnect()
-            raise AutoReconnect(str(why))
-        except:
-            sock_info.close()
-            raise
+            try:
+                sock_info = self.__socket(member)
+                rqst_id, data = self.__check_bson_size(msg, member.max_bson_size)
+                sock_info.sock.sendall(data)
+                # Safe mode. We pack the message together with a lastError
+                # message and send both. We then get the response (to the
+                # lastError) and raise OperationFailure if it is an error
+                # response.
+                rv = None
+                if with_last_error:
+                    response = self.__recv_msg(1, rqst_id, sock_info)
+                    rv = self.__check_response_to_last_error(response)
+                return rv
+            except OperationFailure:
+                raise
+            except(ConnectionFailure, socket.error), why:
+                member.pool.discard_socket(sock_info)
+                if _connection_to_use in (None, -1):
+                    self.disconnect()
+                raise AutoReconnect(str(why))
+            except:
+                sock_info.close()
+                raise
+        finally:
+            if sock_info is not None:
+                member.pool.maybe_return_socket(sock_info)
 
     def __send_and_receive(self, member, msg, **kwargs):
         """Send a message on the given socket and return the response data.
@@ -1379,23 +1394,26 @@ class MongoReplicaSetClient(common.BaseObject):
         """
         sock_info = None
         try:
-            sock_info = self.__socket(member)
+            try:
+                sock_info = self.__socket(member)
 
-            if "network_timeout" in kwargs:
-                sock_info.sock.settimeout(kwargs['network_timeout'])
+                if "network_timeout" in kwargs:
+                    sock_info.sock.settimeout(kwargs['network_timeout'])
 
-            rqst_id, data = self.__check_bson_size(msg, member.max_bson_size)
-            sock_info.sock.sendall(data)
-            response = self.__recv_msg(1, rqst_id, sock_info)
+                rqst_id, data = self.__check_bson_size(msg, member.max_bson_size)
+                sock_info.sock.sendall(data)
+                response = self.__recv_msg(1, rqst_id, sock_info)
 
-            if "network_timeout" in kwargs:
-                sock_info.sock.settimeout(self.__net_timeout)
-            member.pool.maybe_return_socket(sock_info)
+                if "network_timeout" in kwargs:
+                    sock_info.sock.settimeout(self.__net_timeout)
 
-            return response
-        except:
-            member.pool.discard_socket(sock_info)
-            raise
+                return response
+            except:
+                member.pool.discard_socket(sock_info)
+                raise
+        finally:
+            if sock_info is not None:
+                member.pool.maybe_return_socket(sock_info)
 
     def __try_read(self, member, msg, **kwargs):
         """Attempt a read from a member; on failure mark the member "down" and
