@@ -56,6 +56,10 @@ class Ident(object):
         """
         raise NotImplementedError
 
+    def watching(self):
+        """Is the current thread being watched for death?"""
+        return self.get() in self._refs
+
 
 class ThreadIdent(Ident):
     class _DummyLock(object):
@@ -98,15 +102,6 @@ class ThreadIdent(Ident):
     def watch(self, callback):
         vigil = self._make_vigil()
         self._refs[id(vigil)] = weakref.ref(vigil, callback)
-
-    def watching(self):
-        """Is the current thread being watched for death?"""
-        tid = self.get()
-        if tid not in self._refs:
-            return False
-        # Check that the weakref is active, if not the thread has died
-        # This fixes the case where a thread id gets reused
-        return self._refs[tid]()
 
 
 class GreenletIdent(Ident):
