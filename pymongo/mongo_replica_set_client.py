@@ -901,14 +901,19 @@ class MongoReplicaSetClient(common.BaseObject):
 
     @property
     def max_pool_size(self):
-        """The maximum number of idle connections kept open in each pool for
-        future use.
+        """The maximum number of sockets the pool will open concurrently.
 
-        .. note:: ``max_pool_size`` does not cap the number of concurrent
-          connections to a replica set member; there is currently no way to
-          limit the number of connections. ``max_pool_size`` only limits the
-          number of **idle** connections kept open when they are returned to
-          a pool.
+        When the pool has reached `max_pool_size`, operations block waiting for
+        a socket to be returned to the pool. If ``waitQueueTimeoutMS`` is set,
+        a blocked operation will raise :exc:`~pymongo.errors.ConnectionFailure`
+        after a timeout. By default ``waitQueueTimeoutMS`` is not set.
+
+        .. warning:: SIGNIFICANT BEHAVIOR CHANGE in 2.5.1+. Previously, this
+          parameter would limit only the idle sockets the pool would hold
+          onto, not the number of open sockets. The default has also changed
+          to 100.
+
+        .. versionchanged:: 2.5.1+
         """
         return self.__max_pool_size
 

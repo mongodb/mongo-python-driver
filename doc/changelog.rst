@@ -1,6 +1,24 @@
 Changelog
 =========
 
+Changes in Version 2.5.1+
+----------------------
+
+Important new features:
+
+- The `max_pool_size` option for :class:`~pymongo.mongo_client.MongoClient` and
+  :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient` now actually
+  caps the number of sockets the pool will open concurrently. Connection or
+  query attempts when the pool has reached `max_pool_size` block waiting for a
+  socket to be returned to the pool. If ``waitQueueTimeoutMS`` is set, an
+  operation that blocks waiting for a socket will raise
+  :exc:`~pymongo.errors.ConnectionFailure` after the timeout. By default
+  ``waitQueueTimeoutMS`` is not set.
+
+.. warning:: SIGNIFICANT BEHAVIOR CHANGE in 2.5.1+. Previously, `max_pool_size`
+  would limit only the idle sockets the pool would hold onto, not the
+  number of open sockets. The default has also changed, from 10 to 100.
+
 Changes in Version 2.5.1
 ------------------------
 
