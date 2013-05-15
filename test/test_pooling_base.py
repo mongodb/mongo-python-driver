@@ -585,6 +585,7 @@ class _TestPooling(_TestPoolingBase):
 
         # Kill old request socket
         sock_info.sock.close()
+        cx_pool.maybe_return_socket(sock_info)
         time.sleep(1.1) # trigger _check_closed
 
         # Dead socket detected and removed
