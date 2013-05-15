@@ -302,7 +302,7 @@ class Monitor(object):
 
             try:
                 try:
-                    self.rsc.refresh(force=True)
+                    self.rsc.refresh()
                 finally:
                     self.refreshed.set()
             except AutoReconnect:
@@ -1031,7 +1031,7 @@ class MongoReplicaSetClient(common.BaseObject):
         else:
             return threading.local()
 
-    def refresh(self, force=False):
+    def refresh(self):
         """Iterate through the existing host list, or possibly the
         seed list, to update the list of hosts and arbiters in this
         replica set.
@@ -1060,7 +1060,7 @@ class MongoReplicaSetClient(common.BaseObject):
             member, sock_info = rs_state.get(node), None
             try:
                 if member:
-                    sock_info = self.__socket(member, force=force)
+                    sock_info = self.__socket(member, force=True)
                     response, ping_time = self.__simple_command(
                         sock_info, 'admin', {'ismaster': 1})
                     member.pool.maybe_return_socket(sock_info)
@@ -1117,7 +1117,7 @@ class MongoReplicaSetClient(common.BaseObject):
             member, sock_info = rs_state.get(host), None
             try:
                 if member:
-                    sock_info = self.__socket(member, force=force)
+                    sock_info = self.__socket(member, force=True)
                     res, ping_time = self.__simple_command(
                         sock_info, 'admin', {'ismaster': 1})
                     member.pool.maybe_return_socket(sock_info)
