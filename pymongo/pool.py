@@ -409,8 +409,7 @@ class Pool:
         try:
             self.lock.acquire()
             if (len(self.sockets) < self.max_size
-                and sock_info.pool_id == self.pool_id
-            ):
+                    and sock_info.pool_id == self.pool_id):
                 self.sockets.add(sock_info)
             else:
                 sock_info.close()
@@ -454,7 +453,8 @@ class Pool:
         else:
             try:
                 if acquire_on_connect:
-                    if not self._socket_semaphore.acquire(True, self.wait_queue_timeout):
+                    if not self._socket_semaphore.acquire(
+                            True, self.wait_queue_timeout):
                         raise socket.timeout()
                 return self.connect(pair)
             except socket.error:
@@ -484,6 +484,7 @@ class Pool:
                 # thread locals in this function, while PyThreadState_Clear()
                 # is in progress can cause leaks, see PYTHON-353.
                 poolref = weakref.ref(self)
+
                 def on_thread_died(ref):
                     try:
                         ident.unwatch(tid)
