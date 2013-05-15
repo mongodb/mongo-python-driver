@@ -1401,10 +1401,6 @@ class MongoReplicaSetClient(common.BaseObject):
                     sock_info.sock.settimeout(self.__net_timeout)
 
                 return response
-            except (ConnectionFailure, socket.error), why:
-                host, port = member.pool.pair
-                member.pool.discard_socket(sock_info)
-                raise AutoReconnect("%s:%d: %s" % (host, port, str(why)))
             except:
                 if sock_info is not None:
                     sock_info.close()
