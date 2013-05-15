@@ -614,6 +614,7 @@ class _TestPooling(_TestPoolingBase):
         # Get the request socket
         sock_info = cx_pool.get_socket()
         self.assertEqual(sock_info, cx_pool._get_request_state())
+        cx_pool.maybe_return_socket(sock_info)
 
         # End request
         cx_pool.end_request()
@@ -621,7 +622,6 @@ class _TestPooling(_TestPoolingBase):
 
         # Kill old request socket
         sock_info.sock.close()
-        cx_pool.maybe_return_socket(sock_info)
         time.sleep(1.1) # trigger _check_closed
 
         # Dead socket detected and removed
