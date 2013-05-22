@@ -30,7 +30,7 @@ from nose.plugins.skip import SkipTest
 import pymongo.pool
 from pymongo.mongo_client import MongoClient
 from pymongo.pool import Pool, NO_REQUEST, NO_SOCKET_YET, SocketInfo
-from pymongo.errors import ConfigurationError
+from pymongo.errors import ConfigurationError, ConnectionFailure
 from pymongo.thread_util import ExceededMaxWaiters
 from test import version, host, port
 from test.test_client import get_client

@@ -318,7 +318,8 @@ class Pool:
             if not self._socket_semaphore.acquire(False):
                 forced = True
         elif not self._socket_semaphore.acquire(True, self.wait_queue_timeout):
-            raise socket.timeout()
+            self._raise_wait_queue_timeout()
+
         sock_info, from_pool = None, None
         try:
             try:
@@ -452,7 +453,7 @@ class Pool:
                 if acquire_on_connect:
                     if not self._socket_semaphore.acquire(
                             True, self.wait_queue_timeout):
-                        raise socket.timeout()
+                        self._raise_wait_queue_timeout()
                 return self.connect(pair)
             except socket.error:
                 self.reset()
@@ -502,6 +503,12 @@ class Pool:
     def _get_request_state(self):
         tid = self._ident.get()
         return self._tid_to_sock.get(tid, NO_REQUEST)
+
+    def _raise_wait_queue_timeout(self):
+        raise ConnectionFailure(
+            'Timed out waiting for socket from pool with max_size %r and'
+            ' wait_queue_timeout %r' % (
+                self.max_size, self.wait_queue_timeout))
 
     def __del__(self):
         # Avoid ResourceWarnings in Python 3
