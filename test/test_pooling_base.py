@@ -848,40 +848,38 @@ class _TestMaxPoolSize(_TestPoolingBase):
         for t in threads:
             self.assertTrue(t.passed)
 
-        # Socket-reclamation doesn't work in Jython
-        if not sys.platform.startswith('java'):
-            cx_pool = c._MongoClient__pool
+        cx_pool = c._MongoClient__pool
 
-            # Socket-reclamation depends on timely garbage-collection
-            if 'PyPy' in sys.version:
-                gc.collect()
+        # Socket-reclamation depends on timely garbage-collection
+        if 'PyPy' in sys.version:
+            gc.collect()
 
-            if self.use_greenlets:
-                # Wait for Greenlet.link() callbacks to execute
-                the_hub = hub.get_hub()
-                if hasattr(the_hub, 'join'):
-                    # Gevent 1.0
-                    the_hub.join()
-                else:
-                    # Gevent 0.13 and less
-                    the_hub.shutdown()
+        if self.use_greenlets:
+            # Wait for Greenlet.link() callbacks to execute
+            the_hub = hub.get_hub()
+            if hasattr(the_hub, 'join'):
+                # Gevent 1.0
+                the_hub.join()
+            else:
+                # Gevent 0.13 and less
+                the_hub.shutdown()
 
-            # thread.join completes slightly *before* thread locals are
-            # cleaned up, so wait up to 5 seconds for them.
+        # thread.join completes slightly *before* thread locals are
+        # cleaned up, so wait up to 5 seconds for them.
+        time.sleep(0.1)
+        cx_pool._ident.get()
+        start = time.time()
+
+        while (
+            not cx_pool.sockets
+            and cx_pool._socket_semaphore.counter < max_pool_size
+            and (time.time() - start) < 5
+        ):
             time.sleep(0.1)
             cx_pool._ident.get()
-            start = time.time()
 
-            while (
-                not cx_pool.sockets
-                and cx_pool._socket_semaphore.counter < max_pool_size
-                and (time.time() - start) < 5
-            ):
-                time.sleep(0.1)
-                cx_pool._ident.get()
-
-            self.assertTrue(len(cx_pool.sockets) >= 1)
-            self.assertEqual(max_pool_size, cx_pool._socket_semaphore.counter)
+        self.assertTrue(len(cx_pool.sockets) >= 1)
+        self.assertEqual(max_pool_size, cx_pool._socket_semaphore.counter)
 
     def test_max_pool_size(self):
         self._test_max_pool_size(
@@ -923,61 +921,61 @@ class _TestMaxPoolSize(_TestPoolingBase):
         self._test_max_pool_size(0, 1)
 
 
+class SocketGetter(threading.Thread):
+    """Utility for _TestMaxOpenSockets and _TestWaitQueueMultiple"""
+    def __init__(self, pool):
+        super(SocketGetter, self).__init__()
+        self.setDaemon(True)
+        self.state = 'init'
+        self.pool = pool
+        self.sock = None
+
+    def run(self):
+        self.state = 'get_socket'
+        self.sock = self.pool.get_socket()
+        self.state = 'sock'
+
+
 class _TestMaxOpenSockets(_TestPoolingBase):
     """Test that connection pool doesn't open more than max_size sockets.
     To be run both with threads and with greenlets.
     """
-    def get_pool(self, conn_timeout, net_timeout, wait_queue_timeout):
-        return pymongo.pool.Pool(('127.0.0.1', 27017),
-                                 2, net_timeout, conn_timeout,
-                                 False, False,
-                                 wait_queue_timeout=wait_queue_timeout)
+    def get_pool_with_wait_queue_timeout(self, wait_queue_timeout):
+        return self.get_pool(('127.0.0.1', 27017),
+                             1, None, None,
+                             False,
+                             wait_queue_timeout=wait_queue_timeout,
+                             wait_queue_multiple=None)
 
-    def test_over_max_times_out(self):
-        conn_timeout = 2
-        pool = self.get_pool(conn_timeout, conn_timeout + 5, conn_timeout + 1)
-        s1 = pool.get_socket()
-        s2 = pool.get_socket()
-        self.assertNotEqual(s1, s2)
+    def test_wait_queue_timeout(self):
+        wait_queue_timeout = 2  # Seconds
+        pool = self.get_pool_with_wait_queue_timeout(wait_queue_timeout)
+        pool.get_socket()
         start = time.time()
-        self.assertRaises(socket.timeout, pool.get_socket)
-        end = time.time()
+        self.assertRaises(ConnectionFailure, pool.get_socket)
+        duration = time.time() - start
         self.assertTrue(
-            end - start > conn_timeout,
-            "%.2f seconds duration less than expected %f" % (
-                end - start, conn_timeout))
+            abs(wait_queue_timeout - duration) < 1,
+            "Waited %.2f seconds for a socket, expected %f" % (
+                duration, wait_queue_timeout))
 
-        self.assertTrue(end - start < conn_timeout + 5)
+    def test_blocking(self):
+        # Verify get_socket() with no wait_queue_timeout blocks forever.
+        pool = self.get_pool_with_wait_queue_timeout(None)
 
-    def test_over_max_no_timeout_blocks(self):
-        class Thread(threading.Thread):
-            def __init__(self, pool):
-                super(Thread, self).__init__()
-                self.state = 'init'
-                self.pool = pool
-                self.sock = None
-
-            def run(self):
-                self.state = 'get_socket'
-                self.sock = self.pool.get_socket()
-                self.state = 'sock'
-
-        pool = self.get_pool(None, 2, None)
+        # Reach max_size.
         s1 = pool.get_socket()
-        self.assertTrue(None is not s1)
-        s2 = pool.get_socket()
-        self.assertTrue(None is not s2)
-        self.assertNotEqual(s1, s2)
-        t = Thread(pool)
+        t = SocketGetter(pool)
         t.start()
         while t.state != 'get_socket':
             time.sleep(0.1)
-        self.assertEqual(t.state, 'get_socket')
-        time.sleep(5)
+
+        time.sleep(1)
         self.assertEqual(t.state, 'get_socket')
         pool.maybe_return_socket(s1)
         while t.state != 'sock':
             time.sleep(0.1)
+
         self.assertEqual(t.state, 'sock')
         self.assertEqual(t.sock, s1)
 
@@ -987,88 +985,47 @@ class _TestWaitQueueMultiple(_TestPoolingBase):
     waitQueueMultiple * max_size waiters.
     To be run both with threads and with greenlets.
     """
-    def get_pool(self, conn_timeout, net_timeout, wait_queue_timeout,
-                 wait_queue_multiple):
-        return pymongo.pool.Pool(('127.0.0.1', 27017),
-                                 2, net_timeout, conn_timeout,
-                                 False, False,
-                                 wait_queue_timeout=wait_queue_timeout,
-                                 wait_queue_multiple=wait_queue_multiple)
+    def get_pool_with_wait_queue_multiple(self, wait_queue_multiple):
+        return self.get_pool(('127.0.0.1', 27017),
+                             2, None, None,
+                             False,
+                             wait_queue_timeout=None,
+                             wait_queue_multiple=wait_queue_multiple)
 
     def test_wait_queue_multiple(self):
-        class Thread(threading.Thread):
-            def __init__(self, pool):
-                super(Thread, self).__init__()
-                self.state = 'init'
-                self.pool = pool
-                self.sock = None
+        pool = self.get_pool_with_wait_queue_multiple(3)
 
-            def run(self):
-                self.state = 'get_socket'
-                self.sock = self.pool.get_socket()
-                self.state = 'sock'
+        # Reach max_size sockets.
+        pool.get_socket()
+        pool.get_socket()
 
-        pool = self.get_pool(None, None, None, 3)
-        socks = []
-        for _ in xrange(2):
-            sock = pool.get_socket()
-            self.assertTrue(sock is not None)
-            socks.append(sock)
+        # Reach max_size * wait_queue_multiple waiters.
         threads = []
         for _ in xrange(6):
-            t = Thread(pool)
+            t = SocketGetter(pool)
             t.start()
             threads.append(t)
+
         time.sleep(1)
         for t in threads:
             self.assertEqual(t.state, 'get_socket')
+
         self.assertRaises(ExceededMaxWaiters, pool.get_socket)
-        while threads:
-            for sock in socks:
-                pool.maybe_return_socket(sock)
-            socks = []
-            for t in list(threads):
-                if t.sock is not None:
-                    socks.append(t.sock)
-                    t.join()
-                    threads.remove(t)
 
     def test_wait_queue_multiple_unset(self):
-        class Thread(threading.Thread):
-            def __init__(self, pool):
-                super(Thread, self).__init__()
-                self.state = 'init'
-                self.pool = pool
-                self.sock = None
-
-            def run(self):
-                self.state = 'get_socket'
-                self.sock = self.pool.get_socket()
-                self.state = 'sock'
-
-        pool = self.get_pool(None, None, None, None)
+        pool = self.get_pool_with_wait_queue_multiple(None)
         socks = []
         for _ in xrange(2):
             sock = pool.get_socket()
-            self.assertTrue(sock is not None)
             socks.append(sock)
         threads = []
         for _ in xrange(30):
-            t = Thread(pool)
+            t = SocketGetter(pool)
             t.start()
             threads.append(t)
         time.sleep(1)
         for t in threads:
             self.assertEqual(t.state, 'get_socket')
-        while threads:
-            for sock in socks:
-                pool.maybe_return_socket(sock)
-            socks = []
-            for t in list(threads):
-                if t.sock is not None:
-                    socks.append(t.sock)
-                    t.join()
-                    threads.remove(t)
 
 
 class _TestPoolSocketSharing(_TestPoolingBase):
