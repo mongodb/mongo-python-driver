@@ -1250,8 +1250,7 @@ class MongoReplicaSetClient(common.BaseObject):
             except (socket.error, ConnectionFailure):
                 return False
         finally:
-            if sock_info is not None:
-                member.pool.maybe_return_socket(sock_info)
+            member.pool.maybe_return_socket(sock_info)
 
     def __check_response_to_last_error(self, response):
         """Check a response to a lastError message for errors.
@@ -1382,8 +1381,7 @@ class MongoReplicaSetClient(common.BaseObject):
                 sock_info.close()
                 raise
         finally:
-            if sock_info is not None:
-                member.pool.maybe_return_socket(sock_info)
+            member.pool.maybe_return_socket(sock_info)
 
     def __send_and_receive(self, member, msg, **kwargs):
         """Send a message on the given socket and return the response data.
@@ -1411,8 +1409,7 @@ class MongoReplicaSetClient(common.BaseObject):
                     sock_info.close()
                 raise
         finally:
-            if sock_info is not None:
-                member.pool.maybe_return_socket(sock_info)
+            member.pool.maybe_return_socket(sock_info)
 
     def __try_read(self, member, msg, **kwargs):
         """Attempt a read from a member; on failure mark the member "down" and

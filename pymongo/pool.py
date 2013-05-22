@@ -388,11 +388,14 @@ class Pool:
     def maybe_return_socket(self, sock_info):
         """Return the socket to the pool unless it's the request socket.
         """
+        if sock_info in (NO_REQUEST, NO_SOCKET_YET):
+            return
+
         if self.pid != os.getpid():
             if not sock_info.forced:
                 self._socket_semaphore.release()
             self.reset()
-        elif sock_info not in (NO_REQUEST, NO_SOCKET_YET):
+        else:
             if sock_info.closed:
                 if sock_info.forced:
                     sock_info.forced = False
