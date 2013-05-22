@@ -26,7 +26,6 @@ have_gevent = True
 try:
     import greenlet
     import gevent.coros
-    import gevent.thread
 except ImportError:
     have_gevent = False
 
@@ -55,10 +54,6 @@ class Ident(object):
         one meaningless argument.
         """
         raise NotImplementedError
-
-    def watching(self):
-        """Is the current thread being watched for death?"""
-        return self.get() in self._refs
 
 
 class ThreadIdent(Ident):

@@ -1359,7 +1359,9 @@ class MongoReplicaSetClient(common.BaseObject):
         try:
             try:
                 sock_info = self.__socket(member)
-                rqst_id, data = self.__check_bson_size(msg, member.max_bson_size)
+                rqst_id, data = self.__check_bson_size(
+                    msg, member.max_bson_size)
+
                 sock_info.sock.sendall(data)
                 # Safe mode. We pack the message together with a lastError
                 # message and send both. We then get the response (to the
