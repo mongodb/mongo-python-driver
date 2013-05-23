@@ -867,8 +867,23 @@ class _TestMaxPoolSize(_TestPoolingBase):
         for t in threads:
             t.start()
 
-        for t in threads:
-            t.join()
+        if 'PyPy' in sys.version:
+            # With PyPy we need to kick off the gc whenever the threads hit the
+            # rendezvous since nthreads > max_pool_size.
+            start = time.time()
+            running = list(threads)
+            while running:
+                assert (time.time() - start) < 60, "Threads timed out"
+                for t in running:
+                    t.thread.join(0.1)
+                    if not t.alive:
+                        running.remove(t)
+                if (len(threads) - len(running)) % min(nthreads, max_pool_size) == 0:
+                    gc.collect()
+            gc.collect()
+        else:
+            for t in threads:
+                t.join()
 
         for t in threads:
             self.assertTrue(t.passed)
