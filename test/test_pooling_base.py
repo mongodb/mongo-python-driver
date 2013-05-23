@@ -68,7 +68,7 @@ class MongoThread(object):
             self.thread = Greenlet(self.run)
         else:
             self.thread = threading.Thread(target=self.run)
-            self.thread.setDaemon(True) # Don't hang whole test if thread hangs
+            self.thread.setDaemon(True)  # Don't hang whole test if thread hangs
 
         self.thread.start()
 
@@ -767,9 +767,7 @@ class _TestMaxPoolSize(_TestPoolingBase):
                     t.thread.join(0.1)
                     if not t.alive:
                         running.remove(t)
-                if (len(threads) - len(running)) % min(nthreads, max_pool_size) == 0:
-                    gc.collect()
-            gc.collect()
+                gc.collect()
         else:
             for t in threads:
                 t.join()
@@ -878,9 +876,7 @@ class _TestMaxPoolSize(_TestPoolingBase):
                     t.thread.join(0.1)
                     if not t.alive:
                         running.remove(t)
-                if (len(threads) - len(running)) % min(nthreads, max_pool_size) == 0:
-                    gc.collect()
-            gc.collect()
+                gc.collect()
         else:
             for t in threads:
                 t.join()
