@@ -45,6 +45,12 @@ specify the host and port explicitly, as follows:
 
 .. doctest::
 
+  >>> client = MongoClient('localhost', 27017)
+
+Or use the MongoDB URI format:
+
+.. doctest::
+
   >>> client = MongoClient('mongodb://localhost:27017/')
 
 Getting a Database
