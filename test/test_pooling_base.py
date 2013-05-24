@@ -348,6 +348,12 @@ class _TestPoolingBase(object):
         kwargs['use_greenlets'] = self.use_greenlets
         return Pool(*args, **kwargs)
 
+    def sleep(self, seconds):
+        if self.use_greenlets:
+            gevent.sleep(seconds)
+        else:
+            time.sleep(seconds)
+
     def assert_no_request(self):
         self.assertEqual(
             NO_REQUEST, self.c._MongoClient__pool._get_request_state()
@@ -954,11 +960,10 @@ class _TestMaxPoolSize(_TestPoolingBase):
         self._test_max_pool_size(0, 1)
 
 
-class SocketGetter(threading.Thread):
+class SocketGetter(MongoThread):
     """Utility for _TestMaxOpenSockets and _TestWaitQueueMultiple"""
-    def __init__(self, pool):
-        super(SocketGetter, self).__init__()
-        self.setDaemon(True)
+    def __init__(self, test_case, pool):
+        super(SocketGetter, self).__init__(test_case)
         self.state = 'init'
         self.pool = pool
         self.sock = None
@@ -998,16 +1003,16 @@ class _TestMaxOpenSockets(_TestPoolingBase):
 
         # Reach max_size.
         s1 = pool.get_socket()
-        t = SocketGetter(pool)
+        t = SocketGetter(self, pool)
         t.start()
         while t.state != 'get_socket':
-            time.sleep(0.1)
+            self.sleep(0.1)
 
-        time.sleep(1)
+        self.sleep(1)
         self.assertEqual(t.state, 'get_socket')
         pool.maybe_return_socket(s1)
         while t.state != 'sock':
-            time.sleep(0.1)
+            self.sleep(0.1)
 
         self.assertEqual(t.state, 'sock')
         self.assertEqual(t.sock, s1)
@@ -1035,11 +1040,11 @@ class _TestWaitQueueMultiple(_TestPoolingBase):
         # Reach max_size * wait_queue_multiple waiters.
         threads = []
         for _ in xrange(6):
-            t = SocketGetter(pool)
+            t = SocketGetter(self, pool)
             t.start()
             threads.append(t)
 
-        time.sleep(1)
+        self.sleep(1)
         for t in threads:
             self.assertEqual(t.state, 'get_socket')
 
@@ -1053,10 +1058,10 @@ class _TestWaitQueueMultiple(_TestPoolingBase):
             socks.append(sock)
         threads = []
         for _ in xrange(30):
-            t = SocketGetter(pool)
+            t = SocketGetter(self, pool)
             t.start()
             threads.append(t)
-        time.sleep(1)
+        self.sleep(1)
         for t in threads:
             self.assertEqual(t.state, 'get_socket')
 
