@@ -53,6 +53,19 @@ except ImportError:
     has_gevent = False
 
 
+def gc_collect_until_done(threads, timeout=60):
+    start = time.time()
+    running = list(threads)
+    while running:
+        assert (time.time() - start) < timeout, "Threads timed out"
+        for t in running:
+            t.thread.join(0.1)
+            if not t.alive:
+                running.remove(t)
+        gc.collect()
+
+
+
 class MongoThread(object):
     """A thread, or a greenlet, that uses a MongoClient"""
     def __init__(self, test_case):
@@ -759,15 +772,7 @@ class _TestMaxPoolSize(_TestPoolingBase):
         if 'PyPy' in sys.version:
             # With PyPy we need to kick off the gc whenever the threads hit the
             # rendezvous since nthreads > max_pool_size.
-            start = time.time()
-            running = list(threads)
-            while running:
-                assert (time.time() - start) < 60, "Threads timed out"
-                for t in running:
-                    t.thread.join(0.1)
-                    if not t.alive:
-                        running.remove(t)
-                gc.collect()
+            gc_collect_until_done(threads)
         else:
             for t in threads:
                 t.join()
@@ -868,15 +873,7 @@ class _TestMaxPoolSize(_TestPoolingBase):
         if 'PyPy' in sys.version:
             # With PyPy we need to kick off the gc whenever the threads hit the
             # rendezvous since nthreads > max_pool_size.
-            start = time.time()
-            running = list(threads)
-            while running:
-                assert (time.time() - start) < 60, "Threads timed out"
-                for t in running:
-                    t.thread.join(0.1)
-                    if not t.alive:
-                        running.remove(t)
-                gc.collect()
+            gc_collect_until_done(threads)
         else:
             for t in threads:
                 t.join()
