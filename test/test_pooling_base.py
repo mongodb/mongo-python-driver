@@ -65,7 +65,6 @@ def gc_collect_until_done(threads, timeout=60):
         gc.collect()
 
 
-
 class MongoThread(object):
     """A thread, or a greenlet, that uses a MongoClient"""
     def __init__(self, test_case):
