@@ -53,6 +53,19 @@ except ImportError:
     has_gevent = False
 
 
+def gc_collect_until_done(threads, timeout=60):
+    start = time.time()
+    running = list(threads)
+    while running:
+        assert (time.time() - start) < timeout, "Threads timed out"
+        for t in running:
+            t.thread.join(0.1)
+            if not t.alive:
+                running.remove(t)
+        gc.collect()
+
+
+
 class MongoThread(object):
     """A thread, or a greenlet, that uses a MongoClient"""
     def __init__(self, test_case):
@@ -72,13 +85,17 @@ class MongoThread(object):
 
         self.thread.start()
 
+    @property
+    def alive(self):
+        if self.use_greenlets:
+            return not self.thread.dead
+        else:
+            return self.thread.isAlive()
+
     def join(self):
         self.thread.join(5)
-        if self.use_greenlets:
-            assert self.thread.dead, "Greenlet timeout"
-        else:
-            assert not self.thread.isAlive(), "Thread timeout"
-
+        assert not self.alive, ("Greenlet timeout" if self.use_greenlets
+                                else "Thread timeout")
         self.thread = None
 
     def run(self):
@@ -206,11 +223,17 @@ class CreateAndReleaseSocket(MongoThread):
         def __init__(self, nthreads, use_greenlets):
             self.nthreads = nthreads
             self.nthreads_run = 0
+            self.use_greenlets = use_greenlets
             if use_greenlets:
                 self.lock = gevent.coros.RLock()
-                self.ready = gevent.event.Event()
             else:
                 self.lock = threading.Lock()
+            self.reset_ready()
+
+        def reset_ready(self):
+            if self.use_greenlets:
+                self.ready = gevent.event.Event()
+            else:
                 self.ready = threading.Event()
 
     def __init__(self, ut, client, start_request, end_request, rendezvous):
@@ -746,8 +769,13 @@ class _TestMaxPoolSize(_TestPoolingBase):
         for t in threads:
             t.start()
 
-        for t in threads:
-            t.join()
+        if 'PyPy' in sys.version:
+            # With PyPy we need to kick off the gc whenever the threads hit the
+            # rendezvous since nthreads > max_pool_size.
+            gc_collect_until_done(threads)
+        else:
+            for t in threads:
+                t.join()
 
         # join() returns before the thread state is cleared; give it time.
         time.sleep(1)
@@ -842,8 +870,13 @@ class _TestMaxPoolSize(_TestPoolingBase):
         for t in threads:
             t.start()
 
-        for t in threads:
-            t.join()
+        if 'PyPy' in sys.version:
+            # With PyPy we need to kick off the gc whenever the threads hit the
+            # rendezvous since nthreads > max_pool_size.
+            gc_collect_until_done(threads)
+        else:
+            for t in threads:
+                t.join()
 
         for t in threads:
             self.assertTrue(t.passed)
