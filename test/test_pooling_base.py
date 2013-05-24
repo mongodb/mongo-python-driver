@@ -783,7 +783,7 @@ class _TestMaxPoolSize(_TestPoolingBase):
                 t.join()
 
         # join() returns before the thread state is cleared; give it time.
-        time.sleep(1)
+        self.sleep(1)
 
         for t in threads:
             self.assertTrue(t.passed)
@@ -827,7 +827,7 @@ class _TestMaxPoolSize(_TestPoolingBase):
 
             # thread.join completes slightly *before* thread locals are
             # cleaned up, so wait up to 5 seconds for them.
-            time.sleep(0.1)
+            self.sleep(0.1)
             cx_pool._ident.get()
             start = time.time()
 
@@ -836,7 +836,7 @@ class _TestMaxPoolSize(_TestPoolingBase):
                 and cx_pool._socket_semaphore.counter < max_pool_size
                 and (time.time() - start) < 5
             ):
-                time.sleep(0.1)
+                self.sleep(0.1)
                 cx_pool._ident.get()
 
             self.assertEqual(max_pool_size, cx_pool._socket_semaphore.counter)
@@ -904,7 +904,7 @@ class _TestMaxPoolSize(_TestPoolingBase):
 
         # thread.join completes slightly *before* thread locals are
         # cleaned up, so wait up to 5 seconds for them.
-        time.sleep(0.1)
+        self.sleep(0.1)
         cx_pool._ident.get()
         start = time.time()
 
@@ -913,7 +913,7 @@ class _TestMaxPoolSize(_TestPoolingBase):
             and cx_pool._socket_semaphore.counter < max_pool_size
             and (time.time() - start) < 5
         ):
-            time.sleep(0.1)
+            self.sleep(0.1)
             cx_pool._ident.get()
 
         self.assertTrue(len(cx_pool.sockets) >= 1)
