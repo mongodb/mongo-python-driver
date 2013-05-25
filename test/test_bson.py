@@ -20,6 +20,7 @@ import unittest
 import datetime
 import re
 import sys
+from StringIO import StringIO
 try:
     import uuid
     should_test_uuid = True
@@ -32,6 +33,8 @@ from nose.plugins.skip import SkipTest
 import bson
 from bson import (BSON,
                   decode_all,
+                  decode_iter,
+                  decode_file_iter,
                   is_valid)
 from bson.binary import Binary, UUIDLegacy
 from bson.code import Code
@@ -41,7 +44,8 @@ from bson.py3compat import b
 from bson.son import SON
 from bson.timestamp import Timestamp
 from bson.errors import (InvalidDocument,
-                         InvalidStringData)
+                         InvalidStringData,
+                         InvalidBSON)
 from bson.max_key import MaxKey
 from bson.min_key import MinKey
 from bson.tz_util import (FixedOffset,
@@ -89,6 +93,61 @@ class TestBSON(unittest.TestCase):
                                       "\x00\x0C\x00\x00\x00\x68\x65\x6C\x6C"
                                       "\x6f\x20\x77\x6F\x72\x6C\x64\x00\x00"
                                       "\x05\x00\x00\x00\x00")))
+        self.assertEqual([{"test": u"hello world"}, {}],
+                         list(decode_iter(
+                            b("\x1B\x00\x00\x00\x0E\x74\x65\x73\x74"
+                              "\x00\x0C\x00\x00\x00\x68\x65\x6C\x6C"
+                              "\x6f\x20\x77\x6F\x72\x6C\x64\x00\x00"
+                              "\x05\x00\x00\x00\x00"))))
+        self.assertEqual([{"test": u"hello world"}, {}],
+                         list(decode_file_iter(StringIO(
+                            b("\x1B\x00\x00\x00\x0E\x74\x65\x73\x74"
+                              "\x00\x0C\x00\x00\x00\x68\x65\x6C\x6C"
+                              "\x6f\x20\x77\x6F\x72\x6C\x64\x00\x00"
+                              "\x05\x00\x00\x00\x00")))))
+
+    def test_invalid_decodes(self):
+        # Invalid object size (not enough bytes in document for even
+        # an object size of first object.
+        # NOTE: decode_all and decode_iter don't care, not sure if they should?
+        self.assertRaises(InvalidBSON, list,
+                          decode_file_iter(StringIO(b("\x1B"))))
+
+        # An object size that's too small to even include the object size,
+        # but is correctly encoded, along with a correct EOO (and no data).
+        data = b("\x01\x00\x00\x00\x00")
+        self.assertRaises(InvalidBSON, decode_all, data)
+        self.assertRaises(InvalidBSON, list, decode_iter(data))
+        self.assertRaises(InvalidBSON, list, decode_file_iter(StringIO(data)))
+
+        # One object, but with object size listed smaller than it is in the
+        # data.
+        data = b("\x1A\x00\x00\x00\x0E\x74\x65\x73\x74"
+                 "\x00\x0C\x00\x00\x00\x68\x65\x6C\x6C"
+                 "\x6f\x20\x77\x6F\x72\x6C\x64\x00\x00"
+                 "\x05\x00\x00\x00\x00")
+        self.assertRaises(InvalidBSON, decode_all, data)
+        self.assertRaises(InvalidBSON, list, decode_iter(data))
+        self.assertRaises(InvalidBSON, list, decode_file_iter(StringIO(data)))
+
+        # One object, missing the EOO at the end.
+        data = b("\x1B\x00\x00\x00\x0E\x74\x65\x73\x74"
+                 "\x00\x0C\x00\x00\x00\x68\x65\x6C\x6C"
+                 "\x6f\x20\x77\x6F\x72\x6C\x64\x00\x00"
+                 "\x05\x00\x00\x00")
+        self.assertRaises(InvalidBSON, decode_all, data)
+        self.assertRaises(InvalidBSON, list, decode_iter(data))
+        self.assertRaises(InvalidBSON, list, decode_file_iter(StringIO(data)))
+
+        # One object, sized correctly, with a spot for an EOO, but the EOO
+        # isn't 0x00.
+        data = b("\x1B\x00\x00\x00\x0E\x74\x65\x73\x74"
+                 "\x00\x0C\x00\x00\x00\x68\x65\x6C\x6C"
+                 "\x6f\x20\x77\x6F\x72\x6C\x64\x00\x00"
+                 "\x05\x00\x00\x00\xFF")
+        self.assertRaises(InvalidBSON, decode_all, data)
+        self.assertRaises(InvalidBSON, list, decode_iter(data))
+        self.assertRaises(InvalidBSON, list, decode_file_iter(StringIO(data)))
 
     def test_data_timestamp(self):
         self.assertEqual({"test": Timestamp(4, 20)},
