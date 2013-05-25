@@ -542,6 +542,82 @@ if _use_c:
     decode_all = _cbson.decode_all
 
 
+def decode_iter(data, as_class=dict,
+                tz_aware=True, uuid_subtype=OLD_UUID_SUBTYPE):
+    """Decode BSON data to multiple documents as a generator. Works
+    similarly to the decode_all function, but yields one document
+    at a time.
+
+    `data` must be a string of concatenated, valid, BSON-encoded
+    documents.
+
+    :Parameters:
+      - `data`: BSON data
+      - `as_class` (optional): the class to use for the resulting
+        documents
+      - `tz_aware` (optional): if ``True``, return timezone-aware
+        :class:`~datetime.datetime` instances
+
+    .. versionadded:: 2.5
+    """
+    position = 0
+    end = len(data) - 1
+    while position < end:
+        obj_size = struct.unpack("<i", data[position:position + 4])[0]
+        if len(data) - position < obj_size:
+            raise InvalidBSON("objsize too large")
+        if data[position + obj_size - 1:position + obj_size] != ZERO:
+            raise InvalidBSON("bad eoo")
+        elements = data[position + 4:position + obj_size - 1]
+        position += obj_size
+
+        yield _elements_to_dict(elements, as_class, tz_aware, uuid_subtype)
+
+
+def decode_file_iter(file_obj, as_class=dict, tz_aware=True,
+                     uuid_subtype=OLD_UUID_SUBTYPE):
+    """Decode bson data from a file to multiple documents as a generator. Works
+    similarly to the decode_all function, but reads from the file object in
+    chunks and parses bson in chunks, yielding one document at a time.
+
+    :Parameters:
+      - `file_obj`: A file object containing BSON data.
+      - `as_class` (optional): the class to use for the resulting
+        documents
+      - `tz_aware` (optional): if ``True``, return timezone-aware
+        :class:`~datetime.datetime` instances
+
+    .. versionadded:: 2.5
+    """
+    while True:
+        # Read size of next object.
+        size_data = file_obj.read(4)
+        if len(size_data) == 0:
+            break  # Finished with file normaly.
+        elif len(size_data) != 4:
+            raise InvalidBSON("cut off in middle of objsize")
+        obj_size = struct.unpack("<i", size_data)[0]
+        if obj_size < 5:
+            # The obj_size should at least be big enough to encode the
+            # obj_size and EOO itself, even on a zero-sized elements.
+            raise InvalidBSON("objsize too small")
+
+        # Actual data for elements is total size - size_prefix - suffix, but
+        # we read the suffix together with the element to reduce number of
+        # reads.
+        elements_size = obj_size - 4
+
+        # Read object itself and the EOO in one read (to reduce num reads).
+        elements = file_obj.read(elements_size)
+        if len(elements) != elements_size:
+            raise InvalidBSON("objsize too large")
+        if elements[-1] != ZERO:
+            raise InvalidBSON("bad eoo")
+
+        yield _elements_to_dict(elements[:-1], as_class,
+                                tz_aware, uuid_subtype)
+
+
 def is_valid(bson):
     """Check that the given string represents valid :class:`BSON` data.
 
