@@ -13,6 +13,11 @@ services:
 
 script: python setup.py test
 
+before_install:
+  - sudo apt-get update -qq
+  - sudo apt-get install -qq libevent-dev
+  - pip install gevent || true
+
 install:
-    #Temporary solution for Travis CI mutiprocessing issue #155
-    - sudo rm -rf /dev/shm && sudo ln -s /run/shm /dev/shm
+  #Temporary solution for Travis CI mutiprocessing issue #155
+  - sudo rm -rf /dev/shm && sudo ln -s /run/shm /dev/shm
