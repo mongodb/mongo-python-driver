@@ -73,6 +73,12 @@ Minimongo
   collection & database naming helpers. The `source is on github
   <http://github.com/slacy/minimongo>`_.
 
+Manga
+  `Manga <http://pypi.python.org/pypi/manga>`_ aims to be a simpler ORM-like
+  layer on top of PyMongo. The syntax for defining schema is inspired be the
+  Django ORM, but Pymongo's query language is maintained. The `source is on
+  github <http://github.com/wladston/manga>`_.
+
 Framework Tools
 ---------------
 This section lists tools and adapters that have been designed to work with
