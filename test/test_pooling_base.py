@@ -700,6 +700,10 @@ class _TestPooling(_TestPoolingBase):
             g.start()
             g.join(1)
             self.assertTrue(g.ready(), "Greenlet is hung")
+
+            # In Gevent after 0.13.8, join() returns before the Greenlet.link
+            # callback fires. Give it a moment to reclaim the socket.
+            gevent.sleep(0.1)
         else:
             lock = thread.allocate_lock()
             lock.acquire()
