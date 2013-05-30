@@ -2,7 +2,7 @@ Changelog
 =========
 
 Changes in Version 2.5.1+
-----------------------
+-------------------------
 
 Important new features:
 
