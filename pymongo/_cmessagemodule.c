@@ -551,37 +551,25 @@ PyMODINIT_FUNC
 init_cmessage(void)
 #endif
 {
-    PyObject *m;
+    PyObject *_cbson;
     PyObject *c_api_object;
+    PyObject *m;
     struct module_state *state;
-
-#if PY_MAJOR_VERSION >= 3
-    m = PyModule_Create(&moduledef);
-#else
-    m = Py_InitModule("_cmessage", _CMessageMethods);
-#endif
-    if (m == NULL) {
-        INITERROR;
-    }
-
-    state = GETSTATE(m);
 
     /* Store a reference to the _cbson module since it's needed to call some
      * of its functions
      */
-    state->_cbson = PyImport_ImportModule("bson._cbson");
-    if (state->_cbson == NULL) {
-        Py_DECREF(m);
+    _cbson = PyImport_ImportModule("bson._cbson");
+    if (_cbson == NULL) {
         INITERROR;
     }
 
     /* Import C API of _cbson
      * The header file accesses _cbson_API to call the functions
      */
-    c_api_object = PyObject_GetAttrString(state->_cbson, "_C_API");
+    c_api_object = PyObject_GetAttrString(_cbson, "_C_API");
     if (c_api_object == NULL) {
-        Py_DECREF(m);
-        Py_DECREF(state->_cbson);
+        Py_DECREF(_cbson);
         INITERROR;
     }
 #if PY_VERSION_HEX >= 0x03010000
@@ -592,11 +580,24 @@ init_cmessage(void)
         _cbson_API = (void **)PyCObject_AsVoidPtr(c_api_object);
 #endif
     if (_cbson_API == NULL) {
-        Py_DECREF(m);
         Py_DECREF(c_api_object);
-        Py_DECREF(state->_cbson);
+        Py_DECREF(_cbson);
         INITERROR;
     }
+
+#if PY_MAJOR_VERSION >= 3
+    m = PyModule_Create(&moduledef);
+#else
+    m = Py_InitModule("_cmessage", _CMessageMethods);
+#endif
+    if (m == NULL) {
+        Py_DECREF(c_api_object);
+        Py_DECREF(_cbson);
+        INITERROR;
+    }
+
+    state = GETSTATE(m);
+    state->_cbson = _cbson;
 
     Py_DECREF(c_api_object);
 
