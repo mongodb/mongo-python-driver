@@ -150,7 +150,7 @@ def _get_object(data, position, as_class, tz_aware, uuid_subtype):
     object = _elements_to_dict(encoded, as_class, tz_aware, uuid_subtype)
     position += obj_size
     if "$ref" in object:
-        return (DBRef(object.pop("$ref"), object.pop("$id"),
+        return (DBRef(object.pop("$ref"), object.pop("$id", None),
                       object.pop("$db", None), object), position)
     return object, position
 
