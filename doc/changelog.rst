@@ -1,7 +1,7 @@
 Changelog
 =========
 
-Changes in Version 2.5.1+
+Changes in Version 2.5.2+
 -------------------------
 
 Important new features:
@@ -15,9 +15,23 @@ Important new features:
   :exc:`~pymongo.errors.ConnectionFailure` after the timeout. By default
   ``waitQueueTimeoutMS`` is not set.
 
-.. warning:: SIGNIFICANT BEHAVIOR CHANGE in 2.5.1+. Previously, `max_pool_size`
+.. warning:: SIGNIFICANT BEHAVIOR CHANGE in 2.5.2+. Previously, `max_pool_size`
   would limit only the idle sockets the pool would hold onto, not the
   number of open sockets. The default has also changed, from 10 to 100.
+
+Changes in Version 2.5.2
+------------------------
+
+Version 2.5.2 fixes a NULL pointer dereference issue when decoding
+an invalid :class:`~bson.dbref.DBRef`.
+
+Issues Resolved
+...............
+
+See the `PyMongo 2.5.2 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 2.5.2 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/12581
 
 Changes in Version 2.5.1
 ------------------------
