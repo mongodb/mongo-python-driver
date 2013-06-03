@@ -538,6 +538,11 @@ class Cursor(object):
         .. note:: The `with_limit_and_skip` parameter requires server
            version **>= 1.1.4-**
 
+        .. note:: ``count`` ignores ``network_timeout``. For example, the
+          timeout is ignored in the following code::
+
+            collection.find({}, network_timeout=1).count()
+
         .. versionadded:: 1.1.1
            The `with_limit_and_skip` parameter.
            :meth:`~pymongo.cursor.Cursor.__len__` was deprecated in favor of
