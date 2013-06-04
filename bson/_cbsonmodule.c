@@ -51,6 +51,11 @@ struct module_state {
     PyTypeObject* REType;
 };
 
+/* The Py_TYPE macro was introduced in CPython 2.6 */
+#ifndef Py_TYPE
+#define Py_TYPE(ob) (((PyObject*)(ob))->ob_type)
+#endif
+
 #if PY_MAJOR_VERSION >= 3
 #define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
 #else
@@ -278,6 +283,8 @@ static int _reload_object(PyObject** object, char* module_name, char* object_nam
  *
  * Returns non-zero on failure. */
 static int _reload_python_objects(PyObject* module) {
+    PyObject* empty_string;
+    PyObject* compiled;
     struct module_state *state = GETSTATE(module);
 
     if (_reload_object(&state->Binary, "bson.binary", "Binary") ||
@@ -297,12 +304,25 @@ static int _reload_python_objects(PyObject* module) {
         PyErr_Clear();
     }
     /* Reload our REType hack too. */
-    state->REType = PyObject_CallFunction(state->RECompile, "O",
 #if PY_MAJOR_VERSION >= 3
-                                   PyBytes_FromString(""))->ob_type;
+    empty_string = PyBytes_FromString("");
 #else
-                                   PyString_FromString(""))->ob_type;
+    empty_string = PyString_FromString("");
 #endif
+    if (empty_string == NULL) {
+        state->REType = NULL;
+        return 1;
+    }
+    compiled = PyObject_CallFunction(state->RECompile, "O", empty_string);
+    if (compiled == NULL) {
+        state->REType = NULL;
+        Py_DECREF(empty_string);
+        return 1;
+    }
+    Py_INCREF(Py_TYPE(compiled));
+    state->REType = Py_TYPE(compiled);
+    Py_DECREF(empty_string);
+    Py_DECREF(compiled);
     return 0;
 }
 
