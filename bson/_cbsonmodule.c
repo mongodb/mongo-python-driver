@@ -1256,10 +1256,10 @@ static PyObject* get_value(PyObject* self, const char* buffer, int* position,
             while (*position < end) {
                 PyObject* to_append;
 
-                int type = (int)buffer[(*position)++];
+                int bson_type = (int)buffer[(*position)++];
                 int key_size = strlen(buffer + *position);
                 *position += key_size + 1; /* just skip the key, they're in order. */
-                to_append = get_value(self, buffer, position, type,
+                to_append = get_value(self, buffer, position, bson_type,
                                       max - key_size, as_class, tz_aware, uuid_subtype);
                 if (!to_append) {
                     Py_DECREF(value);
