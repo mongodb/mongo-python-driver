@@ -343,18 +343,26 @@ class TestBSON(unittest.TestCase):
         w = {u"aéあ": u"aéあ"}
         self.assertEqual(w, BSON.encode(w).decode())
 
-        if not PY3:
-            # In python3 this would be stored as BSON binary
-            # subtype 0 and wouldn't raise an exception.
-            y = {"hello": u"aé".encode("iso-8859-1")}
-            self.assertRaises(InvalidStringData, BSON.encode, y)
+        iso8859_bytes = u"aé".encode("iso-8859-1")
+        y = {"hello": iso8859_bytes}
+        if PY3:
+            # Stored as BSON binary subtype 0.
+            out = BSON.encode(y).decode()
+            self.assertTrue(isinstance(out['hello'], bytes))
+            self.assertEqual(out['hello'], iso8859_bytes)
+        else:
+            # Python 2.
+            try:
+                BSON.encode(y)
+            except InvalidStringData, e:
+                self.assertTrue(repr(iso8859_bytes) in str(e))
 
             # The next two tests only make sense in python 2.x since
             # you can't use `bytes` type as document keys in python 3.x.
             x = {u"aéあ".encode("utf-8"): u"aéあ".encode("utf-8")}
             self.assertEqual(w, BSON.encode(x).decode())
 
-            z = {u"aé".encode("iso-8859-1"): "hello"}
+            z = {iso8859_bytes: "hello"}
             self.assertRaises(InvalidStringData, BSON.encode, z)
 
     def test_null_character(self):

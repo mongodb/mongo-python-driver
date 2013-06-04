@@ -655,8 +655,24 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer, int type_by
         if (status == NOT_UTF_8) {
             PyObject* InvalidStringData = _error("InvalidStringData");
             if (InvalidStringData) {
-                PyErr_SetString(InvalidStringData,
-                                "strings in documents must be valid UTF-8");
+                PyObject* repr = PyObject_Repr(value);
+                char* repr_as_cstr = repr ? PyString_AsString(repr) : NULL;
+                if (repr_as_cstr) {
+                    PyObject *message = PyString_FromFormat(
+                        "strings in documents must be valid UTF-8: %s",
+                        repr_as_cstr);
+
+                    if (message) {
+                        PyErr_SetObject(InvalidStringData, message);
+                        Py_DECREF(message);
+                    }
+                } else {
+                    /* repr(value) failed, use a generic message. */
+                    PyErr_SetString(
+                        InvalidStringData,
+                        "strings in documents must be valid UTF-8");
+                }
+                Py_XDECREF(repr);
                 Py_DECREF(InvalidStringData);
             }
             return 0;
