@@ -1182,7 +1182,8 @@ static PyObject* get_value(PyObject* self, const char* buffer, int* position,
         }
     case 3:
         {
-            int size;
+            PyObject* collection;
+            unsigned size;
             memcpy(&size, buffer + *position, 4);
             if (max < size) {
                 goto invalid;
@@ -1194,15 +1195,16 @@ static PyObject* get_value(PyObject* self, const char* buffer, int* position,
             }
 
             /* Decoding for DBRefs */
-            if (strcmp(buffer + *position + 5, "$ref") == 0) { /* DBRef */
+            collection = PyDict_GetItemString(value, "$ref");
+            if (collection) { /* DBRef */
                 PyObject* dbref;
-                PyObject* collection = PyDict_GetItemString(value, "$ref");
-                PyObject* id = PyDict_GetItemString(value, "$id");
-                PyObject* database = PyDict_GetItemString(value, "$db");
+                PyObject* id;
+                PyObject* database;
 
                 Py_INCREF(collection);
                 PyDict_DelItemString(value, "$ref");
 
+                id = PyDict_GetItemString(value, "$id");
                 if (id == NULL) {
                     id = Py_None;
                     Py_INCREF(id);
@@ -1211,6 +1213,7 @@ static PyObject* get_value(PyObject* self, const char* buffer, int* position,
                     PyDict_DelItemString(value, "$id");
                 }
 
+                database = PyDict_GetItemString(value, "$db");
                 if (database == NULL) {
                     database = Py_None;
                     Py_INCREF(database);
