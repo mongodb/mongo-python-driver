@@ -332,6 +332,8 @@ class Database(common.BaseObject):
           - `**kwargs` (optional): additional keyword arguments will
             be added to the command document before it is sent
 
+        .. note:: ``command`` ignores the ``network_timeout`` parameter.
+
         .. versionchanged:: 2.3
            Added `tag_sets` and `secondary_acceptable_latency_ms` options.
         .. versionchanged:: 2.2

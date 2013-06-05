@@ -30,6 +30,7 @@ sys.path[0:0] = [""]
 
 from bson.binary import Binary, UUIDLegacy, OLD_UUID_SUBTYPE, UUID_SUBTYPE
 from bson.code import Code
+from bson.dbref import DBRef
 from bson.objectid import ObjectId
 from bson.py3compat import b
 from bson.son import SON
@@ -1674,6 +1675,31 @@ class TestCollection(unittest.TestCase):
         warnings.simplefilter("ignore")
         self.assertRaises(InvalidDocument, c.save, {"x": c})
         warnings.simplefilter("default")
+
+    def test_bad_dbref(self):
+        c = self.db.test
+        c.drop()
+
+        # Incomplete DBRefs.
+        self.assertRaises(
+            InvalidDocument,
+            c.insert, {'ref': {'$ref': 'collection'}})
+
+        self.assertRaises(
+            InvalidDocument,
+            c.insert, {'ref': {'$id': ObjectId()}})
+
+        ref_only = {'ref': {'$ref': 'collection'}}
+        id_only = {'ref': {'$id': ObjectId()}}
+
+        # Force insert of ref without $id.
+        c.insert(ref_only, check_keys=False)
+        self.assertEqual(DBRef('collection', id=None), c.find_one()['ref'])
+        c.drop()
+
+        # DBRef without $ref is decoded as normal subdocument.
+        c.insert(id_only, check_keys=False)
+        self.assertEqual(id_only, c.find_one())
 
     def test_as_class(self):
         c = self.db.test

@@ -275,6 +275,22 @@ class TestDatabase(unittest.TestCase):
 
         self.assertEqual(db.command("buildinfo"), db.command({"buildinfo": 1}))
 
+    def test_command_ignores_network_timeout(self):
+        # command() should ignore network_timeout.
+        if not version.at_least(self.client, (1, 9, 0)):
+            raise SkipTest("Need sleep() to test command with network timeout")
+
+        db = self.client.pymongo_test
+
+        # No errors.
+        db.test.remove()
+        db.test.insert({})
+        cursor = db.test.find(
+            {'$where': 'sleep(100); return true'}, network_timeout=0.001)
+
+        self.assertEqual(1, cursor.count())
+        db.command('eval', 'sleep(100)', network_timeout=0.001)
+
     def test_last_status(self):
         db = self.client.pymongo_test
 

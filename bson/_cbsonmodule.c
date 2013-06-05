@@ -51,6 +51,11 @@ struct module_state {
     PyTypeObject* REType;
 };
 
+/* The Py_TYPE macro was introduced in CPython 2.6 */
+#ifndef Py_TYPE
+#define Py_TYPE(ob) (((PyObject*)(ob))->ob_type)
+#endif
+
 #if PY_MAJOR_VERSION >= 3
 #define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
 #else
@@ -278,6 +283,8 @@ static int _reload_object(PyObject** object, char* module_name, char* object_nam
  *
  * Returns non-zero on failure. */
 static int _reload_python_objects(PyObject* module) {
+    PyObject* empty_string;
+    PyObject* compiled;
     struct module_state *state = GETSTATE(module);
 
     if (_reload_object(&state->Binary, "bson.binary", "Binary") ||
@@ -297,12 +304,25 @@ static int _reload_python_objects(PyObject* module) {
         PyErr_Clear();
     }
     /* Reload our REType hack too. */
-    state->REType = PyObject_CallFunction(state->RECompile, "O",
 #if PY_MAJOR_VERSION >= 3
-                                   PyBytes_FromString(""))->ob_type;
+    empty_string = PyBytes_FromString("");
 #else
-                                   PyString_FromString(""))->ob_type;
+    empty_string = PyString_FromString("");
 #endif
+    if (empty_string == NULL) {
+        state->REType = NULL;
+        return 1;
+    }
+    compiled = PyObject_CallFunction(state->RECompile, "O", empty_string);
+    if (compiled == NULL) {
+        state->REType = NULL;
+        Py_DECREF(empty_string);
+        return 1;
+    }
+    Py_INCREF(Py_TYPE(compiled));
+    state->REType = Py_TYPE(compiled);
+    Py_DECREF(empty_string);
+    Py_DECREF(compiled);
     return 0;
 }
 
@@ -1182,7 +1202,8 @@ static PyObject* get_value(PyObject* self, const char* buffer, int* position,
         }
     case 3:
         {
-            int size;
+            PyObject* collection;
+            unsigned size;
             memcpy(&size, buffer + *position, 4);
             if (max < size) {
                 goto invalid;
@@ -1194,17 +1215,25 @@ static PyObject* get_value(PyObject* self, const char* buffer, int* position,
             }
 
             /* Decoding for DBRefs */
-            if (strcmp(buffer + *position + 5, "$ref") == 0) { /* DBRef */
+            collection = PyDict_GetItemString(value, "$ref");
+            if (collection) { /* DBRef */
                 PyObject* dbref;
-                PyObject* collection = PyDict_GetItemString(value, "$ref");
-                PyObject* id = PyDict_GetItemString(value, "$id");
-                PyObject* database = PyDict_GetItemString(value, "$db");
+                PyObject* id;
+                PyObject* database;
 
                 Py_INCREF(collection);
                 PyDict_DelItemString(value, "$ref");
-                Py_INCREF(id);
-                PyDict_DelItemString(value, "$id");
 
+                id = PyDict_GetItemString(value, "$id");
+                if (id == NULL) {
+                    id = Py_None;
+                    Py_INCREF(id);
+                } else {
+                    Py_INCREF(id);
+                    PyDict_DelItemString(value, "$id");
+                }
+
+                database = PyDict_GetItemString(value, "$db");
                 if (database == NULL) {
                     database = Py_None;
                     Py_INCREF(database);
@@ -1247,10 +1276,10 @@ static PyObject* get_value(PyObject* self, const char* buffer, int* position,
             while (*position < end) {
                 PyObject* to_append;
 
-                int type = (int)buffer[(*position)++];
+                int bson_type = (int)buffer[(*position)++];
                 int key_size = strlen(buffer + *position);
                 *position += key_size + 1; /* just skip the key, they're in order. */
-                to_append = get_value(self, buffer, position, type,
+                to_append = get_value(self, buffer, position, bson_type,
                                       max - key_size, as_class, tz_aware, uuid_subtype);
                 if (!to_append) {
                     Py_DECREF(value);
