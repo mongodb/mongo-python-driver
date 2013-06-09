@@ -73,7 +73,7 @@ static int add_last_error(PyObject* self, buffer_t buffer,
     PyObject* one;
     char *p = strchr(ns, '.');
     /* Length of the database portion of ns. */
-    nslen = p ? (p - ns) : nslen;
+    nslen = p ? (int)(p - ns) : nslen;
 
     message_start = buffer_save_space(buffer, 4);
     if (message_start == -1) {
