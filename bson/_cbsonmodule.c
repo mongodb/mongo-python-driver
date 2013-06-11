@@ -1544,7 +1544,7 @@ static PyObject* get_value(PyObject* self, const char* buffer, int* position,
 
                 Py_DECREF(args);
                 Py_DECREF(kwargs);
-                Py_DECREF(data);
+                Py_XDECREF(data);
                 if (!value) {
                     return NULL;
                 }
