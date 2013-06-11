@@ -456,7 +456,7 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer, int type_by
         items = PySequence_Size(value);
         for(i = 0; i < items; i++) {
             int list_type_byte = buffer_save_space(buffer, 1);
-            char* name;
+            char* name = NULL;
             PyObject* item_value;
 
             if (list_type_byte == -1) {
@@ -473,7 +473,8 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer, int type_by
             }
             free(name);
 
-            item_value = PySequence_GetItem(value, i);
+            if (!(item_value = PySequence_GetItem(value, i)))
+                return 0;
             if (!write_element_to_buffer(self, buffer, list_type_byte,
                                          item_value, check_keys, uuid_subtype, 1)) {
                 Py_DECREF(item_value);
@@ -602,6 +603,7 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer, int type_by
 #endif
         if (data == NULL) {
             Py_DECREF(bytes);
+            return 0;
         }
         if (uuid_subtype == JAVA_LEGACY) {
             /* Store in legacy java byte order. */
@@ -737,6 +739,8 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer, int type_by
     } else if (PyDateTime_Check(value)) {
         long long millis;
         PyObject* utcoffset = PyObject_CallMethod(value, "utcoffset", NULL);
+        if (utcoffset == NULL)
+            return 0;
         if (utcoffset != Py_None) {
             PyObject* result = PyNumber_Subtract(value, utcoffset);
             Py_DECREF(utcoffset);
@@ -1200,8 +1204,9 @@ int decode_and_write_pair(PyObject* self, buffer_t buffer,
 }
 
 /* returns 0 on failure */
-int write_dict(PyObject* self, buffer_t buffer, PyObject* dict,
-               unsigned char check_keys, unsigned char uuid_subtype, unsigned char top_level) {
+int write_dict(PyObject* self, buffer_t buffer,
+               PyObject* dict, unsigned char check_keys,
+               unsigned char uuid_subtype, unsigned char top_level) {
     PyObject* key;
     PyObject* iter;
     char zero = 0;
@@ -1210,18 +1215,37 @@ int write_dict(PyObject* self, buffer_t buffer, PyObject* dict,
 
     if (!PyDict_Check(dict)) {
         PyObject* repr = PyObject_Repr(dict);
+        if (repr) {
 #if PY_MAJOR_VERSION >= 3
-        PyObject* errmsg = PyUnicode_FromString("encoder expected a mapping type but got: ");
-        PyObject* error = PyUnicode_Concat(errmsg, repr);
-        PyErr_SetObject(PyExc_TypeError, error);
-        Py_DECREF(error);
-        Py_DECREF(repr);
+            PyObject* errmsg = PyUnicode_FromString(
+                "encoder expected a mapping type but got: ");
+            if (errmsg) {
+                PyObject* error = PyUnicode_Concat(errmsg, repr);
+                if (error) {
+                    PyErr_SetObject(PyExc_TypeError, error);
+                    Py_DECREF(error);
+                }
+                Py_DECREF(errmsg);
+                Py_DECREF(repr);
+            }
 #else
-        PyObject* errmsg = PyString_FromString("encoder expected a mapping type but got: ");
-        PyString_ConcatAndDel(&errmsg, repr);
-        PyErr_SetString(PyExc_TypeError, PyString_AsString(errmsg));
+            PyObject* errmsg = PyString_FromString(
+                "encoder expected a mapping type but got: ");
+            if (errmsg) {
+                PyString_ConcatAndDel(&errmsg, repr);
+                if (errmsg) {
+                    PyErr_SetObject(PyExc_TypeError, errmsg);
+                    Py_DECREF(errmsg);
+                }
+            }
 #endif
-        Py_DECREF(errmsg);
+            else {
+                Py_DECREF(repr);
+            }
+        } else {
+            PyErr_SetString(PyExc_TypeError,
+                            "encoder expected a mapping type");
+        }
         return 0;
     }
 
@@ -1494,7 +1518,8 @@ static PyObject* get_value(PyObject* self, const char* buffer, int* position,
 
                 if (uuid_subtype == CSHARP_LEGACY) {
                     /* Legacy C# byte order */
-                    PyDict_SetItemString(kwargs, "bytes_le", data);
+                    if ((PyDict_SetItemString(kwargs, "bytes_le", data)) == -1)
+                        goto uuiderror;
                 }
                 else {
                     if (uuid_subtype == JAVA_LEGACY) {
@@ -1508,8 +1533,12 @@ static PyObject* get_value(PyObject* self, const char* buffer, int* position,
 #else
                         data = PyString_FromStringAndSize(big_endian, length);
 #endif
+                        if (data == NULL)
+                            goto uuiderror;
                     }
-                    PyDict_SetItemString(kwargs, "bytes", data);
+                    if ((PyDict_SetItemString(kwargs, "bytes", data)) == -1)
+                        goto uuiderror;
+                
                 }
                 value = PyObject_Call(state->UUID, args, kwargs);
 
@@ -1522,6 +1551,12 @@ static PyObject* get_value(PyObject* self, const char* buffer, int* position,
 
                 *position += length + 5;
                 break;
+
+            uuiderror:
+                Py_DECREF(args);
+                Py_DECREF(kwargs);
+                Py_DECREF(data);
+                return NULL;
             }
 
 #if PY_MAJOR_VERSION >= 3
@@ -1983,7 +2018,8 @@ static PyObject* _cbson_decode_all(PyObject* self, PyObject* args) {
         return NULL;
     }
 
-    result = PyList_New(0);
+    if (!(result = PyList_New(0)))
+        return NULL;
 
     while (total_size > 0) {
         if (total_size < 5) {
