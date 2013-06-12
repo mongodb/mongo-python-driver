@@ -37,6 +37,12 @@ GSSAPI_HOST = os.environ.get('GSSAPI_HOST')
 GSSAPI_PORT = int(os.environ.get('GSSAPI_PORT', '27017'))
 PRINCIPAL = os.environ.get('PRINCIPAL')
 
+SASL_HOST = os.environ.get('SASL_HOST')
+SASL_PORT = int(os.environ.get('SASL_PORT', '27017'))
+SASL_USER = os.environ.get('SASL_USER')
+SASL_PASS = os.environ.get('SASL_PASS')
+SASL_DB   = os.environ.get('SASL_DB', '$external')
+
 
 class AutoAuthenticateThread(threading.Thread):
     """Used in testing threaded authentication.
@@ -124,6 +130,40 @@ class TestGSSAPI(unittest.TestCase):
             for thread in threads:
                 thread.join()
                 self.assertTrue(thread.success)
+
+
+class TestSASL(unittest.TestCase):
+
+    def setUp(self):
+        if not SASL_HOST or not SASL_USER or not SASL_PASS:
+            raise SkipTest('Must set SASL_HOST, '
+                           'SASL_USER, and SASL_PASS to test SASL')
+
+    def test_sasl_plain(self):
+
+        client = MongoClient(SASL_HOST, SASL_PORT)
+        self.assertTrue(client.test.authenticate(SASL_USER, SASL_PASS,
+                                                 SASL_DB, 'PLAIN'))
+
+        uri = ('mongodb://%s:%s@%s:%d/?authMechanism=PLAIN;'
+               'authSource=%s' % (quote_plus(SASL_USER),
+                                  quote_plus(SASL_PASS),
+                                  SASL_HOST, SASL_PORT, SASL_DB))
+        client = MongoClient(uri)
+
+        set_name = client.admin.command('ismaster').get('setName')
+        if set_name:
+            client = MongoReplicaSetClient(SASL_HOST,
+                                           port=SASL_PORT,
+                                           replicaSet=set_name)
+            self.assertTrue(client.test.authenticate(SASL_USER, SASL_PASS,
+                                                     SASL_DB, 'PLAIN'))
+            uri = ('mongodb://%s:%s@%s:%d/?authMechanism=PLAIN;'
+                   'authSource=%s;replicaSet=%s' % (quote_plus(SASL_USER),
+                                                    quote_plus(SASL_PASS),
+                                                    SASL_HOST, SASL_PORT,
+                                                    SASL_DB, str(set_name)))
+            client = MongoReplicaSetClient(uri)
 
 
 class TestAuthURIOptions(unittest.TestCase):

@@ -70,7 +70,8 @@ class Database(common.BaseObject):
             raise TypeError("name must be an instance "
                             "of %s" % (basestring.__name__,))
 
-        _check_name(name)
+        if name != '$external':
+            _check_name(name)
 
         self.__name = unicode(name)
         self.__connection = connection

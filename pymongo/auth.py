@@ -27,11 +27,12 @@ try:
 except ImportError:
     HAVE_KERBEROS = False
 
+from bson.binary import Binary
 from bson.son import SON
 from pymongo.errors import ConfigurationError, OperationFailure
 
 
-MECHANISMS = ('MONGODB-CR', 'GSSAPI')
+MECHANISMS = ('MONGODB-CR', 'GSSAPI', 'PLAIN')
 """The authentication mechanisms supported by PyMongo."""
 
 
@@ -141,6 +142,17 @@ def _authenticate_gssapi(username, sock_info, cmd_func):
         raise OperationFailure(str(exc))
 
 
+def _authenticate_plain(username, password, source, sock_info, cmd_func):
+    """Authenticate using SASL PLAIN (RFC 4616)
+    """
+    payload = ('\x00%s\x00%s' % (username, password)).encode('utf-8')
+    cmd = SON([('saslStart', 1),
+               ('mechanism', 'PLAIN'),
+               ('payload', Binary(payload)),
+               ('autoAuthorize', 1)])
+    cmd_func(sock_info, source, cmd)
+
+
 def _authenticate_mongo_cr(username, password, source, sock_info, cmd_func):
     """Authenticate using MONGODB-CR.
     """
@@ -167,6 +179,8 @@ def authenticate(credentials, sock_info, cmd_func):
             raise ConfigurationError('The "kerberos" module must be '
                                      'installed to use GSSAPI authentication.')
         _authenticate_gssapi(username, sock_info, cmd_func)
+    elif mechanism == 'PLAIN':
+        _authenticate_plain(username, password, source, sock_info, cmd_func)
     else:
         _authenticate_mongo_cr(username, password, source, sock_info, cmd_func)
 
