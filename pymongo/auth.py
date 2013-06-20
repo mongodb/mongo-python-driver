@@ -36,6 +36,16 @@ MECHANISMS = ('MONGODB-CR', 'GSSAPI', 'PLAIN')
 """The authentication mechanisms supported by PyMongo."""
 
 
+def _build_credentials_tuple(mech, source, user, passwd, extra):
+    """Build and return a mechanism specific credentials tuple.
+    """
+    if mech == 'GSSAPI':
+        gsn = extra.get('gssapiservicename', 'mongodb')
+        # No password, source is always $external.
+        return (mech, '$external', user, gsn)
+    return (mech, source, user, passwd)
+
+
 def _password_digest(username, password):
     """Get a password digest to use for authentication.
     """
@@ -64,13 +74,14 @@ def _auth_key(nonce, username, password):
     return unicode(md5hash.hexdigest())
 
 
-def _authenticate_gssapi(username, sock_info, cmd_func):
+def _authenticate_gssapi(credentials, sock_info, cmd_func):
     """Authenticate using GSSAPI.
     """
     try:
+        dummy, username, gsn = credentials
         # Starting here and continuing through the while loop below - establish
         # the security context. See RFC 4752, Section 3.1, first paragraph.
-        result, ctx = kerberos.authGSSClientInit('mongodb@' + sock_info.host,
+        result, ctx = kerberos.authGSSClientInit(gsn + '@' + sock_info.host,
                                                  kerberos.GSS_C_MUTUAL_FLAG)
         if result != kerberos.AUTH_GSS_COMPLETE:
             raise OperationFailure('Kerberos context failed to initialize.')
@@ -142,9 +153,10 @@ def _authenticate_gssapi(username, sock_info, cmd_func):
         raise OperationFailure(str(exc))
 
 
-def _authenticate_plain(username, password, source, sock_info, cmd_func):
+def _authenticate_plain(credentials, sock_info, cmd_func):
     """Authenticate using SASL PLAIN (RFC 4616)
     """
+    source, username, password = credentials
     payload = ('\x00%s\x00%s' % (username, password)).encode('utf-8')
     cmd = SON([('saslStart', 1),
                ('mechanism', 'PLAIN'),
@@ -153,9 +165,10 @@ def _authenticate_plain(username, password, source, sock_info, cmd_func):
     cmd_func(sock_info, source, cmd)
 
 
-def _authenticate_mongo_cr(username, password, source, sock_info, cmd_func):
+def _authenticate_mongo_cr(credentials, sock_info, cmd_func):
     """Authenticate using MONGODB-CR.
     """
+    source, username, password = credentials
     # Get a nonce
     response, _ = cmd_func(sock_info, source, {'getnonce': 1})
     nonce = response['nonce']
@@ -172,15 +185,15 @@ def _authenticate_mongo_cr(username, password, source, sock_info, cmd_func):
 def authenticate(credentials, sock_info, cmd_func):
     """Authenticate sock_info.
     """
-    source, username, password, mechanism = credentials
     # Use a dict for this when we support more mechanisms.
+    mechanism = credentials[0]
     if mechanism == 'GSSAPI':
         if not HAVE_KERBEROS:
             raise ConfigurationError('The "kerberos" module must be '
                                      'installed to use GSSAPI authentication.')
-        _authenticate_gssapi(username, sock_info, cmd_func)
+        _authenticate_gssapi(credentials[1:], sock_info, cmd_func)
     elif mechanism == 'PLAIN':
-        _authenticate_plain(username, password, source, sock_info, cmd_func)
+        _authenticate_plain(credentials[1:], sock_info, cmd_func)
     else:
-        _authenticate_mongo_cr(username, password, source, sock_info, cmd_func)
+        _authenticate_mongo_cr(credentials[1:], sock_info, cmd_func)
 

@@ -669,7 +669,7 @@ class Database(common.BaseObject):
         self.system.users.remove({"user": name}, **self._get_wc_override())
 
     def authenticate(self, name, password=None,
-                     source=None, mechanism='MONGODB-CR'):
+                     source=None, mechanism='MONGODB-CR', **kwargs):
         """Authenticate to use this database.
 
         Raises :class:`TypeError` if either `name` or `password` is not
@@ -708,6 +708,9 @@ class Database(common.BaseObject):
           - `mechanism` (optional): See
             :data:`~pymongo.auth.MECHANISMS` for options.
             Defaults to MONGODB-CR (MongoDB Challenge Response protocol)
+          - `gssapiServiceName` (optional): Used with the GSSAPI mechanism
+            to specify the service name portion of the service principal name.
+            Defaults to 'mongodb'.
 
         .. versionchanged:: 2.5
            Added the `source` and `mechanism` parameters. :meth:`authenticate`
@@ -728,8 +731,15 @@ class Database(common.BaseObject):
                             "of %s" % (basestring.__name__,))
         common.validate_auth_mechanism('mechanism', mechanism)
 
-        credentials = (source or self.name, unicode(name),
-                       password and unicode(password) or None, mechanism)
+        validated_options = {}
+        for option, value in kwargs.iteritems():
+            normalized, val = common.validate_auth_option(option, value)
+            validated_options[normalized] = val
+
+        credentials = auth._build_credentials_tuple(mechanism,
+                                source or self.name, unicode(name),
+                                password and unicode(password) or None,
+                                validated_options)
         self.connection._cache_credentials(self.name, credentials)
         return True
 

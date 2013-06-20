@@ -65,19 +65,29 @@ class TestGSSAPI(unittest.TestCase):
     def setUp(self):
         if not HAVE_KERBEROS:
             raise SkipTest('Kerberos module not available.')
-        if not GSSAPI_HOST:
+        if not GSSAPI_HOST or not PRINCIPAL:
             raise SkipTest('Must set GSSAPI_HOST and PRINCIPAL to test GSSAPI')
 
     def test_gssapi_simple(self):
 
         client = MongoClient(GSSAPI_HOST, GSSAPI_PORT)
+        # Without gssapiServiceName
         self.assertTrue(client.test.authenticate(PRINCIPAL,
                                                  mechanism='GSSAPI'))
-        # Just test that we can run a simple command.
         self.assertTrue(client.database_names())
-
         uri = ('mongodb://%s@%s:%d/?authMechanism='
                'GSSAPI' % (quote_plus(PRINCIPAL), GSSAPI_HOST, GSSAPI_PORT))
+        client = MongoClient(uri)
+        self.assertTrue(client.database_names())
+
+        # With gssapiServiceName
+        self.assertTrue(client.test.authenticate(PRINCIPAL,
+                                                 mechanism='GSSAPI',
+                                                 gssapiServiceName='mongodb'))
+        self.assertTrue(client.database_names())
+        uri = ('mongodb://%s@%s:%d/?authMechanism='
+               'GSSAPI;gssapiServiceName=mongodb' % (quote_plus(PRINCIPAL),
+                                                     GSSAPI_HOST, GSSAPI_PORT))
         client = MongoClient(uri)
         self.assertTrue(client.database_names())
 
@@ -86,12 +96,26 @@ class TestGSSAPI(unittest.TestCase):
             client = MongoReplicaSetClient(GSSAPI_HOST,
                                            port=GSSAPI_PORT,
                                            replicaSet=set_name)
+            # Without gssapiServiceName
             self.assertTrue(client.test.authenticate(PRINCIPAL,
                                                      mechanism='GSSAPI'))
             self.assertTrue(client.database_names())
             uri = ('mongodb://%s@%s:%d/?authMechanism=GSSAPI;replicaSet'
                    '=%s' % (quote_plus(PRINCIPAL),
                             GSSAPI_HOST, GSSAPI_PORT, str(set_name)))
+            client = MongoReplicaSetClient(uri)
+            self.assertTrue(client.database_names())
+
+            # With gssapiServiceName
+            self.assertTrue(client.test.authenticate(PRINCIPAL,
+                                                     mechanism='GSSAPI',
+                                                     gssapiServiceName='mongodb'))
+            self.assertTrue(client.database_names())
+            uri = ('mongodb://%s@%s:%d/?authMechanism=GSSAPI;replicaSet'
+                   '=%s;gssapiServiceName=mongodb' % (quote_plus(PRINCIPAL),
+                                                      GSSAPI_HOST,
+                                                      GSSAPI_PORT,
+                                                      str(set_name)))
             client = MongoReplicaSetClient(uri)
             self.assertTrue(client.database_names())
 

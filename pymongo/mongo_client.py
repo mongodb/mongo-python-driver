@@ -356,12 +356,12 @@ class MongoClient(common.BaseObject):
                           "must provide a username and password." % (db_name,))
         if username:
             mechanism = options.get('authmechanism', 'MONGODB-CR')
-            if mechanism == 'GSSAPI':
-                source = '$external'
-            else:
-                source = db_name or 'admin'
-            credentials = (source, unicode(username),
-                           unicode(password), mechanism)
+            source = db_name or 'admin'
+            credentials = auth._build_credentials_tuple(mechanism,
+                                                        source,
+                                                        unicode(username),
+                                                        unicode(password),
+                                                        options)
             try:
                 self._cache_credentials(source, credentials, _connect)
             except OperationFailure, exc:
@@ -460,7 +460,7 @@ class MongoClient(common.BaseObject):
 
             # Logout any credentials that no longer exist in the cache.
             for credentials in authset - cached:
-                self.__simple_command(sock_info, credentials[0], {'logout': 1})
+                self.__simple_command(sock_info, credentials[1], {'logout': 1})
                 sock_info.authset.discard(credentials)
 
             for credentials in cached - authset:
