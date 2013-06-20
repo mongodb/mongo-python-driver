@@ -672,32 +672,30 @@ class Database(common.BaseObject):
                      source=None, mechanism='MONGODB-CR', **kwargs):
         """Authenticate to use this database.
 
-        Raises :class:`TypeError` if either `name` or `password` is not
-        an instance of :class:`basestring` (:class:`str` in python 3).
         Authentication lasts for the life of the underlying client
         instance, or until :meth:`logout` is called.
 
-        The "admin" database is special. Authenticating on "admin"
-        gives access to *all* databases. Effectively, "admin" access
-        means root access to the database.
+        Raises :class:`TypeError` if (required) `name`, (optional) `password`,
+        or (optional) `source` is not an instance of :class:`basestring`
+        (:class:`str` in python 3).
 
         .. note::
-          This method authenticates the current connection, and
-          will also cause all new :class:`~socket.socket` connections
-          in the underlying client instance to be authenticated automatically.
+          - This method authenticates the current connection, and
+            will also cause all new :class:`~socket.socket` connections
+            in the underlying client instance to be authenticated automatically.
 
-         - Authenticating more than once on the same database with different
-           credentials is not supported. You must call :meth:`logout` before
-           authenticating with new credentials.
+          - Authenticating more than once on the same database with different
+            credentials is not supported. You must call :meth:`logout` before
+            authenticating with new credentials.
 
-         - When sharing a client instance between multiple threads, all
-           threads will share the authentication. If you need different
-           authentication profiles for different purposes you must use
-           distinct client instances.
+          - When sharing a client instance between multiple threads, all
+            threads will share the authentication. If you need different
+            authentication profiles for different purposes you must use
+            distinct client instances.
 
-         - To get authentication to apply immediately to all
-           existing sockets you may need to reset this client instance's
-           sockets using :meth:`~pymongo.mongo_client.MongoClient.disconnect`.
+          - To get authentication to apply immediately to all
+            existing sockets you may need to reset this client instance's
+            sockets using :meth:`~pymongo.mongo_client.MongoClient.disconnect`.
 
         :Parameters:
           - `name`: the name of the user to authenticate.
