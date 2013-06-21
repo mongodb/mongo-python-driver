@@ -103,6 +103,10 @@ class TestCollection(unittest.TestCase):
 
         self.assertRaises(TypeError, db.test.create_index, 5)
         self.assertRaises(TypeError, db.test.create_index, {"hello": 1})
+        self.assertRaises(TypeError,
+                          db.test.ensure_index, {"hello": 1}, cache_for='foo')
+        self.assertRaises(TypeError,
+                          db.test.ensure_index, {"hello": 1}, ttl='foo')
         self.assertRaises(ValueError, db.test.create_index, [])
 
         db.test.drop_indexes()
@@ -148,6 +152,10 @@ class TestCollection(unittest.TestCase):
         db = self.db
 
         self.assertRaises(TypeError, db.test.ensure_index, {"hello": 1})
+        self.assertRaises(TypeError,
+                          db.test.ensure_index, {"hello": 1}, cache_for='foo')
+        self.assertRaises(TypeError,
+                          db.test.ensure_index, {"hello": 1}, ttl='foo')
 
         db.test.drop_indexes()
         self.assertEqual("hello_1", db.test.create_index("hello"))

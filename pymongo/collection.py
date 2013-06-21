@@ -804,6 +804,10 @@ class Collection(common.BaseObject):
             warnings.warn("ttl is deprecated. Please use cache_for instead.",
                           DeprecationWarning, stacklevel=2)
 
+        # The types supported by datetime.timedelta. 2to3 removes long.
+        if not isinstance(cache_for, (int, long, float)):
+            raise TypeError("cache_for must be an integer or float.")
+
         keys = helpers._index_list(key_or_list)
         index_doc = helpers._index_document(keys)
 
