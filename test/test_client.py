@@ -346,6 +346,22 @@ class TestClient(unittest.TestCase, TestRequestMixin):
             c.admin.system.users.remove({})
             c.pymongo_test.system.users.remove({})
 
+    def test_lazy_auth_raises_operation_failure(self):
+        # Check if we have the prerequisites to run this test.
+        c = MongoClient(host, port)
+        if not server_started_with_auth(c):
+            raise SkipTest('Authentication is not enabled on server')
+
+        if is_mongos(c) and not version.at_least(c, (2, 0, 0)):
+            raise SkipTest("Auth with sharding requires MongoDB >= 2.0.0")
+
+        lazy_client = MongoClient(
+            "mongodb://user:wrong@%s:%d/pymongo_test" % (host, port),
+            _connect=False)
+
+        assertRaisesExactly(
+            OperationFailure, lazy_client.test.collection.find_one)
+
     def test_unix_socket(self):
         if not hasattr(socket, "AF_UNIX"):
             raise SkipTest("UNIX-sockets are not supported on this system")

@@ -711,6 +711,9 @@ class MongoClient(common.BaseObject):
                     raise ConfigurationError("Seed list cannot contain a mix "
                                              "of mongod and mongos instances.")
                 return node
+            except OperationFailure:
+                # The server is available but something failed, probably auth.
+                raise
             except Exception, why:
                 errors.append(str(why))
 
