@@ -83,28 +83,28 @@ static struct module_state _state;
  */
 #if defined(_MSC_VER) && (_MSC_VER >= 1400)
 #define INT2STRING(buffer, i)                                           \
-    *(buffer) = malloc(_scprintf("%ld", (i)) + 1),                      \
+    *(buffer) = malloc(_scprintf("%d", (i)) + 1),                       \
         (!(buffer) ?                                                    \
          -1 :                                                           \
          _snprintf_s(*(buffer),                                         \
-                     _scprintf("%ld", (i)) + 1,                         \
-                     _scprintf("%ld", (i)) + 1,                         \
-                     "%ld",                                             \
+                     _scprintf("%d", (i)) + 1,                          \
+                     _scprintf("%d", (i)) + 1,                          \
+                     "%d",                                              \
                      (i)))
 #define STRCAT(dest, n, src) strcat_s((dest), (n), (src))
 #else
 #define INT2STRING(buffer, i)                                           \
-    *(buffer) = malloc(_scprintf("%ld", (i)) + 1),                      \
+    *(buffer) = malloc(_scprintf("%d", (i)) + 1),                       \
         (!(buffer) ?                                                    \
          -1 :                                                           \
          _snprintf(*(buffer),                                           \
-                     _scprintf("%ld", (i)) + 1,                         \
-                     "%ld",                                             \
+                     _scprintf("%d", (i)) + 1,                          \
+                     "%d",                                              \
                      (i)))
 #define STRCAT(dest, n, src) strcat((dest), (src))
 #endif
 #else
-#define INT2STRING(buffer, i) asprintf((buffer), "%ld", (i))
+#define INT2STRING(buffer, i) asprintf((buffer), "%d", (i))
 #define STRCAT(dest, n, src) strcat((dest), (src))
 #endif
 
@@ -453,7 +453,15 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer, int type_by
             return 0;
         }
 
-        items = PySequence_Size(value);
+        if ((items = PySequence_Size(value)) > BSON_MAX_SIZE) {
+            PyObject* BSONError = _error("BSONError");
+            if (BSONError) {
+                PyErr_SetString(BSONError,
+                                "Too many items to serialize.");
+                Py_DECREF(BSONError);
+            }
+            return 0;
+        }
         for(i = 0; i < items; i++) {
             int list_type_byte = buffer_save_space(buffer, 1);
             char* name = NULL;
@@ -463,7 +471,7 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer, int type_by
                 PyErr_NoMemory();
                 return 0;
             }
-            if (INT2STRING(&name, i) < 0 || !name) {
+            if (INT2STRING(&name, (int)i) < 0 || !name) {
                 PyErr_NoMemory();
                 return 0;
             }
@@ -1449,12 +1457,12 @@ static PyObject* get_value(PyObject* self, const char* buffer, int* position,
 
                 int bson_type = (int)buffer[(*position)++];
                 size_t key_size = strlen(buffer + *position);
-                if ((size_t)(int)key_size != key_size) {
+                if (key_size > BSON_MAX_SIZE) {
                     Py_DECREF(value);
                     goto invalid;
                 }
                 /* just skip the key, they're in order. */
-                *position += key_size + 1; 
+                *position += (int)key_size + 1; 
                 to_append = get_value(self, buffer, position, bson_type,
                                       max - (int)key_size, as_class, tz_aware, uuid_subtype);
                 if (!to_append) {
@@ -1659,15 +1667,18 @@ static PyObject* get_value(PyObject* self, const char* buffer, int* position,
             int flags;
             size_t flags_length, i;
             size_t pattern_length = strlen(buffer + *position);
-            if (max < pattern_length) {
+            if (max < pattern_length || pattern_length > BSON_MAX_SIZE) {
                 goto invalid;
             }
             pattern = PyUnicode_DecodeUTF8(buffer + *position, pattern_length, "strict");
             if (!pattern) {
                 return NULL;
             }
-            *position += pattern_length + 1;
-            flags_length = strlen(buffer + *position);
+            *position += (int)pattern_length + 1;
+            if ((flags_length = strlen(buffer + *position)) > BSON_MAX_SIZE) {
+                Py_DECREF(pattern);
+                goto invalid;
+            }
             if (max < pattern_length + flags_length) {
                 Py_DECREF(pattern);
                 goto invalid;
@@ -1688,7 +1699,7 @@ static PyObject* get_value(PyObject* self, const char* buffer, int* position,
                     flags |= 64;
                 }
             }
-            *position += flags_length + 1;
+            *position += (int)flags_length + 1;
             value = PyObject_CallFunction(state->RECompile, "Oi", pattern, flags);
             Py_DECREF(pattern);
             break;
@@ -1701,14 +1712,14 @@ static PyObject* get_value(PyObject* self, const char* buffer, int* position,
 
             *position += 4;
             collection_length = strlen(buffer + *position);
-            if (max < collection_length) {
+            if (max < collection_length || collection_length > BSON_MAX_SIZE) {
                 goto invalid;
             }
             collection = PyUnicode_DecodeUTF8(buffer + *position, collection_length, "strict");
             if (!collection) {
                 return NULL;
             }
-            *position += collection_length + 1;
+            *position += (int)collection_length + 1;
             if (max < collection_length + 12) {
                 Py_DECREF(collection);
                 goto invalid;
@@ -1750,14 +1761,14 @@ static PyObject* get_value(PyObject* self, const char* buffer, int* position,
 
             *position += 8;
             code_length = strlen(buffer + *position);
-            if (max < 8 + code_length) {
+            if (max < 8 + code_length || code_length > BSON_MAX_SIZE) {
                 goto invalid;
             }
             code = PyUnicode_DecodeUTF8(buffer + *position, code_length, "strict");
             if (!code) {
                 return NULL;
             }
-            *position += code_length + 1;
+            *position += (int)code_length + 1;
 
             memcpy(&scope_size, buffer + *position, 4);
             scope = elements_to_dict(self, buffer + *position + 4, scope_size - 5,
@@ -1866,7 +1877,7 @@ static PyObject* elements_to_dict(PyObject* self, const char* string, int max,
         PyObject* value;
         int type = (int)string[position++];
         size_t name_length = strlen(string + position);
-        if (position + name_length >= max) {
+        if (name_length > BSON_MAX_SIZE || position + name_length >= max) {
             PyObject* InvalidBSON = _error("InvalidBSON");
             if (InvalidBSON) {
                 PyErr_SetNone(InvalidBSON);
@@ -1880,7 +1891,7 @@ static PyObject* elements_to_dict(PyObject* self, const char* string, int max,
             Py_DECREF(dict);
             return NULL;
         }
-        position += name_length + 1;
+        position += (int)name_length + 1;
         value = get_value(self, string, &position, type,
                           max - position, as_class, tz_aware, uuid_subtype);
         if (!value) {
