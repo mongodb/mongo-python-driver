@@ -49,7 +49,7 @@ from pymongo.errors import (AutoReconnect,
 from test import version, port, pair
 from test.utils import (
     delay, assertReadFrom, assertReadFromAll, read_from_which_host,
-    assertRaisesExactly, TestRequestMixin, one)
+    assertRaisesExactly, TestRequestMixin, one, server_started_with_auth)
 
 
 class TestReplicaSetClientAgainstStandalone(unittest.TestCase):
@@ -305,6 +305,21 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
             self.assertRaises(AutoReconnect, cursor.next)
         finally:
             socket.socket.sendall = old_sendall
+
+    def test_lazy_auth_raises_operation_failure(self):
+        # Check if we have the prerequisites to run this test.
+        c = self._get_client()
+        if not server_started_with_auth(c):
+            raise SkipTest('Authentication is not enabled on server')
+
+        lazy_client = MongoReplicaSetClient(
+            "mongodb://user:wrong@%s/pymongo_test" % pair,
+            replicaSet=self.name,
+            _connect=False)
+
+        lazy_client.test.collection.find_one()
+        assertRaisesExactly(
+            OperationFailure, lazy_client.test.collection.find_one)
 
     def test_operations(self):
         c = self._get_client()
