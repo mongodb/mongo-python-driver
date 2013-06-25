@@ -15,7 +15,6 @@
 """MongoDB specific extensions to Sphinx."""
 
 from docutils import nodes
-from docutils.writers import html4css1
 from sphinx import addnodes
 from sphinx.util.compat import (Directive,
                                 make_admonition)
@@ -59,8 +58,6 @@ class MongodocDirective(Directive):
     option_spec = {}
 
     def run(self):
-        env = self.state.document.settings.env
-
         return make_admonition(mongodoc, self.name,
                                ['See general MongoDB documentation'],
                                self.options, self.content, self.lineno,
@@ -69,8 +66,6 @@ class MongodocDirective(Directive):
 
 
 def process_mongodoc_nodes(app, doctree, fromdocname):
-    env = app.builder.env
-
     for node in doctree.traverse(mongodoc):
         anchor = None
         for name in node.parent.parent.traverse(addnodes.desc_signature):
