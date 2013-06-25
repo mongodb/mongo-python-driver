@@ -619,7 +619,8 @@ class MongoReplicaSetClient(common.BaseObject):
             raise TypeError("port must be an instance of int")
 
         username = None
-        db_name = None
+        password = None
+        self.__default_database_name = None
         options = {}
         if host is None:
             self.__seeds.add(('localhost', port))
@@ -628,7 +629,7 @@ class MongoReplicaSetClient(common.BaseObject):
             self.__seeds.update(res['nodelist'])
             username = res['username']
             password = res['password']
-            db_name = res['database']
+            self.__default_database_name = res['database']
             options = res['options']
         else:
             self.__seeds.update(uri_parser.split_hosts(host, port))
@@ -706,14 +707,13 @@ class MongoReplicaSetClient(common.BaseObject):
                 # ConnectionFailure makes more sense here than AutoReconnect
                 raise ConnectionFailure(str(e))
 
-        db_name = options.get('authsource', db_name)
-        if db_name and username is None:
-            warnings.warn("database name or authSource in URI is being "
-                          "ignored. If you wish to authenticate to %s, you "
-                          "must provide a username and password." % (db_name,))
         if username:
             mechanism = options.get('authmechanism', 'MONGODB-CR')
-            source = db_name or 'admin'
+            source = (
+                options.get('authsource')
+                or self.__default_database_name
+                or 'admin')
+
             credentials = auth._build_credentials_tuple(mechanism,
                                                         source,
                                                         unicode(username),
@@ -1762,3 +1762,19 @@ class MongoReplicaSetClient(common.BaseObject):
             return self.admin.command("copydb", **command)
         finally:
             self.end_request()
+
+    def get_default_database(self):
+        """Get the database named in the MongoDB connection URI.
+
+        >>> uri = 'mongodb://host/my_database'
+        >>> client = MongoReplicaSetClient(uri)
+        >>> db = client.get_default_database()
+        >>> assert db.name == 'my_database'
+
+        Useful in scripts where you want to choose which database to use
+        based only on the URI in a configuration file.
+        """
+        if self.__default_database_name is None:
+            raise ConfigurationError('No default database defined')
+
+        return self[self.__default_database_name]

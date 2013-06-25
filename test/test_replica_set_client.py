@@ -317,7 +317,6 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
             replicaSet=self.name,
             _connect=False)
 
-        lazy_client.test.collection.find_one()
         assertRaisesExactly(
             OperationFailure, lazy_client.test.collection.find_one)
 
@@ -453,6 +452,32 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
             time.sleep(2)
             self.assertEqual("bar", c.pymongo_test1.test.find_one()["foo"])
         c.close()
+
+    def test_get_default_database(self):
+        host = one(self.hosts)
+        uri = "mongodb://%s:%d/foo?replicaSet=%s" % (
+            host[0], host[1], self.name)
+
+        c = MongoReplicaSetClient(uri, _connect=False)
+        self.assertEqual(Database(c, 'foo'), c.get_default_database())
+
+    def test_get_default_database_error(self):
+        host = one(self.hosts)
+        # URI with no database.
+        uri = "mongodb://%s:%d/?replicaSet=%s" % (
+            host[0], host[1], self.name)
+
+        c = MongoReplicaSetClient(uri, _connect=False)
+        self.assertRaises(ConfigurationError, c.get_default_database)
+
+    def test_get_default_database_with_authsource(self):
+        # Ensure we distinguish database name from authSource.
+        host = one(self.hosts)
+        uri = "mongodb://%s:%d/foo?replicaSet=%s&authSource=src" % (
+            host[0], host[1], self.name)
+
+        c = MongoReplicaSetClient(uri, _connect=False)
+        self.assertEqual(Database(c, 'foo'), c.get_default_database())
 
     def test_iteration(self):
         client = self._get_client()

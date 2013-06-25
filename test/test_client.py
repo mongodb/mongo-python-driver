@@ -294,6 +294,21 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         self.assertTrue(MongoClient(
             "mongodb://%s:%d/?slaveok=true;w=2" % (host, port)).slave_okay)
 
+    def test_get_default_database(self):
+        c = MongoClient("mongodb://%s:%d/foo" % (host, port), _connect=False)
+        self.assertEqual(Database(c, 'foo'), c.get_default_database())
+
+    def test_get_default_database_error(self):
+        # URI with no database.
+        c = MongoClient("mongodb://%s:%d/" % (host, port), _connect=False)
+        self.assertRaises(ConfigurationError, c.get_default_database)
+
+    def test_get_default_database_with_authsource(self):
+        # Ensure we distinguish database name from authSource.
+        uri = "mongodb://%s:%d/foo?authSource=src" % (host, port)
+        c = MongoClient(uri, _connect=False)
+        self.assertEqual(Database(c, 'foo'), c.get_default_database())
+
     def test_auth_from_uri(self):
         c = MongoClient(host, port)
         # Sharded auth not supported before MongoDB 2.0
