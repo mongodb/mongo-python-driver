@@ -578,11 +578,9 @@ init_cmessage(void)
         INITERROR;
     }
 #if PY_VERSION_HEX >= 0x03010000
-    if (PyCapsule_CheckExact(c_api_object))
-        _cbson_API = (void **)PyCapsule_GetPointer(c_api_object, "_cbson._C_API");
+    _cbson_API = (void **)PyCapsule_GetPointer(c_api_object, "_cbson._C_API");
 #else
-    if (PyCObject_Check(c_api_object))
-        _cbson_API = (void **)PyCObject_AsVoidPtr(c_api_object);
+    _cbson_API = (void **)PyCObject_AsVoidPtr(c_api_object);
 #endif
     if (_cbson_API == NULL) {
         Py_DECREF(c_api_object);

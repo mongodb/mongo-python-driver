@@ -2163,24 +2163,8 @@ init_cbson(void)
     PyObject *c_api_object;
     static void *_cbson_API[_cbson_API_POINTER_COUNT];
 
-#if PY_MAJOR_VERSION >= 3
-    m = PyModule_Create(&moduledef);
-#else
-    m = Py_InitModule("_cbson", _CBSONMethods);
-#endif
-    if (m == NULL) {
-        INITERROR;
-    }
-
     PyDateTime_IMPORT;
     if (PyDateTimeAPI == NULL) {
-        Py_DECREF(m);
-        INITERROR;
-    }
-
-    /* Import several python objects */
-    if (_reload_python_objects(m)) {
-        Py_DECREF(m);
         INITERROR;
     }
 
@@ -2196,10 +2180,36 @@ init_cbson(void)
 #else
     c_api_object = PyCObject_FromVoidPtr((void *) _cbson_API, NULL);
 #endif
+    if (c_api_object == NULL)
+        INITERROR;
 
-    if (c_api_object != NULL) {
-        PyModule_AddObject(m, "_C_API", c_api_object);
+#if PY_MAJOR_VERSION >= 3
+    m = PyModule_Create(&moduledef);
+#else
+    m = Py_InitModule("_cbson", _CBSONMethods);
+#endif
+    if (m == NULL) {
+        Py_DECREF(c_api_object);
+        INITERROR;
     }
+
+    /* Import several python objects */
+    if (_reload_python_objects(m)) {
+        Py_DECREF(c_api_object);
+#if PY_MAJOR_VERSION >= 3
+        Py_DECREF(m);
+#endif
+        INITERROR;
+    }
+
+    if (PyModule_AddObject(m, "_C_API", c_api_object) < 0) {
+        Py_DECREF(c_api_object);
+#if PY_MAJOR_VERSION >= 3
+        Py_DECREF(m);
+#endif
+        INITERROR;
+    }
+
 #if PY_MAJOR_VERSION >= 3
     return m;
 #endif
