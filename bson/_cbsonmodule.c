@@ -1552,7 +1552,7 @@ static PyObject* get_value(PyObject* self, const char* buffer, int* position,
 
                 Py_DECREF(args);
                 Py_DECREF(kwargs);
-                Py_XDECREF(data);
+                Py_DECREF(data);
                 if (!value) {
                     return NULL;
                 }
@@ -1563,7 +1563,7 @@ static PyObject* get_value(PyObject* self, const char* buffer, int* position,
             uuiderror:
                 Py_DECREF(args);
                 Py_DECREF(kwargs);
-                Py_DECREF(data);
+                Py_XDECREF(data);
                 return NULL;
             }
 
