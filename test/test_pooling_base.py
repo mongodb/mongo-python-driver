@@ -662,6 +662,32 @@ class _TestPooling(_TestPoolingBase):
         cx_pool.maybe_return_socket(new_sock_info)
         self.assertEqual(1, len(cx_pool.sockets))
 
+    def test_dead_request_socket_with_max_size(self):
+        # When a pool replaces a dead request socket, the semaphore it uses
+        # to enforce max_size should remain unaffected.
+        cx_pool = self.get_pool(
+            (host, port), 1, None, None, False, wait_queue_timeout=1)
+
+        cx_pool._check_interval_seconds = 0  # Always check.
+        cx_pool.start_request()
+
+        # Get and close the request socket.
+        request_sock_info = cx_pool.get_socket()
+        request_sock_info.sock.close()
+        cx_pool.maybe_return_socket(request_sock_info)
+
+        # Detects closed socket and creates new one, semaphore value still 0.
+        request_sock_info_2 = cx_pool.get_socket()
+        self.assertNotEqual(request_sock_info, request_sock_info_2)
+        cx_pool.maybe_return_socket(request_sock_info_2)
+        cx_pool.end_request()
+
+        # Semaphore value now 1; we can get a socket.
+        sock_info = cx_pool.get_socket()
+
+        # Clean up.
+        cx_pool.maybe_return_socket(sock_info)
+
     def test_socket_reclamation(self):
         if sys.platform.startswith('java'):
             raise SkipTest("Jython can't do socket reclamation")
