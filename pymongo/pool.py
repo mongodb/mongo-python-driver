@@ -137,6 +137,10 @@ class Pool:
           - `wait_queue_multiple`: (integer) Multiplied by max_pool_size to give
             the number of threads allowed to wait for a socket at one time.
         """
+        # Only check a socket's health with _closed() every once in a while.
+        # Can override for testing: 0 to always check, None to never check.
+        self._check_interval_seconds = 1
+
         if use_greenlets and not thread_util.have_gevent:
             raise ConfigurationError(
                 "The Gevent module is not available. "
@@ -434,6 +438,9 @@ class Pool:
         """
         error = False
 
+        # How long since socket was last checked out.
+        age = time.time() - sock_info.last_checkout
+
         if sock_info.closed:
             error = True
 
@@ -441,7 +448,10 @@ class Pool:
             sock_info.close()
             error = True
 
-        elif time.time() - sock_info.last_checkout > 1:
+        elif (self._check_interval_seconds is not None
+                and (
+                    0 == self._check_interval_seconds
+                    or age > self._check_interval_seconds)):
             if _closed(sock_info.sock):
                 sock_info.close()
                 error = True
