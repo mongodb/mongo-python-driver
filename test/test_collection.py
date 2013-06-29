@@ -46,7 +46,7 @@ from pymongo.errors import (ConfigurationError,
                             OperationFailure,
                             TimeoutError)
 from test.test_client import get_client
-from test.utils import is_mongos, joinall
+from test.utils import is_mongos, joinall, enable_text_search
 from test import (qcheck,
                   version)
 
@@ -399,8 +399,7 @@ class TestCollection(unittest.TestCase):
         if is_mongos(self.client):
             raise SkipTest("setParameter does not work through mongos")
 
-        self.client.admin.command('setParameter', '*',
-                                  textSearchEnabled=True)
+        enable_text_search(self.client)
 
         db = self.db
         db.test.drop_indexes()
@@ -408,9 +407,6 @@ class TestCollection(unittest.TestCase):
         index_info = db.test.index_information()["t_text"]
         self.assertTrue("weights" in index_info)
         db.test.drop_indexes()
-
-        self.client.admin.command('setParameter', '*',
-                                  textSearchEnabled=False)
 
     def test_index_2dsphere(self):
         if not version.at_least(self.client, (2, 3, 2)):

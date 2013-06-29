@@ -340,6 +340,16 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
                 ('pipeline', [])
             ])))
 
+        # Text search.
+        if version.at_least(self.c, (2, 3, 2)):
+            utils.enable_text_search(self.c)
+            self.c.pymongo_test.test.create_index([("t", "text")])
+            self._test_fn(True, lambda: self.c.pymongo_test.command(SON([
+                ('text', 'test'),
+                ('search', 'foo')])))
+
+            self.c.pymongo_test.test.drop_indexes()
+
     def test_map_reduce_command(self):
         # mapreduce fails if no collection
         self.c.pymongo_test.test.insert({}, w=self.w)

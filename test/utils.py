@@ -16,6 +16,7 @@
 """
 import threading
 
+from pymongo import MongoClient, MongoReplicaSetClient
 from pymongo.errors import AutoReconnect
 from pymongo.pool import NO_REQUEST, NO_SOCKET_YET, SocketInfo
 from test import host, port
@@ -58,6 +59,15 @@ def joinall(threads):
 def is_mongos(client):
     res = client.admin.command('ismaster')
     return res.get('msg', '') == 'isdbgrid'
+
+def enable_text_search(client):
+    client.admin.command(
+        'setParameter', textSearchEnabled=True)
+
+    if isinstance(client, MongoReplicaSetClient):
+        for host, port in client.secondaries:
+            MongoClient(host, port).admin.command(
+                'setParameter', textSearchEnabled=True)
 
 def assertRaisesExactly(cls, fn, *args, **kwargs):
     """
