@@ -191,6 +191,7 @@ def select_member(
 secondary_ok_commands = frozenset([
     "group", "aggregate", "collstats", "dbstats", "count", "distinct",
     "geonear", "geosearch", "geowalk", "mapreduce", "getnonce", "authenticate",
+    "text",
 ])
 
 
