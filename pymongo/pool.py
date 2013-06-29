@@ -131,7 +131,7 @@ class Pool:
             "certification authority" certificates, which are used to validate
             certificates passed from the other end of the connection.
             Implies ``ssl=True``.
-          - `wait_queue_timeout`: (integer) How long (in milliseconds) a
+          - `wait_queue_timeout`: (integer) How long (in seconds) a
             thread will wait for a socket from the pool if the pool has no
             free sockets.
           - `wait_queue_multiple`: (integer) Multiplied by max_pool_size to give
