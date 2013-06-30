@@ -343,7 +343,17 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
         # Text search.
         if version.at_least(self.c, (2, 3, 2)):
             utils.enable_text_search(self.c)
-            self.c.pymongo_test.test.create_index([("t", "text")])
+            db = self.c.pymongo_test
+
+            # Only way to create an index and wait for all members to build it.
+            index = {
+                'ns': 'pymongo_test.test',
+                'name': 't_text',
+                'key': {'t': 'text'}}
+
+            db.system.indexes.insert(
+                index, manipulate=False, check_keys=False, w=self.w)
+
             self._test_fn(True, lambda: self.c.pymongo_test.command(SON([
                 ('text', 'test'),
                 ('search', 'foo')])))
