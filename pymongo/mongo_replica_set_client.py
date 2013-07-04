@@ -325,6 +325,14 @@ class MonitorThread(Monitor, threading.Thread):
         # Track whether the thread has started. (Greenlets track this already.)
         self.started = False
 
+    def schedule_refresh(self):
+        """Override Monitor's schedule_refresh method
+        raise exception as warning if thread is dead
+        """
+        if not self.is_alive():
+            raise Exception("Monitor thread died unexpectedly, used with fork?")
+        super(MonitorThread, self).schedule_refresh()
+
     def start(self):
         self.started = True
         super(MonitorThread, self).start()
