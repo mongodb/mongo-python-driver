@@ -329,7 +329,7 @@ class MonitorThread(Monitor, threading.Thread):
         """Override Monitor's schedule_refresh method
         raise exception as warning if thread is dead
         """
-        if not self.is_alive():
+        if not self.isAlive():
             raise Exception("Monitor thread died unexpectedly, used with fork?")
         super(MonitorThread, self).schedule_refresh()
 
