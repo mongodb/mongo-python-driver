@@ -564,6 +564,45 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
 
         db.connection.close()
 
+    def test_fork_and_schedule_refresh(self):
+        # After a fork the monitor thread is gone. Check that it's restarted.
+        if sys.platform == "win32":
+            raise SkipTest("Can't fork on Windows")
+
+        try:
+            from multiprocessing import Process, Pipe
+        except ImportError:
+            raise SkipTest("No multiprocessing module")
+
+        client = self._get_client()
+        db = client.pymongo_test
+
+        def f(pipe):
+            try:
+                # Trigger a refresh.
+                self.assertRaises(Exception, client.disconnect)
+            except:
+                traceback.print_exc()
+                pipe.send(True)
+                os._exit(1)
+
+        cp, cc = Pipe()
+        p = Process(target=f, args=(cc,))
+        p.start()
+        p.join(1)
+        p.terminate()
+        p.join()
+        cc.close()
+
+        # recv will only have data if the subprocess failed
+        try:
+            cp.recv()
+            self.fail()
+        except EOFError:
+            pass
+
+        db.connection.close()
+
     def test_document_class(self):
         c = self._get_client()
         db = c.pymongo_test
