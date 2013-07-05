@@ -824,6 +824,40 @@ class TestCollection(unittest.TestCase):
                                             itertools.repeat(None, 10)))
         self.assertEqual(db.test.find().count(), 10)
 
+    def test_insert_manipulate_false(self):
+        # Test three aspects of insert with manipulate=False:
+        #   1. The return value is None or [None] as appropriate.
+        #   2. _id is not set on the passed-in document object.
+        #   3. _id is not sent to server.
+        collection_name = 'test_insert_manipulate_false'
+        try:
+            self.db.drop_collection(collection_name)
+
+            # A capped collection, so server doesn't set _id automatically.
+            collection = self.db.create_collection(
+                collection_name, capped=True, autoIndexId=False,
+                size=1000)
+
+            oid = ObjectId()
+            doc = {'a': oid}
+
+            # The return value is None.
+            self.assertTrue(collection.insert(doc, manipulate=False) is None)
+
+            # insert() shouldn't set _id on the passed-in document object.
+            self.assertEqual({'a': oid}, doc)
+
+            # _id is not sent to server.
+            self.assertEqual(doc, collection.find_one())
+
+            # Bulk insert. The return value is a list of None.
+            self.assertEqual([None], collection.insert([{}], manipulate=False))
+
+            ids = collection.insert([{}, {}], manipulate=False)
+            self.assertEqual([None, None], ids)
+        finally:
+            self.db.drop_collection(collection_name)
+
     def test_save(self):
         self.db.drop_collection("test")
 

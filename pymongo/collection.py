@@ -357,7 +357,10 @@ class Collection(common.BaseObject):
                            continue_on_error, self.__uuid_subtype), safe)
 
         ids = [doc.get("_id", None) for doc in docs]
-        return return_one and ids[0] or ids
+        if return_one:
+            return ids[0]
+        else:
+            return ids
 
     def update(self, spec, document, upsert=False, manipulate=False,
                safe=None, multi=False, check_keys=True, **kwargs):
