@@ -45,7 +45,7 @@ from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
                             ConnectionFailure,
                             InvalidName,
-                            OperationFailure)
+                            OperationFailure, InvalidOperation)
 from test import version, port, pair
 from test.utils import (
     delay, assertReadFrom, assertReadFromAll, read_from_which_host,
@@ -580,7 +580,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         def f(pipe):
             try:
                 # Trigger a refresh.
-                self.assertRaises(Exception, client.disconnect)
+                self.assertRaises(InvalidOperation, client.disconnect)
             except:
                 traceback.print_exc()
                 pipe.send(True)

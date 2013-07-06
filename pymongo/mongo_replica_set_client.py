@@ -56,7 +56,8 @@ from pymongo.errors import (AutoReconnect,
                             ConnectionFailure,
                             DuplicateKeyError,
                             InvalidDocument,
-                            OperationFailure)
+                            OperationFailure,
+                            InvalidOperation)
 
 EMPTY = b("")
 MAX_BSON_SIZE = 4 * 1024 * 1024
@@ -282,6 +283,10 @@ class Monitor(object):
     def schedule_refresh(self):
         """Refresh immediately
         """
+        if not self.isAlive():
+            raise InvalidOperation(
+                "Monitor thread is dead: Perhaps started before a fork?")
+
         self.refreshed.clear()
         self.event.set()
 
@@ -313,8 +318,11 @@ class Monitor(object):
             except:
                 break
 
+    def isAlive(self):
+        raise NotImplementedError()
 
-class MonitorThread(Monitor, threading.Thread):
+
+class MonitorThread(threading.Thread, Monitor):
     """Thread based replica set monitor.
     """
     def __init__(self, rsc):
@@ -324,14 +332,6 @@ class MonitorThread(Monitor, threading.Thread):
 
         # Track whether the thread has started. (Greenlets track this already.)
         self.started = False
-
-    def schedule_refresh(self):
-        """Override Monitor's schedule_refresh method
-        raise exception as warning if thread is dead
-        """
-        if not self.isAlive():
-            raise Exception("Monitor thread died unexpectedly, used with fork?")
-        super(MonitorThread, self).schedule_refresh()
 
     def start(self):
         self.started = True
@@ -366,6 +366,10 @@ try:
             """Define Greenlet's _run method.
             """
             self.monitor()
+
+        def isAlive(self):
+            # Gevent defines bool(Greenlet) as True if it's alive.
+            return bool(self)
 
 except ImportError:
     pass
