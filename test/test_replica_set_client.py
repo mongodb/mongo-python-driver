@@ -564,7 +564,8 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         db.connection.close()
 
     def test_fork_and_schedule_refresh(self):
-        # After a fork the monitor thread is gone. Check that it's restarted.
+        # After a fork the monitor thread is gone.
+        # Verify that schedule_refresh throws InvalidOperation.
         if sys.platform == "win32":
             raise SkipTest("Can't fork on Windows")
 
