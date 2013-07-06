@@ -589,7 +589,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         cp, cc = Pipe()
         p = Process(target=f, args=(cc,))
         p.start()
-        p.join(1)
+        p.join(10)
         p.terminate()
         p.join()
         cc.close()
