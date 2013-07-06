@@ -1262,7 +1262,8 @@ class MongoReplicaSetClient(common.BaseObject):
             except (socket.error, ConnectionFailure):
                 return False
         finally:
-            member.pool.maybe_return_socket(sock_info)
+            if member and sock_info:
+                member.pool.maybe_return_socket(sock_info)
 
     def __check_response_to_last_error(self, response):
         """Check a response to a lastError message for errors.
