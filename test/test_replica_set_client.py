@@ -516,7 +516,6 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
 
         # Failure occurs if the client is used before the fork
         db.test.find_one()
-        #db.connection.end_request()
 
         def loop(pipe):
             while True:
