@@ -82,29 +82,23 @@ static struct module_state _state;
  * must be explicitly free'd when done being used.
  */
 #if defined(_MSC_VER) && (_MSC_VER >= 1400)
-#define INT2STRING(buffer, i)                                           \
-    *(buffer) = malloc(_scprintf("%d", (i)) + 1),                       \
-        (!(buffer) ?                                                    \
-         -1 :                                                           \
-         _snprintf_s(*(buffer),                                         \
-                     _scprintf("%d", (i)) + 1,                          \
-                     _scprintf("%d", (i)) + 1,                          \
-                     "%d",                                              \
-                     (i)))
+#define INT2STRING(buffer, i)                                       \
+    _snprintf_s((buffer),                                           \
+                 _scprintf("%d", (i)) + 1,                          \
+                 _scprintf("%d", (i)) + 1,                          \
+                 "%d",                                              \
+                 (i))
 #define STRCAT(dest, n, src) strcat_s((dest), (n), (src))
 #else
-#define INT2STRING(buffer, i)                                           \
-    *(buffer) = malloc(_scprintf("%d", (i)) + 1),                       \
-        (!(buffer) ?                                                    \
-         -1 :                                                           \
-         _snprintf(*(buffer),                                           \
-                     _scprintf("%d", (i)) + 1,                          \
-                     "%d",                                              \
-                     (i)))
+#define INT2STRING(buffer, i)                                     \
+    _snprintf((buffer),                                           \
+               _scprintf("%d", (i)) + 1,                          \
+               "%d",                                              \
+              (i))
 #define STRCAT(dest, n, src) strcat((dest), (src))
 #endif
 #else
-#define INT2STRING(buffer, i) asprintf((buffer), "%d", (i))
+#define INT2STRING(buffer, i) snprintf((buffer), sizeof((buffer)), "%d", (i))
 #define STRCAT(dest, n, src) strcat((dest), (src))
 #endif
 
@@ -464,22 +458,17 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer, int type_by
         }
         for(i = 0; i < items; i++) {
             int list_type_byte = buffer_save_space(buffer, 1);
-            char* name = NULL;
+            char name[16];
             PyObject* item_value;
 
             if (list_type_byte == -1) {
                 PyErr_NoMemory();
                 return 0;
             }
-            if (INT2STRING(&name, (int)i) < 0 || !name) {
-                PyErr_NoMemory();
-                return 0;
-            }
+            INT2STRING(name, (int)i);
             if (!buffer_write_bytes(buffer, name, (int)strlen(name) + 1)) {
-                free(name);
                 return 0;
             }
-            free(name);
 
             if (!(item_value = PySequence_GetItem(value, i)))
                 return 0;
