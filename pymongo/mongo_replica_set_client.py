@@ -272,7 +272,14 @@ class Monitor(object):
         self.rsc = weakref.proxy(rsc, self.shutdown)
         self.event = event_class()
         self.refreshed = event_class()
+        self.started_event = event_class()
         self.stopped = False
+
+    def start_sync(self):
+        """Start the Monitor and block until it's really started.
+        """
+        self.start()  # Implemented in subclasses.
+        self.started_event.wait(5)
 
     def shutdown(self, dummy=None):
         """Signal the monitor to shutdown.
@@ -299,6 +306,7 @@ class Monitor(object):
         """Run until the RSC is collected or an
         unexpected error occurs.
         """
+        self.started_event.set()
         while True:
             self.event.wait(Monitor._refresh_interval)
             if self.stopped:
@@ -747,7 +755,11 @@ class MongoReplicaSetClient(common.BaseObject):
         register_monitor(self.__monitor)
 
         if _connect:
-            self.__monitor.start()
+            # Wait for the monitor to really start. Otherwise if we return to
+            # caller and caller forks immediately, the monitor could think it's
+            # still alive in the child process when it really isn't.
+            # See http://bugs.python.org/issue18418.
+            self.__monitor.start_sync()
 
     def _cached(self, dbname, coll, index):
         """Test if `index` is cached.
