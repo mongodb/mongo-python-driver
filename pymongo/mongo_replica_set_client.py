@@ -514,6 +514,11 @@ class MongoReplicaSetClient(common.BaseObject):
            sure you call :meth:`~close` to ensure that the monitor task is
            cleanly shut down.
 
+        .. note:: A :class:`MongoReplicaSetClient` created before a call to
+           ``os.fork()`` is invalid after the fork. Applications should either
+           fork before creating the client, or recreate the client after a
+           fork.
+
         :Parameters:
           - `hosts_or_uri` (optional): A MongoDB URI or string of `host:port`
             pairs. If a host is an IPv6 literal it must be enclosed in '[' and
