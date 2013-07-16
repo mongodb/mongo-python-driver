@@ -270,7 +270,7 @@ class Monitor(object):
 
     def __init__(self, rsc, event_class):
         self.rsc = weakref.proxy(rsc, self.shutdown)
-        self.event = event_class()
+        self.timer = event_class()
         self.refreshed = event_class()
         self.started_event = event_class()
         self.stopped = False
@@ -285,7 +285,7 @@ class Monitor(object):
         """Signal the monitor to shutdown.
         """
         self.stopped = True
-        self.event.set()
+        self.timer.set()
 
     def schedule_refresh(self):
         """Refresh immediately
@@ -295,7 +295,7 @@ class Monitor(object):
                 "Monitor thread is dead: Perhaps started before a fork?")
 
         self.refreshed.clear()
-        self.event.set()
+        self.timer.set()
 
     def wait_for_refresh(self, timeout_seconds):
         """Block until a scheduled refresh completes
@@ -308,10 +308,10 @@ class Monitor(object):
         """
         self.started_event.set()
         while True:
-            self.event.wait(Monitor._refresh_interval)
+            self.timer.wait(Monitor._refresh_interval)
             if self.stopped:
                 break
-            self.event.clear()
+            self.timer.clear()
 
             try:
                 try:
