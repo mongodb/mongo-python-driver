@@ -1424,7 +1424,8 @@ class MongoReplicaSetClient(common.BaseObject):
                     sock_info.close()
                 raise
         finally:
-            member.pool.maybe_return_socket(sock_info)
+            if sock_info:
+                member.pool.maybe_return_socket(sock_info)
 
     def __try_read(self, member, msg, **kwargs):
         """Attempt a read from a member; on failure mark the member "down" and
