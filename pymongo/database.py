@@ -700,7 +700,7 @@ class Database(common.BaseObject):
         :Parameters:
           - `name`: the name of the user to authenticate.
           - `password` (optional): the password of the user to authenticate.
-            Not used with GSSAPI authentication.
+            Not used with GSSAPI or MONGODB-X509 authentication.
           - `source` (optional): the database to authenticate on. If not
             specified the current database is used.
           - `mechanism` (optional): See

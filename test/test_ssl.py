@@ -20,12 +20,15 @@ import sys
 import unittest
 sys.path[0:0] = [""]
 
+from urllib import quote_plus
+
 from nose.plugins.skip import SkipTest
 
 from pymongo import MongoClient, MongoReplicaSetClient
 from pymongo.common import HAS_SSL
 from pymongo.errors import ConfigurationError, ConnectionFailure
-from test import host, port, pair
+from test import host, port, pair, version
+from test.utils import get_command_line
 
 
 CERT_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
@@ -35,6 +38,7 @@ CA_PEM = os.path.join(CERT_PATH, 'ca.pem')
 SIMPLE_SSL = False
 CERT_SSL = False
 SERVER_IS_RESOLVABLE = False
+MONGODB_X509_USERNAME = os.environ.get('MONGODB_X509_USERNAME')
 
 # To fully test this start a mongod instance (built with SSL support) like so:
 # mongod --dbpath /path/to/data/directory --sslOnNormalPorts \
@@ -376,6 +380,32 @@ class TestSSL(unittest.TestCase):
             except:
                 pass
 
+    def test_mongodb_x509_auth(self):
+        # Expects the server to be running with the the server.pem, ca.pem
+        # and crl.pem provided in mongodb and the server tests as well as
+        # --clusterAuthMode x509 eg:
+        #
+        #   --sslPEMKeyFile=jstests/libs/server.pem
+        #   --sslCAFile=jstests/libs/ca.pem
+        #   --sslCRLFile=jstests/libs/crl.pem
+        if not MONGODB_X509_USERNAME:
+            raise SkipTest("MONGODB_X509_USERNAME "
+                           "must be set to test MONGODB-X509")
+        if not CERT_SSL:
+            raise SkipTest("No mongod available over SSL with certs")
+        client = MongoClient(host, port, ssl=True, ssl_certfile=CLIENT_PEM)
+        if not version.at_least(client, (2, 5, 1)):
+            raise SkipTest("MONGODB-X509 requires MongoDB 2.5.1 or newer")
+        argv = get_command_line(client)
+        if '--clusterAuthMode' not in argv or 'x509' not in argv:
+            raise SkipTest("Mongo must be started with "
+                           "'--clusterAuthMode x509' to test MONGODB-X509")
+        self.assertTrue(client.test.authenticate(MONGODB_X509_USERNAME,
+                                                 mechanism='MONGODB-X509'))
+        uri = ('mongodb://%s@%s:%d/?authMechanism='
+               'MONGODB-X509' % (quote_plus(MONGODB_X509_USERNAME), host, port))
+        # SSL options aren't supported in the URI...
+        self.assertTrue(MongoClient(uri, ssl=True, ssl_certfile=CLIENT_PEM))
 
 if __name__ == "__main__":
     unittest.main()

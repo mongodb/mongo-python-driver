@@ -32,7 +32,7 @@ from bson.son import SON
 from pymongo.errors import ConfigurationError, OperationFailure
 
 
-MECHANISMS = ('MONGODB-CR', 'GSSAPI', 'PLAIN')
+MECHANISMS = ('GSSAPI', 'MONGODB-CR', 'MONGODB-X509', 'PLAIN')
 """The authentication mechanisms supported by PyMongo."""
 
 
@@ -43,6 +43,8 @@ def _build_credentials_tuple(mech, source, user, passwd, extra):
         gsn = extra.get('gssapiservicename', 'mongodb')
         # No password, source is always $external.
         return (mech, '$external', user, gsn)
+    elif mech == 'MONGODB-X509':
+        return (mech, '$external', user)
     return (mech, source, user, passwd)
 
 
@@ -165,6 +167,16 @@ def _authenticate_plain(credentials, sock_info, cmd_func):
     cmd_func(sock_info, source, cmd)
 
 
+def _authenticate_x509(credentials, sock_info, cmd_func):
+    """Authenticate using MONGODB-X509.
+    """
+    dummy, username = credentials
+    query = SON([('authenticate', 1),
+                 ('mechanism', 'MONGODB-X509'),
+                 ('user', username)])
+    cmd_func(sock_info, '$external', query)
+
+
 def _authenticate_mongo_cr(credentials, sock_info, cmd_func):
     """Authenticate using MONGODB-CR.
     """
@@ -182,6 +194,14 @@ def _authenticate_mongo_cr(credentials, sock_info, cmd_func):
     cmd_func(sock_info, source, query)
 
 
+_AUTH_MAP = {
+    'GSSAPI': _authenticate_gssapi,
+    'MONGODB-CR': _authenticate_mongo_cr,
+    'MONGODB-X509': _authenticate_x509,
+    'PLAIN': _authenticate_plain,
+}
+
+
 def authenticate(credentials, sock_info, cmd_func):
     """Authenticate sock_info.
     """
@@ -191,9 +211,6 @@ def authenticate(credentials, sock_info, cmd_func):
         if not HAVE_KERBEROS:
             raise ConfigurationError('The "kerberos" module must be '
                                      'installed to use GSSAPI authentication.')
-        _authenticate_gssapi(credentials[1:], sock_info, cmd_func)
-    elif mechanism == 'PLAIN':
-        _authenticate_plain(credentials[1:], sock_info, cmd_func)
-    else:
-        _authenticate_mongo_cr(credentials[1:], sock_info, cmd_func)
+    auth_func = _AUTH_MAP.get(mechanism)
+    auth_func(credentials[1:], sock_info, cmd_func)
 
