@@ -26,7 +26,9 @@ from nose.plugins.skip import SkipTest
 
 from pymongo import MongoClient, MongoReplicaSetClient
 from pymongo.common import HAS_SSL
-from pymongo.errors import ConfigurationError, ConnectionFailure
+from pymongo.errors import (ConfigurationError,
+                            ConnectionFailure,
+                            OperationFailure)
 from test import host, port, pair, version
 from test.utils import get_command_line
 
@@ -383,11 +385,12 @@ class TestSSL(unittest.TestCase):
     def test_mongodb_x509_auth(self):
         # Expects the server to be running with the the server.pem, ca.pem
         # and crl.pem provided in mongodb and the server tests as well as
-        # --clusterAuthMode x509 eg:
+        # --auth
         #
         #   --sslPEMKeyFile=jstests/libs/server.pem
         #   --sslCAFile=jstests/libs/ca.pem
         #   --sslCRLFile=jstests/libs/crl.pem
+        #   --auth
         if not MONGODB_X509_USERNAME:
             raise SkipTest("MONGODB_X509_USERNAME "
                            "must be set to test MONGODB-X509")
@@ -397,15 +400,28 @@ class TestSSL(unittest.TestCase):
         if not version.at_least(client, (2, 5, 1)):
             raise SkipTest("MONGODB-X509 requires MongoDB 2.5.1 or newer")
         argv = get_command_line(client)
-        if '--clusterAuthMode' not in argv or 'x509' not in argv:
+        if '--auth' not in argv:
             raise SkipTest("Mongo must be started with "
-                           "'--clusterAuthMode x509' to test MONGODB-X509")
-        self.assertTrue(client.test.authenticate(MONGODB_X509_USERNAME,
-                                                 mechanism='MONGODB-X509'))
+                           "--auth to test MONGODB-X509")
+        # Give admin all necessary priviledges.
+        client.admin.add_user(MONGODB_X509_USERNAME,
+                              userSource='$external',
+                              roles=['readWriteAnyDatabase',
+                                     'userAdminAnyDatabase',
+                                     'dbAdminAnyDatabase'])
+        client = MongoClient(host, port, ssl=True, ssl_certfile=CLIENT_PEM)
+        coll = client.pymongo_test.test
+        self.assertRaises(OperationFailure, coll.count)
+        self.assertTrue(client.admin.authenticate(MONGODB_X509_USERNAME,
+                                                  mechanism='MONGODB-X509'))
+        self.assertEqual(0, coll.count())
         uri = ('mongodb://%s@%s:%d/?authMechanism='
                'MONGODB-X509' % (quote_plus(MONGODB_X509_USERNAME), host, port))
         # SSL options aren't supported in the URI...
         self.assertTrue(MongoClient(uri, ssl=True, ssl_certfile=CLIENT_PEM))
+        # Cleanup
+        client.admin.system.users.remove()
+        client['$external'].logout()
 
 if __name__ == "__main__":
     unittest.main()
