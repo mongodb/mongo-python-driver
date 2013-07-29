@@ -25,8 +25,13 @@ sys.path[0:0] = [""]
 from nose.plugins.skip import SkipTest
 
 from pymongo import thread_util
-if thread_util.have_gevent:
+
+try:
     import greenlet
+    import gevent
+    have_gevent = True
+except ImportError:
+    have_gevent = False
 
 from test.utils import looplet, RendezvousThread
 
@@ -52,7 +57,13 @@ class TestIdent(unittest.TestCase):
       child's callback was not
     """
     def _test_ident(self, use_greenlets):
-        ident = thread_util.create_ident(use_greenlets)
+        if use_greenlets:
+            from pymongo import thread_util_gevent
+            thread_support_module = thread_util_gevent
+        else:
+            from pymongo import thread_util_threading
+            thread_support_module = thread_util_threading
+        ident = thread_support_module.Ident()
 
         ids = set([ident.get()])
         unwatched_id = []
@@ -148,8 +159,8 @@ class TestIdent(unittest.TestCase):
         self._test_ident(False)
 
     def test_greenlet_ident(self):
-        if not thread_util.have_gevent:
-            raise SkipTest('greenlet not installed')
+        if not have_gevent:
+            raise SkipTest('gevent not installed')
 
         self._test_ident(True)
 
@@ -166,7 +177,13 @@ def my_partial(f, *args, **kwargs):
 
 class TestCounter(unittest.TestCase):
     def _test_counter(self, use_greenlets):
-        counter = thread_util.Counter(use_greenlets)
+        if use_greenlets:
+            from pymongo import thread_util_gevent
+            thread_support_module = thread_util_gevent
+        else:
+            from pymongo import thread_util_threading
+            thread_support_module = thread_util_threading
+        counter = thread_util.Counter(thread_support_module)
 
         self.assertEqual(0, counter.dec())
         self.assertEqual(0, counter.get())
@@ -212,8 +229,8 @@ class TestCounter(unittest.TestCase):
         self._test_counter(False)
 
     def test_greenlet_counter(self):
-        if not thread_util.have_gevent:
-            raise SkipTest('greenlet not installed')
+        if not have_gevent:
+            raise SkipTest('gevent not installed')
 
         self._test_counter(True)
 

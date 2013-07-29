@@ -35,7 +35,6 @@ import atexit
 import datetime
 import socket
 import struct
-import threading
 import time
 import warnings
 import weakref
@@ -330,59 +329,6 @@ class Monitor(object):
         raise NotImplementedError()
 
 
-class MonitorThread(threading.Thread, Monitor):
-    """Thread based replica set monitor.
-    """
-    def __init__(self, rsc):
-        Monitor.__init__(self, rsc, threading.Event)
-        threading.Thread.__init__(self)
-        self.setName("ReplicaSetMonitorThread")
-
-        # Track whether the thread has started. (Greenlets track this already.)
-        self.started = False
-
-    def start(self):
-        self.started = True
-        super(MonitorThread, self).start()
-
-    def run(self):
-        """Override Thread's run method.
-        """
-        self.monitor()
-
-
-have_gevent = False
-try:
-    from gevent import Greenlet
-    from gevent.event import Event
-
-    # Used by ReplicaSetConnection
-    from gevent.local import local as gevent_local
-    have_gevent = True
-
-    class MonitorGreenlet(Monitor, Greenlet):
-        """Greenlet based replica set monitor.
-        """
-        def __init__(self, rsc):
-            Monitor.__init__(self, rsc, Event)
-            Greenlet.__init__(self)
-
-        # Don't override `run` in a Greenlet. Add _run instead.
-        # Refer to gevent's Greenlet docs and source for more
-        # information.
-        def _run(self):
-            """Define Greenlet's _run method.
-            """
-            self.monitor()
-
-        def isAlive(self):
-            # Gevent defines bool(Greenlet) as True if it's alive.
-            return bool(self)
-
-except ImportError:
-    pass
-
-
 class Member(object):
     """Immutable representation of one member of a replica set.
 
@@ -561,6 +507,10 @@ class MongoReplicaSetClient(common.BaseObject):
             thread-local, socket.
             `use_greenlets` with :class:`MongoReplicaSetClient` requires
             `Gevent <http://gevent.org/>`_ to be installed.
+            DEPRECATED in favor of `thread_support_module`.
+          - `thread_support_module`: ``threading``, ``gevent``, or a module
+            which implements the necessary interface. Defaults to ``threading``.
+            See :module: `~pymongo.thread_util_threading`.
 
           | **Write Concern options:**
 
@@ -664,20 +614,30 @@ class MongoReplicaSetClient(common.BaseObject):
         self.pool_class = kwargs.pop('_pool_class', pool.Pool)
         monitor_class = kwargs.pop('_monitor_class', None)
 
+        if 'use_greenlets' in kwargs and 'thread_support_module' in kwargs:
+            raise ConfigurationError('Only one of use_greenlets and '
+                                     'thread_module_support may be used')
+
+        if kwargs.get('use_greenlets') is not None:
+            if kwargs['use_greenlets']:
+                kwargs['thread_support_module'] = 'gevent'
+            else:
+                kwargs['thread_support_module'] = 'threading'
+        else:
+            kwargs.setdefault('thread_support_module', 'threading')
+
         for option, value in kwargs.iteritems():
             option, value = common.validate(option, value)
             self.__opts[option] = value
         self.__opts.update(options)
 
-        self.__use_greenlets = self.__opts.get('use_greenlets', False)
-        if self.__use_greenlets and not have_gevent:
-            raise ConfigurationError(
-                "The gevent module is not available. "
-                "Install the gevent package from PyPI.")
+        self.__use_greenlets = self.__opts.get('use_greenlets', None)
+        # default is set above
+        self.__thread_support_module = self.__opts['thread_support_module']
 
-        self.__rs_state = RSState(self.__make_threadlocal())
+        self.__rs_state = RSState(self.__thread_support_module.local())
 
-        self.__request_counter = thread_util.Counter(self.__use_greenlets)
+        self.__request_counter = thread_util.Counter(self.__thread_support_module)
 
         self.__auto_start_request = self.__opts.get('auto_start_request', False)
         if self.__auto_start_request:
@@ -752,11 +712,9 @@ class MongoReplicaSetClient(common.BaseObject):
         # Start the monitor after we know the configuration is correct.
         if monitor_class:
             self.__monitor = monitor_class(self)
-        elif self.__use_greenlets:
-            self.__monitor = MonitorGreenlet(self)
         else:
-            self.__monitor = MonitorThread(self)
-            self.__monitor.setDaemon(True)
+            self.__monitor = self.__thread_support_module.ReplSetMonitor(self)
+
         register_monitor(self.__monitor)
 
         if _connect:
@@ -1020,7 +978,7 @@ class MongoReplicaSetClient(common.BaseObject):
             self.__net_timeout,
             self.__conn_timeout,
             self.__use_ssl,
-            use_greenlets=self.__use_greenlets,
+            thread_support_module=self.__thread_support_module,
             ssl_keyfile=self.__ssl_keyfile,
             ssl_certfile=self.__ssl_certfile,
             ssl_cert_reqs=self.__ssl_cert_reqs,
@@ -1053,12 +1011,6 @@ class MongoReplicaSetClient(common.BaseObject):
         self.__monitor.schedule_refresh()
         if sync:
             self.__monitor.wait_for_refresh(timeout_seconds=5)
-
-    def __make_threadlocal(self):
-        if self.__use_greenlets:
-            return gevent_local()
-        else:
-            return threading.local()
 
     def refresh(self):
         """Iterate through the existing host list, or possibly the
@@ -1172,7 +1124,7 @@ class MongoReplicaSetClient(common.BaseObject):
         else:
             # We unpin threads from members if the primary has changed, since
             # no monotonic consistency can be promised now anyway.
-            threadlocal = self.__make_threadlocal()
+            threadlocal = self.__thread_support_module.local()
 
         # Replace old state with new.
         self.__rs_state = RSState(threadlocal, members, arbiters, writer)
@@ -1220,7 +1172,7 @@ class MongoReplicaSetClient(common.BaseObject):
         if rs_state.primary_member:
             rs_state.primary_member.pool.reset()
 
-        threadlocal = self.__make_threadlocal()
+        threadlocal = self.__thread_support_module.local()
         self.__rs_state = rs_state.clone_without_writer(threadlocal)
         self.__schedule_refresh()
 
@@ -1229,7 +1181,7 @@ class MongoReplicaSetClient(common.BaseObject):
 
         This method first terminates the replica set monitor, then disconnects
         from all members of the replica set.
-        
+
         .. warning:: This method stops the replica set monitor task. The
            replica set monitor is required to properly handle replica set
            configuration changes, including a failure of the primary.
@@ -1244,7 +1196,7 @@ class MongoReplicaSetClient(common.BaseObject):
             self.__monitor.join(1.0)
             self.__monitor = None
 
-        self.__rs_state = RSState(self.__make_threadlocal())
+        self.__rs_state = RSState(self.__thread_support_module.local())
 
     def alive(self):
         """Return ``False`` if there has been an error communicating with the
