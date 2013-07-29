@@ -357,7 +357,10 @@ class Collection(common.BaseObject):
                            continue_on_error, self.__uuid_subtype), safe)
 
         ids = [doc.get("_id", None) for doc in docs]
-        return return_one and ids[0] or ids
+        if return_one:
+            return ids[0]
+        else:
+            return ids
 
     def update(self, spec, document, upsert=False, manipulate=False,
                safe=None, multi=False, check_keys=True, **kwargs):
@@ -753,6 +756,8 @@ class Collection(common.BaseObject):
           - `dropDups` or `drop_dups`: should we drop duplicates
           - `background`: if this index should be created in the
             background
+          - `sparse`: if True, omit from the index any documents that lack
+            the indexed field
           - `bucketSize` or `bucket_size`: for use with geoHaystack indexes.
             Number of documents to group together within a certain proximity
             to a given longitude and latitude.
@@ -801,6 +806,10 @@ class Collection(common.BaseObject):
             cache_for = kwargs.pop('ttl')
             warnings.warn("ttl is deprecated. Please use cache_for instead.",
                           DeprecationWarning, stacklevel=2)
+
+        # The types supported by datetime.timedelta. 2to3 removes long.
+        if not isinstance(cache_for, (int, long, float)):
+            raise TypeError("cache_for must be an integer or float.")
 
         keys = helpers._index_list(key_or_list)
         index_doc = helpers._index_document(keys)
@@ -865,6 +874,8 @@ class Collection(common.BaseObject):
             during index creation when creating a unique index?
           - `background`: if this index should be created in the
             background
+          - `sparse`: if True, omit from the index any documents that lack
+            the indexed field
           - `bucketSize` or `bucket_size`: for use with geoHaystack indexes.
             Number of documents to group together within a certain proximity
             to a given longitude and latitude.

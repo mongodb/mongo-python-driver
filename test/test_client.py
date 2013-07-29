@@ -310,6 +310,21 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         self.assertTrue(MongoClient(
             "mongodb://%s:%d/?slaveok=true;w=2" % (host, port)).slave_okay)
 
+    def test_get_default_database(self):
+        c = MongoClient("mongodb://%s:%d/foo" % (host, port), _connect=False)
+        self.assertEqual(Database(c, 'foo'), c.get_default_database())
+
+    def test_get_default_database_error(self):
+        # URI with no database.
+        c = MongoClient("mongodb://%s:%d/" % (host, port), _connect=False)
+        self.assertRaises(ConfigurationError, c.get_default_database)
+
+    def test_get_default_database_with_authsource(self):
+        # Ensure we distinguish database name from authSource.
+        uri = "mongodb://%s:%d/foo?authSource=src" % (host, port)
+        c = MongoClient(uri, _connect=False)
+        self.assertEqual(Database(c, 'foo'), c.get_default_database())
+
     def test_auth_from_uri(self):
         c = MongoClient(host, port)
         # Sharded auth not supported before MongoDB 2.0
@@ -361,6 +376,22 @@ class TestClient(unittest.TestCase, TestRequestMixin):
             # Clean up.
             c.admin.system.users.remove({})
             c.pymongo_test.system.users.remove({})
+
+    def test_lazy_auth_raises_operation_failure(self):
+        # Check if we have the prerequisites to run this test.
+        c = MongoClient(host, port)
+        if not server_started_with_auth(c):
+            raise SkipTest('Authentication is not enabled on server')
+
+        if is_mongos(c) and not version.at_least(c, (2, 0, 0)):
+            raise SkipTest("Auth with sharding requires MongoDB >= 2.0.0")
+
+        lazy_client = MongoClient(
+            "mongodb://user:wrong@%s:%d/pymongo_test" % (host, port),
+            _connect=False)
+
+        assertRaisesExactly(
+            OperationFailure, lazy_client.test.collection.find_one)
 
     def test_unix_socket(self):
         if not hasattr(socket, "AF_UNIX"):

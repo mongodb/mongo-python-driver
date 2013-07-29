@@ -559,12 +559,10 @@ class _TestPooling(_TestPoolingBase):
     def test_pool_reuses_open_socket(self):
         # Test Pool's _check_closed() method doesn't close a healthy socket
         cx_pool = self.get_pool((host,port), 10, None, None, False)
+        cx_pool._check_interval_seconds = 0  # Always check.
         sock_info = cx_pool.get_socket()
         cx_pool.maybe_return_socket(sock_info)
 
-        # trigger _check_closed, which only runs on sockets that haven't been
-        # used in a second
-        time.sleep(1.1)
         new_sock_info = cx_pool.get_socket()
         self.assertEqual(sock_info, new_sock_info)
         cx_pool.maybe_return_socket(new_sock_info)
@@ -574,22 +572,23 @@ class _TestPooling(_TestPoolingBase):
         # Test that Pool removes dead socket and the socket doesn't return
         # itself PYTHON-344
         cx_pool = self.get_pool((host,port), 10, None, None, False)
+        cx_pool._check_interval_seconds = 0  # Always check.
         sock_info = cx_pool.get_socket()
 
         # Simulate a closed socket without telling the SocketInfo it's closed
         sock_info.sock.close()
         self.assertTrue(pymongo.pool._closed(sock_info.sock))
         cx_pool.maybe_return_socket(sock_info)
-        time.sleep(1.1) # trigger _check_closed
         new_sock_info = cx_pool.get_socket()
         self.assertEqual(0, len(cx_pool.sockets))
         self.assertNotEqual(sock_info, new_sock_info)
         cx_pool.maybe_return_socket(new_sock_info)
         self.assertEqual(1, len(cx_pool.sockets))
 
-    def test_pool_removes_dead_request_socket_after_1_sec(self):
+    def test_pool_removes_dead_request_socket_after_check(self):
         # Test that Pool keeps request going even if a socket dies in request
         cx_pool = self.get_pool((host,port), 10, None, None, False)
+        cx_pool._check_interval_seconds = 0  # Always check.
         cx_pool.start_request()
 
         # Get the request socket
@@ -598,7 +597,6 @@ class _TestPooling(_TestPoolingBase):
         self.assertEqual(sock_info, cx_pool._get_request_state())
         sock_info.sock.close()
         cx_pool.maybe_return_socket(sock_info)
-        time.sleep(1.1) # trigger _check_closed
 
         # Although the request socket died, we're still in a request with a
         # new socket
@@ -623,8 +621,8 @@ class _TestPooling(_TestPoolingBase):
         self.assertEqual(0, len(cx_pool.sockets))
         self.assertEqual(sock_info, cx_pool._get_request_state())
 
-        # Unlike in test_pool_removes_dead_request_socket_after_1_sec, we
-        # set sock_info.closed and *don't* wait 1 second
+        # Unlike in test_pool_removes_dead_request_socket_after_check, we
+        # set sock_info.closed and *don't* wait for it to be checked.
         sock_info.close()
         cx_pool.maybe_return_socket(sock_info)
 
@@ -645,6 +643,7 @@ class _TestPooling(_TestPoolingBase):
         # Test that Pool handles a socket dying that *used* to be the request
         # socket.
         cx_pool = self.get_pool((host,port), 10, None, None, False)
+        cx_pool._check_interval_seconds = 0  # Always check.
         cx_pool.start_request()
 
         # Get the request socket
@@ -658,7 +657,6 @@ class _TestPooling(_TestPoolingBase):
 
         # Kill old request socket
         sock_info.sock.close()
-        time.sleep(1.1) # trigger _check_closed
 
         # Dead socket detected and removed
         new_sock_info = cx_pool.get_socket()
@@ -668,6 +666,32 @@ class _TestPooling(_TestPoolingBase):
         self.assertFalse(pymongo.pool._closed(new_sock_info.sock))
         cx_pool.maybe_return_socket(new_sock_info)
         self.assertEqual(1, len(cx_pool.sockets))
+
+    def test_dead_request_socket_with_max_size(self):
+        # When a pool replaces a dead request socket, the semaphore it uses
+        # to enforce max_size should remain unaffected.
+        cx_pool = self.get_pool(
+            (host, port), 1, None, None, False, wait_queue_timeout=1)
+
+        cx_pool._check_interval_seconds = 0  # Always check.
+        cx_pool.start_request()
+
+        # Get and close the request socket.
+        request_sock_info = cx_pool.get_socket()
+        request_sock_info.sock.close()
+        cx_pool.maybe_return_socket(request_sock_info)
+
+        # Detects closed socket and creates new one, semaphore value still 0.
+        request_sock_info_2 = cx_pool.get_socket()
+        self.assertNotEqual(request_sock_info, request_sock_info_2)
+        cx_pool.maybe_return_socket(request_sock_info_2)
+        cx_pool.end_request()
+
+        # Semaphore value now 1; we can get a socket.
+        sock_info = cx_pool.get_socket()
+
+        # Clean up.
+        cx_pool.maybe_return_socket(sock_info)
 
     def test_socket_reclamation(self):
         if sys.platform.startswith('java'):

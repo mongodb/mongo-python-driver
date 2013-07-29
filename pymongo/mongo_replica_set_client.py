@@ -55,7 +55,8 @@ from pymongo.errors import (AutoReconnect,
                             ConnectionFailure,
                             DuplicateKeyError,
                             InvalidDocument,
-                            OperationFailure)
+                            OperationFailure,
+                            InvalidOperation)
 
 EMPTY = b("")
 MAX_BSON_SIZE = 4 * 1024 * 1024
@@ -268,21 +269,32 @@ class Monitor(object):
 
     def __init__(self, rsc, event_class):
         self.rsc = weakref.proxy(rsc, self.shutdown)
-        self.event = event_class()
+        self.timer = event_class()
         self.refreshed = event_class()
+        self.started_event = event_class()
         self.stopped = False
+
+    def start_sync(self):
+        """Start the Monitor and block until it's really started.
+        """
+        self.start()  # Implemented in subclasses.
+        self.started_event.wait(5)
 
     def shutdown(self, dummy=None):
         """Signal the monitor to shutdown.
         """
         self.stopped = True
-        self.event.set()
+        self.timer.set()
 
     def schedule_refresh(self):
         """Refresh immediately
         """
+        if not self.isAlive():
+            raise InvalidOperation(
+                "Monitor thread is dead: Perhaps started before a fork?")
+
         self.refreshed.clear()
-        self.event.set()
+        self.timer.set()
 
     def wait_for_refresh(self, timeout_seconds):
         """Block until a scheduled refresh completes
@@ -293,11 +305,12 @@ class Monitor(object):
         """Run until the RSC is collected or an
         unexpected error occurs.
         """
+        self.started_event.set()
         while True:
-            self.event.wait(Monitor._refresh_interval)
+            self.timer.wait(Monitor._refresh_interval)
             if self.stopped:
                 break
-            self.event.clear()
+            self.timer.clear()
 
             try:
                 try:
@@ -311,6 +324,9 @@ class Monitor(object):
             # was an unexpected error.
             except:
                 break
+
+    def isAlive(self):
+        raise NotImplementedError()
 
 
 class Member(object):
@@ -444,6 +460,11 @@ class MongoReplicaSetClient(common.BaseObject):
            sure you call :meth:`~close` to ensure that the monitor task is
            cleanly shut down.
 
+        .. note:: A :class:`MongoReplicaSetClient` created before a call to
+           ``os.fork()`` is invalid after the fork. Applications should either
+           fork before creating the client, or recreate the client after a
+           fork.
+
         :Parameters:
           - `hosts_or_uri` (optional): A MongoDB URI or string of `host:port`
             pairs. If a host is an IPv6 literal it must be enclosed in '[' and
@@ -573,7 +594,8 @@ class MongoReplicaSetClient(common.BaseObject):
             raise TypeError("port must be an instance of int")
 
         username = None
-        db_name = None
+        password = None
+        self.__default_database_name = None
         options = {}
         if host is None:
             self.__seeds.add(('localhost', port))
@@ -582,7 +604,7 @@ class MongoReplicaSetClient(common.BaseObject):
             self.__seeds.update(res['nodelist'])
             username = res['username']
             password = res['password']
-            db_name = res['database']
+            self.__default_database_name = res['database']
             options = res['options']
         else:
             self.__seeds.update(uri_parser.split_hosts(host, port))
@@ -670,19 +692,18 @@ class MongoReplicaSetClient(common.BaseObject):
                 # ConnectionFailure makes more sense here than AutoReconnect
                 raise ConnectionFailure(str(e))
 
-        db_name = options.get('authsource', db_name)
-        if db_name and username is None:
-            warnings.warn("database name or authSource in URI is being "
-                          "ignored. If you wish to authenticate to %s, you "
-                          "must provide a username and password." % (db_name,))
         if username:
             mechanism = options.get('authmechanism', 'MONGODB-CR')
-            if mechanism == 'GSSAPI':
-                source = '$external'
-            else:
-                source = db_name or 'admin'
-            credentials = (source, unicode(username),
-                           unicode(password), mechanism)
+            source = (
+                options.get('authsource')
+                or self.__default_database_name
+                or 'admin')
+
+            credentials = auth._build_credentials_tuple(mechanism,
+                                                        source,
+                                                        unicode(username),
+                                                        unicode(password),
+                                                        options)
             try:
                 self._cache_credentials(source, credentials, _connect)
             except OperationFailure, exc:
@@ -697,7 +718,11 @@ class MongoReplicaSetClient(common.BaseObject):
         register_monitor(self.__monitor)
 
         if _connect:
-            self.__monitor.start()
+            # Wait for the monitor to really start. Otherwise if we return to
+            # caller and caller forks immediately, the monitor could think it's
+            # still alive in the child process when it really isn't.
+            # See http://bugs.python.org/issue18418.
+            self.__monitor.start_sync()
 
     def _cached(self, dbname, coll, index):
         """Test if `index` is cached.
@@ -803,7 +828,7 @@ class MongoReplicaSetClient(common.BaseObject):
 
             # Logout any credentials that no longer exist in the cache.
             for credentials in authset - cached:
-                self.__simple_command(sock_info, credentials[0], {'logout': 1})
+                self.__simple_command(sock_info, credentials[1], {'logout': 1})
                 sock_info.authset.discard(credentials)
 
             for credentials in cached - authset:
@@ -1206,7 +1231,8 @@ class MongoReplicaSetClient(common.BaseObject):
             except (socket.error, ConnectionFailure):
                 return False
         finally:
-            member.pool.maybe_return_socket(sock_info)
+            if member and sock_info:
+                member.pool.maybe_return_socket(sock_info)
 
     def __check_response_to_last_error(self, response):
         """Check a response to a lastError message for errors.
@@ -1367,7 +1393,8 @@ class MongoReplicaSetClient(common.BaseObject):
                     sock_info.close()
                 raise
         finally:
-            member.pool.maybe_return_socket(sock_info)
+            if sock_info:
+                member.pool.maybe_return_socket(sock_info)
 
     def __try_read(self, member, msg, **kwargs):
         """Attempt a read from a member; on failure mark the member "down" and
@@ -1718,3 +1745,19 @@ class MongoReplicaSetClient(common.BaseObject):
             return self.admin.command("copydb", **command)
         finally:
             self.end_request()
+
+    def get_default_database(self):
+        """Get the database named in the MongoDB connection URI.
+
+        >>> uri = 'mongodb://host/my_database'
+        >>> client = MongoReplicaSetClient(uri)
+        >>> db = client.get_default_database()
+        >>> assert db.name == 'my_database'
+
+        Useful in scripts where you want to choose which database to use
+        based only on the URI in a configuration file.
+        """
+        if self.__default_database_name is None:
+            raise ConfigurationError('No default database defined')
+
+        return self[self.__default_database_name]

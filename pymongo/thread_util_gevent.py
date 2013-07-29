@@ -49,3 +49,7 @@ class ReplSetMonitor(mongo_replica_set_client.Monitor, Greenlet):
         """Define Greenlet's _run method.
         """
         self.monitor()
+
+    def isAlive(self):
+        # Gevent defines bool(Greenlet) as True if it's alive.
+        return bool(self)

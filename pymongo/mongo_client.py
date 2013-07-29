@@ -238,7 +238,7 @@ class MongoClient(common.BaseObject):
         seeds = set()
         username = None
         password = None
-        db_name = None
+        self.__default_database_name = None
         opts = {}
         for entity in host:
             if "://" in entity:
@@ -247,7 +247,9 @@ class MongoClient(common.BaseObject):
                     seeds.update(res["nodelist"])
                     username = res["username"] or username
                     password = res["password"] or password
-                    db_name = res["database"] or db_name
+                    self.__default_database_name = (
+                        res["database"] or self.__default_database_name)
+
                     opts = res["options"]
                 else:
                     idx = entity.find("://")
@@ -370,19 +372,18 @@ class MongoClient(common.BaseObject):
                 # ConnectionFailure makes more sense here than AutoReconnect
                 raise ConnectionFailure(str(e))
 
-        db_name = options.get('authsource', db_name)
-        if db_name and username is None:
-            warnings.warn("database name or authSource in URI is being "
-                          "ignored. If you wish to authenticate to %s, you "
-                          "must provide a username and password." % (db_name,))
         if username:
             mechanism = options.get('authmechanism', 'MONGODB-CR')
-            if mechanism == 'GSSAPI':
-                source = '$external'
-            else:
-                source = db_name or 'admin'
-            credentials = (source, unicode(username),
-                           unicode(password), mechanism)
+            source = (
+                options.get('authsource')
+                or self.__default_database_name
+                or 'admin')
+
+            credentials = auth._build_credentials_tuple(mechanism,
+                                                        source,
+                                                        unicode(username),
+                                                        unicode(password),
+                                                        options)
             try:
                 self._cache_credentials(source, credentials, _connect)
             except OperationFailure, exc:
@@ -481,7 +482,7 @@ class MongoClient(common.BaseObject):
 
             # Logout any credentials that no longer exist in the cache.
             for credentials in authset - cached:
-                self.__simple_command(sock_info, credentials[0], {'logout': 1})
+                self.__simple_command(sock_info, credentials[1], {'logout': 1})
                 sock_info.authset.discard(credentials)
 
             for credentials in cached - authset:
@@ -743,6 +744,9 @@ class MongoClient(common.BaseObject):
                     raise ConfigurationError("Seed list cannot contain a mix "
                                              "of mongod and mongos instances.")
                 return node
+            except OperationFailure:
+                # The server is available but something failed, probably auth.
+                raise
             except Exception, why:
                 errors.append(str(why))
 
@@ -1273,6 +1277,22 @@ class MongoClient(common.BaseObject):
             return self.admin.command("copydb", **command)
         finally:
             self.end_request()
+
+    def get_default_database(self):
+        """Get the database named in the MongoDB connection URI.
+
+        >>> uri = 'mongodb://host/my_database'
+        >>> client = MongoClient(uri)
+        >>> db = client.get_default_database()
+        >>> assert db.name == 'my_database'
+
+        Useful in scripts where you want to choose which database to use
+        based only on the URI in a configuration file.
+        """
+        if self.__default_database_name is None:
+            raise ConfigurationError('No default database defined')
+
+        return self[self.__default_database_name]
 
     @property
     def is_locked(self):

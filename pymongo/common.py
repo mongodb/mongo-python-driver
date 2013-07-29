@@ -261,8 +261,22 @@ VALIDATORS = {
     'use_greenlets': validate_boolean,
     'authmechanism': validate_auth_mechanism,
     'authsource': validate_basestring,
+    'gssapiservicename': validate_basestring,
     'thread_support_module': validate_thread_support_module,
 }
+
+
+_AUTH_OPTIONS = frozenset(['gssapiservicename'])
+
+
+def validate_auth_option(option, value):
+    """Validate optional authentication parameters.
+    """
+    lower, value = validate(option, value)
+    if lower not in _AUTH_OPTIONS:
+        raise ConfigurationError('Unknown '
+                                 'authentication option: %s' % (option,))
+    return lower, value
 
 
 def validate(option, value):

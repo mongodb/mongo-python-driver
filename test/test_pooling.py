@@ -164,7 +164,7 @@ class TestMaxPoolSizeThreads(_TestMaxPoolSize, unittest.TestCase):
     use_greenlets = False
 
     def test_max_pool_size_with_leaked_request_massive(self):
-        nthreads = 100
+        nthreads = 50
         self._test_max_pool_size(
             2, 1, max_pool_size=2 * nthreads, nthreads=nthreads)
 

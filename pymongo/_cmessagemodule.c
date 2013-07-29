@@ -73,7 +73,7 @@ static int add_last_error(PyObject* self, buffer_t buffer,
     PyObject* one;
     char *p = strchr(ns, '.');
     /* Length of the database portion of ns. */
-    nslen = p ? (p - ns) : nslen;
+    nslen = p ? (int)(p - ns) : nslen;
 
     message_start = buffer_save_space(buffer, 4);
     if (message_start == -1) {
@@ -104,7 +104,8 @@ static int add_last_error(PyObject* self, buffer_t buffer,
     }
 
     /* getlasterror: 1 */
-    one = PyLong_FromLong(1);
+    if (!(one = PyLong_FromLong(1)))
+        return 0;
     if (!write_pair(state->_cbson, buffer, "getlasterror", 12, one, 0, 4, 1)) {
         Py_DECREF(one);
         return 0;
@@ -195,8 +196,10 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
     iterator = PyObject_GetIter(docs);
     if (iterator == NULL) {
         PyObject* InvalidOperation = _error("InvalidOperation");
-        PyErr_SetString(InvalidOperation, "input is not iterable");
-        Py_DECREF(InvalidOperation);
+        if (InvalidOperation) {
+            PyErr_SetString(InvalidOperation, "input is not iterable");
+            Py_DECREF(InvalidOperation);
+        }
         buffer_free(buffer);
         PyMem_Free(collection_name);
         return NULL;
@@ -224,8 +227,10 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
 
     if (!max_size) {
         PyObject* InvalidOperation = _error("InvalidOperation");
-        PyErr_SetString(InvalidOperation, "cannot do an empty bulk insert");
-        Py_DECREF(InvalidOperation);
+        if (InvalidOperation) {
+            PyErr_SetString(InvalidOperation, "cannot do an empty bulk insert");
+            Py_DECREF(InvalidOperation);
+        }
         buffer_free(buffer);
         PyMem_Free(collection_name);
         return NULL;
@@ -573,11 +578,9 @@ init_cmessage(void)
         INITERROR;
     }
 #if PY_VERSION_HEX >= 0x03010000
-    if (PyCapsule_CheckExact(c_api_object))
-        _cbson_API = (void **)PyCapsule_GetPointer(c_api_object, "_cbson._C_API");
+    _cbson_API = (void **)PyCapsule_GetPointer(c_api_object, "_cbson._C_API");
 #else
-    if (PyCObject_Check(c_api_object))
-        _cbson_API = (void **)PyCObject_AsVoidPtr(c_api_object);
+    _cbson_API = (void **)PyCObject_AsVoidPtr(c_api_object);
 #endif
     if (_cbson_API == NULL) {
         Py_DECREF(c_api_object);
