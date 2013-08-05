@@ -205,7 +205,6 @@ _AUTH_MAP = {
 def authenticate(credentials, sock_info, cmd_func):
     """Authenticate sock_info.
     """
-    # Use a dict for this when we support more mechanisms.
     mechanism = credentials[0]
     if mechanism == 'GSSAPI':
         if not HAVE_KERBEROS:
