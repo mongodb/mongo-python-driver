@@ -1327,16 +1327,18 @@ class MongoReplicaSetClient(common.BaseObject):
             message += chunk
         return message
 
-    def __recv_msg(self, operation, request_id, sock):
-        """Receive a message in response to `request_id` on `sock`.
+    def __recv_msg(self, operation, rqst_id, sock):
+        """Receive a message in response to `rqst_id` on `sock`.
 
         Returns the response data with the header removed.
         """
         header = self.__recv_data(16, sock)
         length = struct.unpack("<i", header[:4])[0]
-        resp_id = struct.unpack("<i", header[8:12])[0]
-        assert resp_id == request_id, "ids don't match %r %r" % (resp_id,
-                                                                 request_id)
+        # No rqst_id for exhaust cursor "getMore".
+        if rqst_id is not None:
+            resp_id = struct.unpack("<i", header[8:12])[0]
+            assert rqst_id == resp_id, "ids don't match %r %r" % (rqst_id,
+                                                                  resp_id)
         assert operation == struct.unpack("<i", header[12:])[0]
 
         return self.__recv_data(length - 16, sock)
@@ -1421,28 +1423,28 @@ class MongoReplicaSetClient(common.BaseObject):
         Can raise socket.error.
         """
         sock_info = None
+        exhaust = kwargs.get('exhaust')
+        rqst_id, data = self.__check_bson_size(msg, member.max_bson_size)
         try:
-            try:
-                sock_info = self.__socket(member)
+            sock_info = self.__socket(member)
 
-                if "network_timeout" in kwargs:
-                    sock_info.sock.settimeout(kwargs['network_timeout'])
+            if not exhaust and "network_timeout" in kwargs:
+                sock_info.sock.settimeout(kwargs['network_timeout'])
 
-                rqst_id, data = self.__check_bson_size(msg, member.max_bson_size)
-                sock_info.sock.sendall(data)
-                response = self.__recv_msg(1, rqst_id, sock_info)
+            sock_info.sock.sendall(data)
+            response = self.__recv_msg(1, rqst_id, sock_info)
 
+            if not exhaust:
                 if "network_timeout" in kwargs:
                     sock_info.sock.settimeout(self.__net_timeout)
-
-                return response
-            except:
-                if sock_info is not None:
-                    sock_info.close()
-                raise
-        finally:
-            if sock_info:
                 member.pool.maybe_return_socket(sock_info)
+
+            return response, sock_info, member.pool
+        except:
+            if sock_info is not None:
+                sock_info.close()
+                member.pool.maybe_return_socket(sock_info)
+            raise
 
     def __try_read(self, member, msg, **kwargs):
         """Attempt a read from a member; on failure mark the member "down" and
@@ -1591,6 +1593,11 @@ class MongoReplicaSetClient(common.BaseObject):
             msg += " and tags " + repr(tag_sets)
 
         raise AutoReconnect(msg, errors)
+
+    def _exhaust_next(self, sock_info):
+        """Used with exhaust cursors to get the next batch off the socket.
+        """
+        return self.__recv_msg(1, None, sock_info)
 
     def start_request(self):
         """Ensure the current thread or greenlet always uses the same socket

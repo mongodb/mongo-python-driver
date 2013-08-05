@@ -975,16 +975,18 @@ class MongoClient(common.BaseObject):
             message += chunk
         return message
 
-    def __receive_message_on_socket(self, operation, request_id, sock_info):
-        """Receive a message in response to `request_id` on `sock`.
+    def __receive_message_on_socket(self, operation, rqst_id, sock_info):
+        """Receive a message in response to `rqst_id` on `sock`.
 
         Returns the response data with the header removed.
         """
         header = self.__receive_data_on_socket(16, sock_info)
         length = struct.unpack("<i", header[:4])[0]
-        msg_req_id = struct.unpack("<i", header[8:12])[0]
-        assert request_id == msg_req_id, \
-            "ids don't match %r %r" % (request_id, msg_req_id)
+        # No rqst_id for exhaust cursor "getMore".
+        if rqst_id is not None:
+            resp_id = struct.unpack("<i", header[8:12])[0]
+            assert rqst_id == resp_id, "ids don't match %r %r" % (rqst_id,
+                                                                  resp_id)
         assert operation == struct.unpack("<i", header[12:])[0]
 
         return self.__receive_data_on_socket(length - 16, sock_info)
@@ -1012,27 +1014,29 @@ class MongoClient(common.BaseObject):
           - `message`: (request_id, data) pair making up the message to send
         """
         sock_info = self.__socket()
-
+        exhaust = kwargs.get('exhaust')
         try:
             try:
-                if "network_timeout" in kwargs:
+                if not exhaust and "network_timeout" in kwargs:
                     sock_info.sock.settimeout(kwargs["network_timeout"])
-                return self.__send_and_receive(message, sock_info)
+                response = self.__send_and_receive(message, sock_info)
+
+                if not exhaust:
+                    if "network_timeout" in kwargs:
+                        sock_info.sock.settimeout(self.__net_timeout)
+
+                return (None, (response, sock_info, self.__pool))
             except (ConnectionFailure, socket.error), e:
                 self.disconnect()
                 raise AutoReconnect(str(e))
         finally:
-            if "network_timeout" in kwargs:
-                try:
-                    # Restore the socket's original timeout and return it to
-                    # the pool
-                    sock_info.sock.settimeout(self.__net_timeout)
-                    self.__pool.maybe_return_socket(sock_info)
-                except socket.error:
-                    # There was an exception and we've closed the socket
-                    pass
-            else:
+            if not exhaust:
                 self.__pool.maybe_return_socket(sock_info)
+
+    def _exhaust_next(self, sock_info):
+        """Used with exhaust cursors to get the next batch off the socket.
+        """
+        return self.__receive_message_on_socket(1, None, sock_info)
 
     def start_request(self):
         """Ensure the current thread or greenlet always uses the same socket

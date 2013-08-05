@@ -124,7 +124,7 @@ class TestMasterSlaveConnection(unittest.TestCase, TestRequestMixin):
                 Slave.calls += 1
                 if self._fail:
                     raise AutoReconnect()
-                return 'sent'
+                return (None, 'sent')
 
         class NotRandomList(object):
             last_idx = -1

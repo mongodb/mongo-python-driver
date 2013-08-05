@@ -679,6 +679,32 @@ class Collection(common.BaseObject):
             the nearest member may accept reads. Default 15 milliseconds.
             **Ignored by mongos** and must be configured on the command line.
             See the localThreshold_ option for more information.
+          - `exhaust` (optional): If ``True`` create an "exhaust" cursor.
+            MongoDB will stream batched results to the client without waiting
+            for the client to request each batch, reducing latency.
+
+        .. note:: There are a number of caveats to using the `exhaust`
+           parameter:
+
+            1. The `exhaust` and `limit` options are incompatible and can
+            not be used together.
+
+            2. The `exhaust` option is not supported by mongos and can not be
+            used with a sharded cluster.
+
+            3. A :class:`~pymongo.cursor.Cursor` instance created with the
+            `exhaust` option requires an exclusive :class:`~socket.socket`
+            connection to MongoDB. If the :class:`~pymongo.cursor.Cursor` is
+            discarded without being completely iterated the underlying
+            :class:`~socket.socket` connection will be closed and discarded
+            without being returned to the connection pool.
+
+            4. A :class:`~pymongo.cursor.Cursor` instance created with the
+            `exhaust` option in a :doc:`request </examples/requests>` **must**
+            be completely iterated before executing any other operation.
+
+            5. The `network_timeout` option is ignored when using the
+            `exhaust` option.
 
         .. note:: The `manipulate` parameter may default to False in
            a future release.

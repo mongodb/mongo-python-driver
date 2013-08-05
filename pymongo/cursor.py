@@ -34,6 +34,28 @@ _QUERY_OPTIONS = {
     "partial": 128}
 
 
+# This has to be an old style class due to
+# http://bugs.jython.org/issue1057
+class _SocketManager:
+    """Used with exhaust cursors to ensure the socket is returned.
+    """
+    def __init__(self, sock, pool):
+        self.sock = sock
+        self.pool = pool
+        self.__closed = False
+
+    def __del__(self):
+        self.close()
+
+    def close(self):
+        """Return this instance's socket to the connection pool.
+        """
+        if not self.__closed:
+            self.__closed = True
+            self.pool.maybe_return_socket(self.sock)
+            self.sock, self.pool = None, None
+
+
 # TODO might be cool to be able to do find().include("foo") or
 # find().exclude(["bar", "baz"]) or find().slice("a", 1, 2) as an
 # alternative to the fields specifier.
@@ -46,7 +68,7 @@ class Cursor(object):
                  max_scan=None, as_class=None, slave_okay=False,
                  await_data=False, partial=False, manipulate=True,
                  read_preference=ReadPreference.PRIMARY, tag_sets=[{}],
-                 secondary_acceptable_latency_ms=None,
+                 secondary_acceptable_latency_ms=None, exhaust=False,
                  _must_use_master=False, _uuid_subtype=None, **kwargs):
         """Create a new cursor.
 
@@ -78,6 +100,8 @@ class Cursor(object):
             raise TypeError("await_data must be an instance of bool")
         if not isinstance(partial, bool):
             raise TypeError("partial must be an instance of bool")
+        if not isinstance(exhaust, bool):
+            raise TypeError("exhaust must be an instance of bool")
 
         if fields is not None:
             if not fields:
@@ -94,6 +118,15 @@ class Cursor(object):
         self.__skip = skip
         self.__limit = limit
         self.__batch_size = 0
+
+        # Exhaust cursor support
+        if self.__collection.database.connection.is_mongos and exhaust:
+            raise InvalidOperation('Exhaust cursors are '
+                                   'not supported by mongos')
+        if limit and exhaust:
+            raise InvalidOperation("Can't use limit and exhaust together.")
+        self.__exhaust = exhaust
+        self.__exhaust_mgr = None
 
         # This is ugly. People want to be able to do cursor[5:5] and
         # get an empty result set (old behavior was an
@@ -193,11 +226,19 @@ class Cursor(object):
         """Closes this cursor.
         """
         if self.__id and not self.__killed:
-            connection = self.__collection.database.connection
-            if self.__connection_id is not None:
-                connection.close_cursor(self.__id, self.__connection_id)
+            if self.__exhaust and self.__exhaust_mgr:
+                # If this is an exhaust cursor and we haven't completely
+                # exhausted the result set we *must* close the socket
+                # to stop the server from sending more data.
+                self.__exhaust_mgr.sock.close()
             else:
-                connection.close_cursor(self.__id)
+                connection = self.__collection.database.connection
+                if self.__connection_id is not None:
+                    connection.close_cursor(self.__id, self.__connection_id)
+                else:
+                    connection.close_cursor(self.__id)
+        if self.__exhaust and self.__exhaust_mgr:
+            self.__exhaust_mgr.close()
         self.__killed = True
 
     def close(self):
@@ -299,6 +340,8 @@ class Cursor(object):
             options |= _QUERY_OPTIONS["no_timeout"]
         if self.__await_data:
             options |= _QUERY_OPTIONS["await_data"]
+        if self.__exhaust:
+            options |= _QUERY_OPTIONS["exhaust"]
         if self.__partial:
             options |= _QUERY_OPTIONS["partial"]
         return options
@@ -319,6 +362,14 @@ class Cursor(object):
             raise TypeError("mask must be an int")
         self.__check_okay_to_chain()
 
+        if mask & _QUERY_OPTIONS["exhaust"]:
+            if self.__limit:
+                raise InvalidOperation("Can't use limit and exhaust together.")
+            if self.__collection.database.connection.is_mongos:
+                raise InvalidOperation('Exhaust cursors are '
+                                       'not supported by mongos')
+            self.__exhaust = True
+
         self.__query_flags |= mask
         return self
 
@@ -331,6 +382,9 @@ class Cursor(object):
         if not isinstance(mask, int):
             raise TypeError("mask must be an int")
         self.__check_okay_to_chain()
+
+        if mask & _QUERY_OPTIONS["exhaust"]:
+            self.__exhaust = False
 
         self.__query_flags &= ~mask
         return self
@@ -350,6 +404,8 @@ class Cursor(object):
         """
         if not isinstance(limit, int):
             raise TypeError("limit must be an int")
+        if self.__exhaust:
+            raise InvalidOperation("Can't use limit and exhaust together.")
         self.__check_okay_to_chain()
 
         self.__empty = False
@@ -689,34 +745,38 @@ class Cursor(object):
 
     def __send_message(self, message):
         """Send a query or getmore message and handles the response.
+
+        If message is ``None`` this is an exhaust cursor, which reads
+        the next result batch off the exhaust socket instead of
+        sending getMore messages to the server.
         """
-        db = self.__collection.database
-        kwargs = {"_must_use_master": self.__must_use_master}
-        kwargs["read_preference"] = self.__read_preference
-        kwargs["tag_sets"] = self.__tag_sets
-        kwargs["secondary_acceptable_latency_ms"] = (
-            self.__secondary_acceptable_latency_ms)
-        if self.__connection_id is not None:
-            kwargs["_connection_to_use"] = self.__connection_id
-        kwargs.update(self.__kwargs)
+        client = self.__collection.database.connection
 
-        try:
-            response = db.connection._send_message_with_response(message,
-                                                                 **kwargs)
-        except AutoReconnect:
-            # Don't try to send kill cursors on another socket
-            # or to another server. It can cause a _pinValue
-            # assertion on some server releases if we get here
-            # due to a socket timeout.
-            self.__killed = True
-            raise
+        if message:
+            kwargs = {"_must_use_master": self.__must_use_master}
+            kwargs["read_preference"] = self.__read_preference
+            kwargs["tag_sets"] = self.__tag_sets
+            kwargs["secondary_acceptable_latency_ms"] = (
+                self.__secondary_acceptable_latency_ms)
+            kwargs['exhaust'] = self.__exhaust
+            if self.__connection_id is not None:
+                kwargs["_connection_to_use"] = self.__connection_id
+            kwargs.update(self.__kwargs)
 
-        if isinstance(response, tuple):
-            (connection_id, response) = response
-        else:
-            connection_id = None
-
-        self.__connection_id = connection_id
+            try:
+                res = client._send_message_with_response(message, **kwargs)
+                self.__connection_id, (response, sock, pool) = res
+                if self.__exhaust:
+                    self.__exhaust_mgr = _SocketManager(sock, pool)
+            except AutoReconnect:
+                # Don't try to send kill cursors on another socket
+                # or to another server. It can cause a _pinValue
+                # assertion on some server releases if we get here
+                # due to a socket timeout.
+                self.__killed = True
+                raise
+        else: # exhaust cursor - no getMore message
+            response = client._exhaust_next(self.__exhaust_mgr.sock)
 
         try:
             response = helpers._unpack_response(response, self.__id,
@@ -727,7 +787,7 @@ class Cursor(object):
             # Don't send kill cursors to another server after a "not master"
             # error. It's completely pointless.
             self.__killed = True
-            db.connection.disconnect()
+            client.disconnect()
             raise
         self.__id = response["cursor_id"]
 
@@ -742,6 +802,11 @@ class Cursor(object):
 
         if self.__limit and self.__id and self.__limit <= self.__retrieved:
             self.__die()
+
+        # Don't wait for garbage collection to call __del__, return the
+        # socket to the pool now.
+        if self.__exhaust and self.__id == 0:
+            self.__exhaust_mgr.close()
 
     def _refresh(self):
         """Refreshes the cursor with more data from Mongo.
@@ -776,9 +841,14 @@ class Cursor(object):
             else:
                 limit = self.__batch_size
 
-            self.__send_message(
-                message.get_more(self.__collection.full_name,
-                                 limit, self.__id))
+            # Exhaust cursors don't send getMore messages.
+            if self.__exhaust:
+                self.__send_message(None)
+            else:
+                self.__send_message(
+                    message.get_more(self.__collection.full_name,
+                                     limit, self.__id))
+
         else:  # Cursor id is zero nothing else to return
             self.__killed = True
 

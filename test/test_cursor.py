@@ -476,7 +476,7 @@ class TestCursor(unittest.TestCase):
                                    partial=True,
                                    manipulate=False,
                                    fields={'_id': False}).limit(2)
-        cursor.add_option(64)
+        cursor.add_option(128)
 
         cursor2 = cursor.clone()
         self.assertEqual(cursor._Cursor__skip, cursor2._Cursor__skip)

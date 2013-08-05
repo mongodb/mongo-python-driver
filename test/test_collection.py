@@ -1521,6 +1521,58 @@ class TestCollection(unittest.TestCase):
         list(self.db.test.find(timeout=False))
         list(self.db.test.find(timeout=True))
 
+    def test_exhaust(self):
+        if is_mongos(self.db.connection):
+            self.assertRaises(InvalidOperation,
+                              self.db.test.find, exhaust=True)
+            return
+
+        self.assertRaises(TypeError, self.db.test.find, exhaust=5)
+        # Limit is incompatible with exhaust.
+        self.assertRaises(InvalidOperation,
+                          self.db.test.find, exhaust=True, limit=5)
+        cur = self.db.test.find(exhaust=True)
+        self.assertRaises(InvalidOperation, cur.limit, 5)
+        cur = self.db.test.find(limit=5)
+        self.assertRaises(InvalidOperation, cur.add_option, 64)
+        cur = self.db.test.find()
+        cur.add_option(64)
+        self.assertRaises(InvalidOperation, cur.limit, 5)
+
+        self.db.drop_collection("test")
+        # Insert enough documents to require more than one batch
+        self.db.test.insert([{'i': i} for i in xrange(150)])
+
+        client = get_client(max_pool_size=1)
+        socks = client._MongoClient__pool.sockets
+        self.assertEqual(1, len(socks))
+
+        # Make sure the socket is returned after exhaustion.
+        cur = client[self.db.name].test.find(exhaust=True)
+        cur.next()
+        self.assertEqual(0, len(socks))
+        for doc in cur:
+            pass
+        self.assertEqual(1, len(socks))
+
+        # Same as previous but don't call next()
+        for doc in client[self.db.name].test.find(exhaust=True):
+            pass
+        self.assertEqual(1, len(socks))
+
+        # If the Cursor intance is discarded before being
+        # completely interated we have to close and
+        # discard the socket.
+        cur = client[self.db.name].test.find(exhaust=True)
+        cur.next()
+        self.assertEqual(0, len(socks))
+        if sys.platform.startswith('java') or 'PyPy' in sys.version:
+            # Don't wait for GC or use gc.collect(), it's unreliable.
+            cur.close()
+        cur = None
+        # The socket should be discarded.
+        self.assertEqual(0, len(socks))
+
     def test_distinct(self):
         if not version.at_least(self.db.connection, (1, 1)):
             raise SkipTest("distinct command requires MongoDB >= 1.1")
