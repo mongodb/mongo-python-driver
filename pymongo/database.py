@@ -273,7 +273,7 @@ class Database(common.BaseObject):
 
     def command(self, command, value=1,
                 check=True, allowable_errors=[],
-                uuid_subtype=OLD_UUID_SUBTYPE, **kwargs):
+                uuid_subtype=OLD_UUID_SUBTYPE, compile_re=True, **kwargs):
         """Issue a MongoDB command.
 
         Send command `command` to the database and return the
@@ -318,6 +318,12 @@ class Database(common.BaseObject):
             in this list will be ignored by error-checking
           - `uuid_subtype` (optional): The BSON binary subtype to use
             for a UUID used in this command.
+          - `compile_re` (optional): if ``False``, don't attempt to compile
+            BSON regular expressions into Python regular expressions. Return
+            instances of :class:`~bson.regex.Regex` instead. Can avoid
+            :exc:`~bson.errors.InvalidBSON` errors when receiving
+            Python-incompatible regular expressions, for example from
+            ``currentOp``
           - `read_preference`: The read preference for this connection.
             See :class:`~pymongo.read_preferences.ReadPreference` for available
             options.
@@ -337,6 +343,8 @@ class Database(common.BaseObject):
 
         .. note:: ``command`` ignores the ``network_timeout`` parameter.
 
+        .. versionchanged:: 2.7
+           Added ``compile_re`` option.
         .. versionchanged:: 2.3
            Added `tag_sets` and `secondary_acceptable_latency_ms` options.
         .. versionchanged:: 2.2
@@ -390,6 +398,7 @@ class Database(common.BaseObject):
         extra_opts['secondary_acceptable_latency_ms'] = kwargs.pop(
             'secondary_acceptable_latency_ms',
             self.secondary_acceptable_latency_ms)
+        extra_opts['compile_re'] = compile_re
 
         fields = kwargs.get('fields')
         if fields is not None and not isinstance(fields, dict):

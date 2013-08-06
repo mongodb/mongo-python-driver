@@ -16,6 +16,7 @@
 
 import datetime
 import os
+import re
 import sys
 import warnings
 
@@ -25,9 +26,10 @@ import unittest
 from nose.plugins.skip import SkipTest
 
 from bson.code import Code
+from bson.regex import Regex
 from bson.dbref import DBRef
 from bson.objectid import ObjectId
-from bson.son import SON
+from bson.son import SON, RE_TYPE
 from pymongo import (ALL,
                      auth,
                      OFF,
@@ -302,6 +304,21 @@ class TestDatabase(unittest.TestCase):
         # mongos doesn't support the eval command
         if not is_mongos(self.client):
             db.command('eval', 'sleep(100)', network_timeout=0.001)
+
+    def test_command_with_compile_re(self):
+        # Using 'aggregate' as our example command, since it's an easy way to
+        # retrieve a BSON regex from a collection using a command.
+        if not version.at_least(self.client, (2, 1, 0)):
+            raise SkipTest('Need aggregation to test compile_re')
+
+        db = self.client.pymongo_test
+        db.test.drop()
+        db.test.insert({'r': re.compile('.*')})
+
+        result = db.command('aggregate', 'test', pipeline=[])
+        self.assertTrue(isinstance(result['result'][0]['r'], RE_TYPE))
+        result = db.command('aggregate', 'test', pipeline=[], compile_re=False)
+        self.assertTrue(isinstance(result['result'][0]['r'], Regex))
 
     def test_last_status(self):
         db = self.client.pymongo_test

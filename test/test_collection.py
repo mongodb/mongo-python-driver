@@ -29,11 +29,12 @@ from nose.plugins.skip import SkipTest
 sys.path[0:0] = [""]
 
 from bson.binary import Binary
+from bson.regex import Regex
 from bson.code import Code
 from bson.dbref import DBRef
 from bson.objectid import ObjectId
 from bson.py3compat import b
-from bson.son import SON
+from bson.son import SON, RE_TYPE
 from pymongo import (ASCENDING, DESCENDING, GEO2D,
                      GEOHAYSTACK, GEOSPHERE, HASHED)
 from pymongo import message as message_module
@@ -1267,6 +1268,19 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(expected, db.test.aggregate([pipeline]))
         self.assertEqual(expected, db.test.aggregate((pipeline,)))
 
+    def test_aggregate_with_compile_re(self):
+        if not version.at_least(self.db.connection, (2, 1, 0)):
+            raise SkipTest("The aggregate command requires MongoDB >= 2.1.0")
+
+        db = self.client.pymongo_test
+        db.test.drop()
+        db.test.insert({'r': re.compile('.*')})
+
+        result = db.test.aggregate([])
+        self.assertTrue(isinstance(result['result'][0]['r'], RE_TYPE))
+        result = db.test.aggregate([], compile_re=False)
+        self.assertTrue(isinstance(result['result'][0]['r'], Regex))
+
     def test_aggregation_cursor_validation(self):
         if not version.at_least(self.db.connection, (2, 5, 1)):
             raise SkipTest("Aggregation cursor requires MongoDB >= 2.5.1")
@@ -2147,6 +2161,22 @@ class TestCollection(unittest.TestCase):
 
         self.assertEqual(2, c.find_one(manipulate=True)['foo'])
         c.remove({})
+
+    def test_compile_re(self):
+        c = self.client.pymongo_test.test
+        c.drop()
+        c.insert({'r': re.compile('.*')})
+
+        # Test find_one with compile_re.
+        self.assertTrue(isinstance(c.find_one()['r'], RE_TYPE))
+        self.assertTrue(isinstance(c.find_one(compile_re=False)['r'], Regex))
+
+        # Test find with compile_re.
+        for doc in c.find():
+            self.assertTrue(isinstance(doc['r'], RE_TYPE))
+
+        for doc in c.find(compile_re=False):
+            self.assertTrue(isinstance(doc['r'], Regex))
 
 
 if __name__ == "__main__":

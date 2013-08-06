@@ -690,6 +690,9 @@ class Collection(common.BaseObject):
             the nearest member may accept reads. Default 15 milliseconds.
             **Ignored by mongos** and must be configured on the command line.
             See the localThreshold_ option for more information.
+          - `compile_re` (optional): if ``False``, don't attempt to compile
+            BSON regex objects into Python regexes. Return instances of
+            :class:`~bson.regex.Regex` instead.
           - `exhaust` (optional): If ``True`` create an "exhaust" cursor.
             MongoDB will stream batched results to the client without waiting
             for the client to request each batch, reducing latency.
@@ -717,11 +720,14 @@ class Collection(common.BaseObject):
             5. The `network_timeout` option is ignored when using the
             `exhaust` option.
 
-        .. note:: The `manipulate` parameter may default to False in
-           a future release.
+        .. note:: The `manipulate` and `compile_re` parameters may default to
+           False in future releases.
 
         .. note:: The `max_scan` parameter requires server
            version **>= 1.5.1**
+
+        .. versionadded:: 2.7
+           The ``compile_re`` parameter.
 
         .. versionadded:: 2.3
            The `tag_sets` and `secondary_acceptable_latency_ms` parameters.

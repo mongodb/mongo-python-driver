@@ -32,6 +32,8 @@ from bson.dbref import DBRef
 from bson.max_key import MaxKey
 from bson.min_key import MinKey
 from bson.objectid import ObjectId
+from bson.regex import Regex
+from bson.son import RE_TYPE
 from bson.timestamp import Timestamp
 from bson.tz_util import utc
 
@@ -74,6 +76,22 @@ class TestJsonUtil(unittest.TestCase):
         self.round_trip({"date": datetime.datetime(2009, 12, 9, 15,
                                                    49, 45, 191000, utc)})
 
+    def test_regex_object_hook(self):
+        import json
+
+        # Extended JSON format regular expression.
+        pat = 'a*b'
+        json_re = '{"$regex": "%s", "$options": "u"}' % pat
+        loaded = json_util.object_hook(json.loads(json_re))
+        self.assertTrue(isinstance(loaded, RE_TYPE))
+        self.assertEqual(pat, loaded.pattern)
+        self.assertEqual(re.U, loaded.flags)
+
+        loaded = json_util.object_hook(json.loads(json_re), compile_re=False)
+        self.assertTrue(isinstance(loaded, Regex))
+        self.assertEqual(pat, loaded.pattern)
+        self.assertEqual(re.U, loaded.flags)
+
     def test_regex(self):
         res = self.round_tripped({"r": re.compile("a*b", re.IGNORECASE)})["r"]
         self.assertEqual("a*b", res.pattern)
@@ -94,6 +112,12 @@ class TestJsonUtil(unittest.TestCase):
         if PY3:
             expected_flags = re.U
         self.assertEqual(expected_flags, res.flags)
+
+        self.assertEqual(
+            Regex('.*', 'ilm'),
+            json_util.loads(
+                '{"r": {"$regex": ".*", "$options": "ilm"}}',
+                compile_re=False)['r'])
 
     def test_minkey(self):
         self.round_trip({"m": MinKey()})

@@ -11,6 +11,7 @@ Sub-modules:
    :maxdepth: 2
 
    binary
+   regex
    code
    dbref
    errors

@@ -90,6 +90,7 @@ from bson.dbref import DBRef
 from bson.max_key import MaxKey
 from bson.min_key import MinKey
 from bson.objectid import ObjectId
+from bson.regex import Regex
 from bson.timestamp import Timestamp
 
 from bson.py3compat import PY3, binary_type, string_types
@@ -120,10 +121,20 @@ def loads(s, *args, **kwargs):
     """Helper function that wraps :class:`json.loads`.
 
     Automatically passes the object_hook for BSON type conversion.
+
+    :Parameters:
+      - `compile_re` (optional): if ``False``, don't attempt to compile
+      BSON regular expressions into Python regular expressions. Return
+      instances of :class:`~bson.bsonregex.BSONRegex` instead.
+
+    .. versionchanged:: 2.7
+       Added ``compile_re`` option.
     """
     if not json_lib:
         raise Exception("No json library available")
-    kwargs['object_hook'] = object_hook
+
+    compile_re = kwargs.pop('compile_re', True)
+    kwargs['object_hook'] = lambda dct: object_hook(dct, compile_re)
     return json.loads(s, *args, **kwargs)
 
 
@@ -141,7 +152,7 @@ def _json_convert(obj):
         return obj
 
 
-def object_hook(dct):
+def object_hook(dct, compile_re=True):
     if "$oid" in dct:
         return ObjectId(str(dct["$oid"]))
     if "$ref" in dct:
@@ -154,7 +165,11 @@ def object_hook(dct):
         # PyMongo always adds $options but some other tools may not.
         for opt in dct.get("$options", ""):
             flags |= _RE_OPT_TABLE.get(opt, 0)
-        return re.compile(dct["$regex"], flags)
+
+        if compile_re:
+            return re.compile(dct["$regex"], flags)
+        else:
+            return Regex(dct["$regex"], flags)
     if "$minKey" in dct:
         return MinKey()
     if "$maxKey" in dct:

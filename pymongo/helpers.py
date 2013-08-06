@@ -73,7 +73,8 @@ def _index_document(index_list):
 
 
 def _unpack_response(response, cursor_id=None, as_class=dict,
-                     tz_aware=False, uuid_subtype=OLD_UUID_SUBTYPE):
+                     tz_aware=False, uuid_subtype=OLD_UUID_SUBTYPE,
+                     compile_re=True):
     """Unpack a response from the database.
 
     Check the response for errors and unpack, returning a dictionary
@@ -108,7 +109,8 @@ def _unpack_response(response, cursor_id=None, as_class=dict,
     result["starting_from"] = struct.unpack("<i", response[12:16])[0]
     result["number_returned"] = struct.unpack("<i", response[16:20])[0]
     result["data"] = bson.decode_all(response[20:],
-                                     as_class, tz_aware, uuid_subtype)
+                                     as_class, tz_aware, uuid_subtype,
+                                     compile_re)
     assert len(result["data"]) == result["number_returned"]
     return result
 

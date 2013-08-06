@@ -32,7 +32,8 @@ from nose.plugins.skip import SkipTest
 import bson
 from bson import (BSON,
                   decode_all,
-                  is_valid)
+                  is_valid,
+                  Regex)
 from bson.binary import Binary, UUIDLegacy
 from bson.code import Code
 from bson.objectid import ObjectId
@@ -533,6 +534,43 @@ class TestBSON(unittest.TestCase):
             raise SkipTest("No OrderedDict")
         d = OrderedDict([("one", 1), ("two", 2), ("three", 3), ("four", 4)])
         self.assertEqual(d, BSON.encode(d).decode(as_class=OrderedDict))
+
+    def test_bson_regex(self):
+        # Invalid Python regex, though valid PCRE.
+        bson_re1 = Regex(r'[\w-\.]')
+        self.assertEqual(r'[\w-\.]', bson_re1.pattern)
+        self.assertEqual(0, bson_re1.flags)
+
+        doc1 = {'r': bson_re1}
+        doc1_bson = b(
+            '\x11\x00\x00\x00'              # document length
+            '\x0br\x00[\\w-\\.]\x00\x00'    # r: regex
+            '\x00')                         # document terminator
+
+        self.assertEqual(doc1_bson, BSON.encode(doc1))
+        self.assertEqual(doc1, BSON(doc1_bson).decode(compile_re=False))
+
+        # Valid Python regex, with flags.
+        re2 = re.compile('.*', re.IGNORECASE | re.MULTILINE | re.UNICODE)
+        bson_re2 = Regex('.*', re.IGNORECASE | re.MULTILINE | re.UNICODE)
+
+        doc2_with_re = {'r': re2}
+        doc2_with_bson_re = {'r': bson_re2}
+        doc2_bson = b(
+            "\x0f\x00\x00\x00"          # document length
+            "\x0br\x00.*\x00imu\x00"    # r: regex
+            "\x00")                     # document terminator
+
+        self.assertEqual(doc2_bson, BSON.encode(doc2_with_re))
+        self.assertEqual(doc2_bson, BSON.encode(doc2_with_bson_re))
+
+        # Built-in re objects don't support ==. Compare pattern and flags.
+        self.assertEqual(re2.pattern, BSON(doc2_bson).decode()['r'].pattern)
+        self.assertEqual(re2.flags, BSON(doc2_bson).decode()['r'].flags)
+
+        self.assertEqual(
+            doc2_with_bson_re, BSON(doc2_bson).decode(compile_re=False))
+
 
 if __name__ == "__main__":
     unittest.main()
