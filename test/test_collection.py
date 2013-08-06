@@ -37,6 +37,7 @@ from bson.son import SON
 from pymongo import (ASCENDING, DESCENDING, GEO2D,
                      GEOHAYSTACK, GEOSPHERE, HASHED)
 from pymongo.collection import Collection
+from pymongo.cursor import Cursor
 from pymongo.son_manipulator import SONManipulator
 from pymongo.errors import (ConfigurationError,
                             DuplicateKeyError,
@@ -1228,6 +1229,36 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(expected, db.test.aggregate(pipeline))
         self.assertEqual(expected, db.test.aggregate([pipeline]))
         self.assertEqual(expected, db.test.aggregate((pipeline,)))
+
+    def test_aggregation_cursor_validation(self):
+        if not version.at_least(self.db.connection, (2, 5, 1)):
+            raise SkipTest("Aggregation cursor requires MongoDB >= 2.5.1")
+        db = self.db
+        projection = {'$project': {'_id': '$_id'}}
+        cursor = db.test.aggregate(projection, cursor={})
+        self.assertTrue(isinstance(cursor, Cursor))
+        self.assertRaises(InvalidOperation, cursor.rewind)
+        self.assertRaises(InvalidOperation, cursor.clone)
+        self.assertRaises(InvalidOperation, cursor.count)
+        self.assertRaises(InvalidOperation, cursor.explain)
+
+    def test_aggregation_cursor(self):
+        if not version.at_least(self.db.connection, (2, 5, 1)):
+            raise SkipTest("Aggregation cursor requires MongoDB >= 2.5.1")
+        db = self.db
+
+        # A small collection which returns only an initial batch,
+        # and a larger one that requires a getMore.
+        for collection_size in (10, 1000):
+            db.drop_collection("test")
+            db.test.insert([{'_id': i} for i in range(collection_size)])
+            expected_sum = sum(range(collection_size))
+            cursor = db.test.aggregate(
+                {'$project': {'_id': '$_id'}}, cursor={})
+
+            self.assertEqual(
+                expected_sum,
+                sum(doc['_id'] for doc in cursor))
 
     def test_group(self):
         db = self.db

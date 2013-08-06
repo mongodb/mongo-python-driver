@@ -1059,7 +1059,7 @@ class Collection(common.BaseObject):
 
         return options
 
-    def aggregate(self, pipeline):
+    def aggregate(self, pipeline, **kwargs):
         """Perform an aggregation using the aggregation framework on this
         collection.
 
@@ -1072,10 +1072,22 @@ class Collection(common.BaseObject):
 
         :Parameters:
           - `pipeline`: a single command or list of aggregation commands
+          - `**kwargs`: send arbitrary parameters to the aggregate command
 
-        .. note:: Requires server version **>= 2.1.0**
+        .. note:: Requires server version **>= 2.1.0**.
+
+        With server version **>= 2.5.1**, pass
+        ``cursor={}`` to retrieve unlimited aggregation results
+        with a :class:`~pymongo.cursor.Cursor`::
+
+            pipeline = [{'$project': {'name': {'$toUpper': '$name'}}}]
+            cursor = collection.aggregate(pipeline, cursor={})
+            for doc in cursor:
+                print doc
 
         .. versionadded:: 2.3
+        .. versionchanged:: 2.5.1+
+           Added cursor support.
 
         .. _aggregate command:
             http://docs.mongodb.org/manual/applications/aggregation
@@ -1088,14 +1100,27 @@ class Collection(common.BaseObject):
 
         use_master = not self.slave_okay and not self.read_preference
 
-        return self.__database.command("aggregate", self.__name,
-                                        pipeline=pipeline,
-                                        read_preference=self.read_preference,
-                                        tag_sets=self.tag_sets,
-                                        secondary_acceptable_latency_ms=(
-                                         self.secondary_acceptable_latency_ms),
-                                        slave_okay=self.slave_okay,
-                                        _use_master=use_master)
+        command_kwargs = {
+            'pipeline': pipeline,
+            'read_preference': self.read_preference,
+            'tag_sets': self.tag_sets,
+            'secondary_acceptable_latency_ms': (
+                self.secondary_acceptable_latency_ms),
+            'slave_okay': self.slave_okay,
+            '_use_master': use_master}
+
+        command_kwargs.update(kwargs)
+        command_response = self.__database.command(
+            "aggregate", self.__name, **command_kwargs)
+
+        if 'cursor' in command_response:
+            cursor_info = command_response['cursor']
+            return Cursor(
+                self,
+                _first_batch=cursor_info['firstBatch'],
+                _cursor_id=cursor_info['id'])
+        else:
+            return command_response
 
     # TODO key and condition ought to be optional, but deprecation
     # could be painful as argument order would have to change.
