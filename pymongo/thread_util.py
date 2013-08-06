@@ -25,7 +25,13 @@ except ImportError:
 have_gevent = True
 try:
     import greenlet
-    import gevent.coros
+
+    try:
+        # gevent-1.0rc2 and later.
+        from gevent.lock import BoundedSemaphore as GeventBoundedSemaphore
+    except ImportError:
+        from gevent.coros import BoundedSemaphore as GeventBoundedSemaphore
+
 except ImportError:
     have_gevent = False
 
@@ -269,7 +275,7 @@ if have_gevent:
     class MaxWaitersBoundedSemaphoreGevent(MaxWaitersBoundedSemaphore):
         def __init__(self, value=1, max_waiters=1):
             MaxWaitersBoundedSemaphore.__init__(
-                self, gevent.coros.BoundedSemaphore, value, max_waiters)
+                self, GeventBoundedSemaphore, value, max_waiters)
 
 
 def create_semaphore(max_size, max_waiters, use_greenlets):
@@ -277,7 +283,7 @@ def create_semaphore(max_size, max_waiters, use_greenlets):
         return DummySemaphore()
     elif use_greenlets:
         if max_waiters is None:
-            return gevent.coros.BoundedSemaphore(max_size)
+            return GeventBoundedSemaphore(max_size)
         else:
             return MaxWaitersBoundedSemaphoreGevent(max_size, max_waiters)
     else:
