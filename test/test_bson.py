@@ -16,10 +16,11 @@
 
 """Test the bson module."""
 
-import unittest
 import datetime
 import re
 import sys
+import traceback
+import unittest
 try:
     import uuid
     should_test_uuid = True
@@ -41,7 +42,8 @@ from bson.py3compat import b
 from bson.son import SON
 from bson.timestamp import Timestamp
 from bson.errors import (InvalidDocument,
-                         InvalidStringData)
+                         InvalidStringData,
+                         InvalidBSON)
 from bson.max_key import MaxKey
 from bson.min_key import MinKey
 from bson.tz_util import (FixedOffset,
@@ -447,6 +449,33 @@ class TestBSON(unittest.TestCase):
             raise SkipTest("No OrderedDict")
         d = OrderedDict([("one", 1), ("two", 2), ("three", 3), ("four", 4)])
         self.assertEqual(d, BSON.encode(d).decode(as_class=OrderedDict))
+
+    def test_exception_wrapping(self):
+        # No matter what exception is raised while trying to decode BSON,
+        # the final exception always matches InvalidBSON and the original
+        # is traceback preserved.
+
+        # Invalid Python regex, though valid PCRE: {'r': /[\w-\.]/}
+        # Will cause an error in re.compile().
+        bad_doc = b('"\x00\x00\x00\x07_id\x00R\x013\xd4S1\xe3\xd3\xd6Sgs'
+                    '\x0br\x00[\\w-\\.]\x00\x00\x00')
+
+        try:
+            decode_all(bad_doc)
+        except InvalidBSON:
+            exc_type, exc_value, exc_tb = sys.exc_info()
+            # Original re error was captured and wrapped in InvalidBSON.
+            self.assertEqual(exc_value.args[0], 'bad character range')
+
+            # Traceback includes bson module's call into re module.
+            for filename, lineno, fname, text in traceback.extract_tb(exc_tb):
+                if filename.endswith('re.py') and fname == 'compile':
+                    # Traceback was correctly preserved.
+                    break
+            else:
+                self.fail('Traceback not captured')
+        else:
+            self.fail('InvalidBSON not raised')
 
 if __name__ == "__main__":
     unittest.main()
