@@ -1199,12 +1199,6 @@ class TestCollection(unittest.TestCase):
 
     def test_manual_last_error(self):
         self.db.test.save({"x": 1}, w=0)
-        # XXX: Fix this if we ever have a replica set unittest env.
-        # mongo >=1.7.6 errors with 'norepl' when w=2+
-        # and we aren't replicated
-        if not version.at_least(self.client, (1, 7, 6)):
-            self.assertRaises(TimeoutError, self.db.command,
-                              "getlasterror", w=2, wtimeout=1)
         self.db.command("getlasterror", w=1, wtimeout=1)
 
     def test_count(self):
