@@ -63,7 +63,7 @@ MongoEngine
   documents and query collections using syntax inspired by the Django
   ORM. The code is available on `github
   <http://github.com/mongoengine/mongoengine>`_; for more information, see
-  the `tutorial <http://mongoengine.org/docs/v0.5/tutorial.html>`_.
+  the `tutorial <http://docs.mongoengine.org/en/latest/tutorial.html>`_.
 
 Minimongo
   `minimongo <http://pypi.python.org/pypi/minimongo>`_ is a lightweight,
