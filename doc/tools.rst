@@ -62,7 +62,7 @@ MongoEngine
   layer on top of PyMongo. It allows you to define schemas for
   documents and query collections using syntax inspired by the Django
   ORM. The code is available on `github
-  <http://github.com/hmarr/mongoengine>`_; for more information, see
+  <http://github.com/mongoengine/mongoengine>`_; for more information, see
   the `tutorial <http://mongoengine.org/docs/v0.5/tutorial.html>`_.
 
 Minimongo
