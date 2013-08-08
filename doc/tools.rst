@@ -85,9 +85,10 @@ This section lists tools and adapters that have been designed to work with
 various Python frameworks and libraries.
 
 * `Django MongoDB Engine
-  <http://django-mongodb.org/>`_ is a MongoDB
+  <http://django-mongodb-engine.readthedocs.org/en/latest/>`_ is a MongoDB
   database backend for Django that completely integrates with its ORM.
-  For more information `see the tutorial <http://django-mongodb.org/tutorial.html>`_.
+  For more information `see the tutorial
+  <http://django-mongodb-engine.readthedocs.org/en/latest/tutorial.html>`_.
 * `mango <http://github.com/vpulim/mango>`_ provides MongoDB backends for
   Django sessions and authentication (bypassing :mod:`django.db` entirely).
 * `Django MongoEngine
