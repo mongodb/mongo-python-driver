@@ -117,6 +117,25 @@ class MasterSlaveConnection(BaseObject):
     def tz_aware(self):
         return self.__tz_aware
 
+    @property
+    def max_bson_size(self):
+        """Return the maximum size BSON object the connected master
+        accepts in bytes. Defaults to 4MB in server < 1.7.4.
+
+        .. versionadded:: 2.6
+        """
+        return self.master.max_bson_size
+
+    @property
+    def max_message_size(self):
+        """Return the maximum message size the connected master
+        accepts in bytes.
+
+        .. versionadded:: 2.6
+        """
+        return self.master.max_message_size
+
+
     def disconnect(self):
         """Disconnect from MongoDB.
 
