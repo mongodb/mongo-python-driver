@@ -52,7 +52,7 @@ def kill_members(members, sig, hosts=nodes):
     for member in sorted(members):
         try:
             if ha_tools_debug:
-                print('killing %s' % (member)),
+                print('killing %s' % (member,)),
             proc = hosts[member]['proc']
             # Not sure if cygwin makes sense here...
             if sys.platform in ('win32', 'cygwin'):
@@ -99,9 +99,10 @@ def start_replica_set(members, auth=False, fresh=True):
 
         try:
             os.makedirs(dbpath)
-        except (OSError) as e:
-            print(e)
-            print("\tWhile creating %s" % (dbpath))
+        except OSError:
+            exc = sys.exc_info()[1]
+            print(exc)
+            print("\tWhile creating %s" % (dbpath,))
 
     if auth:
         key_file = os.path.join(dbpath, 'key.txt')
@@ -132,7 +133,7 @@ def start_replica_set(members, auth=False, fresh=True):
             cmd += ['--keyFile', key_file]
 
         if ha_tools_debug:
-            print('starting %s' % (' '.join(cmd)))
+            print('starting %s' % (' '.join(cmd),))
 
         proc = subprocess.Popen(cmd,
                                 stdout=subprocess.PIPE,
@@ -153,10 +154,11 @@ def start_replica_set(members, auth=False, fresh=True):
             print('rs.initiate(%s)' % (config,))
 
         c.admin.command('replSetInitiate', config)
-    except (pymongo.errors.OperationFailure) as e:
+    except pymongo.errors.OperationFailure:
         # Already initialized from a previous run?
         if ha_tools_debug:
-            print(e)
+            exc = sys.exc_info()[1]
+            print(exc)
 
     expected_arbiters = 0
     for member in members:
@@ -369,14 +371,15 @@ def stepdown_primary():
     primary = get_primary()
     if primary:
         if ha_tools_debug:
-            print('stepping down primary: %s' % (primary))
+            print('stepping down primary: %s' % (primary,))
         c = pymongo.MongoClient(primary, use_greenlets=use_greenlets)
         # replSetStepDown causes mongod to close all connections
         try:
             c.admin.command('replSetStepDown', 20)
-        except (Exception) as e:
+        except Exception:
             if ha_tools_debug:
-                print('Exception from replSetStepDown: %s' % (e.message,))
+                exc = sys.exc_info()[1]
+                print('Exception from replSetStepDown: %s' % (exc.message,))
         if ha_tools_debug:
             print('\tcalled replSetStepDown')
     elif ha_tools_debug:
