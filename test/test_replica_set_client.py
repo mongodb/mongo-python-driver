@@ -123,7 +123,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         self.assertTrue(c.secondaries)
 
         c = self._get_client(_connect=False)
-        c.pymongo_test.test.insert({})  # Auto-connect for write.
+        c.pymongo_test.test.update({}, {})  # Auto-connect for write.
         self.assertTrue(c.primary)
 
         c = MongoReplicaSetClient(
