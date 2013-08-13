@@ -413,6 +413,8 @@ class Member(object):
         self.tags = ismaster_response.get('tags', {})
         self.max_bson_size = ismaster_response.get(
             'maxBsonObjectSize', MAX_BSON_SIZE)
+        self.max_message_size = ismaster_response.get(
+            'maxMessageSizeBytes', 2 * self.max_bson_size)
 
     def clone_with(self, ismaster_response, ping_time_sample):
         """Get a clone updated with ismaster response and a single ping time.
@@ -983,6 +985,16 @@ class MongoReplicaSetClient(common.BaseObject):
         rs_state = self.__rs_state
         if rs_state.primary_member:
             return rs_state.primary_member.max_bson_size
+        return 0
+
+    @property
+    def max_message_size(self):
+        """Returns the maximum message size the connected primary
+        accepts in bytes. Returns 0 if no primary is available.
+        """
+        rs_state = self.__rs_state
+        if rs_state.primary_member:
+            return rs_state.primary_member.max_message_size
         return 0
 
     @property

@@ -351,10 +351,10 @@ class Collection(common.BaseObject):
             docs = [self.__database._fix_incoming(doc, self) for doc in docs]
 
         safe, options = self._get_write_mode(safe, **kwargs)
-        self.__database.connection._send_message(
-            message.insert(self.__full_name, docs,
-                           check_keys, safe, options,
-                           continue_on_error, self.__uuid_subtype), safe)
+        message._do_batched_insert(self.__full_name, docs,
+                                   check_keys, safe, options,
+                                   continue_on_error, self.__uuid_subtype,
+                                   self.database.connection)
 
         ids = [doc.get("_id", None) for doc in docs]
         if return_one:

@@ -140,3 +140,7 @@ int buffer_get_position(buffer_t buffer) {
 char* buffer_get_buffer(buffer_t buffer) {
     return buffer->buffer;
 }
+
+void buffer_update_position(buffer_t buffer, buffer_position new_position) {
+    buffer->position = new_position;
+}

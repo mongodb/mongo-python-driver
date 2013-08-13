@@ -51,5 +51,6 @@ int buffer_write_at_position(buffer_t buffer, buffer_position position, const ch
  * since they break the abstraction. */
 buffer_position buffer_get_position(buffer_t buffer);
 char* buffer_get_buffer(buffer_t buffer);
+void buffer_update_position(buffer_t buffer, buffer_position new_position);
 
 #endif

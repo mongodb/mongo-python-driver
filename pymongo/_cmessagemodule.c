@@ -131,10 +131,36 @@ static int add_last_error(PyObject* self, buffer_t buffer,
     return 1;
 }
 
+static int init_insert_buffer(buffer_t buffer, int request_id, int options,
+                              const char* coll_name, int coll_name_len) {
+    /* Save space for message length */
+    int length_location = buffer_save_space(buffer, 4);
+    if (length_location == -1) {
+        PyErr_NoMemory();
+        return length_location;
+    }
+    if (!buffer_write_bytes(buffer, (const char*)&request_id, 4) ||
+        !buffer_write_bytes(buffer,
+                            "\x00\x00\x00\x00"
+                            "\xd2\x07\x00\x00",
+                            8) ||
+        !buffer_write_bytes(buffer, (const char*)&options, 4) ||
+        !buffer_write_bytes(buffer,
+                            coll_name,
+                            coll_name_len + 1)) {
+        return -1;
+    }
+    return length_location;
+}
+
 static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
-    /* NOTE just using a random number as the request_id */
+    /* Note: As of PyMongo 2.6, this function is no longer used. It
+     * is being kept (with tests) for backwards compatibility with 3rd
+     * party libraries that may currently be using it, but will likely
+     * be removed in a future release. */
     struct module_state *state = GETSTATE(self);
 
+    /* NOTE just using a random number as the request_id */
     int request_id = rand();
     char* collection_name = NULL;
     int collection_name_length;
@@ -172,22 +198,12 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
         return NULL;
     }
 
-    // save space for message length
-    length_location = buffer_save_space(buffer, 4);
+    length_location = init_insert_buffer(buffer,
+                                         request_id,
+                                         options,
+                                         collection_name,
+                                         collection_name_length);
     if (length_location == -1) {
-        PyMem_Free(collection_name);
-        PyErr_NoMemory();
-        return NULL;
-    }
-    if (!buffer_write_bytes(buffer, (const char*)&request_id, 4) ||
-        !buffer_write_bytes(buffer,
-                            "\x00\x00\x00\x00"
-                            "\xd2\x07\x00\x00",
-                            8) ||
-        !buffer_write_bytes(buffer, (const char*)&options, 4) ||
-        !buffer_write_bytes(buffer,
-                            collection_name,
-                            collection_name_length + 1)) {
         PyMem_Free(collection_name);
         buffer_free(buffer);
         return NULL;
@@ -258,6 +274,14 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
     buffer_free(buffer);
     return result;
 }
+
+PyDoc_STRVAR(_cbson_insert_message_doc,
+"Create an insert message to be sent to MongoDB\n\
+\n\
+Note: As of PyMongo 2.6, this function is no longer used. It\n\
+is being kept (with tests) for backwards compatibility with 3rd\n\
+party libraries that may currently be using it, but will likely\n\
+be removed in a future release.");
 
 static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
     /* NOTE just using a random number as the request_id */
@@ -512,15 +536,290 @@ static PyObject* _cbson_get_more_message(PyObject* self, PyObject* args) {
     return result;
 }
 
+static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
+    struct module_state *state = GETSTATE(self);
+
+    /* NOTE just using a random number as the request_id */
+    int request_id = rand();
+    int options = 0, max_size = 0;
+    int length_location, message_length;
+    int collection_name_length;
+    char* collection_name = NULL;
+    PyObject* docs;
+    PyObject* doc;
+    PyObject* iterator;
+    PyObject* client;
+    PyObject* last_error_args;
+    PyObject* result;
+    unsigned char check_keys;
+    unsigned char safe;
+    unsigned char continue_on_error;
+    unsigned char uuid_subtype;
+    long max_bson_size;
+    long max_message_size;
+    buffer_t buffer;
+    PyObject *exc_type = NULL, *exc_value = NULL, *exc_trace = NULL;
+
+    if (!PyArg_ParseTuple(args, "et#ObbObbO",
+                          "utf-8",
+                          &collection_name,
+                          &collection_name_length,
+                          &docs, &check_keys, &safe,
+                          &last_error_args,
+                          &continue_on_error,
+                          &uuid_subtype, &client)) {
+        return NULL;
+    }
+    if (continue_on_error) {
+        options += 1;
+    }
+
+#if PY_MAJOR_VERSION >= 3
+    max_bson_size = PyLong_AsLong(
+        PyObject_GetAttrString(client, "max_bson_size"));
+#else
+    max_bson_size = PyInt_AsLong(
+        PyObject_GetAttrString(client, "max_bson_size"));
+#endif
+    if (max_bson_size == -1) {
+        PyMem_Free(collection_name);
+        return NULL;
+    }
+#if PY_MAJOR_VERSION >= 3
+    max_message_size = PyLong_AsLong(
+        PyObject_GetAttrString(client, "max_message_size"));
+#else
+    max_message_size = PyInt_AsLong(
+        PyObject_GetAttrString(client, "max_message_size"));
+#endif
+    if (max_message_size == -1) {
+        PyMem_Free(collection_name);
+        return NULL;
+    }
+
+    buffer = buffer_new();
+    if (!buffer) {
+        PyErr_NoMemory();
+        PyMem_Free(collection_name);
+        return NULL;
+    }
+
+    length_location = init_insert_buffer(buffer,
+                                         request_id,
+                                         options,
+                                         collection_name,
+                                         collection_name_length);
+    if (length_location == -1) {
+        goto insertfail;
+    }
+
+    iterator = PyObject_GetIter(docs);
+    if (iterator == NULL) {
+        PyObject* InvalidOperation = _error("InvalidOperation");
+        if (InvalidOperation) {
+            PyErr_SetString(InvalidOperation, "input is not iterable");
+            Py_DECREF(InvalidOperation);
+        }
+        goto insertfail;
+    }
+    while ((doc = PyIter_Next(iterator)) != NULL) {
+        int before = buffer_get_position(buffer);
+        int cur_size;
+        if (!write_dict(state->_cbson, buffer, doc, check_keys, uuid_subtype, 1)) {
+            Py_DECREF(doc);
+            goto iterfail;
+        }
+        Py_DECREF(doc);
+
+        cur_size = buffer_get_position(buffer) - before;
+        max_size = (cur_size > max_size) ? cur_size : max_size;
+        if (cur_size > max_bson_size) {
+            PyObject* InvalidDocument = _error("InvalidDocument");
+            if (InvalidDocument) {
+                const char* msg = ("BSON document too large (%ld bytes)"
+                                   " - the connected server supports"
+                                   " BSON document sizes up to %ld bytes.");
+#if PY_MAJOR_VERSION >= 3
+                PyObject* error = PyUnicode_FromFormat(msg,
+                                                       cur_size, max_bson_size);
+#else
+                PyObject* error = PyString_FromFormat(msg,
+                                                      cur_size, max_bson_size);
+#endif
+                if (error) {
+                    PyErr_SetObject(InvalidDocument, error);
+                    Py_DECREF(error);
+                }
+                Py_DECREF(InvalidDocument);
+            }
+            goto iterfail;
+        }
+
+        /* We have enough data, send this batch. */
+        if (buffer_get_position(buffer) > max_message_size) {
+            int new_request_id = rand();
+            int message_start;
+            PyObject* send_gle = Py_False;
+            buffer_t new_buffer = buffer_new();
+            if (!new_buffer) {
+                PyErr_NoMemory();
+                goto iterfail;
+            }
+            message_start = init_insert_buffer(new_buffer,
+                                               new_request_id,
+                                               options,
+                                               collection_name,
+                                               collection_name_length);
+            if (message_start == -1) {
+                buffer_free(new_buffer);
+                goto iterfail;
+            }
+
+            /* Copy the overflow encoded document into the new buffer. */
+            if (!buffer_write_bytes(new_buffer,
+                (const char*)buffer_get_buffer(buffer) + before, cur_size)) {
+                buffer_free(new_buffer);
+                goto iterfail;
+            }
+
+            /* Roll back to the beginning of this document. */
+            buffer_update_position(buffer, before);
+            message_length = buffer_get_position(buffer) - length_location;
+            memcpy(buffer_get_buffer(buffer) + length_location, &message_length, 4);
+
+            /* If we are doing unacknowledged writes *and* continue_on_error
+             * is True it's pointless (and slower) to send GLE. */
+            if (safe || !continue_on_error) {
+                send_gle = Py_True;
+                if (!add_last_error(self, buffer, request_id, collection_name,
+                                    collection_name_length, last_error_args)) {
+                    buffer_free(new_buffer);
+                    goto iterfail;
+                }
+            }
+            /* Objectify buffer */
+            result = Py_BuildValue("i" BYTES_FORMAT_STRING, request_id,
+                                   buffer_get_buffer(buffer),
+                                   buffer_get_position(buffer));
+            buffer_free(buffer);
+            buffer = new_buffer;
+            request_id = new_request_id;
+            length_location = message_start;
+
+            if (!PyObject_CallMethod(client,
+                                     "_send_message", "NO", result, send_gle)) {
+                PyObject *etype = NULL, *evalue = NULL, *etrace = NULL;
+                PyErr_Fetch(&etype, &evalue, &etrace);
+                PyObject* OperationFailure = _error("OperationFailure");
+                if (OperationFailure) {
+                    if (PyErr_GivenExceptionMatches(etype, OperationFailure)) {
+                        if (!safe || continue_on_error) {
+                            Py_DECREF(OperationFailure);
+                            if (!safe) {
+                                /* We're doing unacknowledged writes and
+                                 * continue_on_error is False. Just return. */
+                                Py_DECREF(etype);
+                                Py_DECREF(evalue);
+                                Py_DECREF(etrace);
+                                Py_DECREF(iterator);
+                                buffer_free(buffer);
+                                PyMem_Free(collection_name);
+                                Py_RETURN_NONE;
+                            }
+                            /* continue_on_error is True, store the error
+                             * details to re-raise after the final batch */
+                            Py_XDECREF(exc_type);
+                            Py_XDECREF(exc_value);
+                            Py_XDECREF(exc_trace);
+                            exc_type = etype;
+                            exc_value = evalue;
+                            exc_trace = etrace;
+                            continue;
+                        }
+                    }
+                    Py_DECREF(OperationFailure);
+                }
+                /* This isn't OperationFailure, we couldn't
+                 * import OperationFailure, or we are doing
+                 * acknowledged writes. Re-raise immediately. */
+                PyErr_Restore(etype, evalue, etrace);
+                goto iterfail;
+            }
+        }
+    }
+    Py_DECREF(iterator);
+
+    if (PyErr_Occurred()) {
+        goto insertfail;
+    }
+
+    if (!max_size) {
+        PyObject* InvalidOperation = _error("InvalidOperation");
+        if (InvalidOperation) {
+            PyErr_SetString(InvalidOperation, "cannot do an empty bulk insert");
+            Py_DECREF(InvalidOperation);
+        }
+        goto insertfail;
+    }
+
+    message_length = buffer_get_position(buffer) - length_location;
+    memcpy(buffer_get_buffer(buffer) + length_location, &message_length, 4);
+
+    if (safe) {
+        if (!add_last_error(self, buffer, request_id, collection_name,
+                            collection_name_length, last_error_args)) {
+            goto insertfail;
+        }
+    }
+
+    PyMem_Free(collection_name);
+
+    /* objectify buffer */
+    result = Py_BuildValue("i" BYTES_FORMAT_STRING, request_id,
+                           buffer_get_buffer(buffer),
+                           buffer_get_position(buffer));
+    buffer_free(buffer);
+
+    /* Send the last (or only) batch */
+    if (!PyObject_CallMethod(client, "_send_message", "NN",
+                             result, PyBool_FromLong((long)safe))) {
+        Py_XDECREF(exc_type);
+        Py_XDECREF(exc_value);
+        Py_XDECREF(exc_trace);
+        return NULL;
+    }
+
+    if (exc_type) {
+        /* Re-raise any previously stored exception
+         * due to continue_on_error being True */
+        PyErr_Restore(exc_type, exc_value, exc_trace);
+        return NULL;
+    }
+
+    Py_RETURN_NONE;
+
+iterfail:
+    Py_DECREF(iterator);
+insertfail:
+    Py_XDECREF(exc_type);
+    Py_XDECREF(exc_value);
+    Py_XDECREF(exc_trace);
+    buffer_free(buffer);
+    PyMem_Free(collection_name);
+    return NULL;
+}
+
 static PyMethodDef _CMessageMethods[] = {
     {"_insert_message", _cbson_insert_message, METH_VARARGS,
-     "create an insert message to be sent to MongoDB"},
+     _cbson_insert_message_doc},
     {"_update_message", _cbson_update_message, METH_VARARGS,
      "create an update message to be sent to MongoDB"},
     {"_query_message", _cbson_query_message, METH_VARARGS,
      "create a query message to be sent to MongoDB"},
     {"_get_more_message", _cbson_get_more_message, METH_VARARGS,
      "create a get more message to be sent to MongoDB"},
+    {"_do_batched_insert", _cbson_do_batched_insert, METH_VARARGS,
+     "insert a batch of documents, splitting the batch as needed"},
     {NULL, NULL, 0, NULL}
 };
 

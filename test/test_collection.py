@@ -36,6 +36,7 @@ from bson.py3compat import b
 from bson.son import SON
 from pymongo import (ASCENDING, DESCENDING, GEO2D,
                      GEOHAYSTACK, GEOSPHERE, HASHED)
+from pymongo import message as message_module
 from pymongo.collection import Collection
 from pymongo.cursor import Cursor
 from pymongo.son_manipulator import SONManipulator
@@ -1673,6 +1674,85 @@ class TestCollection(unittest.TestCase):
         self.assertRaises(InvalidDocument, self.db.test.update,
                           {"bar": "x"}, {"bar": "x" * (max_size - 14)})
         self.db.test.update({"bar": "x"}, {"bar": "x" * (max_size - 15)})
+
+    def test_insert_large_batch(self):
+        max_bson_size = self.db.connection.max_bson_size
+        big_string = 'x' * (max_bson_size - 100)
+        self.db.test.drop()
+        self.assertEqual(0, self.db.test.count())
+
+        # Batch insert that requires 2 batches
+        batch = [{'x': big_string}, {'x': big_string},
+                 {'x': big_string}, {'x': big_string}]
+        self.assertTrue(self.db.test.insert(batch, w=1))
+        self.assertEqual(4, self.db.test.count())
+
+        batch[1]['_id'] = batch[0]['_id']
+
+        # Test that inserts fail after first error, acknowledged.
+        self.db.test.drop()
+        self.assertRaises(DuplicateKeyError, self.db.test.insert, batch, w=1)
+        self.assertEqual(1, self.db.test.count())
+
+        # Test that inserts fail after first error, unacknowledged.
+        self.db.test.drop()
+        self.assertTrue(self.db.test.insert(batch, w=0))
+        self.assertEqual(1, self.db.test.count())
+
+        # 2 batches, 2 errors, acknowledged, continue on error
+        self.db.test.drop()
+        batch[3]['_id'] = batch[2]['_id']
+        try:
+            self.db.test.insert(batch, continue_on_error=True, w=1)
+        except OperationFailure, e:
+            # Make sure we report the last error, not the first.
+            self.assertTrue(str(batch[2]['_id']) in str(e))
+        else:
+            self.fail('OpreationFailure not raised.')
+        # Only the first and third documents should be inserted.
+        self.assertEqual(2, self.db.test.count())
+
+        # 2 batches, 2 errors, unacknowledged, continue on error
+        self.db.test.drop()
+        self.assertTrue(self.db.test.insert(batch, continue_on_error=True, w=0))
+        # Only the first and third documents should be inserted.
+        self.assertEqual(2, self.db.test.count())
+
+    # Starting in PyMongo 2.6 we no longer use message.insert for inserts, but
+    # message.insert is part of the public API. Do minimal testing here; there
+    # isn't really a better place.
+    def test_insert_message_creation(self):
+        send = self.db.connection._send_message
+        name = "%s.%s" % (self.db.name, "test")
+
+        def do_insert(args):
+            send(message_module.insert(*args), args[3])
+
+        self.db.drop_collection("test")
+        self.db.test.insert({'_id': 0}, w=1)
+        self.assertTrue(1, self.db.test.count())
+
+        simple_args = (name, [{'_id': 0}], True, False, {}, False, 3)
+        gle_args = (name, [{'_id': 0}], True, True, {'w': 1}, False, 3)
+        coe_args = (name, [{'_id': 0}, {'_id': 1}],
+                    True, True, {'w': 1}, True, 3)
+
+        self.assertEqual(None, do_insert(simple_args))
+        self.assertTrue(1, self.db.test.count())
+        self.assertRaises(DuplicateKeyError, do_insert, gle_args)
+        self.assertTrue(1, self.db.test.count())
+        self.assertRaises(DuplicateKeyError, do_insert, coe_args)
+        self.assertTrue(2, self.db.test.count())
+
+        if have_uuid:
+            doc = {'_id': 2, 'uuid': uuid.uuid4()}
+            uuid_sub_args = (name, [doc],
+                             True, True, {'w': 1}, True, 6)
+            do_insert(uuid_sub_args)
+            coll = self.db.test
+            self.assertNotEqual(doc, coll.find_one({'_id': 2}))
+            coll.uuid_subtype = 6
+            self.assertEqual(doc, coll.find_one({'_id': 2}))
 
     def test_map_reduce(self):
         if not version.at_least(self.db.connection, (1, 1, 1)):

@@ -580,6 +580,15 @@ class MongoClient(common.BaseObject):
         """
         return self.__max_bson_size
 
+    @property
+    def max_message_size(self):
+        """Return the maximum message size the connected server
+        accepts in bytes.
+
+        .. versionadded:: 2.6
+        """
+        return self.__max_message_size
+
     def __simple_command(self, sock_info, dbname, spec):
         """Send a command to the server.
         """
@@ -622,6 +631,10 @@ class MongoClient(common.BaseObject):
 
         if "maxBsonObjectSize" in response:
             self.__max_bson_size = response["maxBsonObjectSize"]
+        if "maxMessageSizeBytes" in response:
+            self.__max_message_size = response["maxMessageSizeBytes"]
+        else:
+            self.__max_message_size = 2 * self.max_bson_size
 
         # Replica Set?
         if not self.__direct:
