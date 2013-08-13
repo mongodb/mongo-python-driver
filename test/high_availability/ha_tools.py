@@ -47,6 +47,11 @@ nodes = {}
 routers = {}
 cur_port = port
 
+try:
+    from subprocess import DEVNULL  # Python 3.
+except ImportError:
+    DEVNULL = open(os.devnull, 'wb')
+
 
 def kill_members(members, sig, hosts=nodes):
     for member in sorted(members):
@@ -85,6 +90,11 @@ def wait_for(proc, port_num):
 
     kill_all_members()
     return False
+
+
+def start_subprocess(cmd):
+    """Run cmd (a list of strings) and return a Popen instance."""
+    return subprocess.Popen(cmd, stdout=DEVNULL, stderr=DEVNULL)
 
 
 def start_replica_set(members, auth=False, fresh=True):
@@ -135,9 +145,7 @@ def start_replica_set(members, auth=False, fresh=True):
         if ha_tools_debug:
             print('starting %s' % (' '.join(cmd),))
 
-        proc = subprocess.Popen(cmd,
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.STDOUT)
+        proc = start_subprocess(cmd)
         nodes[host] = {'proc': proc, 'cmd': cmd}
         res = wait_for(proc, cur_port)
 
@@ -202,9 +210,7 @@ def create_sharded_cluster(num_routers=3):
            '--port', str(cur_port),
            '--nojournal', '--logappend',
            '--logpath', configdb_logpath]
-    proc = subprocess.Popen(cmd,
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT)
+    proc = start_subprocess(cmd)
     nodes[configdb_host] = {'proc': proc, 'cmd': cmd}
     res = wait_for(proc, cur_port)
     if not res:
@@ -222,9 +228,7 @@ def create_sharded_cluster(num_routers=3):
            '--port', str(cur_port),
            '--nojournal', '--logappend',
            '--logpath', db_logpath]
-    proc = subprocess.Popen(cmd,
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT)
+    proc = start_subprocess(cmd)
     nodes[shard_host] = {'proc': proc, 'cmd': cmd}
     res = wait_for(proc, cur_port)
     if not res:
@@ -241,9 +245,7 @@ def create_sharded_cluster(num_routers=3):
                '--logappend',
                '--logpath', mongos_logpath,
                '--configdb', configdb_host]
-        proc = subprocess.Popen(cmd,
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.STDOUT)
+        proc = start_subprocess(cmd)
         routers[host] = {'proc': proc, 'cmd': cmd}
         res = wait_for(proc, cur_port)
         if not res:
@@ -406,9 +408,7 @@ def restart_members(members, router=False):
             cmd = routers[member]['cmd']
         else:
             cmd = nodes[member]['cmd']
-        proc = subprocess.Popen(cmd,
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.STDOUT)
+        proc = start_subprocess(cmd)
         if router:
             routers[member]['proc'] = proc
         else:
