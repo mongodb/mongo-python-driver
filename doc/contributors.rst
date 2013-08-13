@@ -64,3 +64,4 @@ The following is a list of people who have contributed to
 - Sam Helman (shelman)
 - Justin Patrin (reversefold)
 - Xiuming Chen (cxmcc)
+- Tyler Jones (thomascirca)
