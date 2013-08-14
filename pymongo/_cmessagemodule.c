@@ -709,8 +709,9 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
             if (!PyObject_CallMethod(client,
                                      "_send_message", "NO", result, send_gle)) {
                 PyObject *etype = NULL, *evalue = NULL, *etrace = NULL;
+                PyObject* OperationFailure;
                 PyErr_Fetch(&etype, &evalue, &etrace);
-                PyObject* OperationFailure = _error("OperationFailure");
+                OperationFailure = _error("OperationFailure");
                 if (OperationFailure) {
                     if (PyErr_GivenExceptionMatches(etype, OperationFailure)) {
                         if (!safe || continue_on_error) {
