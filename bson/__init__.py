@@ -525,7 +525,7 @@ def decode_all(data, as_class=dict,
             raise e.with_traceback(exc_tb)
         else:
             # 2to3 mistranslates this.
-            raise InvalidBSON, InvalidBSON(str(exc_value)), exc_tb
+            raise InvalidBSON, str(exc_value), exc_tb
 
 if _use_c:
     decode_all = _cbson.decode_all
