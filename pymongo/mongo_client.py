@@ -778,6 +778,13 @@ class MongoClient(common.BaseObject):
             raise
         return sock_info
 
+    def _ensure_connected(self, dummy):
+        """Ensure this client instance is connected to a mongod/s.
+        """
+        host, port = (self.__host, self.__port)
+        if host is None or (port is None and '/' not in host):
+            self.__find_node()
+
     def disconnect(self):
         """Disconnect from MongoDB.
 

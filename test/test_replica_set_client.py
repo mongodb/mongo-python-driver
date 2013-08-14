@@ -126,6 +126,14 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         c.pymongo_test.test.update({}, {})  # Auto-connect for write.
         self.assertTrue(c.primary)
 
+        c = self._get_client(_connect=False)
+        c.pymongo_test.test.insert({})  # Auto-connect for write.
+        self.assertTrue(c.primary)
+
+        c = self._get_client(_connect=False)
+        c.pymongo_test.test.remove({})  # Auto-connect for write.
+        self.assertTrue(c.primary)
+
         c = MongoReplicaSetClient(
             "somedomainthatdoesntexist.org", replicaSet="rs",
             connectTimeoutMS=1, _connect=False)

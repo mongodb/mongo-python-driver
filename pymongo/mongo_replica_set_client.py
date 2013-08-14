@@ -1224,6 +1224,22 @@ class MongoReplicaSetClient(common.BaseObject):
             raise
         return sock_info
 
+    def _ensure_connected(self, sync=False):
+        """Ensure this client instance is connected to a primary.
+        """
+        # This may be the first time we're connecting to the set.
+        if self.__monitor and not self.__monitor.started:
+            try:
+                self.__monitor.start()
+            # Minor race condition. It's possible that two (or more)
+            # threads could call monitor.start() consecutively. Just pass.
+            except RunTimeError:
+                pass
+        if sync:
+            rs_state = self.__rs_state
+            if not rs_state.primary_member:
+                self.__schedule_refresh(sync)
+
     def disconnect(self):
         """Disconnect from the replica set primary, unpin all members, and
         refresh our view of the replica set.
@@ -1390,9 +1406,7 @@ class MongoReplicaSetClient(common.BaseObject):
           - `with_last_error`: check getLastError status after sending the
             message
         """
-        # This may be the first time we're connecting to the set.
-        if self.__monitor and not self.__monitor.started:
-            self.__monitor.start()
+        self._ensure_connected()
 
         if _connection_to_use in (None, -1):
             member = self.__find_primary()
@@ -1494,9 +1508,7 @@ class MongoReplicaSetClient(common.BaseObject):
             used by Cursor for getMore and killCursors messages.
           - `_must_use_master`: If True, send to primary.
         """
-        # This may be the first time we're connecting to the set.
-        if self.__monitor and not self.__monitor.started:
-            self.__monitor.start()
+        self._ensure_connected()
 
         rs_state = self.__rs_state
         tag_sets = kwargs.get('tag_sets', [{}])

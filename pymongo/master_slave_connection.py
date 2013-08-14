@@ -159,6 +159,11 @@ class MasterSlaveConnection(BaseObject):
         for slave in self.__slaves:
             slave.set_cursor_manager(manager_class)
 
+    def _ensure_connected(self, sync):
+        """Ensure the master is connected to a mongod/s.
+        """
+        self.__master._ensure_connected(sync)
+
     # _connection_to_use is a hack that we need to include to make sure
     # that killcursor operations can be sent to the same instance on which
     # the cursor actually resides...

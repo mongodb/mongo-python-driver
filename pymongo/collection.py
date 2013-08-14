@@ -341,6 +341,11 @@ class Collection(common.BaseObject):
 
         .. mongodoc:: insert
         """
+        # Batch inserts require us to know the connected master's
+        # max_bson_size and max_message_size. We have to be connected
+        # to a master to know that.
+        self.database.connection._ensure_connected(True)
+
         docs = doc_or_docs
         return_one = False
         if isinstance(docs, dict):
