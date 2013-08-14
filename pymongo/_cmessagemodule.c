@@ -43,6 +43,10 @@ static struct module_state _state;
 #define BYTES_FORMAT_STRING "s#"
 #endif
 
+#define DOC_TOO_LARGE_FMT "BSON document too large (%d bytes)" \
+                          " - the connected server supports" \
+                          " BSON document sizes up to %ld bytes."
+
 /* Get an error class from the pymongo.errors module.
  *
  * Returns a new ref */
@@ -636,14 +640,11 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
         if (cur_size > max_bson_size) {
             PyObject* InvalidDocument = _error("InvalidDocument");
             if (InvalidDocument) {
-                const char* msg = ("BSON document too large (%ld bytes)"
-                                   " - the connected server supports"
-                                   " BSON document sizes up to %ld bytes.");
 #if PY_MAJOR_VERSION >= 3
-                PyObject* error = PyUnicode_FromFormat(msg,
+                PyObject* error = PyUnicode_FromFormat(DOC_TOO_LARGE_FMT,
                                                        cur_size, max_bson_size);
 #else
-                PyObject* error = PyString_FromFormat(msg,
+                PyObject* error = PyString_FromFormat(DOC_TOO_LARGE_FMT,
                                                       cur_size, max_bson_size);
 #endif
                 if (error) {
