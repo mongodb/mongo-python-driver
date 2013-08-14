@@ -520,12 +520,7 @@ def decode_all(data, as_class=dict,
     except Exception:
         # Change exception type to InvalidBSON but preserve traceback.
         exc_type, exc_value, exc_tb = sys.exc_info()
-        if PY3:
-            e = InvalidBSON(str(exc_value))
-            raise e.with_traceback(exc_tb)
-        else:
-            # 2to3 mistranslates this.
-            raise InvalidBSON, str(exc_value), exc_tb
+        raise InvalidBSON, str(exc_value), exc_tb
 
 if _use_c:
     decode_all = _cbson.decode_all
