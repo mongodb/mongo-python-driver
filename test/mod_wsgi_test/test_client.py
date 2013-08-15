@@ -29,7 +29,7 @@ def parse_args():
 
   mode:\tparallel or serial""")
 
-    # Should be enough that any collection leak will exhaust available file
+    # Should be enough that any connection leak will exhaust available file
     # descriptors.
     parser.add_option("-n", "--nrequests", type="int",
         dest="nrequests", default=50 * 1000,
