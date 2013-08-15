@@ -1856,7 +1856,6 @@ static PyObject* get_value(PyObject* self, const char* buffer, int* position,
                     evalue = msg;
                 }
                 PyErr_NormalizeException(&etype, &evalue, &etrace);
-                Py_XDECREF(msg);
             }
         }
         /* Steals references to args. */
