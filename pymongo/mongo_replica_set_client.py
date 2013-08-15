@@ -526,8 +526,10 @@ class MongoReplicaSetClient(common.BaseObject):
             pairs. If a host is an IPv6 literal it must be enclosed in '[' and
             ']' characters following the RFC2732 URL syntax (e.g. '[::1]' for
             localhost)
-          - `max_pool_size` (optional): The maximum number of idle connections
-            to keep open in each pool for future use
+          - `max_pool_size` (optional): The maximum number of connections
+            each pool will open simultaneously. If this is set, operations
+            will block if there are `max_pool_size` outstanding connections
+            from the pool. Defaults to 100.
           - `document_class` (optional): default class to use for
             documents returned from queries on this client
           - `tz_aware` (optional): if ``True``,

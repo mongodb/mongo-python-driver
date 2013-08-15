@@ -84,8 +84,10 @@ class Connection(MongoClient):
             it must be enclosed in '[' and ']' characters following
             the RFC2732 URL syntax (e.g. '[::1]' for localhost)
           - `port` (optional): port number on which to connect
-          - `max_pool_size` (optional): The maximum size limit for
-            the connection pool.
+          - `max_pool_size` (optional): The maximum number of connections
+            that the pool will open simultaneously. If this is set, operations
+            will block if there are `max_pool_size` outstanding connections
+            from the pool. Defaults to 100.
           - `network_timeout` (optional): timeout (in seconds) to use
             for socket operations - default is no timeout
           - `document_class` (optional): default class to use for

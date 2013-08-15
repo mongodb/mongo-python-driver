@@ -18,6 +18,12 @@ Important new features:
 .. warning:: SIGNIFICANT BEHAVIOR CHANGE in 2.5.2+. Previously, `max_pool_size`
   would limit only the idle sockets the pool would hold onto, not the
   number of open sockets. The default has also changed, from 10 to 100.
+  If you pass a value for ``max_pool_size`` make sure it is large enough for
+  the expected load. (Sockets are only opened when needed, so there is no cost
+  to having a ``max_pool_size`` larger than necessary. Err towards a larger
+  value.) If your application accepts the default, continue to do so.
+
+  See :ref:`connection-pooling` for more information.
 
 Changes in Version 2.5.2
 ------------------------

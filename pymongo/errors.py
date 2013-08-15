@@ -109,3 +109,13 @@ class UnsupportedOption(ConfigurationError):
 
     .. versionadded:: 2.0
     """
+
+
+class ExceededMaxWaiters(Exception):
+    """Raised when a thread tries to get a connection from a pool and
+    ``max_pool_size * waitQueueMultiple`` threads are already waiting.
+
+    .. versionadded:: 2.6
+    """
+    pass
+

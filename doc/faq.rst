@@ -17,14 +17,60 @@ How does connection pooling work in PyMongo?
 Every :class:`~pymongo.mongo_client.MongoClient` instance has a built-in
 connection pool. The pool begins with one open connection. If necessary to
 support concurrent access to MongoDB from multiple threads in your application,
-the client will open new connections on demand.
+the client opens new connections on demand.
 
 By default, there is no thread-affinity for connections.
 
-The size of the connection pool is capped at ``max_pool_size`` (default 100).
-When a thread in your application begins an operation on MongoDB, if no
-connections are available and the pool has reach its maximum, the thread
-blocks waiting for a connection to be returned to the pool by another thread.
+In versions before 2.6, the default ``max_pool_size`` was 10, and it did not
+actually bound the number of open connections; it only determined the number
+of connections that would be kept open when no longer in use.
+
+Starting with PyMongo 2.6, the size of the connection pool is capped at
+``max_pool_size``, which now defaults to 100. When a thread in your application
+begins an operation on MongoDB, if all other connections are in use and the
+pool has reached its maximum, the thread pauses, waiting for a connection to
+be returned to the pool by another thread.
+
+The default configuration for a :class:`~pymongo.mongo_client.MongoClient`
+works for most applications::
+
+    client = MongoClient(host, port)
+
+Create this client **once** when your program starts up, and reuse it for all
+operations. It is a common mistake to create a new client for each request,
+which is very inefficient.
+
+To support extremely high numbers of concurrent MongoDB operations within one
+process, increase ``max_pool_size``::
+
+    client = MongoClient(host, port, max_pool_size=200)
+
+... or make it unbounded::
+
+    client = MongoClient(host, port, max_pool_size=None)
+
+By default, any number of threads are allowed to wait for connections to become
+available, and they can wait any length of time. Override ``waitQueueMultiple``
+to cap the number of waiting threads. E.g., to keep the number of waiters less
+than or equal to 500::
+
+    client = MongoClient(host, port, max_pool_size=50, waitQueueMultiple=10)
+
+When 500 threads are waiting for a socket, the 501st that needs a connection
+raises :exc:`~pymongo.errors.ExceededMaxWaiters`. Use this option to
+bound the amount of queueing in your application during a load spike, at the
+cost of additional exceptions.
+
+Once the pool reaches its max size, additional threads are allowed to wait
+indefinitely for connections to become available, unless you set
+``waitQueueTimeoutMS``::
+
+    client = MongoClient(host, port, waitQueueTimeoutMS=100)
+
+A thread that waits more than 100ms (in this example) for a connection raises
+:exc:`~pymongo.errors.ConnectionFailure`. Use this option if it is more
+important to bound the duration of operations during a load spike than it is to
+complete every operation.
 
 When :meth:`~pymongo.mongo_client.MongoClient.disconnect` is called by any thread,
 all sockets are closed.

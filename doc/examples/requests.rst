@@ -94,3 +94,17 @@ the previous example more terse:
   2
   >>> client.in_request() # request automatically ended
   False
+
+Requests And ``max_pool_size``
+------------------------------
+
+A thread in a request retains exclusive access to a socket until its request
+ends or the thread dies; thus, applications in which more than 100 threads are
+in requests at once should disable the ``max_pool_size`` option::
+
+    client = MongoClient(host, port, max_pool_size=None)
+
+Failure to increase or disable ``max_pool_size`` in such an application can
+leave threads forever waiting for sockets.
+
+See :ref:`connection-pooling`

@@ -35,6 +35,8 @@ try:
 except ImportError:
     have_gevent = False
 
+from pymongo.errors import ExceededMaxWaiters
+
 
 # Do we have to work around http://bugs.python.org/issue1868?
 issue1868 = (sys.version_info[:3] <= (2, 7, 0))
@@ -242,10 +244,6 @@ class DummySemaphore(object):
 
     def release(self):
         pass
-
-
-class ExceededMaxWaiters(Exception):
-    pass
 
 
 class MaxWaitersBoundedSemaphore(object):
