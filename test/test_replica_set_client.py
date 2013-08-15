@@ -206,7 +206,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         self.assertEqual(c.primary, self.primary)
         self.assertEqual(c.hosts, self.hosts)
         self.assertEqual(c.arbiters, self.arbiters)
-        self.assertEqual(c.max_pool_size, 10)
+        self.assertEqual(c.max_pool_size, 100)
         self.assertEqual(c.document_class, dict)
         self.assertEqual(c.tz_aware, False)
 
