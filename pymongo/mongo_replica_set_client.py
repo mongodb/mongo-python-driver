@@ -487,7 +487,7 @@ class MongoReplicaSetClient(common.BaseObject):
     """Connection to a MongoDB replica set.
     """
 
-    def __init__(self, hosts_or_uri=None, max_pool_size=10,
+    def __init__(self, hosts_or_uri=None, max_pool_size=100,
                  document_class=dict, tz_aware=False, _connect=True, **kwargs):
         """Create a new connection to a MongoDB replica set.
 
