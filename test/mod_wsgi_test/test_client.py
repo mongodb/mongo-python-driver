@@ -31,19 +31,23 @@ def parse_args():
 
     # Should be enough that any connection leak will exhaust available file
     # descriptors.
-    parser.add_option("-n", "--nrequests", type="int",
+    parser.add_option(
+        "-n", "--nrequests", type="int",
         dest="nrequests", default=50 * 1000,
         help="Number of times to GET the URL, in total")
 
-    parser.add_option("-t", "--nthreads", type="int",
+    parser.add_option(
+        "-t", "--nthreads", type="int",
         dest="nthreads", default=100,
         help="Number of threads with mode 'parallel'")
 
-    parser.add_option("-q", "--quiet",
+    parser.add_option(
+        "-q", "--quiet",
         action="store_false", dest="verbose", default=True,
         help="Don't print status messages to stdout")
 
-    parser.add_option("-c", "--continue",
+    parser.add_option(
+        "-c", "--continue",
         action="store_true", dest="continue_", default=False,
         help="Continue after HTTP errors")
 
@@ -65,7 +69,7 @@ def get(url):
 
 
 class URLGetterThread(threading.Thread):
-    # class variables
+    # Class variables.
     counter_lock = threading.Lock()
     counter = 0
 
@@ -107,12 +111,11 @@ def main(options, mode, url):
         nrequests_per_thread = options.nrequests / options.nthreads
 
         if options.verbose:
-            print ('Getting %s %s times total in %s threads, '
+            print (
+                'Getting %s %s times total in %s threads, '
                 '%s times per thread' % (
-                url, nrequests_per_thread * options.nthreads, options.nthreads,
-                nrequests_per_thread
-            ))
-
+                    url, nrequests_per_thread * options.nthreads,
+                    options.nthreads, nrequests_per_thread))
         threads = [
             URLGetterThread(options, url, nrequests_per_thread)
             for _ in range(options.nthreads)
