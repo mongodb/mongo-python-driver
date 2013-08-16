@@ -32,6 +32,8 @@ try:
     except ImportError:
         from gevent.coros import BoundedSemaphore as GeventBoundedSemaphore
 
+    from gevent.greenlet import SpawnedLink
+
 except ImportError:
     have_gevent = False
 
@@ -119,23 +121,22 @@ class GreenletIdent(Ident):
             # This is a Gevent Greenlet (capital G), which inherits from
             # greenlet and provides a 'link' method to detect when the
             # Greenlet exits.
-            from gevent.greenlet import SpawnedLink
-            sl = SpawnedLink(callback)
-            current.rawlink(sl)
-            self._refs[tid] = sl
-            #current.link(callback)
-            #self._refs[tid] = None
+            link = SpawnedLink(callback)
+            current.rawlink(link)
+            self._refs[tid] = link
         else:
             # This is a non-Gevent greenlet (small g), or it's the main
             # greenlet.
             self._refs[tid] = weakref.ref(current, callback)
 
-    def unwatch(self):
+    def unwatch(self, tid):
         """ call unlink if link before """
-        sl = self._refs.pop(self.get(), None)
+        link = self._refs.pop(tid, None)
         current = greenlet.getcurrent()
-        if hasattr(current, 'link'):
-            current.unlink(sl)
+        if hasattr(current, 'unlink'):
+            # This is a Gevent enhanced Greenlet. Remove the SpawnedLink we
+            # linked to it.
+            current.unlink(link)
             
             
 def create_ident(use_greenlets):
