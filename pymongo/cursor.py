@@ -139,10 +139,6 @@ class Cursor(object):
         # it anytime we change __limit.
         self.__empty = False
 
-        self.__timeout = timeout
-        self.__tailable = tailable
-        self.__await_data = tailable and await_data
-        self.__partial = partial
         self.__snapshot = snapshot
         self.__ordering = sort and helpers._index_document(sort) or None
         self.__max_scan = max_scan
@@ -157,12 +153,23 @@ class Cursor(object):
         self.__tz_aware = collection.database.connection.tz_aware
         self.__must_use_master = _must_use_master
         self.__uuid_subtype = _uuid_subtype or collection.uuid_subtype
-        self.__query_flags = 0
 
         self.__data = deque(_first_batch or [])
         self.__connection_id = None
         self.__retrieved = 0
         self.__killed = False
+
+        self.__query_flags = 0
+        if tailable:
+            self.__query_flags |= _QUERY_OPTIONS["tailable_cursor"]
+        if not timeout:
+            self.__query_flags |= _QUERY_OPTIONS["no_timeout"]
+        if tailable and await_data:
+            self.__query_flags |= _QUERY_OPTIONS["await_data"]
+        if exhaust:
+            self.__query_flags |= _QUERY_OPTIONS["exhaust"]
+        if partial:
+            self.__query_flags |= _QUERY_OPTIONS["partial"]
 
         # this is for passing network_timeout through if it's specified
         # need to use kwargs as None is a legit value for network_timeout
@@ -213,11 +220,10 @@ class Cursor(object):
         self.__check_not_command_cursor('clone')
         clone = Cursor(self.__collection)
         values_to_clone = ("spec", "fields", "skip", "limit",
-                           "timeout", "snapshot", "tailable",
-                           "ordering", "explain", "hint", "batch_size",
-                           "max_scan", "as_class",  "slave_okay", "await_data",
-                           "partial", "manipulate", "read_preference",
-                           "tag_sets", "secondary_acceptable_latency_ms",
+                           "snapshot", "ordering", "explain", "hint",
+                           "batch_size", "max_scan", "as_class", "slave_okay",
+                           "manipulate", "read_preference", "tag_sets",
+                           "secondary_acceptable_latency_ms",
                            "must_use_master", "uuid_subtype", "query_flags",
                            "kwargs")
         data = dict((k, v) for k, v in self.__dict__.iteritems()
@@ -335,20 +341,10 @@ class Cursor(object):
         """Get the query options string to use for this query.
         """
         options = self.__query_flags
-        if self.__tailable:
-            options |= _QUERY_OPTIONS["tailable_cursor"]
         if (self.__slave_okay
             or self.__read_preference != ReadPreference.PRIMARY
         ):
             options |= _QUERY_OPTIONS["slave_okay"]
-        if not self.__timeout:
-            options |= _QUERY_OPTIONS["no_timeout"]
-        if self.__await_data:
-            options |= _QUERY_OPTIONS["await_data"]
-        if self.__exhaust:
-            options |= _QUERY_OPTIONS["exhaust"]
-        if self.__partial:
-            options |= _QUERY_OPTIONS["partial"]
         return options
 
     def __check_okay_to_chain(self):
@@ -374,6 +370,8 @@ class Cursor(object):
             raise TypeError("mask must be an int")
         self.__check_okay_to_chain()
 
+        if mask & _QUERY_OPTIONS["slave_okay"]:
+            self.__slave_okay = True
         if mask & _QUERY_OPTIONS["exhaust"]:
             if self.__limit:
                 raise InvalidOperation("Can't use limit and exhaust together.")
@@ -395,6 +393,8 @@ class Cursor(object):
             raise TypeError("mask must be an int")
         self.__check_okay_to_chain()
 
+        if mask & _QUERY_OPTIONS["slave_okay"]:
+            self.__slave_okay = False
         if mask & _QUERY_OPTIONS["exhaust"]:
             self.__exhaust = False
 
@@ -807,7 +807,7 @@ class Cursor(object):
         self.__id = response["cursor_id"]
 
         # starting from doesn't get set on getmore's for tailable cursors
-        if not self.__tailable:
+        if not (self.__query_flags & _QUERY_OPTIONS["tailable_cursor"]):
             assert response["starting_from"] == self.__retrieved, (
                 "Result batch started from %s, expected %s" % (
                     response['starting_from'], self.__retrieved))
