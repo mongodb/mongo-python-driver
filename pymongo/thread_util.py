@@ -119,14 +119,25 @@ class GreenletIdent(Ident):
             # This is a Gevent Greenlet (capital G), which inherits from
             # greenlet and provides a 'link' method to detect when the
             # Greenlet exits.
-            current.link(callback)
-            self._refs[tid] = None
+            from gevent.greenlet import SpawnedLink
+            sl = SpawnedLink(callback)
+            current.rawlink(sl)
+            self._refs[tid] = sl
+            #current.link(callback)
+            #self._refs[tid] = None
         else:
             # This is a non-Gevent greenlet (small g), or it's the main
             # greenlet.
             self._refs[tid] = weakref.ref(current, callback)
 
-
+    def unwatch(self):
+        """ call unlink if link before """
+        sl = self._refs.pop(self.get(), None)
+        current = greenlet.getcurrent()
+        if hasattr(current, 'link'):
+            current.unlink(sl)
+            
+            
 def create_ident(use_greenlets):
     if use_greenlets:
         return GreenletIdent()
