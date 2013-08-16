@@ -56,7 +56,7 @@ class TestIdent(unittest.TestCase):
 
         ids = set([ident.get()])
         unwatched_id = []
-        done = set([ident.get()]) # Start with main thread's / greenlet's id
+        done = set([ident.get()])  # Start with main thread's / greenlet's id.
         died = set()
 
         class Watched(object):
