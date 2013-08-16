@@ -44,7 +44,7 @@ class Connection(MongoClient):
     """Connection to MongoDB.
     """
 
-    def __init__(self, host=None, port=None, max_pool_size=10,
+    def __init__(self, host=None, port=None, max_pool_size=None,
                  network_timeout=None, document_class=dict,
                  tz_aware=False, _connect=True, **kwargs):
         """Create a new connection to a single MongoDB instance at *host:port*.
@@ -87,7 +87,7 @@ class Connection(MongoClient):
           - `max_pool_size` (optional): The maximum number of connections
             that the pool will open simultaneously. If this is set, operations
             will block if there are `max_pool_size` outstanding connections
-            from the pool. Defaults to 100.
+            from the pool. By default the pool size is unlimited.
           - `network_timeout` (optional): timeout (in seconds) to use
             for socket operations - default is no timeout
           - `document_class` (optional): default class to use for

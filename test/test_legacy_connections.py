@@ -34,6 +34,7 @@ class TestConnection(unittest.TestCase):
     def test_connection(self):
         c = Connection(host, port)
         self.assertTrue(c.auto_start_request)
+        self.assertEqual(None, c.max_pool_size)
         self.assertFalse(c.slave_okay)
         self.assertFalse(c.safe)
         self.assertEqual({}, c.get_lasterror_options())
@@ -67,6 +68,7 @@ class TestReplicaSetConnection(TestReplicaSetClientBase):
     def test_replica_set_connection(self):
         c = ReplicaSetConnection(pair, replicaSet=self.name)
         self.assertTrue(c.auto_start_request)
+        self.assertEqual(None, c.max_pool_size)
         self.assertFalse(c.slave_okay)
         self.assertFalse(c.safe)
         self.assertEqual({}, c.get_lasterror_options())

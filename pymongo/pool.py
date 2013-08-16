@@ -177,7 +177,7 @@ class Pool:
         # Count the number of calls to start_request() per thread or greenlet
         self._request_counter = thread_util.Counter(use_greenlets)
 
-        if self.wait_queue_multiple is None:
+        if self.wait_queue_multiple is None or self.max_size is None:
             max_waiters = None
         else:
             max_waiters = self.max_size * self.wait_queue_multiple

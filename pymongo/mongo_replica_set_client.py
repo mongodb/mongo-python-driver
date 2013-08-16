@@ -634,8 +634,8 @@ class MongoReplicaSetClient(common.BaseObject):
         self.__index_cache = {}
         self.__auth_credentials = {}
 
-        self.__max_pool_size = common.validate_positive_integer(
-                                        'max_pool_size', max_pool_size)
+        self.__max_pool_size = common.validate_positive_integer_or_none(
+            'max_pool_size', max_pool_size)
         self.__tz_aware = common.validate_boolean('tz_aware', tz_aware)
         self.__document_class = document_class
         self.__monitor = None
