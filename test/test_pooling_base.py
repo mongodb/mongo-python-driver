@@ -1018,7 +1018,7 @@ class _TestMaxOpenSockets(_TestPoolingBase):
     def test_wait_queue_timeout(self):
         wait_queue_timeout = 2  # Seconds
         pool = self.get_pool_with_wait_queue_timeout(wait_queue_timeout)
-        pool.get_socket()
+        sock_info = pool.get_socket()
         start = time.time()
         self.assertRaises(ConnectionFailure, pool.get_socket)
         duration = time.time() - start
@@ -1026,6 +1026,8 @@ class _TestMaxOpenSockets(_TestPoolingBase):
             abs(wait_queue_timeout - duration) < 1,
             "Waited %.2f seconds for a socket, expected %f" % (
                 duration, wait_queue_timeout))
+
+        sock_info.close()
 
     def test_blocking(self):
         # Verify get_socket() with no wait_queue_timeout blocks forever.
@@ -1046,6 +1048,7 @@ class _TestMaxOpenSockets(_TestPoolingBase):
 
         self.assertEqual(t.state, 'sock')
         self.assertEqual(t.sock, s1)
+        s1.close()
 
 
 class _TestWaitQueueMultiple(_TestPoolingBase):
@@ -1064,8 +1067,8 @@ class _TestWaitQueueMultiple(_TestPoolingBase):
         pool = self.get_pool_with_wait_queue_multiple(3)
 
         # Reach max_size sockets.
-        pool.get_socket()
-        pool.get_socket()
+        socket_info_0 = pool.get_socket()
+        socket_info_1 = pool.get_socket()
 
         # Reach max_size * wait_queue_multiple waiters.
         threads = []
@@ -1079,6 +1082,8 @@ class _TestWaitQueueMultiple(_TestPoolingBase):
             self.assertEqual(t.state, 'get_socket')
 
         self.assertRaises(ExceededMaxWaiters, pool.get_socket)
+        socket_info_0.close()
+        socket_info_1.close()
 
     def test_wait_queue_multiple_unset(self):
         pool = self.get_pool_with_wait_queue_multiple(None)
@@ -1094,6 +1099,9 @@ class _TestWaitQueueMultiple(_TestPoolingBase):
         self.sleep(1)
         for t in threads:
             self.assertEqual(t.state, 'get_socket')
+
+        for socket_info in socks:
+            socket_info.close()
 
 
 class _TestPoolSocketSharing(_TestPoolingBase):
