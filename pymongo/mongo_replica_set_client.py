@@ -1235,7 +1235,7 @@ class MongoReplicaSetClient(common.BaseObject):
                 self.__monitor.start()
             # Minor race condition. It's possible that two (or more)
             # threads could call monitor.start() consecutively. Just pass.
-            except RunTimeError:
+            except RuntimeError:
                 pass
         if sync:
             rs_state = self.__rs_state
