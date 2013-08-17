@@ -32,6 +32,7 @@ from pymongo.errors import (InvalidOperation,
                             OperationFailure)
 from test import version
 from test.test_client import get_client
+from test.utils import is_mongos
 
 
 class TestCursor(unittest.TestCase):
@@ -602,16 +603,17 @@ class TestCursor(unittest.TestCase):
         cursor.remove_option(32)
         self.assertEqual(2, cursor._Cursor__query_options())
 
-        # Exhaust
-        cursor = self.db.test.find(exhaust=True)
-        self.assertEqual(64, cursor._Cursor__query_options())
-        cursor2 = self.db.test.find().add_option(64)
-        self.assertEqual(cursor._Cursor__query_options(),
-                         cursor2._Cursor__query_options())
-        self.assertTrue(cursor._Cursor__exhaust)
-        cursor.remove_option(64)
-        self.assertEqual(0, cursor._Cursor__query_options())
-        self.assertFalse(cursor._Cursor__exhaust)
+        # Exhaust - which mongos doesn't support
+        if not is_mongos(self.db.connection):
+            cursor = self.db.test.find(exhaust=True)
+            self.assertEqual(64, cursor._Cursor__query_options())
+            cursor2 = self.db.test.find().add_option(64)
+            self.assertEqual(cursor._Cursor__query_options(),
+                             cursor2._Cursor__query_options())
+            self.assertTrue(cursor._Cursor__exhaust)
+            cursor.remove_option(64)
+            self.assertEqual(0, cursor._Cursor__query_options())
+            self.assertFalse(cursor._Cursor__exhaust)
 
         # Partial
         cursor = self.db.test.find(partial=True)

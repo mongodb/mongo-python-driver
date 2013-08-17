@@ -293,7 +293,9 @@ class TestDatabase(unittest.TestCase):
             {'$where': 'sleep(100); return true'}, network_timeout=0.001)
 
         self.assertEqual(1, cursor.count())
-        db.command('eval', 'sleep(100)', network_timeout=0.001)
+        # mongos doesn't support the eval command
+        if not is_mongos(self.client):
+            db.command('eval', 'sleep(100)', network_timeout=0.001)
 
     def test_last_status(self):
         db = self.client.pymongo_test

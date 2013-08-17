@@ -831,6 +831,9 @@ class TestCollection(unittest.TestCase):
         #   1. The return value is None or [None] as appropriate.
         #   2. _id is not set on the passed-in document object.
         #   3. _id is not sent to server.
+        if not version.at_least(self.db.connection, (2, 0)):
+            raise SkipTest('Need at least MongoDB 2.0')
+
         collection_name = 'test_insert_manipulate_false'
         try:
             self.db.drop_collection(collection_name)
@@ -1922,11 +1925,14 @@ class TestCollection(unittest.TestCase):
         c.insert({'_id': 1, 'i': 1})
 
         # Test that we raise DuplicateKeyError when appropriate.
-        c.ensure_index('i', unique=True)
-        self.assertRaises(DuplicateKeyError,
-                          c.find_and_modify, query={'i': 1, 'j': 1},
-                          update={'$set': {'k': 1}}, upsert=True)
-        c.drop_indexes()
+        # MongoDB doesn't have a code field for DuplicateKeyError
+        # from commands before 2.2.
+        if version.at_least(self.db.connection, (2, 2)):
+            c.ensure_index('i', unique=True)
+            self.assertRaises(DuplicateKeyError,
+                              c.find_and_modify, query={'i': 1, 'j': 1},
+                              update={'$set': {'k': 1}}, upsert=True)
+            c.drop_indexes()
 
         # Test correct findAndModify
         self.assertEqual({'_id': 1, 'i': 1},
@@ -1962,20 +1968,23 @@ class TestCollection(unittest.TestCase):
                          c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
                                            new=True, fields={'i': 1}))
 
-        # Test with full_response=True (version > 2.4.2)
-        result = c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
-                                           new=True, upsert=True, 
-                                           full_response=True,
-                                           fields={'i': 1})
-        self.assertEqual({'_id': 1, 'i': 5}, result["value"])
-        self.assertEqual(True, result["lastErrorObject"]["updatedExisting"])
-        
-        result = c.find_and_modify({'_id': 2}, {'$inc': {'i': 1}},
-                                           new=True, upsert=True, 
-                                           full_response=True,
-                                           fields={'i': 1})
-        self.assertEqual({'_id': 2, 'i': 1}, result["value"])
-        self.assertEqual(False, result["lastErrorObject"]["updatedExisting"])
+        # Test with full_response=True
+        # No lastErrorObject from mongos until 2.0
+        if (not is_mongos(self.db.connection) or
+            version.at_least(self.db.connection, (2, 0))):
+            result = c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
+                                               new=True, upsert=True,
+                                               full_response=True,
+                                               fields={'i': 1})
+            self.assertEqual({'_id': 1, 'i': 5}, result["value"])
+            self.assertEqual(True, result["lastErrorObject"]["updatedExisting"])
+
+            result = c.find_and_modify({'_id': 2}, {'$inc': {'i': 1}},
+                                               new=True, upsert=True,
+                                               full_response=True,
+                                               fields={'i': 1})
+            self.assertEqual({'_id': 2, 'i': 1}, result["value"])
+            self.assertEqual(False, result["lastErrorObject"]["updatedExisting"])
 
         class ExtendedDict(dict):
             pass
