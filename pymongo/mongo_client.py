@@ -300,10 +300,10 @@ class MongoClient(common.BaseObject):
                                      % ', '.join(ssl_kwarg_keys))
 
         if self.__ssl_cert_reqs and not self.__ssl_ca_certs:
-                raise ConfigurationError("If `ssl_cert_reqs` is not "
-                                         "`ssl.CERT_NONE` then you must "
-                                         "include `ssl_ca_certs` to be able "
-                                         "to validate the server.")
+            raise ConfigurationError("If `ssl_cert_reqs` is not "
+                                     "`ssl.CERT_NONE` then you must "
+                                     "include `ssl_ca_certs` to be able "
+                                     "to validate the server.")
 
         if ssl_kwarg_keys and self.__use_ssl is None:
             # ssl options imply ssl = True
