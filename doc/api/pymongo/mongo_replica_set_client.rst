@@ -26,6 +26,7 @@
       .. autoattribute:: document_class
       .. autoattribute:: tz_aware
       .. autoattribute:: max_bson_size
+      .. autoattribute:: max_message_size
       .. autoattribute:: auto_start_request
       .. autoattribute:: read_preference
       .. autoattribute:: tag_sets

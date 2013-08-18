@@ -1090,9 +1090,9 @@ class Collection(common.BaseObject):
             for doc in cursor:
                 print doc
 
-        .. versionadded:: 2.3
         .. versionchanged:: 2.6
            Added cursor support.
+        .. versionadded:: 2.3
 
         .. _aggregate command:
             http://docs.mongodb.org/manual/applications/aggregation

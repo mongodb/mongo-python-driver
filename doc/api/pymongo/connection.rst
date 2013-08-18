@@ -26,6 +26,7 @@
       .. autoattribute:: document_class
       .. autoattribute:: tz_aware
       .. autoattribute:: max_bson_size
+      .. autoattribute:: max_message_size
       .. autoattribute:: read_preference
       .. autoattribute:: tag_sets
       .. autoattribute:: secondary_acceptable_latency_ms
