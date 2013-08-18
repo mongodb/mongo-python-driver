@@ -1091,7 +1091,7 @@ class Collection(common.BaseObject):
                 print doc
 
         .. versionadded:: 2.3
-        .. versionchanged:: 2.5.1+
+        .. versionchanged:: 2.6
            Added cursor support.
 
         .. _aggregate command:

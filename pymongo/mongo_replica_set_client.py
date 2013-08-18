@@ -941,12 +941,12 @@ class MongoReplicaSetClient(common.BaseObject):
         a blocked operation will raise :exc:`~pymongo.errors.ConnectionFailure`
         after a timeout. By default ``waitQueueTimeoutMS`` is not set.
 
-        .. warning:: SIGNIFICANT BEHAVIOR CHANGE in 2.5.1+. Previously, this
+        .. warning:: SIGNIFICANT BEHAVIOR CHANGE in 2.6. Previously, this
           parameter would limit only the idle sockets the pool would hold
           onto, not the number of open sockets. The default has also changed
           to 100.
 
-        .. versionchanged:: 2.5.1+
+        .. versionchanged:: 2.6
         """
         return self.__max_pool_size
 
