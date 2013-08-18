@@ -484,6 +484,7 @@ if _use_c:
     _dict_to_bson = _cbson._dict_to_bson
 
 
+
 def decode_all(data, as_class=dict,
                tz_aware=True, uuid_subtype=OLD_UUID_SUBTYPE):
     """Decode BSON data to multiple documents.
@@ -503,25 +504,17 @@ def decode_all(data, as_class=dict,
     docs = []
     position = 0
     end = len(data) - 1
-    try:
-        while position < end:
-            obj_size = struct.unpack("<i", data[position:position + 4])[0]
-            if len(data) - position < obj_size:
-                raise InvalidBSON("objsize too large")
-            if data[position + obj_size - 1:position + obj_size] != ZERO:
-                raise InvalidBSON("bad eoo")
-            elements = data[position + 4:position + obj_size - 1]
-            position += obj_size
-            docs.append(_elements_to_dict(elements, as_class,
-                                          tz_aware, uuid_subtype))
-        return docs
-    except InvalidBSON:
-        raise
-    except Exception:
-        # Change exception type to InvalidBSON but preserve traceback.
-        exc_type, exc_value, exc_tb = sys.exc_info()
-        raise InvalidBSON, str(exc_value), exc_tb
-
+    while position < end:
+        obj_size = struct.unpack("<i", data[position:position + 4])[0]
+        if len(data) - position < obj_size:
+            raise InvalidBSON("objsize too large")
+        if data[position + obj_size - 1:position + obj_size] != ZERO:
+            raise InvalidBSON("bad eoo")
+        elements = data[position + 4:position + obj_size - 1]
+        position += obj_size
+        docs.append(_elements_to_dict(elements, as_class,
+                                      tz_aware, uuid_subtype))
+    return docs
 if _use_c:
     decode_all = _cbson.decode_all
 
