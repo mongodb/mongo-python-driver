@@ -22,7 +22,7 @@ into `Mongo Extended JSON
 mode.  This lets you encode / decode BSON documents to JSON even when
 they use special BSON types.
 
-Example usage (serialization)::
+Example usage (serialization):
 
 .. doctest::
 
@@ -34,7 +34,7 @@ Example usage (serialization)::
    ...        {'bin': Binary("\x00\x01\x02\x03\x04")}])
    '[{"foo": [1, 2]}, {"bar": {"hello": "world"}}, {"code": {"$scope": {}, "$code": "function x() { return 1; }"}}, {"bin": {"$type": "00", "$binary": "AAECAwQ="}}]'
 
-Example usage (deserialization)::
+Example usage (deserialization):
 
 .. doctest::
 
