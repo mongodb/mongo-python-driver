@@ -122,6 +122,8 @@ class Cursor(object):
         self.__limit = limit
         self.__max_time_ms = None
         self.__batch_size = 0
+        self.__max = None
+        self.__min = None
 
         # Exhaust cursor support
         if self.__collection.database.connection.is_mongos and exhaust:
@@ -223,7 +225,7 @@ class Cursor(object):
         self.__check_not_command_cursor('clone')
         clone = Cursor(self.__collection)
         values_to_clone = ("spec", "fields", "skip", "limit", "max_time_ms",
-                           "comment",
+                           "comment", "max", "min",
                            "snapshot", "ordering", "explain", "hint",
                            "batch_size", "max_scan", "as_class", "slave_okay",
                            "manipulate", "read_preference", "tag_sets",
@@ -281,6 +283,10 @@ class Cursor(object):
             operators["$maxScan"] = self.__max_scan
         if self.__max_time_ms is not None:
             operators["$maxTimeMS"] = self.__max_time_ms
+        if self.__max:
+            operators["$max"] = self.__max
+        if self.__min:
+            operators["$min"] = self.__min
         # Only set $readPreference if it's something other than
         # PRIMARY to avoid problems with mongos versions that
         # don't support read preferences.
@@ -588,6 +594,38 @@ class Cursor(object):
         """
         self.__check_okay_to_chain()
         self.__max_scan = max_scan
+        return self
+
+    def max(self, spec):
+        """Adds `max` operator that specifies upper bound for specific index.
+
+        Raises TypeError if spec is not an intance of a dict.
+
+        :Parameters:
+          - `spec`: a dictionary specifying the exclusive upper bound for all
+            keys of a specific index in order.
+        """
+        if not isinstance(spec, dict):
+            raise TypeError("spec must be an instance of dict")
+
+        self.__check_okay_to_chain()
+        self.__max = spec
+        return self
+
+    def min(self, spec):
+        """Adds `min` operator that specifies lower bound for specific index.
+
+        Raises TypeError if spec is not an intance of a dict.
+
+        :Parameters:
+          - `spec`: a dictionary specifying the inclusive lower bound for all
+            keys of a specific index in order.
+        """
+        if not isinstance(spec, dict):
+            raise TypeError("spec must be an instance of dict")
+
+        self.__check_okay_to_chain()
+        self.__min = spec
         return self
 
     def sort(self, key_or_list, direction=None):

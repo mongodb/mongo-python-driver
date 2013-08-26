@@ -211,6 +211,40 @@ class TestCursor(unittest.TestCase):
             break
         self.assertRaises(InvalidOperation, a.limit, 5)
 
+    def test_max(self):
+        db = self.db
+        db.test.ensure_index([("j", ASCENDING)])
+
+        for j in range(10):
+            db.test.insert({"j": j})
+
+        cursor = db.test.find({"j": {"$exists": True}}).max({"j": 3})
+        self.assertEqual(len(list(cursor)), 3)
+
+        cursor = db.test.find({"j": {"$exists": True}}).max({"j": 10})
+        self.assertEqual(len(list(cursor)), 10)
+
+        cursor = db.test.find({"j": {"$exists": True}}).max({"j": 0})
+        self.assertEqual(len(list(cursor)), 0)
+        self.assertRaises(TypeError, db.test.find().max, 10)
+
+    def test_min(self):
+        db = self.db
+        db.test.ensure_index([("k", ASCENDING)])
+
+        for k in range(10):
+            db.test.insert({"k": k})
+
+        cursor = db.test.find({"k": {"$exists": True}}).min({"k": 3})
+        self.assertEqual(len(list(cursor)), 7)
+
+        cursor = db.test.find({"k": {"$exists": True}}).min({"k": 0})
+        self.assertEqual(len(list(cursor)), 10)
+
+        cursor = db.test.find({"k": {"$exists": True}}).min({"k": 10})
+        self.assertEqual(len(list(cursor)), 0)
+        self.assertRaises(TypeError, db.test.find().min, 10)
+
     def test_batch_size(self):
         db = self.db
         db.test.drop()
