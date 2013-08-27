@@ -104,7 +104,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         self.assertEqual(port, c.port)
 
         bad_host = "somedomainthatdoesntexist.org"
-        c = MongoClient(bad_host, port, connectTimeoutMS=1,_connect=False)
+        c = MongoClient(bad_host, port, connectTimeoutMS=1, _connect=False)
         self.assertRaises(ConnectionFailure, c.pymongo_test.test.find_one)
 
     def test_init_disconnected_with_auth(self):
