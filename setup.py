@@ -16,12 +16,12 @@ except ImportError:
     # PY3
     from configparser import SafeConfigParser
 
-# Don't force people to install distribute unless
+# Don't force people to install setuptools unless
 # we have to.
 try:
     from setuptools import setup, Feature
 except ImportError:
-    from distribute_setup import use_setuptools
+    from ez_setup import use_setuptools
     use_setuptools()
     from setuptools import setup, Feature
 

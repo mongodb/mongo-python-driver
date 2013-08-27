@@ -29,8 +29,8 @@ get an answer on the list.
 Installation
 ============
 
-If you have `distribute
-<http://packages.python.org/distribute/>`_ installed you
+If you have `setuptools
+<http://pythonhosted.org/setuptools/>`_ installed you
 should be able to do **easy_install pymongo** to install
 PyMongo. Otherwise you can download the project source and do **python
 setup.py install** to install.
