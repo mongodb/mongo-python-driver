@@ -28,10 +28,6 @@ from copy import deepcopy
 
 
 class TestDBRef(unittest.TestCase):
-
-    def setUp(self):
-        pass
-
     def test_creation(self):
         a = ObjectId()
         self.assertRaises(TypeError, DBRef)

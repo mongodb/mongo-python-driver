@@ -53,10 +53,6 @@ PY3 = sys.version_info[0] == 3
 
 
 class TestBSON(unittest.TestCase):
-
-    def setUp(self):
-        pass
-
     def test_basic_validation(self):
         self.assertRaises(TypeError, is_valid, 100)
         self.assertRaises(TypeError, is_valid, u"test")

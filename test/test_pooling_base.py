@@ -337,6 +337,7 @@ class _TestPoolingBase(object):
 
     def tearDown(self):
         self.c.close()
+        self.c = None
         if self.use_greenlets:
             # Undo patch
             reload(socket)

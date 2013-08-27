@@ -212,11 +212,11 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
             secondary_acceptable_latency_ms=1000*1000)
 
     def tearDown(self):
-        self.c.close()
-
         # We create a lot of collections and indexes in these tests, so drop
-        # the database
-        self._get_client().drop_database('pymongo_test')
+        # the database.
+        self.c.drop_database('pymongo_test')
+        self.c.close()
+        self.c = None
         super(TestCommandAndReadPreference, self).tearDown()
 
     def executed_on_which_member(self, client, fn, *args, **kwargs):

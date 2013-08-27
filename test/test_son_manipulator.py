@@ -35,6 +35,9 @@ class TestSONManipulator(unittest.TestCase):
     def setUp(self):
         self.db = Database(get_client(), "pymongo_test")
 
+    def tearDown(self):
+        self.db = None
+
     def test_basic(self):
         manip = SONManipulator()
         collection = self.db.test

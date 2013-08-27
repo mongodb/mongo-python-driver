@@ -22,10 +22,6 @@ from bson.code import Code
 
 
 class TestCode(unittest.TestCase):
-
-    def setUp(self):
-        pass
-
     def test_types(self):
         self.assertRaises(TypeError, Code, 5)
         self.assertRaises(TypeError, Code, None)

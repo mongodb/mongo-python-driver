@@ -50,6 +50,9 @@ class TestDatabase(unittest.TestCase):
     def setUp(self):
         self.client = get_client()
 
+    def tearDown(self):
+        self.client = None
+
     def test_name(self):
         self.assertRaises(TypeError, Database, self.client, 4)
         self.assertRaises(InvalidName, Database, self.client, "my db")

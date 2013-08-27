@@ -80,6 +80,9 @@ class TestGridfs(unittest.TestCase):
         self.fs = gridfs.GridFS(self.db)
         self.alt = gridfs.GridFS(self.db, "alt")
 
+    def tearDown(self):
+        self.db = self.fs = self.alt = None
+
     def test_gridfs(self):
         self.assertRaises(TypeError, gridfs.GridFS, "foo")
         self.assertRaises(TypeError, gridfs.GridFS, self.db, 5)

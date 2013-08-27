@@ -28,10 +28,6 @@ from bson.son import SON
 
 
 class TestSON(unittest.TestCase):
-
-    def setUp(self):
-        pass
-
     def test_ordered_dict(self):
         a1 = SON()
         a1["hello"] = "world"

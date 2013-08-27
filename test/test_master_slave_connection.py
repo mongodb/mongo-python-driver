@@ -69,6 +69,7 @@ class TestMasterSlaveConnection(unittest.TestCase, TestRequestMixin):
             # that make this fail
             pass
 
+        self.master = self.slaves = self.db = self.client = None
         super(TestMasterSlaveConnection, self).tearDown()
 
     def test_types(self):

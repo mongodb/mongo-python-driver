@@ -37,10 +37,6 @@ from test.test_client import get_client
 
 
 class TestBinary(unittest.TestCase):
-
-    def setUp(self):
-        pass
-
     def test_binary(self):
         a_string = "hello world"
         a_binary = Binary(b("hello world"))

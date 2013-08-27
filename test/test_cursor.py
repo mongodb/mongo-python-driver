@@ -40,6 +40,9 @@ class TestCursor(unittest.TestCase):
     def setUp(self):
         self.db = Database(get_client(), "pymongo_test")
 
+    def tearDown(self):
+        self.db = None
+
     def test_explain(self):
         a = self.db.test.find()
         b = a.explain()

@@ -46,6 +46,9 @@ class TestGridFile(unittest.TestCase):
         self.db.fs.files.remove({})
         self.db.fs.chunks.remove({})
 
+    def tearDown(self):
+        self.db = None
+
     def test_basic(self):
         f = GridIn(self.db.fs, filename="test")
         f.write(b("hello world"))

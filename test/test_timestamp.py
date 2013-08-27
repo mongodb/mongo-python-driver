@@ -26,10 +26,6 @@ from bson.tz_util import utc
 
 
 class TestTimestamp(unittest.TestCase):
-
-    def setUp(self):
-        pass
-
     def test_timestamp(self):
         t = Timestamp(123, 456)
         self.assertEqual(t.time, 123)

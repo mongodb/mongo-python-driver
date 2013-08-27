@@ -38,10 +38,6 @@ def oid(x):
 
 
 class TestObjectId(unittest.TestCase):
-
-    def setUp(self):
-        pass
-
     def test_creation(self):
         self.assertRaises(TypeError, ObjectId, 4)
         self.assertRaises(TypeError, ObjectId, 175.0)

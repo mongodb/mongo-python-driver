@@ -217,6 +217,7 @@ class TestAuthURIOptions(unittest.TestCase):
         self.client.pymongo_test.system.users.remove()
         self.client.admin.system.users.remove()
         self.client.admin.logout()
+        self.client = None
 
     def test_uri_options(self):
         # Test default to admin
@@ -289,6 +290,7 @@ class TestDelegatedAuth(unittest.TestCase):
         self.client.pymongo_test2.foo.remove()
         self.client.admin.system.users.remove()
         self.client.admin.logout()
+        self.client = None
 
     def test_delegated_auth(self):
         self.client.admin.authenticate('admin', 'pass')

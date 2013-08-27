@@ -48,6 +48,9 @@ class TestJsonUtil(unittest.TestCase):
 
         self.db = get_client().pymongo_test
 
+    def tearDown(self):
+        self.db = None
+
     def round_tripped(self, doc):
         return json_util.loads(json_util.dumps(doc))
 
