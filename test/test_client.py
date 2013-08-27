@@ -46,7 +46,8 @@ from test.utils import (assertRaisesExactly,
                         remove_all_users,
                         server_is_master_with_slave,
                         server_started_with_auth,
-                        TestRequestMixin)
+                        TestRequestMixin,
+                        TestLazyConnectMixin)
 
 
 def get_client(*args, **kwargs):
@@ -876,6 +877,12 @@ with client.start_request() as request:
 
         # OperationFailure doesn't affect the request socket
         self.assertEqual(old_sock_info, pool._get_request_state())
+
+
+class TestClientLazyConnect(unittest.TestCase, TestLazyConnectMixin):
+    # Test concurrent access to a lazily-connecting client.
+    def _get_client(self, **kwargs):
+        return get_client(**kwargs)
 
 
 if __name__ == "__main__":

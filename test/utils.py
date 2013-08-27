@@ -14,6 +14,8 @@
 
 """Utilities for testing pymongo
 """
+
+import functools
 import threading
 
 from pymongo import MongoClient, MongoReplicaSetClient
@@ -339,3 +341,103 @@ class TestRequestMixin(object):
         for pool in pools:
             self.assertFalse(pool.in_request())
             self.assertDifferentSock(pool)
+
+
+class TestLazyConnectMixin(object):
+    """Inherit from this class and from unittest.TestCase, and override
+    _get_client(self, **kwargs), for testing clients with _connect=False.
+    """
+    ntrials = 10
+    nthreads = 10
+
+    def run_threads(self, collection, target):
+        """Run a target function in many threads.
+
+        target is a function taking a Collection and an integer.
+        """
+        threads = [
+            threading.Thread(target=functools.partial(target, collection, i))
+            for i in range(self.nthreads)]
+
+        for t in threads:
+            t.start()
+
+        for t in threads:
+            t.join(10)
+
+    def trial(self, reset, target, test):
+        collection = self._get_client().pymongo_test.test
+
+        for i in range(self.ntrials):
+            reset(collection)
+            lazy_client = self._get_client(_connect=False)
+            lazy_collection = lazy_client.pymongo_test.test
+            self.run_threads(lazy_collection, target)
+            test(collection)
+
+    def test_insert(self):
+        def reset(collection):
+            collection.drop()
+
+        def insert(collection, _):
+            collection.insert({})
+
+        def test(collection):
+            self.assertEqual(self.nthreads, collection.count())
+
+        self.trial(reset, insert, test)
+
+    def test_save(self):
+        def reset(collection):
+            collection.drop()
+
+        def save(collection, _):
+            collection.save({})
+
+        def test(collection):
+            self.assertEqual(self.nthreads, collection.count())
+
+        self.trial(reset, save, test)
+
+    def test_update(self):
+        def reset(collection):
+            collection.drop()
+            collection.insert([{'i': 0}])
+
+        # Update doc 10 times.
+        def update(collection, i):
+            collection.update({}, {'$inc': {'i': 1}})
+
+        def test(collection):
+            self.assertEqual(self.nthreads, collection.find_one()['i'])
+
+        self.trial(reset, update, test)
+
+    def test_remove(self):
+        def reset(collection):
+            collection.drop()
+            collection.insert([{'i': i} for i in range(self.nthreads)])
+
+        def remove(collection, i):
+            collection.remove({'i': i})
+
+        def test(collection):
+            self.assertEqual(0, collection.count())
+
+        self.trial(reset, remove, test)
+
+    def test_find_one(self):
+        results = []
+
+        def reset(collection):
+            collection.drop()
+            collection.insert({})
+            results[:] = []
+
+        def find_one(collection, _):
+            results.append(collection.find_one())
+
+        def test(collection):
+            self.assertEqual(self.nthreads, len(results))
+
+        self.trial(reset, find_one, test)

@@ -49,7 +49,8 @@ from test import version, port, pair
 from test.utils import (
     delay, assertReadFrom, assertReadFromAll, read_from_which_host,
     remove_all_users, assertRaisesExactly, TestRequestMixin, one,
-    server_started_with_auth, pools_from_rs_client, get_pool)
+    server_started_with_auth, pools_from_rs_client, get_pool,
+    TestLazyConnectMixin)
 
 
 class TestReplicaSetClientAgainstStandalone(unittest.TestCase):
@@ -93,6 +94,8 @@ class TestReplicaSetClientBase(unittest.TestCase):
             ]
         else:
             raise SkipTest("Not connected to a replica set")
+
+        super(TestReplicaSetClientBase, self).setUp()
 
     def _get_client(self, **kwargs):
         return MongoReplicaSetClient(pair,
@@ -1138,6 +1141,12 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         assertReadFromAll(
             self, client, list(client.secondaries) + [client.primary],
             ReadPreference.NEAREST, None, latency)
+
+
+class TestReplicaSetClientLazyConnect(
+        TestReplicaSetClientBase, TestLazyConnectMixin):
+    # Test concurrent access to a lazily-connecting RS client.
+    pass
 
 
 if __name__ == "__main__":
