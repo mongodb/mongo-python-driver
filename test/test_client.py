@@ -78,19 +78,24 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         MongoClient.PORT = port
         self.assertTrue(MongoClient())
 
+    def assertIsInstance(self, obj, cls, msg=None):
+        """Backport from Python 2.7."""
+        if not isinstance(obj, cls):
+            standardMsg = '%r is not an instance of %r' % (obj, cls)
+            self.fail(self._formatMessage(msg, standardMsg))
+
     def test_init_disconnected(self):
         c = MongoClient(host, port, _connect=False)
 
-        # No errors
-        c.is_primary
-        c.is_mongos
-        c.max_pool_size
-        c.use_greenlets
-        c.nodes
-        c.auto_start_request
-        c.get_document_class()
-        c.tz_aware
-        c.max_bson_size
+        self.assertIsInstance(c.is_primary, bool)
+        self.assertIsInstance(c.is_mongos, bool)
+        self.assertIsInstance(c.max_pool_size, int)
+        self.assertIsInstance(c.use_greenlets, bool)
+        self.assertIsInstance(c.nodes, set)
+        self.assertIsInstance(c.auto_start_request, bool)
+        self.assertEqual(dict, c.get_document_class())
+        self.assertIsInstance(c.tz_aware, bool)
+        self.assertIsInstance(c.max_bson_size, int)
         self.assertEqual(None, c.host)
         self.assertEqual(None, c.port)
 

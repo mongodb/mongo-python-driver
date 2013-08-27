@@ -111,20 +111,25 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
 
         self.fail(msg)
 
+    def assertIsInstance(self, obj, cls, msg=None):
+        """Backport from Python 2.7."""
+        if not isinstance(obj, cls):
+            standardMsg = '%r is not an instance of %r' % (obj, cls)
+            self.fail(self._formatMessage(msg, standardMsg))
+
     def test_init_disconnected(self):
         c = self._get_client(_connect=False)
 
-        # No errors
-        c.seeds
-        c.hosts
-        c.arbiters
-        c.is_mongos
-        c.max_pool_size
-        c.use_greenlets
-        c.get_document_class
-        c.tz_aware
-        c.max_bson_size
-        c.auto_start_request
+        self.assertIsInstance(c.is_mongos, bool)
+        self.assertIsInstance(c.max_pool_size, int)
+        self.assertIsInstance(c.use_greenlets, bool)
+        self.assertIsInstance(c.auto_start_request, bool)
+        self.assertIsInstance(c.tz_aware, bool)
+        self.assertIsInstance(c.max_bson_size, int)
+        self.assertIsInstance(c.seeds, set)
+        self.assertIsInstance(c.hosts, frozenset)
+        self.assertIsInstance(c.arbiters, frozenset)
+        self.assertEqual(dict, c.get_document_class())
         self.assertFalse(c.primary)
         self.assertFalse(c.secondaries)
 
