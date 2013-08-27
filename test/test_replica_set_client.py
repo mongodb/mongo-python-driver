@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Test the mongo_replica_set_client module."""
+"""Test the replica_set_connection module."""
 
 # TODO: anywhere we wait for refresh in tests, consider just refreshing w/ sync
 
@@ -50,7 +50,7 @@ from test.utils import (
     delay, assertReadFrom, assertReadFromAll, read_from_which_host,
     remove_all_users, assertRaisesExactly, TestRequestMixin, one,
     server_started_with_auth, pools_from_rs_client, get_pool,
-    _TestLazyConnectMixin)
+    TestLazyConnectMixin)
 
 
 class TestReplicaSetClientAgainstStandalone(unittest.TestCase):
@@ -460,14 +460,9 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         self.assertTrue("pymongo_test2" in c.database_names())
         self.assertEqual("bar", c.pymongo_test2.test.find_one()["foo"])
 
-        if version.at_least(c, (1, 3, 3, 1)):
-
+        if (version.at_least(c, (1, 3, 3, 1))
+            and not version.at_least(c, (2, 5, 3, -1))):
             c.drop_database("pymongo_test1")
-            if "pymongo_test1" in c.database_names():
-                raise SkipTest("SERVER-2329?")
-
-            c.admin.add_user("admin", "password")
-            c.admin.authenticate("admin", "password")
 
             c.pymongo_test.add_user("mike", "password")
 
@@ -484,12 +479,8 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
             c.copy_database("pymongo_test", "pymongo_test1",
                             username="mike", password="password")
             self.assertTrue("pymongo_test1" in c.database_names())
-            res = c.pymongo_test1.test.find_one(_must_use_master=True)
-            self.assertEqual("bar", res["foo"])
-
-            # Cleanup
-            c.pymongo_test.remove_user("mike")
-            c.admin.remove_user("admin")
+            time.sleep(2)
+            self.assertEqual("bar", c.pymongo_test1.test.find_one()["foo"])
         c.close()
 
     def test_get_default_database(self):
@@ -666,41 +657,21 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         no_timeout.pymongo_test.drop_collection("test")
         no_timeout.pymongo_test.test.insert({"x": 1})
 
-        # A $where clause that takes a second longer than the timeout.
-        query = {'$where': delay(1 + timeout_sec)}
-        no_timeout.pymongo_test.test.find_one(query)  # No error.
+        # A $where clause that takes a second longer than the timeout
+        where_func = delay(1 + timeout_sec)
 
-        try:
-            timeout.pymongo_test.test.find_one(query)
-        except AutoReconnect, e:
-            self.assertEqual('%s: timed out' % pair, e.args[0])
-        else:
-            self.fail('RS client should have raised timeout error')
+        def get_x(db):
+            doc = db.test.find().where(where_func).next()
+            return doc["x"]
+        self.assertEqual(1, get_x(no_timeout.pymongo_test))
+        self.assertRaises(ConnectionFailure, get_x, timeout.pymongo_test)
 
-        timeout.pymongo_test.test.find_one(query, network_timeout=None)
-
-        try:
-            no_timeout.pymongo_test.test.find_one(query, network_timeout=0.1)
-        except AutoReconnect, e:
-            self.assertEqual('%s: timed out' % pair, e.args[0])
-        else:
-            self.fail('RS client should have raised timeout error')
-
-        try:
-            timeout.pymongo_test.test.find_one(
-                query,
-                read_preference=ReadPreference.SECONDARY)
-        except AutoReconnect, e:
-            # Like 'No replica set secondary available for query with
-            # ReadPreference SECONDARY. host:27018: timed out,
-            # host:27019: timed out'.
-            self.assertTrue(
-                str(e).startswith('No replica set secondary available'))
-
-            self.assertTrue('timed out' in str(e))
-        else:
-            self.fail('RS client should have raised timeout error')
-
+        def get_x_timeout(db, t):
+            doc = db.test.find(network_timeout=t).where(where_func).next()
+            return doc["x"]
+        self.assertEqual(1, get_x_timeout(timeout.pymongo_test, None))
+        self.assertRaises(ConnectionFailure, get_x_timeout,
+                          no_timeout.pymongo_test, 0.1)
         no_timeout.close()
         timeout.close()
 
@@ -1172,10 +1143,9 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
             ReadPreference.NEAREST, None, latency)
 
 
-# Test concurrent access to a lazily-connecting RS client.
 class TestReplicaSetClientLazyConnect(
-        TestReplicaSetClientBase,
-        _TestLazyConnectMixin):
+        TestReplicaSetClientBase, TestLazyConnectMixin):
+    # Test concurrent access to a lazily-connecting RS client.
     pass
 
 

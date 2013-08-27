@@ -15,6 +15,7 @@
 """Utilities for testing pymongo
 """
 
+import functools
 import threading
 
 from pymongo import MongoClient, MongoReplicaSetClient
@@ -22,15 +23,6 @@ from pymongo.errors import AutoReconnect
 from pymongo.pool import NO_REQUEST, NO_SOCKET_YET, SocketInfo
 from test import host, port, version
 
-
-# No functools in Python 2.4
-def my_partial(f, *args, **kwargs):
-    def _f(*new_args, **new_kwargs):
-        final_kwargs = kwargs.copy()
-        final_kwargs.update(new_kwargs)
-        return f(*(args + new_args), **final_kwargs)
-
-    return _f
 
 def one(s):
     """Get one element of a set"""
@@ -351,7 +343,7 @@ class TestRequestMixin(object):
             self.assertDifferentSock(pool)
 
 
-class _TestLazyConnectMixin(object):
+class TestLazyConnectMixin(object):
     """Inherit from this class and from unittest.TestCase, and override
     _get_client(self, **kwargs), for testing clients with _connect=False.
     """
@@ -364,15 +356,14 @@ class _TestLazyConnectMixin(object):
         target is a function taking a Collection and an integer.
         """
         threads = [
-            threading.Thread(target=my_partial(target, collection, i))
+            threading.Thread(target=functools.partial(target, collection, i))
             for i in range(self.nthreads)]
 
         for t in threads:
             t.start()
 
         for t in threads:
-            t.join(30)
-            assert not t.isAlive()
+            t.join(10)
 
     def trial(self, reset, target, test):
         collection = self._get_client().pymongo_test.test
@@ -450,19 +441,3 @@ class _TestLazyConnectMixin(object):
             self.assertEqual(self.nthreads, len(results))
 
         self.trial(reset, find_one, test)
-
-    def test_max_bson_size(self):
-        # Client should have sane defaults before connecting, and should update
-        # its configuration once connected.
-        c = self._get_client(_connect=False)
-        self.assertEqual(16 * (1024 ** 2), c.max_bson_size)
-        self.assertEqual(2 * c.max_bson_size, c.max_message_size)
-
-        # Make the client connect, so that it sets its max_bson_size and
-        # max_message_size attributes.
-        ismaster = c.db.command('ismaster')
-        self.assertEqual(ismaster['maxBsonObjectSize'], c.max_bson_size)
-        if 'maxMessageSizeBytes' in ismaster:
-            self.assertEqual(
-                ismaster['maxMessageSizeBytes'],
-                c.max_message_size)

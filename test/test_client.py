@@ -47,7 +47,7 @@ from test.utils import (assertRaisesExactly,
                         server_is_master_with_slave,
                         server_started_with_auth,
                         TestRequestMixin,
-                        _TestLazyConnectMixin)
+                        TestLazyConnectMixin)
 
 
 def get_client(*args, **kwargs):
@@ -245,37 +245,31 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         self.assertTrue("pymongo_test2" in c.database_names())
         self.assertEqual("bar", c.pymongo_test2.test.find_one()["foo"])
 
-        # See SERVER-6427 for mongos
-        if version.at_least(c, (1, 3, 3, 1)) and not is_mongos(c):
-
+        if (version.at_least(c, (1, 3, 3, 1))
+            and not version.at_least(c, (2, 5, 3, -1))):
             c.drop_database("pymongo_test1")
-            if "pymongo_test1" in c.database_names():
-                raise SkipTest("SERVER-2329?")
-
-            c.admin.add_user("admin", "password")
-            c.admin.authenticate("admin", "password")
 
             c.pymongo_test.add_user("mike", "password")
 
             self.assertRaises(OperationFailure, c.copy_database,
                               "pymongo_test", "pymongo_test1",
                               username="foo", password="bar")
-            self.assertFalse("pymongo_test1" in c.database_names())
+            if not server_is_master_with_slave(c):
+                self.assertFalse("pymongo_test1" in c.database_names())
 
             self.assertRaises(OperationFailure, c.copy_database,
                               "pymongo_test", "pymongo_test1",
                               username="mike", password="bar")
-            self.assertFalse("pymongo_test1" in c.database_names())
 
-            c.copy_database("pymongo_test", "pymongo_test1",
-                            username="mike", password="password")
-            self.assertTrue("pymongo_test1" in c.database_names())
-            self.assertEqual("bar", c.pymongo_test1.test.find_one()["foo"])
+            if not server_is_master_with_slave(c):
+                self.assertFalse("pymongo_test1" in c.database_names())
 
-            # Cleanup
-            c.pymongo_test.remove_user("mike")
-            c.admin.remove_user("admin")
-            c.disconnect()
+            if not is_mongos(c):
+                # See SERVER-6427
+                c.copy_database("pymongo_test", "pymongo_test1",
+                                username="mike", password="password")
+                self.assertTrue("pymongo_test1" in c.database_names())
+                self.assertEqual("bar", c.pymongo_test1.test.find_one()["foo"])
 
     def test_iteration(self):
         client = MongoClient(host, port)
@@ -885,7 +879,8 @@ with client.start_request() as request:
         self.assertEqual(old_sock_info, pool._get_request_state())
 
 
-class TestClientLazyConnect(unittest.TestCase, _TestLazyConnectMixin):
+class TestClientLazyConnect(unittest.TestCase, TestLazyConnectMixin):
+    # Test concurrent access to a lazily-connecting client.
     def _get_client(self, **kwargs):
         return get_client(**kwargs)
 
