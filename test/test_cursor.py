@@ -19,29 +19,98 @@ import random
 import re
 import sys
 import unittest
+from struct import pack
 sys.path[0:0] = [""]
 
 from nose.plugins.skip import SkipTest
 
+from bson import BSON
 from bson.code import Code
 from bson.son import SON
 from pymongo import (ASCENDING,
                      DESCENDING)
 from pymongo.database import Database
 from pymongo.errors import (InvalidOperation,
-                            OperationFailure)
+                            OperationFailure,
+                            ExecutionTimeout)
+from pymongo.helpers import (_unpack_response,
+                             _check_command_response)
 from test import version
 from test.test_client import get_client
-from test.utils import is_mongos
+from test.utils import is_mongos, get_command_line
 
 
 class TestCursor(unittest.TestCase):
 
     def setUp(self):
-        self.db = Database(get_client(), "pymongo_test")
+        self.client = get_client()
+        self.db = Database(self.client, "pymongo_test")
 
     def tearDown(self):
         self.db = None
+
+    def test_max_time_ms(self):
+        if not version.at_least(self.db.connection, (2, 5, 3, -1)):
+            raise SkipTest("MaxTimeMS requires MongoDB >= 2.5.3")
+
+        max_time_ms_response = {
+            '$err': 'operation exceeded time limit',
+            'code': 50
+        }
+        bson_response = BSON.encode(max_time_ms_response)
+        response_flags = pack("<i", 2)
+        cursor_id = pack("<q", 0)
+        starting_from = pack("<i", 0)
+        number_returned = pack("<i", 1)
+        op_reply = (response_flags + cursor_id + starting_from +
+                    number_returned + bson_response)
+        self.assertRaises(ExecutionTimeout, _unpack_response,
+                          op_reply)
+
+        command_response = {
+            'ok': 0,
+            'errmsg': 'operation exceeded time limit',
+            'code': 50
+        }
+        self.assertRaises(ExecutionTimeout, _check_command_response,
+                          command_response, None)
+
+        db = self.db
+        db.pymongo_test.drop()
+        coll = db.pymongo_test
+        self.assertRaises(TypeError, coll.find().max_time_ms, 'foo')
+        coll.insert({"amalia": 1})
+        coll.insert({"amalia": 2})
+
+        coll.find().max_time_ms(None)
+        coll.find().max_time_ms(1L)
+
+        cursor = coll.find().max_time_ms(999)
+        self.assertEqual(999, cursor._Cursor__max_time_ms)
+        cursor = coll.find().max_time_ms(10).max_time_ms(1000)
+        self.assertEqual(1000, cursor._Cursor__max_time_ms)
+
+        cursor = coll.find().max_time_ms(999)
+        c2 = cursor.clone()
+        self.assertEqual(999, c2._Cursor__max_time_ms)
+        self.assertTrue("$maxTimeMS" in cursor._Cursor__query_spec())
+        self.assertTrue("$maxTimeMS" in c2._Cursor__query_spec())
+
+        self.assertTrue(coll.find_one(max_time_ms=1000))
+
+        reducer = Code("""function(obj, prev){prev.count++;}""")
+        coll.group(key={"amalia": 1}, condition={}, initial={"count": 0},
+                   reduce=reducer, maxTimeMS=1000)
+
+        if "enableTestCommands=1" in get_command_line(self.client):
+            self.client.admin.command("configureFailPoint",
+                                      "maxTimeAlwaysTimeOut",
+                                      mode="alwaysOn")
+            self.assertRaises(ExecutionTimeout,
+                              coll.find_one, max_time_ms=1)
+            self.client.admin.command("configureFailPoint",
+                                      "maxTimeAlwaysTimeOut",
+                                      mode="off")
 
     def test_explain(self):
         a = self.db.test.find()

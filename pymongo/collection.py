@@ -571,6 +571,11 @@ class Collection(common.BaseObject):
           - `**kwargs` (optional): any additional keyword arguments
             are the same as the arguments to :meth:`find`.
 
+          - `max_time_ms` (optional): a value for max_time_ms may be
+            specified as part of `**kwargs`, e.g.
+
+              >>> find_one(max_time_ms=100)
+
         .. versionchanged:: 1.7
            Allow passing any of the arguments that are valid for
            :meth:`find`.
@@ -582,7 +587,11 @@ class Collection(common.BaseObject):
         if spec_or_id is not None and not isinstance(spec_or_id, dict):
             spec_or_id = {"_id": spec_or_id}
 
-        for result in self.find(spec_or_id, *args, **kwargs).limit(-1):
+        max_time_ms = kwargs.pop("max_time_ms", None)
+        cursor = self.find(spec_or_id,
+                           *args, **kwargs).max_time_ms(max_time_ms)
+
+        for result in cursor.limit(-1):
             return result
         return None
 
@@ -1110,7 +1119,7 @@ class Collection(common.BaseObject):
 
     # TODO key and condition ought to be optional, but deprecation
     # could be painful as argument order would have to change.
-    def group(self, key, condition, initial, reduce, finalize=None):
+    def group(self, key, condition, initial, reduce, finalize=None, **kwargs):
         """Perform a query similar to an SQL *group by* operation.
 
         Returns an array of grouped items.
@@ -1173,7 +1182,8 @@ class Collection(common.BaseObject):
                                        secondary_acceptable_latency_ms=(
                                            self.secondary_acceptable_latency_ms),
                                        slave_okay=self.slave_okay,
-                                       _use_master=use_master)["retval"]
+                                       _use_master=use_master,
+                                       **kwargs)["retval"]
 
     def rename(self, new_name, **kwargs):
         """Rename this collection.
