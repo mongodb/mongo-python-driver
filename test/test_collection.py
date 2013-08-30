@@ -1003,7 +1003,8 @@ class TestCollection(unittest.TestCase):
             self.fail()
         except OperationFailure, e:
             if version.at_least(self.db.connection, (1, 3)):
-                self.assertEqual(10147, e.code)
+                if e.code not in (10147, 17009):
+                    self.fail()
 
     def test_index_on_subfield(self):
         db = self.db
@@ -1889,14 +1890,19 @@ class TestCollection(unittest.TestCase):
         ref_only = {'ref': {'$ref': 'collection'}}
         id_only = {'ref': {'$id': ObjectId()}}
 
-        # Force insert of ref without $id.
-        c.insert(ref_only, check_keys=False)
-        self.assertEqual(DBRef('collection', id=None), c.find_one()['ref'])
-        c.drop()
+        # Starting with MongoDB 2.5.2 this is no longer possible
+        # from insert, update, or findAndModify.
+        if not version.at_least(self.db.connection, (2, 5, 2)):
+            # Force insert of ref without $id.
+            c.insert(ref_only, check_keys=False)
+            self.assertEqual(DBRef('collection', id=None),
+                             c.find_one()['ref'])
 
-        # DBRef without $ref is decoded as normal subdocument.
-        c.insert(id_only, check_keys=False)
-        self.assertEqual(id_only, c.find_one())
+            c.drop()
+
+            # DBRef without $ref is decoded as normal subdocument.
+            c.insert(id_only, check_keys=False)
+            self.assertEqual(id_only, c.find_one())
 
     def test_as_class(self):
         c = self.db.test
