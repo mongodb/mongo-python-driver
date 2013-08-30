@@ -34,7 +34,7 @@ from bson.py3compat import b, binary_type
 from bson.son import SON
 from nose.plugins.skip import SkipTest
 from test.test_client import get_client
-
+from pymongo.mongo_client import MongoClient
 
 class TestBinary(unittest.TestCase):
     def test_binary(self):
@@ -239,6 +239,14 @@ class TestBinary(unittest.TestCase):
         for d in coll.find():
             self.assertNotEqual(d['newguid'], d['newguidstring'])
         client.pymongo_test.drop_collection('csharp_uuid')
+
+    def test_uri_to_uuid(self):
+        if not should_test_uuid:
+            raise SkipTest("No uuid module")
+
+        uri = "mongodb://foo/?uuidrepresentation=csharpLegacy"
+        client = MongoClient(uri, _connect=False)
+        self.assertEqual(client.pymongo_test.test.uuid_subtype, CSHARP_LEGACY)
 
     def test_uuid_queries(self):
         if not should_test_uuid:

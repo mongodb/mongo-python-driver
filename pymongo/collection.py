@@ -16,7 +16,6 @@
 
 import warnings
 
-from bson.binary import ALL_UUID_SUBTYPES, OLD_UUID_SUBTYPE
 from bson.code import Code
 from bson.son import SON
 from pymongo import (common,
@@ -88,6 +87,7 @@ class Collection(common.BaseObject):
             secondary_acceptable_latency_ms=(
                 database.secondary_acceptable_latency_ms),
             safe=database.safe,
+            uuidrepresentation=database.uuid_subtype,
             **database.write_concern)
 
         if not isinstance(name, basestring):
@@ -109,7 +109,6 @@ class Collection(common.BaseObject):
 
         self.__database = database
         self.__name = unicode(name)
-        self.__uuid_subtype = OLD_UUID_SUBTYPE
         self.__full_name = u"%s.%s" % (self.__database.name, self.__name)
         if create or kwargs:
             self.__create(kwargs)
@@ -180,24 +179,6 @@ class Collection(common.BaseObject):
            ``database`` is now a property rather than a method.
         """
         return self.__database
-
-    def __get_uuid_subtype(self):
-        return self.__uuid_subtype
-
-    def __set_uuid_subtype(self, subtype):
-        if subtype not in ALL_UUID_SUBTYPES:
-            raise ConfigurationError("Not a valid setting for uuid_subtype.")
-        self.__uuid_subtype = subtype
-
-    uuid_subtype = property(__get_uuid_subtype, __set_uuid_subtype,
-                            doc="""This attribute specifies which BSON Binary
-                            subtype is used when storing UUIDs. Historically
-                            UUIDs have been stored as BSON Binary subtype 3.
-                            This attribute is used to switch to the newer BSON
-                            binary subtype 4. It can also be used to force
-                            legacy byte order and subtype compatibility with
-                            the Java and C# drivers. See the
-                            :mod:`bson.binary` module for all options.""")
 
     def save(self, to_save, manipulate=True,
              safe=None, check_keys=True, **kwargs):
@@ -358,7 +339,7 @@ class Collection(common.BaseObject):
         safe, options = self._get_write_mode(safe, **kwargs)
         message._do_batched_insert(self.__full_name, docs,
                                    check_keys, safe, options,
-                                   continue_on_error, self.__uuid_subtype,
+                                   continue_on_error, self.uuid_subtype,
                                    self.database.connection)
 
         ids = [doc.get("_id", None) for doc in docs]
@@ -484,7 +465,7 @@ class Collection(common.BaseObject):
         return self.__database.connection._send_message(
             message.update(self.__full_name, upsert, multi,
                            spec, document, safe, options,
-                           check_keys, self.__uuid_subtype), safe)
+                           check_keys, self.uuid_subtype), safe)
 
     def drop(self):
         """Alias for :meth:`~pymongo.database.Database.drop_collection`.
@@ -568,7 +549,7 @@ class Collection(common.BaseObject):
         safe, options = self._get_write_mode(safe, **kwargs)
         return self.__database.connection._send_message(
             message.delete(self.__full_name, spec_or_id, safe,
-                           options, self.__uuid_subtype), safe)
+                           options, self.uuid_subtype), safe)
 
     def find_one(self, spec_or_id=None, *args, **kwargs):
         """Get a single document from the database.
@@ -1186,7 +1167,7 @@ class Collection(common.BaseObject):
         use_master = not self.slave_okay and not self.read_preference
 
         return self.__database.command("group", group,
-                                       uuid_subtype=self.__uuid_subtype,
+                                       uuid_subtype=self.uuid_subtype,
                                        read_preference=self.read_preference,
                                        tag_sets=self.tag_sets,
                                        secondary_acceptable_latency_ms=(
@@ -1297,7 +1278,7 @@ class Collection(common.BaseObject):
             must_use_master = True
 
         response = self.__database.command("mapreduce", self.__name,
-                                           uuid_subtype=self.__uuid_subtype,
+                                           uuid_subtype=self.uuid_subtype,
                                            map=map, reduce=reduce,
                                            read_preference=self.read_preference,
                                            tag_sets=self.tag_sets,
@@ -1353,7 +1334,7 @@ class Collection(common.BaseObject):
         use_master = not self.slave_okay and not self.read_preference
 
         res = self.__database.command("mapreduce", self.__name,
-                                      uuid_subtype=self.__uuid_subtype,
+                                      uuid_subtype=self.uuid_subtype,
                                       read_preference=self.read_preference,
                                       tag_sets=self.tag_sets,
                                       secondary_acceptable_latency_ms=(
@@ -1453,7 +1434,7 @@ class Collection(common.BaseObject):
 
         out = self.__database.command("findAndModify", self.__name,
                                       allowable_errors=[no_obj_error],
-                                      uuid_subtype=self.__uuid_subtype,
+                                      uuid_subtype=self.uuid_subtype,
                                       **kwargs)
 
         if not out['ok']:

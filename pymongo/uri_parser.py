@@ -22,6 +22,7 @@ from pymongo.errors import (ConfigurationError,
                             InvalidURI,
                             UnsupportedOption)
 
+
 SCHEME = 'mongodb://'
 SCHEME_LEN = len(SCHEME)
 DEFAULT_PORT = 27017
@@ -157,6 +158,32 @@ def validate_options(opts):
     return normalized
 
 
+def _parse_options(opts, delim):
+    """Helper method for split_options which creates the options dict.
+    Also handles the creation of a list of dicts for the URI tag_sets/
+    readpreferencetags portion."""
+    options = {}
+    for opt in opts.split(delim):
+        key, val = opt.split("=")
+        if key.lower() == 'readpreferencetags':
+            options.setdefault('readpreferencetags', []).append(val)
+        else:
+            options[key] = val
+    if 'readpreferencetags' in options:
+        new_tag_sets = []
+        for tag_set in options['readpreferencetags']:
+            tag_dict = {}
+            try:
+                for tag in tag_set.split(","):
+                    tag_parts = tag.split(":")
+                    tag_dict[tag_parts[0]] = tag_parts[1]
+                new_tag_sets.append(tag_dict)
+            except IndexError:
+                new_tag_sets.append({})
+        options['readpreferencetags'] = new_tag_sets
+    return options
+
+
 def split_options(opts):
     """Takes the options portion of a MongoDB URI, validates each option
     and returns the options in a dictionary. The option names will be returned
@@ -171,11 +198,11 @@ def split_options(opts):
         if and_idx >= 0 and semi_idx >= 0:
             raise InvalidURI("Can not mix '&' and ';' for option separators.")
         elif and_idx >= 0:
-            options = dict([kv.split("=") for kv in opts.split("&")])
+            options = _parse_options(opts, "&")
         elif semi_idx >= 0:
-            options = dict([kv.split("=") for kv in opts.split(";")])
+            options = _parse_options(opts, ";")
         elif opts.find("=") != -1:
-            options = dict([opts.split("=")])
+            options = _parse_options(opts, None)
         else:
             raise ValueError
     except ValueError:
@@ -298,4 +325,3 @@ if __name__ == '__main__':
     except (InvalidURI, UnsupportedOption), e:
         print e
     sys.exit(0)
-
