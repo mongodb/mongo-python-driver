@@ -65,3 +65,4 @@ The following is a list of people who have contributed to
 - Justin Patrin (reversefold)
 - Xiuming Chen (cxmcc)
 - Tyler Jones (thomascirca)
+- Amalia Hawkins (hawka)

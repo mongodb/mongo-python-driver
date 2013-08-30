@@ -32,6 +32,7 @@
       .. autoattribute:: tag_sets
       .. autoattribute:: secondary_acceptable_latency_ms
       .. autoattribute:: write_concern
+      .. autoattribute:: uuid_subtype
       .. automethod:: database_names
       .. automethod:: drop_database
       .. automethod:: copy_database(from_name, to_name[, from_host=None[, username=None[, password=None]]])
