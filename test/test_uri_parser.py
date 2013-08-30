@@ -28,6 +28,7 @@ from pymongo.uri_parser import (_partition,
                                 parse_uri)
 from pymongo.errors import ConfigurationError, InvalidURI
 from pymongo import ReadPreference
+from bson.binary import JAVA_LEGACY
 
 
 class TestURI(unittest.TestCase):
@@ -334,6 +335,50 @@ class TestURI(unittest.TestCase):
         self.assertEqual(res,
                          parse_uri("mongodb://user%40domain.com"
                                    "@localhost/foo?authMechanism=GSSAPI"))
+
+        res = copy.deepcopy(orig)
+        res['options'] = {'readpreference': ReadPreference.SECONDARY,
+                          'readpreferencetags': [
+                              {'dc': 'west', 'use': 'website'},
+                              {'dc': 'east', 'use': 'website'}]}
+        res['username'] = 'user@domain.com'
+        res['password'] = 'password'
+        res['database'] = 'foo'
+        self.assertEqual(res,
+                         parse_uri("mongodb://user%40domain.com:password"
+                                   "@localhost/foo?readpreference=secondary&"
+                                   "readpreferencetags=dc:west,use:website&"
+                                   "readpreferencetags=dc:east,use:website"))
+
+        res = copy.deepcopy(orig)
+        res['options'] = {'readpreference': ReadPreference.SECONDARY,
+                          'readpreferencetags': [
+                              {'dc': 'west', 'use': 'website'},
+                              {'dc': 'east', 'use': 'website'},
+                              {}]}
+        res['username'] = 'user@domain.com'
+        res['password'] = 'password'
+        res['database'] = 'foo'
+        self.assertEqual(res,
+                         parse_uri("mongodb://user%40domain.com:password"
+                                   "@localhost/foo?readpreference=secondary&"
+                                   "readpreferencetags=dc:west,use:website&"
+                                   "readpreferencetags=dc:east,use:website&"
+                                   "readpreferencetags="))
+
+        res = copy.deepcopy(orig)
+        res['options'] = {'uuidrepresentation': JAVA_LEGACY}
+        res['username'] = 'user@domain.com'
+        res['password'] = 'password'
+        res['database'] = 'foo'
+        self.assertEqual(res,
+                         parse_uri("mongodb://user%40domain.com:password"
+                                   "@localhost/foo?uuidrepresentation="
+                                   "javaLegacy"))
+
+        self.assertRaises(ConfigurationError, parse_uri,
+                          "mongodb://user%40domain.com:password"
+                          "@localhost/foo?uuidrepresentation=notAnOption")
 
     def test_parse_uri_unicode(self):
         # Ensure parsing a unicode returns option names that can be passed
