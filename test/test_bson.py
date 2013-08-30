@@ -207,6 +207,14 @@ class TestBSON(unittest.TestCase):
         qcheck.check_unittest(self, encode_then_decode,
                               qcheck.gen_mongo_dict(3))
 
+    def test_bad_dbref(self):
+        ref_only = {'ref': {'$ref': 'collection'}}
+        id_only = {'ref': {'$id': ObjectId()}}
+
+        self.assertEqual(DBRef('collection', id=None),
+                         BSON.encode(ref_only).decode()['ref'])
+        self.assertEqual(id_only, BSON.encode(id_only).decode())
+
     def test_bytes_as_keys(self):
         doc = {b("foo"): 'bar'}
         # Since `bytes` are stored as Binary you can't use them
