@@ -67,9 +67,9 @@ class Cursor(object):
                  timeout=True, snapshot=False, tailable=False, sort=None,
                  max_scan=None, as_class=None, slave_okay=False,
                  await_data=False, partial=False, manipulate=True,
-                 read_preference=ReadPreference.PRIMARY, tag_sets=[{}],
-                 secondary_acceptable_latency_ms=None, exhaust=False,
-                 _must_use_master=False, _uuid_subtype=None,
+                 read_preference=ReadPreference.PRIMARY,
+                 tag_sets=[{}], secondary_acceptable_latency_ms=None,
+                 exhaust=False, _must_use_master=False, _uuid_subtype=None,
                  _first_batch=None, _cursor_id=None,
                  **kwargs):
         """Create a new cursor.
@@ -120,6 +120,7 @@ class Cursor(object):
         self.__fields = fields
         self.__skip = skip
         self.__limit = limit
+        self.__max_time_ms = None
         self.__batch_size = 0
 
         # Exhaust cursor support
@@ -219,7 +220,7 @@ class Cursor(object):
     def __clone(self, deepcopy=True):
         self.__check_not_command_cursor('clone')
         clone = Cursor(self.__collection)
-        values_to_clone = ("spec", "fields", "skip", "limit",
+        values_to_clone = ("spec", "fields", "skip", "limit", "max_time_ms",
                            "snapshot", "ordering", "explain", "hint",
                            "batch_size", "max_scan", "as_class", "slave_okay",
                            "manipulate", "read_preference", "tag_sets",
@@ -273,6 +274,8 @@ class Cursor(object):
             operators["$snapshot"] = True
         if self.__max_scan:
             operators["$maxScan"] = self.__max_scan
+        if self.__max_time_ms is not None:
+            operators["$maxTimeMS"] = self.__max_time_ms
         # Only set $readPreference if it's something other than
         # PRIMARY to avoid problems with mongos versions that
         # don't support read preferences.
@@ -472,6 +475,26 @@ class Cursor(object):
         self.__skip = skip
         return self
 
+    def max_time_ms(self, max_time_ms):
+        """Specifies a time limit for a query operation. After the specified
+        time is exceeded, the operation will be aborted and an error will be
+        returned to the client. If max_time_ms is None, no limit is applied.
+
+        Raises :exc:`TypeError` if max_time_ms is not an instance of int
+        or None.
+        Raises :exc:`~pymongo.errors.ExecutionTimeout` if the operation exceeds
+        the time limit.
+
+        :Parameters:
+          - `max_time_ms`: the time limit after which the operation is aborted
+        """
+        if not isinstance(max_time_ms, (int, long)) and max_time_ms is not None:
+            raise TypeError("max_time_ms must be an int or None")
+        self.__check_okay_to_chain()
+
+        self.__max_time_ms = max_time_ms
+        return self
+
     def __getitem__(self, index):
         """Get a single document or a slice of documents from this cursor.
 
@@ -626,6 +649,8 @@ class Cursor(object):
         command['slave_okay'] = self.__slave_okay
         use_master = not self.__slave_okay and not self.__read_preference
         command['_use_master'] = use_master
+        if self.__max_time_ms is not None:
+            command["maxTimeMS"] = self.__max_time_ms
 
         if with_limit_and_skip:
             if self.__limit:
@@ -681,6 +706,8 @@ class Cursor(object):
         options['slave_okay'] = self.__slave_okay
         use_master = not self.__slave_okay and not self.__read_preference
         options['_use_master'] = use_master
+        if self.__max_time_ms is not None:
+            options['maxTimeMS'] = self.__max_time_ms
 
         database = self.__collection.database
         return database.command("distinct",

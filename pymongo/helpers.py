@@ -25,6 +25,7 @@ from bson.son import SON
 from pymongo.errors import (AutoReconnect,
                             DuplicateKeyError,
                             OperationFailure,
+                            ExecutionTimeout,
                             TimeoutError)
 
 
@@ -96,6 +97,9 @@ def _unpack_response(response, cursor_id=None, as_class=dict,
         error_object = bson.BSON(response[20:]).decode()
         if error_object["$err"].startswith("not master"):
             raise AutoReconnect(error_object["$err"])
+        elif error_object.get("code") == 50:
+            raise ExecutionTimeout(error_object["$err"],
+                                   error_object["code"])
         raise OperationFailure("database error: %s" %
                                error_object["$err"])
 
@@ -144,6 +148,8 @@ def _check_command_response(response, reset, msg="%s", allowable_errors=[]):
             # findAndModify with upsert can raise duplicate key error
             if code in (11000, 11001, 12582):
                 raise DuplicateKeyError(errmsg, code)
+            elif code == 50:
+                raise ExecutionTimeout(errmsg, code)
             raise OperationFailure(msg % errmsg, code)
 
 

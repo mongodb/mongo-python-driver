@@ -66,8 +66,19 @@ class OperationFailure(PyMongoError):
         PyMongoError.__init__(self, error)
 
 
+class ExecutionTimeout(OperationFailure):
+    """Raised when a database operation times out, exceeding the $maxTimeMS
+    set in the query or command option.
+
+    .. note:: Requires server version **>= 2.6.0**
+
+    .. versionadded:: 2.7
+    """
+
+
 class TimeoutError(OperationFailure):
-    """Raised when a database operation times out.
+    """Raised when a database operation times out (i.e. wtimeout expires)
+    before replication completes.
 
     .. versionadded:: 1.8
     """
