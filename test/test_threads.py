@@ -20,7 +20,8 @@ import traceback
 
 from nose.plugins.skip import SkipTest
 
-from test.utils import server_started_with_auth, joinall, RendezvousThread
+from test.utils import (joinall, remove_all_users,
+                        server_started_with_auth, RendezvousThread)
 from test.test_client import get_client
 from pymongo.mongo_client import MongoClient
 from pymongo.replica_set_connection import MongoReplicaSetClient
@@ -330,18 +331,23 @@ class BaseTestThreadsAuth(object):
         if not server_started_with_auth(client):
             raise SkipTest("Authentication is not enabled on server")
         self.client = client
-        self.client.admin.system.users.remove({})
-        self.client.admin.add_user('admin-user', 'password')
+        remove_all_users(self.client.admin)
+        self.client.admin.add_user('admin-user', 'password',
+                                   roles=['clusterAdmin',
+                                          'dbAdminAnyDatabase',
+                                          'readWriteAnyDatabase',
+                                          'userAdminAnyDatabase'])
         self.client.admin.authenticate("admin-user", "password")
-        self.client.auth_test.system.users.remove({})
-        self.client.auth_test.add_user("test-user", "password")
+        remove_all_users(self.client.auth_test)
+        self.client.auth_test.add_user("test-user", "password",
+                                       roles=['readWrite'])
 
     def tearDown(self):
         # Remove auth users from databases
         self.client.admin.authenticate("admin-user", "password")
-        self.client.admin.system.users.remove({})
-        self.client.auth_test.system.users.remove({})
+        remove_all_users(self.client.auth_test)
         self.client.drop_database('auth_test')
+        remove_all_users(self.client.admin)
         # Clear client reference so that RSC's monitor thread
         # dies.
         self.client = None

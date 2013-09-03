@@ -615,6 +615,50 @@ class Database(common.BaseObject):
     def next(self):
         raise TypeError("'Database' object is not iterable")
 
+    def _create_user(self, name, password, **kwargs):
+        """Uses v2 commands for creating a new user.
+        """
+        create_opts = {}
+        if password is not None:
+            create_opts["pwd"] = password
+        if "roles" not in kwargs:
+            create_opts["roles"] = []
+        create_opts["writeConcern"] = self._get_wc_override()
+        create_opts.update(kwargs)
+
+        self.command("createUser", name, **create_opts)
+
+    def _update_user(self, name, password, **kwargs):
+        """Uses v2 commands for updating a user.
+        """
+        update_opts = {}
+        if password is not None:
+            update_opts["pwd"] = password
+        update_opts["writeConcern"] = self._get_wc_override()
+        update_opts.update(kwargs)
+
+        self.command("updateUser", name, **update_opts)
+
+    def _legacy_add_user(self, name, password, read_only, **kwargs):
+        """Uses v1 system to add users, i.e. saving to system.users.
+        """
+        user = self.system.users.find_one({"user": name}) or {"user": name}
+        if password is not None:
+            user["pwd"] = auth._password_digest(name, password)
+        if read_only is not None:
+            user["readOnly"] = common.validate_boolean('read_only', read_only)
+        user.update(kwargs)
+
+        try:
+            self.system.users.save(user, **self._get_wc_override())
+        except OperationFailure, e:
+            # First admin user add fails gle in MongoDB >= 2.1.2
+            # See SERVER-4225 for more information.
+            if 'login' in str(e):
+                pass
+            else:
+                raise
+
     def add_user(self, name, password=None, read_only=None, **kwargs):
         """Create user `name` with password `password`.
 
@@ -644,22 +688,19 @@ class Database(common.BaseObject):
         .. versionadded:: 1.4
         """
 
-        user = self.system.users.find_one({"user": name}) or {"user": name}
-        if password is not None:
-            user["pwd"] = auth._password_digest(name, password)
-        if read_only is not None:
-            user["readOnly"] = common.validate_boolean('read_only', read_only)
-        user.update(kwargs)
-
         try:
-            self.system.users.save(user, **self._get_wc_override())
-        except OperationFailure, e:
-            # First admin user add fails gle in MongoDB >= 2.1.2
-            # See SERVER-4225 for more information.
-            if 'login' in str(e):
-                pass
-            else:
-                raise
+            uinfo = self.command("usersInfo", name)
+
+        except OperationFailure, exc:
+            if exc.code is None:
+                self._legacy_add_user(name, password, read_only, **kwargs)
+                return
+            raise
+
+        if uinfo["users"]:
+            self._update_user(name, password, **kwargs)
+        else:
+            self._create_user(name, password, **kwargs)
 
     def remove_user(self, name):
         """Remove user `name` from this :class:`Database`.
@@ -672,7 +713,16 @@ class Database(common.BaseObject):
 
         .. versionadded:: 1.4
         """
-        self.system.users.remove({"user": name}, **self._get_wc_override())
+
+        try:
+            self.command("removeUser", name,
+                         writeConcern=self._get_wc_override())
+        except OperationFailure, exc:
+            if exc.code is None:
+                self.system.users.remove({"user": name},
+                                         **self._get_wc_override())
+                return
+            raise
 
     def authenticate(self, name, password=None,
                      source=None, mechanism='MONGODB-CR', **kwargs):

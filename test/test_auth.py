@@ -201,8 +201,14 @@ class TestAuthURIOptions(unittest.TestCase):
             raise SkipTest('Authentication is not enabled on server')
         response = client.admin.command('ismaster')
         self.set_name = str(response.get('setName', ''))
-        client.pymongo_test.add_user('user', 'pass')
-        client.admin.add_user('admin', 'pass')
+        client.admin.add_user('admin', 'pass', roles=['userAdminAnyDatabase',
+                                                      'dbAdminAnyDatabase',
+                                                      'readWriteAnyDatabase',
+                                                      'clusterAdmin'])
+        client.admin.authenticate('admin', 'pass')
+        client.pymongo_test.add_user('user', 'pass',
+                                     roles=['userAdmin', 'readWrite'])
+
         if self.set_name:
             # GLE requires authentication.
             client.admin.authenticate('admin', 'pass')
@@ -214,8 +220,9 @@ class TestAuthURIOptions(unittest.TestCase):
 
     def tearDown(self):
         self.client.admin.authenticate('admin', 'pass')
-        self.client.pymongo_test.system.users.remove()
-        self.client.admin.system.users.remove()
+        self.client.pymongo_test.remove_user('user')
+        self.client.admin.remove_user('admin')
+        self.client.pymongo_test.logout()
         self.client.admin.logout()
         self.client = None
 
@@ -275,7 +282,9 @@ class TestDelegatedAuth(unittest.TestCase):
             raise SkipTest('Delegated authentication requires MongoDB >= 2.4.0')
         if not server_started_with_auth(self.client):
             raise SkipTest('Authentication is not enabled on server')
-        # Give admin all priviledges.
+        if version.at_least(self.client, (2, 5, 3, -1)):
+            raise SkipTest('Delegated auth does not exist in MongoDB >= 2.5.3')
+        # Give admin all privileges.
         self.client.admin.add_user('admin', 'pass',
                                    roles=['readAnyDatabase',
                                           'readWriteAnyDatabase',
@@ -285,10 +294,10 @@ class TestDelegatedAuth(unittest.TestCase):
 
     def tearDown(self):
         self.client.admin.authenticate('admin', 'pass')
-        self.client.pymongo_test.system.users.remove()
-        self.client.pymongo_test2.system.users.remove()
+        self.client.pymongo_test.remove_user('user')
+        self.client.pymongo_test2.remove_user('user')
         self.client.pymongo_test2.foo.remove()
-        self.client.admin.system.users.remove()
+        self.client.admin.remove_user('admin')
         self.client.admin.logout()
         self.client = None
 

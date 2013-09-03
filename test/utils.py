@@ -19,7 +19,7 @@ import threading
 from pymongo import MongoClient, MongoReplicaSetClient
 from pymongo.errors import AutoReconnect
 from pymongo.pool import NO_REQUEST, NO_SOCKET_YET, SocketInfo
-from test import host, port
+from test import host, port, version
 
 
 def one(s):
@@ -49,6 +49,13 @@ def drop_collections(db):
     for coll in db.collection_names():
         if not coll.startswith('system'):
             db.drop_collection(coll)
+
+def remove_all_users(db):
+    if version.at_least(db.connection, (2, 5, 3, -1)):
+        db.command({"removeUsersFromDatabase": 1})
+    else:
+        db.system.users.remove({})
+
 
 def joinall(threads):
     """Join threads with a 5-minute timeout, assert joins succeeded"""
