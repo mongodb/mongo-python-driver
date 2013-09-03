@@ -555,6 +555,9 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
     PyObject* client;
     PyObject* last_error_args;
     PyObject* result;
+    PyObject* max_bson_size_obj;
+    PyObject* max_message_size_obj;
+    PyObject* send_message_result;
     unsigned char check_keys;
     unsigned char safe;
     unsigned char continue_on_error;
@@ -578,24 +581,25 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
         options += 1;
     }
 
+    max_bson_size_obj = PyObject_GetAttrString(client, "max_bson_size");
 #if PY_MAJOR_VERSION >= 3
-    max_bson_size = PyLong_AsLong(
-        PyObject_GetAttrString(client, "max_bson_size"));
+    max_bson_size = PyLong_AsLong(max_bson_size_obj);
 #else
-    max_bson_size = PyInt_AsLong(
-        PyObject_GetAttrString(client, "max_bson_size"));
+    max_bson_size = PyInt_AsLong(max_bson_size_obj);
 #endif
+    Py_XDECREF(max_bson_size_obj);
     if (max_bson_size == -1) {
         PyMem_Free(collection_name);
         return NULL;
     }
+
+    max_message_size_obj = PyObject_GetAttrString(client, "max_message_size");
 #if PY_MAJOR_VERSION >= 3
-    max_message_size = PyLong_AsLong(
-        PyObject_GetAttrString(client, "max_message_size"));
+    max_message_size = PyLong_AsLong(max_message_size_obj);
 #else
-    max_message_size = PyInt_AsLong(
-        PyObject_GetAttrString(client, "max_message_size"));
+    max_message_size = PyInt_AsLong(max_message_size_obj);
 #endif
+    Py_XDECREF(max_message_size_obj);
     if (max_message_size == -1) {
         PyMem_Free(collection_name);
         return NULL;
@@ -707,8 +711,10 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
             request_id = new_request_id;
             length_location = message_start;
 
-            if (!PyObject_CallMethod(client,
-                                     "_send_message", "NO", result, send_gle)) {
+            send_message_result = PyObject_CallMethod(client, "_send_message",
+                                                      "NO", result, send_gle);
+
+            if (!send_message_result) {
                 PyObject *etype = NULL, *evalue = NULL, *etrace = NULL;
                 PyObject* OperationFailure;
                 PyErr_Fetch(&etype, &evalue, &etrace);
@@ -746,6 +752,8 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
                  * acknowledged writes. Re-raise immediately. */
                 PyErr_Restore(etype, evalue, etrace);
                 goto iterfail;
+            } else {
+                Py_DECREF(send_message_result);
             }
         }
     }
@@ -783,12 +791,17 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
     buffer_free(buffer);
 
     /* Send the last (or only) batch */
-    if (!PyObject_CallMethod(client, "_send_message", "NN",
-                             result, PyBool_FromLong((long)safe))) {
+    send_message_result = PyObject_CallMethod(client, "_send_message", "NN",
+                                              result,
+                                              PyBool_FromLong((long)safe));
+
+    if (!send_message_result) {
         Py_XDECREF(exc_type);
         Py_XDECREF(exc_value);
         Py_XDECREF(exc_trace);
         return NULL;
+    } else {
+        Py_DECREF(send_message_result);
     }
 
     if (exc_type) {
