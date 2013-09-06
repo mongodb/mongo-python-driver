@@ -49,6 +49,11 @@ class TestConnection(unittest.TestCase):
         c = Connection("mongodb://%s:%s/?safe=true" % (host, port))
         self.assertTrue(c.safe)
 
+        # To preserve legacy Connection's behavior, max_size should be None.
+        # Pool should handle this without error.
+        self.assertEqual(None, c._MongoClient__pool.max_size)
+        c.end_request()
+
         # Connection's network_timeout argument is translated into
         # socketTimeoutMS
         self.assertEqual(123, Connection(
@@ -84,6 +89,13 @@ class TestReplicaSetConnection(TestReplicaSetClientBase):
             host, port, self.name))
 
         self.assertTrue(c.safe)
+
+        # To preserve legacy ReplicaSetConnection's behavior, max_size should
+        # be None. Pool should handle this without error.
+        rs_state = c._MongoReplicaSetClient__rs_state
+        pool = rs_state.primary_member.pool
+        self.assertEqual(None, pool.max_size)
+        c.end_request()
 
         # ReplicaSetConnection's network_timeout argument is translated into
         # socketTimeoutMS
