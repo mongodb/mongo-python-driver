@@ -1,6 +1,20 @@
 Changelog
 =========
 
+Changes in Version 2.6.2
+------------------------
+
+Version 2.6.2 fixes a :exc:`TypeError` problem when max_pool_size=None
+is used in Python 3.
+
+Issues Resolved
+...............
+
+See the `PyMongo 2.6.2 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 2.6.2 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/12910
+
 Changes in Version 2.6.1
 ------------------------
 
