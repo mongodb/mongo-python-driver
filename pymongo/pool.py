@@ -410,8 +410,10 @@ class Pool:
         """
         try:
             self.lock.acquire()
-            if (len(self.sockets) < self.max_size
-                    and sock_info.pool_id == self.pool_id):
+            too_many_sockets = (self.max_size is not None
+                                and len(self.sockets) >= self.max_size)
+
+            if not too_many_sockets and sock_info.pool_id == self.pool_id:
                 self.sockets.add(sock_info)
             else:
                 sock_info.close()
