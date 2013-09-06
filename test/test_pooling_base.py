@@ -789,7 +789,8 @@ class _TestMaxPoolSize(_TestPoolingBase):
         recent Gevent development.
         """
         if start_request:
-            assert max_pool_size >= nthreads, "Deadlock"
+            if max_pool_size is not None and max_pool_size < nthreads:
+                raise AssertionError("Deadlock")
 
         c = self.get_client(
             max_pool_size=max_pool_size, auto_start_request=False)
@@ -871,7 +872,11 @@ class _TestMaxPoolSize(_TestPoolingBase):
                 self.sleep(0.1)
                 cx_pool._ident.get()
 
-            self.assertEqual(max_pool_size, cx_pool._socket_semaphore.counter)
+            if max_pool_size is not None:
+                self.assertEqual(
+                    max_pool_size,
+                    cx_pool._socket_semaphore.counter)
+
             self.assertEqual(0, len(cx_pool._tid_to_sock))
 
     def _test_max_pool_size_no_rendezvous(self, start_request, end_request):
@@ -954,6 +959,10 @@ class _TestMaxPoolSize(_TestPoolingBase):
     def test_max_pool_size(self):
         self._test_max_pool_size(
             start_request=0, end_request=0, nthreads=10, max_pool_size=4)
+
+    def test_max_pool_size_none(self):
+        self._test_max_pool_size(
+            start_request=0, end_request=0, nthreads=10, max_pool_size=None)
 
     def test_max_pool_size_with_request(self):
         self._test_max_pool_size(
