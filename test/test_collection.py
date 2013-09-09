@@ -1268,10 +1268,6 @@ class TestCollection(unittest.TestCase):
         db = self.db
         db.drop_collection("test")
 
-        def group_checker(args, expected):
-            eval = db.test.group(*args)
-            self.assertEqual(eval, expected)
-
         self.assertEqual([],
                          db.test.group([], {}, {"count": 0},
                                        "function (obj, prev) { prev.count++; }"
