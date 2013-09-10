@@ -599,7 +599,7 @@ class Cursor(object):
     def max(self, spec):
         """Adds `max` operator that specifies upper bound for specific index.
 
-        Raises TypeError if spec is not an intance of a dict.
+        Raises TypeError if spec is not an instance of a dict.
 
         :Parameters:
           - `spec`: a dictionary specifying the exclusive upper bound for all
@@ -615,7 +615,7 @@ class Cursor(object):
     def min(self, spec):
         """Adds `min` operator that specifies lower bound for specific index.
 
-        Raises TypeError if spec is not an intance of a dict.
+        Raises TypeError if spec is not an instance of a dict.
 
         :Parameters:
           - `spec`: a dictionary specifying the inclusive lower bound for all
