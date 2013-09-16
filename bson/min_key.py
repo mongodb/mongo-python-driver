@@ -20,6 +20,8 @@ class MinKey(object):
     """MongoDB internal MinKey type.
     """
 
+    _type_marker = -1
+
     def __eq__(self, other):
         if isinstance(other, MinKey):
             return True

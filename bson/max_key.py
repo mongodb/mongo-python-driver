@@ -20,6 +20,8 @@ class MaxKey(object):
     """MongoDB internal MaxKey type.
     """
 
+    _type_marker = 127
+
     def __eq__(self, other):
         if isinstance(other, MaxKey):
             return True

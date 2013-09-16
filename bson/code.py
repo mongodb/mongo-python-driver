@@ -39,6 +39,8 @@ class Code(str):
        Ability to pass scope values using keyword arguments.
     """
 
+    _type_marker = 13
+
     def __new__(cls, code, scope=None, **kwargs):
         if not isinstance(code, basestring):
             raise TypeError("code must be an "

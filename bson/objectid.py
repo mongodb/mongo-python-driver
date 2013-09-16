@@ -65,6 +65,8 @@ class ObjectId(object):
 
     __slots__ = ('__id')
 
+    _type_marker = 7
+
     def __init__(self, oid=None):
         """Initialize a new ObjectId.
 

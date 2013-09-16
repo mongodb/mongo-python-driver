@@ -26,6 +26,8 @@ class Timestamp(object):
     """MongoDB internal timestamps used in the opLog.
     """
 
+    _type_marker = 17
+
     def __init__(self, time, inc):
         """Create a new :class:`Timestamp`.
 

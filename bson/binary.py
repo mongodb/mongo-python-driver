@@ -127,6 +127,8 @@ class Binary(binary_type):
         to use
     """
 
+    _type_marker = 5
+
     def __new__(cls, data, subtype=BINARY_SUBTYPE):
         if not isinstance(data, binary_type):
             raise TypeError("data must be an "
