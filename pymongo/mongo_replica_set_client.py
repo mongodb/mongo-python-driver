@@ -1276,6 +1276,12 @@ class MongoReplicaSetClient(common.BaseObject):
 
         self.__rs_state = RSState(self.__make_threadlocal())
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
     def alive(self):
         """Return ``False`` if there has been an error communicating with the
         primary, else ``True``.
