@@ -284,8 +284,9 @@ class Monitor(object):
     def shutdown(self, dummy=None):
         """Signal the monitor to shutdown.
         """
-        self.stopped = True
-        self.timer.set()
+        if not self.stopped:
+            self.stopped = True
+            self.timer.set()
 
     def schedule_refresh(self):
         """Refresh immediately
