@@ -28,7 +28,9 @@ from bson import BSON
 from bson.code import Code
 from bson.son import SON
 from pymongo import (ASCENDING,
-                     DESCENDING)
+                     DESCENDING,
+                     ALL,
+                     OFF)
 from pymongo.database import Database
 from pymongo.errors import (InvalidOperation,
                             OperationFailure,
@@ -38,6 +40,7 @@ from pymongo.helpers import (_unpack_response,
 from test import version
 from test.test_client import get_client
 from test.utils import is_mongos, get_command_line
+from contextlib import contextmanager
 
 
 class TestCursor(unittest.TestCase):
@@ -938,6 +941,38 @@ with self.db.test.find() as c2:
 self.assertFalse(c2.alive)
 """
         self.assertTrue(c1.alive)
+
+    def test_comment(self):
+        @contextmanager
+        def new_profile():
+            self.db.set_profiling_level(OFF)
+            self.db.system.profile.drop()
+            self.db.set_profiling_level(ALL)
+            yield
+            self.db.set_profiling_level(OFF)
+
+        with new_profile():
+            matching = list(self.db.test.find({'type': 'string'}).comment('foo'))
+            op = self.db.system.profile.find({'ns': 'pymongo_test.test',
+                                              'op': 'query',
+                                              'query.$comment': 'foo'})
+            self.assertEqual(op.count(), 1)
+
+        with new_profile():
+            self.db.test.find({'type': 'string'}).comment('foo').count()
+            op = self.db.system.profile.find({'ns': 'pymongo_test.$cmd',
+                                              'op': 'command',
+                                              'command.count': 'test',
+                                              'command.$comment': 'foo'})
+            self.assertEqual(op.count(), 1)
+
+        with new_profile():
+            self.db.test.find({'type': 'string'}).comment('foo').distinct('type')
+            op = self.db.system.profile.find({'ns': 'pymongo_test.$cmd',
+                                              'op': 'command',
+                                              'command.distinct': 'test',
+                                              'command.$comment': 'foo'})
+            self.assertEqual(op.count(), 1)
 
 if __name__ == "__main__":
     unittest.main()

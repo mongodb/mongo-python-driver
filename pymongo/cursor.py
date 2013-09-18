@@ -145,6 +145,7 @@ class Cursor(object):
         self.__max_scan = max_scan
         self.__explain = False
         self.__hint = None
+        self.__comment = None
         self.__as_class = as_class
         self.__slave_okay = slave_okay
         self.__manipulate = manipulate
@@ -271,6 +272,8 @@ class Cursor(object):
             operators["$explain"] = True
         if self.__hint:
             operators["$hint"] = self.__hint
+        if self.__comment:
+            operators["$comment"] = self.__comment
         if self.__snapshot:
             operators["$snapshot"] = True
         if self.__max_scan:
@@ -657,6 +660,8 @@ class Cursor(object):
         command['_use_master'] = use_master
         if self.__max_time_ms is not None:
             command["maxTimeMS"] = self.__max_time_ms
+        if self.__comment:
+            command['$comment'] = self.__comment
 
         if with_limit_and_skip:
             if self.__limit:
@@ -715,6 +720,8 @@ class Cursor(object):
         options['_use_master'] = use_master
         if self.__max_time_ms is not None:
             options['maxTimeMS'] = self.__max_time_ms
+        if self.__comment:
+            options['$comment'] = self.__comment
 
         database = self.__collection.database
         return database.command("distinct",
@@ -764,6 +771,17 @@ class Cursor(object):
             return self
 
         self.__hint = helpers._index_document(index)
+        return self
+
+    def comment(self, comment):
+        """Adds a 'comment', to the cursor.
+
+        http://docs.mongodb.org/manual/reference/operator/comment/
+
+        :Parameters:
+          - `comment`: A string or document
+        """
+        self.__comment = comment
         return self
 
     def where(self, code):
