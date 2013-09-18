@@ -23,4 +23,5 @@ MongoDB, you can start it like so:
    gevent
    gridfs
    high_availability
+   mod_wsgi
    requests
