@@ -35,14 +35,27 @@ def _index_list(key_or_list, direction=None):
     Takes such a list, or a single key, or a single key and direction.
     """
     if direction is not None:
-        return [(key_or_list, direction)]
+        key_list = ((key_or_list, direction))
     else:
         if isinstance(key_or_list, basestring):
-            return [(key_or_list, pymongo.ASCENDING)]
-        elif not isinstance(key_or_list, list):
-            raise TypeError("if no direction is specified, "
-                            "key_or_list must be an instance of list")
-        return key_or_list
+            key_list = ((key_or_list, pymongo.ASCENDING))
+        else:
+            def _raise_helper():
+                raise TypeError("if no direction is specified, key_or_list must be an iterable object of (key, direction) pairs")
+            try:
+                key_list = list()
+                k_d_iter = iter(key_or_list)
+                for (k, d) in k_d_iter:
+                    if not isinstance(k, basestring):
+                        raise TypeError('key should be basestring instance')
+                    if not isinstance(d, (basestring, int)):
+                        raise TypeError('direction should be basestring or integer instance')  # Please refer pymongo/__init__.py contants
+                    key_list.append((k, d))
+            except TypeError:
+                _raise_helper()
+            except ValueError:
+                _raise_helper()
+    return key_list
 
 
 def _index_document(index_list):
