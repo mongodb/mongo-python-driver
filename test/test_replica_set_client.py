@@ -1154,6 +1154,32 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
             self, client, list(client.secondaries) + [client.primary],
             ReadPreference.NEAREST, None, latency)
 
+    def test_contextlib(self):
+        if sys.version_info < (2, 6):
+            raise SkipTest("With statement requires Python >= 2.6")
+
+        import contextlib
+
+        client = self._get_client(_connect=False)
+        client.pymongo_test.drop_collection("test")
+        client.pymongo_test.test.insert({"foo": "bar"})
+
+        self.assertNotEqual(None, client.primary)
+
+        # We need exec here because if the Python version is less than 2.6
+        # these with-statements won't even compile.
+        exec """
+with contextlib.closing(client):
+    self.assertEqual("bar", client.pymongo_test.test.find_one()["foo"])
+self.assertEqual(None, client.primary)
+"""
+
+        exec """
+with self._get_client() as client:
+    self.assertEqual("bar", client.pymongo_test.test.find_one()["foo"])
+self.assertEqual(None, client.primary)
+"""
+    
 
 if __name__ == "__main__":
     unittest.main()

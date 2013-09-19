@@ -284,8 +284,9 @@ class Monitor(object):
     def shutdown(self, dummy=None):
         """Signal the monitor to shutdown.
         """
-        self.stopped = True
-        self.timer.set()
+        if not self.stopped:
+            self.stopped = True
+            self.timer.set()
 
     def schedule_refresh(self):
         """Refresh immediately
@@ -1275,6 +1276,12 @@ class MongoReplicaSetClient(common.BaseObject):
             self.__monitor = None
 
         self.__rs_state = RSState(self.__make_threadlocal())
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
 
     def alive(self):
         """Return ``False`` if there has been an error communicating with the
