@@ -602,14 +602,14 @@ class Cursor(object):
         Raises TypeError if spec is not an instance of a dict.
 
         :Parameters:
-          - `spec`: a dictionary specifying the exclusive upper bound for all
-            keys of a specific index in order.
+          - `spec`: a list of field, limit pairs specifying the exclusive
+            upper bound for all keys of a specific index in order.
         """
-        if not isinstance(spec, dict):
-            raise TypeError("spec must be an instance of dict")
+        if not isinstance(spec, list):
+            raise TypeError("spec must be an instance of list")
 
         self.__check_okay_to_chain()
-        self.__max = spec
+        self.__max = SON(spec)
         return self
 
     def min(self, spec):
@@ -618,14 +618,14 @@ class Cursor(object):
         Raises TypeError if spec is not an instance of a dict.
 
         :Parameters:
-          - `spec`: a dictionary specifying the inclusive lower bound for all
-            keys of a specific index in order.
+          - `spec`: a list of field, limit pairs  specifying the inclusive
+            lower bound for all keys of a specific index in order.
         """
-        if not isinstance(spec, dict):
-            raise TypeError("spec must be an instance of dict")
+        if not isinstance(spec, list):
+            raise TypeError("spec must be an instance of list")
 
         self.__check_okay_to_chain()
-        self.__min = spec
+        self.__min = SON(spec)
         return self
 
     def sort(self, key_or_list, direction=None):
