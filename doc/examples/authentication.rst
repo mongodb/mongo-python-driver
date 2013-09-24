@@ -13,26 +13,26 @@ credentials can be specified through the MongoDB URI or passed to the
 :meth:`~pymongo.database.Database.authenticate` method::
 
   >>> from pymongo import MongoClient
-  >>> client = pymongo.MongoClient('example.com')
+  >>> client = MongoClient('example.com')
   >>> client.the_database.authenticate('user', 'password')
   True
   >>>
   >>> uri = "mongodb://user:password@example.com/the_database"
-  >>> client = pymongo.MongoClient(uri)
+  >>> client = MongoClient(uri)
   >>>
 
 When using MongoDB's delegated authentication features, a separate
 authentication source can be specified (using PyMongo 2.5 or newer)::
 
   >>> from pymongo import MongoClient
-  >>> client = pymongo.MongoClient('example.com')
+  >>> client = MongoClient('example.com')
   >>> client.the_database.authenticate('user',
   ...                                  'password',
   ...                                  source='source_database')
   True
   >>>
   >>> uri = "mongodb://user:password@example.com/?authSource=source_database"
-  >>> client = pymongo.MongoClient(uri)
+  >>> client = MongoClient(uri)
   >>>
 
 MONGODB-X509
@@ -47,11 +47,11 @@ and newer::
 
   >>> import ssl
   >>> from pymongo import MongoClient
-  >>> client = pymongo.MongoClient('example.com',
-  ...                              ssl=True,
-  ...                              ssl_certfile='/path/to/client.pem',
-  ...                              ssl_cert_reqs=ssl.CERT_REQUIRED,
-  ...                              ssl_ca_certs='/path/to/ca.pem')
+  >>> client = MongoClient('example.com',
+  ...                       ssl=True,
+  ...                       ssl_certfile='/path/to/client.pem',
+  ...                       ssl_cert_reqs=ssl.CERT_REQUIRED,
+  ...                       ssl_ca_certs='/path/to/ca.pem')
   >>> client.the_database.authenticate("<X.509 derived username>",
   ...                                  mechanism='MONGODB-X509')
   True
@@ -61,11 +61,11 @@ MONGODB-X509 authenticates against the $external virtual database, so you
 do not have to specify a database in the URI::
 
   >>> uri = "mongodb://<X.509 derived username>@example.com/?authMechanism=MONGODB-X509"
-  >>> client = pymongo.MongoClient(uri,
-  ...                              ssl=True,
-  ...                              ssl_certfile='/path/to/client.pem',
-  ...                              ssl_cert_reqs=ssl.CERT_REQUIRED,
-  ...                              ssl_ca_certs='/path/to/ca.pem')
+  >>> client = MongoClient(uri,
+  ...                     ssl=True,
+  ...                     ssl_certfile='/path/to/client.pem',
+  ...                     ssl_cert_reqs=ssl.CERT_REQUIRED,
+  ...                     ssl_ca_certs='/path/to/ca.pem')
   >>>
 
 .. note::
@@ -99,15 +99,15 @@ $external virtual database so you do not have to specify a database in the
 URI::
 
   >>> # Note: the kerberos principal must be url encoded.
-  >>> import pymongo
+  >>> from pymongo import MongoClient
   >>> uri = "mongodb://mongodbuser%40EXAMPLE.COM@example.com/?authMechanism=GSSAPI"
-  >>> client = pymongo.MongoClient(uri)
+  >>> client = MongoClient(uri)
   >>>
 
 or using :meth:`~pymongo.database.Database.authenticate`::
 
-  >>> import pymongo
-  >>> client = pymongo.MongoClient('example.com')
+  >>> from pymongo import MongoClient
+  >>> client = MongoClient('example.com')
   >>> db = client.test
   >>> db.authenticate('mongodbuser@EXAMPLE.COM', mechanism='GSSAPI')
   True
@@ -115,11 +115,11 @@ or using :meth:`~pymongo.database.Database.authenticate`::
 The default service name used by MongoDB and PyMongo is `mongodb`. You can
 specify a custom service name with the ``gssapiServiceName`` option::
 
-  >>> import pymongo
+  >>> from pymongo import MongoClient
   >>> uri = "mongodb://mongodbuser%40EXAMPLE.COM@example.com/?authMechanism=GSSAPI&gssapiServiceName=myservicename"
-  >>> client = pymongo.MongoClient(uri)
+  >>> client = MongoClient(uri)
   >>>
-  >>> client = pymongo.MongoClient('example.com')
+  >>> client = MongoClient('example.com')
   >>> db = client.test
   >>> db.authenticate('mongodbuser@EXAMPLE.COM', mechanism='GSSAPI', gssapiServiceName='myservicename')
   True
@@ -141,7 +141,7 @@ to an LDAP server. Using the PLAIN mechanism is very similar to MONGODB-CR.
 These examples use the $external virtual database for LDAP support::
 
   >>> from pymongo import MongoClient
-  >>> client = pymongo.MongoClient('example.com')
+  >>> client = MongoClient('example.com')
   >>> client.the_database.authenticate('user',
   ...                                  'password',
   ...                                  source='$external',
@@ -149,7 +149,7 @@ These examples use the $external virtual database for LDAP support::
   True
   >>>
   >>> uri = "mongodb://user:password@example.com/?authMechanism=PLAIN&authSource=$external"
-  >>> client = pymongo.MongoClient(uri)
+  >>> client = MongoClient(uri)
   >>>
 
 SASL PLAIN is a clear-text authentication mechanism. We **strongly** recommend
@@ -158,11 +158,11 @@ the SASL PLAIN mechanism::
 
   >>> import ssl
   >>> from pymongo import MongoClient
-  >>> client = pymongo.MongoClient('example.com',
-  ...                              ssl=True,
-  ...                              ssl_certfile='/path/to/client.pem',
-  ...                              ssl_cert_reqs=ssl.CERT_REQUIRED,
-  ...                              ssl_ca_certs='/path/to/ca.pem')
+  >>> client = MongoClient('example.com',
+  ...                      ssl=True,
+  ...                      ssl_certfile='/path/to/client.pem',
+  ...                      ssl_cert_reqs=ssl.CERT_REQUIRED,
+  ...                      ssl_ca_certs='/path/to/ca.pem')
   >>> client.the_database.authenticate('user',
   ...                                  'password',
   ...                                  source='$external',
@@ -170,10 +170,10 @@ the SASL PLAIN mechanism::
   True
   >>>
   >>> uri = "mongodb://user:password@example.com/?authMechanism=PLAIN&authSource=$external"
-  >>> client = pymongo.MongoClient(uri,
-  ...                              ssl=True,
-  ...                              ssl_certfile='/path/to/client.pem',
-  ...                              ssl_cert_reqs=ssl.CERT_REQUIRED,
-  ...                              ssl_ca_certs='/path/to/ca.pem')
+  >>> client = MongoClient(uri,
+  ...                      ssl=True,
+  ...                      ssl_certfile='/path/to/client.pem',
+  ...                      ssl_cert_reqs=ssl.CERT_REQUIRED,
+  ...                      ssl_ca_certs='/path/to/ca.pem')
   >>>
 
