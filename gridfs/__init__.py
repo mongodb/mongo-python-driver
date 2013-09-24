@@ -118,7 +118,15 @@ class GridFS(object):
         request = self.__collection.database.connection.start_request()
         try:
             try:
-                grid_file.write(data)
+                if kwargs.get('huge'):
+                    while True:
+                        chunk = data.read(grid_file.chunk_size)
+                        if chunk:
+                            grid_file.write(chunk)
+                        else:
+                            break
+                else:
+                    grid_file.write(data)
             finally:
                 grid_file.close()
         finally:
