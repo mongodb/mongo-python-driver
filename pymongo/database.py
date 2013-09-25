@@ -692,7 +692,7 @@ class Database(common.BaseObject):
             uinfo = self.command("usersInfo", name)
 
         except OperationFailure, exc:
-            if exc.code is None:
+            if exc.code in (59, None):
                 self._legacy_add_user(name, password, read_only, **kwargs)
                 return
             raise
