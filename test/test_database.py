@@ -41,7 +41,8 @@ from pymongo.son_manipulator import (AutoReference,
                                      NamespaceInjector,
                                      ObjectIdShuffler)
 from test import version
-from test.utils import is_mongos, server_started_with_auth
+from test.utils import (is_mongos, server_started_with_auth,
+                        remove_all_users)
 from test.test_client import get_client
 
 
@@ -330,6 +331,8 @@ class TestDatabase(unittest.TestCase):
         if (is_mongos(self.client) and not
             version.at_least(self.client, (2, 0, 0))):
             raise SkipTest("Auth with sharding requires MongoDB >= 2.0.0")
+        if version.at_least(self.client, (2, 5, 3, -1)):
+            raise SkipTest("Old auth requires MongoDB < 2.5.3")
         db = self.client.pymongo_test
         db.system.users.remove({})
         db.remove_user("mike")
@@ -373,13 +376,36 @@ class TestDatabase(unittest.TestCase):
         self.assertTrue(db.system.users.find({"readOnly": True}).count())
         db.logout()
 
+    def test_new_user_cmds(self):
+        if not version.at_least(self.client, (2, 5, 3, -1)):
+            raise SkipTest("User manipulation commands "
+                           "require MongoDB >= 2.5.3")
+
+        db = self.client.pymongo_test
+        remove_all_users(db)
+        db.add_user("amalia", "password", roles=["userAdmin"])
+        db.authenticate("amalia", "password")
+        # This tests the ability to update user attributes.
+        db.add_user("amalia", "new_password", customData={"secret": "koalas"})
+
+        user_info = db.command("usersInfo", "amalia")
+        self.assertTrue(user_info["users"])
+        amalia_user = user_info["users"][0]
+        self.assertEqual(amalia_user["name"], "amalia")
+        self.assertEqual(amalia_user["customData"], {"secret": "koalas"})
+
+        db.remove_user("amalia")
+        db.logout()
+
     def test_authenticate_and_safe(self):
         if (is_mongos(self.client) and not
             version.at_least(self.client, (2, 0, 0))):
             raise SkipTest("Auth with sharding requires MongoDB >= 2.0.0")
         db = self.client.auth_test
-        db.system.users.remove({})
-        db.add_user("bernie", "password")
+        remove_all_users(db)
+
+        db.add_user("bernie", "password",
+                    roles=["userAdmin", "dbAdmin", "readWrite"])
         db.authenticate("bernie", "password")
 
         db.test.remove({})
@@ -394,8 +420,8 @@ class TestDatabase(unittest.TestCase):
                          db.test.remove({}).get('n'))
 
         self.assertEqual(0, db.test.count())
-        self.client.drop_database("auth_test")
-
+        db.remove_user("bernie")
+        db.logout()
 
     def test_authenticate_and_request(self):
         if (is_mongos(self.client) and not
@@ -407,9 +433,9 @@ class TestDatabase(unittest.TestCase):
         # (in or not in a request) properly when it's finished.
         self.assertFalse(self.client.auto_start_request)
         db = self.client.pymongo_test
-        db.system.users.remove({})
-        db.remove_user("mike")
-        db.add_user("mike", "password")
+        remove_all_users(db)
+        db.add_user("mike", "password",
+                    roles=["userAdmin", "dbAdmin", "readWrite"])
         self.assertFalse(self.client.in_request())
         self.assertTrue(db.authenticate("mike", "password"))
         self.assertFalse(self.client.in_request())
@@ -421,10 +447,9 @@ class TestDatabase(unittest.TestCase):
         self.assertTrue(request_cx.in_request())
 
         # just make sure there are no exceptions here
+        db.remove_user("mike")
         db.logout()
-        db.collection.find_one()
         request_db.logout()
-        request_db.collection.find_one()
 
     def test_authenticate_multiple(self):
         client = get_client()
@@ -438,16 +463,25 @@ class TestDatabase(unittest.TestCase):
         users_db = client.pymongo_test
         admin_db = client.admin
         other_db = client.pymongo_test1
-        users_db.system.users.remove()
-        admin_db.system.users.remove()
+        remove_all_users(users_db)
+        remove_all_users(admin_db)
+        remove_all_users(other_db)
         users_db.test.remove()
         other_db.test.remove()
 
-        admin_db.add_user('admin', 'pass')
+        admin_db.add_user('admin', 'pass',
+                          roles=["userAdminAnyDatabase", "dbAdmin",
+                                 "clusterAdmin", "readWrite"])
         self.assertTrue(admin_db.authenticate('admin', 'pass'))
 
-        admin_db.add_user('ro-admin', 'pass', read_only=True)
-        users_db.add_user('user', 'pass')
+        if version.at_least(self.client, (2, 5, 3, -1)):
+            admin_db.add_user('ro-admin', 'pass',
+                              roles=["userAdmin", "readAnyDatabase"])
+        else:
+            admin_db.add_user('ro-admin', 'pass', read_only=True)
+
+        users_db.add_user('user', 'pass',
+                          roles=["userAdmin", "readWrite"])
 
         admin_db.logout()
         self.assertRaises(OperationFailure, users_db.test.find_one)
@@ -480,9 +514,9 @@ class TestDatabase(unittest.TestCase):
         admin_db.logout()
         users_db.logout()
         self.assertTrue(admin_db.authenticate('admin', 'pass'))
-        self.assertTrue(admin_db.system.users.remove())
-        self.assertEqual(0, admin_db.system.users.count())
-        self.assertTrue(users_db.system.users.remove())
+        users_db.remove_user('user')
+        admin_db.remove_user('ro-admin')
+        admin_db.remove_user('admin')
 
     def test_id_ordering(self):
         # PyMongo attempts to have _id show up first
@@ -760,7 +794,6 @@ class TestDatabase(unittest.TestCase):
             self.assertTrue(name in ('ObjectIdShuffler', 'AutoReference'))
         self.assertEqual([], db.outgoing_manipulators)
         self.assertEqual(['AutoReference'], db.outgoing_copying_manipulators)
-
 
 if __name__ == "__main__":
     unittest.main()

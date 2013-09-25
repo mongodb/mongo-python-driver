@@ -43,6 +43,7 @@ from test import version, host, port
 from test.utils import (assertRaisesExactly,
                         delay,
                         is_mongos,
+                        remove_all_users,
                         server_is_master_with_slave,
                         server_started_with_auth,
                         TestRequestMixin)
@@ -238,7 +239,8 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         self.assertTrue("pymongo_test2" in c.database_names())
         self.assertEqual("bar", c.pymongo_test2.test.find_one()["foo"])
 
-        if version.at_least(c, (1, 3, 3, 1)):
+        if (version.at_least(c, (1, 3, 3, 1))
+            and not version.at_least(c, (2, 5, 3, -1))):
             c.drop_database("pymongo_test1")
 
             c.pymongo_test.add_user("mike", "password")
@@ -315,13 +317,17 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         if is_mongos(c) and not version.at_least(c, (2, 0, 0)):
             raise SkipTest("Auth with sharding requires MongoDB >= 2.0.0")
 
-        c.admin.system.users.remove({})
-        c.pymongo_test.system.users.remove({})
+        remove_all_users(c.pymongo_test)
+        remove_all_users(c.admin)
 
         try:
-            c.admin.add_user("admin", "pass")
+            c.admin.add_user("admin", "pass",
+                             roles=['readWriteAnyDatabase',
+                                    'userAdminAnyDatabase',
+                                    'dbAdminAnyDatabase',
+                                    'userAdmin'])
             c.admin.authenticate("admin", "pass")
-            c.pymongo_test.add_user("user", "pass")
+            c.pymongo_test.add_user("user", "pass", roles=['userAdmin', 'readWrite'])
 
             self.assertRaises(ConfigurationError, MongoClient,
                               "mongodb://foo:bar@%s:%d" % (host, port))
@@ -358,8 +364,8 @@ class TestClient(unittest.TestCase, TestRequestMixin):
 
         finally:
             # Clean up.
-            c.admin.system.users.remove({})
-            c.pymongo_test.system.users.remove({})
+            remove_all_users(c.pymongo_test)
+            remove_all_users(c.admin)
 
     def test_lazy_auth_raises_operation_failure(self):
         # Check if we have the prerequisites to run this test.
