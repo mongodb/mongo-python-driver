@@ -205,9 +205,9 @@ class TestCommon(unittest.TestCase):
         cursor = coll.find(slave_okay=True)
         self.assertTrue(cursor._Cursor__slave_okay)
 
-        coll.set_lasterror_options(j=True)
-        self.assertEqual({'j': True}, coll.get_lasterror_options())
-        self.assertEqual({'j': True}, coll.write_concern)
+        coll.set_lasterror_options(fsync=True)
+        self.assertEqual({'fsync': True}, coll.get_lasterror_options())
+        self.assertEqual({'fsync': True}, coll.write_concern)
         self.assertEqual({}, db.get_lasterror_options())
         self.assertEqual({}, db.write_concern)
         self.assertFalse(db.safe)
@@ -216,8 +216,8 @@ class TestCommon(unittest.TestCase):
         self.assertFalse(c.safe)
 
         db.set_lasterror_options(w='majority')
-        self.assertEqual({'j': True}, coll.get_lasterror_options())
-        self.assertEqual({'j': True}, coll.write_concern)
+        self.assertEqual({'fsync': True}, coll.get_lasterror_options())
+        self.assertEqual({'fsync': True}, coll.write_concern)
         self.assertEqual({'w': 'majority'}, db.get_lasterror_options())
         self.assertEqual({'w': 'majority'}, db.write_concern)
         self.assertEqual({}, c.get_lasterror_options())
