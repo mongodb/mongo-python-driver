@@ -49,7 +49,8 @@ from pymongo.errors import (AutoReconnect,
 from test import version, port, pair
 from test.utils import (
     delay, assertReadFrom, assertReadFromAll, read_from_which_host,
-    assertRaisesExactly, TestRequestMixin, one, server_started_with_auth)
+    remove_all_users, assertRaisesExactly, TestRequestMixin, one,
+    server_started_with_auth)
 
 
 class TestReplicaSetClientAgainstStandalone(unittest.TestCase):
@@ -149,13 +150,16 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
 
     def test_init_disconnected_with_auth(self):
         c = self._get_client()
-        c.admin.system.users.remove({})
-        c.pymongo_test.system.users.remove({})
+        remove_all_users(c.pymongo_test)
+        remove_all_users(c.admin)
 
         try:
-            c.admin.add_user("admin", "pass")
+            c.admin.add_user("admin", "pass",
+                             roles=['dbAdminAnyDatabase',
+                                    'readWriteAnyDatabase',
+                                    'userAdminAnyDatabase'])
             c.admin.authenticate("admin", "pass")
-            c.pymongo_test.add_user("user", "pass")
+            c.pymongo_test.add_user("user", "pass", roles=['readWrite', 'userAdmin'])
 
             # Auth with lazy connection.
             host = one(self.hosts)
@@ -175,8 +179,8 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
 
         finally:
             # Clean up.
-            c.admin.system.users.remove({})
-            c.pymongo_test.system.users.remove({})
+            remove_all_users(c.pymongo_test)
+            remove_all_users(c.admin)
 
     def test_connect(self):
         assertRaisesExactly(ConnectionFailure, MongoReplicaSetClient,
@@ -439,7 +443,8 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         self.assertTrue("pymongo_test2" in c.database_names())
         self.assertEqual("bar", c.pymongo_test2.test.find_one()["foo"])
 
-        if version.at_least(c, (1, 3, 3, 1)):
+        if (version.at_least(c, (1, 3, 3, 1))
+            and not version.at_least(c, (2, 5, 3, -1))):
             c.drop_database("pymongo_test1")
 
             c.pymongo_test.add_user("mike", "password")

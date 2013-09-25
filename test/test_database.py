@@ -332,7 +332,7 @@ class TestDatabase(unittest.TestCase):
             version.at_least(self.client, (2, 0, 0))):
             raise SkipTest("Auth with sharding requires MongoDB >= 2.0.0")
         if version.at_least(self.client, (2, 5, 3, -1)):
-            raise SkipTest("Old auth requires MongoDB < 2.5.3")
+            raise SkipTest("Legacy user manipulation requires MongoDB < 2.5.3")
         db = self.client.pymongo_test
         db.system.users.remove({})
         db.remove_user("mike")
@@ -378,8 +378,8 @@ class TestDatabase(unittest.TestCase):
 
     def test_new_user_cmds(self):
         if not version.at_least(self.client, (2, 5, 3, -1)):
-            raise SkipTest("User manipulation commands "
-                           "require MongoDB >= 2.5.3")
+            raise SkipTest("User manipulation through commands "
+                           "requires MongoDB >= 2.5.3")
 
         db = self.client.pymongo_test
         remove_all_users(db)
