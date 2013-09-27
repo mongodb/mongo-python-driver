@@ -116,10 +116,14 @@ def _unpack_response(response, cursor_id=None, as_class=dict,
 def _check_command_response(response, reset, msg="%s", allowable_errors=[]):
     """Check the response to a command for errors.
     """
-    if not response["ok"]:
-        if "wtimeout" in response and response["wtimeout"]:
-            raise TimeoutError(msg % response["errmsg"])
+    # If update is succeeded, getLastError command returns ok == true even if
+    # it timed out on waiting for slaves due to wtimeout option. errmsg also
+    # is not set because MongoDB sets it only when ok == false.
+    if response.get("wtimeout"):
+        errmsg = response.get("errmsg", "timed out waiting for slaves")
+        raise TimeoutError(msg % errmsg)
 
+    if not response["ok"]:
         details = response
         # Mongos returns the error details in a 'raw' object
         # for some errors.
