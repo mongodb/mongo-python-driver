@@ -281,8 +281,10 @@ _in_main_interpreter(void) {
 
     if (main_interpreter == NULL) {
         interpreter = PyInterpreterState_Head();
-        while (interpreter->next)
-            interpreter = interpreter->next;
+
+        while (PyInterpreterState_Next(interpreter))
+            interpreter = PyInterpreterState_Next(interpreter);
+
         main_interpreter = interpreter;
     }
 
