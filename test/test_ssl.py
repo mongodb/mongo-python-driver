@@ -397,18 +397,18 @@ class TestSSL(unittest.TestCase):
         if not CERT_SSL:
             raise SkipTest("No mongod available over SSL with certs")
         client = MongoClient(host, port, ssl=True, ssl_certfile=CLIENT_PEM)
-        if not version.at_least(client, (2, 5, 1)):
-            raise SkipTest("MONGODB-X509 requires MongoDB 2.5.1 or newer")
+        if not version.at_least(client, (2, 5, 3, -1)):
+            raise SkipTest("MONGODB-X509 tests require MongoDB 2.5.3 or newer")
         argv = get_command_line(client)
         if '--auth' not in argv:
             raise SkipTest("Mongo must be started with "
                            "--auth to test MONGODB-X509")
         # Give admin all necessary priviledges.
-        client.admin.add_user(MONGODB_X509_USERNAME,
-                              userSource='$external',
-                              roles=['readWriteAnyDatabase',
-                                     'userAdminAnyDatabase',
-                                     'dbAdminAnyDatabase'])
+        client['$external'].add_user(MONGODB_X509_USERNAME, roles=[
+            {'name': 'readWriteAnyDatabase',
+                'source': 'admin', 'hasRole': True, 'canDelegate': False},
+            {'name': 'userAdminAnyDatabase',
+                'source': 'admin', 'hasRole': True, 'canDelegate': False}])
         client = MongoClient(host, port, ssl=True, ssl_certfile=CLIENT_PEM)
         coll = client.pymongo_test.test
         self.assertRaises(OperationFailure, coll.count)
@@ -420,7 +420,7 @@ class TestSSL(unittest.TestCase):
         # SSL options aren't supported in the URI...
         self.assertTrue(MongoClient(uri, ssl=True, ssl_certfile=CLIENT_PEM))
         # Cleanup
-        client.admin.system.users.remove()
+        client['$external'].command('removeUsersFromDatabase')
         client['$external'].logout()
 
 if __name__ == "__main__":
