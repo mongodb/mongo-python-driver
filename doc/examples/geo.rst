@@ -59,6 +59,18 @@ Using the geospatial index we can find documents near another point:
   "{u'loc': [4, 4], u'_id': ObjectId('...')}"
   "{u'loc': [1, 2], u'_id': ObjectId('...')}"
 
+The $maxDistance operator requires the use of :class:`~bson.son.SON`:
+
+.. doctest::
+
+  >>> from bson.son import SON
+  >>> for doc in db.places.find({"loc": SON([("$near", [3, 6]), ("$maxDistance", 100)])}).limit(3):
+  ...   repr(doc)
+  ...
+  "{u'loc': [2, 5], u'_id': ObjectId('...')}"
+  "{u'loc': [4, 4], u'_id': ObjectId('...')}"
+  "{u'loc': [1, 2], u'_id': ObjectId('...')}"
+
 It's also possible to query for all items within a given rectangle
 (specified by lower-left and upper-right coordinates):
 
