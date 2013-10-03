@@ -100,9 +100,18 @@ class Connection(MongoClient):
           | **Other optional parameters can be passed as keyword arguments:**
 
           - `socketTimeoutMS`: (integer) How long (in milliseconds) a send or
-            receive on a socket can take before timing out.
+            receive on a socket can take before timing out. Defaults to ``None``
+            (no timeout).
           - `connectTimeoutMS`: (integer) How long (in milliseconds) a
-            connection can take to be opened before timing out.
+            connection can take to be opened before timing out. Defaults to
+            ``20000``.
+          - `waitQueueTimeoutMS`: (integer) How long (in milliseconds) a
+            thread will wait for a socket from the pool if the pool has no
+            free sockets. Defaults to ``None`` (no timeout).
+          - `waitQueueMultiple`: (integer) Multiplied by max_pool_size to give
+            the number of threads allowed to wait for a socket at one time.
+            Defaults to ``None`` (no waiters).
+
           - `auto_start_request`: If ``True`` (the default), each thread that
             accesses this Connection has a socket allocated to it for the
             thread's lifetime.  This ensures consistent reads, even if you read

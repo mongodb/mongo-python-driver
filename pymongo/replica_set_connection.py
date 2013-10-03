@@ -107,9 +107,11 @@ class ReplicaSetConnection(MongoReplicaSetClient):
             specified `network_timeout` takes precedence, matching
             connection.Connection.
           - `socketTimeoutMS`: (integer) How long (in milliseconds) a send or
-            receive on a socket can take before timing out.
+            receive on a socket can take before timing out. Defaults to ``None``
+            (no timeout).
           - `connectTimeoutMS`: (integer) How long (in milliseconds) a
-            connection can take to be opened before timing out.
+            connection can take to be opened before timing out. Defaults to
+            ``20000``.
           - `auto_start_request`: If ``True`` (the default), each thread that
             accesses this :class:`ReplicaSetConnection` has a socket allocated
             to it for the thread's lifetime, for each member of the set. For
