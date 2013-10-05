@@ -62,8 +62,8 @@ MongoEngine
   layer on top of PyMongo. It allows you to define schemas for
   documents and query collections using syntax inspired by the Django
   ORM. The code is available on `github
-  <http://github.com/hmarr/mongoengine>`_; for more information, see
-  the `tutorial <http://mongoengine.org/docs/v0.5/tutorial.html>`_.
+  <http://github.com/mongoengine/mongoengine>`_; for more information, see
+  the `tutorial <http://docs.mongoengine.org/en/latest/tutorial.html>`_.
 
 Minimongo
   `minimongo <http://pypi.python.org/pypi/minimongo>`_ is a lightweight,
@@ -73,22 +73,40 @@ Minimongo
   collection & database naming helpers. The `source is on github
   <http://github.com/slacy/minimongo>`_.
 
+Manga
+  `Manga <http://pypi.python.org/pypi/manga>`_ aims to be a simpler ORM-like
+  layer on top of PyMongo. The syntax for defining schema is inspired be the
+  Django ORM, but Pymongo's query language is maintained. The source `is on
+  github <http://github.com/wladston/manga>`_.
+  
+MotorEngine
+  `MotorEngine <http://motorengine.readthedocs.org/`_ is a port of the amazing
+  MongoEngine. It implementes the same modeling APIs to be data-portable, meaning
+  that a model defined in MongoEngine can be read in MotorEngine. The source `is on
+  github <http://github.com/heynemann/motorengine>`_.
+
 Framework Tools
 ---------------
 This section lists tools and adapters that have been designed to work with
 various Python frameworks and libraries.
 
 * `Django MongoDB Engine
-  <http://django-mongodb.org/>`_ is a MongoDB
+  <http://django-mongodb-engine.readthedocs.org/en/latest/>`_ is a MongoDB
   database backend for Django that completely integrates with its ORM.
-  For more information `see the tutorial <http://django-mongodb.org/tutorial.html>`_.
+  For more information `see the tutorial
+  <http://django-mongodb-engine.readthedocs.org/en/latest/tutorial.html>`_.
 * `mango <http://github.com/vpulim/mango>`_ provides MongoDB backends for
   Django sessions and authentication (bypassing :mod:`django.db` entirely).
+* `Django MongoEngine
+  <https://github.com/MongoEngine/django-mongoengine>`_ is a MongoDB backend for
+  Django, an `example:
+  <https://github.com/MongoEngine/django-mongoengine/tree/master/example/tumblelog>`_.
+  For more information `<http://docs.mongoengine.org/en/latest/django.html>`_
 * `mongodb_beaker <http://pypi.python.org/pypi/mongodb_beaker>`_ is a
   project to enable using MongoDB as a backend for `beaker's
   <http://beaker.groovie.org/>`_ caching / session system.
   `The source is on github <http://github.com/bwmcadams/mongodb_beaker>`_.
-* `MongoLog <http://github.com/andreisavu/mongodb-log/>`_ is a Python logging
+* `MongoLog <http://github.com/puentesarrin/mongodb-log/>`_ is a Python logging
   handler that stores logs in MongoDB using a capped collection.
 * `c5t <http://bitbucket.org/percious/c5t/>`_ is a content-management system
   using TurboGears and MongoDB.
@@ -98,13 +116,21 @@ various Python frameworks and libraries.
   <http://code.google.com/p/repoze-what-plugins-mongodb/>`_ is a project
   working to support a plugin for using MongoDB as a backend for
   :mod:`repoze.what`.
+* `mongobox <http://github.com/theorm/mongobox>`_ is a tool to run a sandboxed
+  MongoDB instance from within a python app.
+* `Flask-MongoAlchemy <http://github.com/cobrateam/flask-mongoalchemy/>`_ Add
+  Flask support for MongoDB using MongoAlchemy.
+* `Flask-MongoKit <http://github.com/jarus/flask-mongokit/>`_ Flask extension
+  to better integrate MongoKit into Flask.
+* `Flask-PyMongo <http://github.com/dcrosta/flask-pymongo/>`_ Flask-PyMongo
+  bridges Flask and PyMongo.
 
 Alternative Drivers
 -------------------
 These are alternatives to PyMongo.
 
-* `asyncmongo <https://github.com/bitly/asyncmongo>`_ is an asynchronous library
-  for accessing mongo which is built on the tornado ioloop.
+* `Motor <https://github.com/mongodb/motor>`_ is a full-featured, non-blocking
+  MongoDB driver for Python Tornado applications.
 * `TxMongo <http://github.com/fiorix/mongo-async-python-driver>`_ is an
   asynchronous Python driver for MongoDB, although it is not currently
   recommended for production use.
