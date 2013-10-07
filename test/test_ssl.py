@@ -406,21 +406,21 @@ class TestSSL(unittest.TestCase):
         # Give admin all necessary priviledges.
         client['$external'].add_user(MONGODB_X509_USERNAME, roles=[
             {'name': 'readWriteAnyDatabase',
-                'source': 'admin', 'hasRole': True, 'canDelegate': False},
+                'db': 'admin', 'hasRole': True, 'canDelegate': False},
             {'name': 'userAdminAnyDatabase',
-                'source': 'admin', 'hasRole': True, 'canDelegate': False}])
+                'db': 'admin', 'hasRole': True, 'canDelegate': False}])
         client = MongoClient(host, port, ssl=True, ssl_certfile=CLIENT_PEM)
         coll = client.pymongo_test.test
         self.assertRaises(OperationFailure, coll.count)
         self.assertTrue(client.admin.authenticate(MONGODB_X509_USERNAME,
                                                   mechanism='MONGODB-X509'))
-        self.assertEqual(0, coll.count())
+        self.assertTrue(coll.remove())
         uri = ('mongodb://%s@%s:%d/?authMechanism='
                'MONGODB-X509' % (quote_plus(MONGODB_X509_USERNAME), host, port))
         # SSL options aren't supported in the URI...
         self.assertTrue(MongoClient(uri, ssl=True, ssl_certfile=CLIENT_PEM))
         # Cleanup
-        client['$external'].command('removeUsersFromDatabase')
+        client['$external'].command('dropUsersFromDatabase')
         client['$external'].logout()
 
 if __name__ == "__main__":

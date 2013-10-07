@@ -715,7 +715,7 @@ class Database(common.BaseObject):
         """
 
         try:
-            self.command("removeUser", name,
+            self.command("dropUser", name,
                          writeConcern=self._get_wc_override())
         except OperationFailure, exc:
             if exc.code is None:

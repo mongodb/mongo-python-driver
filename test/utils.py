@@ -52,7 +52,7 @@ def drop_collections(db):
 
 def remove_all_users(db):
     if version.at_least(db.connection, (2, 5, 3, -1)):
-        db.command({"removeUsersFromDatabase": 1})
+        db.command({"dropUsersFromDatabase": 1})
     else:
         db.system.users.remove({})
 
