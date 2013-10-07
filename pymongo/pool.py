@@ -349,7 +349,8 @@ class Pool:
                 # request until end_request.
                 self._set_request_state(sock_info)
         except:
-            self._socket_semaphore.release()
+            if not forced:
+                self._socket_semaphore.release()
             raise
 
         sock_info.last_checkout = time.time()
