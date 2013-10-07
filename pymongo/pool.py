@@ -324,28 +324,33 @@ class Pool:
         elif not self._socket_semaphore.acquire(True, self.wait_queue_timeout):
             self._raise_wait_queue_timeout()
 
-        sock_info, from_pool = None, None
+        # We've now acquired the semaphore and must release it on error.
         try:
+            sock_info, from_pool = None, None
             try:
-                # set.pop() isn't atomic in Jython less than 2.7, see
-                # http://bugs.jython.org/issue1854
-                self.lock.acquire()
-                sock_info, from_pool = self.sockets.pop(), True
-            finally:
-                self.lock.release()
-        except KeyError:
-            sock_info, from_pool = self.connect(pair), False
+                try:
+                    # set.pop() isn't atomic in Jython less than 2.7, see
+                    # http://bugs.jython.org/issue1854
+                    self.lock.acquire()
+                    sock_info, from_pool = self.sockets.pop(), True
+                finally:
+                    self.lock.release()
+            except KeyError:
+                sock_info, from_pool = self.connect(pair), False
 
-        if from_pool:
-            sock_info = self._check(sock_info, pair)
+            if from_pool:
+                sock_info = self._check(sock_info, pair)
 
-        sock_info.forced = forced
+            sock_info.forced = forced
 
-        if req_state == NO_SOCKET_YET:
-            # start_request has been called but we haven't assigned a socket to
-            # the request yet. Let's use this socket for this request until
-            # end_request.
-            self._set_request_state(sock_info)
+            if req_state == NO_SOCKET_YET:
+                # start_request has been called but we haven't assigned a
+                # socket to the request yet. Let's use this socket for this
+                # request until end_request.
+                self._set_request_state(sock_info)
+        except:
+            self._socket_semaphore.release()
+            raise
 
         sock_info.last_checkout = time.time()
         return sock_info
