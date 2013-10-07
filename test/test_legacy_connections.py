@@ -28,6 +28,7 @@ from pymongo.replica_set_connection import ReplicaSetConnection
 from pymongo.errors import ConfigurationError
 from test import host, port, pair
 from test.test_replica_set_client import TestReplicaSetClientBase
+from test.utils import get_pool
 
 
 class TestConnection(unittest.TestCase):
@@ -92,8 +93,7 @@ class TestReplicaSetConnection(TestReplicaSetClientBase):
 
         # To preserve legacy ReplicaSetConnection's behavior, max_size should
         # be None. Pool should handle this without error.
-        rs_state = c._MongoReplicaSetClient__rs_state
-        pool = rs_state.primary_member.pool
+        pool = get_pool(c)
         self.assertEqual(None, pool.max_size)
         c.end_request()
 
@@ -104,7 +104,8 @@ class TestReplicaSetConnection(TestReplicaSetClientBase):
         )._MongoReplicaSetClient__net_timeout)
 
         for network_timeout in 'foo', 0, -1:
-            self.assertRaises(ConfigurationError,
+            self.assertRaises(
+                ConfigurationError,
                 ReplicaSetConnection, pair, replicaSet=self.name,
                 network_timeout=network_timeout)
 

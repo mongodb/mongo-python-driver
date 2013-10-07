@@ -50,7 +50,7 @@ from test import version, port, pair
 from test.utils import (
     delay, assertReadFrom, assertReadFromAll, read_from_which_host,
     remove_all_users, assertRaisesExactly, TestRequestMixin, one,
-    server_started_with_auth)
+    server_started_with_auth, pools_from_rs_client, get_pool)
 
 
 class TestReplicaSetClientAgainstStandalone(unittest.TestCase):
@@ -704,8 +704,8 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         previous_writer = c._MongoReplicaSetClient__rs_state.writer
 
         def kill_sockets():
-            for member in c._MongoReplicaSetClient__rs_state.members:
-                for socket_info in member.pool.sockets:
+            for pool in pools_from_rs_client(c):
+                for socket_info in pool.sockets:
                     socket_info.sock.close()
 
         kill_sockets()
@@ -928,7 +928,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         # Ensure MongoReplicaSetClient doesn't close socket after it gets an
         # error response to getLastError. PYTHON-395.
         c = self._get_client(auto_start_request=False)
-        pool = c._MongoReplicaSetClient__rs_state.get(self.primary).pool
+        pool = get_pool(c)
         self.assertEqual(1, len(pool.sockets))
         old_sock_info = iter(pool.sockets).next()
         c.pymongo_test.test.drop()
@@ -948,7 +948,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         # error response to getLastError. PYTHON-395.
         c = self._get_client(auto_start_request=True)
         c.pymongo_test.test.find_one()
-        pool = c._MongoReplicaSetClient__rs_state.get(self.primary).pool
+        pool = get_pool(c)
 
         # Client reserved a socket for this thread
         self.assertTrue(isinstance(pool._get_request_state(), SocketInfo))
@@ -973,13 +973,10 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
 
         client = self._get_client(auto_start_request=True)
         self.assertTrue(client.auto_start_request)
-        pools = [member.pool for member in
-                 client._MongoReplicaSetClient__rs_state.members]
-
+        pools = pools_from_rs_client(client)
         self.assertInRequestAndSameSock(client, pools)
 
-        primary_pool = \
-            client._MongoReplicaSetClient__rs_state.get(client.primary).pool
+        primary_pool = get_pool(client)
 
         # Trigger the RSC to actually start a request on primary pool
         client.pymongo_test.test.find_one()
@@ -1008,9 +1005,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         client.close()
 
         client = self._get_client()
-        pools = [mongo.pool for mongo in
-                 client._MongoReplicaSetClient__rs_state.members]
-
+        pools = pools_from_rs_client(client)
         self.assertNotInRequestAndDifferentSock(client, pools)
         client.start_request()
         self.assertInRequestAndSameSock(client, pools)
@@ -1021,8 +1016,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
     def test_nested_request(self):
         client = self._get_client(auto_start_request=True)
         try:
-            pools = [member.pool for member in
-                     client._MongoReplicaSetClient__rs_state.members]
+            pools = pools_from_rs_client(client)
             self.assertTrue(client.in_request())
 
             # Start and end request - we're still in "outer" original request
@@ -1064,8 +1058,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
     def test_request_threads(self):
         client = self._get_client()
         try:
-            pools = [member.pool for member in
-                     client._MongoReplicaSetClient__rs_state.members]
+            pools = pools_from_rs_client(client)
             self.assertNotInRequestAndDifferentSock(client, pools)
 
             started_request, ended_request = threading.Event(), threading.Event()

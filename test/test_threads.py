@@ -23,20 +23,9 @@ from nose.plugins.skip import SkipTest
 from test.utils import (joinall, remove_all_users,
                         server_started_with_auth, RendezvousThread)
 from test.test_client import get_client
-from pymongo.mongo_client import MongoClient
-from pymongo.replica_set_connection import MongoReplicaSetClient
+from test.utils import get_pool
 from pymongo.pool import SocketInfo, _closed
 from pymongo.errors import AutoReconnect, OperationFailure
-
-
-def get_pool(client):
-    if isinstance(client, MongoClient):
-        return client._MongoClient__pool
-    elif isinstance(client, MongoReplicaSetClient):
-        rs_state = client._MongoReplicaSetClient__rs_state
-        return rs_state[rs_state.writer].pool
-    else:
-        raise TypeError(str(client))
 
 
 class AutoAuthenticateThreads(threading.Thread):

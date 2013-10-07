@@ -270,6 +270,22 @@ def assertReadFromAll(testcase, rsc, members, *args, **kwargs):
 
     testcase.assertEqual(members, used)
 
+def get_pool(client):
+    if isinstance(client, MongoClient):
+        return client._MongoClient__pool
+    elif isinstance(client, MongoReplicaSetClient):
+        rs_state = client._MongoReplicaSetClient__rs_state
+        return rs_state.primary_member.pool
+    else:
+        raise TypeError(str(client))
+
+def pools_from_rs_client(client):
+    """Get Pool instances from a MongoReplicaSetClient or ReplicaSetConnection.
+    """
+    return [
+        member.pool for member in
+        client._MongoReplicaSetClient__rs_state.members]
+
 class TestRequestMixin(object):
     """Inherit from this class and from unittest.TestCase to get some
     convenient methods for testing connection pools and requests
