@@ -767,6 +767,17 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         self.assertTrue(rs_state.get(secondary_host).up)
         collection.find_one(read_preference=SECONDARY)  # No error.
 
+    def test_waitQueueTimeoutMS(self):
+        client = self._get_client(waitQueueTimeoutMS=2000)
+        pool = get_pool(client)
+        self.assertEqual(pool.wait_queue_timeout, 2)
+
+    def test_waitQueueMultiple(self):
+        client = self._get_client(max_pool_size=3, waitQueueMultiple=2)
+        pool = get_pool(client)
+        self.assertEqual(pool.wait_queue_multiple, 2)
+        self.assertEqual(pool._socket_semaphore.waiter_semaphore.counter, 6)
+
     def test_tz_aware(self):
         self.assertRaises(ConfigurationError, MongoReplicaSetClient,
                           tz_aware='foo', replicaSet=self.name)
