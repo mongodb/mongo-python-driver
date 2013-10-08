@@ -350,9 +350,10 @@ class BaseObject(object):
         # Note: 'safe' is always passed by Connection and ReplicaSetConnection
         # Always do the most "safe" thing, but warn about conflicts.
         if self.__safe and options.get('w') == 0:
-            warnings.warn("Conflicting write concerns.  'w' set to 0 "
-                          "but other options have enabled write concern. "
-                          "Please set 'w' to a value other than 0.",
+
+            warnings.warn("Conflicting write concerns: %s. Write concern "
+                          "options were configured, but w=0 disables all "
+                          "other options." % self.write_concern,
                           UserWarning)
 
     def __set_safe_option(self, option, value):
