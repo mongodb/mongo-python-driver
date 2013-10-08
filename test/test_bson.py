@@ -63,6 +63,8 @@ class TestBSON(unittest.TestCase):
         # the simplest valid BSON document
         self.assertTrue(is_valid(b("\x05\x00\x00\x00\x00")))
         self.assertTrue(is_valid(BSON(b("\x05\x00\x00\x00\x00"))))
+
+        # failure cases
         self.assertFalse(is_valid(b("\x04\x00\x00\x00\x00")))
         self.assertFalse(is_valid(b("\x05\x00\x00\x00\x01")))
         self.assertFalse(is_valid(b("\x05\x00\x00\x00")))
@@ -70,6 +72,17 @@ class TestBSON(unittest.TestCase):
         self.assertFalse(is_valid(b("\x07\x00\x00\x00\x02a\x00\x78\x56\x34\x12")))
         self.assertFalse(is_valid(b("\x09\x00\x00\x00\x10a\x00\x05\x00")))
         self.assertFalse(is_valid(b("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00")))
+        self.assertFalse(is_valid(b("\x13\x00\x00\x00\x02foo\x00"
+                                    "\x04\x00\x00\x00bar\x00\x00")))
+        self.assertFalse(is_valid(b("\x18\x00\x00\x00\x03foo\x00\x0f\x00\x00"
+                                    "\x00\x10bar\x00\xff\xff\xff\x7f\x00\x00")))
+        self.assertFalse(is_valid(b("\x15\x00\x00\x00\x03foo\x00\x0c"
+                                    "\x00\x00\x00\x08bar\x00\x01\x00\x00")))
+        self.assertFalse(is_valid(b("\x1c\x00\x00\x00\x03foo\x00"
+                                    "\x12\x00\x00\x00\x02bar\x00"
+                                    "\x05\x00\x00\x00baz\x00\x00\x00")))
+        self.assertFalse(is_valid(b("\x10\x00\x00\x00\x02a\x00"
+                                    "\x04\x00\x00\x00abc\xff\x00")))
 
     def test_random_data_is_not_bson(self):
         qcheck.check_unittest(self, qcheck.isnt(is_valid),

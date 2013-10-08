@@ -139,13 +139,19 @@ def _get_number(data, position, as_class, tz_aware, uuid_subtype):
 
 
 def _get_string(data, position, as_class, tz_aware, uuid_subtype):
-    length = struct.unpack("<i", data[position:position + 4])[0] - 1
+    length = struct.unpack("<i", data[position:position + 4])[0]
+    if (len(data) - position - 4) < length:
+        raise InvalidBSON("invalid string length")
     position += 4
-    return _get_c_string(data, position, length)
+    if data[position + length - 1] != ZERO:
+        raise InvalidBSON("invalid end of string")
+    return _get_c_string(data, position, length - 1)
 
 
 def _get_object(data, position, as_class, tz_aware, uuid_subtype):
     obj_size = struct.unpack("<i", data[position:position + 4])[0]
+    if data[position + obj_size - 1:position + obj_size] != ZERO:
+        raise InvalidBSON("bad eoo")
     encoded = data[position + 4:position + obj_size - 1]
     object = _elements_to_dict(encoded, as_class, tz_aware, uuid_subtype)
     position += obj_size
