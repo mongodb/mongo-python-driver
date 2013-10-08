@@ -143,7 +143,7 @@ def _get_string(data, position, as_class, tz_aware, uuid_subtype):
     if (len(data) - position - 4) < length:
         raise InvalidBSON("invalid string length")
     position += 4
-    if data[position + length - 1] != ZERO:
+    if data[position + length - 1:position + length] != ZERO:
         raise InvalidBSON("invalid end of string")
     return _get_c_string(data, position, length - 1)
 
