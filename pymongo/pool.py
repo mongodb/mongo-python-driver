@@ -141,12 +141,6 @@ class Pool:
         # Can override for testing: 0 to always check, None to never check.
         self._check_interval_seconds = 1
 
-        if use_greenlets and not thread_util.have_gevent:
-            raise ConfigurationError(
-                "The Gevent module is not available. "
-                "Install the gevent package from PyPI."
-            )
-
         self.sockets = set()
         self.lock = threading.Lock()
 
@@ -169,10 +163,16 @@ class Pool:
         if HAS_SSL and use_ssl and not ssl_cert_reqs:
             self.ssl_cert_reqs = ssl.CERT_NONE
 
-        self._ident = thread_util.create_ident(use_greenlets)
-
         # Map self._ident.get() -> request socket
         self._tid_to_sock = {}
+
+        if use_greenlets and not thread_util.have_gevent:
+            raise ConfigurationError(
+                "The Gevent module is not available. "
+                "Install the gevent package from PyPI."
+            )
+
+        self._ident = thread_util.create_ident(use_greenlets)
 
         # Count the number of calls to start_request() per thread or greenlet
         self._request_counter = thread_util.Counter(use_greenlets)
