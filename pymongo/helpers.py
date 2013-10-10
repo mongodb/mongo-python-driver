@@ -116,6 +116,10 @@ def _unpack_response(response, cursor_id=None, as_class=dict,
 def _check_command_response(response, reset, msg="%s", allowable_errors=[]):
     """Check the response to a command for errors.
     """
+    if "ok" not in response:
+        # Server didn't recognize our message as a command.
+        raise OperationFailure(response.get("$err"))
+
     if not response["ok"]:
         if "wtimeout" in response and response["wtimeout"]:
             raise TimeoutError(msg % response["errmsg"])
