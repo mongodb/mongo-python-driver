@@ -30,7 +30,8 @@ from bson.son import SON
 from pymongo import (ALL,
                      auth,
                      OFF,
-                     SLOW_ONLY)
+                     SLOW_ONLY,
+                     helpers)
 from pymongo.collection import Collection
 from pymongo.database import Database
 from pymongo.errors import (CollectionInvalid,
@@ -794,6 +795,22 @@ class TestDatabase(unittest.TestCase):
             self.assertTrue(name in ('ObjectIdShuffler', 'AutoReference'))
         self.assertEqual([], db.outgoing_manipulators)
         self.assertEqual(['AutoReference'], db.outgoing_copying_manipulators)
+
+    def test_command_response_without_ok(self):
+        # Sometimes (SERVER-10891) the server's response to a badly-formatted
+        # command document will have no 'ok' field. We should raise
+        # OperationFailure instead of KeyError.
+        self.assertRaises(
+            OperationFailure,
+            helpers._check_command_response, {}, reset=None)
+
+        try:
+            helpers._check_command_response({'$err': 'foo'}, reset=None)
+        except OperationFailure, e:
+            self.assertEqual(e.args[0], 'foo')
+        else:
+            self.fail("_check_command_response didn't raise OperationFailure")
+
 
 if __name__ == "__main__":
     unittest.main()
