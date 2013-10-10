@@ -1041,7 +1041,7 @@ class _TestMaxOpenSockets(_TestPoolingBase):
     To be run both with threads and with greenlets.
     """
     def get_pool_with_wait_queue_timeout(self, wait_queue_timeout):
-        return self.get_pool(('127.0.0.1', 27017),
+        return self.get_pool((host, port),
                              1, None, None,
                              False,
                              wait_queue_timeout=wait_queue_timeout,
@@ -1089,7 +1089,7 @@ class _TestWaitQueueMultiple(_TestPoolingBase):
     To be run both with threads and with greenlets.
     """
     def get_pool_with_wait_queue_multiple(self, wait_queue_multiple):
-        return self.get_pool(('127.0.0.1', 27017),
+        return self.get_pool((host, port),
                              2, None, None,
                              False,
                              wait_queue_timeout=None,
