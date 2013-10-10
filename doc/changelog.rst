@@ -1,6 +1,20 @@
 Changelog
 =========
 
+Changes in Version 2.6.3
+------------------------
+
+Version 2.6.3 fixes issues reported since the release of 2.6.2, most
+importantly a semaphore leak when a connection to the server fails.
+
+Issues Resolved
+...............
+
+See the `PyMongo 2.6.3 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 2.6.3 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/13098
+
 Changes in Version 2.6.2
 ------------------------
 
