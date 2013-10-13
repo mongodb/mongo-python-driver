@@ -334,15 +334,14 @@ class Collection(common.BaseObject):
             docs = [docs]
 
         if manipulate:
-            docs = [self.__database._fix_incoming(doc, self) for doc in docs]
+            docs = (self.__database._fix_incoming(doc, self) for doc in docs)
 
         safe, options = self._get_write_mode(safe, **kwargs)
-        message._do_batched_insert(self.__full_name, docs,
-                                   check_keys, safe, options,
-                                   continue_on_error, self.uuid_subtype,
-                                   self.database.connection)
+        ids = message._do_batched_insert(self.__full_name, docs,
+                                         check_keys, safe, options,
+                                         continue_on_error, self.uuid_subtype,
+                                         self.database.connection)
 
-        ids = [doc.get("_id", None) for doc in docs]
         if return_one:
             return ids[0]
         else:
