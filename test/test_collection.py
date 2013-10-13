@@ -761,7 +761,9 @@ class TestCollection(unittest.TestCase):
         self.assertTrue(isinstance(id, list))
         self.assertEqual(1, len(id))
 
-        self.assertRaises(InvalidOperation, db.test.insert, [])
+        # InvalidOperation: empty list
+        # OperationFailure: exhausted generator
+        self.assertRaises((InvalidOperation, OperationFailure), db.test.insert, [])
 
     def test_insert_multiple_with_duplicate(self):
         db = self.db
