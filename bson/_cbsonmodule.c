@@ -670,7 +670,7 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
                 *(buffer_get_buffer(buffer) + type_byte) = 0x03;
                 return 1;
             }
-        case -1:
+        case 255:
             {
                 /* MinKey */
                 *(buffer_get_buffer(buffer) + type_byte) = 0xFF;
@@ -1434,7 +1434,7 @@ static PyObject* _cbson_dict_to_bson(PyObject* self, PyObject* args) {
 }
 
 static PyObject* get_value(PyObject* self, const char* buffer, unsigned* position,
-                           int type, unsigned max, PyObject* as_class,
+                           unsigned char type, unsigned max, PyObject* as_class,
                            unsigned char tz_aware, unsigned char uuid_subtype) {
     struct module_state *state = GETSTATE(self);
 
@@ -1572,7 +1572,8 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
             while (*position < end) {
                 PyObject* to_append;
 
-                int bson_type = (int)buffer[(*position)++];
+                unsigned char bson_type = (unsigned char)buffer[(*position)++];
+
                 size_t key_size = strlen(buffer + *position);
                 if (max < key_size) {
                     Py_DECREF(value);
@@ -1603,7 +1604,8 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
             PyObject* data;
             PyObject* st;
             PyObject* type_to_create;
-            unsigned length, subtype;
+            unsigned length;
+            unsigned char subtype;
 
             if (max < 4) {
                 goto invalid;
@@ -1612,6 +1614,7 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
             if (max < length) {
                 goto invalid;
             }
+
             subtype = (unsigned char)buffer[*position + 4];
 #if PY_MAJOR_VERSION >= 3
             /* Python3 special case. Decode BSON binary subtype 0 to bytes. */
@@ -1755,10 +1758,12 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
             PyObject* replace;
             PyObject* args;
             PyObject* kwargs;
+            long long millis;
             if (max < 8) {
                 goto invalid;
             }
-            naive = datetime_from_millis(*(long long*)(buffer + *position));
+            memcpy(&millis, buffer + *position, 8);
+            naive = datetime_from_millis(millis);
             *position += 8;
             if (!tz_aware) { /* In the naive case, we're done here. */
                 value = naive;
@@ -2040,7 +2045,7 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
             *position += 8;
             break;
         }
-    case -1:
+    case 255:
         {
             PyObject* minkey_type = _get_object(state->MinKey, "bson.min_key", "MinKey");
             if (!minkey_type)
@@ -2094,7 +2099,8 @@ static PyObject* _elements_to_dict(PyObject* self, const char* string,
     while (position < max) {
         PyObject* name;
         PyObject* value;
-        int type = (int)string[position++];
+
+        unsigned char type = (unsigned char)string[position++];
         size_t name_length = strlen(string + position);
         if (name_length > BSON_MAX_SIZE || position + name_length >= max) {
             PyObject* InvalidBSON = _error("InvalidBSON");
