@@ -220,6 +220,19 @@ class TestBSON(unittest.TestCase):
         qcheck.check_unittest(self, encode_then_decode,
                               qcheck.gen_mongo_dict(3))
 
+    def test_dbpointer(self):
+        # *Note* - DBPointer and DBRef are *not* the same thing. DBPointer
+        # is a deprecated BSON type. DBRef is a convention that does not
+        # exist in the BSON spec, meant to replace DBPointer. PyMongo does
+        # not support creation of the DBPointer type, but will decode
+        # DBPointer to DBRef.
+
+        bs = b("\x18\x00\x00\x00\x0c\x00\x01\x00\x00"
+               "\x00\x00RY\xb5j\xfa[\xd8A\xd6X]\x99\x00")
+
+        self.assertEqual({'': DBRef('', ObjectId('5259b56afa5bd841d6585d99'))},
+                         bson.BSON(bs).decode())
+
     def test_bad_dbref(self):
         ref_only = {'ref': {'$ref': 'collection'}}
         id_only = {'ref': {'$id': ObjectId()}}

@@ -270,8 +270,8 @@ def _get_regex(data, position, as_class, tz_aware, uuid_subtype):
 
 
 def _get_ref(data, position, as_class, tz_aware, uuid_subtype):
-    position += 4
-    collection, position = _get_c_string(data, position)
+    collection, position = _get_string(data, position,
+                                       as_class, tz_aware, uuid_subtype)
     oid, position = _get_oid(data, position)
     return DBRef(collection, oid), position
 

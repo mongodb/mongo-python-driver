@@ -1883,7 +1883,11 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
             *position += coll_length;
 
             if ((objectid_type = _get_object(state->ObjectId, "bson.objectid", "ObjectId"))) {
+#if PY_MAJOR_VERSION >= 3
+                id = PyObject_CallFunction(objectid_type, "y#", buffer + *position, 12);
+#else
                 id = PyObject_CallFunction(objectid_type, "s#", buffer + *position, 12);
+#endif
                 Py_DECREF(objectid_type);
             }
             if (!id) {
