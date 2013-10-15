@@ -92,7 +92,7 @@ class MongoThread(object):
             return self.thread.isAlive()
 
     def join(self):
-        self.thread.join(10)
+        self.thread.join(20)
         if self.use_greenlets:
             msg = "Greenlet timeout"
         else:
