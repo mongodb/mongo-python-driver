@@ -392,7 +392,7 @@ class TestDatabase(unittest.TestCase):
         user_info = db.command("usersInfo", "amalia")
         self.assertTrue(user_info["users"])
         amalia_user = user_info["users"][0]
-        self.assertEqual(amalia_user["name"], "amalia")
+        self.assertEqual(amalia_user["user"], "amalia")
         self.assertEqual(amalia_user["customData"], {"secret": "koalas"})
 
         db.remove_user("amalia")

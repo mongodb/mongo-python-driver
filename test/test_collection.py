@@ -422,8 +422,8 @@ class TestCollection(unittest.TestCase):
                 "coordinates": [[[40,5], [40,6], [41,6], [41,5], [40,5]]]}
         query = {"geo": {"$within": {"$geometry": poly}}}
 
-        self.assertTrue(
-            db.test.find(query).explain()['cursor'].startswith('S2Cursor'))
+        cursor = db.test.find(query).explain()['cursor']
+        self.assertTrue('S2Cursor' in cursor or 'geo_2dsphere' in cursor)
 
         db.test.drop_indexes()
 

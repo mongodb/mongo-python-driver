@@ -405,10 +405,8 @@ class TestSSL(unittest.TestCase):
                            "--auth to test MONGODB-X509")
         # Give admin all necessary priviledges.
         client['$external'].add_user(MONGODB_X509_USERNAME, roles=[
-            {'name': 'readWriteAnyDatabase',
-                'db': 'admin', 'hasRole': True, 'canDelegate': False},
-            {'name': 'userAdminAnyDatabase',
-                'db': 'admin', 'hasRole': True, 'canDelegate': False}])
+            {'role': 'readWriteAnyDatabase', 'db': 'admin'},
+            {'role': 'userAdminAnyDatabase', 'db': 'admin'}])
         client = MongoClient(host, port, ssl=True, ssl_certfile=CLIENT_PEM)
         coll = client.pymongo_test.test
         self.assertRaises(OperationFailure, coll.count)
