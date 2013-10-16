@@ -140,7 +140,7 @@ def _get_number(data, position, as_class, tz_aware, uuid_subtype):
 
 def _get_string(data, position, as_class, tz_aware, uuid_subtype):
     length = struct.unpack("<i", data[position:position + 4])[0]
-    if (len(data) - position - 4) < length:
+    if length <= 0 or (len(data) - position - 4) < length:
         raise InvalidBSON("invalid string length")
     position += 4
     if data[position + length - 1:position + length] != ZERO:

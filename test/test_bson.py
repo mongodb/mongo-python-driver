@@ -40,7 +40,8 @@ from bson.dbref import DBRef
 from bson.py3compat import b
 from bson.son import SON
 from bson.timestamp import Timestamp
-from bson.errors import (InvalidDocument,
+from bson.errors import (InvalidBSON,
+                         InvalidDocument,
                          InvalidStringData)
 from bson.max_key import MaxKey
 from bson.min_key import MinKey
@@ -83,6 +84,61 @@ class TestBSON(unittest.TestCase):
                                     "\x05\x00\x00\x00baz\x00\x00\x00")))
         self.assertFalse(is_valid(b("\x10\x00\x00\x00\x02a\x00"
                                     "\x04\x00\x00\x00abc\xff\x00")))
+
+    def test_bad_string_lengths(self):
+        def decode(bs):
+            bson.BSON(bs).decode()
+
+        self.assertRaises(InvalidBSON, decode,
+                          b("\x0c\x00\x00\x00\x02\x00"
+                            "\x00\x00\x00\x00\x00\x00"))
+        self.assertRaises(InvalidBSON, decode,
+                          b("\x12\x00\x00\x00\x02\x00"
+                            "\xff\xff\xff\xfffoobar\x00\x00"))
+        self.assertRaises(InvalidBSON, decode,
+                          b("\x0c\x00\x00\x00\x0e\x00"
+                            "\x00\x00\x00\x00\x00\x00"))
+        self.assertRaises(InvalidBSON, decode,
+                          b("\x12\x00\x00\x00\x0e\x00"
+                            "\xff\xff\xff\xfffoobar\x00\x00"))
+        self.assertRaises(InvalidBSON, decode,
+                          b("\x18\x00\x00\x00\x0c\x00"
+                            "\x00\x00\x00\x00\x00RY\xb5j"
+                            "\xfa[\xd8A\xd6X]\x99\x00"))
+        self.assertRaises(InvalidBSON, decode,
+                          b("\x1e\x00\x00\x00\x0c\x00"
+                            "\xff\xff\xff\xfffoobar\x00"
+                            "RY\xb5j\xfa[\xd8A\xd6X]\x99\x00"))
+        self.assertRaises(InvalidBSON, decode,
+                          b("\x0c\x00\x00\x00\r\x00"
+                            "\x00\x00\x00\x00\x00\x00"))
+        self.assertRaises(InvalidBSON, decode,
+                          b("\x0c\x00\x00\x00\r\x00"
+                            "\xff\xff\xff\xff\x00\x00"))
+        self.assertRaises(InvalidBSON, decode,
+                          b("\x1c\x00\x00\x00\x0f\x00"
+                            "\x15\x00\x00\x00\x00\x00"
+                            "\x00\x00\x00\x0c\x00\x00"
+                            "\x00\x02\x00\x01\x00\x00"
+                            "\x00\x00\x00\x00"))
+        self.assertRaises(InvalidBSON, decode,
+                          b("\x1c\x00\x00\x00\x0f\x00"
+                            "\x15\x00\x00\x00\xff\xff"
+                            "\xff\xff\x00\x0c\x00\x00"
+                            "\x00\x02\x00\x01\x00\x00"
+                            "\x00\x00\x00\x00"))
+        self.assertRaises(InvalidBSON, decode,
+                          b("\x1c\x00\x00\x00\x0f\x00"
+                            "\x15\x00\x00\x00\x01\x00"
+                            "\x00\x00\x00\x0c\x00\x00"
+                            "\x00\x02\x00\x00\x00\x00"
+                            "\x00\x00\x00\x00"))
+        self.assertRaises(InvalidBSON, decode,
+                          b("\x1c\x00\x00\x00\x0f\x00"
+                            "\x15\x00\x00\x00\x01\x00"
+                            "\x00\x00\x00\x0c\x00\x00"
+                            "\x00\x02\x00\xff\xff\xff"
+                            "\xff\x00\x00\x00"))
 
     def test_random_data_is_not_bson(self):
         qcheck.check_unittest(self, qcheck.isnt(is_valid),
