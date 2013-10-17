@@ -66,3 +66,4 @@ The following is a list of people who have contributed to
 - Xiuming Chen (cxmcc)
 - Tyler Jones (thomascirca)
 - Amalia Hawkins (hawka)
+- Yuchen Ying (yegle)
