@@ -22,7 +22,7 @@ from pymongo import (common,
                      helpers,
                      message)
 from pymongo.cursor import Cursor
-from pymongo.errors import ConfigurationError, InvalidName
+from pymongo.errors import InvalidName
 
 
 try:
