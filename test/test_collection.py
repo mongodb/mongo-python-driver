@@ -1048,6 +1048,15 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(db.test.find_one(id1)["x"], 7)
         self.assertEqual(db.test.find_one(id2)["x"], 1)
 
+    def test_update_manipulate(self):
+        db = self.db
+        db.drop_collection("test")
+        db.test.insert({'_id': 1})
+        db.test.update({'_id': 1}, {'a': 1}, manipulate=True)
+        self.assertEqual(
+            {'_id': 1, 'a': 1},
+            db.test.find_one())
+
     def test_multi_update(self):
         db = self.db
         if not version.at_least(db.connection, (1, 1, 3, -1)):
