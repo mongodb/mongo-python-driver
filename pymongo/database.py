@@ -23,7 +23,6 @@ from pymongo.collection import Collection
 from pymongo.errors import (CollectionInvalid,
                             InvalidName,
                             OperationFailure)
-from pymongo.son_manipulator import ObjectIdInjector
 from pymongo import read_preferences as rp
 
 
@@ -81,7 +80,6 @@ class Database(common.BaseObject):
         self.__incoming_copying_manipulators = []
         self.__outgoing_manipulators = []
         self.__outgoing_copying_manipulators = []
-        self.add_son_manipulator(ObjectIdInjector())
 
     def add_son_manipulator(self, manipulator):
         """Add a new son manipulator to this database.

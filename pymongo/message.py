@@ -210,9 +210,7 @@ def _do_batched_insert(collection_name, docs, check_keys,
     begin += bson._make_c_string(collection_name)
     message_length = len(begin)
     data = [begin]
-    ids = []
     for doc in docs:
-        ids.append(doc.get("_id", None))
         encoded = bson.BSON.encode(doc, check_keys, uuid_subtype)
         encoded_length = len(encoded)
         if encoded_length > client.max_bson_size:
@@ -240,7 +238,7 @@ def _do_batched_insert(collection_name, docs, check_keys,
                 last_error = exc
             # With unacknowledged writes just return at the first error.
             elif not safe:
-                return ids
+                return
             # With acknowledged writes raise immediately.
             else:
                 raise
@@ -252,6 +250,5 @@ def _do_batched_insert(collection_name, docs, check_keys,
     # Re-raise any exception stored due to continue_on_error
     if last_error is not None:
         raise last_error
-    return ids
 if _use_c:
     _do_batched_insert = _cmessage._do_batched_insert

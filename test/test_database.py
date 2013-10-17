@@ -780,16 +780,15 @@ class TestDatabase(unittest.TestCase):
 
     def test_manipulator_properties(self):
         db = self.client.foo
-        self.assertEqual(['ObjectIdInjector'], db.incoming_manipulators)
+        self.assertEqual([], db.incoming_manipulators)
         self.assertEqual([], db.incoming_copying_manipulators)
         self.assertEqual([], db.outgoing_manipulators)
         self.assertEqual([], db.outgoing_copying_manipulators)
         db.add_son_manipulator(AutoReference(db))
         db.add_son_manipulator(NamespaceInjector())
         db.add_son_manipulator(ObjectIdShuffler())
-        self.assertEqual(2, len(db.incoming_manipulators))
-        for name in db.incoming_manipulators:
-            self.assertTrue(name in ('ObjectIdInjector', 'NamespaceInjector'))
+        self.assertEqual(1, len(db.incoming_manipulators))
+        self.assertEqual(db.incoming_manipulators, ['NamespaceInjector'])
         self.assertEqual(2, len(db.incoming_copying_manipulators))
         for name in db.incoming_copying_manipulators:
             self.assertTrue(name in ('ObjectIdShuffler', 'AutoReference'))

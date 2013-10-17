@@ -17,6 +17,7 @@
 import warnings
 
 from bson.code import Code
+from bson.objectid import ObjectId
 from bson.son import SON
 from pymongo import (common,
                      helpers,
@@ -333,14 +334,30 @@ class Collection(common.BaseObject):
             return_one = True
             docs = [docs]
 
+        ids = []
+
         if manipulate:
-            docs = (self.__database._fix_incoming(doc, self) for doc in docs)
+            def gen():
+                db = self.__database
+                for doc in docs:
+                    if '_id' not in doc:
+                        doc['_id'] = ObjectId()
+
+                    # Apply user-configured SON manipulators.
+                    doc = db._fix_incoming(doc, self)
+                    ids.append(doc['_id'])
+                    yield doc
+        else:
+            def gen():
+                for doc in docs:
+                    ids.append(doc.get('_id'))
+                    yield doc
 
         safe, options = self._get_write_mode(safe, **kwargs)
-        ids = message._do_batched_insert(self.__full_name, docs,
-                                         check_keys, safe, options,
-                                         continue_on_error, self.uuid_subtype,
-                                         self.database.connection)
+        message._do_batched_insert(self.__full_name, gen(),
+                                   check_keys, safe, options,
+                                   continue_on_error, self.uuid_subtype,
+                                   self.database.connection)
 
         if return_one:
             return ids[0]
