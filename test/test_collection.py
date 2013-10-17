@@ -617,6 +617,10 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(5, db.test.count())
         db.test.remove({})
 
+        db.test.insert(({'a': i} for i in xrange(5)), manipulate=True)
+        self.assertEqual(5, db.test.count())
+        db.test.remove({})
+
     def test_remove_all(self):
         self.db.test.remove()
         self.assertEqual(0, self.db.test.count())
@@ -1057,6 +1061,23 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(
             {'_id': 1, 'a': 1},
             db.test.find_one())
+
+        class AddField(SONManipulator):
+            def transform_incoming(self, son, collection):
+                son['field'] = 'value'
+                return son
+
+        db.add_son_manipulator(AddField())
+        db.test.update({'_id': 1}, {'a': 2}, manipulate=False)
+        self.assertEqual(
+            {'_id': 1, 'a': 2},
+            db.test.find_one())
+
+        db.test.update({'_id': 1}, {'a': 3}, manipulate=True)
+        self.assertEqual(
+            {'_id': 1, 'a': 3, 'field': 'value'},
+            db.test.find_one())
+
 
     def test_multi_update(self):
         db = self.db
