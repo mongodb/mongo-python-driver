@@ -367,6 +367,13 @@ class Database(common.BaseObject):
             if not isinstance(out, dict) or not out.get('inline'):
                 must_use_master = True
 
+        # Special-case: aggregate with $out cannot go to secondaries.
+        if command_name == 'aggregate':
+            for stage in kwargs.get('pipeline', []):
+                if '$out' in stage:
+                    must_use_master = True
+                    break
+
         extra_opts = {
             'as_class': kwargs.pop('as_class', None),
             'slave_okay': kwargs.pop('slave_okay', self.slave_okay),
