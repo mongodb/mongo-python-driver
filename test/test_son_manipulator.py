@@ -19,7 +19,6 @@ import unittest
 import sys
 sys.path[0:0] = [""]
 
-from bson.objectid import ObjectId
 from bson.son import SON
 from pymongo.database import Database
 from pymongo.son_manipulator import (NamespaceInjector,
