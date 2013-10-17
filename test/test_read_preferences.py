@@ -393,6 +393,31 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
             ('out', {'inline': True})
         ])))
 
+    def test_aggregate_command_with_out(self):
+        if not version.at_least(self.c, (2, 5, 2)):
+            raise SkipTest("Aggregation with $out requires MongoDB >= 2.5.2")
+
+        # Tests aggregate command when pipeline contains $out.
+        self.c.pymongo_test.test.insert({"x": 1, "y": 1}, w=self.w)
+        self.c.pymongo_test.test.insert({"x": 1, "y": 2}, w=self.w)
+        self.c.pymongo_test.test.insert({"x": 2, "y": 1}, w=self.w)
+        self.c.pymongo_test.test.insert({"x": 2, "y": 2}, w=self.w)
+
+        # Aggregate with $out always goes to primary, doesn't obey read prefs.
+        # Test aggregate command sent directly to db.command.
+        self._test_fn(False, lambda: self.c.pymongo_test.command(
+            "aggregate", "test",
+            pipeline=[{"$match": {"x": 1}}, {"$out": "agg_out"}]
+        ))
+
+        # Test aggregate when sent through the collection aggregate function.
+        self._test_fn(False, lambda: self.c.pymongo_test.test.aggregate(
+            [{"$match": {"x": 2}}, {"$out": "agg_out"}]
+        ))
+
+        self.c.pymongo_test.drop_collection("test")
+        self.c.pymongo_test.drop_collection("agg_out")
+
     def test_create_collection(self):
         # Collections should be created on primary, obviously
         self._test_fn(False, lambda: self.c.pymongo_test.command(
