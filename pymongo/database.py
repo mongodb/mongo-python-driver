@@ -14,6 +14,8 @@
 
 """Database level operations."""
 
+import warnings
+
 from bson.binary import OLD_UUID_SUBTYPE
 from bson.code import Code
 from bson.dbref import DBRef
@@ -21,6 +23,7 @@ from bson.son import SON
 from pymongo import auth, common, helpers
 from pymongo.collection import Collection
 from pymongo.errors import (CollectionInvalid,
+                            ConfigurationError,
                             InvalidName,
                             OperationFailure)
 from pymongo import read_preferences as rp
@@ -613,14 +616,30 @@ class Database(common.BaseObject):
     def next(self):
         raise TypeError("'Database' object is not iterable")
 
-    def _create_user(self, name, password, **kwargs):
+    def _create_user(self, name, password, read_only, **kwargs):
         """Uses v2 commands for creating a new user.
         """
+        if read_only or not kwargs.get("roles"):
+            warnings.warn("Creating a user with the read_only option "
+                          "or without roles is deprecated in MongoDB "
+                          ">= 2.6", DeprecationWarning)
+
         create_opts = {}
         if password is not None:
             create_opts["pwd"] = password
         if "roles" not in kwargs:
-            create_opts["roles"] = []
+            roles = []
+            if self.name == "admin":
+                if read_only:
+                    roles = ["readAnyDatabase"]
+                else:
+                    roles = ["root"]
+            else:
+                if read_only:
+                    roles = ["read"]
+                else:
+                    roles = ["dbOwner"]
+            create_opts["roles"] = roles
         create_opts["writeConcern"] = self._get_wc_override()
         create_opts.update(kwargs)
 
@@ -644,15 +663,15 @@ class Database(common.BaseObject):
         if password is not None:
             user["pwd"] = auth._password_digest(name, password)
         if read_only is not None:
-            user["readOnly"] = common.validate_boolean('read_only', read_only)
+            user["readOnly"] = read_only
         user.update(kwargs)
 
         try:
             self.system.users.save(user, **self._get_wc_override())
-        except OperationFailure, e:
+        except OperationFailure, exc:
             # First admin user add fails gle in MongoDB >= 2.1.2
             # See SERVER-4225 for more information.
-            if 'login' in str(e):
+            if 'login' in str(exc):
                 pass
             else:
                 raise
@@ -685,11 +704,29 @@ class Database(common.BaseObject):
 
         .. versionadded:: 1.4
         """
+        if not isinstance(name, basestring):
+            raise TypeError("name must be an instance "
+                            "of %s" % (basestring.__name__,))
+        if password is not None:
+            if not isinstance(password, basestring):
+                raise TypeError("password must be an instance "
+                                "of %s or None" % (basestring.__name__,))
+            if len(password) == 0:
+                raise ValueError("password can't be empty")
+        if read_only is not None:
+            read_only = common.validate_boolean('read_only', read_only)
+            if 'roles' in kwargs:
+                raise ConfigurationError("Can not use "
+                                         "read_only and roles together")
 
         try:
             uinfo = self.command("usersInfo", name)
-
         except OperationFailure, exc:
+            # MongoDB >= 2.5.3 requires the use of commands to manage
+            # users. "No such command" error didn't return an error
+            # code (59) before MongoDB 2.4.7 so we assume that an error
+            # code of None means the userInfo command doesn't exist and
+            # we should fall back to the legacy add user code.
             if exc.code in (59, None):
                 self._legacy_add_user(name, password, read_only, **kwargs)
                 return
@@ -698,7 +735,7 @@ class Database(common.BaseObject):
         if uinfo["users"]:
             self._update_user(name, password, **kwargs)
         else:
-            self._create_user(name, password, **kwargs)
+            self._create_user(name, password, read_only, **kwargs)
 
     def remove_user(self, name):
         """Remove user `name` from this :class:`Database`.
@@ -716,7 +753,8 @@ class Database(common.BaseObject):
             self.command("dropUser", name,
                          writeConcern=self._get_wc_override())
         except OperationFailure, exc:
-            if exc.code is None:
+            # See comment in add_user try / except above.
+            if exc.code in (59, None):
                 self.system.users.remove({"user": name},
                                          **self._get_wc_override())
                 return

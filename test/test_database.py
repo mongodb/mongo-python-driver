@@ -17,6 +17,7 @@
 import datetime
 import os
 import sys
+import warnings
 
 sys.path[0:0] = [""]
 import unittest
@@ -332,49 +333,118 @@ class TestDatabase(unittest.TestCase):
         if (is_mongos(self.client) and not
             version.at_least(self.client, (2, 0, 0))):
             raise SkipTest("Auth with sharding requires MongoDB >= 2.0.0")
-        if version.at_least(self.client, (2, 5, 3, -1)):
-            raise SkipTest("Legacy user manipulation requires MongoDB < 2.5.3")
-        db = self.client.pymongo_test
-        db.system.users.remove({})
-        db.remove_user("mike")
 
-        self.assertRaises(TypeError, db.add_user, "user", '')
+        db = self.client.pymongo_test
+
+        # Configuration errors
+        self.assertRaises(ValueError, db.add_user, "user", '')
         self.assertRaises(TypeError, db.add_user, "user", 'password', 15)
         self.assertRaises(ConfigurationError, db.add_user,
                           "user", 'password', 'True')
+        self.assertRaises(ConfigurationError, db.add_user,
+                          "user", 'password', True, roles=['read'])
 
+        if version.at_least(self.client, (2, 5, 3, -1)):
+            warnings.resetwarnings()
+            warnings.simplefilter("error", DeprecationWarning)
+            self.assertRaises(DeprecationWarning, db.add_user,
+                              "user", "password")
+            self.assertRaises(DeprecationWarning, db.add_user,
+                              "user", "password", True)
+            warnings.resetwarnings()
+            warnings.simplefilter("ignore")
+
+        # Add / authenticate / remove
         db.add_user("mike", "password")
-
         self.assertRaises(TypeError, db.authenticate, 5, "password")
         self.assertRaises(TypeError, db.authenticate, "mike", 5)
-
         self.assertRaises(OperationFailure,
                           db.authenticate, "mike", "not a real password")
         self.assertRaises(OperationFailure,
                           db.authenticate, "faker", "password")
         self.assertTrue(db.authenticate("mike", "password"))
+        db.logout()
         self.assertTrue(db.authenticate(u"mike", u"password"))
+        db.remove_user("mike")
         db.logout()
 
-        db.remove_user("mike")
         self.assertRaises(OperationFailure,
                           db.authenticate, "mike", "password")
 
+        # A new connection is required to re-enable the localhost
+        # exception after removing all users. In MongoDB < 2.5.3
+        # adding a non-admin user didn't disable the localhost
+        # exception.
+        db.connection.disconnect()
+
+        # Add / authenticate / change password
         self.assertRaises(OperationFailure,
                           db.authenticate, "Gustave", u"Dor\xe9")
         db.add_user("Gustave", u"Dor\xe9")
         self.assertTrue(db.authenticate("Gustave", u"Dor\xe9"))
-        db.logout()
-
         db.add_user("Gustave", "password")
+        db.logout()
         self.assertRaises(OperationFailure,
                           db.authenticate, "Gustave", u"Dor\xe9")
         self.assertTrue(db.authenticate("Gustave", u"password"))
+
+        if not version.at_least(self.client, (2, 5, 3, -1)):
+            # Add a readOnly user
+            db.add_user("Ross", "password", read_only=True)
+            db.logout()
+            self.assertTrue(db.authenticate("Ross", u"password"))
+            self.assertTrue(db.system.users.find({"readOnly": True}).count())
+            db.logout()
+
+        # Cleanup
+        db.authenticate("Gustave", "password")
+        remove_all_users(db)
         db.logout()
 
-        db.add_user("Ross", "password", read_only=True)
-        self.assertTrue(db.authenticate("Ross", u"password"))
-        self.assertTrue(db.system.users.find({"readOnly": True}).count())
+    def test_default_roles(self):
+        if not version.at_least(self.client, (2, 5, 3, -1)):
+            raise SkipTest("Default roles only exist in MongoDB >= 2.5.3")
+
+        # "Admin" user
+        db = self.client.admin
+        db.add_user('admin', 'pass')
+        db.authenticate('admin', 'pass')
+        info = db.command('usersInfo', 'admin')['users'][0]
+        self.assertEqual("root", info['roles'][0]['role'])
+
+        # Read only "admin" user
+        db.add_user('ro-admin', 'pass', read_only=True)
+        db.logout()
+        db.authenticate('ro-admin', 'pass')
+        info = db.command('usersInfo', 'ro-admin')['users'][0]
+        self.assertEqual("readAnyDatabase", info['roles'][0]['role'])
+        db.logout()
+
+        # Cleanup
+        db.authenticate('admin', 'pass')
+        remove_all_users(db)
+        db.logout()
+
+        db.connection.disconnect()
+
+        # "Non-admin" user
+        db = self.client.pymongo_test
+        db.add_user('user', 'pass')
+        db.authenticate('user', 'pass')
+        info = db.command('usersInfo', 'user')['users'][0]
+        self.assertEqual("dbOwner", info['roles'][0]['role'])
+
+        # Read only "Non-admin" user
+        db.add_user('ro-user', 'pass', read_only=True)
+        db.logout()
+        db.authenticate('ro-user', 'pass')
+        info = db.command('usersInfo', 'ro-user')['users'][0]
+        self.assertEqual("read", info['roles'][0]['role'])
+        db.logout()
+
+        # Cleanup
+        db.authenticate('user', 'pass')
+        remove_all_users(db)
         db.logout()
 
     def test_new_user_cmds(self):
