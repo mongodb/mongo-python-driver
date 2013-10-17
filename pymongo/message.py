@@ -202,15 +202,14 @@ def _do_batched_insert(collection_name, docs, check_keys,
             final_message += error_message
         return request_id, final_message
 
-    if not docs:
-        raise InvalidOperation("cannot do an empty bulk insert")
-
     last_error = None
     begin = struct.pack("<i", int(continue_on_error))
     begin += bson._make_c_string(collection_name)
     message_length = len(begin)
     data = [begin]
+    has_docs = False
     for doc in docs:
+        has_docs = True
         encoded = bson.BSON.encode(doc, check_keys, uuid_subtype)
         encoded_length = len(encoded)
         if encoded_length > client.max_bson_size:
@@ -244,6 +243,9 @@ def _do_batched_insert(collection_name, docs, check_keys,
                 raise
         message_length = len(begin) + encoded_length
         data = [begin, encoded]
+
+    if not has_docs:
+        raise InvalidOperation("cannot do an empty bulk insert")
 
     client._send_message(_insert_message(EMPTY.join(data), safe), safe)
 
