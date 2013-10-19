@@ -167,6 +167,7 @@ class TestCursor(unittest.TestCase):
         self.assertRaises(TypeError, db.test.find().limit, None)
         self.assertRaises(TypeError, db.test.find().limit, "hello")
         self.assertRaises(TypeError, db.test.find().limit, 5.5)
+        self.assertTrue(db.test.find().limit(5L))
 
         db.test.drop()
         for i in range(100):
@@ -218,6 +219,7 @@ class TestCursor(unittest.TestCase):
         self.assertRaises(TypeError, db.test.find().batch_size, "hello")
         self.assertRaises(TypeError, db.test.find().batch_size, 5.5)
         self.assertRaises(ValueError, db.test.find().batch_size, -1)
+        self.assertTrue(db.test.find().batch_size(5L))
         a = db.test.find()
         for _ in a:
             break
@@ -298,6 +300,8 @@ class TestCursor(unittest.TestCase):
         self.assertRaises(TypeError, db.test.find().skip, None)
         self.assertRaises(TypeError, db.test.find().skip, "hello")
         self.assertRaises(TypeError, db.test.find().skip, 5.5)
+        self.assertRaises(ValueError, db.test.find().skip, -5)
+        self.assertTrue(db.test.find().skip(5L))
 
         db.drop_collection("test")
 
@@ -798,6 +802,8 @@ class TestCursor(unittest.TestCase):
     def test_count_with_limit_and_skip(self):
         if not version.at_least(self.db.connection, (1, 1, 4, -1)):
             raise SkipTest("count with limit / skip requires MongoDB >= 1.1.4")
+
+        self.assertRaises(TypeError, self.db.test.find().count, "foo")
 
         def check_len(cursor, length):
             self.assertEqual(len(list(cursor)), cursor.count(True))

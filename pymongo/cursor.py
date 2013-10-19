@@ -407,18 +407,18 @@ class Cursor(object):
     def limit(self, limit):
         """Limits the number of results to be returned by this cursor.
 
-        Raises TypeError if limit is not an instance of int. Raises
-        InvalidOperation if this cursor has already been used. The
-        last `limit` applied to this cursor takes precedence. A limit
-        of ``0`` is equivalent to no limit.
+        Raises :exc:`TypeError` if `limit` is not an integer. Raises
+        :exc:`~pymongo.errors.InvalidOperation` if this :class:`Cursor`
+        has already been used. The last `limit` applied to this cursor
+        takes precedence. A limit of ``0`` is equivalent to no limit.
 
         :Parameters:
           - `limit`: the number of results to return
 
         .. mongodoc:: limit
         """
-        if not isinstance(limit, int):
-            raise TypeError("limit must be an int")
+        if not isinstance(limit, (int, long)):
+            raise TypeError("limit must be an integer")
         if self.__exhaust:
             raise InvalidOperation("Can't use limit and exhaust together.")
         self.__check_okay_to_chain()
@@ -437,10 +437,9 @@ class Cursor(object):
            if you set batch size to 1,000,000,000, MongoDB will currently only
            return 4-16MB of results per batch).
 
-        Raises :class:`TypeError` if `batch_size` is not an instance
-        of :class:`int`. Raises :class:`ValueError` if `batch_size` is
-        less than ``0``. Raises
-        :class:`~pymongo.errors.InvalidOperation` if this
+        Raises :exc:`TypeError` if `batch_size` is not an integer.
+        Raises :exc:`ValueError` if `batch_size` is less than ``0``.
+        Raises :exc:`~pymongo.errors.InvalidOperation` if this
         :class:`Cursor` has already been used. The last `batch_size`
         applied to this cursor takes precedence.
 
@@ -449,8 +448,8 @@ class Cursor(object):
 
         .. versionadded:: 1.9
         """
-        if not isinstance(batch_size, int):
-            raise TypeError("batch_size must be an int")
+        if not isinstance(batch_size, (int, long)):
+            raise TypeError("batch_size must be an integer")
         if batch_size < 0:
             raise ValueError("batch_size must be >= 0")
         self.__check_okay_to_chain()
@@ -461,35 +460,39 @@ class Cursor(object):
     def skip(self, skip):
         """Skips the first `skip` results of this cursor.
 
-        Raises TypeError if skip is not an instance of int. Raises
-        InvalidOperation if this cursor has already been used. The last `skip`
-        applied to this cursor takes precedence.
+        Raises :exc:`TypeError` if `skip` is not an integer. Raises
+        :exc:`ValueError` if `skip` is less than ``0``. Raises
+        :exc:`~pymongo.errors.InvalidOperation` if this :class:`Cursor` has
+        already been used. The last `skip` applied to this cursor takes
+        precedence.
 
         :Parameters:
           - `skip`: the number of results to skip
         """
         if not isinstance(skip, (int, long)):
-            raise TypeError("skip must be an int")
+            raise TypeError("skip must be an integer")
+        if skip < 0:
+            raise ValueError("skip must be >= 0")
         self.__check_okay_to_chain()
 
         self.__skip = skip
         return self
 
     def max_time_ms(self, max_time_ms):
-        """Specifies a time limit for a query operation. After the specified
-        time is exceeded, the operation will be aborted and an error will be
-        returned to the client. If max_time_ms is None, no limit is applied.
+        """Specifies a time limit for a query operation. If the specified
+        time is exceeded, the operation will be aborted and
+        :exc:`~pymongo.errors.ExecutionTimeout` is raised. If `max_time_ms`
+        is ``None`` no limit is applied.
 
-        Raises :exc:`TypeError` if max_time_ms is not an instance of int
-        or None.
-        Raises :exc:`~pymongo.errors.ExecutionTimeout` if the operation exceeds
-        the time limit.
+        Raises :exc:`TypeError` if `max_time_ms` is not an integer or ``None``.
+        Raises :exc:`~pymongo.errors.InvalidOperation` if this :class:`Cursor`
+        has already been used.
 
         :Parameters:
           - `max_time_ms`: the time limit after which the operation is aborted
         """
         if not isinstance(max_time_ms, (int, long)) and max_time_ms is not None:
-            raise TypeError("max_time_ms must be an int or None")
+            raise TypeError("max_time_ms must be an integer or None")
         self.__check_okay_to_chain()
 
         self.__max_time_ms = max_time_ms
@@ -639,6 +642,8 @@ class Cursor(object):
            :meth:`~pymongo.cursor.Cursor.__len__` was deprecated in favor of
            calling :meth:`count` with `with_limit_and_skip` set to ``True``.
         """
+        if not isinstance(with_limit_and_skip, bool):
+            raise TypeError("with_limit_and_skip must be an instance of bool")
         self.__check_not_command_cursor('count')
         command = {"query": self.__spec, "fields": self.__fields}
 
