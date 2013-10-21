@@ -215,6 +215,8 @@ class Collection(common.BaseObject):
           - `check_keys` (optional): check if keys start with '$' or
             contain '.', raising :class:`~pymongo.errors.InvalidName`
             in either case.
+          - `full_response`: return the entire response object from the server
+            (default ``False``)
           - `w` (optional): (integer or string) If this is a replica set, write
             operations will block until they have been replicated to the
             specified number or tagged set of servers. `w=<int>` always includes
@@ -225,6 +227,9 @@ class Collection(common.BaseObject):
             Specify a value in milliseconds to control how long to wait for
             write propagation to complete. If replication does not complete in
             the given timeframe, a timeout exception is raised.
+          - `wtimeout_is_error`: If ``True`` raise
+            :class:`~pymongo.errors.TimeoutError` on write concern timeout.
+            (default ``True``)
           - `j` (optional): If ``True`` block until write operations have been
             committed to the journal. Ignored if the server is running without
             journaling.
@@ -247,12 +252,16 @@ class Collection(common.BaseObject):
         if "_id" not in to_save:
             return self.insert(to_save, manipulate, safe, check_keys, **kwargs)
         else:
-            self.update({"_id": to_save["_id"]}, to_save, True,
+            response = self.update({"_id": to_save["_id"]}, to_save, True,
                         manipulate, safe, check_keys=check_keys, **kwargs)
-            return to_save.get("_id", None)
+            if kwargs.get("full_response"):
+                return response
+            else:
+                return to_save["_id"]
 
     def insert(self, doc_or_docs, manipulate=True,
-               safe=None, check_keys=True, continue_on_error=False, **kwargs):
+               safe=None, check_keys=True, continue_on_error=False,
+               full_response=False, wtimeout_is_error=True, **kwargs):
         """Insert a document(s) into this collection.
 
         If `manipulate` is ``True``, the document(s) are manipulated using
@@ -290,6 +299,8 @@ class Collection(common.BaseObject):
             inserts, except lastError will be set if any insert fails, not just
             the last one. If multiple errors occur, only the most recent will
             be reported by :meth:`~pymongo.database.Database.error`.
+          - `full_response`: return the entire response object from the server
+            (default ``False``)
           - `w` (optional): (integer or string) If this is a replica set, write
             operations will block until they have been replicated to the
             specified number or tagged set of servers. `w=<int>` always includes
@@ -300,6 +311,9 @@ class Collection(common.BaseObject):
             Specify a value in milliseconds to control how long to wait for
             write propagation to complete. If replication does not complete in
             the given timeframe, a timeout exception is raised.
+          - `wtimeout_is_error`: If ``True`` raise
+            :class:`~pymongo.errors.TimeoutError` on write concern timeout.
+            (default ``True``)
           - `j` (optional): If ``True`` block until write operations have been
             committed to the journal. Ignored if the server is running without
             journaling.
@@ -354,18 +368,31 @@ class Collection(common.BaseObject):
                     yield doc
 
         safe, options = self._get_write_mode(safe, **kwargs)
-        message._do_batched_insert(self.__full_name, gen(),
-                                   check_keys, safe, options,
-                                   continue_on_error, self.uuid_subtype,
-                                   self.database.connection)
+
+        if full_response:
+            if not return_one:
+                raise ValueError("Full response must be used only with one document")
+
+            if not safe:
+                raise ValueError("Full response must be used only with acknowledged writes")
+
+        response = message._do_batched_insert(self.__full_name, gen(),
+                                              check_keys, safe, options,
+                                              continue_on_error,
+                                              self.uuid_subtype,
+                                              self.database.connection,
+                                              wtimeout_is_error)
+
+        if full_response:
+            return response
 
         if return_one:
             return ids[0]
         else:
             return ids
 
-    def update(self, spec, document, upsert=False, manipulate=False,
-               safe=None, multi=False, check_keys=True, **kwargs):
+    def update(self, spec, document, upsert=False, manipulate=False, safe=None,
+               multi=False, check_keys=True, wtimeout_is_error=True, **kwargs):
         """Update a document(s) in this collection.
 
         Raises :class:`TypeError` if either `spec` or `document` is
@@ -434,6 +461,9 @@ class Collection(common.BaseObject):
             Specify a value in milliseconds to control how long to wait for
             write propagation to complete. If replication does not complete in
             the given timeframe, a timeout exception is raised.
+          - `wtimeout_is_error`: If ``True`` raise
+            :class:`~pymongo.errors.TimeoutError` on write concern timeout.
+            (default ``True``)
           - `j` (optional): If ``True`` block until write operations have been
             committed to the journal. Ignored if the server is running without
             journaling.
@@ -481,7 +511,8 @@ class Collection(common.BaseObject):
         return self.__database.connection._send_message(
             message.update(self.__full_name, upsert, multi,
                            spec, document, safe, options,
-                           check_keys, self.uuid_subtype), safe)
+                           check_keys, self.uuid_subtype),
+            safe, wtimeout_is_error=wtimeout_is_error)
 
     def drop(self):
         """Alias for :meth:`~pymongo.database.Database.drop_collection`.
@@ -495,7 +526,7 @@ class Collection(common.BaseObject):
         """
         self.__database.drop_collection(self.__name)
 
-    def remove(self, spec_or_id=None, safe=None, **kwargs):
+    def remove(self, spec_or_id=None, safe=None, wtimeout_is_error=True, **kwargs):
         """Remove a document(s) from this collection.
 
         .. warning:: Calls to :meth:`remove` should be performed with
@@ -531,6 +562,9 @@ class Collection(common.BaseObject):
             Specify a value in milliseconds to control how long to wait for
             write propagation to complete. If replication does not complete in
             the given timeframe, a timeout exception is raised.
+          - `wtimeout_is_error`: If ``True`` raise
+            :class:`~pymongo.errors.TimeoutError` on write concern timeout.
+            (default ``True``)
           - `j` (optional): If ``True`` block until write operations have been
             committed to the journal. Ignored if the server is running without
             journaling.
@@ -565,7 +599,8 @@ class Collection(common.BaseObject):
         safe, options = self._get_write_mode(safe, **kwargs)
         return self.__database.connection._send_message(
             message.delete(self.__full_name, spec_or_id, safe,
-                           options, self.uuid_subtype), safe)
+                           options, self.uuid_subtype),
+            safe, wtimeout_is_error=wtimeout_is_error)
 
     def find_one(self, spec_or_id=None, *args, **kwargs):
         """Get a single document from the database.

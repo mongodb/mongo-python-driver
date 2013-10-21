@@ -167,8 +167,8 @@ class MasterSlaveConnection(BaseObject):
     # _connection_to_use is a hack that we need to include to make sure
     # that killcursor operations can be sent to the same instance on which
     # the cursor actually resides...
-    def _send_message(self, message,
-                      with_last_error=False, _connection_to_use=None):
+    def _send_message(self, message, with_last_error=False,
+                      _connection_to_use=None, wtimeout_is_error=True):
         """Say something to Mongo.
 
         Sends a message on the Master connection. This is used for inserts,
@@ -183,9 +183,11 @@ class MasterSlaveConnection(BaseObject):
           - `safe`: perform a getLastError after sending the message
         """
         if _connection_to_use is None or _connection_to_use == -1:
-            return self.__master._send_message(message, with_last_error)
+            return self.__master._send_message(
+                message, with_last_error, wtimeout_is_error=wtimeout_is_error)
         return self.__slaves[_connection_to_use]._send_message(
-            message, with_last_error, check_primary=False)
+            message, with_last_error, check_primary=False,
+            wtimeout_is_error=wtimeout_is_error)
 
     # _connection_to_use is a hack that we need to include to make sure
     # that getmore operations can be sent to the same instance on which

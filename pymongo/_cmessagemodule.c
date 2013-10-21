@@ -557,24 +557,26 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
     PyObject* result;
     PyObject* max_bson_size_obj;
     PyObject* max_message_size_obj;
-    PyObject* send_message_result;
     unsigned char check_keys;
     unsigned char safe;
     unsigned char continue_on_error;
     unsigned char uuid_subtype;
+    unsigned char wtimeout_is_error;
     long max_bson_size;
     long max_message_size;
     buffer_t buffer;
-    PyObject *exc_type = NULL, *exc_value = NULL, *exc_trace = NULL;
+    PyObject* send_message_result = NULL;
+    PyObject* exc_type = NULL, *exc_value = NULL, *exc_trace = NULL;
 
-    if (!PyArg_ParseTuple(args, "et#ObbObbO",
+    if (!PyArg_ParseTuple(args, "et#ObbObbOb",
                           "utf-8",
                           &collection_name,
                           &collection_name_length,
                           &docs, &check_keys, &safe,
                           &last_error_args,
                           &continue_on_error,
-                          &uuid_subtype, &client)) {
+                          &uuid_subtype, &client,
+                          &wtimeout_is_error)) {
         return NULL;
     }
     if (continue_on_error) {
@@ -706,13 +708,38 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
             result = Py_BuildValue("i" BYTES_FORMAT_STRING, request_id,
                                    buffer_get_buffer(buffer),
                                    buffer_get_position(buffer));
+            if(!result) {
+                buffer_free(new_buffer);
+                goto iterfail;
+            }
+
             buffer_free(buffer);
             buffer = new_buffer;
             request_id = new_request_id;
             length_location = message_start;
 
-            send_message_result = PyObject_CallMethod(client, "_send_message",
-                                                      "NO", result, send_gle);
+            /* Call client._send_message() */
+            PyObject* cargs = Py_BuildValue("(N,O)", result, send_gle);
+            PyObject* ckwargs = Py_BuildValue("{s:N}",
+                "wtimeout_is_error", PyBool_FromLong(wtimeout_is_error));
+            PyObject* send_message = PyObject_GetAttrString(client, "_send_message");
+
+            if(!cargs || !ckwargs || !send_message) {
+                if(cargs) {
+                    Py_DECREF(cargs);
+                } else {
+                    Py_DECREF(result);
+                }
+                Py_XDECREF(ckwargs);
+                Py_XDECREF(send_message);
+                goto iterfail;
+            }
+
+            Py_XDECREF(send_message_result);
+            send_message_result = PyObject_Call(send_message, cargs, ckwargs);
+            Py_DECREF(cargs);
+            Py_DECREF(ckwargs);
+            Py_DECREF(send_message);
 
             if (!send_message_result) {
                 PyObject *etype = NULL, *evalue = NULL, *etrace = NULL;
@@ -752,8 +779,6 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
                  * acknowledged writes. Re-raise immediately. */
                 PyErr_Restore(etype, evalue, etrace);
                 goto iterfail;
-            } else {
-                Py_DECREF(send_message_result);
             }
         }
     }
@@ -789,38 +814,63 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
                            buffer_get_buffer(buffer),
                            buffer_get_position(buffer));
     buffer_free(buffer);
+    if(!result) {
+        goto finalfail;
+    }
+
+    /* Call client._send_message() */
+    PyObject* cargs = Py_BuildValue("(N,N)", result, PyBool_FromLong(safe));
+    PyObject* ckwargs = Py_BuildValue("{s:N}",
+        "wtimeout_is_error", PyBool_FromLong(wtimeout_is_error));
+    PyObject* send_message = PyObject_GetAttrString(client, "_send_message");
+
+    if(!cargs || !ckwargs || !send_message) {
+        if(cargs) {
+            Py_DECREF(cargs);
+        } else {
+            Py_DECREF(result);
+        }
+        Py_XDECREF(ckwargs);
+        Py_XDECREF(send_message);
+        goto finalfail;
+    }
 
     /* Send the last (or only) batch */
-    send_message_result = PyObject_CallMethod(client, "_send_message", "NN",
-                                              result,
-                                              PyBool_FromLong((long)safe));
+    Py_XDECREF(send_message_result);
+    send_message_result = PyObject_Call(send_message, cargs, ckwargs);
+    Py_DECREF(cargs);
+    Py_DECREF(ckwargs);
+    Py_DECREF(send_message);
 
     if (!send_message_result) {
-        Py_XDECREF(exc_type);
-        Py_XDECREF(exc_value);
-        Py_XDECREF(exc_trace);
-        return NULL;
-    } else {
-        Py_DECREF(send_message_result);
+        goto finalfail;
     }
 
     if (exc_type) {
+        Py_XDECREF(send_message_result);
         /* Re-raise any previously stored exception
          * due to continue_on_error being True */
         PyErr_Restore(exc_type, exc_value, exc_trace);
         return NULL;
     }
 
+    if(safe && send_message_result) {
+        return send_message_result;
+    }
+
+    Py_XDECREF(send_message_result);
     Py_RETURN_NONE;
 
 iterfail:
     Py_DECREF(iterator);
 insertfail:
+    buffer_free(buffer);
+    PyMem_Free(collection_name);
+finalfail:
+    Py_XDECREF(send_message_result);
     Py_XDECREF(exc_type);
     Py_XDECREF(exc_value);
     Py_XDECREF(exc_trace);
-    buffer_free(buffer);
-    PyMem_Free(collection_name);
     return NULL;
 }
 

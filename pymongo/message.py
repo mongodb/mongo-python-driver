@@ -189,7 +189,8 @@ def kill_cursors(cursor_ids):
     return __pack_message(2007, data)
 
 def _do_batched_insert(collection_name, docs, check_keys,
-           safe, last_error_args, continue_on_error, uuid_subtype, client):
+                       safe, last_error_args, continue_on_error, uuid_subtype,
+                       client, wtimeout_is_error):
     """Insert `docs` using multiple batches.
     """
     def _insert_message(insert_message, send_safe):
@@ -203,6 +204,7 @@ def _do_batched_insert(collection_name, docs, check_keys,
         return request_id, final_message
 
     last_error = None
+    last_response = None
     begin = struct.pack("<i", int(continue_on_error))
     begin += bson._make_c_string(collection_name)
     message_length = len(begin)
@@ -226,8 +228,9 @@ def _do_batched_insert(collection_name, docs, check_keys,
         # We have enough data, send this message.
         send_safe = safe or not continue_on_error
         try:
-            client._send_message(_insert_message(EMPTY.join(data),
-                                                 send_safe), send_safe)
+            msg = _insert_message(EMPTY.join(data), send_safe)
+            last_response = client._send_message(
+                msg, send_safe, wtimeout_is_error=wtimeout_is_error)
         # Exception type could be OperationFailure or a subtype
         # (e.g. DuplicateKeyError)
         except OperationFailure, exc:
@@ -247,10 +250,14 @@ def _do_batched_insert(collection_name, docs, check_keys,
     if not has_docs:
         raise InvalidOperation("cannot do an empty bulk insert")
 
-    client._send_message(_insert_message(EMPTY.join(data), safe), safe)
+    msg = _insert_message(EMPTY.join(data), safe)
+    last_response = client._send_message(
+        msg, safe, wtimeout_is_error=wtimeout_is_error)
 
     # Re-raise any exception stored due to continue_on_error
     if last_error is not None:
         raise last_error
+
+    return last_response
 if _use_c:
     _do_batched_insert = _cmessage._do_batched_insert
