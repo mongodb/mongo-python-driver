@@ -2303,7 +2303,7 @@ static PyObject* _cbson_decode_all(PyObject* self, PyObject* args) {
     PyObject* as_class = (PyObject*)&PyDict_Type;
     unsigned char tz_aware = 1;
     unsigned char uuid_subtype = 3;
-    unsigned char compile_re;
+    unsigned char compile_re = 1;
 
     if (!PyArg_ParseTuple(
             args, "O|Obbb",
