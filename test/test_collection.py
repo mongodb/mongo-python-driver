@@ -1269,8 +1269,11 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(expected, db.test.aggregate((pipeline,)))
 
     def test_aggregate_with_compile_re(self):
-        if not version.at_least(self.db.connection, (2, 1, 0)):
-            raise SkipTest("The aggregate command requires MongoDB >= 2.1.0")
+        # See SERVER-6470.
+        if not version.at_least(self.db.connection, (2, 3, 2)):
+            raise SkipTest(
+                "Retrieving a regex with aggregation requires "
+                "MongoDB >= 2.3.2")
 
         db = self.client.pymongo_test
         db.test.drop()

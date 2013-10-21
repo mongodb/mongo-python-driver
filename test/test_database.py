@@ -306,10 +306,13 @@ class TestDatabase(unittest.TestCase):
             db.command('eval', 'sleep(100)', network_timeout=0.001)
 
     def test_command_with_compile_re(self):
-        # Using 'aggregate' as our example command, since it's an easy way to
-        # retrieve a BSON regex from a collection using a command.
-        if not version.at_least(self.client, (2, 1, 0)):
-            raise SkipTest('Need aggregation to test compile_re')
+        # We use 'aggregate' as our example command, since it's an easy way to
+        # retrieve a BSON regex from a collection using a command. But until
+        # MongoDB 2.3.2, aggregation turned regexes into strings: SERVER-6470.
+        if not version.at_least(self.client, (2, 3, 2)):
+            raise SkipTest(
+                "Retrieving a regex with aggregation requires "
+                "MongoDB >= 2.3.2")
 
         db = self.client.pymongo_test
         db.test.drop()
