@@ -451,7 +451,6 @@ _set_cannot_encode(PyObject* value) {
 static int _write_regex_to_buffer(
     buffer_t buffer, int type_byte, PyObject* value) {
 
-    struct module_state *state = GETSTATE(self);
     PyObject* py_flags;
     PyObject* py_pattern;
     PyObject* encoded_pattern;
