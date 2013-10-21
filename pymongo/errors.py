@@ -77,10 +77,17 @@ class ExecutionTimeout(OperationFailure):
 
 
 class TimeoutError(OperationFailure):
+    """DEPRECATED - will be removed in PyMongo 3.0. See WTimeoutError instead.
+
+    .. versionadded:: 1.8
+    """
+
+
+class WTimeoutError(TimeoutError):
     """Raised when a database operation times out (i.e. wtimeout expires)
     before replication completes.
 
-    .. versionadded:: 1.8
+    .. versionadded:: 2.7
     """
 
 

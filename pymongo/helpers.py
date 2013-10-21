@@ -26,7 +26,7 @@ from pymongo.errors import (AutoReconnect,
                             DuplicateKeyError,
                             OperationFailure,
                             ExecutionTimeout,
-                            TimeoutError)
+                            WTimeoutError)
 
 
 def _index_list(key_or_list, direction=None):
@@ -122,9 +122,13 @@ def _check_command_response(response, reset, msg="%s", allowable_errors=[]):
         # Server didn't recognize our message as a command.
         raise OperationFailure(response.get("$err"))
 
+    if response.get("wtimeout", False):
+        # MongoDB versions before 1.8.0 return the error message in an "errmsg"
+        # field. If "errmsg" exists "err" will also exist set to None, so we
+        # have to check for "errmsg" first.
+        raise WTimeoutError(response.get("errmsg", response.get("err")))
+
     if not response["ok"]:
-        if "wtimeout" in response and response["wtimeout"]:
-            raise TimeoutError(msg % response["errmsg"])
 
         details = response
         # Mongos returns the error details in a 'raw' object

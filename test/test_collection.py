@@ -46,7 +46,7 @@ from pymongo.errors import (DuplicateKeyError,
                             InvalidName,
                             InvalidOperation,
                             OperationFailure,
-                            TimeoutError)
+                            WTimeoutError)
 from test.test_client import get_client
 from test.utils import is_mongos, joinall, enable_text_search
 from test import (qcheck,
@@ -1218,23 +1218,22 @@ class TestCollection(unittest.TestCase):
         if not version.at_least(self.client, (1, 5, 1)):
             raise SkipTest("getLastError options require MongoDB >= 1.5.1")
 
-        # XXX: Fix this if we ever have a replica set unittest env.
-        # mongo >=1.7.6 errors with 'norepl' when w=2+
-        # and we aren't replicated.
-        if not version.at_least(self.client, (1, 7, 6)):
-            self.assertRaises(TimeoutError, self.db.test.save,
-                              {"x": 1}, w=2, wtimeout=1)
-            self.assertRaises(TimeoutError, self.db.test.insert,
-                              {"x": 1}, w=2, wtimeout=1)
-            self.assertRaises(TimeoutError, self.db.test.update,
-                              {"x": 1}, {"y": 2}, w=2, wtimeout=1)
-            self.assertRaises(TimeoutError, self.db.test.remove,
-                              {"x": 1}, w=2, wtimeout=1)
-
         self.db.test.save({"x": 1}, w=1, wtimeout=1)
         self.db.test.insert({"x": 1}, w=1, wtimeout=1)
         self.db.test.remove({"x": 1}, w=1, wtimeout=1)
         self.db.test.update({"x": 1}, {"y": 2}, w=1, wtimeout=1)
+
+        ismaster = self.client.admin.command("ismaster")
+        if ismaster.get("setName"):
+            w = len(ismaster["hosts"]) + 1
+            self.assertRaises(WTimeoutError, self.db.test.save,
+                              {"x": 1}, w=w, wtimeout=1)
+            self.assertRaises(WTimeoutError, self.db.test.insert,
+                              {"x": 1}, w=w, wtimeout=1)
+            self.assertRaises(WTimeoutError, self.db.test.update,
+                              {"x": 1}, {"y": 2}, w=w, wtimeout=1)
+            self.assertRaises(WTimeoutError, self.db.test.remove,
+                              {"x": 1}, w=w, wtimeout=1)
 
     def test_manual_last_error(self):
         self.db.test.save({"x": 1}, w=0)
