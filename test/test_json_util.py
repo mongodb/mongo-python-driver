@@ -77,7 +77,8 @@ class TestJsonUtil(unittest.TestCase):
                                                    49, 45, 191000, utc)})
 
     def test_regex_object_hook(self):
-        import json
+        # simplejson or the builtin json module.
+        from bson.json_util import json
 
         # Extended JSON format regular expression.
         pat = 'a*b'
