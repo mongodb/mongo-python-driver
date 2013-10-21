@@ -16,10 +16,11 @@
 
 """Test the bson module."""
 
-import unittest
 import datetime
 import re
 import sys
+import traceback
+import unittest
 try:
     import uuid
     should_test_uuid = True
@@ -55,91 +56,109 @@ PY3 = sys.version_info[0] == 3
 
 
 class TestBSON(unittest.TestCase):
+    def assertInvalid(self, data, msg=None):
+        try:
+            bson.BSON(data).decode()
+        except InvalidBSON, e:
+            # Check a message is set.
+            self.assertTrue(len(e.args) > 0)
+            if msg:
+                self.assertEqual(msg, e.args[0])
+
     def test_basic_validation(self):
         self.assertRaises(TypeError, is_valid, 100)
         self.assertRaises(TypeError, is_valid, u"test")
         self.assertRaises(TypeError, is_valid, 10.4)
 
-        self.assertFalse(is_valid(b("test")))
+        self.assertInvalid(b("test"))
 
         # the simplest valid BSON document
         self.assertTrue(is_valid(b("\x05\x00\x00\x00\x00")))
         self.assertTrue(is_valid(BSON(b("\x05\x00\x00\x00\x00"))))
 
         # failure cases
-        self.assertFalse(is_valid(b("\x04\x00\x00\x00\x00")))
-        self.assertFalse(is_valid(b("\x05\x00\x00\x00\x01")))
-        self.assertFalse(is_valid(b("\x05\x00\x00\x00")))
-        self.assertFalse(is_valid(b("\x05\x00\x00\x00\x00\x00")))
-        self.assertFalse(is_valid(b("\x07\x00\x00\x00\x02a\x00\x78\x56\x34\x12")))
-        self.assertFalse(is_valid(b("\x09\x00\x00\x00\x10a\x00\x05\x00")))
-        self.assertFalse(is_valid(b("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00")))
-        self.assertFalse(is_valid(b("\x13\x00\x00\x00\x02foo\x00"
-                                    "\x04\x00\x00\x00bar\x00\x00")))
-        self.assertFalse(is_valid(b("\x18\x00\x00\x00\x03foo\x00\x0f\x00\x00"
-                                    "\x00\x10bar\x00\xff\xff\xff\x7f\x00\x00")))
-        self.assertFalse(is_valid(b("\x15\x00\x00\x00\x03foo\x00\x0c"
-                                    "\x00\x00\x00\x08bar\x00\x01\x00\x00")))
-        self.assertFalse(is_valid(b("\x1c\x00\x00\x00\x03foo\x00"
-                                    "\x12\x00\x00\x00\x02bar\x00"
-                                    "\x05\x00\x00\x00baz\x00\x00\x00")))
-        self.assertFalse(is_valid(b("\x10\x00\x00\x00\x02a\x00"
-                                    "\x04\x00\x00\x00abc\xff\x00")))
+        self.assertInvalid(b("\x04\x00\x00\x00\x00"),
+                           'invalid message size')
+        self.assertInvalid(b("\x05\x00\x00\x00\x01"),
+                           'bad eoo')
+        self.assertInvalid(b("\x05\x00\x00\x00"),
+                           'not enough data for a BSON document')
+        self.assertInvalid(b("\x05\x00\x00\x00\x00\x00"),
+                           'bad eoo')
+        self.assertInvalid(b("\x07\x00\x00\x00\x02a\x00\x78\x56\x34\x12"),
+                           'bad eoo')
+        self.assertInvalid(b("\x09\x00\x00\x00\x10a\x00\x05\x00"),
+                           'invalid length or type code')
+        self.assertInvalid(b("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"),
+                           'invalid message size')
+        self.assertInvalid(b("\x13\x00\x00\x00\x02foo\x00"
+                             "\x04\x00\x00\x00bar\x00\x00"),
+                           'objsize too large')
+        self.assertInvalid(b("\x18\x00\x00\x00\x03foo\x00\x0f\x00\x00"
+                             "\x00\x10bar\x00\xff\xff\xff\x7f\x00\x00"),
+                           'invalid length or type code')
+        self.assertInvalid(b("\x15\x00\x00\x00\x03foo\x00\x0c"
+                             "\x00\x00\x00\x08bar\x00\x01\x00\x00"),
+                           'invalid length or type code')
+        self.assertInvalid(b("\x1c\x00\x00\x00\x03foo\x00"
+                             "\x12\x00\x00\x00\x02bar\x00"
+                             "\x05\x00\x00\x00baz\x00\x00\x00"),
+                           'invalid length or type code')
+        self.assertInvalid(b("\x10\x00\x00\x00\x02a\x00"
+                             "\x04\x00\x00\x00abc\xff\x00"),
+                           'invalid length or type code')
 
     def test_bad_string_lengths(self):
-        def decode(bs):
-            bson.BSON(bs).decode()
-
-        self.assertRaises(InvalidBSON, decode,
-                          b("\x0c\x00\x00\x00\x02\x00"
-                            "\x00\x00\x00\x00\x00\x00"))
-        self.assertRaises(InvalidBSON, decode,
-                          b("\x12\x00\x00\x00\x02\x00"
-                            "\xff\xff\xff\xfffoobar\x00\x00"))
-        self.assertRaises(InvalidBSON, decode,
-                          b("\x0c\x00\x00\x00\x0e\x00"
-                            "\x00\x00\x00\x00\x00\x00"))
-        self.assertRaises(InvalidBSON, decode,
-                          b("\x12\x00\x00\x00\x0e\x00"
-                            "\xff\xff\xff\xfffoobar\x00\x00"))
-        self.assertRaises(InvalidBSON, decode,
-                          b("\x18\x00\x00\x00\x0c\x00"
-                            "\x00\x00\x00\x00\x00RY\xb5j"
-                            "\xfa[\xd8A\xd6X]\x99\x00"))
-        self.assertRaises(InvalidBSON, decode,
-                          b("\x1e\x00\x00\x00\x0c\x00"
-                            "\xff\xff\xff\xfffoobar\x00"
-                            "RY\xb5j\xfa[\xd8A\xd6X]\x99\x00"))
-        self.assertRaises(InvalidBSON, decode,
-                          b("\x0c\x00\x00\x00\r\x00"
-                            "\x00\x00\x00\x00\x00\x00"))
-        self.assertRaises(InvalidBSON, decode,
-                          b("\x0c\x00\x00\x00\r\x00"
-                            "\xff\xff\xff\xff\x00\x00"))
-        self.assertRaises(InvalidBSON, decode,
-                          b("\x1c\x00\x00\x00\x0f\x00"
-                            "\x15\x00\x00\x00\x00\x00"
-                            "\x00\x00\x00\x0c\x00\x00"
-                            "\x00\x02\x00\x01\x00\x00"
-                            "\x00\x00\x00\x00"))
-        self.assertRaises(InvalidBSON, decode,
-                          b("\x1c\x00\x00\x00\x0f\x00"
-                            "\x15\x00\x00\x00\xff\xff"
-                            "\xff\xff\x00\x0c\x00\x00"
-                            "\x00\x02\x00\x01\x00\x00"
-                            "\x00\x00\x00\x00"))
-        self.assertRaises(InvalidBSON, decode,
-                          b("\x1c\x00\x00\x00\x0f\x00"
-                            "\x15\x00\x00\x00\x01\x00"
-                            "\x00\x00\x00\x0c\x00\x00"
-                            "\x00\x02\x00\x00\x00\x00"
-                            "\x00\x00\x00\x00"))
-        self.assertRaises(InvalidBSON, decode,
-                          b("\x1c\x00\x00\x00\x0f\x00"
-                            "\x15\x00\x00\x00\x01\x00"
-                            "\x00\x00\x00\x0c\x00\x00"
-                            "\x00\x02\x00\xff\xff\xff"
-                            "\xff\x00\x00\x00"))
+        self.assertInvalid(
+            b("\x0c\x00\x00\x00\x02\x00"
+              "\x00\x00\x00\x00\x00\x00"))
+        self.assertInvalid(
+            b("\x12\x00\x00\x00\x02\x00"
+              "\xff\xff\xff\xfffoobar\x00\x00"))
+        self.assertInvalid(
+            b("\x0c\x00\x00\x00\x0e\x00"
+              "\x00\x00\x00\x00\x00\x00"))
+        self.assertInvalid(
+            b("\x12\x00\x00\x00\x0e\x00"
+              "\xff\xff\xff\xfffoobar\x00\x00"))
+        self.assertInvalid(
+            b("\x18\x00\x00\x00\x0c\x00"
+              "\x00\x00\x00\x00\x00RY\xb5j"
+              "\xfa[\xd8A\xd6X]\x99\x00"))
+        self.assertInvalid(
+            b("\x1e\x00\x00\x00\x0c\x00"
+              "\xff\xff\xff\xfffoobar\x00"
+              "RY\xb5j\xfa[\xd8A\xd6X]\x99\x00"))
+        self.assertInvalid(
+            b("\x0c\x00\x00\x00\r\x00"
+              "\x00\x00\x00\x00\x00\x00"))
+        self.assertInvalid(
+            b("\x0c\x00\x00\x00\r\x00"
+              "\xff\xff\xff\xff\x00\x00"))
+        self.assertInvalid(
+            b("\x1c\x00\x00\x00\x0f\x00"
+              "\x15\x00\x00\x00\x00\x00"
+              "\x00\x00\x00\x0c\x00\x00"
+              "\x00\x02\x00\x01\x00\x00"
+              "\x00\x00\x00\x00"))
+        self.assertInvalid(
+            b("\x1c\x00\x00\x00\x0f\x00"
+              "\x15\x00\x00\x00\xff\xff"
+              "\xff\xff\x00\x0c\x00\x00"
+              "\x00\x02\x00\x01\x00\x00"
+              "\x00\x00\x00\x00"))
+        self.assertInvalid(
+            b("\x1c\x00\x00\x00\x0f\x00"
+              "\x15\x00\x00\x00\x01\x00"
+              "\x00\x00\x00\x0c\x00\x00"
+              "\x00\x02\x00\x00\x00\x00"
+              "\x00\x00\x00\x00"))
+        self.assertInvalid(
+            b("\x1c\x00\x00\x00\x0f\x00"
+              "\x15\x00\x00\x00\x01\x00"
+              "\x00\x00\x00\x0c\x00\x00"
+              "\x00\x02\x00\xff\xff\xff"
+              "\xff\x00\x00\x00"))
 
     def test_random_data_is_not_bson(self):
         qcheck.check_unittest(self, qcheck.isnt(is_valid),
@@ -570,6 +589,32 @@ class TestBSON(unittest.TestCase):
 
         self.assertEqual(
             doc2_with_bson_re, BSON(doc2_bson).decode(compile_re=False))
+
+    def test_exception_wrapping(self):
+        # No matter what exception is raised while trying to decode BSON,
+        # the final exception always matches InvalidBSON and the original
+        # traceback is preserved.
+
+        # Invalid Python regex, though valid PCRE.
+        # Causes an error in re.compile().
+        bad_doc = BSON.encode({'r': Regex(r'[\w-\.]')})
+
+        try:
+            decode_all(bad_doc)
+        except InvalidBSON:
+            exc_type, exc_value, exc_tb = sys.exc_info()
+            # Original re error was captured and wrapped in InvalidBSON.
+            self.assertEqual(exc_value.args[0], 'bad character range')
+
+            # Traceback includes bson module's call into re module.
+            for filename, lineno, fname, text in traceback.extract_tb(exc_tb):
+                if filename.endswith('re.py') and fname == 'compile':
+                    # Traceback was correctly preserved.
+                    break
+            else:
+                self.fail('Traceback not captured')
+        else:
+            self.fail('InvalidBSON not raised')
 
 
 if __name__ == "__main__":

@@ -1463,7 +1463,6 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
     struct module_state *state = GETSTATE(self);
 
     PyObject* value = NULL;
-    PyObject* error;
     switch (type) {
     case 1:
         {
@@ -1473,9 +1472,6 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
             }
             memcpy(&d, buffer + *position, 8);
             value = PyFloat_FromDouble(d);
-            if (!value) {
-                return NULL;
-            }
             *position += 8;
             break;
         }
@@ -1498,7 +1494,7 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
             }
             value = PyUnicode_DecodeUTF8(buffer + *position, value_length - 1, "strict");
             if (!value) {
-                return NULL;
+                goto invalid;
             }
             *position += value_length;
             break;
@@ -1522,7 +1518,7 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
                                      size - 5, as_class, tz_aware, uuid_subtype,
                                      compile_re);
             if (!value) {
-                return NULL;
+                goto invalid;
             }
 
             /* Decoding for DBRefs */
@@ -1564,9 +1560,6 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
                 Py_DECREF(id);
                 Py_DECREF(collection);
                 Py_DECREF(database);
-                if (!value) {
-                    return NULL;
-                }
             }
 
             *position += size;
@@ -1592,7 +1585,7 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
 
             value = PyList_New(0);
             if (!value) {
-                return NULL;
+                goto invalid;
             }
             while (*position < end) {
                 PyObject* to_append;
@@ -1608,7 +1601,7 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
                 *position += (unsigned)key_size + 1;
                 if (Py_EnterRecursiveCall(" while decoding a list value")) {
                     Py_DECREF(value);
-                    return NULL;
+                    goto invalid;
                 }
                 to_append = get_value(self, buffer, position, bson_type,
                                       max - (unsigned)key_size,
@@ -1617,7 +1610,7 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
                 Py_LeaveRecursiveCall();
                 if (!to_append) {
                     Py_DECREF(value);
-                    return NULL;
+                    goto invalid;
                 }
                 PyList_Append(value, to_append);
                 Py_DECREF(to_append);
@@ -1666,7 +1659,7 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
             }
 #endif
             if (!data) {
-                return NULL;
+                goto invalid;
             }
             /* Encode as UUID, not Binary */
             if ((subtype == 3 || subtype == 4) && state->UUID) {
@@ -1675,15 +1668,19 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
                 /* UUID should always be 16 bytes */
                 if (!args || length != 16) {
                     Py_DECREF(data);
-                    return NULL;
+                    goto invalid;
                 }
                 kwargs = PyDict_New();
                 if (!kwargs) {
                     Py_DECREF(data);
                     Py_DECREF(args);
-                    return NULL;
+                    goto invalid;
                 }
 
+                /*
+                 * From this point, we hold refs to args, kwargs, and data.
+                 * If anything fails, goto uuiderror to clean them up.
+                 */
                 if (uuid_subtype == CSHARP_LEGACY) {
                     /* Legacy C# byte order */
                     if ((PyDict_SetItemString(kwargs, "bytes_le", data)) == -1)
@@ -1717,7 +1714,7 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
                 Py_DECREF(kwargs);
                 Py_DECREF(data);
                 if (!value) {
-                    return NULL;
+                    goto invalid;
                 }
 
                 *position += length;
@@ -1727,7 +1724,7 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
                 Py_DECREF(args);
                 Py_DECREF(kwargs);
                 Py_XDECREF(data);
-                return NULL;
+                goto invalid;
             }
 
 #if PY_MAJOR_VERSION >= 3
@@ -1737,7 +1734,7 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
 #endif
             if (!st) {
                 Py_DECREF(data);
-                return NULL;
+                goto invalid;
             }
             if ((type_to_create = _get_object(state->Binary, "bson.binary", "Binary"))) {
                 value = PyObject_CallFunctionObjArgs(type_to_create, data, st, NULL);
@@ -1746,7 +1743,7 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
             Py_DECREF(st);
             Py_DECREF(data);
             if (!value) {
-                return NULL;
+                goto invalid;
             }
             *position += length;
             break;
@@ -1801,23 +1798,23 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
             }
 
             if (!naive) {
-                return NULL;
+                goto invalid;
             }
             replace = PyObject_GetAttrString(naive, "replace");
             Py_DECREF(naive);
             if (!replace) {
-                return NULL;
+                goto invalid;
             }
             args = PyTuple_New(0);
             if (!args) {
                 Py_DECREF(replace);
-                return NULL;
+                goto invalid;
             }
             kwargs = PyDict_New();
             if (!kwargs) {
                 Py_DECREF(replace);
                 Py_DECREF(args);
-                return NULL;
+                goto invalid;
             }
             utc_type = _get_object(state->UTC, "bson.tz_util", "UTC");
             if (!utc_type || PyDict_SetItemString(kwargs, "tzinfo", utc_type) == -1) {
@@ -1825,7 +1822,7 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
                 Py_DECREF(args);
                 Py_DECREF(kwargs);
                 Py_XDECREF(utc_type);
-                return NULL;
+                goto invalid;
             }
             Py_XDECREF(utc_type);
             value = PyObject_Call(replace, args, kwargs);
@@ -1846,7 +1843,7 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
             }
             pattern = PyUnicode_DecodeUTF8(buffer + *position, pattern_length, "strict");
             if (!pattern) {
-                return NULL;
+                goto invalid;
             }
             *position += (unsigned)pattern_length + 1;
             flags_length = strlen(buffer + *position);
@@ -1919,7 +1916,7 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
             collection = PyUnicode_DecodeUTF8(buffer + *position,
                                               coll_length - 1, "strict");
             if (!collection) {
-                return NULL;
+                goto invalid;
             }
             *position += coll_length;
 
@@ -1933,7 +1930,7 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
             }
             if (!id) {
                 Py_DECREF(collection);
-                return NULL;
+                goto invalid;
             }
             *position += 12;
             if ((dbref_type = _get_object(state->DBRef, "bson.dbref", "DBRef"))) {
@@ -1964,7 +1961,7 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
             }
             code = PyUnicode_DecodeUTF8(buffer + *position, value_length - 1, "strict");
             if (!code) {
-                return NULL;
+                goto invalid;
             }
             *position += value_length;
             if ((code_type = _get_object(state->Code, "bson.code", "Code"))) {
@@ -2006,7 +2003,7 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
             }
             code = PyUnicode_DecodeUTF8(buffer + *position, code_size - 1, "strict");
             if (!code) {
-                return NULL;
+                goto invalid;
             }
             *position += code_size;
 
@@ -2030,7 +2027,7 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
                                      tz_aware, uuid_subtype, compile_re);
             if (!scope) {
                 Py_DECREF(code);
-                return NULL;
+                goto invalid;
             }
             *position += scope_size;
 
@@ -2055,7 +2052,7 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
             value = PyInt_FromLong(i);
 #endif
             if (!value) {
-                return NULL;
+                goto invalid;
             }
             *position += 4;
             break;
@@ -2085,7 +2082,7 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
             memcpy(&ll, buffer + *position, 8);
             value = PyLong_FromLongLong(ll);
             if (!value) {
-                return NULL;
+                goto invalid;
             }
             *position += 8;
             break;
@@ -2094,7 +2091,7 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
         {
             PyObject* minkey_type = _get_object(state->MinKey, "bson.min_key", "MinKey");
             if (!minkey_type)
-                return NULL;
+                goto invalid;
             value = PyObject_CallFunctionObjArgs(minkey_type, NULL);
             Py_DECREF(minkey_type);
             break;
@@ -2103,7 +2100,7 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
         {
             PyObject* maxkey_type = _get_object(state->MaxKey, "bson.max_key", "MaxKey");
             if (!maxkey_type)
-                return NULL;
+                goto invalid;
             value = PyObject_CallFunctionObjArgs(maxkey_type, NULL);
             Py_DECREF(maxkey_type);
             break;
@@ -2116,18 +2113,58 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
                                 "no c decoder for this type yet");
                 Py_DECREF(InvalidDocument);
             }
-            return NULL;
+            goto invalid;
         }
     }
-    return value;
+
+    if (value) {
+        return value;
+    }
 
     invalid:
 
-    error = _error("InvalidBSON");
-    if (error) {
-        PyErr_SetString(error,
-                        "invalid length or type code");
-        Py_DECREF(error);
+    /*
+     * Wrap any non-InvalidBSON errors in InvalidBSON.
+     */
+    if (PyErr_Occurred()) {
+        PyObject *etype, *evalue, *etrace;
+        PyObject *InvalidBSON;
+
+        /*
+         * Calling _error clears the error state, so fetch it first.
+         */
+        PyErr_Fetch(&etype, &evalue, &etrace);
+        InvalidBSON = _error("InvalidBSON");
+        if (InvalidBSON) {
+            if (!PyErr_GivenExceptionMatches(etype, InvalidBSON)) {
+                /*
+                 * Raise InvalidBSON(str(e)).
+                 */
+                Py_DECREF(etype);
+                etype = InvalidBSON;
+
+                if (evalue) {
+                    PyObject *msg = PyObject_Str(evalue);
+                    Py_DECREF(evalue);
+                    evalue = msg;
+                }
+                PyErr_NormalizeException(&etype, &evalue, &etrace);
+            } else {
+                /*
+                 * The current exception matches InvalidBSON, so we don't need
+                 * this reference after all.
+                 */
+                Py_DECREF(InvalidBSON);
+            }
+        }
+        /* Steals references to args. */
+        PyErr_Restore(etype, evalue, etrace);
+    } else {
+        PyObject *InvalidBSON = _error("InvalidBSON");
+        if (InvalidBSON) {
+            PyErr_SetString(InvalidBSON, "invalid length or type code");
+            Py_DECREF(InvalidBSON);
+        }
     }
     return NULL;
 }
