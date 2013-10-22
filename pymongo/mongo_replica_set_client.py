@@ -291,9 +291,8 @@ class Monitor(object):
         """Refresh immediately
         """
         if not self.isAlive():
-            raise InvalidOperation(
-                "Monitor thread is dead: Perhaps started before a fork?")
-
+            # Checks in RS client should prevent this.
+            raise AssertionError("schedule_refresh called with dead monitor")
         self.refreshed.clear()
         self.timer.set()
 
@@ -337,6 +336,7 @@ class MonitorThread(threading.Thread, Monitor):
         Monitor.__init__(self, rsc, threading.Event)
         threading.Thread.__init__(self)
         self.setName("ReplicaSetMonitorThread")
+        self.setDaemon(True)
 
         # Track whether the thread has started. (Greenlets track this already.)
         self.started = False
@@ -516,11 +516,6 @@ class MongoReplicaSetClient(common.BaseObject):
            sure you call :meth:`~close` to ensure that the monitor task is
            cleanly shut down.
 
-        .. note:: A :class:`MongoReplicaSetClient` created before a call to
-           ``os.fork()`` is invalid after the fork. Applications should either
-           fork before creating the client, or recreate the client after a
-           fork.
-
         :Parameters:
           - `hosts_or_uri` (optional): A MongoDB URI or string of `host:port`
             pairs. If a host is an IPv6 literal it must be enclosed in '[' and
@@ -674,7 +669,7 @@ class MongoReplicaSetClient(common.BaseObject):
         # _pool_class and _monitor_class are for deep customization of PyMongo,
         # e.g. Motor. SHOULD NOT BE USED BY DEVELOPERS EXTERNAL TO 10GEN.
         self.pool_class = kwargs.pop('_pool_class', pool.Pool)
-        monitor_class = kwargs.pop('_monitor_class', None)
+        self.__monitor_class = kwargs.pop('_monitor_class', None)
 
         for option, value in kwargs.iteritems():
             option, value = common.validate(option, value)
@@ -764,14 +759,17 @@ class MongoReplicaSetClient(common.BaseObject):
                 raise ConfigurationError(str(exc))
 
         # Start the monitor after we know the configuration is correct.
-        if monitor_class:
-            self.__monitor = monitor_class(self)
-        elif self.__use_greenlets:
-            self.__monitor = MonitorGreenlet(self)
-        else:
-            self.__monitor = MonitorThread(self)
-            self.__monitor.setDaemon(True)
+        if not self.__monitor_class:
+            if self.__use_greenlets:
+                self.__monitor_class = MonitorGreenlet
+            else:
+                # Common case: monitor RS with a background thread.
+                self.__monitor_class = MonitorThread
+
+        self.__monitor = self.__monitor_class(self)
         register_monitor(self.__monitor)
+
+        self.__monitor_lock = threading.Lock()
 
         if _connect:
             # Wait for the monitor to really start. Otherwise if we return to
@@ -1076,9 +1074,30 @@ class MongoReplicaSetClient(common.BaseObject):
         is in progress, the work of refreshing the state is only performed
         once.
         """
+        if not self.__monitor:
+            raise InvalidOperation('MongoReplicaSetClient has been closed')
+
+        if not self.__monitor.isAlive():
+            # We've forked since monitor was created.
+            self.__restart_monitor()
+
         self.__monitor.schedule_refresh()
         if sync:
             self.__monitor.wait_for_refresh(timeout_seconds=5)
+
+    def __restart_monitor(self):
+        self.__monitor_lock.acquire()
+        try:
+            # Another thread may have restarted the monitor while we were
+            # waiting for the lock.
+            if self.__monitor.isAlive():
+                return
+
+            self.__monitor = self.__monitor_class(self)
+            register_monitor(self.__monitor)
+            self.__monitor.start_sync()
+        finally:
+            self.__monitor_lock.release()
 
     def __make_threadlocal(self):
         if self.__use_greenlets:
@@ -1270,23 +1289,25 @@ class MongoReplicaSetClient(common.BaseObject):
         """Close this client instance.
 
         This method first terminates the replica set monitor, then disconnects
-        from all members of the replica set.
-        
+        from all members of the replica set. No further operations are
+        permitted on this client.
+
         .. warning:: This method stops the replica set monitor task. The
            replica set monitor is required to properly handle replica set
            configuration changes, including a failure of the primary.
-           Once :meth:`~close` is called this client instance must not be reused.
+           Once :meth:`~close` is called this client instance must not be
+           reused.
 
         .. versionchanged:: 2.2.1
            The :meth:`close` method now terminates the replica set monitor.
         """
-        if self.__monitor:
-            self.__monitor.shutdown()
-            # Use a reasonable timeout.
-            self.__monitor.join(1.0)
-            self.__monitor = None
-
         self.__rs_state = RSState(self.__make_threadlocal())
+
+        monitor, self.__monitor = self.__monitor, None
+        if monitor:
+            monitor.shutdown()
+            # Use a reasonable timeout.
+            monitor.join(1.0)
 
     def alive(self):
         """Return ``False`` if there has been an error communicating with the

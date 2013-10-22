@@ -18,7 +18,6 @@
 
 import copy
 import datetime
-import os
 import signal
 import socket
 import sys
@@ -102,6 +101,16 @@ class TestReplicaSetClientBase(unittest.TestCase):
 
 
 class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
+    def assertSoon(self, fn, msg=None):
+        start = time.time()
+        while time.time() - start < 10:
+            if fn():
+                return
+
+            time.sleep(0.1)
+
+        self.fail(msg)
+
     def test_init_disconnected(self):
         c = self._get_client(_connect=False)
 
@@ -515,70 +524,31 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
 
         coll.count()
 
+    def test_close(self):
+        # Multiple threads can call close() at once without error, and all
+        # operations raise InvalidOperation afterward.
+        c = self._get_client()
+        nthreads = 10
+        outcomes = []
+
+        def close():
+            c.close()
+            outcomes.append(True)
+
+        threads = [threading.Thread(target=close) for _ in range(nthreads)]
+        for t in threads:
+            t.start()
+
+        for t in threads:
+            t.join(10)
+
+        self.assertEqual(nthreads, len(outcomes))
+        self.assertRaises(InvalidOperation, c.db.collection.find_one)
+        self.assertRaises(InvalidOperation, c.db.collection.insert, {})
+
     def test_fork(self):
-        # Test using a client before and after a fork.
-        if sys.platform == "win32":
-            raise SkipTest("Can't fork on Windows")
-
-        try:
-            from multiprocessing import Process, Pipe
-        except ImportError:
-            raise SkipTest("No multiprocessing module")
-
-        db = self._get_client().pymongo_test
-
-        # Failure occurs if the client is used before the fork
-        db.test.find_one()
-
-        def loop(pipe):
-            while True:
-                try:
-                    db.test.insert({"a": "b"})
-                    for _ in db.test.find():
-                        pass
-                except:
-                    traceback.print_exc()
-                    pipe.send(True)
-                    os._exit(1)
-
-        cp1, cc1 = Pipe()
-        cp2, cc2 = Pipe()
-
-        p1 = Process(target=loop, args=(cc1,))
-        p2 = Process(target=loop, args=(cc2,))
-
-        p1.start()
-        p2.start()
-
-        p1.join(1)
-        p2.join(1)
-
-        p1.terminate()
-        p2.terminate()
-
-        p1.join()
-        p2.join()
-
-        cc1.close()
-        cc2.close()
-
-        # recv will only have data if the subprocess failed
-        try:
-            cp1.recv()
-            self.fail()
-        except EOFError:
-            pass
-        try:
-            cp2.recv()
-            self.fail()
-        except EOFError:
-            pass
-
-        db.connection.close()
-
-    def test_fork_and_schedule_refresh(self):
         # After a fork the monitor thread is gone.
-        # Verify that schedule_refresh throws InvalidOperation.
+        # Verify that schedule_refresh restarts it.
         if sys.platform == "win32":
             raise SkipTest("Can't fork on Windows")
 
@@ -588,23 +558,26 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
             raise SkipTest("No multiprocessing module")
 
         client = self._get_client()
-        db = client.pymongo_test
 
         def f(pipe):
             try:
                 # Trigger a refresh.
-                self.assertRaises(InvalidOperation, client.disconnect)
+                self.assertFalse(
+                    client._MongoReplicaSetClient__monitor.isAlive())
+
+                client.disconnect()
+                self.assertSoon(
+                    lambda: client._MongoReplicaSetClient__monitor.isAlive())
+
+                client.db.collection.find_one()  # No error.
             except:
                 traceback.print_exc()
                 pipe.send(True)
-                os._exit(1)
 
         cp, cc = Pipe()
         p = Process(target=f, args=(cc,))
         p.start()
         p.join(10)
-        p.terminate()
-        p.join()
         cc.close()
 
         # recv will only have data if the subprocess failed
@@ -613,8 +586,6 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
             self.fail()
         except EOFError:
             pass
-
-        db.connection.close()
 
     def test_document_class(self):
         c = self._get_client()
