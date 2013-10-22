@@ -114,12 +114,6 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
 
         self.fail(msg)
 
-    def assertIsInstance(self, obj, cls, msg=None):
-        """Backport from Python 2.7."""
-        if not isinstance(obj, cls):
-            standardMsg = '%r is not an instance of %r' % (obj, cls)
-            self.fail(self._formatMessage(msg, standardMsg))
-
     def test_init_disconnected(self):
         c = self._get_client(_connect=False)
 
