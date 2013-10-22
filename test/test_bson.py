@@ -56,14 +56,8 @@ PY3 = sys.version_info[0] == 3
 
 
 class TestBSON(unittest.TestCase):
-    def assertInvalid(self, data, msg=None):
-        try:
-            bson.BSON(data).decode()
-        except InvalidBSON, e:
-            # Check a message is set.
-            self.assertTrue(len(e.args) > 0)
-            if msg:
-                self.assertEqual(msg, e.args[0])
+    def assertInvalid(self, data):
+        self.assertRaises(InvalidBSON, bson.BSON(data).decode)
 
     def test_basic_validation(self):
         self.assertRaises(TypeError, is_valid, 100)
@@ -77,36 +71,24 @@ class TestBSON(unittest.TestCase):
         self.assertTrue(is_valid(BSON(b("\x05\x00\x00\x00\x00"))))
 
         # failure cases
-        self.assertInvalid(b("\x04\x00\x00\x00\x00"),
-                           'invalid message size')
-        self.assertInvalid(b("\x05\x00\x00\x00\x01"),
-                           'bad eoo')
-        self.assertInvalid(b("\x05\x00\x00\x00"),
-                           'not enough data for a BSON document')
-        self.assertInvalid(b("\x05\x00\x00\x00\x00\x00"),
-                           'bad eoo')
-        self.assertInvalid(b("\x07\x00\x00\x00\x02a\x00\x78\x56\x34\x12"),
-                           'bad eoo')
-        self.assertInvalid(b("\x09\x00\x00\x00\x10a\x00\x05\x00"),
-                           'invalid length or type code')
-        self.assertInvalid(b("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"),
-                           'invalid message size')
+        self.assertInvalid(b("\x04\x00\x00\x00\x00"))
+        self.assertInvalid(b("\x05\x00\x00\x00\x01"))
+        self.assertInvalid(b("\x05\x00\x00\x00"))
+        self.assertInvalid(b("\x05\x00\x00\x00\x00\x00"))
+        self.assertInvalid(b("\x07\x00\x00\x00\x02a\x00\x78\x56\x34\x12"))
+        self.assertInvalid(b("\x09\x00\x00\x00\x10a\x00\x05\x00"))
+        self.assertInvalid(b("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"))
         self.assertInvalid(b("\x13\x00\x00\x00\x02foo\x00"
-                             "\x04\x00\x00\x00bar\x00\x00"),
-                           'objsize too large')
+                             "\x04\x00\x00\x00bar\x00\x00"))
         self.assertInvalid(b("\x18\x00\x00\x00\x03foo\x00\x0f\x00\x00"
-                             "\x00\x10bar\x00\xff\xff\xff\x7f\x00\x00"),
-                           'invalid length or type code')
+                             "\x00\x10bar\x00\xff\xff\xff\x7f\x00\x00"))
         self.assertInvalid(b("\x15\x00\x00\x00\x03foo\x00\x0c"
-                             "\x00\x00\x00\x08bar\x00\x01\x00\x00"),
-                           'invalid length or type code')
+                             "\x00\x00\x00\x08bar\x00\x01\x00\x00"))
         self.assertInvalid(b("\x1c\x00\x00\x00\x03foo\x00"
                              "\x12\x00\x00\x00\x02bar\x00"
-                             "\x05\x00\x00\x00baz\x00\x00\x00"),
-                           'invalid length or type code')
+                             "\x05\x00\x00\x00baz\x00\x00\x00"))
         self.assertInvalid(b("\x10\x00\x00\x00\x02a\x00"
-                             "\x04\x00\x00\x00abc\xff\x00"),
-                           'invalid length or type code')
+                             "\x04\x00\x00\x00abc\xff\x00"))
 
     def test_bad_string_lengths(self):
         self.assertInvalid(
