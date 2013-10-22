@@ -968,6 +968,15 @@ class TestCollection(unittest.TestCase):
                           db.test.update, {"x": 1},
                           {"$inc": {"x": 1}})
 
+        try:
+            db.test.insert({"_id": 1})
+        except expected_error, exc:
+            # Just check that we set the error document. Fields
+            # vary by MongoDB version.
+            self.assertTrue(exc.error_document is not None)
+        else:
+            self.fail("%s was not raised" % (expected_error.__name__,))
+
     def test_continue_on_error(self):
         db = self.db
         if not version.at_least(db.connection, (1, 9, 1)):
@@ -1008,11 +1017,14 @@ class TestCollection(unittest.TestCase):
     def test_error_code(self):
         try:
             self.db.test.update({}, {"$thismodifierdoesntexist": 1})
-            self.fail()
-        except OperationFailure, e:
+        except OperationFailure, exc:
             if version.at_least(self.db.connection, (1, 3)):
-                if e.code not in (10147, 17009):
-                    self.fail()
+                self.assertTrue(exc.code in (10147, 17009))
+                # Just check that we set the error document. Fields
+                # vary by MongoDB version.
+                self.assertTrue(exc.error_document is not None)
+        else:
+            self.fail("OperationFailure was not raised")
 
     def test_index_on_subfield(self):
         db = self.db
@@ -1234,6 +1246,15 @@ class TestCollection(unittest.TestCase):
                               {"x": 1}, {"y": 2}, w=w, wtimeout=1)
             self.assertRaises(WTimeoutError, self.db.test.remove,
                               {"x": 1}, w=w, wtimeout=1)
+
+            try:
+                self.db.test.save({"x": 1}, w=w, wtimeout=1)
+            except WTimeoutError, exc:
+                # Just check that we set the error document. Fields
+                # vary by MongoDB version.
+                self.assertTrue(exc.error_document is not None)
+            else:
+                self.fail("WTimeoutError was not raised")
 
     def test_manual_last_error(self):
         self.db.test.save({"x": 1}, w=0)

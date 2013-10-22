@@ -57,13 +57,35 @@ class ConfigurationError(PyMongoError):
 class OperationFailure(PyMongoError):
     """Raised when a database operation fails.
 
+    .. versionadded:: 2.7
+       The :attr:`error_document` attribute.
+
     .. versionadded:: 1.8
        The :attr:`code` attribute.
     """
 
-    def __init__(self, error, code=None):
-        self.code = code
+    def __init__(self, error, code=None, error_document=None):
+        self.__code = code
+        self.__error_document = error_document
         PyMongoError.__init__(self, error)
+
+    @property
+    def code(self):
+        """The error code returned by the server, if any.
+        """
+        return self.__code
+
+    @property
+    def error_document(self):
+        """The complete error document returned by the server.
+
+        Depending on the error that occurred, the error document
+        may include useful information beyond just the error
+        message. When connected to a mongos the error document
+        may contain one or more subdocuments if errors occurred
+        on multiple shards.
+        """
+        return self.__error_document
 
 
 class ExecutionTimeout(OperationFailure):
@@ -86,6 +108,9 @@ class TimeoutError(OperationFailure):
 class WTimeoutError(TimeoutError):
     """Raised when a database operation times out (i.e. wtimeout expires)
     before replication completes.
+
+    With newer versions of MongoDB the `error_document` attribute may include
+    write concern fields like 'n', 'updatedExisting', or 'writtenTo'.
 
     .. versionadded:: 2.7
     """

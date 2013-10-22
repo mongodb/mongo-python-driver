@@ -1346,13 +1346,10 @@ class MongoReplicaSetClient(common.BaseObject):
             self.disconnect()
             raise AutoReconnect(error_msg)
 
-        if "code" in error:
-            if error["code"] in (11000, 11001, 12582):
-                raise DuplicateKeyError(error["err"], error["code"])
-            else:
-                raise OperationFailure(error["err"], error["code"])
-        else:
-            raise OperationFailure(error["err"])
+        code = error.get("code")
+        if code in (11000, 11001, 12582):
+            raise DuplicateKeyError(error["err"], code, error)
+        raise OperationFailure(error["err"], code, error)
 
     def __recv_data(self, length, sock_info):
         """Lowest level receive operation.

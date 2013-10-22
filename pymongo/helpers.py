@@ -100,9 +100,11 @@ def _unpack_response(response, cursor_id=None, as_class=dict,
             raise AutoReconnect(error_object["$err"])
         elif error_object.get("code") == 50:
             raise ExecutionTimeout(error_object["$err"],
-                                   error_object["code"])
+                                   error_object["code"],
+                                   error_object)
         raise OperationFailure("database error: %s" %
-                               error_object["$err"])
+                               error_object["$err"],
+                               error_object)
 
     result = {}
     result["cursor_id"] = struct.unpack("<q", response[4:12])[0]
@@ -115,18 +117,22 @@ def _unpack_response(response, cursor_id=None, as_class=dict,
     return result
 
 
-def _check_command_response(response, reset, msg="%s", allowable_errors=[]):
+def _check_command_response(response, reset, msg=None, allowable_errors=None):
     """Check the response to a command for errors.
     """
     if "ok" not in response:
         # Server didn't recognize our message as a command.
-        raise OperationFailure(response.get("$err"))
+        raise OperationFailure(response.get("$err"),
+                               response.get("code"),
+                               response)
 
     if response.get("wtimeout", False):
         # MongoDB versions before 1.8.0 return the error message in an "errmsg"
         # field. If "errmsg" exists "err" will also exist set to None, so we
         # have to check for "errmsg" first.
-        raise WTimeoutError(response.get("errmsg", response.get("err")))
+        raise WTimeoutError(response.get("errmsg", response.get("err")),
+                            response.get("code"),
+                            response)
 
     if not response["ok"]:
 
@@ -141,26 +147,33 @@ def _check_command_response(response, reset, msg="%s", allowable_errors=[]):
                     break
 
         errmsg = details["errmsg"]
-        if not errmsg in allowable_errors:
+        if allowable_errors is None or errmsg not in allowable_errors:
+
+            # Server is "not master" or "recovering"
             if (errmsg.startswith("not master")
                 or errmsg.startswith("node is recovering")):
                 if reset is not None:
                     reset()
                 raise AutoReconnect(errmsg)
+
+            # Server assertion failures
             if errmsg == "db assertion failure":
-                ex_msg = ("db assertion failure, assertion: '%s'" %
+                errmsg = ("db assertion failure, assertion: '%s'" %
                           details.get("assertion", ""))
-                if "assertionCode" in details:
-                    ex_msg += (", assertionCode: %d" %
-                               (details["assertionCode"],))
-                raise OperationFailure(ex_msg, details.get("assertionCode"))
+                raise OperationFailure(errmsg,
+                                       details.get("assertionCode"),
+                                       response)
+
+            # Other errors
             code = details.get("code")
             # findAndModify with upsert can raise duplicate key error
             if code in (11000, 11001, 12582):
-                raise DuplicateKeyError(errmsg, code)
+                raise DuplicateKeyError(errmsg, code, response)
             elif code == 50:
-                raise ExecutionTimeout(errmsg, code)
-            raise OperationFailure(msg % errmsg, code)
+                raise ExecutionTimeout(errmsg, code, response)
+
+            msg = msg or "%s"
+            raise OperationFailure(msg % errmsg, code, response)
 
 
 def _fields_list_to_dict(fields):
