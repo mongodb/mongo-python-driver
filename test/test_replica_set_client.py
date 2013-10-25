@@ -657,21 +657,41 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         no_timeout.pymongo_test.drop_collection("test")
         no_timeout.pymongo_test.test.insert({"x": 1})
 
-        # A $where clause that takes a second longer than the timeout
-        where_func = delay(1 + timeout_sec)
+        # A $where clause that takes a second longer than the timeout.
+        query = {'$where': delay(1 + timeout_sec)}
+        no_timeout.pymongo_test.test.find_one(query)  # No error.
 
-        def get_x(db):
-            doc = db.test.find().where(where_func).next()
-            return doc["x"]
-        self.assertEqual(1, get_x(no_timeout.pymongo_test))
-        self.assertRaises(ConnectionFailure, get_x, timeout.pymongo_test)
+        try:
+            timeout.pymongo_test.test.find_one(query)
+        except AutoReconnect, e:
+            self.assertEqual('%s: timed out' % pair, e.args[0])
+        else:
+            self.fail('RS client should have raised timeout error')
 
-        def get_x_timeout(db, t):
-            doc = db.test.find(network_timeout=t).where(where_func).next()
-            return doc["x"]
-        self.assertEqual(1, get_x_timeout(timeout.pymongo_test, None))
-        self.assertRaises(ConnectionFailure, get_x_timeout,
-                          no_timeout.pymongo_test, 0.1)
+        timeout.pymongo_test.test.find_one(query, network_timeout=None)
+
+        try:
+            no_timeout.pymongo_test.test.find_one(query, network_timeout=0.1)
+        except AutoReconnect, e:
+            self.assertEqual('%s: timed out' % pair, e.args[0])
+        else:
+            self.fail('RS client should have raised timeout error')
+
+        try:
+            timeout.pymongo_test.test.find_one(
+                query,
+                read_preference=ReadPreference.SECONDARY)
+        except AutoReconnect, e:
+            # Like 'No replica set secondary available for query with
+            # ReadPreference SECONDARY. host:27018: timed out,
+            # host:27019: timed out'.
+            self.assertTrue(
+                str(e).startswith('No replica set secondary available'))
+
+            self.assertTrue('timed out' in str(e))
+        else:
+            self.fail('RS client should have raised timeout error')
+
         no_timeout.close()
         timeout.close()
 

@@ -1632,6 +1632,9 @@ class MongoReplicaSetClient(common.BaseObject):
                     rs_state.pin_host(member.host, mode, tag_sets, latency)
                 return member.host, response
             except AutoReconnect, why:
+                if mode == ReadPreference.PRIMARY:
+                    raise
+
                 errors.append(str(why))
                 members.remove(member)
 
@@ -1647,6 +1650,12 @@ class MongoReplicaSetClient(common.BaseObject):
 
         if tag_sets != [{}]:
             msg += " and tags " + repr(tag_sets)
+
+        # Format a message like:
+        # 'No replica set secondary available for query with ReadPreference
+        # SECONDARY. host:27018: timed out, host:27019: timed out'.
+        if errors:
+            msg += ". " + ', '.join(errors)
 
         raise AutoReconnect(msg, errors)
 
