@@ -47,7 +47,7 @@ from test.utils import (assertRaisesExactly,
                         server_is_master_with_slave,
                         server_started_with_auth,
                         TestRequestMixin,
-                        TestLazyConnectMixin)
+                        _TestLazyConnectMixin)
 
 
 def get_client(*args, **kwargs):
@@ -879,8 +879,7 @@ with client.start_request() as request:
         self.assertEqual(old_sock_info, pool._get_request_state())
 
 
-class TestClientLazyConnect(unittest.TestCase, TestLazyConnectMixin):
-    # Test concurrent access to a lazily-connecting client.
+class TestClientLazyConnect(unittest.TestCase, _TestLazyConnectMixin):
     def _get_client(self, **kwargs):
         return get_client(**kwargs)
 
