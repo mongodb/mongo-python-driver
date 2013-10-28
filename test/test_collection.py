@@ -311,7 +311,6 @@ class TestCollection(unittest.TestCase):
 
         def check_result(result):
             self.assertEqual(4, result['nIndexes'])
-            self.assertEqual(4, result['nIndexesWas'])
             indexes = result['indexes']
             names = [idx['name'] for idx in indexes]
             for name in names:
