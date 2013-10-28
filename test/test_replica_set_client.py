@@ -50,7 +50,7 @@ from test.utils import (
     delay, assertReadFrom, assertReadFromAll, read_from_which_host,
     remove_all_users, assertRaisesExactly, TestRequestMixin, one,
     server_started_with_auth, pools_from_rs_client, get_pool,
-    TestLazyConnectMixin)
+    _TestLazyConnectMixin)
 
 
 class TestReplicaSetClientAgainstStandalone(unittest.TestCase):
@@ -1143,9 +1143,10 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
             ReadPreference.NEAREST, None, latency)
 
 
+# Test concurrent access to a lazily-connecting RS client.
 class TestReplicaSetClientLazyConnect(
-        TestReplicaSetClientBase, TestLazyConnectMixin):
-    # Test concurrent access to a lazily-connecting RS client.
+        TestReplicaSetClientBase,
+        _TestLazyConnectMixin):
     pass
 
 

@@ -36,6 +36,11 @@ if sys.platform.startswith('java'):
     HAS_SSL = False
 
 
+# Defaults until we connect to a server and get updated limits.
+MAX_BSON_SIZE = 16 * (1024 ** 2)
+MAX_MESSAGE_SIZE = 2 * MAX_BSON_SIZE
+
+
 def raise_config_error(key, dummy):
     """Raise ConfigurationError with the given key name."""
     raise ConfigurationError("Unknown option %s" % (key,))

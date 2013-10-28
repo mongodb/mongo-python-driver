@@ -60,7 +60,6 @@ from pymongo.errors import (AutoReconnect,
                             InvalidOperation)
 
 EMPTY = b("")
-MAX_BSON_SIZE = 4 * 1024 * 1024
 MAX_RETRY = 3
 
 # Member states
@@ -412,7 +411,7 @@ class Member(object):
 
         self.tags = ismaster_response.get('tags', {})
         self.max_bson_size = ismaster_response.get(
-            'maxBsonObjectSize', MAX_BSON_SIZE)
+            'maxBsonObjectSize', common.MAX_BSON_SIZE)
         self.max_message_size = ismaster_response.get(
             'maxMessageSizeBytes', 2 * self.max_bson_size)
 
@@ -989,23 +988,24 @@ class MongoReplicaSetClient(common.BaseObject):
     @property
     def max_bson_size(self):
         """Returns the maximum size BSON object the connected primary
-        accepts in bytes. Defaults to 4MB in server < 1.7.4. Returns
-        0 if no primary is available.
+        accepts in bytes. Defaults to 16MB if not connected to a
+        primary.
         """
         rs_state = self.__rs_state
         if rs_state.primary_member:
             return rs_state.primary_member.max_bson_size
-        return 0
+        return common.MAX_BSON_SIZE
 
     @property
     def max_message_size(self):
         """Returns the maximum message size the connected primary
-        accepts in bytes. Returns 0 if no primary is available.
+        accepts in bytes. Defaults to 32MB if not connected to a
+        primary.
         """
         rs_state = self.__rs_state
         if rs_state.primary_member:
             return rs_state.primary_member.max_message_size
-        return 0
+        return common.MAX_MESSAGE_SIZE
 
     @property
     def auto_start_request(self):

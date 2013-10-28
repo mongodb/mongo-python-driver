@@ -83,7 +83,8 @@ class MongoClient(common.BaseObject):
     HOST = "localhost"
     PORT = 27017
 
-    __max_bson_size = 4 * 1024 * 1024
+    __max_bson_size = common.MAX_BSON_SIZE
+    __max_message_size = common.MAX_MESSAGE_SIZE
 
     def __init__(self, host=None, port=None, max_pool_size=100,
                  document_class=dict, tz_aware=False, _connect=True,
@@ -577,7 +578,8 @@ class MongoClient(common.BaseObject):
     @property
     def max_bson_size(self):
         """Return the maximum size BSON object the connected server
-        accepts in bytes. Defaults to 4MB in server < 1.7.4.
+        accepts in bytes. Defaults to 16MB if not connected to a
+        server.
 
         .. versionadded:: 1.10
         """
@@ -586,7 +588,8 @@ class MongoClient(common.BaseObject):
     @property
     def max_message_size(self):
         """Return the maximum message size the connected server
-        accepts in bytes.
+        accepts in bytes. Defaults to 32MB if not connected to a
+        server.
 
         .. versionadded:: 2.6
         """
@@ -636,8 +639,6 @@ class MongoClient(common.BaseObject):
             self.__max_bson_size = response["maxBsonObjectSize"]
         if "maxMessageSizeBytes" in response:
             self.__max_message_size = response["maxMessageSizeBytes"]
-        else:
-            self.__max_message_size = 2 * self.max_bson_size
 
         # Replica Set?
         if not self.__direct:

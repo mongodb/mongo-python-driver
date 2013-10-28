@@ -343,7 +343,7 @@ class TestRequestMixin(object):
             self.assertDifferentSock(pool)
 
 
-class TestLazyConnectMixin(object):
+class _TestLazyConnectMixin(object):
     """Inherit from this class and from unittest.TestCase, and override
     _get_client(self, **kwargs), for testing clients with _connect=False.
     """
@@ -441,3 +441,19 @@ class TestLazyConnectMixin(object):
             self.assertEqual(self.nthreads, len(results))
 
         self.trial(reset, find_one, test)
+
+    def test_max_bson_size(self):
+        # Client should have sane defaults before connecting, and should update
+        # its configuration once connected.
+        c = self._get_client(_connect=False)
+        self.assertEqual(16 * (1024 ** 2), c.max_bson_size)
+        self.assertEqual(2 * c.max_bson_size, c.max_message_size)
+
+        # Make the client connect, so that it sets its max_bson_size and
+        # max_message_size attributes.
+        ismaster = c.db.command('ismaster')
+        self.assertEqual(ismaster['maxBsonObjectSize'], c.max_bson_size)
+        if 'maxMessageSizeBytes' in ismaster:
+            self.assertEqual(
+                ismaster['maxMessageSizeBytes'],
+                c.max_message_size)
