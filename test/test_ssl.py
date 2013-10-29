@@ -355,7 +355,7 @@ class TestSSL(unittest.TestCase):
         if not CERT_SSL:
             raise SkipTest("No mongod available over SSL with certs")
 
-        client = MongoClient(ssl=True, ssl_certfile=CLIENT_PEM)
+        client = MongoClient(host, port, ssl=True, ssl_certfile=CLIENT_PEM)
         response = client.admin.command('ismaster')
         single_server = 'setName' not in response
 
@@ -376,7 +376,7 @@ class TestSSL(unittest.TestCase):
                                       w=len(response['hosts']),
                                       ssl=True,
                                       ssl_certfile=CLIENT_PEM,
-                                      ssl_cert_reqs=ssl.CERT_OPTIONAL,
+                                      ssl_cert_reqs=ssl.CERT_REQUIRED,
                                       ssl_ca_certs=CA_PEM)
                 self.fail("Invalid hostname should have failed")
             except:
