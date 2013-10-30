@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Test the replica_set_connection module."""
+"""Test the mongo_replica_set_client module."""
 
 # TODO: anywhere we wait for refresh in tests, consider just refreshing w/ sync
 
