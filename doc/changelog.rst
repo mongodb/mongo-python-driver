@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Changes in Version 2.7
+----------------------
+
+Version 2.7 drops support for replica sets running MongoDB versions older
+than 1.6.2.
+
 Changes in Version 2.6.3
 ------------------------
 

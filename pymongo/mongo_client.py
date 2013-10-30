@@ -645,10 +645,7 @@ class MongoClient(common.BaseObject):
             # Check that this host is part of the given replica set.
             if self.__repl:
                 set_name = response.get('setName')
-                # The 'setName' field isn't returned by mongod before 1.6.2
-                # so we can't assume that if it's missing this host isn't in
-                # the specified set.
-                if set_name and set_name != self.__repl:
+                if set_name != self.__repl:
                     raise ConfigurationError("%s:%d is not a member of "
                                              "replica set %s"
                                              % (node[0], node[1], self.__repl))

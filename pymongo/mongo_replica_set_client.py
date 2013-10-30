@@ -744,7 +744,7 @@ class MongoReplicaSetClient(common.BaseObject):
 
         if _connect:
             try:
-                self.refresh()
+                self.refresh(initial=True)
             except AutoReconnect, e:
                 # ConnectionFailure makes more sense here than AutoReconnect
                 raise ConnectionFailure(str(e))
@@ -1113,7 +1113,7 @@ class MongoReplicaSetClient(common.BaseObject):
         else:
             return threading.local()
 
-    def refresh(self):
+    def refresh(self, initial=False):
         """Iterate through the existing host list, or possibly the
         seed list, to update the list of hosts and arbiters in this
         replica set.
@@ -1153,15 +1153,17 @@ class MongoReplicaSetClient(common.BaseObject):
                         node, pool, response, MovingAverage([ping_time]), True)
 
                 # Check that this host is part of the given replica set.
-                set_name = response.get('setName')
-                # The 'setName' field isn't returned by mongod before 1.6.2
-                # so we can't assume that if it's missing this host isn't in
-                # the specified set.
-                if set_name and set_name != self.__name:
-                    host, port = node
-                    raise ConfigurationError("%s:%d is not a member of "
-                                             "replica set %s"
-                                             % (host, port, self.__name))
+                # Fail fast if we find a bad seed during __init__.
+                # Regular refreshes keep searching for valid nodes.
+                if response.get('setName') != self.__name:
+                    if initial:
+                        host, port = node
+                        raise ConfigurationError("%s:%d is not a member of "
+                                                 "replica set %s"
+                                                 % (host, port, self.__name))
+                    else:
+                        continue
+
                 if "arbiters" in response:
                     arbiters = set([
                         _partition_node(h) for h in response["arbiters"]])
@@ -1202,10 +1204,19 @@ class MongoReplicaSetClient(common.BaseObject):
                     sock_info = self.__socket(member, force=True)
                     res, ping_time = self.__simple_command(
                         sock_info, 'admin', {'ismaster': 1})
+
+                    if res.get('setName') != self.__name:
+                        # Not a member of this set.
+                        continue
+
                     member.pool.maybe_return_socket(sock_info)
                     new_member = member.clone_with(res, ping_time)
                 else:
                     res, connection_pool, ping_time = self.__is_master(host)
+                    if res.get('setName') != self.__name:
+                        # Not a member of this set.
+                        continue
+
                     new_member = Member(
                         host, connection_pool, res, MovingAverage([ping_time]),
                         True)

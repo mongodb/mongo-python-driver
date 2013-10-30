@@ -882,6 +882,18 @@ with client.start_request() as request:
         client = MongoClient('doesnt exist', _connect=False)
         self.assertFalse(client.alive())
 
+    def test_replica_set(self):
+        client = MongoClient(host, port)
+        name = client.pymongo_test.command('ismaster').get('setName')
+        if not name:
+            raise SkipTest('Not connected to a replica set')
+
+        MongoClient(host, port, replicaSet=name)  # No error.
+
+        self.assertRaises(
+            ConnectionFailure,
+            MongoClient, host, port, replicaSet='bad' + name)
+
 
 class TestClientLazyConnect(unittest.TestCase, _TestLazyConnectMixin):
     def _get_client(self, **kwargs):
