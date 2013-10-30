@@ -642,7 +642,14 @@ class Database(common.BaseObject):
 
         create_opts = {}
         if password is not None:
-            create_opts["pwd"] = password
+            # We always salt and hash client side.
+            if "digestPassword" in kwargs:
+                raise ConfigurationError("The digestPassword option is not "
+                                         "supported via add_user. Please use "
+                                         "db.command('createUser', ...) "
+                                         "instead for this option.")
+            create_opts["pwd"] = auth._password_digest(name, password)
+            create_opts["digestPassword"] = False
         if "roles" not in kwargs:
             roles = []
             if self.name == "admin":
@@ -666,7 +673,14 @@ class Database(common.BaseObject):
         """
         update_opts = {}
         if password is not None:
-            update_opts["pwd"] = password
+            # We always salt and hash client side.
+            if "digestPassword" in kwargs:
+                raise ConfigurationError("The digestPassword option is not "
+                                         "supported via add_user. Please use "
+                                         "db.command('updateUser', ...) "
+                                         "instead for this option.")
+            update_opts["pwd"] = auth._password_digest(name, password)
+            update_opts["digestPassword"] = False
         update_opts["writeConcern"] = self._get_wc_override()
         update_opts.update(kwargs)
 
