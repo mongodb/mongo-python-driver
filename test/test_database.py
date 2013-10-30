@@ -378,6 +378,9 @@ class TestDatabase(unittest.TestCase):
             self.assertRaises(ConfigurationError, db.add_user,
                               "user", "password", digestPassword=True)
 
+            self.assertRaises(ConfigurationError, db.add_user,
+                              "user", "password", digestPassword=True)
+
         # Add / authenticate / remove
         db.add_user("mike", "password")
         self.assertRaises(TypeError, db.authenticate, 5, "password")
