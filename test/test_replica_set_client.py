@@ -460,9 +460,14 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         self.assertTrue("pymongo_test2" in c.database_names())
         self.assertEqual("bar", c.pymongo_test2.test.find_one()["foo"])
 
-        if (version.at_least(c, (1, 3, 3, 1))
-            and not version.at_least(c, (2, 5, 3, -1))):
+        if version.at_least(c, (1, 3, 3, 1)):
+
             c.drop_database("pymongo_test1")
+            if "pymongo_test1" in c.database_names():
+                raise SkipTest("SERVER-2329?")
+
+            c.admin.add_user("admin", "password")
+            c.admin.authenticate("admin", "password")
 
             c.pymongo_test.add_user("mike", "password")
 
@@ -479,8 +484,12 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
             c.copy_database("pymongo_test", "pymongo_test1",
                             username="mike", password="password")
             self.assertTrue("pymongo_test1" in c.database_names())
-            time.sleep(2)
-            self.assertEqual("bar", c.pymongo_test1.test.find_one()["foo"])
+            res = c.pymongo_test1.test.find_one(_must_use_master=True)
+            self.assertEqual("bar", res["foo"])
+
+            # Cleanup
+            c.pymongo_test.remove_user("mike")
+            c.admin.remove_user("admin")
         c.close()
 
     def test_get_default_database(self):

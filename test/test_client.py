@@ -245,31 +245,37 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         self.assertTrue("pymongo_test2" in c.database_names())
         self.assertEqual("bar", c.pymongo_test2.test.find_one()["foo"])
 
-        if (version.at_least(c, (1, 3, 3, 1))
-            and not version.at_least(c, (2, 5, 3, -1))):
+        # See SERVER-6427 for mongos
+        if version.at_least(c, (1, 3, 3, 1)) and not is_mongos(c):
+
             c.drop_database("pymongo_test1")
+            if "pymongo_test1" in c.database_names():
+                raise SkipTest("SERVER-2329?")
+
+            c.admin.add_user("admin", "password")
+            c.admin.authenticate("admin", "password")
 
             c.pymongo_test.add_user("mike", "password")
 
             self.assertRaises(OperationFailure, c.copy_database,
                               "pymongo_test", "pymongo_test1",
                               username="foo", password="bar")
-            if not server_is_master_with_slave(c):
-                self.assertFalse("pymongo_test1" in c.database_names())
+            self.assertFalse("pymongo_test1" in c.database_names())
 
             self.assertRaises(OperationFailure, c.copy_database,
                               "pymongo_test", "pymongo_test1",
                               username="mike", password="bar")
+            self.assertFalse("pymongo_test1" in c.database_names())
 
-            if not server_is_master_with_slave(c):
-                self.assertFalse("pymongo_test1" in c.database_names())
+            c.copy_database("pymongo_test", "pymongo_test1",
+                            username="mike", password="password")
+            self.assertTrue("pymongo_test1" in c.database_names())
+            self.assertEqual("bar", c.pymongo_test1.test.find_one()["foo"])
 
-            if not is_mongos(c):
-                # See SERVER-6427
-                c.copy_database("pymongo_test", "pymongo_test1",
-                                username="mike", password="password")
-                self.assertTrue("pymongo_test1" in c.database_names())
-                self.assertEqual("bar", c.pymongo_test1.test.find_one()["foo"])
+            # Cleanup
+            c.pymongo_test.remove_user("mike")
+            c.admin.remove_user("admin")
+            c.disconnect()
 
     def test_iteration(self):
         client = MongoClient(host, port)
