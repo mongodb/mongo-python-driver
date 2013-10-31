@@ -371,7 +371,8 @@ class _TestLazyConnectMixin(object):
             t.start()
 
         for t in threads:
-            t.join(10)
+            t.join(30)
+            assert not t.isAlive()
 
     def trial(self, reset, target, test):
         collection = self._get_client().pymongo_test.test
