@@ -15,7 +15,6 @@
 """Utilities for testing pymongo
 """
 
-import functools
 import threading
 
 from pymongo import MongoClient, MongoReplicaSetClient
@@ -23,6 +22,15 @@ from pymongo.errors import AutoReconnect
 from pymongo.pool import NO_REQUEST, NO_SOCKET_YET, SocketInfo
 from test import host, port, version
 
+
+# No functools in Python 2.4
+def my_partial(f, *args, **kwargs):
+    def _f(*new_args, **new_kwargs):
+        final_kwargs = kwargs.copy()
+        final_kwargs.update(new_kwargs)
+        return f(*(args + new_args), **final_kwargs)
+
+    return _f
 
 def one(s):
     """Get one element of a set"""
@@ -356,7 +364,7 @@ class _TestLazyConnectMixin(object):
         target is a function taking a Collection and an integer.
         """
         threads = [
-            threading.Thread(target=functools.partial(target, collection, i))
+            threading.Thread(target=my_partial(target, collection, i))
             for i in range(self.nthreads)]
 
         for t in threads:

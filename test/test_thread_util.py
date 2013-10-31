@@ -30,7 +30,7 @@ if thread_util.have_gevent:
     import gevent.greenlet  # Gevent's enhanced Greenlets.
     import gevent.hub
 
-from test.utils import looplet, RendezvousThread
+from test.utils import looplet, my_partial, RendezvousThread
 
 
 class TestIdent(unittest.TestCase):
@@ -190,16 +190,6 @@ class TestGreenletIdent(unittest.TestCase):
 
         # unwatch() canceled the callback.
         self.assertFalse(callback_ran[0])
-
-
-# No functools in Python 2.4
-def my_partial(f, *args, **kwargs):
-    def _f(*new_args, **new_kwargs):
-        final_kwargs = kwargs.copy()
-        final_kwargs.update(new_kwargs)
-        return f(*(args + new_args), **final_kwargs)
-
-    return _f
 
 
 class TestCounter(unittest.TestCase):
