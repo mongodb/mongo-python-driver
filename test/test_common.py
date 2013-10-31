@@ -48,21 +48,21 @@ class TestCommon(unittest.TestCase):
         # manager to test this warning nicely. As we can't do that
         # we must test raising errors before the ignore filter is applied.
         warnings.simplefilter("error", UserWarning)
-        self.assertRaises(UserWarning, lambda:
-                MongoClient(host, port, wtimeout=1000, w=0))
         try:
-            MongoClient(host, port, wtimeout=1000, w=1)
-        except UserWarning:
-            self.fail()
+            self.assertRaises(UserWarning, lambda:
+                    MongoClient(host, port, wtimeout=1000, w=0))
+            try:
+                MongoClient(host, port, wtimeout=1000, w=1)
+            except UserWarning:
+                self.fail()
 
-        try:
-            MongoClient(host, port, wtimeout=1000)
-        except UserWarning:
-            self.fail()
-
-        warnings.resetwarnings()
-
-        warnings.simplefilter("ignore")
+            try:
+                MongoClient(host, port, wtimeout=1000)
+            except UserWarning:
+                self.fail()
+        finally:
+            warnings.resetwarnings()
+            warnings.simplefilter("ignore")
 
         # Connection tests
         c = Connection(pair)
@@ -246,8 +246,6 @@ class TestCommon(unittest.TestCase):
         # Succeeds since we override the lasterror settings per query.
         self.assertTrue(coll.insert({'foo': 'bar'}, fsync=True))
         drop_collections(db)
-
-        warnings.resetwarnings()
 
     def test_uuid_subtype(self):
         if not have_uuid:

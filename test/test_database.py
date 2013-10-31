@@ -365,14 +365,15 @@ class TestDatabase(unittest.TestCase):
                           "user", 'password', True, roles=['read'])
 
         if version.at_least(self.client, (2, 5, 3, -1)):
-            warnings.resetwarnings()
             warnings.simplefilter("error", DeprecationWarning)
-            self.assertRaises(DeprecationWarning, db.add_user,
-                              "user", "password")
-            self.assertRaises(DeprecationWarning, db.add_user,
-                              "user", "password", True)
-            warnings.resetwarnings()
-            warnings.simplefilter("ignore")
+            try:
+                self.assertRaises(DeprecationWarning, db.add_user,
+                                  "user", "password")
+                self.assertRaises(DeprecationWarning, db.add_user,
+                                  "user", "password", True)
+            finally:
+                warnings.resetwarnings()
+                warnings.simplefilter("ignore")
 
             self.assertRaises(ConfigurationError, db.add_user,
                               "user", "password", digestPassword=True)

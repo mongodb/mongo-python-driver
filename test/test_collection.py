@@ -219,10 +219,12 @@ class TestCollection(unittest.TestCase):
         # manager to test this warning nicely. As we can't do that
         # we must test raising errors before the ignore filter is applied.
         warnings.simplefilter("error", DeprecationWarning)
-        self.assertRaises(DeprecationWarning, lambda:
-                        db.test.ensure_index("goodbye", ttl=10))
-        warnings.resetwarnings()
-        warnings.simplefilter("ignore")
+        try:
+            self.assertRaises(DeprecationWarning, lambda:
+                              db.test.ensure_index("goodbye", ttl=10))
+        finally:
+            warnings.resetwarnings()
+            warnings.simplefilter("ignore")
 
         self.assertEqual("goodbye_1",
                          db.test.ensure_index("goodbye", ttl=10))
@@ -1935,9 +1937,7 @@ class TestCollection(unittest.TestCase):
     # (Shame on me)
     def test_bad_encode(self):
         c = self.db.test
-        warnings.simplefilter("ignore")
         self.assertRaises(InvalidDocument, c.save, {"x": c})
-        warnings.simplefilter("default")
 
     def test_bad_dbref(self):
         c = self.db.test

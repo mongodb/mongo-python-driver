@@ -16,7 +16,6 @@
 
 import datetime
 import pickle
-import warnings
 import unittest
 import sys
 import time
