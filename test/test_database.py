@@ -34,7 +34,8 @@ from pymongo import (ALL,
                      auth,
                      OFF,
                      SLOW_ONLY,
-                     helpers)
+                     helpers,
+                     ReadPreference)
 from pymongo.collection import Collection
 from pymongo.database import Database
 from pymongo.errors import (CollectionInvalid,
@@ -903,6 +904,20 @@ class TestDatabase(unittest.TestCase):
             self.assertEqual(e.args[0], 'foo')
         else:
             self.fail("_check_command_response didn't raise OperationFailure")
+
+    def test_command_read_pref_warning(self):
+        warnings.simplefilter("error", UserWarning)
+        try:
+            self.assertRaises(UserWarning, self.client.pymongo_test.command,
+                              'ping', read_preference=ReadPreference.SECONDARY)
+            try:
+                self.client.pymongo_test.command(
+                    'dbStats', read_preference=ReadPreference.SECONDARY)
+            except UserWarning:
+                self.fail("Shouldn't have raised UserWarning.")
+        finally:
+            warnings.resetwarnings()
+            warnings.simplefilter("ignore")
 
 
 if __name__ == "__main__":

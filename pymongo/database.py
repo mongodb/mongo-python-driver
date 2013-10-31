@@ -406,6 +406,15 @@ class Database(common.BaseObject):
 
         command.update(kwargs)
 
+        # Warn if must_use_master will override read_preference.
+        if (extra_opts['read_preference'] != rp.ReadPreference.PRIMARY and
+                extra_opts['_must_use_master']):
+            warnings.warn("%s does not support %s read preference "
+                          "and will be routed to the primary instead." %
+                          (command_name,
+                           rp.modes[extra_opts['read_preference']]),
+                          UserWarning)
+
         result = self["$cmd"].find_one(command, **extra_opts)
 
         if check:
