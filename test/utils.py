@@ -15,12 +15,22 @@
 """Utilities for testing pymongo
 """
 
+import sys
 import threading
 
+from nose.plugins.skip import SkipTest
 from pymongo import MongoClient, MongoReplicaSetClient
 from pymongo.errors import AutoReconnect
 from pymongo.pool import NO_REQUEST, NO_SOCKET_YET, SocketInfo
 from test import host, port, version
+
+PY3 = sys.version_info[0] == 3
+
+try:
+    import gevent
+    has_gevent = True
+except ImportError:
+    has_gevent = False
 
 
 # No functools in Python 2.4
@@ -352,37 +362,82 @@ class TestRequestMixin(object):
 
 
 class _TestLazyConnectMixin(object):
-    """Inherit from this class and from unittest.TestCase, and override
-    _get_client(self, **kwargs), for testing clients with _connect=False.
+    """Test concurrent operations on a lazily-connecting client.
+
+    Inherit from this class and from unittest.TestCase, and override
+    _get_client(self, **kwargs), for testing a lazily-connecting
+    client, i.e. a client initialized with _connect=False.
+
+    Set use_greenlets = True to test with Gevent.
     """
+    use_greenlets = False
     ntrials = 10
     nthreads = 10
+    interval = None
 
     def run_threads(self, collection, target):
         """Run a target function in many threads.
 
         target is a function taking a Collection and an integer.
         """
-        threads = [
-            threading.Thread(target=my_partial(target, collection, i))
-            for i in range(self.nthreads)]
+        threads = []
+        for i in range(self.nthreads):
+            bound_target = my_partial(target, collection, i)
+            if self.use_greenlets:
+                threads.append(gevent.Greenlet(run=bound_target))
+            else:
+                threads.append(threading.Thread(target=bound_target))
 
         for t in threads:
             t.start()
 
         for t in threads:
             t.join(30)
-            assert not t.isAlive()
+            if self.use_greenlets:
+                # bool(Greenlet) is True if it's alive.
+                assert not t
+            else:
+                assert not t.isAlive()
 
     def trial(self, reset, target, test):
+        """Test concurrent operations on a lazily-connecting client.
+
+        `reset` takes a collection and resets it for the next trial.
+
+        `target` takes a lazily-connecting collection and an index from
+        0 to nthreads, and performs some operation, e.g. an insert.
+
+        `test` takes a collection and asserts a post-condition to prove
+        `target` succeeded.
+        """
+        if self.use_greenlets and not has_gevent:
+            raise SkipTest('Gevent not installed')
+
         collection = self._get_client().pymongo_test.test
 
-        for i in range(self.ntrials):
-            reset(collection)
-            lazy_client = self._get_client(_connect=False)
-            lazy_collection = lazy_client.pymongo_test.test
-            self.run_threads(lazy_collection, target)
-            test(collection)
+        # Make concurrency bugs more likely to manifest.
+        if PY3:
+            self.interval = sys.getswitchinterval()
+            sys.setswitchinterval(1e-6)
+        else:
+            self.interval = sys.getcheckinterval()
+            sys.setcheckinterval(1)
+
+        try:
+            for i in range(self.ntrials):
+                reset(collection)
+                lazy_client = self._get_client(
+                    _connect=False, use_greenlets=self.use_greenlets)
+
+                lazy_collection = lazy_client.pymongo_test.test
+                self.run_threads(lazy_collection, target)
+                test(collection)
+
+        finally:
+            if PY3:
+                sys.setswitchinterval(self.interval)
+            else:
+                sys.setcheckinterval(self.interval)
 
     def test_insert(self):
         def reset(collection):

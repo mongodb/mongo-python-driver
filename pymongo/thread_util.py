@@ -44,6 +44,14 @@ from pymongo.errors import ExceededMaxWaiters
 issue1868 = (sys.version_info[:3] <= (2, 7, 0))
 
 
+class DummyLock(object):
+    def acquire(self):
+        pass
+
+    def release(self):
+        pass
+
+
 class Ident(object):
     def __init__(self):
         self._refs = {}
@@ -67,20 +75,13 @@ class Ident(object):
 
 
 class ThreadIdent(Ident):
-    class _DummyLock(object):
-        def acquire(self):
-            pass
-
-        def release(self):
-            pass
-
     def __init__(self):
         super(ThreadIdent, self).__init__()
         self._local = threading.local()
         if issue1868:
             self._lock = threading.Lock()
         else:
-            self._lock = ThreadIdent._DummyLock()
+            self._lock = DummyLock()
 
     # We watch for thread-death using a weakref callback to a thread local.
     # Weakrefs are permitted on subclasses of object but not object() itself.

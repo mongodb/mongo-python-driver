@@ -1179,5 +1179,12 @@ class TestReplicaSetClientLazyConnect(
     pass
 
 
+# Test concurrent access to a lazily-connecting RS client, with Gevent.
+class TestReplicaSetClientLazyConnectGevent(
+        TestReplicaSetClientBase,
+        _TestLazyConnectMixin):
+    use_greenlets = True
+
+
 if __name__ == "__main__":
     unittest.main()
