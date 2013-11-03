@@ -99,11 +99,12 @@ def _unpack_response(response, cursor_id=None, as_class=dict,
         if error_object["$err"].startswith("not master"):
             raise AutoReconnect(error_object["$err"])
         elif error_object.get("code") == 50:
-            raise ExecutionTimeout(error_object["$err"],
-                                   error_object["code"],
+            raise ExecutionTimeout(error_object.get("$err"),
+                                   error_object.get("code"),
                                    error_object)
         raise OperationFailure("database error: %s" %
-                               error_object["$err"],
+                               error_object.get("$err"),
+                               error_object.get("code"),
                                error_object)
 
     result = {}
