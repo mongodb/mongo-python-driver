@@ -463,8 +463,6 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         if version.at_least(c, (1, 3, 3, 1)):
 
             c.drop_database("pymongo_test1")
-            if "pymongo_test1" in c.database_names():
-                raise SkipTest("SERVER-2329?")
 
             c.admin.add_user("admin", "password")
             c.admin.authenticate("admin", "password")

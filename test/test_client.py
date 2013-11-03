@@ -206,6 +206,10 @@ class TestClient(unittest.TestCase, TestRequestMixin):
 
     def test_copy_db(self):
         c = MongoClient(host, port)
+        # Due to SERVER-2329, databases may not disappear
+        # from a master in a master-slave pair.
+        if server_is_master_with_slave(c):
+            raise SkipTest("SERVER-2329")
         # We test copy twice; once starting in a request and once not. In
         # either case the copy should succeed (because it starts a request
         # internally) and should leave us in the same state as before the copy.
@@ -219,14 +223,10 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         c.pymongo_test.test.drop()
         c.drop_database("pymongo_test1")
         c.drop_database("pymongo_test2")
+        self.assertFalse("pymongo_test1" in c.database_names())
+        self.assertFalse("pymongo_test2" in c.database_names())
 
         c.pymongo_test.test.insert({"foo": "bar"})
-
-        # Due to SERVER-2329, databases may not disappear from a master in a
-        # master-slave pair
-        if not server_is_master_with_slave(c):
-            self.assertFalse("pymongo_test1" in c.database_names())
-            self.assertFalse("pymongo_test2" in c.database_names())
 
         c.copy_database("pymongo_test", "pymongo_test1")
         # copy_database() didn't accidentally end the request
@@ -249,8 +249,6 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         if version.at_least(c, (1, 3, 3, 1)) and not is_mongos(c):
 
             c.drop_database("pymongo_test1")
-            if "pymongo_test1" in c.database_names():
-                raise SkipTest("SERVER-2329?")
 
             c.admin.add_user("admin", "password")
             c.admin.authenticate("admin", "password")
