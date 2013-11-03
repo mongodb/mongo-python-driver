@@ -63,8 +63,9 @@ To initialize the set we need to connect to a single node and run the
 initiate command. Since we don't have a primary yet, we'll need to
 tell PyMongo that it's okay to connect to a slave/secondary::
 
-  >>> from pymongo import MongoClient
-  >>> c = MongoClient("morton.local:27017", slave_okay=True)
+  >>> from pymongo import MongoClient, ReadPreference
+  >>> c = MongoClient("morton.local:27017",
+                      read_preference=ReadPreference.SECONDARY)
 
 .. note:: We could have connected to any of the other nodes instead,
    but only the node we initiate from is allowed to contain any
