@@ -435,10 +435,11 @@ class _TestLazyConnectMixin(object):
                 test(collection)
 
         finally:
-            if PY3:
-                sys.setswitchinterval(self.interval)
-            else:
-                sys.setcheckinterval(self.interval)
+            if not sys.platform.startswith('java'):
+                if PY3:
+                    sys.setswitchinterval(self.interval)
+                else:
+                    sys.setcheckinterval(self.interval)
 
     def test_insert(self):
         def reset(collection):
