@@ -416,12 +416,13 @@ class _TestLazyConnectMixin(object):
         collection = self._get_client().pymongo_test.test
 
         # Make concurrency bugs more likely to manifest.
-        if PY3:
-            self.interval = sys.getswitchinterval()
-            sys.setswitchinterval(1e-6)
-        else:
-            self.interval = sys.getcheckinterval()
-            sys.setcheckinterval(1)
+        if not sys.platform.startswith('java'):
+            if PY3:
+                self.interval = sys.getswitchinterval()
+                sys.setswitchinterval(1e-6)
+            else:
+                self.interval = sys.getcheckinterval()
+                sys.setcheckinterval(1)
 
         try:
             for i in range(self.ntrials):
