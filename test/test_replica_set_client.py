@@ -1171,6 +1171,12 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
             self, client, list(client.secondaries) + [client.primary],
             ReadPreference.NEAREST, None, latency)
 
+    def test_alive(self):
+        client = MongoReplicaSetClient(
+            'doesnt exist', replicaSet='rs', _connect=False)
+
+        self.assertFalse(client.alive())
+
 
 # Test concurrent access to a lazily-connecting RS client.
 class TestReplicaSetClientLazyConnect(

@@ -850,7 +850,8 @@ class MongoClient(common.BaseObject):
             except (socket.error, ConnectionFailure):
                 return False
         finally:
-            self.__pool.maybe_return_socket(sock_info)
+            if sock_info:
+                self.__pool.maybe_return_socket(sock_info)
 
     def set_cursor_manager(self, manager_class):
         """Set this client's cursor manager.
