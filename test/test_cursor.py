@@ -102,7 +102,7 @@ class TestCursor(unittest.TestCase):
         coll.group(key={"amalia": 1}, condition={}, initial={"count": 0},
                    reduce=reducer, maxTimeMS=1000)
 
-        if "enableTestCommands=1" in get_command_line(self.client):
+        if "enableTestCommands=1" in get_command_line(self.client)["argv"]:
             self.client.admin.command("configureFailPoint",
                                       "maxTimeAlwaysTimeOut",
                                       mode="alwaysOn")

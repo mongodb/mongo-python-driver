@@ -167,15 +167,12 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
 
     def test_init_disconnected_with_auth(self):
         c = self._get_client()
-        remove_all_users(c.pymongo_test)
-        remove_all_users(c.admin)
+        if not server_started_with_auth(c):
+            raise SkipTest('Authentication is not enabled on server')
 
+        c.admin.add_user("admin", "pass")
+        c.admin.authenticate("admin", "pass")
         try:
-            c.admin.add_user("admin", "pass",
-                             roles=['dbAdminAnyDatabase',
-                                    'readWriteAnyDatabase',
-                                    'userAdminAnyDatabase'])
-            c.admin.authenticate("admin", "pass")
             c.pymongo_test.add_user("user", "pass", roles=['readWrite', 'userAdmin'])
 
             # Auth with lazy connection.
@@ -460,34 +457,33 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         self.assertTrue("pymongo_test2" in c.database_names())
         self.assertEqual("bar", c.pymongo_test2.test.find_one()["foo"])
 
-        if version.at_least(c, (1, 3, 3, 1)):
-
+        if version.at_least(c, (1, 3, 3, 1)) and server_started_with_auth(c):
             c.drop_database("pymongo_test1")
 
             c.admin.add_user("admin", "password")
             c.admin.authenticate("admin", "password")
+            try:
+                c.pymongo_test.add_user("mike", "password")
 
-            c.pymongo_test.add_user("mike", "password")
+                self.assertRaises(OperationFailure, c.copy_database,
+                                  "pymongo_test", "pymongo_test1",
+                                  username="foo", password="bar")
+                self.assertFalse("pymongo_test1" in c.database_names())
 
-            self.assertRaises(OperationFailure, c.copy_database,
-                              "pymongo_test", "pymongo_test1",
-                              username="foo", password="bar")
-            self.assertFalse("pymongo_test1" in c.database_names())
+                self.assertRaises(OperationFailure, c.copy_database,
+                                  "pymongo_test", "pymongo_test1",
+                                  username="mike", password="bar")
+                self.assertFalse("pymongo_test1" in c.database_names())
 
-            self.assertRaises(OperationFailure, c.copy_database,
-                              "pymongo_test", "pymongo_test1",
-                              username="mike", password="bar")
-            self.assertFalse("pymongo_test1" in c.database_names())
-
-            c.copy_database("pymongo_test", "pymongo_test1",
-                            username="mike", password="password")
-            self.assertTrue("pymongo_test1" in c.database_names())
-            res = c.pymongo_test1.test.find_one(_must_use_master=True)
-            self.assertEqual("bar", res["foo"])
-
-            # Cleanup
-            c.pymongo_test.remove_user("mike")
-            c.admin.remove_user("admin")
+                c.copy_database("pymongo_test", "pymongo_test1",
+                                username="mike", password="password")
+                self.assertTrue("pymongo_test1" in c.database_names())
+                res = c.pymongo_test1.test.find_one(_must_use_master=True)
+                self.assertEqual("bar", res["foo"])
+            finally:
+                # Cleanup
+                remove_all_users(c.pymongo_test)
+                c.admin.remove_user("admin")
         c.close()
 
     def test_get_default_database(self):

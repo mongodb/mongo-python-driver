@@ -30,7 +30,6 @@ from pymongo.errors import (ConfigurationError,
                             ConnectionFailure,
                             OperationFailure)
 from test import host, port, pair, version
-from test.utils import get_command_line
 
 
 CERT_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
@@ -399,15 +398,12 @@ class TestSSL(unittest.TestCase):
         client = MongoClient(host, port, ssl=True, ssl_certfile=CLIENT_PEM)
         if not version.at_least(client, (2, 5, 3, -1)):
             raise SkipTest("MONGODB-X509 tests require MongoDB 2.5.3 or newer")
-        argv = get_command_line(client)
-        if '--auth' not in argv:
-            raise SkipTest("Mongo must be started with "
-                           "--auth to test MONGODB-X509")
+        if not server_started_with_auth(client):
+            raise SkipTest('Authentication is not enabled on server')
         # Give admin all necessary priviledges.
         client['$external'].add_user(MONGODB_X509_USERNAME, roles=[
             {'role': 'readWriteAnyDatabase', 'db': 'admin'},
             {'role': 'userAdminAnyDatabase', 'db': 'admin'}])
-        client = MongoClient(host, port, ssl=True, ssl_certfile=CLIENT_PEM)
         coll = client.pymongo_test.test
         self.assertRaises(OperationFailure, coll.count)
         self.assertTrue(client.admin.authenticate(MONGODB_X509_USERNAME,

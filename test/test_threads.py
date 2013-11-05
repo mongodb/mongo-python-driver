@@ -320,14 +320,12 @@ class BaseTestThreadsAuth(object):
         if not server_started_with_auth(client):
             raise SkipTest("Authentication is not enabled on server")
         self.client = client
-        remove_all_users(self.client.admin)
         self.client.admin.add_user('admin-user', 'password',
                                    roles=['clusterAdmin',
                                           'dbAdminAnyDatabase',
                                           'readWriteAnyDatabase',
                                           'userAdminAnyDatabase'])
         self.client.admin.authenticate("admin-user", "password")
-        remove_all_users(self.client.auth_test)
         self.client.auth_test.add_user("test-user", "password",
                                        roles=['readWrite'])
 

@@ -56,14 +56,21 @@ def delay(sec):
 def get_command_line(client):
     command_line = client.admin.command('getCmdLineOpts')
     assert command_line['ok'] == 1, "getCmdLineOpts() failed"
-    return command_line['argv']
+    return command_line
 
 def server_started_with_auth(client):
-    argv = get_command_line(client)
+    command_line = get_command_line(client)
+    if 'parsed' in command_line:
+        parsed = command_line['parsed']
+        return parsed.get('auth', False) or bool(parsed.get('keyFile'))
+    argv = command_line['argv']
     return '--auth' in argv or '--keyFile' in argv
 
 def server_is_master_with_slave(client):
-    return '--master' in get_command_line(client)
+    command_line = get_command_line(client)
+    if 'parsed' in command_line:
+        return command_line['parsed'].get('master', False)
+    return '--master' in command_line['argv']
 
 def drop_collections(db):
     for coll in db.collection_names():
