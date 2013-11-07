@@ -287,3 +287,8 @@ class ObjectId(object):
         .. versionadded:: 1.1
         """
         return hash(self.__id)
+        
+    def __json__(self, **kwargs):
+        """Make :class:`ObjectId` json serializable.
+        """
+        return str(self)
