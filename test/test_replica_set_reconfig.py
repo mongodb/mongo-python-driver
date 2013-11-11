@@ -58,7 +58,7 @@ MOCK_RS_NAME = 'rs'
 
 class MockClientBase(object):
     def __init__(self):
-        self.mock_hosts = MOCK_HOSTS
+        self.mock_hosts = MOCK_HOSTS[:]
 
         # Hosts that should raise socket errors.
         self.mock_down_hosts = []
