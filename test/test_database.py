@@ -212,7 +212,7 @@ class TestDatabase(unittest.TestCase):
         db = self.client.pymongo_test
 
         db.set_profiling_level(ALL)
-        db.test.find()
+        db.test.find_one()
         db.set_profiling_level(OFF)
 
         info = db.profiling_info()
@@ -232,7 +232,6 @@ class TestDatabase(unittest.TestCase):
             self.assertTrue(isinstance(info[0]['millis'], int))
             self.assertTrue(isinstance(info[0]['client'], basestring))
             self.assertTrue(isinstance(info[0]['user'], basestring))
-            self.assertTrue(isinstance(info[0]['ntoreturn'], int))
             self.assertTrue(isinstance(info[0]['ns'], basestring))
             self.assertTrue(isinstance(info[0]['op'], basestring))
         else:
