@@ -698,47 +698,6 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         no_timeout.close()
         timeout.close()
 
-    def test_socket_error_marks_member_down(self):
-        # A socket error (besides timeout) changes a member's state to "down".
-        c = self._get_client()
-        collection = c.pymongo_test.test
-        collection.insert({}, w=self.w)
-        previous_writer = c._MongoReplicaSetClient__rs_state.writer
-
-        def kill_sockets():
-            for pool in pools_from_rs_client(c):
-                for socket_info in pool.sockets:
-                    socket_info.sock.close()
-
-        kill_sockets()
-
-        # Query the primary.
-        self.assertRaises(ConnectionFailure, collection.find_one)
-
-        # primary_member returns None if primary is marked "down".
-        rs_state = c._MongoReplicaSetClient__rs_state
-
-        self.assertEqual(None, rs_state.writer)
-        self.assertFalse(rs_state.get(previous_writer).up)
-
-        collection.find_one()  # No error, we recovered.
-        rs_state = c._MongoReplicaSetClient__rs_state
-        self.assertTrue(rs_state.get(rs_state.writer).up)
-
-        kill_sockets()
-
-        # Query secondaries. Client marks them "down" as they fail, and tries
-        # up to 3 of them before raising.
-        self.assertRaises(
-            ConnectionFailure,
-            collection.find_one,
-            read_preference=SECONDARY)
-
-        # Secondaries were either removed from state or marked "down".
-        rs_state = c._MongoReplicaSetClient__rs_state
-        for secondary_host in rs_state.secondaries:
-            self.assertFalse(rs_state.get(secondary_host).up)
-
     def test_timeout_does_not_mark_member_down(self):
         # If a query times out, the RS client shouldn't mark the member "down".
         c = self._get_client(socketTimeoutMS=3000)
