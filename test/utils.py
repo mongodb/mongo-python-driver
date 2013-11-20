@@ -399,7 +399,7 @@ class _TestLazyConnectMixin(object):
             t.start()
 
         for t in threads:
-            t.join(30)
+            t.join(60)
             if self.use_greenlets:
                 # bool(Greenlet) is True if it's alive.
                 assert not t
