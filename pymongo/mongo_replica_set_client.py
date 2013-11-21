@@ -1189,6 +1189,8 @@ class MongoReplicaSetClient(common.BaseObject):
                 break
         else:
             if errors:
+                if rs_state.hosts:
+                    self.__rs_state = RSState(self.__make_threadlocal())
                 raise AutoReconnect(', '.join(errors))
             raise ConfigurationError('No suitable hosts found')
 
