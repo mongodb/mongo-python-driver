@@ -37,8 +37,8 @@ from test import utils
 from test.utils import one
 
 
-# Will be imported from time or gevent, below
-sleep = None
+# May be imported from gevent, below.
+sleep = time.sleep
 
 
 # Override default 30-second interval for faster testing
@@ -976,6 +976,7 @@ class TestReplicaSetRequest(HATestCase):
         super(TestReplicaSetRequest, self).tearDown()
 
 
+
 if __name__ == '__main__':
     if use_greenlets:
         print('Using Gevent')
@@ -985,7 +986,5 @@ if __name__ == '__main__':
         from gevent import monkey
         monkey.patch_socket()
         sleep = gevent.sleep
-    else:
-        sleep = time.sleep
 
     unittest.main()
