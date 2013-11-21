@@ -35,7 +35,8 @@ from pymongo.mongo_client import MongoClient
 from pymongo.collection import Collection
 from pymongo.master_slave_connection import MasterSlaveConnection
 from test import host, port, host2, port2, host3, port3
-from test.utils import TestRequestMixin
+from test.utils import TestRequestMixin, get_pool
+
 
 class TestMasterSlaveConnection(unittest.TestCase, TestRequestMixin):
 
@@ -275,7 +276,7 @@ class TestMasterSlaveConnection(unittest.TestCase, TestRequestMixin):
         client = self.client
 
         # In a request, all ops go through master
-        pool = client.master._MongoClient__pool
+        pool = get_pool(client.master)
         client.master.end_request()
         self.assertNotInRequestAndDifferentSock(client, pool)
 

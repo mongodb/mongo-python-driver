@@ -551,7 +551,6 @@ class TestDatabase(unittest.TestCase):
 
             request_cx = get_client(auto_start_request=True)
             request_db = request_cx.pymongo_test
-            self.assertTrue(request_cx.in_request())
             self.assertTrue(request_db.authenticate("mike", "password"))
             self.assertTrue(request_cx.in_request())
         finally:

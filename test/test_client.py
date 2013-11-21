@@ -34,12 +34,14 @@ from pymongo.mongo_client import MongoClient
 from pymongo.database import Database
 from pymongo.pool import SocketInfo
 from pymongo import thread_util
-from pymongo.errors import (ConfigurationError,
+from pymongo.errors import (AutoReconnect,
+                            ConfigurationError,
                             ConnectionFailure,
                             InvalidName,
                             OperationFailure,
                             PyMongoError)
-from test import version, host, port
+from test import version, host, port, pair
+from test.pymongo_mocks import MockClient
 from test.utils import (assertRaisesExactly,
                         delay,
                         is_mongos,
@@ -47,7 +49,10 @@ from test.utils import (assertRaisesExactly,
                         server_is_master_with_slave,
                         server_started_with_auth,
                         TestRequestMixin,
-                        _TestLazyConnectMixin)
+                        _TestLazyConnectMixin,
+                        lazy_client_trial,
+                        NTHREADS,
+                        get_pool)
 
 
 def get_client(*args, **kwargs):
@@ -92,7 +97,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         self.assertIsInstance(c.is_mongos, bool)
         self.assertIsInstance(c.max_pool_size, int)
         self.assertIsInstance(c.use_greenlets, bool)
-        self.assertIsInstance(c.nodes, set)
+        self.assertIsInstance(c.nodes, frozenset)
         self.assertIsInstance(c.auto_start_request, bool)
         self.assertEqual(dict, c.get_document_class())
         self.assertIsInstance(c.tz_aware, bool)
@@ -510,9 +515,9 @@ class TestClient(unittest.TestCase, TestRequestMixin):
 
     def test_timeouts(self):
         client = MongoClient(host, port, connectTimeoutMS=10500)
-        self.assertEqual(10.5, client._MongoClient__pool.conn_timeout)
+        self.assertEqual(10.5, client._MongoClient__member.pool.conn_timeout)
         client = MongoClient(host, port, socketTimeoutMS=10500)
-        self.assertEqual(10.5, client._MongoClient__pool.net_timeout)
+        self.assertEqual(10.5, client._MongoClient__member.pool.net_timeout)
 
     def test_network_timeout_validation(self):
         c = get_client(socketTimeoutMS=10 * 1000)
@@ -565,11 +570,11 @@ class TestClient(unittest.TestCase, TestRequestMixin):
 
     def test_waitQueueTimeoutMS(self):
         client = MongoClient(host, port, waitQueueTimeoutMS=2000)
-        self.assertEqual(client._MongoClient__pool.wait_queue_timeout, 2)
+        self.assertEqual(client._MongoClient__member.pool.wait_queue_timeout, 2)
 
     def test_waitQueueMultiple(self):
         client = MongoClient(host, port, max_pool_size=3, waitQueueMultiple=2)
-        pool = client._MongoClient__pool
+        pool = client._MongoClient__member.pool
         self.assertEqual(pool.wait_queue_multiple, 2)
         self.assertEqual(pool._socket_semaphore.waiter_semaphore.counter, 6)
 
@@ -647,26 +652,25 @@ class TestClient(unittest.TestCase, TestRequestMixin):
 
         # The socket used for the previous commands has been returned to the
         # pool
-        self.assertEqual(1, len(client._MongoClient__pool.sockets))
+        self.assertEqual(1, len(client._MongoClient__member.pool.sockets))
 
         # We need exec here because if the Python version is less than 2.6
         # these with-statements won't even compile.
         exec """
 with contextlib.closing(client):
     self.assertEqual("bar", client.pymongo_test.test.find_one()["foo"])
-self.assertEqual(0, len(client._MongoClient__pool.sockets))
+self.assertEqual(None, client._MongoClient__member)
 """
 
         exec """
 with get_client() as client:
     self.assertEqual("bar", client.pymongo_test.test.find_one()["foo"])
-# Calling client.close() has reset the pool
-self.assertEqual(0, len(client._MongoClient__pool.sockets))
+self.assertEqual(None, client._MongoClient__member)
 """
 
     def test_with_start_request(self):
         client = get_client()
-        pool = client._MongoClient__pool
+        pool = client._MongoClient__member.pool
 
         # No request started
         self.assertNoRequest(pool)
@@ -716,12 +720,11 @@ with client.start_request() as request:
 
         client = get_client(auto_start_request=True)
         self.assertTrue(client.auto_start_request)
-        self.assertTrue(client.in_request())
-        pool = client._MongoClient__pool
 
-        # Request started already, just from MongoClient constructor - it's a
-        # bit weird, but MongoClient does some socket stuff when it initializes
-        # and it ends up with a request socket
+        # Assure we acquire a request socket.
+        client.pymongo_test.test.find_one()
+        self.assertTrue(client.in_request())
+        pool = client._MongoClient__member.pool
         self.assertRequestSocket(pool)
         self.assertSameSock(pool)
 
@@ -737,7 +740,7 @@ with client.start_request() as request:
     def test_nested_request(self):
         # auto_start_request is False
         client = get_client()
-        pool = client._MongoClient__pool
+        pool = client._MongoClient__member.pool
         self.assertFalse(client.in_request())
 
         # Start and end request
@@ -765,7 +768,7 @@ with client.start_request() as request:
 
     def test_request_threads(self):
         client = get_client(auto_start_request=False)
-        pool = client._MongoClient__pool
+        pool = client._MongoClient__member.pool
         self.assertNotInRequestAndDifferentSock(client, pool)
 
         started_request, ended_request = threading.Event(), threading.Event()
@@ -854,7 +857,7 @@ with client.start_request() as request:
         # Ensure MongoClient doesn't close socket after it gets an error
         # response to getLastError. PYTHON-395.
         c = get_client()
-        pool = c._MongoClient__pool
+        pool = c._MongoClient__member.pool
         self.assertEqual(1, len(pool.sockets))
         old_sock_info = iter(pool.sockets).next()
         c.pymongo_test.test.drop()
@@ -871,9 +874,10 @@ with client.start_request() as request:
         # Ensure MongoClient doesn't close socket after it gets an error
         # response to getLastError. PYTHON-395.
         c = get_client(auto_start_request=True)
-        pool = c._MongoClient__pool
+        pool = get_pool(c)
 
-        # MongoClient has reserved a socket for this thread
+        # Pool reserves a socket for this thread.
+        c.pymongo_test.test.find_one()
         self.assertTrue(isinstance(pool._get_request_state(), SocketInfo))
 
         old_sock_info = pool._get_request_state()
@@ -906,6 +910,111 @@ with client.start_request() as request:
 class TestClientLazyConnect(unittest.TestCase, _TestLazyConnectMixin):
     def _get_client(self, **kwargs):
         return get_client(**kwargs)
+
+
+class TestClientLazyConnectBadSeeds(unittest.TestCase):
+    def _get_client(self, **kwargs):
+        kwargs.setdefault('connectTimeoutMS', 100)
+
+        # Assume there are no open mongods listening on a.com, b.com, ....
+        bad_seeds = ['%s.com' % chr(ord('a') + i) for i in range(10)]
+        return MongoClient(bad_seeds, **kwargs)
+
+    def test_connect(self):
+        def reset(dummy):
+            pass
+
+        def connect(collection, dummy):
+            self.assertRaises(AutoReconnect, collection.find_one)
+
+        def test(collection):
+            client = collection.database.connection
+            self.assertEqual(0, len(client.nodes))
+
+        lazy_client_trial(
+            reset, connect, test,
+            self._get_client, use_greenlets=False)
+
+
+class TestClientLazyConnectOneGoodSeed(
+        unittest.TestCase,
+        _TestLazyConnectMixin):
+
+    def _get_client(self, **kwargs):
+        kwargs.setdefault('connectTimeoutMS', 100)
+
+        # Assume there are no open mongods listening on a.com, b.com, ....
+        bad_seeds = ['%s.com' % chr(ord('a') + i) for i in range(10)]
+        seeds = bad_seeds + [pair]
+
+        # MongoClient puts the seeds in a set before iterating, so order is
+        # undefined.
+        return MongoClient(seeds, **kwargs)
+
+    def test_insert(self):
+        def reset(collection):
+            collection.drop()
+
+        def insert(collection, dummy):
+            collection.insert({})
+
+        def test(collection):
+            self.assertEqual(NTHREADS, collection.count())
+
+        lazy_client_trial(
+            reset, insert, test,
+            self._get_client, use_greenlets=False)
+
+
+class TestMongoClientFailover(unittest.TestCase):
+    def test_discover_primary(self):
+        c = MockClient(
+            standalones=[],
+            members=['a:1', 'b:2', 'c:3'],
+            mongoses=[],
+            host='b:2',  # Pass a secondary.
+            replicaSet='rs')
+
+        self.assertEqual('a', c.host)
+        self.assertEqual(1, c.port)
+        self.assertEqual(3, len(c.nodes))
+
+        # Fail over.
+        c.kill_host('a:1')
+        c.mock_primary = 'b:2'
+
+        # Force reconnect.
+        c.disconnect()
+        c.db.collection.find_one()
+        self.assertEqual('b', c.host)
+        self.assertEqual(2, c.port)
+
+        # a:1 is still in nodes.
+        self.assertEqual(3, len(c.nodes))
+
+    def test_reconnect(self):
+        # Verify the node list isn't forgotten during a network failure.
+        c = MockClient(
+            standalones=[],
+            members=['a:1', 'b:2', 'c:3'],
+            mongoses=[],
+            host='b:2',  # Pass a secondary.
+            replicaSet='rs')
+
+        # Total failure.
+        c.kill_host('a:1')
+        c.kill_host('b:2')
+        c.kill_host('c:3')
+
+        # MongoClient discovers it's alone.
+        self.assertRaises(AutoReconnect, c.db.collection.find_one)
+
+        # But it remembers its node list.
+        self.assertEqual(3, len(c.nodes))
+
+        # So it can reconnect.
+        c.revive_host('a:1')
+        c.db.collection.find_one()
 
 
 if __name__ == "__main__":

@@ -140,8 +140,8 @@ class FindPauseFind(RendezvousThread):
         # acquire a socket
         list(self.collection.find())
 
-        self.pool = get_pool(self.collection.database.connection)
-        socket_info = self.pool._get_request_state()
+        pool = get_pool(self.collection.database.connection)
+        socket_info = pool._get_request_state()
         assert isinstance(socket_info, SocketInfo)
         self.request_sock = socket_info.sock
         assert not _closed(self.request_sock)
@@ -151,12 +151,12 @@ class FindPauseFind(RendezvousThread):
         # because it's not our request socket anymore
         assert _closed(self.request_sock)
 
-        # if disconnect() properly closed all threads' request sockets, then
-        # this won't raise AutoReconnect because it will acquire a new socket
-        assert self.request_sock == self.pool._get_request_state().sock
+        # if disconnect() properly replaced the pool, then this won't raise
+        # AutoReconnect because it will acquire a new socket
         list(self.collection.find())
         assert self.collection.database.connection.in_request()
-        assert self.request_sock != self.pool._get_request_state().sock
+        pool = get_pool(self.collection.database.connection)
+        assert self.request_sock != pool._get_request_state().sock
 
 
 class BaseTestThreads(object):

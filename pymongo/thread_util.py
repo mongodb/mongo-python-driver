@@ -33,6 +33,7 @@ try:
         from gevent.coros import BoundedSemaphore as GeventBoundedSemaphore
 
     from gevent.greenlet import SpawnedLink
+    from gevent.event import Event as GeventEvent
 
 except ImportError:
     have_gevent = False
@@ -185,6 +186,32 @@ class Counter(object):
         return self._counters.get(self.ident.get(), 0)
 
 
+class Future(object):
+    """Minimal backport of concurrent.futures.Future.
+
+    event_class makes this Future adaptable for Gevent and other frameworks.
+    """
+    def __init__(self, event_class):
+        self._event = event_class()
+        self._result = None
+        self._exception = None
+
+    def set_result(self, result):
+        self._result = result
+        self._event.set()
+
+    def set_exception(self, exc):
+        self._exception = exc
+        self._event.set()
+
+    def result(self):
+        self._event.wait()
+        if self._exception:
+            raise self._exception
+        else:
+            return self._result
+
+
 ### Begin backport from CPython 3.2 for timeout support for Semaphore.acquire
 class Semaphore:
 
@@ -302,3 +329,10 @@ def create_semaphore(max_size, max_waiters, use_greenlets):
             return BoundedSemaphore(max_size)
         else:
             return MaxWaitersBoundedSemaphoreThread(max_size, max_waiters)
+
+
+def create_event(use_greenlets):
+    if use_greenlets:
+        return GeventEvent()
+    else:
+        return threading.Event()

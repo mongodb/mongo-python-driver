@@ -52,7 +52,7 @@ class TestConnection(unittest.TestCase):
 
         # To preserve legacy Connection's behavior, max_size should be None.
         # Pool should handle this without error.
-        self.assertEqual(None, c._MongoClient__pool.max_size)
+        self.assertEqual(None, get_pool(c).max_size)
         c.end_request()
 
         # Connection's network_timeout argument is translated into

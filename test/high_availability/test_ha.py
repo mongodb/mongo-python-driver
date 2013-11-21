@@ -27,7 +27,8 @@ from ha_tools import use_greenlets
 
 
 from pymongo.errors import AutoReconnect, OperationFailure, ConnectionFailure
-from pymongo.mongo_replica_set_client import Member, Monitor
+from pymongo.member import Member
+from pymongo.mongo_replica_set_client import Monitor
 from pymongo.mongo_replica_set_client import MongoReplicaSetClient
 from pymongo.mongo_client import MongoClient, _partition_node
 from pymongo.read_preferences import ReadPreference, modes

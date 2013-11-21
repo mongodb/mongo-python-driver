@@ -35,8 +35,8 @@ from bson.son import SON
 from bson.tz_util import utc
 from pymongo.mongo_client import MongoClient
 from pymongo.read_preferences import ReadPreference
+from pymongo.member import PRIMARY, SECONDARY, OTHER
 from pymongo.mongo_replica_set_client import MongoReplicaSetClient
-from pymongo.mongo_replica_set_client import PRIMARY, SECONDARY, OTHER
 from pymongo.mongo_replica_set_client import _partition_node, have_gevent
 from pymongo.database import Database
 from pymongo.pool import SocketInfo

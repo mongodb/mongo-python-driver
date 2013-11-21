@@ -48,7 +48,7 @@ from pymongo.errors import (DuplicateKeyError,
                             OperationFailure,
                             WTimeoutError)
 from test.test_client import get_client
-from test.utils import is_mongos, joinall, enable_text_search
+from test.utils import is_mongos, joinall, enable_text_search, get_pool
 from test import (qcheck,
                   version)
 
@@ -1661,7 +1661,7 @@ class TestCollection(unittest.TestCase):
         self.db.test.insert([{'i': i} for i in xrange(150)])
 
         client = get_client(max_pool_size=1)
-        socks = client._MongoClient__pool.sockets
+        socks = get_pool(client).sockets
         self.assertEqual(1, len(socks))
 
         # Make sure the socket is returned after exhaustion.

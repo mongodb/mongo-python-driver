@@ -27,6 +27,7 @@ from test import host, port
 from test.test_pooling_base import (
     _TestPooling, _TestMaxPoolSize, _TestMaxOpenSockets,
     _TestPoolSocketSharing, _TestWaitQueueMultiple, one)
+from test.utils import get_pool
 
 
 class TestPoolingThreads(_TestPooling, unittest.TestCase):
@@ -117,15 +118,15 @@ class TestPoolingThreads(_TestPooling, unittest.TestCase):
         a.pymongo_test.test.remove()
         a.pymongo_test.test.insert({'_id':1})
         a.pymongo_test.test.find_one()
-        self.assertEqual(1, len(a._MongoClient__pool.sockets))
-        a_sock = one(a._MongoClient__pool.sockets)
+        self.assertEqual(1, len(get_pool(a).sockets))
+        a_sock = one(get_pool(a).sockets)
 
         def loop(pipe):
             c = self.get_client(auto_start_request=False)
-            self.assertEqual(1,len(c._MongoClient__pool.sockets))
+            self.assertEqual(1,len(get_pool(c).sockets))
             c.pymongo_test.test.find_one()
-            self.assertEqual(1,len(c._MongoClient__pool.sockets))
-            pipe.send(one(c._MongoClient__pool.sockets).sock.getsockname())
+            self.assertEqual(1,len(get_pool(c).sockets))
+            pipe.send(one(get_pool(c).sockets).sock.getsockname())
 
         cp1, cc1 = Pipe()
         cp2, cc2 = Pipe()
@@ -155,7 +156,7 @@ class TestPoolingThreads(_TestPooling, unittest.TestCase):
         self.assertTrue(b_sock != c_sock)
 
         # a_sock, created by parent process, is still in the pool
-        d_sock = a._MongoClient__pool.get_socket((a.host, a.port))
+        d_sock = get_pool(a).get_socket()
         self.assertEqual(a_sock, d_sock)
         d_sock.close()
 
