@@ -976,6 +976,65 @@ class TestReplicaSetRequest(HATestCase):
         super(TestReplicaSetRequest, self).tearDown()
 
 
+class TestShipOfTheseus(HATestCase):
+    # If all of a replica set's members are replaced with new ones, is it still
+    # the same replica set, or a different one?
+    def setUp(self):
+        super(TestShipOfTheseus, self).setUp()
+        res = ha_tools.start_replica_set([{}, {}])
+        self.seed, self.name = res
+
+    def test_ship_of_theseus(self):
+        c = MongoReplicaSetClient(self.seed, replicaSet=self.name)
+        db = c.pymongo_test
+        db.test.insert({}, w=len(c.secondaries) + 1)
+        find_one = db.test.find_one
+
+        primary = ha_tools.get_primary()
+        secondary1 = ha_tools.get_random_secondary()
+
+        new_hosts = [ha_tools.add_member() for _ in range(3)]
+
+        # Wait for new members to join.
+        for _ in xrange(120):
+            if ha_tools.get_primary() and len(ha_tools.get_secondaries()) == 4:
+                break
+
+            sleep(1)
+        else:
+            self.fail("New secondaries didn't join")
+
+        ha_tools.kill_members([primary, secondary1], 9)
+
+        # Wait for primary.
+        for _ in xrange(30):
+            if ha_tools.get_primary() and len(ha_tools.get_secondaries()) == 2:
+                break
+
+            sleep(1)
+        else:
+            self.fail("No failover")
+
+        sleep(2 * MONITOR_INTERVAL)
+
+        # No error.
+        find_one()
+        find_one(read_preference=SECONDARY)
+
+        # All members down.
+        ha_tools.kill_members(new_hosts, 9)
+        self.assertRaises(
+            ConnectionFailure,
+            find_one, read_preference=SECONDARY)
+
+        ha_tools.restart_members(new_hosts)
+
+        # Should be able to reconnect to set even though original seed
+        # list is useless. Use SECONDARY so we don't have to wait for
+        # the election, merely for the client to detect members are up.
+        sleep(2 * MONITOR_INTERVAL)
+        find_one(read_preference=SECONDARY)
+
 
 if __name__ == '__main__':
     if use_greenlets:

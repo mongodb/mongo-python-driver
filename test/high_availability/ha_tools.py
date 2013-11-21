@@ -46,6 +46,7 @@ ha_tools_debug = bool(os.environ.get('HA_TOOLS_DEBUG'))
 nodes = {}
 routers = {}
 cur_port = port
+key_file = None
 
 try:
     from subprocess import DEVNULL  # Python 3.
@@ -99,6 +100,7 @@ def start_subprocess(cmd):
 
 def start_replica_set(members, auth=False, fresh=True):
     global cur_port
+    global key_file
 
     if fresh:
         if os.path.exists(dbpath):
@@ -146,7 +148,7 @@ def start_replica_set(members, auth=False, fresh=True):
             print('starting %s' % (' '.join(cmd),))
 
         proc = start_subprocess(cmd)
-        nodes[host] = {'proc': proc, 'cmd': cmd}
+        nodes[host] = {'proc': proc, 'cmd': cmd, 'dbpath': path}
         res = wait_for(proc, cur_port)
 
         cur_port += 1
@@ -211,7 +213,7 @@ def create_sharded_cluster(num_routers=3):
            '--nojournal', '--logappend',
            '--logpath', configdb_logpath]
     proc = start_subprocess(cmd)
-    nodes[configdb_host] = {'proc': proc, 'cmd': cmd}
+    nodes[configdb_host] = {'proc': proc, 'cmd': cmd, 'dbpath': path}
     res = wait_for(proc, cur_port)
     if not res:
         return None
@@ -229,7 +231,7 @@ def create_sharded_cluster(num_routers=3):
            '--nojournal', '--logappend',
            '--logpath', db_logpath]
     proc = start_subprocess(cmd)
-    nodes[shard_host] = {'proc': proc, 'cmd': cmd}
+    nodes[shard_host] = {'proc': proc, 'cmd': cmd, 'dbpath': path}
     res = wait_for(proc, cur_port)
     if not res:
         return None
@@ -369,6 +371,58 @@ def kill_all_secondaries(sig=2):
     return secondaries
 
 
+# TODO: refactor w/ start_replica_set
+def add_member(auth=False):
+    global cur_port
+    host = '%s:%d' % (hostname, cur_port)
+    primary = get_primary()
+    c = pymongo.MongoClient(primary, use_greenlets=use_greenlets)
+    config = c.local.system.replset.find_one()
+    _id = max([member['_id'] for member in config['members']]) + 1
+    member = {'_id': _id, 'host': host}
+    path = os.path.join(dbpath, 'db' + str(_id))
+    if os.path.exists(path):
+        shutil.rmtree(path)
+
+    os.makedirs(path)
+    member_logpath = os.path.join(logpath, 'db' + str(_id) + '.log')
+    if not os.path.exists(os.path.dirname(member_logpath)):
+        os.makedirs(os.path.dirname(member_logpath))
+    cmd = [mongod,
+           '--dbpath', path,
+           '--port', str(cur_port),
+           '--replSet', set_name,
+           '--nojournal', '--oplogSize', '64',
+           '--logappend', '--logpath', member_logpath]
+    if auth:
+        cmd += ['--keyFile', key_file]
+
+    if ha_tools_debug:
+        print 'starting', ' '.join(cmd)
+
+    proc = subprocess.Popen(cmd,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT)
+    nodes[host] = {'proc': proc, 'cmd': cmd, 'dbpath': path}
+    res = wait_for(proc, cur_port)
+
+    cur_port += 1
+
+    config['members'].append(member)
+    config['version'] += 1
+
+    if ha_tools_debug:
+        print {'replSetReconfig': config}
+
+    response = c.admin.command({'replSetReconfig': config})
+    if ha_tools_debug:
+        print response
+
+    if not res:
+        return None
+    return host
+
+
 def stepdown_primary():
     primary = get_primary()
     if primary:
@@ -408,6 +462,11 @@ def restart_members(members, router=False):
             cmd = routers[member]['cmd']
         else:
             cmd = nodes[member]['cmd']
+
+        lockfile_path = os.path.join(nodes[member]['dbpath'], 'mongod.lock')
+        if os.path.exists(lockfile_path):
+            os.remove(lockfile_path)
+
         proc = start_subprocess(cmd)
         if router:
             routers[member]['proc'] = proc
