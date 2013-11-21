@@ -515,9 +515,9 @@ class TestClient(unittest.TestCase, TestRequestMixin):
 
     def test_timeouts(self):
         client = MongoClient(host, port, connectTimeoutMS=10500)
-        self.assertEqual(10.5, client._MongoClient__member.pool.conn_timeout)
+        self.assertEqual(10.5, get_pool(client).conn_timeout)
         client = MongoClient(host, port, socketTimeoutMS=10500)
-        self.assertEqual(10.5, client._MongoClient__member.pool.net_timeout)
+        self.assertEqual(10.5, get_pool(client).net_timeout)
 
     def test_network_timeout_validation(self):
         c = get_client(socketTimeoutMS=10 * 1000)
@@ -570,11 +570,11 @@ class TestClient(unittest.TestCase, TestRequestMixin):
 
     def test_waitQueueTimeoutMS(self):
         client = MongoClient(host, port, waitQueueTimeoutMS=2000)
-        self.assertEqual(client._MongoClient__member.pool.wait_queue_timeout, 2)
+        self.assertEqual(get_pool(client).wait_queue_timeout, 2)
 
     def test_waitQueueMultiple(self):
         client = MongoClient(host, port, max_pool_size=3, waitQueueMultiple=2)
-        pool = client._MongoClient__member.pool
+        pool = get_pool(client)
         self.assertEqual(pool.wait_queue_multiple, 2)
         self.assertEqual(pool._socket_semaphore.waiter_semaphore.counter, 6)
 
@@ -652,7 +652,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
 
         # The socket used for the previous commands has been returned to the
         # pool
-        self.assertEqual(1, len(client._MongoClient__member.pool.sockets))
+        self.assertEqual(1, len(get_pool(client).sockets))
 
         # We need exec here because if the Python version is less than 2.6
         # these with-statements won't even compile.
@@ -670,7 +670,7 @@ self.assertEqual(None, client._MongoClient__member)
 
     def test_with_start_request(self):
         client = get_client()
-        pool = client._MongoClient__member.pool
+        pool = get_pool(client)
 
         # No request started
         self.assertNoRequest(pool)
@@ -724,7 +724,7 @@ with client.start_request() as request:
         # Assure we acquire a request socket.
         client.pymongo_test.test.find_one()
         self.assertTrue(client.in_request())
-        pool = client._MongoClient__member.pool
+        pool = get_pool(client)
         self.assertRequestSocket(pool)
         self.assertSameSock(pool)
 
@@ -740,7 +740,7 @@ with client.start_request() as request:
     def test_nested_request(self):
         # auto_start_request is False
         client = get_client()
-        pool = client._MongoClient__member.pool
+        pool = get_pool(client)
         self.assertFalse(client.in_request())
 
         # Start and end request
@@ -768,7 +768,7 @@ with client.start_request() as request:
 
     def test_request_threads(self):
         client = get_client(auto_start_request=False)
-        pool = client._MongoClient__member.pool
+        pool = get_pool(client)
         self.assertNotInRequestAndDifferentSock(client, pool)
 
         started_request, ended_request = threading.Event(), threading.Event()
@@ -857,7 +857,7 @@ with client.start_request() as request:
         # Ensure MongoClient doesn't close socket after it gets an error
         # response to getLastError. PYTHON-395.
         c = get_client()
-        pool = c._MongoClient__member.pool
+        pool = get_pool(c)
         self.assertEqual(1, len(pool.sockets))
         old_sock_info = iter(pool.sockets).next()
         c.pymongo_test.test.drop()
