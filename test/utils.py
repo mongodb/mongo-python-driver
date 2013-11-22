@@ -24,7 +24,6 @@ from pymongo.errors import AutoReconnect
 from pymongo.pool import NO_REQUEST, NO_SOCKET_YET, SocketInfo
 from test import host, port, version
 
-PY3 = sys.version_info[0] == 3
 
 try:
     import gevent
@@ -424,7 +423,7 @@ class _TestLazyConnectMixin(object):
 
         # Make concurrency bugs more likely to manifest.
         if not sys.platform.startswith('java'):
-            if PY3:
+            if sys.version_info >= (3, 2):
                 self.interval = sys.getswitchinterval()
                 sys.setswitchinterval(1e-6)
             else:
@@ -443,7 +442,7 @@ class _TestLazyConnectMixin(object):
 
         finally:
             if not sys.platform.startswith('java'):
-                if PY3:
+                if sys.version_info >= (3, 2):
                     sys.setswitchinterval(self.interval)
                 else:
                     sys.setcheckinterval(self.interval)
