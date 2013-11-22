@@ -1766,8 +1766,12 @@ class TestCollection(unittest.TestCase):
 
         # Test that inserts fail after first error, unacknowledged.
         self.db.test.drop()
-        self.assertTrue(self.db.test.insert(batch, w=0))
-        self.assertEqual(1, self.db.test.count())
+        self.client.start_request()
+        try:
+            self.assertTrue(self.db.test.insert(batch, w=0))
+            self.assertEqual(1, self.db.test.count())
+        finally:
+            self.client.end_request()
 
         # 2 batches, 2 errors, acknowledged, continue on error
         self.db.test.drop()
@@ -1784,9 +1788,13 @@ class TestCollection(unittest.TestCase):
 
         # 2 batches, 2 errors, unacknowledged, continue on error
         self.db.test.drop()
-        self.assertTrue(self.db.test.insert(batch, continue_on_error=True, w=0))
-        # Only the first and third documents should be inserted.
-        self.assertEqual(2, self.db.test.count())
+        self.client.start_request()
+        try:
+            self.assertTrue(self.db.test.insert(batch, continue_on_error=True, w=0))
+            # Only the first and third documents should be inserted.
+            self.assertEqual(2, self.db.test.count())
+        finally:
+            self.client.end_request()
 
     # Starting in PyMongo 2.6 we no longer use message.insert for inserts, but
     # message.insert is part of the public API. Do minimal testing here; there
