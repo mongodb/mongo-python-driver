@@ -1782,7 +1782,7 @@ class TestCollection(unittest.TestCase):
             # Make sure we report the last error, not the first.
             self.assertTrue(str(batch[2]['_id']) in str(e))
         else:
-            self.fail('OpreationFailure not raised.')
+            self.fail('OperationFailure not raised.')
         # Only the first and third documents should be inserted.
         self.assertEqual(2, self.db.test.count())
 
