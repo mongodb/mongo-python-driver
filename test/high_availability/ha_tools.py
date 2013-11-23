@@ -462,10 +462,9 @@ def restart_members(members, router=False):
             cmd = routers[member]['cmd']
         else:
             cmd = nodes[member]['cmd']
-
-        lockfile_path = os.path.join(nodes[member]['dbpath'], 'mongod.lock')
-        if os.path.exists(lockfile_path):
-            os.remove(lockfile_path)
+            lockfile_path = os.path.join(nodes[member]['dbpath'], 'mongod.lock')
+            if os.path.exists(lockfile_path):
+                os.remove(lockfile_path)
 
         proc = start_subprocess(cmd)
         if router:
