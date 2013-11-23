@@ -689,8 +689,7 @@ class MongoClient(common.BaseObject):
             node,
             connection_pool,
             response,
-            res_time,
-            True)
+            res_time)
 
         nodes = frozenset([node])
 

@@ -1081,6 +1081,18 @@ class TestShipOfTheseus(HATestCase):
         sleep(2 * MONITOR_INTERVAL)
         find_one(read_preference=SECONDARY)
 
+        # Kill new members and switch back to original two members.
+        ha_tools.kill_members(new_hosts, 9)
+        self.assertRaises(
+            ConnectionFailure,
+            find_one, read_preference=SECONDARY)
+
+        ha_tools.restart_members([primary, secondary1])
+
+        # Should be able to reconnect to set again.
+        sleep(2 * MONITOR_INTERVAL)
+        find_one(read_preference=SECONDARY)
+
 
 if __name__ == '__main__':
     if use_greenlets:

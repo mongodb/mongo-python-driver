@@ -33,17 +33,15 @@ class Member(object):
       - `connection_pool`: A Pool instance
       - `ismaster_response`: A dict, MongoDB's ismaster response
       - `ping_time`: A MovingAverage instance
-      - `up`: Whether we think this member is available
     """
     # For unittesting only. Use under no circumstances!
     _host_to_ping_time = {}
 
-    def __init__(self, host, connection_pool, ismaster_response, ping_time, up):
+    def __init__(self, host, connection_pool, ismaster_response, ping_time):
         self.host = host
         self.pool = connection_pool
         self.ismaster_response = ismaster_response
         self.ping_time = ping_time
-        self.up = up
         self.is_mongos = (ismaster_response.get('msg') == 'isdbgrid')
 
         if ismaster_response['ismaster']:
@@ -71,14 +69,7 @@ class Member(object):
         """Get a clone updated with ismaster response and a single ping time.
         """
         ping_time = self.ping_time.clone_with(ping_time_sample)
-        return Member(self.host, self.pool, ismaster_response, ping_time, True)
-
-    def clone_down(self):
-        """Get a clone of this Member, but with up=False.
-        """
-        return Member(
-            self.host, self.pool, self.ismaster_response, self.ping_time,
-            False)
+        return Member(self.host, self.pool, ismaster_response, ping_time)
 
     @property
     def is_primary(self):
@@ -137,5 +128,5 @@ class Member(object):
         return False
 
     def __str__(self):
-        return '<Member "%s:%s" primary=%r up=%r>' % (
-            self.host[0], self.host[1], self.is_primary, self.up)
+        return '<Member "%s:%s" primary=%r>' % (
+            self.host[0], self.host[1], self.is_primary)

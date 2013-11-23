@@ -733,7 +733,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
 
         rs_state = c._MongoReplicaSetClient__rs_state
         secondary_host = one(rs_state.secondaries)
-        self.assertTrue(rs_state.get(secondary_host).up)
+        self.assertTrue(rs_state.get(secondary_host))
         collection.find_one(read_preference=SECONDARY)  # No error.
 
     def test_waitQueueTimeoutMS(self):
@@ -1085,9 +1085,9 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         client._MongoReplicaSetClient__rs_state = new_rs_state
         client._MongoReplicaSetClient__schedule_refresh(sync=True)
         rs_state = client._MongoReplicaSetClient__rs_state
-        for member in rs_state.members:
-            self.assertTrue(
-                member.up, "MongoReplicaSetClient didn't detect member is up")
+        self.assertEqual(
+            self.w, len(rs_state.members),
+            "MongoReplicaSetClient didn't detect members are up")
 
         client.close()
 

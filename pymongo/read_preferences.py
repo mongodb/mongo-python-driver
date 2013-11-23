@@ -87,10 +87,7 @@ def mongos_enum(enum):
 def select_primary(members):
     for member in members:
         if member.is_primary:
-            if member.up:
-                return member
-            else:
-                return None
+            return member
 
     return None
 
@@ -99,9 +96,6 @@ def select_member_with_tags(members, tags, secondary_only, latency):
     candidates = []
 
     for candidate in members:
-        if not candidate.up:
-            continue
-
         if secondary_only and candidate.is_primary:
             continue
 

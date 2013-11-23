@@ -129,12 +129,14 @@ def _partition_node(node):
 
 class RSState(object):
     def __init__(
-            self, threadlocal, host_to_member=None, arbiters=None, writer=None,
-            error_message='No primary available'):
+            self, threadlocal, hosts=None, host_to_member=None, arbiters=None,
+            writer=None, error_message='No primary available'):
         """An immutable snapshot of the client's view of the replica set state.
 
         :Parameters:
           - `threadlocal`: Thread- or greenlet-local storage
+          - `hosts`: List of (host, port) pairs, known hosts in the set
+            (not necessarily available members)
           - `host_to_member`: Optional dict: (host, port) -> Member instance
           - `arbiters`: Optional sequence of arbiters as (host, port)
           - `writer`: Optional (host, port) of primary
@@ -145,33 +147,35 @@ class RSState(object):
         self._writer = writer  # (host, port) of the primary, or None
         self._error_message = error_message
         self._host_to_member = host_to_member or {}
-        self._hosts = frozenset(self._host_to_member)
+        self._hosts = frozenset(hosts or [])
         self._members = frozenset(self._host_to_member.values())
-
-        if writer and self._host_to_member[writer].up:
-            self._primary_member = self._host_to_member[writer]
-        else:
-            self._primary_member = None
+        self._primary_member = self._host_to_member.get(writer)
 
     def clone_with_host_down(self, host, error_message):
         """Get a clone, marking as "down" the member with the given (host, port)
         """
         members = self._host_to_member.copy()
-        down_member = members.pop(host, None)
-        if down_member:
-            members[host] = down_member.clone_down()
+        members.pop(host, None)
 
         if host == self.writer:
             # The primary went down; record the error message.
             return RSState(
-                self._threadlocal, members, self._arbiters,
-                None, error_message)
+                self._threadlocal,
+                self._hosts,
+                members,
+                self._arbiters,
+                None,
+                error_message)
         else:
             # Some other host went down. Keep our current primary or, if it's
             # already down, keep our current error message.
             return RSState(
-                self._threadlocal, members, self._arbiters,
-                self._writer, self._error_message)
+                self._threadlocal,
+                self._hosts,
+                members,
+                self._arbiters,
+                self._writer,
+                self._error_message)
 
     def clone_without_writer(self, threadlocal):
         """Get a clone without a primary. Unpins all threads.
@@ -180,7 +184,11 @@ class RSState(object):
           - `threadlocal`: Thread- or greenlet-local storage
         """
         return RSState(
-            threadlocal, self._host_to_member.copy(), self._arbiters, None)
+            threadlocal,
+            self._hosts,
+            self._host_to_member,
+            self._arbiters,
+            None)
 
     @property
     def arbiters(self):
@@ -198,7 +206,7 @@ class RSState(object):
 
     @property
     def hosts(self):
-        """Set of (host, port) tuples of data members of the replica set."""
+        """(host, port) pairs from the last ismaster response's host list."""
         return self._hosts
 
     @property
@@ -213,7 +221,7 @@ class RSState(object):
 
     @property
     def secondaries(self):
-        """Set of (host, port) pairs."""
+        """Set of (host, port) pairs, secondaries we're connected to."""
         # Unlike the other properties, this isn't cached because it isn't used
         # in regular operations.
         return set([
@@ -1048,7 +1056,9 @@ class MongoReplicaSetClient(common.BaseObject):
         if rs_state.hosts:
             # Try first those hosts we think are up, then the down ones.
             nodes = sorted(
-                rs_state.hosts, key=lambda host: rs_state.get(host).up)
+                rs_state.hosts,
+                key=lambda host: rs_state.get(host),
+                reverse=True)
         else:
             nodes = self.__seeds
 
@@ -1072,7 +1082,7 @@ class MongoReplicaSetClient(common.BaseObject):
                 else:
                     response, pool, ping_time = self.__is_master(node)
                     new_member = Member(
-                        node, pool, response, MovingAverage([ping_time]), True)
+                        node, pool, response, MovingAverage([ping_time]))
 
                 # Check that this host is part of the given replica set.
                 # Fail fast if we find a bad seed during __init__.
@@ -1110,6 +1120,8 @@ class MongoReplicaSetClient(common.BaseObject):
             if hosts:
                 break
         else:
+            # We've changed nothing. On the next refresh, we'll try the same
+            # list of hosts: rs_state.hosts or self.__seeds.
             if errors:
                 raise AutoReconnect(', '.join(errors))
             raise ConfigurationError('No suitable hosts found')
@@ -1140,8 +1152,7 @@ class MongoReplicaSetClient(common.BaseObject):
                         continue
 
                     new_member = Member(
-                        host, connection_pool, res, MovingAverage([ping_time]),
-                        True)
+                        host, connection_pool, res, MovingAverage([ping_time]))
 
                 members[host] = new_member
 
@@ -1160,8 +1171,26 @@ class MongoReplicaSetClient(common.BaseObject):
             # no monotonic consistency can be promised now anyway.
             threadlocal = self.__make_threadlocal()
 
+        # Get list of hosts in the RS config, including unreachable ones.
+        # Prefer the primary's list, otherwise any member's list.
+        if writer:
+            response = members[writer].ismaster_response
+        elif members:
+            response = members.values()[0].ismaster_response
+        else:
+            response = {}
+
+        final_host_list = (
+            response.get('hosts', [])
+            + response.get('passives', []))
+
         # Replace old state with new.
-        self.__rs_state = RSState(threadlocal, members, arbiters, writer)
+        self.__rs_state = RSState(
+            threadlocal,
+            [_partition_node(h) for h in final_host_list],
+            members,
+            arbiters,
+            writer)
 
     def __find_primary(self):
         """Returns a connection to the primary of this replica set,
@@ -1561,7 +1590,7 @@ class MongoReplicaSetClient(common.BaseObject):
                 break
 
             try:
-                # Sets member.up False on failure, so select_member won't try
+                # Removes member on failure, so select_member won't try
                 # it again.
                 response = self.__try_read(member, msg, **kwargs)
 
