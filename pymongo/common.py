@@ -39,6 +39,8 @@ if sys.platform.startswith('java'):
 # Defaults until we connect to a server and get updated limits.
 MAX_BSON_SIZE = 16 * (1024 ** 2)
 MAX_MESSAGE_SIZE = 2 * MAX_BSON_SIZE
+MIN_WIRE_VERSION = 0
+MAX_WIRE_VERSION = 0
 
 
 def raise_config_error(key, dummy):

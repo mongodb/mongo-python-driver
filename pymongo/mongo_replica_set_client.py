@@ -422,6 +422,10 @@ class Member(object):
             'maxBsonObjectSize', common.MAX_BSON_SIZE)
         self.max_message_size = ismaster_response.get(
             'maxMessageSizeBytes', 2 * self.max_bson_size)
+        self.min_wire_version = ismaster_response.get('minWireVersion',
+                                                      common.MIN_WIRE_VERSION)
+        self.max_wire_version = ismaster_response.get('maxWireVersion',
+                                                      common.MAX_WIRE_VERSION)
 
     def clone_with(self, ismaster_response, ping_time_sample):
         """Get a clone updated with ismaster response and a single ping time.
@@ -1016,6 +1020,32 @@ class MongoReplicaSetClient(common.BaseObject):
         if rs_state.primary_member:
             return rs_state.primary_member.max_message_size
         return common.MAX_MESSAGE_SIZE
+
+    @property
+    def min_wire_version(self):
+        """The minWireVersion reported by the server.
+        
+        Returns ``0`` when connected to server versions prior to MongoDB 2.6.
+
+        .. versionadded:: 2.7
+        """
+        rs_state = self.__rs_state
+        if rs_state.primary_member:
+            return rs_state.primary_member.min_wire_version
+        return common.MIN_WIRE_VERSION
+
+    @property
+    def max_wire_version(self):
+        """The maxWireVersion reported by the server.
+        
+        Returns ``0`` when connected to server versions prior to MongoDB 2.6.
+
+        .. versionadded:: 2.7
+        """
+        rs_state = self.__rs_state
+        if rs_state.primary_member:
+            return rs_state.primary_member.max_wire_version
+        return common.MAX_WIRE_VERSION
 
     @property
     def auto_start_request(self):

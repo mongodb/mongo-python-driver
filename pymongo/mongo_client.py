@@ -85,6 +85,9 @@ class MongoClient(common.BaseObject):
 
     __max_bson_size = common.MAX_BSON_SIZE
     __max_message_size = common.MAX_MESSAGE_SIZE
+    __min_wire_version = common.MIN_WIRE_VERSION
+    # TODO: write commands with _connect=False
+    __max_wire_version = common.MAX_WIRE_VERSION
 
     def __init__(self, host=None, port=None, max_pool_size=100,
                  document_class=dict, tz_aware=False, _connect=True,
@@ -595,6 +598,26 @@ class MongoClient(common.BaseObject):
         """
         return self.__max_message_size
 
+    @property
+    def min_wire_version(self):
+        """The minWireVersion reported by the server.
+        
+        Returns ``0`` when connected to server versions prior to MongoDB 2.6.
+
+        .. versionadded:: 2.7
+        """
+        return self.__min_wire_version
+
+    @property
+    def max_wire_version(self):
+        """The maxWireVersion reported by the server.
+        
+        Returns ``0`` when connected to server versions prior to MongoDB 2.6.
+
+        .. versionadded:: 2.7
+        """
+        return self.__max_wire_version
+
     def __simple_command(self, sock_info, dbname, spec):
         """Send a command to the server.
         """
@@ -639,6 +662,10 @@ class MongoClient(common.BaseObject):
             self.__max_bson_size = response["maxBsonObjectSize"]
         if "maxMessageSizeBytes" in response:
             self.__max_message_size = response["maxMessageSizeBytes"]
+        if "minWireVersion" in response:
+            self.__min_wire_version = response["minWireVersion"]
+        if "maxWireVersion" in response:
+            self.__max_wire_version = response["maxWireVersion"]
 
         # Replica Set?
         if not self.__direct:

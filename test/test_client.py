@@ -97,12 +97,20 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         self.assertEqual(dict, c.get_document_class())
         self.assertIsInstance(c.tz_aware, bool)
         self.assertIsInstance(c.max_bson_size, int)
+        self.assertIsInstance(c.min_wire_version, int)
+        self.assertIsInstance(c.max_wire_version, int)
         self.assertEqual(None, c.host)
         self.assertEqual(None, c.port)
 
         c.pymongo_test.test.find_one()  # Auto-connect.
         self.assertEqual(host, c.host)
         self.assertEqual(port, c.port)
+
+        if version.at_least(c, (2, 5, 4, -1)):
+            self.assertTrue(c.max_wire_version > 0)
+        else:
+            self.assertEqual(c.max_wire_version, 0)
+        self.assertTrue(c.min_wire_version >= 0)
 
         bad_host = "somedomainthatdoesntexist.org"
         c = MongoClient(bad_host, port, connectTimeoutMS=1, _connect=False)

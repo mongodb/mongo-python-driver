@@ -129,6 +129,8 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         self.assertIsInstance(c.auto_start_request, bool)
         self.assertIsInstance(c.tz_aware, bool)
         self.assertIsInstance(c.max_bson_size, int)
+        self.assertIsInstance(c.min_wire_version, int)
+        self.assertIsInstance(c.max_wire_version, int)
         self.assertIsInstance(c.seeds, set)
         self.assertIsInstance(c.hosts, frozenset)
         self.assertIsInstance(c.arbiters, frozenset)
@@ -139,6 +141,12 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         c.pymongo_test.test.find_one()  # Auto-connect for read.
         self.assertTrue(c.primary)
         self.assertTrue(c.secondaries)
+
+        if version.at_least(c, (2, 5, 4, -1)):
+            self.assertTrue(c.max_wire_version > 0)
+        else:
+            self.assertEqual(c.max_wire_version, 0)
+        self.assertTrue(c.min_wire_version >= 0)
 
         c = self._get_client(_connect=False)
         c.pymongo_test.test.update({}, {})  # Auto-connect for write.
