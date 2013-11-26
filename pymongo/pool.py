@@ -393,8 +393,8 @@ class Pool:
     def maybe_return_socket(self, sock_info):
         """Return the socket to the pool unless it's the request socket.
         """
-        # These sentinel values should only be used internally.
-        assert sock_info not in (NO_REQUEST, NO_SOCKET_YET)
+        if sock_info in (NO_REQUEST, NO_SOCKET_YET):
+            return
 
         if self.pid != os.getpid():
             if not sock_info.forced:

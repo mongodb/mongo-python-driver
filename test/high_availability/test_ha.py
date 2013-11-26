@@ -388,6 +388,9 @@ class TestWritesWithFailover(HATestCase):
         res = ha_tools.start_replica_set([{}, {}, {}])
         self.seed, self.name = res
 
+        # Disable periodic refresh.
+        Monitor._refresh_interval = 1e6
+
     def test_writes_with_failover(self):
         c = MongoReplicaSetClient(
             self.seed, replicaSet=self.name, use_greenlets=use_greenlets)
@@ -398,20 +401,34 @@ class TestWritesWithFailover(HATestCase):
         db.test.insert({'foo': 'bar'}, w=w)
         self.assertEqual('bar', db.test.find_one()['foo'])
 
-        def try_write():
-            for _ in xrange(30):
-                try:
-                    db.test.insert({'bar': 'baz'})
-                    return True
-                except AutoReconnect:
-                    sleep(1)
-            return False
-
         killed = ha_tools.kill_primary(9)
         self.assertTrue(bool(len(killed)))
-        self.assertTrue(try_write())
+
+        # Wait past pool's check interval, so it throws an error from
+        # get_socket().
+        sleep(1)
+
+        # Verify that we only raise AutoReconnect, not some other error,
+        # while we wait for new primary.
+        for _ in xrange(10000):
+            try:
+                db.test.insert({'bar': 'baz'})
+
+                # No error, found primary.
+                break
+            except AutoReconnect:
+                sleep(.01)
+        else:
+            self.fail("Couldn't connect to new primary")
+
+        # Found new primary.
+        self.assertTrue(c.primary)
         self.assertTrue(primary != c.primary)
         self.assertEqual('baz', db.test.find_one({'bar': 'baz'})['bar'])
+
+    def tearDown(self):
+        Monitor._refresh_interval = MONITOR_INTERVAL
+        super(TestWritesWithFailover, self).tearDown()
 
 
 class TestReadWithFailover(HATestCase):
