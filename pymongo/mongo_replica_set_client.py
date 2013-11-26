@@ -133,10 +133,13 @@ class RSState(object):
             writer=None, error_message='No primary available'):
         """An immutable snapshot of the client's view of the replica set state.
 
+        Stores Member instances for all members we're connected to, and a
+        list of (host, port) pairs for all the hosts and arbiters listed
+        in the most recent ismaster response.
+
         :Parameters:
           - `threadlocal`: Thread- or greenlet-local storage
-          - `hosts`: List of (host, port) pairs, known hosts in the set
-            (not necessarily available members)
+          - `hosts`: Sequence of (host, port) pairs
           - `host_to_member`: Optional dict: (host, port) -> Member instance
           - `arbiters`: Optional sequence of arbiters as (host, port)
           - `writer`: Optional (host, port) of primary
@@ -149,7 +152,7 @@ class RSState(object):
         self._host_to_member = host_to_member or {}
         self._hosts = frozenset(hosts or [])
         self._members = frozenset(self._host_to_member.values())
-        self._primary_member = self._host_to_member.get(writer)
+        self._primary_member = self.get(writer)
 
     def clone_with_host_down(self, host, error_message):
         """Get a clone, marking as "down" the member with the given (host, port)
@@ -192,7 +195,8 @@ class RSState(object):
 
     @property
     def arbiters(self):
-        """Set of (host, port) pairs."""
+        """(host, port) pairs from the last ismaster response's arbiter list.
+        """
         return self._arbiters
 
     @property
@@ -1590,8 +1594,7 @@ class MongoReplicaSetClient(common.BaseObject):
                 break
 
             try:
-                # Removes member on failure, so select_member won't try
-                # it again.
+                # Removes member on failure, so select_member won't retry it.
                 response = self.__try_read(member, msg, **kwargs)
 
                 # Success
