@@ -33,12 +33,11 @@ from distutils.core import Extension
 
 version = "2.6+"
 
-f = open("README.rst")
 try:
-    try:
-        readme_content = f.read()
-    except:
-        readme_content = ""
+    f = open("README.rst")
+    readme_content = f.read()
+except IOError:
+    readme_content = ""
 finally:
     f.close()
 
