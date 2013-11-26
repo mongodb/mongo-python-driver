@@ -19,17 +19,15 @@ except ImportError:
 # Don't force people to install setuptools unless
 # we have to.
 try:
-    from setuptools import setup, Feature
+    from setuptools import setup, Feature, Extension, Command
 except ImportError:
     from ez_setup import use_setuptools
     use_setuptools()
-    from setuptools import setup, Feature
+    from setuptools import setup, Feature, Extension, Command
 
-from distutils.cmd import Command
-from distutils.command.build_ext import build_ext
+from setuptools.command.build_ext import build_ext
 from distutils.errors import CCompilerError
 from distutils.errors import DistutilsPlatformError, DistutilsExecError
-from distutils.core import Extension
 
 version = "2.6+"
 
