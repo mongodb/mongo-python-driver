@@ -911,7 +911,10 @@ class TestCollection(unittest.TestCase):
         self.assertTrue(self.db.test.insert({"hello": "world"}))
         doc = self.db.test.find_one()
         doc['a.b'] = 'c'
-        self.assertRaises(InvalidDocument, self.db.test.save, doc)
+        expected = InvalidDocument
+        if version.at_least(self.client, (2, 5, 4, -1)):
+            expected = OperationFailure
+        self.assertRaises(expected, self.db.test.save, doc)
 
     def test_unique_index(self):
         db = self.db
@@ -1020,7 +1023,7 @@ class TestCollection(unittest.TestCase):
             self.db.test.update({}, {"$thismodifierdoesntexist": 1})
         except OperationFailure, exc:
             if version.at_least(self.db.connection, (1, 3)):
-                self.assertTrue(exc.code in (10147, 17009))
+                self.assertTrue(exc.code in (10147, 16840, 17009))
                 # Just check that we set the error document. Fields
                 # vary by MongoDB version.
                 self.assertTrue(exc.error_document is not None)
@@ -1159,11 +1162,15 @@ class TestCollection(unittest.TestCase):
         doc = self.db.test.find_one()
         doc['a.b'] = 'c'
 
+        expected = InvalidDocument
+        if version.at_least(self.client, (2, 5, 4, -1)):
+            expected = OperationFailure
+
         # Replace
-        self.assertRaises(InvalidDocument,
+        self.assertRaises(expected,
                           self.db.test.update, {"hello": "world"}, doc)
         # Upsert
-        self.assertRaises(InvalidDocument,
+        self.assertRaises(expected,
                           self.db.test.update, {"foo": "bar"}, doc, upsert=True)
 
         # Check that the last two ops didn't actually modify anything
@@ -1185,7 +1192,7 @@ class TestCollection(unittest.TestCase):
         # doesn't change. If the behavior changes checking the first key for
         # '$' in update won't be good enough anymore.
         doc = SON([("hello", "world"), ("$set", {"foo.bar": "bim"})])
-        self.assertRaises(InvalidDocument, self.db.test.update,
+        self.assertRaises(expected, self.db.test.update,
                           {"hello": "world"}, doc, upsert=True)
 
         # Replace with empty document
@@ -1731,23 +1738,34 @@ class TestCollection(unittest.TestCase):
         half_size = int(max_size / 2)
         if version.at_least(self.db.connection, (1, 7, 4)):
             self.assertEqual(max_size, 16777216)
-        self.assertRaises(InvalidDocument, self.db.test.insert,
+
+        expected = InvalidDocument
+        if version.at_least(self.client, (2, 5, 4, -1)):
+            # Document too large handled by the server
+            expected = OperationFailure
+        self.assertRaises(expected, self.db.test.insert,
                           {"foo": "x" * max_size})
-        self.assertRaises(InvalidDocument, self.db.test.save,
+        self.assertRaises(expected, self.db.test.save,
                           {"foo": "x" * max_size})
-        self.assertRaises(InvalidDocument, self.db.test.insert,
+        self.assertRaises(expected, self.db.test.insert,
                           [{"x": 1}, {"foo": "x" * max_size}])
         self.db.test.insert([{"foo": "x" * half_size},
                              {"foo": "x" * half_size}])
 
         self.db.test.insert({"bar": "x"})
+        # Use w=0 here to test legacy doc size checking in all server versions
         self.assertRaises(InvalidDocument, self.db.test.update,
-                          {"bar": "x"}, {"bar": "x" * (max_size - 14)})
+                          {"bar": "x"}, {"bar": "x" * (max_size - 14)}, w=0)
+        # This will pass with OP_UPDATE or the update command.
         self.db.test.update({"bar": "x"}, {"bar": "x" * (max_size - 15)})
 
     def test_insert_large_batch(self):
-        max_bson_size = self.db.connection.max_bson_size
-        big_string = 'x' * (max_bson_size - 100)
+        max_bson_size = self.client.max_bson_size
+        if version.at_least(self.client, (2, 5, 4, -1)):
+            # Write commands are limited to 16MB + 16k per batch
+            big_string = 'x' * int(max_bson_size / 2)
+        else:
+            big_string = 'x' * (max_bson_size - 100)
         self.db.test.drop()
         self.assertEqual(0, self.db.test.count())
 

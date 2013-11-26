@@ -902,7 +902,7 @@ class MongoClient(common.BaseObject):
 
         self.__cursor_manager = manager
 
-    def __check_response_to_last_error(self, response):
+    def __check_response_to_last_error(self, response, command):
         """Check a response to a lastError message for errors.
 
         `response` is a byte string representing a response to the message.
@@ -914,6 +914,9 @@ class MongoClient(common.BaseObject):
 
         assert response["number_returned"] == 1
         error = response["data"][0]
+
+        if command:
+            return error
 
         helpers._check_command_response(error, self.disconnect)
 
@@ -959,7 +962,8 @@ class MongoClient(common.BaseObject):
             # don't include BSON documents.
             return message
 
-    def _send_message(self, message, with_last_error=False, check_primary=True):
+    def _send_message(self, message,
+                      with_last_error=False, command=False, check_primary=True):
         """Say something to Mongo.
 
         Raises ConnectionFailure if the message cannot be sent. Raises
@@ -992,7 +996,7 @@ class MongoClient(common.BaseObject):
                 if with_last_error:
                     response = self.__receive_message_on_socket(1, request_id,
                                                                 sock_info)
-                    rv = self.__check_response_to_last_error(response)
+                    rv = self.__check_response_to_last_error(response, command)
 
                 return rv
             except OperationFailure:

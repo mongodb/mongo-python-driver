@@ -173,6 +173,10 @@ def _check_command_response(response, reset, msg=None, allowable_errors=None):
             elif code == 50:
                 raise ExecutionTimeout(errmsg, code, response)
 
+            # wtimeout from write commands
+            if "errInfo" in details and details["errInfo"].get("wtimeout"):
+                raise WTimeoutError(errmsg, code, response)
+
             msg = msg or "%s"
             raise OperationFailure(msg % errmsg, code, response)
 

@@ -67,34 +67,6 @@ static struct module_state _state;
 /* Maximum number of regex flags */
 #define FLAGS_SIZE 7
 
-#if defined(WIN32) || defined(_MSC_VER)
-/* This macro is basically an implementation of asprintf for win32
- * We get the length of the int as string and malloc a buffer for it,
- * returning -1 if that malloc fails. We then actually print to the
- * buffer to get the string value as an int. Like asprintf, the result
- * must be explicitly free'd when done being used.
- */
-#if defined(_MSC_VER) && (_MSC_VER >= 1400)
-#define INT2STRING(buffer, i)                                       \
-    _snprintf_s((buffer),                                           \
-                 _scprintf("%d", (i)) + 1,                          \
-                 _scprintf("%d", (i)) + 1,                          \
-                 "%d",                                              \
-                 (i))
-#define STRCAT(dest, n, src) strcat_s((dest), (n), (src))
-#else
-#define INT2STRING(buffer, i)                                     \
-    _snprintf((buffer),                                           \
-               _scprintf("%d", (i)) + 1,                          \
-               "%d",                                              \
-              (i))
-#define STRCAT(dest, n, src) strcat((dest), (src))
-#endif
-#else
-#define INT2STRING(buffer, i) snprintf((buffer), sizeof((buffer)), "%d", (i))
-#define STRCAT(dest, n, src) strcat((dest), (src))
-#endif
-
 #define JAVA_LEGACY   5
 #define CSHARP_LEGACY 6
 #define BSON_MAX_SIZE 2147483647

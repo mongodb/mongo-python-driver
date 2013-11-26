@@ -27,7 +27,7 @@ import struct
 
 import bson
 from bson.binary import OLD_UUID_SUBTYPE
-from bson.py3compat import b
+from bson.py3compat import b, StringIO
 from bson.son import SON
 try:
     from pymongo import _cmessage
@@ -37,12 +37,21 @@ except ImportError:
 from pymongo.errors import InvalidDocument, InvalidOperation, OperationFailure
 
 
-__ZERO = b("\x00\x00\x00\x00")
-
-EMPTY  = b("")
-
 MAX_INT32 = 2147483647
 MIN_INT32 = -2147483648
+
+_EMPTY   = b('')
+_BSONOBJ = b('\x03')
+_ZERO_8  = b('\x00')
+_ZERO_16 = b('\x00\x00')
+_ZERO_32 = b('\x00\x00\x00\x00')
+_ZERO_64 = b('\x00\x00\x00\x00\x00\x00\x00\x00')
+_SKIPLIM = b('\x00\x00\x00\x00\xff\xff\xff\xff')
+_CMD_MAP = {
+    'insert': b('\x04documents\x00\x00\x00\x00\x00'),
+    'update': b('\x04updates\x00\x00\x00\x00\x00'),
+    'delete': b('\x04deletes\x00\x00\x00\x00\x00'),
+}
 
 
 def __last_error(namespace, args):
@@ -62,7 +71,7 @@ def __pack_message(operation, data):
     request_id = random.randint(MIN_INT32, MAX_INT32)
     message = struct.pack("<i", 16 + len(data))
     message += struct.pack("<i", request_id)
-    message += __ZERO  # responseTo
+    message += _ZERO_32  # responseTo
     message += struct.pack("<i", operation)
     return (request_id, message + data)
 
@@ -86,7 +95,7 @@ def insert(collection_name, docs, check_keys,
     if not encoded:
         raise InvalidOperation("cannot do an empty bulk insert")
     max_bson_size = max(map(len, encoded))
-    data += EMPTY.join(encoded)
+    data += _EMPTY.join(encoded)
     if safe:
         (_, insert_message) = __pack_message(2002, data)
         (request_id, error_message, _) = __last_error(collection_name,
@@ -109,7 +118,7 @@ def update(collection_name, upsert, multi,
     if multi:
         options += 2
 
-    data = __ZERO
+    data = _ZERO_32
     data += bson._make_c_string(collection_name)
     data += struct.pack("<i", options)
     data += bson.BSON.encode(spec, False, uuid_subtype)
@@ -152,7 +161,7 @@ if _use_c:
 def get_more(collection_name, num_to_return, cursor_id):
     """Get a **getMore** message.
     """
-    data = __ZERO
+    data = _ZERO_32
     data += bson._make_c_string(collection_name)
     data += struct.pack("<i", num_to_return)
     data += struct.pack("<q", cursor_id)
@@ -164,9 +173,9 @@ if _use_c:
 def delete(collection_name, spec, safe, last_error_args, uuid_subtype):
     """Get a **delete** message.
     """
-    data = __ZERO
+    data = _ZERO_32
     data += bson._make_c_string(collection_name)
-    data += __ZERO
+    data += _ZERO_32
     encoded = bson.BSON.encode(spec, False, uuid_subtype)
     data += encoded
     if safe:
@@ -182,11 +191,12 @@ def delete(collection_name, spec, safe, last_error_args, uuid_subtype):
 def kill_cursors(cursor_ids):
     """Get a **killCursors** message.
     """
-    data = __ZERO
+    data = _ZERO_32
     data += struct.pack("<i", len(cursor_ids))
     for cursor_id in cursor_ids:
         data += struct.pack("<q", cursor_id)
     return __pack_message(2007, data)
+
 
 def _do_batched_insert(collection_name, docs, check_keys,
            safe, last_error_args, continue_on_error, uuid_subtype, client):
@@ -226,7 +236,7 @@ def _do_batched_insert(collection_name, docs, check_keys,
         # We have enough data, send this message.
         send_safe = safe or not continue_on_error
         try:
-            client._send_message(_insert_message(EMPTY.join(data),
+            client._send_message(_insert_message(_EMPTY.join(data),
                                                  send_safe), send_safe)
         # Exception type could be OperationFailure or a subtype
         # (e.g. DuplicateKeyError)
@@ -247,10 +257,139 @@ def _do_batched_insert(collection_name, docs, check_keys,
     if not has_docs:
         raise InvalidOperation("cannot do an empty bulk insert")
 
-    client._send_message(_insert_message(EMPTY.join(data), safe), safe)
+    client._send_message(_insert_message(_EMPTY.join(data), safe), safe)
 
     # Re-raise any exception stored due to continue_on_error
     if last_error is not None:
         raise last_error
 if _use_c:
     _do_batched_insert = _cmessage._do_batched_insert
+
+
+def _do_batched_write_command(namespace, name, command, docs,
+                              check_keys, ordered, uuid_subtype, client):
+    """Execute a batch of insert, update, or delete commands.
+    """
+    max_bson_size = client.max_bson_size
+    # Max BSON object size + 16k - 2 bytes for ending NUL bytes
+    # XXX: This should come from the server - SERVER-10643
+    max_cmd_size = max_bson_size + 16382
+
+    buf = StringIO()
+    # Save space for message length and request id
+    buf.write(_ZERO_64)
+    # responseTo, opCode
+    buf.write(b("\x00\x00\x00\x00\xd4\x07\x00\x00"))
+    # No options
+    buf.write(_ZERO_32)
+    # Namespace as C string
+    buf.write(b(namespace))
+    buf.write(_ZERO_8)
+    # Skip: 0, Limit: -1
+    buf.write(_SKIPLIM)
+
+    # Where to write command document length
+    command_start = buf.tell()
+    buf.write(bson.BSON.encode(command))
+
+    # Start of payload
+    buf.seek(-1, 2)
+    # Work around some Jython weirdness.
+    buf.truncate()
+    try:
+        buf.write(_CMD_MAP[name])
+    except KeyError:
+        raise InvalidOperation('Unknown command: %s' % (name,))
+
+    if name in ('update', 'delete'):
+        check_keys = False
+
+    # Where to write list document length
+    list_start = buf.tell() - 4
+
+    def send_message():
+        """Finalize and send the current OP_QUERY message.
+        """
+        # Close list and command documents
+        buf.write(_ZERO_16)
+
+        # Write document lengths and request id
+        length = buf.tell()
+        buf.seek(list_start)
+        buf.write(struct.pack('<i', length - list_start - 1))
+        buf.seek(command_start)
+        buf.write(struct.pack('<i', length - command_start))
+        buf.seek(4)
+        request_id = random.randint(MIN_INT32, MAX_INT32)
+        buf.write(struct.pack('<i', request_id))
+        buf.seek(0)
+        buf.write(struct.pack('<i', length))
+
+        try:
+            result = client._send_message((request_id, buf.getvalue()),
+                                          with_last_error=True,
+                                          command=True)
+        except OperationFailure, exc:
+            # If we were called from the bulk API we could be
+            # many batches in. We have to update the indexes of
+            # failed documents in the error document, using the
+            # full offset including any previous batches. Do
+            # that and re-raise in the caller.
+            details = exc.error_document
+            if not details:
+                # Some error not related to write commands
+                # (e.g. kerberos failure). Re-raise immediately.
+                raise
+            return True, details
+
+        return not result.get('ok'), result
+
+    # If there are multiple batches we'll
+    # merge results in the caller.
+    results = []
+
+    idx = 0
+    idx_offset = 0
+    has_docs = False
+    for doc in docs:
+        has_docs = True
+        # Encode the current operation
+        key = b(str(idx))
+        value = bson.BSON.encode(doc, check_keys, uuid_subtype)
+        # Send a batch?
+        if (buf.tell() + len(key) + len(value) + 2) >= max_cmd_size:
+            if not idx:
+                if name == 'insert':
+                    raise InvalidDocument("BSON document too large (%d bytes)"
+                                          " - the connected server supports"
+                                          " BSON document sizes up to %d"
+                                          " bytes." % (len(value),
+                                                       max_bson_size))
+                # There's nothing intelligent we can say
+                # about size for update and remove
+                raise InvalidDocument("command document too large")
+            errors, result = send_message()
+            results.append((idx_offset, result))
+            if errors and ordered:
+                return results
+
+            # Truncate back to the start of list elements
+            buf.seek(list_start + 4)
+            buf.truncate()
+            idx_offset += idx
+            idx = 0
+            key = b('0')
+        buf.write(_BSONOBJ)
+        buf.write(key)
+        buf.write(_ZERO_8)
+        buf.write(value)
+        idx += 1
+
+    if not has_docs:
+        raise InvalidOperation("cannot do an empty bulk write")
+
+    _, result = send_message()
+    results.append((idx_offset, result))
+    return results
+if _use_c:
+    _do_batched_write_command = _cmessage._do_batched_write_command

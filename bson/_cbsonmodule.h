@@ -26,6 +26,32 @@ typedef int Py_ssize_t;
 #define PY_SSIZE_T_MIN INT_MIN
 #endif
 
+#if defined(WIN32) || defined(_MSC_VER)
+/*
+ * This macro is basically an implementation of asprintf for win32
+ * We print to the provided buffer to get the string value as an int.
+ */
+#if defined(_MSC_VER) && (_MSC_VER >= 1400)
+#define INT2STRING(buffer, i)                                       \
+    _snprintf_s((buffer),                                           \
+                 _scprintf("%d", (i)) + 1,                          \
+                 _scprintf("%d", (i)) + 1,                          \
+                 "%d",                                              \
+                 (i))
+#define STRCAT(dest, n, src) strcat_s((dest), (n), (src))
+#else
+#define INT2STRING(buffer, i)                                       \
+    _snprintf((buffer),                                             \
+               _scprintf("%d", (i)) + 1,                            \
+               "%d",                                                \
+              (i))
+#define STRCAT(dest, n, src) strcat((dest), (src))
+#endif
+#else
+#define INT2STRING(buffer, i) snprintf((buffer), sizeof((buffer)), "%d", (i))
+#define STRCAT(dest, n, src) strcat((dest), (src))
+#endif
+
 /* C API functions */
 #define _cbson_buffer_write_bytes_INDEX 0
 #define _cbson_buffer_write_bytes_RETURN int

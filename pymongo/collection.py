@@ -24,6 +24,7 @@ from pymongo import (common,
                      message)
 from pymongo.cursor import Cursor
 from pymongo.errors import InvalidName
+from pymongo.helpers import _check_command_response
 
 
 try:
@@ -323,10 +324,11 @@ class Collection(common.BaseObject):
 
         .. mongodoc:: insert
         """
+        client = self.database.connection
         # Batch inserts require us to know the connected master's
         # max_bson_size and max_message_size. We have to be connected
         # to a master to know that.
-        self.database.connection._ensure_connected(True)
+        client._ensure_connected(True)
 
         docs = doc_or_docs
         return_one = False
@@ -354,10 +356,41 @@ class Collection(common.BaseObject):
                     yield doc
 
         safe, options = self._get_write_mode(safe, **kwargs)
-        message._do_batched_insert(self.__full_name, gen(),
-                                   check_keys, safe, options,
-                                   continue_on_error, self.uuid_subtype,
-                                   self.database.connection)
+
+        if client.max_wire_version > 1 and safe:
+            # Insert command
+            dbname, collname = self.__full_name.split('.', 1)
+            namespace = '%s.%s' % (dbname, '$cmd')
+            command = SON([('insert', collname),
+                           ('ordered', not continue_on_error)])
+
+            if safe:
+                command['writeConcern'] = options
+
+            results = message._do_batched_write_command(
+                            namespace, 'insert', command, gen(), check_keys,
+                            not continue_on_error, self.uuid_subtype, client)
+
+            errors = [result for result in results if not result[1]['ok']]
+            if errors:
+                # If multiple batches had errors
+                # just raise from the last batch...
+                offset, error = errors[-1]
+                if "errDetails" in error:
+                    # ...and the last error in that batch.
+                    error = error["errDetails"][-1]
+                    error["index"] += offset
+                    # We use _check_command_response to figure out the
+                    # error type (OperationFailure, DuplicateKeyError, etc.)
+                    # but we have to add the 'ok' field if we're passing it
+                    # a subdocument from errDetails.
+                    error['ok'] = 0
+                _check_command_response(error, None)
+        else:
+            # Legacy batched OP_INSERT
+            message._do_batched_insert(self.__full_name, gen(), check_keys,
+                                       safe, options, continue_on_error,
+                                       self.uuid_subtype, client)
 
         if return_one:
             return ids[0]
@@ -478,10 +511,39 @@ class Collection(common.BaseObject):
             if first.startswith('$'):
                 check_keys = False
 
-        return self.__database.connection._send_message(
-            message.update(self.__full_name, upsert, multi,
-                           spec, document, safe, options,
-                           check_keys, self.uuid_subtype), safe)
+        client = self.database.connection
+        if client.max_wire_version > 1 and safe:
+            # Update command
+            dbname, collname = self.__full_name.split('.', 1)
+            namespace = '%s.%s' % (dbname, '$cmd')
+            command = SON([('update', collname)])
+
+            if safe:
+                command['writeConcern'] = options
+
+            docs = [SON([('q', spec), ('u', document),
+                         ('multi', multi), ('upsert', upsert)])]
+
+            _, result = message._do_batched_write_command(
+                        namespace, 'update', command, docs,
+                        check_keys, True, self.uuid_subtype, client)[0]
+            if not result['ok']:
+                _check_command_response(result, None)
+
+            # Add the updatedExisting field for compatibility
+            if result.get('n') and 'upserted' not in result:
+                result['updatedExisting'] = True
+            else:
+                result['updatedExisting'] = False
+
+            return result
+
+        else:
+            # Legacy OP_UPDATE
+            return client._send_message(
+                message.update(self.__full_name, upsert, multi,
+                               spec, document, safe, options,
+                               check_keys, self.uuid_subtype), safe)
 
     def drop(self):
         """Alias for :meth:`~pymongo.database.Database.drop_collection`.
@@ -563,9 +625,32 @@ class Collection(common.BaseObject):
             spec_or_id = {"_id": spec_or_id}
 
         safe, options = self._get_write_mode(safe, **kwargs)
-        return self.__database.connection._send_message(
-            message.delete(self.__full_name, spec_or_id, safe,
-                           options, self.uuid_subtype), safe)
+
+        client = self.database.connection
+        if client.max_wire_version > 1 and safe:
+            # Delete command
+            dbname, collname = self.__full_name.split('.', 1)
+            namespace = '%s.%s' % (dbname, '$cmd')
+            command = SON([('delete', collname)])
+
+            if safe:
+                command['writeConcern'] = options
+
+            docs = [SON([('q', spec_or_id), ('limit', 0)])]
+
+            _, result = message._do_batched_write_command(
+                        namespace, 'delete', command, docs,
+                        False, True, self.uuid_subtype, client)[0]
+            if not result['ok']:
+                _check_command_response(result, None)
+
+            return result
+
+        else:
+            # Legacy OP_DELETE
+            return client._send_message(
+                message.delete(self.__full_name, spec_or_id, safe,
+                               options, self.uuid_subtype), safe)
 
     def find_one(self, spec_or_id=None, *args, **kwargs):
         """Get a single document from the database.
