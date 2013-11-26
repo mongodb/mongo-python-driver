@@ -49,6 +49,7 @@ nose_config_options = {
     'py3where': 'build',  # Tell nose where to find tests under PY3.
 }
 
+
 def write_nose_config():
     """Write out setup.cfg. Since py3where has to be set
     for tests to run correctly in Python 3 we create this
@@ -311,5 +312,6 @@ setup(
         "Topic :: Database"],
     cmdclass={"build_ext": custom_build_ext,
               "doc": doc},
+    zip_safe=False,
     **extra_opts
 )
