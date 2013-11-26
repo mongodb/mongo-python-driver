@@ -601,7 +601,7 @@ class MongoClient(common.BaseObject):
     @property
     def min_wire_version(self):
         """The minWireVersion reported by the server.
-        
+
         Returns ``0`` when connected to server versions prior to MongoDB 2.6.
 
         .. versionadded:: 2.7
@@ -611,7 +611,7 @@ class MongoClient(common.BaseObject):
     @property
     def max_wire_version(self):
         """The maxWireVersion reported by the server.
-        
+
         Returns ``0`` when connected to server versions prior to MongoDB 2.6.
 
         .. versionadded:: 2.7
