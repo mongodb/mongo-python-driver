@@ -135,6 +135,25 @@ class MasterSlaveConnection(BaseObject):
         """
         return self.master.max_message_size
 
+    @property
+    def min_wire_version(self):
+        """The minWireVersion reported by the server.
+
+        Returns ``0`` when connected to server versions prior to MongoDB 2.6.
+
+        .. versionadded:: 2.7
+        """
+        return self.master.min_wire_version
+
+    @property
+    def max_wire_version(self):
+        """The maxWireVersion reported by the server.
+
+        Returns ``0`` when connected to server versions prior to MongoDB 2.6.
+
+        .. versionadded:: 2.7
+        """
+        return self.master.max_wire_version
 
     def disconnect(self):
         """Disconnect from MongoDB.
