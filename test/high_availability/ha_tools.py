@@ -60,8 +60,11 @@ def kill_members(members, sig, hosts=nodes):
             if ha_tools_debug:
                 print('killing %s' % (member,)),
             proc = hosts[member]['proc']
+            if 'java' in sys.platform:
+                # _process is a wrapped java.lang.UNIXProcess.
+                proc._process.destroy()
             # Not sure if cygwin makes sense here...
-            if sys.platform in ('win32', 'cygwin'):
+            elif sys.platform in ('win32', 'cygwin'):
                 os.kill(proc.pid, signal.CTRL_C_EVENT)
             else:
                 os.kill(proc.pid, sig)
