@@ -362,10 +362,8 @@ class Collection(common.BaseObject):
             dbname, collname = self.__full_name.split('.', 1)
             namespace = '%s.%s' % (dbname, '$cmd')
             command = SON([('insert', collname),
-                           ('ordered', not continue_on_error)])
-
-            if safe:
-                command['writeConcern'] = options
+                           ('ordered', not continue_on_error),
+                           ('writeConcern', options)])
 
             results = message._do_batched_write_command(
                             namespace, 'insert', command, gen(), check_keys,
@@ -516,10 +514,8 @@ class Collection(common.BaseObject):
             # Update command
             dbname, collname = self.__full_name.split('.', 1)
             namespace = '%s.%s' % (dbname, '$cmd')
-            command = SON([('update', collname)])
-
-            if safe:
-                command['writeConcern'] = options
+            command = SON([('update', collname),
+                           ('writeConcern', options)])
 
             docs = [SON([('q', spec), ('u', document),
                          ('multi', multi), ('upsert', upsert)])]
@@ -631,10 +627,8 @@ class Collection(common.BaseObject):
             # Delete command
             dbname, collname = self.__full_name.split('.', 1)
             namespace = '%s.%s' % (dbname, '$cmd')
-            command = SON([('delete', collname)])
-
-            if safe:
-                command['writeConcern'] = options
+            command = SON([('delete', collname),
+                           ('writeConcern', options)])
 
             docs = [SON([('q', spec_or_id), ('limit', 0)])]
 
