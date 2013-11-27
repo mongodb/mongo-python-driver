@@ -19,7 +19,6 @@
 # a replica set. Thus each method asserts everything we want to assert for a
 # given replica-set configuration.
 
-import itertools
 import time
 import unittest
 
@@ -56,6 +55,33 @@ NEAREST = ReadPreference.NEAREST
 def partition_nodes(nodes):
     """Translate from ['host:port', ...] to [(host, port), ...]"""
     return [_partition_node(node) for node in nodes]
+
+
+# Backport permutations to Python 2.4.
+# http://docs.python.org/2.7/library/itertools.html#itertools.permutations
+def permutations(iterable, r=None):
+    pool = tuple(iterable)
+    n = len(pool)
+    if r is None:
+        r = n
+    if r > n:
+        return
+    indices = range(n)
+    cycles = range(n, n-r, -1)
+    yield tuple(pool[i] for i in indices[:r])
+    while n:
+        for i in reversed(range(r)):
+            cycles[i] -= 1
+            if cycles[i] == 0:
+                indices[i:] = indices[i+1:] + indices[i:i+1]
+                cycles[i] = n - i
+            else:
+                j = cycles[i]
+                indices[i], indices[-j] = indices[-j], indices[i]
+                yield tuple(pool[i] for i in indices[:r])
+                break
+        else:
+            return
 
 
 class HATestCase(unittest.TestCase):
@@ -765,7 +791,7 @@ class TestReadPreference(HATestCase):
 
         # Verify that changing the mode unpins the member. We'll try it for
         # every relevant change of mode.
-        for mode0, mode1 in itertools.permutations(
+        for mode0, mode1 in permutations(
             (PRIMARY, SECONDARY, SECONDARY_PREFERRED, NEAREST), 2
         ):
             # Try reading and then changing modes and reading again, see if we
