@@ -438,7 +438,7 @@ def stepdown_primary():
         except Exception:
             if ha_tools_debug:
                 exc = sys.exc_info()[1]
-                print('Exception from replSetStepDown: %s' % (exc.message,))
+                print('Exception from replSetStepDown: %s' % exc)
         if ha_tools_debug:
             print('\tcalled replSetStepDown')
     elif ha_tools_debug:
