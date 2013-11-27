@@ -867,11 +867,12 @@ class TestReplicaSetAuth(HATestCase):
         self.db.logout()
         self.assertRaises(OperationFailure, self.db.foo.find_one)
 
-        primary = '%s:%d' % self.c.primary
-        ha_tools.kill_members([primary], 2)
+        primary = self.c.primary
+        ha_tools.kill_members(['%s:%d' % primary], 2)
 
         # Let monitor notice primary's gone
         sleep(2 * MONITOR_INTERVAL)
+        self.assertFalse(primary == self.c.primary)
 
         # Make sure we can still authenticate
         self.assertTrue(self.db.authenticate('user', 'userpass'))
