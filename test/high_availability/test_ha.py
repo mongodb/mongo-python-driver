@@ -1028,7 +1028,9 @@ class TestShipOfTheseus(HATestCase):
         self.seed, self.name = res
 
     def test_ship_of_theseus(self):
-        c = MongoReplicaSetClient(self.seed, replicaSet=self.name)
+        c = MongoReplicaSetClient(
+            self.seed, replicaSet=self.name, use_greenlets=use_greenlets)
+
         db = c.pymongo_test
         db.test.insert({}, w=len(c.secondaries) + 1)
         find_one = db.test.find_one
