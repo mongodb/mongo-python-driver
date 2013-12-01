@@ -926,6 +926,10 @@ _command_buffer_new(char* ns, int ns_len) {
     return buffer;
 }
 
+#define _INSERT 0
+#define _UPDATE 1
+#define _DELETE 2
+
 static PyObject*
 _cbson_do_batched_write_command(PyObject* self, PyObject* args) {
     struct module_state *state = GETSTATE(self);
@@ -937,7 +941,8 @@ _cbson_do_batched_write_command(PyObject* self, PyObject* args) {
     int cmd_len_loc;
     int lst_len_loc;
     int ns_len;
-    char *ns = NULL, *cmd = NULL;
+    int ordered;
+    char *ns = NULL;
     PyObject* max_bson_size_obj;
     PyObject* command;
     PyObject* doc;
@@ -946,16 +951,16 @@ _cbson_do_batched_write_command(PyObject* self, PyObject* args) {
     PyObject* iterator;
     PyObject* result;
     PyObject* results;
+    unsigned char op;
     unsigned char check_keys;
-    unsigned char ordered;
     unsigned char uuid_subtype;
     unsigned char empty = 1;
     unsigned char errors = 0;
     buffer_t buffer;
 
-    if (!PyArg_ParseTuple(args, "et#sOObbbO", "utf-8",
-                          &ns, &ns_len, &cmd, &command, &docs,
-                          &check_keys, &ordered, &uuid_subtype, &client)) {
+    if (!PyArg_ParseTuple(args, "et#bOObbO", "utf-8",
+                          &ns, &ns_len, &op, &command, &docs,
+                          &check_keys, &uuid_subtype, &client)) {
         return NULL;
     }
 
@@ -975,6 +980,9 @@ _cbson_do_batched_write_command(PyObject* self, PyObject* args) {
      * XXX: This should come from the server - SERVER-10643
      */
     max_cmd_size = max_bson_size + 16382;
+
+    /* Default to True */
+    ordered = !((PyDict_GetItemString(command, "ordered")) == Py_False);
 
     if (!(results = PyList_New(0))) {
         PyMem_Free(ns);
@@ -998,14 +1006,14 @@ _cbson_do_batched_write_command(PyObject* self, PyObject* args) {
     /* Write type byte for array */
     *(buffer_get_buffer(buffer) + (buffer_get_position(buffer) - 1)) = 0x4;
 
-    switch (*cmd) {
-    case 'i':
+    switch (op) {
+    case _INSERT:
         {
             if (!buffer_write_bytes(buffer, "documents\x00", 10))
                 goto cmdfail;
             break;
         }
-    case 'u':
+    case _UPDATE:
         {
             /* MongoDB does key validation for update. */
             check_keys = 0;
@@ -1013,7 +1021,7 @@ _cbson_do_batched_write_command(PyObject* self, PyObject* args) {
                 goto cmdfail;
             break;
         }
-    case 'd':
+    case _DELETE:
         {
             /* Never check keys in a delete command. */
             check_keys = 0;
@@ -1025,17 +1033,7 @@ _cbson_do_batched_write_command(PyObject* self, PyObject* args) {
         {
             PyObject* InvalidOperation = _error("InvalidOperation");
             if (InvalidOperation) {
-#if PY_MAJOR_VERSION >= 3
-                PyObject* error = PyUnicode_FromFormat("Unknown command: %s",
-                                                       cmd);
-#else
-                PyObject* error = PyString_FromFormat("Unknown command: %s",
-                                                      cmd);
-#endif
-                if (error) {
-                    PyErr_SetObject(InvalidOperation, error);
-                    Py_DECREF(error);
-                }
+                PyErr_SetString(InvalidOperation, "Unknown command");
                 Py_DECREF(InvalidOperation);
             }
             goto cmdfail;
@@ -1085,9 +1083,9 @@ _cbson_do_batched_write_command(PyObject* self, PyObject* args) {
 
             /* This single document is too large for the command. */
             if (!idx) {
-                if (*cmd == 'i') { /* Insert */
+                if (op == _INSERT) {
                     _set_document_too_large(cur_size, max_bson_size);
-                } else { /* Update and delete */
+                } else {
                     PyObject* InvalidDocument = _error("InvalidDocument");
                     if (InvalidDocument) {
                         /*

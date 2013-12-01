@@ -25,6 +25,7 @@ from pymongo import (common,
 from pymongo.cursor import Cursor
 from pymongo.errors import InvalidName
 from pymongo.helpers import _check_command_response
+from pymongo.message import _INSERT, _UPDATE, _DELETE
 
 
 try:
@@ -359,15 +360,13 @@ class Collection(common.BaseObject):
 
         if client.max_wire_version > 1 and safe:
             # Insert command
-            dbname, collname = self.__full_name.split('.', 1)
-            namespace = '%s.%s' % (dbname, '$cmd')
-            command = SON([('insert', collname),
+            command = SON([('insert', self.name),
                            ('ordered', not continue_on_error),
                            ('writeConcern', options)])
 
             results = message._do_batched_write_command(
-                            namespace, 'insert', command, gen(), check_keys,
-                            not continue_on_error, self.uuid_subtype, client)
+                    self.database.name + ".$cmd", _INSERT, command,
+                    gen(), check_keys, self.uuid_subtype, client)
 
             errors = [result for result in results if not result[1]['ok']]
             if errors:
@@ -383,7 +382,7 @@ class Collection(common.BaseObject):
                     # but we have to add the 'ok' field if we're passing it
                     # a subdocument from errDetails.
                     error['ok'] = 0
-                _check_command_response(error, None)
+                _check_command_response(error, client.disconnect)
         else:
             # Legacy batched OP_INSERT
             message._do_batched_insert(self.__full_name, gen(), check_keys,
@@ -512,19 +511,17 @@ class Collection(common.BaseObject):
         client = self.database.connection
         if client.max_wire_version > 1 and safe:
             # Update command
-            dbname, collname = self.__full_name.split('.', 1)
-            namespace = '%s.%s' % (dbname, '$cmd')
-            command = SON([('update', collname),
+            command = SON([('update', self.name),
                            ('writeConcern', options)])
 
             docs = [SON([('q', spec), ('u', document),
                          ('multi', multi), ('upsert', upsert)])]
 
             _, result = message._do_batched_write_command(
-                        namespace, 'update', command, docs,
-                        check_keys, True, self.uuid_subtype, client)[0]
+                        self.database.name + '.$cmd', _UPDATE, command,
+                        docs, check_keys, self.uuid_subtype, client)[0]
             if not result['ok']:
-                _check_command_response(result, None)
+                _check_command_response(result, client.disconnect)
 
             # Add the updatedExisting field for compatibility
             if result.get('n') and 'upserted' not in result:
@@ -625,18 +622,16 @@ class Collection(common.BaseObject):
         client = self.database.connection
         if client.max_wire_version > 1 and safe:
             # Delete command
-            dbname, collname = self.__full_name.split('.', 1)
-            namespace = '%s.%s' % (dbname, '$cmd')
-            command = SON([('delete', collname),
+            command = SON([('delete', self.name),
                            ('writeConcern', options)])
 
             docs = [SON([('q', spec_or_id), ('limit', 0)])]
 
             _, result = message._do_batched_write_command(
-                        namespace, 'delete', command, docs,
-                        False, True, self.uuid_subtype, client)[0]
+                        self.database.name + '.$cmd', _DELETE, command,
+                        docs, False, self.uuid_subtype, client)[0]
             if not result['ok']:
-                _check_command_response(result, None)
+                _check_command_response(result, client.disconnect)
 
             return result
 

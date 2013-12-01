@@ -40,6 +40,10 @@ from pymongo.errors import InvalidDocument, InvalidOperation, OperationFailure
 MAX_INT32 = 2147483647
 MIN_INT32 = -2147483648
 
+_INSERT = 0
+_UPDATE = 1
+_DELETE = 2
+
 _EMPTY   = b('')
 _BSONOBJ = b('\x03')
 _ZERO_8  = b('\x00')
@@ -47,10 +51,10 @@ _ZERO_16 = b('\x00\x00')
 _ZERO_32 = b('\x00\x00\x00\x00')
 _ZERO_64 = b('\x00\x00\x00\x00\x00\x00\x00\x00')
 _SKIPLIM = b('\x00\x00\x00\x00\xff\xff\xff\xff')
-_CMD_MAP = {
-    'insert': b('\x04documents\x00\x00\x00\x00\x00'),
-    'update': b('\x04updates\x00\x00\x00\x00\x00'),
-    'delete': b('\x04deletes\x00\x00\x00\x00\x00'),
+_OP_MAP = {
+    _INSERT: b('\x04documents\x00\x00\x00\x00\x00'),
+    _UPDATE: b('\x04updates\x00\x00\x00\x00\x00'),
+    _DELETE: b('\x04deletes\x00\x00\x00\x00\x00'),
 }
 
 
@@ -266,14 +270,16 @@ if _use_c:
     _do_batched_insert = _cmessage._do_batched_insert
 
 
-def _do_batched_write_command(namespace, name, command, docs,
-                              check_keys, ordered, uuid_subtype, client):
+def _do_batched_write_command(namespace, operation, command,
+                              docs, check_keys, uuid_subtype, client):
     """Execute a batch of insert, update, or delete commands.
     """
     max_bson_size = client.max_bson_size
     # Max BSON object size + 16k - 2 bytes for ending NUL bytes
     # XXX: This should come from the server - SERVER-10643
     max_cmd_size = max_bson_size + 16382
+
+    ordered = command.get('ordered', True)
 
     buf = StringIO()
     # Save space for message length and request id
@@ -297,11 +303,11 @@ def _do_batched_write_command(namespace, name, command, docs,
     # Work around some Jython weirdness.
     buf.truncate()
     try:
-        buf.write(_CMD_MAP[name])
+        buf.write(_OP_MAP[operation])
     except KeyError:
-        raise InvalidOperation('Unknown command: %s' % (name,))
+        raise InvalidOperation('Unknown command')
 
-    if name in ('update', 'delete'):
+    if operation in (_UPDATE, _DELETE):
         check_keys = False
 
     # Where to write list document length
@@ -359,7 +365,7 @@ def _do_batched_write_command(namespace, name, command, docs,
         # Send a batch?
         if (buf.tell() + len(key) + len(value) + 2) >= max_cmd_size:
             if not idx:
-                if name == 'insert':
+                if operation == _INSERT:
                     raise InvalidDocument("BSON document too large (%d bytes)"
                                           " - the connected server supports"
                                           " BSON document sizes up to %d"
