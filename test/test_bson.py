@@ -597,6 +597,49 @@ class TestBSON(unittest.TestCase):
                 self.fail('Traceback not captured')
         else:
             self.fail('InvalidBSON not raised')
+            
+    def test_minkey_maxkey_comparison(self):
+        # MinKey's <, <=, >, >=, !=, and ==.
+        self.assertTrue(MinKey() < None)
+        self.assertTrue(MinKey() < 1)
+        self.assertTrue(MinKey() <= 1)
+        self.assertTrue(MinKey() <= MinKey())
+        self.assertFalse(MinKey() > None)
+        self.assertFalse(MinKey() > 1)
+        self.assertFalse(MinKey() >= 1)
+        self.assertTrue(MinKey() >= MinKey())
+        self.assertTrue(MinKey() != 1)
+        self.assertFalse(MinKey() == 1)
+        self.assertTrue(MinKey() == MinKey())
+        
+        # MinKey compared to MaxKey.
+        self.assertTrue(MinKey() < MaxKey())
+        self.assertTrue(MinKey() <= MaxKey())
+        self.assertFalse(MinKey() > MaxKey())
+        self.assertFalse(MinKey() >= MaxKey())
+        self.assertTrue(MinKey() != MaxKey())
+        self.assertFalse(MinKey() == MaxKey())
+        
+        # MaxKey's <, <=, >, >=, !=, and ==.
+        self.assertFalse(MaxKey() < None)
+        self.assertFalse(MaxKey() < 1)
+        self.assertFalse(MaxKey() <= 1)
+        self.assertTrue(MaxKey() <= MaxKey())
+        self.assertTrue(MaxKey() > None)
+        self.assertTrue(MaxKey() > 1)
+        self.assertTrue(MaxKey() >= 1)
+        self.assertTrue(MaxKey() >= MaxKey())
+        self.assertTrue(MaxKey() != 1)
+        self.assertFalse(MaxKey() == 1)
+        self.assertTrue(MaxKey() == MaxKey())
+
+        # MaxKey compared to MinKey.
+        self.assertFalse(MaxKey() < MinKey())
+        self.assertFalse(MaxKey() <= MinKey())
+        self.assertTrue(MaxKey() > MinKey())
+        self.assertTrue(MaxKey() >= MinKey())
+        self.assertTrue(MaxKey() != MinKey())
+        self.assertFalse(MaxKey() == MinKey())
 
 
 if __name__ == "__main__":
