@@ -623,6 +623,20 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(5, db.test.count())
         db.test.remove({})
 
+    def test_remove_one(self):
+        self.db.test.remove()
+        self.assertEqual(0, self.db.test.count())
+
+        self.db.test.insert({"x": 1})
+        self.db.test.insert({"y": 1})
+        self.db.test.insert({"z": 1})
+        self.assertEqual(3, self.db.test.count())
+
+        self.db.test.remove(multi=False)
+        self.assertEqual(2, self.db.test.count())
+        self.db.test.remove()
+        self.assertEqual(0, self.db.test.count())
+
     def test_remove_all(self):
         self.db.test.remove()
         self.assertEqual(0, self.db.test.count())

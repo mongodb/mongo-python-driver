@@ -174,12 +174,13 @@ if _use_c:
     get_more = _cmessage._get_more_message
 
 
-def delete(collection_name, spec, safe, last_error_args, uuid_subtype):
+def delete(collection_name, spec, safe,
+           last_error_args, uuid_subtype, options=0):
     """Get a **delete** message.
     """
     data = _ZERO_32
     data += bson._make_c_string(collection_name)
-    data += _ZERO_32
+    data += struct.pack("<I", options)
     encoded = bson.BSON.encode(spec, False, uuid_subtype)
     data += encoded
     if safe:

@@ -550,7 +550,7 @@ class Collection(common.BaseObject):
         """
         self.__database.drop_collection(self.__name)
 
-    def remove(self, spec_or_id=None, safe=None, **kwargs):
+    def remove(self, spec_or_id=None, safe=None, multi=True, **kwargs):
         """Remove a document(s) from this collection.
 
         .. warning:: Calls to :meth:`remove` should be performed with
@@ -576,6 +576,9 @@ class Collection(common.BaseObject):
             documents to be removed OR any other type specifying the
             value of ``"_id"`` for the document to be removed
           - `safe` (optional): **DEPRECATED** - Use `w` instead.
+          - `multi` (optional): If ``True`` (the default) remove all documents
+            matching `spec_or_id`, otherwise remove only the first matching
+            document.
           - `w` (optional): (integer or string) If this is a replica set, write
             operations will block until they have been replicated to the
             specified number or tagged set of servers. `w=<int>` always includes
@@ -625,7 +628,7 @@ class Collection(common.BaseObject):
             command = SON([('delete', self.name),
                            ('writeConcern', options)])
 
-            docs = [SON([('q', spec_or_id), ('limit', 0)])]
+            docs = [SON([('q', spec_or_id), ('limit', int(not multi))])]
 
             _, result = message._do_batched_write_command(
                         self.database.name + '.$cmd', _DELETE, command,
@@ -639,7 +642,7 @@ class Collection(common.BaseObject):
             # Legacy OP_DELETE
             return client._send_message(
                 message.delete(self.__full_name, spec_or_id, safe,
-                               options, self.uuid_subtype), safe)
+                               options, self.uuid_subtype, int(not multi)), safe)
 
     def find_one(self, spec_or_id=None, *args, **kwargs):
         """Get a single document from the database.
