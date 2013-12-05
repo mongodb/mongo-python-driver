@@ -127,6 +127,25 @@ class TestSecondaryAdded(unittest.TestCase):
         self.assertEqual(1, c.port)
         self.assertEqual(set([('a', 1), ('b', 2), ('c', 3)]), c.nodes)
 
+    def test_replica_set_client(self):
+        c = MockReplicaSetClient(
+            standalones=[],
+            members=['a:1', 'b:2'],
+            mongoses=[],
+            host='a:1',
+            replicaSet='rs')
+
+        self.assertEqual(('a', 1), c.primary)
+        self.assertEqual(set([('b', 2)]), c.secondaries)
+
+        # C is added.
+        c.mock_members.append('c:3')
+        c.mock_conf.append('c:3')
+        c.refresh()
+
+        self.assertEqual(('a', 1), c.primary)
+        self.assertEqual(set([('b', 2), ('c', 3)]), c.secondaries)
+
 
 if __name__ == "__main__":
     unittest.main()
