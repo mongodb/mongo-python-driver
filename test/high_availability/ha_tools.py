@@ -179,8 +179,8 @@ def start_replica_set(members, auth=False, fresh=True):
             expected_arbiters += 1
     expected_secondaries = len(members) - expected_arbiters - 1
 
-    # Wait for 8 minutes for replica set to come up
-    patience = 8
+    # Wait a minute for replica set to come up.
+    patience = 1
     for i in range(int(patience * 60 / 2)):
         time.sleep(2)
         try:
