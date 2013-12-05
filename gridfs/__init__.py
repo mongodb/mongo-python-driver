@@ -248,7 +248,11 @@ class GridFS(object):
         .. versionchanged:: 1.6
            Removed the `collection` argument.
         """
-        return self.__files.distinct("filename")
+        # With an index, distinct includes documents with no filename
+        # as None.
+        return [
+            name for name in self.__files.distinct("filename")
+            if name is not None]
 
     def exists(self, document_or_id=None, **kwargs):
         """Check if a file exists in this instance of :class:`GridFS`.

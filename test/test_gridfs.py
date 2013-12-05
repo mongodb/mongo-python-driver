@@ -108,6 +108,11 @@ class TestGridfs(unittest.TestCase):
         self.fs.put(b("hello world"))
         self.assertEqual([], self.fs.list())
 
+        # PYTHON-598: in server versions before 2.5.x, creating an index on
+        # filename, uploadDate causes list() to include None.
+        self.fs.get_last_version()
+        self.assertEqual([], self.fs.list())
+
         self.fs.put(b(""), filename="mike")
         self.fs.put(b("foo"), filename="test")
         self.fs.put(b(""), filename="hello world")
