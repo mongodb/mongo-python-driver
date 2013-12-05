@@ -1010,7 +1010,7 @@ class _TestMaxPoolSize(_TestPoolingBase):
         # The pool acquires its semaphore before attempting to connect; ensure
         # it releases the semaphore on connection failure.
         class TestPool(Pool):
-            def connect(self, pair):
+            def connect(self):
                 raise socket.error()
 
         test_pool = TestPool(

@@ -39,18 +39,18 @@ class MockPool(Pool):
             use_ssl=False,
             use_greenlets=False)
 
-    def get_socket(self, pair=None, force=False):
+    def get_socket(self, force=False):
         client = self.client
         host_and_port = '%s:%s' % (self.mock_host, self.mock_port)
         if host_and_port in client.mock_down_hosts:
             raise socket.timeout('mock timeout')
-        
+
         assert host_and_port in (
             client.mock_standalones
             + client.mock_members
             + client.mock_mongoses), "bad host: %s" % host_and_port
 
-        sock_info = Pool.get_socket(self, pair, force)
+        sock_info = Pool.get_socket(self, force)
         sock_info.mock_host = self.mock_host
         sock_info.mock_port = self.mock_port
         return sock_info

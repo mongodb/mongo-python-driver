@@ -204,13 +204,13 @@ class Pool:
         for sock_info in sockets:
             sock_info.close()
 
-    def create_connection(self, pair):
-        """Connect to *pair* and return the socket object.
+    def create_connection(self):
+        """Connect and return a socket object.
 
         This is a modified version of create_connection from
         CPython >=2.6.
         """
-        host, port = pair or self.pair
+        host, port = self.pair
 
         # Check if dealing with a unix domain socket
         if host.endswith('.sock'):
@@ -257,13 +257,13 @@ class Pool:
             # support IPv6 at all.
             raise socket.error('getaddrinfo failed')
 
-    def connect(self, pair):
+    def connect(self):
         """Connect to Mongo and return a new (connected) socket. Note that the
            pool does not keep a reference to the socket -- you must call
            return_socket() when you're done with it.
         """
-        sock = self.create_connection(pair)
-        hostname = (pair or self.pair)[0]
+        sock = self.create_connection()
+        hostname = self.pair[0]
 
         if self.use_ssl:
             try:
@@ -283,7 +283,7 @@ class Pool:
         sock.settimeout(self.net_timeout)
         return SocketInfo(sock, self.pool_id, hostname)
 
-    def get_socket(self, pair=None, force=False):
+    def get_socket(self, force=False):
         """Get a socket from the pool.
 
         Returns a :class:`SocketInfo` object wrapping a connected
@@ -291,7 +291,6 @@ class Pool:
         the pool or freshly created.
 
         :Parameters:
-          - `pair`: optional (hostname, port) tuple
           - `force`: optional boolean, forces a connection to be returned
               without blocking, even if `max_size` has been reached.
         """
@@ -305,7 +304,7 @@ class Pool:
         req_state = self._get_request_state()
         if req_state not in (NO_SOCKET_YET, NO_REQUEST):
             # There's a socket for this request, check it and return it
-            checked_sock = self._check(req_state, pair)
+            checked_sock = self._check(req_state)
             if checked_sock != req_state:
                 self._set_request_state(checked_sock)
 
@@ -336,10 +335,10 @@ class Pool:
                 finally:
                     self.lock.release()
             except KeyError:
-                sock_info, from_pool = self.connect(pair), False
+                sock_info, from_pool = self.connect(), False
 
             if from_pool:
-                sock_info = self._check(sock_info, pair)
+                sock_info = self._check(sock_info)
 
             sock_info.forced = forced
 
@@ -431,7 +430,7 @@ class Pool:
         else:
             self._socket_semaphore.release()
 
-    def _check(self, sock_info, pair):
+    def _check(self, sock_info):
         """This side-effecty function checks if this pool has been reset since
         the last time this socket was used, or if the socket has been closed by
         some external network error, and if so, attempts to create a new socket.
@@ -468,7 +467,7 @@ class Pool:
             return sock_info
         else:
             try:
-                return self.connect(pair)
+                return self.connect()
             except socket.error:
                 self.reset()
                 raise
