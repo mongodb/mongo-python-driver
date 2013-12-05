@@ -24,7 +24,8 @@ from gridfs.errors import (NoFile,
                            UnsupportedAPI)
 from gridfs.grid_file import (GridIn,
                               GridOut)
-from pymongo import (ASCENDING,
+from pymongo import (MongoClient,
+                     ASCENDING,
                      DESCENDING)
 from pymongo.database import Database
 
@@ -32,7 +33,7 @@ from pymongo.database import Database
 class GridFS(object):
     """An instance of GridFS on top of a single Database.
     """
-    def __init__(self, database, collection="fs"):
+    def __init__(self, database, collection="fs", _connect=True):
         """Create a new instance of :class:`GridFS`.
 
         Raises :class:`TypeError` if `database` is not an instance of
@@ -54,11 +55,26 @@ class GridFS(object):
         self.__collection = database[collection]
         self.__files = self.__collection.files
         self.__chunks = self.__collection.chunks
-        connection = database.connection
-        if not hasattr(connection, 'is_primary') or connection.is_primary:
+        if _connect:
+            self.__ensure_index_files_id()
+
+    def __is_secondary(self):
+        client = self.__database.connection
+
+        # Connect the client, so we know if it's connected to the primary.
+        client._ensure_connected()
+        return isinstance(client, MongoClient) and not client.is_primary
+
+    def __ensure_index_files_id(self):
+        if not self.__is_secondary():
             self.__chunks.ensure_index([("files_id", ASCENDING),
                                         ("n", ASCENDING)],
                                        unique=True)
+
+    def __ensure_index_filename(self):
+        if not self.__is_secondary():
+            self.__files.ensure_index([("filename", ASCENDING),
+                                       ("uploadDate", DESCENDING)])
 
     def new_file(self, **kwargs):
         """Create a new file in GridFS.
@@ -76,6 +92,8 @@ class GridFS(object):
 
         .. versionadded:: 1.6
         """
+        # No need for __ensure_index_files_id() here; GridIn ensures
+        # the (files_id, n) index when needed.
         return GridIn(self.__collection, **kwargs)
 
     def put(self, data, **kwargs):
@@ -176,11 +194,7 @@ class GridFS(object):
            Accept keyword arguments to find files by custom metadata.
         .. versionadded:: 1.9
         """
-        connection = self.__database.connection
-        if not hasattr(connection, 'is_primary') or connection.is_primary:
-            self.__files.ensure_index([("filename", ASCENDING),
-                                       ("uploadDate", DESCENDING)])
-
+        self.__ensure_index_filename()
         query = kwargs
         if filename is not None:
             query["filename"] = filename
@@ -237,6 +251,7 @@ class GridFS(object):
 
         .. versionadded:: 1.6
         """
+        self.__ensure_index_files_id()
         self.__files.remove({"_id": file_id},
                             **self.__files._get_wc_override())
         self.__chunks.remove({"files_id": file_id})
@@ -245,9 +260,18 @@ class GridFS(object):
         """List the names of all files stored in this instance of
         :class:`GridFS`.
 
+        An index on ``{filename: 1, uploadDate: -1}`` will
+        automatically be created when this method is called the first
+        time.
+
+        .. versionchanged:: 2.7
+           ``list`` ensures an index, the same as ``get_version``.
+
         .. versionchanged:: 1.6
            Removed the `collection` argument.
         """
+        self.__ensure_index_filename()
+
         # With an index, distinct includes documents with no filename
         # as None.
         return [

@@ -152,10 +152,6 @@ class GridIn(object):
         # Defaults
         kwargs["_id"] = kwargs.get("_id", ObjectId())
         kwargs["chunkSize"] = kwargs.get("chunkSize", DEFAULT_CHUNK_SIZE)
-
-        root_collection.chunks.ensure_index([("files_id", ASCENDING),
-                                             ("n", ASCENDING)],
-                                            unique=True)
         object.__setattr__(self, "_coll", root_collection)
         object.__setattr__(self, "_chunks", root_collection.chunks)
         object.__setattr__(self, "_file", kwargs)
@@ -163,6 +159,14 @@ class GridIn(object):
         object.__setattr__(self, "_position", 0)
         object.__setattr__(self, "_chunk_number", 0)
         object.__setattr__(self, "_closed", False)
+        object.__setattr__(self, "_ensured_index", False)
+
+    def _ensure_index(self):
+        if not object.__getattribute__(self, "_ensured_index"):
+            self._coll.chunks.ensure_index(
+                [("files_id", ASCENDING), ("n", ASCENDING)],
+                unique=True)
+            object.__setattr__(self, "_ensured_index", True)
 
     @property
     def closed(self):
@@ -209,6 +213,10 @@ class GridIn(object):
     def __flush_data(self, data):
         """Flush `data` to a chunk.
         """
+        # Ensure the index, even if there's nothing to write, so
+        # the filemd5 command always succeeds.
+        self._ensure_index()
+
         if not data:
             return
         assert(len(data) <= self.chunk_size)
@@ -358,7 +366,8 @@ class GridIn(object):
 class GridOut(object):
     """Class to read data out of GridFS.
     """
-    def __init__(self, root_collection, file_id=None, file_document=None):
+    def __init__(self, root_collection, file_id=None, file_document=None,
+                 _connect=True):
         """Read a file from GridFS
 
         Application developers should generally not need to
@@ -383,16 +392,13 @@ class GridOut(object):
                             "instance of Collection")
 
         self.__chunks = root_collection.chunks
-
-        files = root_collection.files
-        self._file = file_document or files.find_one({"_id": file_id})
-
-        if not self._file:
-            raise NoFile("no file in gridfs collection %r with _id %r" %
-                         (files, file_id))
-
+        self.__files = root_collection.files
+        self.__file_id = file_id
         self.__buffer = EMPTY
         self.__position = 0
+        self._file = file_document
+        if _connect:
+            self._ensure_file()
 
     _id = _create_property("_id", "The ``'_id'`` value for this file.", True)
     filename = _create_property("filename", "Name of this file.", True)
@@ -413,7 +419,15 @@ class GridOut(object):
     md5 = _create_property("md5", "MD5 of the contents of this file "
                             "(generated on the server).", True)
 
+    def _ensure_file(self):
+        if not self._file:
+            self._file = self.__files.find_one({"_id": self.__file_id})
+            if not self._file:
+                raise NoFile("no file in gridfs collection %r with _id %r" %
+                             (self.__files, self.__file_id))
+
     def __getattr__(self, name):
+        self._ensure_file()
         if name in self._file:
             return self._file[name]
         raise AttributeError("GridOut object has no attribute '%s'" % name)
@@ -428,6 +442,8 @@ class GridOut(object):
         :Parameters:
           - `size` (optional): the number of bytes to read
         """
+        self._ensure_file()
+
         if size == 0:
             return ""
 

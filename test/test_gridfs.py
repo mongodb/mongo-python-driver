@@ -20,7 +20,7 @@ import sys
 sys.path[0:0] = [""]
 
 from pymongo.mongo_client import MongoClient
-from pymongo.errors import AutoReconnect
+from pymongo.errors import ConnectionFailure
 from pymongo.read_preferences import ReadPreference
 from test.test_replica_set_client import TestReplicaSetClientBase
 
@@ -364,6 +364,15 @@ class TestGridfs(unittest.TestCase):
         # Request started and ended by put(), we're back to original state
         self.assertFalse(self.db.connection.in_request())
 
+    def test_gridfs_lazy_connect(self):
+        client = MongoClient('badhost', _connect=False)
+        db = client.db
+        self.assertRaises(ConnectionFailure, gridfs.GridFS, db)
+
+        fs = gridfs.GridFS(db, _connect=False)
+        f = fs.new_file()  # Still no connection.
+        self.assertRaises(ConnectionFailure, f.close)
+
 
 class TestGridfsReplicaSet(TestReplicaSetClientBase):
     def test_gridfs_replica_set(self):
@@ -397,7 +406,23 @@ class TestGridfsReplicaSet(TestReplicaSetClientBase):
             fs = gridfs.GridFS(secondary_connection.pymongo_test)
 
             # This won't detect secondary, raises error
-            self.assertRaises(AutoReconnect, fs.put, b('foo'))
+            self.assertRaises(ConnectionFailure, fs.put, b('foo'))
+
+    def test_gridfs_secondary_lazy(self):
+        # Should detect it's connected to secondary and not attempt to
+        # create index.
+        secondary_host, secondary_port = self.secondaries[0]
+        client = MongoClient(
+            secondary_host, secondary_port,
+            read_preference=ReadPreference.SECONDARY,
+            _connect=False)
+
+        # Still no connection.
+        fs = gridfs.GridFS(client.pymongo_test, _connect=False)
+
+        # Connects, doesn't create index.
+        self.assertRaises(NoFile, fs.get_last_version)
+        self.assertRaises(ConnectionFailure, fs.put, 'data')
 
     def tearDown(self):
         rsc = self._get_client()

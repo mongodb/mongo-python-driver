@@ -35,6 +35,8 @@ from gridfs.grid_file import (DEFAULT_CHUNK_SIZE,
                               GridOut)
 from gridfs.errors import (NoFile,
                            UnsupportedAPI)
+from pymongo import MongoClient
+from pymongo.errors import ConnectionFailure
 from test.test_client import get_client
 from test import qcheck
 
@@ -534,6 +536,26 @@ with GridOut(self.db.fs, infile._id) as outfile:
         write_me(s, DEFAULT_CHUNK_SIZE * 3)
         # Custom
         write_me(s, 262300)
+
+    def test_grid_out_lazy_connect(self):
+        fs = self.db.fs
+        outfile = GridOut(fs, file_id=-1, _connect=False)
+        self.assertRaises(NoFile, outfile.read)
+        self.assertRaises(NoFile, getattr, outfile, 'filename')
+
+        infile = GridIn(fs, filename=1)
+        infile.close()
+
+        outfile = GridOut(fs, infile._id, _connect=False)
+        outfile.read()
+        outfile.filename
+
+    def test_grid_in_lazy_connect(self):
+        client = MongoClient('badhost', _connect=False)
+        fs = client.db.fs
+        infile = GridIn(fs, file_id=-1, chunk_size=1)
+        self.assertRaises(ConnectionFailure, infile.write, 'data goes here')
+        self.assertRaises(ConnectionFailure, infile.close)
 
 
 if __name__ == "__main__":
