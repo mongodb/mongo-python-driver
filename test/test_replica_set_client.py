@@ -1153,5 +1153,18 @@ class TestReplicaSetClientLazyConnectGevent(
     use_greenlets = True
 
 
+class TestReplicaSetClientLazyConnectBadSeeds(
+        TestReplicaSetClientBase,
+        _TestLazyConnectMixin):
+
+    def _get_client(self, **kwargs):
+        kwargs.setdefault('connectTimeoutMS', 100)
+
+        # Assume there are no open mongods listening on a.com, b.com, ....
+        bad_seeds = ['%s.com' % chr(ord('a') + i) for i in range(10)]
+        seeds = ','.join(bad_seeds + [pair])
+        return MongoReplicaSetClient(seeds, replicaSet=self.name, **kwargs)
+
+
 if __name__ == "__main__":
     unittest.main()
