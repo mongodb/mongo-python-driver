@@ -641,6 +641,29 @@ class TestBSON(unittest.TestCase):
         self.assertTrue(MaxKey() != MinKey())
         self.assertFalse(MaxKey() == MinKey())
 
+    def test_timestamp_comparison(self):
+        # Timestamp is initialized with time, inc. Time is the more
+        # significant comparand.
+        self.assertTrue(Timestamp(1, 0) < Timestamp(2, 17))
+        self.assertTrue(Timestamp(2, 0) > Timestamp(1, 0))
+        self.assertTrue(Timestamp(1, 7) <= Timestamp(2, 0))
+        self.assertTrue(Timestamp(2, 0) >= Timestamp(1, 1))
+        self.assertTrue(Timestamp(2, 0) <= Timestamp(2, 0))
+        self.assertTrue(Timestamp(2, 0) >= Timestamp(2, 0))
+        self.assertFalse(Timestamp(1, 0) > Timestamp(2, 0))
+
+        # Comparison by inc.
+        self.assertTrue(Timestamp(1, 0) < Timestamp(1, 1))
+        self.assertTrue(Timestamp(1, 1) > Timestamp(1, 0))
+        self.assertTrue(Timestamp(1, 0) <= Timestamp(1, 0))
+        self.assertTrue(Timestamp(1, 0) <= Timestamp(1, 1))
+        self.assertFalse(Timestamp(1, 0) >= Timestamp(1, 1))
+        self.assertTrue(Timestamp(1, 0) >= Timestamp(1, 0))
+        self.assertTrue(Timestamp(1, 1) >= Timestamp(1, 0))
+        self.assertFalse(Timestamp(1, 1) <= Timestamp(1, 0))
+        self.assertTrue(Timestamp(1, 0) <= Timestamp(1, 0))
+        self.assertFalse(Timestamp(1, 0) > Timestamp(1, 0))
+
 
 if __name__ == "__main__":
     unittest.main()

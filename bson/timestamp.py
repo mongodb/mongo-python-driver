@@ -86,6 +86,26 @@ class Timestamp(object):
     def __ne__(self, other):
         return not self == other
 
+    def __lt__(self, other):
+        if isinstance(other, Timestamp):
+            return (self.time, self.inc) < (other.time, other.inc)
+        return NotImplemented
+
+    def __le__(self, other):
+        if isinstance(other, Timestamp):
+            return (self.time, self.inc) <= (other.time, other.inc)
+        return NotImplemented
+
+    def __gt__(self, other):
+        if isinstance(other, Timestamp):
+            return (self.time, self.inc) > (other.time, other.inc)
+        return NotImplemented
+
+    def __ge__(self, other):
+        if isinstance(other, Timestamp):
+            return (self.time, self.inc) >= (other.time, other.inc)
+        return NotImplemented
+
     def __repr__(self):
         return "Timestamp(%s, %s)" % (self.__time, self.__inc)
 
