@@ -554,7 +554,7 @@ with GridOut(self.db.fs, infile._id) as outfile:
         client = MongoClient('badhost', _connect=False)
         fs = client.db.fs
         infile = GridIn(fs, file_id=-1, chunk_size=1)
-        self.assertRaises(ConnectionFailure, infile.write, 'data goes here')
+        self.assertRaises(ConnectionFailure, infile.write, b('data goes here'))
         self.assertRaises(ConnectionFailure, infile.close)
 
 
