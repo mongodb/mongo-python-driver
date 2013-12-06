@@ -361,8 +361,10 @@ class Collection(common.BaseObject):
         if client.max_wire_version > 1 and safe:
             # Insert command
             command = SON([('insert', self.name),
-                           ('ordered', not continue_on_error),
-                           ('writeConcern', options)])
+                           ('ordered', not continue_on_error)])
+
+            if options:
+                command['writeConcern'] = options
 
             results = message._do_batched_write_command(
                     self.database.name + ".$cmd", _INSERT, command,
@@ -511,8 +513,9 @@ class Collection(common.BaseObject):
         client = self.database.connection
         if client.max_wire_version > 1 and safe:
             # Update command
-            command = SON([('update', self.name),
-                           ('writeConcern', options)])
+            command = SON([('update', self.name)])
+            if options:
+                command['writeConcern'] = options
 
             docs = [SON([('q', spec), ('u', document),
                          ('multi', multi), ('upsert', upsert)])]
@@ -625,8 +628,9 @@ class Collection(common.BaseObject):
         client = self.database.connection
         if client.max_wire_version > 1 and safe:
             # Delete command
-            command = SON([('delete', self.name),
-                           ('writeConcern', options)])
+            command = SON([('delete', self.name)])
+            if options:
+                command['writeConcern'] = options
 
             docs = [SON([('q', spec_or_id), ('limit', int(not multi))])]
 
