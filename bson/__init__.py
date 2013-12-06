@@ -260,7 +260,7 @@ def _get_regex(data, position, as_class, tz_aware, uuid_subtype, compile_re):
     bson_flags, position = _get_c_string(data, position)
     bson_re = Regex(pattern, bson_flags)
     if compile_re:
-        return bson_re.compile(), position
+        return bson_re.try_compile(), position
     else:
         return bson_re, position
 

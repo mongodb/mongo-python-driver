@@ -17,6 +17,7 @@
 
 import re
 
+from bson.son import RE_TYPE
 from bson.py3compat import string_types
 
 
@@ -41,6 +42,29 @@ def str_flags_to_int(str_flags):
 class Regex(object):
     """BSON regular expression data."""
     _type_marker = 11
+
+    @classmethod
+    def from_native(cls, regex):
+        """Convert a Python regular expression into a ``Regex`` instance.
+
+        :Parameters:
+          - `regex`: A regular expression object from ``re.compile()``.
+
+        .. warning::
+           Python regular expressions use a different syntax and different
+           set of flags than MongoDB, which uses `PCRE`_. A regular
+           expression retrieved from the server may not compile in
+           Python, or may match a different set of strings in Python than
+           when used in a MongoDB query.
+
+        .. _PCRE: http://www.pcre.org/
+        """
+        if not isinstance(regex, RE_TYPE):
+            raise TypeError(
+                "regex must be a compiled regular expression, not %s"
+                % type(regex))
+
+        return Regex(regex.pattern, regex.flags)
 
     def __init__(self, pattern, flags=0):
         """BSON regular expression data.
@@ -77,7 +101,17 @@ class Regex(object):
     def __repr__(self):
         return "Regex(%r, %r)" % (self.pattern, self.flags)
 
-    def compile(self):
-        """Compile this ``Regex`` as a Python regular expression.
+    def try_compile(self):
+        """Compile this :class:`Regex` as a Python regular expression.
+
+        .. warning::
+           Python regular expressions use a different syntax and different
+           set of flags than MongoDB, which uses `PCRE`_. A regular
+           expression retrieved from the server may not compile in
+           Python, or may match a different set of strings in Python than
+           when used in a MongoDB query. ``try_compile()`` may raise
+           :exc:`re.error`.
+
+        .. _PCRE: http://www.pcre.org/
         """
         return re.compile(self.pattern, self.flags)

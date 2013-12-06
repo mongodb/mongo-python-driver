@@ -552,15 +552,15 @@ class TestBSON(unittest.TestCase):
         self.assertEqual(doc1, BSON(doc1_bson).decode(compile_re=False))
 
         # Valid Python regex, with flags.
-        re2 = re.compile('.*', re.IGNORECASE | re.MULTILINE | re.UNICODE)
-        bson_re2 = Regex('.*', re.IGNORECASE | re.MULTILINE | re.UNICODE)
+        re2 = re.compile('.*', re.I | re.L | re.M | re.S | re.U | re.X)
+        bson_re2 = Regex('.*', re.I | re.L | re.M | re.S | re.U | re.X)
 
         doc2_with_re = {'r': re2}
         doc2_with_bson_re = {'r': bson_re2}
         doc2_bson = b(
-            "\x0f\x00\x00\x00"          # document length
-            "\x0br\x00.*\x00imu\x00"    # r: regex
-            "\x00")                     # document terminator
+            "\x12\x00\x00\x00"           # document length
+            "\x0br\x00.*\x00ilmsux\x00"  # r: regex
+            "\x00")                      # document terminator
 
         self.assertEqual(doc2_bson, BSON.encode(doc2_with_re))
         self.assertEqual(doc2_bson, BSON.encode(doc2_with_bson_re))
@@ -571,6 +571,15 @@ class TestBSON(unittest.TestCase):
 
         self.assertEqual(
             doc2_with_bson_re, BSON(doc2_bson).decode(compile_re=False))
+
+    def test_regex_from_native(self):
+        self.assertEqual('.*', Regex.from_native(re.compile('.*')).pattern)
+        self.assertEqual(0, Regex.from_native(re.compile('')).flags)
+
+        regex = re.compile('', re.I | re.L | re.M | re.S | re.U | re.X)
+        self.assertEqual(
+            re.I | re.L | re.M | re.S | re.U | re.X,
+            Regex.from_native(regex).flags)
 
     def test_exception_wrapping(self):
         # No matter what exception is raised while trying to decode BSON,
