@@ -112,6 +112,7 @@ class TestCollection(unittest.TestCase):
         self.assertRaises(ValueError, db.test.create_index, [])
 
         db.test.drop_indexes()
+        db.test.insert({})
         self.assertEqual(db.system.indexes.find({"ns": u"pymongo_test.test"})
                          .count(), 1)
 
