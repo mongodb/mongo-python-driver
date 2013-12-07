@@ -16,6 +16,7 @@
 
 import socket
 
+from pymongo import common
 from pymongo import MongoClient, MongoReplicaSetClient
 from pymongo.pool import Pool
 
@@ -77,6 +78,9 @@ class MockClientBase(object):
         # Hosts that should raise socket errors.
         self.mock_down_hosts = []
 
+        # Hostname -> (min wire version, max wire version)
+        self.mock_wire_versions = {}
+
     def kill_host(self, host):
         """Host is like 'a:1'."""
         self.mock_down_hosts.append(host)
@@ -85,13 +89,23 @@ class MockClientBase(object):
         """Host is like 'a:1'."""
         self.mock_down_hosts.remove(host)
 
+    def set_wire_version_range(self, host, min_version, max_version):
+        self.mock_wire_versions[host] = (min_version, max_version)
+
     def mock_is_master(self, host):
+        min_wire_version, max_wire_version = self.mock_wire_versions.get(
+            host,
+            (common.MIN_WIRE_VERSION, common.MAX_WIRE_VERSION))
+
         # host is like 'a:1'.
         if host in self.mock_down_hosts:
             raise socket.timeout('mock timeout')
 
         if host in self.mock_standalones:
-            return {'ismaster': True}
+            return {
+                'ismaster': True,
+                'minWireVersion': min_wire_version,
+                'maxWireVersion': max_wire_version}
 
         if host in self.mock_members:
             ismaster = (host == self.mock_primary)
@@ -101,7 +115,9 @@ class MockClientBase(object):
                 'ismaster': ismaster,
                 'secondary': not ismaster,
                 'setName': 'rs',
-                'hosts': self.mock_ismaster_hosts}
+                'hosts': self.mock_ismaster_hosts,
+                'minWireVersion': min_wire_version,
+                'maxWireVersion': max_wire_version}
 
             if self.mock_primary:
                 response['primary'] = self.mock_primary
@@ -109,7 +125,11 @@ class MockClientBase(object):
             return response
 
         if host in self.mock_mongoses:
-            return {'ismaster': True, 'msg': 'isdbgrid'}
+            return {
+                'ismaster': True,
+                'minWireVersion': min_wire_version,
+                'maxWireVersion': max_wire_version,
+                'msg': 'isdbgrid'}
 
         # In test_internal_ips(), we try to connect to a host listed
         # in ismaster['hosts'] but not publicly accessible.

@@ -19,7 +19,7 @@ import unittest
 
 sys.path[0:0] = [""]
 
-from pymongo.errors import AutoReconnect, ConnectionFailure
+from pymongo.errors import ConfigurationError, ConnectionFailure
 from pymongo import ReadPreference
 from test.pymongo_mocks import MockClient, MockReplicaSetClient
 
@@ -53,7 +53,7 @@ class TestSecondaryBecomesStandalone(unittest.TestCase):
 
         try:
             c.db.collection.find_one()
-        except AutoReconnect, e:
+        except ConfigurationError, e:
             self.assertTrue('not a member of replica set' in str(e))
         else:
             self.fail("MongoClient didn't raise AutoReconnect")

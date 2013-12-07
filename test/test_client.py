@@ -33,7 +33,7 @@ from bson.tz_util import utc
 from pymongo.mongo_client import MongoClient
 from pymongo.database import Database
 from pymongo.pool import SocketInfo
-from pymongo import thread_util
+from pymongo import thread_util, common
 from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
                             ConnectionFailure,
@@ -894,6 +894,53 @@ with client.start_request() as request:
         client = MongoClient('doesnt exist', _connect=False)
         self.assertFalse(client.alive())
 
+    def test_wire_version(self):
+        c = MockClient(
+            standalones=[],
+            members=['a:1', 'b:2', 'c:3'],
+            mongoses=[],
+            host='b:2',  # Pass a secondary.
+            replicaSet='rs',
+            _connect=False)
+
+        c.set_wire_version_range('a:1', 1, 5)
+        c.db.collection.find_one()  # Connect.
+        self.assertEqual(c.min_wire_version, 1)
+        self.assertEqual(c.max_wire_version, 5)
+
+        c.set_wire_version_range('a:1', 10, 11)
+        c.disconnect()
+        self.assertRaises(ConfigurationError, c.db.collection.find_one)
+
+    def test_wire_version_mongos_ha(self):
+        c = MockClient(
+            standalones=[],
+            members=[],
+            mongoses=['a:1', 'b:2', 'c:3'],
+            host='a:1,b:2,c:3',
+            _connect=False)
+
+        c.set_wire_version_range('a:1', 2, 5)
+        c.set_wire_version_range('b:2', 2, 2)
+        c.set_wire_version_range('c:3', 1, 1)
+        c.db.collection.find_one()  # Connect.
+
+        # Which member did we use?
+        used_host = '%s:%s' % (c.host, c.port)
+        expected_min, expected_max = c.mock_wire_versions[used_host]
+        self.assertEqual(expected_min, c.min_wire_version)
+        self.assertEqual(expected_max, c.max_wire_version)
+
+        c.set_wire_version_range('a:1', 0, 0)
+        c.set_wire_version_range('b:2', 0, 0)
+        c.set_wire_version_range('c:3', 0, 0)
+        c.disconnect()
+        c.db.collection.find_one()
+        used_host = '%s:%s' % (c.host, c.port)
+        expected_min, expected_max = c.mock_wire_versions[used_host]
+        self.assertEqual(expected_min, c.min_wire_version)
+        self.assertEqual(expected_max, c.max_wire_version)
+
     def test_replica_set(self):
         client = MongoClient(host, port)
         name = client.pymongo_test.command('ismaster').get('setName')
@@ -903,7 +950,7 @@ with client.start_request() as request:
         MongoClient(host, port, replicaSet=name)  # No error.
 
         self.assertRaises(
-            ConnectionFailure,
+            ConfigurationError,
             MongoClient, host, port, replicaSet='bad' + name)
 
 

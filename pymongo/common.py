@@ -42,6 +42,10 @@ MAX_MESSAGE_SIZE = 2 * MAX_BSON_SIZE
 MIN_WIRE_VERSION = 0
 MAX_WIRE_VERSION = 0
 
+# What this version of PyMongo supports.
+MIN_SUPPORTED_WIRE_VERSION = 0
+MAX_SUPPORTED_WIRE_VERSION = 2
+
 
 def raise_config_error(key, dummy):
     """Raise ConfigurationError with the given key name."""

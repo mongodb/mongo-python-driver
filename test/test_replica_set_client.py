@@ -1140,6 +1140,37 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         self.assertFalse(client.alive())
 
 
+class TestReplicaSetWireVersion(unittest.TestCase):
+    def test_wire_version(self):
+        c = MockReplicaSetClient(
+            standalones=[],
+            members=['a:1', 'b:2', 'c:3'],
+            mongoses=[],
+            host='a:1',
+            replicaSet='rs',
+            _connect=False)
+
+        c.set_wire_version_range('a:1', 1, 5)
+        c.set_wire_version_range('b:2', 0, 1)
+        c.set_wire_version_range('c:3', 1, 2)
+        c.db.collection.find_one()  # Connect.
+        self.assertEqual(c.min_wire_version, 1)
+        self.assertEqual(c.max_wire_version, 5)
+
+        c.set_wire_version_range('a:1', 2, 2)
+        c.refresh()
+        self.assertEqual(c.min_wire_version, 2)
+        self.assertEqual(c.max_wire_version, 2)
+
+        # A secondary doesn't overlap with us.
+        c.set_wire_version_range('b:2', 5, 6)
+
+        # refresh() raises, as do all following operations.
+        self.assertRaises(ConfigurationError, c.refresh)
+        self.assertRaises(ConfigurationError, c.db.collection.find_one)
+        self.assertRaises(ConfigurationError, c.db.collection.insert, {})
+
+
 # Test concurrent access to a lazily-connecting RS client.
 class TestReplicaSetClientLazyConnect(
         TestReplicaSetClientBase,

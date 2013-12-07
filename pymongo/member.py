@@ -15,6 +15,7 @@
 """Represent a mongod / mongos instance"""
 
 from pymongo import common
+from pymongo.errors import ConfigurationError
 from pymongo.read_preferences import ReadPreference
 
 # Member states
@@ -53,6 +54,7 @@ class Member(object):
         else:
             self.state = OTHER
 
+        self.set_name = ismaster_response.get('setName')
         self.tags = ismaster_response.get('tags', {})
         self.max_bson_size = ismaster_response.get(
             'maxBsonObjectSize', common.MAX_BSON_SIZE)
@@ -63,7 +65,21 @@ class Member(object):
         self.max_wire_version = ismaster_response.get(
             'maxWireVersion', common.MAX_WIRE_VERSION)
 
-        self.set_name = ismaster_response.get('setName')
+        # self.min/max_wire_version is the server's wire protocol.
+        # MIN/MAX_SUPPORTED_WIRE_VERSION is what PyMongo supports.
+        if (
+            # Server too new.
+            common.MAX_SUPPORTED_WIRE_VERSION < self.min_wire_version
+            # Server too old.
+            or common.MIN_SUPPORTED_WIRE_VERSION > self.max_wire_version
+        ):
+            raise ConfigurationError(
+                "Server at %s:%d uses wire protocol versions %d through %d, "
+                "but PyMongo only supports %d through %d"
+                % (self.host[0], self.host[1],
+                   self.min_wire_version, self.max_wire_version,
+                   common.MIN_SUPPORTED_WIRE_VERSION,
+                   common.MAX_SUPPORTED_WIRE_VERSION))
 
     def clone_with(self, ismaster_response, ping_time_sample):
         """Get a clone updated with ismaster response and a single ping time.

@@ -848,8 +848,9 @@ class MongoClient(common.BaseObject):
                 chosen_member = member
                 discovered_nodes = nodes
                 break
-            except OperationFailure:
-                # The server is available but something failed, probably auth.
+            except (OperationFailure, ConfigurationError):
+                # The server is available but something failed, e.g. auth,
+                # wrong replica set name, or incompatible wire protocol.
                 raise
             except Exception, why:
                 errors.append(str(why))
