@@ -1061,7 +1061,7 @@ class MongoReplicaSetClient(common.BaseObject):
             # Try first those hosts we think are up, then the down ones.
             nodes = sorted(
                 rs_state.hosts,
-                key=lambda host: rs_state.get(host),
+                key=lambda host: bool(rs_state.get(host)),
                 reverse=True)
         else:
             nodes = self.__seeds
