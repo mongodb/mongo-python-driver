@@ -109,7 +109,7 @@ class Regex(object):
            set of flags than MongoDB, which uses `PCRE`_. A regular
            expression retrieved from the server may not compile in
            Python, or may match a different set of strings in Python than
-           when used in a MongoDB query. ``try_compile()`` may raise
+           when used in a MongoDB query. :meth:`try_compile()` may raise
            :exc:`re.error`.
 
         .. _PCRE: http://www.pcre.org/
