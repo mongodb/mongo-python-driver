@@ -43,7 +43,7 @@ class MockPool(Pool):
         client = self.client
         host_and_port = '%s:%s' % (self.mock_host, self.mock_port)
         if host_and_port in client.mock_down_hosts:
-            raise socket.timeout('mock timeout')
+            raise socket.error('mock error')
 
         assert host_and_port in (
             client.mock_standalones

@@ -19,7 +19,8 @@ import unittest
 
 sys.path[0:0] = [""]
 
-from pymongo.errors import AutoReconnect
+from pymongo.errors import AutoReconnect, ConnectionFailure
+from pymongo import ReadPreference
 from test.pymongo_mocks import MockClient, MockReplicaSetClient
 
 
@@ -100,6 +101,26 @@ class TestSecondaryRemoved(unittest.TestCase):
 
         self.assertEqual(('a', 1), c.primary)
         self.assertEqual(set([('b', 2)]), c.secondaries)
+
+
+class TestSocketError(unittest.TestCase):
+    def test_socket_error_marks_member_down(self):
+        c = MockReplicaSetClient(
+            standalones=[],
+            members=['a:1', 'b:2'],
+            mongoses=[],
+            host='a:1',
+            replicaSet='rs')
+
+        self.assertEqual(2, len(c._MongoReplicaSetClient__rs_state.members))
+
+        # b now raises socket.error.
+        c.mock_down_hosts.append('b:2')
+        self.assertRaises(
+            ConnectionFailure,
+            c.db.collection.find_one, read_preference=ReadPreference.SECONDARY)
+
+        self.assertEqual(1, len(c._MongoReplicaSetClient__rs_state.members))
 
 
 class TestSecondaryAdded(unittest.TestCase):
