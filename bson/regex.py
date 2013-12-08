@@ -47,6 +47,15 @@ class Regex(object):
     def from_native(cls, regex):
         """Convert a Python regular expression into a ``Regex`` instance.
 
+        Note that in Python 3, a regular expression compiled from a
+        :class:`str` has the ``re.UNICODE`` flag set. If it is undesirable
+        to store this flag in a BSON regular expression, unset it first::
+
+          >>> pattern = re.compile('.*')
+          >>> regex = Regex.from_native(pattern)
+          >>> regex.flags ^= re.UNICODE
+          >>> db.collection.insert({'pattern': regex})
+
         :Parameters:
           - `regex`: A regular expression object from ``re.compile()``.
 

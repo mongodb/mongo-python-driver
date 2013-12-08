@@ -574,12 +574,15 @@ class TestBSON(unittest.TestCase):
 
     def test_regex_from_native(self):
         self.assertEqual('.*', Regex.from_native(re.compile('.*')).pattern)
-        self.assertEqual(0, Regex.from_native(re.compile('')).flags)
+        self.assertEqual(0, Regex.from_native(re.compile(b(''))).flags)
 
-        regex = re.compile('', re.I | re.L | re.M | re.S | re.U | re.X)
+        regex = re.compile(b(''), re.I | re.L | re.M | re.S | re.X)
         self.assertEqual(
-            re.I | re.L | re.M | re.S | re.U | re.X,
+            re.I | re.L | re.M | re.S | re.X,
             Regex.from_native(regex).flags)
+
+        unicode_regex = re.compile('', re.U)
+        self.assertEqual(re.U, Regex.from_native(unicode_regex).flags)
 
     def test_exception_wrapping(self):
         # No matter what exception is raised while trying to decode BSON,
