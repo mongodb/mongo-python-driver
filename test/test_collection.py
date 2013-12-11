@@ -119,10 +119,13 @@ class TestCollection(unittest.TestCase):
         db.test.create_index("hello")
         db.test.create_index([("hello", DESCENDING), ("world", ASCENDING)])
 
+        # Tuple instead of list.
+        db.test.create_index((("world", ASCENDING),))
+
         count = 0
         for _ in db.system.indexes.find({"ns": u"pymongo_test.test"}):
             count += 1
-        self.assertEqual(count, 3)
+        self.assertEqual(count, 4)
 
         db.test.drop_indexes()
         ix = db.test.create_index([("hello", DESCENDING),
