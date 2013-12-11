@@ -39,7 +39,7 @@ def _index_list(key_or_list, direction=None):
     else:
         if isinstance(key_or_list, basestring):
             return [(key_or_list, pymongo.ASCENDING)]
-        elif not isinstance(key_or_list, list):
+        elif not isinstance(key_or_list, (list, tuple)):
             raise TypeError("if no direction is specified, "
                             "key_or_list must be an instance of list")
         return key_or_list
@@ -54,7 +54,7 @@ def _index_document(index_list):
         raise TypeError("passing a dict to sort/create_index/hint is not "
                         "allowed - use a list of tuples instead. did you "
                         "mean %r?" % list(index_list.iteritems()))
-    elif not isinstance(index_list, list):
+    elif not isinstance(index_list, (list, tuple)):
         raise TypeError("must use a list of (key, direction) pairs, "
                         "not: " + repr(index_list))
     if not len(index_list):
