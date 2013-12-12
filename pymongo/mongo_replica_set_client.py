@@ -1168,6 +1168,15 @@ class MongoReplicaSetClient(common.BaseObject):
             if res['ismaster']:
                 writer = host
 
+        if not members:
+            # In the first loop, we connected to a member in the seed list
+            # and got a host list, but couldn't reach any members in that
+            # list.
+            raise AutoReconnect(
+                "Couldn't reach any hosts in %s. Replica set is"
+                " configured with internal hostnames or IPs?"
+                % list(hosts))
+
         if writer == rs_state.writer:
             threadlocal = self.__rs_state.threadlocal
         else:

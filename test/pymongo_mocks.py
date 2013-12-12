@@ -57,7 +57,7 @@ class MockPool(Pool):
 
 
 class MockClientBase(object):
-    def __init__(self, standalones, members, mongoses):
+    def __init__(self, standalones, members, mongoses, config):
         """standalones, etc., are like ['a:1', 'b:2']"""
         self.mock_standalones = standalones[:]
         self.mock_members = members[:]
@@ -67,7 +67,11 @@ class MockClientBase(object):
         else:
             self.mock_primary = None
 
-        self.mock_conf = members[:]
+        if config is not None:
+            self.mock_ismaster_hosts = config
+        else:
+            self.mock_ismaster_hosts = members[:]
+
         self.mock_mongoses = mongoses[:]
 
         # Hosts that should raise socket errors.
@@ -97,7 +101,7 @@ class MockClientBase(object):
                 'ismaster': ismaster,
                 'secondary': not ismaster,
                 'setName': 'rs',
-                'hosts': self.mock_conf}
+                'hosts': self.mock_ismaster_hosts}
 
             if self.mock_primary:
                 response['primary'] = self.mock_primary
@@ -107,7 +111,9 @@ class MockClientBase(object):
         if host in self.mock_mongoses:
             return {'ismaster': True, 'msg': 'isdbgrid'}
 
-        raise AssertionError('Unknown host: %s' % host)
+        # In test_internal_ips(), we try to connect to a host listed
+        # in ismaster['hosts'] but not publicly accessible.
+        raise socket.error('Unknown host: %s' % host)
 
     def simple_command(self, sock_info, dbname, spec):
         # __simple_command is also used for authentication, but in this
@@ -121,8 +127,13 @@ class MockClientBase(object):
 
 
 class MockClient(MockClientBase, MongoClient):
-    def __init__(self, standalones, members, mongoses, *args, **kwargs):
-        MockClientBase.__init__(self, standalones, members, mongoses)
+    def __init__(
+        self, standalones, members, mongoses, ismaster_hosts=None,
+        *args, **kwargs
+    ):
+        MockClientBase.__init__(
+            self, standalones, members, mongoses, ismaster_hosts)
+
         kwargs['_pool_class'] = my_partial(MockPool, self)
         MongoClient.__init__(self, *args, **kwargs)
 
@@ -131,8 +142,13 @@ class MockClient(MockClientBase, MongoClient):
 
 
 class MockReplicaSetClient(MockClientBase, MongoReplicaSetClient):
-    def __init__(self, standalones, members, mongoses, *args, **kwargs):
-        MockClientBase.__init__(self, standalones, members, mongoses)
+    def __init__(
+        self, standalones, members, mongoses, ismaster_hosts=None,
+        *args, **kwargs
+    ):
+        MockClientBase.__init__(
+            self, standalones, members, mongoses, ismaster_hosts)
+
         kwargs['_pool_class'] = my_partial(MockPool, self)
         MongoReplicaSetClient.__init__(self, *args, **kwargs)
 

@@ -96,7 +96,7 @@ class TestSecondaryRemoved(unittest.TestCase):
         self.assertTrue(('c', 3) in c.secondaries)
 
         # C is removed.
-        c.mock_conf.remove('c:3')
+        c.mock_ismaster_hosts.remove('c:3')
         c.refresh()
 
         self.assertEqual(('a', 1), c.primary)
@@ -139,7 +139,7 @@ class TestSecondaryAdded(unittest.TestCase):
 
         # C is added.
         c.mock_members.append('c:3')
-        c.mock_conf.append('c:3')
+        c.mock_ismaster_hosts.append('c:3')
 
         c.disconnect()
         c.db.collection.find_one()
@@ -161,7 +161,7 @@ class TestSecondaryAdded(unittest.TestCase):
 
         # C is added.
         c.mock_members.append('c:3')
-        c.mock_conf.append('c:3')
+        c.mock_ismaster_hosts.append('c:3')
         c.refresh()
 
         self.assertEqual(('a', 1), c.primary)

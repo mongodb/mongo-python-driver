@@ -46,6 +46,7 @@ from pymongo.errors import (AutoReconnect,
                             InvalidName,
                             OperationFailure, InvalidOperation)
 from test import version, port, pair
+from test.pymongo_mocks import MockReplicaSetClient
 from test.utils import (
     delay, assertReadFrom, assertReadFromAll, read_from_which_host,
     remove_all_users, assertRaisesExactly, TestRequestMixin, one,
@@ -1164,6 +1165,21 @@ class TestReplicaSetClientLazyConnectBadSeeds(
         bad_seeds = ['%s.com' % chr(ord('a') + i) for i in range(10)]
         seeds = ','.join(bad_seeds + [pair])
         return MongoReplicaSetClient(seeds, replicaSet=self.name, **kwargs)
+
+
+class TestReplicaSetClientInternalIPs(unittest.TestCase):
+    def test_connect_with_internal_ips(self):
+        # Client is passed an IP it can reach, 'a:1', but the RS config
+        # only contains unreachable IPs like 'internal-ip'. PYTHON-608.
+        assertRaisesExactly(
+            ConnectionFailure,
+            MockReplicaSetClient,
+            standalones=[],
+            members=['a:1'],
+            mongoses=[],
+            ismaster_hosts=['internal-ip:27017'],
+            host='a:1',
+            replicaSet='rs')
 
 
 if __name__ == "__main__":
