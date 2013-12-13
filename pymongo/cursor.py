@@ -782,6 +782,7 @@ class Cursor(object):
         :Parameters:
           - `comment`: A string or document
         """
+        self.__check_okay_to_chain()
         self.__comment = comment
         return self
 

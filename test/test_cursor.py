@@ -980,6 +980,12 @@ self.assertFalse(c2.alive)
             self.assertEqual(op.count(), 1)
 
         run_with_profiling(distinct)
+
+        self.db.test.insert([{}, {}])
+        cursor = self.db.test.find()
+        next(cursor)
+        self.assertRaises(InvalidOperation, cursor.comment, 'hello')
+
         self.db.system.profile.drop()
 
 if __name__ == "__main__":
