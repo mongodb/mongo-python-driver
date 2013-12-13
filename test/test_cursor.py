@@ -557,6 +557,7 @@ class TestCursor(unittest.TestCase):
                                    compile_re=False,
                                    fields={'_id': False}).limit(2)
         cursor.add_option(128)
+        cursor.comment('hi!')
 
         cursor2 = cursor.clone()
         self.assertEqual(cursor._Cursor__skip, cursor2._Cursor__skip)
@@ -572,6 +573,8 @@ class TestCursor(unittest.TestCase):
                          cursor2._Cursor__compile_re)
         self.assertEqual(cursor._Cursor__query_flags,
                          cursor2._Cursor__query_flags)
+        self.assertEqual(cursor._Cursor__comment,
+                         cursor2._Cursor__comment)
 
         # Shallow copies can so can mutate
         cursor2 = copy.copy(cursor)

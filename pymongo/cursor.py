@@ -223,6 +223,7 @@ class Cursor(object):
         self.__check_not_command_cursor('clone')
         clone = Cursor(self.__collection)
         values_to_clone = ("spec", "fields", "skip", "limit", "max_time_ms",
+                           "comment",
                            "snapshot", "ordering", "explain", "hint",
                            "batch_size", "max_scan", "as_class", "slave_okay",
                            "manipulate", "read_preference", "tag_sets",
