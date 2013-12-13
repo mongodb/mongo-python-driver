@@ -200,7 +200,7 @@ def default(obj):
         millis = int(calendar.timegm(obj.timetuple()) * 1000 +
                      obj.microsecond / 1000)
         return {"$date": millis}
-    if isinstance(obj, RE_TYPE):
+    if isinstance(obj, (RE_TYPE, Regex)):
         flags = ""
         if obj.flags & re.IGNORECASE:
             flags += "i"

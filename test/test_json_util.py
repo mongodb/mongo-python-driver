@@ -94,13 +94,19 @@ class TestJsonUtil(unittest.TestCase):
         self.assertEqual(re.U, loaded.flags)
 
     def test_regex(self):
-        res = self.round_tripped({"r": re.compile("a*b", re.IGNORECASE)})["r"]
-        self.assertEqual("a*b", res.pattern)
-        if PY3:
-            # re.UNICODE is a default in python 3.
-            self.assertEqual(re.IGNORECASE | re.UNICODE, res.flags)
-        else:
-            self.assertEqual(re.IGNORECASE, res.flags)
+        for regex_instance in (
+                re.compile("a*b", re.IGNORECASE),
+                Regex("a*b", re.IGNORECASE)):
+            res = self.round_tripped({"r": regex_instance})["r"]
+
+            self.assertEqual("a*b", res.pattern)
+            res = self.round_tripped({"r": Regex("a*b", re.IGNORECASE)})["r"]
+            self.assertEqual("a*b", res.pattern)
+            if PY3:
+                # re.UNICODE is a default in python 3.
+                self.assertEqual(re.IGNORECASE | re.UNICODE, res.flags)
+            else:
+                self.assertEqual(re.IGNORECASE, res.flags)
 
         all_options = re.I|re.L|re.M|re.S|re.U|re.X
         regex = re.compile("a*b", all_options)
