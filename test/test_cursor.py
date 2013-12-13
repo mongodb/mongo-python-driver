@@ -216,34 +216,60 @@ class TestCursor(unittest.TestCase):
         db.test.ensure_index([("j", ASCENDING)])
 
         for j in range(10):
-            db.test.insert({"j": j})
+            db.test.insert({"j": j, "k": j})
 
-        cursor = db.test.find({"j": {"$exists": True}}).max({"j": 3})
+        cursor = db.test.find().max([("j", 3)])
         self.assertEqual(len(list(cursor)), 3)
 
-        cursor = db.test.find({"j": {"$exists": True}}).max({"j": 10})
-        self.assertEqual(len(list(cursor)), 10)
+        # Tuple.
+        cursor = db.test.find().max((("j", 3), ))
+        self.assertEqual(len(list(cursor)), 3)
 
-        cursor = db.test.find({"j": {"$exists": True}}).max({"j": 0})
-        self.assertEqual(len(list(cursor)), 0)
+        # Compound index.
+        db.test.ensure_index([("j", ASCENDING), ("k", ASCENDING)])
+        cursor = db.test.find().max([("j", 3), ("k", 3)])
+        self.assertEqual(len(list(cursor)), 3)
+
+        # Wrong order.
+        cursor = db.test.find().max([("k", 3), ("j", 3)])
+        self.assertRaises(OperationFailure, list, cursor)
+
+        # No such index.
+        cursor = db.test.find().max([("k", 3)])
+        self.assertRaises(OperationFailure, list, cursor)
+
         self.assertRaises(TypeError, db.test.find().max, 10)
+        self.assertRaises(TypeError, db.test.find().max, {"j": 10})
 
     def test_min(self):
         db = self.db
-        db.test.ensure_index([("k", ASCENDING)])
+        db.test.ensure_index([("j", ASCENDING)])
 
-        for k in range(10):
-            db.test.insert({"k": k})
+        for j in range(10):
+            db.test.insert({"j": j, "k": j})
 
-        cursor = db.test.find({"k": {"$exists": True}}).min({"k": 3})
+        cursor = db.test.find().min([("j", 3)])
         self.assertEqual(len(list(cursor)), 7)
 
-        cursor = db.test.find({"k": {"$exists": True}}).min({"k": 0})
-        self.assertEqual(len(list(cursor)), 10)
+        # Tuple.
+        cursor = db.test.find().min((("j", 3), ))
+        self.assertEqual(len(list(cursor)), 7)
 
-        cursor = db.test.find({"k": {"$exists": True}}).min({"k": 10})
-        self.assertEqual(len(list(cursor)), 0)
+        # Compound index.
+        db.test.ensure_index([("j", ASCENDING), ("k", ASCENDING)])
+        cursor = db.test.find().min([("j", 3), ("k", 3)])
+        self.assertEqual(len(list(cursor)), 7)
+
+        # Wrong order.
+        cursor = db.test.find().min([("k", 3), ("j", 3)])
+        self.assertRaises(OperationFailure, list, cursor)
+
+        # No such index.
+        cursor = db.test.find().min([("k", 3)])
+        self.assertRaises(OperationFailure, list, cursor)
+
         self.assertRaises(TypeError, db.test.find().min, 10)
+        self.assertRaises(TypeError, db.test.find().min, {"j": 10})
 
     def test_batch_size(self):
         db = self.db

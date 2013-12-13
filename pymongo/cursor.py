@@ -605,8 +605,8 @@ class Cursor(object):
           - `spec`: a list of field, limit pairs specifying the exclusive
             upper bound for all keys of a specific index in order.
         """
-        if not isinstance(spec, list):
-            raise TypeError("spec must be an instance of list")
+        if not isinstance(spec, (list, tuple)):
+            raise TypeError("spec must be an instance of list or tuple")
 
         self.__check_okay_to_chain()
         self.__max = SON(spec)
@@ -621,8 +621,8 @@ class Cursor(object):
           - `spec`: a list of field, limit pairs  specifying the inclusive
             lower bound for all keys of a specific index in order.
         """
-        if not isinstance(spec, list):
-            raise TypeError("spec must be an instance of list")
+        if not isinstance(spec, (list, tuple)):
+            raise TypeError("spec must be an instance of list or tuple")
 
         self.__check_okay_to_chain()
         self.__min = SON(spec)
