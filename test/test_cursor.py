@@ -618,6 +618,7 @@ class TestCursor(unittest.TestCase):
                                    manipulate=False,
                                    compile_re=False,
                                    fields={'_id': False}).limit(2)
+        cursor.min([('a', 1)]).max([('b', 3)])
         cursor.add_option(128)
         cursor.comment('hi!')
 
@@ -637,6 +638,10 @@ class TestCursor(unittest.TestCase):
                          cursor2._Cursor__query_flags)
         self.assertEqual(cursor._Cursor__comment,
                          cursor2._Cursor__comment)
+        self.assertEqual(cursor._Cursor__min,
+                         cursor2._Cursor__min)
+        self.assertEqual(cursor._Cursor__max,
+                         cursor2._Cursor__max)
 
         # Shallow copies can so can mutate
         cursor2 = copy.copy(cursor)
