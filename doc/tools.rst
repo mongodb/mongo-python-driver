@@ -80,9 +80,10 @@ Manga
   github <http://github.com/wladston/manga>`_.
   
 MotorEngine
-  `MotorEngine <http://motorengine.readthedocs.org/`_ is a port of the amazing
-  MongoEngine. It implementes the same modeling APIs to be data-portable, meaning
-  that a model defined in MongoEngine can be read in MotorEngine. The source `is on
+  `MotorEngine <http://motorengine.readthedocs.org/>`_ is a port of
+  MongoEngine to Motor, for asynchronous access with Tornado.
+  It implements the same modeling APIs to be data-portable, meaning that a
+  model defined in MongoEngine can be read in MotorEngine. The source `is on
   github <http://github.com/heynemann/motorengine>`_.
 
 Framework Tools
