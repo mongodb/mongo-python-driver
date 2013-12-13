@@ -599,11 +599,11 @@ class Cursor(object):
     def max(self, spec):
         """Adds `max` operator that specifies upper bound for specific index.
 
-        Raises TypeError if spec is not an instance of a dict.
-
         :Parameters:
           - `spec`: a list of field, limit pairs specifying the exclusive
             upper bound for all keys of a specific index in order.
+
+        .. versionadded:: 2.7
         """
         if not isinstance(spec, (list, tuple)):
             raise TypeError("spec must be an instance of list or tuple")
@@ -615,11 +615,11 @@ class Cursor(object):
     def min(self, spec):
         """Adds `min` operator that specifies lower bound for specific index.
 
-        Raises TypeError if spec is not an instance of a dict.
-
         :Parameters:
-          - `spec`: a list of field, limit pairs  specifying the inclusive
+          - `spec`: a list of field, limit pairs specifying the inclusive
             lower bound for all keys of a specific index in order.
+
+        .. versionadded:: 2.7
         """
         if not isinstance(spec, (list, tuple)):
             raise TypeError("spec must be an instance of list or tuple")
