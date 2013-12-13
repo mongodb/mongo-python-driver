@@ -226,7 +226,7 @@ def default(obj):
     if isinstance(obj, Timestamp):
         return SON([("t", obj.time), ("i", obj.inc)])
     if isinstance(obj, Code):
-        return SON([('$code', "%s" % obj), ('$scope', obj.scope)])
+        return SON([('$code', str(obj)), ('$scope', obj.scope)])
     if isinstance(obj, Binary):
         return SON([
             ('$binary', base64.b64encode(obj).decode()),
