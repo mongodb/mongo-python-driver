@@ -953,7 +953,7 @@ self.assertFalse(c2.alive)
             self.db.set_profiling_level(OFF)
 
         def find():
-            list(self.db.test.find({'type': 'string'}).comment('foo'))
+            list(self.db.test.find().comment('foo'))
             op = self.db.system.profile.find({'ns': 'pymongo_test.test',
                                               'op': 'query',
                                               'query.$comment': 'foo'})
@@ -962,7 +962,7 @@ self.assertFalse(c2.alive)
         run_with_profiling(find)
 
         def count():
-            self.db.test.find({'type': 'string'}).comment('foo').count()
+            self.db.test.find().comment('foo').count()
             op = self.db.system.profile.find({'ns': 'pymongo_test.$cmd',
                                               'op': 'command',
                                               'command.count': 'test',
@@ -972,7 +972,7 @@ self.assertFalse(c2.alive)
         run_with_profiling(count)
 
         def distinct():
-            self.db.test.find({'type': 'string'}).comment('foo').distinct('type')
+            self.db.test.find().comment('foo').distinct('type')
             op = self.db.system.profile.find({'ns': 'pymongo_test.$cmd',
                                               'op': 'command',
                                               'command.distinct': 'test',
