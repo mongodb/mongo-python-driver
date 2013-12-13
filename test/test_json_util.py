@@ -69,7 +69,11 @@ class TestJsonUtil(unittest.TestCase):
         self.round_trip({"ref": DBRef("foo", 5)})
         self.round_trip({"ref": DBRef("foo", 5, "db")})
         self.round_trip({"ref": DBRef("foo", ObjectId())})
-        self.round_trip({"ref": DBRef("foo", ObjectId(), "db")})
+
+        # Check order.
+        self.assertEqual(
+            '{"$ref": "collection", "$id": 1, "$db": "db"}',
+            json_util.dumps(DBRef('collection', 1, 'db')))
 
     def test_datetime(self):
         # only millis, not micros
@@ -126,6 +130,15 @@ class TestJsonUtil(unittest.TestCase):
                 '{"r": {"$regex": ".*", "$options": "ilm"}}',
                 compile_re=False)['r'])
 
+        # Check order.
+        self.assertEqual(
+            '{"$regex": ".*", "$options": "mx"}',
+            json_util.dumps(Regex('.*', re.M | re.X)))
+
+        self.assertEqual(
+            '{"$regex": ".*", "$options": "mx"}',
+            json_util.dumps(re.compile('.*', re.M | re.X)))
+
     def test_minkey(self):
         self.round_trip({"m": MinKey()})
 
@@ -135,6 +148,7 @@ class TestJsonUtil(unittest.TestCase):
     def test_timestamp(self):
         res = json_util.json.dumps({"ts": Timestamp(4, 13)},
                                      default=json_util.default)
+        self.assertEqual('{"ts": {"t": 4, "i": 13}}', res)
         dct = json_util.json.loads(res)
         self.assertEqual(dct['ts']['t'], 4)
         self.assertEqual(dct['ts']['i'], 13)
@@ -164,7 +178,10 @@ class TestJsonUtil(unittest.TestCase):
             json_util.loads('{"bin": {"$type": 0, "$binary": "AAECAwQ="}}'))
 
         json_bin_dump = json_util.dumps(md5_type_dict)
-        self.assertTrue('"$type": "05"' in json_bin_dump)
+        self.assertEqual(
+            '{"md5": {"$binary": "IG43GK8JL9HRL4DK53HMrA==", "$type": "05"}}',
+            json_bin_dump)
+
         self.assertEqual(md5_type_dict,
             json_util.loads('{"md5": {"$type": 5, "$binary":'
                             ' "IG43GK8JL9HRL4DK53HMrA=="}}'))
@@ -186,7 +203,13 @@ class TestJsonUtil(unittest.TestCase):
 
     def test_code(self):
         self.round_trip({"code": Code("function x() { return 1; }")})
-        self.round_trip({"code": Code("function y() { return z; }", z=2)})
+
+        code = Code("return z", z=2)
+        res = json_util.dumps(code)
+        self.assertEqual(code, json_util.loads(res))
+
+        # Check order.
+        self.assertEqual('{"$code": "return z", "$scope": {"z": 2}}', res)
 
     def test_cursor(self):
         db = self.db

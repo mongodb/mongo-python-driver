@@ -83,7 +83,7 @@ except ImportError:
         json_lib = False
 
 import bson
-from bson import EPOCH_AWARE, RE_TYPE
+from bson import EPOCH_AWARE, RE_TYPE, SON
 from bson.binary import Binary
 from bson.code import Code
 from bson.dbref import DBRef
@@ -111,6 +111,10 @@ def dumps(obj, *args, **kwargs):
 
     Recursive function that handles all BSON types including
     :class:`~bson.binary.Binary` and :class:`~bson.code.Code`.
+
+    .. versionchanged:: 2.7
+       Preserves order when rendering SON, Timestamp, Code, Binary, and DBRef
+       instances.
     """
     if not json_lib:
         raise Exception("No json library available")
@@ -143,7 +147,7 @@ def _json_convert(obj):
     converted into json.
     """
     if hasattr(obj, 'iteritems') or hasattr(obj, 'items'):  # PY3 support
-        return dict(((k, _json_convert(v)) for k, v in obj.iteritems()))
+        return SON(((k, _json_convert(v)) for k, v in obj.iteritems()))
     elif hasattr(obj, '__iter__') and not isinstance(obj, string_types):
         return list((_json_convert(v) for v in obj))
     try:
@@ -214,22 +218,23 @@ def default(obj):
             flags += "u"
         if obj.flags & re.VERBOSE:
             flags += "x"
-        return {"$regex": obj.pattern,
-                "$options": flags}
+        return SON([("$regex", obj.pattern), ("$options", flags)])
     if isinstance(obj, MinKey):
         return {"$minKey": 1}
     if isinstance(obj, MaxKey):
         return {"$maxKey": 1}
     if isinstance(obj, Timestamp):
-        return {"t": obj.time, "i": obj.inc}
+        return SON([("t", obj.time), ("i", obj.inc)])
     if isinstance(obj, Code):
-        return {'$code': "%s" % obj, '$scope': obj.scope}
+        return SON([('$code', "%s" % obj), ('$scope', obj.scope)])
     if isinstance(obj, Binary):
-        return {'$binary': base64.b64encode(obj).decode(),
-                '$type': "%02x" % obj.subtype}
+        return SON([
+            ('$binary', base64.b64encode(obj).decode()),
+            ('$type', "%02x" % obj.subtype)])
     if PY3 and isinstance(obj, binary_type):
-        return {'$binary': base64.b64encode(obj).decode(),
-                '$type': "00"}
+        return SON([
+            ('$binary', base64.b64encode(obj).decode()),
+            ('$type', "00")])
     if bson.has_uuid() and isinstance(obj, bson.uuid.UUID):
         return {"$uuid": obj.hex}
     raise TypeError("%r is not JSON serializable" % obj)
