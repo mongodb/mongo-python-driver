@@ -213,6 +213,7 @@ class TestCursor(unittest.TestCase):
 
     def test_max(self):
         db = self.db
+        db.test.drop()
         db.test.ensure_index([("j", ASCENDING)])
 
         for j in range(10):
@@ -243,6 +244,7 @@ class TestCursor(unittest.TestCase):
 
     def test_min(self):
         db = self.db
+        db.test.drop()
         db.test.ensure_index([("j", ASCENDING)])
 
         for j in range(10):
