@@ -40,7 +40,6 @@ from pymongo.helpers import (_unpack_response,
 from test import version
 from test.test_client import get_client
 from test.utils import is_mongos, get_command_line
-from contextlib import contextmanager
 
 
 class TestCursor(unittest.TestCase):
@@ -943,22 +942,23 @@ self.assertFalse(c2.alive)
         self.assertTrue(c1.alive)
 
     def test_comment(self):
-        @contextmanager
-        def new_profile():
+        def run_with_profiling(func):
             self.db.set_profiling_level(OFF)
             self.db.system.profile.drop()
             self.db.set_profiling_level(ALL)
-            yield
+            func()
             self.db.set_profiling_level(OFF)
 
-        with new_profile():
-            matching = list(self.db.test.find({'type': 'string'}).comment('foo'))
+        def find():
+            list(self.db.test.find({'type': 'string'}).comment('foo'))
             op = self.db.system.profile.find({'ns': 'pymongo_test.test',
                                               'op': 'query',
                                               'query.$comment': 'foo'})
             self.assertEqual(op.count(), 1)
 
-        with new_profile():
+        run_with_profiling(find)
+
+        def count():
             self.db.test.find({'type': 'string'}).comment('foo').count()
             op = self.db.system.profile.find({'ns': 'pymongo_test.$cmd',
                                               'op': 'command',
@@ -966,13 +966,18 @@ self.assertFalse(c2.alive)
                                               'command.$comment': 'foo'})
             self.assertEqual(op.count(), 1)
 
-        with new_profile():
+        run_with_profiling(count)
+
+        def distinct():
             self.db.test.find({'type': 'string'}).comment('foo').distinct('type')
             op = self.db.system.profile.find({'ns': 'pymongo_test.$cmd',
                                               'op': 'command',
                                               'command.distinct': 'test',
                                               'command.$comment': 'foo'})
             self.assertEqual(op.count(), 1)
+
+        run_with_profiling(distinct)
+        self.db.system.profile.drop()
 
 if __name__ == "__main__":
     unittest.main()
