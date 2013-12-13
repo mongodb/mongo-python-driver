@@ -775,12 +775,14 @@ class Cursor(object):
         return self
 
     def comment(self, comment):
-        """Adds a 'comment', to the cursor.
+        """Adds a 'comment' to the cursor.
 
         http://docs.mongodb.org/manual/reference/operator/comment/
 
         :Parameters:
           - `comment`: A string or document
+
+        .. versionadded:: 2.7
         """
         self.__check_okay_to_chain()
         self.__comment = comment
