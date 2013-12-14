@@ -137,7 +137,7 @@ class TestJsonUtil(unittest.TestCase):
 
         self.assertEqual(
             '{"$regex": ".*", "$options": "mx"}',
-            json_util.dumps(re.compile('.*', re.M | re.X)))
+            json_util.dumps(re.compile(b('.*'), re.M | re.X)))
 
     def test_minkey(self):
         self.round_trip({"m": MinKey()})

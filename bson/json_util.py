@@ -218,7 +218,11 @@ def default(obj):
             flags += "u"
         if obj.flags & re.VERBOSE:
             flags += "x"
-        return SON([("$regex", obj.pattern), ("$options", flags)])
+        if isinstance(obj.pattern, unicode):
+            pattern = obj.pattern
+        else:
+            pattern = obj.pattern.decode('utf-8')
+        return SON([("$regex", pattern), ("$options", flags)])
     if isinstance(obj, MinKey):
         return {"$minKey": 1}
     if isinstance(obj, MaxKey):
