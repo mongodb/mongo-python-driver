@@ -1050,7 +1050,7 @@ self.assertFalse(c2.alive)
 
         self.db.test.insert([{}, {}])
         cursor = self.db.test.find()
-        next(cursor)
+        cursor.next()
         self.assertRaises(InvalidOperation, cursor.comment, 'hello')
 
         self.db.system.profile.drop()
