@@ -511,7 +511,7 @@ class GridOut(object):
             for pos in xrange(len(chunk_data)):
                 byte = chunk_data[pos]
                 if byte == EMPTY or byte == NEWLN:
-                    size = received + pos
+                    size = received + pos + 1
                     break
 
             received += len(chunk_data)

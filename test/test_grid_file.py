@@ -396,6 +396,7 @@ Hope all is well.
 Bye"""))
         f.close()
 
+        # Try read(), then readline().
         g = GridOut(self.db.fs, f._id)
         self.assertEqual(b("H"), g.read(1))
         self.assertEqual(b("ello world,\n"), g.readline())
@@ -405,6 +406,19 @@ Bye"""))
         self.assertEqual(b("Hope all is well.\n"), g.readline(1000))
         self.assertEqual(b("Bye"), g.readline())
         self.assertEqual(b(""), g.readline())
+
+        # Try readline() first, then read().
+        g = GridOut(self.db.fs, f._id)
+        self.assertEqual(b("He"), g.readline(2))
+        self.assertEqual(b("l"), g.read(1))
+        self.assertEqual(b("lo"), g.readline(2))
+        self.assertEqual(b(" world,\n"), g.readline())
+
+        # Only readline().
+        g = GridOut(self.db.fs, f._id)
+        self.assertEqual(b("H"), g.readline(1))
+        self.assertEqual(b("e"), g.readline(1))
+        self.assertEqual(b("llo world,\n"), g.readline())
 
     def test_iterator(self):
         f = GridIn(self.db.fs)
