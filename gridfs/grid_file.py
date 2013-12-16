@@ -436,26 +436,19 @@ class GridOut(object):
         """Reads a chunk at a time. If the current position is within a
         chunk the remainder of the chunk is returned.
         """
-        size = int(self.length) - self.__position
-
         received = len(self.__buffer)
         chunk_data = EMPTY
 
         if received > 0:
             chunk_data = self.__buffer
-        elif received < size:
+        elif self.__position < int(self.length):
             chunk_number = int((received + self.__position) / self.chunk_size)
-
-
             chunk = self.__chunks.find_one({"files_id": self._id,
                                             "n": chunk_number})
             if not chunk:
                 raise CorruptGridFile("no chunk #%d" % chunk_number)
 
-            if received:
-                chunk_data = chunk["data"]
-            else:
-                chunk_data = chunk["data"][self.__position % self.chunk_size:]
+            chunk_data = chunk["data"][self.__position % self.chunk_size:]
 
         self.__position += len(chunk_data)
         self.__buffer = EMPTY
@@ -481,15 +474,19 @@ class GridOut(object):
             size = remainder
 
         received = 0
-        data = EMPTY
+        data = StringIO()
         while received < size:
             chunk_data = self.readchunk()
             received += len(chunk_data)
-            data += chunk_data
+            data.write(chunk_data)
 
         self.__position -= received - size
-        self.__buffer = data[size:]
-        return data[:size]
+
+        # Return 'size' bytes and store the rest.
+        data.seek(size)
+        self.__buffer = data.read()
+        data.seek(0)
+        return data.read(size)
 
     def readline(self, size=-1):
         """Read one line or up to `size` bytes from the file.
@@ -499,27 +496,33 @@ class GridOut(object):
 
         .. versionadded:: 1.9
         """
+        if size == 0:
+            return b('')
+
         remainder = int(self.length) - self.__position
         if size < 0 or size > remainder:
             size = remainder
 
         received = 0
-        data = EMPTY
+        data = StringIO()
         while received < size:
             chunk_data = self.readchunk()
-
-            for pos in xrange(len(chunk_data)):
-                byte = chunk_data[pos]
-                if byte == EMPTY or byte == NEWLN:
-                    size = received + pos + 1
-                    break
+            pos = chunk_data.find(NEWLN, 0, size)
+            if pos != -1:
+                size = received + pos + 1
 
             received += len(chunk_data)
-            data += chunk_data
+            data.write(chunk_data)
+            if pos != -1:
+                break
 
         self.__position -= received - size
-        self.__buffer = data[size:]
-        return data[:size]
+
+        # Return 'size' bytes and store the rest.
+        data.seek(size)
+        self.__buffer = data.read()
+        data.seek(0)
+        return data.read(size)
 
     def tell(self):
         """Return the current position of this file.

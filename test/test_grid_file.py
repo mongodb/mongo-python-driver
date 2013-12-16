@@ -442,7 +442,7 @@ Bye"""))
         self.assertEqual([b("he"), b("ll"), b("o "),
                           b("wo"), b("rl"), b("d")], list(g))
 
-    def test_read_chunks_unaligned_buffer_size(self):
+    def test_read_unaligned_buffer_size(self):
         in_data = b("This is a text that doesn't "
                     "quite fit in a single 16-byte chunk.")
         f = GridIn(self.db.fs, chunkSize=16)
@@ -458,6 +458,24 @@ Bye"""))
             out_data += s
 
         self.assertEqual(in_data, out_data)
+
+    def test_readchunk(self):
+        in_data = b('a') * 10
+        f = GridIn(self.db.fs, chunkSize=3)
+        f.write(in_data)
+        f.close()
+
+        g = GridOut(self.db.fs, f._id)
+        self.assertEqual(3, len(g.readchunk()))
+
+        self.assertEqual(2, len(g.read(2)))
+        self.assertEqual(1, len(g.readchunk()))
+
+        self.assertEqual(3, len(g.read(3)))
+
+        self.assertEqual(1, len(g.readchunk()))
+
+        self.assertEqual(0, len(g.readchunk()))
 
     def test_write_unicode(self):
         f = GridIn(self.db.fs)
