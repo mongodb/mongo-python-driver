@@ -96,7 +96,7 @@ To use MongoDB with `Tornado <http://www.tornadoweb.org/>`_ see the
 
 For `Twisted <http://twistedmatrix.com/>`_, see `TxMongo
 <http://github.com/fiorix/mongo-async-python-driver>`_. Compared to PyMongo,
-TxMongo is less stable, lack features, and is less actively maintained.
+TxMongo is less stable, lacks features, and is less actively maintained.
 
 What does *OperationFailure* cursor id not valid at server mean?
 ----------------------------------------------------------------
