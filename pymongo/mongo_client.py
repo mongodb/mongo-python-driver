@@ -956,23 +956,21 @@ class MongoClient(common.BaseObject):
         """
         # In the common case, a socket is available and was used recently, so
         # calling select() on it is a reasonable attempt to see if the OS has
-        # reported an error. Note this can be wasteful: __socket implicitly
-        # calls select() if the socket hasn't been checked in the last second,
-        # or it may create a new socket, in which case calling select() is
-        # redundant.
-        member, sock_info = None, None
-        try:
+        # reported an error.
+        self.__connecting_lock.acquire()
+        member = self.__member
+        self.__connecting_lock.release()
+        if not member:
+            return False
+        else:
+            sock_info = None
             try:
-                member = self.__ensure_member()
-                if not member:
+                try:
+                    sock_info = member.pool.get_socket()
+                    return not pool._closed(sock_info.sock)
+                except (socket.error, ConnectionFailure):
                     return False
-
-                sock_info = member.pool.get_socket()
-                return not pool._closed(sock_info.sock)
-            except (socket.error, ConnectionFailure):
-                return False
-        finally:
-            if sock_info:
+            finally:
                 member.pool.maybe_return_socket(sock_info)
 
     def set_cursor_manager(self, manager_class):

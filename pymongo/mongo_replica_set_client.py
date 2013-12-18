@@ -1330,8 +1330,7 @@ class MongoReplicaSetClient(common.BaseObject):
         socket if it's in a request, or a random idle socket if it's not in a
         request) from the primary's connection pool and checks whether calling
         select_ on it raises an error. If there are currently no idle sockets,
-        or if there is no known primary, :meth:`alive` will attempt to actually
-        find and connect to the primary.
+        :meth:`alive` attempts to connect a new socket.
 
         A more certain way to determine primary availability is to ping it::
 
@@ -1341,21 +1340,22 @@ class MongoReplicaSetClient(common.BaseObject):
         """
         # In the common case, a socket is available and was used recently, so
         # calling select() on it is a reasonable attempt to see if the OS has
-        # reported an error. Note this can be wasteful: __socket implicitly
-        # calls select() if the socket hasn't been checked in the last second,
-        # or it may create a new socket, in which case calling select() is
-        # redundant.
-        member, sock_info = None, None
+        # reported an error.
+        primary, sock_info = None, None
         try:
             try:
-                member = self.__find_primary()
-                sock_info = self.__socket(member)
-                return not pool._closed(sock_info.sock)
+                rs_state = self.__get_rs_state()
+                primary = rs_state.primary_member
+                if not primary:
+                    return False
+                else:
+                    sock_info = self.__socket(primary)
+                    return not pool._closed(sock_info.sock)
             except (socket.error, ConnectionFailure):
                 return False
         finally:
-            if member and sock_info:
-                member.pool.maybe_return_socket(sock_info)
+            if primary:
+                primary.pool.maybe_return_socket(sock_info)
 
     def __check_response_to_last_error(self, response, command):
         """Check a response to a lastError message for errors.

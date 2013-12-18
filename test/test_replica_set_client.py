@@ -1134,6 +1134,9 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
             ReadPreference.NEAREST, None, latency)
 
     def test_alive(self):
+        client = self._get_client()
+        self.assertTrue(client.alive())
+
         client = MongoReplicaSetClient(
             'doesnt exist', replicaSet='rs', _connect=False)
 

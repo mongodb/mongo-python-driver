@@ -891,6 +891,8 @@ with client.start_request() as request:
         self.assertEqual(old_sock_info, pool._get_request_state())
 
     def test_alive(self):
+        self.assertTrue(get_client().alive())
+
         client = MongoClient('doesnt exist', _connect=False)
         self.assertFalse(client.alive())
 
