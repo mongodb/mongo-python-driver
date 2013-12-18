@@ -23,7 +23,8 @@ The :mod:`gridfs` package is an implementation of GridFS on top of
 from gridfs.errors import (NoFile,
                            UnsupportedAPI)
 from gridfs.grid_file import (GridIn,
-                              GridOut)
+                              GridOut,
+                              GridOutCursor)
 from pymongo import (MongoClient,
                      ASCENDING,
                      DESCENDING)
@@ -277,6 +278,72 @@ class GridFS(object):
         return [
             name for name in self.__files.distinct("filename")
             if name is not None]
+
+    def find(self, *args, **kwargs):
+        """Query GridFS for files.
+
+        Returns a cursor that iterates across files matching
+        arbitrary queries on the files collection. Can be combined
+        with other modifiers for additional control. For example
+
+        >>> for grid_out in fs.find({"filename": "lisa.txt"}, timeout=False):
+        >>>     data = grid_out.read()
+
+        would iterate through all versions of "lisa.txt" stored in GridFS.
+        Note that setting timeout to False may be important to prevent the
+        cursor from timing out during long multi-file processing work.
+
+        As another example, the call
+
+        >>> most_recent_three = fs.find().sort("uploadDate", -1).limit(3)
+
+        would return a cursor to the three most recently uploaded files
+        in GridFS.
+
+        Follows a similar interface to
+        :meth:`~pymongo.collection.Collection.find`
+        in :class:`~pymongo.collection.Collection`.
+
+        :Parameters:
+          - `spec` (optional): a SON object specifying elements which
+            must be present for a document to be included in the
+            result set
+          - `skip` (optional): the number of files to omit (from
+            the start of the result set) when returning the results
+          - `limit` (optional): the maximum number of results to
+            return
+          - `timeout` (optional): if True (the default), any returned
+            cursor is closed by the server after 10 minutes of
+            inactivity. If set to False, the returned cursor will never
+            time out on the server. Care should be taken to ensure that
+            cursors with timeout turned off are properly closed.
+          - `sort` (optional): a list of (key, direction) pairs
+            specifying the sort order for this query. See
+            :meth:`~pymongo.cursor.Cursor.sort` for details.
+          - `max_scan` (optional): limit the number of file documents
+            examined when performing the query
+          - `read_preference` (optional): The read preference for
+            this query.
+          - `tag_sets` (optional): The tag sets for this query.
+          - `secondary_acceptable_latency_ms` (optional): Any replica-set
+            member whose ping time is within secondary_acceptable_latency_ms of
+            the nearest member may accept reads. Default 15 milliseconds.
+            **Ignored by mongos** and must be configured on the command line.
+            See the localThreshold_ option for more information.
+          - `compile_re` (optional): if ``False``, don't attempt to compile
+            BSON regex objects into Python regexes. Return instances of
+            :class:`~bson.regex.Regex` instead.
+
+        Raises :class:`TypeError` if any of the arguments are of
+        improper type. Returns an instance of
+        :class:`~gridfs.grid_file.GridOutCursor`
+        corresponding to this query.
+
+        .. versionadded:: 2.7
+        .. mongodoc:: find
+        .. _localThreshold: http://docs.mongodb.org/manual/reference/mongos/#cmdoption-mongos--localThreshold
+        """
+        return GridOutCursor(self.__collection, *args, **kwargs)
 
     def exists(self, document_or_id=None, **kwargs):
         """Check if a file exists in this instance of :class:`GridFS`.

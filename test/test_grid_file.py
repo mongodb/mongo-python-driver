@@ -32,7 +32,8 @@ from gridfs.grid_file import (DEFAULT_CHUNK_SIZE,
                               _SEEK_END,
                               GridIn,
                               GridFile,
-                              GridOut)
+                              GridOut,
+                              GridOutCursor)
 from gridfs.errors import (NoFile,
                            UnsupportedAPI)
 from pymongo import MongoClient
@@ -588,6 +589,27 @@ with GridOut(self.db.fs, infile._id) as outfile:
         infile = GridIn(fs, file_id=-1, chunk_size=1)
         self.assertRaises(ConnectionFailure, infile.write, b('data goes here'))
         self.assertRaises(ConnectionFailure, infile.close)
+
+    def test_grid_out_cursor_options(self):
+        self.assertRaises(TypeError, GridOutCursor.__init__, self.db.fs, {},
+                                                    tailable=True)
+        self.assertRaises(TypeError, GridOutCursor.__init__, self.db.fs, {},
+                                                    fields={"filename":1})
+
+        cursor = GridOutCursor(self.db.fs, {})
+        min_ms = self.db.fs.files.secondary_acceptable_latency_ms
+        new_ms = cursor._Cursor__secondary_acceptable_latency_ms
+        self.assertEqual(min_ms, new_ms)
+        cursor = GridOutCursor(self.db.fs, {},
+                               secondary_acceptable_latency_ms=100)
+        min_ms = self.db.fs.files.secondary_acceptable_latency_ms
+        new_ms = cursor._Cursor__secondary_acceptable_latency_ms
+        self.assertNotEqual(min_ms, new_ms)
+        cursor_clone = cursor.clone()
+        self.assertEqual(cursor_clone.__dict__, cursor.__dict__)
+
+        self.assertRaises(NotImplementedError, cursor.add_option, 0)
+        self.assertRaises(NotImplementedError, cursor.remove_option, 0)
 
 
 if __name__ == "__main__":

@@ -373,6 +373,22 @@ class TestGridfs(unittest.TestCase):
         f = fs.new_file()  # Still no connection.
         self.assertRaises(ConnectionFailure, f.close)
 
+    def test_gridfs_find(self):
+        self.fs.put(b("test2"), filename="two")
+        self.fs.put(b("test2+"), filename="two")
+        self.fs.put(b("test1"), filename="one")
+        self.fs.put(b("test2++"), filename="two")
+        self.assertEqual(3, self.fs.find({"filename":"two"}).count())
+        self.assertEqual(4, self.fs.find().count())
+        cursor = self.fs.find(timeout=False).sort("uploadDate", -1).skip(1).limit(2)
+        self.assertEqual(b("test1"), cursor.next().read())
+        cursor.rewind()
+        self.assertEqual(b("test1"), cursor.next().read())
+        self.assertEqual(b("test2+"), cursor.next().read())
+        self.assertRaises(StopIteration, cursor.next)
+        cursor.close()
+        self.assertRaises(TypeError, self.fs.find, {}, {"_id": True})
+
 
 class TestGridfsReplicaSet(TestReplicaSetClientBase):
     def test_gridfs_replica_set(self):
