@@ -375,7 +375,7 @@ class Cursor(object):
                 "cannot call %s on a command cursor" % method_name)
 
     def add_option(self, mask):
-        """Set arbitary query flags using a bitmask.
+        """Set arbitrary query flags using a bitmask.
 
         To set the tailable flag:
         cursor.add_option(2)
