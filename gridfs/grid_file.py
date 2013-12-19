@@ -432,6 +432,35 @@ class GridOut(object):
             return self._file[name]
         raise AttributeError("GridOut object has no attribute '%s'" % name)
 
+    def readchunk(self):
+        """Reads a chunk at a time. If the current position is within a
+        chunk the remainder of the chunk is returned.
+        """
+        size = int(self.length) - self.__position
+
+        received = len(self.__buffer)
+        chunk_data = EMPTY
+
+        if received > 0:
+            chunk_data = self.__buffer
+        elif received < size:
+            chunk_number = int((received + self.__position) / self.chunk_size)
+
+
+            chunk = self.__chunks.find_one({"files_id": self._id,
+                                            "n": chunk_number})
+            if not chunk:
+                raise CorruptGridFile("no chunk #%d" % chunk_number)
+
+            if received:
+                chunk_data = chunk["data"]
+            else:
+                chunk_data = chunk["data"][self.__position % self.chunk_size:]
+
+        self.__position += len(chunk_data)
+        self.__buffer = EMPTY
+        return chunk_data
+
     def read(self, size=-1):
         """Read at most `size` bytes from the file (less if there
         isn't enough data).
@@ -451,30 +480,16 @@ class GridOut(object):
         if size < 0 or size > remainder:
             size = remainder
 
-        received = len(self.__buffer)
-        chunk_number = int((received + self.__position) / self.chunk_size)
-        chunks = []
-
+        received = 0
+        data = EMPTY
         while received < size:
-            chunk = self.__chunks.find_one({"files_id": self._id,
-                                            "n": chunk_number})
-            if not chunk:
-                raise CorruptGridFile("no chunk #%d" % chunk_number)
-
-            if received:
-                chunk_data = chunk["data"]
-            else:
-                chunk_data = chunk["data"][self.__position % self.chunk_size:]
-
+            chunk_data = self.readchunk()
             received += len(chunk_data)
-            chunks.append(chunk_data)
-            chunk_number += 1
+            data += chunk_data
 
-        data = EMPTY.join([self.__buffer] + chunks)
-        self.__position += size
-        to_return = data[:size]
+        self.__position -= received - size
         self.__buffer = data[size:]
-        return to_return
+        return data[:size]
 
     def readline(self, size=-1):
         """Read one line or up to `size` bytes from the file.
@@ -484,13 +499,27 @@ class GridOut(object):
 
         .. versionadded:: 1.9
         """
-        bytes = EMPTY
-        while len(bytes) != size:
-            byte = self.read(1)
-            bytes += byte
-            if byte == EMPTY or byte == NEWLN:
-                break
-        return bytes
+        remainder = int(self.length) - self.__position
+        if size < 0 or size > remainder:
+            size = remainder
+
+        received = 0
+        data = EMPTY
+        while received < size:
+            chunk_data = self.readchunk()
+
+            for pos in xrange(len(chunk_data)):
+                byte = chunk_data[pos]
+                if byte == EMPTY or byte == NEWLN:
+                    size = received + pos
+                    break
+
+            received += len(chunk_data)
+            data += chunk_data
+
+        self.__position -= received - size
+        self.__buffer = data[size:]
+        return data[:size]
 
     def tell(self):
         """Return the current position of this file.
