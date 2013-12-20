@@ -1190,10 +1190,10 @@ class TestReplicaSetClientLazyConnectBadSeeds(
         _TestLazyConnectMixin):
 
     def _get_client(self, **kwargs):
-        kwargs.setdefault('connectTimeoutMS', 100)
+        kwargs.setdefault('connectTimeoutMS', 500)
 
         # Assume there are no open mongods listening on a.com, b.com, ....
-        bad_seeds = ['%s.com' % chr(ord('a') + i) for i in range(10)]
+        bad_seeds = ['%s.com' % chr(ord('a') + i) for i in range(5)]
         seeds = ','.join(bad_seeds + [pair])
         return MongoReplicaSetClient(seeds, replicaSet=self.name, **kwargs)
 
