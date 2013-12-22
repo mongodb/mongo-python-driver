@@ -30,6 +30,7 @@ from pymongo.errors import (ConfigurationError,
                             ConnectionFailure,
                             OperationFailure)
 from test import host, port, pair, version
+from test.utils import server_started_with_auth, remove_all_users
 
 
 CERT_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
@@ -49,7 +50,7 @@ MONGODB_X509_USERNAME = os.environ.get('MONGODB_X509_USERNAME')
 # --sslWeakCertificateValidation
 # Also, make sure you have 'server' as an alias for localhost in /etc/hosts
 #
-# Note: For all tests to pass with MongoReplicaSetConnection the replica
+# Note: For all tests to pass with MongoReplicaSetClient the replica
 # set configuration must use 'server' for the hostname of all hosts.
 
 def is_server_resolvable():
@@ -390,6 +391,9 @@ class TestSSL(unittest.TestCase):
         #   --sslCAFile=jstests/libs/ca.pem
         #   --sslCRLFile=jstests/libs/crl.pem
         #   --auth
+        #
+        # Set the MONGODB_X509_USERNAME environment variable to:
+        # "CN=client,OU=kerneluser,O=10Gen,L=New York City,ST=New York,C=US"
         if not MONGODB_X509_USERNAME:
             raise SkipTest("MONGODB_X509_USERNAME "
                            "must be set to test MONGODB-X509")
@@ -414,7 +418,7 @@ class TestSSL(unittest.TestCase):
         # SSL options aren't supported in the URI...
         self.assertTrue(MongoClient(uri, ssl=True, ssl_certfile=CLIENT_PEM))
         # Cleanup
-        client['$external'].command('dropUsersFromDatabase')
+        remove_all_users(client['$external'])
         client['$external'].logout()
 
 if __name__ == "__main__":
