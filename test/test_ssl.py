@@ -108,12 +108,14 @@ class TestClientSSL(unittest.TestCase):
         self.assertRaises(ConfigurationError,
                           MongoClient, ssl=True)
         self.assertRaises(ConfigurationError,
-                          MongoReplicaSetClient, ssl=True)
+                          MongoReplicaSetClient, replicaSet='rs', ssl=True)
         # Implied
         self.assertRaises(ConfigurationError,
                           MongoClient, ssl_certfile=CLIENT_PEM)
         self.assertRaises(ConfigurationError,
-                          MongoReplicaSetClient, ssl_certfile=CLIENT_PEM)
+                          MongoReplicaSetClient,
+                          replicaSet='rs',
+                          ssl_certfile=CLIENT_PEM)
 
     def test_config_ssl(self):
         """Tests various ssl configurations"""
@@ -126,14 +128,19 @@ class TestClientSSL(unittest.TestCase):
         self.assertRaises(TypeError, MongoClient, ssl=5.5)
         self.assertRaises(TypeError, MongoClient, ssl=[])
 
-        self.assertRaises(ConfigurationError, MongoReplicaSetClient, ssl='foo')
+        self.assertRaises(ConfigurationError,
+                          MongoReplicaSetClient, replicaSet='rs', ssl='foo')
         self.assertRaises(ConfigurationError,
                           MongoReplicaSetClient,
+                          replicaSet='rs',
                           ssl=False,
                           ssl_certfile=CLIENT_PEM)
-        self.assertRaises(TypeError, MongoReplicaSetClient, ssl=0)
-        self.assertRaises(TypeError, MongoReplicaSetClient, ssl=5.5)
-        self.assertRaises(TypeError, MongoReplicaSetClient, ssl=[])
+        self.assertRaises(TypeError,
+                          MongoReplicaSetClient, replicaSet='rs', ssl=0)
+        self.assertRaises(TypeError,
+                          MongoReplicaSetClient, replicaSet='rs', ssl=5.5)
+        self.assertRaises(TypeError,
+                          MongoReplicaSetClient, replicaSet='rs', ssl=[])
 
         self.assertRaises(IOError, MongoClient, ssl_certfile="NoSuchFile")
         self.assertRaises(TypeError, MongoClient, ssl_certfile=True)
@@ -144,11 +151,16 @@ class TestClientSSL(unittest.TestCase):
 
         self.assertRaises(IOError,
                           MongoReplicaSetClient,
+                          replicaSet='rs',
                           ssl_keyfile="NoSuchFile")
         self.assertRaises(IOError,
                           MongoReplicaSetClient,
+                          replicaSet='rs',
                           ssl_certfile="NoSuchFile")
-        self.assertRaises(TypeError, MongoReplicaSetClient, ssl_certfile=True)
+        self.assertRaises(TypeError,
+                          MongoReplicaSetClient,
+                          replicaSet='rs',
+                          ssl_certfile=True)
 
         # Test invalid combinations
         self.assertRaises(ConfigurationError,
@@ -167,14 +179,17 @@ class TestClientSSL(unittest.TestCase):
 
         self.assertRaises(ConfigurationError,
                           MongoReplicaSetClient,
+                          replicaSet='rs',
                           ssl=False,
                           ssl_keyfile=CLIENT_PEM)
         self.assertRaises(ConfigurationError,
                           MongoReplicaSetClient,
+                          replicaSet='rs',
                           ssl=False,
                           ssl_certfile=CLIENT_PEM)
         self.assertRaises(ConfigurationError,
                           MongoReplicaSetClient,
+                          replicaSet='rs',
                           ssl=False,
                           ssl_keyfile=CLIENT_PEM,
                           ssl_certfile=CLIENT_PEM)
