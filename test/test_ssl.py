@@ -367,7 +367,7 @@ class TestSSL(unittest.TestCase):
                             ssl_cert_reqs=ssl.CERT_REQUIRED,
                             ssl_ca_certs=CA_PEM)
                 self.fail("Invalid hostname should have failed")
-            except:
+            except ConnectionFailure:
                 pass
         else:
             try:
@@ -379,7 +379,7 @@ class TestSSL(unittest.TestCase):
                                       ssl_cert_reqs=ssl.CERT_REQUIRED,
                                       ssl_ca_certs=CA_PEM)
                 self.fail("Invalid hostname should have failed")
-            except:
+            except ConnectionFailure:
                 pass
 
     def test_mongodb_x509_auth(self):
