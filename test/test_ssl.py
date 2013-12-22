@@ -419,7 +419,7 @@ class TestSSL(unittest.TestCase):
             raise SkipTest("MONGODB-X509 tests require MongoDB 2.5.3 or newer")
         if not server_started_with_auth(client):
             raise SkipTest('Authentication is not enabled on server')
-        # Give admin all necessary priviledges.
+        # Give admin all necessary privileges.
         client['$external'].add_user(MONGODB_X509_USERNAME, roles=[
             {'role': 'readWriteAnyDatabase', 'db': 'admin'},
             {'role': 'userAdminAnyDatabase', 'db': 'admin'}])
