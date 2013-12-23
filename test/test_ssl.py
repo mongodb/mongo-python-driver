@@ -226,7 +226,7 @@ class TestSSL(unittest.TestCase):
         client.drop_database('pymongo_ssl_test')
 
     def test_cert_ssl(self):
-        # Expects the server to be running with the the server.pem, ca.pem
+        # Expects the server to be running with the server.pem, ca.pem
         # and crl.pem provided in mongodb and the server tests eg:
         #
         #   --sslPEMKeyFile=jstests/libs/server.pem
@@ -252,7 +252,7 @@ class TestSSL(unittest.TestCase):
         client.drop_database('pymongo_ssl_test')
 
     def test_cert_ssl_implicitly_set(self):
-        # Expects the server to be running with the the server.pem, ca.pem
+        # Expects the server to be running with the server.pem, ca.pem
         # and crl.pem provided in mongodb and the server tests eg:
         #
         #   --sslPEMKeyFile=jstests/libs/server.pem
@@ -278,7 +278,7 @@ class TestSSL(unittest.TestCase):
         client.drop_database('pymongo_ssl_test')
 
     def test_cert_ssl_validation(self):
-        # Expects the server to be running with the the server.pem, ca.pem
+        # Expects the server to be running with the server.pem, ca.pem
         # and crl.pem provided in mongodb and the server tests eg:
         #
         #   --sslPEMKeyFile=jstests/libs/server.pem
@@ -319,7 +319,7 @@ class TestSSL(unittest.TestCase):
         client.drop_database('pymongo_ssl_test')
 
     def test_cert_ssl_validation_optional(self):
-        # Expects the server to be running with the the server.pem, ca.pem
+        # Expects the server to be running with the server.pem, ca.pem
         # and crl.pem provided in mongodb and the server tests eg:
         #
         #   --sslPEMKeyFile=jstests/libs/server.pem
@@ -361,7 +361,7 @@ class TestSSL(unittest.TestCase):
         client.drop_database('pymongo_ssl_test')
 
     def test_cert_ssl_validation_hostname_fail(self):
-        # Expects the server to be running with the the server.pem, ca.pem
+        # Expects the server to be running with the server.pem, ca.pem
         # and crl.pem provided in mongodb and the server tests eg:
         #
         #   --sslPEMKeyFile=jstests/libs/server.pem
@@ -398,7 +398,7 @@ class TestSSL(unittest.TestCase):
                 pass
 
     def test_mongodb_x509_auth(self):
-        # Expects the server to be running with the the server.pem, ca.pem
+        # Expects the server to be running with the server.pem, ca.pem
         # and crl.pem provided in mongodb and the server tests as well as
         # --auth
         #
