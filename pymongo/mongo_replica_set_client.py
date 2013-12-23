@@ -640,7 +640,7 @@ class MongoReplicaSetClient(common.BaseObject):
         self.__ssl_ca_certs = self.__opts.get('ssl_ca_certs', None)
 
         ssl_kwarg_keys = [k for k in kwargs.keys() if k.startswith('ssl_')]
-        if not self.__use_ssl and ssl_kwarg_keys:
+        if self.__use_ssl is False and ssl_kwarg_keys:
             raise ConfigurationError("ssl has not been enabled but the "
                                      "following ssl parameters have been set: "
                                      "%s. Please set `ssl=True` or remove."
