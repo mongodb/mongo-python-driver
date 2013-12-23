@@ -1681,8 +1681,8 @@ class TestCollection(unittest.TestCase):
             pass
         self.assertEqual(1, len(socks))
 
-        # If the Cursor intance is discarded before being
-        # completely interated we have to close and
+        # If the Cursor instance is discarded before being
+        # completely iterated we have to close and
         # discard the socket.
         cur = client[self.db.name].test.find(exhaust=True)
         cur.next()
