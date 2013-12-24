@@ -78,9 +78,6 @@ if HAS_SSL:
         MongoClient(host, port, connectTimeoutMS=100, ssl=True)
         SIMPLE_SSL = True
     except ConnectionFailure:
-        pass
-
-    if SIMPLE_SSL:
         # Is MongoDB configured with server.pem, ca.pem, and crl.pem from
         # mongodb jstests/lib?
         try:
@@ -206,12 +203,12 @@ class TestSSL(unittest.TestCase):
             raise SkipTest("Python 3.0.x has problems "
                            "with SSL and socket timeouts.")
 
-        if not SIMPLE_SSL:
-            raise SkipTest("No simple mongod available over SSL")
-
     def test_simple_ssl(self):
         # Expects the server to be running with ssl and with
         # no --sslPEMKeyFile or with --sslWeakCertificateValidation
+        if not SIMPLE_SSL:
+            raise SkipTest("No simple mongod available over SSL")
+
         client = MongoClient(host, port, ssl=True)
         response = client.admin.command('ismaster')
         if 'setName' in response:
