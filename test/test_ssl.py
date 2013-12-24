@@ -40,7 +40,8 @@ CA_PEM = os.path.join(CERT_PATH, 'ca.pem')
 SIMPLE_SSL = False
 CERT_SSL = False
 SERVER_IS_RESOLVABLE = False
-MONGODB_X509_USERNAME = os.environ.get('MONGODB_X509_USERNAME')
+MONGODB_X509_USERNAME = (
+    "CN=client,OU=kerneluser,O=10Gen,L=New York City,ST=New York,C=US")
 
 # To fully test this start a mongod instance (built with SSL support) like so:
 # mongod --dbpath /path/to/data/directory --sslOnNormalPorts \
@@ -406,14 +407,9 @@ class TestSSL(unittest.TestCase):
         #   --sslCAFile=jstests/libs/ca.pem
         #   --sslCRLFile=jstests/libs/crl.pem
         #   --auth
-        #
-        # Set the MONGODB_X509_USERNAME environment variable to:
-        # "CN=client,OU=kerneluser,O=10Gen,L=New York City,ST=New York,C=US"
-        if not MONGODB_X509_USERNAME:
-            raise SkipTest("MONGODB_X509_USERNAME "
-                           "must be set to test MONGODB-X509")
         if not CERT_SSL:
             raise SkipTest("No mongod available over SSL with certs")
+
         client = MongoClient(host, port, ssl=True, ssl_certfile=CLIENT_PEM)
         if not version.at_least(client, (2, 5, 3, -1)):
             raise SkipTest("MONGODB-X509 tests require MongoDB 2.5.3 or newer")
