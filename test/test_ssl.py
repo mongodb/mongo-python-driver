@@ -18,6 +18,13 @@ import os
 import socket
 import sys
 import unittest
+
+try:
+    from ssl import CertificateError
+except ImportError:
+    # Backport.
+    from pymongo.ssl_match_hostname import CertificateError
+
 sys.path[0:0] = [""]
 
 from urllib import quote_plus
@@ -370,19 +377,18 @@ class TestSSL(unittest.TestCase):
 
         client = MongoClient(host, port, ssl=True, ssl_certfile=CLIENT_PEM)
         response = client.admin.command('ismaster')
-        single_server = 'setName' not in response
 
-        if single_server:
-            try:
-                MongoClient(pair,
-                            ssl=True,
-                            ssl_certfile=CLIENT_PEM,
-                            ssl_cert_reqs=ssl.CERT_REQUIRED,
-                            ssl_ca_certs=CA_PEM)
-                self.fail("Invalid hostname should have failed")
-            except ConnectionFailure:
-                pass
-        else:
+        try:
+            MongoClient(pair,
+                        ssl=True,
+                        ssl_certfile=CLIENT_PEM,
+                        ssl_cert_reqs=ssl.CERT_REQUIRED,
+                        ssl_ca_certs=CA_PEM)
+            self.fail("Invalid hostname should have failed")
+        except CertificateError:
+            pass
+
+        if 'setName' in response:
             try:
                 MongoReplicaSetClient(pair,
                                       replicaSet=response['setName'],
@@ -392,7 +398,7 @@ class TestSSL(unittest.TestCase):
                                       ssl_cert_reqs=ssl.CERT_REQUIRED,
                                       ssl_ca_certs=CA_PEM)
                 self.fail("Invalid hostname should have failed")
-            except ConnectionFailure:
+            except CertificateError:
                 pass
 
     def test_mongodb_x509_auth(self):

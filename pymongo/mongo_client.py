@@ -848,7 +848,7 @@ class MongoClient(common.BaseObject):
                 chosen_member = member
                 discovered_nodes = nodes
                 break
-            except (OperationFailure, ConfigurationError):
+            except (OperationFailure, ConfigurationError, ValueError):
                 # The server is available but something failed, e.g. auth,
                 # wrong replica set name, or incompatible wire protocol.
                 raise
