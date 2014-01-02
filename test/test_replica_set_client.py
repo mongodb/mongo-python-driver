@@ -1198,7 +1198,11 @@ class TestReplicaSetClientLazyConnectBadSeeds(
         # Assume there are no open mongods listening on a.com, b.com, ....
         bad_seeds = ['%s.com' % chr(ord('a') + i) for i in range(5)]
         seeds = ','.join(bad_seeds + [pair])
-        return MongoReplicaSetClient(seeds, replicaSet=self.name, **kwargs)
+        client = MongoReplicaSetClient(seeds, replicaSet=self.name, **kwargs)
+
+        # In case of a slow test machine.
+        client._refresh_timeout_sec = 30
+        return client
 
 
 class TestReplicaSetClientInternalIPs(unittest.TestCase):

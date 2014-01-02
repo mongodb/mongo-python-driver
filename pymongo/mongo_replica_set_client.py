@@ -420,6 +420,9 @@ class MongoReplicaSetClient(common.BaseObject):
     """Connection to a MongoDB replica set.
     """
 
+    # For tests.
+    _refresh_timeout_sec = 5
+
     def __init__(self, hosts_or_uri=None, max_pool_size=100,
                  document_class=dict, tz_aware=False, _connect=True, **kwargs):
         """Create a new connection to a MongoDB replica set.
@@ -1042,7 +1045,7 @@ class MongoReplicaSetClient(common.BaseObject):
         monitor = self.__ensure_monitor()
         monitor.schedule_refresh()
         if sync:
-            monitor.wait_for_refresh(timeout_seconds=5)
+            monitor.wait_for_refresh(timeout_seconds=self._refresh_timeout_sec)
 
     def __ensure_monitor(self):
         """Ensure the monitor is started, and return it."""
