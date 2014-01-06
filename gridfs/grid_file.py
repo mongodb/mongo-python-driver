@@ -467,7 +467,7 @@ class GridOut(object):
         self._ensure_file()
 
         if size == 0:
-            return ""
+            return EMPTY
 
         remainder = int(self.length) - self.__position
         if size < 0 or size > remainder:
