@@ -31,6 +31,7 @@ from pymongo import (ASCENDING,
                      DESCENDING,
                      ALL,
                      OFF)
+from pymongo.cursor import Cursor
 from pymongo.database import Database
 from pymongo.errors import (InvalidOperation,
                             OperationFailure,
@@ -990,6 +991,10 @@ class TestCursor(unittest.TestCase):
         self.assertEqual(50, len(list(self.db.test.find(max_scan=50))))
         self.assertEqual(50, len(list(self.db.test.find()
                                       .max_scan(90).max_scan(50))))
+
+    def test_cursor_retrieved(self):
+        cursor = Cursor(self.db.test, _retrieved=10)
+        self.assertEqual(10, cursor._Cursor__retrieved)
 
     def test_with_statement(self):
         if sys.version_info < (2, 6):

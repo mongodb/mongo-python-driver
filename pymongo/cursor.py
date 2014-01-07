@@ -71,7 +71,7 @@ class Cursor(object):
                  tag_sets=[{}], secondary_acceptable_latency_ms=None,
                  exhaust=False, compile_re=True, _must_use_master=False,
                  _uuid_subtype=None, _first_batch=None, _cursor_id=None,
-                 **kwargs):
+                 _retrieved=0, **kwargs):
         """Create a new cursor.
 
         Should not be called directly by application developers - see
@@ -161,7 +161,7 @@ class Cursor(object):
 
         self.__data = deque(_first_batch or [])
         self.__connection_id = None
-        self.__retrieved = 0
+        self.__retrieved = _retrieved
         self.__killed = False
 
         self.__query_flags = 0
