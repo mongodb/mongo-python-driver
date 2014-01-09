@@ -74,6 +74,9 @@ class TestGridFile(unittest.TestCase):
         g = GridOut(self.db.fs, f._id)
         self.assertEqual(b(""), g.read())
 
+        # test that reading 0 returns proper type
+        self.assertEqual(b(""), g.read(0))
+
     def test_md5(self):
         f = GridIn(self.db.fs)
         f.write(b("hello world\n"))
