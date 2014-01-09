@@ -27,6 +27,7 @@ from gridfs.errors import (CorruptGridFile,
                            UnsupportedAPI)
 from pymongo import ASCENDING
 from pymongo.collection import Collection
+from pymongo.cursor import Cursor
 from pymongo.errors import DuplicateKeyError
 
 try:
@@ -614,3 +615,54 @@ class GridFile(object):
     def __init__(self, *args, **kwargs):
         raise UnsupportedAPI("The GridFile class is no longer supported. "
                              "Please use GridIn or GridOut instead.")
+
+
+class GridOutCursor(Cursor):
+    """A cursor / iterator for returning GridOut objects as the result
+    of an arbitrary query against the GridFS files collection.
+    """
+    def __init__(self, collection, spec=None, skip=0, limit=0,
+                 timeout=True, sort=None, max_scan=None,
+                 read_preference=None, tag_sets=None,
+                 secondary_acceptable_latency_ms=None, compile_re=True):
+        """Create a new cursor, similar to the normal
+        :class:`~pymongo.cursor.Cursor`.
+
+        Should not be called directly by application developers - see
+        the :class:`~gridfs.GridFS` method :meth:`~gridfs.GridFS.find` instead.
+
+        .. versionadded 2.7
+
+        .. mongodoc:: cursors
+        """
+        # Hold on to the base "fs" collection to create GridOut objects later.
+        self.__root_collection = collection
+
+        # Copy these settings from collection if they are not set by caller.
+        read_preference = read_preference or collection.files.read_preference
+        tag_sets = tag_sets or collection.files.tag_sets
+        latency = (secondary_acceptable_latency_ms
+                   or collection.files.secondary_acceptable_latency_ms)
+
+        super(GridOutCursor, self).__init__(
+            collection.files, spec, skip=skip, limit=limit, timeout=timeout,
+            sort=sort, max_scan=max_scan, read_preference=read_preference,
+            secondary_acceptable_latency_ms=latency, compile_re=compile_re,
+            tag_sets=tag_sets)
+
+    def next(self):
+        """Get next GridOut object from cursor.
+        """
+        next_file = super(GridOutCursor, self).next()
+        return GridOut(self.__root_collection, file_document=next_file)
+
+    def add_option(self, *args, **kwargs):
+        raise NotImplementedError("Method does not exist for GridOutCursor")
+
+    def remove_option(self, *args, **kwargs):
+        raise NotImplementedError("Method does not exist for GridOutCursor")
+
+    def _clone_base(self):
+        """Creates an empty GridOutCursor for information to be copied into.
+        """
+        return GridOutCursor(self.__root_collection)

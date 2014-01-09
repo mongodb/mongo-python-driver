@@ -17,3 +17,6 @@
 
    .. autoclass:: GridFile
       :members:
+
+   .. autoclass:: GridOutCursor
+      :members:

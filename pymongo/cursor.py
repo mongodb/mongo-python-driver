@@ -219,11 +219,11 @@ class Cursor(object):
         unevaluated, even if the current instance has been partially or
         completely evaluated.
         """
-        return self.__clone(True)
+        return self._clone(True)
 
-    def __clone(self, deepcopy=True):
+    def _clone(self, deepcopy=True):
         self.__check_not_command_cursor('clone')
-        clone = Cursor(self.__collection)
+        clone = self._clone_base()
         values_to_clone = ("spec", "fields", "skip", "limit", "max_time_ms",
                            "comment", "max", "min",
                            "snapshot", "ordering", "explain", "hint",
@@ -235,9 +235,14 @@ class Cursor(object):
         data = dict((k, v) for k, v in self.__dict__.iteritems()
                     if k.startswith('_Cursor__') and k[9:] in values_to_clone)
         if deepcopy:
-            data = self.__deepcopy(data)
+            data = self._deepcopy(data)
         clone.__dict__.update(data)
         return clone
+
+    def _clone_base(self):
+        """Creates an empty Cursor object for information to be copied into.
+        """
+        return Cursor(self.__collection)
 
     def __die(self):
         """Closes this cursor.
@@ -1017,16 +1022,16 @@ class Cursor(object):
 
         .. versionadded:: 2.4
         """
-        return self.__clone(deepcopy=False)
+        return self._clone(deepcopy=False)
 
     def __deepcopy__(self, memo):
         """Support function for `copy.deepcopy()`.
 
         .. versionadded:: 2.4
         """
-        return self.__clone(deepcopy=True)
+        return self._clone(deepcopy=True)
 
-    def __deepcopy(self, x, memo=None):
+    def _deepcopy(self, x, memo=None):
         """Deepcopy helper for the data dictionary or list.
 
         Regular expressions cannot be deep copied but as they are immutable we
@@ -1046,7 +1051,7 @@ class Cursor(object):
 
         for key, value in iterator:
             if isinstance(value, (dict, list)) and not isinstance(value, SON):
-                value = self.__deepcopy(value, memo)
+                value = self._deepcopy(value, memo)
             elif not isinstance(value, RE_TYPE):
                 value = copy.deepcopy(value, memo)
 
