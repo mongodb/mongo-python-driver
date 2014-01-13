@@ -17,7 +17,9 @@
 """Test the collection module."""
 
 import itertools
+import os
 import re
+import struct
 import sys
 import threading
 import time
@@ -860,34 +862,27 @@ class TestCollection(unittest.TestCase):
         if not version.at_least(self.db.connection, (2, 0)):
             raise SkipTest('Need at least MongoDB 2.0')
 
-        collection_name = 'test_insert_manipulate_false'
-        try:
-            self.db.drop_collection(collection_name)
+        collection = self.db.test_insert_manipulate_false
+        collection.drop()
+        oid = ObjectId()
+        doc = {'a': oid}
 
-            # A capped collection, so server doesn't set _id automatically.
-            collection = self.db.create_collection(
-                collection_name, capped=True, autoIndexId=False,
-                size=1000)
+        # The return value is None.
+        self.assertTrue(collection.insert(doc, manipulate=False) is None)
+        # insert() shouldn't set _id on the passed-in document object.
+        self.assertEqual({'a': oid}, doc)
+        server_doc = collection.find_one()
 
-            oid = ObjectId()
-            doc = {'a': oid}
+        # _id is not sent to server, so it's generated server-side.
+        pid_from_doc = struct.unpack(">H", server_doc['_id'].binary[7:9])[0]
+        self.assertNotEqual(os.getpid() % 0xFFFF, pid_from_doc)
 
-            # The return value is None.
-            self.assertTrue(collection.insert(doc, manipulate=False) is None)
+        # Bulk insert. The return value is a list of None.
+        self.assertEqual([None], collection.insert([{}], manipulate=False))
 
-            # insert() shouldn't set _id on the passed-in document object.
-            self.assertEqual({'a': oid}, doc)
-
-            # _id is not sent to server.
-            self.assertEqual(doc, collection.find_one())
-
-            # Bulk insert. The return value is a list of None.
-            self.assertEqual([None], collection.insert([{}], manipulate=False))
-
-            ids = collection.insert([{}, {}], manipulate=False)
-            self.assertEqual([None, None], ids)
-        finally:
-            self.db.drop_collection(collection_name)
+        ids = collection.insert([{}, {}], manipulate=False)
+        self.assertEqual([None, None], ids)
+        collection.drop()
 
     def test_save(self):
         self.db.drop_collection("test")
