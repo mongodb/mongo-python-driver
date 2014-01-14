@@ -38,6 +38,7 @@ if PY3:
 
     binary_type = bytes
     text_type   = str
+    next_item   = "__next__"
 
 else:
     try:
@@ -56,5 +57,6 @@ else:
     # 2to3 will convert this to "str". That's okay
     # since we won't ever get here under python3.
     text_type   = unicode
+    next_item   = "next"
 
 string_types = (binary_type, text_type)

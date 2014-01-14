@@ -20,7 +20,8 @@ import os
 
 from bson.binary import Binary
 from bson.objectid import ObjectId
-from bson.py3compat import b, binary_type, string_types, text_type, StringIO
+from bson.py3compat import (b, binary_type, next_item,
+                            string_types, text_type, StringIO)
 from gridfs.errors import (CorruptGridFile,
                            FileExists,
                            NoFile,
@@ -653,7 +654,8 @@ class GridOutCursor(Cursor):
     def next(self):
         """Get next GridOut object from cursor.
         """
-        next_file = super(GridOutCursor, self).next()
+        # Work around "super is not iterable" issue in Python 3.x
+        next_file = getattr(super(GridOutCursor, self), next_item)()
         return GridOut(self.__root_collection, file_document=next_file)
 
     def add_option(self, *args, **kwargs):
