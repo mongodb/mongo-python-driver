@@ -855,43 +855,7 @@ _send_write_command(PyObject* client, buffer_t buffer,
     /* Send the current batch */
     result = PyObject_CallMethod(client, "_send_message",
                                  "NOO", msg, Py_True, Py_True);
-    if (!result) {
-        PyObject *etype = NULL, *evalue = NULL, *etrace = NULL;
-        PyObject* OperationFailure;
-        PyErr_Fetch(&etype, &evalue, &etrace);
-        OperationFailure = _error("OperationFailure");
-        if (OperationFailure) {
-            if (PyErr_GivenExceptionMatches(etype, OperationFailure)) {
-                PyObject* details;
-                Py_DECREF(OperationFailure);
-                if (!evalue ||
-                    !(details = PyObject_GetAttrString(evalue,
-                                                       "error_document")) ||
-                    details == Py_None) {
-                    /*
-                     * Either there is no error_document, or
-                     * something went very wrong...
-                     */
-                    PyErr_Restore(etype, evalue, etrace);
-                    return NULL;
-                }
-                Py_DECREF(etype);
-                Py_DECREF(evalue);
-                Py_XDECREF(etrace);
-                *errors = 1;
-                return details;
-            }
-            Py_DECREF(OperationFailure);
-        }
-        /*
-         * This isn't OperationFailure or we couldn't
-         * import OperationFailure. Re-raise immediately.
-         */
-        PyErr_Restore(etype, evalue, etrace);
-        return NULL;
-    }
-    if (!(ok = PyDict_GetItemString(result, "ok")) ||
-        !PyObject_IsTrue(ok))
+    if (result && PyDict_GetItemString(result, "writeErrors"))
         *errors = 1;
     return result;
 }

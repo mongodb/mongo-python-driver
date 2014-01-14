@@ -173,12 +173,35 @@ def _check_command_response(response, reset, msg=None, allowable_errors=None):
             elif code == 50:
                 raise ExecutionTimeout(errmsg, code, response)
 
-            # wtimeout from write commands
-            if "errInfo" in details and details["errInfo"].get("wtimeout"):
-                raise WTimeoutError(errmsg, code, response)
-
             msg = msg or "%s"
             raise OperationFailure(msg % errmsg, code, response)
+
+
+def _check_write_command_response(results):
+    """Backward compatibility helper for write command error handling.
+    """
+    errors = [res for res in results
+              if "writeErrors" in res[1] or "writeConcernError" in res[1]]
+    if errors:
+        # If multiple batches had errors
+        # raise from the last batch.
+        offset, result = errors[-1]
+        # Prefer write errors over write concern errors
+        write_errors = result.get("writeErrors")
+        if write_errors:
+            # If the last batch had multiple errors only report
+            # the last error to emulate continue_on_error.
+            error = write_errors[-1]
+            error["index"] += offset
+            if error.get("code") == 11000:
+                raise DuplicateKeyError(error.get("errmsg"), 11000, error)
+        else:
+            error = result["writeConcernError"]
+            if "errInfo" in error and error["errInfo"].get('wtimeout'):
+                # Make sure we raise WTimeoutError
+                raise WTimeoutError(error.get("errmsg"),
+                                    error.get("code"), error)
+        raise OperationFailure(error.get("errmsg"), error.get("code"), error)
 
 
 def _fields_list_to_dict(fields):

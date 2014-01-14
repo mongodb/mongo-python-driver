@@ -998,7 +998,7 @@ class MongoClient(common.BaseObject):
 
         self.__cursor_manager = manager
 
-    def __check_response_to_last_error(self, response, command):
+    def __check_response_to_last_error(self, response, is_command):
         """Check a response to a lastError message for errors.
 
         `response` is a byte string representing a response to the message.
@@ -1009,33 +1009,35 @@ class MongoClient(common.BaseObject):
         response = helpers._unpack_response(response)
 
         assert response["number_returned"] == 1
-        error = response["data"][0]
+        result = response["data"][0]
 
-        if command:
-            return error
+        helpers._check_command_response(result, self.disconnect)
 
-        helpers._check_command_response(error, self.disconnect)
+        # write commands - skip getLastError checking
+        if is_command:
+            return result
 
-        error_msg = error.get("err", "")
+        # getLastError
+        error_msg = result.get("err", "")
         if error_msg is None:
-            return error
+            return result
         if error_msg.startswith("not master"):
             self.disconnect()
             raise AutoReconnect(error_msg)
 
-        details = error
+        details = result
         # mongos returns the error code in an error object
         # for some errors.
-        if "errObjects" in error:
-            for errobj in error["errObjects"]:
+        if "errObjects" in result:
+            for errobj in result["errObjects"]:
                 if errobj["err"] == error_msg:
                     details = errobj
                     break
 
         code = details.get("code")
         if code in (11000, 11001, 12582):
-            raise DuplicateKeyError(details["err"], code, error)
-        raise OperationFailure(details["err"], code, error)
+            raise DuplicateKeyError(details["err"], code, result)
+        raise OperationFailure(details["err"], code, result)
 
     def __check_bson_size(self, message):
         """Make sure the message doesn't include BSON documents larger

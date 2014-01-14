@@ -24,7 +24,7 @@ from pymongo import (common,
                      message)
 from pymongo.cursor import Cursor
 from pymongo.errors import InvalidName
-from pymongo.helpers import _check_command_response
+from pymongo.helpers import _check_write_command_response
 from pymongo.message import _INSERT, _UPDATE, _DELETE
 
 
@@ -369,22 +369,7 @@ class Collection(common.BaseObject):
             results = message._do_batched_write_command(
                     self.database.name + ".$cmd", _INSERT, command,
                     gen(), check_keys, self.uuid_subtype, client)
-
-            errors = [result for result in results if not result[1]['ok']]
-            if errors:
-                # If multiple batches had errors
-                # just raise from the last batch...
-                offset, error = errors[-1]
-                if "errDetails" in error:
-                    # ...and the last error in that batch.
-                    error = error["errDetails"][-1]
-                    error["index"] += offset
-                    # We use _check_command_response to figure out the
-                    # error type (OperationFailure, DuplicateKeyError, etc.)
-                    # but we have to add the 'ok' field if we're passing it
-                    # a subdocument from errDetails.
-                    error['ok'] = 0
-                _check_command_response(error, client.disconnect)
+            _check_write_command_response(results)
         else:
             # Legacy batched OP_INSERT
             message._do_batched_insert(self.__full_name, gen(), check_keys,
@@ -520,12 +505,12 @@ class Collection(common.BaseObject):
             docs = [SON([('q', spec), ('u', document),
                          ('multi', multi), ('upsert', upsert)])]
 
-            _, result = message._do_batched_write_command(
-                        self.database.name + '.$cmd', _UPDATE, command,
-                        docs, check_keys, self.uuid_subtype, client)[0]
-            if not result['ok']:
-                _check_command_response(result, client.disconnect)
+            results = message._do_batched_write_command(
+                self.database.name + '.$cmd', _UPDATE, command,
+                docs, check_keys, self.uuid_subtype, client)
+            _check_write_command_response(results)
 
+            _, result = results[0]
             # Add the updatedExisting field for compatibility
             if result.get('n') and 'upserted' not in result:
                 result['updatedExisting'] = True
@@ -634,12 +619,12 @@ class Collection(common.BaseObject):
 
             docs = [SON([('q', spec_or_id), ('limit', int(not multi))])]
 
-            _, result = message._do_batched_write_command(
-                        self.database.name + '.$cmd', _DELETE, command,
-                        docs, False, self.uuid_subtype, client)[0]
-            if not result['ok']:
-                _check_command_response(result, client.disconnect)
+            results = message._do_batched_write_command(
+                self.database.name + '.$cmd', _DELETE, command,
+                docs, False, self.uuid_subtype, client)
+            _check_write_command_response(results)
 
+            _, result = results[0]
             return result
 
         else:

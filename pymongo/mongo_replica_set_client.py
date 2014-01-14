@@ -1360,7 +1360,7 @@ class MongoReplicaSetClient(common.BaseObject):
             if primary:
                 primary.pool.maybe_return_socket(sock_info)
 
-    def __check_response_to_last_error(self, response, command):
+    def __check_response_to_last_error(self, response, is_command):
         """Check a response to a lastError message for errors.
 
         `response` is a byte string representing a response to the message.
@@ -1371,24 +1371,26 @@ class MongoReplicaSetClient(common.BaseObject):
         response = helpers._unpack_response(response)
 
         assert response["number_returned"] == 1
-        error = response["data"][0]
+        result = response["data"][0]
 
-        if command:
-            return error
+        helpers._check_command_response(result, self.disconnect)
 
-        helpers._check_command_response(error, self.disconnect)
+        # write commands - skip getLastError checking
+        if is_command:
+            return result
 
-        error_msg = error.get("err", "")
+        # getLastError
+        error_msg = result.get("err", "")
         if error_msg is None:
-            return error
+            return result
         if error_msg.startswith("not master"):
             self.disconnect()
             raise AutoReconnect(error_msg)
 
-        code = error.get("code")
+        code = result.get("code")
         if code in (11000, 11001, 12582):
-            raise DuplicateKeyError(error["err"], code, error)
-        raise OperationFailure(error["err"], code, error)
+            raise DuplicateKeyError(result["err"], code, result)
+        raise OperationFailure(result["err"], code, result)
 
     def __recv_data(self, length, sock_info):
         """Lowest level receive operation.

@@ -332,24 +332,9 @@ def _do_batched_write_command(namespace, operation, command,
         buf.seek(0)
         buf.write(struct.pack('<i', length))
 
-        try:
-            result = client._send_message((request_id, buf.getvalue()),
-                                          with_last_error=True,
-                                          command=True)
-        except OperationFailure, exc:
-            # If we were called from the bulk API we could be
-            # many batches in. We have to update the indexes of
-            # failed documents in the error document, using the
-            # full offset including any previous batches. Do
-            # that and re-raise in the caller.
-            details = exc.error_document
-            if not details:
-                # Some error not related to write commands
-                # (e.g. kerberos failure). Re-raise immediately.
-                raise
-            return True, details
-
-        return not result.get('ok'), result
+        return client._send_message((request_id, buf.getvalue()),
+                                    with_last_error=True,
+                                    command=True)
 
     # If there are multiple batches we'll
     # merge results in the caller.
@@ -375,9 +360,9 @@ def _do_batched_write_command(namespace, operation, command,
                 # There's nothing intelligent we can say
                 # about size for update and remove
                 raise InvalidDocument("command document too large")
-            errors, result = send_message()
+            result = send_message()
             results.append((idx_offset, result))
-            if errors and ordered:
+            if ordered and "writeErrors" in result:
                 return results
 
             # Truncate back to the start of list elements
@@ -395,8 +380,7 @@ def _do_batched_write_command(namespace, operation, command,
     if not has_docs:
         raise InvalidOperation("cannot do an empty bulk write")
 
-    _, result = send_message()
-    results.append((idx_offset, result))
+    results.append((idx_offset, send_message()))
     return results
 if _use_c:
     _do_batched_write_command = _cmessage._do_batched_write_command
