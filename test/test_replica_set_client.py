@@ -676,7 +676,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         try:
             timeout.pymongo_test.test.find_one(query)
         except AutoReconnect, e:
-            self.assertEqual('%s: timed out' % pair, e.args[0])
+            self.assertTrue('%d: timed out' % (port,) in e.args[0])
         else:
             self.fail('RS client should have raised timeout error')
 
@@ -685,7 +685,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         try:
             no_timeout.pymongo_test.test.find_one(query, network_timeout=0.1)
         except AutoReconnect, e:
-            self.assertEqual('%s: timed out' % pair, e.args[0])
+            self.assertTrue('%d: timed out' % (port,) in e.args[0])
         else:
             self.fail('RS client should have raised timeout error')
 
