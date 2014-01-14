@@ -860,28 +860,13 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         old_signal_handler = None
 
         try:
-            # Platform-specific hacks for raising a KeyboardInterrupt on the main
-            # thread while find() is in-progress: On Windows, SIGALRM is unavailable
-            # so we use second thread. In our Bamboo setup on Linux, the thread
-            # technique causes an error in the test at sock.recv():
-            #    TypeError: 'int' object is not callable
-            # We don't know what causes this in Bamboo, so we hack around it.
-            if sys.platform == 'win32':
-                def interrupter():
-                    time.sleep(0.25)
+            def interrupter():
+                time.sleep(0.25)
 
-                    # Raises KeyboardInterrupt in the main thread
-                    thread.interrupt_main()
+                # Raises KeyboardInterrupt in the main thread
+                thread.interrupt_main()
 
-                thread.start_new_thread(interrupter, ())
-            else:
-                # Convert SIGALRM to SIGINT -- it's hard to schedule a SIGINT for one
-                # second in the future, but easy to schedule SIGALRM.
-                def sigalarm(num, frame):
-                    raise KeyboardInterrupt
-
-                old_signal_handler = signal.signal(signal.SIGALRM, sigalarm)
-                signal.alarm(1)
+            thread.start_new_thread(interrupter, ())
 
             raised = False
             try:
