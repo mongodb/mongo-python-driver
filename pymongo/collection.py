@@ -206,7 +206,7 @@ class Collection(common.BaseObject):
 
         By default an acknowledgment is requested from the server that the
         save was successful, raising :class:`~pymongo.errors.OperationFailure`
-        if an error occurred. **Passing ``w=0`` disables write acknowledgement
+        if an error occurred. **Passing w=0 disables write acknowledgement
         and all other write concern options.**
 
         :Parameters:
@@ -274,7 +274,7 @@ class Collection(common.BaseObject):
 
         By default an acknowledgment is requested from the server that the
         insert was successful, raising :class:`~pymongo.errors.OperationFailure`
-        if an error occurred. **Passing ``w=0`` disables write acknowledgement
+        if an error occurred. **Passing w=0 disables write acknowledgement
         and all other write concern options.**
 
         :Parameters:
@@ -396,7 +396,7 @@ class Collection(common.BaseObject):
 
         By default an acknowledgment is requested from the server that the
         update was successful, raising :class:`~pymongo.errors.OperationFailure`
-        if an error occurred. **Passing ``w=0`` disables write acknowledgement
+        if an error occurred. **Passing w=0 disables write acknowledgement
         and all other write concern options.**
 
         There are many useful `update modifiers`_ which can be used
@@ -556,7 +556,7 @@ class Collection(common.BaseObject):
 
         By default an acknowledgment is requested from the server that the
         remove was successful, raising :class:`~pymongo.errors.OperationFailure`
-        if an error occurred. **Passing ``w=0`` disables write acknowledgement
+        if an error occurred. **Passing w=0 disables write acknowledgement
         and all other write concern options.**
 
         :Parameters:
