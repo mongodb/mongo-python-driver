@@ -477,10 +477,12 @@ def _dict_to_bson(dict, check_keys, uuid_subtype, top_level=True):
     try:
         elements = []
         if top_level and "_id" in dict:
-            elements.append(_element_to_bson("_id", dict["_id"], False, uuid_subtype))
+            elements.append(_element_to_bson("_id", dict["_id"],
+                                             check_keys, uuid_subtype))
         for (key, value) in dict.iteritems():
             if not top_level or key != "_id":
-                elements.append(_element_to_bson(key, value, check_keys, uuid_subtype))
+                elements.append(_element_to_bson(key, value,
+                                                 check_keys, uuid_subtype))
     except AttributeError:
         raise TypeError("encoder expected a mapping type but got: %r" % dict)
 

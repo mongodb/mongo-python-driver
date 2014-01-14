@@ -676,6 +676,12 @@ class TestBSON(unittest.TestCase):
         self.assertTrue(Timestamp(1, 0) <= Timestamp(1, 0))
         self.assertFalse(Timestamp(1, 0) > Timestamp(1, 0))
 
+    def test_bad_id_keys(self):
+        self.assertRaises(InvalidDocument, BSON.encode,
+                          {"_id": {"$bad": 123}}, True)
+        self.assertRaises(InvalidDocument, BSON.encode,
+                          {"_id": {'$oid': "52d0b971b3ba219fdeb4170e"}}, True)
+        BSON.encode({"_id": {'$oid': "52d0b971b3ba219fdeb4170e"}})
 
 if __name__ == "__main__":
     unittest.main()
