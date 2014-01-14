@@ -131,9 +131,9 @@ def loads(s, *args, **kwargs):
     Automatically passes the object_hook for BSON type conversion.
 
     :Parameters:
-      - `compile_re` (optional): if ``False``, don't attempt to compile
-      BSON regular expressions into Python regular expressions. Return
-      instances of :class:`~bson.bsonregex.BSONRegex` instead.
+      - `compile_re` (optional): if ``False``, don't attempt to compile BSON
+        regular expressions into Python regular expressions. Return instances
+        of :class:`~bson.bsonregex.BSONRegex` instead.
 
     .. versionchanged:: 2.7
        Added ``compile_re`` option.

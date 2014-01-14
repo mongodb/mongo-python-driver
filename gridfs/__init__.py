@@ -105,7 +105,7 @@ class GridFS(object):
           try:
               f = new_file(**kwargs)
               f.write(data)
-          finally
+          finally:
               f.close()
 
         `data` can be either an instance of :class:`str` (:class:`bytes`
@@ -284,18 +284,18 @@ class GridFS(object):
 
         Returns a cursor that iterates across files matching
         arbitrary queries on the files collection. Can be combined
-        with other modifiers for additional control. For example
+        with other modifiers for additional control. For example::
 
-        >>> for grid_out in fs.find({"filename": "lisa.txt"}, timeout=False):
-        >>>     data = grid_out.read()
+          for grid_out in fs.find({"filename": "lisa.txt"}, timeout=False):
+              data = grid_out.read()
 
         would iterate through all versions of "lisa.txt" stored in GridFS.
         Note that setting timeout to False may be important to prevent the
         cursor from timing out during long multi-file processing work.
 
-        As another example, the call
+        As another example, the call::
 
-        >>> most_recent_three = fs.find().sort("uploadDate", -1).limit(3)
+          most_recent_three = fs.find().sort("uploadDate", -1).limit(3)
 
         would return a cursor to the three most recently uploaded files
         in GridFS.
