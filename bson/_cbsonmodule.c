@@ -1341,9 +1341,8 @@ int write_dict(PyObject* self, buffer_t buffer,
     if (top_level) {
         PyObject* _id = PyDict_GetItemString(dict, "_id");
         if (_id) {
-            /* Don't bother checking keys, but do make sure we're allowed to
-             * write _id */
-            if (!write_pair(self, buffer, "_id", 3, _id, 0, uuid_subtype, 1)) {
+            if (!write_pair(self, buffer, "_id", 3,
+                            _id, check_keys, uuid_subtype, 1)) {
                 return 0;
             }
         }
