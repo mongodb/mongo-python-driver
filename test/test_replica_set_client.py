@@ -778,7 +778,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         # Try a few simple things
         client = MongoReplicaSetClient("mongodb://[::1]:%d" % (port,),
                                           replicaSet=self.name)
-        client = MongoReplicaSetClient("mongodb://[::1]:%d/?safe=true;"
+        client = MongoReplicaSetClient("mongodb://[::1]:%d/?w=0;"
                                           "replicaSet=%s" % (port, self.name))
         client = MongoReplicaSetClient("[::1]:%d,localhost:"
                                           "%d" % (port, port),

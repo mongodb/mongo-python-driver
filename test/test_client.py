@@ -604,7 +604,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
 
         # Try a few simple things
         MongoClient("mongodb://[::1]:%d" % (port,))
-        MongoClient("mongodb://[::1]:%d/?slaveOk=true" % (port,))
+        MongoClient("mongodb://[::1]:%d/?w=0" % (port,))
         MongoClient("[::1]:%d,localhost:%d" % (port, port))
 
         client = MongoClient("localhost:%d,[::1]:%d" % (port, port))
