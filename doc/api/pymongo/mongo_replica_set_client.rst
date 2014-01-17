@@ -4,7 +4,7 @@
 .. automodule:: pymongo.mongo_replica_set_client
    :synopsis: Tools for connecting to a MongoDB replica set
 
-   .. autoclass:: pymongo.mongo_replica_set_client.MongoReplicaSetClient([hosts_or_uri[, max_pool_size=10[, document_class=dict[, tz_aware=False[, **kwargs]]]]])
+   .. autoclass:: pymongo.mongo_replica_set_client.MongoReplicaSetClient([hosts_or_uri[, max_pool_size=100[, document_class=dict[, tz_aware=False[, **kwargs]]]]])
 
       .. automethod:: disconnect
       .. automethod:: close
