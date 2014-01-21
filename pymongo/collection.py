@@ -19,7 +19,8 @@ import warnings
 from bson.code import Code
 from bson.objectid import ObjectId
 from bson.son import SON
-from pymongo import (common,
+from pymongo import (bulk,
+                     common,
                      helpers,
                      message)
 from pymongo.cursor import Cursor
@@ -182,6 +183,31 @@ class Collection(common.BaseObject):
            ``database`` is now a property rather than a method.
         """
         return self.__database
+
+    def initialize_unordered_bulk_op(self):
+        """Initialize an unordered batch of write operations.
+
+        Operations will be performed on the server in arbitrary order,
+        possibly in parallel. All operations will be attempted.
+
+        Returns a :class:`~pymongo.bulk.BulkOperationBuilder` instance.
+
+        .. versionadded:: 2.7
+        """
+        return bulk.BulkOperationBuilder(self, ordered=False)
+
+    def initialize_ordered_bulk_op(self):
+        """Initialize an ordered batch of write operations.
+
+        Operations will be performed on the server serially, in the
+        order provided. If an error occurs all remaining operations
+        are aborted.
+
+        Returns a :class:`~pymongo.bulk.BulkOperationBuilder` instance.
+
+        .. versionadded:: 2.7
+        """
+        return bulk.BulkOperationBuilder(self, ordered=True)
 
     def save(self, to_save, manipulate=True,
              safe=None, check_keys=True, **kwargs):

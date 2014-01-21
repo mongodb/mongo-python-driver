@@ -125,6 +125,16 @@ class DuplicateKeyError(OperationFailure):
     """
 
 
+class BulkWriteError(OperationFailure):
+    """Exception class for bulk write errors.
+
+    .. versionadded:: 2.7
+    """
+    def __init__(self, results):
+        OperationFailure.__init__(
+            self, "batch op errors occurred", 65, results)
+
+
 class InvalidOperation(PyMongoError):
     """Raised when a client attempts to perform an invalid operation.
     """

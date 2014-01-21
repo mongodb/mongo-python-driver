@@ -57,6 +57,22 @@ def get_command_line(client):
     assert command_line['ok'] == 1, "getCmdLineOpts() failed"
     return command_line
 
+def server_started_with_option(client, cmdline_opt, config_opt):
+    """Check if the server was started with a particular option.
+    
+    :Parameters:
+      - `cmdline_opt`: The command line option (i.e. --nojournal)
+      - `config_opt`: The config file option (i.e. nojournal)
+    """
+    command_line = get_command_line(client)
+    if 'parsed' in command_line:
+        parsed = command_line['parsed']
+        if config_opt in parsed:
+            return parsed[config_opt]
+    argv = command_line['argv']
+    return cmdline_opt in argv
+
+
 def server_started_with_auth(client):
     command_line = get_command_line(client)
     if 'parsed' in command_line:

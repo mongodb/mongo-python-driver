@@ -32,6 +32,7 @@ Sub-modules:
    database
    collection
    cursor
+   bulk
    errors
    master_slave_connection
    message
