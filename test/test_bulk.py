@@ -396,7 +396,7 @@ class TestBulkWriteConcern(unittest.TestCase):
         client = get_client()
         ismaster = client.test.command('ismaster')
         self.is_repl = bool(ismaster.get('setName'))
-        self.w = len(ismaster["hosts"])
+        self.w = len(ismaster.get("hosts", []))
         self.coll = client.pymongo_test.test
         self.coll.remove()
 
