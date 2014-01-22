@@ -821,7 +821,7 @@ class TestCollection(unittest.TestCase):
         # Implied safe
         self.assertRaises(
             DuplicateKeyError,
-            lambda: db.test.insert([{'i': 2}] * 2, j=True),
+            lambda: db.test.insert([{'i': 2}] * 2, fsync=True),
         )
 
         # Explicit safe
