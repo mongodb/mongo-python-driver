@@ -174,6 +174,7 @@ class _Bulk(object):
         self.ops = []
         self.name = "%s.%s" % (collection.database.name, collection.name)
         self.namespace = collection.database.name + '.$cmd'
+        self.executed = False
 
     def add_insert(self, document):
         """Add an insert document to the list of ops.
@@ -394,6 +395,10 @@ class _Bulk(object):
         """
         if not self.ops:
             raise InvalidOperation('No operations to execute')
+        if self.executed:
+            raise InvalidOperation('Bulk operations can '
+                                   'only be executed once.')
+        self.executed = True
         client = self.collection.database.connection
         client._ensure_connected(sync=True)
         write_concern = write_concern or self.collection.write_concern

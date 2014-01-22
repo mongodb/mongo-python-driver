@@ -21,7 +21,8 @@ from nose.plugins.skip import SkipTest
 
 sys.path[0:0] = [""]
 
-from pymongo.errors import BulkWriteError, OperationFailure
+from pymongo.errors import (BulkWriteError,
+                            InvalidOperation, OperationFailure)
 from test.test_client import get_client
 from test.utils import server_started_with_option
 from test import version
@@ -388,6 +389,12 @@ class TestBulk(unittest.TestCase):
 
         self.assertEqual(6, result['nInserted'])
         self.assertEqual(6, self.coll.count())
+
+    def test_multiple_execution(self):
+        batch = self.coll.initialize_ordered_bulk_op()
+        batch.insert({})
+        batch.execute()
+        self.assertRaises(InvalidOperation, batch.execute)
 
 
 class TestBulkWriteConcern(unittest.TestCase):
