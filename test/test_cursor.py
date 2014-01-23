@@ -1017,6 +1017,9 @@ self.assertFalse(c2.alive)
         self.assertTrue(c1.alive)
 
     def test_comment(self):
+        if is_mongos(self.client):
+            raise SkipTest("profile is not supported by mongos")
+
         def run_with_profiling(func):
             self.db.set_profiling_level(OFF)
             self.db.system.profile.drop()
