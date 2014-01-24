@@ -990,7 +990,7 @@ class TestCollection(unittest.TestCase):
         except expected_error, exc:
             # Just check that we set the error document. Fields
             # vary by MongoDB version.
-            self.assertTrue(exc.error_document is not None)
+            self.assertTrue(exc.details is not None)
         else:
             self.fail("%s was not raised" % (expected_error.__name__,))
 
@@ -1039,7 +1039,7 @@ class TestCollection(unittest.TestCase):
                 self.assertTrue(exc.code in (10147, 16840, 17009))
                 # Just check that we set the error document. Fields
                 # vary by MongoDB version.
-                self.assertTrue(exc.error_document is not None)
+                self.assertTrue(exc.details is not None)
         else:
             self.fail("OperationFailure was not raised")
 
@@ -1273,7 +1273,7 @@ class TestCollection(unittest.TestCase):
             except WTimeoutError, exc:
                 # Just check that we set the error document. Fields
                 # vary by MongoDB version.
-                self.assertTrue(exc.error_document is not None)
+                self.assertTrue(exc.details is not None)
             else:
                 self.fail("WTimeoutError was not raised")
 

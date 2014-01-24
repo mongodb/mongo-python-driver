@@ -204,7 +204,7 @@ class TestBulk(unittest.TestCase):
             try:
                 batch.execute()
             except BulkWriteError, exc:
-                result = exc.error_document
+                result = exc.details
                 self.assertEqual(exc.code, 65)
             else:
                 self.fail("Error not raised")
@@ -239,7 +239,7 @@ class TestBulk(unittest.TestCase):
             try:
                 batch.execute()
             except BulkWriteError, exc:
-                result = exc.error_document
+                result = exc.details
                 self.assertEqual(exc.code, 65)
             else:
                 self.fail("Error not raised")
@@ -285,7 +285,7 @@ class TestBulk(unittest.TestCase):
             try:
                 batch.execute()
             except BulkWriteError, exc:
-                result = exc.error_document
+                result = exc.details
                 self.assertEqual(exc.code, 65)
             else:
                 self.fail("Error not raised")
@@ -320,7 +320,7 @@ class TestBulk(unittest.TestCase):
             try:
                 batch.execute()
             except BulkWriteError, exc:
-                result = exc.error_document
+                result = exc.details
                 self.assertEqual(exc.code, 65)
             else:
                 self.fail("Error not raised")
@@ -370,7 +370,7 @@ class TestBulk(unittest.TestCase):
         try:
             batch.execute()
         except BulkWriteError, exc:
-            result = exc.error_document
+            result = exc.details
             self.assertEqual(exc.code, 65)
         else:
             self.fail("Error not raised")
@@ -427,7 +427,7 @@ class TestBulkWriteConcern(unittest.TestCase):
             try:
                 batch.execute({'w': self.w + 1, 'wtimeout': 1})
             except BulkWriteError, exc:
-                result = exc.error_document
+                result = exc.details
                 self.assertEqual(exc.code, 65)
             else:
                 self.fail("Error not raised")
@@ -455,7 +455,7 @@ class TestBulkWriteConcern(unittest.TestCase):
                 try:
                     batch.execute({'w': self.w + 1, 'wtimeout': 1})
                 except BulkWriteError, exc:
-                    result = exc.error_document
+                    result = exc.details
                     self.assertEqual(exc.code, 65)
                 else:
                     self.fail("Error not raised")
@@ -494,7 +494,7 @@ class TestBulkWriteConcern(unittest.TestCase):
             try:
                 batch.execute({'w': self.w + 1, 'wtimeout': 1})
             except BulkWriteError, exc:
-                result = exc.error_document
+                result = exc.details
                 self.assertEqual(exc.code, 65)
             else:
                 self.fail("Error not raised")
@@ -521,7 +521,7 @@ class TestBulkWriteConcern(unittest.TestCase):
                 try:
                     batch.execute({'w': self.w + 1, 'wtimeout': 1})
                 except BulkWriteError, exc:
-                    result = exc.error_document
+                    result = exc.details
                     self.assertEqual(exc.code, 65)
                 else:
                     self.fail("Error not raised")

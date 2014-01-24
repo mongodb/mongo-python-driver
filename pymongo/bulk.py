@@ -369,12 +369,11 @@ class _Bulk(object):
                                              **write_concern)
                     _merge_legacy(run, full_result, result, idx)
                 except OperationFailure, exc:
-                    details = exc.error_document
-                    if not details:
+                    if not exc.details:
                         # Some error not related to the write operation
                         # (e.g. kerberos failure). Re-raise immediately.
                         raise
-                    _merge_legacy(run, full_result, details, idx)
+                    _merge_legacy(run, full_result, exc.details, idx)
                     # We're supposed to continue if errors are
                     # at the write concern level (e.g. wtimeout)
                     if self.ordered and full_result["writeErrors"]:
