@@ -24,7 +24,7 @@ from pymongo import (bulk,
                      helpers,
                      message)
 from pymongo.cursor import Cursor
-from pymongo.errors import InvalidName
+from pymongo.errors import InvalidName, OperationFailure
 from pymongo.helpers import _check_write_command_response
 from pymongo.message import _INSERT, _UPDATE, _DELETE
 
@@ -949,10 +949,8 @@ class Collection(common.BaseObject):
         keys = helpers._index_list(key_or_list)
         index_doc = helpers._index_document(keys)
 
-        index = {"key": index_doc, "ns": self.__full_name}
-
         name = "name" in kwargs and kwargs["name"] or _gen_index_name(keys)
-        index["name"] = name
+        index = {"key": index_doc, "name": name}
 
         if "drop_dups" in kwargs:
             kwargs["dropDups"] = kwargs.pop("drop_dups")
@@ -962,9 +960,16 @@ class Collection(common.BaseObject):
 
         index.update(kwargs)
 
-        self.__database.system.indexes.insert(index, manipulate=False,
-                                              check_keys=False,
-                                              **self._get_wc_override())
+        try:
+            self.__database.command('createIndexes', self.name, indexes=[index])
+        except OperationFailure, exc:
+            if exc.code in (59, None):
+                index["ns"] = self.__full_name
+                self.__database.system.indexes.insert(index, manipulate=False,
+                                                      check_keys=False,
+                                                      **self._get_wc_override())
+            else:
+                raise
 
         self.__database.connection._cache_index(self.__database.name,
                                                 self.__name, name, cache_for)
