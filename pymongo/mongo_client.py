@@ -56,8 +56,8 @@ from pymongo.cursor_manager import CursorManager
 from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
                             ConnectionFailure,
+                            DocumentTooLarge,
                             DuplicateKeyError,
-                            InvalidDocument,
                             InvalidURI,
                             OperationFailure)
 from pymongo.member import Member
@@ -1049,11 +1049,11 @@ class MongoClient(common.BaseObject):
         if len(message) == 3:
             (request_id, data, max_doc_size) = message
             if max_doc_size > self.max_bson_size:
-                raise InvalidDocument("BSON document too large (%d bytes)"
-                                      " - the connected server supports"
-                                      " BSON document sizes up to %d"
-                                      " bytes." %
-                                      (max_doc_size, self.max_bson_size))
+                raise DocumentTooLarge("BSON document too large (%d bytes)"
+                                       " - the connected server supports"
+                                       " BSON document sizes up to %d"
+                                       " bytes." %
+                                       (max_doc_size, self.max_bson_size))
             return (request_id, data)
         else:
             # get_more and kill_cursors messages

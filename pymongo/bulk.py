@@ -17,6 +17,7 @@
 from bson.objectid import ObjectId
 from bson.son import SON
 from pymongo.errors import (BulkWriteError,
+                            DocumentTooLarge,
                             InvalidOperation,
                             OperationFailure)
 from pymongo.message import (_INSERT, _UPDATE, _DELETE,
@@ -26,6 +27,8 @@ from pymongo.message import (_INSERT, _UPDATE, _DELETE,
 _DELETE_ALL = 0
 _DELETE_ONE = 1
 
+# For backwards compatibility. See MongoDB src/mongo/base/error_codes.err
+_BAD_VALUE = 2
 _UNKNOWN_ERROR = 8
 _WRITE_CONCERN_ERROR = 64
 
@@ -84,7 +87,7 @@ def _merge_legacy(run, full_result, result, index):
     # will fail.
     note = result.get("jnote", result.get("wnote"))
     if note:
-        raise OperationFailure(note, 2, result)
+        raise OperationFailure(note, _BAD_VALUE, result)
 
     affected = result.get('n', 0)
 
@@ -368,6 +371,14 @@ class _Bulk(object):
                                              multi=(not operation['limit']),
                                              **write_concern)
                     _merge_legacy(run, full_result, result, idx)
+                except DocumentTooLarge, exc:
+                    # MongoDB 2.6 uses error code 2 for "too large".
+                    error = _make_error(
+                        run.index(idx), _BAD_VALUE, str(exc), operation)
+                    full_result['writeErrors'].append(error)
+                    if self.ordered:
+                        stop = True
+                        break
                 except OperationFailure, exc:
                     if not exc.details:
                         # Some error not related to the write operation

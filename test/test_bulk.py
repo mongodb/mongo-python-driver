@@ -17,15 +17,12 @@
 import sys
 import unittest
 
-from nose.plugins.skip import SkipTest
-
 sys.path[0:0] = [""]
 
 from pymongo.errors import (BulkWriteError,
                             InvalidOperation, OperationFailure)
 from test.test_client import get_client
 from test.utils import server_started_with_option
-from test import version
 
 
 class TestBulk(unittest.TestCase):
@@ -359,13 +356,11 @@ class TestBulk(unittest.TestCase):
             self.coll.drop_index([('a', 1)])
 
     def test_large_inserts_ordered(self):
-        client = self.coll.database.connection
-        if not version.at_least(client, (2, 5, 4)):
-            raise SkipTest('Legacy server...')
         big = 'x' * self.coll.database.connection.max_bson_size
         batch = self.coll.initialize_ordered_bulk_op()
         batch.insert({'b': 1, 'a': 1})
         batch.insert({'big': big})
+        batch.insert({'b': 2, 'a': 2})
 
         try:
             batch.execute()
@@ -374,6 +369,40 @@ class TestBulk(unittest.TestCase):
             self.assertEqual(exc.code, 65)
         else:
             self.fail("Error not raised")
+
+        self.assertEqual(1, result['nInserted'])
+
+        self.coll.remove()
+
+        big = 'x' * (1024 * 1024 * 4)
+        batch = self.coll.initialize_ordered_bulk_op()
+        batch.insert({'a': 1, 'big': big})
+        batch.insert({'a': 2, 'big': big})
+        batch.insert({'a': 3, 'big': big})
+        batch.insert({'a': 4, 'big': big})
+        batch.insert({'a': 5, 'big': big})
+        batch.insert({'a': 6, 'big': big})
+        result = batch.execute()
+
+        self.assertEqual(6, result['nInserted'])
+        self.assertEqual(6, self.coll.count())
+
+    def test_large_inserts_unordered(self):
+        big = 'x' * self.coll.database.connection.max_bson_size
+        batch = self.coll.initialize_unordered_bulk_op()
+        batch.insert({'b': 1, 'a': 1})
+        batch.insert({'big': big})
+        batch.insert({'b': 2, 'a': 2})
+
+        try:
+            batch.execute()
+        except BulkWriteError, exc:
+            result = exc.details
+            self.assertEqual(exc.code, 65)
+        else:
+            self.fail("Error not raised")
+
+        self.assertEqual(2, result['nInserted'])
 
         self.coll.remove()
 

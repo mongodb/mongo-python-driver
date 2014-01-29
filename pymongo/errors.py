@@ -172,3 +172,8 @@ class ExceededMaxWaiters(Exception):
     """
     pass
 
+
+class DocumentTooLarge(InvalidDocument):
+    """Raised when an encoded document is too large for the connected server.
+    """
+    pass

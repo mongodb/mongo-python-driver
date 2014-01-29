@@ -542,19 +542,40 @@ static PyObject* _cbson_get_more_message(PyObject* self, PyObject* args) {
 
 static void
 _set_document_too_large(int size, long max) {
-    PyObject* InvalidDocument = _error("InvalidDocument");
-    if (InvalidDocument) {
+    PyObject* DocumentTooLarge = _error("DocumentTooLarge");
+    if (DocumentTooLarge) {
 #if PY_MAJOR_VERSION >= 3
         PyObject* error = PyUnicode_FromFormat(DOC_TOO_LARGE_FMT, size, max);
 #else
         PyObject* error = PyString_FromFormat(DOC_TOO_LARGE_FMT, size, max);
 #endif
         if (error) {
-            PyErr_SetObject(InvalidDocument, error);
+            PyErr_SetObject(DocumentTooLarge, error);
             Py_DECREF(error);
         }
-        Py_DECREF(InvalidDocument);
+        Py_DECREF(DocumentTooLarge);
     }
+}
+
+static PyObject*
+_send_insert(PyObject* self, PyObject* client,
+             PyObject* gle_args, buffer_t buffer,
+             char* coll_name, int coll_len, int request_id, int safe) {
+
+    PyObject* result;
+    if (safe) {
+        if (!add_last_error(self, buffer, request_id,
+                            coll_name, coll_len, gle_args)) {
+            return NULL;
+        }
+    }
+
+    result = Py_BuildValue("i" BYTES_FORMAT_STRING, request_id,
+                           buffer_get_buffer(buffer),
+                           buffer_get_position(buffer));
+
+    return PyObject_CallMethod(client, "_send_message", "NN",
+                               result, PyBool_FromLong((long)safe));
 }
 
 static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
@@ -562,7 +583,7 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
 
     /* NOTE just using a random number as the request_id */
     int request_id = rand();
-    int options = 0;
+    int send_safe, options = 0;
     int length_location, message_length;
     int collection_name_length;
     char* collection_name = NULL;
@@ -574,7 +595,6 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
     PyObject* result;
     PyObject* max_bson_size_obj;
     PyObject* max_message_size_obj;
-    PyObject* send_message_result;
     unsigned char check_keys;
     unsigned char safe;
     unsigned char continue_on_error;
@@ -598,6 +618,11 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
     if (continue_on_error) {
         options += 1;
     }
+    /*
+     * If we are doing unacknowledged writes *and* continue_on_error
+     * is True it's pointless (and slower) to send GLE.
+     */
+    send_safe = (safe || !continue_on_error);
 
     max_bson_size_obj = PyObject_GetAttrString(client, "max_bson_size");
 #if PY_MAJOR_VERSION >= 3
@@ -651,7 +676,6 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
     while ((doc = PyIter_Next(iterator)) != NULL) {
         int before = buffer_get_position(buffer);
         int cur_size;
-        empty = 0;
         if (!write_dict(state->_cbson, buffer, doc, check_keys, uuid_subtype, 1)) {
             Py_DECREF(doc);
             goto iterfail;
@@ -660,15 +684,28 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
 
         cur_size = buffer_get_position(buffer) - before;
         if (cur_size > max_bson_size) {
+            /* If we've encoded anything send it before raising. */
+            if (!empty) {
+                buffer_update_position(buffer, before);
+                message_length = buffer_get_position(buffer) - length_location;
+                memcpy(buffer_get_buffer(buffer) + length_location,
+                       &message_length, 4);
+                result = _send_insert(self, client, last_error_args, buffer,
+                                      collection_name, collection_name_length,
+                                      request_id, send_safe);
+                if (!result)
+                    goto iterfail;
+                Py_DECREF(result);
+            }
             _set_document_too_large(cur_size, max_bson_size);
             goto iterfail;
         }
+        empty = 0;
 
         /* We have enough data, send this batch. */
         if (buffer_get_position(buffer) > max_message_size) {
             int new_request_id = rand();
             int message_start;
-            PyObject* send_gle = Py_False;
             buffer_t new_buffer = buffer_new();
             if (!new_buffer) {
                 PyErr_NoMemory();
@@ -696,29 +733,16 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
             message_length = buffer_get_position(buffer) - length_location;
             memcpy(buffer_get_buffer(buffer) + length_location, &message_length, 4);
 
-            /* If we are doing unacknowledged writes *and* continue_on_error
-             * is True it's pointless (and slower) to send GLE. */
-            if (safe || !continue_on_error) {
-                send_gle = Py_True;
-                if (!add_last_error(self, buffer, request_id, collection_name,
-                                    collection_name_length, last_error_args)) {
-                    buffer_free(new_buffer);
-                    goto iterfail;
-                }
-            }
-            /* Objectify buffer */
-            result = Py_BuildValue("i" BYTES_FORMAT_STRING, request_id,
-                                   buffer_get_buffer(buffer),
-                                   buffer_get_position(buffer));
+            result = _send_insert(self, client, last_error_args, buffer,
+                                  collection_name, collection_name_length,
+                                  request_id, send_safe);
+
             buffer_free(buffer);
             buffer = new_buffer;
             request_id = new_request_id;
             length_location = message_start;
 
-            send_message_result = PyObject_CallMethod(client, "_send_message",
-                                                      "NO", result, send_gle);
-
-            if (!send_message_result) {
+            if (!result) {
                 PyObject *etype = NULL, *evalue = NULL, *etrace = NULL;
                 PyObject* OperationFailure;
                 PyErr_Fetch(&etype, &evalue, &etrace);
@@ -757,7 +781,7 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
                 PyErr_Restore(etype, evalue, etrace);
                 goto iterfail;
             } else {
-                Py_DECREF(send_message_result);
+                Py_DECREF(result);
             }
         }
     }
@@ -779,33 +803,21 @@ static PyObject* _cbson_do_batched_insert(PyObject* self, PyObject* args) {
     message_length = buffer_get_position(buffer) - length_location;
     memcpy(buffer_get_buffer(buffer) + length_location, &message_length, 4);
 
-    if (safe) {
-        if (!add_last_error(self, buffer, request_id, collection_name,
-                            collection_name_length, last_error_args)) {
-            goto insertfail;
-        }
-    }
+    /* Send the last (or only) batch */
+    result = _send_insert(self, client, last_error_args, buffer,
+                          collection_name, collection_name_length,
+                          request_id, safe);
 
     PyMem_Free(collection_name);
-
-    /* objectify buffer */
-    result = Py_BuildValue("i" BYTES_FORMAT_STRING, request_id,
-                           buffer_get_buffer(buffer),
-                           buffer_get_position(buffer));
     buffer_free(buffer);
 
-    /* Send the last (or only) batch */
-    send_message_result = PyObject_CallMethod(client, "_send_message", "NN",
-                                              result,
-                                              PyBool_FromLong((long)safe));
-
-    if (!send_message_result) {
+    if (!result) {
         Py_XDECREF(exc_type);
         Py_XDECREF(exc_value);
         Py_XDECREF(exc_trace);
         return NULL;
     } else {
-        Py_DECREF(send_message_result);
+        Py_DECREF(result);
     }
 
     if (exc_type) {
@@ -1050,15 +1062,15 @@ _cbson_do_batched_write_command(PyObject* self, PyObject* args) {
                 if (op == _INSERT) {
                     _set_document_too_large(cur_size, max_bson_size);
                 } else {
-                    PyObject* InvalidDocument = _error("InvalidDocument");
-                    if (InvalidDocument) {
+                    PyObject* DocumentTooLarge = _error("DocumentTooLarge");
+                    if (DocumentTooLarge) {
                         /*
                          * There's nothing intelligent we can say
                          * about size for update and remove.
                          */
-                        PyErr_SetString(InvalidDocument,
+                        PyErr_SetString(DocumentTooLarge,
                                         "command document too large");
-                        Py_DECREF(InvalidDocument);
+                        Py_DECREF(DocumentTooLarge);
                     }
                 }
                 goto cmditerfail;

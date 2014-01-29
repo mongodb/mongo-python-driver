@@ -34,7 +34,7 @@ try:
     _use_c = True
 except ImportError:
     _use_c = False
-from pymongo.errors import InvalidDocument, InvalidOperation, OperationFailure
+from pymongo.errors import DocumentTooLarge, InvalidOperation, OperationFailure
 
 
 MAX_INT32 = 2147483647
@@ -217,6 +217,7 @@ def _do_batched_insert(collection_name, docs, check_keys,
             final_message += error_message
         return request_id, final_message
 
+    send_safe = safe or not continue_on_error
     last_error = None
     begin = struct.pack("<i", int(continue_on_error))
     begin += bson._make_c_string(collection_name)
@@ -224,38 +225,42 @@ def _do_batched_insert(collection_name, docs, check_keys,
     data = [begin]
     has_docs = False
     for doc in docs:
-        has_docs = True
         encoded = bson.BSON.encode(doc, check_keys, uuid_subtype)
         encoded_length = len(encoded)
-        if encoded_length > client.max_bson_size:
-            raise InvalidDocument("BSON document too large (%d bytes)"
-                                  " - the connected server supports"
-                                  " BSON document sizes up to %d"
-                                  " bytes." %
-                                  (encoded_length, client.max_bson_size))
+        too_large = (encoded_length > client.max_bson_size)
+
         message_length += encoded_length
-        if message_length < client.max_message_size:
+        if message_length < client.max_message_size and not too_large:
             data.append(encoded)
+            has_docs = True
             continue
 
-        # We have enough data, send this message.
-        send_safe = safe or not continue_on_error
-        try:
-            client._send_message(_insert_message(_EMPTY.join(data),
-                                                 send_safe), send_safe)
-        # Exception type could be OperationFailure or a subtype
-        # (e.g. DuplicateKeyError)
-        except OperationFailure, exc:
-            # Like it says, continue on error...
-            if continue_on_error:
-                # Store exception details to re-raise after the final batch.
-                last_error = exc
-            # With unacknowledged writes just return at the first error.
-            elif not safe:
-                return
-            # With acknowledged writes raise immediately.
-            else:
-                raise
+        if has_docs:
+            # We have enough data, send this message.
+            try:
+                client._send_message(_insert_message(_EMPTY.join(data),
+                                                     send_safe), send_safe)
+            # Exception type could be OperationFailure or a subtype
+            # (e.g. DuplicateKeyError)
+            except OperationFailure, exc:
+                # Like it says, continue on error...
+                if continue_on_error:
+                    # Store exception details to re-raise after the final batch.
+                    last_error = exc
+                # With unacknowledged writes just return at the first error.
+                elif not safe:
+                    return
+                # With acknowledged writes raise immediately.
+                else:
+                    raise
+
+        if too_large:
+            raise DocumentTooLarge("BSON document too large (%d bytes)"
+                                   " - the connected server supports"
+                                   " BSON document sizes up to %d"
+                                   " bytes." %
+                                   (encoded_length, client.max_bson_size))
+
         message_length = len(begin) + encoded_length
         data = [begin, encoded]
 
@@ -352,14 +357,14 @@ def _do_batched_write_command(namespace, operation, command,
         if (buf.tell() + len(key) + len(value) + 2) >= max_cmd_size:
             if not idx:
                 if operation == _INSERT:
-                    raise InvalidDocument("BSON document too large (%d bytes)"
-                                          " - the connected server supports"
-                                          " BSON document sizes up to %d"
-                                          " bytes." % (len(value),
-                                                       max_bson_size))
+                    raise DocumentTooLarge("BSON document too large (%d bytes)"
+                                           " - the connected server supports"
+                                           " BSON document sizes up to %d"
+                                           " bytes." % (len(value),
+                                                        max_bson_size))
                 # There's nothing intelligent we can say
                 # about size for update and remove
-                raise InvalidDocument("command document too large")
+                raise DocumentTooLarge("command document too large")
             result = send_message()
             results.append((idx_offset, result))
             if ordered and "writeErrors" in result:

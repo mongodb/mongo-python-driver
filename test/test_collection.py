@@ -43,7 +43,8 @@ from pymongo import message as message_module
 from pymongo.collection import Collection
 from pymongo.cursor import Cursor
 from pymongo.son_manipulator import SONManipulator
-from pymongo.errors import (DuplicateKeyError,
+from pymongo.errors import (DocumentTooLarge,
+                            DuplicateKeyError,
                             InvalidDocument,
                             InvalidName,
                             InvalidOperation,
@@ -1752,7 +1753,7 @@ class TestCollection(unittest.TestCase):
         if version.at_least(self.db.connection, (1, 7, 4)):
             self.assertEqual(max_size, 16777216)
 
-        expected = InvalidDocument
+        expected = DocumentTooLarge
         if version.at_least(self.client, (2, 5, 4, -1)):
             # Document too large handled by the server
             expected = OperationFailure
@@ -1767,7 +1768,7 @@ class TestCollection(unittest.TestCase):
 
         self.db.test.insert({"bar": "x"})
         # Use w=0 here to test legacy doc size checking in all server versions
-        self.assertRaises(InvalidDocument, self.db.test.update,
+        self.assertRaises(DocumentTooLarge, self.db.test.update,
                           {"bar": "x"}, {"bar": "x" * (max_size - 14)}, w=0)
         # This will pass with OP_UPDATE or the update command.
         self.db.test.update({"bar": "x"}, {"bar": "x" * (max_size - 15)})

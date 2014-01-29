@@ -55,8 +55,8 @@ from pymongo.read_preferences import (
 from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
                             ConnectionFailure,
+                            DocumentTooLarge,
                             DuplicateKeyError,
-                            InvalidDocument,
                             OperationFailure,
                             InvalidOperation)
 from pymongo.thread_util import DummyLock
@@ -1433,11 +1433,11 @@ class MongoReplicaSetClient(common.BaseObject):
         if len(msg) == 3:
             request_id, data, max_doc_size = msg
             if max_doc_size > max_size:
-                raise InvalidDocument("BSON document too large (%d bytes)"
-                                      " - the connected server supports"
-                                      " BSON document sizes up to %d"
-                                      " bytes." %
-                                      (max_doc_size, max_size))
+                raise DocumentTooLarge("BSON document too large (%d bytes)"
+                                       " - the connected server supports"
+                                       " BSON document sizes up to %d"
+                                       " bytes." %
+                                       (max_doc_size, max_size))
             return (request_id, data)
         # get_more and kill_cursors messages
         # don't include BSON documents.
