@@ -846,7 +846,6 @@ _send_write_command(PyObject* client, buffer_t buffer,
 
     PyObject* msg;
     PyObject* result;
-    PyObject* ok;
 
     int request_id = rand();
     int position = buffer_get_position(buffer);
