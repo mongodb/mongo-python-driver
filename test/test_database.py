@@ -329,10 +329,10 @@ class TestDatabase(unittest.TestCase):
         db.test.remove({})
         db.test.save({"i": 1})
 
-        db.test.update({"i": 1}, {"$set": {"i": 2}})
+        db.test.update({"i": 1}, {"$set": {"i": 2}}, w=0)
         self.assertTrue(db.last_status()["updatedExisting"])
 
-        db.test.update({"i": 1}, {"$set": {"i": 500}})
+        db.test.update({"i": 1}, {"$set": {"i": 500}}, w=0)
         self.assertFalse(db.last_status()["updatedExisting"])
 
     def test_password_digest(self):
