@@ -32,7 +32,7 @@ Example usage (serialization):
    ...        {'bar': {'hello': 'world'}},
    ...        {'code': Code("function x() { return 1; }")},
    ...        {'bin': Binary("\x01\x02\x03\x04")}])
-   '[{"foo": [1, 2]}, {"bar": {"hello": "world"}}, {"code": {"$scope": {}, "$code": "function x() { return 1; }"}}, {"bin": {"$type": "00", "$binary": "AQIDBA=="}}]'
+   '[{"foo": [1, 2]}, {"bar": {"hello": "world"}}, {"code": {"$code": "function x() { return 1; }", "$scope": {}}}, {"bin": {"$binary": "AQIDBA==", "$type": "00"}}]'
 
 Example usage (deserialization):
 
