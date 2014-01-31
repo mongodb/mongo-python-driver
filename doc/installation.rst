@@ -42,9 +42,9 @@ To upgrade do::
 Dependencies for installing C Extensions on Unix
 ------------------------------------------------
 
-10gen does not provide statically linked binary packages for Unix flavors
-other than OSX. To build the optional C extensions you must have the GNU C
-compiler (gcc) installed. Depending on your flavor of Unix (or Linux
+MongoDB, Inc. does not provide statically linked binary packages for Unix
+flavors other than OSX. To build the optional C extensions you must have the
+GNU C compiler (gcc) installed. Depending on your flavor of Unix (or Linux
 distribution) you may also need a python development package that provides
 the necessary header files for your version of Python. The package name may
 vary from distro to distro.
@@ -60,10 +60,10 @@ RedHat, CentOS, and Fedora users should issue the following command::
 OSX
 ---
 
-10gen provides pre-built egg packages for Apple provided Python versions on
-Snow Leopard (2.5, 2.6), Lion (2.5, 2.6, 2.7) and Mountain Lion (2.5, 2.6, 2.7).
-If you want to install PyMongo for other Python versions (or from source) you
-will have to install the following to build the C extensions:
+MongoDB, Inc. provides pre-built egg packages for Apple provided Python
+versions on Snow Leopard (2.5, 2.6), Lion (2.5, 2.6, 2.7) and Mountain Lion
+(2.5, 2.6, 2.7). If you want to install PyMongo for other Python versions (or
+from source) you will have to install the following to build the C extensions:
 
 **Snow Leopard (10.6)** - Xcode 3 with 'UNIX Development Support'.
 
@@ -118,9 +118,9 @@ Installing from source on Windows
 
 .. note::
 
-  10gen provides pre-built exe installers for 32-bit and 64-bit Windows. We
-  recommend that users install those packages (`available from pypi
-  <http://pypi.python.org/pypi/pymongo/>`_).
+  MongoDB, Inc. provides pre-built exe installers for 32-bit and 64-bit
+  Windows. We recommend that users install those packages (`available from
+  pypi <http://pypi.python.org/pypi/pymongo/>`_).
 
 If you want to install PyMongo with C extensions from source the following
 directions apply to both CPython and ActiveState's ActivePython:
@@ -193,9 +193,9 @@ package::
 Installing a release candidate
 ------------------------------
 
-10gen may occasionally tag a release candidate for testing by the community
-before final release. These releases will not be uploaded to pypi but can be
-found on the
+MongoDB, Inc. may occasionally tag a release candidate for testing by the
+community before final release. These releases will not be uploaded to pypi
+but can be found on the
 `github tags page <https://github.com/mongodb/mongo-python-driver/tags>`_.
 They can be installed by passing the full URL for the tag to pip::
 

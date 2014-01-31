@@ -1,4 +1,4 @@
-# Copyright 2011-2012 10gen, Inc.
+# Copyright 2011-2014 MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you
 # may not use this file except in compliance with the License.  You
@@ -333,7 +333,7 @@ class BaseObject(object):
     """A base class that provides attributes and methods common
     to multiple pymongo classes.
 
-    SHOULD NOT BE USED BY DEVELOPERS EXTERNAL TO 10GEN
+    SHOULD NOT BE USED BY DEVELOPERS EXTERNAL TO MONGODB.
     """
 
     def __init__(self, **options):

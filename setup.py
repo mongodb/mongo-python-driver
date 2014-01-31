@@ -282,7 +282,7 @@ setup(
     author="Mike Dirolf",
     author_email="mongodb-user@googlegroups.com",
     maintainer="Bernie Hackett",
-    maintainer_email="bernie@10gen.com",
+    maintainer_email="bernie@mongodb.com",
     url="http://github.com/mongodb/mongo-python-driver",
     keywords=["mongo", "mongodb", "pymongo", "gridfs", "bson"],
     install_requires=[],

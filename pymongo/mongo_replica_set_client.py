@@ -1,4 +1,4 @@
-# Copyright 2011-2012 10gen, Inc.
+# Copyright 2011-2014 MongoDB, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you
 # may not use this file except in compliance with the License.  You
@@ -604,7 +604,7 @@ class MongoReplicaSetClient(common.BaseObject):
             self.__seeds.update(uri_parser.split_hosts(host, port))
 
         # _pool_class and _monitor_class are for deep customization of PyMongo,
-        # e.g. Motor. SHOULD NOT BE USED BY DEVELOPERS EXTERNAL TO 10GEN.
+        # e.g. Motor. SHOULD NOT BE USED BY DEVELOPERS EXTERNAL TO MONGODB.
         self.pool_class = kwargs.pop('_pool_class', pool.Pool)
         self.__monitor_class = kwargs.pop('_monitor_class', None)
 
