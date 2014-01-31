@@ -115,7 +115,7 @@ def _merge_legacy(run, full_result, result, index):
             full_result['nUpserted'] += affected
         else:
             full_result['nUpdated'] += affected
-        full_result['nModified'] += affected
+            full_result['nModified'] += affected
     elif run.op_type == _DELETE:
         full_result['nRemoved'] += affected
 
@@ -150,7 +150,7 @@ def _merge_command(run, full_result, results):
                 full_result["nUpdated"] += (affected - n_upserted)
             else:
                 full_result["nUpdated"] += affected
-            full_result["nModified"] += result.get("nDocsModified", 0)
+            full_result["nModified"] += result.get("nModified", 0)
 
         write_errors = result.get("writeErrors")
         if write_errors:
