@@ -75,9 +75,15 @@ def server_started_with_option(client, cmdline_opt, config_opt):
 
 def server_started_with_auth(client):
     command_line = get_command_line(client)
+    # MongoDB >= 2.0
     if 'parsed' in command_line:
         parsed = command_line['parsed']
+        # MongoDB >= 2.6
+        if 'security' in parsed:
+            security = parsed['security']
+            return security.get('auth', False) or bool(security.get('keyFile'))
         return parsed.get('auth', False) or bool(parsed.get('keyFile'))
+    # Legacy
     argv = command_line['argv']
     return '--auth' in argv or '--keyFile' in argv
 
