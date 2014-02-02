@@ -192,6 +192,8 @@ class Collection(common.BaseObject):
 
         Returns a :class:`~pymongo.bulk.BulkOperationBuilder` instance.
 
+        See :ref:`unordered_bulk` for examples.
+
         .. versionadded:: 2.7
         """
         return bulk.BulkOperationBuilder(self, ordered=False)
@@ -204,6 +206,8 @@ class Collection(common.BaseObject):
         are aborted.
 
         Returns a :class:`~pymongo.bulk.BulkOperationBuilder` instance.
+
+        See :ref:`ordered_bulk` for examples.
 
         .. versionadded:: 2.7
         """

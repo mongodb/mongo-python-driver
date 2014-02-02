@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""The bulk write operations interface."""
+"""The bulk write operations interface.
+
+.. versionadded:: 2.7
+"""
 
 from bson.objectid import ObjectId
 from bson.son import SON
