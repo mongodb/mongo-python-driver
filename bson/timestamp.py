@@ -17,6 +17,7 @@
 
 import calendar
 import datetime
+from operator import lt, le, gt, ge
 
 from bson.tz_util import utc
 
@@ -77,6 +78,11 @@ class Timestamp(object):
         """
         return self.__inc
 
+    def operate(self, op, other):
+        if isinstance(other, Timestamp):
+            return op((self.time, self.inc), (other.time, other.inc))
+        return NotImplemented
+
     def __eq__(self, other):
         if isinstance(other, Timestamp):
             return (self.__time == other.time and self.__inc == other.inc)
@@ -87,24 +93,16 @@ class Timestamp(object):
         return not self == other
 
     def __lt__(self, other):
-        if isinstance(other, Timestamp):
-            return (self.time, self.inc) < (other.time, other.inc)
-        return NotImplemented
+        return self.operate(lt, other)
 
     def __le__(self, other):
-        if isinstance(other, Timestamp):
-            return (self.time, self.inc) <= (other.time, other.inc)
-        return NotImplemented
+        return self.operate(le, other)
 
     def __gt__(self, other):
-        if isinstance(other, Timestamp):
-            return (self.time, self.inc) > (other.time, other.inc)
-        return NotImplemented
+        return self.operate(gt, other)
 
     def __ge__(self, other):
-        if isinstance(other, Timestamp):
-            return (self.time, self.inc) >= (other.time, other.inc)
-        return NotImplemented
+        return self.operate(ge, other)
 
     def __repr__(self):
         return "Timestamp(%s, %s)" % (self.__time, self.__inc)
