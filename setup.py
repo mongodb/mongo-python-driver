@@ -65,10 +65,9 @@ def write_nose_config():
         cf.close()
 
 
-def should_run_tests():
-    if "test" in sys.argv or "nosetests" in sys.argv:
-        return True
-    return False
+should_run_tests = False
+if "test" in sys.argv or "nosetests" in sys.argv:
+    should_run_tests = True
 
 
 class doc(Command):
@@ -189,7 +188,7 @@ http://api.mongodb.org/python/current/installation.html#osx
         if sys.version_info[:3] >= (2, 4, 0):
             try:
                 build_ext.build_extension(self, ext)
-                if should_run_tests():
+                if should_run_tests:
                     self.set_nose_options()
             except build_errors:
                 e = sys.exc_info()[1]
@@ -221,9 +220,9 @@ c_ext = Feature(
                            sources=['pymongo/_cmessagemodule.c',
                                     'bson/buffer.c'])])
 
+features = {}
 if "--no_ext" in sys.argv:
-    sys.argv = [x for x in sys.argv if x != "--no_ext"]
-    features = {}
+    sys.argv.remove("--no_ext")
 elif (sys.platform.startswith("java") or
       sys.platform == "cli" or
       "PyPy" in sys.version):
@@ -233,7 +232,6 @@ The optional C extensions are currently not supported\n
 by this python implementation.\n
 *****************************************************\n
 """)
-    features = {}
 elif sys.byteorder == "big":
     sys.stdout.write("""
 *****************************************************\n
@@ -242,7 +240,6 @@ on big endian platforms and will not be built.\n
 Performance may be degraded.\n
 *****************************************************\n
 """)
-    features = {}
 else:
     features = {"c-ext": c_ext}
 
@@ -252,7 +249,7 @@ extra_opts = {
 }
 if PY3:
     extra_opts["use_2to3"] = True
-    if should_run_tests():
+    if should_run_tests:
         # Distribute isn't smart enough to copy the
         # tests and run 2to3 on them. We don't want to
         # install the test suite so only do this if we
@@ -271,7 +268,7 @@ if PY3:
 
 # This may be called a second time if
 # we are testing with C extensions.
-if should_run_tests():
+if should_run_tests:
     write_nose_config()
 
 setup(
