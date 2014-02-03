@@ -416,6 +416,23 @@ class TestCollection(unittest.TestCase):
         self.assertEqual("t_text", db.test.create_index([("t", "text")]))
         index_info = db.test.index_information()["t_text"]
         self.assertTrue("weights" in index_info)
+
+        if version.at_least(self.client, (2, 5, 5)):
+            db.test.insert([
+                {'t': 'spam eggs and spam'},
+                {'t': 'spam'},
+                {'t': 'egg sausage and bacon'}])
+
+            # MongoDB 2.6 text search. Create 'score' field in projection.
+            cursor = db.test.find(
+                {'$text': {'$search': 'spam'}},
+                {'score': {'$meta': 'textScore'}})
+
+            # Sort by 'score' field.
+            cursor.sort([('score', {'$meta': 'textScore'})])
+            results = list(cursor)
+            self.assertTrue(results[0]['score'] >= results[1]['score'])
+
         db.test.drop_indexes()
 
     def test_index_2dsphere(self):
