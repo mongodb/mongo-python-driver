@@ -31,6 +31,7 @@ import socket
 import struct
 import threading
 import time
+from operator import eq, ne, lt, le, gt ,ge
 
 from bson.errors import InvalidId
 from bson.py3compat import (PY3, b, binary_type, text_type,
@@ -253,35 +254,28 @@ class ObjectId(object):
     def __repr__(self):
         return "ObjectId('%s')" % (str(self),)
 
-    def __eq__(self, other):
+    def operate(self, op, other):
         if isinstance(other, ObjectId):
-            return self.__id == other.__id
+            return op(self.__id, other.__id)
         return NotImplemented
+
+    def __eq__(self, other):
+        return self.operate(eq, other)
 
     def __ne__(self, other):
-        if isinstance(other, ObjectId):
-            return self.__id != other.__id
-        return NotImplemented
+        return self.operate(ne, other)
 
     def __lt__(self, other):
-        if isinstance(other, ObjectId):
-            return self.__id < other.__id
-        return NotImplemented
+        return self.operate(lt, other)
 
     def __le__(self, other):
-        if isinstance(other, ObjectId):
-            return self.__id <= other.__id
-        return NotImplemented
+        return self.operate(le, other)
 
     def __gt__(self, other):
-        if isinstance(other, ObjectId):
-            return self.__id > other.__id
-        return NotImplemented
+        return self.operate(gt, other)
 
     def __ge__(self, other):
-        if isinstance(other, ObjectId):
-            return self.__id >= other.__id
-        return NotImplemented
+        return self.operate(ge, other)
 
     def __hash__(self):
         """Get a hash value for this :class:`ObjectId`.
