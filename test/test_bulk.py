@@ -31,6 +31,14 @@ class TestBulk(unittest.TestCase):
         self.coll = get_client().pymongo_test.test
         self.coll.remove()
 
+    def test_find(self):
+        # find() requires a selector.
+        bulk = self.coll.initialize_ordered_bulk_op()
+        self.assertRaises(TypeError, bulk.find)
+        self.assertRaises(TypeError, bulk.find, 'foo')
+        # No error.
+        bulk.find({})
+
     def test_insert(self):
         bulk = self.coll.initialize_ordered_bulk_op()
         self.assertRaises(TypeError, bulk.insert, 1)
@@ -52,7 +60,7 @@ class TestBulk(unittest.TestCase):
         self.assertRaises(TypeError, bulk.find({}).update, 1)
         self.assertRaises(ValueError, bulk.find({}).update, {})
         self.assertRaises(ValueError, bulk.find({}).update, {'foo': 'bar'})
-        bulk.find().update({'$set': {'foo': 'bar'}})
+        bulk.find({}).update({'$set': {'foo': 'bar'}})
         result = bulk.execute()
         self.assertEqual(2, result['nUpdated'])
         self.assertEqual(0, result['nUpserted'])
@@ -62,7 +70,7 @@ class TestBulk(unittest.TestCase):
         self.coll.insert([{}, {}])
 
         bulk = self.coll.initialize_unordered_bulk_op()
-        bulk.find().update({'$set': {'bim': 'baz'}})
+        bulk.find({}).update({'$set': {'bim': 'baz'}})
         bulk.execute()
         self.assertEqual(2, result['nUpdated'])
         self.assertEqual(0, result['nUpserted'])
@@ -75,7 +83,7 @@ class TestBulk(unittest.TestCase):
         self.assertRaises(TypeError, bulk.find({}).update_one, 1)
         self.assertRaises(ValueError, bulk.find({}).update_one, {})
         self.assertRaises(ValueError, bulk.find({}).update_one, {'foo': 'bar'})
-        bulk.find().update_one({'$set': {'foo': 'bar'}})
+        bulk.find({}).update_one({'$set': {'foo': 'bar'}})
         result = bulk.execute()
         self.assertEqual(1, result['nUpdated'])
         self.assertEqual(0, result['nUpserted'])
@@ -85,7 +93,7 @@ class TestBulk(unittest.TestCase):
         self.coll.insert([{}, {}])
 
         bulk = self.coll.initialize_unordered_bulk_op()
-        bulk.find().update_one({'$set': {'bim': 'baz'}})
+        bulk.find({}).update_one({'$set': {'bim': 'baz'}})
         result = bulk.execute()
         self.assertEqual(1, result['nUpdated'])
         self.assertEqual(0, result['nUpserted'])
@@ -98,7 +106,7 @@ class TestBulk(unittest.TestCase):
         self.assertRaises(TypeError, bulk.find({}).replace_one, 1)
         self.assertRaises(ValueError,
                           bulk.find({}).replace_one, {'$set': {'foo': 'bar'}})
-        bulk.find().replace_one({'foo': 'bar'})
+        bulk.find({}).replace_one({'foo': 'bar'})
         result = bulk.execute()
         self.assertEqual(1, result['nUpdated'])
         self.assertEqual(0, result['nUpserted'])
@@ -108,7 +116,7 @@ class TestBulk(unittest.TestCase):
         self.coll.insert([{}, {}])
 
         bulk = self.coll.initialize_unordered_bulk_op()
-        bulk.find().replace_one({'bim': 'baz'})
+        bulk.find({}).replace_one({'bim': 'baz'})
         result = bulk.execute()
         self.assertEqual(1, result['nUpdated'])
         self.assertEqual(0, result['nUpserted'])
@@ -118,7 +126,7 @@ class TestBulk(unittest.TestCase):
         self.coll.insert([{}, {}])
 
         bulk = self.coll.initialize_ordered_bulk_op()
-        bulk.find().remove()
+        bulk.find({}).remove()
         result = bulk.execute()
         self.assertEqual(2, result['nRemoved'])
         self.assertEqual(self.coll.count(), 0)
@@ -126,7 +134,7 @@ class TestBulk(unittest.TestCase):
         self.coll.insert([{}, {}])
 
         bulk = self.coll.initialize_unordered_bulk_op()
-        bulk.find().remove()
+        bulk.find({}).remove()
         result = bulk.execute()
         self.assertEqual(2, result['nRemoved'])
         self.assertEqual(self.coll.count(), 0)
@@ -135,7 +143,7 @@ class TestBulk(unittest.TestCase):
         self.coll.insert([{}, {}])
 
         bulk = self.coll.initialize_ordered_bulk_op()
-        bulk.find().remove_one()
+        bulk.find({}).remove_one()
         result = bulk.execute()
         self.assertEqual(1, result['nRemoved'])
         self.assertEqual(self.coll.count(), 1)
@@ -143,7 +151,7 @@ class TestBulk(unittest.TestCase):
         self.coll.insert({})
 
         bulk = self.coll.initialize_unordered_bulk_op()
-        bulk.find().remove_one()
+        bulk.find({}).remove_one()
         result = bulk.execute()
         self.assertEqual(1, result['nRemoved'])
         self.assertEqual(self.coll.count(), 1)
@@ -153,21 +161,21 @@ class TestBulk(unittest.TestCase):
         # "upserted" field unless _id is an ObjectId
         self.assertFalse(self.coll.count())
         bulk = self.coll.initialize_ordered_bulk_op()
-        bulk.find().upsert().replace_one({'foo': 'bar'})
+        bulk.find({}).upsert().replace_one({'foo': 'bar'})
         result = bulk.execute()
         self.assertEqual(0, result['nUpdated'])
         self.assertEqual(1, result['nUpserted'])
         self.assertEqual(self.coll.find({'foo': 'bar'}).count(), 1)
 
         bulk = self.coll.initialize_ordered_bulk_op()
-        bulk.find().upsert().update_one({'$set': {'bim': 'baz'}})
+        bulk.find({}).upsert().update_one({'$set': {'bim': 'baz'}})
         bulk.execute()
         self.assertEqual(0, result['nUpdated'])
         self.assertEqual(1, result['nUpserted'])
         self.assertEqual(self.coll.find({'bim': 'baz'}).count(), 1)
 
         bulk = self.coll.initialize_ordered_bulk_op()
-        bulk.find().upsert().update({'$set': {'bim': 'bop'}})
+        bulk.find({}).upsert().update({'$set': {'bim': 'bop'}})
         bulk.execute()
         self.assertEqual(0, result['nUpdated'])
         self.assertEqual(1, result['nUpserted'])

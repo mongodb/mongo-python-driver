@@ -546,7 +546,7 @@ class BulkOperationBuilder(object):
         """
         self.__bulk = _Bulk(collection, ordered)
 
-    def find(self, selector=None):
+    def find(self, selector):
         """Specify selection criteria for bulk operations.
 
         :Parameters:
@@ -557,9 +557,8 @@ class BulkOperationBuilder(object):
           - A :class:`BulkWriteOperation` instance, used to add
             update and remove operations to this bulk operation.
         """
-        if selector and not isinstance(selector, dict):
+        if not isinstance(selector, dict):
             raise TypeError('selector must be an instance of dict')
-        selector = selector or {}
         return BulkWriteOperation(selector, self.__bulk)
 
     def insert(self, document):
