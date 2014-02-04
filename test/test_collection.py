@@ -1017,6 +1017,19 @@ class TestCollection(unittest.TestCase):
         else:
             self.fail("%s was not raised" % (expected_error.__name__,))
 
+    def test_wtimeout(self):
+        # Ensure setting wtimeout doesn't disable write concern altogether.
+        # See SERVER-12596.
+        collection = self.db.test
+        collection.remove()
+        collection.insert({'_id': 1})
+
+        collection.write_concern = {'w': 1, 'wtimeout': 1000}
+        self.assertRaises(DuplicateKeyError, collection.insert, {'_id': 1})
+
+        collection.write_concern = {'wtimeout': 1000}
+        self.assertRaises(DuplicateKeyError, collection.insert, {'_id': 1})
+
     def test_continue_on_error(self):
         db = self.db
         if not version.at_least(db.connection, (1, 9, 1)):
