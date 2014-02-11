@@ -859,6 +859,47 @@ class Collection(common.BaseObject):
                 self.secondary_acceptable_latency_ms)
         return Cursor(self, *args, **kwargs)
 
+    def parallel_collection_scan(self, num_cursors, **kwargs):
+        """Scan this collection in parallel.
+
+        Returns a list of :class:`~pymongo.command_cursor.CommandCursor`
+        instances that can be iterated concurrently by one or more threads
+        or greenlets.
+
+        With :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`
+        or :class:`~pymongo.master_slave_connection.MasterSlaveConnection`,
+        if the `read_preference` attribute of this instance is not set to
+        :attr:`pymongo.read_preferences.ReadPreference.PRIMARY` or the
+        (deprecated) `slave_okay` attribute of this instance is set to `True`
+        the command will be sent to a secondary or slave.
+
+        :Parameters:
+          - `num_cursors`: the number of cursors to return
+
+        .. note:: Requires server version **>= 2.5.5**.
+
+        """
+        use_master = not self.slave_okay and not self.read_preference
+        compile_re = kwargs.get('compile_re', False)
+
+        command_kwargs = {
+            'numCursors': num_cursors,
+            'read_preference': self.read_preference,
+            'tag_sets': self.tag_sets,
+            'secondary_acceptable_latency_ms': (
+                self.secondary_acceptable_latency_ms),
+            'slave_okay': self.slave_okay,
+            '_use_master': use_master}
+        command_kwargs.update(kwargs)
+
+        result, conn_id = self.__database._command(
+            "parallelCollectionScan", self.__name, **command_kwargs)
+
+        return [CommandCursor(self,
+                              cursor['cursor'],
+                              conn_id,
+                              compile_re) for cursor in result['cursors']]
+
     def count(self):
         """Get the number of documents in this collection.
 
@@ -1237,12 +1278,10 @@ class Collection(common.BaseObject):
             "aggregate", self.__name, **command_kwargs)
 
         if 'cursor' in result:
-            cursor_info = result['cursor']
             return CommandCursor(
                 self,
-                cursor_info['id'],
+                result['cursor'],
                 conn_id,
-                cursor_info['firstBatch'],
                 command_kwargs.get('compile_re', True))
         else:
             return result

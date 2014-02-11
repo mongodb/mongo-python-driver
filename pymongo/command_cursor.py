@@ -24,21 +24,20 @@ class CommandCursor(object):
     """A cursor / iterator over command cursors.
     """
 
-    def __init__(self, collection, cursor_id,
-                 conn_id, initial=None, compile_re=True):
+    def __init__(self, collection, cursor_info, conn_id, compile_re=True):
         """Create a new command cursor.
         """
         self.__collection = collection
-        self.__id = cursor_id
+        self.__id = cursor_info['id']
         self.__conn_id = conn_id
-        self.__data = deque(initial or [])
+        self.__data = deque(cursor_info['firstBatch'])
         self.__decode_opts = (
             collection.database.connection.document_class,
             collection.database.connection.tz_aware,
             collection.uuid_subtype,
             compile_re
         )
-        self.__retrieved = 0
+        self.__retrieved = cursor_info.get('_retrieved', 0)
         self.__batch_size = 0
         self.__killed = False
 

@@ -70,8 +70,7 @@ class Cursor(object):
                  read_preference=ReadPreference.PRIMARY,
                  tag_sets=[{}], secondary_acceptable_latency_ms=None,
                  exhaust=False, compile_re=True, _must_use_master=False,
-                 _uuid_subtype=None, _first_batch=None, _cursor_id=None,
-                 _retrieved=0, **kwargs):
+                 _uuid_subtype=None, **kwargs):
         """Create a new cursor.
 
         Should not be called directly by application developers - see
@@ -79,8 +78,7 @@ class Cursor(object):
 
         .. mongodoc:: cursors
         """
-        self.__id = _cursor_id
-        self.__is_command_cursor = _cursor_id is not None
+        self.__id = None
 
         if spec is None:
             spec = {}
@@ -159,9 +157,9 @@ class Cursor(object):
         self.__must_use_master = _must_use_master
         self.__uuid_subtype = _uuid_subtype or collection.uuid_subtype
 
-        self.__data = deque(_first_batch or [])
+        self.__data = deque()
         self.__connection_id = None
-        self.__retrieved = _retrieved
+        self.__retrieved = 0
         self.__killed = False
 
         self.__query_flags = 0
@@ -213,7 +211,6 @@ class Cursor(object):
         be sent to the server, even if the resultant data has already been
         retrieved by this cursor.
         """
-        self.__check_not_command_cursor('rewind')
         self.__data = deque()
         self.__id = None
         self.__connection_id = None
@@ -233,7 +230,6 @@ class Cursor(object):
         return self._clone(True)
 
     def _clone(self, deepcopy=True):
-        self.__check_not_command_cursor('clone')
         clone = self._clone_base()
         values_to_clone = ("spec", "fields", "skip", "limit", "max_time_ms",
                            "comment", "max", "min",
@@ -382,13 +378,6 @@ class Cursor(object):
         """
         if self.__retrieved or self.__id is not None:
             raise InvalidOperation("cannot set options after executing query")
-
-    def __check_not_command_cursor(self, method_name):
-        """Check if calling a method on this cursor is valid.
-        """
-        if self.__is_command_cursor:
-            raise InvalidOperation(
-                "cannot call %s on a command cursor" % method_name)
 
     def add_option(self, mask):
         """Set arbitrary query flags using a bitmask.
@@ -703,7 +692,6 @@ class Cursor(object):
         """
         if not isinstance(with_limit_and_skip, bool):
             raise TypeError("with_limit_and_skip must be an instance of bool")
-        self.__check_not_command_cursor('count')
         command = {"query": self.__spec, "fields": self.__fields}
 
         command['read_preference'] = self.__read_preference
@@ -757,7 +745,6 @@ class Cursor(object):
 
         .. versionadded:: 1.2
         """
-        self.__check_not_command_cursor('distinct')
         if not isinstance(key, basestring):
             raise TypeError("key must be an instance "
                             "of %s" % (basestring.__name__,))
@@ -790,7 +777,6 @@ class Cursor(object):
 
         .. mongodoc:: explain
         """
-        self.__check_not_command_cursor('explain')
         c = self.clone()
         c.__explain = True
 

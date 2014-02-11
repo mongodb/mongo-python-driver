@@ -69,6 +69,9 @@ class TestCollection(unittest.TestCase):
     def setUp(self):
         self.client = get_client()
         self.db = self.client.pymongo_test
+        ismaster = self.db.command('ismaster')
+        self.setname = ismaster.get('setName')
+        self.w = len(ismaster.get('hosts', [])) or 1
 
     def tearDown(self):
         self.db.drop_collection("test_large_limit")
@@ -1357,18 +1360,17 @@ class TestCollection(unittest.TestCase):
         if not version.at_least(self.db.connection, (2, 5, 1)):
             raise SkipTest("Aggregation cursor requires MongoDB >= 2.5.1")
         db = self.db
-        ismaster = db.command('ismaster')
-        setname = ismaster.get('setName')
-        w = len(ismaster.get('hosts', [])) or 1
-        if setname:
+        if self.setname:
             db = MongoReplicaSetClient(host=self.client.host,
                                        port=self.client.port,
-                                       replicaSet=setname)[db.name]
+                                       replicaSet=self.setname)[db.name]
+            # Test that getMore messages are sent to the right server.
             db.read_preference = ReadPreference.SECONDARY
 
         for collection_size in (10, 1000):
             db.drop_collection("test")
-            db.test.insert([{'_id': i} for i in range(collection_size)], w=w)
+            db.test.insert([{'_id': i} for i in range(collection_size)],
+                           w=self.w)
             expected_sum = sum(range(collection_size))
             # Use batchSize to ensure multiple getMore messages
             cursor = db.test.aggregate(
@@ -1378,6 +1380,28 @@ class TestCollection(unittest.TestCase):
             self.assertEqual(
                 expected_sum,
                 sum(doc['_id'] for doc in cursor))
+
+    def test_parallel_collection_scan(self):
+        if not version.at_least(self.db.connection, (2, 5, 5)):
+            raise SkipTest("Requires MongoDB >= 2.5.5")
+        db = self.db
+        db.drop_collection("test")
+        if self.setname:
+            db = MongoReplicaSetClient(host=self.client.host,
+                                       port=self.client.port,
+                                       replicaSet=self.setname)[db.name]
+            # Test that getMore messages are sent to the right server.
+            db.read_preference = ReadPreference.SECONDARY
+        coll = db.test
+        coll.insert(({'_id': i} for i in xrange(8000)), w=self.w)
+        docs = []
+        threads = [threading.Thread(target=docs.extend, args=(cursor,))
+                   for cursor in coll.parallel_collection_scan(3)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(len(docs), db.test.count())
 
     def test_group(self):
         db = self.db
