@@ -23,6 +23,7 @@ from pymongo import (bulk,
                      common,
                      helpers,
                      message)
+from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import Cursor
 from pymongo.errors import InvalidName, OperationFailure
 from pymongo.helpers import _check_write_command_response
@@ -1196,13 +1197,17 @@ class Collection(common.BaseObject):
 
         With server version **>= 2.5.1**, pass
         ``cursor={}`` to retrieve unlimited aggregation results
-        with a :class:`~pymongo.cursor.Cursor`::
+        with a :class:`~pymongo.command_cursor.CommandCursor`::
 
             pipeline = [{'$project': {'name': {'$toUpper': '$name'}}}]
             cursor = collection.aggregate(pipeline, cursor={})
             for doc in cursor:
                 print doc
 
+        .. versionchanged:: 2.7
+           When the cursor option is used, return
+           :class:`~pymongo.command_cursor.CommandCursor` instead of
+           :class:`~pymongo.cursor.Cursor`.
         .. versionchanged:: 2.6
            Added cursor support.
         .. versionadded:: 2.3
@@ -1228,17 +1233,19 @@ class Collection(common.BaseObject):
             '_use_master': use_master}
 
         command_kwargs.update(kwargs)
-        command_response = self.__database.command(
+        result, conn_id = self.__database._command(
             "aggregate", self.__name, **command_kwargs)
 
-        if 'cursor' in command_response:
-            cursor_info = command_response['cursor']
-            return Cursor(
+        if 'cursor' in result:
+            cursor_info = result['cursor']
+            return CommandCursor(
                 self,
-                _first_batch=cursor_info['firstBatch'],
-                _cursor_id=cursor_info['id'])
+                cursor_info['id'],
+                conn_id,
+                cursor_info['firstBatch'],
+                command_kwargs.get('compile_re', True))
         else:
-            return command_response
+            return result
 
     # TODO key and condition ought to be optional, but deprecation
     # could be painful as argument order would have to change.

@@ -271,6 +271,77 @@ class Database(common.BaseObject):
             son = manipulator.transform_outgoing(son, collection)
         return son
 
+    def _command(self, command, value=1,
+                 check=True, allowable_errors=None,
+                 uuid_subtype=OLD_UUID_SUBTYPE, compile_re=True, **kwargs):
+        """Internal command helper.
+        """
+
+        if isinstance(command, basestring):
+            command = SON([(command, value)])
+
+        command_name = command.keys()[0].lower()
+        must_use_master = kwargs.pop('_use_master', False)
+        if command_name not in rp.secondary_ok_commands:
+            must_use_master = True
+
+        # Special-case: mapreduce can go to secondaries only if inline
+        if command_name == 'mapreduce':
+            out = command.get('out') or kwargs.get('out')
+            if not isinstance(out, dict) or not out.get('inline'):
+                must_use_master = True
+
+        # Special-case: aggregate with $out cannot go to secondaries.
+        if command_name == 'aggregate':
+            for stage in kwargs.get('pipeline', []):
+                if '$out' in stage:
+                    must_use_master = True
+                    break
+
+        extra_opts = {
+            'as_class': kwargs.pop('as_class', None),
+            'slave_okay': kwargs.pop('slave_okay', self.slave_okay),
+            '_must_use_master': must_use_master,
+            '_uuid_subtype': uuid_subtype
+        }
+
+        extra_opts['read_preference'] = kwargs.pop(
+            'read_preference',
+            self.read_preference)
+        extra_opts['tag_sets'] = kwargs.pop(
+            'tag_sets',
+            self.tag_sets)
+        extra_opts['secondary_acceptable_latency_ms'] = kwargs.pop(
+            'secondary_acceptable_latency_ms',
+            self.secondary_acceptable_latency_ms)
+        extra_opts['compile_re'] = compile_re
+
+        fields = kwargs.get('fields')
+        if fields is not None and not isinstance(fields, dict):
+            kwargs['fields'] = helpers._fields_list_to_dict(fields)
+
+        command.update(kwargs)
+
+        # Warn if must_use_master will override read_preference.
+        if (extra_opts['read_preference'] != rp.ReadPreference.PRIMARY and
+                extra_opts['_must_use_master']):
+            warnings.warn("%s does not support %s read preference "
+                          "and will be routed to the primary instead." %
+                          (command_name,
+                           rp.modes[extra_opts['read_preference']]),
+                          UserWarning)
+
+        cursor = self["$cmd"].find(command, **extra_opts).limit(-1)
+        for doc in cursor:
+            result = doc
+
+        if check:
+            msg = "command %s failed: %%s" % repr(command).replace("%", "%%")
+            helpers._check_command_response(result, self.connection.disconnect,
+                                            msg, allowable_errors)
+
+        return result, cursor._connection_id
+
     def command(self, command, value=1,
                 check=True, allowable_errors=[],
                 uuid_subtype=OLD_UUID_SUBTYPE, compile_re=True, **kwargs):
@@ -360,69 +431,8 @@ class Database(common.BaseObject):
         .. mongodoc:: commands
         .. _localThreshold: http://docs.mongodb.org/manual/reference/mongos/#cmdoption-mongos--localThreshold
         """
-
-        if isinstance(command, basestring):
-            command = SON([(command, value)])
-
-        command_name = command.keys()[0].lower()
-        must_use_master = kwargs.pop('_use_master', False)
-        if command_name not in rp.secondary_ok_commands:
-            must_use_master = True
-
-        # Special-case: mapreduce can go to secondaries only if inline
-        if command_name == 'mapreduce':
-            out = command.get('out') or kwargs.get('out')
-            if not isinstance(out, dict) or not out.get('inline'):
-                must_use_master = True
-
-        # Special-case: aggregate with $out cannot go to secondaries.
-        if command_name == 'aggregate':
-            for stage in kwargs.get('pipeline', []):
-                if '$out' in stage:
-                    must_use_master = True
-                    break
-
-        extra_opts = {
-            'as_class': kwargs.pop('as_class', None),
-            'slave_okay': kwargs.pop('slave_okay', self.slave_okay),
-            '_must_use_master': must_use_master,
-            '_uuid_subtype': uuid_subtype
-        }
-
-        extra_opts['read_preference'] = kwargs.pop(
-            'read_preference',
-            self.read_preference)
-        extra_opts['tag_sets'] = kwargs.pop(
-            'tag_sets',
-            self.tag_sets)
-        extra_opts['secondary_acceptable_latency_ms'] = kwargs.pop(
-            'secondary_acceptable_latency_ms',
-            self.secondary_acceptable_latency_ms)
-        extra_opts['compile_re'] = compile_re
-
-        fields = kwargs.get('fields')
-        if fields is not None and not isinstance(fields, dict):
-            kwargs['fields'] = helpers._fields_list_to_dict(fields)
-
-        command.update(kwargs)
-
-        # Warn if must_use_master will override read_preference.
-        if (extra_opts['read_preference'] != rp.ReadPreference.PRIMARY and
-                extra_opts['_must_use_master']):
-            warnings.warn("%s does not support %s read preference "
-                          "and will be routed to the primary instead." %
-                          (command_name,
-                           rp.modes[extra_opts['read_preference']]),
-                          UserWarning)
-
-        result = self["$cmd"].find_one(command, **extra_opts)
-
-        if check:
-            msg = "command %s failed: %%s" % repr(command).replace("%", "%%")
-            helpers._check_command_response(result, self.connection.disconnect,
-                                            msg, allowable_errors)
-
-        return result
+        return self._command(command, value, check, allowable_errors,
+                             uuid_subtype, compile_re, **kwargs)[0]
 
     def collection_names(self, include_system_collections=True):
         """Get a list of all the collection names in this database.

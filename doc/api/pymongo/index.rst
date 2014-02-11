@@ -31,6 +31,7 @@ Sub-modules:
    connection
    database
    collection
+   command_cursor
    cursor
    bulk
    errors

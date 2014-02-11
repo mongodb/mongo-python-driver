@@ -41,7 +41,9 @@ from pymongo import (ASCENDING, DESCENDING, GEO2D,
                      GEOHAYSTACK, GEOSPHERE, HASHED)
 from pymongo import message as message_module
 from pymongo.collection import Collection
-from pymongo.cursor import Cursor
+from pymongo.command_cursor import CommandCursor
+from pymongo.mongo_replica_set_client import MongoReplicaSetClient
+from pymongo.read_preferences import ReadPreference
 from pymongo.son_manipulator import SONManipulator
 from pymongo.errors import (DocumentTooLarge,
                             DuplicateKeyError,
@@ -1349,25 +1351,29 @@ class TestCollection(unittest.TestCase):
         db = self.db
         projection = {'$project': {'_id': '$_id'}}
         cursor = db.test.aggregate(projection, cursor={})
-        self.assertTrue(isinstance(cursor, Cursor))
-        self.assertRaises(InvalidOperation, cursor.rewind)
-        self.assertRaises(InvalidOperation, cursor.clone)
-        self.assertRaises(InvalidOperation, cursor.count)
-        self.assertRaises(InvalidOperation, cursor.explain)
+        self.assertTrue(isinstance(cursor, CommandCursor))
 
     def test_aggregation_cursor(self):
         if not version.at_least(self.db.connection, (2, 5, 1)):
             raise SkipTest("Aggregation cursor requires MongoDB >= 2.5.1")
         db = self.db
+        ismaster = db.command('ismaster')
+        setname = ismaster.get('setName')
+        w = len(ismaster.get('hosts', [])) or 1
+        if setname:
+            db = MongoReplicaSetClient(host=self.client.host,
+                                       port=self.client.port,
+                                       replicaSet=setname)[db.name]
+            db.read_preference = ReadPreference.SECONDARY
 
-        # A small collection which returns only an initial batch,
-        # and a larger one that requires a getMore.
         for collection_size in (10, 1000):
             db.drop_collection("test")
-            db.test.insert([{'_id': i} for i in range(collection_size)])
+            db.test.insert([{'_id': i} for i in range(collection_size)], w=w)
             expected_sum = sum(range(collection_size))
+            # Use batchSize to ensure multiple getMore messages
             cursor = db.test.aggregate(
-                {'$project': {'_id': '$_id'}}, cursor={})
+                {'$project': {'_id': '$_id'}},
+                cursor={'batchSize': 5})
 
             self.assertEqual(
                 expected_sum,
