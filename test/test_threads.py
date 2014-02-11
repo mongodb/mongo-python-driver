@@ -259,7 +259,7 @@ class BaseTestThreads(object):
         assert isinstance(socket_info, SocketInfo)
         request_sock = socket_info.sock
 
-        state = FindPauseFind.create_shared_state(nthreads=40)
+        state = FindPauseFind.create_shared_state(nthreads=10)
 
         threads = [
             FindPauseFind(collection, state)

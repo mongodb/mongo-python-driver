@@ -36,7 +36,7 @@ from test import version, host, port
 from test.test_client import get_client
 from test.utils import delay, is_mongos, one, get_pool
 
-N = 50
+N = 10
 DB = "pymongo-pooling-tests"
 
 
@@ -899,7 +899,7 @@ class _TestMaxPoolSize(_TestPoolingBase):
         # On the other hand, nthreads had better be much larger than
         # max_pool_size to ensure that max_pool_size sockets are actually
         # required at some point in this test's execution.
-        nthreads = 30
+        nthreads = 10
 
         if (sys.platform.startswith('java')
                 and start_request > end_request
