@@ -4,8 +4,39 @@ Changelog
 Changes in Version 2.7
 ----------------------
 
+PyMongo 2.7 is a major release with a large number of new features and bug
+fixes. Highlights include:
+
+- Full support for MongoDB 2.6.
+- A new :doc:`bulk write operations API </examples/bulk>`.
+- Support for server side query timeouts using
+  :meth:`~pymongo.cursor.Cursor.max_time_ms`.
+- Support for writing :meth:`~pymongo.collection.Collection.aggregate`
+  output to a collection.
+- A new :meth:`~pymongo.collection.Collection.parallel_collection_scan` helper.
+- :class:`~pymongo.errors.OperationFailure` and its subclasses now include
+  a :attr:`~pymongo.errors.OperationFailure.details` attribute with complete
+  error details from the server.
+- A new GridFS :meth:`~gridfs.GridFS.find` method that returns a
+  :class:`~gridfs.grid_file.GridOutCursor`.
+- Greatly improved :doc:`support for mod_wsgi </examples/mod_wsgi>` when using
+  PyMongo's C extensions. Read `Jesse's blog post
+  <http://emptysqua.re/blog/python-c-extensions-and-mod-wsgi/>`_ for details.
+- Improved C extension support for ARM little endian.
+
+Breaking changes
+................
+
 Version 2.7 drops support for replica sets running MongoDB versions older
 than 1.6.2.
+
+Issues Resolved
+...............
+
+See the `PyMongo 2.7 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 2.7 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/12892
 
 Changes in Version 2.6.3
 ------------------------
