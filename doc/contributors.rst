@@ -67,3 +67,4 @@ The following is a list of people who have contributed to
 - Tyler Jones (thomascirca)
 - Amalia Hawkins (hawka)
 - Yuchen Ying (yegle)
+- Kyle Erf (3rf)
