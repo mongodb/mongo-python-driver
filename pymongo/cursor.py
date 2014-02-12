@@ -21,8 +21,9 @@ from bson.code import Code
 from bson.son import SON
 from pymongo import helpers, message, read_preferences
 from pymongo.read_preferences import ReadPreference, secondary_ok_commands
-from pymongo.errors import (InvalidOperation,
-                            AutoReconnect)
+from pymongo.errors import (AutoReconnect,
+                            CursorNotFound,
+                            InvalidOperation)
 
 _QUERY_OPTIONS = {
     "tailable_cursor": 2,
@@ -896,6 +897,15 @@ class Cursor(object):
                                                 self.__tz_aware,
                                                 self.__uuid_subtype,
                                                 self.__compile_re)
+        except CursorNotFound:
+            self.__killed = True
+            # If this is a tailable cursor the error is likely
+            # due to capped collection roll over. Setting
+            # self.__killed to True ensures Cursor.alive will be
+            # False. No need to re-raise.
+            if self.__query_flags & _QUERY_OPTIONS["tailable_cursor"]:
+                return
+            raise
         except AutoReconnect:
             # Don't send kill cursors to another server after a "not master"
             # error. It's completely pointless.

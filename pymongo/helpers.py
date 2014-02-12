@@ -23,6 +23,7 @@ import pymongo
 from bson.binary import OLD_UUID_SUBTYPE
 from bson.son import SON
 from pymongo.errors import (AutoReconnect,
+                            CursorNotFound,
                             DuplicateKeyError,
                             OperationFailure,
                             ExecutionTimeout,
@@ -92,8 +93,8 @@ def _unpack_response(response, cursor_id=None, as_class=dict,
         # Shouldn't get this response if we aren't doing a getMore
         assert cursor_id is not None
 
-        raise OperationFailure("cursor id '%s' not valid at server" %
-                               cursor_id)
+        raise CursorNotFound("cursor id '%s' not valid at server" %
+                             cursor_id)
     elif response_flag & 2:
         error_object = bson.BSON(response[20:]).decode()
         if error_object["$err"].startswith("not master"):

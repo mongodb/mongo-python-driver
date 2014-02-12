@@ -88,6 +88,14 @@ class OperationFailure(PyMongoError):
         return self.__details
 
 
+class CursorNotFound(OperationFailure):
+    """Raised while iterating query results if the cursor is
+    invalidated on the server.
+
+    .. versionadded:: 2.7
+    """
+
+
 class ExecutionTimeout(OperationFailure):
     """Raised when a database operation times out, exceeding the $maxTimeMS
     set in the query or command option.

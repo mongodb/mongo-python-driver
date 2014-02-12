@@ -98,11 +98,11 @@ For `Twisted <http://twistedmatrix.com/>`_, see `TxMongo
 <http://github.com/fiorix/mongo-async-python-driver>`_. Compared to PyMongo,
 TxMongo is less stable, lacks features, and is less actively maintained.
 
-What does *OperationFailure* cursor id not valid at server mean?
-----------------------------------------------------------------
+What does *CursorNotFound* cursor id not valid at server mean?
+--------------------------------------------------------------
 Cursors in MongoDB can timeout on the server if they've been open for
 a long time without any operations being performed on them. This can
-lead to an :class:`~pymongo.errors.OperationFailure` exception being
+lead to an :class:`~pymongo.errors.CursorNotFound` exception being
 raised when attempting to iterate the cursor.
 
 How do I change the timeout value for cursors?

@@ -17,7 +17,7 @@
 from collections import deque
 
 from pymongo import helpers, message
-from pymongo.errors import AutoReconnect
+from pymongo.errors import AutoReconnect, CursorNotFound
 
 
 class CommandCursor(object):
@@ -107,6 +107,9 @@ class CommandCursor(object):
             response = helpers._unpack_response(response,
                                                 self.__id,
                                                 *self.__decode_opts)
+        except CursorNotFound:
+            self.__killed = True
+            raise
         except AutoReconnect:
             # Don't send kill cursors to another server after a "not master"
             # error. It's completely pointless.

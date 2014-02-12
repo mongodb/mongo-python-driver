@@ -921,33 +921,44 @@ class TestCursor(unittest.TestCase):
     def test_tailable(self):
         db = self.db
         db.drop_collection("test")
-        db.create_collection("test", capped=True, size=1000)
+        db.create_collection("test", capped=True, size=1000, max=3)
 
-        cursor = db.test.find(tailable=True)
+        try:
+            cursor = db.test.find(tailable=True)
 
-        db.test.insert({"x": 1})
-        count = 0
-        for doc in cursor:
-            count += 1
-            self.assertEqual(1, doc["x"])
-        self.assertEqual(1, count)
+            db.test.insert({"x": 1})
+            count = 0
+            for doc in cursor:
+                count += 1
+                self.assertEqual(1, doc["x"])
+            self.assertEqual(1, count)
 
-        db.test.insert({"x": 2})
-        count = 0
-        for doc in cursor:
-            count += 1
-            self.assertEqual(2, doc["x"])
-        self.assertEqual(1, count)
+            db.test.insert({"x": 2})
+            count = 0
+            for doc in cursor:
+                count += 1
+                self.assertEqual(2, doc["x"])
+            self.assertEqual(1, count)
 
-        db.test.insert({"x": 3})
-        count = 0
-        for doc in cursor:
-            count += 1
-            self.assertEqual(3, doc["x"])
-        self.assertEqual(1, count)
+            db.test.insert({"x": 3})
+            count = 0
+            for doc in cursor:
+                count += 1
+                self.assertEqual(3, doc["x"])
+            self.assertEqual(1, count)
 
-        self.assertEqual(3, db.test.count())
-        db.drop_collection("test")
+            # Capped rollover - the collection can never
+            # have more than 3 documents. Just make sure
+            # this doesn't raise...
+            db.test.insert(({"x": i} for i in xrange(4, 7)))
+            self.assertEqual(0, len(list(cursor)))
+
+            # and that the cursor doesn't think it's still alive.
+            self.assertFalse(cursor.alive)
+
+            self.assertEqual(3, db.test.count())
+        finally:
+            db.drop_collection("test")
 
     def test_distinct(self):
         if not version.at_least(self.db.connection, (1, 1, 3, 1)):
