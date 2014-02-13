@@ -1027,6 +1027,8 @@ self.assertFalse(c2.alive)
     def test_comment(self):
         if is_mongos(self.client):
             raise SkipTest("profile is not supported by mongos")
+        if not version.at_least(self.db.connection, (2, 0)):
+            raise SkipTest("Requires server >= 2.0")
 
         def run_with_profiling(func):
             self.db.set_profiling_level(OFF)

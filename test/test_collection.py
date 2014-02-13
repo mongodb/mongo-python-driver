@@ -2127,7 +2127,7 @@ class TestCollection(unittest.TestCase):
 
         # Test with full_response=True
         # No lastErrorObject from mongos until 2.0
-        if (not is_mongos(self.db.connection) or
+        if (not is_mongos(self.db.connection) and
             version.at_least(self.db.connection, (2, 0))):
             result = c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
                                                new=True, upsert=True,
