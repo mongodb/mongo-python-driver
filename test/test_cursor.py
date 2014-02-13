@@ -31,6 +31,8 @@ from pymongo import (ASCENDING,
                      DESCENDING,
                      ALL,
                      OFF)
+from pymongo.command_cursor import CommandCursor
+from pymongo.cursor_manager import CursorManager
 from pymongo.database import Database
 from pymongo.errors import (InvalidOperation,
                             OperationFailure,
@@ -1068,6 +1070,37 @@ self.assertFalse(c2.alive)
         self.assertRaises(InvalidOperation, cursor.comment, 'hello')
 
         self.db.system.profile.drop()
+
+    def test_cursor_transfer(self):
+
+        # This is just a test, don't try this at home...
+        self.db.test.remove({})
+        self.db.test.insert({'_id': i} for i in xrange(200))
+
+        class CManager(CursorManager):
+            def __init__(self, connection):
+                super(CManager, self).__init__(connection)
+
+            def close(self, dummy):
+                # Do absolutely nothing...
+                pass
+
+        client = self.db.connection
+        try:
+            client.set_cursor_manager(CManager)
+            docs = []
+            cursor = self.db.test.find().batch_size(10)
+            docs.append(cursor.next())
+            cursor.close()
+            docs.extend(cursor)
+            self.assertEqual(len(docs), 10)
+            cmd_cursor = {'id': cursor.cursor_id, 'firstBatch': []}
+            ccursor = CommandCursor(cursor.collection, cmd_cursor,
+                                    cursor.conn_id, retrieved=cursor.retrieved)
+            docs.extend(ccursor)
+            self.assertEqual(len(docs), 200)
+        finally:
+            client.set_cursor_manager(CursorManager)
 
 if __name__ == "__main__":
     unittest.main()

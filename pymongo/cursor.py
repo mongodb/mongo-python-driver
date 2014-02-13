@@ -189,15 +189,20 @@ class Cursor(object):
         return self.__collection
 
     @property
-    def _connection_id(self):
+    def conn_id(self):
         """The server/client/pool this cursor lives on.
 
         Could be (host, port), -1, or None depending on what
         client class executed the initial query or this cursor
         being advanced at all.
         """
-        # TODO: Make this public after sorting out client issues.
         return self.__connection_id
+
+    @property
+    def retrieved(self):
+        """The number of documents retrieved so far.
+        """
+        return self.__retrieved
 
     def __del__(self):
         if self.__id and not self.__killed:

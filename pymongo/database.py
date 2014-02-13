@@ -340,7 +340,7 @@ class Database(common.BaseObject):
             helpers._check_command_response(result, self.connection.disconnect,
                                             msg, allowable_errors)
 
-        return result, cursor._connection_id
+        return result, cursor.conn_id
 
     def command(self, command, value=1,
                 check=True, allowable_errors=[],
