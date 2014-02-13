@@ -379,7 +379,7 @@ class TestRequestMixin(object):
 
 
 # Constants for run_threads and _TestLazyConnectMixin.
-NTRIALS = 10
+NTRIALS = 5
 NTHREADS = 10
 
 
