@@ -41,7 +41,7 @@ from pymongo.helpers import (_unpack_response,
                              _check_command_response)
 from test import version
 from test.test_client import get_client
-from test.utils import is_mongos, get_command_line
+from test.utils import is_mongos, get_command_line, server_started_with_auth
 
 
 class TestCursor(unittest.TestCase):
@@ -1029,6 +1029,8 @@ self.assertFalse(c2.alive)
             raise SkipTest("profile is not supported by mongos")
         if not version.at_least(self.db.connection, (2, 0)):
             raise SkipTest("Requires server >= 2.0")
+        if server_started_with_auth(self.db.connection):
+            raise SkipTest("SERVER-4754 - This test uses profiling.")
 
         def run_with_profiling(func):
             self.db.set_profiling_level(OFF)

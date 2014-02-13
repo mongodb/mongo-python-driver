@@ -619,6 +619,8 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         c = get_client()
         if is_mongos(c):
             raise SkipTest('fsync/lock not supported by mongos')
+        if not version.at_least(c, (2, 0)) and server_started_with_auth(c):
+            raise SkipTest('Requires server >= 2.0 to test with auth')
 
         res = c.admin.command('getCmdLineOpts')
         if '--master' in res['argv'] and version.at_least(c, (2, 3, 0)):
