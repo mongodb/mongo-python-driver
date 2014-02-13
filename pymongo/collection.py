@@ -859,12 +859,35 @@ class Collection(common.BaseObject):
                 self.secondary_acceptable_latency_ms)
         return Cursor(self, *args, **kwargs)
 
-    def parallel_collection_scan(self, num_cursors, **kwargs):
-        """Scan this collection in parallel.
+    def parallel_scan(self, num_cursors, **kwargs):
+        """Scan this entire collection in parallel.
 
-        Returns a list of :class:`~pymongo.command_cursor.CommandCursor`
-        instances that can be iterated concurrently by one or more threads
-        or greenlets.
+        Returns a list of up to ``num_cursors`` cursors that can be iterated
+        concurrently. As long as the collection is not modified during
+        scanning, each document appears once in one of the cursors' result
+        sets.
+
+        For example, to process each document in a collection using some
+        thread-safe ``process_document()`` function::
+
+            def process_cursor(cursor):
+                for document in cursor:
+                    # Some thread-safe processing function:
+                    process_document(document)
+
+            # Get up to 4 cursors.
+            cursors = collection.parallel_scan(4)
+            threads = [
+                threading.Thread(target=process_cursor, args=(cursor,))
+                for cursor in cursors]
+
+            for thread in threads:
+                thread.start()
+
+            for thread in threads:
+                thread.join()
+
+            # All documents have now been processed.
 
         With :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`
         or :class:`~pymongo.master_slave_connection.MasterSlaveConnection`,

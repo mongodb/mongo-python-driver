@@ -13,7 +13,7 @@ fixes. Highlights include:
   :meth:`~pymongo.cursor.Cursor.max_time_ms`.
 - Support for writing :meth:`~pymongo.collection.Collection.aggregate`
   output to a collection.
-- A new :meth:`~pymongo.collection.Collection.parallel_collection_scan` helper.
+- A new :meth:`~pymongo.collection.Collection.parallel_scan` helper.
 - :class:`~pymongo.errors.OperationFailure` and its subclasses now include
   a :attr:`~pymongo.errors.OperationFailure.details` attribute with complete
   error details from the server.

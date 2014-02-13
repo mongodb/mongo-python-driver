@@ -1381,7 +1381,7 @@ class TestCollection(unittest.TestCase):
                 expected_sum,
                 sum(doc['_id'] for doc in cursor))
 
-    def test_parallel_collection_scan(self):
+    def test_parallel_scan(self):
         if not version.at_least(self.db.connection, (2, 5, 5)):
             raise SkipTest("Requires MongoDB >= 2.5.5")
         db = self.db
@@ -1396,7 +1396,7 @@ class TestCollection(unittest.TestCase):
         coll.insert(({'_id': i} for i in xrange(8000)), w=self.w)
         docs = []
         threads = [threading.Thread(target=docs.extend, args=(cursor,))
-                   for cursor in coll.parallel_collection_scan(3)]
+                   for cursor in coll.parallel_scan(3)]
         for t in threads:
             t.start()
         for t in threads:
