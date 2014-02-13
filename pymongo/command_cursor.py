@@ -126,7 +126,7 @@ class CommandCursor(object):
         self.__retrieved += response["number_returned"]
         self.__data = deque(response["data"])
 
-    def __refresh(self):
+    def _refresh(self):
         """Refreshes the cursor with more data from the server.
 
         Returns the length of self.__data after refresh. Will exit early if
@@ -146,13 +146,23 @@ class CommandCursor(object):
 
         return len(self.__data)
 
+    @property
+    def alive(self):
+        """Does this cursor have the potential to return more data?"""
+        return bool(len(self.__data) or (not self.__killed))
+
+    @property
+    def cursor_id(self):
+        """Returns the id of the cursor."""
+        return self.__id
+
     def __iter__(self):
         return self
 
     def next(self):
         """Advance the cursor.
         """
-        if len(self.__data) or self.__refresh():
+        if len(self.__data) or self._refresh():
             coll = self.__collection
             return coll.database._fix_incoming(self.__data.popleft(), coll)
         else:
