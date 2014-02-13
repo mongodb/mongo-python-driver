@@ -74,9 +74,9 @@ describing the type and count of operations performed.
   >>> result = bulk.execute()
   >>> pprint(result)
   {'nInserted': 3,
+   'nMatched': 2,
    'nModified': 2,
    'nRemoved': 10000,
-   'nMatched': 2,
    'nUpserted': 1,
    'upserted': [{u'_id': 4, u'index': 5}],
    'writeConcernErrors': [],
@@ -105,9 +105,9 @@ the failure.
   ...     pprint(bre.details)
   ... 
   {'nInserted': 0,
+   'nMatched': 1,
    'nModified': 1,
    'nRemoved': 0,
-   'nMatched': 1,
    'nUpserted': 0,
    'upserted': [],
    'writeConcernErrors': [],
@@ -143,9 +143,9 @@ and fourth operations succeed.
   ...     pprint(bre.details)
   ... 
   {'nInserted': 0,
+   'nMatched': 1,
    'nModified': 1,
    'nRemoved': 1,
-   'nMatched': 1,
    'nUpserted': 0,
    'upserted': [],
    'writeConcernErrors': [],
@@ -182,9 +182,9 @@ regardless of execution order.
   ...     pprint(bre.details)
   ... 
   {'nInserted': 4,
+   'nMatched': 0,
    'nModified': 0,
    'nRemoved': 0,
-   'nMatched': 0,
    'nUpserted': 0,
    'upserted': [],
    'writeConcernErrors': [{u'code': 64,
