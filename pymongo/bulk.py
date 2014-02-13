@@ -117,7 +117,7 @@ def _merge_legacy(run, full_result, result, index):
             full_result["upserted"].append(doc)
             full_result['nUpserted'] += affected
         else:
-            full_result['nUpdated'] += affected
+            full_result['nMatched'] += affected
             full_result['nModified'] += affected
     elif run.op_type == _DELETE:
         full_result['nRemoved'] += affected
@@ -150,9 +150,9 @@ def _merge_command(run, full_result, results):
                     doc = {u"index": index, u"_id": upserted}
                     full_result["upserted"].append(doc)
                 full_result["nUpserted"] += n_upserted
-                full_result["nUpdated"] += (affected - n_upserted)
+                full_result["nMatched"] += (affected - n_upserted)
             else:
-                full_result["nUpdated"] += affected
+                full_result["nMatched"] += affected
             full_result["nModified"] += result.get("nModified", 0)
 
         write_errors = result.get("writeErrors")
@@ -266,7 +266,7 @@ class _Bulk(object):
             "writeConcernErrors": [],
             "nInserted": 0,
             "nUpserted": 0,
-            "nUpdated": 0,
+            "nMatched": 0,
             "nModified": 0,
             "nRemoved": 0,
             "upserted": [],
@@ -349,7 +349,7 @@ class _Bulk(object):
             "writeConcernErrors": [],
             "nInserted": 0,
             "nUpserted": 0,
-            "nUpdated": 0,
+            "nMatched": 0,
             "nModified": 0,
             "nRemoved": 0,
             "upserted": [],

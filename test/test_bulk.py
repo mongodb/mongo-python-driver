@@ -62,7 +62,7 @@ class TestBulk(unittest.TestCase):
         self.assertRaises(ValueError, bulk.find({}).update, {'foo': 'bar'})
         bulk.find({}).update({'$set': {'foo': 'bar'}})
         result = bulk.execute()
-        self.assertEqual(2, result['nUpdated'])
+        self.assertEqual(2, result['nMatched'])
         self.assertEqual(0, result['nUpserted'])
         self.assertEqual(self.coll.find({'foo': 'bar'}).count(), 2)
 
@@ -72,7 +72,7 @@ class TestBulk(unittest.TestCase):
         bulk = self.coll.initialize_unordered_bulk_op()
         bulk.find({}).update({'$set': {'bim': 'baz'}})
         bulk.execute()
-        self.assertEqual(2, result['nUpdated'])
+        self.assertEqual(2, result['nMatched'])
         self.assertEqual(0, result['nUpserted'])
         self.assertEqual(self.coll.find({'bim': 'baz'}).count(), 2)
 
@@ -85,7 +85,7 @@ class TestBulk(unittest.TestCase):
         self.assertRaises(ValueError, bulk.find({}).update_one, {'foo': 'bar'})
         bulk.find({}).update_one({'$set': {'foo': 'bar'}})
         result = bulk.execute()
-        self.assertEqual(1, result['nUpdated'])
+        self.assertEqual(1, result['nMatched'])
         self.assertEqual(0, result['nUpserted'])
         self.assertEqual(self.coll.find({'foo': 'bar'}).count(), 1)
 
@@ -95,7 +95,7 @@ class TestBulk(unittest.TestCase):
         bulk = self.coll.initialize_unordered_bulk_op()
         bulk.find({}).update_one({'$set': {'bim': 'baz'}})
         result = bulk.execute()
-        self.assertEqual(1, result['nUpdated'])
+        self.assertEqual(1, result['nMatched'])
         self.assertEqual(0, result['nUpserted'])
         self.assertEqual(self.coll.find({'bim': 'baz'}).count(), 1)
 
@@ -108,7 +108,7 @@ class TestBulk(unittest.TestCase):
                           bulk.find({}).replace_one, {'$set': {'foo': 'bar'}})
         bulk.find({}).replace_one({'foo': 'bar'})
         result = bulk.execute()
-        self.assertEqual(1, result['nUpdated'])
+        self.assertEqual(1, result['nMatched'])
         self.assertEqual(0, result['nUpserted'])
         self.assertEqual(self.coll.find({'foo': 'bar'}).count(), 1)
 
@@ -118,7 +118,7 @@ class TestBulk(unittest.TestCase):
         bulk = self.coll.initialize_unordered_bulk_op()
         bulk.find({}).replace_one({'bim': 'baz'})
         result = bulk.execute()
-        self.assertEqual(1, result['nUpdated'])
+        self.assertEqual(1, result['nMatched'])
         self.assertEqual(0, result['nUpserted'])
         self.assertEqual(self.coll.find({'bim': 'baz'}).count(), 1)
 
@@ -163,21 +163,21 @@ class TestBulk(unittest.TestCase):
         bulk = self.coll.initialize_ordered_bulk_op()
         bulk.find({}).upsert().replace_one({'foo': 'bar'})
         result = bulk.execute()
-        self.assertEqual(0, result['nUpdated'])
+        self.assertEqual(0, result['nMatched'])
         self.assertEqual(1, result['nUpserted'])
         self.assertEqual(self.coll.find({'foo': 'bar'}).count(), 1)
 
         bulk = self.coll.initialize_ordered_bulk_op()
         bulk.find({}).upsert().update_one({'$set': {'bim': 'baz'}})
         bulk.execute()
-        self.assertEqual(0, result['nUpdated'])
+        self.assertEqual(0, result['nMatched'])
         self.assertEqual(1, result['nUpserted'])
         self.assertEqual(self.coll.find({'bim': 'baz'}).count(), 1)
 
         bulk = self.coll.initialize_ordered_bulk_op()
         bulk.find({}).upsert().update({'$set': {'bim': 'bop'}})
         bulk.execute()
-        self.assertEqual(0, result['nUpdated'])
+        self.assertEqual(0, result['nMatched'])
         self.assertEqual(1, result['nUpserted'])
         self.assertEqual(self.coll.find({'bim': 'bop'}).count(), 1)
 
@@ -191,7 +191,7 @@ class TestBulk(unittest.TestCase):
         result = batch.execute()
         self.assertEqual(2, result['nInserted'])
         self.assertEqual(1, result['nUpserted'])
-        self.assertEqual(1, result['nUpdated'])
+        self.assertEqual(1, result['nMatched'])
         self.assertEqual(1, result['nRemoved'])
         upserts = result['upserted']
         self.assertEqual(1, len(upserts))
