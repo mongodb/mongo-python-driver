@@ -65,7 +65,7 @@ class SONManipulator(object):
 class ObjectIdInjector(SONManipulator):
     """A son manipulator that adds the _id field if it is missing.
 
-    .. versionchanged:: 2.6+
+    .. versionchanged:: 2.7
        ObjectIdInjector is no longer used by PyMongo, but remains in this
        module for backwards compatibility.
     """
