@@ -1163,7 +1163,14 @@ class TestReplicaSetWireVersion(unittest.TestCase):
 class TestReplicaSetClientLazyConnect(
         TestReplicaSetClientBase,
         _TestLazyConnectMixin):
-    pass
+
+    def test_read_mode_secondary(self):
+        client = MongoReplicaSetClient(
+            pair, replicaSet=self.name, _connect=False,
+            read_preference=ReadPreference.SECONDARY)
+
+        # No error.
+        client.pymongo_test.test_collection.find_one()
 
 
 # Test concurrent access to a lazily-connecting RS client, with Gevent.

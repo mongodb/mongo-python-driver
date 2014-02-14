@@ -130,7 +130,8 @@ def _partition_node(node):
 class RSState(object):
     def __init__(
             self, threadlocal, hosts=None, host_to_member=None, arbiters=None,
-            writer=None, error_message='No primary available', exc=None):
+            writer=None, error_message='No primary available', exc=None,
+            initial=False):
         """An immutable snapshot of the client's view of the replica set state.
 
         Stores Member instances for all members we're connected to, and a
@@ -145,6 +146,7 @@ class RSState(object):
           - `writer`: Optional (host, port) of primary
           - `error_message`: Optional error if `writer` is None
           - `exc`: Optional error if state is unusable
+          - `initial`: Whether this is the initial client state
         """
         self._threadlocal = threadlocal  # threading.local or gevent local
         self._arbiters = frozenset(arbiters or [])  # set of (host, port)
@@ -154,6 +156,7 @@ class RSState(object):
         self._hosts = frozenset(hosts or [])
         self._members = frozenset(self._host_to_member.values())
         self._exc = exc
+        self._initial = initial
         self._primary_member = self.get(writer)
 
     def clone_with_host_down(self, host, error_message):
@@ -249,6 +252,11 @@ class RSState(object):
     def exc(self):
         """Reason RSState is unusable, or None."""
         return self._exc
+
+    @property
+    def initial(self):
+        """Whether this is the initial client state."""
+        return self._initial
 
     def get(self, host):
         """Return a Member instance or None for the given (host, port)."""
@@ -619,7 +627,7 @@ class MongoReplicaSetClient(common.BaseObject):
                 "The gevent module is not available. "
                 "Install the gevent package from PyPI.")
 
-        self.__rs_state = RSState(self.__make_threadlocal())
+        self.__rs_state = RSState(self.__make_threadlocal(), initial=True)
 
         self.__request_counter = thread_util.Counter(self.__use_greenlets)
 
@@ -1570,10 +1578,12 @@ class MongoReplicaSetClient(common.BaseObject):
             tag_sets = [{}]
 
         if not rs_state.primary_member:
-            # Primary was down last we checked. Start a refresh if one is not
-            # already in progress. If caller requested the primary, wait to
-            # see if it's up, otherwise continue with known-good members.
-            sync = (mode == ReadPreference.PRIMARY)
+            # If we were initialized with _connect=False then connect now.
+            # Otherwise, the primary was down last we checked. Start a refresh
+            # if one is not already in progress. If caller requested the
+            # primary, wait to see if it's up, otherwise continue with
+            # known-good members.
+            sync = (rs_state.initial or mode == ReadPreference.PRIMARY)
             self.__schedule_refresh(sync=sync)
             rs_state = self.__rs_state
 
