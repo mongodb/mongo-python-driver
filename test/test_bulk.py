@@ -593,10 +593,6 @@ class TestBulkNoResults(unittest.TestCase):
     def setUp(self):
         self.coll = get_client().pymongo_test.test
         self.coll.remove()
-        self.coll.database.connection.start_request()
-
-    def tearDown(self):
-        self.coll.database.connection.end_request()
 
     def test_no_results_ordered_success(self):
 
