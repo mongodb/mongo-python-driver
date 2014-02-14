@@ -1382,6 +1382,8 @@ class TestCollection(unittest.TestCase):
                 sum(doc['_id'] for doc in cursor))
 
     def test_parallel_scan(self):
+        if is_mongos(self.db.connection):
+            raise SkipTest("mongos does not support parallel_scan")
         if not version.at_least(self.db.connection, (2, 5, 5)):
             raise SkipTest("Requires MongoDB >= 2.5.5")
         db = self.db
