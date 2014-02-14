@@ -525,7 +525,7 @@ class BulkOperationBuilder(object):
     """An interface for executing a batch of write operations.
     """
 
-    __slots__ = ('__bulk')
+    __slots__ = '__bulk'
 
     def __init__(self, collection, ordered=True):
         """Initialize a new BulkOperationBuilder instance.
