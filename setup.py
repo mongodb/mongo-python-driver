@@ -19,11 +19,11 @@ except ImportError:
 # Don't force people to install setuptools unless
 # we have to.
 try:
-    from setuptools import setup, Feature
+    from setuptools import setup
 except ImportError:
     from ez_setup import use_setuptools
     use_setuptools()
-    from setuptools import setup, Feature
+    from setuptools import setup
 
 from distutils.cmd import Command
 from distutils.command.build_ext import build_ext
@@ -206,21 +206,21 @@ http://api.mongodb.org/python/current/installation.html#osx
                                                   "to take advantage of the "
                                                   "extension."))
 
-c_ext = Feature(
-    "optional C extensions",
-    standard=True,
-    ext_modules=[Extension('bson._cbson',
-                           include_dirs=['bson'],
-                           sources=['bson/_cbsonmodule.c',
-                                    'bson/time64.c',
-                                    'bson/buffer.c',
-                                    'bson/encoding_helpers.c']),
-                 Extension('pymongo._cmessage',
-                           include_dirs=['bson'],
-                           sources=['pymongo/_cmessagemodule.c',
-                                    'bson/buffer.c'])])
+ext_modules = [Extension('bson._cbson',
+                         include_dirs=['bson'],
+                         sources=['bson/_cbsonmodule.c',
+                                  'bson/time64.c',
+                                  'bson/buffer.c',
+                                  'bson/encoding_helpers.c']),
+               Extension('pymongo._cmessage',
+                         include_dirs=['bson'],
+                         sources=['pymongo/_cmessagemodule.c',
+                                  'bson/buffer.c'])]
 
-features = {}
+extra_opts = {
+    "packages": ["bson", "pymongo", "gridfs"],
+    "test_suite": "nose.collector"
+}
 if "--no_ext" in sys.argv:
     sys.argv.remove("--no_ext")
 elif (sys.platform.startswith("java") or
@@ -241,12 +241,8 @@ Performance may be degraded.\n
 *****************************************************\n
 """)
 else:
-    features = {"c-ext": c_ext}
+    extra_opts['ext_modules'] = ext_modules
 
-extra_opts = {
-    "packages": ["bson", "pymongo", "gridfs"],
-    "test_suite": "nose.collector"
-}
 if PY3:
     extra_opts["use_2to3"] = True
     if should_run_tests:
@@ -283,7 +279,6 @@ setup(
     url="http://github.com/mongodb/mongo-python-driver",
     keywords=["mongo", "mongodb", "pymongo", "gridfs", "bson"],
     install_requires=[],
-    features=features,
     license="Apache License, Version 2.0",
     tests_require=["nose"],
     classifiers=[
