@@ -1059,7 +1059,7 @@ class TestCollection(unittest.TestCase):
             self.db.test.update({}, {"$thismodifierdoesntexist": 1})
         except OperationFailure, exc:
             if version.at_least(self.db.connection, (1, 3)):
-                self.assertTrue(exc.code in (10147, 16840, 17009))
+                self.assertTrue(exc.code in (9, 10147, 16840, 17009))
                 # Just check that we set the error document. Fields
                 # vary by MongoDB version.
                 self.assertTrue(exc.details is not None)
