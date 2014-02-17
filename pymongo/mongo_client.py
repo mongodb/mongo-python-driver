@@ -197,7 +197,7 @@ class MongoClient(common.BaseObject):
 
           - `ssl`: If ``True``, create the connection to the server using SSL.
           - `ssl_keyfile`: The private keyfile used to identify the local
-            connection against mongod.  If included with the ``certfile` then
+            connection against mongod.  If included with the ``certfile`` then
             only the ``ssl_certfile`` is needed.  Implies ``ssl=True``.
           - `ssl_certfile`: The certificate file used to identify the local
             connection against mongod. Implies ``ssl=True``.
