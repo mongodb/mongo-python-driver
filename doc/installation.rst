@@ -14,23 +14,28 @@ Package Index <http://pypi.python.org/pypi/pymongo/>`_.
 Installing with pip
 -------------------
 
-We prefer `pip <http://pypi.python.org/pypi/pip>`_
+To use `pip <http://pypi.python.org/pypi/pip>`_
 to install pymongo on platforms other than Windows::
 
   $ pip install pymongo
 
 To get a specific version of pymongo::
 
-  $ pip install pymongo==2.1.1
+  $ pip install pymongo==2.6.3
 
 To upgrade using pip::
 
   $ pip install --upgrade pymongo
 
+.. note::
+  pip does not support installing python packages in .egg format. If you would
+  like to install PyMongo from a .egg provided on pypi use easy_install
+  instead.
+
 Installing with easy_install
 ----------------------------
 
-If you must install pymongo using
+To use ``easy_install`` from
 `setuptools <http://pypi.python.org/pypi/setuptools>`_ do::
 
   $ easy_install pymongo
@@ -53,17 +58,18 @@ Debian and Ubuntu users should issue the following command::
 
   $ sudo apt-get install build-essential python-dev
 
-RedHat, CentOS, and Fedora users should issue the following command::
+Users of Red Hat based distributions (RHEL, CentOS, Amazon Linux, Oracle Linux,
+Fedora, etc.) should issue the following command::
 
   $ sudo yum install gcc python-devel
 
 OSX
 ---
 
-MongoDB, Inc. provides pre-built egg packages for Apple provided Python
-versions on Snow Leopard (2.5, 2.6), Lion (2.5, 2.6, 2.7) and Mountain Lion
-(2.5, 2.6, 2.7). If you want to install PyMongo for other Python versions (or
-from source) you will have to install the following to build the C extensions:
+MongoDB, Inc. provides PyMongo in .egg format for Apple provided Python
+versions on OSX 10.7 and newer (usually python 2.5, 2.6, and 2.7). If you want
+to install PyMongo for other Python versions (or from source) you will have to
+install the following to build the C extensions:
 
 **Snow Leopard (10.6)** - Xcode 3 with 'UNIX Development Support'.
 
@@ -84,22 +90,10 @@ Xcode 4 installed. There is a workaround::
 See `http://bugs.python.org/issue11623 <http://bugs.python.org/issue11623>`_
 for a more detailed explanation.
 
-**Lion (10.7)** - PyMongo's C extensions can be built against versions of Python
->= 3.2 downloaded from python.org. Building against versions older than 3.2.3
-requires **Xcode 4.1**. Any version of Xcode 4 can be used to build the C
-extensions against 3.2.3 and newer. In all cases Xcode must be installed with
-'UNIX Development Support'. See the following for more information:
-
-http://bugs.python.org/issue13590
-
-http://hg.python.org/cpython/file/v3.2.3/Misc/NEWS#l198
-
-**Mountain Lion (10.8)** - PyMongo's C extensions can be built against versions
-of Python >= 3.3rc1 downloaded from python.org with no special requirements.
-If you want to build against the python.org provided 3.2.3 you must have
-MacOSX10.6.sdk in /Developer/SDKs. See the following for more information:
-
-http://bugs.python.org/issue14499
+**Lion (10.7) and newer** - PyMongo's C extensions can be built against
+versions of Python 2.7 >= 2.7.4 or Python 3.x >= 3.2.4 downloaded from
+python.org. In all cases Xcode must be installed with 'UNIX Development
+Support'.
 
 Installing from source
 ----------------------
@@ -128,15 +122,15 @@ directions apply to both CPython and ActiveState's ActivePython:
 64-bit Windows
 ~~~~~~~~~~~~~~
 
-For Python 3.3 install Visual Studio 2010. For Python 3.2 and older install
-Visual Studio 2008. In either case you must use the full version as Visual
-C++ Express does not provide 64-bit compilers. Make sure that you check the
-"x64 Compilers and Tools" option under Visual C++.
+For Python 3.3 and newer install Visual Studio 2010. For Python 3.2 and older
+install Visual Studio 2008. In either case you must use the full version as
+Visual C++ Express does not provide 64-bit compilers. Make sure that you check
+the "x64 Compilers and Tools" option under Visual C++.
 
 32-bit Windows
 ~~~~~~~~~~~~~~
 
-For Python 3.3 install Visual C++ 2010 Express.
+For Python 3.3 and newer install Visual C++ 2010 Express.
 
 For Python 2.6 through 3.2 install Visual C++ 2008 Express SP1.
 
@@ -156,9 +150,8 @@ extensions (used for increasing performance) when it is installed. If
 any extension fails to build the driver will be installed anyway but a
 warning will be printed.
 
-In :ref:`certain cases <using-with-mod-wsgi>`, you might wish to
-install the driver without the C extensions, even if the extensions
-build properly. This can be done using a command line option to
+If you wish to install PyMongo without the C extensions, even if the
+extensions build properly, it can be done using a command line option to
 *setup.py*::
 
   $ python setup.py --no_ext install
@@ -175,7 +168,7 @@ PyMongo source directory::
   $ python setup.py bdist_egg
 
 The egg package can be found in the dist/ subdirectory. The file name will
-resemble “pymongo-2.2-py2.7-linux-x86_64.egg” but may have a different name
+resemble “pymongo-2.6.3-py2.7-linux-x86_64.egg” but may have a different name
 depending on your platform and the version of python you use to compile.
 
 .. warning::
@@ -188,7 +181,7 @@ depending on your platform and the version of python you use to compile.
 Copy this file to the target system and issue the following command to install the
 package::
 
-  $ sudo easy_install pymongo-2.2-py2.7-linux-x86_64.egg
+  $ sudo easy_install pymongo-2.6.3-py2.7-linux-x86_64.egg
 
 Installing a release candidate
 ------------------------------

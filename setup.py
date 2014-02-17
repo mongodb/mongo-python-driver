@@ -144,7 +144,8 @@ Debian and Ubuntu users should issue the following command:
 
     $ sudo apt-get install build-essential python-dev
 
-RedHat, CentOS, and Fedora users should issue the following command:
+Users of Red Hat based distributions (RHEL, CentOS, Amazon Linux,
+Oracle Linux, Fedora, etc.) should issue the following command:
 
     $ sudo yum install gcc python-devel
 
