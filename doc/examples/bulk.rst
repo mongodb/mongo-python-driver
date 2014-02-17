@@ -101,8 +101,8 @@ the failure.
   >>> bulk.find({'i': 5}).remove_one()
   >>> try:
   ...     bulk.execute()
-  ... except BulkWriteError as bre:
-  ...     pprint(bre.details)
+  ... except BulkWriteError as bwe:
+  ...     pprint(bwe.details)
   ... 
   {'nInserted': 0,
    'nMatched': 1,
@@ -139,8 +139,8 @@ and fourth operations succeed.
   >>> bulk.find({'_id': 4}).replace_one({'i': 1})
   >>> try:
   ...     bulk.execute()
-  ... except BulkWriteError as bre:
-  ...     pprint(bre.details)
+  ... except BulkWriteError as bwe:
+  ...     pprint(bwe.details)
   ... 
   {'nInserted': 0,
    'nMatched': 1,
@@ -178,8 +178,8 @@ regardless of execution order.
   >>> bulk.insert({'a': 3})
   >>> try:
   ...     bulk.execute({'w': 4, 'wtimeout': 1})
-  ... except BulkWriteError as bre:
-  ...     pprint(bre.details)
+  ... except BulkWriteError as bwe:
+  ...     pprint(bwe.details)
   ... 
   {'nInserted': 4,
    'nMatched': 0,
