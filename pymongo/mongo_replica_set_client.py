@@ -526,10 +526,16 @@ class MongoReplicaSetClient(common.BaseObject):
             to complete. If replication does not complete in the given
             timeframe, a timeout exception is raised.
           - `j`: If ``True`` block until write operations have been committed
-            to the journal. Ignored if the server is running without journaling.
-          - `fsync`: If ``True`` force the database to fsync all files before
-            returning. When used with `j` the server awaits the next group
-            commit before returning.
+            to the journal. Can not be used in combination with `fsync`. Prior
+            to MongoDB 2.6 this option was ignored if the server was running
+            without journaling. Starting with MongoDB 2.6 write operations will
+            fail with an exception if this option is used when the server is
+            running without journaling.
+          - `fsync`: If ``True`` and the server is running without journaling,
+            blocks until the server has synced all data files to disk. If the
+            server is running with journaling acts identical to the `j` option,
+            blocking until write operations have been committed to the journal.
+            Can not be used in combination with `j`.
 
           | **Read preference options:**
 

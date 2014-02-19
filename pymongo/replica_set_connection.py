@@ -147,11 +147,16 @@ class ReplicaSetConnection(MongoReplicaSetClient):
             to complete. If replication does not complete in the given
             timeframe, a timeout exception is raised. Implies safe=True.
           - `j`: If ``True`` block until write operations have been committed
-            to the journal. Ignored if the server is running without journaling.
-            Implies safe=True.
-          - `fsync`: If ``True`` force the database to fsync all files before
-            returning. When used with `j` the server awaits the next group
-            commit before returning. Implies safe=True.
+            to the journal. Can not be used in combination with `fsync`. Prior
+            to MongoDB 2.6 this option was ignored if the server was running
+            without journaling. Starting with MongoDB 2.6 write operations will
+            fail with an exception if this option is used when the server is
+            running without journaling. Implies safe=True.
+          - `fsync`: If ``True`` and the server is running without journaling,
+            blocks until the server has synced all data files to disk. If the
+            server is running with journaling acts identical to the `j` option,
+            blocking until write operations have been committed to the journal.
+            Can not be used in combination with `j`. Implies safe=True.
 
           | **Read preference options:**
 
