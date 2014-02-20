@@ -219,7 +219,10 @@ def validate_tag_sets(dummy, value):
 def validate_auth_mechanism(option, value):
     """Validate the authMechanism URI option.
     """
-    if value not in MECHANISMS:
+    # CRAM-MD5 is for server testing only. Undocumented,
+    # unsupported, may be removed at any time. You have
+    # been warned.
+    if value not in MECHANISMS and value != 'CRAM-MD5':
         raise ConfigurationError("%s must be in "
                                  "%s" % (option, MECHANISMS))
     return value

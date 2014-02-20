@@ -14,12 +14,15 @@
 
 """Authentication helpers."""
 
+import hmac
 try:
     import hashlib
     _MD5 = hashlib.md5
+    _DMOD = _MD5
 except ImportError:  # for Python < 2.5
     import md5
     _MD5 = md5.new
+    _DMOD = md5
 
 HAVE_KERBEROS = True
 try:
@@ -28,11 +31,12 @@ except ImportError:
     HAVE_KERBEROS = False
 
 from bson.binary import Binary
+from bson.py3compat import b
 from bson.son import SON
 from pymongo.errors import ConfigurationError, OperationFailure
 
 
-MECHANISMS = ('GSSAPI', 'MONGODB-CR', 'MONGODB-X509', 'PLAIN')
+MECHANISMS = frozenset(['GSSAPI', 'MONGODB-CR', 'MONGODB-X509', 'PLAIN'])
 """The authentication mechanisms supported by PyMongo."""
 
 
@@ -167,6 +171,29 @@ def _authenticate_plain(credentials, sock_info, cmd_func):
     cmd_func(sock_info, source, cmd)
 
 
+def _authenticate_cram_md5(credentials, sock_info, cmd_func):
+    """Authenticate using CRAM-MD5 (RFC 2195)
+    """
+    source, username, password = credentials
+    # The password used as the mac key is the
+    # same as what we use for MONGODB-CR
+    passwd = _password_digest(username, password)
+    cmd = SON([('saslStart', 1),
+               ('mechanism', 'CRAM-MD5'),
+               ('payload', Binary(b(''))),
+               ('autoAuthorize', 1)])
+    response, _ = cmd_func(sock_info, source, cmd)
+    # MD5 as implicit default digest for digestmod is deprecated
+    # in python 3.4
+    mac = hmac.HMAC(key=passwd.encode('utf-8'), digestmod=_DMOD)
+    mac.update(response['payload'])
+    challenge = username.encode('utf-8') + b(' ') + b(mac.hexdigest())
+    cmd = SON([('saslContinue', 1),
+               ('conversationId', response['conversationId']),
+               ('payload', Binary(challenge))])
+    cmd_func(sock_info, source, cmd)
+
+
 def _authenticate_x509(credentials, sock_info, cmd_func):
     """Authenticate using MONGODB-X509.
     """
@@ -195,6 +222,7 @@ def _authenticate_mongo_cr(credentials, sock_info, cmd_func):
 
 
 _AUTH_MAP = {
+    'CRAM-MD5': _authenticate_cram_md5,
     'GSSAPI': _authenticate_gssapi,
     'MONGODB-CR': _authenticate_mongo_cr,
     'MONGODB-X509': _authenticate_x509,
