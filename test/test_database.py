@@ -426,6 +426,44 @@ class TestDatabase(unittest.TestCase):
             self.client.admin.remove_user("admin")
             self.client.admin.logout()
 
+    def test_make_user_readonly(self):
+        if (is_mongos(self.client)
+                and not version.at_least(self.client, (2, 0, 0))):
+            raise SkipTest('Auth with sharding requires MongoDB >= 2.0.0')
+
+        if not server_started_with_auth(self.client):
+            raise SkipTest('Authentication is not enabled on server')
+
+        admin = self.client.admin
+        admin.add_user('admin', 'pw')
+        admin.authenticate('admin', 'pw')
+
+        db = self.client.pymongo_test
+
+        try:
+            # Make a read-write user.
+            db.add_user('jesse', 'pw')
+            admin.logout()
+
+            # Check that we're read-write by default.
+            db.authenticate('jesse', 'pw')
+            db.collection.insert({})
+            db.logout()
+
+            # Make the user read-only.
+            admin.authenticate('admin', 'pw')
+            db.add_user('jesse', 'pw', read_only=True)
+            admin.logout()
+
+            db.authenticate('jesse', 'pw')
+            self.assertRaises(OperationFailure, db.collection.insert, {})
+        finally:
+            # Cleanup
+            admin.authenticate('admin', 'pw')
+            remove_all_users(db)
+            admin.remove_user("admin")
+            admin.logout()
+
     def test_default_roles(self):
         if not version.at_least(self.client, (2, 5, 3, -1)):
             raise SkipTest("Default roles only exist in MongoDB >= 2.5.3")

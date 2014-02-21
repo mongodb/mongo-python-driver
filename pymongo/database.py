@@ -651,15 +651,34 @@ class Database(common.BaseObject):
     def next(self):
         raise TypeError("'Database' object is not iterable")
 
-    def _create_user(self, name, password, read_only, **kwargs):
-        """Uses v2 commands for creating a new user.
+    def _default_role(self, read_only):
+        if self.name == "admin":
+            if read_only:
+                return "readAnyDatabase"
+            else:
+                return "root"
+        else:
+            if read_only:
+                return "read"
+            else:
+                return "dbOwner"
+
+    def _create_or_update_user(
+            self, create, name, password, read_only, **kwargs):
+        """Use a command to create (if create=True) or modify a user.
         """
-        if read_only or not kwargs.get("roles"):
+        opts = {}
+        if read_only or (create and "roles" not in kwargs):
             warnings.warn("Creating a user with the read_only option "
                           "or without roles is deprecated in MongoDB "
                           ">= 2.6", DeprecationWarning)
 
-        create_opts = {}
+            opts["roles"] = [self._default_role(read_only)]
+
+        elif read_only:
+            warnings.warn("The read_only option is deprecated in MongoDB "
+                          ">= 2.6, use 'roles' instead", DeprecationWarning)
+
         if password is not None:
             # We always salt and hash client side.
             if "digestPassword" in kwargs:
@@ -667,43 +686,18 @@ class Database(common.BaseObject):
                                          "supported via add_user. Please use "
                                          "db.command('createUser', ...) "
                                          "instead for this option.")
-            create_opts["pwd"] = auth._password_digest(name, password)
-            create_opts["digestPassword"] = False
-        if "roles" not in kwargs:
-            roles = []
-            if self.name == "admin":
-                if read_only:
-                    roles = ["readAnyDatabase"]
-                else:
-                    roles = ["root"]
-            else:
-                if read_only:
-                    roles = ["read"]
-                else:
-                    roles = ["dbOwner"]
-            create_opts["roles"] = roles
-        create_opts["writeConcern"] = self._get_wc_override()
-        create_opts.update(kwargs)
+            opts["pwd"] = auth._password_digest(name, password)
+            opts["digestPassword"] = False
 
-        self.command("createUser", name, **create_opts)
+        opts["writeConcern"] = self._get_wc_override()
+        opts.update(kwargs)
 
-    def _update_user(self, name, password, **kwargs):
-        """Uses v2 commands for updating a user.
-        """
-        update_opts = {}
-        if password is not None:
-            # We always salt and hash client side.
-            if "digestPassword" in kwargs:
-                raise ConfigurationError("The digestPassword option is not "
-                                         "supported via add_user. Please use "
-                                         "db.command('updateUser', ...) "
-                                         "instead for this option.")
-            update_opts["pwd"] = auth._password_digest(name, password)
-            update_opts["digestPassword"] = False
-        update_opts["writeConcern"] = self._get_wc_override()
-        update_opts.update(kwargs)
+        if create:
+            command_name = "createUser"
+        else:
+            command_name = "updateUser"
 
-        self.command("updateUser", name, **update_opts)
+        self.command(command_name, name, **opts)
 
     def _legacy_add_user(self, name, password, read_only, **kwargs):
         """Uses v1 system to add users, i.e. saving to system.users.
@@ -781,10 +775,9 @@ class Database(common.BaseObject):
                 return
             raise
 
-        if uinfo["users"]:
-            self._update_user(name, password, **kwargs)
-        else:
-            self._create_user(name, password, read_only, **kwargs)
+        # Create the user if not found in uinfo, otherwise update one.
+        self._create_or_update_user(
+            (not uinfo["users"]), name, password, read_only, **kwargs)
 
     def remove_user(self, name):
         """Remove user `name` from this :class:`Database`.
