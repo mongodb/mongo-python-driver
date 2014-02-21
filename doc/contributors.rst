@@ -68,3 +68,4 @@ The following is a list of people who have contributed to
 - Amalia Hawkins (hawka)
 - Yuchen Ying (yegle)
 - Kyle Erf (3rf)
+- Luke Lovett (lovett89)
