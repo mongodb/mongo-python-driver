@@ -427,6 +427,27 @@ class TestBulk(unittest.TestCase):
         self.assertEqual(6, result['nInserted'])
         self.assertEqual(6, self.coll.count())
 
+    def test_numerous_inserts(self):
+        # Ensure we don't exceed server's 1000-document batch size limit.
+        n_docs = 2100
+        batch = self.coll.initialize_unordered_bulk_op()
+        for _ in range(n_docs):
+            batch.insert({})
+
+        result = batch.execute()
+        self.assertEqual(n_docs, result['nInserted'])
+        self.assertEqual(n_docs, self.coll.count())
+
+        # Same with ordered bulk.
+        self.coll.remove()
+        batch = self.coll.initialize_ordered_bulk_op()
+        for _ in range(n_docs):
+            batch.insert({})
+
+        result = batch.execute()
+        self.assertEqual(n_docs, result['nInserted'])
+        self.assertEqual(n_docs, self.coll.count())
+
     def test_multiple_execution(self):
         batch = self.coll.initialize_ordered_bulk_op()
         batch.insert({})

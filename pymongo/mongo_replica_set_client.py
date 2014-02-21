@@ -987,6 +987,20 @@ class MongoReplicaSetClient(common.BaseObject):
         return common.MAX_WIRE_VERSION
 
     @property
+    def max_write_batch_size(self):
+        """The maxWriteBatchSize reported by the server.
+
+        Returns a default value when connected to server versions prior to
+        MongoDB 2.6.
+
+        .. versionadded:: 2.7
+        """
+        rs_state = self.__rs_state
+        if rs_state.primary_member:
+            return rs_state.primary_member.max_write_batch_size
+        return common.MAX_WRITE_BATCH_SIZE
+
+    @property
     def auto_start_request(self):
         """Is auto_start_request enabled?
         """

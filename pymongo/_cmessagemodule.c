@@ -911,6 +911,7 @@ _cbson_do_batched_write_command(PyObject* self, PyObject* args) {
 
     long max_bson_size;
     long max_cmd_size;
+    long max_write_batch_size;
     long idx_offset = 0;
     int idx = 0;
     int cmd_len_loc;
@@ -919,6 +920,7 @@ _cbson_do_batched_write_command(PyObject* self, PyObject* args) {
     int ordered;
     char *ns = NULL;
     PyObject* max_bson_size_obj;
+    PyObject* max_write_batch_size_obj;
     PyObject* command;
     PyObject* doc;
     PyObject* docs;
@@ -955,6 +957,18 @@ _cbson_do_batched_write_command(PyObject* self, PyObject* args) {
      * XXX: This should come from the server - SERVER-10643
      */
     max_cmd_size = max_bson_size + 16382;
+
+    max_write_batch_size_obj = PyObject_GetAttrString(client, "max_write_batch_size");
+#if PY_MAJOR_VERSION >= 3
+    max_write_batch_size = PyLong_AsLong(max_write_batch_size_obj);
+#else
+    max_write_batch_size = PyInt_AsLong(max_write_batch_size_obj);
+#endif
+    Py_XDECREF(max_write_batch_size_obj);
+    if (max_write_batch_size == -1) {
+        PyMem_Free(ns);
+        return NULL;
+    }
 
     /* Default to True */
     ordered = !((PyDict_GetItemString(command, "ordered")) == Py_False);
@@ -1035,6 +1049,8 @@ _cbson_do_batched_write_command(PyObject* self, PyObject* args) {
         int sub_doc_begin = buffer_get_position(buffer);
         int cur_doc_begin;
         int cur_size;
+        int enough_data = 0;
+        int enough_documents = 0;
         char key[16];
         empty = 0;
         INT2STRING(key, idx);
@@ -1052,7 +1068,9 @@ _cbson_do_batched_write_command(PyObject* self, PyObject* args) {
         Py_DECREF(doc);
 
         /* We have enough data, maybe send this batch. */
-        if (buffer_get_position(buffer) > max_cmd_size) {
+        enough_data = (buffer_get_position(buffer) > max_cmd_size);
+        enough_documents = (idx >= max_write_batch_size);
+        if (enough_data || enough_documents) {
             buffer_t new_buffer;
             cur_size = buffer_get_position(buffer) - cur_doc_begin;
 

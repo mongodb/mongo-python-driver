@@ -155,6 +155,17 @@ class MasterSlaveConnection(BaseObject):
         """
         return self.master.max_wire_version
 
+    @property
+    def max_write_batch_size(self):
+        """The maxWriteBatchSize reported by the server.
+
+        Returns a default value when connected to server versions prior to
+        MongoDB 2.6.
+
+        .. versionadded:: 2.7
+        """
+        return self.master.max_write_batch_size
+
     def disconnect(self):
         """Disconnect from MongoDB.
 

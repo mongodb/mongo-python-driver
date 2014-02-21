@@ -1212,5 +1212,31 @@ class TestReplicaSetClientInternalIPs(unittest.TestCase):
             replicaSet='rs')
 
 
+class TestReplicaSetClientMaxWriteBatchSize(unittest.TestCase):
+    def test_max_write_batch_size(self):
+        c = MockReplicaSetClient(
+            standalones=[],
+            members=['a:1', 'b:2'],
+            mongoses=[],
+            host='a:1',
+            replicaSet='rs',
+            _connect=False)
+
+        c.set_max_write_batch_size('a:1', 1)
+        c.set_max_write_batch_size('b:2', 2)
+
+        # Starts with default max batch size.
+        self.assertEqual(1000, c.max_write_batch_size)
+        c.db.collection.find_one()  # Connect.
+
+        # Uses primary's max batch size.
+        self.assertEqual(c.max_write_batch_size, 1)
+
+        # b becomes primary.
+        c.mock_primary = 'b:2'
+        c.refresh()
+        self.assertEqual(c.max_write_batch_size, 2)
+
+
 if __name__ == "__main__":
     unittest.main()

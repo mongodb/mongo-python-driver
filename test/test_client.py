@@ -104,6 +104,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         self.assertIsInstance(c.max_bson_size, int)
         self.assertIsInstance(c.min_wire_version, int)
         self.assertIsInstance(c.max_wire_version, int)
+        self.assertIsInstance(c.max_write_batch_size, int)
         self.assertEqual(None, c.host)
         self.assertEqual(None, c.port)
 
@@ -915,6 +916,31 @@ with client.start_request() as request:
         c.set_wire_version_range('a:1', 10, 11)
         c.disconnect()
         self.assertRaises(ConfigurationError, c.db.collection.find_one)
+
+    def test_max_wire_version(self):
+        c = MockClient(
+            standalones=[],
+            members=['a:1', 'b:2', 'c:3'],
+            mongoses=[],
+            host='b:2',  # Pass a secondary.
+            replicaSet='rs',
+            _connect=False)
+
+        c.set_max_write_batch_size('a:1', 1)
+        c.set_max_write_batch_size('b:2', 2)
+
+        # Starts with default max batch size.
+        self.assertEqual(1000, c.max_write_batch_size)
+        c.db.collection.find_one()  # Connect.
+        # Uses primary's max batch size.
+        self.assertEqual(c.max_write_batch_size, 1)
+
+        # b becomes primary.
+        c.mock_primary = 'b:2'
+        c.disconnect()
+        self.assertEqual(1000, c.max_write_batch_size)
+        c.db.collection.find_one()  # Connect.
+        self.assertEqual(c.max_write_batch_size, 2)
 
     def test_wire_version_mongos_ha(self):
         c = MockClient(

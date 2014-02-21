@@ -235,7 +235,7 @@ class _Bulk(object):
         for idx, (op_type, operation) in enumerate(self.ops):
             if run is None:
                 run = _Run(op_type)
-            elif run.op_type != op_type or len(run.ops) > 1000:
+            elif run.op_type != op_type:
                 yield run
                 run = _Run(op_type)
             run.add(idx, operation)
@@ -248,9 +248,6 @@ class _Bulk(object):
         operations = [_Run(_INSERT), _Run(_UPDATE), _Run(_DELETE)]
         for idx, (op_type, operation) in enumerate(self.ops):
             operations[op_type].add(idx, operation)
-            if len(operations[op_type].ops) > 1000:
-                yield operations[op_type]
-                operations[op_type] = _Run(op_type)
 
         for run in operations:
             if run.ops:

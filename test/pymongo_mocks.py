@@ -81,6 +81,9 @@ class MockClientBase(object):
         # Hostname -> (min wire version, max wire version)
         self.mock_wire_versions = {}
 
+        # Hostname -> max write batch size
+        self.mock_max_write_batch_sizes = {}
+
     def kill_host(self, host):
         """Host is like 'a:1'."""
         self.mock_down_hosts.append(host)
@@ -92,10 +95,16 @@ class MockClientBase(object):
     def set_wire_version_range(self, host, min_version, max_version):
         self.mock_wire_versions[host] = (min_version, max_version)
 
+    def set_max_write_batch_size(self, host, size):
+        self.mock_max_write_batch_sizes[host] = size
+
     def mock_is_master(self, host):
         min_wire_version, max_wire_version = self.mock_wire_versions.get(
             host,
             (common.MIN_WIRE_VERSION, common.MAX_WIRE_VERSION))
+
+        max_write_batch_size = self.mock_max_write_batch_sizes.get(
+            host, common.MAX_WRITE_BATCH_SIZE)
 
         # host is like 'a:1'.
         if host in self.mock_down_hosts:
@@ -105,7 +114,8 @@ class MockClientBase(object):
             return {
                 'ismaster': True,
                 'minWireVersion': min_wire_version,
-                'maxWireVersion': max_wire_version}
+                'maxWireVersion': max_wire_version,
+                'maxWriteBatchSize': max_write_batch_size}
 
         if host in self.mock_members:
             ismaster = (host == self.mock_primary)
@@ -117,7 +127,8 @@ class MockClientBase(object):
                 'setName': 'rs',
                 'hosts': self.mock_ismaster_hosts,
                 'minWireVersion': min_wire_version,
-                'maxWireVersion': max_wire_version}
+                'maxWireVersion': max_wire_version,
+                'maxWriteBatchSize': max_write_batch_size}
 
             if self.mock_primary:
                 response['primary'] = self.mock_primary
@@ -129,7 +140,8 @@ class MockClientBase(object):
                 'ismaster': True,
                 'minWireVersion': min_wire_version,
                 'maxWireVersion': max_wire_version,
-                'msg': 'isdbgrid'}
+                'msg': 'isdbgrid',
+                'maxWriteBatchSize': max_write_batch_size}
 
         # In test_internal_ips(), we try to connect to a host listed
         # in ismaster['hosts'] but not publicly accessible.

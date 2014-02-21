@@ -64,6 +64,8 @@ class Member(object):
             'minWireVersion', common.MIN_WIRE_VERSION)
         self.max_wire_version = ismaster_response.get(
             'maxWireVersion', common.MAX_WIRE_VERSION)
+        self.max_write_batch_size = ismaster_response.get(
+            'maxWriteBatchSize', common.MAX_WRITE_BATCH_SIZE)
 
         # self.min/max_wire_version is the server's wire protocol.
         # MIN/MAX_SUPPORTED_WIRE_VERSION is what PyMongo supports.

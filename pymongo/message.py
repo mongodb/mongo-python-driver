@@ -281,6 +281,7 @@ def _do_batched_write_command(namespace, operation, command,
     """Execute a batch of insert, update, or delete commands.
     """
     max_bson_size = client.max_bson_size
+    max_write_batch_size = client.max_write_batch_size
     # Max BSON object size + 16k - 2 bytes for ending NUL bytes
     # XXX: This should come from the server - SERVER-10643
     max_cmd_size = max_bson_size + 16382
@@ -354,7 +355,9 @@ def _do_batched_write_command(namespace, operation, command,
         key = b(str(idx))
         value = bson.BSON.encode(doc, check_keys, uuid_subtype)
         # Send a batch?
-        if (buf.tell() + len(key) + len(value) + 2) >= max_cmd_size:
+        enough_data = (buf.tell() + len(key) + len(value) + 2) >= max_cmd_size
+        enough_documents = (idx >= max_write_batch_size)
+        if enough_data or enough_documents:
             if not idx:
                 if operation == _INSERT:
                     raise DocumentTooLarge("BSON document too large (%d bytes)"

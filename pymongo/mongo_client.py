@@ -655,6 +655,18 @@ class MongoClient(common.BaseObject):
         return self.__member_property(
             'max_wire_version', common.MAX_WIRE_VERSION)
 
+    @property
+    def max_write_batch_size(self):
+        """The maxWriteBatchSize reported by the server.
+
+        Returns a default value when connected to server versions prior to
+        MongoDB 2.6.
+
+        .. versionadded:: 2.7
+        """
+        return self.__member_property(
+            'max_write_batch_size', common.MAX_WRITE_BATCH_SIZE)
+
     def __simple_command(self, sock_info, dbname, spec):
         """Send a command to the server.
         """

@@ -1893,6 +1893,14 @@ class TestCollection(unittest.TestCase):
         finally:
             self.client.end_request()
 
+    def test_numerous_inserts(self):
+        # Ensure we don't exceed server's 1000-document batch size limit.
+        self.db.test.remove()
+        n_docs = 2100
+        self.db.test.insert({} for _ in range(n_docs))
+        self.assertEqual(n_docs, self.db.test.count())
+        self.db.test.remove()
+
     # Starting in PyMongo 2.6 we no longer use message.insert for inserts, but
     # message.insert is part of the public API. Do minimal testing here; there
     # isn't really a better place.

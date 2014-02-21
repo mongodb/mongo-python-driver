@@ -357,9 +357,9 @@ class Collection(common.BaseObject):
         .. mongodoc:: insert
         """
         client = self.database.connection
-        # Batch inserts require us to know the connected master's
-        # max_bson_size and max_message_size. We have to be connected
-        # to a master to know that.
+        # Batch inserts require us to know the connected primary's
+        # max_bson_size, max_message_size, and max_write_batch_size.
+        # We have to be connected to the primary to know that.
         client._ensure_connected(True)
 
         docs = doc_or_docs
