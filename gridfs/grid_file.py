@@ -124,7 +124,7 @@ class GridIn(object):
            >>> from pymongo import MongoClient
            >>> from gridfs import GridFS
            >>> client = MongoClient(w=0) # turn off write acknowledgment
-           >>> fs = GridFS(client)
+           >>> fs = GridFS(client.database)
            >>> gridin = fs.new_file()
            >>> request = client.start_request()
            >>> try:
