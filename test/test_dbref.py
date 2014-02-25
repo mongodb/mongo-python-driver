@@ -72,12 +72,6 @@ class TestDBRef(unittest.TestCase):
                               ObjectId("1234567890abcdef12345678"), "foo")),
                          "DBRef('coll', ObjectId('1234567890abcdef12345678'), "
                          "'foo')")
-        # This assert will fail in Python 3.3+ unless
-        # hash randomization is disabled.
-        if (sys.version_info < (3, 3) or
-            os.environ.get('PYTHONHASHSEED') == '0'):
-            self.assertEqual(repr(DBRef("coll", 5, "baz", foo="bar", baz=4)),
-                             "DBRef('coll', 5, 'baz', foo='bar', baz=4)")
 
     def test_equality(self):
         obj_id = ObjectId("1234567890abcdef12345678")

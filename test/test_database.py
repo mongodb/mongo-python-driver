@@ -667,22 +667,14 @@ class TestDatabase(unittest.TestCase):
         # when you iterate key/value pairs in a document.
         # This isn't reliable since python dicts don't
         # guarantee any particular order. This will never
-        # work right in Jython or Python >= 3.3 with
-        # hash randomization enabled.
+        # work right in Jython or any Python or environment
+        # with hash randomization enabled (e.g. tox).
         db = self.client.pymongo_test
         db.test.remove({})
         db.test.insert(SON([("hello", "world"),
                             ("_id", 5)]))
 
-        if ((sys.version_info >= (3, 3) and
-             os.environ.get('PYTHONHASHSEED') != '0') or
-            sys.platform.startswith('java')):
-            # See http://bugs.python.org/issue13703 for why we
-            # use as_class=SON in certain environments.
-            cursor = db.test.find(as_class=SON)
-        else:
-            cursor = db.test.find()
-
+        cursor = db.test.find(as_class=SON)
         for x in cursor:
             for (k, v) in x.items():
                 self.assertEqual(k, "_id")
