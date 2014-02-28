@@ -14,7 +14,6 @@
 
 """Tests for the dbref module."""
 
-import os
 import pickle
 import unittest
 import sys
