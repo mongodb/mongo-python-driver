@@ -40,14 +40,15 @@ from pymongo.collection import Collection
 from pymongo.database import Database
 from pymongo.errors import (CollectionInvalid,
                             ConfigurationError,
+                            ExecutionTimeout,
                             InvalidName,
                             OperationFailure)
 from pymongo.son_manipulator import (AutoReference,
                                      NamespaceInjector,
                                      ObjectIdShuffler)
 from test import version
-from test.utils import (is_mongos, server_started_with_auth,
-                        remove_all_users)
+from test.utils import (get_command_line, is_mongos,
+                        remove_all_users, server_started_with_auth)
 from test.test_client import get_client
 
 
@@ -958,6 +959,35 @@ class TestDatabase(unittest.TestCase):
         finally:
             warnings.resetwarnings()
             warnings.simplefilter("ignore")
+
+    def test_command_max_time_ms(self):
+        if not version.at_least(self.client, (2, 5, 3, -1)):
+            raise SkipTest("MaxTimeMS requires MongoDB >= 2.5.3")
+        if "enableTestCommands=1" not in get_command_line(self.client)["argv"]:
+            raise SkipTest("Test commands must be enabled.")
+
+        self.client.admin.command("configureFailPoint",
+                                  "maxTimeAlwaysTimeOut",
+                                  mode="alwaysOn")
+        try:
+            db = self.client.pymongo_test
+            db.command('count', 'test')
+            self.assertRaises(ExecutionTimeout, db.command,
+                              'count', 'test', maxTimeMS=1)
+            pipeline = [{'$project': {'name': 1, 'count': 1}}]
+            # Database command helper.
+            db.command('aggregate', 'test', pipeline=pipeline)
+            self.assertRaises(ExecutionTimeout, db.command,
+                              'aggregate', 'test',
+                              pipeline=pipeline, maxTimeMS=1)
+            # Collection helper.
+            db.test.aggregate(pipeline=pipeline)
+            self.assertRaises(ExecutionTimeout,
+                              db.test.aggregate, pipeline, maxTimeMS=1)
+        finally:
+            self.client.admin.command("configureFailPoint",
+                                      "maxTimeAlwaysTimeOut",
+                                      mode="off")
 
 
 if __name__ == "__main__":

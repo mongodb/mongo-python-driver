@@ -102,19 +102,24 @@ class TestCursor(unittest.TestCase):
 
         self.assertTrue(coll.find_one(max_time_ms=1000))
 
-        reducer = Code("""function(obj, prev){prev.count++;}""")
-        coll.group(key={"amalia": 1}, condition={}, initial={"count": 0},
-                   reduce=reducer, maxTimeMS=1000)
-
         if "enableTestCommands=1" in get_command_line(self.client)["argv"]:
             self.client.admin.command("configureFailPoint",
                                       "maxTimeAlwaysTimeOut",
                                       mode="alwaysOn")
-            self.assertRaises(ExecutionTimeout,
-                              coll.find_one, max_time_ms=1)
-            self.client.admin.command("configureFailPoint",
-                                      "maxTimeAlwaysTimeOut",
-                                      mode="off")
+            try:
+                cursor = coll.find().max_time_ms(1)
+                try:
+                    cursor.next()
+                except ExecutionTimeout:
+                    pass
+                else:
+                    self.fail("ExecutionTimeout not raised")
+                self.assertRaises(ExecutionTimeout,
+                                  coll.find_one, max_time_ms=1)
+            finally:
+                self.client.admin.command("configureFailPoint",
+                                          "maxTimeAlwaysTimeOut",
+                                          mode="off")
 
     def test_explain(self):
         a = self.db.test.find()
