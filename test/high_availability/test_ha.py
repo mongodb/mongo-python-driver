@@ -25,15 +25,18 @@ import unittest
 import ha_tools
 from ha_tools import use_greenlets
 
-
-from pymongo.errors import AutoReconnect, OperationFailure, ConnectionFailure
+from nose.plugins.skip import SkipTest
+from pymongo.errors import (AutoReconnect,
+                            OperationFailure,
+                            ConnectionFailure,
+                            WTimeoutError)
 from pymongo.member import Member
 from pymongo.mongo_replica_set_client import Monitor
 from pymongo.mongo_replica_set_client import MongoReplicaSetClient
 from pymongo.mongo_client import MongoClient, _partition_node
 from pymongo.read_preferences import ReadPreference, modes
 
-from test import utils
+from test import utils, version
 from test.utils import one
 
 
@@ -1019,6 +1022,45 @@ class TestReplicaSetRequest(HATestCase):
     def tearDown(self):
         self.c.close()
         super(TestReplicaSetRequest, self).tearDown()
+
+
+class TestLastErrorDefaults(HATestCase):
+
+    def setUp(self):
+        members = [{}, {}]
+        res = ha_tools.start_replica_set(members)
+        self.seed, self.name = res
+        self.c = MongoReplicaSetClient(self.seed, replicaSet=self.name,
+                                       use_greenlets=use_greenlets)
+
+    def test_get_last_error_defaults(self):
+        if not version.at_least(self.c, (1, 9, 0)):
+            raise SkipTest("Need MongoDB >= 1.9.0 to test getLastErrorDefaults")
+
+        replset = self.c.local.system.replset.find_one()
+        settings = replset.get('settings', {})
+        # This should cause a WTimeoutError for every write command
+        settings['getLastErrorDefaults'] = {
+            'w': 3,
+            'wtimeout': 1
+        }
+        replset['settings'] = settings
+        replset['version'] = replset.get("version", 1) + 1
+
+        self.c.admin.command("replSetReconfig", replset)
+
+        self.assertRaises(WTimeoutError, self.c.pymongo_test.test.insert,
+                          {'_id': 0})
+        self.assertRaises(WTimeoutError, self.c.pymongo_test.test.save,
+                          {'_id': 0, "a": 5})
+        self.assertRaises(WTimeoutError, self.c.pymongo_test.test.update,
+                          {'_id': 0}, {"$set": {"a": 10}})
+        self.assertRaises(WTimeoutError, self.c.pymongo_test.test.remove,
+                          {'_id': 0})
+
+    def tearDown(self):
+        self.c.close()
+        super(TestLastErrorDefaults, self).tearDown()
 
 
 class TestShipOfTheseus(HATestCase):
