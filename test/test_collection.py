@@ -1313,6 +1313,10 @@ class TestCollection(unittest.TestCase):
             else:
                 self.fail("WTimeoutError was not raised")
 
+        # can't use fsync and j options together
+        self.assertRaises(OperationFailure, self.db.test.insert,
+                          {"_id": 1}, j=True, fsync=True)
+
     def test_manual_last_error(self):
         self.db.test.save({"x": 1}, w=0)
         self.db.command("getlasterror", w=1, wtimeout=1)
