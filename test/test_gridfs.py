@@ -375,8 +375,11 @@ class TestGridfs(unittest.TestCase):
 
     def test_gridfs_find(self):
         self.fs.put(b("test2"), filename="two")
+        time.sleep(0.01)
         self.fs.put(b("test2+"), filename="two")
+        time.sleep(0.01)
         self.fs.put(b("test1"), filename="one")
+        time.sleep(0.01)
         self.fs.put(b("test2++"), filename="two")
         self.assertEqual(3, self.fs.find({"filename":"two"}).count())
         self.assertEqual(4, self.fs.find().count())
