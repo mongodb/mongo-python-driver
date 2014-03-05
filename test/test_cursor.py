@@ -19,12 +19,10 @@ import random
 import re
 import sys
 import unittest
-from struct import pack
 sys.path[0:0] = [""]
 
 from nose.plugins.skip import SkipTest
 
-from bson import BSON
 from bson.code import Code
 from bson.son import SON
 from pymongo import (ASCENDING,
@@ -37,8 +35,6 @@ from pymongo.database import Database
 from pymongo.errors import (InvalidOperation,
                             OperationFailure,
                             ExecutionTimeout)
-from pymongo.helpers import (_unpack_response,
-                             _check_command_response)
 from test import version
 from test.test_client import get_client
 from test.utils import is_mongos, get_command_line, server_started_with_auth
@@ -56,28 +52,6 @@ class TestCursor(unittest.TestCase):
     def test_max_time_ms(self):
         if not version.at_least(self.db.connection, (2, 5, 3, -1)):
             raise SkipTest("MaxTimeMS requires MongoDB >= 2.5.3")
-
-        max_time_ms_response = {
-            '$err': 'operation exceeded time limit',
-            'code': 50
-        }
-        bson_response = BSON.encode(max_time_ms_response)
-        response_flags = pack("<i", 2)
-        cursor_id = pack("<q", 0)
-        starting_from = pack("<i", 0)
-        number_returned = pack("<i", 1)
-        op_reply = (response_flags + cursor_id + starting_from +
-                    number_returned + bson_response)
-        self.assertRaises(ExecutionTimeout, _unpack_response,
-                          op_reply)
-
-        command_response = {
-            'ok': 0,
-            'errmsg': 'operation exceeded time limit',
-            'code': 50
-        }
-        self.assertRaises(ExecutionTimeout, _check_command_response,
-                          command_response, None)
 
         db = self.db
         db.pymongo_test.drop()
@@ -103,6 +77,7 @@ class TestCursor(unittest.TestCase):
         self.assertTrue(coll.find_one(max_time_ms=1000))
 
         if "enableTestCommands=1" in get_command_line(self.client)["argv"]:
+            # Cursor parses server timeout error in response to initial query.
             self.client.admin.command("configureFailPoint",
                                       "maxTimeAlwaysTimeOut",
                                       mode="alwaysOn")
@@ -120,6 +95,33 @@ class TestCursor(unittest.TestCase):
                 self.client.admin.command("configureFailPoint",
                                           "maxTimeAlwaysTimeOut",
                                           mode="off")
+
+    def test_max_time_ms_getmore(self):
+        # Test that Cursor handles server timeout error in response to getmore.
+        if "enableTestCommands=1" not in get_command_line(self.client)["argv"]:
+            raise SkipTest("Need test commands enabled")
+
+        coll = self.db.pymongo_test
+        coll.insert({} for _ in range(200))
+        cursor = coll.find().max_time_ms(100)
+
+        # Send initial query before turning on failpoint.
+        cursor.next()
+        self.client.admin.command("configureFailPoint",
+                                  "maxTimeAlwaysTimeOut",
+                                  mode="alwaysOn")
+        try:
+            try:
+                # Iterate up to first getmore.
+                list(cursor)
+            except ExecutionTimeout:
+                pass
+            else:
+                self.fail("ExecutionTimeout not raised")
+        finally:
+            self.client.admin.command("configureFailPoint",
+                                      "maxTimeAlwaysTimeOut",
+                                      mode="off")
 
     def test_explain(self):
         a = self.db.test.find()
