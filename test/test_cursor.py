@@ -101,6 +101,9 @@ class TestCursor(unittest.TestCase):
         if "enableTestCommands=1" not in get_command_line(self.client)["argv"]:
             raise SkipTest("Need test commands enabled")
 
+        if not version.at_least(self.db.connection, (2, 5, 3, -1)):
+            raise SkipTest("MaxTimeMS requires MongoDB >= 2.5.3")
+
         coll = self.db.pymongo_test
         coll.insert({} for _ in range(200))
         cursor = coll.find().max_time_ms(100)
