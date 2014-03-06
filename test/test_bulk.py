@@ -597,7 +597,7 @@ class TestBulk(BulkTestBase):
         batch = self.coll.initialize_ordered_bulk_op()
         batch.insert({'a': 1})
         batch.find({'a': 1}).update_one({'$set': {'b': 1}})
-        batch.find({'a': 2}).upsert().update_one({'$set': {'b' :2}})
+        batch.find({'a': 2}).upsert().update_one({'$set': {'b': 2}})
         batch.insert({'a': 3})
         batch.find({'a': 3}).remove()
         result = batch.execute()
