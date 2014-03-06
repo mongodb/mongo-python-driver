@@ -118,7 +118,6 @@ def _merge_legacy(run, full_result, result, index):
             full_result['nUpserted'] += affected
         else:
             full_result['nMatched'] += affected
-            full_result['nModified'] += affected
     elif run.op_type == _DELETE:
         full_result['nRemoved'] += affected
 
@@ -258,6 +257,7 @@ class _Bulk(object):
         """
         uuid_subtype = self.collection.uuid_subtype
         client = self.collection.database.connection
+        # nModified is only reported for write commands, not legacy ops.
         full_result = {
             "writeErrors": [],
             "writeConcernErrors": [],
@@ -347,7 +347,6 @@ class _Bulk(object):
             "nInserted": 0,
             "nUpserted": 0,
             "nMatched": 0,
-            "nModified": 0,
             "nRemoved": 0,
             "upserted": [],
         }

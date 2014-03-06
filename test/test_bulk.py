@@ -38,7 +38,13 @@ class BulkTestBase(unittest.TestCase):
     def assertEqualResponse(self, expected, actual):
         """Compare response from bulk.execute() to expected response."""
         for key, value in expected.items():
-            if key == 'upserted':
+            if key == 'nModified':
+                if self.has_write_commands:
+                    self.assertEqual(value, actual['nModified'])
+                else:
+                    # Legacy servers don't include nModified in the response.
+                    self.assertFalse('nModified' in actual)
+            elif key == 'upserted':
                 expected_upserts = value
                 actual_upserts = actual['upserted']
                 self.assertEqual(
