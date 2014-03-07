@@ -25,9 +25,10 @@ from bson import InvalidDocument, SON
 from pymongo.errors import BulkWriteError, InvalidOperation, OperationFailure
 from test import version
 from test.test_client import get_client
-from test.utils import (server_started_with_option, server_started_with_auth,
-                        remove_all_users)
-
+from test.utils import (oid_generated_on_client,
+                        remove_all_users,
+                        server_started_with_auth,
+                        server_started_with_option)
 
 class BulkTestBase(unittest.TestCase):
 
@@ -152,6 +153,8 @@ class TestBulk(BulkTestBase):
             result)
 
         self.assertEqual(1, self.coll.count())
+        doc = self.coll.find_one()
+        self.assertTrue(oid_generated_on_client(doc))
 
         bulk = self.coll.initialize_unordered_bulk_op()
         bulk.insert({})
