@@ -1144,6 +1144,24 @@ class TestCollection(unittest.TestCase):
             {'_id': 1, 'a': 3, 'field': 'value'},
             db.test.find_one())
 
+    def test_update_nmodified(self):
+        db = self.db
+        db.drop_collection("test")
+        used_write_commands = (self.client.max_wire_version > 1)
+
+        db.test.insert({'_id': 1})
+        result = db.test.update({'_id': 1}, {'$set': {'x': 1}})
+        if used_write_commands:
+            self.assertEqual(1, result['nModified'])
+        else:
+            self.assertFalse('nModified' in result)
+
+        # x is already 1.
+        result = db.test.update({'_id': 1}, {'$set': {'x': 1}})
+        if used_write_commands:
+            self.assertEqual(0, result['nModified'])
+        else:
+            self.assertFalse('nModified' in result)
 
     def test_multi_update(self):
         db = self.db
