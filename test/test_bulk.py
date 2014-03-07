@@ -902,20 +902,27 @@ class TestBulkWriteConcern(BulkTestBase):
             OperationFailure,
             batch.execute, {'fsync': True, 'j': True})
 
+    def test_j_without_journal(self):
+        client = self.coll.database.connection
+        if not server_started_with_option(client, '--nojournal', 'nojournal'):
+            raise SkipTest("Need mongod started with --nojournal")
+
+        # Using j=True without journaling is a hard failure.
+        batch = self.coll.initialize_ordered_bulk_op()
+        batch.insert({})
+        self.assertRaises(OperationFailure, batch.execute, {'j': True})
+
     def test_write_concern_failure_ordered(self):
 
         batch = self.coll.initialize_ordered_bulk_op()
         batch.insert({'a': 1})
         batch.insert({'a': 2})
 
-        client = self.coll.database.connection
-        # Using j=True without journaling is a hard failure.
-        if server_started_with_option(client, '--nojournal', 'nojournal'):
-            self.assertRaises(OperationFailure, batch.execute, {'j': True})
-        # So is using w > 1 with no replication.
-        elif not self.is_repl:
-            self.assertRaises(BulkWriteError,
+        # Using w > 1 with no replication is a hard failure.
+        if not self.is_repl:
+            self.assertRaises(OperationFailure,
                               batch.execute, {'w': 5, 'wtimeout': 1})
+
         # Replication wtimeout is a 'soft' error.
         # It shouldn't stop batch processing.
         else:
