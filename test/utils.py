@@ -15,6 +15,8 @@
 """Utilities for testing pymongo
 """
 
+import os
+import struct
 import sys
 import threading
 
@@ -44,6 +46,11 @@ def my_partial(f, *args, **kwargs):
 def one(s):
     """Get one element of a set"""
     return iter(s).next()
+
+def oid_generated_on_client(doc):
+    """Is this process's PID in the document's _id?"""
+    pid_from_doc = struct.unpack(">H", doc['_id'].binary[7:9])[0]
+    return (os.getpid() % 0xFFFF) == pid_from_doc
 
 def delay(sec):
     # Javascript sleep() only available in MongoDB since version ~1.9

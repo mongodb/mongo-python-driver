@@ -17,9 +17,7 @@
 """Test the collection module."""
 
 import itertools
-import os
 import re
-import struct
 import sys
 import threading
 import time
@@ -53,7 +51,8 @@ from pymongo.errors import (DocumentTooLarge,
                             OperationFailure,
                             WTimeoutError)
 from test.test_client import get_client
-from test.utils import is_mongos, joinall, enable_text_search, get_pool
+from test.utils import (is_mongos, joinall, enable_text_search, get_pool,
+                        oid_generated_on_client)
 from test import (qcheck,
                   version)
 
@@ -897,8 +896,7 @@ class TestCollection(unittest.TestCase):
         server_doc = collection.find_one()
 
         # _id is not sent to server, so it's generated server-side.
-        pid_from_doc = struct.unpack(">H", server_doc['_id'].binary[7:9])[0]
-        self.assertNotEqual(os.getpid() % 0xFFFF, pid_from_doc)
+        self.assertFalse(oid_generated_on_client(server_doc))
 
         # Bulk insert. The return value is a list of None.
         self.assertEqual([None], collection.insert([{}], manipulate=False))
