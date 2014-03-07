@@ -751,11 +751,11 @@ class TestBulk(BulkTestBase):
         try:
             batch = self.coll.initialize_unordered_bulk_op()
             batch.insert({'b': 1, 'a': 1})
-            batch.find({'b': 2}).upsert().update_one({'$set': {'a': 1}})
-            batch.find({'b': 3}).upsert().update_one({'$set': {'a': 2}})
-            batch.find({'b': 2}).upsert().update_one({'$set': {'a': 1}})
-            batch.insert({'b': 4, 'a': 3})
-            batch.insert({'b': 5, 'a': 1})
+            batch.find({'b': 2}).upsert().update_one({'$set': {'a': 3}})
+            batch.find({'b': 3}).upsert().update_one({'$set': {'a': 4}})
+            batch.find({'b': 4}).upsert().update_one({'$set': {'a': 3}})
+            batch.insert({'b': 5, 'a': 2})
+            batch.insert({'b': 6, 'a': 1})
 
             try:
                 batch.execute()
@@ -764,33 +764,30 @@ class TestBulk(BulkTestBase):
                 self.assertEqual(exc.code, 65)
             else:
                 self.fail("Error not raised")
+            # Assume the update at index 1 runs before the update at index 3,
+            # although the spec does not require it. Same for inserts.
             self.assertEqualResponse(
                 {'nMatched': 0,
                  'nModified': 0,
-                 'nUpserted': 1,
+                 'nUpserted': 2,
                  'nInserted': 2,
                  'nRemoved': 0,
-                 'upserted': [{'index': 2, '_id': '...'}],
+                 'upserted': [
+                     {'index': 1, '_id': '...'},
+                     {'index': 2, '_id': '...'}],
                  'writeConcernErrors': [],
                  'writeErrors': [
-                     {'index': 1,
-                      'code': 11000,
-                      'errmsg': '...',
-                      'op': {'q': {'b': 2},
-                             'u': {'$set': {'a': 1}},
-                             'multi': False,
-                             'upsert': True}},
                      {'index': 3,
                       'code': 11000,
                       'errmsg': '...',
-                      'op': {'q': {'b': 2},
-                             'u': {'$set': {'a': 1}},
+                      'op': {'q': {'b': 4},
+                             'u': {'$set': {'a': 3}},
                              'multi': False,
                              'upsert': True}},
                      {'index': 5,
                       'code': 11000,
                       'errmsg': '...',
-                      'op': {'_id': '...', 'b': 5, 'a': 1}}]},
+                      'op': {'_id': '...', 'b': 6, 'a': 1}}]},
                 result)
         finally:
             self.coll.drop_index([('a', 1)])
