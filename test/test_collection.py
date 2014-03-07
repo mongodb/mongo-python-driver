@@ -1437,7 +1437,10 @@ class TestCollection(unittest.TestCase):
             t.start()
         for t in threads:
             t.join()
-        self.assertEqual(len(docs), db.test.count())
+
+        self.assertEqual(
+            set(range(8000)),
+            set(doc['_id'] for doc in docs))
 
     def test_group(self):
         db = self.db
