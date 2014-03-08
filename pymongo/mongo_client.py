@@ -338,7 +338,9 @@ class MongoClient(common.BaseObject):
         if event_class:
             self.__event_class = event_class
         else:
-            event_class = lambda: thread_util.create_event(self.__use_greenlets)
+            # Prevent a cycle; this lambda shouldn't refer to self.
+            g = self.__use_greenlets
+            event_class = lambda: thread_util.create_event(g)
             self.__event_class = event_class
 
         self.__future_member = None
