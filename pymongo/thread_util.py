@@ -201,7 +201,11 @@ class Future(object):
         self._event.set()
 
     def set_exception(self, exc):
-        self._exception = exc
+        if hasattr(exc, 'with_traceback'):
+            # Python 3: avoid potential reference cycle.
+            self._exception = exc.with_traceback(None)
+        else:
+            self._exception = exc
         self._event.set()
 
     def result(self):
