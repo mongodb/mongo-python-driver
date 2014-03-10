@@ -441,7 +441,7 @@ class TestGridfsReplicaSet(TestReplicaSetClientBase):
             _connect=False)
 
         # Still no connection.
-        fs = gridfs.GridFS(client.pymongo_test, _connect=False)
+        fs = gridfs.GridFS(client.test_gridfs_secondary_lazy, _connect=False)
 
         # Connects, doesn't create index.
         self.assertRaises(NoFile, fs.get_last_version)
