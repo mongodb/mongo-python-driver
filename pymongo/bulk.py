@@ -152,7 +152,15 @@ def _merge_command(run, full_result, results):
                 full_result["nMatched"] += (affected - n_upserted)
             else:
                 full_result["nMatched"] += affected
-            full_result["nModified"] += result.get("nModified", 0)
+            n_modified = result.get("nModified")
+            # SERVER-13001 - in a mixed sharded cluster a call to
+            # update could return nModified (>= 2.6) or not (<= 2.4).
+            # If any call does not return nModified we can't report
+            # a valid final count so omit the field completely.
+            if n_modified is not None and "nModified" in full_result:
+                full_result["nModified"] += n_modified
+            else:
+                full_result.pop("nModified", None)
 
         write_errors = result.get("writeErrors")
         if write_errors:

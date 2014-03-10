@@ -84,8 +84,9 @@ describing the type and count of operations performed.
   >>>
 
 .. warning:: ``nModified`` is only reported by MongoDB 2.6 and later. When
-  connected to an earlier server version, PyMongo omits this field from the
-  results of a bulk write operation.
+  connected to an earlier server version, or in certain mixed version sharding
+  configurations, PyMongo omits this field from the results of a bulk
+  write operation.
 
 The first write failure that occurs (e.g. duplicate key error) aborts the
 remaining operations, and PyMongo raises
