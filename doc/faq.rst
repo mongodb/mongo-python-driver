@@ -243,14 +243,6 @@ without using a Django backend. Certain features of Django that require
 using just MongoDB, but most of what Django provides can still be
 used.
 
-We have written a demo `Django + MongoDB project
-<http://github.com/mdirolf/DjanMon/tree/master>`_. The README for that
-project describes some of what you need to do to use MongoDB from
-Django. The main point is that your persistence code will go directly
-into your views, rather than being defined in separate models. The
-README also gives instructions for how to change settings.py to
-disable the features that won't work with MongoDB.
-
 One project which should make working with MongoDB and Django easier
 is `mango <http://github.com/vpulim/mango>`_. Mango is a set of
 MongoDB backends for Django sessions and authentication (bypassing
