@@ -989,8 +989,6 @@ class TestBulkWriteConcern(BulkTestBase):
                     result)
 
                 self.assertEqual(2, len(result['writeConcernErrors']))
-                timeout = result['writeConcernErrors'][0]
-                self.assertTrue('timeout' in timeout['errmsg'])
                 failed = result['writeErrors'][0]
                 self.assertTrue("duplicate" in failed['errmsg'])
             finally:
