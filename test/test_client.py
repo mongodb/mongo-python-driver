@@ -376,11 +376,8 @@ class TestClient(unittest.TestCase, TestRequestMixin):
                 "mongodb://user:wrong@%s:%d/pymongo_test" % (host, port),
                 _connect=False)
 
-            # If auth fails with lazy connection, MongoClient raises
-            # AutoReconnect instead of the more appropriate OperationFailure,
-            # PYTHON-517.
-            self.assertRaises(
-                PyMongoError, bad_client.pymongo_test.test.find_one)
+            self.assertRaises(OperationFailure,
+                              bad_client.pymongo_test.test.find_one)
 
         finally:
             # Clean up.
