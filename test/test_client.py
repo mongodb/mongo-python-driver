@@ -980,6 +980,16 @@ with client.start_request() as request:
             ConfigurationError,
             MongoClient, host, port, replicaSet='bad' + name)
 
+    def test_lazy_connect_w0(self):
+        client = get_client(_connect=False)
+        client.pymongo_test.test.insert({}, w=0)
+
+        client = get_client(_connect=False)
+        client.pymongo_test.test.update({}, {'$set': {'x': 1}}, w=0)
+
+        client = get_client(_connect=False)
+        client.pymongo_test.test.remove(w=0)
+
 
 class TestClientLazyConnect(unittest.TestCase, _TestLazyConnectMixin):
     def _get_client(self, **kwargs):

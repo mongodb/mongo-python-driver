@@ -1097,11 +1097,11 @@ class MongoClient(common.BaseObject):
           - `check_primary`: don't try to write to a non-primary; see
             kill_cursors for an exception to this rule
         """
+        member = self.__ensure_member()
         if check_primary and not with_last_error and not self.is_primary:
             # The write won't succeed, bail as if we'd done a getLastError
             raise AutoReconnect("not master")
 
-        member = self.__ensure_member()
         sock_info = self.__socket(member)
         try:
             try:

@@ -511,6 +511,10 @@ class Collection(common.BaseObject):
         if not isinstance(upsert, bool):
             raise TypeError("upsert must be an instance of bool")
 
+        client = self.database.connection
+        # Need to connect to know the wire version, and may want to connect
+        # before applying SON manipulators.
+        client._ensure_connected(True)
         if manipulate:
             document = self.__database._fix_incoming(document, self)
 
@@ -526,7 +530,6 @@ class Collection(common.BaseObject):
             if first.startswith('$'):
                 check_keys = False
 
-        client = self.database.connection
         if client.max_wire_version > 1 and safe:
             # Update command
             command = SON([('update', self.name)])
@@ -642,6 +645,9 @@ class Collection(common.BaseObject):
         safe, options = self._get_write_mode(safe, **kwargs)
 
         client = self.database.connection
+
+        # Need to connect to know the wire version.
+        client._ensure_connected(True)
         if client.max_wire_version > 1 and safe:
             # Delete command
             command = SON([('delete', self.name)])
