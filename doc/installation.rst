@@ -95,6 +95,26 @@ versions of Python 2.7 >= 2.7.4 or Python 3.x >= 3.2.4 downloaded from
 python.org. In all cases Xcode must be installed with 'UNIX Development
 Support'.
 
+**Xcode 5.1**: Starting with version 5.1 the version of clang that ships with
+Xcode throws an error when it encounters compiler flags it doesn't recognize.
+This may cause C extension builds to fail with an error similar to::
+
+  clang: error: unknown argument: '-mno-fused-madd' [-Wunused-command-line-argument-hard-error-in-future]
+
+There are workarounds::
+
+  # Apple specified workaround for Xcode 5.1
+  # easy_install
+  $ ARCHFLAGS=-Wno-error=unused-command-line-argument-hard-error-in-future easy_install pymongo
+  # or pip
+  $ ARCHFLAGS=-Wno-error=unused-command-line-argument-hard-error-in-future pip install pymongo
+
+  # Alternative workaround using CFLAGS
+  # easy_install
+  $ CFLAGS=-Qunused-arguments easy_install pymongo
+  # or pip
+  $ CFLAGS=-Qunused-arguments pip install pymongo
+
 Installing from source
 ----------------------
 
