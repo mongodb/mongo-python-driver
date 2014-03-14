@@ -584,10 +584,8 @@ class TestBulk(BulkTestBase):
         self.assertEqual(self.coll.find({'x': 2}).count(), 0)
 
     def test_upsert_large(self):
-        # We can insert a 16MB document, using an update command a little over
-        # 16MB long.
         client = self.coll.database.connection
-        big = 'a' * (client.max_bson_size - 30)
+        big = 'a' * (client.max_bson_size - 37)
         bulk = self.coll.initialize_ordered_bulk_op()
         bulk.find({'x': 1}).upsert().update({'$set': {'s': big}})
         result = bulk.execute()

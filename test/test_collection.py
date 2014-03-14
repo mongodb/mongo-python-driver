@@ -1859,7 +1859,7 @@ class TestCollection(unittest.TestCase):
         self.assertRaises(DocumentTooLarge, self.db.test.update,
                           {"bar": "x"}, {"bar": "x" * (max_size - 14)}, w=0)
         # This will pass with OP_UPDATE or the update command.
-        self.db.test.update({"bar": "x"}, {"bar": "x" * (max_size - 15)})
+        self.db.test.update({"bar": "x"}, {"bar": "x" * (max_size - 32)})
 
     def test_insert_large_batch(self):
         max_bson_size = self.client.max_bson_size
