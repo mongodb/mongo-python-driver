@@ -31,7 +31,7 @@
       .. automethod:: insert(doc_or_docs[, manipulate=True[, safe=None[, check_keys=True[, continue_on_error=False[, **kwargs]]]]])
       .. automethod:: save(to_save[, manipulate=True[, safe=None[, check_keys=True[, **kwargs]]]])
       .. automethod:: update(spec, document[, upsert=False[, manipulate=False[, safe=None[, multi=False[, check_keys=True[, **kwargs]]]]]])
-      .. automethod:: remove([spec_or_id=None[, safe=None[, **kwargs]]])
+      .. automethod:: remove([spec_or_id=None[, safe=None[, multi=True[, **kwargs]]]])
       .. automethod:: initialize_unordered_bulk_op
       .. automethod:: initialize_ordered_bulk_op
       .. automethod:: drop
