@@ -942,9 +942,10 @@ class Collection(common.BaseObject):
 
         Takes either a single key or a list of (key, direction) pairs.
         The key(s) must be an instance of :class:`basestring`
-        (:class:`str` in python 3), and the directions must be one of
+        (:class:`str` in python 3), and the direction(s) must be one of
         (:data:`~pymongo.ASCENDING`, :data:`~pymongo.DESCENDING`,
-        :data:`~pymongo.GEO2D`). Returns the name of the created index.
+        :data:`~pymongo.GEO2D`, :data:`~pymongo.GEOHAYSTACK`,
+        :data:`~pymongo.GEOSPHERE`, :data:`~pymongo.HASHED`).
 
         To create a single key index on the key ``'mike'`` we just use
         a string argument:
@@ -1058,8 +1059,9 @@ class Collection(common.BaseObject):
         The key(s) must be an instance of :class:`basestring`
         (:class:`str` in python 3), and the direction(s) must be one of
         (:data:`~pymongo.ASCENDING`, :data:`~pymongo.DESCENDING`,
-        :data:`~pymongo.GEO2D`). See :meth:`create_index` for a detailed
-        example.
+        :data:`~pymongo.GEO2D`, :data:`~pymongo.GEOHAYSTACK`,
+        :data:`~pymongo.GEOSPHERE`, :data:`~pymongo.HASHED`).
+        See :meth:`create_index` for a detailed example.
 
         Unlike :meth:`create_index`, which attempts to create an index
         unconditionally, :meth:`ensure_index` takes advantage of some
@@ -1076,8 +1078,9 @@ class Collection(common.BaseObject):
         :meth:`ensure_index` within the cache window will fail to
         re-create the missing index.
 
-        Returns the name of the created index if an index is actually
-        created. Returns ``None`` if the index already exists.
+        Returns the specified or generated index name used if
+        :meth:`ensure_index` attempts to create the index. Returns
+        ``None`` if the index is already cached.
 
         All optional index creation parameters should be passed as
         keyword arguments to this method. Valid options include:
