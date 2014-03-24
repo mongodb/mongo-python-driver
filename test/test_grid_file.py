@@ -124,7 +124,7 @@ class TestGridFile(unittest.TestCase):
         self.assertRaises(AttributeError, getattr, a, "length")
         self.assertRaises(AttributeError, setattr, a, "length", 5)
 
-        self.assertEqual(256 * 1024, a.chunk_size)
+        self.assertEqual(255 * 1024, a.chunk_size)
         self.assertRaises(AttributeError, setattr, a, "chunk_size", 5)
 
         self.assertRaises(AttributeError, getattr, a, "upload_date")
@@ -157,7 +157,7 @@ class TestGridFile(unittest.TestCase):
         self.assertEqual(0, a.length)
         self.assertRaises(AttributeError, setattr, a, "length", 5)
 
-        self.assertEqual(256 * 1024, a.chunk_size)
+        self.assertEqual(255 * 1024, a.chunk_size)
         self.assertRaises(AttributeError, setattr, a, "chunk_size", 5)
 
         self.assertTrue(isinstance(a.upload_date, datetime.datetime))
@@ -216,7 +216,7 @@ class TestGridFile(unittest.TestCase):
         self.assertEqual(None, b.content_type)
         self.assertEqual(None, b.name)
         self.assertEqual(None, b.filename)
-        self.assertEqual(256 * 1024, b.chunk_size)
+        self.assertEqual(255 * 1024, b.chunk_size)
         self.assertTrue(isinstance(b.upload_date, datetime.datetime))
         self.assertEqual(None, b.aliases)
         self.assertEqual(None, b.metadata)

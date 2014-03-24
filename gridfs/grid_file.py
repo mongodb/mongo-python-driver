@@ -45,7 +45,8 @@ EMPTY = b("")
 NEWLN = b("\n")
 
 """Default chunk size, in bytes."""
-DEFAULT_CHUNK_SIZE = 256 * 1024
+# Slightly under a power of 2, to work well with server's record allocations.
+DEFAULT_CHUNK_SIZE = 255 * 1024
 
 
 def _create_property(field_name, docstring,

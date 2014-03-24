@@ -130,7 +130,7 @@ class TestGridfs(unittest.TestCase):
         self.assertEqual(0, raw["length"])
         self.assertEqual(oid, raw["_id"])
         self.assertTrue(isinstance(raw["uploadDate"], datetime.datetime))
-        self.assertEqual(256 * 1024, raw["chunkSize"])
+        self.assertEqual(255 * 1024, raw["chunkSize"])
         self.assertTrue(isinstance(raw["md5"], basestring))
 
     def test_alt_collection(self):
