@@ -642,12 +642,33 @@ class Cursor(object):
     def sort(self, key_or_list, direction=None):
         """Sorts this cursor's results.
 
-        Takes either a single key and a direction, or a list of (key,
-        direction) pairs. The key(s) must be an instance of ``(str,
-        unicode)``, and the direction(s) must be one of
-        (:data:`~pymongo.ASCENDING`,
-        :data:`~pymongo.DESCENDING`). Raises
-        :class:`~pymongo.errors.InvalidOperation` if this cursor has
+        Pass a field name and a direction, either
+        :data:`~pymongo.ASCENDING` or :data:`~pymongo.DESCENDING`::
+
+            for doc in collection.find().sort('field', pymongo.ASCENDING):
+                print(doc)
+
+        To sort by multiple fields, pass a list of (key, direction) pairs::
+
+            for doc in collection.find().sort([
+                    ('field1', pymongo.ASCENDING),
+                    ('field2', pymongo.DESCENDING)]):
+                print(doc)
+
+        Beginning with MongoDB version 2.6, text search results can be
+        sorted by relevance::
+
+            cursor = db.test.find(
+                {'$text': {'$search': 'some words'}},
+                {'score': {'$meta': 'textScore'}})
+
+            # Sort by 'score' field.
+            cursor.sort([('score', {'$meta': 'textScore'})])
+
+            for doc in cursor:
+                print(doc)
+
+        Raises :class:`~pymongo.errors.InvalidOperation` if this cursor has
         already been used. Only the last :meth:`sort` applied to this
         cursor has any effect.
 
