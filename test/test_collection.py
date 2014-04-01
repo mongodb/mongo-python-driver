@@ -1550,20 +1550,11 @@ class TestCollection(unittest.TestCase):
         db = self.db
         db.drop_collection("test_large_limit")
         db.test_large_limit.create_index([('x', 1)])
+        my_str = "mongomongo" * 1000
 
         for i in range(2000):
-            doc = {"x": i, "y": "mongomongo" * 1000}
+            doc = {"x": i, "y": my_str}
             db.test_large_limit.insert(doc)
-
-        # Wait for insert to complete; often mysteriously failing in Jenkins
-        st = time.time()
-        while (
-            len(list(db.test_large_limit.find())) < 2000
-            and time.time() - st < 30
-        ):
-            time.sleep(1)
-
-        self.assertEqual(2000, len(list(db.test_large_limit.find())))
 
         i = 0
         y = 0
