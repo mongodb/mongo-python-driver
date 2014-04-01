@@ -301,7 +301,7 @@ class TestGridFile(unittest.TestCase):
         f.close()
 
     def test_multi_chunk_file(self):
-        random_string = 'a' * (DEFAULT_CHUNK_SIZE + 1000)
+        random_string = b('a') * (DEFAULT_CHUNK_SIZE + 1000)
 
         f = GridIn(self.db.fs)
         f.write(random_string)
