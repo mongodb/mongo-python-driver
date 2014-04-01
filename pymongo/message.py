@@ -219,10 +219,10 @@ def _do_batched_insert(collection_name, docs, check_keys,
 
     send_safe = safe or not continue_on_error
     last_error = None
-    begin = struct.pack("<i", int(continue_on_error))
-    begin += bson._make_c_string(collection_name)
-    message_length = len(begin)
-    data = [begin]
+    data = StringIO()
+    data.write(struct.pack("<i", int(continue_on_error)))
+    data.write(bson._make_c_string(collection_name))
+    message_length = begin_loc = data.tell()
     has_docs = False
     for doc in docs:
         encoded = bson.BSON.encode(doc, check_keys, uuid_subtype)
@@ -231,14 +231,14 @@ def _do_batched_insert(collection_name, docs, check_keys,
 
         message_length += encoded_length
         if message_length < client.max_message_size and not too_large:
-            data.append(encoded)
+            data.write(encoded)
             has_docs = True
             continue
 
         if has_docs:
             # We have enough data, send this message.
             try:
-                client._send_message(_insert_message(_EMPTY.join(data),
+                client._send_message(_insert_message(data.getvalue(),
                                                      send_safe), send_safe)
             # Exception type could be OperationFailure or a subtype
             # (e.g. DuplicateKeyError)
@@ -261,13 +261,15 @@ def _do_batched_insert(collection_name, docs, check_keys,
                                    " bytes." %
                                    (encoded_length, client.max_bson_size))
 
-        message_length = len(begin) + encoded_length
-        data = [begin, encoded]
+        message_length = begin_loc + encoded_length
+        data.seek(begin_loc)
+        data.truncate()
+        data.write(encoded)
 
     if not has_docs:
         raise InvalidOperation("cannot do an empty bulk insert")
 
-    client._send_message(_insert_message(_EMPTY.join(data), safe), safe)
+    client._send_message(_insert_message(data.getvalue(), safe), safe)
 
     # Re-raise any exception stored due to continue_on_error
     if last_error is not None:
