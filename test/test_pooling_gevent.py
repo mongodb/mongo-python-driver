@@ -15,6 +15,7 @@
 """Tests for connection-pooling with greenlets and Gevent"""
 
 import gc
+import sys
 import time
 import unittest
 
@@ -201,6 +202,9 @@ class TestUseGreenletsWithoutGevent(unittest.TestCase):
                 "Gevent is installed, can't test what happens calling "
                 "Pool(use_greenlets=True) when Gevent is unavailable")
 
+        if 'java' in sys.platform:
+            raise SkipTest("Can't rely on __del__ in Jython")
+
         # Possible outcomes of __del__.
         DID_NOT_RUN, RAISED, SUCCESS = range(3)
         outcome = [DID_NOT_RUN]
@@ -224,7 +228,7 @@ class TestUseGreenletsWithoutGevent(unittest.TestCase):
             use_ssl=False,
             use_greenlets=True)
 
-        # Convince Jython or PyPy to call __del__.
+        # Convince PyPy to call __del__.
         for _ in range(10):
             if outcome[0] == DID_NOT_RUN:
                 gc.collect()
