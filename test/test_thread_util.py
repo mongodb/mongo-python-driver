@@ -54,6 +54,9 @@ class TestIdent(unittest.TestCase):
       child's callback was not
     """
     def _test_ident(self, use_greenlets):
+        if 'java' in sys.platform:
+            raise SkipTest("Can't rely on weakref callbacks in Jython")
+
         ident = thread_util.create_ident(use_greenlets)
 
         ids = set([ident.get()])
