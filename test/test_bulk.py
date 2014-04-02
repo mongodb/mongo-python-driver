@@ -999,12 +999,8 @@ class TestBulkWriteConcern(BulkTestBase):
         batch.find({'a': 3}).upsert().update_one({'$set': {'a': 3, 'b': 1}})
         batch.insert({'a': 2})
 
-        client = self.coll.database.connection
-        # Using j=True without journaling is a hard failure.
-        if server_started_with_nojournal(client):
-            self.assertRaises(OperationFailure, batch.execute, {'j': True})
-        # So is using w > 1 with no replication.
-        elif not self.is_repl:
+        # Using w > 1 with no replication is a hard failure.
+        if not self.is_repl:
             self.assertRaises(OperationFailure,
                               batch.execute, {'w': 5, 'wtimeout': 1})
         # Replication wtimeout is a 'soft' error.
