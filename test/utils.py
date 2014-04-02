@@ -94,6 +94,21 @@ def server_started_with_auth(client):
     argv = command_line['argv']
     return '--auth' in argv or '--keyFile' in argv
 
+
+def server_started_with_nojournal(client):
+    command_line = get_command_line(client)
+
+    # MongoDB 2.6.
+    if 'parsed' in command_line:
+        parsed = command_line['parsed']
+        if 'storage' in parsed:
+            storage = parsed['storage']
+            if 'journal' in storage:
+                return not storage['journal']['enabled']
+
+    return server_started_with_option(client, '--nojournal', 'nojournal')
+
+
 def server_is_master_with_slave(client):
     command_line = get_command_line(client)
     if 'parsed' in command_line:

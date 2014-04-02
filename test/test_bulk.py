@@ -28,7 +28,7 @@ from test.test_client import get_client
 from test.utils import (oid_generated_on_client,
                         remove_all_users,
                         server_started_with_auth,
-                        server_started_with_option)
+                        server_started_with_nojournal)
 
 class BulkTestBase(unittest.TestCase):
 
@@ -905,7 +905,7 @@ class TestBulkWriteConcern(BulkTestBase):
 
     def test_j_without_journal(self):
         client = self.coll.database.connection
-        if not server_started_with_option(client, '--nojournal', 'nojournal'):
+        if not server_started_with_nojournal(client):
             raise SkipTest("Need mongod started with --nojournal")
 
         # Using j=True without journaling is a hard failure.
@@ -1001,7 +1001,7 @@ class TestBulkWriteConcern(BulkTestBase):
 
         client = self.coll.database.connection
         # Using j=True without journaling is a hard failure.
-        if server_started_with_option(client, '--nojournal', 'nojournal'):
+        if server_started_with_nojournal(client):
             self.assertRaises(OperationFailure, batch.execute, {'j': True})
         # So is using w > 1 with no replication.
         elif not self.is_repl:
