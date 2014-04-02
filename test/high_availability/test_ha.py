@@ -1082,7 +1082,21 @@ class TestShipOfTheseus(HATestCase):
         primary = ha_tools.get_primary()
         secondary1 = ha_tools.get_random_secondary()
 
-        new_hosts = [ha_tools.add_member() for _ in range(3)]
+        new_hosts = []
+        for i in range(3):
+            new_hosts.append(ha_tools.add_member())
+
+            # RS closes all connections after reconfig.
+            for j in xrange(30):
+                try:
+                    if ha_tools.get_primary():
+                        break
+                except (ConnectionFailure, OperationFailure):
+                    pass
+
+                sleep(1)
+            else:
+                self.fail("Couldn't recover from reconfig")
 
         # Wait for new members to join.
         for _ in xrange(120):
@@ -1094,6 +1108,7 @@ class TestShipOfTheseus(HATestCase):
             self.fail("New secondaries didn't join")
 
         ha_tools.kill_members([primary, secondary1], 9)
+        sleep(5)
 
         # Wait for primary.
         for _ in xrange(30):
@@ -1131,6 +1146,18 @@ class TestShipOfTheseus(HATestCase):
             find_one, read_preference=SECONDARY)
 
         ha_tools.restart_members([primary, secondary1])
+
+        # Wait for members to figure out they're secondaries.
+        for _ in xrange(30):
+            try:
+                if len(ha_tools.get_secondaries()) == 2:
+                    break
+            except ConnectionFailure:
+                pass
+
+            sleep(1)
+        else:
+            self.fail("Original members didn't become secondaries")
 
         # Should be able to reconnect to set again.
         sleep(2 * MONITOR_INTERVAL)

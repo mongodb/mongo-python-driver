@@ -269,10 +269,18 @@ def create_sharded_cluster(num_routers=3):
 
 # Connect to a random member
 def get_client():
-    return pymongo.MongoClient(
-        nodes.keys(),
-        read_preference=ReadPreference.PRIMARY_PREFERRED,
-        use_greenlets=use_greenlets)
+    # Attempt a direct connection to each node until one succeeds. Using a
+    # non-PRIMARY read preference allows us to use the node even if it's a
+    # secondary.
+    for i, node in enumerate(nodes.keys()):
+        try:
+            return pymongo.MongoClient(
+                node,
+                read_preference=ReadPreference.PRIMARY_PREFERRED,
+                use_greenlets=use_greenlets)
+        except pymongo.errors.ConnectionFailure:
+            if i == len(nodes.keys()) - 1:
+                raise
 
 
 def get_mongos_seed_list():
@@ -301,7 +309,7 @@ def get_primary():
         assert len(primaries) <= 1
         if primaries:
             return primaries[0]
-    except pymongo.errors.ConnectionFailure:
+    except (pymongo.errors.ConnectionFailure, pymongo.errors.OperationFailure):
         pass
 
     return None
@@ -379,6 +387,7 @@ def add_member(auth=False):
     global cur_port
     host = '%s:%d' % (hostname, cur_port)
     primary = get_primary()
+    assert primary
     c = pymongo.MongoClient(primary, use_greenlets=use_greenlets)
     config = c.local.system.replset.find_one()
     _id = max([member['_id'] for member in config['members']]) + 1
