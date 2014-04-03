@@ -315,6 +315,15 @@ def get_primary():
     return None
 
 
+def wait_for_primary():
+    for _ in range(30):
+        time.sleep(1)
+        if get_primary():
+            break
+    else:
+        raise AssertionError("Primary didn't come back up")
+
+
 def get_random_secondary():
     secondaries = get_members_in_state(2)
     if len(secondaries):

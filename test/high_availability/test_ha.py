@@ -703,15 +703,11 @@ class TestReadPreference(HATestCase):
 
         # 3. PRIMARY UP, ONE SECONDARY DOWN -----------------------------------
         ha_tools.restart_members([killed])
-
-        for _ in range(30):
-            if ha_tools.get_primary():
-                break
-            sleep(1)
-        else:
-            self.fail("Primary didn't come back up")
+        ha_tools.wait_for_primary()
 
         ha_tools.kill_members([unpartition_node(secondary)], 2)
+        sleep(5)
+        ha_tools.wait_for_primary()
         self.assertTrue(MongoClient(
             unpartition_node(primary), use_greenlets=use_greenlets,
             read_preference=PRIMARY_PREFERRED
