@@ -992,9 +992,10 @@ class TestReplicaSetRequest(HATestCase):
 
         # Fail over
         ha_tools.kill_primary()
+        sleep(5)
+
         patience_seconds = 60
         for _ in range(patience_seconds):
-            sleep(1)
             try:
                 if ha_tools.ha_tools_debug:
                     print 'Waiting for failover'
@@ -1003,6 +1004,8 @@ class TestReplicaSetRequest(HATestCase):
                     break
             except ConnectionFailure:
                 pass
+
+            sleep(1)
         else:
             self.fail("Problem with test: No new primary after %s seconds"
                 % patience_seconds)
