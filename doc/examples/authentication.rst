@@ -82,8 +82,8 @@ GSSAPI (Kerberos)
 
 GSSAPI (Kerberos) authentication is available in the Enterprise Edition of
 MongoDB, version 2.4 and newer. To authenticate using GSSAPI you must first
-install the python `kerberos module`_ using easy_install or pip. Make sure
-you run kinit before using the following authentication methods::
+install the python `kerberos`_ or `pykerberos`_ module using easy_install or
+pip. Make sure you run kinit before using the following authentication methods::
 
   $ kinit mongodbuser@EXAMPLE.COM
   mongodbuser@EXAMPLE.COM's Password: 
@@ -126,10 +126,11 @@ specify a custom service name with the ``gssapiServiceName`` option::
 
 .. note::
    Kerberos support is only provided in environments supported by the python
-   `kerberos module`_. This currently limits support to CPython 2.x and Unix
-   environments.
+   `kerberos`_ or `pykerberos`_ modules. This currently limits support to
+   CPython and Unix environments.
 
-.. _kerberos module: http://pypi.python.org/pypi/kerberos
+.. _kerberos: http://pypi.python.org/pypi/kerberos
+.. _pykerberos: https://pypi.python.org/pypi/pykerberos
 
 SASL PLAIN (RFC 4616)
 ---------------------
