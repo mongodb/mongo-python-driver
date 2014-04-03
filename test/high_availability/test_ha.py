@@ -400,12 +400,13 @@ class TestHealthMonitor(HATestCase):
             sleep(1)
             rs_state = c._MongoReplicaSetClient__rs_state
             if rs_state.writer and rs_state.writer != primary:
-                # New primary stepped up
-                new_primary = _partition_node(ha_tools.get_primary())
-                self.assertEqual(new_primary, rs_state.writer)
-                new_secondaries = partition_nodes(ha_tools.get_secondaries())
-                self.assertEqual(set(new_secondaries), rs_state.secondaries)
-                break
+                if ha_tools.get_primary():
+                    # New primary stepped up
+                    new_primary = _partition_node(ha_tools.get_primary())
+                    self.assertEqual(new_primary, rs_state.writer)
+                    new_secondaries = partition_nodes(ha_tools.get_secondaries())
+                    self.assertEqual(set(new_secondaries), rs_state.secondaries)
+                    break
         else:
             self.fail(
                 "No new primary after %s seconds. Old primary was %s, current"
