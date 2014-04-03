@@ -266,7 +266,7 @@ class CreateAndReleaseSocket(MongoThread):
             r.lock.release()
         else:
             r.lock.release()
-            r.ready.wait(2)  # Wait two seconds
+            r.ready.wait(30)  # Wait thirty seconds....
             assert r.ready.isSet(), "Rendezvous timed out"
 
         for i in range(self.end_request):
