@@ -363,7 +363,6 @@ class TestMasterSlaveConnection(unittest.TestCase, TestRequestMixin):
 
     def test_kill_cursor_explicit(self):
         c = self.client
-        c.slave_okay = True
         db = c.pymongo_test
 
         test = db.master_slave_test_kill_cursor_explicit
@@ -413,45 +412,37 @@ class TestMasterSlaveConnection(unittest.TestCase, TestRequestMixin):
 
     def test_base_object(self):
         c = self.client
-        self.assertFalse(c.slave_okay)
         self.assertTrue(bool(c.read_preference))
         self.assertTrue(c.safe)
         self.assertEqual({}, c.get_lasterror_options())
         db = c.pymongo_test
-        self.assertFalse(db.slave_okay)
         self.assertTrue(bool(c.read_preference))
         self.assertTrue(db.safe)
         self.assertEqual({}, db.get_lasterror_options())
         coll = db.test
         coll.drop()
-        self.assertFalse(coll.slave_okay)
         self.assertTrue(bool(c.read_preference))
         self.assertTrue(coll.safe)
         self.assertEqual({}, coll.get_lasterror_options())
         cursor = coll.find()
-        self.assertFalse(cursor._Cursor__slave_okay)
         self.assertTrue(bool(cursor._Cursor__read_preference))
 
         w = 1 + len(self.slaves)
         wtimeout=10000 # Wait 10 seconds for replication to complete
         c.set_lasterror_options(w=w, wtimeout=wtimeout)
-        self.assertFalse(c.slave_okay)
         self.assertTrue(bool(c.read_preference))
         self.assertTrue(c.safe)
         self.assertEqual({'w': w, 'wtimeout': wtimeout}, c.get_lasterror_options())
         db = c.pymongo_test
-        self.assertFalse(db.slave_okay)
         self.assertTrue(bool(c.read_preference))
         self.assertTrue(db.safe)
         self.assertEqual({'w': w, 'wtimeout': wtimeout}, db.get_lasterror_options())
         coll = db.test
-        self.assertFalse(coll.slave_okay)
         self.assertTrue(bool(c.read_preference))
         self.assertTrue(coll.safe)
         self.assertEqual({'w': w, 'wtimeout': wtimeout},
                          coll.get_lasterror_options())
         cursor = coll.find()
-        self.assertFalse(cursor._Cursor__slave_okay)
         self.assertTrue(bool(cursor._Cursor__read_preference))
 
         coll.insert({'foo': 'bar'})
@@ -462,7 +453,6 @@ class TestMasterSlaveConnection(unittest.TestCase, TestRequestMixin):
 
         c.safe = False
         c.unset_lasterror_options()
-        self.assertFalse(self.client.slave_okay)
         self.assertTrue(bool(self.client.read_preference))
         self.assertFalse(self.client.safe)
         self.assertEqual({}, self.client.get_lasterror_options())

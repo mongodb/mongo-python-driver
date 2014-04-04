@@ -60,8 +60,7 @@ class Database(common.BaseObject):
         .. mongodoc:: databases
         """
         super(Database,
-              self).__init__(slave_okay=connection.slave_okay,
-                             read_preference=connection.read_preference,
+              self).__init__(read_preference=connection.read_preference,
                              tag_sets=connection.tag_sets,
                              secondary_acceptable_latency_ms=(
                                  connection.secondary_acceptable_latency_ms),
@@ -300,7 +299,6 @@ class Database(common.BaseObject):
 
         extra_opts = {
             'as_class': kwargs.pop('as_class', None),
-            'slave_okay': kwargs.pop('slave_okay', self.slave_okay),
             '_must_use_master': must_use_master,
             '_uuid_subtype': uuid_subtype
         }

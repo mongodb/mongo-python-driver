@@ -28,7 +28,6 @@
       .. autoattribute:: secondary_acceptable_latency_ms
       .. autoattribute:: write_concern
       .. autoattribute:: uuid_subtype
-      .. autoattribute:: slave_okay
       .. autoattribute:: safe
       .. automethod:: get_lasterror_options
       .. automethod:: set_lasterror_options

@@ -35,7 +35,7 @@
       .. automethod:: initialize_unordered_bulk_op
       .. automethod:: initialize_ordered_bulk_op
       .. automethod:: drop
-      .. automethod:: find([spec=None[, fields=None[, skip=0[, limit=0[, timeout=True[, snapshot=False[, tailable=False[, sort=None[, max_scan=None[, as_class=None[, slave_okay=False[, await_data=False[, partial=False[, manipulate=True[, read_preference=ReadPreference.PRIMARY[, exhaust=False, [compile_re=True, [,**kwargs]]]]]]]]]]]]]]]]]])
+      .. automethod:: find([spec=None[, fields=None[, skip=0[, limit=0[, timeout=True[, snapshot=False[, tailable=False[, sort=None[, max_scan=None[, as_class=None[, await_data=False[, partial=False[, manipulate=True[, read_preference=ReadPreference.PRIMARY[, exhaust=False, [compile_re=True, [,**kwargs]]]]]]]]]]]]]]]]])
       .. automethod:: find_one([spec_or_id=None[, *args[, **kwargs]]])
       .. automethod:: parallel_scan
       .. automethod:: count
@@ -53,7 +53,6 @@
       .. automethod:: map_reduce
       .. automethod:: inline_map_reduce
       .. automethod:: find_and_modify
-      .. autoattribute:: slave_okay
       .. autoattribute:: safe
       .. automethod:: get_lasterror_options
       .. automethod:: set_lasterror_options

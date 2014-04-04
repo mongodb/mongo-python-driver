@@ -132,7 +132,6 @@ class TestDirectConnection(HATestCase):
             {'read_preference': SECONDARY},
             {'read_preference': SECONDARY_PREFERRED},
             {'read_preference': NEAREST},
-            {'slave_okay': True}
         ]:
             client = MongoClient(primary_host,
                                  primary_port,

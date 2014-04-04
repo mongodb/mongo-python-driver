@@ -252,8 +252,6 @@ def validate_uuid_subtype(dummy, value):
 # readpreferencetags is an alias for tag_sets.
 VALIDATORS = {
     'replicaset': validate_basestring,
-    'slaveok': validate_boolean,
-    'slave_okay': validate_boolean,
     'safe': validate_boolean,
     'w': validate_int_or_basestring,
     'wtimeout': validate_integer,
@@ -342,7 +340,6 @@ class BaseObject(object):
 
     def __init__(self, **options):
 
-        self.__slave_okay = False
         self.__read_pref = ReadPreference.PRIMARY
         self.__tag_sets = [{}]
         self.__secondary_acceptable_latency_ms = 15
@@ -385,9 +382,7 @@ class BaseObject(object):
     def __set_options(self, options):
         """Validates and sets all options passed to this object."""
         for option, value in options.iteritems():
-            if option in ('slave_okay', 'slaveok'):
-                self.__slave_okay = validate_boolean(option, value)
-            elif option in ('read_preference', "readpreference"):
+            if option in ('read_preference', "readpreference"):
                 self.__read_pref = validate_read_preference(option, value)
             elif option in ('tag_sets', 'readpreferencetags'):
                 self.__tag_sets = validate_tag_sets(option, value)
@@ -481,24 +476,6 @@ class BaseObject(object):
         return self.__write_concern
 
     write_concern = property(__get_write_concern, __set_write_concern)
-
-    def __get_slave_okay(self):
-        """DEPRECATED. Use :attr:`read_preference` instead.
-
-        .. versionchanged:: 2.1
-           Deprecated slave_okay.
-        .. versionadded:: 2.0
-        """
-        return self.__slave_okay
-
-    def __set_slave_okay(self, value):
-        """Property setter for slave_okay"""
-        warnings.warn("slave_okay is deprecated. Please use "
-                      "read_preference instead.", DeprecationWarning,
-                      stacklevel=2)
-        self.__slave_okay = validate_boolean('slave_okay', value)
-
-    slave_okay = property(__get_slave_okay, __set_slave_okay)
 
     def __get_read_pref(self):
         """The read preference mode for this instance.

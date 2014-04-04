@@ -86,7 +86,6 @@ class Collection(common.BaseObject):
         .. mongodoc:: collections
         """
         super(Collection, self).__init__(
-            slave_okay=database.slave_okay,
             read_preference=database.read_preference,
             tag_sets=database.tag_sets,
             secondary_acceptable_latency_ms=(
@@ -773,8 +772,6 @@ class Collection(common.BaseObject):
           - `as_class` (optional): class to use for documents in the
             query result (default is
             :attr:`~pymongo.mongo_client.MongoClient.document_class`)
-          - `slave_okay` (optional): if True, allows this query to
-            be run against a replica secondary.
           - `await_data` (optional): if True, the server will block for
             some extra time before returning, waiting for more data to
             return. Ignored if `tailable` is False.
@@ -854,8 +851,6 @@ class Collection(common.BaseObject):
         .. mongodoc:: find
         .. _localThreshold: http://docs.mongodb.org/manual/reference/mongos/#cmdoption-mongos--localThreshold
         """
-        if not 'slave_okay' in kwargs:
-            kwargs['slave_okay'] = self.slave_okay
         if not 'read_preference' in kwargs:
             kwargs['read_preference'] = self.read_preference
         if not 'tag_sets' in kwargs:
@@ -898,9 +893,9 @@ class Collection(common.BaseObject):
         With :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`
         or :class:`~pymongo.master_slave_connection.MasterSlaveConnection`,
         if the `read_preference` attribute of this instance is not set to
-        :attr:`pymongo.read_preferences.ReadPreference.PRIMARY` or the
-        (deprecated) `slave_okay` attribute of this instance is set to `True`
-        the command will be sent to a secondary or slave.
+        :attr:`pymongo.read_preferences.ReadPreference.PRIMARY` or
+        :attr:`pymongo.read_preferences.ReadPreference.PRIMARY_PREFERRED`
+        the command will be sent to a secondary.
 
         :Parameters:
           - `num_cursors`: the number of cursors to return
@@ -908,7 +903,6 @@ class Collection(common.BaseObject):
         .. note:: Requires server version **>= 2.5.5**.
 
         """
-        use_master = not self.slave_okay and not self.read_preference
         compile_re = kwargs.get('compile_re', False)
 
         command_kwargs = {
@@ -917,8 +911,7 @@ class Collection(common.BaseObject):
             'tag_sets': self.tag_sets,
             'secondary_acceptable_latency_ms': (
                 self.secondary_acceptable_latency_ms),
-            'slave_okay': self.slave_okay,
-            '_use_master': use_master}
+            '_use_master': not self.read_preference}
         command_kwargs.update(kwargs)
 
         result, conn_id = self.__database._command(
@@ -1258,9 +1251,9 @@ class Collection(common.BaseObject):
         With :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`
         or :class:`~pymongo.master_slave_connection.MasterSlaveConnection`,
         if the `read_preference` attribute of this instance is not set to
-        :attr:`pymongo.read_preferences.ReadPreference.PRIMARY` or the
-        (deprecated) `slave_okay` attribute of this instance is set to `True`
-        the `aggregate command`_ will be sent to a secondary or slave.
+        :attr:`pymongo.read_preferences.ReadPreference.PRIMARY` or
+        :attr:`pymongo.read_preferences.ReadPreference.PRIMARY_PREFERRED`
+        the command will be sent to a secondary.
 
         :Parameters:
           - `pipeline`: a single command or list of aggregation commands
@@ -1294,16 +1287,13 @@ class Collection(common.BaseObject):
         if isinstance(pipeline, dict):
             pipeline = [pipeline]
 
-        use_master = not self.slave_okay and not self.read_preference
-
         command_kwargs = {
             'pipeline': pipeline,
             'read_preference': self.read_preference,
             'tag_sets': self.tag_sets,
             'secondary_acceptable_latency_ms': (
                 self.secondary_acceptable_latency_ms),
-            'slave_okay': self.slave_okay,
-            '_use_master': use_master}
+            '_use_master': not self.read_preference}
 
         command_kwargs.update(kwargs)
         result, conn_id = self.__database._command(
@@ -1339,9 +1329,8 @@ class Collection(common.BaseObject):
         or :class:`~pymongo.master_slave_connection.MasterSlaveConnection`,
         if the `read_preference` attribute of this instance is not set to
         :attr:`pymongo.read_preferences.ReadPreference.PRIMARY` or
-        :attr:`pymongo.read_preferences.ReadPreference.PRIMARY_PREFERRED`, or
-        the (deprecated) `slave_okay` attribute of this instance is set to
-        `True`, the group command will be sent to a secondary or slave.
+        :attr:`pymongo.read_preferences.ReadPreference.PRIMARY_PREFERRED`
+        the command will be sent to a secondary.
 
         :Parameters:
           - `key`: fields to group by (see above description)
@@ -1374,16 +1363,13 @@ class Collection(common.BaseObject):
         if finalize is not None:
             group["finalize"] = Code(finalize)
 
-        use_master = not self.slave_okay and not self.read_preference
-
         return self.__database.command("group", group,
                                        uuid_subtype=self.uuid_subtype,
                                        read_preference=self.read_preference,
                                        tag_sets=self.tag_sets,
                                        secondary_acceptable_latency_ms=(
                                            self.secondary_acceptable_latency_ms),
-                                       slave_okay=self.slave_okay,
-                                       _use_master=use_master,
+                                       _use_master=not self.read_preference,
                                        **kwargs)["retval"]
 
     def rename(self, new_name, **kwargs):
@@ -1522,9 +1508,8 @@ class Collection(common.BaseObject):
         or :class:`~pymongo.master_slave_connection.MasterSlaveConnection`,
         if the `read_preference` attribute of this instance is not set to
         :attr:`pymongo.read_preferences.ReadPreference.PRIMARY` or
-        :attr:`pymongo.read_preferences.ReadPreference.PRIMARY_PREFERRED`, or
-        the (deprecated) `slave_okay` attribute of this instance is set to
-        `True`, the inline map reduce will be run on a secondary or slave.
+        :attr:`pymongo.read_preferences.ReadPreference.PRIMARY_PREFERRED`
+        the command will be sent to a secondary.
 
         :Parameters:
           - `map`: map function (as a JavaScript string)
@@ -1542,16 +1527,13 @@ class Collection(common.BaseObject):
         .. versionadded:: 1.10
         """
 
-        use_master = not self.slave_okay and not self.read_preference
-
         res = self.__database.command("mapreduce", self.__name,
                                       uuid_subtype=self.uuid_subtype,
                                       read_preference=self.read_preference,
                                       tag_sets=self.tag_sets,
                                       secondary_acceptable_latency_ms=(
                                           self.secondary_acceptable_latency_ms),
-                                      slave_okay=self.slave_okay,
-                                      _use_master=use_master,
+                                      _use_master=not self.read_preference,
                                       map=map, reduce=reduce,
                                       out={"inline": 1}, **kwargs)
 

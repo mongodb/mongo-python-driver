@@ -523,21 +523,18 @@ class TestMongosConnection(unittest.TestCase):
             ('read_preference', SECONDARY, 'secondary'),
             ('read_preference', SECONDARY_PREFERRED, 'secondaryPreferred'),
             ('read_preference', NEAREST, 'nearest'),
-            ('slave_okay', True, 'secondaryPreferred'),
-            ('slave_okay', False, 'primary')
         ):
             for tag_sets in (
                 None, [{}]
             ):
-                # Create a client e.g. with read_preference=NEAREST or
-                # slave_okay=True
+                # Create a client e.g. with read_preference=NEAREST
                 c = get_client(tag_sets=tag_sets, **{kwarg: value})
 
                 self.assertEqual(is_mongos, c.is_mongos)
                 cursor = c.pymongo_test.test.find()
                 if is_mongos:
                     # We don't set $readPreference for SECONDARY_PREFERRED
-                    # unless tags are in use. slaveOkay has the same effect.
+                    # unless tags are in use.
                     if mongos_mode == 'secondaryPreferred':
                         self.assertEqual(
                             None,
@@ -570,15 +567,6 @@ class TestMongosConnection(unittest.TestCase):
                 [{'dc': 'la'}, {'dc': 'sf'}],
                 [{'dc': 'la'}, {'dc': 'sf'}, {}],
             ):
-                if kwarg == 'slave_okay':
-                    # Can't use tags with slave_okay True or False, need a
-                    # real read preference
-                    self.assertRaises(
-                        ConfigurationError,
-                        get_client, tag_sets=tag_sets, **{kwarg: value})
-
-                    continue
-
                 c = get_client(tag_sets=tag_sets, **{kwarg: value})
 
                 self.assertEqual(is_mongos, c.is_mongos)

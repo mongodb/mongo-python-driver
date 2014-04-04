@@ -242,7 +242,6 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
             self.assertEqual(obj.read_preference, ReadPreference.PRIMARY)
             self.assertEqual(obj.tag_sets, [{}])
             self.assertEqual(obj.secondary_acceptable_latency_ms, 15)
-            self.assertEqual(obj.slave_okay, False)
             self.assertEqual(obj.write_concern, {})
 
         cursor = c.pymongo_test.test.find()
@@ -250,13 +249,11 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
             ReadPreference.PRIMARY, cursor._Cursor__read_preference)
         self.assertEqual([{}], cursor._Cursor__tag_sets)
         self.assertEqual(15, cursor._Cursor__secondary_acceptable_latency_ms)
-        self.assertEqual(False, cursor._Cursor__slave_okay)
         c.close()
 
         tag_sets = [{'dc': 'la', 'rack': '2'}, {'foo': 'bar'}]
         c = MongoReplicaSetClient(pair, replicaSet=self.name, max_pool_size=25,
                                  document_class=SON, tz_aware=True,
-                                 slaveOk=False,
                                  read_preference=ReadPreference.SECONDARY,
                                  tag_sets=copy.deepcopy(tag_sets),
                                  secondary_acceptable_latency_ms=77)
@@ -272,7 +269,6 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
             self.assertEqual(obj.read_preference, ReadPreference.SECONDARY)
             self.assertEqual(obj.tag_sets, tag_sets)
             self.assertEqual(obj.secondary_acceptable_latency_ms, 77)
-            self.assertEqual(obj.slave_okay, False)
             self.assertEqual(obj.safe, True)
 
         cursor = c.pymongo_test.test.find()
@@ -280,7 +276,6 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
             ReadPreference.SECONDARY, cursor._Cursor__read_preference)
         self.assertEqual(tag_sets, cursor._Cursor__tag_sets)
         self.assertEqual(77, cursor._Cursor__secondary_acceptable_latency_ms)
-        self.assertEqual(False, cursor._Cursor__slave_okay)
 
         cursor = c.pymongo_test.test.find(
             read_preference=ReadPreference.NEAREST,
@@ -291,7 +286,6 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
             ReadPreference.NEAREST, cursor._Cursor__read_preference)
         self.assertEqual([{'dc':'ny'}, {}], cursor._Cursor__tag_sets)
         self.assertEqual(123, cursor._Cursor__secondary_acceptable_latency_ms)
-        self.assertEqual(False, cursor._Cursor__slave_okay)
 
         if version.at_least(c, (1, 7, 4)):
             self.assertEqual(c.max_bson_size, 16777216)

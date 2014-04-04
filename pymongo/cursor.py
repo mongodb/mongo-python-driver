@@ -66,7 +66,7 @@ class Cursor(object):
 
     def __init__(self, collection, spec=None, fields=None, skip=0, limit=0,
                  timeout=True, snapshot=False, tailable=False, sort=None,
-                 max_scan=None, as_class=None, slave_okay=False,
+                 max_scan=None, as_class=None,
                  await_data=False, partial=False, manipulate=True,
                  read_preference=ReadPreference.PRIMARY,
                  tag_sets=[{}], secondary_acceptable_latency_ms=None,
@@ -96,8 +96,6 @@ class Cursor(object):
             raise TypeError("snapshot must be an instance of bool")
         if not isinstance(tailable, bool):
             raise TypeError("tailable must be an instance of bool")
-        if not isinstance(slave_okay, bool):
-            raise TypeError("slave_okay must be an instance of bool")
         if not isinstance(await_data, bool):
             raise TypeError("await_data must be an instance of bool")
         if not isinstance(partial, bool):
@@ -148,7 +146,6 @@ class Cursor(object):
         self.__hint = None
         self.__comment = None
         self.__as_class = as_class
-        self.__slave_okay = slave_okay
         self.__manipulate = manipulate
         self.__read_preference = read_preference
         self.__tag_sets = tag_sets
@@ -166,6 +163,8 @@ class Cursor(object):
         self.__query_flags = 0
         if tailable:
             self.__query_flags |= _QUERY_OPTIONS["tailable_cursor"]
+        if read_preference != ReadPreference.PRIMARY:
+            self.__query_flags |= _QUERY_OPTIONS["slave_okay"]
         if not timeout:
             self.__query_flags |= _QUERY_OPTIONS["no_timeout"]
         if tailable and await_data:
@@ -240,7 +239,7 @@ class Cursor(object):
         values_to_clone = ("spec", "fields", "skip", "limit", "max_time_ms",
                            "comment", "max", "min",
                            "snapshot", "ordering", "explain", "hint",
-                           "batch_size", "max_scan", "as_class", "slave_okay",
+                           "batch_size", "max_scan", "as_class",
                            "manipulate", "read_preference", "tag_sets",
                            "secondary_acceptable_latency_ms",
                            "must_use_master", "uuid_subtype", "compile_re",
@@ -369,16 +368,6 @@ class Cursor(object):
 
         return self.__spec
 
-    def __query_options(self):
-        """Get the query options string to use for this query.
-        """
-        options = self.__query_flags
-        if (self.__slave_okay
-            or self.__read_preference != ReadPreference.PRIMARY
-        ):
-            options |= _QUERY_OPTIONS["slave_okay"]
-        return options
-
     def __check_okay_to_chain(self):
         """Check if it is okay to chain more options onto this cursor.
         """
@@ -395,8 +384,6 @@ class Cursor(object):
             raise TypeError("mask must be an int")
         self.__check_okay_to_chain()
 
-        if mask & _QUERY_OPTIONS["slave_okay"]:
-            self.__slave_okay = True
         if mask & _QUERY_OPTIONS["exhaust"]:
             if self.__limit:
                 raise InvalidOperation("Can't use limit and exhaust together.")
@@ -418,8 +405,6 @@ class Cursor(object):
             raise TypeError("mask must be an int")
         self.__check_okay_to_chain()
 
-        if mask & _QUERY_OPTIONS["slave_okay"]:
-            self.__slave_okay = False
         if mask & _QUERY_OPTIONS["exhaust"]:
             self.__exhaust = False
 
@@ -695,9 +680,8 @@ class Cursor(object):
         or :class:`~pymongo.master_slave_connection.MasterSlaveConnection`,
         if `read_preference` is not
         :attr:`pymongo.read_preferences.ReadPreference.PRIMARY` or
-        :attr:`pymongo.read_preferences.ReadPreference.PRIMARY_PREFERRED`, or
-        (deprecated) `slave_okay` is `True`, the count command will be sent to
-        a secondary or slave.
+        :attr:`pymongo.read_preferences.ReadPreference.PRIMARY_PREFERRED`, the
+        count command will be sent to a secondary.
 
         :Parameters:
           - `with_limit_and_skip` (optional): take any :meth:`limit` or
@@ -725,9 +709,7 @@ class Cursor(object):
         command['tag_sets'] = self.__tag_sets
         command['secondary_acceptable_latency_ms'] = (
             self.__secondary_acceptable_latency_ms)
-        command['slave_okay'] = self.__slave_okay
-        use_master = not self.__slave_okay and not self.__read_preference
-        command['_use_master'] = use_master
+        command['_use_master'] = not self.__read_preference
         if self.__max_time_ms is not None:
             command["maxTimeMS"] = self.__max_time_ms
         if self.__comment:
@@ -758,10 +740,10 @@ class Cursor(object):
 
         With :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`
         or :class:`~pymongo.master_slave_connection.MasterSlaveConnection`,
-        if `read_preference` is
-        not :attr:`pymongo.read_preferences.ReadPreference.PRIMARY` or
-        (deprecated) `slave_okay` is `True` the distinct command will be sent
-        to a secondary or slave.
+        if `read_preference` is not
+        :attr:`pymongo.read_preferences.ReadPreference.PRIMARY` or
+        :attr:`pymongo.read_preferences.ReadPreference.PRIMARY_PREFERRED`, the
+        count command will be sent to a secondary.
 
         :Parameters:
           - `key`: name of key for which we want to get the distinct values
@@ -784,9 +766,7 @@ class Cursor(object):
         options['tag_sets'] = self.__tag_sets
         options['secondary_acceptable_latency_ms'] = (
             self.__secondary_acceptable_latency_ms)
-        options['slave_okay'] = self.__slave_okay
-        use_master = not self.__slave_okay and not self.__read_preference
-        options['_use_master'] = use_master
+        options['_use_master'] = not self.__read_preference
         if self.__max_time_ms is not None:
             options['maxTimeMS'] = self.__max_time_ms
         if self.__comment:
@@ -975,7 +955,7 @@ class Cursor(object):
                 else:
                     ntoreturn = self.__limit
             self.__send_message(
-                message.query(self.__query_options(),
+                message.query(self.__query_flags,
                               self.__collection.full_name,
                               self.__skip, ntoreturn,
                               self.__query_spec(), self.__fields,

@@ -417,7 +417,6 @@ class TestGridfsReplicaSet(TestReplicaSetClientBase):
 
         secondary_host, secondary_port = self.secondaries[0]
         for secondary_connection in [
-            MongoClient(secondary_host, secondary_port, slave_okay=True),
             MongoClient(secondary_host, secondary_port,
                         read_preference=ReadPreference.SECONDARY),
         ]:

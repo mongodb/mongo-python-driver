@@ -316,10 +316,6 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         c = MongoClient(host, port)
 
         self.assertEqual(c, MongoClient("mongodb://%s:%d" % (host, port)))
-        self.assertTrue(MongoClient(
-            "mongodb://%s:%d" % (host, port), slave_okay=True).slave_okay)
-        self.assertTrue(MongoClient(
-            "mongodb://%s:%d/?slaveok=true;w=2" % (host, port)).slave_okay)
 
     def test_get_default_database(self):
         c = MongoClient("mongodb://%s:%d/foo" % (host, port), _connect=False)

@@ -624,7 +624,6 @@ class TestCursor(unittest.TestCase):
                                    snapshot=True,
                                    tailable=True,
                                    as_class=MyClass,
-                                   slave_okay=True,
                                    await_data=True,
                                    partial=True,
                                    manipulate=False,
@@ -640,8 +639,6 @@ class TestCursor(unittest.TestCase):
         self.assertEqual(cursor._Cursor__snapshot, cursor2._Cursor__snapshot)
         self.assertEqual(type(cursor._Cursor__as_class),
                          type(cursor2._Cursor__as_class))
-        self.assertEqual(cursor._Cursor__slave_okay,
-                         cursor2._Cursor__slave_okay)
         self.assertEqual(cursor._Cursor__manipulate,
                          cursor2._Cursor__manipulate)
         self.assertEqual(cursor._Cursor__compile_re,
@@ -700,92 +697,81 @@ class TestCursor(unittest.TestCase):
 
     def test_add_remove_option(self):
         cursor = self.db.test.find()
-        self.assertEqual(0, cursor._Cursor__query_options())
+        self.assertEqual(0, cursor._Cursor__query_flags)
         cursor.add_option(2)
         cursor2 = self.db.test.find(tailable=True)
-        self.assertEqual(2, cursor2._Cursor__query_options())
-        self.assertEqual(cursor._Cursor__query_options(),
-                         cursor2._Cursor__query_options())
+        self.assertEqual(2, cursor2._Cursor__query_flags)
+        self.assertEqual(cursor._Cursor__query_flags,
+                         cursor2._Cursor__query_flags)
         cursor.add_option(32)
         cursor2 = self.db.test.find(tailable=True, await_data=True)
-        self.assertEqual(34, cursor2._Cursor__query_options())
-        self.assertEqual(cursor._Cursor__query_options(),
-                         cursor2._Cursor__query_options())
+        self.assertEqual(34, cursor2._Cursor__query_flags)
+        self.assertEqual(cursor._Cursor__query_flags,
+                         cursor2._Cursor__query_flags)
         cursor.add_option(128)
         cursor2 = self.db.test.find(tailable=True,
                                     await_data=True).add_option(128)
-        self.assertEqual(162, cursor2._Cursor__query_options())
-        self.assertEqual(cursor._Cursor__query_options(),
-                         cursor2._Cursor__query_options())
+        self.assertEqual(162, cursor2._Cursor__query_flags)
+        self.assertEqual(cursor._Cursor__query_flags,
+                         cursor2._Cursor__query_flags)
 
-        self.assertEqual(162, cursor._Cursor__query_options())
+        self.assertEqual(162, cursor._Cursor__query_flags)
         cursor.add_option(128)
-        self.assertEqual(162, cursor._Cursor__query_options())
+        self.assertEqual(162, cursor._Cursor__query_flags)
 
         cursor.remove_option(128)
         cursor2 = self.db.test.find(tailable=True, await_data=True)
-        self.assertEqual(34, cursor2._Cursor__query_options())
-        self.assertEqual(cursor._Cursor__query_options(),
-                         cursor2._Cursor__query_options())
+        self.assertEqual(34, cursor2._Cursor__query_flags)
+        self.assertEqual(cursor._Cursor__query_flags,
+                         cursor2._Cursor__query_flags)
         cursor.remove_option(32)
         cursor2 = self.db.test.find(tailable=True)
-        self.assertEqual(2, cursor2._Cursor__query_options())
-        self.assertEqual(cursor._Cursor__query_options(),
-                         cursor2._Cursor__query_options())
+        self.assertEqual(2, cursor2._Cursor__query_flags)
+        self.assertEqual(cursor._Cursor__query_flags,
+                         cursor2._Cursor__query_flags)
 
-        self.assertEqual(2, cursor._Cursor__query_options())
+        self.assertEqual(2, cursor._Cursor__query_flags)
         cursor.remove_option(32)
-        self.assertEqual(2, cursor._Cursor__query_options())
-
-        # Slave OK
-        cursor = self.db.test.find(slave_okay=True)
-        self.assertEqual(4, cursor._Cursor__query_options())
-        cursor2 = self.db.test.find().add_option(4)
-        self.assertEqual(cursor._Cursor__query_options(),
-                         cursor2._Cursor__query_options())
-        self.assertTrue(cursor._Cursor__slave_okay)
-        cursor.remove_option(4)
-        self.assertEqual(0, cursor._Cursor__query_options())
-        self.assertFalse(cursor._Cursor__slave_okay)
+        self.assertEqual(2, cursor._Cursor__query_flags)
 
         # Timeout
         cursor = self.db.test.find(timeout=False)
-        self.assertEqual(16, cursor._Cursor__query_options())
+        self.assertEqual(16, cursor._Cursor__query_flags)
         cursor2 = self.db.test.find().add_option(16)
-        self.assertEqual(cursor._Cursor__query_options(),
-                         cursor2._Cursor__query_options())
+        self.assertEqual(cursor._Cursor__query_flags,
+                         cursor2._Cursor__query_flags)
         cursor.remove_option(16)
-        self.assertEqual(0, cursor._Cursor__query_options())
+        self.assertEqual(0, cursor._Cursor__query_flags)
 
         # Tailable / Await data
         cursor = self.db.test.find(tailable=True, await_data=True)
-        self.assertEqual(34, cursor._Cursor__query_options())
+        self.assertEqual(34, cursor._Cursor__query_flags)
         cursor2 = self.db.test.find().add_option(34)
-        self.assertEqual(cursor._Cursor__query_options(),
-                         cursor2._Cursor__query_options())
+        self.assertEqual(cursor._Cursor__query_flags,
+                         cursor2._Cursor__query_flags)
         cursor.remove_option(32)
-        self.assertEqual(2, cursor._Cursor__query_options())
+        self.assertEqual(2, cursor._Cursor__query_flags)
 
         # Exhaust - which mongos doesn't support
         if not is_mongos(self.db.connection):
             cursor = self.db.test.find(exhaust=True)
-            self.assertEqual(64, cursor._Cursor__query_options())
+            self.assertEqual(64, cursor._Cursor__query_flags)
             cursor2 = self.db.test.find().add_option(64)
-            self.assertEqual(cursor._Cursor__query_options(),
-                             cursor2._Cursor__query_options())
+            self.assertEqual(cursor._Cursor__query_flags,
+                             cursor2._Cursor__query_flags)
             self.assertTrue(cursor._Cursor__exhaust)
             cursor.remove_option(64)
-            self.assertEqual(0, cursor._Cursor__query_options())
+            self.assertEqual(0, cursor._Cursor__query_flags)
             self.assertFalse(cursor._Cursor__exhaust)
 
         # Partial
         cursor = self.db.test.find(partial=True)
-        self.assertEqual(128, cursor._Cursor__query_options())
+        self.assertEqual(128, cursor._Cursor__query_flags)
         cursor2 = self.db.test.find().add_option(128)
-        self.assertEqual(cursor._Cursor__query_options(),
-                         cursor2._Cursor__query_options())
+        self.assertEqual(cursor._Cursor__query_flags,
+                         cursor2._Cursor__query_flags)
         cursor.remove_option(128)
-        self.assertEqual(0, cursor._Cursor__query_options())
+        self.assertEqual(0, cursor._Cursor__query_flags)
 
     def test_count_with_fields(self):
         self.db.test.drop()

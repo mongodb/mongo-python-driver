@@ -353,10 +353,6 @@ class MongoClient(common.BaseObject):
         self.__auth_credentials = {}
 
         super(MongoClient, self).__init__(**options)
-        if self.slave_okay:
-            warnings.warn("slave_okay is deprecated. Please "
-                          "use read_preference instead.", DeprecationWarning,
-                          stacklevel=2)
 
         if _connect:
             try:
