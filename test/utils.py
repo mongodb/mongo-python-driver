@@ -354,7 +354,7 @@ def get_pool(client):
         raise TypeError(str(client))
 
 def pools_from_rs_client(client):
-    """Get Pool instances from a MongoReplicaSetClient or ReplicaSetConnection.
+    """Get Pool instances from a MongoReplicaSetClient.
     """
     return [
         member.pool for member in

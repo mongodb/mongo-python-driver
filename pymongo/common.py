@@ -183,7 +183,7 @@ def validate_timeout_or_none(option, value):
 
 
 def validate_read_preference(dummy, value):
-    """Validate read preference for a ReplicaSetConnection.
+    """Validate read preference for a MongoReplicaSetClient.
     """
     if value in read_preferences.modes:
         return value
@@ -196,7 +196,7 @@ def validate_read_preference(dummy, value):
 
 
 def validate_tag_sets(dummy, value):
-    """Validate tag sets for a ReplicaSetConnection.
+    """Validate tag sets for a MongoReplicaSetClient.
     """
     if value is None:
         return [{}]
@@ -359,7 +359,6 @@ class BaseObject(object):
             else:
                 self.__safe = validate_boolean('safe',
                                                options.get("safe", True))
-        # Note: 'safe' is always passed by Connection and ReplicaSetConnection
         # Always do the most "safe" thing, but warn about conflicts.
         if self.__safe and options.get('w') == 0:
 
@@ -370,7 +369,7 @@ class BaseObject(object):
 
     def __set_safe_option(self, option, value):
         """Validates and sets getlasterror options for this
-        object (Connection, Database, Collection, etc.)
+        object (MongoClient, Database, Collection, etc.)
         """
         if value is None:
             self.__write_concern.pop(option, None)
@@ -462,14 +461,6 @@ class BaseObject(object):
 
         .. note:: Accessing :attr:`write_concern` returns its value
            (a subclass of :class:`dict`), not a copy.
-
-        .. warning:: If you are using :class:`~pymongo.connection.Connection`
-           or :class:`~pymongo.replica_set_connection.ReplicaSetConnection`
-           make sure you explicitly set ``w`` to 1 (or a greater value) or
-           :attr:`safe` to ``True``. Unlike calling
-           :meth:`set_lasterror_options`, setting an option in
-           :attr:`write_concern` does not implicitly set :attr:`safe`
-           to ``True``.
         """
         # To support dict style access we have to return the actual
         # WriteConcern here, not a copy.
@@ -524,7 +515,7 @@ class BaseObject(object):
         To specify a priority-order for tag sets, provide a list of
         tag sets: ``[{'dc': 'ny'}, {'dc': 'la'}, {}]``. A final, empty tag
         set, ``{}``, means "read from any member that matches the mode,
-        ignoring tags." ReplicaSetConnection tries each set of tags in turn
+        ignoring tags." MongoReplicaSetClient tries each set of tags in turn
         until it finds a set of tags with at least one matching member.
 
            .. seealso:: `Data-Center Awareness
@@ -678,8 +669,6 @@ class BaseObject(object):
                     # with no options if safe=True was passed but collection
                     # level defaults have been disabled with w=0.
                     # These should be equivalent:
-                    # Connection(w=0).foo.bar.insert({}, safe=True)
-                    # MongoClient(w=0).foo.bar.insert({}, w=1)
                     if options.get('w') == 0:
                         return True, {}
                 # Passing w=0 overrides passing safe=True.

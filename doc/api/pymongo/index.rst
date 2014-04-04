@@ -28,7 +28,6 @@ Sub-modules:
 .. toctree::
    :maxdepth: 2
 
-   connection
    database
    collection
    command_cursor
@@ -40,7 +39,6 @@ Sub-modules:
    mongo_client
    mongo_replica_set_client
    pool
-   replica_set_connection
    son_manipulator
    cursor_manager
    uri_parser

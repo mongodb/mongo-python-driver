@@ -17,7 +17,7 @@ they are closed.
 
 New cursor managers should be defined as subclasses of CursorManager and can be
 installed on a connection by calling
-`pymongo.connection.Connection.set_cursor_manager`.
+`pymongo.mongo_client.MongoClient.set_cursor_manager`.
 
 .. versionchanged:: 2.1+
    Deprecated.
@@ -36,7 +36,7 @@ class CursorManager(object):
         """Instantiate the manager.
 
         :Parameters:
-          - `connection`: a Mongo Connection
+          - `connection`: a MongoClient
         """
         self.__connection = weakref.ref(connection)
 
@@ -62,7 +62,7 @@ class BatchCursorManager(CursorManager):
         """Instantiate the manager.
 
         :Parameters:
-          - `connection`: a Mongo Connection
+          - `connection`: a MongoClient
         """
         self.__dying_cursors = []
         self.__max_dying_cursors = 20

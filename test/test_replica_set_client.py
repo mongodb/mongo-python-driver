@@ -650,8 +650,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         self.assertRaises(ConfigurationError,
             self._get_client, socketTimeoutMS='foo')
 
-        # network_timeout is gone from MongoReplicaSetClient, remains in
-        # deprecated ReplicaSetConnection
+        # network_timeout is gone from MongoReplicaSetClient.
         self.assertRaises(ConfigurationError,
             self._get_client, network_timeout=10)
 
