@@ -83,8 +83,7 @@ connection pool per server in your replica set.
 Does PyMongo support Python 3?
 ------------------------------
 
-Starting with version 2.2 PyMongo supports Python 3.x where x >= 1. See the
-:doc:`python3` for details.
+PyMongo supports Python 3.x where x >= 2. See the :doc:`python3` for details.
 
 Does PyMongo support asynchronous frameworks like Gevent, Tornado, or Twisted?
 ------------------------------------------------------------------------------

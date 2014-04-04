@@ -204,7 +204,7 @@ http://api.mongodb.org/python/current/installation.html#osx
 
     def build_extension(self, ext):
         name = ext.name
-        if sys.version_info[:3] >= (2, 4, 0):
+        if sys.version_info[:3] >= (2, 6, 0):
             try:
                 build_ext.build_extension(self, ext)
                 if should_run_tests:
@@ -221,7 +221,7 @@ http://api.mongodb.org/python/current/installation.html#osx
         else:
             warnings.warn(self.warning_message % ("The %s extension "
                                                   "module" % (name,),
-                                                  "Please use Python >= 2.4 "
+                                                  "Please use Python >= 2.6 "
                                                   "to take advantage of the "
                                                   "extension."))
 
@@ -308,17 +308,13 @@ setup(
         "Operating System :: Microsoft :: Windows",
         "Operating System :: POSIX",
         "Programming Language :: Python :: 2",
-        "Programming Language :: Python :: 2.4",
-        "Programming Language :: Python :: 2.5",
         "Programming Language :: Python :: 2.6",
         "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.1",
         "Programming Language :: Python :: 3.2",
         "Programming Language :: Python :: 3.3",
         "Programming Language :: Python :: 3.4",
         "Programming Language :: Python :: Implementation :: CPython",
-        "Programming Language :: Python :: Implementation :: Jython",
         "Programming Language :: Python :: Implementation :: PyPy",
         "Topic :: Database"],
     cmdclass={"build_ext": custom_build_ext,

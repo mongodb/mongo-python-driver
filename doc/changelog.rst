@@ -1,6 +1,21 @@
 Changelog
 =========
 
+Changes in Version 3.0
+----------------------
+
+.. warning:: PyMongo no longer supports Python 2.4, 2.5, or 3.1. If you
+  must use PyMongo with these versions of Python the 2.x branch of PyMongo
+  will be minimally supported for some time.
+
+Issues Resolved
+...............
+
+See the `PyMongo 3.0 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 3.0 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/12501
+
 Changes in Version 2.7
 ----------------------
 
