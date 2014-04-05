@@ -527,65 +527,6 @@ class BaseObject(object):
 
     uuid_subtype = property(__get_uuid_subtype, __set_uuid_subtype)
 
-    def get_lasterror_options(self):
-        """DEPRECATED: Use :attr:`write_concern` instead.
-
-        Returns a dict of the getlasterror options set on this instance.
-
-        .. versionchanged:: 2.4
-           Deprecated get_lasterror_options.
-        .. versionadded:: 2.0
-        """
-        warnings.warn("get_lasterror_options is deprecated. Please use "
-                      "write_concern instead.", DeprecationWarning,
-                      stacklevel=2)
-        return self.__write_concern.copy()
-
-    def set_lasterror_options(self, **kwargs):
-        """DEPRECATED: Use :attr:`write_concern` instead.
-
-        Set getlasterror options for this instance.
-
-        Valid options include j=<bool>, w=<int/string>, wtimeout=<int>,
-        and fsync=<bool>.
-
-        :Parameters:
-            - `**kwargs`: Options should be passed as keyword
-                          arguments (e.g. w=2, fsync=True)
-
-        .. versionchanged:: 2.4
-           Deprecated set_lasterror_options.
-        .. versionadded:: 2.0
-        """
-        warnings.warn("set_lasterror_options is deprecated. Please use "
-                      "write_concern instead.", DeprecationWarning,
-                      stacklevel=2)
-        for key, value in kwargs.iteritems():
-            self.__set_write_concern_option(key, value)
-
-    def unset_lasterror_options(self, *options):
-        """DEPRECATED: Use :attr:`write_concern` instead.
-
-        Unset getlasterror options for this instance.
-
-        If no options are passed unsets all getlasterror options.
-
-        :Parameters:
-            - `*options`: The list of options to unset.
-
-        .. versionchanged:: 2.4
-           Deprecated unset_lasterror_options.
-        .. versionadded:: 2.0
-        """
-        warnings.warn("unset_lasterror_options is deprecated. Please use "
-                      "write_concern instead.", DeprecationWarning,
-                      stacklevel=2)
-        if len(options):
-            for option in options:
-                self.__write_concern.pop(option, None)
-        else:
-            self.__write_concern = WriteConcern()
-
     def _get_wc_override(self):
         """Get write concern override.
 
