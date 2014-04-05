@@ -781,9 +781,6 @@ class Collection(common.BaseObject):
             results if some shards are down instead of returning an error.
           - `manipulate`: (optional): If True (the default), apply any
             outgoing SON manipulators before returning.
-          - `network_timeout` (optional): specify a timeout to use for
-            this query, which will override the
-            :class:`~pymongo.mongo_client.MongoClient`-level default
           - `read_preference` (optional): The read preference for
             this query.
           - `tag_sets` (optional): The tag sets for this query.
@@ -819,14 +816,14 @@ class Collection(common.BaseObject):
             `exhaust` option in a :doc:`request </examples/requests>` **must**
             be completely iterated before executing any other operation.
 
-            5. The `network_timeout` option is ignored when using the
-            `exhaust` option.
-
         .. note:: The `manipulate` and `compile_re` parameters may default to
            False in future releases.
 
         .. note:: The `max_scan` parameter requires server
            version **>= 1.5.1**
+
+        .. versionchanged:: 3.0
+           Removed the ``network_timeout`` parameter.
 
         .. versionadded:: 2.7
            The ``compile_re`` parameter.

@@ -1529,16 +1529,10 @@ class MongoReplicaSetClient(common.BaseObject):
         rqst_id, data = self.__check_bson_size(msg, member.max_bson_size)
         try:
             sock_info = self.__socket(member)
-
-            if not exhaust and "network_timeout" in kwargs:
-                sock_info.sock.settimeout(kwargs['network_timeout'])
-
             sock_info.sock.sendall(data)
             response = self.__recv_msg(1, rqst_id, sock_info)
 
             if not exhaust:
-                if "network_timeout" in kwargs:
-                    sock_info.sock.settimeout(self.__net_timeout)
                 member.pool.maybe_return_socket(sock_info)
 
             return response, sock_info, member.pool

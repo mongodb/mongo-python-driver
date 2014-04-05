@@ -410,8 +410,6 @@ class Database(common.BaseObject):
           - `**kwargs` (optional): additional keyword arguments will
             be added to the command document before it is sent
 
-        .. note:: ``command`` ignores the ``network_timeout`` parameter.
-
         .. versionchanged:: 2.7
            Added ``compile_re`` option.
         .. versionchanged:: 2.3

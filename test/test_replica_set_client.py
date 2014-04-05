@@ -630,7 +630,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         self.assertFalse(isinstance(db.test.find_one(), SON))
         c.close()
 
-    def test_network_timeout_validation(self):
+    def test_socket_timeout_ms_validation(self):
         c = self._get_client(socketTimeoutMS=10 * 1000)
         self.assertEqual(10, c._MongoReplicaSetClient__net_timeout)
 
@@ -649,11 +649,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         self.assertRaises(ConfigurationError,
             self._get_client, socketTimeoutMS='foo')
 
-        # network_timeout is gone from MongoReplicaSetClient.
-        self.assertRaises(ConfigurationError,
-            self._get_client, network_timeout=10)
-
-    def test_network_timeout(self):
+    def test_socket_timeout(self):
         no_timeout = self._get_client()
         timeout_sec = 1
         timeout = self._get_client(socketTimeoutMS=timeout_sec*1000)
@@ -667,15 +663,6 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
 
         try:
             timeout.pymongo_test.test.find_one(query)
-        except AutoReconnect, e:
-            self.assertTrue('%d: timed out' % (port,) in e.args[0])
-        else:
-            self.fail('RS client should have raised timeout error')
-
-        timeout.pymongo_test.test.find_one(query, network_timeout=None)
-
-        try:
-            no_timeout.pymongo_test.test.find_one(query, network_timeout=0.1)
         except AutoReconnect, e:
             self.assertTrue('%d: timed out' % (port,) in e.args[0])
         else:

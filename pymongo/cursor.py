@@ -71,7 +71,7 @@ class Cursor(object):
                  read_preference=ReadPreference.PRIMARY,
                  tag_sets=[{}], secondary_acceptable_latency_ms=None,
                  exhaust=False, compile_re=True, _must_use_master=False,
-                 _uuid_subtype=None, **kwargs):
+                 _uuid_subtype=None):
         """Create a new cursor.
 
         Should not be called directly by application developers - see
@@ -174,10 +174,6 @@ class Cursor(object):
         if partial:
             self.__query_flags |= _QUERY_OPTIONS["partial"]
 
-        # this is for passing network_timeout through if it's specified
-        # need to use kwargs as None is a legit value for network_timeout
-        self.__kwargs = kwargs
-
     @property
     def collection(self):
         """The :class:`~pymongo.collection.Collection` that this
@@ -243,7 +239,7 @@ class Cursor(object):
                            "manipulate", "read_preference", "tag_sets",
                            "secondary_acceptable_latency_ms",
                            "must_use_master", "uuid_subtype", "compile_re",
-                           "query_flags", "kwargs")
+                           "query_flags")
         data = dict((k, v) for k, v in self.__dict__.iteritems()
                     if k.startswith('_Cursor__') and k[9:] in values_to_clone)
         if deepcopy:
@@ -691,11 +687,6 @@ class Cursor(object):
         .. note:: The `with_limit_and_skip` parameter requires server
            version **>= 1.1.4-**
 
-        .. note:: ``count`` ignores ``network_timeout``. For example, the
-          timeout is ignored in the following code::
-
-            collection.find({}, network_timeout=1).count()
-
         .. versionadded:: 1.1.1
            The `with_limit_and_skip` parameter.
            :meth:`~pymongo.cursor.Cursor.__len__` was deprecated in favor of
@@ -880,7 +871,6 @@ class Cursor(object):
             kwargs['exhaust'] = self.__exhaust
             if self.__connection_id is not None:
                 kwargs["_connection_to_use"] = self.__connection_id
-            kwargs.update(self.__kwargs)
 
             try:
                 res = client._send_message_with_response(message, **kwargs)

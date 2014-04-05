@@ -1183,14 +1183,7 @@ class MongoClient(common.BaseObject):
         exhaust = kwargs.get('exhaust')
         try:
             try:
-                if not exhaust and "network_timeout" in kwargs:
-                    sock_info.sock.settimeout(kwargs["network_timeout"])
                 response = self.__send_and_receive(message, sock_info)
-
-                if not exhaust:
-                    if "network_timeout" in kwargs:
-                        sock_info.sock.settimeout(self.__net_timeout)
-
                 return (None, (response, sock_info, member.pool))
             except (ConnectionFailure, socket.error), e:
                 self.disconnect()

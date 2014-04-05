@@ -513,7 +513,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         client = MongoClient(host, port, socketTimeoutMS=10500)
         self.assertEqual(10.5, get_pool(client).net_timeout)
 
-    def test_network_timeout_validation(self):
+    def test_socket_timeout_ms_validation(self):
         c = get_client(socketTimeoutMS=10 * 1000)
         self.assertEqual(10, c._MongoClient__net_timeout)
 
@@ -532,12 +532,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         self.assertRaises(ConfigurationError,
             get_client, socketTimeoutMS='foo')
 
-        # network_timeout is gone from MongoClient, remains in deprecated
-        # Connection
-        self.assertRaises(ConfigurationError,
-            get_client, network_timeout=10)
-
-    def test_network_timeout(self):
+    def test_socket_timeout(self):
         no_timeout = MongoClient(host, port)
         timeout_sec = 1
         timeout = MongoClient(
@@ -554,13 +549,6 @@ class TestClient(unittest.TestCase, TestRequestMixin):
             return doc["x"]
         self.assertEqual(1, get_x(no_timeout.pymongo_test))
         self.assertRaises(ConnectionFailure, get_x, timeout.pymongo_test)
-
-        def get_x_timeout(db, t):
-            doc = db.test.find(network_timeout=t).where(where_func).next()
-            return doc["x"]
-        self.assertEqual(1, get_x_timeout(timeout.pymongo_test, None))
-        self.assertRaises(ConnectionFailure, get_x_timeout,
-                          no_timeout.pymongo_test, 0.1)
 
     def test_waitQueueTimeoutMS(self):
         client = MongoClient(host, port, waitQueueTimeoutMS=2000)
