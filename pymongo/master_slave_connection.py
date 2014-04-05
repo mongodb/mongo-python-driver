@@ -69,7 +69,6 @@ class MasterSlaveConnection(BaseObject):
 
         super(MasterSlaveConnection,
               self).__init__(read_preference=ReadPreference.SECONDARY,
-                             safe=master.safe,
                              **master.write_concern)
 
         self.__master = master
@@ -211,7 +210,6 @@ class MasterSlaveConnection(BaseObject):
         :Parameters:
           - `operation`: opcode of the message
           - `data`: data to send
-          - `safe`: perform a getLastError after sending the message
         """
         if _connection_to_use is None or _connection_to_use == -1:
             return self.__master._send_message(message,

@@ -269,7 +269,6 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
             self.assertEqual(obj.read_preference, ReadPreference.SECONDARY)
             self.assertEqual(obj.tag_sets, tag_sets)
             self.assertEqual(obj.secondary_acceptable_latency_ms, 77)
-            self.assertEqual(obj.safe, True)
 
         cursor = c.pymongo_test.test.find()
         self.assertEqual(

@@ -28,10 +28,10 @@
       .. autoattribute:: secondary_acceptable_latency_ms
       .. autoattribute:: write_concern
       .. autoattribute:: uuid_subtype
-      .. automethod:: insert(doc_or_docs[, manipulate=True[, safe=None[, check_keys=True[, continue_on_error=False[, **kwargs]]]]])
-      .. automethod:: save(to_save[, manipulate=True[, safe=None[, check_keys=True[, **kwargs]]]])
-      .. automethod:: update(spec, document[, upsert=False[, manipulate=False[, safe=None[, multi=False[, check_keys=True[, **kwargs]]]]]])
-      .. automethod:: remove([spec_or_id=None[, safe=None[, multi=True[, **kwargs]]]])
+      .. automethod:: insert(doc_or_docs[, manipulate=True[, check_keys=True[, continue_on_error=False[, **kwargs]]]])
+      .. automethod:: save(to_save[, manipulate=True[, check_keys=True[, **kwargs]]])
+      .. automethod:: update(spec, document[, upsert=False[, manipulate=False[, multi=False[, check_keys=True[, **kwargs]]]]])
+      .. automethod:: remove([spec_or_id=None[, multi=True[, **kwargs]]])
       .. automethod:: initialize_unordered_bulk_op
       .. automethod:: initialize_ordered_bulk_op
       .. automethod:: drop
@@ -53,7 +53,6 @@
       .. automethod:: map_reduce
       .. automethod:: inline_map_reduce
       .. automethod:: find_and_modify
-      .. autoattribute:: safe
       .. automethod:: get_lasterror_options
       .. automethod:: set_lasterror_options
       .. automethod:: unset_lasterror_options

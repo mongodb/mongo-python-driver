@@ -90,7 +90,6 @@ class Collection(common.BaseObject):
             tag_sets=database.tag_sets,
             secondary_acceptable_latency_ms=(
                 database.secondary_acceptable_latency_ms),
-            safe=database.safe,
             uuidrepresentation=database.uuid_subtype,
             **database.write_concern)
 
@@ -213,8 +212,7 @@ class Collection(common.BaseObject):
         """
         return bulk.BulkOperationBuilder(self, ordered=True)
 
-    def save(self, to_save, manipulate=True,
-             safe=None, check_keys=True, **kwargs):
+    def save(self, to_save, manipulate=True, check_keys=True, **kwargs):
         """Save a document in this collection.
 
         If `to_save` already has an ``"_id"`` then an :meth:`update`
@@ -243,7 +241,6 @@ class Collection(common.BaseObject):
           - `to_save`: the document to be saved
           - `manipulate` (optional): manipulate the document before
             saving it?
-          - `safe` (optional): **DEPRECATED** - Use `w` instead.
           - `check_keys` (optional): check if keys start with '$' or
             contain '.', raising :class:`~pymongo.errors.InvalidName`
             in either case.
@@ -267,6 +264,8 @@ class Collection(common.BaseObject):
           - The ``'_id'`` value of `to_save` or ``[None]`` if `manipulate` is
             ``False`` and `to_save` has no '_id' field.
 
+        .. versionchanged:: 3.0
+           Removed the `safe` parameter
         .. versionadded:: 1.8
            Support for passing `getLastError` options as keyword
            arguments.
@@ -277,14 +276,14 @@ class Collection(common.BaseObject):
             raise TypeError("cannot save object of type %s" % type(to_save))
 
         if "_id" not in to_save:
-            return self.insert(to_save, manipulate, safe, check_keys, **kwargs)
+            return self.insert(to_save, manipulate, check_keys, **kwargs)
         else:
             self.update({"_id": to_save["_id"]}, to_save, True,
-                        manipulate, safe, check_keys=check_keys, **kwargs)
+                        manipulate, check_keys=check_keys, **kwargs)
             return to_save.get("_id", None)
 
     def insert(self, doc_or_docs, manipulate=True,
-               safe=None, check_keys=True, continue_on_error=False, **kwargs):
+               check_keys=True, continue_on_error=False, **kwargs):
         """Insert a document(s) into this collection.
 
         If `manipulate` is ``True``, the document(s) are manipulated using
@@ -312,7 +311,6 @@ class Collection(common.BaseObject):
             inserted
           - `manipulate` (optional): If ``True`` manipulate the documents
             before inserting.
-          - `safe` (optional): **DEPRECATED** - Use `w` instead.
           - `check_keys` (optional): If ``True`` check if keys start with '$'
             or contain '.', raising :class:`~pymongo.errors.InvalidName` in
             either case.
@@ -345,6 +343,8 @@ class Collection(common.BaseObject):
 
         .. note:: `continue_on_error` requires server version **>= 1.9.1**
 
+        .. versionchanged:: 3.0
+           Removed the `safe` parameter
         .. versionadded:: 2.1
            Support for continue_on_error.
         .. versionadded:: 1.8
@@ -386,7 +386,7 @@ class Collection(common.BaseObject):
                     ids.append(doc.get('_id'))
                     yield doc
 
-        safe, options = self._get_write_mode(safe, **kwargs)
+        safe, options = self._get_write_mode(kwargs)
 
         if client.max_wire_version > 1 and safe:
             # Insert command
@@ -412,7 +412,7 @@ class Collection(common.BaseObject):
             return ids
 
     def update(self, spec, document, upsert=False, manipulate=False,
-               safe=None, multi=False, check_keys=True, **kwargs):
+               multi=False, check_keys=True, **kwargs):
         """Update a document(s) in this collection.
 
         Raises :class:`TypeError` if either `spec` or `document` is
@@ -464,7 +464,6 @@ class Collection(common.BaseObject):
             :class:`~pymongo.errors.InvalidName`. Only applies to
             document replacement, not modification through $
             operators.
-          - `safe` (optional): **DEPRECATED** - Use `w` instead.
           - `multi` (optional): update all documents that match
             `spec`, rather than just the first matching document. The
             default value for `multi` is currently ``False``, but this
@@ -491,6 +490,8 @@ class Collection(common.BaseObject):
           - A document (dict) describing the effect of the update or ``None``
             if write acknowledgement is disabled.
 
+        .. versionchanged:: 3.0
+           Removed the `safe` parameter
         .. versionadded:: 1.8
            Support for passing `getLastError` options as keyword
            arguments.
@@ -517,7 +518,7 @@ class Collection(common.BaseObject):
         if manipulate:
             document = self.__database._fix_incoming(document, self)
 
-        safe, options = self._get_write_mode(safe, **kwargs)
+        safe, options = self._get_write_mode(kwargs)
 
         if document:
             # If a top level key begins with '$' this is a modify operation
@@ -571,7 +572,7 @@ class Collection(common.BaseObject):
         """
         self.__database.drop_collection(self.__name)
 
-    def remove(self, spec_or_id=None, safe=None, multi=True, **kwargs):
+    def remove(self, spec_or_id=None, multi=True, **kwargs):
         """Remove a document(s) from this collection.
 
         .. warning:: Calls to :meth:`remove` should be performed with
@@ -596,7 +597,6 @@ class Collection(common.BaseObject):
           - `spec_or_id` (optional): a dictionary specifying the
             documents to be removed OR any other type specifying the
             value of ``"_id"`` for the document to be removed
-          - `safe` (optional): **DEPRECATED** - Use `w` instead.
           - `multi` (optional): If ``True`` (the default) remove all documents
             matching `spec_or_id`, otherwise remove only the first matching
             document.
@@ -620,6 +620,8 @@ class Collection(common.BaseObject):
           - A document (dict) describing the effect of the remove or ``None``
             if write acknowledgement is disabled.
 
+        .. versionchanged:: 3.0
+           Removed the `safe` parameter
         .. versionadded:: 1.8
            Support for passing `getLastError` options as keyword arguments.
         .. versionchanged:: 1.7 Accept any type other than a ``dict``
@@ -641,7 +643,7 @@ class Collection(common.BaseObject):
         if not isinstance(spec_or_id, dict):
             spec_or_id = {"_id": spec_or_id}
 
-        safe, options = self._get_write_mode(safe, **kwargs)
+        safe, options = self._get_write_mode(kwargs)
 
         client = self.database.connection
 

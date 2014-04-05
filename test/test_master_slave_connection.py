@@ -413,16 +413,13 @@ class TestMasterSlaveConnection(unittest.TestCase, TestRequestMixin):
     def test_base_object(self):
         c = self.client
         self.assertTrue(bool(c.read_preference))
-        self.assertTrue(c.safe)
         self.assertEqual({}, c.get_lasterror_options())
         db = c.pymongo_test
         self.assertTrue(bool(c.read_preference))
-        self.assertTrue(db.safe)
         self.assertEqual({}, db.get_lasterror_options())
         coll = db.test
         coll.drop()
         self.assertTrue(bool(c.read_preference))
-        self.assertTrue(coll.safe)
         self.assertEqual({}, coll.get_lasterror_options())
         cursor = coll.find()
         self.assertTrue(bool(cursor._Cursor__read_preference))
@@ -431,15 +428,12 @@ class TestMasterSlaveConnection(unittest.TestCase, TestRequestMixin):
         wtimeout=10000 # Wait 10 seconds for replication to complete
         c.set_lasterror_options(w=w, wtimeout=wtimeout)
         self.assertTrue(bool(c.read_preference))
-        self.assertTrue(c.safe)
         self.assertEqual({'w': w, 'wtimeout': wtimeout}, c.get_lasterror_options())
         db = c.pymongo_test
         self.assertTrue(bool(c.read_preference))
-        self.assertTrue(db.safe)
         self.assertEqual({'w': w, 'wtimeout': wtimeout}, db.get_lasterror_options())
         coll = db.test
         self.assertTrue(bool(c.read_preference))
-        self.assertTrue(coll.safe)
         self.assertEqual({'w': w, 'wtimeout': wtimeout},
                          coll.get_lasterror_options())
         cursor = coll.find()
@@ -451,10 +445,8 @@ class TestMasterSlaveConnection(unittest.TestCase, TestRequestMixin):
         coll.remove({'foo': 'bar'})
         self.assertEqual(0, coll.find({'foo': 'bar'}).count())
 
-        c.safe = False
         c.unset_lasterror_options()
         self.assertTrue(bool(self.client.read_preference))
-        self.assertFalse(self.client.safe)
         self.assertEqual({}, self.client.get_lasterror_options())
 
     def test_document_class(self):

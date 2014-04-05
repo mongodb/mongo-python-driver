@@ -64,7 +64,6 @@ class Database(common.BaseObject):
                              tag_sets=connection.tag_sets,
                              secondary_acceptable_latency_ms=(
                                  connection.secondary_acceptable_latency_ms),
-                             safe=connection.safe,
                              uuidrepresentation=connection.uuid_subtype,
                              **connection.write_concern)
 

@@ -7,7 +7,6 @@
    .. autoclass:: pymongo.master_slave_connection.MasterSlaveConnection
         :members:
 
-        .. autoattribute:: safe
         .. automethod:: get_lasterror_options
         .. automethod:: set_lasterror_options
         .. automethod:: unset_lasterror_options

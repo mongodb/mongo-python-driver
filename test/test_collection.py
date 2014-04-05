@@ -852,12 +852,6 @@ class TestCollection(unittest.TestCase):
             lambda: db.test.insert([{'i': 2}] * 2, w=1),
         )
 
-        # Misconfigured value for safe
-        self.assertRaises(
-            TypeError,
-            lambda: db.test.insert([{'i': 2}] * 2, safe=1),
-        )
-
     def test_insert_iterables(self):
         db = self.db
 
@@ -979,10 +973,6 @@ class TestCollection(unittest.TestCase):
         db.test.insert({"_id": 2, "x": 2})
 
         # No error
-        db.test.insert({"_id": 1, "x": 1}, safe=False)
-        db.test.save({"_id": 1, "x": 1}, safe=False)
-        db.test.insert({"_id": 2, "x": 2}, safe=False)
-        db.test.save({"_id": 2, "x": 2}, safe=False)
         db.test.insert({"_id": 1, "x": 1}, w=0)
         db.test.save({"_id": 1, "x": 1}, w=0)
         db.test.insert({"_id": 2, "x": 2}, w=0)

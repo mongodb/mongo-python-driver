@@ -89,7 +89,7 @@ the previous example more terse:
   ...     {'region': region, 'browser': browser, 'os': os},
   ...     {'$inc': {'n': 1 }},
   ...     upsert=True,
-  ...     safe=False)
+  ...     w=0)
   ...   print sum([p['n'] for p in counts.find({'region': region})])
   2
   >>> client.in_request() # request automatically ended
