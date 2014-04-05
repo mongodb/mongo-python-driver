@@ -34,7 +34,6 @@ Sub-modules:
    cursor
    bulk
    errors
-   master_slave_connection
    message
    mongo_client
    mongo_replica_set_client

@@ -672,8 +672,7 @@ class Cursor(object):
         `with_limit_and_skip` to ``True`` if that is the desired behavior.
         Raises :class:`~pymongo.errors.OperationFailure` on a database error.
 
-        With :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`
-        or :class:`~pymongo.master_slave_connection.MasterSlaveConnection`,
+        With :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`,
         if `read_preference` is not
         :attr:`pymongo.read_preferences.ReadPreference.PRIMARY` or
         :attr:`pymongo.read_preferences.ReadPreference.PRIMARY_PREFERRED`, the
@@ -729,8 +728,7 @@ class Cursor(object):
         Raises :class:`TypeError` if `key` is not an instance of
         :class:`basestring` (:class:`str` in python 3).
 
-        With :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`
-        or :class:`~pymongo.master_slave_connection.MasterSlaveConnection`,
+        With :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`,
         if `read_preference` is not
         :attr:`pymongo.read_preferences.ReadPreference.PRIMARY` or
         :attr:`pymongo.read_preferences.ReadPreference.PRIMARY_PREFERRED`, the

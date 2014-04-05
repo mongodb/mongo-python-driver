@@ -14,11 +14,9 @@
 
 """Tools for connecting to MongoDB.
 
-.. seealso:: Module :mod:`~pymongo.master_slave_connection` for
-   connecting to master-slave clusters, and
-   :doc:`/examples/high_availability` for an example of how to connect
-   to a replica set, or specify a list of mongos instances for automatic
-   failover.
+.. seealso:: :doc:`/examples/high_availability` for an example of how to
+   connect to a replica set, or specify a list of mongos instances for
+   automatic failover.
 
 To get a :class:`~pymongo.database.Database` instance from a
 :class:`MongoClient` use either dictionary-style or attribute-style

@@ -889,8 +889,7 @@ class Collection(common.BaseObject):
 
             # All documents have now been processed.
 
-        With :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`
-        or :class:`~pymongo.master_slave_connection.MasterSlaveConnection`,
+        With :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`,
         if the `read_preference` attribute of this instance is not set to
         :attr:`pymongo.read_preferences.ReadPreference.PRIMARY` or
         :attr:`pymongo.read_preferences.ReadPreference.PRIMARY_PREFERRED`
@@ -1247,8 +1246,7 @@ class Collection(common.BaseObject):
         """Perform an aggregation using the aggregation framework on this
         collection.
 
-        With :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`
-        or :class:`~pymongo.master_slave_connection.MasterSlaveConnection`,
+        With :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`,
         if the `read_preference` attribute of this instance is not set to
         :attr:`pymongo.read_preferences.ReadPreference.PRIMARY` or
         :attr:`pymongo.read_preferences.ReadPreference.PRIMARY_PREFERRED`
@@ -1324,8 +1322,7 @@ class Collection(common.BaseObject):
             function to be applied to each document, returning the key
             to group by.
 
-        With :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`
-        or :class:`~pymongo.master_slave_connection.MasterSlaveConnection`,
+        With :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`,
         if the `read_preference` attribute of this instance is not set to
         :attr:`pymongo.read_preferences.ReadPreference.PRIMARY` or
         :attr:`pymongo.read_preferences.ReadPreference.PRIMARY_PREFERRED`
@@ -1503,8 +1500,7 @@ class Collection(common.BaseObject):
         result documents in a list. Otherwise, returns the full
         response from the server to the `map reduce command`_.
 
-        With :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`
-        or :class:`~pymongo.master_slave_connection.MasterSlaveConnection`,
+        With :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`,
         if the `read_preference` attribute of this instance is not set to
         :attr:`pymongo.read_preferences.ReadPreference.PRIMARY` or
         :attr:`pymongo.read_preferences.ReadPreference.PRIMARY_PREFERRED`
