@@ -480,7 +480,8 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
                 c.copy_database("pymongo_test", "pymongo_test1",
                                 username="mike", password="password")
                 self.assertTrue("pymongo_test1" in c.database_names())
-                res = c.pymongo_test1.test.find_one(_must_use_master=True)
+                res = c.pymongo_test1.test.find_one(
+                    read_preference=ReadPreference.PRIMARY)
                 self.assertEqual("bar", res["foo"])
             finally:
                 # Cleanup

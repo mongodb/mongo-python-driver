@@ -1165,10 +1165,7 @@ class MongoClient(common.BaseObject):
             sock_info.close()
             raise
 
-    # we just ignore _must_use_master here: it's only relevant for
-    # MasterSlaveConnection instances.
-    def _send_message_with_response(self, message,
-                                    _must_use_master=False, **kwargs):
+    def _send_message_with_response(self, message, **kwargs):
         """Send a message to Mongo and return the response.
 
         Sends the given message and returns the response.

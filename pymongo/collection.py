@@ -909,7 +909,7 @@ class Collection(common.BaseObject):
             'tag_sets': self.tag_sets,
             'secondary_acceptable_latency_ms': (
                 self.secondary_acceptable_latency_ms),
-            '_use_master': not self.read_preference}
+        }
         command_kwargs.update(kwargs)
 
         result, conn_id = self.__database._command(
@@ -1290,7 +1290,7 @@ class Collection(common.BaseObject):
             'tag_sets': self.tag_sets,
             'secondary_acceptable_latency_ms': (
                 self.secondary_acceptable_latency_ms),
-            '_use_master': not self.read_preference}
+        }
 
         command_kwargs.update(kwargs)
         result, conn_id = self.__database._command(
@@ -1365,7 +1365,6 @@ class Collection(common.BaseObject):
                                        tag_sets=self.tag_sets,
                                        secondary_acceptable_latency_ms=(
                                            self.secondary_acceptable_latency_ms),
-                                       _use_master=not self.read_preference,
                                        **kwargs)["retval"]
 
     def rename(self, new_name, **kwargs):
@@ -1465,11 +1464,6 @@ class Collection(common.BaseObject):
             raise TypeError("'out' must be an instance of "
                             "%s or dict" % (basestring.__name__,))
 
-        if isinstance(out, dict) and out.get('inline'):
-            must_use_master = False
-        else:
-            must_use_master = True
-
         response = self.__database.command("mapreduce", self.__name,
                                            uuid_subtype=self.uuid_subtype,
                                            map=map, reduce=reduce,
@@ -1477,8 +1471,7 @@ class Collection(common.BaseObject):
                                            tag_sets=self.tag_sets,
                                            secondary_acceptable_latency_ms=(
                                                self.secondary_acceptable_latency_ms),
-                                           out=out, _use_master=must_use_master,
-                                           **kwargs)
+                                           out=out, **kwargs)
 
         if full_response or not response.get('result'):
             return response
@@ -1528,7 +1521,6 @@ class Collection(common.BaseObject):
                                       tag_sets=self.tag_sets,
                                       secondary_acceptable_latency_ms=(
                                           self.secondary_acceptable_latency_ms),
-                                      _use_master=not self.read_preference,
                                       map=map, reduce=reduce,
                                       out={"inline": 1}, **kwargs)
 

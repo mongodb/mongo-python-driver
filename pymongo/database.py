@@ -26,7 +26,8 @@ from pymongo.errors import (CollectionInvalid,
                             ConfigurationError,
                             InvalidName,
                             OperationFailure)
-from pymongo import read_preferences as rp
+from pymongo.read_preferences import (ReadPreference,
+                                      modes, secondary_ok_commands)
 
 
 def _check_name(name):
@@ -276,59 +277,56 @@ class Database(common.BaseObject):
         """
 
         if isinstance(command, basestring):
+            command_name = command.lower()
             command = SON([(command, value)])
+        else:
+            command_name = command.keys()[0].lower()
 
-        command_name = command.keys()[0].lower()
-        must_use_master = kwargs.pop('_use_master', False)
-        if command_name not in rp.secondary_ok_commands:
-            must_use_master = True
+        orig = mode = kwargs.pop('read_preference', self.read_preference)
+        tags = kwargs.pop('tag_sets', self.tag_sets)
+        latency = kwargs.pop('secondary_acceptable_latency_ms',
+                             self.secondary_acceptable_latency_ms)
+        as_class = kwargs.pop('as_class', None)
+
+        if command_name not in secondary_ok_commands:
+            mode = ReadPreference.PRIMARY
 
         # Special-case: mapreduce can go to secondaries only if inline
-        if command_name == 'mapreduce':
+        elif command_name == 'mapreduce':
             out = command.get('out') or kwargs.get('out')
             if not isinstance(out, dict) or not out.get('inline'):
-                must_use_master = True
+                mode = ReadPreference.PRIMARY
 
         # Special-case: aggregate with $out cannot go to secondaries.
-        if command_name == 'aggregate':
+        elif command_name == 'aggregate':
             for stage in kwargs.get('pipeline', []):
                 if '$out' in stage:
-                    must_use_master = True
+                    mode = ReadPreference.PRIMARY
                     break
 
-        extra_opts = {
-            'as_class': kwargs.pop('as_class', None),
-            '_must_use_master': must_use_master,
-            '_uuid_subtype': uuid_subtype
-        }
+        # Warn if mode will override read_preference.
+        if mode != orig:
+            warnings.warn("%s does not support %s read preference "
+                          "and will be routed to the primary instead." %
+                          (command_name, modes[orig]), UserWarning)
+            tags = [{}]
+            latency = None
 
-        extra_opts['read_preference'] = kwargs.pop(
-            'read_preference',
-            self.read_preference)
-        extra_opts['tag_sets'] = kwargs.pop(
-            'tag_sets',
-            self.tag_sets)
-        extra_opts['secondary_acceptable_latency_ms'] = kwargs.pop(
-            'secondary_acceptable_latency_ms',
-            self.secondary_acceptable_latency_ms)
-        extra_opts['compile_re'] = compile_re
-
-        fields = kwargs.get('fields')
+        fields = kwargs.pop('fields', None)
         if fields is not None and not isinstance(fields, dict):
-            kwargs['fields'] = helpers._fields_list_to_dict(fields)
+            fields = helpers._fields_list_to_dict(fields)
 
         command.update(kwargs)
 
-        # Warn if must_use_master will override read_preference.
-        if (extra_opts['read_preference'] != rp.ReadPreference.PRIMARY and
-                extra_opts['_must_use_master']):
-            warnings.warn("%s does not support %s read preference "
-                          "and will be routed to the primary instead." %
-                          (command_name,
-                           rp.modes[extra_opts['read_preference']]),
-                          UserWarning)
-
-        cursor = self["$cmd"].find(command, **extra_opts).limit(-1)
+        cursor = self["$cmd"].find(command,
+                                   fields=fields,
+                                   limit=-1,
+                                   as_class=as_class,
+                                   read_preference=mode,
+                                   tag_sets=tags,
+                                   secondary_acceptable_latency_ms=latency,
+                                   compile_re=compile_re,
+                                   _uuid_subtype=uuid_subtype)
         for doc in cursor:
             result = doc
 
@@ -437,7 +435,8 @@ class Database(common.BaseObject):
           - `include_system_collections` (optional): if ``False`` list
             will not include system collections (e.g ``system.indexes``)
         """
-        results = self["system.namespaces"].find(_must_use_master=True)
+        results = self["system.namespaces"].find(
+            read_preference=ReadPreference.PRIMARY)
         names = [r["name"] for r in results]
         names = [n[len(self.__name) + 1:] for n in names
                  if n.startswith(self.__name + ".") and "$" not in n]

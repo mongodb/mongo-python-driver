@@ -1566,8 +1566,8 @@ class MongoReplicaSetClient(common.BaseObject):
             host, port = member.host
             raise AutoReconnect("%s:%d: %s" % (host, port, why))
 
-    def _send_message_with_response(self, msg, _connection_to_use=None,
-                                    _must_use_master=False, **kwargs):
+    def _send_message_with_response(self, msg,
+                                    _connection_to_use=None, **kwargs):
         """Send a message to Mongo and return the response.
 
         Sends the given message and returns (host used, response).
@@ -1576,16 +1576,12 @@ class MongoReplicaSetClient(common.BaseObject):
           - `msg`: (request_id, data) pair making up the message to send
           - `_connection_to_use`: Optional (host, port) of member for message,
             used by Cursor for getMore and killCursors messages.
-          - `_must_use_master`: If True, send to primary.
         """
         self._ensure_connected()
 
         rs_state = self.__get_rs_state()
         tag_sets = kwargs.get('tag_sets', [{}])
         mode = kwargs.get('read_preference', ReadPreference.PRIMARY)
-        if _must_use_master:
-            mode = ReadPreference.PRIMARY
-            tag_sets = [{}]
 
         if not rs_state.primary_member:
             # If we were initialized with _connect=False then connect now.
@@ -1639,7 +1635,7 @@ class MongoReplicaSetClient(common.BaseObject):
                     pinned_member.host,
                     self.__try_read(pinned_member, msg, **kwargs))
             except AutoReconnect, why:
-                if _must_use_master or mode == ReadPreference.PRIMARY:
+                if mode == ReadPreference.PRIMARY:
                     self.disconnect()
                     raise
                 else:
