@@ -271,8 +271,7 @@ VALIDATORS = {
     'read_preference': validate_read_preference,
     'readpreferencetags': validate_tag_sets,
     'tag_sets': validate_tag_sets,
-    'secondaryacceptablelatencyms': validate_positive_float,
-    'secondary_acceptable_latency_ms': validate_positive_float,
+    'acceptablelatencyms': validate_positive_float,
     'auto_start_request': validate_boolean,
     'use_greenlets': validate_boolean,
     'authmechanism': validate_auth_mechanism,
@@ -341,7 +340,6 @@ class BaseObject(object):
 
         self.__read_pref = ReadPreference.PRIMARY
         self.__tag_sets = [{}]
-        self.__secondary_acceptable_latency_ms = 15
         self.__uuid_subtype = OLD_UUID_SUBTYPE
         self.__write_concern = WriteConcern()
         self.__set_options(options)
@@ -368,12 +366,6 @@ class BaseObject(object):
                 self.__tag_sets = validate_tag_sets(option, value)
             elif option == 'uuidrepresentation':
                 self.__uuid_subtype = validate_uuid_subtype(option, value)
-            elif option in (
-                'secondaryacceptablelatencyms',
-                'secondary_acceptable_latency_ms'
-            ):
-                self.__secondary_acceptable_latency_ms = \
-                    validate_positive_float(option, value)
             elif option in WRITE_CONCERN_OPTIONS:
                 if option == 'journal':
                     self.__set_write_concern_option('j', value)
@@ -464,31 +456,6 @@ class BaseObject(object):
         self.__read_pref = validate_read_preference('read_preference', value)
 
     read_preference = property(__get_read_pref, __set_read_pref)
-
-    def __get_acceptable_latency(self):
-        """Any replica-set member whose ping time is within
-        secondary_acceptable_latency_ms of the nearest member may accept
-        reads. Defaults to 15 milliseconds.
-
-        See :class:`~pymongo.read_preferences.ReadPreference`.
-
-        .. versionadded:: 2.3
-
-        .. note:: ``secondary_acceptable_latency_ms`` is ignored when talking
-          to a replica set *through* a mongos. The equivalent is the
-          localThreshold_ command line option.
-
-        .. _localThreshold: http://docs.mongodb.org/manual/reference/mongos/#cmdoption-mongos--localThreshold
-        """
-        return self.__secondary_acceptable_latency_ms
-
-    def __set_acceptable_latency(self, value):
-        """Property setter for secondary_acceptable_latency_ms"""
-        self.__secondary_acceptable_latency_ms = (validate_positive_float(
-            'secondary_acceptable_latency_ms', value))
-
-    secondary_acceptable_latency_ms = property(
-        __get_acceptable_latency, __set_acceptable_latency)
 
     def __get_tag_sets(self):
         """Set ``tag_sets`` to a list of dictionaries like [{'dc': 'ny'}] to

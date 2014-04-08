@@ -25,7 +25,6 @@
       .. autoattribute:: database
       .. autoattribute:: read_preference
       .. autoattribute:: tag_sets
-      .. autoattribute:: secondary_acceptable_latency_ms
       .. autoattribute:: write_concern
       .. autoattribute:: uuid_subtype
       .. automethod:: insert(doc_or_docs[, manipulate=True[, check_keys=True[, continue_on_error=False[, **kwargs]]]])

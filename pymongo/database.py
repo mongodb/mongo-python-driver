@@ -63,8 +63,6 @@ class Database(common.BaseObject):
         super(Database,
               self).__init__(read_preference=connection.read_preference,
                              tag_sets=connection.tag_sets,
-                             secondary_acceptable_latency_ms=(
-                                 connection.secondary_acceptable_latency_ms),
                              uuidrepresentation=connection.uuid_subtype,
                              **connection.write_concern)
 
@@ -284,8 +282,6 @@ class Database(common.BaseObject):
 
         orig = mode = kwargs.pop('read_preference', self.read_preference)
         tags = kwargs.pop('tag_sets', self.tag_sets)
-        latency = kwargs.pop('secondary_acceptable_latency_ms',
-                             self.secondary_acceptable_latency_ms)
         as_class = kwargs.pop('as_class', None)
 
         if command_name not in secondary_ok_commands:
@@ -310,7 +306,6 @@ class Database(common.BaseObject):
                           "and will be routed to the primary instead." %
                           (command_name, modes[orig]), UserWarning)
             tags = [{}]
-            latency = None
 
         fields = kwargs.pop('fields', None)
         if fields is not None and not isinstance(fields, dict):
@@ -324,7 +319,6 @@ class Database(common.BaseObject):
                                    as_class=as_class,
                                    read_preference=mode,
                                    tag_sets=tags,
-                                   secondary_acceptable_latency_ms=latency,
                                    compile_re=compile_re,
                                    _uuid_subtype=uuid_subtype)
         for doc in cursor:
@@ -400,14 +394,11 @@ class Database(common.BaseObject):
             ignoring tags." MongoReplicaSetClient tries each set of tags in
             turn until it finds a set of tags with at least one matching
             member.
-          - `secondary_acceptable_latency_ms`: Any replica-set member whose
-            ping time is within secondary_acceptable_latency_ms of the nearest
-            member may accept reads. Default 15 milliseconds.
-            **Ignored by mongos** and must be configured on the command line.
-            See the localThreshold_ option for more information.
           - `**kwargs` (optional): additional keyword arguments will
             be added to the command document before it is sent
 
+        .. versionchanged:: 3.0
+           Removed the `secondary_acceptable_latency_ms` option.
         .. versionchanged:: 2.7
            Added ``compile_re`` option.
         .. versionchanged:: 2.3
@@ -423,7 +414,6 @@ class Database(common.BaseObject):
         .. versionadded:: 1.4
 
         .. mongodoc:: commands
-        .. _localThreshold: http://docs.mongodb.org/manual/reference/mongos/#cmdoption-mongos--localThreshold
         """
         return self._command(command, value, check, allowable_errors,
                              uuid_subtype, compile_re, **kwargs)[0]

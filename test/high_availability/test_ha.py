@@ -654,11 +654,6 @@ class TestReadPreference(HATestCase):
 
         assertReadFrom(other_secondary, NEAREST)
 
-        # High secondaryAcceptableLatencyMS, should read from all members
-        assertReadFromAll(
-            [primary, secondary, other_secondary],
-            NEAREST, secondary_acceptable_latency_ms=1000*1000)
-
         self.clear_ping_times()
 
         assertReadFromAll([primary, other_secondary], NEAREST, [{'dc': 'ny'}])
@@ -821,18 +816,6 @@ class TestReadPreference(HATestCase):
             self.fail(
                 "Changing from tags %s to tags %s never unpinned" % (
                     tags0, tags1))
-
-        # Finally, verify changing the secondary_acceptable_latency_ms unpins
-        # the member.
-        for _ in range(1000):
-            host = utils.read_from_which_host(c, SECONDARY, None, 15)
-            new_host = utils.read_from_which_host(c, SECONDARY, None, 20)
-            if host != new_host:
-                break
-        else:
-            self.fail(
-                "Changing secondary_acceptable_latency_ms from 15 to 20"
-                " never unpinned")
 
     def tearDown(self):
         self.c.close()

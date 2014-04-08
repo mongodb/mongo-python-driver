@@ -31,7 +31,7 @@
       .. autoattribute:: max_wire_version
       .. autoattribute:: read_preference
       .. autoattribute:: tag_sets
-      .. autoattribute:: secondary_acceptable_latency_ms
+      .. autoattribute:: acceptable_latency_ms
       .. autoattribute:: write_concern
       .. autoattribute:: uuid_subtype
       .. autoattribute:: is_locked

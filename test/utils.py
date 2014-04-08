@@ -278,7 +278,6 @@ def read_from_which_host(
     rsc,
     mode,
     tag_sets=None,
-    secondary_acceptable_latency_ms=15
 ):
     """Read from a MongoReplicaSetClient with the given Read Preference mode,
        tags, and acceptable latency. Return the 'host:port' which was read from.
@@ -287,14 +286,12 @@ def read_from_which_host(
       - `rsc`: A MongoReplicaSetClient
       - `mode`: A ReadPreference
       - `tag_sets`: List of dicts of tags for data-center-aware reads
-      - `secondary_acceptable_latency_ms`: a float
     """
     db = rsc.pymongo_test
     db.read_preference = mode
     if isinstance(tag_sets, dict):
         tag_sets = [tag_sets]
     db.tag_sets = tag_sets or [{}]
-    db.secondary_acceptable_latency_ms = secondary_acceptable_latency_ms
 
     cursor = db.test.find()
     try:
@@ -309,9 +306,8 @@ def read_from_which_host(
         return None
 
 def assertReadFrom(testcase, rsc, member, *args, **kwargs):
-    """Check that a query with the given mode, tag_sets, and
-       secondary_acceptable_latency_ms reads from the expected replica-set
-       member
+    """Check that a query with the given mode and tag_sets reads from
+    the expected replica-set member.
 
     :Parameters:
       - `testcase`: A unittest.TestCase
@@ -319,15 +315,13 @@ def assertReadFrom(testcase, rsc, member, *args, **kwargs):
       - `member`: A host:port expected to be used
       - `mode`: A ReadPreference
       - `tag_sets` (optional): List of dicts of tags for data-center-aware reads
-      - `secondary_acceptable_latency_ms` (optional): a float
     """
     for _ in range(10):
         testcase.assertEqual(member, read_from_which_host(rsc, *args, **kwargs))
 
 def assertReadFromAll(testcase, rsc, members, *args, **kwargs):
-    """Check that a query with the given mode, tag_sets, and
-    secondary_acceptable_latency_ms reads from all members in a set, and
-    only members in that set.
+    """Check that a query with the given mode and tag_sets reads from all
+    members in a set, and only members in that set.
 
     :Parameters:
       - `testcase`: A unittest.TestCase
@@ -335,7 +329,6 @@ def assertReadFromAll(testcase, rsc, members, *args, **kwargs):
       - `members`: Sequence of host:port expected to be used
       - `mode`: A ReadPreference
       - `tag_sets` (optional): List of dicts of tags for data-center-aware reads
-      - `secondary_acceptable_latency_ms` (optional): a float
     """
     members = set(members)
     used = set()

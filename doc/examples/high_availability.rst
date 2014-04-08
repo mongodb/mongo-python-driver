@@ -200,7 +200,7 @@ per-query basis, e.g.::
   >>> db.collection.find_one(read_preference=ReadPreference.PRIMARY)
 
 Reads are configured using three options: **read_preference**, **tag_sets**,
-and **secondary_acceptable_latency_ms**.
+and **acceptableLatencyMS**.
 
 **read_preference**:
 
@@ -210,18 +210,18 @@ and **secondary_acceptable_latency_ms**.
 
 - ``PRIMARY_PREFERRED``: Read from the primary if available, or if there is
   none, read from a secondary matching your choice of ``tag_sets`` and
-  ``secondary_acceptable_latency_ms``.
+  ``acceptableLatencyMS``.
 
 - ``SECONDARY``: Read from a secondary matching your choice of ``tag_sets`` and
-  ``secondary_acceptable_latency_ms``. If no matching secondary is available,
+  ``acceptableLatencyMS``. If no matching secondary is available,
   raise :class:`~pymongo.errors.AutoReconnect`.
 
 - ``SECONDARY_PREFERRED``: Read from a secondary matching your choice of
-  ``tag_sets`` and ``secondary_acceptable_latency_ms`` if available, otherwise
+  ``tag_sets`` and ``acceptableLatencyMS`` if available, otherwise
   from primary (regardless of the primary's tags and latency).
 
 - ``NEAREST``: Read from any member matching your choice of ``tag_sets`` and
-  ``secondary_acceptable_latency_ms``.
+  ``acceptableLatencyMS``.
 
 **tag_sets**:
 
@@ -248,22 +248,22 @@ and raises :class:`~pymongo.errors.AutoReconnect` if none are available. As an
 additional fallback, specify a final, empty tag set, ``{}``, which means "read
 from any member that matches the mode, ignoring tags."
 
-**secondary_acceptable_latency_ms**:
+**acceptableLatencyMS**:
 
 If multiple members match the mode and tag sets, MongoReplicaSetClient reads
 from among the nearest members, chosen according to ping time. By default,
 only members whose ping times are within 15 milliseconds of the nearest
 are used for queries. You can choose to distribute reads among members with
-higher latencies by setting ``secondary_acceptable_latency_ms`` to a larger
+higher latencies by setting ``acceptableLatencyMS`` to a larger
 number. In that case, MongoReplicaSetClient distributes reads among matching
-members within ``secondary_acceptable_latency_ms`` of the closest member's
+members within ``acceptableLatencyMS`` of the closest member's
 ping time.
 
-.. note:: ``secondary_acceptable_latency_ms`` is ignored when talking to a
+.. note:: ``acceptableLatencyMS`` is ignored when talking to a
   replica set *through* a mongos. The equivalent is the localThreshold_ command
   line option.
 
-.. _localThreshold: http://docs.mongodb.org/manual/reference/mongos/#cmdoption-mongos--localThreshold
+.. _localThreshold: http://docs.mongodb.org/manual/reference/mongos/#cmdoption--localThreshold
 
 Health Monitoring
 '''''''''''''''''

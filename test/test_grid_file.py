@@ -600,14 +600,6 @@ with GridOut(self.db.fs, infile._id) as outfile:
                                                     fields={"filename":1})
 
         cursor = GridOutCursor(self.db.fs, {})
-        min_ms = self.db.fs.files.secondary_acceptable_latency_ms
-        new_ms = cursor._Cursor__secondary_acceptable_latency_ms
-        self.assertEqual(min_ms, new_ms)
-        cursor = GridOutCursor(self.db.fs, {},
-                               secondary_acceptable_latency_ms=100)
-        min_ms = self.db.fs.files.secondary_acceptable_latency_ms
-        new_ms = cursor._Cursor__secondary_acceptable_latency_ms
-        self.assertNotEqual(min_ms, new_ms)
         cursor_clone = cursor.clone()
         self.assertEqual(cursor_clone.__dict__, cursor.__dict__)
 

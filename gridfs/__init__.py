@@ -325,11 +325,6 @@ class GridFS(object):
           - `read_preference` (optional): The read preference for
             this query.
           - `tag_sets` (optional): The tag sets for this query.
-          - `secondary_acceptable_latency_ms` (optional): Any replica-set
-            member whose ping time is within secondary_acceptable_latency_ms of
-            the nearest member may accept reads. Default 15 milliseconds.
-            **Ignored by mongos** and must be configured on the command line.
-            See the localThreshold_ option for more information.
           - `compile_re` (optional): if ``False``, don't attempt to compile
             BSON regex objects into Python regexes. Return instances of
             :class:`~bson.regex.Regex` instead.
@@ -341,7 +336,6 @@ class GridFS(object):
 
         .. versionadded:: 2.7
         .. mongodoc:: find
-        .. _localThreshold: http://docs.mongodb.org/manual/reference/mongos/#cmdoption-mongos--localThreshold
         """
         return GridOutCursor(self.__collection, *args, **kwargs)
 

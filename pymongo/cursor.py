@@ -69,8 +69,8 @@ class Cursor(object):
                  max_scan=None, as_class=None,
                  await_data=False, partial=False, manipulate=True,
                  read_preference=ReadPreference.PRIMARY,
-                 tag_sets=[{}], secondary_acceptable_latency_ms=None,
-                 exhaust=False, compile_re=True, _uuid_subtype=None):
+                 tag_sets=[{}], exhaust=False, compile_re=True,
+                 _uuid_subtype=None):
         """Create a new cursor.
 
         Should not be called directly by application developers - see
@@ -148,7 +148,6 @@ class Cursor(object):
         self.__manipulate = manipulate
         self.__read_preference = read_preference
         self.__tag_sets = tag_sets
-        self.__secondary_acceptable_latency_ms = secondary_acceptable_latency_ms
         self.__tz_aware = collection.database.connection.tz_aware
         self.__compile_re = compile_re
         self.__uuid_subtype = _uuid_subtype or collection.uuid_subtype
@@ -235,7 +234,6 @@ class Cursor(object):
                            "snapshot", "ordering", "explain", "hint",
                            "batch_size", "max_scan", "as_class",
                            "manipulate", "read_preference", "tag_sets",
-                           "secondary_acceptable_latency_ms",
                            "uuid_subtype", "compile_re", "query_flags")
         data = dict((k, v) for k, v in self.__dict__.iteritems()
                     if k.startswith('_Cursor__') and k[9:] in values_to_clone)
@@ -690,12 +688,12 @@ class Cursor(object):
         """
         if not isinstance(with_limit_and_skip, bool):
             raise TypeError("with_limit_and_skip must be an instance of bool")
-        command = {"query": self.__spec, "fields": self.__fields}
-
-        command['read_preference'] = self.__read_preference
-        command['tag_sets'] = self.__tag_sets
-        command['secondary_acceptable_latency_ms'] = (
-            self.__secondary_acceptable_latency_ms)
+        command = {
+            "query": self.__spec,
+            "fields": self.__fields,
+            "read_preference": self.__read_preference,
+            "tag_sets": self.__tag_sets,
+        }
         if self.__max_time_ms is not None:
             command["maxTimeMS"] = self.__max_time_ms
         if self.__comment:
@@ -749,8 +747,6 @@ class Cursor(object):
 
         options['read_preference'] = self.__read_preference
         options['tag_sets'] = self.__tag_sets
-        options['secondary_acceptable_latency_ms'] = (
-            self.__secondary_acceptable_latency_ms)
         if self.__max_time_ms is not None:
             options['maxTimeMS'] = self.__max_time_ms
         if self.__comment:
@@ -859,8 +855,6 @@ class Cursor(object):
             kwargs = {
                 "read_preference": self.__read_preference,
                 "tag_sets": self.__tag_sets,
-                "secondary_acceptable_latency_ms":
-                    self.__secondary_acceptable_latency_ms,
                 "exhaust": self.__exhaust,
             }
             if self.__connection_id is not None:

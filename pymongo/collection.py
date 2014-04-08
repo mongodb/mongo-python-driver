@@ -88,8 +88,6 @@ class Collection(common.BaseObject):
         super(Collection, self).__init__(
             read_preference=database.read_preference,
             tag_sets=database.tag_sets,
-            secondary_acceptable_latency_ms=(
-                database.secondary_acceptable_latency_ms),
             uuidrepresentation=database.uuid_subtype,
             **database.write_concern)
 
@@ -784,11 +782,6 @@ class Collection(common.BaseObject):
           - `read_preference` (optional): The read preference for
             this query.
           - `tag_sets` (optional): The tag sets for this query.
-          - `secondary_acceptable_latency_ms` (optional): Any replica-set
-            member whose ping time is within secondary_acceptable_latency_ms of
-            the nearest member may accept reads. Default 15 milliseconds.
-            **Ignored by mongos** and must be configured on the command line.
-            See the localThreshold_ option for more information.
           - `compile_re` (optional): if ``False``, don't attempt to compile
             BSON regex objects into Python regexes. Return instances of
             :class:`~bson.regex.Regex` instead.
@@ -823,7 +816,8 @@ class Collection(common.BaseObject):
            version **>= 1.5.1**
 
         .. versionchanged:: 3.0
-           Removed the ``network_timeout`` parameter.
+           Removed the `network_timeout` and
+           `secondary_acceptable_latency_ms` parameters.
 
         .. versionadded:: 2.7
            The ``compile_re`` parameter.
@@ -848,15 +842,11 @@ class Collection(common.BaseObject):
            The `tailable` parameter.
 
         .. mongodoc:: find
-        .. _localThreshold: http://docs.mongodb.org/manual/reference/mongos/#cmdoption-mongos--localThreshold
         """
         if not 'read_preference' in kwargs:
             kwargs['read_preference'] = self.read_preference
         if not 'tag_sets' in kwargs:
             kwargs['tag_sets'] = self.tag_sets
-        if not 'secondary_acceptable_latency_ms' in kwargs:
-            kwargs['secondary_acceptable_latency_ms'] = (
-                self.secondary_acceptable_latency_ms)
         return Cursor(self, *args, **kwargs)
 
     def parallel_scan(self, num_cursors, **kwargs):
@@ -907,8 +897,6 @@ class Collection(common.BaseObject):
             'numCursors': num_cursors,
             'read_preference': self.read_preference,
             'tag_sets': self.tag_sets,
-            'secondary_acceptable_latency_ms': (
-                self.secondary_acceptable_latency_ms),
         }
         command_kwargs.update(kwargs)
 
@@ -1288,8 +1276,6 @@ class Collection(common.BaseObject):
             'pipeline': pipeline,
             'read_preference': self.read_preference,
             'tag_sets': self.tag_sets,
-            'secondary_acceptable_latency_ms': (
-                self.secondary_acceptable_latency_ms),
         }
 
         command_kwargs.update(kwargs)
@@ -1363,8 +1349,6 @@ class Collection(common.BaseObject):
                                        uuid_subtype=self.uuid_subtype,
                                        read_preference=self.read_preference,
                                        tag_sets=self.tag_sets,
-                                       secondary_acceptable_latency_ms=(
-                                           self.secondary_acceptable_latency_ms),
                                        **kwargs)["retval"]
 
     def rename(self, new_name, **kwargs):
@@ -1469,8 +1453,6 @@ class Collection(common.BaseObject):
                                            map=map, reduce=reduce,
                                            read_preference=self.read_preference,
                                            tag_sets=self.tag_sets,
-                                           secondary_acceptable_latency_ms=(
-                                               self.secondary_acceptable_latency_ms),
                                            out=out, **kwargs)
 
         if full_response or not response.get('result'):
@@ -1519,8 +1501,6 @@ class Collection(common.BaseObject):
                                       uuid_subtype=self.uuid_subtype,
                                       read_preference=self.read_preference,
                                       tag_sets=self.tag_sets,
-                                      secondary_acceptable_latency_ms=(
-                                          self.secondary_acceptable_latency_ms),
                                       map=map, reduce=reduce,
                                       out={"inline": 1}, **kwargs)
 

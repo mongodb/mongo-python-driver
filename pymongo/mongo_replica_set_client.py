@@ -262,7 +262,7 @@ class RSState(object):
         """Return a Member instance or None for the given (host, port)."""
         return self._host_to_member.get(host)
 
-    def pin_host(self, host, mode, tag_sets, latency):
+    def pin_host(self, host, mode, tag_sets):
         """Pin this thread / greenlet to a member.
 
         `host` is a (host, port) pair. The remaining parameters are a read
@@ -272,11 +272,11 @@ class RSState(object):
         # assignment here. Assignment to a threadlocal is only unsafe if it
         # can cause other Python code to run implicitly.
         self._threadlocal.host = host
-        self._threadlocal.read_preference = (mode, tag_sets, latency)
+        self._threadlocal.read_preference = (mode, tag_sets)
 
-    def keep_pinned_host(self, mode, tag_sets, latency):
+    def keep_pinned_host(self, mode, tag_sets):
         """Does a read pref match the last used by this thread / greenlet?"""
-        return self._threadlocal.read_preference == (mode, tag_sets, latency)
+        return self._threadlocal.read_preference == (mode, tag_sets)
 
     @property
     def pinned_host(self):
@@ -549,11 +549,9 @@ class MongoReplicaSetClient(common.BaseObject):
             ignoring tags." :class:`MongoReplicaSetClient` tries each set of
             tags in turn until it finds a set of tags with at least one matching
             member.
-          - `secondary_acceptable_latency_ms`: (integer) Any replica-set member
-            whose ping time is within secondary_acceptable_latency_ms of the
+          - `acceptable_latency_ms`: (integer) Any replica-set member
+            whose ping time is within acceptable_latency_ms of the
             nearest member may accept reads. Default 15 milliseconds.
-            **Ignored by mongos** and must be configured on the command line.
-            See the localThreshold_ option for more information.
 
           | **SSL configuration:**
 
@@ -579,8 +577,6 @@ class MongoReplicaSetClient(common.BaseObject):
         .. versionchanged:: 2.5
            Added additional ssl options
         .. versionadded:: 2.4
-
-        .. _localThreshold: http://docs.mongodb.org/manual/reference/mongos/#cmdoption-mongos--localThreshold
         """
         self.__opts = {}
         self.__seeds = set()
@@ -646,6 +642,7 @@ class MongoReplicaSetClient(common.BaseObject):
             raise ConfigurationError("the replicaSet "
                                      "keyword parameter is required.")
 
+        self.__acceptable_latency = self.__opts.get('acceptablelatencyms', 15)
         self.__net_timeout = self.__opts.get('sockettimeoutms')
         self.__conn_timeout = self.__opts.get('connecttimeoutms')
         self.__wait_queue_timeout = self.__opts.get('waitqueuetimeoutms')
@@ -995,6 +992,18 @@ class MongoReplicaSetClient(common.BaseObject):
         if rs_state.primary_member:
             return rs_state.primary_member.max_write_batch_size
         return common.MAX_WRITE_BATCH_SIZE
+
+    @property
+    def acceptable_latency_ms(self):
+        """Any replica-set member whose ping time is within
+        acceptable_latency_ms of the nearest member may accept
+        reads. Defaults to 15 milliseconds.
+
+        See :class:`~pymongo.read_preferences.ReadPreference`.
+
+        .. versionadded:: 2.3
+        """
+        return self.__acceptable_latency
 
     @property
     def auto_start_request(self):
@@ -1593,10 +1602,6 @@ class MongoReplicaSetClient(common.BaseObject):
             self.__schedule_refresh(sync=sync)
             rs_state = self.__rs_state
 
-        latency = kwargs.get(
-            'secondary_acceptable_latency_ms',
-            self.secondary_acceptable_latency_ms)
-
         try:
             if _connection_to_use is not None:
                 if _connection_to_use == -1:
@@ -1629,7 +1634,7 @@ class MongoReplicaSetClient(common.BaseObject):
         if (pinned_member
                 and pinned_member.matches_mode(mode)
                 and pinned_member.matches_tag_sets(tag_sets)  # TODO: REMOVE?
-                and rs_state.keep_pinned_host(mode, tag_sets, latency)):
+                and rs_state.keep_pinned_host(mode, tag_sets)):
             try:
                 return (
                     pinned_member.host,
@@ -1650,7 +1655,7 @@ class MongoReplicaSetClient(common.BaseObject):
                 members=members,
                 mode=mode,
                 tag_sets=tag_sets,
-                latency=latency)
+                latency=self.__acceptable_latency)
 
             if not member:
                 # Ran out of members to try
@@ -1664,7 +1669,7 @@ class MongoReplicaSetClient(common.BaseObject):
                 if self.in_request():
                     # Keep reading from this member in this thread / greenlet
                     # unless read preference changes
-                    rs_state.pin_host(member.host, mode, tag_sets, latency)
+                    rs_state.pin_host(member.host, mode, tag_sets)
                 return member.host, response
             except AutoReconnect, why:
                 if mode == ReadPreference.PRIMARY:

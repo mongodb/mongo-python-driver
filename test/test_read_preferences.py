@@ -118,16 +118,16 @@ class TestReadPreferences(TestReadPreferencesBase):
 
     def test_latency_validation(self):
         self.assertEqual(17, self._get_client(
-            secondary_acceptable_latency_ms=17
-        ).secondary_acceptable_latency_ms)
+            acceptableLatencyMS=17
+        ).acceptable_latency_ms)
 
         self.assertEqual(42, self._get_client(
-            secondaryAcceptableLatencyMS=42
-        ).secondary_acceptable_latency_ms)
+            acceptableLatencyMS=42
+        ).acceptable_latency_ms)
 
         self.assertEqual(666, self._get_client(
-            secondaryacceptablelatencyms=666
-        ).secondary_acceptable_latency_ms)
+            acceptablelatencyms=666
+        ).acceptable_latency_ms)
 
     def test_primary(self):
         self.assertReadsFrom('primary',
@@ -157,11 +157,11 @@ class TestReadPreferences(TestReadPreferencesBase):
             ReadPreference.SECONDARY, ReadPreference.SECONDARY_ONLY)
 
     def test_nearest(self):
-        # With high secondaryAcceptableLatencyMS, expect to read from any
+        # With high acceptableLatencyMS, expect to read from any
         # member
         c = self._get_client(
             read_preference=ReadPreference.NEAREST,
-            secondaryAcceptableLatencyMS=10000, # 10 seconds
+            acceptableLatencyMS=10000, # 10 seconds
             auto_start_request=False)
 
         data_members = set(self.hosts).difference(set(self.arbiters))
@@ -209,7 +209,7 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
             replicaSet=self.name, auto_start_request=False,
             # Effectively ignore members' ping times so we can test the effect
             # of ReadPreference modes only
-            secondary_acceptable_latency_ms=1000*1000)
+            acceptableLatencyMS=1000*1000)
 
     def tearDown(self):
         # We create a lot of collections and indexes in these tests, so drop

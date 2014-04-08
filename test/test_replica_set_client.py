@@ -241,14 +241,12 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         for obj in c, c.pymongo_test, c.pymongo_test.test:
             self.assertEqual(obj.read_preference, ReadPreference.PRIMARY)
             self.assertEqual(obj.tag_sets, [{}])
-            self.assertEqual(obj.secondary_acceptable_latency_ms, 15)
             self.assertEqual(obj.write_concern, {})
 
         cursor = c.pymongo_test.test.find()
         self.assertEqual(
             ReadPreference.PRIMARY, cursor._Cursor__read_preference)
         self.assertEqual([{}], cursor._Cursor__tag_sets)
-        self.assertEqual(15, cursor._Cursor__secondary_acceptable_latency_ms)
         c.close()
 
         tag_sets = [{'dc': 'la', 'rack': '2'}, {'foo': 'bar'}]
@@ -256,7 +254,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
                                  document_class=SON, tz_aware=True,
                                  read_preference=ReadPreference.SECONDARY,
                                  tag_sets=copy.deepcopy(tag_sets),
-                                 secondary_acceptable_latency_ms=77)
+                                 acceptablelatencyms=77)
         c.admin.command('ping')
         self.assertEqual(c.primary, self.primary)
         self.assertEqual(c.hosts, self.hosts)
@@ -268,23 +266,19 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         for obj in c, c.pymongo_test, c.pymongo_test.test:
             self.assertEqual(obj.read_preference, ReadPreference.SECONDARY)
             self.assertEqual(obj.tag_sets, tag_sets)
-            self.assertEqual(obj.secondary_acceptable_latency_ms, 77)
 
         cursor = c.pymongo_test.test.find()
         self.assertEqual(
             ReadPreference.SECONDARY, cursor._Cursor__read_preference)
         self.assertEqual(tag_sets, cursor._Cursor__tag_sets)
-        self.assertEqual(77, cursor._Cursor__secondary_acceptable_latency_ms)
 
         cursor = c.pymongo_test.test.find(
             read_preference=ReadPreference.NEAREST,
-            tag_sets=[{'dc':'ny'}, {}],
-            secondary_acceptable_latency_ms=123)
+            tag_sets=[{'dc':'ny'}, {}])
 
         self.assertEqual(
             ReadPreference.NEAREST, cursor._Cursor__read_preference)
         self.assertEqual([{'dc':'ny'}, {}], cursor._Cursor__tag_sets)
-        self.assertEqual(123, cursor._Cursor__secondary_acceptable_latency_ms)
 
         if version.at_least(c, (1, 7, 4)):
             self.assertEqual(c.max_bson_size, 16777216)
@@ -1059,7 +1053,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
 
     def test_pinned_member(self):
         latency = 1000 * 1000
-        client = self._get_client(secondary_acceptable_latency_ms=latency)
+        client = self._get_client(acceptablelatencyms=latency)
 
         host = read_from_which_host(client, ReadPreference.SECONDARY)
         self.assertTrue(host in client.secondaries)
@@ -1067,18 +1061,18 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         # No pinning since we're not in a request
         assertReadFromAll(
             self, client, client.secondaries,
-            ReadPreference.SECONDARY, None, latency)
+            ReadPreference.SECONDARY, None)
 
         assertReadFromAll(
             self, client, list(client.secondaries) + [client.primary],
-            ReadPreference.NEAREST, None, latency)
+            ReadPreference.NEAREST, None)
 
         client.start_request()
         host = read_from_which_host(client, ReadPreference.SECONDARY)
         self.assertTrue(host in client.secondaries)
         assertReadFrom(self, client, host, ReadPreference.SECONDARY)
 
-        # Changing any part of read preference (mode, tag_sets, latency)
+        # Changing any part of read preference (mode, tag_sets)
         # unpins the current host and pins to a new one
         primary = client.primary
         assertReadFrom(self, client, primary, ReadPreference.PRIMARY_PREFERRED)
@@ -1096,7 +1090,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         client.end_request()
         assertReadFromAll(
             self, client, list(client.secondaries) + [client.primary],
-            ReadPreference.NEAREST, None, latency)
+            ReadPreference.NEAREST, None)
 
     def test_alive(self):
         client = self._get_client()
