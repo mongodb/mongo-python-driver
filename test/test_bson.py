@@ -683,5 +683,15 @@ class TestBSON(unittest.TestCase):
                           {"_id": {'$oid': "52d0b971b3ba219fdeb4170e"}}, True)
         BSON.encode({"_id": {'$oid': "52d0b971b3ba219fdeb4170e"}})
 
+    def test_invalid_utf8(self):
+      self.assertEqual({"test": u"héllo world"},
+                         BSON(b("\x1C\x00\x00\x00\x02\x74\x65\x73\x74\x00\x0D"
+                                "\x00\x00\x00\x68\xC3\xA9\x6C\x6C\x6F\x20\x77\x6F" # \xC3\xA9=é
+                                "\x72\x6C\x64\x00\x00")).decode())
+      self.assertEqual({"test": u"hllo world"},
+                         BSON(b("\x1C\x00\x00\x00\x02\x74\x65\x73\x74\x00\x0D"
+                                "\x00\x00\x00\x68\xC3\xFF\x6C\x6C\x6F\x20\x77\x6F" # \xC3\xFF is invalid and should be skipped
+                                "\x72\x6C\x64\x00\x00")).decode())
+
 if __name__ == "__main__":
     unittest.main()
