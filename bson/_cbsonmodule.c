@@ -1451,7 +1451,7 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
             if (buffer[*position + value_length - 1]) {
                 goto invalid;
             }
-            value = PyUnicode_DecodeUTF8(buffer + *position, value_length - 1, "strict");
+            value = PyUnicode_DecodeUTF8(buffer + *position, value_length - 1, "ignore");
             if (!value) {
                 goto invalid;
             }
@@ -1800,7 +1800,7 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
             if (pattern_length > BSON_MAX_SIZE || max < pattern_length) {
                 goto invalid;
             }
-            pattern = PyUnicode_DecodeUTF8(buffer + *position, pattern_length, "strict");
+            pattern = PyUnicode_DecodeUTF8(buffer + *position, pattern_length, "ignore"");
             if (!pattern) {
                 goto invalid;
             }
@@ -1873,7 +1873,7 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
             }
 
             collection = PyUnicode_DecodeUTF8(buffer + *position,
-                                              coll_length - 1, "strict");
+                                              coll_length - 1, "ignore"");
             if (!collection) {
                 goto invalid;
             }
@@ -1918,7 +1918,7 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
             if (buffer[*position + value_length - 1]) {
                 goto invalid;
             }
-            code = PyUnicode_DecodeUTF8(buffer + *position, value_length - 1, "strict");
+            code = PyUnicode_DecodeUTF8(buffer + *position, value_length - 1, "ignore"");
             if (!code) {
                 goto invalid;
             }
@@ -1960,7 +1960,7 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
             if (buffer[*position + code_size - 1]) {
                 goto invalid;
             }
-            code = PyUnicode_DecodeUTF8(buffer + *position, code_size - 1, "strict");
+            code = PyUnicode_DecodeUTF8(buffer + *position, code_size - 1, "ignore"");
             if (!code) {
                 goto invalid;
             }
@@ -2153,7 +2153,7 @@ static PyObject* _elements_to_dict(PyObject* self, const char* string,
             Py_DECREF(dict);
             return NULL;
         }
-        name = PyUnicode_DecodeUTF8(string + position, name_length, "strict");
+        name = PyUnicode_DecodeUTF8(string + position, name_length, "ignore"");
         if (!name) {
             Py_DECREF(dict);
             return NULL;
