@@ -37,7 +37,6 @@ import socket
 import struct
 import threading
 import time
-import warnings
 import weakref
 
 from bson.py3compat import b
@@ -51,7 +50,7 @@ from pymongo import (auth,
                      uri_parser)
 from pymongo.member import Member
 from pymongo.read_preferences import (
-    ReadPreference, select_member, modes, MovingAverage)
+    ReadPreference, select_member, MovingAverage)
 from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
                             ConnectionFailure,
@@ -262,21 +261,21 @@ class RSState(object):
         """Return a Member instance or None for the given (host, port)."""
         return self._host_to_member.get(host)
 
-    def pin_host(self, host, mode, tag_sets):
+    def pin_host(self, host, pref):
         """Pin this thread / greenlet to a member.
 
-        `host` is a (host, port) pair. The remaining parameters are a read
-        preference.
+        `host` is a (host, port) pair. The `pref` parameter is a
+        read_preferences.ServerMode subclass (the read preference).
         """
         # Fun fact: Unlike in thread_util.ThreadIdent, we needn't lock around
         # assignment here. Assignment to a threadlocal is only unsafe if it
         # can cause other Python code to run implicitly.
         self._threadlocal.host = host
-        self._threadlocal.read_preference = (mode, tag_sets)
+        self._threadlocal.read_preference = pref
 
-    def keep_pinned_host(self, mode, tag_sets):
+    def keep_pinned_host(self, pref):
         """Does a read pref match the last used by this thread / greenlet?"""
-        return self._threadlocal.read_preference == (mode, tag_sets)
+        return self._threadlocal.read_preference == pref
 
     @property
     def pinned_host(self):
@@ -542,14 +541,7 @@ class MongoReplicaSetClient(common.BaseObject):
           - `read_preference`: The read preference for this client.
             See :class:`~pymongo.read_preferences.ReadPreference` for available
             options.
-          - `tag_sets`: Read from replica-set members with these tags.
-            To specify a priority-order for tag sets, provide a list of
-            tag sets: ``[{'dc': 'ny'}, {'dc': 'la'}, {}]``. A final, empty tag
-            set, ``{}``, means "read from any member that matches the mode,
-            ignoring tags." :class:`MongoReplicaSetClient` tries each set of
-            tags in turn until it finds a set of tags with at least one matching
-            member.
-          - `acceptable_latency_ms`: (integer) Any replica-set member
+          - `acceptableLatencyMS`: (integer) Any replica-set member
             whose ping time is within acceptable_latency_ms of the
             nearest member may accept reads. Default 15 milliseconds.
 
@@ -794,7 +786,7 @@ class MongoReplicaSetClient(common.BaseObject):
         if connect:
             # Try to authenticate even during failover.
             member = select_member(
-                self.__rs_state.members, ReadPreference.PRIMARY_PREFERRED)
+                self.__rs_state.members, ReadPreference.PRIMARY_PREFERRED.mode)
 
             if not member:
                 raise AutoReconnect(
@@ -1589,8 +1581,7 @@ class MongoReplicaSetClient(common.BaseObject):
         self._ensure_connected()
 
         rs_state = self.__get_rs_state()
-        tag_sets = kwargs.get('tag_sets', [{}])
-        mode = kwargs.get('read_preference', ReadPreference.PRIMARY)
+        pref = kwargs.get('read_preference', ReadPreference.PRIMARY)
 
         if not rs_state.primary_member:
             # If we were initialized with _connect=False then connect now.
@@ -1598,7 +1589,7 @@ class MongoReplicaSetClient(common.BaseObject):
             # if one is not already in progress. If caller requested the
             # primary, wait to see if it's up, otherwise continue with
             # known-good members.
-            sync = (rs_state.initial or mode == ReadPreference.PRIMARY)
+            sync = (rs_state.initial or pref == ReadPreference.PRIMARY)
             self.__schedule_refresh(sync=sync)
             rs_state = self.__rs_state
 
@@ -1632,15 +1623,14 @@ class MongoReplicaSetClient(common.BaseObject):
         pinned_host = rs_state.pinned_host
         pinned_member = rs_state.get(pinned_host)
         if (pinned_member
-                and pinned_member.matches_mode(mode)
-                and pinned_member.matches_tag_sets(tag_sets)  # TODO: REMOVE?
-                and rs_state.keep_pinned_host(mode, tag_sets)):
+                and pinned_member.matches_mode(pref.mode)
+                and rs_state.keep_pinned_host(pref)):
             try:
                 return (
                     pinned_member.host,
                     self.__try_read(pinned_member, msg, **kwargs))
             except AutoReconnect, why:
-                if mode == ReadPreference.PRIMARY:
+                if pref == ReadPreference.PRIMARY:
                     self.disconnect()
                     raise
                 else:
@@ -1653,8 +1643,8 @@ class MongoReplicaSetClient(common.BaseObject):
         while len(errors) < MAX_RETRY:
             member = select_member(
                 members=members,
-                mode=mode,
-                tag_sets=tag_sets,
+                mode=pref.mode,
+                tag_sets=pref.tag_sets,
                 latency=self.__acceptable_latency)
 
             if not member:
@@ -1669,27 +1659,24 @@ class MongoReplicaSetClient(common.BaseObject):
                 if self.in_request():
                     # Keep reading from this member in this thread / greenlet
                     # unless read preference changes
-                    rs_state.pin_host(member.host, mode, tag_sets)
+                    rs_state.pin_host(member.host, pref)
                 return member.host, response
             except AutoReconnect, why:
-                if mode == ReadPreference.PRIMARY:
+                if pref == ReadPreference.PRIMARY:
                     raise
 
                 errors.append(str(why))
                 members.remove(member)
 
         # Ran out of tries
-        if mode == ReadPreference.PRIMARY:
+        if pref == ReadPreference.PRIMARY:
             msg = "No replica set primary available for query"
-        elif mode == ReadPreference.SECONDARY:
+        elif pref.mode == ReadPreference.SECONDARY.mode:
             msg = "No replica set secondary available for query"
         else:
             msg = "No replica set members available for query"
 
-        msg += " with ReadPreference %s" % modes[mode]
-
-        if tag_sets != [{}]:
-            msg += " and tags " + repr(tag_sets)
+        msg += " with read preference %r" % (pref,)
 
         # Format a message like:
         # 'No replica set secondary available for query with ReadPreference

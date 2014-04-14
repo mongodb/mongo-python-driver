@@ -228,25 +228,28 @@ and **acceptableLatencyMS**.
 Replica-set members can be `tagged
 <http://www.mongodb.org/display/DOCS/Data+Center+Awareness>`_ according to any
 criteria you choose. By default, MongoReplicaSetClient ignores tags when
-choosing a member to read from, but it can be configured with the ``tag_sets``
-parameter. ``tag_sets`` must be a list of dictionaries, each dict providing tag
-values that the replica set member must match. MongoReplicaSetClient tries each
-set of tags in turn until it finds a set of tags with at least one matching
-member. For example, to prefer reads from the New York data center, but fall
-back to the San Francisco data center, tag your replica set members according
-to their location and create a MongoReplicaSetClient like so:
+choosing a member to read from, but your read preference can be configured with
+a ``tag_sets`` parameter. ``tag_sets`` must be a list of dictionaries, each
+dict providing tag values that the replica set member must match.
+MongoReplicaSetClient tries each set of tags in turn until it finds a set of
+tags with at least one matching member. For example, to prefer reads from the
+New York data center, but fall back to the San Francisco data center, tag your
+replica set members according to their location and create a
+MongoReplicaSetClient like so:
 
+  >>> from pymongo.read_preferences import Secondary
   >>> rsc = MongoReplicaSetClient(
   ...     "morton.local:27017",
   ...     replicaSet='foo'
-  ...     read_preference=ReadPreference.SECONDARY,
-  ...     tag_sets=[{'dc': 'ny'}, {'dc': 'sf'}]
+  ...     read_preference=Secondary(tag_sets=[{'dc': 'ny'}, {'dc': 'sf'}])
   ... )
 
 MongoReplicaSetClient tries to find secondaries in New York, then San Francisco,
 and raises :class:`~pymongo.errors.AutoReconnect` if none are available. As an
 additional fallback, specify a final, empty tag set, ``{}``, which means "read
 from any member that matches the mode, ignoring tags."
+
+See :mod:`~pymongo.read_preferences` for more information.
 
 **acceptableLatencyMS**:
 

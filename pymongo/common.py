@@ -15,11 +15,9 @@
 
 """Functions and classes common to multiple pymongo modules."""
 import sys
-import warnings
 from pymongo import read_preferences
 
 from pymongo.auth import MECHANISMS
-from pymongo.read_preferences import ReadPreference
 from pymongo.errors import ConfigurationError
 from bson.binary import (OLD_UUID_SUBTYPE, UUID_SUBTYPE,
                          JAVA_LEGACY, CSHARP_LEGACY)
@@ -183,38 +181,21 @@ def validate_timeout_or_none(option, value):
 
 
 def validate_read_preference(dummy, value):
-    """Validate read preference for a MongoReplicaSetClient.
+    """Validate a read preference.
     """
-    if value in read_preferences.modes:
-        return value
+    if not isinstance(value, read_preferences.ServerMode):
+        raise ConfigurationError("%r is not a "
+                                 "valid read preference." % (value,))
+    return value
 
-    # Also allow string form of enum for uri_parser
+
+def validate_read_preference_mode(dummy, name):
+    """Validate read preference mode for a MongoReplicaSetClient.
+    """
     try:
-        return read_preferences.mongos_enum(value)
+        return read_preferences.read_pref_mode_from_name(name)
     except ValueError:
         raise ConfigurationError("Not a valid read preference")
-
-
-def validate_tag_sets(dummy, value):
-    """Validate tag sets for a MongoReplicaSetClient.
-    """
-    if value is None:
-        return [{}]
-
-    if not isinstance(value, list):
-        raise ConfigurationError((
-            "Tag sets %s invalid, must be a list") % repr(value))
-    if len(value) == 0:
-        raise ConfigurationError((
-            "Tag sets %s invalid, must be None or contain at least one set of"
-            " tags") % repr(value))
-
-    for tags in value:
-        if not isinstance(tags, dict):
-            raise ConfigurationError(
-                "Tag set %s invalid, must be a dict" % repr(tags))
-
-    return value
 
 
 def validate_auth_mechanism(option, value):
@@ -247,9 +228,26 @@ def validate_uuid_subtype(dummy, value):
     return value
 
 
+def validate_read_preference_tags(name, value):
+    """Parse readPreferenceTags if passed as a client kwarg.
+    """
+    # Parsed in uri_parser.parse_uri
+    if isinstance(value, list):
+        return value
+
+    tags = {}
+    try:
+        for tag in value.split(","):
+            key, val = tag.split(":")
+            tags[key] = val
+    except Exception:
+        raise ConfigurationError("%r not a valid value for %s" % (value, name))
+    return [tags]
+
+
+
 # jounal is an alias for j,
 # wtimeoutms is an alias for wtimeout,
-# readpreferencetags is an alias for tag_sets.
 VALIDATORS = {
     'replicaset': validate_basestring,
     'w': validate_int_or_basestring,
@@ -267,10 +265,9 @@ VALIDATORS = {
     'ssl_certfile': validate_readable,
     'ssl_cert_reqs': validate_cert_reqs,
     'ssl_ca_certs': validate_readable,
-    'readpreference': validate_read_preference,
     'read_preference': validate_read_preference,
-    'readpreferencetags': validate_tag_sets,
-    'tag_sets': validate_tag_sets,
+    'readpreference': validate_read_preference_mode,
+    'readpreferencetags': validate_read_preference_tags,
     'acceptablelatencyms': validate_positive_float,
     'auto_start_request': validate_boolean,
     'use_greenlets': validate_boolean,
@@ -338,15 +335,10 @@ class BaseObject(object):
 
     def __init__(self, **options):
 
-        self.__read_pref = ReadPreference.PRIMARY
-        self.__tag_sets = [{}]
+        self.__read_pref = read_preferences.ReadPreference.PRIMARY
         self.__uuid_subtype = OLD_UUID_SUBTYPE
         self.__write_concern = WriteConcern()
         self.__set_options(options)
-        if (self.__read_pref == ReadPreference.PRIMARY
-                and self.__tag_sets != [{}]):
-            raise ConfigurationError(
-                "ReadPreference PRIMARY cannot be combined with tags")
 
     def __set_write_concern_option(self, option, value):
         """Validates and sets getlasterror options for this
@@ -360,10 +352,16 @@ class BaseObject(object):
     def __set_options(self, options):
         """Validates and sets all options passed to this object."""
         for option, value in options.iteritems():
-            if option in ('read_preference', "readpreference"):
+            if option == 'read_preference':
                 self.__read_pref = validate_read_preference(option, value)
-            elif option in ('tag_sets', 'readpreferencetags'):
-                self.__tag_sets = validate_tag_sets(option, value)
+            elif option == 'readpreference':
+                klass = read_preferences.read_pref_class_from_mode(value)
+                if value == 0:
+                    # Primary, no tags
+                    self.__read_pref = klass()
+                    continue
+                tags = options.get('readpreferencetags', None)
+                self.__read_pref = klass(tags)
             elif option == 'uuidrepresentation':
                 self.__uuid_subtype = validate_uuid_subtype(option, value)
             elif option in WRITE_CONCERN_OPTIONS:
@@ -453,31 +451,9 @@ class BaseObject(object):
 
     def __set_read_pref(self, value):
         """Property setter for read_preference"""
-        self.__read_pref = validate_read_preference('read_preference', value)
+        self.__read_pref = validate_read_preference(None, value)
 
     read_preference = property(__get_read_pref, __set_read_pref)
-
-    def __get_tag_sets(self):
-        """Set ``tag_sets`` to a list of dictionaries like [{'dc': 'ny'}] to
-        read only from members whose ``dc`` tag has the value ``"ny"``.
-        To specify a priority-order for tag sets, provide a list of
-        tag sets: ``[{'dc': 'ny'}, {'dc': 'la'}, {}]``. A final, empty tag
-        set, ``{}``, means "read from any member that matches the mode,
-        ignoring tags." MongoReplicaSetClient tries each set of tags in turn
-        until it finds a set of tags with at least one matching member.
-
-           .. seealso:: `Data-Center Awareness
-               <http://www.mongodb.org/display/DOCS/Data+Center+Awareness>`_
-
-        .. versionadded:: 2.3
-        """
-        return self.__tag_sets
-
-    def __set_tag_sets(self, value):
-        """Property setter for tag_sets"""
-        self.__tag_sets = validate_tag_sets('tag_sets', value)
-
-    tag_sets = property(__get_tag_sets, __set_tag_sets)
 
     def __get_uuid_subtype(self):
         """This attribute specifies which BSON Binary subtype is used when

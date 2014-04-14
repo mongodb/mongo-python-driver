@@ -24,7 +24,6 @@
             attribute of the :class:`Database` class eg: db[`collection_name`].
 
       .. autoattribute:: read_preference
-      .. autoattribute:: tag_sets
       .. autoattribute:: write_concern
       .. autoattribute:: uuid_subtype
 

@@ -87,7 +87,6 @@ class Collection(common.BaseObject):
         """
         super(Collection, self).__init__(
             read_preference=database.read_preference,
-            tag_sets=database.tag_sets,
             uuidrepresentation=database.uuid_subtype,
             **database.write_concern)
 
@@ -781,7 +780,6 @@ class Collection(common.BaseObject):
             outgoing SON manipulators before returning.
           - `read_preference` (optional): The read preference for
             this query.
-          - `tag_sets` (optional): The tag sets for this query.
           - `compile_re` (optional): if ``False``, don't attempt to compile
             BSON regex objects into Python regexes. Return instances of
             :class:`~bson.regex.Regex` instead.
@@ -816,7 +814,7 @@ class Collection(common.BaseObject):
            version **>= 1.5.1**
 
         .. versionchanged:: 3.0
-           Removed the `network_timeout` and
+           Removed the `network_timeout`, `tag_sets`, and
            `secondary_acceptable_latency_ms` parameters.
 
         .. versionadded:: 2.7
@@ -843,13 +841,9 @@ class Collection(common.BaseObject):
 
         .. mongodoc:: find
         """
-        if not 'read_preference' in kwargs:
-            kwargs['read_preference'] = self.read_preference
-        if not 'tag_sets' in kwargs:
-            kwargs['tag_sets'] = self.tag_sets
         return Cursor(self, *args, **kwargs)
 
-    def parallel_scan(self, num_cursors, **kwargs):
+    def parallel_scan(self, num_cursors, read_preference=None, **kwargs):
         """Scan this entire collection in parallel.
 
         Returns a list of up to ``num_cursors`` cursors that can be iterated
@@ -887,21 +881,20 @@ class Collection(common.BaseObject):
 
         :Parameters:
           - `num_cursors`: the number of cursors to return
+          - `read_preference`: the read preference to use for this scan
 
         .. note:: Requires server version **>= 2.5.5**.
 
         """
         compile_re = kwargs.get('compile_re', False)
 
-        command_kwargs = {
-            'numCursors': num_cursors,
-            'read_preference': self.read_preference,
-            'tag_sets': self.tag_sets,
-        }
-        command_kwargs.update(kwargs)
+        cmd = SON([('parallelCollectionScan', self.__name),
+                   ('numCursors', num_cursors)])
 
-        result, conn_id = self.__database._command(
-            "parallelCollectionScan", self.__name, **command_kwargs)
+        mode = read_preference or self.read_preference
+        result, conn_id = self.__database._command(cmd,
+                                                   read_preference=mode,
+                                                   **kwargs)
 
         return [CommandCursor(self,
                               cursor['cursor'],
@@ -1230,7 +1223,7 @@ class Collection(common.BaseObject):
 
         return options
 
-    def aggregate(self, pipeline, **kwargs):
+    def aggregate(self, pipeline, read_preference=None, **kwargs):
         """Perform an aggregation using the aggregation framework on this
         collection.
 
@@ -1242,6 +1235,7 @@ class Collection(common.BaseObject):
 
         :Parameters:
           - `pipeline`: a single command or list of aggregation commands
+          - `read_preference`: read preference to use for this aggregate
           - `**kwargs`: send arbitrary parameters to the aggregate command
 
         .. note:: Requires server version **>= 2.1.0**.
@@ -1272,28 +1266,29 @@ class Collection(common.BaseObject):
         if isinstance(pipeline, dict):
             pipeline = [pipeline]
 
-        command_kwargs = {
-            'pipeline': pipeline,
-            'read_preference': self.read_preference,
-            'tag_sets': self.tag_sets,
-        }
+        cmd = SON([("aggregate", self.__name),
+                   ("pipeline", pipeline)])
 
-        command_kwargs.update(kwargs)
+        compile_re = kwargs.get('compile_re', True)
+
+        mode = read_preference or self.read_preference
         result, conn_id = self.__database._command(
-            "aggregate", self.__name, **command_kwargs)
+            cmd, uuid_subtype=self.uuid_subtype,
+            read_preference=mode, **kwargs)
 
         if 'cursor' in result:
             return CommandCursor(
                 self,
                 result['cursor'],
                 conn_id,
-                command_kwargs.get('compile_re', True))
+                compile_re)
         else:
             return result
 
     # TODO key and condition ought to be optional, but deprecation
     # could be painful as argument order would have to change.
-    def group(self, key, condition, initial, reduce, finalize=None, **kwargs):
+    def group(self, key, condition, initial,
+              reduce, finalize=None, read_preference=None, **kwargs):
         """Perform a query similar to an SQL *group by* operation.
 
         Returns an array of grouped items.
@@ -1321,6 +1316,7 @@ class Collection(common.BaseObject):
           - `initial`: initial value of the aggregation counter object
           - `reduce`: aggregation function as a JavaScript string
           - `finalize`: function to be called on each object in output list.
+          - `read_preference`: read preference to use for this group
 
         .. versionchanged:: 2.2
            Removed deprecated argument: command
@@ -1345,10 +1341,10 @@ class Collection(common.BaseObject):
         if finalize is not None:
             group["finalize"] = Code(finalize)
 
+        mode = read_preference or self.read_preference
         return self.__database.command("group", group,
                                        uuid_subtype=self.uuid_subtype,
-                                       read_preference=self.read_preference,
-                                       tag_sets=self.tag_sets,
+                                       read_preference=mode,
                                        **kwargs)["retval"]
 
     def rename(self, new_name, **kwargs):
@@ -1404,7 +1400,8 @@ class Collection(common.BaseObject):
         """
         return self.find().distinct(key)
 
-    def map_reduce(self, map, reduce, out, full_response=False, **kwargs):
+    def map_reduce(self, map, reduce, out,
+                   full_response=False, read_preference=None, **kwargs):
         """Perform a map/reduce operation on this collection.
 
         If `full_response` is ``False`` (default) returns a
@@ -1422,6 +1419,7 @@ class Collection(common.BaseObject):
             e.g. SON([('replace', <collection name>), ('db', <database name>)])
           - `full_response` (optional): if ``True``, return full response to
             this command - otherwise just return the result collection
+          - `read_preference`: read preference to use for this map reduce
           - `**kwargs` (optional): additional arguments to the
             `map reduce command`_ may be passed as keyword arguments to this
             helper method, e.g.::
@@ -1448,11 +1446,11 @@ class Collection(common.BaseObject):
             raise TypeError("'out' must be an instance of "
                             "%s or dict" % (basestring.__name__,))
 
+        mode = read_preference or self.read_preference
         response = self.__database.command("mapreduce", self.__name,
                                            uuid_subtype=self.uuid_subtype,
+                                           read_preference=mode,
                                            map=map, reduce=reduce,
-                                           read_preference=self.read_preference,
-                                           tag_sets=self.tag_sets,
                                            out=out, **kwargs)
 
         if full_response or not response.get('result'):
@@ -1464,7 +1462,8 @@ class Collection(common.BaseObject):
         else:
             return self.__database[response["result"]]
 
-    def inline_map_reduce(self, map, reduce, full_response=False, **kwargs):
+    def inline_map_reduce(self, map, reduce,
+                          full_response=False, read_preference=None, **kwargs):
         """Perform an inline map/reduce operation on this collection.
 
         Perform the map/reduce operation on the server in RAM. A result
@@ -1486,6 +1485,7 @@ class Collection(common.BaseObject):
           - `reduce`: reduce function (as a JavaScript string)
           - `full_response` (optional): if ``True``, return full response to
             this command - otherwise just return the result collection
+          - `read_preference`: read preference to use for this map reduce
           - `**kwargs` (optional): additional arguments to the
             `map reduce command`_ may be passed as keyword arguments to this
             helper method, e.g.::
@@ -1497,10 +1497,10 @@ class Collection(common.BaseObject):
         .. versionadded:: 1.10
         """
 
+        mode = read_preference or self.read_preference
         res = self.__database.command("mapreduce", self.__name,
                                       uuid_subtype=self.uuid_subtype,
-                                      read_preference=self.read_preference,
-                                      tag_sets=self.tag_sets,
+                                      read_preference=mode,
                                       map=map, reduce=reduce,
                                       out={"inline": 1}, **kwargs)
 

@@ -625,7 +625,7 @@ class GridOutCursor(Cursor):
     """
     def __init__(self, collection, spec=None, skip=0, limit=0,
                  timeout=True, sort=None, max_scan=None,
-                 read_preference=None, tag_sets=None, compile_re=True):
+                 read_preference=None, compile_re=True):
         """Create a new cursor, similar to the normal
         :class:`~pymongo.cursor.Cursor`.
 
@@ -641,12 +641,11 @@ class GridOutCursor(Cursor):
 
         # Copy these settings from collection if they are not set by caller.
         read_preference = read_preference or collection.files.read_preference
-        tag_sets = tag_sets or collection.files.tag_sets
 
         super(GridOutCursor, self).__init__(
             collection.files, spec, skip=skip, limit=limit, timeout=timeout,
             sort=sort, max_scan=max_scan, read_preference=read_preference,
-            compile_re=compile_re, tag_sets=tag_sets)
+            compile_re=compile_re)
 
     def next(self):
         """Get next GridOut object from cursor.

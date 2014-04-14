@@ -27,7 +27,7 @@ from pymongo.errors import (CollectionInvalid,
                             InvalidName,
                             OperationFailure)
 from pymongo.read_preferences import (ReadPreference,
-                                      modes, secondary_ok_commands)
+                                      SECONDARY_OK_COMMANDS)
 
 
 def _check_name(name):
@@ -62,7 +62,6 @@ class Database(common.BaseObject):
         """
         super(Database,
               self).__init__(read_preference=connection.read_preference,
-                             tag_sets=connection.tag_sets,
                              uuidrepresentation=connection.uuid_subtype,
                              **connection.write_concern)
 
@@ -270,7 +269,8 @@ class Database(common.BaseObject):
 
     def _command(self, command, value=1,
                  check=True, allowable_errors=None,
-                 uuid_subtype=OLD_UUID_SUBTYPE, compile_re=True, **kwargs):
+                 uuid_subtype=OLD_UUID_SUBTYPE, compile_re=True,
+                 read_preference=None, **kwargs):
         """Internal command helper.
         """
 
@@ -280,22 +280,25 @@ class Database(common.BaseObject):
         else:
             command_name = command.keys()[0].lower()
 
-        orig = mode = kwargs.pop('read_preference', self.read_preference)
-        tags = kwargs.pop('tag_sets', self.tag_sets)
         as_class = kwargs.pop('as_class', None)
+        fields = kwargs.pop('fields', None)
+        if fields is not None and not isinstance(fields, dict):
+            fields = helpers._fields_list_to_dict(fields)
+        command.update(kwargs)
 
-        if command_name not in secondary_ok_commands:
+        orig = mode = read_preference or self.read_preference
+        if command_name not in SECONDARY_OK_COMMANDS:
             mode = ReadPreference.PRIMARY
 
         # Special-case: mapreduce can go to secondaries only if inline
         elif command_name == 'mapreduce':
-            out = command.get('out') or kwargs.get('out')
+            out = command.get('out')
             if not isinstance(out, dict) or not out.get('inline'):
                 mode = ReadPreference.PRIMARY
 
         # Special-case: aggregate with $out cannot go to secondaries.
         elif command_name == 'aggregate':
-            for stage in kwargs.get('pipeline', []):
+            for stage in command.get('pipeline', []):
                 if '$out' in stage:
                     mode = ReadPreference.PRIMARY
                     break
@@ -304,21 +307,14 @@ class Database(common.BaseObject):
         if mode != orig:
             warnings.warn("%s does not support %s read preference "
                           "and will be routed to the primary instead." %
-                          (command_name, modes[orig]), UserWarning)
-            tags = [{}]
+                          (command_name, orig.name), UserWarning)
 
-        fields = kwargs.pop('fields', None)
-        if fields is not None and not isinstance(fields, dict):
-            fields = helpers._fields_list_to_dict(fields)
-
-        command.update(kwargs)
 
         cursor = self["$cmd"].find(command,
                                    fields=fields,
                                    limit=-1,
                                    as_class=as_class,
                                    read_preference=mode,
-                                   tag_sets=tags,
                                    compile_re=compile_re,
                                    _uuid_subtype=uuid_subtype)
         for doc in cursor:
@@ -333,7 +329,8 @@ class Database(common.BaseObject):
 
     def command(self, command, value=1,
                 check=True, allowable_errors=[],
-                uuid_subtype=OLD_UUID_SUBTYPE, compile_re=True, **kwargs):
+                uuid_subtype=OLD_UUID_SUBTYPE, compile_re=True,
+                read_preference=None, **kwargs):
         """Issue a MongoDB command.
 
         Send command `command` to the database and return the
@@ -384,21 +381,13 @@ class Database(common.BaseObject):
             :exc:`~bson.errors.InvalidBSON` errors when receiving
             Python-incompatible regular expressions, for example from
             ``currentOp``
-          - `read_preference`: The read preference for this connection.
-            See :class:`~pymongo.read_preferences.ReadPreference` for available
-            options.
-          - `tag_sets`: Read from replica-set members with these tags.
-            To specify a priority-order for tag sets, provide a list of
-            tag sets: ``[{'dc': 'ny'}, {'dc': 'la'}, {}]``. A final, empty tag
-            set, ``{}``, means "read from any member that matches the mode,
-            ignoring tags." MongoReplicaSetClient tries each set of tags in
-            turn until it finds a set of tags with at least one matching
-            member.
+          - `read_preference`: The read preference for this operation.
           - `**kwargs` (optional): additional keyword arguments will
             be added to the command document before it is sent
 
         .. versionchanged:: 3.0
-           Removed the `secondary_acceptable_latency_ms` option.
+           Removed the `tag_sets` and `secondary_acceptable_latency_ms`
+           options.
         .. versionchanged:: 2.7
            Added ``compile_re`` option.
         .. versionchanged:: 2.3
@@ -416,7 +405,8 @@ class Database(common.BaseObject):
         .. mongodoc:: commands
         """
         return self._command(command, value, check, allowable_errors,
-                             uuid_subtype, compile_re, **kwargs)[0]
+                             uuid_subtype, compile_re,
+                             read_preference, **kwargs)[0]
 
     def collection_names(self, include_system_collections=True):
         """Get a list of all the collection names in this database.

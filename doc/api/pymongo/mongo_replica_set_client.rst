@@ -31,7 +31,6 @@
       .. autoattribute:: max_wire_version
       .. autoattribute:: auto_start_request
       .. autoattribute:: read_preference
-      .. autoattribute:: tag_sets
       .. autoattribute:: acceptable_latency_ms
       .. autoattribute:: write_concern
       .. autoattribute:: uuid_subtype

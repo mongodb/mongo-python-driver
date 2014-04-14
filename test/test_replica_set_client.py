@@ -16,7 +16,6 @@
 
 # TODO: anywhere we wait for refresh in tests, consider just refreshing w/ sync
 
-import copy
 import datetime
 import signal
 import socket
@@ -34,8 +33,7 @@ from nose.plugins.skip import SkipTest
 from bson.son import SON
 from bson.tz_util import utc
 from pymongo.mongo_client import MongoClient
-from pymongo.read_preferences import ReadPreference
-from pymongo.member import PRIMARY, SECONDARY, OTHER
+from pymongo.read_preferences import ReadPreference, Secondary, Nearest
 from pymongo.mongo_replica_set_client import MongoReplicaSetClient
 from pymongo.mongo_replica_set_client import _partition_node, have_gevent
 from pymongo.database import Database
@@ -240,20 +238,18 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         # Make sure MRSC's properties are copied to Database and Collection
         for obj in c, c.pymongo_test, c.pymongo_test.test:
             self.assertEqual(obj.read_preference, ReadPreference.PRIMARY)
-            self.assertEqual(obj.tag_sets, [{}])
             self.assertEqual(obj.write_concern, {})
 
         cursor = c.pymongo_test.test.find()
         self.assertEqual(
             ReadPreference.PRIMARY, cursor._Cursor__read_preference)
-        self.assertEqual([{}], cursor._Cursor__tag_sets)
         c.close()
 
         tag_sets = [{'dc': 'la', 'rack': '2'}, {'foo': 'bar'}]
+        secondary = Secondary(tag_sets)
         c = MongoReplicaSetClient(pair, replicaSet=self.name, max_pool_size=25,
                                  document_class=SON, tz_aware=True,
-                                 read_preference=ReadPreference.SECONDARY,
-                                 tag_sets=copy.deepcopy(tag_sets),
+                                 read_preference=secondary,
                                  acceptablelatencyms=77)
         c.admin.command('ping')
         self.assertEqual(c.primary, self.primary)
@@ -264,21 +260,17 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         self.assertEqual(c.tz_aware, True)
 
         for obj in c, c.pymongo_test, c.pymongo_test.test:
-            self.assertEqual(obj.read_preference, ReadPreference.SECONDARY)
-            self.assertEqual(obj.tag_sets, tag_sets)
+            self.assertEqual(obj.read_preference, secondary)
 
         cursor = c.pymongo_test.test.find()
         self.assertEqual(
-            ReadPreference.SECONDARY, cursor._Cursor__read_preference)
-        self.assertEqual(tag_sets, cursor._Cursor__tag_sets)
+            secondary, cursor._Cursor__read_preference)
 
-        cursor = c.pymongo_test.test.find(
-            read_preference=ReadPreference.NEAREST,
-            tag_sets=[{'dc':'ny'}, {}])
+        nearest = Nearest([{'dc': 'ny'}, {}])
+        cursor = c.pymongo_test.test.find(read_preference=nearest)
 
         self.assertEqual(
-            ReadPreference.NEAREST, cursor._Cursor__read_preference)
-        self.assertEqual([{'dc':'ny'}, {}], cursor._Cursor__tag_sets)
+            nearest, cursor._Cursor__read_preference)
 
         if version.at_least(c, (1, 7, 4)):
             self.assertEqual(c.max_bson_size, 16777216)
@@ -704,12 +696,12 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
             ConnectionFailure,
             collection.find_one,
             {'$where': delay(5)},
-            read_preference=SECONDARY)
+            read_preference=ReadPreference.SECONDARY)
 
         rs_state = c._MongoReplicaSetClient__rs_state
         secondary_host = one(rs_state.secondaries)
         self.assertTrue(rs_state.get(secondary_host))
-        collection.find_one(read_preference=SECONDARY)  # No error.
+        collection.find_one(read_preference=ReadPreference.SECONDARY)  # No error.
 
     def test_waitQueueTimeoutMS(self):
         client = self._get_client(waitQueueTimeoutMS=2000)

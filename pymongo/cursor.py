@@ -20,7 +20,7 @@ from bson import RE_TYPE
 from bson.code import Code
 from bson.son import SON
 from pymongo import helpers, message, read_preferences
-from pymongo.read_preferences import ReadPreference, secondary_ok_commands
+from pymongo.read_preferences import ReadPreference, SECONDARY_OK_COMMANDS
 from pymongo.errors import (AutoReconnect,
                             CursorNotFound,
                             InvalidOperation)
@@ -68,8 +68,7 @@ class Cursor(object):
                  timeout=True, snapshot=False, tailable=False, sort=None,
                  max_scan=None, as_class=None,
                  await_data=False, partial=False, manipulate=True,
-                 read_preference=ReadPreference.PRIMARY,
-                 tag_sets=[{}], exhaust=False, compile_re=True,
+                 read_preference=None, exhaust=False, compile_re=True,
                  _uuid_subtype=None):
         """Create a new cursor.
 
@@ -146,8 +145,7 @@ class Cursor(object):
         self.__comment = None
         self.__as_class = as_class
         self.__manipulate = manipulate
-        self.__read_preference = read_preference
-        self.__tag_sets = tag_sets
+        self.__read_preference = read_preference or collection.read_preference
         self.__tz_aware = collection.database.connection.tz_aware
         self.__compile_re = compile_re
         self.__uuid_subtype = _uuid_subtype or collection.uuid_subtype
@@ -160,7 +158,7 @@ class Cursor(object):
         self.__query_flags = 0
         if tailable:
             self.__query_flags |= _QUERY_OPTIONS["tailable_cursor"]
-        if read_preference != ReadPreference.PRIMARY:
+        if self.__read_preference != ReadPreference.PRIMARY:
             self.__query_flags |= _QUERY_OPTIONS["slave_okay"]
         if not timeout:
             self.__query_flags |= _QUERY_OPTIONS["no_timeout"]
@@ -233,7 +231,7 @@ class Cursor(object):
                            "comment", "max", "min",
                            "snapshot", "ordering", "explain", "hint",
                            "batch_size", "max_scan", "as_class",
-                           "manipulate", "read_preference", "tag_sets",
+                           "manipulate", "read_preference",
                            "uuid_subtype", "compile_re", "query_flags")
         data = dict((k, v) for k, v in self.__dict__.iteritems()
                     if k.startswith('_Cursor__') and k[9:] in values_to_clone)
@@ -301,22 +299,15 @@ class Cursor(object):
         if (self.__collection.database.connection.is_mongos and
             self.__read_preference != ReadPreference.PRIMARY):
 
-            has_tags = self.__tag_sets and self.__tag_sets != [{}]
-
             # For maximum backwards compatibility, don't set $readPreference
             # for SECONDARY_PREFERRED unless tags are in use. Just rely on
             # the slaveOkay bit (set automatically if read preference is not
             # PRIMARY), which has the same behavior.
-            if (self.__read_preference != ReadPreference.SECONDARY_PREFERRED or
-                has_tags):
-
-                read_pref = {
-                    'mode': read_preferences.mongos_mode(self.__read_preference)
-                }
-                if has_tags:
-                    read_pref['tags'] = self.__tag_sets
-
-                operators['$readPreference'] = read_pref
+            mode = self.__read_preference.mode
+            tag_sets = self.__read_preference.tag_sets
+            if (mode != ReadPreference.SECONDARY_PREFERRED.mode or
+                tag_sets != [{}]):
+                operators['$readPreference'] = self.__read_preference.document
 
         if operators:
             # Make a shallow copy so we can cleanly rewind or clone.
@@ -328,7 +319,7 @@ class Cursor(object):
             if self.collection.name == "$cmd":
                 # Don't change commands that can't be sent to secondaries
                 command_name = spec and spec.keys()[0].lower() or ""
-                if command_name not in secondary_ok_commands:
+                if command_name not in SECONDARY_OK_COMMANDS:
                     return spec
                 elif command_name == 'mapreduce':
                     # mapreduce shouldn't be changed if its not inline
@@ -691,8 +682,6 @@ class Cursor(object):
         command = {
             "query": self.__spec,
             "fields": self.__fields,
-            "read_preference": self.__read_preference,
-            "tag_sets": self.__tag_sets,
         }
         if self.__max_time_ms is not None:
             command["maxTimeMS"] = self.__max_time_ms
@@ -710,6 +699,7 @@ class Cursor(object):
                              allowable_errors=["ns missing"],
                              uuid_subtype=self.__uuid_subtype,
                              compile_re=self.__compile_re,
+                             read_preference=self.__read_preference,
                              **command)
         if r.get("errmsg", "") == "ns missing":
             return 0
@@ -744,9 +734,6 @@ class Cursor(object):
         options = {"key": key}
         if self.__spec:
             options["query"] = self.__spec
-
-        options['read_preference'] = self.__read_preference
-        options['tag_sets'] = self.__tag_sets
         if self.__max_time_ms is not None:
             options['maxTimeMS'] = self.__max_time_ms
         if self.__comment:
@@ -757,6 +744,7 @@ class Cursor(object):
                                 self.__collection.name,
                                 uuid_subtype=self.__uuid_subtype,
                                 compile_re=self.__compile_re,
+                                read_preference=self.__read_preference,
                                 **options)["values"]
 
     def explain(self):
@@ -854,7 +842,6 @@ class Cursor(object):
         if message:
             kwargs = {
                 "read_preference": self.__read_preference,
-                "tag_sets": self.__tag_sets,
                 "exhaust": self.__exhaust,
             }
             if self.__connection_id is not None:

@@ -25,8 +25,11 @@ sys.path[0:0] = [""]
 from bson.son import SON
 from pymongo.cursor import _QUERY_OPTIONS
 from pymongo.mongo_replica_set_client import MongoReplicaSetClient
-from pymongo.read_preferences import (ReadPreference, modes, MovingAverage,
-                                      secondary_ok_commands)
+from pymongo.read_preferences import (ReadPreference, MovingAverage,
+                                      PrimaryPreferred,
+                                      Secondary, SecondaryPreferred,
+                                      Nearest, ServerMode,
+                                      SECONDARY_OK_COMMANDS)
 from pymongo.errors import ConfigurationError
 
 from test.test_replica_set_client import TestReplicaSetClientBase
@@ -78,8 +81,7 @@ class TestReadPreferencesBase(TestReplicaSetClientBase):
 
 class TestReadPreferences(TestReadPreferencesBase):
     def test_mode_validation(self):
-        # 'modes' are imported from read_preferences.py
-        for mode in modes:
+        for mode in ReadPreference:
             self.assertEqual(mode, self._get_client(
                 read_preference=mode).read_preference)
 
@@ -88,33 +90,33 @@ class TestReadPreferences(TestReadPreferencesBase):
 
     def test_tag_sets_validation(self):
         # Can't use tags with PRIMARY
-        self.assertRaises(ConfigurationError, self._get_client,
-            tag_sets=[{'k': 'v'}])
+        self.assertRaises(ConfigurationError, ServerMode,
+                          0, tag_sets=[{'k': 'v'}])
 
         # ... but empty tag sets are ok with PRIMARY
-        self.assertEqual([{}], self._get_client(tag_sets=[{}]).tag_sets)
+        self.assertRaises(ConfigurationError, ServerMode,
+                          0, tag_sets=[{}])
 
-        S = ReadPreference.SECONDARY
-        self.assertEqual([{}], self._get_client(read_preference=S).tag_sets)
+        S = Secondary([{}])
+        self.assertEqual([{}],
+            self._get_client(read_preference=S).read_preference.tag_sets)
 
-        self.assertEqual([{'k': 'v'}], self._get_client(
-            read_preference=S, tag_sets=[{'k': 'v'}]).tag_sets)
+        S = Secondary([{'k': 'v'}])
+        self.assertEqual([{'k': 'v'}],
+            self._get_client(read_preference=S).read_preference.tag_sets)
 
-        self.assertEqual([{'k': 'v'}, {}], self._get_client(
-            read_preference=S, tag_sets=[{'k': 'v'}, {}]).tag_sets)
+        S = Secondary([{'k': 'v'}, {}])
+        self.assertEqual([{'k': 'v'}, {}],
+            self._get_client(read_preference=S).read_preference.tag_sets)
 
-        self.assertRaises(ConfigurationError, self._get_client,
-            read_preference=S, tag_sets=[])
+        self.assertRaises(ConfigurationError, Secondary, tag_sets=[])
 
         # One dict not ok, must be a list of dicts
-        self.assertRaises(ConfigurationError, self._get_client,
-            read_preference=S, tag_sets={'k': 'v'})
+        self.assertRaises(ConfigurationError, Secondary, tag_sets={'k': 'v'})
 
-        self.assertRaises(ConfigurationError, self._get_client,
-            read_preference=S, tag_sets='foo')
+        self.assertRaises(ConfigurationError, Secondary, tag_sets='foo')
 
-        self.assertRaises(ConfigurationError, self._get_client,
-            read_preference=S, tag_sets=['foo'])
+        self.assertRaises(ConfigurationError, Secondary, tag_sets=['foo'])
 
     def test_latency_validation(self):
         self.assertEqual(17, self._get_client(
@@ -149,12 +151,6 @@ class TestReadPreferences(TestReadPreferencesBase):
     def test_secondary_preferred(self):
         self.assertReadsFrom('secondary',
             read_preference=ReadPreference.SECONDARY_PREFERRED)
-
-    def test_secondary_only(self):
-        # Test deprecated mode SECONDARY_ONLY, which is now a synonym for
-        # SECONDARY
-        self.assertEqual(
-            ReadPreference.SECONDARY, ReadPreference.SECONDARY_ONLY)
 
     def test_nearest(self):
         # With high acceptableLatencyMS, expect to read from any
@@ -237,7 +233,7 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
 
     def _test_fn(self, obedient, fn):
         if not obedient:
-            for mode in modes:
+            for mode in ReadPreference:
                 self.c.read_preference = mode
 
                 # Run it a few times to make sure we don't just get lucky the
@@ -511,24 +507,20 @@ class TestMongosConnection(unittest.TestCase):
                 '$readPreference' in cursor._Cursor__query_spec())
 
         # Copy these constants for brevity
-        PRIMARY_PREFERRED = ReadPreference.PRIMARY_PREFERRED
-        SECONDARY = ReadPreference.SECONDARY
-        SECONDARY_PREFERRED = ReadPreference.SECONDARY_PREFERRED
-        NEAREST = ReadPreference.NEAREST
         SLAVE_OKAY = _QUERY_OPTIONS['slave_okay']
 
         # Test non-PRIMARY modes which can be combined with tags
-        for kwarg, value, mongos_mode in (
-            ('read_preference', PRIMARY_PREFERRED, 'primaryPreferred'),
-            ('read_preference', SECONDARY, 'secondary'),
-            ('read_preference', SECONDARY_PREFERRED, 'secondaryPreferred'),
-            ('read_preference', NEAREST, 'nearest'),
+        for mode, mongos_mode in (
+            (PrimaryPreferred, 'primaryPreferred'),
+            (Secondary, 'secondary'),
+            (SecondaryPreferred, 'secondaryPreferred'),
+            (Nearest, 'nearest'),
         ):
             for tag_sets in (
                 None, [{}]
             ):
                 # Create a client e.g. with read_preference=NEAREST
-                c = get_client(tag_sets=tag_sets, **{kwarg: value})
+                c = get_client(read_preference=mode(tag_sets))
 
                 self.assertEqual(is_mongos, c.is_mongos)
                 cursor = c.pymongo_test.test.find()
@@ -567,7 +559,7 @@ class TestMongosConnection(unittest.TestCase):
                 [{'dc': 'la'}, {'dc': 'sf'}],
                 [{'dc': 'la'}, {'dc': 'sf'}, {}],
             ):
-                c = get_client(tag_sets=tag_sets, **{kwarg: value})
+                c = get_client(read_preference=mode(tag_sets))
 
                 self.assertEqual(is_mongos, c.is_mongos)
                 cursor = c.pymongo_test.test.find()
@@ -586,7 +578,7 @@ class TestMongosConnection(unittest.TestCase):
             raise SkipTest("Only mongos have read_prefs added to the spec")
 
         # Ensure secondary_ok_commands have readPreference
-        for cmd in secondary_ok_commands:
+        for cmd in SECONDARY_OK_COMMANDS:
             if cmd == 'mapreduce':  # map reduce is a special case
                 continue
             command = SON([(cmd, 1)])

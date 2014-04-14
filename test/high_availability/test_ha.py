@@ -34,7 +34,7 @@ from pymongo.member import Member
 from pymongo.mongo_replica_set_client import Monitor
 from pymongo.mongo_replica_set_client import MongoReplicaSetClient
 from pymongo.mongo_client import MongoClient, _partition_node
-from pymongo.read_preferences import ReadPreference, modes
+from pymongo.read_preferences import ReadPreference
 
 from test import utils, version
 from test.utils import one
@@ -800,9 +800,8 @@ class TestReadPreference(HATestCase):
                     # Reading with a different mode unpinned, hooray!
                     break
             else:
-                self.fail(
-                    "Changing from mode %s to mode %s never unpinned" % (
-                        modes[mode0], modes[mode1]))
+                self.fail("Changing from mode %r to mode "
+                          "%r never unpinned" % (mode0, mode1))
 
         # Now verify changing the tag_sets unpins the member.
         tags0 = [{'a': 'a'}, {}]

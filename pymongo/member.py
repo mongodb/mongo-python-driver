@@ -114,10 +114,10 @@ class Member(object):
         assert not self.is_mongos, \
             "Tried to match read preference mode on a mongos Member"
 
-        if mode == ReadPreference.PRIMARY and not self.is_primary:
+        if mode == ReadPreference.PRIMARY.mode and not self.is_primary:
             return False
 
-        if mode == ReadPreference.SECONDARY and not self.is_secondary:
+        if mode == ReadPreference.SECONDARY.mode and not self.is_secondary:
             return False
 
         # If we're not primary or secondary, then we're in a state like

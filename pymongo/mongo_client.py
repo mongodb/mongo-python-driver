@@ -191,12 +191,7 @@ class MongoClient(common.BaseObject):
             :class:`~pymongo.errors.AutoReconnect` "not master".
             See :class:`~pymongo.read_preferences.ReadPreference` for all
             available read preference options.
-          - `tag_sets`: Ignored unless connecting to a replica set via mongos.
-            Specify a priority-order for tag sets, provide a list of
-            tag sets: ``[{'dc': 'ny'}, {'dc': 'la'}, {}]``. A final, empty tag
-            set, ``{}``, means "read from any member that matches the mode,
-            ignoring tags.
-          - `acceptable_latency_ms`: (integer) When used with mongos
+          - `acceptableLatencyMS`: (integer) When used with mongos
             high availability, any mongos whose ping time is within
             acceptable_latency_ms of the nearest member may be chosen
             as the new primary during a failover. Default 15 milliseconds.
