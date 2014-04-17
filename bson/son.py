@@ -21,6 +21,9 @@ dictionary."""
 import copy
 import re
 
+from bson.py3compat import iteritems
+
+
 # This sort of sucks, but seems to be as good as it gets...
 # This is essentially the same as re._pattern_type
 RE_TYPE = type(re.compile(""))
@@ -174,7 +177,7 @@ class SON(dict):
 
     def popitem(self):
         try:
-            k, v = self.iteritems().next()
+            k, v = next(self.iteritems())
         except StopIteration:
             raise KeyError('container is empty')
         del self[k]
@@ -214,7 +217,7 @@ class SON(dict):
         return not self == other
 
     def __len__(self):
-        return len(self.keys())
+        return len(self.__keys)
 
     def to_dict(self):
         """Convert a SON document to a normal Python dictionary instance.
@@ -229,7 +232,7 @@ class SON(dict):
             if isinstance(value, SON):
                 value = dict(value)
             if isinstance(value, dict):
-                for k, v in value.iteritems():
+                for k, v in iteritems(value):
                     value[k] = transform_value(v)
             return value
 

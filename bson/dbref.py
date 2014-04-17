@@ -16,6 +16,7 @@
 
 from copy import deepcopy
 
+from bson.py3compat import iteritems, string_type
 from bson.son import SON
 
 
@@ -49,12 +50,12 @@ class DBRef(object):
 
         .. mongodoc:: dbrefs
         """
-        if not isinstance(collection, basestring):
+        if not isinstance(collection, string_type):
             raise TypeError("collection must be an "
-                            "instance of %s" % (basestring.__name__,))
-        if database is not None and not isinstance(database, basestring):
+                            "instance of %s" % string_type.__name__)
+        if database is not None and not isinstance(database, string_type):
             raise TypeError("database must be an "
-                            "instance of %s" % (basestring.__name__,))
+                            "instance of %s" % string_type.__name__)
 
         self.__collection = collection
         self.__id = id
@@ -110,7 +111,7 @@ class DBRef(object):
 
     def __repr__(self):
         extra = "".join([", %s=%r" % (k, v)
-                         for k, v in self.__kwargs.iteritems()])
+                         for k, v in iteritems(self.__kwargs)])
         if self.database is None:
             return "DBRef(%r, %r%s)" % (self.collection, self.id, extra)
         return "DBRef(%r, %r, %r%s)" % (self.collection, self.id,

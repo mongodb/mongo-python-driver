@@ -33,12 +33,11 @@ import threading
 import time
 
 from bson.errors import InvalidId
-from bson.py3compat import (PY3, b, binary_type, text_type,
-                            bytes_from_hex, string_types)
+from bson.py3compat import PY3, binary_type, text_type, bytes_from_hex
 from bson.tz_util import utc
 
-EMPTY = b("")
-ZERO  = b("\x00")
+EMPTY = b""
+ZERO  = b"\x00"
 
 def _machine_bytes():
     """Get the machine portion of an ObjectId.
@@ -181,7 +180,7 @@ class ObjectId(object):
         """
         if isinstance(oid, ObjectId):
             self.__id = oid.__id
-        elif isinstance(oid, string_types):
+        elif isinstance(oid, (text_type, binary_type)):
             if len(oid) == 12:
                 if isinstance(oid, binary_type):
                     self.__id = oid

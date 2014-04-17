@@ -20,7 +20,6 @@ PY3 = sys.version_info[0] == 3
 
 if PY3:
     import codecs
-
     from io import BytesIO as StringIO
 
     def b(s):
@@ -33,12 +32,23 @@ if PY3:
         # See http://python3porting.com/problems.html#nicer-solutions
         return codecs.latin_1_encode(s)[0]
 
+    def u(s):
+        # PY3 strings may already be treated as unicode literals
+        return s
+
     def bytes_from_hex(h):
         return bytes.fromhex(h)
 
+    def iteritems(d):
+        return d.items()
+
+    def reraise(exctype, value, trace=None):
+        raise exctype(str(value)).with_traceback(trace)
+
     binary_type = bytes
-    text_type   = str
-    next_item   = "__next__"
+    text_type = str
+    string_type = str
+    integer_types = int
 
 else:
     try:
@@ -50,13 +60,24 @@ else:
         # See comments above. In python 2.x b('foo') is just 'foo'.
         return s
 
+    import codecs
+
+    def u(s):
+        """Replacement for unicode literal prefix."""
+        return unicode(s.replace('\\', '\\\\'), 'unicode_escape')
+
     def bytes_from_hex(h):
         return h.decode('hex')
 
-    binary_type = str
-    # 2to3 will convert this to "str". That's okay
-    # since we won't ever get here under python3.
-    text_type   = unicode
-    next_item   = "next"
+    def iteritems(d):
+        return d.iteritems()
 
-string_types = (binary_type, text_type)
+    # "raise x, y, z" raises SyntaxError in Python 3
+    exec("""def reraise(exctype, value, trace=None):
+    raise exctype, str(value), trace
+""")
+
+    binary_type = str
+    string_type = basestring
+    text_type = unicode
+    integer_types = (int, long)
