@@ -92,7 +92,6 @@ class WriteConcern(object):
         """
         return self.__acknowledged
 
-    # This doesn't keep the options in order. Do we care?
     def __repr__(self):
         return ("WriteConcern(%s)" % (
             ", ".join("%s=%s" % kvt for kvt in self.document.items()),))

@@ -241,22 +241,28 @@ class Collection(common.BaseObject):
           - `check_keys` (optional): check if keys start with '$' or
             contain '.', raising :class:`~pymongo.errors.InvalidName`
             in either case.
-          - `w` (optional): (integer or string) If this is a replica set, write
-            operations will block until they have been replicated to the
-            specified number or tagged set of servers. `w=<int>` always includes
-            the replica set primary (e.g. w=3 means write to the primary and wait
-            until replicated to **two** secondaries). **Passing w=0 disables
-            write acknowledgement and all other write concern options.**
-          - `wtimeout` (optional): (integer) Used in conjunction with `w`.
-            Specify a value in milliseconds to control how long to wait for
-            write propagation to complete. If replication does not complete in
-            the given timeframe, a timeout exception is raised.
-          - `j` (optional): If ``True`` block until write operations have been
-            committed to the journal. Ignored if the server is running without
-            journaling.
-          - `fsync` (optional): If ``True`` force the database to fsync all
-            files before returning. When used with `j` the server awaits the
-            next group commit before returning.
+          - `w`: (integer or string) Used with replication, write operations
+            will block until they have been replicated to the specified number
+            or tagged set of servers. `w=<integer>` always includes the replica
+            set primary (e.g. w=3 means write to the primary and wait until
+            replicated to **two** secondaries). **w=0 disables acknowledgement
+            of write operations and can not be used with other write concern
+            options.**
+          - `wtimeout`: (integer) Used in conjunction with `w`. Specify a value
+            in milliseconds to control how long to wait for write propagation
+            to complete. If replication does not complete in the given
+            timeframe, a timeout exception is raised.
+          - `j`: If ``True`` block until write operations have been committed
+            to the journal. Cannot be used in combination with `fsync`. Prior
+            to MongoDB 2.6 this option was ignored if the server was running
+            without journaling. Starting with MongoDB 2.6 write operations will
+            fail with an exception if this option is used when the server is
+            running without journaling.
+          - `fsync`: If ``True`` and the server is running without journaling,
+            blocks until the server has synced all data files to disk. If the
+            server is running with journaling, this acts the same as the `j`
+            option, blocking until write operations have been committed to the
+            journal. Cannot be used in combination with `j`.
         :Returns:
           - The ``'_id'`` value of `to_save` or ``[None]`` if `manipulate` is
             ``False`` and `to_save` has no '_id' field.
@@ -317,22 +323,28 @@ class Collection(common.BaseObject):
             inserts, except lastError will be set if any insert fails, not just
             the last one. If multiple errors occur, only the most recent will
             be reported by :meth:`~pymongo.database.Database.error`.
-          - `w` (optional): (integer or string) If this is a replica set, write
-            operations will block until they have been replicated to the
-            specified number or tagged set of servers. `w=<int>` always includes
-            the replica set primary (e.g. w=3 means write to the primary and wait
-            until replicated to **two** secondaries). **Passing w=0 disables
-            write acknowledgement and all other write concern options.**
-          - `wtimeout` (optional): (integer) Used in conjunction with `w`.
-            Specify a value in milliseconds to control how long to wait for
-            write propagation to complete. If replication does not complete in
-            the given timeframe, a timeout exception is raised.
-          - `j` (optional): If ``True`` block until write operations have been
-            committed to the journal. Ignored if the server is running without
-            journaling.
-          - `fsync` (optional): If ``True`` force the database to fsync all
-            files before returning. When used with `j` the server awaits the
-            next group commit before returning.
+          - `w`: (integer or string) Used with replication, write operations
+            will block until they have been replicated to the specified number
+            or tagged set of servers. `w=<integer>` always includes the replica
+            set primary (e.g. w=3 means write to the primary and wait until
+            replicated to **two** secondaries). **w=0 disables acknowledgement
+            of write operations and can not be used with other write concern
+            options.**
+          - `wtimeout`: (integer) Used in conjunction with `w`. Specify a value
+            in milliseconds to control how long to wait for write propagation
+            to complete. If replication does not complete in the given
+            timeframe, a timeout exception is raised.
+          - `j`: If ``True`` block until write operations have been committed
+            to the journal. Cannot be used in combination with `fsync`. Prior
+            to MongoDB 2.6 this option was ignored if the server was running
+            without journaling. Starting with MongoDB 2.6 write operations will
+            fail with an exception if this option is used when the server is
+            running without journaling.
+          - `fsync`: If ``True`` and the server is running without journaling,
+            blocks until the server has synced all data files to disk. If the
+            server is running with journaling, this acts the same as the `j`
+            option, blocking until write operations have been committed to the
+            journal. Cannot be used in combination with `j`.
         :Returns:
           - The ``'_id'`` value (or list of '_id' values) of `doc_or_docs` or
             ``[None]`` if manipulate is ``False`` and the documents passed
@@ -468,22 +480,28 @@ class Collection(common.BaseObject):
             might eventually change to ``True``. It is recommended
             that you specify this argument explicitly for all update
             operations in order to prepare your code for that change.
-          - `w` (optional): (integer or string) If this is a replica set, write
-            operations will block until they have been replicated to the
-            specified number or tagged set of servers. `w=<int>` always includes
-            the replica set primary (e.g. w=3 means write to the primary and wait
-            until replicated to **two** secondaries). **Passing w=0 disables
-            write acknowledgement and all other write concern options.**
-          - `wtimeout` (optional): (integer) Used in conjunction with `w`.
-            Specify a value in milliseconds to control how long to wait for
-            write propagation to complete. If replication does not complete in
-            the given timeframe, a timeout exception is raised.
-          - `j` (optional): If ``True`` block until write operations have been
-            committed to the journal. Ignored if the server is running without
-            journaling.
-          - `fsync` (optional): If ``True`` force the database to fsync all
-            files before returning. When used with `j` the server awaits the
-            next group commit before returning.
+          - `w`: (integer or string) Used with replication, write operations
+            will block until they have been replicated to the specified number
+            or tagged set of servers. `w=<integer>` always includes the replica
+            set primary (e.g. w=3 means write to the primary and wait until
+            replicated to **two** secondaries). **w=0 disables acknowledgement
+            of write operations and can not be used with other write concern
+            options.**
+          - `wtimeout`: (integer) Used in conjunction with `w`. Specify a value
+            in milliseconds to control how long to wait for write propagation
+            to complete. If replication does not complete in the given
+            timeframe, a timeout exception is raised.
+          - `j`: If ``True`` block until write operations have been committed
+            to the journal. Cannot be used in combination with `fsync`. Prior
+            to MongoDB 2.6 this option was ignored if the server was running
+            without journaling. Starting with MongoDB 2.6 write operations will
+            fail with an exception if this option is used when the server is
+            running without journaling.
+          - `fsync`: If ``True`` and the server is running without journaling,
+            blocks until the server has synced all data files to disk. If the
+            server is running with journaling, this acts the same as the `j`
+            option, blocking until write operations have been committed to the
+            journal. Cannot be used in combination with `j`.
         :Returns:
           - A document (dict) describing the effect of the update or ``None``
             if write acknowledgement is disabled.
@@ -599,22 +617,28 @@ class Collection(common.BaseObject):
           - `multi` (optional): If ``True`` (the default) remove all documents
             matching `spec_or_id`, otherwise remove only the first matching
             document.
-          - `w` (optional): (integer or string) If this is a replica set, write
-            operations will block until they have been replicated to the
-            specified number or tagged set of servers. `w=<int>` always includes
-            the replica set primary (e.g. w=3 means write to the primary and wait
-            until replicated to **two** secondaries). **Passing w=0 disables
-            write acknowledgement and all other write concern options.**
-          - `wtimeout` (optional): (integer) Used in conjunction with `w`.
-            Specify a value in milliseconds to control how long to wait for
-            write propagation to complete. If replication does not complete in
-            the given timeframe, a timeout exception is raised.
-          - `j` (optional): If ``True`` block until write operations have been
-            committed to the journal. Ignored if the server is running without
-            journaling.
-          - `fsync` (optional): If ``True`` force the database to fsync all
-            files before returning. When used with `j` the server awaits the
-            next group commit before returning.
+          - `w`: (integer or string) Used with replication, write operations
+            will block until they have been replicated to the specified number
+            or tagged set of servers. `w=<integer>` always includes the replica
+            set primary (e.g. w=3 means write to the primary and wait until
+            replicated to **two** secondaries). **w=0 disables acknowledgement
+            of write operations and can not be used with other write concern
+            options.**
+          - `wtimeout`: (integer) Used in conjunction with `w`. Specify a value
+            in milliseconds to control how long to wait for write propagation
+            to complete. If replication does not complete in the given
+            timeframe, a timeout exception is raised.
+          - `j`: If ``True`` block until write operations have been committed
+            to the journal. Cannot be used in combination with `fsync`. Prior
+            to MongoDB 2.6 this option was ignored if the server was running
+            without journaling. Starting with MongoDB 2.6 write operations will
+            fail with an exception if this option is used when the server is
+            running without journaling.
+          - `fsync`: If ``True`` and the server is running without journaling,
+            blocks until the server has synced all data files to disk. If the
+            server is running with journaling, this acts the same as the `j`
+            option, blocking until write operations have been committed to the
+            journal. Cannot be used in combination with `j`.
         :Returns:
           - A document (dict) describing the effect of the remove or ``None``
             if write acknowledgement is disabled.
