@@ -49,6 +49,7 @@ if PY3:
     text_type = str
     string_type = str
     integer_types = int
+    next_item = "__next__"
 
 else:
     try:
@@ -81,3 +82,6 @@ else:
     string_type = basestring
     text_type = unicode
     integer_types = (int, long)
+    next_item = "next"
+
+string_types = (binary_type, text_type)
