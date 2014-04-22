@@ -217,18 +217,6 @@ class TestCommon(unittest.TestCase):
         coll.write_concern = wc
         self.assertEqual(wc.to_dict(), coll.write_concern)
 
-        def f():
-            c.write_concern = {'foo': 'bar'}
-        self.assertRaises(ConfigurationError, f)
-
-        def f():
-            c.write_concern['foo'] = 'bar'
-        self.assertRaises(ConfigurationError, f)
-
-        def f():
-            c.write_concern = [('foo', 'bar')]
-        self.assertRaises(ConfigurationError, f)
-
     def test_mongo_client(self):
         m = MongoClient(pair, w=0)
         coll = m.pymongo_test.write_concern_test

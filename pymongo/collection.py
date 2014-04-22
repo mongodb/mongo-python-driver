@@ -383,15 +383,16 @@ class Collection(common.BaseObject):
                     ids.append(doc.get('_id'))
                     yield doc
 
-        safe, options = self._get_write_mode(kwargs)
+        concern = kwargs or self.write_concern
+        safe = concern.get("w") != 0
 
         if client.max_wire_version > 1 and safe:
             # Insert command
             command = SON([('insert', self.name),
                            ('ordered', not continue_on_error)])
 
-            if options:
-                command['writeConcern'] = options
+            if concern:
+                command['writeConcern'] = concern
 
             results = message._do_batched_write_command(
                     self.database.name + ".$cmd", _INSERT, command,
@@ -400,7 +401,7 @@ class Collection(common.BaseObject):
         else:
             # Legacy batched OP_INSERT
             message._do_batched_insert(self.__full_name, gen(), check_keys,
-                                       safe, options, continue_on_error,
+                                       safe, concern, continue_on_error,
                                        self.uuid_subtype, client)
 
         if return_one:
@@ -515,7 +516,8 @@ class Collection(common.BaseObject):
         if manipulate:
             document = self.__database._fix_incoming(document, self)
 
-        safe, options = self._get_write_mode(kwargs)
+        concern = kwargs or self.write_concern
+        safe = concern.get("w") != 0
 
         if document:
             # If a top level key begins with '$' this is a modify operation
@@ -530,8 +532,8 @@ class Collection(common.BaseObject):
         if client.max_wire_version > 1 and safe:
             # Update command
             command = SON([('update', self.name)])
-            if options:
-                command['writeConcern'] = options
+            if concern:
+                command['writeConcern'] = concern
 
             docs = [SON([('q', spec), ('u', document),
                          ('multi', multi), ('upsert', upsert)])]
@@ -554,7 +556,7 @@ class Collection(common.BaseObject):
             # Legacy OP_UPDATE
             return client._send_message(
                 message.update(self.__full_name, upsert, multi,
-                               spec, document, safe, options,
+                               spec, document, safe, concern,
                                check_keys, self.uuid_subtype), safe)
 
     def drop(self):
@@ -640,7 +642,8 @@ class Collection(common.BaseObject):
         if not isinstance(spec_or_id, dict):
             spec_or_id = {"_id": spec_or_id}
 
-        safe, options = self._get_write_mode(kwargs)
+        concern = kwargs or self.write_concern
+        safe = concern.get("w") != 0
 
         client = self.database.connection
 
@@ -649,8 +652,8 @@ class Collection(common.BaseObject):
         if client.max_wire_version > 1 and safe:
             # Delete command
             command = SON([('delete', self.name)])
-            if options:
-                command['writeConcern'] = options
+            if concern:
+                command['writeConcern'] = concern
 
             docs = [SON([('q', spec_or_id), ('limit', int(not multi))])]
 
@@ -666,7 +669,7 @@ class Collection(common.BaseObject):
             # Legacy OP_DELETE
             return client._send_message(
                 message.delete(self.__full_name, spec_or_id, safe,
-                               options, self.uuid_subtype, int(not multi)), safe)
+                               concern, self.uuid_subtype, int(not multi)), safe)
 
     def find_one(self, spec_or_id=None, *args, **kwargs):
         """Get a single document from the database.

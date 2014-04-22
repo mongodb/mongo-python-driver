@@ -19,6 +19,7 @@ from pymongo import read_preferences
 
 from pymongo.auth import MECHANISMS
 from pymongo.errors import ConfigurationError
+from pymongo.write_concern import WriteConcern
 from bson.binary import (OLD_UUID_SUBTYPE, UUID_SUBTYPE,
                          JAVA_LEGACY, CSHARP_LEGACY)
 
@@ -245,8 +246,7 @@ def validate_read_preference_tags(name, value):
     return [tags]
 
 
-
-# jounal is an alias for j,
+# journal is an alias for j,
 # wtimeoutms is an alias for wtimeout,
 VALIDATORS = {
     'replicaset': validate_basestring,
@@ -310,22 +310,6 @@ WRITE_CONCERN_OPTIONS = frozenset([
 ])
 
 
-class WriteConcern(dict):
-
-    def __init__(self, *args, **kwargs):
-        """A subclass of dict that overrides __setitem__ to
-        validate write concern options.
-        """
-        super(WriteConcern, self).__init__(*args, **kwargs)
-
-    def __setitem__(self, key, value):
-        if key not in WRITE_CONCERN_OPTIONS:
-            raise ConfigurationError("%s is not a valid write "
-                                     "concern option." % (key,))
-        key, value = validate(key, value)
-        super(WriteConcern, self).__setitem__(key, value)
-
-
 class BaseObject(object):
     """A base class that provides attributes and methods common
     to multiple pymongo classes.
@@ -337,20 +321,12 @@ class BaseObject(object):
 
         self.__read_pref = read_preferences.ReadPreference.PRIMARY
         self.__uuid_subtype = OLD_UUID_SUBTYPE
-        self.__write_concern = WriteConcern()
+        self.__write_concern = None
         self.__set_options(options)
-
-    def __set_write_concern_option(self, option, value):
-        """Validates and sets getlasterror options for this
-        object (MongoClient, Database, Collection, etc.)
-        """
-        if value is None:
-            self.__write_concern.pop(option, None)
-        else:
-            self.__write_concern[option] = value
 
     def __set_options(self, options):
         """Validates and sets all options passed to this object."""
+        wc_opts = {}
         for option, value in options.iteritems():
             if option == 'read_preference':
                 self.__read_pref = validate_read_preference(option, value)
@@ -365,25 +341,20 @@ class BaseObject(object):
             elif option == 'uuidrepresentation':
                 self.__uuid_subtype = validate_uuid_subtype(option, value)
             elif option in WRITE_CONCERN_OPTIONS:
-                if option == 'journal':
-                    self.__set_write_concern_option('j', value)
-                elif option == 'wtimeoutms':
-                    self.__set_write_concern_option('wtimeout', value)
+                if option == "journal":
+                    wc_opts["j"] = value
+                elif option == "wtimeoutms":
+                    wc_opts["wtimeout"] = value
                 else:
-                    self.__set_write_concern_option(option, value)
+                    wc_opts[option] = value
+        self.__write_concern = WriteConcern(**wc_opts)
 
     def __set_write_concern(self, value):
         """Property setter for write_concern."""
         if not isinstance(value, dict):
             raise ConfigurationError("write_concern must be an "
                                      "instance of dict or a subclass.")
-        # Make a copy here to avoid users accidentally setting the
-        # same dict on multiple instances.
-        wc = WriteConcern()
-        for k, v in value.iteritems():
-            # Make sure we validate each option.
-            wc[k] = v
-        self.__write_concern = wc
+        self.__write_concern = WriteConcern(**value)
 
     def __get_write_concern(self):
         """The default write concern for this instance.
@@ -435,7 +406,7 @@ class BaseObject(object):
         """
         # To support dict style access we have to return the actual
         # WriteConcern here, not a copy.
-        return self.__write_concern
+        return self.__write_concern.document
 
     write_concern = property(__get_write_concern, __set_write_concern)
 
@@ -477,22 +448,7 @@ class BaseObject(object):
         We don't want to override user write concern options if write concern
         is already enabled.
         """
-        if self.__write_concern.get('w') != 0:
+        if self.__write_concern.acknowledged:
             return {}
         return {'w': 1}
 
-    def _get_write_mode(self, options):
-        """Get the current write mode.
-
-        Determines if the current write is acknowledged or not based on the
-        inherited write_concern values, or passed options.
-
-        :Parameters:
-            - `options`: overriding write concern options.
-
-        .. versionadded:: 2.3
-        """
-        write_concern = options or self.__write_concern
-        if write_concern.get('w') == 0:
-            return False, {}
-        return True, write_concern

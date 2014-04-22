@@ -833,7 +833,7 @@ class TestCollection(unittest.TestCase):
         )
 
         db.drop_collection("test")
-        db.write_concern['w'] = 0
+        db.write_concern = {"w": 0}
         db.test.ensure_index([('i', ASCENDING)], unique=True)
 
         # No error
