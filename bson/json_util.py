@@ -77,8 +77,6 @@ import calendar
 import datetime
 import re
 
-from bson.py3compat import iteritems, text_type
-
 json_lib = True
 try:
     import json
@@ -99,7 +97,7 @@ from bson.objectid import ObjectId
 from bson.regex import Regex
 from bson.timestamp import Timestamp
 
-from bson.py3compat import PY3, binary_type, string_type
+from bson.py3compat import PY3, binary_type, iteritems, string_types, text_type
 
 
 _RE_OPT_TABLE = {
@@ -154,7 +152,7 @@ def _json_convert(obj):
     """
     if hasattr(obj, 'iteritems') or hasattr(obj, 'items'):  # PY3 support
         return SON(((k, _json_convert(v)) for k, v in iteritems(obj)))
-    elif hasattr(obj, '__iter__') and not isinstance(obj, string_type):
+    elif hasattr(obj, '__iter__') and not isinstance(obj, string_types):
         return list((_json_convert(v) for v in obj))
     try:
         return default(obj)
