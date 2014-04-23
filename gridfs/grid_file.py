@@ -20,8 +20,7 @@ import os
 
 from bson.binary import Binary
 from bson.objectid import ObjectId
-from bson.py3compat import (b, binary_type, next_item,
-                            string_types, text_type, StringIO)
+from bson.py3compat import binary_type, text_type, StringIO
 from gridfs.errors import (CorruptGridFile,
                            FileExists,
                            NoFile,
@@ -41,8 +40,8 @@ except AttributeError:
     _SEEK_CUR = 1
     _SEEK_END = 2
 
-EMPTY = b("")
-NEWLN = b("\n")
+EMPTY = b""
+NEWLN = b"\n"
 
 """Default chunk size, in bytes."""
 # Slightly under a power of 2, to work well with server's record allocations.
@@ -317,9 +316,9 @@ class GridIn(object):
             read = data.read
         except AttributeError:
             # string
-            if not isinstance(data, string_types):
+            if not isinstance(data, (text_type, bytes)):
                 raise TypeError("can only write strings or file-like objects")
-            if isinstance(data, unicode):
+            if isinstance(data, text_type):
                 try:
                     data = data.encode(self.encoding)
                 except AttributeError:
@@ -500,7 +499,7 @@ class GridOut(object):
         .. versionadded:: 1.9
         """
         if size == 0:
-            return b('')
+            return b''
 
         remainder = int(self.length) - self.__position
         if size < 0 or size > remainder:
@@ -607,6 +606,8 @@ class GridOutIterator(object):
         self.__current_chunk += 1
         return binary_type(chunk["data"])
 
+    __next__ = next
+
 
 class GridFile(object):
     """No longer supported.
@@ -651,8 +652,10 @@ class GridOutCursor(Cursor):
         """Get next GridOut object from cursor.
         """
         # Work around "super is not iterable" issue in Python 3.x
-        next_file = getattr(super(GridOutCursor, self), next_item)()
+        next_file = super(GridOutCursor, self).next()
         return GridOut(self.__root_collection, file_document=next_file)
+
+    __next__ = next
 
     def add_option(self, *args, **kwargs):
         raise NotImplementedError("Method does not exist for GridOutCursor")

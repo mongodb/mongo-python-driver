@@ -55,11 +55,6 @@ if PY3:
     text_type = str
     string_type = str
     integer_types = int
-    next_item = "__next__"
-
-    # TODO: remove when gridfs module is made single-source
-    next_item = '__next__'
-    string_types = (bytes, text_type)
 else:
     try:
         from cStringIO import StringIO
@@ -96,7 +91,3 @@ else:
     string_type = basestring
     text_type = unicode
     integer_types = (int, long)
-
-    # TODO: remove when gridfs module is made single-source
-    next_item = 'next'
-    string_types = (bytes, text_type)

@@ -207,7 +207,7 @@ class GridFS(object):
         else:
             cursor.limit(-1).skip(version).sort("uploadDate", ASCENDING)
         try:
-            grid_file = cursor.next()
+            grid_file = next(cursor)
             return GridOut(self.__collection, file_document=grid_file)
         except StopIteration:
             raise NoFile("no version %d for filename %r" % (version, filename))

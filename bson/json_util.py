@@ -97,7 +97,7 @@ from bson.objectid import ObjectId
 from bson.regex import Regex
 from bson.timestamp import Timestamp
 
-from bson.py3compat import PY3, binary_type, iteritems, string_types, text_type
+from bson.py3compat import PY3, binary_type, iteritems, text_type
 
 
 _RE_OPT_TABLE = {
