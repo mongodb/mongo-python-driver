@@ -14,15 +14,9 @@
 
 """Authentication helpers."""
 
+from __future__ import unicode_literals
+
 import hmac
-try:
-    import hashlib
-    _MD5 = hashlib.md5
-    _DMOD = _MD5
-except ImportError:  # for Python < 2.5
-    import md5
-    _MD5 = md5.new
-    _DMOD = md5
 
 HAVE_KERBEROS = True
 try:
@@ -30,8 +24,10 @@ try:
 except ImportError:
     HAVE_KERBEROS = False
 
+from hashlib import md5
+
 from bson.binary import Binary
-from bson.py3compat import b
+from bson.py3compat import b, string_type, _unicode
 from bson.son import SON
 from pymongo.errors import ConfigurationError, OperationFailure
 
@@ -55,29 +51,29 @@ def _build_credentials_tuple(mech, source, user, passwd, extra):
 def _password_digest(username, password):
     """Get a password digest to use for authentication.
     """
-    if not isinstance(password, basestring):
-        raise TypeError("password must be an instance "
-                        "of %s" % (basestring.__name__,))
+    if not isinstance(password, string_type):
+        raise TypeError("password must be an "
+                        "instance of %s" % (string_type.__name__,))
     if len(password) == 0:
         raise ValueError("password can't be empty")
-    if not isinstance(username, basestring):
-        raise TypeError("username must be an instance "
-                        "of %s" % (basestring.__name__,))
+    if not isinstance(username, string_type):
+        raise TypeError("password must be an "
+                        "instance of  %s" % (string_type.__name__,))
 
-    md5hash = _MD5()
+    md5hash = md5()
     data = "%s:mongo:%s" % (username, password)
     md5hash.update(data.encode('utf-8'))
-    return unicode(md5hash.hexdigest())
+    return _unicode(md5hash.hexdigest())
 
 
 def _auth_key(nonce, username, password):
     """Get an auth key to use for authentication.
     """
     digest = _password_digest(username, password)
-    md5hash = _MD5()
-    data = "%s%s%s" % (nonce, unicode(username), digest)
+    md5hash = md5()
+    data = "%s%s%s" % (nonce, _unicode(username), digest)
     md5hash.update(data.encode('utf-8'))
-    return unicode(md5hash.hexdigest())
+    return _unicode(md5hash.hexdigest())
 
 
 def _authenticate_gssapi(credentials, sock_info, cmd_func):
@@ -114,7 +110,7 @@ def _authenticate_gssapi(credentials, sock_info, cmd_func):
             response, _ = cmd_func(sock_info, '$external', cmd)
 
             # Limit how many times we loop to catch protocol / library issues
-            for _ in xrange(10):
+            for _ in range(10):
                 result = kerberos.authGSSClientStep(ctx,
                                                     str(response['payload']))
                 if result == -1:
@@ -156,7 +152,7 @@ def _authenticate_gssapi(credentials, sock_info, cmd_func):
         finally:
             kerberos.authGSSClientClean(ctx)
 
-    except kerberos.KrbError, exc:
+    except kerberos.KrbError as exc:
         raise OperationFailure(str(exc))
 
 
@@ -181,14 +177,14 @@ def _authenticate_cram_md5(credentials, sock_info, cmd_func):
     passwd = _password_digest(username, password)
     cmd = SON([('saslStart', 1),
                ('mechanism', 'CRAM-MD5'),
-               ('payload', Binary(b(''))),
+               ('payload', Binary(b'')),
                ('autoAuthorize', 1)])
     response, _ = cmd_func(sock_info, source, cmd)
     # MD5 as implicit default digest for digestmod is deprecated
     # in python 3.4
-    mac = hmac.HMAC(key=passwd.encode('utf-8'), digestmod=_DMOD)
+    mac = hmac.HMAC(key=passwd.encode('utf-8'), digestmod=md5)
     mac.update(response['payload'])
-    challenge = username.encode('utf-8') + b(' ') + b(mac.hexdigest())
+    challenge = username.encode('utf-8') + b' ' + b(mac.hexdigest())
     cmd = SON([('saslContinue', 1),
                ('conversationId', response['conversationId']),
                ('payload', Binary(challenge))])

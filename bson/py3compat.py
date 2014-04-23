@@ -40,10 +40,16 @@ if PY3:
         return bytes.fromhex(h)
 
     def iteritems(d):
-        return d.items()
+        return iter(d.items())
+
+    def itervalues(d):
+        return iter(d.values())
 
     def reraise(exctype, value, trace=None):
         raise exctype(str(value)).with_traceback(trace)
+
+    def _unicode(s):
+        return s
 
     binary_type = bytes
     text_type = str
@@ -51,6 +57,9 @@ if PY3:
     integer_types = int
     next_item = "__next__"
 
+    # TODO: remove when gridfs module is made single-source
+    next_item = '__next__'
+    string_types = (bytes, text_type)
 else:
     try:
         from cStringIO import StringIO
@@ -73,15 +82,21 @@ else:
     def iteritems(d):
         return d.iteritems()
 
+    def itervalues(d):
+        return d.itervalues()
+
     # "raise x, y, z" raises SyntaxError in Python 3
     exec("""def reraise(exctype, value, trace=None):
     raise exctype, str(value), trace
 """)
 
+    _unicode = unicode
+
     binary_type = str
     string_type = basestring
     text_type = unicode
     integer_types = (int, long)
-    next_item = "next"
 
-string_types = (binary_type, text_type)
+    # TODO: remove when gridfs module is made single-source
+    next_item = 'next'
+    string_types = (bytes, text_type)

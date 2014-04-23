@@ -14,10 +14,15 @@
 
 """Collection level utilities for Mongo."""
 
+from __future__ import unicode_literals
+
 import warnings
 
 from bson.code import Code
 from bson.objectid import ObjectId
+from bson.py3compat import (_unicode,
+                            integer_types,
+                            string_type)
 from bson.son import SON
 from pymongo import (bulk,
                      common,
@@ -40,7 +45,7 @@ except ImportError:
 def _gen_index_name(keys):
     """Generate an index name from the set of fields it is over.
     """
-    return u"_".join([u"%s_%s" % item for item in keys])
+    return "_".join(["%s_%s" % item for item in keys])
 
 
 class Collection(common.BaseObject):
@@ -90,9 +95,9 @@ class Collection(common.BaseObject):
             uuidrepresentation=database.uuid_subtype,
             **database.write_concern)
 
-        if not isinstance(name, basestring):
+        if not isinstance(name, string_type):
             raise TypeError("name must be an instance "
-                            "of %s" % (basestring.__name__,))
+                            "of %s" % (string_type.__name__,))
 
         if not name or ".." in name:
             raise InvalidName("collection names cannot be empty")
@@ -108,8 +113,8 @@ class Collection(common.BaseObject):
                               "null character")
 
         self.__database = database
-        self.__name = unicode(name)
-        self.__full_name = u"%s.%s" % (self.__database.name, self.__name)
+        self.__name = _unicode(name)
+        self.__full_name = "%s.%s" % (self.__database.name, self.__name)
         if create or kwargs:
             self.__create(kwargs)
 
@@ -132,7 +137,7 @@ class Collection(common.BaseObject):
         :Parameters:
           - `name`: the name of the collection to get
         """
-        return Collection(self.__database, u"%s.%s" % (self.__name, name))
+        return Collection(self.__database, "%s.%s" % (self.__name, name))
 
     def __getitem__(self, name):
         return self.__getattr__(name)
@@ -543,7 +548,7 @@ class Collection(common.BaseObject):
             # we check here. Passing a document with a mix of top level keys
             # starting with and without a '$' is invalid and the server will
             # raise an appropriate exception.
-            first = (document.iterkeys()).next()
+            first = next(iter(document))
             if first.startswith('$'):
                 check_keys = False
 
@@ -1018,7 +1023,8 @@ class Collection(common.BaseObject):
                           DeprecationWarning, stacklevel=2)
 
         # The types supported by datetime.timedelta. 2to3 removes long.
-        if not isinstance(cache_for, (int, long, float)):
+        if not (isinstance(cache_for, integer_types) or
+                isinstance(cache_for, float)):
             raise TypeError("cache_for must be an integer or float.")
 
         keys = helpers._index_list(key_or_list)
@@ -1037,7 +1043,7 @@ class Collection(common.BaseObject):
 
         try:
             self.__database.command('createIndexes', self.name, indexes=[index])
-        except OperationFailure, exc:
+        except OperationFailure as exc:
             if exc.code in (59, None):
                 index["ns"] = self.__full_name
                 self.__database.system.indexes.insert(index, manipulate=False,
@@ -1152,7 +1158,7 @@ class Collection(common.BaseObject):
         """
         self.__database.connection._purge_index(self.__database.name,
                                                 self.__name)
-        self.drop_index(u"*")
+        self.drop_index("*")
 
     def drop_index(self, index_or_name):
         """Drops the specified index on this collection.
@@ -1177,7 +1183,7 @@ class Collection(common.BaseObject):
         if isinstance(index_or_name, list):
             name = _gen_index_name(index_or_name)
 
-        if not isinstance(name, basestring):
+        if not isinstance(name, string_type):
             raise TypeError("index_or_name must be an index name or list")
 
         self.__database.connection._purge_index(self.__database.name,
@@ -1357,7 +1363,7 @@ class Collection(common.BaseObject):
         """
 
         group = {}
-        if isinstance(key, basestring):
+        if isinstance(key, string_type):
             group["$keyf"] = Code(key)
         elif key is not None:
             group = {"key": helpers._fields_list_to_dict(key)}
@@ -1392,9 +1398,9 @@ class Collection(common.BaseObject):
         .. versionadded:: 1.7
            support for accepting keyword arguments for rename options
         """
-        if not isinstance(new_name, basestring):
-            raise TypeError("new_name must be an instance "
-                            "of %s" % (basestring.__name__,))
+        if not isinstance(new_name, string_type):
+            raise TypeError("new_name must be an "
+                            "instance of %s" % (string_type.__name__,))
 
         if not new_name or ".." in new_name:
             raise InvalidName("collection names cannot be empty")
@@ -1469,9 +1475,9 @@ class Collection(common.BaseObject):
 
         .. mongodoc:: mapreduce
         """
-        if not isinstance(out, (basestring, dict)):
+        if not isinstance(out, (string_type, dict)):
             raise TypeError("'out' must be an instance of "
-                            "%s or dict" % (basestring.__name__,))
+                            "%s or dict" % (string_type.__name__,))
 
         mode = read_preference or self.read_preference
         response = self.__database.command("mapreduce", self.__name,
@@ -1641,6 +1647,8 @@ class Collection(common.BaseObject):
 
     def next(self):
         raise TypeError("'Collection' object is not iterable")
+
+    __next__ = next
 
     def __call__(self, *args, **kwargs):
         """This is only here so that some API misusages are easier to debug.

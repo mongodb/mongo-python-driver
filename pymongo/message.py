@@ -44,17 +44,17 @@ _INSERT = 0
 _UPDATE = 1
 _DELETE = 2
 
-_EMPTY   = b('')
-_BSONOBJ = b('\x03')
-_ZERO_8  = b('\x00')
-_ZERO_16 = b('\x00\x00')
-_ZERO_32 = b('\x00\x00\x00\x00')
-_ZERO_64 = b('\x00\x00\x00\x00\x00\x00\x00\x00')
-_SKIPLIM = b('\x00\x00\x00\x00\xff\xff\xff\xff')
+_EMPTY   = b''
+_BSONOBJ = b'\x03'
+_ZERO_8  = b'\x00'
+_ZERO_16 = b'\x00\x00'
+_ZERO_32 = b'\x00\x00\x00\x00'
+_ZERO_64 = b'\x00\x00\x00\x00\x00\x00\x00\x00'
+_SKIPLIM = b'\x00\x00\x00\x00\xff\xff\xff\xff'
 _OP_MAP = {
-    _INSERT: b('\x04documents\x00\x00\x00\x00\x00'),
-    _UPDATE: b('\x04updates\x00\x00\x00\x00\x00'),
-    _DELETE: b('\x04deletes\x00\x00\x00\x00\x00'),
+    _INSERT: b'\x04documents\x00\x00\x00\x00\x00',
+    _UPDATE: b'\x04updates\x00\x00\x00\x00\x00',
+    _DELETE: b'\x04deletes\x00\x00\x00\x00\x00',
 }
 
 
@@ -242,7 +242,7 @@ def _do_batched_insert(collection_name, docs, check_keys,
                                                      send_safe), send_safe)
             # Exception type could be OperationFailure or a subtype
             # (e.g. DuplicateKeyError)
-            except OperationFailure, exc:
+            except OperationFailure as exc:
                 # Like it says, continue on error...
                 if continue_on_error:
                     # Store exception details to re-raise after the final batch.
@@ -294,7 +294,7 @@ def _do_batched_write_command(namespace, operation, command,
     # Save space for message length and request id
     buf.write(_ZERO_64)
     # responseTo, opCode
-    buf.write(b("\x00\x00\x00\x00\xd4\x07\x00\x00"))
+    buf.write(b"\x00\x00\x00\x00\xd4\x07\x00\x00")
     # No options
     buf.write(_ZERO_32)
     # Namespace as C string
@@ -380,7 +380,7 @@ def _do_batched_write_command(namespace, operation, command,
             buf.truncate()
             idx_offset += idx
             idx = 0
-            key = b('0')
+            key = b'0'
         buf.write(_BSONOBJ)
         buf.write(key)
         buf.write(_ZERO_8)

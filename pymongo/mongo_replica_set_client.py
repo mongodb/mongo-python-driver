@@ -39,7 +39,11 @@ import threading
 import time
 import weakref
 
-from bson.py3compat import b
+from bson.py3compat import (_unicode,
+                            integer_types,
+                            iteritems,
+                            itervalues,
+                            string_type)
 from pymongo import (auth,
                      common,
                      database,
@@ -60,7 +64,7 @@ from pymongo.errors import (AutoReconnect,
                             InvalidOperation)
 from pymongo.thread_util import DummyLock
 
-EMPTY = b("")
+EMPTY = b""
 MAX_RETRY = 3
 
 MONITORS = set()
@@ -292,7 +296,8 @@ class RSState(object):
 
     def __str__(self):
         return '<RSState [%s] writer="%s">' % (
-            ', '.join(str(member) for member in self._host_to_member.itervalues()),
+            ', '.join(str(member)
+                      for member in itervalues(self._host_to_member)),
             self.writer and '%s:%s' % self.writer or None)
 
 
@@ -610,7 +615,7 @@ class MongoReplicaSetClient(common.BaseObject):
         self.pool_class = kwargs.pop('_pool_class', pool.Pool)
         self.__monitor_class = kwargs.pop('_monitor_class', None)
 
-        for option, value in kwargs.iteritems():
+        for option, value in iteritems(kwargs):
             option, value = common.validate(option, value)
             self.__opts[option] = value
         self.__opts.update(options)
@@ -645,7 +650,7 @@ class MongoReplicaSetClient(common.BaseObject):
         self.__ssl_cert_reqs = self.__opts.get('ssl_cert_reqs', None)
         self.__ssl_ca_certs = self.__opts.get('ssl_ca_certs', None)
 
-        ssl_kwarg_keys = [k for k in kwargs.keys() if k.startswith('ssl_')]
+        ssl_kwarg_keys = [k for k in kwargs if k.startswith('ssl_')]
         if self.__use_ssl is False and ssl_kwarg_keys:
             raise ConfigurationError("ssl has not been enabled but the "
                                      "following ssl parameters have been set: "
@@ -673,7 +678,7 @@ class MongoReplicaSetClient(common.BaseObject):
         if _connect:
             try:
                 self.refresh(initial=True)
-            except AutoReconnect, e:
+            except AutoReconnect as e:
                 # ConnectionFailure makes more sense here than AutoReconnect
                 raise ConnectionFailure(str(e))
 
@@ -686,12 +691,12 @@ class MongoReplicaSetClient(common.BaseObject):
 
             credentials = auth._build_credentials_tuple(mechanism,
                                                         source,
-                                                        unicode(username),
-                                                        unicode(password),
+                                                        _unicode(username),
+                                                        _unicode(password),
                                                         options)
             try:
                 self._cache_credentials(source, credentials, _connect)
-            except OperationFailure, exc:
+            except OperationFailure as exc:
                 raise ConfigurationError(str(exc))
 
         # Start the monitor after we know the configuration is correct.
@@ -813,7 +818,7 @@ class MongoReplicaSetClient(common.BaseObject):
         """Authenticate using cached database credentials.
         """
         if self.__auth_credentials or sock_info.authset:
-            cached = set(self.__auth_credentials.itervalues())
+            cached = set(itervalues(self.__auth_credentials))
 
             authset = sock_info.authset.copy()
 
@@ -1104,7 +1109,7 @@ class MongoReplicaSetClient(common.BaseObject):
         rs_state = self.__rs_state
         try:
             self.__rs_state = self.__create_rs_state(rs_state, initial)
-        except ConfigurationError, e:
+        except ConfigurationError as e:
             self.__rs_state = rs_state.clone_with_error(e)
             raise
 
@@ -1170,7 +1175,7 @@ class MongoReplicaSetClient(common.BaseObject):
                     if response['ismaster']:
                         writer = node
 
-            except (ConnectionFailure, socket.error), why:
+            except (ConnectionFailure, socket.error) as why:
                 if member:
                     member.pool.discard_socket(sock_info)
                 errors.append("%s:%d: %s" % (node[0], node[1], str(why)))
@@ -1242,7 +1247,7 @@ class MongoReplicaSetClient(common.BaseObject):
         if writer:
             response = members[writer].ismaster_response
         elif members:
-            response = members.values()[0].ismaster_response
+            response = next(itervalues(members)).ismaster_response
         else:
             response = {}
 
@@ -1509,7 +1514,7 @@ class MongoReplicaSetClient(common.BaseObject):
                 return rv
             except OperationFailure:
                 raise
-            except(ConnectionFailure, socket.error), why:
+            except(ConnectionFailure, socket.error) as why:
                 member.pool.discard_socket(sock_info)
                 if _connection_to_use in (None, -1):
                     self.disconnect()
@@ -1549,11 +1554,11 @@ class MongoReplicaSetClient(common.BaseObject):
         """
         try:
             return self.__send_and_receive(member, msg, **kwargs)
-        except socket.timeout, e:
+        except socket.timeout as e:
             # Could be one slow query, don't refresh.
             host, port = member.host
             raise AutoReconnect("%s:%d: %s" % (host, port, e))
-        except (socket.error, ConnectionFailure), why:
+        except (socket.error, ConnectionFailure) as why:
             # Try to replace our RSState with a clone where this member is
             # marked "down", to reduce exceptions on other threads, or repeated
             # exceptions on this thread. We accept that there's a race
@@ -1629,7 +1634,7 @@ class MongoReplicaSetClient(common.BaseObject):
                 return (
                     pinned_member.host,
                     self.__try_read(pinned_member, msg, **kwargs))
-            except AutoReconnect, why:
+            except AutoReconnect as why:
                 if pref == ReadPreference.PRIMARY:
                     self.disconnect()
                     raise
@@ -1661,7 +1666,7 @@ class MongoReplicaSetClient(common.BaseObject):
                     # unless read preference changes
                     rs_state.pin_host(member.host, pref)
                 return member.host, response
-            except AutoReconnect, why:
+            except AutoReconnect as why:
                 if pref == ReadPreference.PRIMARY:
                     raise
 
@@ -1801,7 +1806,7 @@ class MongoReplicaSetClient(common.BaseObject):
         :Parameters:
           - `cursor_id`: id of cursor to close
         """
-        if not isinstance(cursor_id, (int, long)):
+        if not isinstance(cursor_id, integer_types):
             raise TypeError("cursor_id must be an instance of (int, long)")
 
         self._send_message(message.kill_cursors([cursor_id]),
@@ -1833,9 +1838,9 @@ class MongoReplicaSetClient(common.BaseObject):
         if isinstance(name, database.Database):
             name = name.name
 
-        if not isinstance(name, basestring):
-            raise TypeError("name_or_database must be an instance of "
-                            "%s or Database" % (basestring.__name__,))
+        if not isinstance(name, string_type):
+            raise TypeError("name_or_database must be an instance "
+                            "of %s or a Database" % (string_type.__name__,))
 
         self._purge_index(name)
         self[name].command("dropDatabase")
@@ -1865,12 +1870,12 @@ class MongoReplicaSetClient(common.BaseObject):
         .. note:: Specifying `username` and `password` requires server
            version **>= 1.3.3+**.
         """
-        if not isinstance(from_name, basestring):
-            raise TypeError("from_name must be an instance "
-                            "of %s" % (basestring.__name__,))
-        if not isinstance(to_name, basestring):
-            raise TypeError("to_name must be an instance "
-                            "of %s" % (basestring.__name__,))
+        if not isinstance(from_name, string_type):
+            raise TypeError("from_name must be an "
+                            "instance of %s" % (string_type.__name__,))
+        if not isinstance(to_name, string_type):
+            raise TypeError("to_name must be an "
+                            "instance of %s" % (string_type.__name__,))
 
         database._check_name(to_name)
 

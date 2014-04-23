@@ -221,7 +221,7 @@ class Pool:
             try:
                 sock.connect(host)
                 return sock
-            except socket.error, e:
+            except socket.error as e:
                 if sock is not None:
                     sock.close()
                 raise e
@@ -243,7 +243,7 @@ class Pool:
                 sock.settimeout(self.conn_timeout or 20.0)
                 sock.connect(sa)
                 return sock
-            except socket.error, e:
+            except socket.error as e:
                 err = e
                 if sock is not None:
                     sock.close()

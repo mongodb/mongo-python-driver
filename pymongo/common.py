@@ -22,6 +22,7 @@ from pymongo.errors import ConfigurationError
 from pymongo.write_concern import WriteConcern
 from bson.binary import (OLD_UUID_SUBTYPE, UUID_SUBTYPE,
                          JAVA_LEGACY, CSHARP_LEGACY)
+from bson.py3compat import string_type, integer_types, iteritems
 
 HAS_SSL = True
 try:
@@ -66,7 +67,7 @@ def validate_boolean(option, value):
     """
     if isinstance(value, bool):
         return value
-    elif isinstance(value, basestring):
+    elif isinstance(value, string_type):
         if value not in ('true', 'false'):
             raise ConfigurationError("The value of %s must be "
                                      "'true' or 'false'" % (option,))
@@ -77,9 +78,9 @@ def validate_boolean(option, value):
 def validate_integer(option, value):
     """Validates that 'value' is an integer (or basestring representation).
     """
-    if isinstance(value, (int, long)):
+    if isinstance(value, integer_types):
         return value
-    elif isinstance(value, basestring):
+    elif isinstance(value, string_type):
         if not value.isdigit():
             raise ConfigurationError("The value of %s must be "
                                      "an integer" % (option,))
@@ -102,7 +103,7 @@ def validate_readable(option, value):
     """
     # First make sure its a string py3.3 open(True, 'r') succeeds
     # Used in ssl cert checking due to poor ssl module error reporting
-    value = validate_basestring(option, value)
+    value = validate_string(option, value)
     open(value, 'r').close()
     return value
 
@@ -132,21 +133,22 @@ def validate_positive_integer_or_none(option, value):
     return validate_positive_integer(option, value)
 
 
-def validate_basestring(option, value):
-    """Validates that 'value' is an instance of `basestring`.
+def validate_string(option, value):
+    """Validates that 'value' is an instance of `basestring` for Python 2
+    or `str` for Python 3.
     """
-    if isinstance(value, basestring):
+    if isinstance(value, string_type):
         return value
-    raise TypeError("Wrong type for %s, value must be an "
-                    "instance of %s" % (option, basestring.__name__))
+    raise TypeError("Wrong type for %s, value must be "
+                    "an instance of %s" % (option, string_type.__name__))
 
 
 def validate_int_or_basestring(option, value):
     """Validates that 'value' is an integer or string.
     """
-    if isinstance(value, (int, long)):
+    if isinstance(value, integer_types):
         return value
-    elif isinstance(value, basestring):
+    elif isinstance(value, string_type):
         if value.isdigit():
             return int(value)
         return value
@@ -214,10 +216,10 @@ def validate_auth_mechanism(option, value):
 def validate_uuid_representation(dummy, value):
     """Validate the uuid representation option selected in the URI.
     """
-    if value not in _UUID_SUBTYPES.keys():
+    if value not in _UUID_SUBTYPES:
         raise ConfigurationError("%s is an invalid UUID representation. "
                                  "Must be one of "
-                                 "%s" % (value, _UUID_SUBTYPES.keys()))
+                                 "%s" % (value, list(_UUID_SUBTYPES)))
     return _UUID_SUBTYPES[value]
 
 
@@ -249,7 +251,7 @@ def validate_read_preference_tags(name, value):
 # journal is an alias for j,
 # wtimeoutms is an alias for wtimeout,
 VALIDATORS = {
-    'replicaset': validate_basestring,
+    'replicaset': validate_string,
     'w': validate_int_or_basestring,
     'wtimeout': validate_integer,
     'wtimeoutms': validate_integer,
@@ -272,8 +274,8 @@ VALIDATORS = {
     'auto_start_request': validate_boolean,
     'use_greenlets': validate_boolean,
     'authmechanism': validate_auth_mechanism,
-    'authsource': validate_basestring,
-    'gssapiservicename': validate_basestring,
+    'authsource': validate_string,
+    'gssapiservicename': validate_string,
     'uuidrepresentation': validate_uuid_representation,
 }
 
@@ -327,7 +329,7 @@ class BaseObject(object):
     def __set_options(self, options):
         """Validates and sets all options passed to this object."""
         wc_opts = {}
-        for option, value in options.iteritems():
+        for option, value in iteritems(options):
             if option == 'read_preference':
                 self.__read_pref = validate_read_preference(option, value)
             elif option == 'readpreference':

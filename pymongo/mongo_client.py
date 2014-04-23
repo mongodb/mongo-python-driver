@@ -40,7 +40,11 @@ import threading
 import time
 import warnings
 
-from bson.py3compat import b
+from bson.py3compat import (_unicode,
+                            integer_types,
+                            iteritems,
+                            itervalues,
+                            string_type)
 from pymongo import (auth,
                      common,
                      database,
@@ -59,7 +63,7 @@ from pymongo.errors import (AutoReconnect,
                             InvalidURI,
                             OperationFailure)
 from pymongo.member import Member
-EMPTY = b("")
+EMPTY = b""
 
 
 def _partition_node(node):
@@ -227,7 +231,7 @@ class MongoClient(common.BaseObject):
         """
         if host is None:
             host = self.HOST
-        if isinstance(host, basestring):
+        if isinstance(host, string_type):
             host = [host]
         if port is None:
             port = self.PORT
@@ -274,7 +278,7 @@ class MongoClient(common.BaseObject):
         event_class = kwargs.pop('_event_class', None)
 
         options = {}
-        for option, value in kwargs.iteritems():
+        for option, value in iteritems(kwargs):
             option, value = common.validate(option, value)
             options[option] = value
         options.update(opts)
@@ -299,7 +303,7 @@ class MongoClient(common.BaseObject):
         self.__ssl_cert_reqs = options.get('ssl_cert_reqs', None)
         self.__ssl_ca_certs = options.get('ssl_ca_certs', None)
 
-        ssl_kwarg_keys = [k for k in kwargs.keys() if k.startswith('ssl_')]
+        ssl_kwarg_keys = [k for k in kwargs if k.startswith('ssl_')]
         if self.__use_ssl == False and ssl_kwarg_keys:
             raise ConfigurationError("ssl has not been enabled but the "
                                      "following ssl parameters have been set: "
@@ -355,7 +359,7 @@ class MongoClient(common.BaseObject):
         if _connect:
             try:
                 self._ensure_connected(True)
-            except AutoReconnect, e:
+            except AutoReconnect as e:
                 # ConnectionFailure makes more sense here than AutoReconnect
                 raise ConnectionFailure(str(e))
 
@@ -368,12 +372,12 @@ class MongoClient(common.BaseObject):
 
             credentials = auth._build_credentials_tuple(mechanism,
                                                         source,
-                                                        unicode(username),
-                                                        unicode(password),
+                                                        _unicode(username),
+                                                        _unicode(password),
                                                         options)
             try:
                 self._cache_credentials(source, credentials, _connect)
-            except OperationFailure, exc:
+            except OperationFailure as exc:
                 raise ConfigurationError(str(exc))
 
     def _cached(self, dbname, coll, index):
@@ -479,7 +483,7 @@ class MongoClient(common.BaseObject):
         """Authenticate using cached database credentials.
         """
         if self.__auth_credentials or sock_info.authset:
-            cached = set(self.__auth_credentials.itervalues())
+            cached = set(itervalues(self.__auth_credentials))
 
             authset = sock_info.authset.copy()
 
@@ -806,7 +810,7 @@ class MongoClient(common.BaseObject):
                 try:
                     member, nodes = self.__find_node()
                     return member
-                except Exception, e:
+                except Exception as e:
                     exc = e
                     raise
             finally:
@@ -882,7 +886,7 @@ class MongoClient(common.BaseObject):
                 # The server is available but something failed, e.g. auth,
                 # wrong replica set name, or incompatible wire protocol.
                 raise
-            except Exception, why:
+            except Exception as why:
                 errors.append(str(why))
 
         if len(mongos_candidates):
@@ -910,7 +914,7 @@ class MongoClient(common.BaseObject):
                 connection_pool.start_request()
 
             sock_info = connection_pool.get_socket()
-        except socket.error, why:
+        except socket.error as why:
             self.disconnect()
 
             # Check if a unix domain socket
@@ -1130,7 +1134,7 @@ class MongoClient(common.BaseObject):
                 return rv
             except OperationFailure:
                 raise
-            except (ConnectionFailure, socket.error), e:
+            except (ConnectionFailure, socket.error) as e:
                 self.disconnect()
                 raise AutoReconnect(str(e))
             except:
@@ -1196,7 +1200,7 @@ class MongoClient(common.BaseObject):
             try:
                 response = self.__send_and_receive(message, sock_info)
                 return (None, (response, sock_info, member.pool))
-            except (ConnectionFailure, socket.error), e:
+            except (ConnectionFailure, socket.error) as e:
                 self.disconnect()
                 raise AutoReconnect(str(e))
         finally:
@@ -1315,7 +1319,7 @@ class MongoClient(common.BaseObject):
         :Parameters:
           - `cursor_id`: id of cursor to close
         """
-        if not isinstance(cursor_id, (int, long)):
+        if not isinstance(cursor_id, integer_types):
             raise TypeError("cursor_id must be an instance of (int, long)")
 
         self.__cursor_manager.close(cursor_id)
@@ -1360,9 +1364,9 @@ class MongoClient(common.BaseObject):
         if isinstance(name, database.Database):
             name = name.name
 
-        if not isinstance(name, basestring):
-            raise TypeError("name_or_database must be an instance of "
-                            "%s or Database" % (basestring.__name__,))
+        if not isinstance(name, string_type):
+            raise TypeError("name_or_database must be an instance "
+                            "of %s or a Database" % (string_type.__name__,))
 
         self._purge_index(name)
         self[name].command("dropDatabase")
@@ -1394,12 +1398,12 @@ class MongoClient(common.BaseObject):
 
         .. versionadded:: 1.5
         """
-        if not isinstance(from_name, basestring):
-            raise TypeError("from_name must be an instance "
-                            "of %s" % (basestring.__name__,))
-        if not isinstance(to_name, basestring):
-            raise TypeError("to_name must be an instance "
-                            "of %s" % (basestring.__name__,))
+        if not isinstance(from_name, string_type):
+            raise TypeError("from_name must be an "
+                            "instance of %s" % (string_type.__name__,))
+        if not isinstance(to_name, string_type):
+            raise TypeError("to_name must be an "
+                            "instance of %s" % (string_type.__name__,))
 
         database._check_name(to_name)
 
@@ -1487,3 +1491,5 @@ class MongoClient(common.BaseObject):
 
     def next(self):
         raise TypeError("'MongoClient' object is not iterable")
+
+    __next__ = next

@@ -16,6 +16,7 @@
 
 from collections import deque
 
+from bson.py3compat import integer_types
 from pymongo import helpers, message
 from pymongo.errors import AutoReconnect, CursorNotFound
 
@@ -80,7 +81,7 @@ class CommandCursor(object):
         :Parameters:
           - `batch_size`: The size of each batch of results requested.
         """
-        if not isinstance(batch_size, (int, long)):
+        if not isinstance(batch_size, integer_types):
             raise TypeError("batch_size must be an integer")
         if batch_size < 0:
             raise ValueError("batch_size must be >= 0")
@@ -167,6 +168,8 @@ class CommandCursor(object):
             return coll.database._fix_incoming(self.__data.popleft(), coll)
         else:
             raise StopIteration
+
+    __next__ = next
 
     def __enter__(self):
         return self

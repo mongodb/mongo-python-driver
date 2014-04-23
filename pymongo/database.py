@@ -19,6 +19,7 @@ import warnings
 from bson.binary import OLD_UUID_SUBTYPE
 from bson.code import Code
 from bson.dbref import DBRef
+from bson.py3compat import iteritems, string_type, _unicode
 from bson.son import SON
 from pymongo import auth, common, helpers
 from pymongo.collection import Collection
@@ -65,14 +66,14 @@ class Database(common.BaseObject):
                              uuidrepresentation=connection.uuid_subtype,
                              **connection.write_concern)
 
-        if not isinstance(name, basestring):
+        if not isinstance(name, string_type):
             raise TypeError("name must be an instance "
-                            "of %s" % (basestring.__name__,))
+                            "of %s" % (string_type.__name__,))
 
         if name != '$external':
             _check_name(name)
 
-        self.__name = unicode(name)
+        self.__name = _unicode(name)
         self.__connection = connection
 
         self.__incoming_manipulators = []
@@ -274,11 +275,11 @@ class Database(common.BaseObject):
         """Internal command helper.
         """
 
-        if isinstance(command, basestring):
+        if isinstance(command, string_type):
             command_name = command.lower()
             command = SON([(command, value)])
         else:
-            command_name = command.keys()[0].lower()
+            command_name = next(iter(command)).lower()
 
         as_class = kwargs.pop('as_class', None)
         fields = kwargs.pop('fields', None)
@@ -435,13 +436,13 @@ class Database(common.BaseObject):
         if isinstance(name, Collection):
             name = name.name
 
-        if not isinstance(name, basestring):
-            raise TypeError("name_or_collection must be an instance of "
-                            "%s or Collection" % (basestring.__name__,))
+        if not isinstance(name, string_type):
+            raise TypeError("name_or_collection must be an "
+                            "instance of %s" % (string_type.__name__,))
 
         self.__connection._purge_index(self.__name, name)
 
-        self.command("drop", unicode(name), allowable_errors=["ns not found"])
+        self.command("drop", _unicode(name), allowable_errors=["ns not found"])
 
     def validate_collection(self, name_or_collection,
                             scandata=False, full=False):
@@ -474,11 +475,11 @@ class Database(common.BaseObject):
         if isinstance(name, Collection):
             name = name.name
 
-        if not isinstance(name, basestring):
+        if not isinstance(name, string_type):
             raise TypeError("name_or_collection must be an instance of "
-                            "%s or Collection" % (basestring.__name__,))
+                            "%s or Collection" % (string_type.__name__,))
 
-        result = self.command("validate", unicode(name),
+        result = self.command("validate", _unicode(name),
                               scandata=scandata, full=full)
 
         valid = True
@@ -489,7 +490,7 @@ class Database(common.BaseObject):
                 raise CollectionInvalid("%s invalid: %s" % (name, info))
         # Sharded results
         elif "raw" in result:
-            for _, res in result["raw"].iteritems():
+            for _, res in iteritems(result["raw"]):
                 if "result" in res:
                     info = res["result"]
                     if (info.find("exception") != -1 or
@@ -626,6 +627,8 @@ class Database(common.BaseObject):
     def next(self):
         raise TypeError("'Database' object is not iterable")
 
+    __next__ = next
+
     def _default_role(self, read_only):
         if self.name == "admin":
             if read_only:
@@ -686,7 +689,7 @@ class Database(common.BaseObject):
 
         try:
             self.system.users.save(user, **self._get_wc_override())
-        except OperationFailure, exc:
+        except OperationFailure as exc:
             # First admin user add fails gle in MongoDB >= 2.1.2
             # See SERVER-4225 for more information.
             if 'login' in str(exc):
@@ -722,13 +725,13 @@ class Database(common.BaseObject):
 
         .. versionadded:: 1.4
         """
-        if not isinstance(name, basestring):
-            raise TypeError("name must be an instance "
-                            "of %s" % (basestring.__name__,))
+        if not isinstance(name, string_type):
+            raise TypeError("name must be an "
+                            "instance of %s" % (string_type.__name__,))
         if password is not None:
-            if not isinstance(password, basestring):
-                raise TypeError("password must be an instance "
-                                "of %s or None" % (basestring.__name__,))
+            if not isinstance(password, string_type):
+                raise TypeError("password must be an "
+                                "instance of %s" % (string_type.__name__,))
             if len(password) == 0:
                 raise ValueError("password can't be empty")
         if read_only is not None:
@@ -739,7 +742,7 @@ class Database(common.BaseObject):
 
         try:
             uinfo = self.command("usersInfo", name)
-        except OperationFailure, exc:
+        except OperationFailure as exc:
             # MongoDB >= 2.5.3 requires the use of commands to manage
             # users. "No such command" error didn't return an error
             # code (59) before MongoDB 2.4.7 so we assume that an error
@@ -769,7 +772,7 @@ class Database(common.BaseObject):
         try:
             self.command("dropUser", name,
                          writeConcern=self._get_wc_override())
-        except OperationFailure, exc:
+        except OperationFailure as exc:
             # See comment in add_user try / except above.
             if exc.code in (59, None):
                 self.system.users.remove({"user": name},
@@ -827,25 +830,25 @@ class Database(common.BaseObject):
 
         .. mongodoc:: authenticate
         """
-        if not isinstance(name, basestring):
-            raise TypeError("name must be an instance "
-                            "of %s" % (basestring.__name__,))
-        if password is not None and not isinstance(password, basestring):
-            raise TypeError("password must be an instance "
-                            "of %s" % (basestring.__name__,))
-        if source is not None and not isinstance(source, basestring):
-            raise TypeError("source must be an instance "
-                            "of %s" % (basestring.__name__,))
+        if not isinstance(name, string_type):
+            raise TypeError("name must be an "
+                            "instance of %s" % (string_type.__name__,))
+        if password is not None and not isinstance(password, string_type):
+            raise TypeError("password must be an "
+                            "instance of %s" % (string_type.__name__,))
+        if source is not None and not isinstance(source, string_type):
+            raise TypeError("source must be an "
+                            "instance of %s" % (string_type.__name__,))
         common.validate_auth_mechanism('mechanism', mechanism)
 
         validated_options = {}
-        for option, value in kwargs.iteritems():
+        for option, value in iteritems(kwargs):
             normalized, val = common.validate_auth_option(option, value)
             validated_options[normalized] = val
 
         credentials = auth._build_credentials_tuple(mechanism,
-                                source or self.name, unicode(name),
-                                password and unicode(password) or None,
+                                source or self.name, _unicode(name),
+                                password and _unicode(password) or None,
                                 validated_options)
         self.connection._cache_credentials(self.name, credentials)
         return True

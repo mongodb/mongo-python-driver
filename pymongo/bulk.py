@@ -17,6 +17,8 @@
 .. versionadded:: 2.7
 """
 
+from __future__ import unicode_literals
+
 from bson.objectid import ObjectId
 from bson.son import SON
 from pymongo.errors import (BulkWriteError,
@@ -72,10 +74,10 @@ def _make_error(index, code, errmsg, operation):
     """Create and return an error document.
     """
     return {
-        u"index": index,
-        u"code": code,
-        u"errmsg": errmsg,
-        u"op": operation
+        "index": index,
+        "code": code,
+        "errmsg": errmsg,
+        "op": operation
     }
 
 
@@ -113,7 +115,7 @@ def _merge_legacy(run, full_result, result, index):
         full_result['nInserted'] += 1
     elif run.op_type == _UPDATE:
         if "upserted" in result:
-            doc = {u"index": run.index(index), u"_id": result["upserted"]}
+            doc = {"index": run.index(index), "_id": result["upserted"]}
             full_result["upserted"].append(doc)
             full_result['nUpserted'] += affected
         else:
@@ -146,7 +148,7 @@ def _merge_command(run, full_result, results):
                 else:
                     n_upserted = 1
                     index = run.index(offset)
-                    doc = {u"index": index, u"_id": upserted}
+                    doc = {"index": index, "_id": upserted}
                     full_result["upserted"].append(doc)
                 full_result["nUpserted"] += n_upserted
                 full_result["nMatched"] += (affected - n_upserted)
@@ -168,7 +170,7 @@ def _merge_command(run, full_result, results):
                 idx = doc["index"] + offset
                 doc["index"] = run.index(idx)
                 # Add the failed operation to the error document.
-                doc[u"op"] = run.ops[idx]
+                doc["op"] = run.ops[idx]
             full_result["writeErrors"].extend(write_errors)
 
         wc_error = result.get("writeConcernError")
@@ -207,7 +209,7 @@ class _Bulk(object):
         # Update can not be {}
         if not update:
             raise ValueError('update only works with $ operators')
-        first = iter(update).next()
+        first = next(iter(update))
         if not first.startswith('$'):
             raise ValueError('update only works with $ operators')
         cmd = SON([('q', selector), ('u', update),
@@ -221,7 +223,7 @@ class _Bulk(object):
             raise TypeError('replacement must be an instance of dict')
         # Replacement can be {}
         if replacement:
-            first = iter(replacement).next()
+            first = next(iter(replacement))
             if first.startswith('$'):
                 raise ValueError('replacement can not include $ operators')
         cmd = SON([('q', selector), ('u', replacement),
@@ -378,7 +380,7 @@ class _Bulk(object):
                                              multi=(not operation['limit']),
                                              **write_concern)
                     _merge_legacy(run, full_result, result, idx)
-                except DocumentTooLarge, exc:
+                except DocumentTooLarge as exc:
                     # MongoDB 2.6 uses error code 2 for "too large".
                     error = _make_error(
                         run.index(idx), _BAD_VALUE, str(exc), operation)
@@ -386,7 +388,7 @@ class _Bulk(object):
                     if self.ordered:
                         stop = True
                         break
-                except OperationFailure, exc:
+                except OperationFailure as exc:
                     if not exc.details:
                         # Some error not related to the write operation
                         # (e.g. kerberos failure). Re-raise immediately.
