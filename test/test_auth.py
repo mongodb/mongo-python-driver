@@ -19,7 +19,11 @@ import sys
 import threading
 import unittest
 
-from urllib import quote_plus
+try:
+    from urllib.parse import quote_plus
+except ImportError:
+    # Python 2
+    from urllib import quote_plus
 
 sys.path[0:0] = [""]
 
@@ -128,7 +132,7 @@ class TestGSSAPI(unittest.TestCase):
                                                  mechanism='GSSAPI'))
 
         threads = []
-        for _ in xrange(4):
+        for _ in range(4):
             threads.append(AutoAuthenticateThread(client.foo))
         for thread in threads:
             thread.start()
@@ -147,7 +151,7 @@ class TestGSSAPI(unittest.TestCase):
             self.assertTrue(client.foo.command('dbstats'))
 
             threads = []
-            for _ in xrange(4):
+            for _ in range(4):
                 threads.append(AutoAuthenticateThread(client.foo))
             for thread in threads:
                 thread.start()

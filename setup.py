@@ -1,4 +1,3 @@
-import glob
 import os
 import platform
 import re
@@ -11,12 +10,6 @@ try:
     import multiprocessing
 except ImportError:
     pass
-
-try:
-    from ConfigParser import SafeConfigParser
-except ImportError:
-    # PY3
-    from configparser import SafeConfigParser
 
 # Don't force people to install setuptools unless
 # we have to.
@@ -44,8 +37,6 @@ try:
 finally:
     f.close()
 
-PY3 = sys.version_info[0] == 3
-
 # PYTHON-654 - Clang doesn't support -mno-fused-madd but the pythons Apple
 # ships are built with it. This is a problem starting with Xcode 5.1
 # since clang 3.4 errors out when it encounters unrecognized compiler
@@ -61,31 +52,6 @@ if sys.platform == 'darwin' and 'clang' in platform.python_compiler().lower():
             flags = res[key]
             flags = re.sub('-mno-fused-madd', '', flags)
             res[key] = flags
-
-nose_config_options = {
-    'with-xunit': '1',    # Write out nosetests.xml for CI.
-    'py3where': 'build',  # Tell nose where to find tests under PY3.
-}
-
-def write_nose_config():
-    """Write out setup.cfg. Since py3where has to be set
-    for tests to run correctly in Python 3 we create this
-    on the fly.
-    """
-    config = SafeConfigParser()
-    config.add_section('nosetests')
-    for opt, val in nose_config_options.items():
-        config.set('nosetests', opt, val)
-    try:
-        cf = open('setup.cfg', 'w')
-        config.write(cf)
-    finally:
-        cf.close()
-
-
-should_run_tests = False
-if "test" in sys.argv or "nosetests" in sys.argv:
-    should_run_tests = True
 
 
 class doc(Command):
@@ -191,24 +157,11 @@ http://api.mongodb.org/python/current/installation.html#osx
                                                   "your platform configuration"
                                                   " - see above."))
 
-    def set_nose_options(self):
-        # Under python 3 we need to tell nose where to find the
-        # proper tests. if we built the C extensions this will be
-        # someplace like build/lib.<os>-<arch>-<python version>
-        if PY3:
-            ver = '.'.join(map(str, sys.version_info[:2]))
-            lib_dirs = glob.glob(os.path.join('build', 'lib*' + ver))
-            if lib_dirs:
-                nose_config_options['py3where'] = lib_dirs[0]
-        write_nose_config()
-
     def build_extension(self, ext):
         name = ext.name
         if sys.version_info[:3] >= (2, 6, 0):
             try:
                 build_ext.build_extension(self, ext)
-                if should_run_tests:
-                    self.set_nose_options()
             except build_errors:
                 e = sys.exc_info()[1]
                 sys.stdout.write('%s\n' % str(e))
@@ -261,30 +214,6 @@ Performance may be degraded.\n
 """)
 else:
     extra_opts['ext_modules'] = ext_modules
-
-if PY3:
-    extra_opts["use_2to3"] = True
-    if should_run_tests:
-        # Distribute isn't smart enough to copy the
-        # tests and run 2to3 on them. We don't want to
-        # install the test suite so only do this if we
-        # are testing.
-        # https://bitbucket.org/tarek/distribute/issue/233
-        extra_opts["packages"].append("test")
-        extra_opts['package_data'] = {"test": ["certificates/ca.pem",
-                                               "certificates/client.pem"]}
-        # Hack to make "python3.x setup.py nosetests" work in python 3
-        # otherwise it won't run 2to3 before running the tests.
-        if "nosetests" in sys.argv:
-            sys.argv.remove("nosetests")
-            sys.argv.append("test")
-            # All "nosetests" does is import and run nose.main.
-            extra_opts["test_suite"] = "nose.main"
-
-# This may be called a second time if
-# we are testing with C extensions.
-if should_run_tests:
-    write_nose_config()
 
 setup(
     name="pymongo",

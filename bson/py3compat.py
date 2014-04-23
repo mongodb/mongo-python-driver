@@ -20,7 +20,9 @@ PY3 = sys.version_info[0] == 3
 
 if PY3:
     import codecs
+    import _thread as thread
     from io import BytesIO as StringIO
+    MAXSIZE = sys.maxsize
 
     def b(s):
         # BSON and socket operations deal in binary data. In
@@ -60,12 +62,12 @@ else:
         from cStringIO import StringIO
     except ImportError:
         from StringIO import StringIO
+    import thread
+    MAXSIZE = sys.maxint
 
     def b(s):
         # See comments above. In python 2.x b('foo') is just 'foo'.
         return s
-
-    import codecs
 
     def u(s):
         """Replacement for unicode literal prefix."""

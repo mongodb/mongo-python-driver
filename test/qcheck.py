@@ -22,14 +22,15 @@ sys.path[0:0] = [""]
 from bson.binary import Binary
 from bson.dbref import DBRef
 from bson.objectid import ObjectId
-from bson.py3compat import b, binary_type
+from bson.py3compat import MAXSIZE, PY3, binary_type, iteritems, u
 from bson.son import SON
+
+if PY3:
+    unichr = chr
 
 gen_target = 100
 reduction_attempts = 10
 examples = 5
-
-PY3 = sys.version_info[0] == 3
 
 
 def lift(value):
@@ -58,7 +59,7 @@ def gen_int():
 
 
 def gen_float():
-    return lambda: (random.random() - 0.5) * sys.maxint
+    return lambda: (random.random() - 0.5) * MAXSIZE
 
 
 def gen_boolean():
@@ -82,7 +83,7 @@ else:
 
 
 def gen_string(gen_length):
-    return lambda: b("").join(gen_list(gen_char(), gen_length)())
+    return lambda: b"".join(gen_list(gen_char(), gen_length)())
 
 
 def gen_unichar():
@@ -90,9 +91,9 @@ def gen_unichar():
 
 
 def gen_unicode(gen_length):
-    return lambda: u"".join([x for x in
-                             gen_list(gen_unichar(), gen_length)() if
-                             x not in ".$"])
+    return lambda: u("").join([x for x in
+                               gen_list(gen_unichar(), gen_length)() if
+                               x not in ".$"])
 
 
 def gen_list(generator, gen_length):
@@ -123,7 +124,7 @@ def gen_regexp(gen_length):
     # TODO our patterns only consist of one letter.
     # this is because of a bug in CPython's regex equality testing,
     # which I haven't quite tracked down, so I'm just ignoring it...
-    pattern = lambda: u"".join(gen_list(choose_lifted(u"a"), gen_length)())
+    pattern = lambda: u("").join(gen_list(choose_lifted(u("a")), gen_length)())
 
     def gen_flags():
         flags = 0
@@ -188,15 +189,17 @@ def simplify(case):  # TODO this is a hack
         simplified = SON(case)  # make a copy!
         if random.choice([True, False]):
             # delete
-            if not len(simplified.keys()):
+            simplified_keys = list(simplified)
+            if not len(simplified_keys):
                 return (False, case)
-            del simplified[random.choice(simplified.keys())]
+            simplified.pop(random.choice(simplified_keys))
             return (True, simplified)
         else:
             # simplify a value
-            if not len(simplified.items()):
+            simplified_items = list(iteritems(simplified))
+            if not len(simplified_items):
                 return (False, case)
-            (key, value) = random.choice(simplified.items())
+            (key, value) = random.choice(simplified_items)
             (success, value) = simplify(value)
             simplified[key] = value
             return (success, success and simplified or case)

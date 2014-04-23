@@ -22,6 +22,7 @@ from nose.plugins.skip import SkipTest
 
 sys.path[0:0] = [""]
 
+from bson.py3compat import MAXSIZE
 from bson.son import SON
 from pymongo.cursor import _QUERY_OPTIONS
 from pymongo.mongo_replica_set_client import MongoReplicaSetClient
@@ -54,7 +55,7 @@ class TestReadPreferencesBase(TestReplicaSetClientBase):
         """Do a find() on the client and return which host was used
         """
         cursor = client.pymongo_test.test.find()
-        cursor.next()
+        next(cursor)
         return cursor._Cursor__connection_id
 
     def read_from_which_kind(self, client):
@@ -417,10 +418,10 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
     def test_create_collection(self):
         # Collections should be created on primary, obviously
         self._test_fn(False, lambda: self.c.pymongo_test.command(
-            'create', 'some_collection%s' % random.randint(0, sys.maxint)))
+            'create', 'some_collection%s' % random.randint(0, MAXSIZE)))
 
         self._test_fn(False, lambda: self.c.pymongo_test.create_collection(
-            'some_collection%s' % random.randint(0, sys.maxint)))
+            'some_collection%s' % random.randint(0, MAXSIZE)))
 
     def test_drop_collection(self):
         self._test_fn(False, lambda: self.c.pymongo_test.drop_collection(

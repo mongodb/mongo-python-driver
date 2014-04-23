@@ -29,6 +29,7 @@ from pymongo.uri_parser import (_partition,
 from pymongo.errors import ConfigurationError, InvalidURI
 from pymongo import ReadPreference
 from bson.binary import JAVA_LEGACY
+from bson.py3compat import string_type, _unicode
 
 
 class TestURI(unittest.TestCase):
@@ -117,7 +118,7 @@ class TestURI(unittest.TestCase):
         self.assertEqual({'connecttimeoutms': 0.0001}, split_options('connectTimeoutMS=0.1'))
         self.assertTrue(split_options('connectTimeoutMS=300'))
         self.assertTrue(isinstance(split_options('w=5')['w'], int))
-        self.assertTrue(isinstance(split_options('w=5.5')['w'], basestring))
+        self.assertTrue(isinstance(split_options('w=5.5')['w'], string_type))
         self.assertTrue(split_options('w=foo'))
         self.assertTrue(split_options('w=majority'))
         self.assertRaises(ConfigurationError, split_options, 'wtimeoutms=foo')
@@ -371,7 +372,7 @@ class TestURI(unittest.TestCase):
         # Ensure parsing a unicode returns option names that can be passed
         # as kwargs. In Python 2.4, keyword argument names must be ASCII.
         # In all Pythons, str is the type of valid keyword arg names.
-        res = parse_uri(unicode("mongodb://localhost/?fsync=true"))
+        res = parse_uri(_unicode("mongodb://localhost/?fsync=true"))
         for key in res['options']:
             self.assertTrue(isinstance(key, str))
 

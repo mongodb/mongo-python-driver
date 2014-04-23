@@ -207,11 +207,11 @@ class TestCounter(unittest.TestCase):
         done = set()
 
         def f(n):
-            for i in xrange(n):
+            for i in range(n):
                 self.assertEqual(i, counter.get())
                 self.assertEqual(i + 1, counter.inc())
 
-            for i in xrange(n, 0, -1):
+            for i in range(n, 0, -1):
                 self.assertEqual(i, counter.get())
                 self.assertEqual(i - 1, counter.dec())
 
@@ -227,11 +227,11 @@ class TestCounter(unittest.TestCase):
 
         if use_greenlets:
             greenlets = [
-                greenlet.greenlet(my_partial(f, i)) for i in xrange(10)]
+                greenlet.greenlet(my_partial(f, i)) for i in range(10)]
             looplet(greenlets)
         else:
             threads = [
-                threading.Thread(target=my_partial(f, i)) for i in xrange(10)]
+                threading.Thread(target=my_partial(f, i)) for i in range(10)]
             for t in threads:
                 t.start()
             for t in threads:

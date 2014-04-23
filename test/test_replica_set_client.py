@@ -21,7 +21,6 @@ import signal
 import socket
 import sys
 import time
-import thread
 import threading
 import traceback
 import unittest
@@ -30,6 +29,7 @@ sys.path[0:0] = [""]
 
 from nose.plugins.skip import SkipTest
 
+from bson.py3compat import thread, u, _unicode
 from bson.son import SON
 from bson.tz_util import utc
 from pymongo.mongo_client import MongoClient
@@ -220,7 +220,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         host_dict = dict([(host, 1) for host in self.hosts])
         hosts_set = frozenset(host_dict)
         hosts_repr = ', '.join([
-            repr(unicode('%s:%s' % host)) for host in hosts_set])
+            repr(_unicode('%s:%s' % host)) for host in hosts_set])
 
         self.assertEqual(repr(client),
                          "MongoReplicaSetClient([%s])" % hosts_repr)
@@ -356,13 +356,13 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         self.assertEqual(1, db.test.count())
 
         cursor = db.test.find()
-        doc = cursor.next()
+        doc = next(cursor)
         self.assertEqual('x', doc['foo'])
         # Ensure we read from the primary
         self.assertEqual(c.primary, cursor._Cursor__connection_id)
 
         cursor = db.test.find(read_preference=ReadPreference.SECONDARY)
-        doc = cursor.next()
+        doc = next(cursor)
         self.assertEqual('x', doc['foo'])
         # Ensure we didn't read from the primary
         self.assertTrue(cursor._Cursor__connection_id in c.secondaries)
@@ -376,8 +376,8 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
     def test_database_names(self):
         client = self._get_client()
 
-        client.pymongo_test.test.save({"dummy": u"object"})
-        client.pymongo_test_mike.test.save({"dummy": u"object"})
+        client.pymongo_test.test.save({"dummy": u("object")})
+        client.pymongo_test_mike.test.save({"dummy": u("object")})
 
         dbs = client.database_names()
         self.assertTrue("pymongo_test" in dbs)
@@ -390,14 +390,14 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         self.assertRaises(TypeError, client.drop_database, 5)
         self.assertRaises(TypeError, client.drop_database, None)
 
-        client.pymongo_test.test.save({"dummy": u"object"})
+        client.pymongo_test.test.save({"dummy": u("object")})
         dbs = client.database_names()
         self.assertTrue("pymongo_test" in dbs)
         client.drop_database("pymongo_test")
         dbs = client.database_names()
         self.assertTrue("pymongo_test" not in dbs)
 
-        client.pymongo_test.test.save({"dummy": u"object"})
+        client.pymongo_test.test.save({"dummy": u("object")})
         dbs = client.database_names()
         self.assertTrue("pymongo_test" in dbs)
         client.drop_database(client.pymongo_test)
@@ -650,7 +650,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
 
         try:
             timeout.pymongo_test.test.find_one(query)
-        except AutoReconnect, e:
+        except AutoReconnect as e:
             self.assertTrue('%d: timed out' % (port,) in e.args[0])
         else:
             self.fail('RS client should have raised timeout error')
@@ -659,7 +659,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
             timeout.pymongo_test.test.find_one(
                 query,
                 read_preference=ReadPreference.SECONDARY)
-        except AutoReconnect, e:
+        except AutoReconnect as e:
             # Like 'No replica set secondary available for query with
             # ReadPreference SECONDARY. host:27018: timed out,
             # host:27019: timed out'.
@@ -752,8 +752,8 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         client = MongoReplicaSetClient("localhost:%d,[::1]:"
                                           "%d" % (port, port),
                                           replicaSet=self.name)
-        client.pymongo_test.test.save({"dummy": u"object"})
-        client.pymongo_test_bernie.test.save({"dummy": u"object"})
+        client.pymongo_test.test.save({"dummy": u("object")})
+        client.pymongo_test_bernie.test.save({"dummy": u("object")})
 
         dbs = client.database_names()
         self.assertTrue("pymongo_test" in dbs)
@@ -770,7 +770,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
 
         # Partially evaluate cursor so it's left alive, then kill it
         cursor = test.find().batch_size(10)
-        cursor.next()
+        next(cursor)
         self.assertNotEqual(0, cursor.cursor_id)
 
         connection_id = cursor._Cursor__connection_id
@@ -837,7 +837,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
             raised = False
             try:
                 # Will be interrupted by a KeyboardInterrupt.
-                db.foo.find({'$where': where}).next()
+                next(db.foo.find({'$where': where}))
             except KeyboardInterrupt:
                 raised = True
 
@@ -850,7 +850,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
             # request id's don't match.
             self.assertEqual(
                 {'_id': 1},
-                db.foo.find().next()
+                next(db.foo.find())
             )
         finally:
             if old_signal_handler:
@@ -862,7 +862,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         c = self._get_client(auto_start_request=False)
         pool = get_pool(c)
         self.assertEqual(1, len(pool.sockets))
-        old_sock_info = iter(pool.sockets).next()
+        old_sock_info = next(iter(pool.sockets))
         c.pymongo_test.test.drop()
         c.pymongo_test.test.insert({'_id': 'foo'})
         self.assertRaises(
@@ -870,7 +870,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
             c.pymongo_test.test.insert, {'_id': 'foo'})
 
         self.assertEqual(1, len(pool.sockets))
-        new_sock_info = iter(pool.sockets).next()
+        new_sock_info = next(iter(pool.sockets))
 
         self.assertEqual(old_sock_info, new_sock_info)
         c.close()
@@ -918,7 +918,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         cursor = client.pymongo_test.test.find(
                 read_preference=ReadPreference.SECONDARY)
         try:
-            cursor.next()
+            next(cursor)
         except StopIteration:
             # No results, no problem
             pass

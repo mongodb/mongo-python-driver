@@ -19,7 +19,6 @@ import gc
 import random
 import socket
 import sys
-import thread
 import threading
 import time
 
@@ -28,6 +27,7 @@ sys.path[0:0] = [""]
 from nose.plugins.skip import SkipTest
 
 import pymongo.pool
+from bson.py3compat import thread
 from pymongo.mongo_client import MongoClient
 from pymongo.pool import Pool, NO_REQUEST, NO_SOCKET_YET, SocketInfo
 from pymongo.errors import ConfigurationError, ConnectionFailure
@@ -113,7 +113,7 @@ class MongoThread(object):
 class SaveAndFind(MongoThread):
 
     def run_mongo_thread(self):
-        for _ in xrange(N):
+        for _ in range(N):
             rand = random.randint(0, N)
             _id = self.db.sf.save({"x": rand})
             self.ut.assertEqual(rand, self.db.sf.find_one(_id)["x"])
@@ -122,7 +122,7 @@ class SaveAndFind(MongoThread):
 class Unique(MongoThread):
 
     def run_mongo_thread(self):
-        for _ in xrange(N):
+        for _ in range(N):
             self.client.start_request()
             self.db.unique.insert({})  # no error
             self.client.end_request()
@@ -131,7 +131,7 @@ class Unique(MongoThread):
 class NonUnique(MongoThread):
 
     def run_mongo_thread(self):
-        for _ in xrange(N):
+        for _ in range(N):
             self.client.start_request()
             self.db.unique.insert({"_id": "jesse"}, w=0)
             self.ut.assertNotEqual(None, self.db.error())
@@ -141,7 +141,7 @@ class NonUnique(MongoThread):
 class Disconnect(MongoThread):
 
     def run_mongo_thread(self):
-        for _ in xrange(N):
+        for _ in range(N):
             self.client.disconnect()
 
 
@@ -150,7 +150,7 @@ class NoRequest(MongoThread):
     def run_mongo_thread(self):
         self.client.start_request()
         errors = 0
-        for _ in xrange(N):
+        for _ in range(N):
             self.db.unique.insert({"_id": "jesse"}, w=0)
             if not self.db.error():
                 errors += 1
@@ -1111,7 +1111,7 @@ class _TestWaitQueueMultiple(_TestPoolingBase):
 
         # Reach max_size * wait_queue_multiple waiters.
         threads = []
-        for _ in xrange(6):
+        for _ in range(6):
             t = SocketGetter(self, pool)
             t.start()
             threads.append(t)
@@ -1127,11 +1127,11 @@ class _TestWaitQueueMultiple(_TestPoolingBase):
     def test_wait_queue_multiple_unset(self):
         pool = self.get_pool_with_wait_queue_multiple(None)
         socks = []
-        for _ in xrange(2):
+        for _ in range(2):
             sock = pool.get_socket()
             socks.append(sock)
         threads = []
-        for _ in xrange(30):
+        for _ in range(30):
             t = SocketGetter(self, pool)
             t.start()
             threads.append(t)

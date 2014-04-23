@@ -58,7 +58,7 @@ def kill_members(members, sig, hosts=nodes):
     for member in sorted(members):
         try:
             if ha_tools_debug:
-                print('killing %s' % (member,)),
+                print('killing %s' % (member,))
             proc = hosts[member]['proc']
             if 'java' in sys.platform:
                 # _process is a wrapped java.lang.UNIXProcess.
@@ -279,7 +279,7 @@ def get_client():
                 read_preference=ReadPreference.PRIMARY_PREFERRED,
                 use_greenlets=use_greenlets)
         except pymongo.errors.ConnectionFailure:
-            if i == len(nodes.keys()) - 1:
+            if i == len(nodes) - 1:
                 raise
 
 
@@ -419,7 +419,7 @@ def add_member(auth=False):
         cmd += ['--keyFile', key_file]
 
     if ha_tools_debug:
-        print 'starting', ' '.join(cmd)
+        print('starting %s' % ' '.join(cmd))
 
     proc = subprocess.Popen(cmd,
                             stdout=subprocess.PIPE,
@@ -433,11 +433,11 @@ def add_member(auth=False):
     config['version'] += 1
 
     if ha_tools_debug:
-        print {'replSetReconfig': config}
+        print({'replSetReconfig': config})
 
     response = c.admin.command({'replSetReconfig': config})
     if ha_tools_debug:
-        print response
+        print(response)
 
     if not res:
         return None

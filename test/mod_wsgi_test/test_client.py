@@ -16,12 +16,17 @@
 """
 
 import sys
-import urllib2
-import thread
 import threading
 import time
 
 from optparse import OptionParser
+
+from bson.py3compat import PY3, thread
+
+if PY3:
+    from urllib.request import urlopen
+else:
+    from urllib2 import urlopen
 
 
 def parse_args():
@@ -65,7 +70,7 @@ def parse_args():
 
 
 def get(url):
-    urllib2.urlopen(url).read().strip()
+    urlopen(url).read().strip()
 
 
 class URLGetterThread(threading.Thread):
@@ -84,8 +89,8 @@ class URLGetterThread(threading.Thread):
         for i in range(self.nrequests_per_thread):
             try:
                 get(url)
-            except Exception, e:
-                print e
+            except Exception as e:
+                print(e)
 
                 if not options.continue_:
                     thread.interrupt_main()
@@ -101,7 +106,7 @@ class URLGetterThread(threading.Thread):
             should_print = options.verbose and not counter % 1000
 
             if should_print:
-                print counter
+                print(counter)
 
 
 def main(options, mode, url):
@@ -130,33 +135,33 @@ def main(options, mode, url):
         errors = sum([t.errors for t in threads])
         nthreads_with_errors = len([t for t in threads if t.errors])
         if nthreads_with_errors:
-            print '%d threads had errors! %d errors in total' % (
-                nthreads_with_errors, errors)
+            print('%d threads had errors! %d errors in total' % (
+                nthreads_with_errors, errors))
     else:
         assert mode == 'serial'
         if options.verbose:
-            print 'Getting %s %s times in one thread' % (
+            print('Getting %s %s times in one thread' % (
                 url, options.nrequests
-            )
+            ))
 
         for i in range(1, options.nrequests + 1):
             try:
                 get(url)
-            except Exception, e:
-                print e
+            except Exception as e:
+                print(e)
                 if not options.continue_:
                     sys.exit(1)
 
                 errors += 1
 
             if options.verbose and not i % 1000:
-                print i
+                print(i)
 
         if errors:
-            print '%d errors!' % errors
+            print('%d errors!' % errors)
 
     if options.verbose:
-        print 'Completed in %.2f seconds' % (time.time() - start_time)
+        print('Completed in %.2f seconds' % (time.time() - start_time))
 
     if errors:
         # Failure

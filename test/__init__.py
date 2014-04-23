@@ -18,20 +18,21 @@
 import os
 import warnings
 
+from bson.py3compat import _unicode
 import pymongo
 from pymongo.errors import ConnectionFailure
 
 # hostnames retrieved by MongoReplicaSetClient from isMaster will be of unicode
 # type in Python 2, so ensure these hostnames are unicodes, too. It makes tests
 # like `test_repr` predictable.
-host = unicode(os.environ.get("DB_IP", 'localhost'))
+host = _unicode(os.environ.get("DB_IP", 'localhost'))
 port = int(os.environ.get("DB_PORT", 27017))
 pair = '%s:%d' % (host, port)
 
-host2 = unicode(os.environ.get("DB_IP2", 'localhost'))
+host2 = _unicode(os.environ.get("DB_IP2", 'localhost'))
 port2 = int(os.environ.get("DB_PORT2", 27018))
 
-host3 = unicode(os.environ.get("DB_IP3", 'localhost'))
+host3 = _unicode(os.environ.get("DB_IP3", 'localhost'))
 port3 = int(os.environ.get("DB_PORT3", 27019))
 
 # Make sure warnings are always raised, regardless of

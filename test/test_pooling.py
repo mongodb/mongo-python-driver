@@ -15,12 +15,12 @@
 """Test built in connection-pooling with threads."""
 
 import sys
-import thread
 import time
 import unittest
 
 sys.path[0:0] = [""]
 
+from bson.py3compat import thread
 from nose.plugins.skip import SkipTest
 
 from test import host, port

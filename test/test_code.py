@@ -19,6 +19,7 @@ import sys
 sys.path[0:0] = [""]
 
 from bson.code import Code
+from bson.py3compat import u
 
 
 class TestCode(unittest.TestCase):
@@ -26,11 +27,11 @@ class TestCode(unittest.TestCase):
         self.assertRaises(TypeError, Code, 5)
         self.assertRaises(TypeError, Code, None)
         self.assertRaises(TypeError, Code, "aoeu", 5)
-        self.assertRaises(TypeError, Code, u"aoeu", 5)
+        self.assertRaises(TypeError, Code, u("aoeu"), 5)
         self.assertTrue(Code("aoeu"))
-        self.assertTrue(Code(u"aoeu"))
+        self.assertTrue(Code(u("aoeu")))
         self.assertTrue(Code("aoeu", {}))
-        self.assertTrue(Code(u"aoeu", {}))
+        self.assertTrue(Code(u("aoeu"), {}))
 
     def test_read_only(self):
         c = Code("blah")

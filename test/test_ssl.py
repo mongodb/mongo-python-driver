@@ -27,7 +27,11 @@ except ImportError:
 
 sys.path[0:0] = [""]
 
-from urllib import quote_plus
+try:
+    from urllib.parse import quote_plus
+except ImportError:
+    # Python 2
+    from urllib import quote_plus
 
 from nose.plugins.skip import SkipTest
 

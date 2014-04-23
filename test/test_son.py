@@ -33,9 +33,9 @@ class TestSON(unittest.TestCase):
         a1["hello"] = "world"
         a1["mike"] = "awesome"
         a1["hello_"] = "mike"
-        self.assertEqual(a1.items(), [("hello", "world"),
-                                     ("mike", "awesome"),
-                                     ("hello_", "mike")])
+        self.assertEqual(list(a1.items()), [("hello", "world"),
+                                            ("mike", "awesome"),
+                                            ("hello_", "mike")])
 
         b2 = SON({"hello": "world"})
         self.assertEqual(b2["hello"], "world")
@@ -87,7 +87,7 @@ class TestSON(unittest.TestCase):
         complex_son = SON([('son', simple_son),
                            ('list', [simple_son, simple_son])])
 
-        for protocol in xrange(pickle.HIGHEST_PROTOCOL + 1):
+        for protocol in range(pickle.HIGHEST_PROTOCOL + 1):
             pickled = pickle.loads(pickle.dumps(complex_son,
                                                 protocol=protocol))
             self.assertEqual(pickled['son'], pickled['list'][0])
@@ -140,7 +140,7 @@ class TestSON(unittest.TestCase):
         self.assertEqual(complex_son, complex_son1)
 
         reflexive_son1 = copy.deepcopy(reflexive_son)
-        self.assertEqual(reflexive_son.keys(), reflexive_son1.keys())
+        self.assertEqual(list(reflexive_son), list(reflexive_son1))
         self.assertEqual(id(reflexive_son1), id(reflexive_son1["reflexive"]))
 
 

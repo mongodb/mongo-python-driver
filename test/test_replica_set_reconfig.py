@@ -53,7 +53,7 @@ class TestSecondaryBecomesStandalone(unittest.TestCase):
 
         try:
             c.db.collection.find_one()
-        except ConfigurationError, e:
+        except ConfigurationError as e:
             self.assertTrue('not a member of replica set' in str(e))
         else:
             self.fail("MongoClient didn't raise AutoReconnect")

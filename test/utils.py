@@ -45,7 +45,7 @@ def my_partial(f, *args, **kwargs):
 
 def one(s):
     """Get one element of a set"""
-    return iter(s).next()
+    return next(iter(s))
 
 def oid_generated_on_client(doc):
     """Is this process's PID in the document's _id?"""
@@ -158,7 +158,7 @@ def assertRaisesExactly(cls, fn, *args, **kwargs):
     """
     try:
         fn(*args, **kwargs)
-    except Exception, e:
+    except Exception as e:
         assert e.__class__ == cls, "got %s, expected %s" % (
             e.__class__.__name__, cls.__name__)
     else:
@@ -296,7 +296,7 @@ def read_from_which_host(
     cursor = db.test.find()
     try:
         try:
-            cursor.next()
+            next(cursor)
         except StopIteration:
             # No documents in collection, that's fine
             pass

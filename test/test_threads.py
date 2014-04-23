@@ -39,7 +39,7 @@ class AutoAuthenticateThreads(threading.Thread):
 
     def run(self):
         try:
-            for i in xrange(self.num):
+            for i in range(self.num):
                 self.coll.insert({'num':i})
                 self.coll.find_one({'num':i})
         except Exception:
@@ -71,7 +71,7 @@ class Insert(threading.Thread):
         self.setDaemon(True)
 
     def run(self):
-        for _ in xrange(self.n):
+        for _ in range(self.n):
             error = True
 
             try:
@@ -95,7 +95,7 @@ class Update(threading.Thread):
         self.setDaemon(True)
 
     def run(self):
-        for _ in xrange(self.n):
+        for _ in range(self.n):
             error = True
 
             try:
@@ -185,7 +185,7 @@ class BaseTestThreads(object):
 
     def test_threading(self):
         self.db.drop_collection("test")
-        for i in xrange(1000):
+        for i in range(1000):
             self.db.test.save({"x": i})
 
         threads = []
@@ -349,7 +349,7 @@ class BaseTestThreadsAuth(object):
 
         nthreads = 10
         threads = []
-        for _ in xrange(nthreads):
+        for _ in range(nthreads):
             t = AutoAuthenticateThreads(client.auth_test.test, 100)
             t.start()
             threads.append(t)
@@ -364,7 +364,7 @@ class BaseTestThreadsAuth(object):
         client.auth_test.authenticate("test-user", "password")
 
         threads = []
-        for _ in xrange(nthreads):
+        for _ in range(nthreads):
             t = AutoAuthenticateThreads(client.auth_test.test, 100)
             t.start()
             threads.append(t)

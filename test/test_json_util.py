@@ -24,7 +24,6 @@ from nose.plugins.skip import SkipTest
 sys.path[0:0] = [""]
 
 import bson
-from bson.py3compat import b
 from bson import json_util
 from bson.binary import Binary, MD5_SUBTYPE, USER_DEFINED_SUBTYPE
 from bson.code import Code
@@ -40,7 +39,6 @@ from bson.tz_util import utc
 from test.test_client import get_client
 
 PY3 = sys.version_info[0] == 3
-PY24 = sys.version_info[:2] == (2, 4)
 
 
 class TestJsonUtil(unittest.TestCase):
@@ -71,11 +69,10 @@ class TestJsonUtil(unittest.TestCase):
         self.round_trip({"ref": DBRef("foo", 5, "db")})
         self.round_trip({"ref": DBRef("foo", ObjectId())})
 
-        if not PY24:
-            # Check order.
-            self.assertEqual(
-                '{"$ref": "collection", "$id": 1, "$db": "db"}',
-                json_util.dumps(DBRef('collection', 1, 'db')))
+        # Check order.
+        self.assertEqual(
+            '{"$ref": "collection", "$id": 1, "$db": "db"}',
+            json_util.dumps(DBRef('collection', 1, 'db')))
 
     def test_datetime(self):
         # only millis, not micros
@@ -132,15 +129,14 @@ class TestJsonUtil(unittest.TestCase):
                 '{"r": {"$regex": ".*", "$options": "ilm"}}',
                 compile_re=False)['r'])
 
-        if not PY24:
-            # Check order.
-            self.assertEqual(
-                '{"$regex": ".*", "$options": "mx"}',
-                json_util.dumps(Regex('.*', re.M | re.X)))
+        # Check order.
+        self.assertEqual(
+            '{"$regex": ".*", "$options": "mx"}',
+            json_util.dumps(Regex('.*', re.M | re.X)))
 
-            self.assertEqual(
-                '{"$regex": ".*", "$options": "mx"}',
-                json_util.dumps(re.compile(b('.*'), re.M | re.X)))
+        self.assertEqual(
+            '{"$regex": ".*", "$options": "mx"}',
+            json_util.dumps(re.compile(b'.*', re.M | re.X)))
 
     def test_minkey(self):
         self.round_trip({"m": MinKey()})
@@ -150,9 +146,8 @@ class TestJsonUtil(unittest.TestCase):
 
     def test_timestamp(self):
         res = json_util.dumps({"ts": Timestamp(4, 13)}, default=json_util.default)
-        if not PY24:
-            # Check order.
-            self.assertEqual('{"ts": {"t": 4, "i": 13}}', res)
+        # Check order.
+        self.assertEqual('{"ts": {"t": 4, "i": 13}}', res)
 
         dct = json_util.loads(res)
         self.assertEqual(dct['ts']['t'], 4)
@@ -166,11 +161,11 @@ class TestJsonUtil(unittest.TestCase):
                             'f47ac10b-58cc-4372-a567-0e02b2c3d479')})
 
     def test_binary(self):
-        bin_type_dict = {"bin": Binary(b("\x00\x01\x02\x03\x04"))}
+        bin_type_dict = {"bin": Binary(b"\x00\x01\x02\x03\x04")}
         md5_type_dict = {
-            "md5": Binary(b(' n7\x18\xaf\t/\xd1\xd1/\x80\xca\xe7q\xcc\xac'),
+            "md5": Binary(b' n7\x18\xaf\t/\xd1\xd1/\x80\xca\xe7q\xcc\xac',
                 MD5_SUBTYPE)}
-        custom_type_dict = {"custom": Binary(b("hello"), USER_DEFINED_SUBTYPE)}
+        custom_type_dict = {"custom": Binary(b"hello", USER_DEFINED_SUBTYPE)}
 
         self.round_trip(bin_type_dict)
         self.round_trip(md5_type_dict)
@@ -183,12 +178,11 @@ class TestJsonUtil(unittest.TestCase):
             json_util.loads('{"bin": {"$type": 0, "$binary": "AAECAwQ="}}'))
 
         json_bin_dump = json_util.dumps(md5_type_dict)
-        if not PY24:
-            # Check order.
-            self.assertEqual(
-                '{"md5": {"$binary": "IG43GK8JL9HRL4DK53HMrA==",'
-                + ' "$type": "05"}}',
-                json_bin_dump)
+        # Check order.
+        self.assertEqual(
+            '{"md5": {"$binary": "IG43GK8JL9HRL4DK53HMrA==",'
+            + ' "$type": "05"}}',
+            json_bin_dump)
 
         self.assertEqual(md5_type_dict,
             json_util.loads('{"md5": {"$type": 5, "$binary":'
@@ -216,9 +210,8 @@ class TestJsonUtil(unittest.TestCase):
         res = json_util.dumps(code)
         self.assertEqual(code, json_util.loads(res))
 
-        if not PY24:
-            # Check order.
-            self.assertEqual('{"$code": "return z", "$scope": {"z": 2}}', res)
+        # Check order.
+        self.assertEqual('{"$code": "return z", "$scope": {"z": 2}}', res)
 
     def test_cursor(self):
         db = self.db
@@ -228,7 +221,7 @@ class TestJsonUtil(unittest.TestCase):
             {'foo': [1, 2]},
             {'bar': {'hello': 'world'}},
             {'code': Code("function x() { return 1; }")},
-            {'bin': Binary(b("\x00\x01\x02\x03\x04"))},
+            {'bin': Binary(b"\x00\x01\x02\x03\x04")},
             {'dbref': {'_ref': DBRef('simple',
                                ObjectId('509b8db456c02c5ab7e63c34'))}}
         ]

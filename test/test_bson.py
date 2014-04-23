@@ -39,7 +39,7 @@ from bson.binary import Binary, UUIDLegacy
 from bson.code import Code
 from bson.objectid import ObjectId
 from bson.dbref import DBRef
-from bson.py3compat import b
+from bson.py3compat import PY3, u, text_type, iteritems
 from bson.son import SON
 from bson.timestamp import Timestamp
 from bson.errors import (InvalidBSON,
@@ -52,7 +52,8 @@ from bson.tz_util import (FixedOffset,
 
 from test import qcheck
 
-PY3 = sys.version_info[0] == 3
+if PY3:
+    long = int
 
 
 class TestBSON(unittest.TestCase):
@@ -61,106 +62,106 @@ class TestBSON(unittest.TestCase):
 
     def test_basic_validation(self):
         self.assertRaises(TypeError, is_valid, 100)
-        self.assertRaises(TypeError, is_valid, u"test")
+        self.assertRaises(TypeError, is_valid, u("test"))
         self.assertRaises(TypeError, is_valid, 10.4)
 
-        self.assertInvalid(b("test"))
+        self.assertInvalid(b"test")
 
         # the simplest valid BSON document
-        self.assertTrue(is_valid(b("\x05\x00\x00\x00\x00")))
-        self.assertTrue(is_valid(BSON(b("\x05\x00\x00\x00\x00"))))
+        self.assertTrue(is_valid(b"\x05\x00\x00\x00\x00"))
+        self.assertTrue(is_valid(BSON(b"\x05\x00\x00\x00\x00")))
 
         # failure cases
-        self.assertInvalid(b("\x04\x00\x00\x00\x00"))
-        self.assertInvalid(b("\x05\x00\x00\x00\x01"))
-        self.assertInvalid(b("\x05\x00\x00\x00"))
-        self.assertInvalid(b("\x05\x00\x00\x00\x00\x00"))
-        self.assertInvalid(b("\x07\x00\x00\x00\x02a\x00\x78\x56\x34\x12"))
-        self.assertInvalid(b("\x09\x00\x00\x00\x10a\x00\x05\x00"))
-        self.assertInvalid(b("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"))
-        self.assertInvalid(b("\x13\x00\x00\x00\x02foo\x00"
-                             "\x04\x00\x00\x00bar\x00\x00"))
-        self.assertInvalid(b("\x18\x00\x00\x00\x03foo\x00\x0f\x00\x00"
-                             "\x00\x10bar\x00\xff\xff\xff\x7f\x00\x00"))
-        self.assertInvalid(b("\x15\x00\x00\x00\x03foo\x00\x0c"
-                             "\x00\x00\x00\x08bar\x00\x01\x00\x00"))
-        self.assertInvalid(b("\x1c\x00\x00\x00\x03foo\x00"
-                             "\x12\x00\x00\x00\x02bar\x00"
-                             "\x05\x00\x00\x00baz\x00\x00\x00"))
-        self.assertInvalid(b("\x10\x00\x00\x00\x02a\x00"
-                             "\x04\x00\x00\x00abc\xff\x00"))
+        self.assertInvalid(b"\x04\x00\x00\x00\x00")
+        self.assertInvalid(b"\x05\x00\x00\x00\x01")
+        self.assertInvalid(b"\x05\x00\x00\x00")
+        self.assertInvalid(b"\x05\x00\x00\x00\x00\x00")
+        self.assertInvalid(b"\x07\x00\x00\x00\x02a\x00\x78\x56\x34\x12")
+        self.assertInvalid(b"\x09\x00\x00\x00\x10a\x00\x05\x00")
+        self.assertInvalid(b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00")
+        self.assertInvalid(b"\x13\x00\x00\x00\x02foo\x00"
+                           b"\x04\x00\x00\x00bar\x00\x00")
+        self.assertInvalid(b"\x18\x00\x00\x00\x03foo\x00\x0f\x00\x00"
+                           b"\x00\x10bar\x00\xff\xff\xff\x7f\x00\x00")
+        self.assertInvalid(b"\x15\x00\x00\x00\x03foo\x00\x0c"
+                           b"\x00\x00\x00\x08bar\x00\x01\x00\x00")
+        self.assertInvalid(b"\x1c\x00\x00\x00\x03foo\x00"
+                           b"\x12\x00\x00\x00\x02bar\x00"
+                           b"\x05\x00\x00\x00baz\x00\x00\x00")
+        self.assertInvalid(b"\x10\x00\x00\x00\x02a\x00"
+                           b"\x04\x00\x00\x00abc\xff\x00")
 
     def test_bad_string_lengths(self):
         self.assertInvalid(
-            b("\x0c\x00\x00\x00\x02\x00"
-              "\x00\x00\x00\x00\x00\x00"))
+            b"\x0c\x00\x00\x00\x02\x00"
+            b"\x00\x00\x00\x00\x00\x00")
         self.assertInvalid(
-            b("\x12\x00\x00\x00\x02\x00"
-              "\xff\xff\xff\xfffoobar\x00\x00"))
+            b"\x12\x00\x00\x00\x02\x00"
+            b"\xff\xff\xff\xfffoobar\x00\x00")
         self.assertInvalid(
-            b("\x0c\x00\x00\x00\x0e\x00"
-              "\x00\x00\x00\x00\x00\x00"))
+            b"\x0c\x00\x00\x00\x0e\x00"
+            b"\x00\x00\x00\x00\x00\x00")
         self.assertInvalid(
-            b("\x12\x00\x00\x00\x0e\x00"
-              "\xff\xff\xff\xfffoobar\x00\x00"))
+            b"\x12\x00\x00\x00\x0e\x00"
+            b"\xff\xff\xff\xfffoobar\x00\x00")
         self.assertInvalid(
-            b("\x18\x00\x00\x00\x0c\x00"
-              "\x00\x00\x00\x00\x00RY\xb5j"
-              "\xfa[\xd8A\xd6X]\x99\x00"))
+            b"\x18\x00\x00\x00\x0c\x00"
+            b"\x00\x00\x00\x00\x00RY\xb5j"
+            b"\xfa[\xd8A\xd6X]\x99\x00")
         self.assertInvalid(
-            b("\x1e\x00\x00\x00\x0c\x00"
-              "\xff\xff\xff\xfffoobar\x00"
-              "RY\xb5j\xfa[\xd8A\xd6X]\x99\x00"))
+            b"\x1e\x00\x00\x00\x0c\x00"
+            b"\xff\xff\xff\xfffoobar\x00"
+            b"RY\xb5j\xfa[\xd8A\xd6X]\x99\x00")
         self.assertInvalid(
-            b("\x0c\x00\x00\x00\r\x00"
-              "\x00\x00\x00\x00\x00\x00"))
+            b"\x0c\x00\x00\x00\r\x00"
+            b"\x00\x00\x00\x00\x00\x00")
         self.assertInvalid(
-            b("\x0c\x00\x00\x00\r\x00"
-              "\xff\xff\xff\xff\x00\x00"))
+            b"\x0c\x00\x00\x00\r\x00"
+            b"\xff\xff\xff\xff\x00\x00")
         self.assertInvalid(
-            b("\x1c\x00\x00\x00\x0f\x00"
-              "\x15\x00\x00\x00\x00\x00"
-              "\x00\x00\x00\x0c\x00\x00"
-              "\x00\x02\x00\x01\x00\x00"
-              "\x00\x00\x00\x00"))
+            b"\x1c\x00\x00\x00\x0f\x00"
+            b"\x15\x00\x00\x00\x00\x00"
+            b"\x00\x00\x00\x0c\x00\x00"
+            b"\x00\x02\x00\x01\x00\x00"
+            b"\x00\x00\x00\x00")
         self.assertInvalid(
-            b("\x1c\x00\x00\x00\x0f\x00"
-              "\x15\x00\x00\x00\xff\xff"
-              "\xff\xff\x00\x0c\x00\x00"
-              "\x00\x02\x00\x01\x00\x00"
-              "\x00\x00\x00\x00"))
+            b"\x1c\x00\x00\x00\x0f\x00"
+            b"\x15\x00\x00\x00\xff\xff"
+            b"\xff\xff\x00\x0c\x00\x00"
+            b"\x00\x02\x00\x01\x00\x00"
+            b"\x00\x00\x00\x00")
         self.assertInvalid(
-            b("\x1c\x00\x00\x00\x0f\x00"
-              "\x15\x00\x00\x00\x01\x00"
-              "\x00\x00\x00\x0c\x00\x00"
-              "\x00\x02\x00\x00\x00\x00"
-              "\x00\x00\x00\x00"))
+            b"\x1c\x00\x00\x00\x0f\x00"
+            b"\x15\x00\x00\x00\x01\x00"
+            b"\x00\x00\x00\x0c\x00\x00"
+            b"\x00\x02\x00\x00\x00\x00"
+            b"\x00\x00\x00\x00")
         self.assertInvalid(
-            b("\x1c\x00\x00\x00\x0f\x00"
-              "\x15\x00\x00\x00\x01\x00"
-              "\x00\x00\x00\x0c\x00\x00"
-              "\x00\x02\x00\xff\xff\xff"
-              "\xff\x00\x00\x00"))
+            b"\x1c\x00\x00\x00\x0f\x00"
+            b"\x15\x00\x00\x00\x01\x00"
+            b"\x00\x00\x00\x0c\x00\x00"
+            b"\x00\x02\x00\xff\xff\xff"
+            b"\xff\x00\x00\x00")
 
     def test_random_data_is_not_bson(self):
         qcheck.check_unittest(self, qcheck.isnt(is_valid),
                               qcheck.gen_string(qcheck.gen_range(0, 40)))
 
     def test_basic_decode(self):
-        self.assertEqual({"test": u"hello world"},
-                         BSON(b("\x1B\x00\x00\x00\x0E\x74\x65\x73\x74\x00\x0C"
-                                "\x00\x00\x00\x68\x65\x6C\x6C\x6F\x20\x77\x6F"
-                                "\x72\x6C\x64\x00\x00")).decode())
-        self.assertEqual([{"test": u"hello world"}, {}],
-                         decode_all(b("\x1B\x00\x00\x00\x0E\x74\x65\x73\x74"
-                                      "\x00\x0C\x00\x00\x00\x68\x65\x6C\x6C"
-                                      "\x6f\x20\x77\x6F\x72\x6C\x64\x00\x00"
-                                      "\x05\x00\x00\x00\x00")))
+        self.assertEqual({"test": u("hello world")},
+                         BSON(b"\x1B\x00\x00\x00\x0E\x74\x65\x73\x74\x00\x0C"
+                              b"\x00\x00\x00\x68\x65\x6C\x6C\x6F\x20\x77\x6F"
+                              b"\x72\x6C\x64\x00\x00").decode())
+        self.assertEqual([{"test": u("hello world")}, {}],
+                         decode_all(b"\x1B\x00\x00\x00\x0E\x74\x65\x73\x74"
+                                    b"\x00\x0C\x00\x00\x00\x68\x65\x6C\x6C"
+                                    b"\x6f\x20\x77\x6F\x72\x6C\x64\x00\x00"
+                                    b"\x05\x00\x00\x00\x00"))
 
     def test_data_timestamp(self):
         self.assertEqual({"test": Timestamp(4, 20)},
-                         BSON(b("\x13\x00\x00\x00\x11\x74\x65\x73\x74\x00\x14"
-                                "\x00\x00\x00\x04\x00\x00\x00\x00")).decode())
+                         BSON(b"\x13\x00\x00\x00\x11\x74\x65\x73\x74\x00\x14"
+                              b"\x00\x00\x00\x04\x00\x00\x00\x00").decode())
 
     def test_basic_encode(self):
         self.assertRaises(TypeError, BSON.encode, 100)
@@ -168,93 +169,94 @@ class TestBSON(unittest.TestCase):
         self.assertRaises(TypeError, BSON.encode, None)
         self.assertRaises(TypeError, BSON.encode, [])
 
-        self.assertEqual(BSON.encode({}), BSON(b("\x05\x00\x00\x00\x00")))
-        self.assertEqual(BSON.encode({"test": u"hello world"}),
-                         b("\x1B\x00\x00\x00\x02\x74\x65\x73\x74\x00\x0C\x00"
-                           "\x00\x00\x68\x65\x6C\x6C\x6F\x20\x77\x6F\x72\x6C"
-                           "\x64\x00\x00"))
-        self.assertEqual(BSON.encode({u"mike": 100}),
-                         b("\x0F\x00\x00\x00\x10\x6D\x69\x6B\x65\x00\x64\x00"
-                           "\x00\x00\x00"))
+        self.assertEqual(BSON.encode({}), BSON(b"\x05\x00\x00\x00\x00"))
+        self.assertEqual(BSON.encode({"test": u("hello world")}),
+                         b"\x1B\x00\x00\x00\x02\x74\x65\x73\x74\x00\x0C\x00"
+                         b"\x00\x00\x68\x65\x6C\x6C\x6F\x20\x77\x6F\x72\x6C"
+                         b"\x64\x00\x00")
+        self.assertEqual(BSON.encode({u("mike"): 100}),
+                         b"\x0F\x00\x00\x00\x10\x6D\x69\x6B\x65\x00\x64\x00"
+                         b"\x00\x00\x00")
         self.assertEqual(BSON.encode({"hello": 1.5}),
-                         b("\x14\x00\x00\x00\x01\x68\x65\x6C\x6C\x6F\x00\x00"
-                           "\x00\x00\x00\x00\x00\xF8\x3F\x00"))
+                         b"\x14\x00\x00\x00\x01\x68\x65\x6C\x6C\x6F\x00\x00"
+                         b"\x00\x00\x00\x00\x00\xF8\x3F\x00")
         self.assertEqual(BSON.encode({"true": True}),
-                         b("\x0C\x00\x00\x00\x08\x74\x72\x75\x65\x00\x01\x00"))
+                         b"\x0C\x00\x00\x00\x08\x74\x72\x75\x65\x00\x01\x00")
         self.assertEqual(BSON.encode({"false": False}),
-                         b("\x0D\x00\x00\x00\x08\x66\x61\x6C\x73\x65\x00\x00"
-                           "\x00"))
+                         b"\x0D\x00\x00\x00\x08\x66\x61\x6C\x73\x65\x00\x00"
+                         b"\x00")
         self.assertEqual(BSON.encode({"empty": []}),
-                         b("\x11\x00\x00\x00\x04\x65\x6D\x70\x74\x79\x00\x05"
-                           "\x00\x00\x00\x00\x00"))
+                         b"\x11\x00\x00\x00\x04\x65\x6D\x70\x74\x79\x00\x05"
+                         b"\x00\x00\x00\x00\x00")
         self.assertEqual(BSON.encode({"none": {}}),
-                         b("\x10\x00\x00\x00\x03\x6E\x6F\x6E\x65\x00\x05\x00"
-                           "\x00\x00\x00\x00"))
-        self.assertEqual(BSON.encode({"test": Binary(b("test"), 0)}),
-                         b("\x14\x00\x00\x00\x05\x74\x65\x73\x74\x00\x04\x00"
-                           "\x00\x00\x00\x74\x65\x73\x74\x00"))
-        self.assertEqual(BSON.encode({"test": Binary(b("test"), 2)}),
-                         b("\x18\x00\x00\x00\x05\x74\x65\x73\x74\x00\x08\x00"
-                           "\x00\x00\x02\x04\x00\x00\x00\x74\x65\x73\x74\x00"))
-        self.assertEqual(BSON.encode({"test": Binary(b("test"), 128)}),
-                         b("\x14\x00\x00\x00\x05\x74\x65\x73\x74\x00\x04\x00"
-                           "\x00\x00\x80\x74\x65\x73\x74\x00"))
+                         b"\x10\x00\x00\x00\x03\x6E\x6F\x6E\x65\x00\x05\x00"
+                         b"\x00\x00\x00\x00")
+        self.assertEqual(BSON.encode({"test": Binary(b"test", 0)}),
+                         b"\x14\x00\x00\x00\x05\x74\x65\x73\x74\x00\x04\x00"
+                         b"\x00\x00\x00\x74\x65\x73\x74\x00")
+        self.assertEqual(BSON.encode({"test": Binary(b"test", 2)}),
+                         b"\x18\x00\x00\x00\x05\x74\x65\x73\x74\x00\x08\x00"
+                         b"\x00\x00\x02\x04\x00\x00\x00\x74\x65\x73\x74\x00")
+        self.assertEqual(BSON.encode({"test": Binary(b"test", 128)}),
+                         b"\x14\x00\x00\x00\x05\x74\x65\x73\x74\x00\x04\x00"
+                         b"\x00\x00\x80\x74\x65\x73\x74\x00")
         self.assertEqual(BSON.encode({"test": None}),
-                         b("\x0B\x00\x00\x00\x0A\x74\x65\x73\x74\x00\x00"))
+                         b"\x0B\x00\x00\x00\x0A\x74\x65\x73\x74\x00\x00")
         self.assertEqual(BSON.encode({"date": datetime.datetime(2007, 1, 8,
                                                                 0, 30, 11)}),
-                         b("\x13\x00\x00\x00\x09\x64\x61\x74\x65\x00\x38\xBE"
-                           "\x1C\xFF\x0F\x01\x00\x00\x00"))
-        self.assertEqual(BSON.encode({"regex": re.compile(b("a*b"),
+                         b"\x13\x00\x00\x00\x09\x64\x61\x74\x65\x00\x38\xBE"
+                         b"\x1C\xFF\x0F\x01\x00\x00\x00")
+        self.assertEqual(BSON.encode({"regex": re.compile(b"a*b",
                                                           re.IGNORECASE)}),
-                         b("\x12\x00\x00\x00\x0B\x72\x65\x67\x65\x78\x00\x61"
-                           "\x2A\x62\x00\x69\x00\x00"))
+                         b"\x12\x00\x00\x00\x0B\x72\x65\x67\x65\x78\x00\x61"
+                         b"\x2A\x62\x00\x69\x00\x00")
         self.assertEqual(BSON.encode({"$where": Code("test")}),
-                         b("\x16\x00\x00\x00\r$where\x00\x05\x00\x00\x00test"
-                           "\x00\x00"))
+                         b"\x16\x00\x00\x00\r$where\x00\x05\x00\x00\x00test"
+                         b"\x00\x00")
         self.assertEqual(BSON.encode({"$field":
                          Code("function(){ return true;}", scope=None)}),
-                         b("+\x00\x00\x00\r$field\x00\x1a\x00\x00\x00"
-                           "function(){ return true;}\x00\x00"))
+                         b"+\x00\x00\x00\r$field\x00\x1a\x00\x00\x00"
+                         b"function(){ return true;}\x00\x00")
         self.assertEqual(BSON.encode({"$field":
                           Code("return function(){ return x; }",
                             scope={'x': False})}),
-                         b("=\x00\x00\x00\x0f$field\x000\x00\x00\x00\x1f\x00"
-                           "\x00\x00return function(){ return x; }\x00\t\x00"
-                           "\x00\x00\x08x\x00\x00\x00\x00"))
-        a = ObjectId(b("\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0A\x0B"))
+                         b"=\x00\x00\x00\x0f$field\x000\x00\x00\x00\x1f\x00"
+                         b"\x00\x00return function(){ return x; }\x00\t\x00"
+                         b"\x00\x00\x08x\x00\x00\x00\x00")
+        a = ObjectId(b"\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0A\x0B")
         self.assertEqual(BSON.encode({"oid": a}),
-                         b("\x16\x00\x00\x00\x07\x6F\x69\x64\x00\x00\x01\x02"
-                           "\x03\x04\x05\x06\x07\x08\x09\x0A\x0B\x00"))
+                         b"\x16\x00\x00\x00\x07\x6F\x69\x64\x00\x00\x01\x02"
+                         b"\x03\x04\x05\x06\x07\x08\x09\x0A\x0B\x00")
         self.assertEqual(BSON.encode({"ref": DBRef("coll", a)}),
-                         b("\x2F\x00\x00\x00\x03ref\x00\x25\x00\x00\x00\x02"
-                           "$ref\x00\x05\x00\x00\x00coll\x00\x07$id\x00\x00"
-                           "\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0A\x0B\x00"
-                           "\x00"))
+                         b"\x2F\x00\x00\x00\x03ref\x00\x25\x00\x00\x00\x02"
+                         b"$ref\x00\x05\x00\x00\x00coll\x00\x07$id\x00\x00"
+                         b"\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0A\x0B\x00"
+                         b"\x00")
 
     def test_encode_then_decode(self):
 
         def helper(dict):
             self.assertEqual(dict, (BSON.encode(dict)).decode())
         helper({})
-        helper({"test": u"hello"})
+        helper({"test": u("hello")})
         self.assertTrue(isinstance(BSON.encode({"hello": "world"})
                                 .decode()["hello"],
-                                unicode))
+                                   text_type))
         helper({"mike": -10120})
         helper({"long": long(10)})
         helper({"really big long": 2147483648})
-        helper({u"hello": 0.0013109})
+        helper({u("hello"): 0.0013109})
         helper({"something": True})
         helper({"false": False})
-        helper({"an array": [1, True, 3.8, u"world"]})
-        helper({"an object": {"test": u"something"}})
-        helper({"a binary": Binary(b("test"), 100)})
-        helper({"a binary": Binary(b("test"), 128)})
-        helper({"a binary": Binary(b("test"), 254)})
-        helper({"another binary": Binary(b("test"), 2)})
-        helper(SON([(u'test dst', datetime.datetime(1993, 4, 4, 2))]))
-        helper(SON([(u'test negative dst', datetime.datetime(1, 1, 1, 1, 1, 1))]))
+        helper({"an array": [1, True, 3.8, u("world")]})
+        helper({"an object": {"test": u("something")}})
+        helper({"a binary": Binary(b"test", 100)})
+        helper({"a binary": Binary(b"test", 128)})
+        helper({"a binary": Binary(b"test", 254)})
+        helper({"another binary": Binary(b"test", 2)})
+        helper(SON([(u('test dst'), datetime.datetime(1993, 4, 4, 2))]))
+        helper(SON([(u('test negative dst'),
+                     datetime.datetime(1, 1, 1, 1, 1, 1))]))
         helper({"big float": float(10000000000)})
         helper({"ref": DBRef("coll", 5)})
         helper({"ref": DBRef("coll", 5, foo="bar", bar=4)})
@@ -285,8 +287,8 @@ class TestBSON(unittest.TestCase):
         # not support creation of the DBPointer type, but will decode
         # DBPointer to DBRef.
 
-        bs = b("\x18\x00\x00\x00\x0c\x00\x01\x00\x00"
-               "\x00\x00RY\xb5j\xfa[\xd8A\xd6X]\x99\x00")
+        bs = (b"\x18\x00\x00\x00\x0c\x00\x01\x00\x00"
+              b"\x00\x00RY\xb5j\xfa[\xd8A\xd6X]\x99\x00")
 
         self.assertEqual({'': DBRef('', ObjectId('5259b56afa5bd841d6585d99'))},
                          bson.BSON(bs).decode())
@@ -300,7 +302,7 @@ class TestBSON(unittest.TestCase):
         self.assertEqual(id_only, BSON.encode(id_only).decode())
 
     def test_bytes_as_keys(self):
-        doc = {b("foo"): 'bar'}
+        doc = {b"foo": 'bar'}
         # Since `bytes` are stored as Binary you can't use them
         # as keys in python 3.x. Using binary data as a key makes
         # no sense in BSON anyway and little sense in python.
@@ -367,13 +369,13 @@ class TestBSON(unittest.TestCase):
             self.assertRaises(RuntimeError, BSON.encode, evil_data)
 
     def test_overflow(self):
-        self.assertTrue(BSON.encode({"x": 9223372036854775807L}))
+        self.assertTrue(BSON.encode({"x": long(9223372036854775807)}))
         self.assertRaises(OverflowError, BSON.encode,
-                          {"x": 9223372036854775808L})
+                          {"x": long(9223372036854775808)})
 
-        self.assertTrue(BSON.encode({"x": -9223372036854775808L}))
+        self.assertTrue(BSON.encode({"x": long(-9223372036854775808)}))
         self.assertRaises(OverflowError, BSON.encode,
-                          {"x": -9223372036854775809L})
+                          {"x": long(-9223372036854775809)})
 
     def test_small_long_encode_decode(self):
         if PY3:
@@ -384,10 +386,10 @@ class TestBSON(unittest.TestCase):
         self.assertEqual(256, decoded1)
         self.assertEqual(type(256), type(decoded1))
 
-        encoded2 = BSON.encode({'x': 256L})
+        encoded2 = BSON.encode({'x': long(256)})
         decoded2 = BSON.decode(encoded2)['x']
-        self.assertEqual(256L, decoded2)
-        self.assertEqual(type(256L), type(decoded2))
+        self.assertEqual(long(256), decoded2)
+        self.assertEqual(type(long(256)), type(decoded2))
 
         self.assertNotEqual(type(decoded1), type(decoded2))
 
@@ -421,17 +423,18 @@ class TestBSON(unittest.TestCase):
     # The C extension was segfaulting on unicode RegExs, so we have this test
     # that doesn't really test anything but the lack of a segfault.
     def test_unicode_regex(self):
-        regex = re.compile(u'revisi\xf3n')
+        regex = re.compile(u('revisi\xf3n'))
         BSON.encode({"regex": regex}).decode()
 
     def test_non_string_keys(self):
         self.assertRaises(InvalidDocument, BSON.encode, {8.9: "test"})
 
     def test_utf8(self):
-        w = {u"aéあ": u"aéあ"}
+        w = {u("aéあ"): u("aéあ")}
         self.assertEqual(w, BSON.encode(w).decode())
 
-        iso8859_bytes = u"aé".encode("iso-8859-1")
+        # b'a\xe9' == u"aé".encode("iso-8859-1")
+        iso8859_bytes = b'a\xe9'
         y = {"hello": iso8859_bytes}
         if PY3:
             # Stored as BSON binary subtype 0.
@@ -442,12 +445,12 @@ class TestBSON(unittest.TestCase):
             # Python 2.
             try:
                 BSON.encode(y)
-            except InvalidStringData, e:
+            except InvalidStringData as e:
                 self.assertTrue(repr(iso8859_bytes) in str(e))
 
             # The next two tests only make sense in python 2.x since
             # you can't use `bytes` type as document keys in python 3.x.
-            x = {u"aéあ".encode("utf-8"): u"aéあ".encode("utf-8")}
+            x = {u("aéあ").encode("utf-8"): u("aéあ").encode("utf-8")}
             self.assertEqual(w, BSON.encode(x).decode())
 
             z = {iso8859_bytes: "hello"}
@@ -460,27 +463,27 @@ class TestBSON(unittest.TestCase):
         # This test doesn't make much sense in Python2
         # since {'a': '\x00'} == {'a': u'\x00'}.
         # Decoding here actually returns {'a': '\x00'}
-        doc = {"a": u"\x00"}
+        doc = {"a": u("\x00")}
         self.assertEqual(doc, BSON.encode(doc).decode())
 
-        self.assertRaises(InvalidDocument, BSON.encode, {b("\x00"): "a"})
-        self.assertRaises(InvalidDocument, BSON.encode, {u"\x00": "a"})
+        self.assertRaises(InvalidDocument, BSON.encode, {b"\x00": "a"})
+        self.assertRaises(InvalidDocument, BSON.encode, {u("\x00"): "a"})
 
         self.assertRaises(InvalidDocument, BSON.encode,
-                          {"a": re.compile(b("ab\x00c"))})
+                          {"a": re.compile(b"ab\x00c")})
         self.assertRaises(InvalidDocument, BSON.encode,
-                          {"a": re.compile(u"ab\x00c")})
+                          {"a": re.compile(u("ab\x00c"))})
 
     def test_move_id(self):
-        self.assertEqual(b("\x19\x00\x00\x00\x02_id\x00\x02\x00\x00\x00a\x00"
-                           "\x02a\x00\x02\x00\x00\x00a\x00\x00"),
+        self.assertEqual(b"\x19\x00\x00\x00\x02_id\x00\x02\x00\x00\x00a\x00"
+                         b"\x02a\x00\x02\x00\x00\x00a\x00\x00",
                          BSON.encode(SON([("a", "a"), ("_id", "a")])))
 
-        self.assertEqual(b("\x2c\x00\x00\x00"
-                           "\x02_id\x00\x02\x00\x00\x00b\x00"
-                           "\x03b\x00"
-                           "\x19\x00\x00\x00\x02a\x00\x02\x00\x00\x00a\x00"
-                           "\x02_id\x00\x02\x00\x00\x00a\x00\x00\x00"),
+        self.assertEqual(b"\x2c\x00\x00\x00"
+                         b"\x02_id\x00\x02\x00\x00\x00b\x00"
+                         b"\x03b\x00"
+                         b"\x19\x00\x00\x00\x02a\x00\x02\x00\x00\x00a\x00"
+                         b"\x02_id\x00\x02\x00\x00\x00a\x00\x00\x00",
                          BSON.encode(SON([("b",
                                            SON([("a", "a"), ("_id", "a")])),
                                           ("_id", "b")])))
@@ -515,14 +518,14 @@ class TestBSON(unittest.TestCase):
         class _myfloat(float):
             pass
 
-        class _myunicode(unicode):
+        class _myunicode(text_type):
             pass
 
         d = {'a': _myint(42), 'b': _myfloat(63.9),
              'c': _myunicode('hello world')
             }
         d2 = BSON.encode(d).decode()
-        for key, value in d2.iteritems():
+        for key, value in iteritems(d2):
             orig_value = d[key]
             orig_type = orig_value.__class__.__bases__[0]
             self.assertEqual(type(value), orig_type)
@@ -543,10 +546,10 @@ class TestBSON(unittest.TestCase):
         self.assertEqual(0, bson_re1.flags)
 
         doc1 = {'r': bson_re1}
-        doc1_bson = b(
-            '\x11\x00\x00\x00'              # document length
-            '\x0br\x00[\\w-\\.]\x00\x00'    # r: regex
-            '\x00')                         # document terminator
+        doc1_bson = (
+            b'\x11\x00\x00\x00'              # document length
+            b'\x0br\x00[\\w-\\.]\x00\x00'    # r: regex
+            b'\x00')                         # document terminator
 
         self.assertEqual(doc1_bson, BSON.encode(doc1))
         self.assertEqual(doc1, BSON(doc1_bson).decode(compile_re=False))
@@ -557,10 +560,10 @@ class TestBSON(unittest.TestCase):
 
         doc2_with_re = {'r': re2}
         doc2_with_bson_re = {'r': bson_re2}
-        doc2_bson = b(
-            "\x12\x00\x00\x00"           # document length
-            "\x0br\x00.*\x00ilmsux\x00"  # r: regex
-            "\x00")                      # document terminator
+        doc2_bson = (
+            b"\x12\x00\x00\x00"           # document length
+            b"\x0br\x00.*\x00ilmsux\x00"  # r: regex
+            b"\x00")                      # document terminator
 
         self.assertEqual(doc2_bson, BSON.encode(doc2_with_re))
         self.assertEqual(doc2_bson, BSON.encode(doc2_with_bson_re))
@@ -574,9 +577,9 @@ class TestBSON(unittest.TestCase):
 
     def test_regex_from_native(self):
         self.assertEqual('.*', Regex.from_native(re.compile('.*')).pattern)
-        self.assertEqual(0, Regex.from_native(re.compile(b(''))).flags)
+        self.assertEqual(0, Regex.from_native(re.compile(b'')).flags)
 
-        regex = re.compile(b(''), re.I | re.L | re.M | re.S | re.X)
+        regex = re.compile(b'', re.I | re.L | re.M | re.S | re.X)
         self.assertEqual(
             re.I | re.L | re.M | re.S | re.X,
             Regex.from_native(regex).flags)

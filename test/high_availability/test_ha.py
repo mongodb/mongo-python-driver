@@ -165,7 +165,7 @@ class TestDirectConnection(HATestCase):
             # should do the same for unacknowledged writes.
             try:
                 client.pymongo_test.test.insert({}, w=0)
-            except AutoReconnect, e:
+            except AutoReconnect as e:
                 self.assertEqual('not master', e.args[0])
             else:
                 self.fail(
@@ -181,7 +181,7 @@ class TestDirectConnection(HATestCase):
             # See explanation above
             try:
                 client.pymongo_test.test.insert({}, w=0)
-            except AutoReconnect, e:
+            except AutoReconnect as e:
                 self.assertEqual('not master', e.args[0])
             else:
                 self.fail(
@@ -486,7 +486,7 @@ class TestReadWithFailover(HATestCase):
 
         db.read_preference = SECONDARY_PREFERRED
         cursor = db.test.find().batch_size(5)
-        cursor.next()
+        next(cursor)
         self.assertEqual(5, cursor._Cursor__retrieved)
         self.assertTrue(cursor._Cursor__connection_id in c.secondaries)
         ha_tools.kill_primary()
@@ -975,7 +975,7 @@ class TestReplicaSetRequest(HATestCase):
         for _ in range(patience_seconds):
             try:
                 if ha_tools.ha_tools_debug:
-                    print 'Waiting for failover'
+                    print('Waiting for failover')
                 if ha_tools.get_primary():
                     # We have a new primary
                     break

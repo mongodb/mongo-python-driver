@@ -24,6 +24,7 @@ sys.path[0:0] = [""]
 from nose.plugins.skip import SkipTest
 
 from bson.code import Code
+from bson.py3compat import u, PY3
 from bson.son import SON
 from pymongo import (ASCENDING,
                      DESCENDING,
@@ -38,6 +39,9 @@ from pymongo.errors import (InvalidOperation,
 from test import version
 from test.test_client import get_client
 from test.utils import is_mongos, get_command_line, server_started_with_auth
+
+if PY3:
+    long = int
 
 
 class TestCursor(unittest.TestCase):
@@ -61,7 +65,7 @@ class TestCursor(unittest.TestCase):
         coll.insert({"amalia": 2})
 
         coll.find().max_time_ms(None)
-        coll.find().max_time_ms(1L)
+        coll.find().max_time_ms(long(1))
 
         cursor = coll.find().max_time_ms(999)
         self.assertEqual(999, cursor._Cursor__max_time_ms)
@@ -84,7 +88,7 @@ class TestCursor(unittest.TestCase):
             try:
                 cursor = coll.find().max_time_ms(1)
                 try:
-                    cursor.next()
+                    next(cursor)
                 except ExecutionTimeout:
                     pass
                 else:
@@ -109,7 +113,7 @@ class TestCursor(unittest.TestCase):
         cursor = coll.find().max_time_ms(100)
 
         # Send initial query before turning on failpoint.
-        cursor.next()
+        next(cursor)
         self.client.admin.command("configureFailPoint",
                                   "maxTimeAlwaysTimeOut",
                                   mode="alwaysOn")
@@ -181,7 +185,7 @@ class TestCursor(unittest.TestCase):
         self.assertRaises(TypeError, db.test.find().limit, None)
         self.assertRaises(TypeError, db.test.find().limit, "hello")
         self.assertRaises(TypeError, db.test.find().limit, 5.5)
-        self.assertTrue(db.test.find().limit(5L))
+        self.assertTrue(db.test.find().limit(long(5)))
 
         db.test.drop()
         for i in range(100):
@@ -295,7 +299,7 @@ class TestCursor(unittest.TestCase):
         self.assertRaises(TypeError, db.test.find().batch_size, "hello")
         self.assertRaises(TypeError, db.test.find().batch_size, 5.5)
         self.assertRaises(ValueError, db.test.find().batch_size, -1)
-        self.assertTrue(db.test.find().batch_size(5L))
+        self.assertTrue(db.test.find().batch_size(long(5)))
         a = db.test.find()
         for _ in a:
             break
@@ -335,27 +339,27 @@ class TestCursor(unittest.TestCase):
             db.test.save({"x": x})
 
         curs = db.test.find().limit(0).batch_size(10)
-        curs.next()
+        next(curs)
         self.assertEqual(10, curs._Cursor__retrieved)
 
         curs = db.test.find().limit(-2).batch_size(0)
-        curs.next()
+        next(curs)
         self.assertEqual(2, curs._Cursor__retrieved)
 
         curs = db.test.find().limit(-4).batch_size(5)
-        curs.next()
+        next(curs)
         self.assertEqual(4, curs._Cursor__retrieved)
 
         curs = db.test.find().limit(50).batch_size(500)
-        curs.next()
+        next(curs)
         self.assertEqual(50, curs._Cursor__retrieved)
 
         curs = db.test.find().batch_size(500)
-        curs.next()
+        next(curs)
         self.assertEqual(500, curs._Cursor__retrieved)
 
         curs = db.test.find().limit(50)
-        curs.next()
+        next(curs)
         self.assertEqual(50, curs._Cursor__retrieved)
 
         # these two might be shaky, as the default
@@ -363,11 +367,11 @@ class TestCursor(unittest.TestCase):
         # or 1MB (whichever is smaller) is default
         # for queries without ntoreturn
         curs = db.test.find()
-        curs.next()
+        next(curs)
         self.assertEqual(101, curs._Cursor__retrieved)
 
         curs = db.test.find().limit(0).batch_size(0)
-        curs.next()
+        next(curs)
         self.assertEqual(101, curs._Cursor__retrieved)
 
     def test_skip(self):
@@ -377,7 +381,7 @@ class TestCursor(unittest.TestCase):
         self.assertRaises(TypeError, db.test.find().skip, "hello")
         self.assertRaises(TypeError, db.test.find().skip, 5.5)
         self.assertRaises(ValueError, db.test.find().skip, -5)
-        self.assertTrue(db.test.find().skip(5L))
+        self.assertTrue(db.test.find().skip(long(5)))
 
         db.drop_collection("test")
 
@@ -428,21 +432,20 @@ class TestCursor(unittest.TestCase):
 
         db.test.drop()
 
-        unsort = range(10)
+        unsort = list(range(10))
         random.shuffle(unsort)
 
         for i in unsort:
             db.test.save({"x": i})
 
         asc = [i["x"] for i in db.test.find().sort("x", ASCENDING)]
-        self.assertEqual(asc, range(10))
+        self.assertEqual(asc, list(range(10)))
         asc = [i["x"] for i in db.test.find().sort("x")]
-        self.assertEqual(asc, range(10))
+        self.assertEqual(asc, list(range(10)))
         asc = [i["x"] for i in db.test.find().sort([("x", ASCENDING)])]
-        self.assertEqual(asc, range(10))
+        self.assertEqual(asc, list(range(10)))
 
-        expect = range(10)
-        expect.reverse()
+        expect = list(reversed(range(10)))
         desc = [i["x"] for i in db.test.find().sort("x", DESCENDING)]
         self.assertEqual(desc, expect)
         desc = [i["x"] for i in db.test.find().sort([("x", DESCENDING)])]
@@ -516,7 +519,7 @@ class TestCursor(unittest.TestCase):
 
         self.assertEqual(3, db.test.find().where('this.x < 3').count())
         self.assertEqual(10, db.test.find().count())
-        self.assertEqual(3, db.test.find().where(u'this.x < 3').count())
+        self.assertEqual(3, db.test.find().where(u('this.x < 3')).count())
         self.assertEqual([0, 1, 2],
                          [a["x"] for a in
                           db.test.find().where('this.x < 3')])
@@ -818,7 +821,8 @@ class TestCursor(unittest.TestCase):
             self.fail()
 
         self.assertEqual(5, len(list(self.db.test.find()[20:25])))
-        self.assertEqual(5, len(list(self.db.test.find()[20L:25L])))
+        self.assertEqual(5, len(list(
+            self.db.test.find()[long(20):long(25)])))
         for a, b in zip(count(20), self.db.test.find()[20:25]):
             self.assertEqual(a, b['i'])
 
@@ -864,7 +868,7 @@ class TestCursor(unittest.TestCase):
         self.assertEqual(50, self.db.test.find()[50]['i'])
         self.assertEqual(50, self.db.test.find().skip(50)[0]['i'])
         self.assertEqual(50, self.db.test.find().skip(49)[1]['i'])
-        self.assertEqual(50, self.db.test.find()[50L]['i'])
+        self.assertEqual(50, self.db.test.find()[long(50)]['i'])
         self.assertEqual(99, self.db.test.find()[99]['i'])
 
         self.assertRaises(IndexError, lambda x: self.db.test.find()[x], -1)
@@ -948,7 +952,7 @@ class TestCursor(unittest.TestCase):
             # Capped rollover - the collection can never
             # have more than 3 documents. Just make sure
             # this doesn't raise...
-            db.test.insert(({"x": i} for i in xrange(4, 7)))
+            db.test.insert(({"x": i} for i in range(4, 7)))
             self.assertEqual(0, len(list(cursor)))
 
             # and that the cursor doesn't think it's still alive.
@@ -1001,23 +1005,18 @@ class TestCursor(unittest.TestCase):
                                       .max_scan(90).max_scan(50))))
 
     def test_with_statement(self):
-        if sys.version_info < (2, 6):
-            raise SkipTest("With statement requires Python >= 2.6")
-
         self.db.drop_collection("test")
         for _ in range(100):
             self.db.test.insert({})
 
         c1 = self.db.test.find()
-        exec """
-with self.db.test.find() as c2:
-    self.assertTrue(c2.alive)
-self.assertFalse(c2.alive)
+        with self.db.test.find() as c2:
+            self.assertTrue(c2.alive)
+        self.assertFalse(c2.alive)
 
-with self.db.test.find() as c2:
-    self.assertEqual(100, len(list(c2)))
-self.assertFalse(c2.alive)
-"""
+        with self.db.test.find() as c2:
+            self.assertEqual(100, len(list(c2)))
+        self.assertFalse(c2.alive)
         self.assertTrue(c1.alive)
 
     def test_comment(self):
@@ -1066,7 +1065,7 @@ self.assertFalse(c2.alive)
 
         self.db.test.insert([{}, {}])
         cursor = self.db.test.find()
-        cursor.next()
+        next(cursor)
         self.assertRaises(InvalidOperation, cursor.comment, 'hello')
 
         self.db.system.profile.drop()
@@ -1075,7 +1074,7 @@ self.assertFalse(c2.alive)
 
         # This is just a test, don't try this at home...
         self.db.test.remove({})
-        self.db.test.insert({'_id': i} for i in xrange(200))
+        self.db.test.insert({'_id': i} for i in range(200))
 
         class CManager(CursorManager):
             def __init__(self, connection):
@@ -1090,7 +1089,7 @@ self.assertFalse(c2.alive)
             client.set_cursor_manager(CManager)
             docs = []
             cursor = self.db.test.find().batch_size(10)
-            docs.append(cursor.next())
+            docs.append(next(cursor))
             cursor.close()
             docs.extend(cursor)
             self.assertEqual(len(docs), 10)
