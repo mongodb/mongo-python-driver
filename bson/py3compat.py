@@ -53,7 +53,6 @@ if PY3:
     def _unicode(s):
         return s
 
-    binary_type = bytes
     text_type = str
     string_type = str
     integer_types = int
@@ -89,7 +88,6 @@ else:
 
     _unicode = unicode
 
-    binary_type = str
     string_type = basestring
     text_type = unicode
     integer_types = (int, long)

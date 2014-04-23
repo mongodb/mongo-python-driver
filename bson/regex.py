@@ -18,7 +18,7 @@
 import re
 
 from bson.son import RE_TYPE
-from bson.py3compat import text_type, binary_type, string_type
+from bson.py3compat import string_type, text_type
 
 
 def str_flags_to_int(str_flags):
@@ -86,7 +86,7 @@ class Regex(object):
           - `flags`: (optional) an integer bitmask, or a string of flag
             characters like "im" for IGNORECASE and MULTILINE
         """
-        if not isinstance(pattern, (text_type, binary_type)):
+        if not isinstance(pattern, (text_type, bytes)):
             raise TypeError("pattern must be a string, not %s" % type(pattern))
         self.pattern = pattern
 

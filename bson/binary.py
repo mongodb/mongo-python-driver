@@ -18,7 +18,7 @@ except ImportError:
     # Python2.4 doesn't have a uuid module.
     pass
 
-from bson.py3compat import PY3, binary_type
+from bson.py3compat import PY3
 
 """Tools for representing BSON binary data.
 """
@@ -104,7 +104,7 @@ USER_DEFINED_SUBTYPE = 128
 """
 
 
-class Binary(binary_type):
+class Binary(bytes):
     """Representation of BSON binary data.
 
     This is necessary because we want to represent Python strings as
@@ -130,14 +130,13 @@ class Binary(binary_type):
     _type_marker = 5
 
     def __new__(cls, data, subtype=BINARY_SUBTYPE):
-        if not isinstance(data, binary_type):
-            raise TypeError("data must be an "
-                            "instance of %s" % (binary_type.__name__,))
+        if not isinstance(data, bytes):
+            raise TypeError("data must be an instance of bytes")
         if not isinstance(subtype, int):
             raise TypeError("subtype must be an instance of int")
         if subtype >= 256 or subtype < 0:
             raise ValueError("subtype must be contained in [0, 256)")
-        self = binary_type.__new__(cls, data)
+        self = bytes.__new__(cls, data)
         self.__subtype = subtype
         return self
 
@@ -150,14 +149,14 @@ class Binary(binary_type):
     def __getnewargs__(self):
         # Work around http://bugs.python.org/issue7382
         data = super(Binary, self).__getnewargs__()[0]
-        if PY3 and not isinstance(data, binary_type):
+        if PY3 and not isinstance(data, bytes):
             data = data.encode('latin-1')
         return data, self.__subtype
 
     def __eq__(self, other):
         if isinstance(other, Binary):
-            return ((self.__subtype, binary_type(self)) ==
-                    (other.subtype, binary_type(other)))
+            return ((self.__subtype, bytes(self)) ==
+                    (other.subtype, bytes(other)))
         # We don't return NotImplemented here because if we did then
         # Binary("foo") == "foo" would return True, since Binary is a
         # subclass of str...
@@ -167,7 +166,7 @@ class Binary(binary_type):
         return not self == other
 
     def __repr__(self):
-        return "Binary(%s, %s)" % (binary_type.__repr__(self), self.__subtype)
+        return "Binary(%s, %s)" % (bytes.__repr__(self), self.__subtype)
 
 
 class UUIDLegacy(Binary):
@@ -210,10 +209,7 @@ class UUIDLegacy(Binary):
     def __new__(cls, obj):
         if not isinstance(obj, UUID):
             raise TypeError("obj must be an instance of uuid.UUID")
-        # Python 3.0(.1) returns a bytearray instance for bytes (3.1 and
-        # newer just return a bytes instance). Convert that to binary_type
-        # for compatibility.
-        self = Binary.__new__(cls, binary_type(obj.bytes), OLD_UUID_SUBTYPE)
+        self = Binary.__new__(cls, obj.bytes, OLD_UUID_SUBTYPE)
         self.__uuid = obj
         return self
 

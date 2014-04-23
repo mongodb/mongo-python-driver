@@ -33,7 +33,6 @@ from bson.min_key import MinKey
 from bson.objectid import ObjectId
 from bson.py3compat import (b,
                             PY3,
-                            binary_type,
                             iteritems,
                             text_type,
                             string_type,
@@ -370,20 +369,17 @@ def _element_to_bson(key, value, check_keys, uuid_subtype):
         if isinstance(value, uuid.UUID):
             # Java Legacy
             if uuid_subtype == JAVA_LEGACY:
-                # Python 3.0(.1) returns a bytearray instance for bytes (3.1
-                # and newer just return a bytes instance). Convert that to
-                # binary_type (here and below) for compatibility.
-                from_uuid = binary_type(value.bytes)
+                from_uuid = value.bytes
                 as_legacy_java = from_uuid[0:8][::-1] + from_uuid[8:16][::-1]
                 value = Binary(as_legacy_java, subtype=OLD_UUID_SUBTYPE)
             # C# legacy
             elif uuid_subtype == CSHARP_LEGACY:
                 # Microsoft GUID representation.
-                value = Binary(binary_type(value.bytes_le),
+                value = Binary(value.bytes_le,
                                subtype=OLD_UUID_SUBTYPE)
             # Python
             else:
-                value = Binary(binary_type(value.bytes), subtype=uuid_subtype)
+                value = Binary(value.bytes, subtype=uuid_subtype)
 
     if isinstance(value, Binary):
         subtype = value.subtype
@@ -400,7 +396,7 @@ def _element_to_bson(key, value, check_keys, uuid_subtype):
         full_length = struct.pack("<i", 8 + len(cstring) + len(scope))
         length = struct.pack("<i", len(cstring))
         return BSONCWS + name + full_length + length + cstring + scope
-    if isinstance(value, binary_type):
+    if isinstance(value, bytes):
         if PY3:
             # Python3 special case. Store 'bytes' as BSON binary subtype 0.
             return (BSONBIN + name +
@@ -557,9 +553,8 @@ def is_valid(bson):
     :Parameters:
       - `bson`: the data to be validated
     """
-    if not isinstance(bson, binary_type):
-        raise TypeError("BSON data must be an instance "
-                        "of a subclass of %s" % (binary_type.__name__,))
+    if not isinstance(bson, bytes):
+        raise TypeError("BSON data must be an instance of a subclass of bytes")
 
     try:
         (_, remainder) = _bson_to_dict(bson, dict, True, OLD_UUID_SUBTYPE, True)
@@ -568,7 +563,7 @@ def is_valid(bson):
         return False
 
 
-class BSON(binary_type):
+class BSON(bytes):
     """BSON (Binary JSON) data.
     """
 

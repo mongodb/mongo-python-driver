@@ -33,7 +33,7 @@ import threading
 import time
 
 from bson.errors import InvalidId
-from bson.py3compat import PY3, binary_type, text_type, bytes_from_hex
+from bson.py3compat import PY3, bytes_from_hex, text_type
 from bson.tz_util import utc
 
 EMPTY = b""
@@ -180,9 +180,9 @@ class ObjectId(object):
         """
         if isinstance(oid, ObjectId):
             self.__id = oid.__id
-        elif isinstance(oid, (text_type, binary_type)):
+        elif isinstance(oid, (bytes, text_type)):
             if len(oid) == 12:
-                if isinstance(oid, binary_type):
+                if isinstance(oid, bytes):
                     self.__id = oid
                 else:
                     raise InvalidId("%s is not a valid ObjectId" % oid)
@@ -194,9 +194,8 @@ class ObjectId(object):
             else:
                 raise InvalidId("%s is not a valid ObjectId" % oid)
         else:
-            raise TypeError("id must be an instance of (%s, %s, ObjectId), "
-                            "not %s" % (binary_type.__name__,
-                                        text_type.__name__, type(oid)))
+            raise TypeError("id must be an instance of (bytes, %s, ObjectId), "
+                            "not %s" % (text_type.__name__, type(oid)))
 
     @property
     def binary(self):
