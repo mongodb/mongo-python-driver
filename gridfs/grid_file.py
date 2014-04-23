@@ -20,7 +20,7 @@ import os
 
 from bson.binary import Binary
 from bson.objectid import ObjectId
-from bson.py3compat import binary_type, text_type, StringIO
+from bson.py3compat import text_type, StringIO
 from gridfs.errors import (CorruptGridFile,
                            FileExists,
                            NoFile,
@@ -604,7 +604,7 @@ class GridOutIterator(object):
         if not chunk:
             raise CorruptGridFile("no chunk #%d" % self.__current_chunk)
         self.__current_chunk += 1
-        return binary_type(chunk["data"])
+        return bytes(chunk["data"])
 
     __next__ = next
 
