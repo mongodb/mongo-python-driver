@@ -30,7 +30,7 @@ sys.path[0:0] = [""]
 import bson
 
 from bson.binary import *
-from bson.py3compat import binary_type, u
+from bson.py3compat import u
 from bson.son import SON
 from nose.plugins.skip import SkipTest
 from test.test_client import get_client
@@ -257,9 +257,7 @@ class TestBinary(unittest.TestCase):
         coll.drop()
 
         uu = uuid.uuid4()
-        # Wrap uu.bytes in binary_type to work
-        # around http://bugs.python.org/issue7380.
-        coll.insert({'uuid': Binary(binary_type(uu.bytes), 3)})
+        coll.insert({'uuid': Binary(uu.bytes, 3)})
         self.assertEqual(1, coll.count())
 
         # Test UUIDLegacy queries.

@@ -22,7 +22,7 @@ sys.path[0:0] = [""]
 from bson.binary import Binary
 from bson.dbref import DBRef
 from bson.objectid import ObjectId
-from bson.py3compat import MAXSIZE, PY3, binary_type, iteritems, u
+from bson.py3compat import MAXSIZE, PY3, iteritems, u
 from bson.son import SON
 
 if PY3:
@@ -155,8 +155,7 @@ def gen_mongo_value(depth, ref):
         # If we used Binary in python3 tests would fail since we
         # decode BSON binary subtype 0 to bytes. Testing this with
         # bytes in python3 makes a lot more sense.
-        # binary_type is `str` in python 2, `bytes` in python 3.
-        bintype = binary_type
+        bintype = bytes
     choices = [gen_unicode(gen_range(0, 50)),
                gen_printable_string(gen_range(0, 50)),
                my_map(gen_string(gen_range(0, 1000)), bintype),
