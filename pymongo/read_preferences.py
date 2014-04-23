@@ -111,6 +111,9 @@ class ServerMode(object):
     def __eq__(self, other):
         return self.mode == other.mode and self.tag_sets == other.tag_sets
 
+    def __ne__(self, other):
+        return not self == other
+
 
 class Primary(ServerMode):
     """Primary read preference.
@@ -130,6 +133,9 @@ class Primary(ServerMode):
 
     def __eq__(self, other):
         return other.mode == _PRIMARY
+
+    def __ne__(self, other):
+        return other.mode != _PRIMARY
 
 
 class PrimaryPreferred(ServerMode):
