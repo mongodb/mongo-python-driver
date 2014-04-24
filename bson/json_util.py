@@ -76,6 +76,7 @@ import base64
 import calendar
 import datetime
 import re
+import uuid
 
 json_lib = True
 try:
@@ -86,7 +87,6 @@ except ImportError:
     except ImportError:
         json_lib = False
 
-import bson
 from bson import EPOCH_AWARE, RE_TYPE, SON
 from bson.binary import Binary
 from bson.code import Code
@@ -191,8 +191,8 @@ def object_hook(dct, compile_re=True):
         return Binary(base64.b64decode(dct["$binary"].encode()), subtype)
     if "$code" in dct:
         return Code(dct["$code"], dct.get("$scope"))
-    if bson.has_uuid() and "$uuid" in dct:
-        return bson.uuid.UUID(dct["$uuid"])
+    if "$uuid" in dct:
+        return uuid.UUID(dct["$uuid"])
     return dct
 
 
@@ -251,6 +251,6 @@ def default(obj):
         return SON([
             ('$binary', base64.b64encode(obj).decode()),
             ('$type', "00")])
-    if bson.has_uuid() and isinstance(obj, bson.uuid.UUID):
+    if isinstance(obj, uuid.UUID):
         return {"$uuid": obj.hex}
     raise TypeError("%r is not JSON serializable" % obj)

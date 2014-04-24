@@ -22,6 +22,7 @@ import sys
 import threading
 import time
 import unittest
+import uuid
 import warnings
 
 from nose.plugins.skip import SkipTest
@@ -55,13 +56,6 @@ from test.utils import (is_mongos, joinall, enable_text_search, get_pool,
                         oid_generated_on_client)
 from test import (qcheck,
                   version)
-
-
-have_uuid = True
-try:
-    import uuid
-except ImportError:
-    have_uuid = False
 
 
 class TestCollection(unittest.TestCase):
@@ -1932,15 +1926,14 @@ class TestCollection(unittest.TestCase):
         self.assertRaises(DuplicateKeyError, do_insert, coe_args)
         self.assertTrue(2, self.db.test.count())
 
-        if have_uuid:
-            doc = {'_id': 2, 'uuid': uuid.uuid4()}
-            uuid_sub_args = (name, [doc],
-                             True, True, {'w': 1}, True, 6)
-            do_insert(uuid_sub_args)
-            coll = self.db.test
-            self.assertNotEqual(doc, coll.find_one({'_id': 2}))
-            coll.uuid_subtype = 6
-            self.assertEqual(doc, coll.find_one({'_id': 2}))
+        doc = {'_id': 2, 'uuid': uuid.uuid4()}
+        uuid_sub_args = (name, [doc],
+                         True, True, {'w': 1}, True, 6)
+        do_insert(uuid_sub_args)
+        coll = self.db.test
+        self.assertNotEqual(doc, coll.find_one({'_id': 2}))
+        coll.uuid_subtype = 6
+        self.assertEqual(doc, coll.find_one({'_id': 2}))
 
     def test_map_reduce(self):
         if not version.at_least(self.db.connection, (1, 1, 1)):

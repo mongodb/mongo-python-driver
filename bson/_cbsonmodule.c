@@ -329,13 +329,9 @@ static int _load_python_objects(PyObject* module) {
         _load_object(&state->MaxKey, "bson.max_key", "MaxKey") ||
         _load_object(&state->UTC, "bson.tz_util", "utc") ||
         _load_object(&state->RECompile, "re", "compile") ||
-        _load_object(&state->Regex, "bson.regex", "Regex")) {
+        _load_object(&state->Regex, "bson.regex", "Regex") ||
+        _load_object(&state->UUID, "uuid", "UUID")) {
         return 1;
-    }
-    /* If we couldn't import uuid then we must be on 2.4. Just ignore. */
-    if (_load_object(&state->UUID, "uuid", "UUID") == 1) {
-        state->UUID = NULL;
-        PyErr_Clear();
     }
     /* Reload our REType hack too. */
 #if PY_MAJOR_VERSION >= 3
@@ -554,6 +550,8 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
                                     unsigned char check_keys,
                                     unsigned char uuid_subtype) {
     struct module_state *state = GETSTATE(self);
+
+    PyObject* uuid_type;
 
     /*
      * Don't use PyObject_IsInstance for our custom types. It causes
@@ -1002,85 +1000,79 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
     /* 
      * Try UUID last since we have to import
      * it if we're in a sub-interpreter.
-     *
-     * If we're running under python 2.4 there likely
-     * isn't a uuid module.
      */
-    if (state->UUID) {
-        PyObject* uuid_type = _get_object(state->UUID, "uuid", "UUID");
-        if (uuid_type && PyObject_IsInstance(value, uuid_type)) {
-            /* Just a special case of Binary above, but
-             * simpler to do as a separate case. */
-            PyObject* bytes;
-            /* Could be bytes, bytearray, str... */
-            const char* data;
-            /* UUID is always 16 bytes */
-            int size = 16;
-            int subtype;
+    uuid_type = _get_object(state->UUID, "uuid", "UUID");
+    if (uuid_type && PyObject_IsInstance(value, uuid_type)) {
+        /* Just a special case of Binary above, but
+         * simpler to do as a separate case. */
+        PyObject* bytes;
+        /* Could be bytes, bytearray, str... */
+        const char* data;
+        /* UUID is always 16 bytes */
+        int size = 16;
+        int subtype;
 
-            Py_DECREF(uuid_type);
+        Py_DECREF(uuid_type);
 
-            if (uuid_subtype == JAVA_LEGACY || uuid_subtype == CSHARP_LEGACY) {
-                subtype = 3;
-            }
-            else {
-                subtype = uuid_subtype;
-            }
+        if (uuid_subtype == JAVA_LEGACY || uuid_subtype == CSHARP_LEGACY) {
+            subtype = 3;
+        }
+        else {
+            subtype = uuid_subtype;
+        }
 
-            *(buffer_get_buffer(buffer) + type_byte) = 0x05;
-            if (!buffer_write_bytes(buffer, (const char*)&size, 4)) {
-                return 0;
-            }
-            if (!buffer_write_bytes(buffer, (const char*)&subtype, 1)) {
-                return 0;
-            }
+        *(buffer_get_buffer(buffer) + type_byte) = 0x05;
+        if (!buffer_write_bytes(buffer, (const char*)&size, 4)) {
+            return 0;
+        }
+        if (!buffer_write_bytes(buffer, (const char*)&subtype, 1)) {
+            return 0;
+        }
 
-            if (uuid_subtype == CSHARP_LEGACY) {
-               /* Legacy C# byte order */
-                bytes = PyObject_GetAttrString(value, "bytes_le");
-            }
-            else {
-                bytes = PyObject_GetAttrString(value, "bytes");
-            }
-            if (!bytes) {
-                return 0;
-            }
+        if (uuid_subtype == CSHARP_LEGACY) {
+           /* Legacy C# byte order */
+            bytes = PyObject_GetAttrString(value, "bytes_le");
+        }
+        else {
+            bytes = PyObject_GetAttrString(value, "bytes");
+        }
+        if (!bytes) {
+            return 0;
+        }
 #if PY_MAJOR_VERSION >= 3
-            /* Work around http://bugs.python.org/issue7380 */
-            if (PyByteArray_Check(bytes)) {
-                data = PyByteArray_AsString(bytes);
-            }
-            else {
-                data = PyBytes_AsString(bytes);
-            }
+        /* Work around http://bugs.python.org/issue7380 */
+        if (PyByteArray_Check(bytes)) {
+            data = PyByteArray_AsString(bytes);
+        }
+        else {
+            data = PyBytes_AsString(bytes);
+        }
 #else
-            data = PyString_AsString(bytes);
+        data = PyString_AsString(bytes);
 #endif
-            if (data == NULL) {
+        if (data == NULL) {
+            Py_DECREF(bytes);
+            return 0;
+        }
+        if (uuid_subtype == JAVA_LEGACY) {
+            /* Store in legacy java byte order. */
+            char as_legacy_java[16];
+            _fix_java(data, as_legacy_java);
+            if (!buffer_write_bytes(buffer, as_legacy_java, size)) {
                 Py_DECREF(bytes);
                 return 0;
             }
-            if (uuid_subtype == JAVA_LEGACY) {
-                /* Store in legacy java byte order. */
-                char as_legacy_java[16];
-                _fix_java(data, as_legacy_java);
-                if (!buffer_write_bytes(buffer, as_legacy_java, size)) {
-                    Py_DECREF(bytes);
-                    return 0;
-                }
-            }
-            else {
-                if (!buffer_write_bytes(buffer, data, size)) {
-                    Py_DECREF(bytes);
-                    return 0;
-                }
-            }
-            Py_DECREF(bytes);
-            return 1;
-        } else {
-            Py_XDECREF(uuid_type);
         }
+        else {
+            if (!buffer_write_bytes(buffer, data, size)) {
+                Py_DECREF(bytes);
+                return 0;
+            }
+        }
+        Py_DECREF(bytes);
+        return 1;
     }
+    Py_XDECREF(uuid_type);
     /* We can't determine value's type. Fail. */
     _set_cannot_encode(value);
     return 0;
@@ -1621,7 +1613,7 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
                 goto invalid;
             }
             /* Encode as UUID, not Binary */
-            if ((subtype == 3 || subtype == 4) && state->UUID) {
+            if (subtype == 3 || subtype == 4) {
                 PyObject* kwargs;
                 PyObject* args = PyTuple_New(0);
                 /* UUID should always be 16 bytes */

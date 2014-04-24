@@ -12,11 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-try:
-    from uuid import UUID
-except ImportError:
-    # Python2.4 doesn't have a uuid module.
-    pass
+from uuid import UUID
 
 from bson.py3compat import PY3
 

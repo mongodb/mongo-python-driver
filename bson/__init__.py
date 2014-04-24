@@ -20,6 +20,7 @@ import datetime
 import re
 import struct
 import sys
+import uuid
 
 from bson.binary import (Binary, OLD_UUID_SUBTYPE,
                          JAVA_LEGACY, CSHARP_LEGACY)
@@ -49,11 +50,6 @@ try:
 except ImportError:
     _use_c = False
 
-try:
-    import uuid
-    _use_uuid = True
-except ImportError:
-    _use_uuid = False
 
 if PY3:
     long = int
@@ -190,7 +186,7 @@ def _get_binary(data, position, as_class, tz_aware, uuid_subtype, compile_re):
         if length2 != length - 4:
             raise InvalidBSON("invalid binary (st 2) - lengths don't match!")
         length = length2
-    if subtype in (3, 4) and _use_uuid:
+    if subtype in (3, 4):
         # Java Legacy
         if uuid_subtype == JAVA_LEGACY:
             java = data[position:position + length]
@@ -365,21 +361,23 @@ def _element_to_bson(key, value, check_keys, uuid_subtype):
     if isinstance(value, float):
         return BSONNUM + name + struct.pack("<d", value)
 
-    if _use_uuid:
-        if isinstance(value, uuid.UUID):
-            # Java Legacy
-            if uuid_subtype == JAVA_LEGACY:
-                from_uuid = value.bytes
-                as_legacy_java = from_uuid[0:8][::-1] + from_uuid[8:16][::-1]
-                value = Binary(as_legacy_java, subtype=OLD_UUID_SUBTYPE)
-            # C# legacy
-            elif uuid_subtype == CSHARP_LEGACY:
-                # Microsoft GUID representation.
-                value = Binary(value.bytes_le,
-                               subtype=OLD_UUID_SUBTYPE)
-            # Python
-            else:
-                value = Binary(value.bytes, subtype=uuid_subtype)
+    if isinstance(value, uuid.UUID):
+        # Java Legacy
+        if uuid_subtype == JAVA_LEGACY:
+            from_uuid = value.bytes
+            data = from_uuid[0:8][::-1] + from_uuid[8:16][::-1]
+            subtype = OLD_UUID_SUBTYPE
+        # C# legacy
+        elif uuid_subtype == CSHARP_LEGACY:
+            # Microsoft GUID representation.
+            data = value.bytes_le
+            subtype = OLD_UUID_SUBTYPE
+        # Python
+        else:
+            data = value.bytes
+            subtype = uuid_subtype
+        return (BSONBIN + name +
+                struct.pack("<i", len(data)) + b(chr(subtype)) + data)
 
     if isinstance(value, Binary):
         subtype = value.subtype
@@ -634,11 +632,3 @@ def has_c():
     .. versionadded:: 1.9
     """
     return _use_c
-
-
-def has_uuid():
-    """Is the uuid module available?
-
-    .. versionadded:: 2.3
-    """
-    return _use_uuid

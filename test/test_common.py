@@ -16,6 +16,7 @@
 
 import sys
 import unittest
+import uuid
 import warnings
 
 sys.path[0:0] = [""]
@@ -32,18 +33,10 @@ from pymongo.errors import ConfigurationError, OperationFailure
 from test import host, port, pair, version
 from test.utils import drop_collections
 
-have_uuid = True
-try:
-    import uuid
-except ImportError:
-    have_uuid = False
-
 
 class TestCommon(unittest.TestCase):
 
     def test_uuid_subtype(self):
-        if not have_uuid:
-            raise SkipTest("No uuid module")
 
         self.client = MongoClient(pair)
         self.db = self.client.pymongo_test

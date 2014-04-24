@@ -18,12 +18,12 @@ import unittest
 import datetime
 import re
 import sys
+import uuid
 
 from nose.plugins.skip import SkipTest
 
 sys.path[0:0] = [""]
 
-import bson
 from bson import json_util
 from bson.binary import Binary, MD5_SUBTYPE, USER_DEFINED_SUBTYPE
 from bson.code import Code
@@ -154,11 +154,8 @@ class TestJsonUtil(unittest.TestCase):
         self.assertEqual(dct['ts']['i'], 13)
 
     def test_uuid(self):
-        if not bson.has_uuid():
-            raise SkipTest("No uuid module")
         self.round_trip(
-                {'uuid': bson.uuid.UUID(
-                            'f47ac10b-58cc-4372-a567-0e02b2c3d479')})
+                {'uuid': uuid.UUID('f47ac10b-58cc-4372-a567-0e02b2c3d479')})
 
     def test_binary(self):
         bin_type_dict = {"bin": Binary(b"\x00\x01\x02\x03\x04")}

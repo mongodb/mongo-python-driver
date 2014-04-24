@@ -21,11 +21,8 @@ import re
 import sys
 import traceback
 import unittest
-try:
-    import uuid
-    should_test_uuid = True
-except ImportError:
-    should_test_uuid = False
+import uuid
+
 sys.path[0:0] = [""]
 
 from nose.plugins.skip import SkipTest
@@ -398,8 +395,6 @@ class TestBSON(unittest.TestCase):
                           BSON.encode({"tuple": (1, 2)}).decode())
 
     def test_uuid(self):
-        if not should_test_uuid:
-            raise SkipTest("No uuid module")
 
         id = uuid.uuid4()
         transformed_id = (BSON.encode({"id": id})).decode()["id"]
@@ -409,8 +404,6 @@ class TestBSON(unittest.TestCase):
         self.assertNotEqual(uuid.uuid4(), transformed_id)
 
     def test_uuid_legacy(self):
-        if not should_test_uuid:
-            raise SkipTest("No uuid module")
 
         id = uuid.uuid4()
         legacy = UUIDLegacy(id)
