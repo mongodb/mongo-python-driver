@@ -134,39 +134,3 @@ version older than 3.2.3::
   ObjectId('5b37392c203135302c203234362c2034352c203235312c203136352c2033342c203532...')
 
 
-Why do I get a syntax error importing pymongo after installing from source?
----------------------------------------------------------------------------
-
-PyMongo makes use of the 2to3 tool to translate much of its code to valid
-Python 3 syntax at install time. The translated modules are written to the
-build subdirectory before being installed, leaving the original source files
-intact. If you start the python interactive shell from the top level source
-directory after running ``python setup.py install`` the untranslated modules
-will be the first thing in your path. Importing pymongo will result in an
-exception similar to::
-
-  Python 3.2.5 (default, Feb 26 2014, 12:40:25)
-  [GCC 4.7.3] on linux2
-  Type "help", "copyright", "credits" or "license" for more information.
-  >>> import pymongo
-  Traceback (most recent call last):
-    File "<stdin>", line 1, in <module>
-    File "pymongo/__init__.py", line 77, in <module>
-      version = get_version_string()
-    File "pymongo/__init__.py", line 73, in get_version_string
-      if isinstance(version_tuple[-1], basestring):
-  NameError: global name 'basestring' is not defined
-
-Note the path in the traceback (``pymongo/__init__.py``). Changing out of the
-source directory takes the untranslated modules out of your path::
-
-  $ cd ..
-  $ python
-  Python 3.2.5 (default, Feb 26 2014, 12:40:25)
-  [GCC 4.7.3] on linux2
-  Type "help", "copyright", "credits" or "license" for more information.
-  >>> import pymongo
-  >>> pymongo.__file__
-  '/home/behackett/py3k/lib/python3.2/site-packages/pymongo-2.7-py3.2-linux-x86_64.egg/pymongo/__init__.py'
-
-

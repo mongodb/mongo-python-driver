@@ -19,13 +19,8 @@ that might not be of interest or that has already been addressed.
 Supported Interpreters
 ----------------------
 
-PyMongo supports CPython 2.4 and newer, PyPy, and Jython. Language
-features not supported by all interpreters can not be used (e.g.
-the `with statement
-<http://docs.python.org/reference/compound_stmts.html#the-with-statement>`_
-is not supported in Python 2.4). Please also ensure that your code is
-properly converted by `2to3 <http://docs.python.org/library/2to3.html>`_ for
-Python 3 support.
+PyMongo supports CPython 2.6, 2.7, 3.2 and newer, and PyPy. Language
+features not supported by all interpreters can not be used.
 
 Style Guide
 -----------

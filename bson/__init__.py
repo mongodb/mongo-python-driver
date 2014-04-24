@@ -278,9 +278,8 @@ def _get_timestamp(
 
 
 def _get_long(data, position, as_class, tz_aware, uuid_subtype, compile_re):
-    # Have to cast to long; on 32-bit unpack may return an int.
-    # 2to3 will change long to int. That's fine since long doesn't
-    # exist in python3.
+    # Have to cast to long (for python 2.x); on 32-bit unpack may return
+    # an int.
     value = long(struct.unpack("<q", data[position:position + 8])[0])
     position += 8
     return value, position
@@ -304,7 +303,7 @@ _element_getter = {
     BSONCWS: _get_code_w_scope,
     BSONINT: _get_int,  # number_int
     BSONTIM: _get_timestamp,
-    BSONLON: _get_long, # Same as _get_int after 2to3 runs.
+    BSONLON: _get_long,
     BSONMIN: lambda u, v, w, x, y, z: (MinKey(), v),
     BSONMAX: lambda u, v, w, x, y, z: (MaxKey(), v)}
 
@@ -424,8 +423,6 @@ def _element_to_bson(key, value, check_keys, uuid_subtype):
         if value > MAX_INT32 or value < MIN_INT32:
             return BSONLON + name + struct.pack("<q", value)
         return BSONINT + name + struct.pack("<i", value)
-    # 2to3 will convert long to int here since there is no long in python3.
-    # That's OK. The previous if block will match instead.
     if not PY3 and isinstance(value, long):
         if value > MAX_INT64 or value < MIN_INT64:
             raise OverflowError("BSON can only handle up to 8-byte ints")

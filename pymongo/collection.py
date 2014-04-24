@@ -1022,7 +1022,7 @@ class Collection(common.BaseObject):
             warnings.warn("ttl is deprecated. Please use cache_for instead.",
                           DeprecationWarning, stacklevel=2)
 
-        # The types supported by datetime.timedelta. 2to3 removes long.
+        # The types supported by datetime.timedelta.
         if not (isinstance(cache_for, integer_types) or
                 isinstance(cache_for, float)):
             raise TypeError("cache_for must be an integer or float.")

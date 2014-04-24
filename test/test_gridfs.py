@@ -384,7 +384,6 @@ class TestGridfs(unittest.TestCase):
         self.assertEqual(3, self.fs.find({"filename":"two"}).count())
         self.assertEqual(4, self.fs.find().count())
         cursor = self.fs.find(timeout=False).sort("uploadDate", -1).skip(1).limit(2)
-        # 2to3 hint...
         gout = next(cursor)
         self.assertEqual(b"test1", gout.read())
         cursor.rewind()
