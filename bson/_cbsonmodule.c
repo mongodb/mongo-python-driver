@@ -1040,13 +1040,7 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
             return 0;
         }
 #if PY_MAJOR_VERSION >= 3
-        /* Work around http://bugs.python.org/issue7380 */
-        if (PyByteArray_Check(bytes)) {
-            data = PyByteArray_AsString(bytes);
-        }
-        else {
-            data = PyBytes_AsString(bytes);
-        }
+        data = PyBytes_AsString(bytes);
 #else
         data = PyString_AsString(bytes);
 #endif
