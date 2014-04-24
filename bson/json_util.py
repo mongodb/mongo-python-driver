@@ -49,7 +49,7 @@ but it will be faster as there is less recursion.
 
 .. versionchanged:: 2.7
    Preserves order when rendering SON, Timestamp, Code, Binary, and DBRef
-   instances. (But not in Python 2.4.)
+   instances.
 
 .. versionchanged:: 2.3
    Added dumps and loads helpers to automatically handle conversion to and
@@ -118,7 +118,7 @@ def dumps(obj, *args, **kwargs):
 
     .. versionchanged:: 2.7
        Preserves order when rendering SON, Timestamp, Code, Binary, and DBRef
-       instances. (But not in Python 2.4.)
+       instances.
     """
     if not json_lib:
         raise Exception("No json library available")
@@ -200,11 +200,8 @@ def default(obj):
     # We preserve key order when rendering SON, DBRef, etc. as JSON by
     # returning a SON for those types instead of a dict. This works with
     # the "json" standard library in Python 2.6+ and with simplejson
-    # 2.1.0+ in Python 2.5+, because those libraries iterate the SON
-    # using PyIter_Next. Python 2.4 must use simplejson 2.0.9 or older,
-    # and those versions of simplejson use the lower-level PyDict_Next,
-    # which bypasses SON's order-preserving iteration, so we lose key
-    # order in Python 2.4.
+    # 2.1.0+ in Python 2.6+, because those libraries iterate the SON
+    # using PyIter_Next.
     if isinstance(obj, ObjectId):
         return {"$oid": str(obj)}
     if isinstance(obj, DBRef):

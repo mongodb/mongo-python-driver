@@ -67,7 +67,7 @@ OSX
 ---
 
 MongoDB, Inc. provides PyMongo in .egg format for Apple provided Python
-versions on OSX 10.7 and newer (usually python 2.5, 2.6, and 2.7). If you want
+versions on OSX 10.7 and newer (usually 2.6 and 2.7). If you want
 to install PyMongo for other Python versions (or from source) you will have to
 install the following to build the C extensions:
 
@@ -82,10 +82,6 @@ Xcode 4 installed. There is a workaround::
   # For Apple-supplied Python2.6 (installed at /usr/bin/python2.6) and
   # some builds from python.org
   $ env ARCHFLAGS='-arch i386 -arch x86_64' python -m easy_install pymongo
-
-  # For 32-bit-only Python (/usr/bin/python2.5) and some builds
-  # from python.org
-  $ env ARCHFLAGS='-arch i386' python -m easy_install pymongo
 
 See `http://bugs.python.org/issue11623 <http://bugs.python.org/issue11623>`_
 for a more detailed explanation.
@@ -153,12 +149,6 @@ the "x64 Compilers and Tools" option under Visual C++.
 For Python 3.3 and newer install Visual C++ 2010 Express.
 
 For Python 2.6 through 3.2 install Visual C++ 2008 Express SP1.
-
-For Python 2.4 or 2.5 you must install
-`MingW32 <http://www.mingw.org/wiki/InstallationHOWTOforMinGW>`_ then run the
-following command to install::
-
-  python setup.py build -c mingw32 install
 
 .. _install-no-c:
 

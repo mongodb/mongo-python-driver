@@ -68,12 +68,6 @@ do not have to specify a database in the URI::
   ...                     ssl_ca_certs='/path/to/ca.pem')
   >>>
 
-.. note::
-   If you are using CPython 2.4 or 2.5 you must install the python
-   `ssl module`_ using easy_install or pip.
-
-.. _ssl module: https://pypi.python.org/pypi/ssl/
-
 .. _use_kerberos:
 
 GSSAPI (Kerberos)
