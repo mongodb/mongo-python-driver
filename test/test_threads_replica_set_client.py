@@ -14,10 +14,9 @@
 
 """Test that pymongo is thread safe."""
 
-import unittest
-
 from pymongo.mongo_replica_set_client import MongoReplicaSetClient
 
+from test import unittest
 from test.test_threads import BaseTestThreads, BaseTestThreadsAuth
 from test.test_replica_set_client import TestReplicaSetClientBase, pair
 

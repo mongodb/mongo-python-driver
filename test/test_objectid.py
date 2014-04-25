@@ -16,18 +16,16 @@
 
 import datetime
 import pickle
-import unittest
 import sys
 import time
 sys.path[0:0] = [""]
-
-from nose.plugins.skip import SkipTest
 
 from bson.errors import InvalidId
 from bson.objectid import ObjectId
 from bson.py3compat import PY3, u, _unicode
 from bson.tz_util import (FixedOffset,
                           utc)
+from test import SkipTest, unittest
 
 
 def oid(x):

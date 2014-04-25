@@ -15,13 +15,13 @@
 """Tests for the dbref module."""
 
 import pickle
-import unittest
 import sys
 sys.path[0:0] = [""]
 
 from bson.dbref import DBRef
 from bson.objectid import ObjectId
 from bson.py3compat import u
+from test import unittest
 
 from copy import deepcopy
 

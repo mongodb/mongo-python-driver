@@ -20,12 +20,9 @@ import datetime
 import re
 import sys
 import traceback
-import unittest
 import uuid
 
 sys.path[0:0] = [""]
-
-from nose.plugins.skip import SkipTest
 
 import bson
 from bson import (BSON,
@@ -47,7 +44,7 @@ from bson.min_key import MinKey
 from bson.tz_util import (FixedOffset,
                           utc)
 
-from test import qcheck
+from test import qcheck, SkipTest, unittest
 
 if PY3:
     long = int

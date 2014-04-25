@@ -14,12 +14,10 @@
 
 """Test that pymongo is thread safe."""
 
-import unittest
 import threading
 import traceback
 
-from nose.plugins.skip import SkipTest
-
+from test import SkipTest, unittest
 from test.utils import (joinall, remove_all_users,
                         server_started_with_auth, RendezvousThread)
 from test.test_client import get_client
@@ -161,10 +159,11 @@ class FindPauseFind(RendezvousThread):
 
 class BaseTestThreads(object):
     """
-    Base test class for TestThreads and TestThreadsReplicaSet. (This is not
-    itself a unittest.TestCase, otherwise it'd be run twice -- once when nose
-    imports this module, and once when nose imports
-    test_threads_replica_set_connection.py, which imports this module.)
+    Base test class for TestThreads and TestThreadsReplicaSet. (This
+    is not itself a unittest.TestCase, otherwise it'd be run twice --
+    once when unittest imports this module, and once when unittest
+    imports test_threads_replica_set_connection.py, which imports this
+    module.)
     """
     def setUp(self):
         self.db = self._get_client().pymongo_test
@@ -303,7 +302,7 @@ class BaseTestThreadsAuth(object):
     """
     Base test class for TestThreadsAuth and TestThreadsAuthReplicaSet. (This is
     not itself a unittest.TestCase, otherwise it'd be run twice -- once when
-    nose imports this module, and once when nose imports
+    unittest imports this module, and once when unittest imports
     test_threads_replica_set_connection.py, which imports this module.)
     """
     def _get_client(self):

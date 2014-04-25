@@ -20,12 +20,10 @@
 # given replica-set configuration.
 
 import time
-import unittest
 
 import ha_tools
 from ha_tools import use_greenlets
 
-from nose.plugins.skip import SkipTest
 from pymongo.errors import (AutoReconnect,
                             OperationFailure,
                             ConnectionFailure,
@@ -36,7 +34,7 @@ from pymongo.mongo_replica_set_client import MongoReplicaSetClient
 from pymongo.mongo_client import MongoClient, _partition_node
 from pymongo.read_preferences import ReadPreference
 
-from test import utils, version
+from test import SkipTest, unittest, utils, version
 from test.utils import one
 
 

@@ -16,11 +16,11 @@
 
 import sys
 import threading
-import unittest
 
 sys.path[0:0] = [""]
 
 from pymongo.errors import AutoReconnect
+from test import unittest
 from test.pymongo_mocks import MockClient
 
 

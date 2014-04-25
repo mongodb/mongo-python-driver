@@ -15,7 +15,6 @@
 """Tests for the Timestamp class."""
 
 import datetime
-import unittest
 import sys
 import copy
 import pickle
@@ -23,6 +22,7 @@ sys.path[0:0] = [""]
 
 from bson.timestamp import Timestamp
 from bson.tz_util import utc
+from test import unittest
 
 
 class TestTimestamp(unittest.TestCase):

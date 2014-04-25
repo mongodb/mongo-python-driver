@@ -18,13 +18,12 @@ import copy
 import pickle
 import re
 import sys
-import unittest
-sys.path[0:0] = [""]
 
-from nose.plugins.skip import SkipTest
+sys.path[0:0] = [""]
 
 from bson.py3compat import b
 from bson.son import SON
+from test import SkipTest, unittest
 
 
 class TestSON(unittest.TestCase):

@@ -21,11 +21,8 @@ import re
 import sys
 import threading
 import time
-import unittest
 import uuid
 import warnings
-
-from nose.plugins.skip import SkipTest
 
 sys.path[0:0] = [""]
 
@@ -54,8 +51,7 @@ from pymongo.errors import (DocumentTooLarge,
 from test.test_client import get_client
 from test.utils import (is_mongos, joinall, enable_text_search, get_pool,
                         oid_generated_on_client)
-from test import (qcheck,
-                  version)
+from test import qcheck, SkipTest, unittest, version
 
 
 class TestCollection(unittest.TestCase):

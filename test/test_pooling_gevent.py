@@ -17,13 +17,10 @@
 import gc
 import sys
 import time
-import unittest
-
-from nose.plugins.skip import SkipTest
 
 from pymongo import pool
 from pymongo.errors import ConfigurationError
-from test import host, port
+from test import host, port, SkipTest, unittest
 from test.utils import looplet
 from test.test_pooling_base import (
     _TestPooling, _TestMaxPoolSize, _TestMaxOpenSockets,

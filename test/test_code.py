@@ -14,12 +14,12 @@
 
 """Tests for the Code wrapper."""
 
-import unittest
 import sys
 sys.path[0:0] = [""]
 
 from bson.code import Code
 from bson.py3compat import u
+from test import unittest
 
 
 class TestCode(unittest.TestCase):

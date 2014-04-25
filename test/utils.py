@@ -20,11 +20,10 @@ import struct
 import sys
 import threading
 
-from nose.plugins.skip import SkipTest
 from pymongo import MongoClient, MongoReplicaSetClient
 from pymongo.errors import AutoReconnect
 from pymongo.pool import NO_REQUEST, NO_SOCKET_YET, SocketInfo
-from test import host, port, version
+from test import host, port, SkipTest, version
 
 
 try:

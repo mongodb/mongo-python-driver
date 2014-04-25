@@ -21,9 +21,6 @@ import sys
 import warnings
 
 sys.path[0:0] = [""]
-import unittest
-
-from nose.plugins.skip import SkipTest
 
 from bson.code import Code
 from bson.regex import Regex
@@ -47,7 +44,7 @@ from pymongo.errors import (CollectionInvalid,
 from pymongo.son_manipulator import (AutoReference,
                                      NamespaceInjector,
                                      ObjectIdShuffler)
-from test import version
+from test import SkipTest, unittest, version
 from test.utils import (get_command_line, is_mongos,
                         remove_all_users, server_started_with_auth)
 from test.test_client import get_client

@@ -16,14 +16,12 @@
 
 import sys
 import time
-import unittest
 
 sys.path[0:0] = [""]
 
 from bson.py3compat import thread
-from nose.plugins.skip import SkipTest
 
-from test import host, port
+from test import host, port, SkipTest, unittest
 from test.test_pooling_base import (
     _TestPooling, _TestMaxPoolSize, _TestMaxOpenSockets,
     _TestPoolSocketSharing, _TestWaitQueueMultiple, one)

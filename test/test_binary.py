@@ -18,7 +18,6 @@ import base64
 import copy
 import pickle
 import sys
-import unittest
 import uuid
 
 sys.path[0:0] = [""]
@@ -28,9 +27,10 @@ import bson
 from bson.binary import *
 from bson.py3compat import u
 from bson.son import SON
-from nose.plugins.skip import SkipTest
+from test import unittest
 from test.test_client import get_client
 from pymongo.mongo_client import MongoClient
+
 
 class TestBinary(unittest.TestCase):
     def test_binary(self):

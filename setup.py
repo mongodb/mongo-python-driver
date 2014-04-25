@@ -5,7 +5,7 @@ import subprocess
 import sys
 import warnings
 
-# Hack to silence atexit traceback in newer python versions.
+# Hack to silence atexit traceback in some Python versions
 try:
     import multiprocessing
 except ImportError:
@@ -191,8 +191,11 @@ ext_modules = [Extension('bson._cbson',
 
 extra_opts = {
     "packages": ["bson", "pymongo", "gridfs"],
-    "test_suite": "nose.collector"
+    "test_suite": "test.test_suite"
 }
+if sys.version_info[:2] == (2, 6):
+    extra_opts['tests_require'] = "unittest2"
+
 if "--no_ext" in sys.argv:
     sys.argv.remove("--no_ext")
 elif (sys.platform.startswith("java") or
@@ -228,7 +231,6 @@ setup(
     keywords=["mongo", "mongodb", "pymongo", "gridfs", "bson"],
     install_requires=[],
     license="Apache License, Version 2.0",
-    tests_require=["nose"],
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",

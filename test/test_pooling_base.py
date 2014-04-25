@@ -24,15 +24,13 @@ import time
 
 sys.path[0:0] = [""]
 
-from nose.plugins.skip import SkipTest
-
 import pymongo.pool
 from bson.py3compat import thread
 from pymongo.mongo_client import MongoClient
 from pymongo.pool import Pool, NO_REQUEST, NO_SOCKET_YET, SocketInfo
 from pymongo.errors import ConfigurationError, ConnectionFailure
 from pymongo.errors import ExceededMaxWaiters
-from test import version, host, port
+from test import version, host, port, SkipTest
 from test.test_client import get_client
 from test.utils import delay, is_mongos, one, get_pool
 
@@ -311,7 +309,7 @@ class CreateAndReleaseSocketNoRendezvous(MongoThread):
 class _TestPoolingBase(object):
     """Base class for all client-pool tests. Doesn't inherit from
     unittest.TestCase, and its name is prefixed with "_" to avoid being
-    run by nose. Real tests double-inherit from this base and from TestCase.
+    run by unittest. Real tests double-inherit from this base and from TestCase.
     """
     use_greenlets = False
 

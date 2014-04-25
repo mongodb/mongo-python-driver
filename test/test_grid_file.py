@@ -19,10 +19,7 @@
 
 import datetime
 import sys
-import unittest
 sys.path[0:0] = [""]
-
-from nose.plugins.skip import SkipTest
 
 from bson.objectid import ObjectId
 from bson.py3compat import u, StringIO
@@ -39,7 +36,7 @@ from gridfs.errors import (NoFile,
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
 from test.test_client import get_client
-from test import qcheck
+from test import qcheck, unittest
 
 
 class TestGridFile(unittest.TestCase):

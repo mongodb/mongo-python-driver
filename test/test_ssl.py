@@ -17,7 +17,6 @@
 import os
 import socket
 import sys
-import unittest
 
 try:
     from ssl import CertificateError
@@ -33,14 +32,12 @@ except ImportError:
     # Python 2
     from urllib import quote_plus
 
-from nose.plugins.skip import SkipTest
-
 from pymongo import MongoClient, MongoReplicaSetClient
 from pymongo.common import HAS_SSL
 from pymongo.errors import (ConfigurationError,
                             ConnectionFailure,
                             OperationFailure)
-from test import host, port, pair, version
+from test import host, pair, port, SkipTest, unittest, version
 from test.utils import server_started_with_auth, remove_all_users
 
 

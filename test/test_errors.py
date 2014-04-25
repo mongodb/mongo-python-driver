@@ -14,12 +14,12 @@
 
 """Test the errors module."""
 
-import unittest
 import sys
 sys.path[0:0] = [""]
 
 from pymongo import MongoClient
 from pymongo.errors import PyMongoError
+from test import unittest
 
 
 class TestErrors(unittest.TestCase):

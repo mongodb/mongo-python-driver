@@ -14,13 +14,10 @@
 
 """Test some utilities for working with JSON and PyMongo."""
 
-import unittest
 import datetime
 import re
 import sys
 import uuid
-
-from nose.plugins.skip import SkipTest
 
 sys.path[0:0] = [""]
 
@@ -36,6 +33,7 @@ from bson.son import RE_TYPE
 from bson.timestamp import Timestamp
 from bson.tz_util import utc
 
+from test import SkipTest, unittest
 from test.test_client import get_client
 
 PY3 = sys.version_info[0] == 3

@@ -15,12 +15,12 @@
 """Test clients and replica set configuration changes, using mocks."""
 
 import sys
-import unittest
 
 sys.path[0:0] = [""]
 
 from pymongo.errors import ConfigurationError, ConnectionFailure
 from pymongo import ReadPreference
+from test import unittest
 from test.pymongo_mocks import MockClient, MockReplicaSetClient
 
 

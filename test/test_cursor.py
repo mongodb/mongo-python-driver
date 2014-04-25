@@ -18,10 +18,7 @@ import itertools
 import random
 import re
 import sys
-import unittest
 sys.path[0:0] = [""]
-
-from nose.plugins.skip import SkipTest
 
 from bson.code import Code
 from bson.py3compat import u, PY3
@@ -36,7 +33,7 @@ from pymongo.database import Database
 from pymongo.errors import (InvalidOperation,
                             OperationFailure,
                             ExecutionTimeout)
-from test import version
+from test import SkipTest, unittest, version
 from test.test_client import get_client
 from test.utils import is_mongos, get_command_line, server_started_with_auth
 

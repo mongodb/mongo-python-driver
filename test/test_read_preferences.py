@@ -16,9 +16,6 @@
 import random
 
 import sys
-import unittest
-
-from nose.plugins.skip import SkipTest
 
 sys.path[0:0] = [""]
 
@@ -35,7 +32,7 @@ from pymongo.errors import ConfigurationError
 
 from test.test_replica_set_client import TestReplicaSetClientBase
 from test.test_client import get_client
-from test import version, utils, host, port
+from test import host, port, SkipTest, unittest, utils, version
 
 
 class TestReadPreferencesBase(TestReplicaSetClientBase):

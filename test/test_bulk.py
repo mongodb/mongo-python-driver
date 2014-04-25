@@ -15,21 +15,19 @@
 """Test the bulk API."""
 
 import sys
-import unittest
-
-from nose.plugins.skip import SkipTest
 
 sys.path[0:0] = [""]
 
 from bson import InvalidDocument, SON
 from bson.py3compat import string_type
 from pymongo.errors import BulkWriteError, InvalidOperation, OperationFailure
-from test import version
+from test import SkipTest, unittest, version
 from test.test_client import get_client
 from test.utils import (oid_generated_on_client,
                         remove_all_users,
                         server_started_with_auth,
                         server_started_with_nojournal)
+
 
 class BulkTestBase(unittest.TestCase):
 

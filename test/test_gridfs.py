@@ -25,7 +25,6 @@ from pymongo.read_preferences import ReadPreference
 from test.test_replica_set_client import TestReplicaSetClientBase
 
 import datetime
-import unittest
 import threading
 import time
 import gridfs
@@ -33,6 +32,7 @@ import gridfs
 from bson.py3compat import u, StringIO, string_type
 from gridfs.errors import (FileExists,
                            NoFile)
+from test import unittest
 from test.test_client import get_client
 from test.utils import joinall
 

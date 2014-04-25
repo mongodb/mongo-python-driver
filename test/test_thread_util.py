@@ -18,11 +18,8 @@ import gc
 import sys
 import threading
 import time
-import unittest
 
 sys.path[0:0] = [""]
-
-from nose.plugins.skip import SkipTest
 
 from pymongo import thread_util
 if thread_util.have_gevent:
@@ -30,6 +27,7 @@ if thread_util.have_gevent:
     import gevent.greenlet  # Gevent's enhanced Greenlets.
     import gevent.hub
 
+from test import SkipTest, unittest
 from test.utils import looplet, my_partial, RendezvousThread
 
 

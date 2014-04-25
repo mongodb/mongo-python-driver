@@ -17,7 +17,6 @@
 import os
 import sys
 import threading
-import unittest
 
 try:
     from urllib.parse import quote_plus
@@ -27,13 +26,11 @@ except ImportError:
 
 sys.path[0:0] = [""]
 
-from nose.plugins.skip import SkipTest
-
 from pymongo import MongoClient, MongoReplicaSetClient
 from pymongo.auth import HAVE_KERBEROS
 from pymongo.errors import OperationFailure, ConfigurationError
 from pymongo.read_preferences import ReadPreference
-from test import version, host, port
+from test import host, port, SkipTest, unittest, version
 from test.utils import is_mongos, server_started_with_auth
 
 # YOU MUST RUN KINIT BEFORE RUNNING GSSAPI TESTS.

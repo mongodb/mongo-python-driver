@@ -15,7 +15,6 @@
 """Tests for SONManipulators.
 """
 
-import unittest
 import sys
 sys.path[0:0] = [""]
 
@@ -26,7 +25,7 @@ from pymongo.son_manipulator import (NamespaceInjector,
                                      ObjectIdShuffler,
                                      SONManipulator)
 from test.test_client import get_client
-from test import qcheck
+from test import qcheck, unittest
 
 
 class TestSONManipulator(unittest.TestCase):

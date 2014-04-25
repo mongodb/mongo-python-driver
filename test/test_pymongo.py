@@ -14,13 +14,13 @@
 
 """Test the pymongo module itself."""
 
-import unittest
 import os
 import sys
 sys.path[0:0] = [""]
 
 import pymongo
-from test import host, port
+from test import host, port, unittest
+
 
 class TestPyMongo(unittest.TestCase):
     def test_mongo_client_alias(self):

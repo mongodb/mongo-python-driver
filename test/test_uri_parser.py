@@ -15,7 +15,6 @@
 """Test the pymongo uri_parser module."""
 
 import copy
-import unittest
 import sys
 
 sys.path[0:0] = [""]
@@ -30,6 +29,7 @@ from pymongo.errors import ConfigurationError, InvalidURI
 from pymongo import ReadPreference
 from bson.binary import JAVA_LEGACY
 from bson.py3compat import string_type, _unicode
+from test import unittest
 
 
 class TestURI(unittest.TestCase):

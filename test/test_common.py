@@ -15,13 +15,10 @@
 """Test the pymongo common module."""
 
 import sys
-import unittest
 import uuid
 import warnings
 
 sys.path[0:0] = [""]
-
-from nose.plugins.skip import SkipTest
 
 from bson.binary import UUIDLegacy, OLD_UUID_SUBTYPE, UUID_SUBTYPE
 from bson.code import Code
@@ -30,7 +27,7 @@ from bson.son import SON
 from pymongo.mongo_client import MongoClient
 from pymongo.mongo_replica_set_client import MongoReplicaSetClient
 from pymongo.errors import ConfigurationError, OperationFailure
-from test import host, port, pair, version
+from test import pair, unittest, SkipTest, version
 from test.utils import drop_collections
 
 

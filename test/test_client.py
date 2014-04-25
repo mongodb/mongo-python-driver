@@ -20,11 +20,8 @@ import threading
 import socket
 import sys
 import time
-import unittest
 
 sys.path[0:0] = [""]
-
-from nose.plugins.skip import SkipTest
 
 from bson.py3compat import thread, u
 from bson.son import SON
@@ -39,7 +36,7 @@ from pymongo.errors import (AutoReconnect,
                             InvalidName,
                             OperationFailure,
                             PyMongoError)
-from test import version, host, port, pair
+from test import host, pair, port, SkipTest, unittest, version
 from test.pymongo_mocks import MockClient
 from test.utils import (assertRaisesExactly,
                         delay,
