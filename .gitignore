@@ -11,6 +11,5 @@ dist/
 tools/settings.py
 pymongo.egg-info/
 *.so
-nosetests.xml
 *.egg
 .tox

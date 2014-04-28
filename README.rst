@@ -64,7 +64,7 @@ support Python 2.4, 2.5, and 3.1.
 Additional dependencies are:
 
 - (to generate documentation) sphinx_
-- (to auto-discover tests) `nose <http://somethingaboutorange.com/mrl/projects/nose/>`_
+- (to run the tests under Python 2.6) unittest2_
 
 Examples
 ========
@@ -115,9 +115,9 @@ setup.py doc**. Generated documentation can be found in the
 Testing
 =======
 
-The easiest way to run the tests is to install `nose
-<http://somethingaboutorange.com/mrl/projects/nose/>`_ (**easy_install
-nose**) and run **nosetests** or **python setup.py test** in the root
-of the distribution. Tests are located in the *test/* directory.
+The easiest way to run the tests is to run **python setup.py test** in
+the root of the distribution. Note that you will need unittest2_ to
+run the tests under Python 2.6.
 
 .. _sphinx: http://sphinx.pocoo.org/
+.. _unittest2: https://pypi.python.org/pypi/unittest2
