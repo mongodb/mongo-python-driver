@@ -78,5 +78,3 @@ class PymongoTestSuite(unittest.TestSuite):
 
 class PymongoTestLoader(unittest.TestLoader):
     suiteClass = PymongoTestSuite
-
-test_suite = PymongoTestLoader().discover('.')
