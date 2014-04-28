@@ -44,10 +44,8 @@ port3 = int(os.environ.get("DB_PORT3", 27019))
 
 
 def setup():
-    # Make sure warnings are always raised, regardless of
-    # python version.
     warnings.resetwarnings()
-    warnings.simplefilter("always")
+    warnings.simplefilter("ignore")
 
 
 def teardown():

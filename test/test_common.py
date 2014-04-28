@@ -16,7 +16,6 @@
 
 import sys
 import uuid
-import warnings
 
 sys.path[0:0] = [""]
 

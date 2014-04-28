@@ -351,15 +351,12 @@ class TestDatabase(unittest.TestCase):
                           "user", 'password', True, roles=['read'])
 
         if version.at_least(self.client, (2, 5, 3, -1)):
-            warnings.simplefilter("error", DeprecationWarning)
-            try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("error", DeprecationWarning)
                 self.assertRaises(DeprecationWarning, db.add_user,
                                   "user", "password")
                 self.assertRaises(DeprecationWarning, db.add_user,
                                   "user", "password", True)
-            finally:
-                warnings.resetwarnings()
-                warnings.simplefilter("ignore")
 
             self.assertRaises(ConfigurationError, db.add_user,
                               "user", "password", digestPassword=True)
@@ -930,8 +927,8 @@ class TestDatabase(unittest.TestCase):
             self.fail("_check_command_response didn't raise OperationFailure")
 
     def test_command_read_pref_warning(self):
-        warnings.simplefilter("error", UserWarning)
-        try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", UserWarning)
             self.assertRaises(UserWarning, self.client.pymongo_test.command,
                               'ping', read_preference=ReadPreference.SECONDARY)
             try:
@@ -939,9 +936,6 @@ class TestDatabase(unittest.TestCase):
                     'dbStats', read_preference=ReadPreference.SECONDARY)
             except UserWarning:
                 self.fail("Shouldn't have raised UserWarning.")
-        finally:
-            warnings.resetwarnings()
-            warnings.simplefilter("ignore")
 
     def test_command_max_time_ms(self):
         if not version.at_least(self.client, (2, 5, 3, -1)):
