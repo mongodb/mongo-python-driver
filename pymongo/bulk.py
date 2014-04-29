@@ -82,16 +82,6 @@ def _make_error(index, code, errmsg, operation):
 def _merge_legacy(run, full_result, result, index):
     """Merge a result from a legacy opcode into the full results.
     """
-    # MongoDB 2.6 returns {'ok': 0, 'code': 2, ...} if the j write
-    # concern option is used with --nojournal or w > 1 is used with
-    # a standalone mongod instance. Raise immediately here for
-    # consistency when talking to older servers. Since these are
-    # configuration errors related to write concern the entire batch
-    # will fail.
-    note = result.get("jnote", result.get("wnote"))
-    if note:
-        raise OperationFailure(note, _BAD_VALUE, result)
-
     affected = result.get('n', 0)
 
     errmsg = result.get("errmsg", result.get("err", ""))
