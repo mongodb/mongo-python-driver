@@ -1761,7 +1761,7 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
                 Py_DECREF(args);
                 goto invalid;
             }
-            utc_type = _get_object(state->UTC, "bson.tz_util", "UTC");
+            utc_type = _get_object(state->UTC, "bson.tz_util", "utc");
             if (!utc_type || PyDict_SetItemString(kwargs, "tzinfo", utc_type) == -1) {
                 Py_DECREF(replace);
                 Py_DECREF(args);
