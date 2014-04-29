@@ -988,7 +988,7 @@ class TestBulkWriteConcern(BulkTestBase):
             raise SkipTest("Need a replica set to test.")
 
         # Ensure we don't raise on wnote.
-        batch = self.coll.initialize_ordered_bulk_op()
+        batch = self.coll.initialize_unordered_bulk_op()
         batch.find({"something": "that does not exist"}).remove()
         self.assertTrue(batch.execute({"w": self.w}))
 
