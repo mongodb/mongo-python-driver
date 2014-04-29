@@ -248,7 +248,6 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
                                  document_class=SON, tz_aware=True,
                                  read_preference=secondary,
                                  acceptablelatencyms=77)
-        c.admin.command('ping')
         self.assertEqual(c.primary, self.primary)
         self.assertEqual(c.hosts, self.hosts)
         self.assertEqual(c.arbiters, self.arbiters)

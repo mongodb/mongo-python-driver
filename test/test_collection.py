@@ -222,8 +222,10 @@ class TestCollection(unittest.TestCase):
             self.assertRaises(DeprecationWarning, lambda:
                               db.test.ensure_index("goodbye", ttl=10))
 
-        self.assertEqual("goodbye_1",
-                         db.test.ensure_index("goodbye", ttl=10))
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            self.assertEqual("goodbye_1",
+                             db.test.ensure_index("goodbye", ttl=10))
         self.assertEqual(None, db.test.ensure_index("goodbye"))
 
     def test_ensure_unique_index_threaded(self):
@@ -2174,47 +2176,49 @@ class TestCollection(unittest.TestCase):
         for j in range(5):
             c.insert({'j': j, 'i': 0})
 
-        sort={'j': DESCENDING}
-        self.assertEqual(4, c.find_and_modify({},
-                                              {'$inc': {'i': 1}},
-                                              sort=sort)['j'])
-        sort={'j': ASCENDING}
-        self.assertEqual(0, c.find_and_modify({},
-                                              {'$inc': {'i': 1}},
-                                              sort=sort)['j'])
-        sort=[('j', DESCENDING)]
-        self.assertEqual(4, c.find_and_modify({},
-                                              {'$inc': {'i': 1}},
-                                              sort=sort)['j'])
-        sort=[('j', ASCENDING)]
-        self.assertEqual(0, c.find_and_modify({},
-                                              {'$inc': {'i': 1}},
-                                              sort=sort)['j'])
-        sort=SON([('j', DESCENDING)])
-        self.assertEqual(4, c.find_and_modify({},
-                                              {'$inc': {'i': 1}},
-                                              sort=sort)['j'])
-        sort=SON([('j', ASCENDING)])
-        self.assertEqual(0, c.find_and_modify({},
-                                              {'$inc': {'i': 1}},
-                                              sort=sort)['j'])
-        try:
-            from collections import OrderedDict
-            sort=OrderedDict([('j', DESCENDING)])
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            sort={'j': DESCENDING}
             self.assertEqual(4, c.find_and_modify({},
                                                   {'$inc': {'i': 1}},
                                                   sort=sort)['j'])
-            sort=OrderedDict([('j', ASCENDING)])
+            sort={'j': ASCENDING}
             self.assertEqual(0, c.find_and_modify({},
                                                   {'$inc': {'i': 1}},
                                                   sort=sort)['j'])
-        except ImportError:
-            pass
-        # Test that a standard dict with two keys is rejected.
-        sort={'j': DESCENDING, 'foo': DESCENDING}
-        self.assertRaises(TypeError, c.find_and_modify, {},
-                                                         {'$inc': {'i': 1}},
-                                                         sort=sort)
+            sort=[('j', DESCENDING)]
+            self.assertEqual(4, c.find_and_modify({},
+                                                  {'$inc': {'i': 1}},
+                                                  sort=sort)['j'])
+            sort=[('j', ASCENDING)]
+            self.assertEqual(0, c.find_and_modify({},
+                                                  {'$inc': {'i': 1}},
+                                                  sort=sort)['j'])
+            sort=SON([('j', DESCENDING)])
+            self.assertEqual(4, c.find_and_modify({},
+                                                  {'$inc': {'i': 1}},
+                                                  sort=sort)['j'])
+            sort=SON([('j', ASCENDING)])
+            self.assertEqual(0, c.find_and_modify({},
+                                                  {'$inc': {'i': 1}},
+                                                  sort=sort)['j'])
+
+            try:
+                from collections import OrderedDict
+                sort=OrderedDict([('j', DESCENDING)])
+                self.assertEqual(4, c.find_and_modify({},
+                                                      {'$inc': {'i': 1}},
+                                                      sort=sort)['j'])
+                sort=OrderedDict([('j', ASCENDING)])
+                self.assertEqual(0, c.find_and_modify({},
+                                                      {'$inc': {'i': 1}},
+                                                      sort=sort)['j'])
+            except ImportError:
+                pass
+            # Test that a standard dict with two keys is rejected.
+            sort={'j': DESCENDING, 'foo': DESCENDING}
+            self.assertRaises(TypeError, c.find_and_modify,
+                              {}, {'$inc': {'i': 1}}, sort=sort)
 
     def test_find_with_nested(self):
         if not version.at_least(self.db.connection, (2, 0, 0)):

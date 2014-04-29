@@ -308,7 +308,7 @@ class Database(common.BaseObject):
         if mode != orig:
             warnings.warn("%s does not support %s read preference "
                           "and will be routed to the primary instead." %
-                          (command_name, orig.name), UserWarning)
+                          (command_name, orig.name), UserWarning, stacklevel=3)
 
 
         cursor = self["$cmd"].find(command,
@@ -442,7 +442,8 @@ class Database(common.BaseObject):
 
         self.__connection._purge_index(self.__name, name)
 
-        self.command("drop", _unicode(name), allowable_errors=["ns not found"])
+        self.command("drop", _unicode(name), allowable_errors=["ns not found"],
+                     read_preference=ReadPreference.PRIMARY)
 
     def validate_collection(self, name_or_collection,
                             scandata=False, full=False):
@@ -480,7 +481,8 @@ class Database(common.BaseObject):
                             "%s or Collection" % (string_type.__name__,))
 
         result = self.command("validate", _unicode(name),
-                              scandata=scandata, full=full)
+                              scandata=scandata, full=full,
+                              read_preference=ReadPreference.PRIMARY)
 
         valid = True
         # Pre 1.9 results
@@ -529,7 +531,8 @@ class Database(common.BaseObject):
 
         .. mongodoc:: profiling
         """
-        result = self.command("profile", -1)
+        result = self.command("profile", -1,
+                              read_preference=ReadPreference.PRIMARY)
 
         assert result["was"] >= 0 and result["was"] <= 2
         return result["was"]
@@ -569,9 +572,11 @@ class Database(common.BaseObject):
             raise TypeError("slow_ms must be an integer")
 
         if slow_ms is not None:
-            self.command("profile", level, slowms=slow_ms)
+            self.command("profile", level, slowms=slow_ms,
+                         read_preference=ReadPreference.PRIMARY)
         else:
-            self.command("profile", level)
+            self.command("profile", level,
+                         read_preference=ReadPreference.PRIMARY)
 
     def profiling_info(self):
         """Returns a list containing current profiling information.
@@ -586,7 +591,8 @@ class Database(common.BaseObject):
         Return None if the last operation was error-free. Otherwise return the
         error that occurred.
         """
-        error = self.command("getlasterror")
+        error = self.command("getlasterror",
+                             read_preference=ReadPreference.PRIMARY)
         error_msg = error.get("err", "")
         if error_msg is None:
             return None
@@ -599,7 +605,8 @@ class Database(common.BaseObject):
 
         Returns a SON object with status information.
         """
-        return self.command("getlasterror")
+        return self.command("getlasterror",
+                            read_preference=ReadPreference.PRIMARY)
 
     def previous_error(self):
         """Get the most recent error to have occurred on this database.
@@ -608,7 +615,8 @@ class Database(common.BaseObject):
         `Database.reset_error_history`. Returns None if no such errors have
         occurred.
         """
-        error = self.command("getpreverror")
+        error = self.command("getpreverror",
+                             read_preference=ReadPreference.PRIMARY)
         if error.get("err", 0) is None:
             return None
         return error
@@ -619,7 +627,8 @@ class Database(common.BaseObject):
         Calls to `Database.previous_error` will only return errors that have
         occurred since the most recent call to this method.
         """
-        self.command("reseterror")
+        self.command("reseterror",
+                     read_preference=ReadPreference.PRIMARY)
 
     def __iter__(self):
         return self
@@ -675,7 +684,8 @@ class Database(common.BaseObject):
         else:
             command_name = "updateUser"
 
-        self.command(command_name, name, **opts)
+        self.command(command_name, name,
+                     read_preference=ReadPreference.PRIMARY, **opts)
 
     def _legacy_add_user(self, name, password, read_only, **kwargs):
         """Uses v1 system to add users, i.e. saving to system.users.
@@ -741,7 +751,8 @@ class Database(common.BaseObject):
                                          "read_only and roles together")
 
         try:
-            uinfo = self.command("usersInfo", name)
+            uinfo = self.command("usersInfo", name,
+                                 read_preference=ReadPreference.PRIMARY)
         except OperationFailure as exc:
             # MongoDB >= 2.5.3 requires the use of commands to manage
             # users. "No such command" error didn't return an error
@@ -771,6 +782,7 @@ class Database(common.BaseObject):
 
         try:
             self.command("dropUser", name,
+                         read_preference=ReadPreference.PRIMARY,
                          writeConcern=self._get_wc_override())
         except OperationFailure as exc:
             # See comment in add_user try / except above.
@@ -908,7 +920,9 @@ class Database(common.BaseObject):
         if not isinstance(code, Code):
             code = Code(code)
 
-        result = self.command("$eval", code, args=args)
+        result = self.command("$eval", code,
+                              read_preference=ReadPreference.PRIMARY,
+                              args=args)
         return result.get("retval", None)
 
     def __call__(self, *args, **kwargs):

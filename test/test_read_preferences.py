@@ -14,8 +14,8 @@
 
 """Test the replica_set_connection module."""
 import random
-
 import sys
+import warnings
 
 sys.path[0:0] = [""]
 
@@ -272,8 +272,10 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
         # Test generic 'command' method. Some commands obey read preference,
         # most don't.
         # Disobedient commands, always go to primary
-        self._test_fn(False, lambda: self.c.pymongo_test.command('ping'))
-        self._test_fn(False, lambda: self.c.admin.command('buildinfo'))
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            self._test_fn(False, lambda: self.c.pymongo_test.command('ping'))
+            self._test_fn(False, lambda: self.c.admin.command('buildinfo'))
 
         # Obedient commands.
         self._test_fn(True, lambda: self.c.pymongo_test.command('group', {
@@ -336,7 +338,10 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
 
         # Text search.
         if version.at_least(self.c, (2, 3, 2)):
-            utils.enable_text_search(self.c)
+
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", UserWarning)
+                utils.enable_text_search(self.c)
             db = self.c.pymongo_test
 
             # Only way to create an index and wait for all members to build it.
@@ -360,20 +365,22 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
 
         # Non-inline mapreduce always goes to primary, doesn't obey read prefs.
         # Test with command in a SON and with kwargs
-        self._test_fn(False, lambda: self.c.pymongo_test.command(SON([
-            ('mapreduce', 'test'),
-            ('map', 'function() { }'),
-            ('reduce', 'function() { }'),
-            ('out', 'mr_out')
-        ])))
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            self._test_fn(False, lambda: self.c.pymongo_test.command(SON([
+                ('mapreduce', 'test'),
+                ('map', 'function() { }'),
+                ('reduce', 'function() { }'),
+                ('out', 'mr_out')
+            ])))
 
-        self._test_fn(False, lambda: self.c.pymongo_test.command(
-            'mapreduce', 'test', map='function() { }',
-            reduce='function() { }', out='mr_out'))
+            self._test_fn(False, lambda: self.c.pymongo_test.command(
+                'mapreduce', 'test', map='function() { }',
+                reduce='function() { }', out='mr_out'))
 
-        self._test_fn(False, lambda: self.c.pymongo_test.command(
-            'mapreduce', 'test', map='function() { }',
-            reduce='function() { }', out={'replace': 'some_collection'}))
+            self._test_fn(False, lambda: self.c.pymongo_test.command(
+                'mapreduce', 'test', map='function() { }',
+                reduce='function() { }', out={'replace': 'some_collection'}))
 
         # Inline mapreduce obeys read prefs
         self._test_fn(True, lambda: self.c.pymongo_test.command(
@@ -397,34 +404,44 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
         self.c.pymongo_test.test.insert({"x": 2, "y": 1}, w=self.w)
         self.c.pymongo_test.test.insert({"x": 2, "y": 2}, w=self.w)
 
-        # Aggregate with $out always goes to primary, doesn't obey read prefs.
-        # Test aggregate command sent directly to db.command.
-        self._test_fn(False, lambda: self.c.pymongo_test.command(
-            "aggregate", "test",
-            pipeline=[{"$match": {"x": 1}}, {"$out": "agg_out"}]
-        ))
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            # Aggregate with $out always goes to primary, doesn't obey
+            # read prefs.
 
-        # Test aggregate when sent through the collection aggregate function.
-        self._test_fn(False, lambda: self.c.pymongo_test.test.aggregate(
-            [{"$match": {"x": 2}}, {"$out": "agg_out"}]
-        ))
+            # Test aggregate command sent directly to db.command.
+            self._test_fn(False, lambda: self.c.pymongo_test.command(
+                "aggregate", "test",
+                pipeline=[{"$match": {"x": 1}}, {"$out": "agg_out"}]
+            ))
+
+            # Test aggregate when sent through the collection aggregate
+            # function.
+            self._test_fn(False, lambda: self.c.pymongo_test.test.aggregate(
+                [{"$match": {"x": 2}}, {"$out": "agg_out"}]
+            ))
 
         self.c.pymongo_test.drop_collection("test")
         self.c.pymongo_test.drop_collection("agg_out")
 
     def test_create_collection(self):
         # Collections should be created on primary, obviously
-        self._test_fn(False, lambda: self.c.pymongo_test.command(
-            'create', 'some_collection%s' % random.randint(0, MAXSIZE)))
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            self._test_fn(False, lambda: self.c.pymongo_test.command(
+                'create', 'some_collection%s' % random.randint(0, MAXSIZE)))
 
-        self._test_fn(False, lambda: self.c.pymongo_test.create_collection(
-            'some_collection%s' % random.randint(0, MAXSIZE)))
+            self._test_fn(False, lambda: self.c.pymongo_test.create_collection(
+                'some_collection%s' % random.randint(0, MAXSIZE)))
 
     def test_drop_collection(self):
-        self._test_fn(False, lambda: self.c.pymongo_test.drop_collection(
-            'some_collection'))
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            self._test_fn(False, lambda: self.c.pymongo_test.drop_collection(
+                'some_collection'))
 
-        self._test_fn(False, lambda: self.c.pymongo_test.some_collection.drop())
+            self._test_fn(False,
+                          lambda: self.c.pymongo_test.some_collection.drop())
 
     def test_group(self):
         self._test_fn(True, lambda: self.c.pymongo_test.test.group(
@@ -434,8 +451,10 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
         # mapreduce fails if no collection
         self.c.pymongo_test.test.insert({}, w=self.w)
 
-        self._test_fn(False, lambda: self.c.pymongo_test.test.map_reduce(
-            'function() { }', 'function() { }', 'mr_out'))
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            self._test_fn(False, lambda: self.c.pymongo_test.test.map_reduce(
+                'function() { }', 'function() { }', 'mr_out'))
 
         self._test_fn(True, lambda: self.c.pymongo_test.test.map_reduce(
             'function() { }', 'function() { }', {'inline': 1}))
@@ -571,7 +590,11 @@ class TestMongosConnection(unittest.TestCase):
 
     def test_only_secondary_ok_commands_have_read_prefs(self):
         c = get_client(read_preference=ReadPreference.SECONDARY)
-        is_mongos = utils.is_mongos(c)
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            is_mongos = utils.is_mongos(c)
+
         if not is_mongos:
             raise SkipTest("Only mongos have read_prefs added to the spec")
 

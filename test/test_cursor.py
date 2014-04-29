@@ -18,6 +18,8 @@ import itertools
 import random
 import re
 import sys
+import warnings
+
 sys.path[0:0] = [""]
 
 from bson.code import Code
@@ -1083,7 +1085,9 @@ class TestCursor(unittest.TestCase):
 
         client = self.db.connection
         try:
-            client.set_cursor_manager(CManager)
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", DeprecationWarning)
+                client.set_cursor_manager(CManager)
             docs = []
             cursor = self.db.test.find().batch_size(10)
             docs.append(next(cursor))
@@ -1096,7 +1100,9 @@ class TestCursor(unittest.TestCase):
             docs.extend(ccursor)
             self.assertEqual(len(docs), 200)
         finally:
-            client.set_cursor_manager(CursorManager)
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", DeprecationWarning)
+                client.set_cursor_manager(CursorManager)
 
 if __name__ == "__main__":
     unittest.main()

@@ -33,6 +33,7 @@ from pymongo.cursor import Cursor
 from pymongo.errors import InvalidName, OperationFailure
 from pymongo.helpers import _check_write_command_response
 from pymongo.message import _INSERT, _UPDATE, _DELETE
+from pymongo.read_preferences import ReadPreference
 
 
 try:
@@ -125,9 +126,12 @@ class Collection(common.BaseObject):
         if options:
             if "size" in options:
                 options["size"] = float(options["size"])
-            self.__database.command("create", self.__name, **options)
+            self.__database.command("create", self.__name,
+                                    read_preference=ReadPreference.PRIMARY,
+                                    **options)
         else:
-            self.__database.command("create", self.__name)
+            self.__database.command("create", self.__name,
+                                    read_preference=ReadPreference.PRIMARY)
 
     def __getattr__(self, name):
         """Get a sub-collection of this collection by name.
@@ -1042,7 +1046,9 @@ class Collection(common.BaseObject):
         index.update(kwargs)
 
         try:
-            self.__database.command('createIndexes', self.name, indexes=[index])
+            self.__database.command('createIndexes', self.name,
+                                    read_preference=ReadPreference.PRIMARY,
+                                    indexes=[index])
         except OperationFailure as exc:
             if exc.code in (59, None):
                 index["ns"] = self.__full_name
@@ -1188,7 +1194,9 @@ class Collection(common.BaseObject):
 
         self.__database.connection._purge_index(self.__database.name,
                                                 self.__name, name)
-        self.__database.command("dropIndexes", self.__name, index=name,
+        self.__database.command("dropIndexes", self.__name,
+                                read_preference=ReadPreference.PRIMARY,
+                                index=name,
                                 allowable_errors=["ns not found"])
 
     def reindex(self):
@@ -1200,7 +1208,8 @@ class Collection(common.BaseObject):
 
         .. versionadded:: 1.11+
         """
-        return self.__database.command("reIndex", self.__name)
+        return self.__database.command("reIndex", self.__name,
+                                       read_preference=ReadPreference.PRIMARY)
 
     def index_information(self):
         """Get information on this collection's indexes.
@@ -1410,9 +1419,10 @@ class Collection(common.BaseObject):
             raise InvalidName("collection names must not contain '$'")
 
         new_name = "%s.%s" % (self.__database.name, new_name)
-        self.__database.connection.admin.command("renameCollection",
-                                                 self.__full_name,
-                                                 to=new_name, **kwargs)
+        client = self.__database.connection
+        client.admin.command("renameCollection", self.__full_name,
+                             read_preference=ReadPreference.PRIMARY,
+                             to=new_name, **kwargs)
 
     def distinct(self, key):
         """Get a list of distinct values for `key` among all documents
@@ -1627,6 +1637,7 @@ class Collection(common.BaseObject):
 
         out = self.__database.command("findAndModify", self.__name,
                                       allowable_errors=[no_obj_error],
+                                      read_preference=ReadPreference.PRIMARY,
                                       uuid_subtype=self.uuid_subtype,
                                       **kwargs)
 
