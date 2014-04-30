@@ -31,12 +31,10 @@ from pymongo import (ASCENDING,
                      OFF)
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor_manager import CursorManager
-from pymongo.database import Database
 from pymongo.errors import (InvalidOperation,
                             OperationFailure,
                             ExecutionTimeout)
-from test import SkipTest, unittest, version
-from test.test_client import get_client
+from test import client_context, SkipTest, unittest
 from test.utils import is_mongos, get_command_line, server_started_with_auth
 
 if PY3:
@@ -45,17 +43,12 @@ if PY3:
 
 class TestCursor(unittest.TestCase):
 
-    def setUp(self):
-        self.client = get_client()
-        self.db = Database(self.client, "pymongo_test")
+    @classmethod
+    def setUpClass(cls):
+        cls.db = client_context.client.pymongo_test
 
-    def tearDown(self):
-        self.db = None
-
+    @client_context.require_version_min(2, 5, 3, -1)
     def test_max_time_ms(self):
-        if not version.at_least(self.db.connection, (2, 5, 3, -1)):
-            raise SkipTest("MaxTimeMS requires MongoDB >= 2.5.3")
-
         db = self.db
         db.pymongo_test.drop()
         coll = db.pymongo_test
@@ -79,11 +72,12 @@ class TestCursor(unittest.TestCase):
 
         self.assertTrue(coll.find_one(max_time_ms=1000))
 
-        if "enableTestCommands=1" in get_command_line(self.client)["argv"]:
+        client = client_context.client
+        if "enableTestCommands=1" in client_context.cmd_line['argv']:
             # Cursor parses server timeout error in response to initial query.
-            self.client.admin.command("configureFailPoint",
-                                      "maxTimeAlwaysTimeOut",
-                                      mode="alwaysOn")
+            client.admin.command("configureFailPoint",
+                                 "maxTimeAlwaysTimeOut",
+                                 mode="alwaysOn")
             try:
                 cursor = coll.find().max_time_ms(1)
                 try:
@@ -95,27 +89,23 @@ class TestCursor(unittest.TestCase):
                 self.assertRaises(ExecutionTimeout,
                                   coll.find_one, max_time_ms=1)
             finally:
-                self.client.admin.command("configureFailPoint",
-                                          "maxTimeAlwaysTimeOut",
-                                          mode="off")
+                client.admin.command("configureFailPoint",
+                                     "maxTimeAlwaysTimeOut",
+                                     mode="off")
 
+    @client_context.require_version_min(2, 5, 3, -1)
+    @client_context.require_test_commands
     def test_max_time_ms_getmore(self):
         # Test that Cursor handles server timeout error in response to getmore.
-        if "enableTestCommands=1" not in get_command_line(self.client)["argv"]:
-            raise SkipTest("Need test commands enabled")
-
-        if not version.at_least(self.db.connection, (2, 5, 3, -1)):
-            raise SkipTest("MaxTimeMS requires MongoDB >= 2.5.3")
-
         coll = self.db.pymongo_test
         coll.insert({} for _ in range(200))
         cursor = coll.find().max_time_ms(100)
 
         # Send initial query before turning on failpoint.
         next(cursor)
-        self.client.admin.command("configureFailPoint",
-                                  "maxTimeAlwaysTimeOut",
-                                  mode="alwaysOn")
+        client_context.client.admin.command("configureFailPoint",
+                                    "maxTimeAlwaysTimeOut",
+                                    mode="alwaysOn")
         try:
             try:
                 # Iterate up to first getmore.
@@ -125,9 +115,9 @@ class TestCursor(unittest.TestCase):
             else:
                 self.fail("ExecutionTimeout not raised")
         finally:
-            self.client.admin.command("configureFailPoint",
-                                      "maxTimeAlwaysTimeOut",
-                                      mode="off")
+            client_context.client.admin.command("configureFailPoint",
+                                        "maxTimeAlwaysTimeOut",
+                                        mode="off")
 
     def test_explain(self):
         a = self.db.test.find()
@@ -779,7 +769,7 @@ class TestCursor(unittest.TestCase):
         self.db.test.drop()
         self.db.test.save({"x": 1})
 
-        if not version.at_least(self.db.connection, (1, 1, 3, -1)):
+        if not client_context.version.at_least(1, 1, 3, -1):
             for _ in self.db.test.find({}, ["a"]):
                 self.fail()
 
@@ -875,10 +865,8 @@ class TestCursor(unittest.TestCase):
         self.assertRaises(IndexError,
                           lambda x: self.db.test.find().skip(50)[x], 50)
 
+    @client_context.require_version_min(1, 1, 4, -1)
     def test_count_with_limit_and_skip(self):
-        if not version.at_least(self.db.connection, (1, 1, 4, -1)):
-            raise SkipTest("count with limit / skip requires MongoDB >= 1.1.4")
-
         self.assertRaises(TypeError, self.db.test.find().count, "foo")
 
         def check_len(cursor, length):
@@ -961,10 +949,8 @@ class TestCursor(unittest.TestCase):
         finally:
             db.drop_collection("test")
 
+    @client_context.require_version_min(1, 1, 3, 1)
     def test_distinct(self):
-        if not version.at_least(self.db.connection, (1, 1, 3, 1)):
-            raise SkipTest("distinct with query requires MongoDB >= 1.1.3")
-
         self.db.drop_collection("test")
 
         self.db.test.save({"a": 1})
@@ -990,10 +976,8 @@ class TestCursor(unittest.TestCase):
 
         self.assertEqual(["b", "c"], distinct)
 
+    @client_context.require_version_min(1, 5, 1)
     def test_max_scan(self):
-        if not version.at_least(self.db.connection, (1, 5, 1)):
-            raise SkipTest("maxScan requires MongoDB >= 1.5.1")
-
         self.db.drop_collection("test")
         for _ in range(100):
             self.db.test.insert({})
@@ -1018,11 +1002,9 @@ class TestCursor(unittest.TestCase):
         self.assertFalse(c2.alive)
         self.assertTrue(c1.alive)
 
+    @client_context.require_version_min(2, 0)
+    @client_context.require_no_mongos
     def test_comment(self):
-        if is_mongos(self.client):
-            raise SkipTest("profile is not supported by mongos")
-        if not version.at_least(self.db.connection, (2, 0)):
-            raise SkipTest("Requires server >= 2.0")
         if server_started_with_auth(self.db.connection):
             raise SkipTest("SERVER-4754 - This test uses profiling.")
 

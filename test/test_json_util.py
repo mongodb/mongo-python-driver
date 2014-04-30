@@ -33,22 +33,20 @@ from bson.son import RE_TYPE
 from bson.timestamp import Timestamp
 from bson.tz_util import utc
 
-from test import SkipTest, unittest
-from test.test_client import get_client
+from test import client_context, SkipTest, unittest
 
 PY3 = sys.version_info[0] == 3
 
 
 class TestJsonUtil(unittest.TestCase):
 
+    @classmethod
+    def setUpClass(cls):
+        cls.db = client_context.client.pymongo_test
+
     def setUp(self):
         if not json_util.json_lib:
             raise SkipTest("No json or simplejson module")
-
-        self.db = get_client().pymongo_test
-
-    def tearDown(self):
-        self.db = None
 
     def round_tripped(self, doc):
         return json_util.loads(json_util.dumps(doc))

@@ -36,14 +36,12 @@ from pymongo.errors import (AutoReconnect,
                             InvalidName,
                             OperationFailure,
                             PyMongoError)
-from test import host, pair, port, SkipTest, unittest, version
+from test import client_context, host, pair, port, SkipTest, unittest
 from test.pymongo_mocks import MockClient
 from test.utils import (assertRaisesExactly,
                         delay,
-                        is_mongos,
                         remove_all_users,
                         server_is_master_with_slave,
-                        server_started_with_auth,
                         TestRequestMixin,
                         _TestLazyConnectMixin,
                         lazy_client_trial,
@@ -56,6 +54,10 @@ def get_client(*args, **kwargs):
 
 
 class TestClient(unittest.TestCase, TestRequestMixin):
+    @classmethod
+    def setUpClass(cls):
+        cls.client = client_context.client
+
     def test_types(self):
         self.assertRaises(TypeError, MongoClient, 1)
         self.assertRaises(TypeError, MongoClient, 1.14)
@@ -108,7 +110,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         self.assertEqual(host, c.host)
         self.assertEqual(port, c.port)
 
-        if version.at_least(c, (2, 5, 4, -1)):
+        if client_context.version.at_least(2, 5, 4, -1):
             self.assertTrue(c.max_wire_version > 0)
         else:
             self.assertEqual(c.max_wire_version, 0)
@@ -136,10 +138,10 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         self.assertTrue(MongoClient(host, port))
 
     def test_equality(self):
-        client = MongoClient(host, port)
-        self.assertEqual(client, MongoClient(host, port))
+        # ClientContext.client is constructed as MongoClient(host, port)
+        self.assertEqual(self.client, MongoClient(host, port))
         # Explicitly test inequality
-        self.assertFalse(client != MongoClient(host, port))
+        self.assertFalse(self.client != MongoClient(host, port))
 
     def test_host_w_port(self):
         self.assertTrue(MongoClient("%s:%d" % (host, port)))
@@ -153,10 +155,9 @@ class TestClient(unittest.TestCase, TestRequestMixin):
                          "MongoClient('%s', %d)" % (host, port))
 
     def test_getters(self):
-        self.assertEqual(MongoClient(host, port).host, host)
-        self.assertEqual(MongoClient(host, port).port, port)
-        self.assertEqual(set([(host, port)]),
-                         MongoClient(host, port).nodes)
+        self.assertEqual(self.client.host, host)
+        self.assertEqual(self.client.port, port)
+        self.assertEqual(set([(host, port)]), self.client.nodes)
 
     def test_use_greenlets(self):
         self.assertFalse(MongoClient(host, port).use_greenlets)
@@ -166,62 +167,56 @@ class TestClient(unittest.TestCase, TestRequestMixin):
                     host, port, use_greenlets=True).use_greenlets)
 
     def test_get_db(self):
-        client = MongoClient(host, port)
-
         def make_db(base, name):
             return base[name]
 
-        self.assertRaises(InvalidName, make_db, client, "")
-        self.assertRaises(InvalidName, make_db, client, "te$t")
-        self.assertRaises(InvalidName, make_db, client, "te.t")
-        self.assertRaises(InvalidName, make_db, client, "te\\t")
-        self.assertRaises(InvalidName, make_db, client, "te/t")
-        self.assertRaises(InvalidName, make_db, client, "te st")
+        self.assertRaises(InvalidName, make_db, self.client, "")
+        self.assertRaises(InvalidName, make_db, self.client, "te$t")
+        self.assertRaises(InvalidName, make_db, self.client, "te.t")
+        self.assertRaises(InvalidName, make_db, self.client, "te\\t")
+        self.assertRaises(InvalidName, make_db, self.client, "te/t")
+        self.assertRaises(InvalidName, make_db, self.client, "te st")
 
-        self.assertTrue(isinstance(client.test, Database))
-        self.assertEqual(client.test, client["test"])
-        self.assertEqual(client.test, Database(client, "test"))
+        self.assertTrue(isinstance(self.client.test, Database))
+        self.assertEqual(self.client.test, self.client["test"])
+        self.assertEqual(self.client.test, Database(self.client, "test"))
 
     def test_database_names(self):
-        client = MongoClient(host, port)
+        self.client.pymongo_test.test.save({"dummy": u("object")})
+        self.client.pymongo_test_mike.test.save({"dummy": u("object")})
 
-        client.pymongo_test.test.save({"dummy": u("object")})
-        client.pymongo_test_mike.test.save({"dummy": u("object")})
-
-        dbs = client.database_names()
+        dbs = self.client.database_names()
         self.assertTrue("pymongo_test" in dbs)
         self.assertTrue("pymongo_test_mike" in dbs)
 
     def test_drop_database(self):
-        client = MongoClient(host, port)
-
-        self.assertRaises(TypeError, client.drop_database, 5)
-        self.assertRaises(TypeError, client.drop_database, None)
+        self.assertRaises(TypeError, self.client.drop_database, 5)
+        self.assertRaises(TypeError, self.client.drop_database, None)
 
         raise SkipTest("This test often fails due to SERVER-2329")
 
-        client.pymongo_test.test.save({"dummy": u("object")})
-        dbs = client.database_names()
+        self.client.pymongo_test.test.save({"dummy": u("object")})
+        dbs = self.client.database_names()
         self.assertTrue("pymongo_test" in dbs)
-        client.drop_database("pymongo_test")
-        dbs = client.database_names()
+        self.client.drop_database("pymongo_test")
+        dbs = self.client.database_names()
         self.assertTrue("pymongo_test" not in dbs)
 
-        client.pymongo_test.test.save({"dummy": u("object")})
-        dbs = client.database_names()
+        self.client.pymongo_test.test.save({"dummy": u("object")})
+        dbs = self.client.database_names()
         self.assertTrue("pymongo_test" in dbs)
-        client.drop_database(client.pymongo_test)
-        dbs = client.database_names()
+        self.client.drop_database(self.client.pymongo_test)
+        dbs = self.client.database_names()
         self.assertTrue("pymongo_test" not in dbs)
 
     def test_copy_db(self):
-        c = MongoClient(host, port)
+        c = self.client
         # Due to SERVER-2329, databases may not disappear
         # from a master in a master-slave pair.
         if server_is_master_with_slave(c):
             raise SkipTest("SERVER-2329")
-        if (not version.at_least(c, (2, 6, 0)) and
-                is_mongos(c) and server_started_with_auth(c)):
+        if (client_context.version.at_least(2, 6, 0) and
+                client_context.is_mongos and client_context.auth_enabled):
             raise SkipTest("Need mongos >= 2.6.0 to test with authentication")
         # We test copy twice; once starting in a request and once not. In
         # either case the copy should succeed (because it starts a request
@@ -259,8 +254,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         self.assertEqual("bar", c.pymongo_test2.test.find_one()["foo"])
 
         # See SERVER-6427 for mongos
-        if not is_mongos(c) and server_started_with_auth(c):
-
+        if not client_context.is_mongos and client_context.auth_enabled:
             c.drop_database("pymongo_test1")
 
             c.admin.add_user("admin", "password")
@@ -286,34 +280,31 @@ class TestClient(unittest.TestCase, TestRequestMixin):
                 # Cleanup
                 remove_all_users(c.pymongo_test)
                 c.admin.remove_user("admin")
+                c.admin.logout()
                 c.disconnect()
 
     def test_iteration(self):
-        client = MongoClient(host, port)
-
         def iterate():
-            [a for a in client]
+            [a for a in self.client]
 
         self.assertRaises(TypeError, iterate)
 
     def test_disconnect(self):
-        c = MongoClient(host, port)
-        coll = c.pymongo_test.bar
+        coll = self.client.pymongo_test.bar
 
-        c.disconnect()
-        c.disconnect()
+        self.client.disconnect()
+        self.client.disconnect()
 
         coll.count()
 
-        c.disconnect()
-        c.disconnect()
+        self.client.disconnect()
+        self.client.disconnect()
 
         coll.count()
 
     def test_from_uri(self):
-        c = MongoClient(host, port)
-
-        self.assertEqual(c, MongoClient("mongodb://%s:%d" % (host, port)))
+        self.assertEqual(self.client,
+                         MongoClient("mongodb://%s:%d" % (host, port)))
 
     def test_get_default_database(self):
         c = MongoClient("mongodb://%s:%d/foo" % (host, port), _connect=False)
@@ -330,18 +321,13 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         c = MongoClient(uri, _connect=False)
         self.assertEqual(Database(c, 'foo'), c.get_default_database())
 
+    @client_context.require_auth
     def test_auth_from_uri(self):
-        c = MongoClient(host, port)
-        # Sharded auth not supported before MongoDB 2.0
-        if is_mongos(c) and not version.at_least(c, (2, 0, 0)):
-            raise SkipTest("Auth with sharding requires MongoDB >= 2.0.0")
-        if not server_started_with_auth(c):
-            raise SkipTest('Authentication is not enabled on server')
-
-        c.admin.add_user("admin", "pass")
-        c.admin.authenticate("admin", "pass")
+        self.client.admin.add_user("admin", "pass")
+        self.client.admin.authenticate("admin", "pass")
         try:
-            c.pymongo_test.add_user("user", "pass", roles=['userAdmin', 'readWrite'])
+            self.client.pymongo_test.add_user(
+                "user", "pass", roles=['userAdmin', 'readWrite'])
 
             self.assertRaises(ConfigurationError, MongoClient,
                               "mongodb://foo:bar@%s:%d" % (host, port))
@@ -375,18 +361,13 @@ class TestClient(unittest.TestCase, TestRequestMixin):
 
         finally:
             # Clean up.
-            remove_all_users(c.pymongo_test)
-            remove_all_users(c.admin)
+            remove_all_users(self.client.pymongo_test)
+            remove_all_users(self.client.admin)
+            self.client.admin.logout()
+            self.client.disconnect()
 
+    @client_context.require_auth
     def test_lazy_auth_raises_operation_failure(self):
-        # Check if we have the prerequisites to run this test.
-        c = MongoClient(host, port)
-        if not server_started_with_auth(c):
-            raise SkipTest('Authentication is not enabled on server')
-
-        if is_mongos(c) and not version.at_least(c, (2, 0, 0)):
-            raise SkipTest("Auth with sharding requires MongoDB >= 2.0.0")
-
         lazy_client = MongoClient(
             "mongodb://user:wrong@%s:%d/pymongo_test" % (host, port),
             _connect=False)
@@ -397,8 +378,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
     def test_unix_socket(self):
         if not hasattr(socket, "AF_UNIX"):
             raise SkipTest("UNIX-sockets are not supported on this system")
-        if (sys.platform == 'darwin' and
-            server_started_with_auth(MongoClient(host, port))):
+        if sys.platform == 'darwin' and client_context.auth_enabled:
             raise SkipTest("SERVER-8492")
 
         mongodb_socket = '/tmp/mongodb-27017.sock'
@@ -428,7 +408,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         except ImportError:
             raise SkipTest("No multiprocessing module")
 
-        db = MongoClient(host, port).pymongo_test
+        db = self.client.pymongo_test
 
         # Failure occurs if the client is used before the fork
         db.test.find_one()
@@ -478,7 +458,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
             pass
 
     def test_document_class(self):
-        c = MongoClient(host, port)
+        c = self.client
         db = c.pymongo_test
         db.test.insert({"x": 1})
 
@@ -488,9 +468,12 @@ class TestClient(unittest.TestCase, TestRequestMixin):
 
         c.document_class = SON
 
-        self.assertEqual(SON, c.document_class)
-        self.assertTrue(isinstance(db.test.find_one(), SON))
-        self.assertFalse(isinstance(db.test.find_one(as_class=dict), SON))
+        try:
+            self.assertEqual(SON, c.document_class)
+            self.assertTrue(isinstance(db.test.find_one(), SON))
+            self.assertFalse(isinstance(db.test.find_one(as_class=dict), SON))
+        finally:
+            c.document_class = dict
 
         c = MongoClient(host, port, document_class=SON)
         db = c.pymongo_test
@@ -531,7 +514,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
             get_client, socketTimeoutMS='foo')
 
     def test_socket_timeout(self):
-        no_timeout = MongoClient(host, port)
+        no_timeout = self.client
         timeout_sec = 1
         timeout = MongoClient(
             host, port, socketTimeoutMS=1000 * timeout_sec)
@@ -562,7 +545,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         self.assertRaises(ConfigurationError, MongoClient, tz_aware='foo')
 
         aware = MongoClient(host, port, tz_aware=True)
-        naive = MongoClient(host, port)
+        naive = self.client
         aware.pymongo_test.drop_collection("test")
 
         now = datetime.datetime.utcnow()
@@ -595,28 +578,26 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         self.assertTrue("pymongo_test" in dbs)
         self.assertTrue("pymongo_test_bernie" in dbs)
 
+    @client_context.require_no_mongos
     def test_fsync_lock_unlock(self):
-        c = get_client()
-        if is_mongos(c):
-            raise SkipTest('fsync/lock not supported by mongos')
-        if not version.at_least(c, (2, 0)) and server_started_with_auth(c):
+        if (not client_context.version.at_least(2, 0) and
+                client_context.auth_enabled):
             raise SkipTest('Requires server >= 2.0 to test with auth')
-
-        res = c.admin.command('getCmdLineOpts')
-        if '--master' in res['argv'] and version.at_least(c, (2, 3, 0)):
+        if (server_is_master_with_slave(client_context.client) and
+                client_context.version.at_least(2, 3, 0)):
             raise SkipTest('SERVER-7714')
 
-        self.assertFalse(c.is_locked)
+        self.assertFalse(self.client.is_locked)
         # async flushing not supported on windows...
         if sys.platform not in ('cygwin', 'win32'):
-            c.fsync(async=True)
-            self.assertFalse(c.is_locked)
-        c.fsync(lock=True)
-        self.assertTrue(c.is_locked)
+            self.client.fsync(async=True)
+            self.assertFalse(self.client.is_locked)
+        self.client.fsync(lock=True)
+        self.assertTrue(self.client.is_locked)
         locked = True
-        c.unlock()
+        self.client.unlock()
         for _ in range(5):
-            locked = c.is_locked
+            locked = self.client.is_locked
             if not locked:
                 break
             time.sleep(1)
@@ -633,26 +614,23 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         # pool
         self.assertEqual(1, len(get_pool(client).sockets))
 
-        # We need exec here because if the Python version is less than 2.6
-        # these with-statements won't even compile.
         with contextlib.closing(client):
             self.assertEqual("bar", client.pymongo_test.test.find_one()["foo"])
         self.assertEqual(None, client._MongoClient__member)
 
-        with get_client() as client:
+        with self.client as client:
             self.assertEqual("bar", client.pymongo_test.test.find_one()["foo"])
         self.assertEqual(None, client._MongoClient__member)
 
     def test_with_start_request(self):
-        client = get_client()
-        pool = get_pool(client)
+        pool = get_pool(self.client)
 
         # No request started
         self.assertNoRequest(pool)
         self.assertDifferentSock(pool)
 
         # Start a request
-        request_context_mgr = client.start_request()
+        request_context_mgr = self.client.start_request()
         self.assertTrue(
             isinstance(request_context_mgr, object)
         )
@@ -667,8 +645,8 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         self.assertDifferentSock(pool)
 
         # Test the 'with' statement
-        with client.start_request() as request:
-            self.assertEqual(client, request.connection)
+        with self.client.start_request() as request:
+            self.assertEqual(self.client, request.connection)
             self.assertNoSocketYet(pool)
             self.assertSameSock(pool)
             self.assertRequestSocket(pool)
@@ -685,8 +663,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
             )
 
         # auto_start_request should default to False
-        client = get_client()
-        self.assertFalse(client.auto_start_request)
+        self.assertFalse(self.client.auto_start_request)
 
         client = get_client(auto_start_request=True)
         self.assertTrue(client.auto_start_request)
@@ -709,35 +686,34 @@ class TestClient(unittest.TestCase, TestRequestMixin):
 
     def test_nested_request(self):
         # auto_start_request is False
-        client = get_client()
-        pool = get_pool(client)
-        self.assertFalse(client.in_request())
+        pool = get_pool(self.client)
+        self.assertFalse(self.client.in_request())
 
         # Start and end request
-        client.start_request()
-        self.assertInRequestAndSameSock(client, pool)
-        client.end_request()
-        self.assertNotInRequestAndDifferentSock(client, pool)
+        self.client.start_request()
+        self.assertInRequestAndSameSock(self.client, pool)
+        self.client.end_request()
+        self.assertNotInRequestAndDifferentSock(self.client, pool)
 
         # Double-nesting
-        client.start_request()
-        client.start_request()
-        client.end_request()
-        self.assertInRequestAndSameSock(client, pool)
-        client.end_request()
-        self.assertNotInRequestAndDifferentSock(client, pool)
+        self.client.start_request()
+        self.client.start_request()
+        self.client.end_request()
+        self.assertInRequestAndSameSock(self.client, pool)
+        self.client.end_request()
+        self.assertNotInRequestAndDifferentSock(self.client, pool)
 
         # Extra end_request calls have no effect - count stays at zero
-        client.end_request()
-        self.assertNotInRequestAndDifferentSock(client, pool)
+        self.client.end_request()
+        self.assertNotInRequestAndDifferentSock(self.client, pool)
 
-        client.start_request()
-        self.assertInRequestAndSameSock(client, pool)
-        client.end_request()
-        self.assertNotInRequestAndDifferentSock(client, pool)
+        self.client.start_request()
+        self.assertInRequestAndSameSock(self.client, pool)
+        self.client.end_request()
+        self.assertNotInRequestAndDifferentSock(self.client, pool)
 
     def test_request_threads(self):
-        client = get_client(auto_start_request=False)
+        client = self.client
         pool = get_pool(client)
         self.assertNotInRequestAndDifferentSock(client, pool)
 
@@ -787,8 +763,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
 
         # Test fix for PYTHON-294 -- make sure MongoClient closes its
         # socket if it gets an interrupt while waiting to recv() from it.
-        c = get_client()
-        db = c.pymongo_test
+        db = self.client.pymongo_test
 
         # A $where clause which takes 1.5 sec to execute
         where = delay(1.5)
@@ -826,17 +801,17 @@ class TestClient(unittest.TestCase, TestRequestMixin):
     def test_operation_failure_without_request(self):
         # Ensure MongoClient doesn't close socket after it gets an error
         # response to getLastError. PYTHON-395.
-        c = get_client()
-        pool = get_pool(c)
-        self.assertEqual(1, len(pool.sockets))
+        pool = get_pool(self.client)
+        socket_count = len(pool.sockets)
+        self.assertGreaterEqual(socket_count, 1)
         old_sock_info = next(iter(pool.sockets))
-        c.pymongo_test.test.drop()
-        c.pymongo_test.test.insert({'_id': 'foo'})
+        self.client.pymongo_test.test.drop()
+        self.client.pymongo_test.test.insert({'_id': 'foo'})
         self.assertRaises(
             OperationFailure,
-            c.pymongo_test.test.insert, {'_id': 'foo'})
+            self.client.pymongo_test.test.insert, {'_id': 'foo'})
 
-        self.assertEqual(1, len(pool.sockets))
+        self.assertEqual(socket_count, len(pool.sockets))
         new_sock_info = next(iter(pool.sockets))
         self.assertEqual(old_sock_info, new_sock_info)
 
@@ -861,7 +836,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         self.assertEqual(old_sock_info, pool._get_request_state())
 
     def test_alive(self):
-        self.assertTrue(get_client().alive())
+        self.assertTrue(self.client.alive())
 
         client = MongoClient('doesnt exist', _connect=False)
         self.assertFalse(client.alive())
@@ -938,12 +913,9 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         self.assertEqual(expected_min, c.min_wire_version)
         self.assertEqual(expected_max, c.max_wire_version)
 
+    @client_context.require_replica_set
     def test_replica_set(self):
-        client = MongoClient(host, port)
-        name = client.pymongo_test.command('ismaster').get('setName')
-        if not name:
-            raise SkipTest('Not connected to a replica set')
-
+        name = client_context.setname
         MongoClient(host, port, replicaSet=name)  # No error.
 
         self.assertRaises(

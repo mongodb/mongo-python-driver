@@ -14,20 +14,18 @@
 
 """Test the pymongo module itself."""
 
-import os
 import sys
 sys.path[0:0] = [""]
 
 import pymongo
-from test import host, port, unittest
+from test import unittest
 
 
 class TestPyMongo(unittest.TestCase):
     def test_mongo_client_alias(self):
         # Testing that pymongo module imports mongo_client.MongoClient
-        c = pymongo.MongoClient(host, port)
-        self.assertEqual(c.host, host)
-        self.assertEqual(c.port, port)
+        self.assertEqual(pymongo.MongoClient,
+                         pymongo.mongo_client.MongoClient)
 
 
 if __name__ == "__main__":

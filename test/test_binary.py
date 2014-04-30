@@ -27,8 +27,7 @@ import bson
 from bson.binary import *
 from bson.py3compat import u
 from bson.son import SON
-from test import unittest
-from test.test_client import get_client
+from test import client_context, unittest
 from pymongo.mongo_client import MongoClient
 
 
@@ -147,9 +146,8 @@ class TestBinary(unittest.TestCase):
         self.assertEqual(data, encoded)
 
         # Test insert and find
-        client = get_client()
-        client.pymongo_test.drop_collection('java_uuid')
-        coll = client.pymongo_test.java_uuid
+        client_context.client.pymongo_test.drop_collection('java_uuid')
+        coll = client_context.client.pymongo_test.java_uuid
         coll.uuid_subtype = JAVA_LEGACY
 
         coll.insert(docs)
@@ -160,7 +158,7 @@ class TestBinary(unittest.TestCase):
         coll.uuid_subtype = OLD_UUID_SUBTYPE
         for d in coll.find():
             self.assertNotEqual(d['newguid'], d['newguidstring'])
-        client.pymongo_test.drop_collection('java_uuid')
+        client_context.client.pymongo_test.drop_collection('java_uuid')
 
     def test_legacy_csharp_uuid(self):
 
@@ -217,9 +215,8 @@ class TestBinary(unittest.TestCase):
         self.assertEqual(data, encoded)
 
         # Test insert and find
-        client = get_client()
-        client.pymongo_test.drop_collection('csharp_uuid')
-        coll = client.pymongo_test.csharp_uuid
+        client_context.client.pymongo_test.drop_collection('csharp_uuid')
+        coll = client_context.client.pymongo_test.csharp_uuid
         coll.uuid_subtype = CSHARP_LEGACY
 
         coll.insert(docs)
@@ -230,7 +227,7 @@ class TestBinary(unittest.TestCase):
         coll.uuid_subtype = OLD_UUID_SUBTYPE
         for d in coll.find():
             self.assertNotEqual(d['newguid'], d['newguidstring'])
-        client.pymongo_test.drop_collection('csharp_uuid')
+        client_context.client.pymongo_test.drop_collection('csharp_uuid')
 
     def test_uri_to_uuid(self):
 
@@ -240,8 +237,7 @@ class TestBinary(unittest.TestCase):
 
     def test_uuid_queries(self):
 
-        c = get_client()
-        coll = c.pymongo_test.test
+        coll = client_context.client.pymongo_test.test
         coll.drop()
 
         uu = uuid.uuid4()

@@ -21,19 +21,14 @@ sys.path[0:0] = [""]
 from bson import InvalidDocument, SON
 from bson.py3compat import string_type
 from pymongo.errors import BulkWriteError, InvalidOperation, OperationFailure
-from test import SkipTest, unittest, version
-from test.test_client import get_client
-from test.utils import (oid_generated_on_client,
-                        remove_all_users,
-                        server_started_with_auth,
-                        server_started_with_nojournal)
+from test import client_context, unittest
+from test.utils import oid_generated_on_client, remove_all_users
 
 
 class BulkTestBase(unittest.TestCase):
 
     def setUp(self):
-        client = get_client()
-        self.has_write_commands = (client.max_wire_version > 1)
+        self.has_write_commands = (client_context.client.max_wire_version > 1)
 
     def assertEqualResponse(self, expected, actual):
         """Compare response from bulk.execute() to expected response."""
@@ -110,9 +105,12 @@ class BulkTestBase(unittest.TestCase):
 
 class TestBulk(BulkTestBase):
 
+    @classmethod
+    def setUpClass(cls):
+        cls.coll = client_context.client.pymongo_test.test
+
     def setUp(self):
         super(TestBulk, self).setUp()
-        self.coll = get_client().pymongo_test.test
         self.coll.remove()
 
     def test_empty(self):
@@ -583,8 +581,7 @@ class TestBulk(BulkTestBase):
         self.assertEqual(self.coll.find({'x': 2}).count(), 0)
 
     def test_upsert_large(self):
-        client = self.coll.database.connection
-        big = 'a' * (client.max_bson_size - 37)
+        big = 'a' * (client_context.client.max_bson_size - 37)
         bulk = self.coll.initialize_ordered_bulk_op()
         bulk.find({'x': 1}).upsert().update({'$set': {'s': big}})
         result = bulk.execute()
@@ -886,29 +883,26 @@ class TestBulk(BulkTestBase):
 
 class TestBulkWriteConcern(BulkTestBase):
 
+    @classmethod
+    def setUpClass(cls):
+        cls.is_repl = ('setName' in client_context.ismaster)
+        cls.w = client_context.w
+        cls.coll = client_context.client.pymongo_test.test
+
     def setUp(self):
         super(TestBulkWriteConcern, self).setUp()
-        client = get_client()
-        ismaster = client.test.command('ismaster')
-        self.is_repl = bool(ismaster.get('setName'))
-        self.w = len(ismaster.get("hosts", []))
-        self.client = client
-        self.coll = client.pymongo_test.test
         self.coll.remove()
 
+    @client_context.require_version_min(1, 8, 2)
     def test_fsync_and_j(self):
-        if not version.at_least(self.client, (1, 8, 2)):
-            raise SkipTest("Need at least MongoDB 1.8.2")
         batch = self.coll.initialize_ordered_bulk_op()
         batch.insert({'a': 1})
         self.assertRaises(
             OperationFailure,
             batch.execute, {'fsync': True, 'j': True})
 
+    @client_context.require_replica_set
     def test_write_concern_failure_ordered(self):
-        if not self.is_repl:
-            raise SkipTest("Need a replica set to test.")
-
         # Ensure we don't raise on wnote.
         batch = self.coll.initialize_ordered_bulk_op()
         batch.find({"something": "that does no exist"}).remove()
@@ -985,10 +979,8 @@ class TestBulkWriteConcern(BulkTestBase):
         finally:
             self.coll.drop_index([('a', 1)])
 
+    @client_context.require_replica_set
     def test_write_concern_failure_unordered(self):
-        if not self.is_repl:
-            raise SkipTest("Need a replica set to test.")
-
         # Ensure we don't raise on wnote.
         batch = self.coll.initialize_unordered_bulk_op()
         batch.find({"something": "that does no exist"}).remove()
@@ -1063,9 +1055,12 @@ class TestBulkWriteConcern(BulkTestBase):
 
 class TestBulkNoResults(BulkTestBase):
 
+    @classmethod
+    def setUpClass(cls):
+        cls.coll = client_context.client.pymongo_test.test
+
     def setUp(self):
         super(TestBulkNoResults, self).setUp()
-        self.coll = get_client().pymongo_test.test
         self.coll.remove()
 
     def test_no_results_ordered_success(self):
@@ -1114,21 +1109,21 @@ class TestBulkNoResults(BulkTestBase):
 
 class TestBulkAuthorization(BulkTestBase):
 
+    @classmethod
+    @client_context.require_auth
+    @client_context.require_version_min(2, 5, 3)
+    def setUpClass(cls):
+        cls.db = client_context.client.pymongo_test
+        cls.coll = cls.db.test
+
     def setUp(self):
         super(TestBulkAuthorization, self).setUp()
-        self.client = client = get_client()
-        if (not server_started_with_auth(client)
-                or not version.at_least(client, (2, 5, 3))):
-            raise SkipTest('Need at least MongoDB 2.5.3 with auth')
-
-        db = client.pymongo_test
-        self.coll = db.test
         self.coll.remove()
 
-        db.add_user('dbOwner', 'pw', roles=['dbOwner'])
-        db.authenticate('dbOwner', 'pw')
-        db.add_user('readonly', 'pw', roles=['read'])
-        db.command(
+        self.db.add_user('dbOwner', 'pw', roles=['dbOwner'])
+        self.db.authenticate('dbOwner', 'pw')
+        self.db.add_user('readonly', 'pw', roles=['read'])
+        self.db.command(
             'createRole', 'noremove',
             privileges=[{
                 'actions': ['insert', 'update', 'find'],
@@ -1136,13 +1131,21 @@ class TestBulkAuthorization(BulkTestBase):
             }],
             roles=[])
 
-        db.add_user('noremove', 'pw', roles=['noremove'])
-        db.logout()
+        self.db.add_user('noremove', 'pw', roles=['noremove'])
+        self.db.logout()
+
+    def tearDown(self):
+        self.db.logout()
+        self.db.authenticate('dbOwner', 'pw')
+        self.db.command('dropRole', 'noremove')
+        remove_all_users(self.db)
+        self.db.logout()
+        self.db.connection.disconnect()
 
     def test_readonly(self):
         # We test that an authorization failure aborts the batch and is raised
         # as OperationFailure.
-        db = self.client.pymongo_test
+        db = client_context.client.pymongo_test
         db.authenticate('readonly', 'pw')
         bulk = self.coll.initialize_ordered_bulk_op()
         bulk.insert({'x': 1})
@@ -1151,7 +1154,7 @@ class TestBulkAuthorization(BulkTestBase):
     def test_no_remove(self):
         # We test that an authorization failure aborts the batch and is raised
         # as OperationFailure.
-        db = self.client.pymongo_test
+        db = client_context.client.pymongo_test
         db.authenticate('noremove', 'pw')
         bulk = self.coll.initialize_ordered_bulk_op()
         bulk.insert({'x': 1})
@@ -1160,14 +1163,6 @@ class TestBulkAuthorization(BulkTestBase):
         bulk.insert({'x': 3})   # Never attempted.
         self.assertRaises(OperationFailure, bulk.execute)
         self.assertEqual(set([1, 2]), set(self.coll.distinct('x')))
-
-    def tearDown(self):
-        db = self.client.pymongo_test
-        db.logout()
-        db.authenticate('dbOwner', 'pw')
-        db.command('dropRole', 'noremove')
-        remove_all_users(db)
-        db.logout()
 
 
 if __name__ == "__main__":

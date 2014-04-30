@@ -30,8 +30,7 @@ from pymongo import MongoClient, MongoReplicaSetClient
 from pymongo.auth import HAVE_KERBEROS
 from pymongo.errors import OperationFailure, ConfigurationError
 from pymongo.read_preferences import ReadPreference
-from test import host, port, SkipTest, unittest, version
-from test.utils import is_mongos, server_started_with_auth
+from test import client_context, host, port, SkipTest, unittest
 
 # YOU MUST RUN KINIT BEFORE RUNNING GSSAPI TESTS.
 GSSAPI_HOST = os.environ.get('GSSAPI_HOST')
@@ -229,13 +228,9 @@ class TestSASL(unittest.TestCase):
 
 class TestAuthURIOptions(unittest.TestCase):
 
+    @client_context.require_auth
     def setUp(self):
         client = MongoClient(host, port)
-        # Sharded auth not supported before MongoDB 2.0
-        if is_mongos(client) and not version.at_least(client, (2, 0, 0)):
-            raise SkipTest("Auth with sharding requires MongoDB >= 2.0.0")
-        if not server_started_with_auth(client):
-            raise SkipTest('Authentication is not enabled on server')
         response = client.admin.command('ismaster')
         self.set_name = str(response.get('setName', ''))
         client.admin.add_user('admin', 'pass', roles=['userAdminAnyDatabase',
@@ -313,14 +308,11 @@ class TestAuthURIOptions(unittest.TestCase):
 
 class TestDelegatedAuth(unittest.TestCase):
 
+    @client_context.require_auth
+    @client_context.require_version_max(2, 5, 3)
+    @client_context.require_version_min(2, 4, 0)
     def setUp(self):
         self.client = MongoClient(host, port)
-        if not version.at_least(self.client, (2, 4, 0)):
-            raise SkipTest('Delegated authentication requires MongoDB >= 2.4.0')
-        if not server_started_with_auth(self.client):
-            raise SkipTest('Authentication is not enabled on server')
-        if version.at_least(self.client, (2, 5, 3, -1)):
-            raise SkipTest('Delegated auth does not exist in MongoDB >= 2.5.3')
         # Give admin all privileges.
         self.client.admin.add_user('admin', 'pass',
                                    roles=['readAnyDatabase',

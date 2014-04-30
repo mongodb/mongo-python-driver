@@ -29,7 +29,6 @@ sys.path[0:0] = [""]
 from bson.py3compat import thread, u, _unicode
 from bson.son import SON
 from bson.tz_util import utc
-from pymongo.mongo_client import MongoClient
 from pymongo.read_preferences import ReadPreference, Secondary, Nearest
 from pymongo.mongo_replica_set_client import MongoReplicaSetClient
 from pymongo.mongo_replica_set_client import _partition_node, have_gevent
@@ -40,13 +39,14 @@ from pymongo.errors import (AutoReconnect,
                             ConnectionFailure,
                             InvalidName,
                             OperationFailure, InvalidOperation)
-from test import pair, port, SkipTest, unittest, version
+from test import client_context, pair, port, SkipTest, unittest
 from test.pymongo_mocks import MockReplicaSetClient
 from test.utils import (
     delay, assertReadFrom, assertReadFromAll, read_from_which_host,
     remove_all_users, assertRaisesExactly, TestRequestMixin, one,
     server_started_with_auth, pools_from_rs_client, get_pool,
     _TestLazyConnectMixin)
+from test.version import Version
 
 
 class TestReplicaSetClientAgainstStandalone(unittest.TestCase):
@@ -54,9 +54,7 @@ class TestReplicaSetClientAgainstStandalone(unittest.TestCase):
     but only if the database at DB_IP and DB_PORT is a standalone.
     """
     def setUp(self):
-        client = MongoClient(pair)
-        response = client.admin.command('ismaster')
-        if 'setName' in response:
+        if client_context.setname:
             raise SkipTest("Connected to a replica set, not a standalone mongod")
 
     def test_connect(self):
@@ -66,32 +64,29 @@ class TestReplicaSetClientAgainstStandalone(unittest.TestCase):
 
 
 class TestReplicaSetClientBase(unittest.TestCase):
-    def setUp(self):
-        client = MongoClient(pair)
-        response = client.admin.command('ismaster')
-        if 'setName' in response:
-            self.name = str(response['setName'])
-            self.w = len(response['hosts'])
-            self.hosts = set([_partition_node(h)
-                              for h in response["hosts"]])
-            self.arbiters = set([_partition_node(h)
-                                 for h in response.get("arbiters", [])])
 
-            repl_set_status = client.admin.command('replSetGetStatus')
-            primary_info = [
-                m for m in repl_set_status['members']
-                if m['stateStr'] == 'PRIMARY'
-            ][0]
+    @classmethod
+    @client_context.require_replica_set
+    def setUpClass(cls):
+        cls.name = client_context.setname
+        ismaster = client_context.ismaster
+        cls.w = client_context.w
+        cls.hosts = set(_partition_node(h) for h in ismaster['hosts'])
+        cls.arbiters = set(_partition_node(h)
+                           for h in ismaster.get("arbiters", []))
 
-            self.primary = _partition_node(primary_info['name'])
-            self.secondaries = [
-                _partition_node(m['name']) for m in repl_set_status['members']
-                if m['stateStr'] == 'SECONDARY'
-            ]
-        else:
-            raise SkipTest("Not connected to a replica set")
+        repl_set_status = client_context.client.admin.command(
+            'replSetGetStatus')
+        primary_info = [
+            m for m in repl_set_status['members']
+            if m['stateStr'] == 'PRIMARY'
+        ][0]
 
-        super(TestReplicaSetClientBase, self).setUp()
+        cls.primary = _partition_node(primary_info['name'])
+        cls.secondaries = [
+            _partition_node(m['name']) for m in repl_set_status['members']
+            if m['stateStr'] == 'SECONDARY'
+        ]
 
     def _get_client(self, **kwargs):
         return MongoReplicaSetClient(pair,
@@ -138,7 +133,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         self.assertTrue(c.primary)
         self.assertTrue(c.secondaries)
 
-        if version.at_least(c, (2, 5, 4, -1)):
+        if Version.from_client(c).at_least(2, 5, 4, -1):
             self.assertTrue(c.max_wire_version > 0)
         else:
             self.assertEqual(c.max_wire_version, 0)
@@ -169,10 +164,9 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
 
         self.assertRaises(ConnectionFailure, c.pymongo_test.test.find_one)
 
+    @client_context.require_auth
     def test_init_disconnected_with_auth(self):
-        c = self._get_client()
-        if not server_started_with_auth(c):
-            raise SkipTest('Authentication is not enabled on server')
+        c = client_context.rs_client
 
         c.admin.add_user("admin", "pass")
         c.admin.authenticate("admin", "pass")
@@ -199,6 +193,8 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
             # Clean up.
             remove_all_users(c.pymongo_test)
             remove_all_users(c.admin)
+            c.admin.logout()
+            c.disconnect()
 
     def test_connect(self):
         assertRaisesExactly(ConnectionFailure, MongoReplicaSetClient,
@@ -210,7 +206,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         self.assertTrue(MongoReplicaSetClient(pair, replicaSet=self.name))
 
     def test_repr(self):
-        client = self._get_client()
+        client = client_context.rs_client
 
         # Quirk: the RS client makes a frozenset of hosts from a dict's keys,
         # so we must do the same to achieve the same order.
@@ -223,7 +219,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
                          "MongoReplicaSetClient([%s])" % hosts_repr)
 
     def test_properties(self):
-        c = MongoReplicaSetClient(pair, replicaSet=self.name)
+        c = client_context.rs_client
         c.admin.command('ping')
         self.assertEqual(c.primary, self.primary)
         self.assertEqual(c.hosts, self.hosts)
@@ -240,7 +236,6 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         cursor = c.pymongo_test.test.find()
         self.assertEqual(
             ReadPreference.PRIMARY, cursor._Cursor__read_preference)
-        c.close()
 
         tag_sets = [{'dc': 'la', 'rack': '2'}, {'foo': 'bar'}]
         secondary = Secondary(tag_sets)
@@ -268,7 +263,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         self.assertEqual(
             nearest, cursor._Cursor__read_preference)
 
-        if version.at_least(c, (1, 7, 4)):
+        if Version.from_client(c).at_least(1, 7, 4):
             self.assertEqual(c.max_bson_size, 16777216)
         else:
             self.assertEqual(c.max_bson_size, 4194304)
@@ -283,7 +278,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
                 pair, replicaSet=self.name, use_greenlets=True).use_greenlets)
 
     def test_get_db(self):
-        client = self._get_client()
+        client = client_context.rs_client
 
         def make_db(base, name):
             return base[name]
@@ -298,10 +293,9 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         self.assertTrue(isinstance(client.test, Database))
         self.assertEqual(client.test, client["test"])
         self.assertEqual(client.test, Database(client, "test"))
-        client.close()
 
     def test_auto_reconnect_exception_when_read_preference_is_secondary(self):
-        c = self._get_client()
+        c = client_context.rs_client
         db = c.pymongo_test
 
         def raise_socket_error(*args, **kwargs):
@@ -316,12 +310,9 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         finally:
             socket.socket.sendall = old_sendall
 
+    @client_context.require_auth
     def test_lazy_auth_raises_operation_failure(self):
         # Check if we have the prerequisites to run this test.
-        c = self._get_client()
-        if not server_started_with_auth(c):
-            raise SkipTest('Authentication is not enabled on server')
-
         lazy_client = MongoReplicaSetClient(
             "mongodb://user:wrong@%s/pymongo_test" % pair,
             replicaSet=self.name,
@@ -331,7 +322,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
             OperationFailure, lazy_client.test.collection.find_one)
 
     def test_operations(self):
-        c = self._get_client()
+        c = client_context.rs_client
 
         # Check explicitly for a case we've commonly hit in tests:
         # a replica set is started with a tiny oplog, a previous
@@ -367,10 +358,9 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         db.test.remove({})
         self.assertEqual(0, db.test.count())
         db.test.drop()
-        c.close()
 
     def test_database_names(self):
-        client = self._get_client()
+        client = client_context.rs_client
 
         client.pymongo_test.test.save({"dummy": u("object")})
         client.pymongo_test_mike.test.save({"dummy": u("object")})
@@ -378,10 +368,9 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         dbs = client.database_names()
         self.assertTrue("pymongo_test" in dbs)
         self.assertTrue("pymongo_test_mike" in dbs)
-        client.close()
 
     def test_drop_database(self):
-        client = self._get_client()
+        client = client_context.rs_client
 
         self.assertRaises(TypeError, client.drop_database, 5)
         self.assertRaises(TypeError, client.drop_database, None)
@@ -399,37 +388,33 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         client.drop_database(client.pymongo_test)
         dbs = client.database_names()
         self.assertTrue("pymongo_test" not in dbs)
-        client.close()
 
     def test_copy_db(self):
-        c = self._get_client()
+        c = client_context.rs_client
         # We test copy twice; once starting in a request and once not. In
         # either case the copy should succeed (because it starts a request
         # internally) and should leave us in the same state as before the copy.
-        c.start_request()
+        with c.start_request():
+            self.assertRaises(TypeError, c.copy_database, 4, "foo")
+            self.assertRaises(TypeError, c.copy_database, "foo", 4)
 
-        self.assertRaises(TypeError, c.copy_database, 4, "foo")
-        self.assertRaises(TypeError, c.copy_database, "foo", 4)
+            self.assertRaises(InvalidName, c.copy_database, "foo", "$foo")
 
-        self.assertRaises(InvalidName, c.copy_database, "foo", "$foo")
+            c.pymongo_test.test.drop()
+            c.drop_database("pymongo_test1")
+            c.drop_database("pymongo_test2")
 
-        c.pymongo_test.test.drop()
-        c.drop_database("pymongo_test1")
-        c.drop_database("pymongo_test2")
+            c.pymongo_test.test.insert({"foo": "bar"})
 
-        c.pymongo_test.test.insert({"foo": "bar"})
+            self.assertFalse("pymongo_test1" in c.database_names())
+            self.assertFalse("pymongo_test2" in c.database_names())
 
-        self.assertFalse("pymongo_test1" in c.database_names())
-        self.assertFalse("pymongo_test2" in c.database_names())
+            c.copy_database("pymongo_test", "pymongo_test1")
+            # copy_database() didn't accidentally end the request
+            self.assertTrue(c.in_request())
 
-        c.copy_database("pymongo_test", "pymongo_test1")
-        # copy_database() didn't accidentally end the request
-        self.assertTrue(c.in_request())
-
-        self.assertTrue("pymongo_test1" in c.database_names())
-        self.assertEqual("bar", c.pymongo_test1.test.find_one()["foo"])
-
-        c.end_request()
+            self.assertTrue("pymongo_test1" in c.database_names())
+            self.assertEqual("bar", c.pymongo_test1.test.find_one()["foo"])
 
         self.assertFalse(c.in_request())
         c.copy_database("pymongo_test", "pymongo_test2", pair)
@@ -441,7 +426,8 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         self.assertTrue("pymongo_test2" in c.database_names())
         self.assertEqual("bar", c.pymongo_test2.test.find_one()["foo"])
 
-        if version.at_least(c, (1, 3, 3, 1)) and server_started_with_auth(c):
+        if (Version.from_client(c).at_least(1, 3, 3, 1) and
+                server_started_with_auth(c)):
             c.drop_database("pymongo_test1")
 
             c.admin.add_user("admin", "password")
@@ -469,7 +455,9 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
                 # Cleanup
                 remove_all_users(c.pymongo_test)
                 c.admin.remove_user("admin")
-        c.close()
+                c.admin.logout()
+                c.pymongo_test.logout()
+                c.disconnect()
 
     def test_get_default_database(self):
         host = one(self.hosts)
@@ -498,16 +486,15 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         self.assertEqual(Database(c, 'foo'), c.get_default_database())
 
     def test_iteration(self):
-        client = self._get_client()
+        client = client_context.rs_client
 
         def iterate():
             [a for a in client]
 
         self.assertRaises(TypeError, iterate)
-        client.close()
 
     def test_disconnect(self):
-        c = self._get_client()
+        c = client_context.rs_client
         coll = c.pymongo_test.bar
 
         c.disconnect()
@@ -553,7 +540,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         except ImportError:
             raise SkipTest("No multiprocessing module")
 
-        client = self._get_client()
+        client = client_context.rs_client
 
         def f(pipe):
             try:
@@ -584,7 +571,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
             pass
 
     def test_document_class(self):
-        c = self._get_client()
+        c = client_context.rs_client
         db = c.pymongo_test
         db.test.insert({"x": 1})
 
@@ -594,10 +581,12 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
 
         c.document_class = SON
 
-        self.assertEqual(SON, c.document_class)
-        self.assertTrue(isinstance(db.test.find_one(), SON))
-        self.assertFalse(isinstance(db.test.find_one(as_class=dict), SON))
-        c.close()
+        try:
+            self.assertEqual(SON, c.document_class)
+            self.assertTrue(isinstance(db.test.find_one(), SON))
+            self.assertFalse(isinstance(db.test.find_one(as_class=dict), SON))
+        finally:
+            c.document_class = dict
 
         c = self._get_client(document_class=SON)
         db = c.pymongo_test
@@ -633,7 +622,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
             self._get_client, socketTimeoutMS='foo')
 
     def test_socket_timeout(self):
-        no_timeout = self._get_client()
+        no_timeout = client_context.rs_client
         timeout_sec = 1
         timeout = self._get_client(socketTimeoutMS=timeout_sec*1000)
 
@@ -666,7 +655,6 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         else:
             self.fail('RS client should have raised timeout error')
 
-        no_timeout.close()
         timeout.close()
 
     def test_timeout_does_not_mark_member_down(self):
@@ -715,7 +703,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
                           tz_aware='foo', replicaSet=self.name)
 
         aware = self._get_client(tz_aware=True)
-        naive = self._get_client()
+        naive = client_context.rs_client
         aware.pymongo_test.drop_collection("test")
 
         now = datetime.datetime.utcnow()
@@ -809,7 +797,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
 
         # Test fix for PYTHON-294 -- make sure client closes its socket if it
         # gets an interrupt while waiting to recv() from it.
-        c = self._get_client()
+        c = client_context.rs_client
         db = c.pymongo_test
 
         # A $where clause which takes 1.5 sec to execute
@@ -932,14 +920,12 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         self.assertInRequestAndSameSock(client, pools)
         client.close()
 
-        client = self._get_client()
+        client = client_context.rs_client
         pools = pools_from_rs_client(client)
         self.assertNotInRequestAndDifferentSock(client, pools)
-        client.start_request()
-        self.assertInRequestAndSameSock(client, pools)
-        client.end_request()
+        with client.start_request():
+            self.assertInRequestAndSameSock(client, pools)
         self.assertNotInRequestAndDifferentSock(client, pools)
-        client.close()
 
     def test_nested_request(self):
         client = self._get_client(auto_start_request=True)
@@ -984,48 +970,46 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
             client.close()
 
     def test_request_threads(self):
-        client = self._get_client()
-        try:
-            pools = pools_from_rs_client(client)
-            self.assertNotInRequestAndDifferentSock(client, pools)
+        client = client_context.rs_client
 
-            started_request, ended_request = threading.Event(), threading.Event()
-            checked_request = threading.Event()
-            thread_done = [False]
+        pools = pools_from_rs_client(client)
+        self.assertNotInRequestAndDifferentSock(client, pools)
 
-            # Starting a request in one thread doesn't put the other thread in a
-            # request
-            def f():
-                self.assertNotInRequestAndDifferentSock(client, pools)
-                client.start_request()
-                self.assertInRequestAndSameSock(client, pools)
-                started_request.set()
-                checked_request.wait()
-                checked_request.clear()
-                self.assertInRequestAndSameSock(client, pools)
-                client.end_request()
-                self.assertNotInRequestAndDifferentSock(client, pools)
-                ended_request.set()
-                checked_request.wait()
-                thread_done[0] = True
+        started_request, ended_request = threading.Event(), threading.Event()
+        checked_request = threading.Event()
+        thread_done = [False]
 
-            t = threading.Thread(target=f)
-            t.setDaemon(True)
-            t.start()
-            started_request.wait()
+        # Starting a request in one thread doesn't put the other thread in a
+        # request
+        def f():
             self.assertNotInRequestAndDifferentSock(client, pools)
-            checked_request.set()
-            ended_request.wait()
+            client.start_request()
+            self.assertInRequestAndSameSock(client, pools)
+            started_request.set()
+            checked_request.wait()
+            checked_request.clear()
+            self.assertInRequestAndSameSock(client, pools)
+            client.end_request()
             self.assertNotInRequestAndDifferentSock(client, pools)
-            checked_request.set()
-            t.join()
-            self.assertNotInRequestAndDifferentSock(client, pools)
-            self.assertTrue(thread_done[0], "Thread didn't complete")
-        finally:
-            client.close()
+            ended_request.set()
+            checked_request.wait()
+            thread_done[0] = True
+
+        t = threading.Thread(target=f)
+        t.setDaemon(True)
+        t.start()
+        started_request.wait()
+        self.assertNotInRequestAndDifferentSock(client, pools)
+        checked_request.set()
+        ended_request.wait()
+        self.assertNotInRequestAndDifferentSock(client, pools)
+        checked_request.set()
+        t.join()
+        self.assertNotInRequestAndDifferentSock(client, pools)
+        self.assertTrue(thread_done[0], "Thread didn't complete")
 
     def test_schedule_refresh(self):
-        client = self._get_client()
+        client = client_context.rs_client
         new_rs_state = rs_state = client._MongoReplicaSetClient__rs_state
         for host in rs_state.hosts:
             new_rs_state = new_rs_state.clone_with_host_down(host, 'error!')
@@ -1036,8 +1020,6 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         self.assertEqual(
             self.w, len(rs_state.members),
             "MongoReplicaSetClient didn't detect members are up")
-
-        client.close()
 
     def test_pinned_member(self):
         latency = 1000 * 1000
@@ -1081,7 +1063,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
             ReadPreference.NEAREST, None)
 
     def test_alive(self):
-        client = self._get_client()
+        client = client_context.rs_client
         self.assertTrue(client.alive())
 
         client = MongoReplicaSetClient(

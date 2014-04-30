@@ -32,8 +32,7 @@ import gridfs
 from bson.py3compat import u, StringIO, string_type
 from gridfs.errors import (FileExists,
                            NoFile)
-from test import unittest
-from test.test_client import get_client
+from test import client_context, unittest
 from test.utils import joinall
 
 
@@ -71,17 +70,17 @@ class JustRead(threading.Thread):
 
 class TestGridfs(unittest.TestCase):
 
+    @classmethod
+    def setUpClass(cls):
+        cls.db = client_context.client.pymongo_test
+        cls.fs = gridfs.GridFS(cls.db)
+        cls.alt = gridfs.GridFS(cls.db, "alt")
+
     def setUp(self):
-        self.db = get_client().pymongo_test
         self.db.drop_collection("fs.files")
         self.db.drop_collection("fs.chunks")
         self.db.drop_collection("alt.files")
         self.db.drop_collection("alt.chunks")
-        self.fs = gridfs.GridFS(self.db)
-        self.alt = gridfs.GridFS(self.db, "alt")
-
-    def tearDown(self):
-        self.db = self.fs = self.alt = None
 
     def test_gridfs(self):
         self.assertRaises(TypeError, gridfs.GridFS, "foo")
@@ -278,17 +277,14 @@ class TestGridfs(unittest.TestCase):
         self.assertEqual(b"hello world", self.fs.get(oid).read())
 
     def test_file_exists(self):
-        db = get_client(w=1).pymongo_test
-        fs = gridfs.GridFS(db)
+        oid = self.fs.put(b"hello")
+        self.assertRaises(FileExists, self.fs.put, b"world", _id=oid)
 
-        oid = fs.put(b"hello")
-        self.assertRaises(FileExists, fs.put, b"world", _id=oid)
-
-        one = fs.new_file(_id=123)
+        one = self.fs.new_file(_id=123)
         one.write(b"some content")
         one.close()
 
-        two = fs.new_file(_id=123)
+        two = self.fs.new_file(_id=123)
         self.assertRaises(FileExists, two.write, b'x' * 262146)
 
     def test_exists(self):
@@ -446,10 +442,9 @@ class TestGridfsReplicaSet(TestReplicaSetClientBase):
         self.assertRaises(ConnectionFailure, fs.put, 'data')
 
     def tearDown(self):
-        rsc = self._get_client()
+        rsc = client_context.rs_client
         rsc.pymongo_test.drop_collection('fs.files')
         rsc.pymongo_test.drop_collection('fs.chunks')
-        rsc.close()
 
 
 if __name__ == "__main__":

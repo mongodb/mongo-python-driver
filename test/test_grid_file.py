@@ -35,19 +35,18 @@ from gridfs.errors import (NoFile,
                            UnsupportedAPI)
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
-from test.test_client import get_client
-from test import qcheck, unittest
+from test import client_context, qcheck, unittest
 
 
 class TestGridFile(unittest.TestCase):
 
+    @classmethod
+    def setUpClass(cls):
+        cls.db = client_context.client.pymongo_test
+
     def setUp(self):
-        self.db = get_client().pymongo_test
         self.db.fs.files.remove({})
         self.db.fs.chunks.remove({})
-
-    def tearDown(self):
-        self.db = None
 
     def test_basic(self):
         f = GridIn(self.db.fs, filename="test")

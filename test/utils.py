@@ -23,7 +23,8 @@ import threading
 from pymongo import MongoClient, MongoReplicaSetClient
 from pymongo.errors import AutoReconnect
 from pymongo.pool import NO_REQUEST, NO_SOCKET_YET, SocketInfo
-from test import host, port, SkipTest, version
+from test import host, port, SkipTest
+from test.version import Version
 
 
 try:
@@ -124,7 +125,7 @@ def drop_collections(db):
             db.drop_collection(coll)
 
 def remove_all_users(db):
-    if version.at_least(db.connection, (2, 5, 3, -1)):
+    if Version.from_client(db.connection).at_least(2, 5, 3, -1):
         db.command({"dropAllUsersFromDatabase": 1})
     else:
         db.system.users.remove({})

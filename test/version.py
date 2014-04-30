@@ -15,41 +15,49 @@
 """Some tools for running tests based on MongoDB server version."""
 
 
-def _padded(iter, length, padding=0):
-    l = list(iter)
-    if len(l) < length:
-        for _ in range(length - len(l)):
-            l.append(0)
-    return l
+class Version(tuple):
 
+    def __new__(cls, *version):
+        padded_version = cls._padded(version, 4)
+        return super(Version, cls).__new__(cls, tuple(padded_version))
 
-def _parse_version_string(version_string):
-    mod = 0
-    if version_string.endswith("+"):
-        version_string = version_string[0:-1]
-        mod = 1
-    elif version_string.endswith("-pre-"):
-        version_string = version_string[0:-5]
-        mod = -1
-    elif version_string.endswith("-"):
-        version_string = version_string[0:-1]
-        mod = -1
-    # Deal with '-rcX' substrings
-    if version_string.find('-rc') != -1:
-        version_string = version_string[0:version_string.find('-rc')]
-        mod = -1
+    @classmethod
+    def _padded(cls, iter, length, padding=0):
+        l = list(iter)
+        if len(l) < length:
+            for _ in range(length - len(l)):
+                l.append(padding)
+        return l
 
-    version = [int(part) for part in version_string.split(".")]
-    version = _padded(version, 3)
-    version.append(mod)
+    @classmethod
+    def from_string(cls, version_string):
+        mod = 0
+        if version_string.endswith("+"):
+            version_string = version_string[0:-1]
+            mod = 1
+        elif version_string.endswith("-pre-"):
+            version_string = version_string[0:-5]
+            mod = -1
+        elif version_string.endswith("-"):
+            version_string = version_string[0:-1]
+            mod = -1
+        # Deal with '-rcX' substrings
+        if version_string.find('-rc') != -1:
+            version_string = version_string[0:version_string.find('-rc')]
+            mod = -1
 
-    return tuple(version)
+        version = [int(part) for part in version_string.split(".")]
+        version = cls._padded(version, 3)
+        version.append(mod)
 
+        return Version(*version)
 
-# Note this is probably broken for very old versions of the database...
-def version(client):
-    return _parse_version_string(client.server_info()["version"])
+    @classmethod
+    def from_client(cls, client):
+        return cls.from_string(client.server_info()['version'])
 
+    def at_least(self, *other_version):
+        return self >= Version(*other_version)
 
-def at_least(client, min_version):
-    return version(client) >= tuple(_padded(min_version, 4))
+    def __str__(self):
+        return ".".join(map(str, self))

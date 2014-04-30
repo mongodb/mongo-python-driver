@@ -44,9 +44,8 @@ from pymongo.errors import (CollectionInvalid,
 from pymongo.son_manipulator import (AutoReference,
                                      NamespaceInjector,
                                      ObjectIdShuffler)
-from test import SkipTest, unittest, version
-from test.utils import (get_command_line, is_mongos,
-                        remove_all_users, server_started_with_auth)
+from test import client_context, SkipTest, unittest
+from test.utils import remove_all_users, server_started_with_auth
 from test.test_client import get_client
 
 if PY3:
@@ -55,11 +54,9 @@ if PY3:
 
 class TestDatabase(unittest.TestCase):
 
-    def setUp(self):
-        self.client = get_client()
-
-    def tearDown(self):
-        self.client = None
+    @classmethod
+    def setUpClass(cls):
+        cls.client = client_context.client
 
     def test_name(self):
         self.assertRaises(TypeError, Database, self.client, 4)
@@ -112,7 +109,7 @@ class TestDatabase(unittest.TestCase):
         db.create_collection("test.foo")
         self.assertTrue(u("test.foo") in db.collection_names())
         expected = {}
-        if version.at_least(self.client, (2, 7, 0)):
+        if client_context.version.at_least(2, 7, 0):
             # usePowerOf2Sizes server default
             expected["flags"] = 1
         result = db.test.foo.options()
@@ -185,9 +182,8 @@ class TestDatabase(unittest.TestCase):
         self.assertTrue(db.validate_collection(db.test, scandata=True, full=True))
         self.assertTrue(db.validate_collection(db.test, True, True))
 
+    @client_context.require_no_mongos
     def test_profiling_levels(self):
-        if is_mongos(self.client):
-            raise SkipTest('profile is not supported by mongos')
         db = self.client.pymongo_test
         self.assertEqual(db.profiling_level(), OFF)  # default
 
@@ -215,9 +211,8 @@ class TestDatabase(unittest.TestCase):
         db.set_profiling_level(OFF, 100)  # back to default
         self.assertEqual(100, db.command("profile", -1)['slowms'])
 
+    @client_context.require_no_mongos
     def test_profiling_info(self):
-        if is_mongos(self.client):
-            raise SkipTest('profile is not supported by mongos')
         db = self.client.pymongo_test
 
         db.set_profiling_level(ALL)
@@ -236,7 +231,7 @@ class TestDatabase(unittest.TestCase):
 
         self.assertTrue(len(info) >= 1)
         # These basically clue us in to server changes.
-        if version.at_least(db.connection, (1, 9, 1, -1)):
+        if client_context.version.at_least(1, 9, 1, -1):
             self.assertTrue(isinstance(info[0]['responseLength'], int))
             self.assertTrue(isinstance(info[0]['millis'], int))
             self.assertTrue(isinstance(info[0]['client'], string_type))
@@ -256,9 +251,8 @@ class TestDatabase(unittest.TestCase):
 
         self.assertRaises(TypeError, iterate)
 
+    @client_context.require_no_mongos
     def test_errors(self):
-        if is_mongos(self.client):
-            raise SkipTest('getpreverror not supported by mongos')
         db = self.client.pymongo_test
 
         db.reset_error_history()
@@ -296,15 +290,11 @@ class TestDatabase(unittest.TestCase):
 
         self.assertEqual(db.command("buildinfo"), db.command({"buildinfo": 1}))
 
+    # We use 'aggregate' as our example command, since it's an easy way to
+    # retrieve a BSON regex from a collection using a command. But until
+    # MongoDB 2.3.2, aggregation turned regexes into strings: SERVER-6470.
+    @client_context.require_version_min(2, 3, 2)
     def test_command_with_compile_re(self):
-        # We use 'aggregate' as our example command, since it's an easy way to
-        # retrieve a BSON regex from a collection using a command. But until
-        # MongoDB 2.3.2, aggregation turned regexes into strings: SERVER-6470.
-        if not version.at_least(self.client, (2, 3, 2)):
-            raise SkipTest(
-                "Retrieving a regex with aggregation requires "
-                "MongoDB >= 2.3.2")
-
         db = self.client.pymongo_test
         db.test.drop()
         db.test.insert({'r': re.compile('.*')})
@@ -317,14 +307,15 @@ class TestDatabase(unittest.TestCase):
     def test_last_status(self):
         db = self.client.pymongo_test
 
-        db.test.remove({})
-        db.test.save({"i": 1})
+        with self.client.start_request():
+            db.test.remove({})
+            db.test.save({"i": 1})
 
-        db.test.update({"i": 1}, {"$set": {"i": 2}}, w=0)
-        self.assertTrue(db.last_status()["updatedExisting"])
+            db.test.update({"i": 1}, {"$set": {"i": 2}}, w=0)
+            self.assertTrue(db.last_status()["updatedExisting"])
 
-        db.test.update({"i": 1}, {"$set": {"i": 500}}, w=0)
-        self.assertFalse(db.last_status()["updatedExisting"])
+            db.test.update({"i": 1}, {"$set": {"i": 500}}, w=0)
+            self.assertFalse(db.last_status()["updatedExisting"])
 
     def test_password_digest(self):
         self.assertRaises(TypeError, auth._password_digest, 5)
@@ -340,13 +331,8 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(auth._password_digest("Gustave", u("Dor\xe9")),
                          u("81e0e2364499209f466e75926a162d73"))
 
+    @client_context.require_auth
     def test_authenticate_add_remove_user(self):
-        if (is_mongos(self.client) and not
-            version.at_least(self.client, (2, 0, 0))):
-            raise SkipTest("Auth with sharding requires MongoDB >= 2.0.0")
-        if not server_started_with_auth(self.client):
-            raise SkipTest('Authentication is not enabled on server')
-
         db = self.client.pymongo_test
 
         # Configuration errors
@@ -357,7 +343,7 @@ class TestDatabase(unittest.TestCase):
         self.assertRaises(ConfigurationError, db.add_user,
                           "user", 'password', True, roles=['read'])
 
-        if version.at_least(self.client, (2, 5, 3, -1)):
+        if client_context.version.at_least(2, 5, 3, -1):
             with warnings.catch_warnings():
                 warnings.simplefilter("error", DeprecationWarning)
                 self.assertRaises(DeprecationWarning, db.add_user,
@@ -400,7 +386,7 @@ class TestDatabase(unittest.TestCase):
                               db.authenticate, "Gustave", u("Dor\xe9"))
             self.assertTrue(db.authenticate("Gustave", u("password")))
 
-            if not version.at_least(self.client, (2, 5, 3, -1)):
+            if not client_context.version.at_least(2, 5, 3, -1):
                 # Add a readOnly user
                 db.add_user("Ross", "password", read_only=True)
                 db.logout()
@@ -411,17 +397,13 @@ class TestDatabase(unittest.TestCase):
         # Cleanup
         finally:
             remove_all_users(db)
+            self.client.pymongo_test.logout()
             self.client.admin.remove_user("admin")
             self.client.admin.logout()
+            self.client.disconnect()
 
+    @client_context.require_auth
     def test_make_user_readonly(self):
-        if (is_mongos(self.client)
-                and not version.at_least(self.client, (2, 0, 0))):
-            raise SkipTest('Auth with sharding requires MongoDB >= 2.0.0')
-
-        if not server_started_with_auth(self.client):
-            raise SkipTest('Authentication is not enabled on server')
-
         admin = self.client.admin
         admin.add_user('admin', 'pw')
         admin.authenticate('admin', 'pw')
@@ -451,13 +433,12 @@ class TestDatabase(unittest.TestCase):
             remove_all_users(db)
             admin.remove_user("admin")
             admin.logout()
+            db.logout()
+            self.client.disconnect()
 
+    @client_context.require_version_min(2, 5, 3, -1)
+    @client_context.require_auth
     def test_default_roles(self):
-        if not version.at_least(self.client, (2, 5, 3, -1)):
-            raise SkipTest("Default roles only exist in MongoDB >= 2.5.3")
-        if not server_started_with_auth(self.client):
-            raise SkipTest('Authentication is not enabled on server')
-
         # "Admin" user
         db = self.client.admin
         db.add_user('admin', 'pass')
@@ -503,14 +484,11 @@ class TestDatabase(unittest.TestCase):
             db.authenticate('user', 'pass')
             remove_all_users(db)
             db.logout()
+            self.client.disconnect()
 
+    @client_context.require_version_min(2, 5, 3, -1)
+    @client_context.require_auth
     def test_new_user_cmds(self):
-        if not version.at_least(self.client, (2, 5, 3, -1)):
-            raise SkipTest("User manipulation through commands "
-                           "requires MongoDB >= 2.5.3")
-        if not server_started_with_auth(self.client):
-            raise SkipTest('Authentication is not enabled on server')
-
         db = self.client.pymongo_test
         db.add_user("amalia", "password", roles=["userAdmin"])
         db.authenticate("amalia", "password")
@@ -527,13 +505,10 @@ class TestDatabase(unittest.TestCase):
         finally:
             db.remove_user("amalia")
             db.logout()
+            self.client.disconnect()
 
+    @client_context.require_auth
     def test_authenticate_and_safe(self):
-        if (is_mongos(self.client) and not
-            version.at_least(self.client, (2, 0, 0))):
-            raise SkipTest("Auth with sharding requires MongoDB >= 2.0.0")
-        if not server_started_with_auth(self.client):
-            raise SkipTest('Authentication is not enabled on server')
         db = self.client.auth_test
 
         db.add_user("bernie", "password",
@@ -555,14 +530,10 @@ class TestDatabase(unittest.TestCase):
         finally:
             db.remove_user("bernie")
             db.logout()
+            self.client.disconnect()
 
+    @client_context.require_auth
     def test_authenticate_and_request(self):
-        if (is_mongos(self.client) and not
-            version.at_least(self.client, (2, 0, 0))):
-            raise SkipTest("Auth with sharding requires MongoDB >= 2.0.0")
-        if not server_started_with_auth(self.client):
-            raise SkipTest('Authentication is not enabled on server')
-
         # Database.authenticate() needs to be in a request - check that it
         # always runs in a request, and that it restores the request state
         # (in or not in a request) properly when it's finished.
@@ -584,19 +555,14 @@ class TestDatabase(unittest.TestCase):
             db.remove_user("mike")
             db.logout()
             request_db.logout()
+            self.client.disconnect()
 
+    @client_context.require_auth
     def test_authenticate_multiple(self):
-        client = get_client()
-        if (is_mongos(client) and not
-                version.at_least(self.client, (2, 2, 0))):
-            raise SkipTest("Need mongos >= 2.2.0")
-        if not server_started_with_auth(client):
-            raise SkipTest("Authentication is not enabled on server")
-
         # Setup
-        users_db = client.pymongo_test
-        admin_db = client.admin
-        other_db = client.pymongo_test1
+        users_db = self.client.pymongo_test
+        admin_db = self.client.admin
+        other_db = self.client.pymongo_test1
         users_db.test.remove()
         other_db.test.remove()
 
@@ -606,7 +572,7 @@ class TestDatabase(unittest.TestCase):
         try:
             self.assertTrue(admin_db.authenticate('admin', 'pass'))
 
-            if version.at_least(self.client, (2, 5, 3, -1)):
+            if client_context.version.at_least(2, 5, 3, -1):
                 admin_db.add_user('ro-admin', 'pass',
                                   roles=["userAdmin", "readAnyDatabase"])
             else:
@@ -632,7 +598,7 @@ class TestDatabase(unittest.TestCase):
                               other_db.test.insert, {})
 
             # Force close all sockets
-            client.disconnect()
+            self.client.disconnect()
 
             # We should still be able to write to the regular user's db
             self.assertTrue(users_db.test.remove())
@@ -644,11 +610,11 @@ class TestDatabase(unittest.TestCase):
 
         # Cleanup
         finally:
-            admin_db.logout()
-            users_db.logout()
-            admin_db.authenticate('admin', 'pass')
             remove_all_users(users_db)
             remove_all_users(admin_db)
+            admin_db.logout()
+            users_db.logout()
+            self.client.disconnect()
 
     def test_id_ordering(self):
         # PyMongo attempts to have _id show up first
@@ -718,7 +684,7 @@ class TestDatabase(unittest.TestCase):
 
     # TODO some of these tests belong in the collection level testing.
     def test_save_find_one(self):
-        db = Database(self.client, "pymongo_test")
+        db = self.client.pymongo_test
         db.test.remove({})
 
         a_doc = SON({"hello": u("world")})
@@ -873,7 +839,7 @@ class TestDatabase(unittest.TestCase):
         del db.system_js['add']
         self.assertEqual(0, db.system.js.count())
 
-        if version.at_least(db.connection, (1, 3, 2, -1)):
+        if client_context.version.at_least(1, 3, 2, -1):
             self.assertRaises(OperationFailure, db.system_js.add, 1, 5)
 
         # TODO right now CodeWScope doesn't work w/ system js
@@ -883,7 +849,7 @@ class TestDatabase(unittest.TestCase):
         self.assertRaises(OperationFailure, db.system_js.non_existant)
 
         # XXX: Broken in V8, works in SpiderMonkey
-        if not version.at_least(db.connection, (2, 3, 0)):
+        if not client_context.version.at_least(2, 3, 0):
             db.system_js.no_param = Code("return 5;")
             self.assertEqual(5, db.system_js.no_param())
 
@@ -939,17 +905,15 @@ class TestDatabase(unittest.TestCase):
             self.assertRaises(UserWarning, self.client.pymongo_test.command,
                               'ping', read_preference=ReadPreference.SECONDARY)
             try:
-                self.client.pymongo_test.command('dbStats',
+                self.client.pymongo_test.command(
+                    'dbStats',
                     read_preference=ReadPreference.SECONDARY_PREFERRED)
             except UserWarning:
                 self.fail("Shouldn't have raised UserWarning.")
 
+    @client_context.require_version_min(2, 5, 3, -1)
+    @client_context.require_test_commands
     def test_command_max_time_ms(self):
-        if not version.at_least(self.client, (2, 5, 3, -1)):
-            raise SkipTest("MaxTimeMS requires MongoDB >= 2.5.3")
-        if "enableTestCommands=1" not in get_command_line(self.client)["argv"]:
-            raise SkipTest("Test commands must be enabled.")
-
         self.client.admin.command("configureFailPoint",
                                   "maxTimeAlwaysTimeOut",
                                   mode="alwaysOn")

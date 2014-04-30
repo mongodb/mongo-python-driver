@@ -158,7 +158,9 @@ class TestIdent(unittest.TestCase):
 
 
 class TestGreenletIdent(unittest.TestCase):
-    def setUp(self):
+
+    @classmethod
+    def setUpClass(cls):
         if not thread_util.have_gevent:
             raise SkipTest("need Gevent")
 

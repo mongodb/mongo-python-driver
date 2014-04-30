@@ -30,9 +30,10 @@ from pymongo.mongo_client import MongoClient
 from pymongo.pool import Pool, NO_REQUEST, NO_SOCKET_YET, SocketInfo
 from pymongo.errors import ConfigurationError, ConnectionFailure
 from pymongo.errors import ExceededMaxWaiters
-from test import version, host, port, SkipTest
+from test import host, port, SkipTest
 from test.test_client import get_client
 from test.utils import delay, is_mongos, one, get_pool
+from test.version import Version
 
 N = 10
 DB = "pymongo-pooling-tests"
@@ -1191,7 +1192,7 @@ class _TestPoolSocketSharing(_TestPoolingBase):
             # Javascript function that pauses N seconds per document
             fn = delay(10)
             if (is_mongos(db.connection) or not
-                version.at_least(db.connection, (1, 7, 2))):
+                    Version.from_client(db.connection).at_least(1, 7, 2)):
                 # mongos doesn't support eval so we have to use $where
                 # which is less reliable in this context.
                 self.assertEqual(1, db.test.find({"$where": fn}).count())

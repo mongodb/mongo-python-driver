@@ -32,21 +32,21 @@ from pymongo.errors import ConfigurationError
 
 from test.test_replica_set_client import TestReplicaSetClientBase
 from test.test_client import get_client
-from test import host, port, SkipTest, unittest, utils, version
+from test import client_context, host, port, SkipTest, unittest, utils
+from test.version import Version
 
 
 class TestReadPreferencesBase(TestReplicaSetClientBase):
     def setUp(self):
         super(TestReadPreferencesBase, self).setUp()
         # Insert some data so we can use cursors in read_from_which_host
-        c = self._get_client()
-        c.pymongo_test.test.drop()
-        c.pymongo_test.test.insert([{'_id': i} for i in range(10)], w=self.w)
+        client_context.client.pymongo_test.test.drop()
+        client_context.client.pymongo_test.test.insert(
+            [{'_id': i} for i in range(10)], w=self.w)
 
     def tearDown(self):
         super(TestReadPreferencesBase, self).tearDown()
-        c = self._get_client()
-        c.pymongo_test.test.drop()
+        client_context.client.pymongo_test.test.drop()
 
     def read_from_which_host(self, client):
         """Do a find() on the client and return which host was used
@@ -204,6 +204,7 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
             # Effectively ignore members' ping times so we can test the effect
             # of ReadPreference modes only
             acceptableLatencyMS=1000*1000)
+        self.client_version = Version.from_client(self.c)
 
     def tearDown(self):
         # We create a lot of collections and indexes in these tests, so drop
@@ -330,14 +331,14 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
             ('geoSearch', 'test'), ('near', [33, 33]), ('maxDistance', 6),
             ('search', {'type': 'restaurant'}), ('limit', 30)])))
 
-        if version.at_least(self.c, (2, 1, 0)):
+        if self.client_version.at_least(2, 1, 0):
             self._test_fn(True, lambda: self.c.pymongo_test.command(SON([
                 ('aggregate', 'test'),
                 ('pipeline', [])
             ])))
 
         # Text search.
-        if version.at_least(self.c, (2, 3, 2)):
+        if self.client_version.at_least(2, 3, 2):
 
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", UserWarning)
@@ -394,10 +395,8 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
             ('out', {'inline': True})
         ])))
 
+    @client_context.require_version_min(2, 5, 2)
     def test_aggregate_command_with_out(self):
-        if not version.at_least(self.c, (2, 5, 2)):
-            raise SkipTest("Aggregation with $out requires MongoDB >= 2.5.2")
-
         # Tests aggregate command when pipeline contains $out.
         self.c.pymongo_test.test.insert({"x": 1, "y": 1}, w=self.w)
         self.c.pymongo_test.test.insert({"x": 1, "y": 2}, w=self.w)
@@ -479,7 +478,7 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
             lambda: self.c.pymongo_test.test.find().distinct('a'))
 
     def test_aggregate(self):
-        if version.at_least(self.c, (2, 1, 0)):
+        if self.client_version.at_least(2, 1, 0):
             self._test_fn(True,
                 lambda: self.c.pymongo_test.test.aggregate(
                     [{'$project': {'_id': 1}}]))

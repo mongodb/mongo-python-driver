@@ -34,8 +34,9 @@ from pymongo.mongo_replica_set_client import MongoReplicaSetClient
 from pymongo.mongo_client import MongoClient, _partition_node
 from pymongo.read_preferences import ReadPreference
 
-from test import SkipTest, unittest, utils, version
+from test import SkipTest, unittest, utils
 from test.utils import one
+from test.version import Version
 
 
 # May be imported from gevent, below.
@@ -1013,7 +1014,7 @@ class TestLastErrorDefaults(HATestCase):
                                        use_greenlets=use_greenlets)
 
     def test_get_last_error_defaults(self):
-        if not version.at_least(self.c, (1, 9, 0)):
+        if not Version.from_client(self.c).at_least(1, 9, 0):
             raise SkipTest("Need MongoDB >= 1.9.0 to test getLastErrorDefaults")
 
         replset = self.c.local.system.replset.find_one()

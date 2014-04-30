@@ -26,17 +26,14 @@ from bson.son import SON
 from pymongo.mongo_client import MongoClient
 from pymongo.mongo_replica_set_client import MongoReplicaSetClient
 from pymongo.errors import ConfigurationError, OperationFailure
-from test import pair, unittest, SkipTest, version
-from test.utils import drop_collections
+from test import client_context, pair, unittest
 
 
 class TestCommon(unittest.TestCase):
 
     def test_uuid_subtype(self):
-
-        self.client = MongoClient(pair)
-        self.db = self.client.pymongo_test
-        coll = self.client.pymongo_test.uuid
+        self.db = client_context.client.pymongo_test
+        coll = self.db.uuid
         coll.drop()
 
         def change_subtype(collection, subtype):
@@ -102,21 +99,20 @@ class TestCommon(unittest.TestCase):
         self.assertEqual(5, coll.find_one({'_id': uu})['i'])
 
         # Test command
-        db = self.client.pymongo_test
         no_obj_error = "No matching object found"
-        result = db.command('findAndModify', 'uuid',
-                            allowable_errors=[no_obj_error],
-                            uuid_subtype=UUID_SUBTYPE,
-                            query={'_id': uu},
-                            update={'$set': {'i': 6}})
+        result = self.db.command('findAndModify', 'uuid',
+                                 allowable_errors=[no_obj_error],
+                                 uuid_subtype=UUID_SUBTYPE,
+                                 query={'_id': uu},
+                                 update={'$set': {'i': 6}})
         self.assertEqual(None, result.get('value'))
-        self.assertEqual(5, db.command('findAndModify', 'uuid',
-                                       update={'$set': {'i': 6}},
-                                       query={'_id': uu})['value']['i'])
-        self.assertEqual(6, db.command('findAndModify', 'uuid',
-                                       update={'$set': {'i': 7}},
-                                       query={'_id': UUIDLegacy(uu)}
-                                      )['value']['i'])
+        self.assertEqual(5, self.db.command('findAndModify', 'uuid',
+                                            update={'$set': {'i': 6}},
+                                            query={'_id': uu})['value']['i'])
+        self.assertEqual(6, self.db.command(
+            'findAndModify', 'uuid',
+            update={'$set': {'i': 7}},
+            query={'_id': UUIDLegacy(uu)})['value']['i'])
 
         # Test (inline)_map_reduce
         coll.drop()
@@ -140,23 +136,23 @@ class TestCommon(unittest.TestCase):
 
         coll.uuid_subtype = UUID_SUBTYPE
         q = {"_id": uu}
-        if version.at_least(self.db.connection, (1, 7, 4)):
+        if client_context.version.at_least(1, 7, 4):
             result = coll.inline_map_reduce(map, reduce, query=q)
             self.assertEqual([], result)
 
         result = coll.map_reduce(map, reduce, "results", query=q)
-        self.assertEqual(0, db.results.count())
+        self.assertEqual(0, self.db.results.count())
 
         coll.uuid_subtype = OLD_UUID_SUBTYPE
         q = {"_id": uu}
-        if version.at_least(self.db.connection, (1, 7, 4)):
+        if client_context.version.at_least(1, 7, 4):
             result = coll.inline_map_reduce(map, reduce, query=q)
             self.assertEqual(2, len(result))
 
         result = coll.map_reduce(map, reduce, "results", query=q)
-        self.assertEqual(2, db.results.count())
+        self.assertEqual(2, self.db.results.count())
 
-        db.drop_collection("result")
+        self.db.drop_collection("result")
         coll.drop()
 
         # Test group
@@ -233,13 +229,9 @@ class TestCommon(unittest.TestCase):
         self.assertEqual(m, MongoClient("mongodb://%s/?w=0" % (pair,)))
         self.assertFalse(m != MongoClient("mongodb://%s/?w=0" % (pair,)))
 
+    @client_context.require_replica_set
     def test_mongo_replica_set_client(self):
-        c = MongoClient(pair)
-        ismaster = c.admin.command('ismaster')
-        if 'setName' in ismaster:
-            setname = str(ismaster.get('setName'))
-        else:
-            raise SkipTest("Not connected to a replica set.")
+        setname = client_context.setname
         m = MongoReplicaSetClient(pair, replicaSet=setname, w=0)
         coll = m.pymongo_test.write_concern_test
         coll.drop()
@@ -249,7 +241,7 @@ class TestCommon(unittest.TestCase):
         self.assertTrue(coll.insert(doc))
         self.assertRaises(OperationFailure, coll.insert, doc, w=1)
 
-        m = MongoReplicaSetClient(pair, replicaSet=setname)
+        m = client_context.rs_client
         coll = m.pymongo_test.write_concern_test
         self.assertTrue(coll.insert(doc, w=0))
         self.assertRaises(OperationFailure, coll.insert, doc)
