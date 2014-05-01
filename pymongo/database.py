@@ -783,7 +783,7 @@ class Database(common.BaseObject):
                          writeConcern=self._get_wc_override())
         except OperationFailure as exc:
             # See comment in add_user try / except above.
-            if exc.code in (59, None):
+            if exc.code in common.COMMAND_NOT_FOUND_CODES:
                 self.system.users.remove({"user": name},
                                          **self._get_wc_override())
                 return
