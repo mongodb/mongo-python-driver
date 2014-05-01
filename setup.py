@@ -102,7 +102,8 @@ class test(Command):
             suite = PymongoTestLoader().loadTestsFromName(self.test_suite)
         runner = unittest.TextTestRunner(verbosity=2,
                                          failfast=self.failfast)
-        runner.run(suite)
+        result = runner.run(suite)
+        sys.exit(not result.wasSuccessful())
 
 
 class doc(Command):
