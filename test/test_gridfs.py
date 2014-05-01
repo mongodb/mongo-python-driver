@@ -16,25 +16,25 @@
 
 """Tests for the gridfs package.
 """
-import sys
-sys.path[0:0] = [""]
-
-from pymongo.mongo_client import MongoClient
-from pymongo.errors import ConnectionFailure
-from pymongo.read_preferences import ReadPreference
-from test.test_replica_set_client import TestReplicaSetClientBase
-
 import datetime
-import unittest
+import sys
 import threading
 import time
+import unittest
+import warnings
+
+sys.path[0:0] = [""]
+
 import gridfs
 
 from bson.py3compat import b, StringIO
-from gridfs.errors import (FileExists,
-                           NoFile)
+from gridfs.errors import (FileExists, NoFile)
+from pymongo.errors import ConnectionFailure
+from pymongo.mongo_client import MongoClient
+from pymongo.read_preferences import ReadPreference
 from test.test_client import get_client
-from test.utils import joinall
+from test.test_replica_set_client import TestReplicaSetClientBase
+from test.utils import catch_warnings, joinall
 
 
 class JustWrite(threading.Thread):
@@ -416,20 +416,25 @@ class TestGridfsReplicaSet(TestReplicaSetClientBase):
         primary_connection = MongoClient(primary_host, primary_port)
 
         secondary_host, secondary_port = self.secondaries[0]
-        for secondary_connection in [
-            MongoClient(secondary_host, secondary_port, slave_okay=True),
-            MongoClient(secondary_host, secondary_port,
-                        read_preference=ReadPreference.SECONDARY),
-        ]:
-            primary_connection.pymongo_test.drop_collection("fs.files")
-            primary_connection.pymongo_test.drop_collection("fs.chunks")
+        ctx = catch_warnings()
+        try:
+            warnings.simplefilter("ignore", DeprecationWarning)
+            for secondary_connection in [
+                MongoClient(secondary_host, secondary_port, slave_okay=True),
+                MongoClient(secondary_host, secondary_port,
+                            read_preference=ReadPreference.SECONDARY),
+            ]:
+                primary_connection.pymongo_test.drop_collection("fs.files")
+                primary_connection.pymongo_test.drop_collection("fs.chunks")
 
-            # Should detect it's connected to secondary and not attempt to
-            # create index
-            fs = gridfs.GridFS(secondary_connection.pymongo_test)
+                # Should detect it's connected to secondary and not attempt to
+                # create index
+                fs = gridfs.GridFS(secondary_connection.pymongo_test)
 
-            # This won't detect secondary, raises error
-            self.assertRaises(ConnectionFailure, fs.put, b('foo'))
+                # This won't detect secondary, raises error
+                self.assertRaises(ConnectionFailure, fs.put, b('foo'))
+        finally:
+            ctx.exit()
 
     def test_gridfs_secondary_lazy(self):
         # Should detect it's connected to secondary and not attempt to

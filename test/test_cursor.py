@@ -19,6 +19,8 @@ import random
 import re
 import sys
 import unittest
+import warnings
+
 sys.path[0:0] = [""]
 
 from nose.plugins.skip import SkipTest
@@ -37,7 +39,8 @@ from pymongo.errors import (InvalidOperation,
                             ExecutionTimeout)
 from test import version
 from test.test_client import get_client
-from test.utils import is_mongos, get_command_line, server_started_with_auth
+from test.utils import (catch_warnings, is_mongos,
+                        get_command_line, server_started_with_auth)
 
 
 class TestCursor(unittest.TestCase):
@@ -1100,8 +1103,11 @@ self.assertFalse(c2.alive)
                 pass
 
         client = self.db.connection
+        ctx = catch_warnings()
         try:
+            warnings.simplefilter("ignore", DeprecationWarning)
             client.set_cursor_manager(CManager)
+
             docs = []
             cursor = self.db.test.find().batch_size(10)
             docs.append(cursor.next())
@@ -1115,6 +1121,7 @@ self.assertFalse(c2.alive)
             self.assertEqual(len(docs), 200)
         finally:
             client.set_cursor_manager(CursorManager)
+            ctx.exit()
 
 if __name__ == "__main__":
     unittest.main()

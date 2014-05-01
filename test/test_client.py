@@ -22,6 +22,7 @@ import sys
 import time
 import thread
 import unittest
+import warnings
 
 
 sys.path[0:0] = [""]
@@ -43,6 +44,7 @@ from pymongo.errors import (AutoReconnect,
 from test import version, host, port, pair
 from test.pymongo_mocks import MockClient
 from test.utils import (assertRaisesExactly,
+                        catch_warnings,
                         delay,
                         is_mongos,
                         remove_all_users,
@@ -315,11 +317,16 @@ class TestClient(unittest.TestCase, TestRequestMixin):
     def test_from_uri(self):
         c = MongoClient(host, port)
 
-        self.assertEqual(c, MongoClient("mongodb://%s:%d" % (host, port)))
-        self.assertTrue(MongoClient(
-            "mongodb://%s:%d" % (host, port), slave_okay=True).slave_okay)
-        self.assertTrue(MongoClient(
-            "mongodb://%s:%d/?slaveok=true;w=2" % (host, port)).slave_okay)
+        ctx = catch_warnings()
+        try:
+            warnings.simplefilter("ignore", DeprecationWarning)
+            self.assertEqual(c, MongoClient("mongodb://%s:%d" % (host, port)))
+            self.assertTrue(MongoClient(
+                "mongodb://%s:%d" % (host, port), slave_okay=True).slave_okay)
+            self.assertTrue(MongoClient(
+                "mongodb://%s:%d/?slaveok=true;w=2" % (host, port)).slave_okay)
+        finally:
+            ctx.exit()
 
     def test_get_default_database(self):
         c = MongoClient("mongodb://%s:%d/foo" % (host, port), _connect=False)

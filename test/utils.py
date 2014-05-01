@@ -584,3 +584,83 @@ class _TestLazyConnectMixin(object):
             self.assertEqual(
                 ismaster['maxMessageSizeBytes'],
                 c.max_message_size)
+
+
+# Backport of WarningMessage from python 2.6, with fixed syntax for python 2.4.
+class WarningMessage(object):
+
+    """Holds the result of a single showwarning() call."""
+
+    _WARNING_DETAILS = ("message", "category", "filename", "lineno", "file",
+                        "line")
+
+    def __init__(self, message, category,
+                 filename, lineno, file=None, line=None):
+        local_values = locals()
+        for attr in self._WARNING_DETAILS:
+            setattr(self, attr, local_values[attr])
+        self._category_name = None
+        if category:
+            self._category_name = category.__name__
+
+    def __str__(self):
+        return ("{message : %r, category : %r, filename : %r, lineno : %s, "
+                    "line : %r}" % (self.message, self._category_name,
+                                    self.filename, self.lineno, self.line))
+
+
+# Rough backport of warnings.catch_warnings from python 2.6,
+# with changes to support python 2.4.
+class CatchWarnings(object):
+    """A non-context manager version of warnings.catch_warnings.
+
+    The 'record' argument specifies whether warnings should be captured by a
+    custom implementation of warnings.showwarning() and be appended to a list
+    accessed through the `log` property. The objects appended to the list are
+    arguments whose attributes mirror the arguments to showwarning().
+
+    The 'module' argument is to specify an alternative module to the module
+    named 'warnings' and imported under that name. This argument is only useful
+    when testing the warnings module itself.
+    """
+
+    def __init__(self, record=False, module=None):
+        self._record = record
+        if module is None:
+            self._module = sys.modules['warnings']
+        else:
+            self._module = module
+
+        # No __enter__ so do that work here
+        self._filters = self._module.filters
+        self._module.filters = self._filters[:]
+        self._showwarning = self._module.showwarning
+        self._log = []
+        if self._record:
+            def showwarning(*args, **kwargs):
+                self._log.append(WarningMessage(*args, **kwargs))
+            self._module.showwarning = showwarning
+
+    @property
+    def log(self):
+        """A list of any warnings recorded when using record=True."""
+        return self._log
+
+    def __repr__(self):
+        args = []
+        if self._record:
+            args.append("record=True")
+        if self._module is not sys.modules['warnings']:
+            args.append("module=%r" % self._module)
+        name = type(self).__name__
+        return "%s(%s)" % (name, ", ".join(args))
+
+    def exit(self):
+        """Revert changes to the warnings module."""
+        self._module.filters = self._filters
+        self._module.showwarning = self._showwarning
+
+
+def catch_warnings(record=False, module=None):
+    """Helper for use with CatchWarnings."""
+    return CatchWarnings(record, module)

@@ -59,6 +59,7 @@ from pymongo.errors import (AutoReconnect,
                             DuplicateKeyError,
                             OperationFailure,
                             InvalidOperation)
+from pymongo.read_preferences import ReadPreference
 from pymongo.thread_util import DummyLock
 
 EMPTY = b("")
@@ -1832,13 +1833,15 @@ class MongoReplicaSetClient(common.BaseObject):
     def server_info(self):
         """Get information about the MongoDB primary we're connected to.
         """
-        return self.admin.command("buildinfo")
+        return self.admin.command("buildinfo",
+                                  read_preference=ReadPreference.PRIMARY)
 
     def database_names(self):
         """Get a list of the names of all databases on the connected server.
         """
         return [db["name"] for db in
-                self.admin.command("listDatabases")["databases"]]
+                self.admin.command("listDatabases",
+                    read_preference=ReadPreference.PRIMARY)["databases"]]
 
     def drop_database(self, name_or_database):
         """Drop a database.
@@ -1860,7 +1863,8 @@ class MongoReplicaSetClient(common.BaseObject):
                             "%s or Database" % (basestring.__name__,))
 
         self._purge_index(name)
-        self[name].command("dropDatabase")
+        self[name].command("dropDatabase",
+                           read_preference=ReadPreference.PRIMARY)
 
     def copy_database(self, from_name, to_name,
                       from_host=None, username=None, password=None):
@@ -1906,12 +1910,15 @@ class MongoReplicaSetClient(common.BaseObject):
 
             if username is not None:
                 nonce = self.admin.command("copydbgetnonce",
-                                           fromhost=from_host)["nonce"]
+                    read_preference=ReadPreference.PRIMARY,
+                    fromhost=from_host)["nonce"]
                 command["username"] = username
                 command["nonce"] = nonce
                 command["key"] = auth._auth_key(nonce, username, password)
 
-            return self.admin.command("copydb", **command)
+            return self.admin.command("copydb",
+                                      read_preference=ReadPreference.PRIMARY,
+                                      **command)
         finally:
             self.end_request()
 

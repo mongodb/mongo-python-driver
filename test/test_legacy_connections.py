@@ -17,6 +17,7 @@
 
 import sys
 import unittest
+import warnings
 
 sys.path[0:0] = [""]
 
@@ -28,27 +29,33 @@ from pymongo.replica_set_connection import ReplicaSetConnection
 from pymongo.errors import ConfigurationError
 from test import host, port, pair
 from test.test_replica_set_client import TestReplicaSetClientBase
-from test.utils import get_pool
+from test.utils import catch_warnings, get_pool
 
 
 class TestConnection(unittest.TestCase):
     def test_connection(self):
         c = Connection(host, port)
-        self.assertTrue(c.auto_start_request)
-        self.assertEqual(None, c.max_pool_size)
-        self.assertFalse(c.slave_okay)
-        self.assertFalse(c.safe)
-        self.assertEqual({}, c.get_lasterror_options())
 
-        # Connection's writes are unacknowledged by default
-        doc = {"_id": ObjectId()}
-        coll = c.pymongo_test.write_concern_test
-        coll.drop()
-        coll.insert(doc)
-        coll.insert(doc)
+        ctx = catch_warnings()
+        try:
+            warnings.simplefilter("ignore", DeprecationWarning)
+            self.assertTrue(c.auto_start_request)
+            self.assertEqual(None, c.max_pool_size)
+            self.assertFalse(c.slave_okay)
+            self.assertFalse(c.safe)
+            self.assertEqual({}, c.get_lasterror_options())
 
-        c = Connection("mongodb://%s:%s/?safe=true" % (host, port))
-        self.assertTrue(c.safe)
+            # Connection's writes are unacknowledged by default
+            doc = {"_id": ObjectId()}
+            coll = c.pymongo_test.write_concern_test
+            coll.drop()
+            coll.insert(doc)
+            coll.insert(doc)
+
+            c = Connection("mongodb://%s:%s/?safe=true" % (host, port))
+            self.assertTrue(c.safe)
+        finally:
+            ctx.exit()
 
         # To preserve legacy Connection's behavior, max_size should be None.
         # Pool should handle this without error.
@@ -73,23 +80,29 @@ class TestConnection(unittest.TestCase):
 class TestReplicaSetConnection(TestReplicaSetClientBase):
     def test_replica_set_connection(self):
         c = ReplicaSetConnection(pair, replicaSet=self.name)
-        self.assertTrue(c.auto_start_request)
-        self.assertEqual(None, c.max_pool_size)
-        self.assertFalse(c.slave_okay)
-        self.assertFalse(c.safe)
-        self.assertEqual({}, c.get_lasterror_options())
 
-        # ReplicaSetConnection's writes are unacknowledged by default
-        doc = {"_id": ObjectId()}
-        coll = c.pymongo_test.write_concern_test
-        coll.drop()
-        coll.insert(doc)
-        coll.insert(doc)
+        ctx = catch_warnings()
+        try:
+            warnings.simplefilter("ignore", DeprecationWarning)
+            self.assertTrue(c.auto_start_request)
+            self.assertEqual(None, c.max_pool_size)
+            self.assertFalse(c.slave_okay)
+            self.assertFalse(c.safe)
+            self.assertEqual({}, c.get_lasterror_options())
 
-        c = ReplicaSetConnection("mongodb://%s:%s/?replicaSet=%s&safe=true" % (
-            host, port, self.name))
+            # ReplicaSetConnection's writes are unacknowledged by default
+            doc = {"_id": ObjectId()}
+            coll = c.pymongo_test.write_concern_test
+            coll.drop()
+            coll.insert(doc)
+            coll.insert(doc)
 
-        self.assertTrue(c.safe)
+            c = ReplicaSetConnection("mongodb://%s:%s/?replicaSet=%s&safe=true" % (
+                host, port, self.name))
+
+            self.assertTrue(c.safe)
+        finally:
+            ctx.exit()
 
         # To preserve legacy ReplicaSetConnection's behavior, max_size should
         # be None. Pool should handle this without error.

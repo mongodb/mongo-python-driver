@@ -14,9 +14,9 @@
 
 """Test the replica_set_connection module."""
 import random
-
 import sys
 import unittest
+import warnings
 
 from nose.plugins.skip import SkipTest
 
@@ -32,6 +32,7 @@ from pymongo.errors import ConfigurationError
 from test.test_replica_set_client import TestReplicaSetClientBase
 from test.test_client import get_client
 from test import version, utils, host, port
+from test.utils import catch_warnings
 
 
 class TestReadPreferencesBase(TestReplicaSetClientBase):
@@ -278,8 +279,13 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
         # Test generic 'command' method. Some commands obey read preference,
         # most don't.
         # Disobedient commands, always go to primary
-        self._test_fn(False, lambda: self.c.pymongo_test.command('ping'))
-        self._test_fn(False, lambda: self.c.admin.command('buildinfo'))
+        ctx = catch_warnings()
+        try:
+            warnings.simplefilter("ignore", UserWarning)
+            self._test_fn(False, lambda: self.c.pymongo_test.command('ping'))
+            self._test_fn(False, lambda: self.c.admin.command('buildinfo'))
+        finally:
+            ctx.exit()
 
         # Obedient commands.
         self._test_fn(True, lambda: self.c.pymongo_test.command('group', {
@@ -342,7 +348,12 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
 
         # Text search.
         if version.at_least(self.c, (2, 3, 2)):
-            utils.enable_text_search(self.c)
+            ctx = catch_warnings()
+            try:
+                warnings.simplefilter("ignore", UserWarning)
+                utils.enable_text_search(self.c)
+            finally:
+                ctx.exit()
             db = self.c.pymongo_test
 
             # Only way to create an index and wait for all members to build it.
@@ -366,20 +377,25 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
 
         # Non-inline mapreduce always goes to primary, doesn't obey read prefs.
         # Test with command in a SON and with kwargs
-        self._test_fn(False, lambda: self.c.pymongo_test.command(SON([
-            ('mapreduce', 'test'),
-            ('map', 'function() { }'),
-            ('reduce', 'function() { }'),
-            ('out', 'mr_out')
-        ])))
+        ctx = catch_warnings()
+        try:
+            warnings.simplefilter("ignore", UserWarning)
+            self._test_fn(False, lambda: self.c.pymongo_test.command(SON([
+                ('mapreduce', 'test'),
+                ('map', 'function() { }'),
+                ('reduce', 'function() { }'),
+                ('out', 'mr_out')
+            ])))
 
-        self._test_fn(False, lambda: self.c.pymongo_test.command(
-            'mapreduce', 'test', map='function() { }',
-            reduce='function() { }', out='mr_out'))
+            self._test_fn(False, lambda: self.c.pymongo_test.command(
+                'mapreduce', 'test', map='function() { }',
+                reduce='function() { }', out='mr_out'))
 
-        self._test_fn(False, lambda: self.c.pymongo_test.command(
-            'mapreduce', 'test', map='function() { }',
-            reduce='function() { }', out={'replace': 'some_collection'}))
+            self._test_fn(False, lambda: self.c.pymongo_test.command(
+                'mapreduce', 'test', map='function() { }',
+                reduce='function() { }', out={'replace': 'some_collection'}))
+        finally:
+            ctx.exit()
 
         # Inline mapreduce obeys read prefs
         self._test_fn(True, lambda: self.c.pymongo_test.command(
@@ -405,32 +421,47 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
 
         # Aggregate with $out always goes to primary, doesn't obey read prefs.
         # Test aggregate command sent directly to db.command.
-        self._test_fn(False, lambda: self.c.pymongo_test.command(
-            "aggregate", "test",
-            pipeline=[{"$match": {"x": 1}}, {"$out": "agg_out"}]
-        ))
+        ctx = catch_warnings()
+        try:
+            warnings.simplefilter("ignore", UserWarning)
+            self._test_fn(False, lambda: self.c.pymongo_test.command(
+                "aggregate", "test",
+                pipeline=[{"$match": {"x": 1}}, {"$out": "agg_out"}]
+            ))
 
-        # Test aggregate when sent through the collection aggregate function.
-        self._test_fn(False, lambda: self.c.pymongo_test.test.aggregate(
-            [{"$match": {"x": 2}}, {"$out": "agg_out"}]
-        ))
+            # Test aggregate when sent through the collection aggregate function.
+            self._test_fn(False, lambda: self.c.pymongo_test.test.aggregate(
+                [{"$match": {"x": 2}}, {"$out": "agg_out"}]
+            ))
+        finally:
+            ctx.exit()
 
         self.c.pymongo_test.drop_collection("test")
         self.c.pymongo_test.drop_collection("agg_out")
 
     def test_create_collection(self):
         # Collections should be created on primary, obviously
-        self._test_fn(False, lambda: self.c.pymongo_test.command(
-            'create', 'some_collection%s' % random.randint(0, sys.maxint)))
+        ctx = catch_warnings()
+        try:
+            warnings.simplefilter("ignore", UserWarning)
+            self._test_fn(False, lambda: self.c.pymongo_test.command(
+                'create', 'some_collection%s' % random.randint(0, sys.maxint)))
 
-        self._test_fn(False, lambda: self.c.pymongo_test.create_collection(
-            'some_collection%s' % random.randint(0, sys.maxint)))
+            self._test_fn(False, lambda: self.c.pymongo_test.create_collection(
+                'some_collection%s' % random.randint(0, sys.maxint)))
+        finally:
+            ctx.exit()
 
     def test_drop_collection(self):
-        self._test_fn(False, lambda: self.c.pymongo_test.drop_collection(
-            'some_collection'))
+        ctx = catch_warnings()
+        try:
+            warnings.simplefilter("ignore", UserWarning)
+            self._test_fn(False, lambda: self.c.pymongo_test.drop_collection(
+                'some_collection'))
 
-        self._test_fn(False, lambda: self.c.pymongo_test.some_collection.drop())
+            self._test_fn(False, lambda: self.c.pymongo_test.some_collection.drop())
+        finally:
+            ctx.exit()
 
     def test_group(self):
         self._test_fn(True, lambda: self.c.pymongo_test.test.group(
@@ -440,8 +471,13 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
         # mapreduce fails if no collection
         self.c.pymongo_test.test.insert({}, w=self.w)
 
-        self._test_fn(False, lambda: self.c.pymongo_test.test.map_reduce(
-            'function() { }', 'function() { }', 'mr_out'))
+        ctx = catch_warnings()
+        try:
+            warnings.simplefilter("ignore", UserWarning)
+            self._test_fn(False, lambda: self.c.pymongo_test.test.map_reduce(
+                'function() { }', 'function() { }', 'mr_out'))
+        finally:
+            ctx.exit()
 
         self._test_fn(True, lambda: self.c.pymongo_test.test.map_reduce(
             'function() { }', 'function() { }', {'inline': 1}))
@@ -517,83 +553,93 @@ class TestMongosConnection(unittest.TestCase):
         NEAREST = ReadPreference.NEAREST
         SLAVE_OKAY = _QUERY_OPTIONS['slave_okay']
 
-        # Test non-PRIMARY modes which can be combined with tags
-        for kwarg, value, mongos_mode in (
-            ('read_preference', PRIMARY_PREFERRED, 'primaryPreferred'),
-            ('read_preference', SECONDARY, 'secondary'),
-            ('read_preference', SECONDARY_PREFERRED, 'secondaryPreferred'),
-            ('read_preference', NEAREST, 'nearest'),
-            ('slave_okay', True, 'secondaryPreferred'),
-            ('slave_okay', False, 'primary')
-        ):
-            for tag_sets in (
-                None, [{}]
+        ctx = catch_warnings()
+        try:
+            warnings.simplefilter("ignore", DeprecationWarning)
+            # Test non-PRIMARY modes which can be combined with tags
+            for kwarg, value, mongos_mode in (
+                ('read_preference', PRIMARY_PREFERRED, 'primaryPreferred'),
+                ('read_preference', SECONDARY, 'secondary'),
+                ('read_preference', SECONDARY_PREFERRED, 'secondaryPreferred'),
+                ('read_preference', NEAREST, 'nearest'),
+                ('slave_okay', True, 'secondaryPreferred'),
+                ('slave_okay', False, 'primary')
             ):
-                # Create a client e.g. with read_preference=NEAREST or
-                # slave_okay=True
-                c = get_client(tag_sets=tag_sets, **{kwarg: value})
+                for tag_sets in (
+                    None, [{}]
+                ):
+                    # Create a client e.g. with read_preference=NEAREST or
+                    # slave_okay=True
+                    c = get_client(tag_sets=tag_sets, **{kwarg: value})
 
-                self.assertEqual(is_mongos, c.is_mongos)
-                cursor = c.pymongo_test.test.find()
-                if is_mongos:
-                    # We don't set $readPreference for SECONDARY_PREFERRED
-                    # unless tags are in use. slaveOkay has the same effect.
-                    if mongos_mode == 'secondaryPreferred':
-                        self.assertEqual(
-                            None,
-                            cursor._Cursor__query_spec().get('$readPreference'))
+                    self.assertEqual(is_mongos, c.is_mongos)
+                    cursor = c.pymongo_test.test.find()
+                    if is_mongos:
+                        # We don't set $readPreference for SECONDARY_PREFERRED
+                        # unless tags are in use. slaveOkay has the same effect.
+                        if mongos_mode == 'secondaryPreferred':
+                            self.assertEqual(
+                                None,
+                                cursor._Cursor__query_spec().get('$readPreference'))
 
-                        self.assertTrue(
-                            cursor._Cursor__query_options() & SLAVE_OKAY)
+                            self.assertTrue(
+                                cursor._Cursor__query_options() & SLAVE_OKAY)
 
-                    # Don't send $readPreference for PRIMARY either
-                    elif mongos_mode == 'primary':
-                        self.assertEqual(
-                            None,
-                            cursor._Cursor__query_spec().get('$readPreference'))
+                        # Don't send $readPreference for PRIMARY either
+                        elif mongos_mode == 'primary':
+                            self.assertEqual(
+                                None,
+                                cursor._Cursor__query_spec().get('$readPreference'))
 
-                        self.assertFalse(
-                            cursor._Cursor__query_options() & SLAVE_OKAY)
+                            self.assertFalse(
+                                cursor._Cursor__query_options() & SLAVE_OKAY)
+                        else:
+                            self.assertEqual(
+                                {'mode': mongos_mode},
+                                cursor._Cursor__query_spec().get('$readPreference'))
+
+                            self.assertTrue(
+                                cursor._Cursor__query_options() & SLAVE_OKAY)
                     else:
+                        self.assertFalse(
+                            '$readPreference' in cursor._Cursor__query_spec())
+
+                for tag_sets in (
+                    [{'dc': 'la'}],
+                    [{'dc': 'la'}, {'dc': 'sf'}],
+                    [{'dc': 'la'}, {'dc': 'sf'}, {}],
+                ):
+                    if kwarg == 'slave_okay':
+                        # Can't use tags with slave_okay True or False, need a
+                        # real read preference
+                        self.assertRaises(
+                            ConfigurationError,
+                            get_client, tag_sets=tag_sets, **{kwarg: value})
+
+                        continue
+
+                    c = get_client(tag_sets=tag_sets, **{kwarg: value})
+
+                    self.assertEqual(is_mongos, c.is_mongos)
+                    cursor = c.pymongo_test.test.find()
+                    if is_mongos:
                         self.assertEqual(
-                            {'mode': mongos_mode},
+                            {'mode': mongos_mode, 'tags': tag_sets},
                             cursor._Cursor__query_spec().get('$readPreference'))
-
-                        self.assertTrue(
-                            cursor._Cursor__query_options() & SLAVE_OKAY)
-                else:
-                    self.assertFalse(
-                        '$readPreference' in cursor._Cursor__query_spec())
-
-            for tag_sets in (
-                [{'dc': 'la'}],
-                [{'dc': 'la'}, {'dc': 'sf'}],
-                [{'dc': 'la'}, {'dc': 'sf'}, {}],
-            ):
-                if kwarg == 'slave_okay':
-                    # Can't use tags with slave_okay True or False, need a
-                    # real read preference
-                    self.assertRaises(
-                        ConfigurationError,
-                        get_client, tag_sets=tag_sets, **{kwarg: value})
-
-                    continue
-
-                c = get_client(tag_sets=tag_sets, **{kwarg: value})
-
-                self.assertEqual(is_mongos, c.is_mongos)
-                cursor = c.pymongo_test.test.find()
-                if is_mongos:
-                    self.assertEqual(
-                        {'mode': mongos_mode, 'tags': tag_sets},
-                        cursor._Cursor__query_spec().get('$readPreference'))
-                else:
-                    self.assertFalse(
-                        '$readPreference' in cursor._Cursor__query_spec())
+                    else:
+                        self.assertFalse(
+                            '$readPreference' in cursor._Cursor__query_spec())
+        finally:
+            ctx.exit()
 
     def test_only_secondary_ok_commands_have_read_prefs(self):
         c = get_client(read_preference=ReadPreference.SECONDARY)
-        is_mongos = utils.is_mongos(c)
+        ctx = catch_warnings()
+        try:
+            warnings.simplefilter("ignore", UserWarning)
+            is_mongos = utils.is_mongos(c)
+        finally:
+            ctx.exit()
         if not is_mongos:
             raise SkipTest("Only mongos have read_prefs added to the spec")
 

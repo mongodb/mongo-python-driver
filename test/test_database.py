@@ -47,8 +47,8 @@ from pymongo.son_manipulator import (AutoReference,
                                      NamespaceInjector,
                                      ObjectIdShuffler)
 from test import version
-from test.utils import (get_command_line, is_mongos,
-                        remove_all_users, server_started_with_auth)
+from test.utils import (catch_warnings, get_command_line,
+                        is_mongos, remove_all_users, server_started_with_auth)
 from test.test_client import get_client
 
 
@@ -368,15 +368,15 @@ class TestDatabase(unittest.TestCase):
                           "user", 'password', True, roles=['read'])
 
         if version.at_least(self.client, (2, 5, 3, -1)):
-            warnings.simplefilter("error", DeprecationWarning)
+            ctx = catch_warnings()
             try:
+                warnings.simplefilter("error", DeprecationWarning)
                 self.assertRaises(DeprecationWarning, db.add_user,
                                   "user", "password")
                 self.assertRaises(DeprecationWarning, db.add_user,
                                   "user", "password", True)
             finally:
-                warnings.resetwarnings()
-                warnings.simplefilter("ignore")
+                ctx.exit()
 
             self.assertRaises(ConfigurationError, db.add_user,
                               "user", "password", digestPassword=True)
@@ -947,8 +947,9 @@ class TestDatabase(unittest.TestCase):
             self.fail("_check_command_response didn't raise OperationFailure")
 
     def test_command_read_pref_warning(self):
-        warnings.simplefilter("error", UserWarning)
+        ctx = catch_warnings()
         try:
+            warnings.simplefilter("error", UserWarning)
             self.assertRaises(UserWarning, self.client.pymongo_test.command,
                               'ping', read_preference=ReadPreference.SECONDARY)
             try:
@@ -957,8 +958,7 @@ class TestDatabase(unittest.TestCase):
             except UserWarning:
                 self.fail("Shouldn't have raised UserWarning.")
         finally:
-            warnings.resetwarnings()
-            warnings.simplefilter("ignore")
+            ctx.exit()
 
     def test_command_max_time_ms(self):
         if not version.at_least(self.client, (2, 5, 3, -1)):

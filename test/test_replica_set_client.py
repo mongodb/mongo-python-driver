@@ -260,7 +260,6 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
                                  read_preference=ReadPreference.SECONDARY,
                                  tag_sets=copy.deepcopy(tag_sets),
                                  secondary_acceptable_latency_ms=77)
-        c.admin.command('ping')
         self.assertEqual(c.primary, self.primary)
         self.assertEqual(c.hosts, self.hosts)
         self.assertEqual(c.arbiters, self.arbiters)

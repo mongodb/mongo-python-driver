@@ -30,6 +30,7 @@ from pymongo import ASCENDING
 from pymongo.collection import Collection
 from pymongo.cursor import Cursor
 from pymongo.errors import DuplicateKeyError
+from pymongo.read_preferences import ReadPreference
 
 try:
     _SEEK_SET = os.SEEK_SET
@@ -258,7 +259,8 @@ class GridIn(object):
             db.error()
 
             md5 = db.command(
-                "filemd5", self._id, root=self._coll.name)["md5"]
+                "filemd5", self._id, root=self._coll.name,
+                read_preference=ReadPreference.PRIMARY)["md5"]
 
             self._file["md5"] = md5
             self._file["length"] = self._position
