@@ -10,6 +10,7 @@
    .. autodata:: pymongo.GEOHAYSTACK
    .. autodata:: pymongo.GEOSPHERE
    .. autodata:: pymongo.HASHED
+   .. autodata:: pymongo.TEXT
 
    .. autoclass:: pymongo.collection.Collection(database, name[, create=False[, **kwargs]]])
 
