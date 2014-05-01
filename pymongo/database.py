@@ -755,11 +755,8 @@ class Database(common.BaseObject):
                                  read_preference=ReadPreference.PRIMARY)
         except OperationFailure as exc:
             # MongoDB >= 2.5.3 requires the use of commands to manage
-            # users. "No such command" error didn't return an error
-            # code (59) before MongoDB 2.4.7 so we assume that an error
-            # code of None means the userInfo command doesn't exist and
-            # we should fall back to the legacy add user code.
-            if exc.code in (59, None):
+            # users.
+            if exc.code in common.COMMAND_NOT_FOUND_CODES:
                 self._legacy_add_user(name, password, read_only, **kwargs)
                 return
             raise

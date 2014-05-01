@@ -47,6 +47,14 @@ MAX_WRITE_BATCH_SIZE = 1000
 MIN_SUPPORTED_WIRE_VERSION = 0
 MAX_SUPPORTED_WIRE_VERSION = 2
 
+# mongod/s 2.6 and above return code 59 when a
+# command doesn't exist. mongod versions previous
+# to 2.6 and mongos 2.4.x return no error code
+# when a command does exist. mongos versions previous
+# to 2.4.0 return code 13390 when a command does not
+# exist.
+COMMAND_NOT_FOUND_CODES = (59, 13390, None)
+
 
 def raise_config_error(key, dummy):
     """Raise ConfigurationError with the given key name."""
