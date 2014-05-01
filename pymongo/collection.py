@@ -1174,7 +1174,8 @@ class Collection(common.BaseObject):
         """Drops the specified index on this collection.
 
         Can be used on non-existant collections or collections with no
-        indexes.  Raises OperationFailure on an error. `index_or_name`
+        indexes.  Raises OperationFailure on an error (e.g. trying to
+        drop an index that does not exist). `index_or_name`
         can be either an index name (as returned by `create_index`),
         or an index specifier (as passed to `create_index`). An index
         specifier should be a list of (key, direction) pairs. Raises
