@@ -953,29 +953,36 @@ class Collection(common.BaseObject):
         (:class:`str` in python 3), and the direction(s) must be one of
         (:data:`~pymongo.ASCENDING`, :data:`~pymongo.DESCENDING`,
         :data:`~pymongo.GEO2D`, :data:`~pymongo.GEOHAYSTACK`,
-        :data:`~pymongo.GEOSPHERE`, :data:`~pymongo.HASHED`).
+        :data:`~pymongo.GEOSPHERE`, :data:`~pymongo.HASHED`,
+        :data:`~pymongo.TEXT`).
 
-        To create a single key index on the key ``'mike'`` we just use
-        a string argument:
+        To create a single key ascending index on the key ``'mike'`` we just
+        use a string argument::
 
-        >>> my_collection.create_index("mike")
+          >>> my_collection.create_index("mike")
 
         For a compound index on ``'mike'`` descending and ``'eliot'``
-        ascending we need to use a list of tuples:
+        ascending we need to use a list of tuples::
 
-        >>> my_collection.create_index([("mike", pymongo.DESCENDING),
-        ...                             ("eliot", pymongo.ASCENDING)])
+          >>> my_collection.create_index([("mike", pymongo.DESCENDING),
+          ...                             ("eliot", pymongo.ASCENDING)])
 
         All optional index creation parameters should be passed as
-        keyword arguments to this method. Valid options include:
+        keyword arguments to this method. For example::
+
+          >>> my_collection.create_index([("mike", pymongo.DESCENDING)],
+          ...                            background=True)
+
+        Valid options include:
 
           - `name`: custom name to use for this index - if none is
             given, a name will be generated
-          - `unique`: should this index guarantee uniqueness?
-          - `dropDups` or `drop_dups`: should we drop duplicates
-          - `background`: if this index should be created in the
+          - `unique`: if ``True`` creates a uniqueness constraint on the index
+          - `dropDups` or `drop_dups`: if ``True`` duplicate values are dropped
+            during index creation when creating a unique index
+          - `background`: if ``True`` this index should be created in the
             background
-          - `sparse`: if True, omit from the index any documents that lack
+          - `sparse`: if ``True``, omit from the index any documents that lack
             the indexed field
           - `bucketSize` or `bucket_size`: for use with geoHaystack indexes.
             Number of documents to group together within a certain proximity
@@ -1071,8 +1078,10 @@ class Collection(common.BaseObject):
         (:class:`str` in python 3), and the direction(s) must be one of
         (:data:`~pymongo.ASCENDING`, :data:`~pymongo.DESCENDING`,
         :data:`~pymongo.GEO2D`, :data:`~pymongo.GEOHAYSTACK`,
-        :data:`~pymongo.GEOSPHERE`, :data:`~pymongo.HASHED`).
-        See :meth:`create_index` for a detailed example.
+        :data:`~pymongo.GEOSPHERE`, :data:`~pymongo.HASHED`,
+        :data:`pymongo.TEXT`).
+
+        See :meth:`create_index` for detailed examples.
 
         Unlike :meth:`create_index`, which attempts to create an index
         unconditionally, :meth:`ensure_index` takes advantage of some
@@ -1098,12 +1107,12 @@ class Collection(common.BaseObject):
 
           - `name`: custom name to use for this index - if none is
             given, a name will be generated
-          - `unique`: should this index guarantee uniqueness?
-          - `dropDups` or `drop_dups`: should we drop duplicates
-            during index creation when creating a unique index?
-          - `background`: if this index should be created in the
+          - `unique`: if ``True`` creates a uniqueness constraint on the index
+          - `dropDups` or `drop_dups`: if ``True`` duplicate values are dropped
+            during index creation when creating a unique index
+          - `background`: if ``True`` this index should be created in the
             background
-          - `sparse`: if True, omit from the index any documents that lack
+          - `sparse`: if ``True``, omit from the index any documents that lack
             the indexed field
           - `bucketSize` or `bucket_size`: for use with geoHaystack indexes.
             Number of documents to group together within a certain proximity

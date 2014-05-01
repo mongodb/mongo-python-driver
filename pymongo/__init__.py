@@ -26,7 +26,7 @@ GEO2D = "2d"
 
 .. note:: Geo-spatial indexing requires server version **>= 1.3.3**.
 
-.. _geospatial index: http://docs.mongodb.org/manual/core/geospatial-indexes/
+.. _geospatial index: http://docs.mongodb.org/manual/core/2d/
 """
 
 GEOHAYSTACK = "geoHaystack"
@@ -36,7 +36,7 @@ GEOHAYSTACK = "geoHaystack"
 
 .. note:: Geo-spatial indexing requires server version **>= 1.5.6**.
 
-.. _haystack index: http://docs.mongodb.org/manual/core/geospatial-indexes/#haystack-indexes
+.. _haystack index: http://docs.mongodb.org/manual/core/geohaystack/
 """
 
 GEOSPHERE = "2dsphere"
@@ -46,7 +46,7 @@ GEOSPHERE = "2dsphere"
 
 .. note:: 2dsphere indexing requires server version **>= 2.4.0**.
 
-.. _spherical geospatial index: http://docs.mongodb.org/manual/release-notes/2.4/#new-geospatial-indexes-with-geojson-and-improved-spherical-geometry
+.. _spherical geospatial index: http://docs.mongodb.org/manual/core/2dsphere/
 """
 
 HASHED = "hashed"
@@ -56,7 +56,17 @@ HASHED = "hashed"
 
 .. note:: hashed indexing requires server version **>= 2.4.0**.
 
-.. _hashed index: http://docs.mongodb.org/manual/release-notes/2.4/#new-hashed-index-and-sharding-with-a-hashed-shard-key
+.. _hashed index: http://docs.mongodb.org/manual/core/index-hashed/
+"""
+
+TEXT = "text"
+"""Index specifier for a `text index`_.
+
+.. versionadded:: 2.7.1
+
+.. note:: text search requires server version **>= 2.4.0**.
+
+.. _text index: http://docs.mongodb.org/manual/core/index-text/
 """
 
 OFF = 0

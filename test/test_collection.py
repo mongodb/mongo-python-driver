@@ -34,7 +34,7 @@ from bson.objectid import ObjectId
 from bson.py3compat import u, itervalues
 from bson.son import SON, RE_TYPE
 from pymongo import (ASCENDING, DESCENDING, GEO2D,
-                     GEOHAYSTACK, GEOSPHERE, HASHED)
+                     GEOHAYSTACK, GEOSPHERE, HASHED, TEXT)
 from pymongo import message as message_module
 from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
@@ -404,7 +404,7 @@ class TestCollection(unittest.TestCase):
 
         db = self.db
         db.test.drop_indexes()
-        self.assertEqual("t_text", db.test.create_index([("t", "text")]))
+        self.assertEqual("t_text", db.test.create_index([("t", TEXT)]))
         index_info = db.test.index_information()["t_text"]
         self.assertTrue("weights" in index_info)
 
