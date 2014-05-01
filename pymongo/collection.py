@@ -1052,7 +1052,7 @@ class Collection(common.BaseObject):
                                     read_preference=ReadPreference.PRIMARY,
                                     indexes=[index])
         except OperationFailure, exc:
-            if exc.code in (59, None):
+            if exc.code in common.COMMAND_NOT_FOUND_CODES:
                 index["ns"] = self.__full_name
                 self.__database.system.indexes.insert(index, manipulate=False,
                                                       check_keys=False,
