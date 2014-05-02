@@ -64,17 +64,11 @@ def teardown():
     c.drop_database("pymongo_test_bernie")
 
 
-class PymongoTestSuite(unittest.TestSuite):
-    """Run package-level setup and teardown functions.
-
-    This functionality was built into nose, but doesn't exist in
-    unittest.
-    """
-    def run(self, result):
+class PymongoTestRunner(unittest.TextTestRunner):
+    def run(self, test):
         setup()
-        super(PymongoTestSuite, self).run(result)
-        teardown()
-
-
-class PymongoTestLoader(unittest.TestLoader):
-    suiteClass = PymongoTestSuite
+        result = super(PymongoTestRunner, self).run(test)
+        try:
+            teardown()
+        finally:
+            return result

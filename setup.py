@@ -95,14 +95,14 @@ class test(Command):
         # TestResult that supports the 'addSkip' method. setuptools will by
         # default create a TextTestRunner that uses the old TestResult class,
         # resulting in DeprecationWarnings instead of skipping tests under 2.6.
-        from test import unittest, PymongoTestLoader
+        from test import unittest, PymongoTestRunner
         if self.test_suite is None:
-            suite = PymongoTestLoader().discover(self.test_module)
+            suite = unittest.defaultTestLoader.discover(self.test_module)
         else:
-            suite = PymongoTestLoader().loadTestsFromName(self.test_suite)
-        runner = unittest.TextTestRunner(verbosity=2,
-                                         failfast=self.failfast)
-        result = runner.run(suite)
+            suite = unittest.defaultTestLoader.loadTestsFromName(
+                self.test_suite)
+        result = PymongoTestRunner(verbosity=2,
+                                   failfast=self.failfast).run(suite)
         sys.exit(not result.wasSuccessful())
 
 
