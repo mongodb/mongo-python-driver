@@ -550,7 +550,7 @@ class TestMongosConnection(unittest.TestCase):
                             cursor._Cursor__query_spec().get('$readPreference'))
 
                         self.assertTrue(
-                            cursor._Cursor__query_options() & SLAVE_OKAY)
+                            cursor._Cursor__query_flags & SLAVE_OKAY)
 
                     # Don't send $readPreference for PRIMARY either
                     elif mongos_mode == 'primary':
@@ -566,7 +566,7 @@ class TestMongosConnection(unittest.TestCase):
                             cursor._Cursor__query_spec().get('$readPreference'))
 
                         self.assertTrue(
-                            cursor._Cursor__query_options() & SLAVE_OKAY)
+                            cursor._Cursor__query_flags & SLAVE_OKAY)
                 else:
                     self.assertFalse(
                         '$readPreference' in cursor._Cursor__query_spec())
