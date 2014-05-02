@@ -594,7 +594,10 @@ class TestCollection(unittest.TestCase):
         db.drop_collection("test")
         if version.at_least(db.connection, (1, 9)):
             db.create_collection("test", capped=True, size=4096)
-            self.assertEqual(db.test.options(), {"capped": True, 'size': 4096})
+            result = db.test.options()
+            # mongos 2.2.x adds an $auth field when auth is enabled.
+            result.pop('$auth', None)
+            self.assertEqual(result, {"capped": True, 'size': 4096})
         else:
             db.create_collection("test", capped=True)
             self.assertEqual(db.test.options(), {"capped": True})
