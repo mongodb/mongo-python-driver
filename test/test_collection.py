@@ -1343,8 +1343,9 @@ class TestCollection(unittest.TestCase):
                 self.fail("WTimeoutError was not raised")
 
         # can't use fsync and j options together
-        self.assertRaises(OperationFailure, self.db.test.insert,
-                          {"_id": 1}, j=True, fsync=True)
+        if version.at_least(self.client, (1, 8, 2)):
+            self.assertRaises(OperationFailure, self.db.test.insert,
+                              {"_id": 1}, j=True, fsync=True)
 
     def test_manual_last_error(self):
         self.db.test.save({"x": 1}, w=0)
