@@ -1053,7 +1053,7 @@ class MongoClient(common.BaseObject):
         # for some errors.
         if "errObjects" in result:
             for errobj in result["errObjects"]:
-                if errobj["err"] == error_msg:
+                if errobj.get("err") == error_msg:
                     details = errobj
                     break
 

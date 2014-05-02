@@ -728,6 +728,11 @@ class Database(common.BaseObject):
             # See SERVER-4225 for more information.
             if 'login' in str(exc):
                 pass
+            # First admin user add fails gle from mongos 2.0.x
+            # and 2.2.x.
+            elif (exc.details and
+                    'getlasterror' in exc.details.get('note', '')):
+                pass
             else:
                 raise
 

@@ -110,7 +110,10 @@ class TestDatabase(unittest.TestCase):
         db.drop_collection("test.foo")
         db.create_collection("test.foo")
         self.assertTrue(u"test.foo" in db.collection_names())
-        self.assertEqual(db.test.foo.options(), {})
+        result = db.test.foo.options()
+        # mongos 2.2.x adds an $auth field when auth is enabled.
+        result.pop('$auth', None)
+        self.assertEqual(result, {})
         self.assertRaises(CollectionInvalid, db.create_collection, "test.foo")
 
     def test_collection_names(self):
@@ -601,8 +604,8 @@ class TestDatabase(unittest.TestCase):
     def test_authenticate_multiple(self):
         client = get_client()
         if (is_mongos(client) and not
-            version.at_least(self.client, (2, 0, 0))):
-            raise SkipTest("Auth with sharding requires MongoDB >= 2.0.0")
+                version.at_least(self.client, (2, 2, 0))):
+            raise SkipTest("Need mongos >= 2.2.0")
         if not server_started_with_auth(client):
             raise SkipTest("Authentication is not enabled on server")
 
