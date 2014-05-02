@@ -892,10 +892,13 @@ class TestBulkWriteConcern(BulkTestBase):
         ismaster = client.test.command('ismaster')
         self.is_repl = bool(ismaster.get('setName'))
         self.w = len(ismaster.get("hosts", []))
+        self.client = client
         self.coll = client.pymongo_test.test
         self.coll.remove()
 
     def test_fsync_and_j(self):
+        if not version.at_least(self.client, (1, 8, 2)):
+            raise SkipTest("Need at least MongoDB 1.8.2")
         batch = self.coll.initialize_ordered_bulk_op()
         batch.insert({'a': 1})
         self.assertRaises(

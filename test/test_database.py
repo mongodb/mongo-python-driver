@@ -932,8 +932,8 @@ class TestDatabase(unittest.TestCase):
             self.assertRaises(UserWarning, self.client.pymongo_test.command,
                               'ping', read_preference=ReadPreference.SECONDARY)
             try:
-                self.client.pymongo_test.command(
-                    'dbStats', read_preference=ReadPreference.SECONDARY)
+                self.client.pymongo_test.command('dbStats',
+                    read_preference=ReadPreference.SECONDARY_PREFERRED)
             except UserWarning:
                 self.fail("Shouldn't have raised UserWarning.")
 
