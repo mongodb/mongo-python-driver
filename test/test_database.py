@@ -110,10 +110,14 @@ class TestDatabase(unittest.TestCase):
         db.drop_collection("test.foo")
         db.create_collection("test.foo")
         self.assertTrue(u"test.foo" in db.collection_names())
+        expected = {}
+        if version.at_least(self.client, (2, 7, 0)):
+            # usePowerOf2Sizes server default
+            expected["flags"] = 1
         result = db.test.foo.options()
         # mongos 2.2.x adds an $auth field when auth is enabled.
         result.pop('$auth', None)
-        self.assertEqual(result, {})
+        self.assertEqual(result, expected)
         self.assertRaises(CollectionInvalid, db.create_collection, "test.foo")
 
     def test_collection_names(self):
