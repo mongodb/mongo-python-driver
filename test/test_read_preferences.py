@@ -480,7 +480,9 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
 
     def test_aggregate(self):
         if version.at_least(self.c, (2, 1, 0)):
-            self._test_fn(True, lambda: self.c.pymongo_test.test.aggregate([]))
+            self._test_fn(True,
+                lambda: self.c.pymongo_test.test.aggregate(
+                    [{'$project': {'_id': 1}}]))
 
 
 class TestMovingAverage(unittest.TestCase):
