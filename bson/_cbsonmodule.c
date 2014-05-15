@@ -590,7 +590,7 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
              */
             if (type == -1 && PyErr_Occurred()) {
                 PyErr_Clear();
-                _set_cannot_encode(value, "Can not determine type based on _type_marker");
+                _set_cannot_encode(value, "Can not determine type based on _type_marker. Have you redefined __getattr__ or use own _type_marker attribute?");
                 return 0;
             }
             switch (type) {
