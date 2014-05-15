@@ -566,234 +566,248 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
         PyObject* type_marker = PyObject_GetAttrString(value, "_type_marker");
         if (type_marker == NULL)
             return 0;
-#if PY_MAJOR_VERSION >= 3
-        type = PyLong_AsLong(type_marker);
-#else
-        type = PyInt_AsLong(type_marker);
-#endif
-        Py_DECREF(type_marker);
-        /* 
-         * Py(Long|Int)_AsLong returns -1 for error but -1 is a valid value
-         * so we call PyErr_Occurred to differentiate.
-         *
-         * One potential reason for an error is the user passing an invalid
-         * type that overrides __getattr__ (e.g. pymongo.collection.Collection)
+        /*
+         * We should use _type_maker only if it's not None.
+         * In case it is None just try to parse type as simple python type
+         * This makes us more bulletproof against strange and buggy implementation of __getattr__
+         * See: https://github.com/namlook/mongokit/issues/173
          */
-        if (type == -1 && PyErr_Occurred()) {
-            PyErr_Clear();
-            _set_cannot_encode(value, "Can not determine type based on _type_marker");
-            return 0;
-        }
-        switch (type) {
-        case 5:
-            {
-                /* Binary */
-                PyObject* subtype_object;
-                long subtype;
-                const char* data;
-                int size;
-
-                *(buffer_get_buffer(buffer) + type_byte) = 0x05;
-                subtype_object = PyObject_GetAttrString(value, "subtype");
-                if (!subtype_object) {
-                    return 0;
-                }
+        if(type_marker != Py_None) {
 #if PY_MAJOR_VERSION >= 3
-                subtype = PyLong_AsLong(subtype_object);
+            type = PyLong_AsLong(type_marker);
 #else
-                subtype = PyInt_AsLong(subtype_object);
+            type = PyInt_AsLong(type_marker);
 #endif
-                if (subtype == -1) {
+            Py_DECREF(type_marker);
+
+
+            /*
+             * Py(Long|Int)_AsLong returns -1 for error but -1 is a valid value
+             * so we call PyErr_Occurred to differentiate.
+             *
+             * One potential reason for an error is the user passing an invalid
+             * type that overrides __getattr__ (e.g. pymongo.collection.Collection)
+             */
+            if (type == -1 && PyErr_Occurred()) {
+                PyErr_Clear();
+                _set_cannot_encode(value, "Can not determine type based on _type_marker");
+                return 0;
+            }
+            switch (type) {
+            case 5:
+                {
+                    /* Binary */
+                    PyObject* subtype_object;
+                    long subtype;
+                    const char* data;
+                    int size;
+
+                    *(buffer_get_buffer(buffer) + type_byte) = 0x05;
+                    subtype_object = PyObject_GetAttrString(value, "subtype");
+                    if (!subtype_object) {
+                        return 0;
+                    }
+#if PY_MAJOR_VERSION >= 3
+                    subtype = PyLong_AsLong(subtype_object);
+#else
+                    subtype = PyInt_AsLong(subtype_object);
+#endif
+                    if (subtype == -1) {
+                        Py_DECREF(subtype_object);
+                        return 0;
+                    }
+#if PY_MAJOR_VERSION >= 3
+                    size = _downcast_and_check(PyBytes_Size(value), 0);
+#else
+                    size = _downcast_and_check(PyString_Size(value), 0);
+#endif
+                    if (size == -1) {
+                        Py_DECREF(subtype_object);
+                        return 0;
+                    }
+
                     Py_DECREF(subtype_object);
-                    return 0;
-                }
+                    if (subtype == 2) {
 #if PY_MAJOR_VERSION >= 3
-                size = _downcast_and_check(PyBytes_Size(value), 0);
+                        int other_size = _downcast_and_check(PyBytes_Size(value), 4);
 #else
-                size = _downcast_and_check(PyString_Size(value), 0);
+                        int other_size = _downcast_and_check(PyString_Size(value), 4);
 #endif
-                if (size == -1) {
-                    Py_DECREF(subtype_object);
-                    return 0;
-                }
-
-                Py_DECREF(subtype_object);
-                if (subtype == 2) {
-#if PY_MAJOR_VERSION >= 3
-                    int other_size = _downcast_and_check(PyBytes_Size(value), 4);
-#else
-                    int other_size = _downcast_and_check(PyString_Size(value), 4);
-#endif
-                    if (other_size == -1)
-                        return 0;
-                    if (!buffer_write_bytes(buffer, (const char*)&other_size, 4)) {
+                        if (other_size == -1)
+                            return 0;
+                        if (!buffer_write_bytes(buffer, (const char*)&other_size, 4)) {
+                            return 0;
+                        }
+                        if (!buffer_write_bytes(buffer, (const char*)&subtype, 1)) {
+                            return 0;
+                        }
+                    }
+                    if (!buffer_write_bytes(buffer, (const char*)&size, 4)) {
                         return 0;
                     }
-                    if (!buffer_write_bytes(buffer, (const char*)&subtype, 1)) {
+                    if (subtype != 2) {
+                        if (!buffer_write_bytes(buffer, (const char*)&subtype, 1)) {
+                            return 0;
+                        }
+                    }
+#if PY_MAJOR_VERSION >= 3
+                    data = PyBytes_AsString(value);
+#else
+                    data = PyString_AsString(value);
+#endif
+                    if (!data) {
                         return 0;
                     }
+                    if (!buffer_write_bytes(buffer, data, size)) {
+                            return 0;
+                    }
+                    return 1;
                 }
-                if (!buffer_write_bytes(buffer, (const char*)&size, 4)) {
-                    return 0;
-                }
-                if (subtype != 2) {
-                    if (!buffer_write_bytes(buffer, (const char*)&subtype, 1)) {
+            case 7:
+                {
+                    /* ObjectId */
+                    const char* data;
+                    PyObject* pystring = PyObject_GetAttrString(value, "_ObjectId__id");
+                    if (!pystring) {
                         return 0;
                     }
-                }
 #if PY_MAJOR_VERSION >= 3
-                data = PyBytes_AsString(value);
+                    data = PyBytes_AsString(pystring);
 #else
-                data = PyString_AsString(value);
+                    data = PyString_AsString(pystring);
 #endif
-                if (!data) {
-                    return 0;
-                }
-                if (!buffer_write_bytes(buffer, data, size)) {
+                    if (!data) {
+                        Py_DECREF(pystring);
                         return 0;
-                }
-                return 1;
-            }
-        case 7:
-            {
-                /* ObjectId */
-                const char* data;
-                PyObject* pystring = PyObject_GetAttrString(value, "_ObjectId__id");
-                if (!pystring) {
-                    return 0;
-                }
-#if PY_MAJOR_VERSION >= 3
-                data = PyBytes_AsString(pystring);
-#else
-                data = PyString_AsString(pystring);
-#endif
-                if (!data) {
+                    }
+                    if (!buffer_write_bytes(buffer, data, 12)) {
+                        Py_DECREF(pystring);
+                        return 0;
+                    }
                     Py_DECREF(pystring);
-                    return 0;
+                    *(buffer_get_buffer(buffer) + type_byte) = 0x07;
+                    return 1;
                 }
-                if (!buffer_write_bytes(buffer, data, 12)) {
-                    Py_DECREF(pystring);
-                    return 0;
+            case 11:
+                {
+                    /* Regex */
+                    return _write_regex_to_buffer(buffer, type_byte, value);
                 }
-                Py_DECREF(pystring);
-                *(buffer_get_buffer(buffer) + type_byte) = 0x07;
-                return 1;
-            }
-        case 11:
-            {
-                /* Regex */
-                return _write_regex_to_buffer(buffer, type_byte, value);
-            }
-        case 13:
-            {
-                /* Code */
-                int start_position,
-                    length_location,
-                    length;
+            case 13:
+                {
+                    /* Code */
+                    int start_position,
+                        length_location,
+                        length;
 
-                PyObject* scope = PyObject_GetAttrString(value, "scope");
-                if (!scope) {
-                    return 0;
-                }
+                    PyObject* scope = PyObject_GetAttrString(value, "scope");
+                    if (!scope) {
+                        return 0;
+                    }
 
-                if (!PyDict_Size(scope)) {
+                    if (!PyDict_Size(scope)) {
+                        Py_DECREF(scope);
+                        *(buffer_get_buffer(buffer) + type_byte) = 0x0D;
+                        return write_string(buffer, value);
+                    }
+
+                    *(buffer_get_buffer(buffer) + type_byte) = 0x0F;
+
+                    start_position = buffer_get_position(buffer);
+                    /* save space for length */
+                    length_location = buffer_save_space(buffer, 4);
+                    if (length_location == -1) {
+                        PyErr_NoMemory();
+                        Py_DECREF(scope);
+                        return 0;
+                    }
+
+                    if (!write_string(buffer, value)) {
+                        Py_DECREF(scope);
+                        return 0;
+                    }
+
+                    if (!write_dict(self, buffer, scope, 0, uuid_subtype, 0)) {
+                        Py_DECREF(scope);
+                        return 0;
+                    }
                     Py_DECREF(scope);
-                    *(buffer_get_buffer(buffer) + type_byte) = 0x0D;
-                    return write_string(buffer, value);
+
+                    length = buffer_get_position(buffer) - start_position;
+                    memcpy(buffer_get_buffer(buffer) + length_location, &length, 4);
+                    return 1;
                 }
+            case 17:
+                {
+                    /* Timestamp */
+                    PyObject* obj;
+                    long i;
 
-                *(buffer_get_buffer(buffer) + type_byte) = 0x0F;
-
-                start_position = buffer_get_position(buffer);
-                /* save space for length */
-                length_location = buffer_save_space(buffer, 4);
-                if (length_location == -1) {
-                    PyErr_NoMemory();
-                    Py_DECREF(scope);
-                    return 0;
-                }
-
-                if (!write_string(buffer, value)) {
-                    Py_DECREF(scope);
-                    return 0;
-                }
-
-                if (!write_dict(self, buffer, scope, 0, uuid_subtype, 0)) {
-                    Py_DECREF(scope);
-                    return 0;
-                }
-                Py_DECREF(scope);
-
-                length = buffer_get_position(buffer) - start_position;
-                memcpy(buffer_get_buffer(buffer) + length_location, &length, 4);
-                return 1;
-            }
-        case 17:
-            {
-                /* Timestamp */
-                PyObject* obj;
-                long i;
-
-                obj = PyObject_GetAttrString(value, "inc");
-                if (!obj) {
-                    return 0;
-                }
+                    obj = PyObject_GetAttrString(value, "inc");
+                    if (!obj) {
+                        return 0;
+                    }
 #if PY_MAJOR_VERSION >= 3
-                i = PyLong_AsLong(obj);
+                    i = PyLong_AsLong(obj);
 #else
-                i = PyInt_AsLong(obj);
+                    i = PyInt_AsLong(obj);
 #endif
-                Py_DECREF(obj);
-                if (!buffer_write_bytes(buffer, (const char*)&i, 4)) {
-                    return 0;
-                }
+                    Py_DECREF(obj);
+                    if (!buffer_write_bytes(buffer, (const char*)&i, 4)) {
+                        return 0;
+                    }
 
-                obj = PyObject_GetAttrString(value, "time");
-                if (!obj) {
-                    return 0;
-                }
+                    obj = PyObject_GetAttrString(value, "time");
+                    if (!obj) {
+                        return 0;
+                    }
 #if PY_MAJOR_VERSION >= 3
-                i = PyLong_AsLong(obj);
+                    i = PyLong_AsLong(obj);
 #else
-                i = PyInt_AsLong(obj);
+                    i = PyInt_AsLong(obj);
 #endif
-                Py_DECREF(obj);
-                if (!buffer_write_bytes(buffer, (const char*)&i, 4)) {
-                    return 0;
-                }
+                    Py_DECREF(obj);
+                    if (!buffer_write_bytes(buffer, (const char*)&i, 4)) {
+                        return 0;
+                    }
 
-                *(buffer_get_buffer(buffer) + type_byte) = 0x11;
-                return 1;
-            }
-        case 100:
-            {
-                /* DBRef */
-                PyObject* as_doc = PyObject_CallMethod(value, "as_doc", NULL);
-                if (!as_doc) {
-                    return 0;
+                    *(buffer_get_buffer(buffer) + type_byte) = 0x11;
+                    return 1;
                 }
-                if (!write_dict(self, buffer, as_doc, 0, uuid_subtype, 0)) {
+            case 100:
+                {
+                    /* DBRef */
+                    PyObject* as_doc = PyObject_CallMethod(value, "as_doc", NULL);
+                    if (!as_doc) {
+                        return 0;
+                    }
+                    if (!write_dict(self, buffer, as_doc, 0, uuid_subtype, 0)) {
+                        Py_DECREF(as_doc);
+                        return 0;
+                    }
                     Py_DECREF(as_doc);
-                    return 0;
+                    *(buffer_get_buffer(buffer) + type_byte) = 0x03;
+                    return 1;
                 }
-                Py_DECREF(as_doc);
-                *(buffer_get_buffer(buffer) + type_byte) = 0x03;
-                return 1;
+            case 255:
+                {
+                    /* MinKey */
+                    *(buffer_get_buffer(buffer) + type_byte) = 0xFF;
+                    return 1;
+                }
+            case 127:
+                {
+                    /* MaxKey */
+                    *(buffer_get_buffer(buffer) + type_byte) = 0x7F;
+                    return 1;
+                }
             }
-        case 255:
-            {
-                /* MinKey */
-                *(buffer_get_buffer(buffer) + type_byte) = 0xFF;
-                return 1;
-            }
-        case 127:
-            {
-                /* MaxKey */
-                *(buffer_get_buffer(buffer) + type_byte) = 0x7F;
-                return 1;
-            }
+        }
+        else {
+            Py_DECREF(type_marker);
         }
     }
+
 
     /* No _type_marker attibute or not one of our types. */
 
