@@ -385,37 +385,38 @@ _fix_java(const char* in, char* out) {
         out[j] = in[i];
     }
 }
-
 static void
-_set_cannot_encode(PyObject* value) {
+_set_cannot_encode(PyObject* value, const char * additional_cause) {
+    if (! additional_cause) {
+        additional_cause = "unknown cause";
+    }
+
     PyObject* InvalidDocument = _error("InvalidDocument");
     if (InvalidDocument) {
         PyObject* repr = PyObject_Repr(value);
         if (repr) {
 #if PY_MAJOR_VERSION >= 3
-            PyObject* errmsg = PyUnicode_FromString("Cannot encode object: ");
+            PyObject* errmsg_format = PyUnicode_FromString("Cannot encode object: %s caused by (%s)");
 #else
-            PyObject* errmsg = PyString_FromString("Cannot encode object: ");
+            PyObject* errmsg_format = PyString_FromString("Cannot encode object: %s caused by (%s)");
 #endif
-            if (errmsg) {
+            if(errmsg_format){
+                PyObject* args = Py_BuildValue("(Ss)", repr, additional_cause);
+                if (args) {
 #if PY_MAJOR_VERSION >= 3
-                PyObject* error = PyUnicode_Concat(errmsg, repr);
-                if (error) {
-                    PyErr_SetObject(InvalidDocument, error);
-                    Py_DECREF(error);
-                }
-                Py_DECREF(errmsg);
-                Py_DECREF(repr);
+                    PyObject* error = PyUnicode_Format(errmsg_format, args);
 #else
-                PyString_ConcatAndDel(&errmsg, repr);
-                if (errmsg) {
-                    PyErr_SetObject(InvalidDocument, errmsg);
-                    Py_DECREF(errmsg);
-                }
+                    PyObject* error = PyString_Format(errmsg_format, args);
 #endif
-            } else {
-                Py_DECREF(repr);
+                    if (error) {
+                        PyErr_SetObject(InvalidDocument, error);
+                        Py_DECREF(error);
+                    }
+                    Py_DECREF(args);
+                }
+                Py_DECREF(errmsg_format);
             }
+            Py_DECREF(repr);
         }
         Py_DECREF(InvalidDocument);
     }
@@ -580,7 +581,7 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
          */
         if (type == -1 && PyErr_Occurred()) {
             PyErr_Clear();
-            _set_cannot_encode(value);
+            _set_cannot_encode(value, "Can not determine type based on _type_marker");
             return 0;
         }
         switch (type) {
@@ -1082,7 +1083,7 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
         }
     }
     /* We can't determine value's type. Fail. */
-    _set_cannot_encode(value);
+    _set_cannot_encode(value, "Unknown type for encoding");
     return 0;
 }
 
