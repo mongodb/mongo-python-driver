@@ -683,5 +683,16 @@ class TestBSON(unittest.TestCase):
                           {"_id": {'$oid': "52d0b971b3ba219fdeb4170e"}}, True)
         BSON.encode({"_id": {'$oid': "52d0b971b3ba219fdeb4170e"}})
 
+    def test_bad_getattr(self):
+        class ExtDict(dict):
+            def __getattr__(self, item):
+                pass
+        d = ExtDict()
+        d['data'] = 'something'
+        try:
+            BSON.encode(d)
+        except InvalidDocument:
+            self.fail("Doesn't works correct when __getattr__ broken")
+
 if __name__ == "__main__":
     unittest.main()
