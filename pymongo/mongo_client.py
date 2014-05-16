@@ -1423,7 +1423,7 @@ class MongoClient(common.BaseObject):
 
             if username is not None:
                 nonce = self.admin.command("copydbgetnonce",
-                    read_preference=ReadPreference.Primary,
+                    read_preference=ReadPreference.PRIMARY,
                     fromhost=from_host)["nonce"]
                 command["username"] = username
                 command["nonce"] = nonce
