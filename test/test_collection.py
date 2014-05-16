@@ -2048,7 +2048,16 @@ class TestCollection(unittest.TestCase):
     # (Shame on me)
     def test_bad_encode(self):
         c = self.db.test
+        c.drop()
         self.assertRaises(InvalidDocument, c.save, {"x": c})
+
+        class BadGetAttr(dict):
+            def __getattr__(self, name):
+                pass
+
+        bad = BadGetAttr([('foo', 'bar')])
+        c.insert({'bad': bad})
+        self.assertEqual('bar', c.find_one()['bad']['foo'])
 
     def test_bad_dbref(self):
         c = self.db.test
