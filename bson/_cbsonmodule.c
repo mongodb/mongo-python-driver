@@ -554,6 +554,7 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
                                     unsigned char check_keys,
                                     unsigned char uuid_subtype) {
     struct module_state *state = GETSTATE(self);
+    PyObject* type_marker = NULL;
 
     /*
      * Don't use PyObject_IsInstance for our custom types. It causes
@@ -561,26 +562,32 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
      * have a _type_marker attribute, which we can switch on instead.
      */
     if (PyObject_HasAttrString(value, "_type_marker")) {
-        long type;
-        PyObject* type_marker = PyObject_GetAttrString(value, "_type_marker");
-        if (type_marker == NULL)
+        type_marker = PyObject_GetAttrString(value, "_type_marker");
+        if (type_marker == NULL) {
             return 0;
+        }
+    }
+    /*
+     * Python objects with broken __getattr__ implementations could return
+     * arbitrary types for a call to PyObject_GetAttrString. For example
+     * pymongo.database.Database returns a new Collection instance for
+     * __getattr__ calls with names that don't match an existing attribute
+     * or method. In some cases "value" could be a subtype of something
+     * we know how to serialize. Make a best effort to encode these types.
+     */
 #if PY_MAJOR_VERSION >= 3
-        type = PyLong_AsLong(type_marker);
+    if (type_marker && PyLong_CheckExact(type_marker)) {
+        long type = PyLong_AsLong(type_marker);
 #else
-        type = PyInt_AsLong(type_marker);
+    if (type_marker && PyInt_CheckExact(type_marker)) {
+        long type = PyInt_AsLong(type_marker);
 #endif
         Py_DECREF(type_marker);
         /* 
          * Py(Long|Int)_AsLong returns -1 for error but -1 is a valid value
          * so we call PyErr_Occurred to differentiate.
-         *
-         * One potential reason for an error is the user passing an invalid
-         * type that overrides __getattr__ (e.g. pymongo.collection.Collection)
          */
         if (type == -1 && PyErr_Occurred()) {
-            PyErr_Clear();
-            _set_cannot_encode(value);
             return 0;
         }
         switch (type) {
@@ -792,6 +799,8 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
                 return 1;
             }
         }
+    } else {
+        Py_XDECREF(type_marker);
     }
 
     /* No _type_marker attibute or not one of our types. */
