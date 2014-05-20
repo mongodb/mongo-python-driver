@@ -2187,6 +2187,20 @@ class TestCollection(unittest.TestCase):
                                     as_class=ExtendedDict)
         self.assertTrue(isinstance(result, ExtendedDict))
 
+    def test_update_backward_compat(self):
+        # MongoDB versions >= 2.6.0 don't return the updatedExisting field
+        # and return upsert _id in an array subdocument. This test should
+        # pass regardless of server version or type (mongod/s).
+        c = self.db.test
+        c.drop()
+        oid = ObjectId()
+        res = c.update({'_id': oid}, {'$set': {'a': 'a'}}, upsert=True)
+        self.assertFalse(res.get('updatedExisting'))
+        self.assertEqual(oid, res.get('upserted'))
+
+        res = c.update({'_id': oid}, {'$set': {'b': 'b'}})
+        self.assertTrue(res.get('updatedExisting'))
+
     def test_find_and_modify_with_sort(self):
         c = self.db.test
         c.drop()
