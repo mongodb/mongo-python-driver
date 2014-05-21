@@ -804,13 +804,14 @@ class TestCollection(unittest.TestCase):
         db.drop_collection("test")
         db.test.ensure_index([('i', ASCENDING)], unique=True)
 
-        # No error
-        db.test.insert([{'i': i} for i in range(5, 10)], w=0)
-        db.test.remove()
+        with db.connection.start_request():
+            # No error
+            db.test.insert([{'i': i} for i in range(5, 10)], w=0)
+            db.test.remove()
 
-        # No error
-        db.test.insert([{'i': 1}] * 2, w=0)
-        self.assertEqual(1, db.test.count())
+            # No error
+            db.test.insert([{'i': 1}] * 2, w=0)
+            self.assertEqual(1, db.test.count())
 
         self.assertRaises(
             DuplicateKeyError,
@@ -821,11 +822,12 @@ class TestCollection(unittest.TestCase):
         wc = db.write_concern
         db.write_concern = {"w": 0}
         try:
-            db.test.ensure_index([('i', ASCENDING)], unique=True)
+            with db.connection.start_request():
+                db.test.ensure_index([('i', ASCENDING)], unique=True)
 
-            # No error
-            db.test.insert([{'i': 1}] * 2)
-            self.assertEqual(1, db.test.count())
+                # No error
+                db.test.insert([{'i': 1}] * 2)
+                self.assertEqual(1, db.test.count())
 
             # Implied safe
             self.assertRaises(
@@ -960,14 +962,15 @@ class TestCollection(unittest.TestCase):
         db.test.insert({"_id": 1, "x": 1})
         db.test.insert({"_id": 2, "x": 2})
 
-        # No error
-        db.test.insert({"_id": 1, "x": 1}, w=0)
-        db.test.save({"_id": 1, "x": 1}, w=0)
-        db.test.insert({"_id": 2, "x": 2}, w=0)
-        db.test.save({"_id": 2, "x": 2}, w=0)
+        with db.connection.start_request():
+            # No error
+            db.test.insert({"_id": 1, "x": 1}, w=0)
+            db.test.save({"_id": 1, "x": 1}, w=0)
+            db.test.insert({"_id": 2, "x": 2}, w=0)
+            db.test.save({"_id": 2, "x": 2}, w=0)
 
-        # But all those statements didn't do anything
-        self.assertEqual(2, db.test.count())
+            # But all those statements didn't do anything
+            self.assertEqual(2, db.test.count())
 
         expected_error = OperationFailure
         if client_context.version.at_least(1, 3):
@@ -1262,8 +1265,9 @@ class TestCollection(unittest.TestCase):
         db.test.insert({"x": 1})
         self.assertEqual(1, db.test.count())
 
-        self.assertEqual(None, db.test.remove({"x": 1}, w=0))
-        self.assertEqual(1, db.test.count())
+        with db.connection.start_request():
+            self.assertEqual(None, db.test.remove({"x": 1}, w=0))
+            self.assertEqual(1, db.test.count())
 
         if client_context.version.at_least(1, 1, 3, -1):
             self.assertRaises(OperationFailure, db.test.remove,

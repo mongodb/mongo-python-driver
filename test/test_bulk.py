@@ -1070,8 +1070,9 @@ class TestBulkNoResults(BulkTestBase):
         batch.find({'_id': 3}).upsert().update_one({'$set': {'b': 1}})
         batch.insert({'_id': 2})
         batch.find({'_id': 1}).remove_one()
-        self.assertTrue(batch.execute({'w': 0}) is None)
-        self.assertEqual(2, self.coll.count())
+        with client_context.client.start_request():
+            self.assertTrue(batch.execute({'w': 0}) is None)
+            self.assertEqual(2, self.coll.count())
 
     def test_no_results_ordered_failure(self):
 
@@ -1081,8 +1082,9 @@ class TestBulkNoResults(BulkTestBase):
         batch.insert({'_id': 2})
         batch.insert({'_id': 1})
         batch.find({'_id': 1}).remove_one()
-        self.assertTrue(batch.execute({'w': 0}) is None)
-        self.assertEqual(3, self.coll.count())
+        with client_context.client.start_request():
+            self.assertTrue(batch.execute({'w': 0}) is None)
+            self.assertEqual(3, self.coll.count())
 
     def test_no_results_unordered_success(self):
 
@@ -1091,8 +1093,9 @@ class TestBulkNoResults(BulkTestBase):
         batch.find({'_id': 3}).upsert().update_one({'$set': {'b': 1}})
         batch.insert({'_id': 2})
         batch.find({'_id': 1}).remove_one()
-        self.assertTrue(batch.execute({'w': 0}) is None)
-        self.assertEqual(2, self.coll.count())
+        with client_context.client.start_request():
+            self.assertTrue(batch.execute({'w': 0}) is None)
+            self.assertEqual(2, self.coll.count())
 
     def test_no_results_unordered_failure(self):
 
@@ -1102,9 +1105,10 @@ class TestBulkNoResults(BulkTestBase):
         batch.insert({'_id': 2})
         batch.insert({'_id': 1})
         batch.find({'_id': 1}).remove_one()
-        self.assertTrue(batch.execute({'w': 0}) is None)
-        self.assertEqual(2, self.coll.count())
-        self.assertTrue(self.coll.find_one({'_id': 1}) is None)
+        with client_context.client.start_request():
+            self.assertTrue(batch.execute({'w': 0}) is None)
+            self.assertEqual(2, self.coll.count())
+            self.assertTrue(self.coll.find_one({'_id': 1}) is None)
 
 
 class TestBulkAuthorization(BulkTestBase):
