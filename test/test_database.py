@@ -255,35 +255,36 @@ class TestDatabase(unittest.TestCase):
     def test_errors(self):
         db = self.client.pymongo_test
 
-        db.reset_error_history()
-        self.assertEqual(None, db.error())
-        self.assertEqual(None, db.previous_error())
+        with self.client.start_request():
+            db.reset_error_history()
+            self.assertEqual(None, db.error())
+            self.assertEqual(None, db.previous_error())
 
-        db.command("forceerror", check=False)
-        self.assertTrue(db.error())
-        self.assertTrue(db.previous_error())
+            db.command("forceerror", check=False)
+            self.assertTrue(db.error())
+            self.assertTrue(db.previous_error())
 
-        db.command("forceerror", check=False)
-        self.assertTrue(db.error())
-        prev_error = db.previous_error()
-        self.assertEqual(prev_error["nPrev"], 1)
-        del prev_error["nPrev"]
-        prev_error.pop("lastOp", None)
-        error = db.error()
-        error.pop("lastOp", None)
-        # getLastError includes "connectionId" in recent
-        # server versions, getPrevError does not.
-        error.pop("connectionId", None)
-        self.assertEqual(error, prev_error)
+            db.command("forceerror", check=False)
+            self.assertTrue(db.error())
+            prev_error = db.previous_error()
+            self.assertEqual(prev_error["nPrev"], 1)
+            del prev_error["nPrev"]
+            prev_error.pop("lastOp", None)
+            error = db.error()
+            error.pop("lastOp", None)
+            # getLastError includes "connectionId" in recent
+            # server versions, getPrevError does not.
+            error.pop("connectionId", None)
+            self.assertEqual(error, prev_error)
 
-        db.test.find_one()
-        self.assertEqual(None, db.error())
-        self.assertTrue(db.previous_error())
-        self.assertEqual(db.previous_error()["nPrev"], 2)
+            db.test.find_one()
+            self.assertEqual(None, db.error())
+            self.assertTrue(db.previous_error())
+            self.assertEqual(db.previous_error()["nPrev"], 2)
 
-        db.reset_error_history()
-        self.assertEqual(None, db.error())
-        self.assertEqual(None, db.previous_error())
+            db.reset_error_history()
+            self.assertEqual(None, db.error())
+            self.assertEqual(None, db.previous_error())
 
     def test_command(self):
         db = self.client.admin
