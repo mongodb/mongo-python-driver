@@ -35,8 +35,7 @@ from bson.dbref import DBRef
 from bson.objectid import ObjectId
 from bson.py3compat import b
 from bson.son import SON, RE_TYPE
-from pymongo import (ASCENDING, DESCENDING, GEO2D,
-                     GEOHAYSTACK, GEOSPHERE, HASHED)
+from pymongo import ASCENDING, DESCENDING, HASHED
 from pymongo import message as message_module
 from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
@@ -363,49 +362,6 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(True,
                      db.test.index_information()["hello_-1_world_1"]["unique"])
 
-    def test_index_geo2d(self):
-        db = self.db
-        db.test.drop_indexes()
-        self.assertEqual('loc_2d', db.test.create_index([("loc", GEO2D)]))
-        index_info = db.test.index_information()['loc_2d']
-        self.assertEqual([('loc', '2d')], index_info['key'])
-
-    def test_index_haystack(self):
-        if is_mongos(self.db.connection):
-            raise SkipTest("geoSearch is not supported by mongos")
-        db = self.db
-        db.test.drop_indexes()
-        db.test.remove()
-        _id = db.test.insert({
-            "pos": {"long": 34.2, "lat": 33.3},
-            "type": "restaurant"
-        })
-        db.test.insert({
-            "pos": {"long": 34.2, "lat": 37.3}, "type": "restaurant"
-        })
-        db.test.insert({
-            "pos": {"long": 59.1, "lat": 87.2}, "type": "office"
-        })
-        db.test.create_index(
-            [("pos", GEOHAYSTACK), ("type", ASCENDING)],
-            bucket_size=1
-        )
-
-        results = db.command(SON([
-            ("geoSearch", "test"),
-            ("near", [33, 33]),
-            ("maxDistance", 6),
-            ("search", {"type": "restaurant"}),
-            ("limit", 30),
-        ]))['results']
-
-        self.assertEqual(2, len(results))
-        self.assertEqual({
-            "_id": _id,
-            "pos": {"long": 34.2, "lat": 33.3},
-            "type": "restaurant"
-        }, results[0])
-
     def test_index_text(self):
         if not version.at_least(self.client, (2, 3, 2)):
             raise SkipTest("Text search requires server >=2.3.2.")
@@ -436,24 +392,6 @@ class TestCollection(unittest.TestCase):
             cursor.sort([('score', {'$meta': 'textScore'})])
             results = list(cursor)
             self.assertTrue(results[0]['score'] >= results[1]['score'])
-
-        db.test.drop_indexes()
-
-    def test_index_2dsphere(self):
-        if not version.at_least(self.client, (2, 3, 2)):
-            raise SkipTest("2dsphere indexing requires server >=2.3.2.")
-
-        db = self.db
-        db.test.drop_indexes()
-        self.assertEqual("geo_2dsphere",
-                         db.test.create_index([("geo", GEOSPHERE)]))
-
-        poly = {"type": "Polygon",
-                "coordinates": [[[40,5], [40,6], [41,6], [41,5], [40,5]]]}
-        query = {"geo": {"$within": {"$geometry": poly}}}
-
-        cursor = db.test.find(query).explain()['cursor']
-        self.assertTrue('S2Cursor' in cursor or 'geo_2dsphere' in cursor)
 
         db.test.drop_indexes()
 
