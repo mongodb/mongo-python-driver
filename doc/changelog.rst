@@ -1,6 +1,21 @@
 Changelog
 =========
 
+Changes in Version 2.7.1
+------------------------
+
+Version 2.7.1 fixes a number of issues reported since the release of 2.7,
+most importantly a fix for creating indexes and manipulating users through
+mongos versions older than 2.4.0.
+
+Issues Resolved
+...............
+
+See the `PyMongo 2.7.1 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 2.7.1 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/13823
+
 Changes in Version 2.7
 ----------------------
 
