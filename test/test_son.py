@@ -162,11 +162,6 @@ class TestSON(unittest.TestCase):
         test_son = SON([(1, 100), (2, 200), (3, 300)])
         for ele in test_son:
             self.assertEqual(ele * 100, test_son[ele])
-        # test failure case
-        def break_iter():
-            for ele in test_son:
-                del test_son[ele]
-        self.assertRaises(RuntimeError, break_iter)
 
     def test_contains_has(self):
         """

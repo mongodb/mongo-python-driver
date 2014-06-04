@@ -124,13 +124,7 @@ class SON(dict):
     # efficient.
     # second level definitions support higher levels
     def __iter__(self):
-        """
-        Cannot remove nor add keys while iterating
-        """
-        key_len = len(self.__keys)
         for k in self.__keys:
-            if len(self.__keys) != key_len:
-                raise RuntimeError("son changed length during iteration")
             yield k
 
     def has_key(self, key):
