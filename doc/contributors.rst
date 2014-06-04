@@ -70,3 +70,4 @@ The following is a list of people who have contributed to
 - Kyle Erf (3rf)
 - Luke Lovett (lovett89)
 - Jaroslav Semančík (girogiro)
+- Don Mitchell (dmitchell)

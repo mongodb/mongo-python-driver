@@ -154,6 +154,52 @@ class TestSON(unittest.TestCase):
         self.assertEqual(list(reflexive_son), list(reflexive_son1))
         self.assertEqual(id(reflexive_son1), id(reflexive_son1["reflexive"]))
 
+    def test_iteration(self):
+        """
+        Test __iter__
+        """
+        # test success case
+        test_son = SON([(1, 100), (2, 200), (3, 300)])
+        for ele in test_son:
+            self.assertEqual(ele * 100, test_son[ele])
+        # test failure case
+        def break_iter():
+            for ele in test_son:
+                del test_son[ele]
+        self.assertRaises(RuntimeError, break_iter)
+
+    def test_contains_has(self):
+        """
+        has_key and __contains__
+        """
+        test_son = SON([(1, 100), (2, 200), (3, 300)])
+        self.assertIn(1, test_son)
+        self.assertTrue(2 in test_son, "in failed")
+        self.assertFalse(22 in test_son, "in succeeded when it shouldn't")
+        self.assertTrue(test_son.has_key(2), "has_key failed")
+        self.assertFalse(test_son.has_key(22), "has_key succeeded when it shouldn't")
+
+    def test_clears(self):
+        """
+        Test clear()
+        """
+        test_son = SON([(1, 100), (2, 200), (3, 300)])
+        test_son.clear()
+        self.assertNotIn(1, test_son)
+        self.assertEqual(0, len(test_son))
+        self.assertEqual(0, len(test_son.keys()))
+        self.assertEqual({}, test_son.to_dict())
+
+    def test_len(self):
+        """
+        Test len
+        """
+        test_son = SON()
+        self.assertEqual(0, len(test_son))
+        test_son = SON([(1, 100), (2, 200), (3, 300)])
+        self.assertEqual(3, len(test_son))
+        test_son.popitem()
+        self.assertEqual(2, len(test_son))
 
 if __name__ == "__main__":
     unittest.main()

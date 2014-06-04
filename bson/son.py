@@ -124,14 +124,20 @@ class SON(dict):
     # efficient.
     # second level definitions support higher levels
     def __iter__(self):
-        for k in self.keys():
+        """
+        Cannot remove nor add keys while iterating
+        """
+        key_len = len(self.__keys)
+        for k in self.__keys:
+            if len(self.__keys) != key_len:
+                raise RuntimeError("son changed length during iteration")
             yield k
 
     def has_key(self, key):
-        return key in self.keys()
+        return key in self.__keys
 
     def __contains__(self, key):
-        return key in self.keys()
+        return key in self.__keys
 
     # third level takes advantage of second level definitions
     def iteritems(self):
@@ -153,8 +159,8 @@ class SON(dict):
         return [(key, self[key]) for key in self]
 
     def clear(self):
-        for key in self.keys():
-            del self[key]
+        self.__keys = []
+        super(SON, self).clear()
 
     def setdefault(self, key, default=None):
         try:
