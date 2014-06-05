@@ -2327,6 +2327,43 @@ class TestCollection(unittest.TestCase):
         for doc in c.find(compile_re=False):
             self.assertTrue(isinstance(doc['r'], Regex))
 
+    def test_find_and_modify_with_manipulator(self):
+        class AddCollectionNameManipulator(SONManipulator):
+            def will_copy(self):
+                return True
+
+            def transform_incoming(self, son, collection):
+                copy = SON(son)
+                if 'collection' in copy:
+                    del copy['collection']
+                return copy
+
+            def transform_outgoing(self, son, collection):
+                copy = SON(son)
+                copy['collection'] = collection.name
+                return copy
+
+        self.db.add_son_manipulator(AddCollectionNameManipulator())
+
+        c = self.db.test
+        c.drop()
+        c.insert({'_id': 1, 'i': 1})
+
+        # Test correct findAndModify
+        # With manipulators
+        self.assertEqual({'_id': 1, 'i': 1, 'collection': 'test'},
+                         c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}}))
+        self.assertEqual({'_id': 1, 'i': 3, 'collection': 'test'},
+                         c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
+                                           new=True))
+        # With out manipulators
+        self.assertEqual({'_id': 1, 'i': 3},
+                         c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
+                                           manipulate=False))
+        self.assertEqual({'_id': 1, 'i': 5},
+                         c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
+                                           new=True, manipulate=False))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1561,7 +1561,8 @@ class Collection(common.BaseObject):
             return res.get("results")
 
     def find_and_modify(self, query={}, update=None,
-                        upsert=False, sort=None, full_response=False, **kwargs):
+                        upsert=False, sort=None, full_response=False,
+                        manipulate=True, **kwargs):
         """Update and return an object.
 
         This is a thin wrapper around the findAndModify_ command. The
@@ -1593,6 +1594,9 @@ class Collection(common.BaseObject):
             - `new`: return updated rather than original object
               (default ``False``)
             - `fields`: see second argument to :meth:`find` (default all)
+            - `manipulate`: (optional): If True (the default), apply any
+               outgoing SON manipulators before returning. Do not works when
+               `full_response` is set to True.
             - `**kwargs`: any other options the findAndModify_ command
               supports can be passed here.
 
@@ -1658,7 +1662,10 @@ class Collection(common.BaseObject):
         if full_response:
             return out
         else:
-            return out.get('value')
+            document = out.get('value')
+            if manipulate:
+                document = self.__database._fix_outgoing(document, self)
+            return document
 
     def __iter__(self):
         return self
