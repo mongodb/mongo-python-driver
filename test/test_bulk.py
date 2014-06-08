@@ -596,6 +596,28 @@ class TestBulk(BulkTestBase):
 
         self.assertEqual(1, self.coll.find({'x': 1}).count())
 
+    def test_client_generated_upsert_id(self):
+        batch = self.coll.initialize_ordered_bulk_op()
+        batch.find({'_id': 0}).upsert().update_one({'$set': {'a': 0}})
+        batch.find({'a': 1}).upsert().replace_one({'_id': 1})
+        if not client_context.version.at_least(2, 6, 0):
+            # This case is only possible in MongoDB versions before 2.6.
+            batch.find({'_id': 3}).upsert().replace_one({'_id': 2})
+        else:
+            # This is just here to make the counts right in all cases.
+            batch.find({'_id': 2}).upsert().replace_one({'_id': 2})
+        result = batch.execute()
+        self.assertEqualResponse(
+            {'nMatched': 0,
+             'nModified': 0,
+             'nUpserted': 3,
+             'nInserted': 0,
+             'nRemoved': 0,
+             'upserted': [{'index': 0, '_id': 0},
+                          {'index': 1, '_id': 1},
+                          {'index': 2, '_id': 2}]},
+            result)
+
     def test_single_ordered_batch(self):
         batch = self.coll.initialize_ordered_bulk_op()
         batch.insert({'a': 1})
