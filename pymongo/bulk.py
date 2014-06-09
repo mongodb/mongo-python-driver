@@ -260,7 +260,7 @@ class _Bulk(object):
             if run.ops:
                 yield run
 
-    def execute_command(self, generator, write_concern):
+    def execute_command(self, generator, write_concern, check_keys=True):
         """Execute using write commands.
         """
         uuid_subtype = self.collection.uuid_subtype
@@ -283,7 +283,7 @@ class _Bulk(object):
                 cmd['writeConcern'] = write_concern
 
             results = _do_batched_write_command(self.namespace,
-                run.op_type, cmd, run.ops, True, uuid_subtype, client)
+                run.op_type, cmd, run.ops, check_keys, uuid_subtype, client)
 
             _merge_command(run, full_result, results)
             # We're supposed to continue if errors are
@@ -407,7 +407,7 @@ class _Bulk(object):
             raise BulkWriteError(full_result)
         return full_result
 
-    def execute(self, write_concern):
+    def execute(self, write_concern, check_keys=True):
         """Execute operations.
         """
         if not self.ops:
@@ -428,7 +428,7 @@ class _Bulk(object):
         if write_concern.get('w') == 0:
             self.execute_no_results(generator)
         elif client.max_wire_version > 1:
-            return self.execute_command(generator, write_concern)
+            return self.execute_command(generator, write_concern, check_keys)
         else:
             return self.execute_legacy(generator, write_concern)
 
@@ -573,7 +573,7 @@ class BulkOperationBuilder(object):
         """
         self.__bulk.add_insert(document)
 
-    def execute(self, write_concern=None):
+    def execute(self, write_concern=None, check_keys=True):
         """Execute all provided operations.
 
         :Parameters:
@@ -582,4 +582,4 @@ class BulkOperationBuilder(object):
         """
         if write_concern and not isinstance(write_concern, dict):
             raise TypeError('write_concern must be an instance of dict')
-        return self.__bulk.execute(write_concern)
+        return self.__bulk.execute(write_concern, check_keys)

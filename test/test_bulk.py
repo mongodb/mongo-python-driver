@@ -181,6 +181,21 @@ class TestBulk(BulkTestBase):
         bulk.insert({'a.b': 1})
         self.assertRaises(InvalidDocument, bulk.execute)
 
+    def test_insert_check_keys_false(self):
+        bulk = self.coll.initialize_ordered_bulk_op()
+        bulk.insert({'a.b': 1})
+        result = bulk.execute(check_keys=False)
+        self.assertEqualResponse(
+            {'nMatched': 0,
+             'nModified': 0,
+             'nUpserted': 0,
+             'nInserted': 1,
+             'nRemoved': 0,
+             'upserted': [],
+             'writeErrors': [],
+             'writeConcernErrors': []},
+            result)
+
     def test_update(self):
         self.coll.insert([{}, {}])
 

@@ -69,3 +69,4 @@ The following is a list of people who have contributed to
 - Yuchen Ying (yegle)
 - Kyle Erf (3rf)
 - Luke Lovett (lovett89)
+- Kimmo Koskinen (viesti)
