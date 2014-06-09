@@ -295,7 +295,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         self.assertEqual(client.test, Database(client, "test"))
 
     def test_auto_reconnect_exception_when_read_preference_is_secondary(self):
-        c = client_context.rs_client
+        c = MongoReplicaSetClient(pair, replicaSet=self.name)
         db = c.pymongo_test
 
         def raise_socket_error(*args, **kwargs):
