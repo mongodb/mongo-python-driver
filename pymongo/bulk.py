@@ -116,7 +116,7 @@ def _merge_legacy(run, full_result, result, index):
             # If _id is in both the update document *and* the query spec
             # the update document _id takes precedence.
             _id = op['u'].get('_id', op['q'].get('_id'))
-            doc = {u"index": run.index(index), u"_id": _id}
+            doc = {"index": run.index(index), "_id": _id}
             full_result["upserted"].append(doc)
             full_result['nUpserted'] += affected
         else:
