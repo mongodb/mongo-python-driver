@@ -32,7 +32,7 @@ import gridfs
 from bson.py3compat import u, StringIO, string_type
 from gridfs.errors import (FileExists,
                            NoFile)
-from test import client_context, unittest
+from test import client_context, unittest, host, port, IntegrationTest
 from test.utils import joinall
 
 
@@ -68,10 +68,23 @@ class JustRead(threading.Thread):
             assert data == b"hello"
 
 
-class TestGridfs(unittest.TestCase):
+class TestGridfsNoConnect(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        client = MongoClient(host, port, _connect=False)
+        cls.db = client.pymongo_test
+
+    def test_gridfs(self):
+        self.assertRaises(TypeError, gridfs.GridFS, "foo")
+        self.assertRaises(TypeError, gridfs.GridFS, self.db, 5)
+
+
+class TestGridfs(IntegrationTest):
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestGridfs, cls).setUpClass()
         cls.db = client_context.client.pymongo_test
         cls.fs = gridfs.GridFS(cls.db)
         cls.alt = gridfs.GridFS(cls.db, "alt")
@@ -81,10 +94,6 @@ class TestGridfs(unittest.TestCase):
         self.db.drop_collection("fs.chunks")
         self.db.drop_collection("alt.files")
         self.db.drop_collection("alt.chunks")
-
-    def test_gridfs(self):
-        self.assertRaises(TypeError, gridfs.GridFS, "foo")
-        self.assertRaises(TypeError, gridfs.GridFS, self.db, 5)
 
     def test_basic(self):
         oid = self.fs.put(b"hello world")
@@ -393,6 +402,7 @@ class TestGridfs(unittest.TestCase):
 
 
 class TestGridfsReplicaSet(TestReplicaSetClientBase):
+
     def test_gridfs_replica_set(self):
         rsc = self._get_client(
             w=self.w, wtimeout=5000,

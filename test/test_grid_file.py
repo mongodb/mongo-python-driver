@@ -35,13 +35,62 @@ from gridfs.errors import (NoFile,
                            UnsupportedAPI)
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
-from test import client_context, qcheck, unittest
+from test import client_context, qcheck, unittest, host, port, IntegrationTest
 
 
-class TestGridFile(unittest.TestCase):
+class TestGridFileNoConnect(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        client = MongoClient(host, port, _connect=False)
+        cls.db = client.pymongo_test
+
+    def test_grid_file(self):
+        self.assertRaises(UnsupportedAPI, GridFile)
+
+    def test_grid_in_custom_opts(self):
+        self.assertRaises(TypeError, GridIn, "foo")
+
+        a = GridIn(self.db.fs, _id=5, filename="my_file",
+                   contentType="text/html", chunkSize=1000, aliases=["foo"],
+                   metadata={"foo": 1, "bar": 2}, bar=3, baz="hello")
+
+        self.assertEqual(5, a._id)
+        self.assertEqual("my_file", a.filename)
+        self.assertEqual("my_file", a.name)
+        self.assertEqual("text/html", a.content_type)
+        self.assertEqual(1000, a.chunk_size)
+        self.assertEqual(["foo"], a.aliases)
+        self.assertEqual({"foo": 1, "bar": 2}, a.metadata)
+        self.assertEqual(3, a.bar)
+        self.assertEqual("hello", a.baz)
+        self.assertRaises(AttributeError, getattr, a, "mike")
+
+        b = GridIn(self.db.fs,
+                   content_type="text/html", chunk_size=1000, baz=100)
+        self.assertEqual("text/html", b.content_type)
+        self.assertEqual(1000, b.chunk_size)
+        self.assertEqual(100, b.baz)
+
+    def test_grid_out_cursor_options(self):
+        self.assertRaises(TypeError, GridOutCursor.__init__, self.db.fs, {},
+                          tailable=True)
+        self.assertRaises(TypeError, GridOutCursor.__init__, self.db.fs, {},
+                          fields={"filename": 1})
+
+        cursor = GridOutCursor(self.db.fs, {})
+        cursor_clone = cursor.clone()
+        self.assertEqual(cursor_clone.__dict__, cursor.__dict__)
+
+        self.assertRaises(NotImplementedError, cursor.add_option, 0)
+        self.assertRaises(NotImplementedError, cursor.remove_option, 0)
+
+
+class TestGridFile(IntegrationTest):
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestGridFile, cls).setUpClass()
         cls.db = client_context.client.pymongo_test
 
     def setUp(self):
@@ -95,9 +144,6 @@ class TestGridFile(unittest.TestCase):
 
         # test that md5 still works...
         self.assertEqual("5eb63bbbe01eeed093cb22bb8f5acdc3", g.md5)
-
-    def test_grid_file(self):
-        self.assertRaises(UnsupportedAPI, GridFile)
 
     def test_grid_in_default_opts(self):
         self.assertRaises(TypeError, GridIn, "foo")
@@ -172,30 +218,6 @@ class TestGridFile(unittest.TestCase):
         self.assertEqual(a.metadata, b.metadata)
         self.assertEqual(a.aliases, b.aliases)
         self.assertEqual(a.forty_two, b.forty_two)
-
-    def test_grid_in_custom_opts(self):
-        self.assertRaises(TypeError, GridIn, "foo")
-
-        a = GridIn(self.db.fs, _id=5, filename="my_file",
-                   contentType="text/html", chunkSize=1000, aliases=["foo"],
-                   metadata={"foo": 1, "bar": 2}, bar=3, baz="hello")
-
-        self.assertEqual(5, a._id)
-        self.assertEqual("my_file", a.filename)
-        self.assertEqual("my_file", a.name)
-        self.assertEqual("text/html", a.content_type)
-        self.assertEqual(1000, a.chunk_size)
-        self.assertEqual(["foo"], a.aliases)
-        self.assertEqual({"foo": 1, "bar": 2}, a.metadata)
-        self.assertEqual(3, a.bar)
-        self.assertEqual("hello", a.baz)
-        self.assertRaises(AttributeError, getattr, a, "mike")
-
-        b = GridIn(self.db.fs,
-                   content_type="text/html", chunk_size=1000, baz=100)
-        self.assertEqual("text/html", b.content_type)
-        self.assertEqual(1000, b.chunk_size)
-        self.assertEqual(100, b.baz)
 
     def test_grid_out_default_opts(self):
         self.assertRaises(TypeError, GridOut, "foo")
@@ -583,19 +605,6 @@ Bye"""))
         infile = GridIn(fs, file_id=-1, chunk_size=1)
         self.assertRaises(ConnectionFailure, infile.write, b'data goes here')
         self.assertRaises(ConnectionFailure, infile.close)
-
-    def test_grid_out_cursor_options(self):
-        self.assertRaises(TypeError, GridOutCursor.__init__, self.db.fs, {},
-                                                    tailable=True)
-        self.assertRaises(TypeError, GridOutCursor.__init__, self.db.fs, {},
-                                                    fields={"filename":1})
-
-        cursor = GridOutCursor(self.db.fs, {})
-        cursor_clone = cursor.clone()
-        self.assertEqual(cursor_clone.__dict__, cursor.__dict__)
-
-        self.assertRaises(NotImplementedError, cursor.add_option, 0)
-        self.assertRaises(NotImplementedError, cursor.remove_option, 0)
 
 
 if __name__ == "__main__":

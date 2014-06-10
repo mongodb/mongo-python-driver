@@ -29,6 +29,11 @@ from pymongo.errors import ConfigurationError, OperationFailure
 from test import client_context, pair, unittest
 
 
+@client_context.require_connection
+def setUpModule():
+    pass
+
+
 class TestCommon(unittest.TestCase):
 
     def test_uuid_subtype(self):

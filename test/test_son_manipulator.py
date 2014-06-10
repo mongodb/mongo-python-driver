@@ -19,18 +19,20 @@ import sys
 sys.path[0:0] = [""]
 
 from bson.son import SON
+from pymongo import MongoClient
 from pymongo.son_manipulator import (NamespaceInjector,
                                      ObjectIdInjector,
                                      ObjectIdShuffler,
                                      SONManipulator)
-from test import client_context, qcheck, unittest
+from test import qcheck, unittest, host, port
 
 
 class TestSONManipulator(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.db = client_context.client.pymongo_test
+        client = MongoClient(host, port, _connect=False)
+        cls.db = client.pymongo_test
 
     def test_basic(self):
         manip = SONManipulator()

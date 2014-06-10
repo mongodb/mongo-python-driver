@@ -53,6 +53,7 @@ class TestReplicaSetClientAgainstStandalone(unittest.TestCase):
     """This is a funny beast -- we want to run tests for MongoReplicaSetClient
     but only if the database at DB_IP and DB_PORT is a standalone.
     """
+    @client_context.require_connection
     def setUp(self):
         if client_context.setname:
             raise SkipTest("Connected to a replica set, not a standalone mongod")
@@ -1073,6 +1074,8 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
 
 
 class TestReplicaSetWireVersion(unittest.TestCase):
+
+    @client_context.require_connection
     def test_wire_version(self):
         c = MockReplicaSetClient(
             standalones=[],
@@ -1142,6 +1145,8 @@ class TestReplicaSetClientLazyConnectBadSeeds(
 
 
 class TestReplicaSetClientInternalIPs(unittest.TestCase):
+
+    @client_context.require_connection
     def test_connect_with_internal_ips(self):
         # Client is passed an IP it can reach, 'a:1', but the RS config
         # only contains unreachable IPs like 'internal-ip'. PYTHON-608.
@@ -1157,6 +1162,8 @@ class TestReplicaSetClientInternalIPs(unittest.TestCase):
 
 
 class TestReplicaSetClientMaxWriteBatchSize(unittest.TestCase):
+
+    @client_context.require_connection
     def test_max_write_batch_size(self):
         c = MockReplicaSetClient(
             standalones=[],

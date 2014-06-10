@@ -33,16 +33,12 @@ from bson.son import RE_TYPE
 from bson.timestamp import Timestamp
 from bson.tz_util import utc
 
-from test import client_context, SkipTest, unittest
+from test import client_context, SkipTest, unittest, IntegrationTest
 
 PY3 = sys.version_info[0] == 3
 
 
 class TestJsonUtil(unittest.TestCase):
-
-    @classmethod
-    def setUpClass(cls):
-        cls.db = client_context.client.pymongo_test
 
     def setUp(self):
         if not json_util.json_lib:
@@ -205,6 +201,18 @@ class TestJsonUtil(unittest.TestCase):
 
         # Check order.
         self.assertEqual('{"$code": "return z", "$scope": {"z": 2}}', res)
+
+
+class TestJsonUtilRoundtrip(IntegrationTest):
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestJsonUtilRoundtrip, cls).setUpClass()
+        cls.db = client_context.client.pymongo_test
+
+    def setUp(self):
+        if not json_util.json_lib:
+            raise SkipTest("No json or simplejson module")
 
     def test_cursor(self):
         db = self.db

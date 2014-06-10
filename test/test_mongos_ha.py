@@ -20,8 +20,13 @@ import threading
 sys.path[0:0] = [""]
 
 from pymongo.errors import AutoReconnect
-from test import unittest
+from test import unittest, client_context
 from test.pymongo_mocks import MockClient
+
+
+@client_context.require_connection
+def setUpModule():
+    pass
 
 
 class FindOne(threading.Thread):

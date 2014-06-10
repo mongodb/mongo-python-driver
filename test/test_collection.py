@@ -36,6 +36,7 @@ from bson.son import SON, RE_TYPE
 from pymongo import (ASCENDING, DESCENDING, GEO2D,
                      GEOHAYSTACK, GEOSPHERE, HASHED, TEXT)
 from pymongo import message as message_module
+from pymongo import MongoClient
 from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
 from pymongo.database import Database
@@ -48,25 +49,18 @@ from pymongo.errors import (DocumentTooLarge,
                             InvalidOperation,
                             OperationFailure,
                             WTimeoutError)
-from test.test_client import get_client
+from test.test_client import get_client, IntegrationTest
 from test.utils import (is_mongos, joinall, enable_text_search, get_pool,
                         oid_generated_on_client)
-from test import (client_context,
-                  qcheck,
-                  SkipTest,
-                  unittest,
-                  version)
+from test import client_context, host, port, qcheck, unittest
 
 
-class TestCollection(unittest.TestCase):
+class TestCollectionNoConnect(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.db = client_context.client.pymongo_test
-        cls.w = client_context.w
-
-    def tearDown(self):
-        self.db.drop_collection("test_large_limit")
+        client = MongoClient(host, port, _connect=False)
+        cls.db = client.pymongo_test
 
     def test_collection(self):
         self.assertRaises(TypeError, Collection, self.db, 5)
@@ -92,6 +86,23 @@ class TestCollection(unittest.TestCase):
         self.assertEqual(self.db.test.mike, self.db["test.mike"])
         self.assertEqual(self.db.test["mike"], self.db["test.mike"])
 
+    def test_iteration(self):
+        self.assertRaises(TypeError, next, self.db)
+
+
+class TestCollection(IntegrationTest):
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestCollection, cls).setUpClass()
+        cls.db = client_context.client.pymongo_test
+        cls.w = client_context.w
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.db.drop_collection("test_large_limit")
+
+    def test_drop_nonexistent_collection(self):
         self.db.drop_collection('test')
         self.assertFalse('test' in self.db.collection_names())
 
@@ -739,14 +750,6 @@ class TestCollection(unittest.TestCase):
         for x in db.test.find():
             self.assertEqual(x["hello"], u("world"))
             self.assertTrue("_id" in x)
-
-    def test_iteration(self):
-        db = self.db
-
-        def iterate():
-            [a for a in db.test]
-
-        self.assertRaises(TypeError, iterate)
 
     def test_invalid_key_names(self):
         db = self.db

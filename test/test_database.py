@@ -28,7 +28,8 @@ from bson.dbref import DBRef
 from bson.objectid import ObjectId
 from bson.py3compat import u, string_type, text_type, PY3
 from bson.son import SON, RE_TYPE
-from pymongo import (ALL,
+from pymongo import (MongoClient,
+                     ALL,
                      auth,
                      OFF,
                      SLOW_ONLY,
@@ -45,7 +46,7 @@ from pymongo.son_manipulator import (AutoReference,
                                      NamespaceInjector,
                                      SONManipulator,
                                      ObjectIdShuffler)
-from test import client_context, SkipTest, unittest
+from test import client_context, SkipTest, unittest, host, port, IntegrationTest
 from test.utils import remove_all_users, server_started_with_auth
 from test.test_client import get_client
 
@@ -53,11 +54,11 @@ if PY3:
     long = int
 
 
-class TestDatabase(unittest.TestCase):
+class TestDatabaseNoConnect(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.client = client_context.client
+        cls.client = MongoClient(host, port, _connect=False)
 
     def test_name(self):
         self.assertRaises(TypeError, Database, self.client, 4)
@@ -77,17 +78,45 @@ class TestDatabase(unittest.TestCase):
         self.assertFalse(Database(self.client, "test") !=
                          Database(self.client, "test"))
 
-    def test_repr(self):
-        self.assertEqual(repr(Database(self.client, "pymongo_test")),
-                         "Database(%r, %s)" % (self.client,
-                                               repr(u("pymongo_test"))))
-
     def test_get_coll(self):
         db = Database(self.client, "pymongo_test")
         self.assertEqual(db.test, db["test"])
         self.assertEqual(db.test, Collection(db, "test"))
         self.assertNotEqual(db.test, Collection(db, "mike"))
         self.assertEqual(db.test.mike, db["test.mike"])
+
+    def test_iteration(self):
+        self.assertRaises(TypeError, next, self.client.pymongo_test)
+
+    def test_manipulator_properties(self):
+        db = self.client.foo
+        self.assertEqual([], db.incoming_manipulators)
+        self.assertEqual([], db.incoming_copying_manipulators)
+        self.assertEqual([], db.outgoing_manipulators)
+        self.assertEqual([], db.outgoing_copying_manipulators)
+        db.add_son_manipulator(AutoReference(db))
+        db.add_son_manipulator(NamespaceInjector())
+        db.add_son_manipulator(ObjectIdShuffler())
+        self.assertEqual(1, len(db.incoming_manipulators))
+        self.assertEqual(db.incoming_manipulators, ['NamespaceInjector'])
+        self.assertEqual(2, len(db.incoming_copying_manipulators))
+        for name in db.incoming_copying_manipulators:
+            self.assertTrue(name in ('ObjectIdShuffler', 'AutoReference'))
+        self.assertEqual([], db.outgoing_manipulators)
+        self.assertEqual(['AutoReference'], db.outgoing_copying_manipulators)
+
+
+class TestDatabase(IntegrationTest):
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestDatabase, cls).setUpClass()
+        cls.client = client_context.client
+
+    def test_repr(self):
+        self.assertEqual(repr(Database(self.client, "pymongo_test")),
+                         "Database(%r, %s)" % (self.client,
+                                               repr(u("pymongo_test"))))
 
     def test_create_collection(self):
         db = Database(self.client, "pymongo_test")
@@ -243,14 +272,6 @@ class TestDatabase(unittest.TestCase):
             self.assertTrue(isinstance(info[0]["info"], string_type))
             self.assertTrue(isinstance(info[0]["millis"], float))
         self.assertTrue(isinstance(info[0]["ts"], datetime.datetime))
-
-    def test_iteration(self):
-        db = self.client.pymongo_test
-
-        def iterate():
-            [a for a in db]
-
-        self.assertRaises(TypeError, iterate)
 
     @client_context.require_no_mongos
     def test_errors(self):
@@ -868,23 +889,6 @@ class TestDatabase(unittest.TestCase):
 
         del db.system_js.foo
         self.assertEqual(["bar"], db.system_js.list())
-
-    def test_manipulator_properties(self):
-        db = self.client.foo
-        self.assertEqual([], db.incoming_manipulators)
-        self.assertEqual([], db.incoming_copying_manipulators)
-        self.assertEqual([], db.outgoing_manipulators)
-        self.assertEqual([], db.outgoing_copying_manipulators)
-        db.add_son_manipulator(AutoReference(db))
-        db.add_son_manipulator(NamespaceInjector())
-        db.add_son_manipulator(ObjectIdShuffler())
-        self.assertEqual(1, len(db.incoming_manipulators))
-        self.assertEqual(db.incoming_manipulators, ['NamespaceInjector'])
-        self.assertEqual(2, len(db.incoming_copying_manipulators))
-        for name in db.incoming_copying_manipulators:
-            self.assertTrue(name in ('ObjectIdShuffler', 'AutoReference'))
-        self.assertEqual([], db.outgoing_manipulators)
-        self.assertEqual(['AutoReference'], db.outgoing_copying_manipulators)
 
     def test_command_response_without_ok(self):
         # Sometimes (SERVER-10891) the server's response to a badly-formatted

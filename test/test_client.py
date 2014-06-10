@@ -36,7 +36,13 @@ from pymongo.errors import (AutoReconnect,
                             InvalidName,
                             OperationFailure,
                             PyMongoError)
-from test import client_context, host, pair, port, SkipTest, unittest
+from test import (client_context,
+                  host,
+                  pair,
+                  port,
+                  SkipTest,
+                  unittest,
+                  IntegrationTest)
 from test.pymongo_mocks import MockClient
 from test.utils import (assertRaisesExactly,
                         delay,
@@ -53,10 +59,12 @@ def get_client(*args, **kwargs):
     return MongoClient(host, port, *args, **kwargs)
 
 
-class TestClient(unittest.TestCase, TestRequestMixin):
+class TestClientNoConnect(unittest.TestCase):
+    """MongoClient unit tests that don't require connecting to MongoDB."""
+
     @classmethod
     def setUpClass(cls):
-        cls.client = client_context.client
+        cls.client = MongoClient(host, port, _connect=False)
 
     def test_types(self):
         self.assertRaises(TypeError, MongoClient, 1)
@@ -66,6 +74,50 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         self.assertRaises(TypeError, MongoClient, "localhost", [])
 
         self.assertRaises(ConfigurationError, MongoClient, [])
+
+    def test_get_db(self):
+        def make_db(base, name):
+            return base[name]
+
+        self.assertRaises(InvalidName, make_db, self.client, "")
+        self.assertRaises(InvalidName, make_db, self.client, "te$t")
+        self.assertRaises(InvalidName, make_db, self.client, "te.t")
+        self.assertRaises(InvalidName, make_db, self.client, "te\\t")
+        self.assertRaises(InvalidName, make_db, self.client, "te/t")
+        self.assertRaises(InvalidName, make_db, self.client, "te st")
+
+        self.assertTrue(isinstance(self.client.test, Database))
+        self.assertEqual(self.client.test, self.client["test"])
+        self.assertEqual(self.client.test, Database(self.client, "test"))
+
+    def test_iteration(self):
+        def iterate():
+            [a for a in self.client]
+
+        self.assertRaises(TypeError, iterate)
+
+    def test_get_default_database(self):
+        c = MongoClient("mongodb://%s:%d/foo" % (host, port), _connect=False)
+        self.assertEqual(Database(c, 'foo'), c.get_default_database())
+
+    def test_get_default_database_error(self):
+        # URI with no database.
+        c = MongoClient("mongodb://%s:%d/" % (host, port), _connect=False)
+        self.assertRaises(ConfigurationError, c.get_default_database)
+
+    def test_get_default_database_with_authsource(self):
+        # Ensure we distinguish database name from authSource.
+        uri = "mongodb://%s:%d/foo?authSource=src" % (host, port)
+        c = MongoClient(uri, _connect=False)
+        self.assertEqual(Database(c, 'foo'), c.get_default_database())
+
+
+class TestClient(IntegrationTest, TestRequestMixin):
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestClient, cls).setUpClass()
+        cls.client = client_context.client
 
     def test_constants(self):
         MongoClient.HOST = host
@@ -165,21 +217,6 @@ class TestClient(unittest.TestCase, TestRequestMixin):
             self.assertTrue(
                 MongoClient(
                     host, port, use_greenlets=True).use_greenlets)
-
-    def test_get_db(self):
-        def make_db(base, name):
-            return base[name]
-
-        self.assertRaises(InvalidName, make_db, self.client, "")
-        self.assertRaises(InvalidName, make_db, self.client, "te$t")
-        self.assertRaises(InvalidName, make_db, self.client, "te.t")
-        self.assertRaises(InvalidName, make_db, self.client, "te\\t")
-        self.assertRaises(InvalidName, make_db, self.client, "te/t")
-        self.assertRaises(InvalidName, make_db, self.client, "te st")
-
-        self.assertTrue(isinstance(self.client.test, Database))
-        self.assertEqual(self.client.test, self.client["test"])
-        self.assertEqual(self.client.test, Database(self.client, "test"))
 
     def test_database_names(self):
         self.client.pymongo_test.test.save({"dummy": u("object")})
@@ -283,12 +320,6 @@ class TestClient(unittest.TestCase, TestRequestMixin):
                 c.admin.logout()
                 c.disconnect()
 
-    def test_iteration(self):
-        def iterate():
-            [a for a in self.client]
-
-        self.assertRaises(TypeError, iterate)
-
     def test_disconnect(self):
         coll = self.client.pymongo_test.bar
 
@@ -305,21 +336,6 @@ class TestClient(unittest.TestCase, TestRequestMixin):
     def test_from_uri(self):
         self.assertEqual(self.client,
                          MongoClient("mongodb://%s:%d" % (host, port)))
-
-    def test_get_default_database(self):
-        c = MongoClient("mongodb://%s:%d/foo" % (host, port), _connect=False)
-        self.assertEqual(Database(c, 'foo'), c.get_default_database())
-
-    def test_get_default_database_error(self):
-        # URI with no database.
-        c = MongoClient("mongodb://%s:%d/" % (host, port), _connect=False)
-        self.assertRaises(ConfigurationError, c.get_default_database)
-
-    def test_get_default_database_with_authsource(self):
-        # Ensure we distinguish database name from authSource.
-        uri = "mongodb://%s:%d/foo?authSource=src" % (host, port)
-        c = MongoClient(uri, _connect=False)
-        self.assertEqual(Database(c, 'foo'), c.get_default_database())
 
     @client_context.require_auth
     def test_auth_from_uri(self):
@@ -933,12 +949,14 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         client.pymongo_test.test.remove(w=0)
 
 
-class TestClientLazyConnect(unittest.TestCase, _TestLazyConnectMixin):
+class TestClientLazyConnect(IntegrationTest, _TestLazyConnectMixin):
+
     def _get_client(self, **kwargs):
         return get_client(**kwargs)
 
 
-class TestClientLazyConnectBadSeeds(unittest.TestCase):
+class TestClientLazyConnectBadSeeds(IntegrationTest):
+
     def _get_client(self, **kwargs):
         kwargs.setdefault('connectTimeoutMS', 100)
 
@@ -963,7 +981,7 @@ class TestClientLazyConnectBadSeeds(unittest.TestCase):
 
 
 class TestClientLazyConnectOneGoodSeed(
-        unittest.TestCase,
+        IntegrationTest,
         _TestLazyConnectMixin):
 
     def _get_client(self, **kwargs):
@@ -992,7 +1010,8 @@ class TestClientLazyConnectOneGoodSeed(
             self._get_client, use_greenlets=False)
 
 
-class TestMongoClientFailover(unittest.TestCase):
+class TestMongoClientFailover(IntegrationTest):
+
     def test_discover_primary(self):
         c = MockClient(
             standalones=[],

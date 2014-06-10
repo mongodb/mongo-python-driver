@@ -20,8 +20,13 @@ sys.path[0:0] = [""]
 
 from pymongo.errors import ConfigurationError, ConnectionFailure
 from pymongo import ReadPreference
-from test import unittest
+from test import unittest, client_context
 from test.pymongo_mocks import MockClient, MockReplicaSetClient
+
+
+@client_context.require_connection
+def setUpModule():
+    pass
 
 
 class TestSecondaryBecomesStandalone(unittest.TestCase):

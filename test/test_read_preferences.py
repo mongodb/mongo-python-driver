@@ -32,11 +32,18 @@ from pymongo.errors import ConfigurationError
 
 from test.test_replica_set_client import TestReplicaSetClientBase
 from test.test_client import get_client
-from test import client_context, host, port, SkipTest, unittest, utils
+from test import (client_context,
+                  host,
+                  port,
+                  SkipTest,
+                  unittest,
+                  utils,
+                  IntegrationTest)
 from test.version import Version
 
 
 class TestReadPreferencesBase(TestReplicaSetClientBase):
+
     def setUp(self):
         super(TestReadPreferencesBase, self).setUp()
         # Insert some data so we can use cursors in read_from_which_host
@@ -194,6 +201,7 @@ class ReadPrefTester(MongoReplicaSetClient):
 
 
 class TestCommandAndReadPreference(TestReplicaSetClientBase):
+
     def setUp(self):
         super(TestCommandAndReadPreference, self).setUp()
 
@@ -505,7 +513,8 @@ class TestMovingAverage(unittest.TestCase):
         self.assertEqual((30 - 100 + 17 + 43 - 1111) / 5., avg7.get())
 
 
-class TestMongosConnection(unittest.TestCase):
+class TestMongosConnection(IntegrationTest):
+
     def test_mongos_connection(self):
         c = get_client()
         is_mongos = utils.is_mongos(c)

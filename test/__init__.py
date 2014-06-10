@@ -50,11 +50,22 @@ class ClientContext(object):
 
     def __init__(self):
         """Create a client and grab essential information from the server."""
+        self.connected = False
+        self.ismaster = {}
+        self.w = None
+        self.setname = None
+        self.rs_client = None
+        self.cmd_line = None
+        self.version = Version(-1)  # Needs to be comparable with Version
+        self.auth_enabled = False
+        self.test_commands_enabled = False
+        self.is_mongos = False
         try:
             self.client = pymongo.MongoClient(host, port)
         except pymongo.errors.ConnectionFailure:
             self.client = None
         else:
+            self.connected = True
             self.ismaster = self.client.admin.command('ismaster')
             self.w = len(self.ismaster.get("hosts", [])) or 1
             self.setname = self.ismaster.get('setName', '')
@@ -91,6 +102,9 @@ class ClientContext(object):
         def make_wrapper(f):
             @wraps(f)
             def wrap(*args, **kwargs):
+                # Always raise SkipTest if we can't connect to MongoDB
+                if not self.connected:
+                    raise SkipTest("Cannot connect to MongoDB on %s" % pair)
                 if condition:
                     return f(*args, **kwargs)
                 raise SkipTest(msg)
@@ -101,6 +115,12 @@ class ClientContext(object):
                 return make_wrapper(f)
             return decorate
         return make_wrapper(func)
+
+    def require_connection(self, func):
+        """Run a test only if we can connect to MongoDB."""
+        return self._require(self.connected,
+                             "Cannot connect to MongoDB on %s" % pair,
+                             func=func)
 
     def require_version_min(self, *ver):
         """Run a test only if the server version is at least ``version``."""
@@ -152,6 +172,15 @@ class ClientContext(object):
 
 # Reusable client context
 client_context = ClientContext()
+
+
+class IntegrationTest(unittest.TestCase):
+    """Base class for TestCases that need a connection to MongoDB to pass."""
+
+    @classmethod
+    @client_context.require_connection
+    def setUpClass(cls):
+        pass
 
 
 def setup():

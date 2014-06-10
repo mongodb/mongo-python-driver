@@ -21,11 +21,16 @@ sys.path[0:0] = [""]
 
 from bson.py3compat import thread
 
-from test import host, port, SkipTest, unittest
+from test import host, port, SkipTest, unittest, client_context
 from test.test_pooling_base import (
     _TestPooling, _TestMaxPoolSize, _TestMaxOpenSockets,
     _TestPoolSocketSharing, _TestWaitQueueMultiple, one)
 from test.utils import get_pool
+
+
+@client_context.require_connection
+def setUpModule():
+    pass
 
 
 class TestPoolingThreads(_TestPooling, unittest.TestCase):

@@ -25,6 +25,11 @@ from test import client_context, unittest
 from test.utils import oid_generated_on_client, remove_all_users
 
 
+@client_context.require_connection
+def setUpModule():
+    pass
+
+
 class BulkTestBase(unittest.TestCase):
 
     def setUp(self):

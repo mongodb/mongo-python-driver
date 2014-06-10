@@ -20,11 +20,16 @@ import time
 
 from pymongo import pool
 from pymongo.errors import ConfigurationError
-from test import host, port, SkipTest, unittest
+from test import host, port, SkipTest, unittest, client_context
 from test.utils import looplet
 from test.test_pooling_base import (
     _TestPooling, _TestMaxPoolSize, _TestMaxOpenSockets,
     _TestPoolSocketSharing, _TestWaitQueueMultiple, has_gevent)
+
+
+@client_context.require_connection
+def setUpModule():
+    pass
 
 
 class TestPoolingGevent(_TestPooling, unittest.TestCase):

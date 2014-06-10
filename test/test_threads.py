@@ -17,13 +17,18 @@
 import threading
 import traceback
 
-from test import SkipTest, unittest
+from test import SkipTest, unittest, client_context
 from test.utils import (joinall, remove_all_users,
                         server_started_with_auth, RendezvousThread)
 from test.test_client import get_client
 from test.utils import get_pool
 from pymongo.pool import SocketInfo, _closed
 from pymongo.errors import AutoReconnect, OperationFailure
+
+
+@client_context.require_connection
+def setUpModule():
+    pass
 
 
 class AutoAuthenticateThreads(threading.Thread):

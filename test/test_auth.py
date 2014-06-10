@@ -62,7 +62,8 @@ class AutoAuthenticateThread(threading.Thread):
 
 class TestGSSAPI(unittest.TestCase):
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         if not HAVE_KERBEROS:
             raise SkipTest('Kerberos module not available.')
         if not GSSAPI_HOST or not PRINCIPAL:
@@ -158,7 +159,8 @@ class TestGSSAPI(unittest.TestCase):
 
 class TestSASL(unittest.TestCase):
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         if not SASL_HOST or not SASL_USER or not SASL_PASS:
             raise SkipTest('Must set SASL_HOST, '
                            'SASL_USER, and SASL_PASS to test SASL')
