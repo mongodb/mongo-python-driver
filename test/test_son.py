@@ -66,6 +66,15 @@ class TestSON(unittest.TestCase):
                                      ('mike', 'awesome'),
                                      ('hello', 'world'))))
 
+        # Embedded SON.
+        d4 = SON([('blah', {'foo': SON()})])
+        self.assertEqual(d4, {'blah': {'foo': {}}})
+        self.assertEqual(d4, {'blah': {'foo': SON()}})
+        self.assertNotEqual(d4, {'blah': {'foo': []}})
+
+        # Original data unaffected.
+        self.assertEqual(SON, d4['blah']['foo'].__class__)
+
     def test_to_dict(self):
         a1 = SON()
         b2 = SON([("blah", SON())])
@@ -79,6 +88,9 @@ class TestSON(unittest.TestCase):
         self.assertEqual(dict, b2.to_dict()["blah"].__class__)
         self.assertEqual(dict, c3.to_dict()["blah"][0].__class__)
         self.assertEqual(dict, d4.to_dict()["blah"]["foo"].__class__)
+
+        # Original data unaffected.
+        self.assertEqual(SON, d4['blah']['foo'].__class__)
 
     def test_pickle(self):
 
