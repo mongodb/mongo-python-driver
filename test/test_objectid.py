@@ -176,6 +176,7 @@ class TestObjectId(unittest.TestCase):
         self.assertEqual(oid_1_9, oid_1_10)
 
     def test_is_valid(self):
+        self.assertFalse(ObjectId.is_valid(None))
         self.assertFalse(ObjectId.is_valid(4))
         self.assertFalse(ObjectId.is_valid(175.0))
         self.assertFalse(ObjectId.is_valid({"test": 4}))
