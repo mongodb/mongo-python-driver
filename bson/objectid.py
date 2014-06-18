@@ -140,6 +140,9 @@ class ObjectId(object):
 
         .. versionadded:: 2.3
         """
+        if not oid:
+            return False
+
         try:
             ObjectId(oid)
             return True
