@@ -226,12 +226,12 @@ class SON(dict):
         def transform_value(value):
             if isinstance(value, list):
                 return [transform_value(v) for v in value]
-            if isinstance(value, SON):
-                value = dict(value)
-            if isinstance(value, dict):
-                for k, v in value.iteritems():
-                    value[k] = transform_value(v)
-            return value
+            elif isinstance(value, dict):
+                return dict([
+                    (k, transform_value(v))
+                    for k, v in value.iteritems()])
+            else:
+                return value
 
         return transform_value(dict(self))
 
