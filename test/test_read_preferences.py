@@ -309,11 +309,11 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
 
         # Distinct
         self._test_fn(True, lambda: self.c.pymongo_test.command(
-            'distinct', 'test', key={'a': 1}))
+            'distinct', 'test', key='a'))
         self._test_fn(True, lambda: self.c.pymongo_test.command(
-            'distinct', 'test', key={'a': 1}, query={'a': 1}))
+            'distinct', 'test', key='a', query={'a': 1}))
         self._test_fn(True, lambda: self.c.pymongo_test.command(SON([
-            ('distinct', 'test'), ('key', {'a': 1}), ('query', {'a': 1})])))
+            ('distinct', 'test'), ('key', 'a'), ('query', {'a': 1})])))
 
         # Geo stuff. Make sure a 2d index is created and replicated
         self.c.pymongo_test.system.indexes.insert({
