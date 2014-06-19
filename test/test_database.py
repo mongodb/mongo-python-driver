@@ -43,6 +43,7 @@ from pymongo.errors import (CollectionInvalid,
                             OperationFailure)
 from pymongo.son_manipulator import (AutoReference,
                                      NamespaceInjector,
+                                     SONManipulator,
                                      ObjectIdShuffler)
 from test import client_context, SkipTest, unittest
 from test.utils import remove_all_users, server_started_with_auth
@@ -937,6 +938,29 @@ class TestDatabase(unittest.TestCase):
             self.client.admin.command("configureFailPoint",
                                       "maxTimeAlwaysTimeOut",
                                       mode="off")
+
+    def test_object_to_dict_transformer(self):
+        # PYTHON-709: Some users rely on their custom SONManipulators to run
+        # before any other checks, so they can insert non-dict objects and
+        # have them dictified before the _id is inserted or any other
+        # processing.
+        class Thing(object):
+            def __init__(self, value):
+                self.value = value
+
+        class ThingTransformer(SONManipulator):
+            def transform_incoming(self, thing, collection):
+                return {'value': thing.value}
+
+        db = self.client.foo
+        db.add_son_manipulator(ThingTransformer())
+        t = Thing('value')
+
+        db.test.remove()
+        db.test.insert([t])
+        out = db.test.find_one()
+        self.assertEqual('value', out.get('value'))
+
 
 
 if __name__ == "__main__":

@@ -242,6 +242,16 @@ class Database(common.BaseObject):
 
         return Collection(self, name, **opts)
 
+    def _apply_incoming_manipulators(self, son, collection):
+        for manipulator in self.__incoming_manipulators:
+            son = manipulator.transform_incoming(son, collection)
+        return son
+
+    def _apply_incoming_copying_manipulators(self, son, collection):
+        for manipulator in self.__incoming_copying_manipulators:
+            son = manipulator.transform_incoming(son, collection)
+        return son
+
     def _fix_incoming(self, son, collection):
         """Apply manipulators to an incoming SON object before it gets stored.
 
@@ -249,10 +259,8 @@ class Database(common.BaseObject):
           - `son`: the son object going into the database
           - `collection`: the collection the son object is being saved in
         """
-        for manipulator in self.__incoming_manipulators:
-            son = manipulator.transform_incoming(son, collection)
-        for manipulator in self.__incoming_copying_manipulators:
-            son = manipulator.transform_incoming(son, collection)
+        son = self._apply_incoming_manipulators(son, collection)
+        son = self._apply_incoming_copying_manipulators(son, collection)
         return son
 
     def _fix_outgoing(self, son, collection):
