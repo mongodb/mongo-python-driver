@@ -790,17 +790,20 @@ class Database(common.BaseObject):
         try:
             uinfo = self.command("usersInfo", name,
                                  read_preference=ReadPreference.PRIMARY)
+            self._create_or_update_user(
+                (not uinfo["users"]), name, password, read_only, **kwargs)
         except OperationFailure, exc:
             # MongoDB >= 2.5.3 requires the use of commands to manage
             # users.
             if exc.code in common.COMMAND_NOT_FOUND_CODES:
                 self._legacy_add_user(name, password, read_only, **kwargs)
-                return
-            raise
-
-        # Create the user if not found in uinfo, otherwise update one.
-        self._create_or_update_user(
-            (not uinfo["users"]), name, password, read_only, **kwargs)
+            # Unauthorized. MongoDB >= 2.7.1 has a narrow localhost exception,
+            # and we must add a user before sending commands.
+            elif exc.code == 13:
+                self._create_or_update_user(
+                    True, name, password, read_only, **kwargs)
+            else:
+                raise
 
     def remove_user(self, name):
         """Remove user `name` from this :class:`Database`.
