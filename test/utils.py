@@ -453,7 +453,7 @@ def lazy_client_trial(reset, target, test, get_client, use_greenlets):
     # Make concurrency bugs more likely to manifest.
     interval = None
     if not sys.platform.startswith('java'):
-        if sys.version_info >= (3, 2):
+        if hasattr(sys, 'getswitchinterval'):
             interval = sys.getswitchinterval()
             sys.setswitchinterval(1e-6)
         else:
@@ -472,7 +472,7 @@ def lazy_client_trial(reset, target, test, get_client, use_greenlets):
 
     finally:
         if not sys.platform.startswith('java'):
-            if sys.version_info >= (3, 2):
+            if hasattr(sys, 'setswitchinterval'):
                 sys.setswitchinterval(interval)
             else:
                 sys.setcheckinterval(interval)
