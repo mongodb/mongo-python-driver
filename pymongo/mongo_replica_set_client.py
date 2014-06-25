@@ -62,8 +62,14 @@ from pymongo.errors import (AutoReconnect,
                             DuplicateKeyError,
                             OperationFailure,
                             InvalidOperation)
-from pymongo.read_preferences import ReadPreference
 from pymongo.thread_util import DummyLock
+
+if common.HAS_SSL:
+    import ssl
+    try:
+        from ssl import SSLContext
+    except ImportError:
+        from pymongo.ssl_context import SSLContext
 
 EMPTY = b""
 MAX_RETRY = 3
@@ -645,34 +651,43 @@ class MongoReplicaSetClient(common.BaseObject):
         self.__conn_timeout = self.__opts.get('connecttimeoutms')
         self.__wait_queue_timeout = self.__opts.get('waitqueuetimeoutms')
         self.__wait_queue_multiple = self.__opts.get('waitqueuemultiple')
-        self.__use_ssl = self.__opts.get('ssl', None)
-        self.__ssl_keyfile = self.__opts.get('ssl_keyfile', None)
-        self.__ssl_certfile = self.__opts.get('ssl_certfile', None)
-        self.__ssl_cert_reqs = self.__opts.get('ssl_cert_reqs', None)
-        self.__ssl_ca_certs = self.__opts.get('ssl_ca_certs', None)
+
+        self.__ssl_ctx = None
+        use_ssl = self.__opts.get('ssl', None)
+        keyfile = self.__opts.get('ssl_keyfile', None)
+        certfile = self.__opts.get('ssl_certfile', None)
+        cert_reqs = self.__opts.get('ssl_cert_reqs', None)
+        ca_certs = self.__opts.get('ssl_ca_certs', None)
 
         ssl_kwarg_keys = [k for k in kwargs if k.startswith('ssl_')]
-        if self.__use_ssl is False and ssl_kwarg_keys:
+        if use_ssl is False and ssl_kwarg_keys:
             raise ConfigurationError("ssl has not been enabled but the "
                                      "following ssl parameters have been set: "
                                      "%s. Please set `ssl=True` or remove."
                                      % ', '.join(ssl_kwarg_keys))
 
-        if self.__ssl_cert_reqs and not self.__ssl_ca_certs:
+        if cert_reqs and not ca_certs:
             raise ConfigurationError("If `ssl_cert_reqs` is not "
                                      "`ssl.CERT_NONE` then you must "
                                      "include `ssl_ca_certs` to be able "
                                      "to validate the server.")
 
-        if ssl_kwarg_keys and self.__use_ssl is None:
+        if ssl_kwarg_keys and use_ssl is None:
             # ssl options imply ssl = True
-            self.__use_ssl = True
+            use_ssl = True
 
-        if self.__use_ssl and not common.HAS_SSL:
-            raise ConfigurationError("The ssl module is not available. If you "
-                                     "are using a python version previous to "
-                                     "2.6 you must install the ssl package "
-                                     "from PyPI.")
+        if use_ssl and not common.HAS_SSL:
+            raise ConfigurationError("The ssl module is not available.")
+
+        if use_ssl is True:
+            ctx = SSLContext(ssl.PROTOCOL_SSLv23)
+            if certfile is not None:
+                ctx.load_cert_chain(certfile, keyfile)
+            if ca_certs is not None:
+                ctx.load_verify_locations(ca_certs)
+            if cert_reqs is not None:
+                ctx.verify_mode = cert_reqs
+            self.__ssl_ctx = ctx
 
         super(MongoReplicaSetClient, self).__init__(**self.__opts)
 
@@ -1037,14 +1052,10 @@ class MongoReplicaSetClient(common.BaseObject):
             self.__max_pool_size,
             self.__net_timeout,
             self.__conn_timeout,
-            self.__use_ssl,
-            wait_queue_timeout=self.__wait_queue_timeout,
-            wait_queue_multiple=self.__wait_queue_multiple,
+            self.__ssl_ctx,
             use_greenlets=self.__use_greenlets,
-            ssl_keyfile=self.__ssl_keyfile,
-            ssl_certfile=self.__ssl_certfile,
-            ssl_cert_reqs=self.__ssl_cert_reqs,
-            ssl_ca_certs=self.__ssl_ca_certs)
+            wait_queue_timeout=self.__wait_queue_timeout,
+            wait_queue_multiple=self.__wait_queue_multiple)
 
         if self.in_request():
             connection_pool.start_request()

@@ -69,7 +69,7 @@ class TestPoolingThreads(_TestPooling, unittest.TestCase):
         self.assertEqual("success", parent_conn.recv())
 
     def test_primitive_thread(self):
-        p = self.get_pool((host, port), 10, None, None, False)
+        p = self.get_pool((host, port), 10, None, None, None)
 
         # Test that start/end_request work with a thread begun from thread
         # module, rather than threading module

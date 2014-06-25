@@ -37,7 +37,7 @@ class MockPool(Pool):
             max_size=None,
             net_timeout=None,
             conn_timeout=20,
-            use_ssl=False,
+            ssl_context=None,
             use_greenlets=False)
 
     def get_socket(self, force=False):

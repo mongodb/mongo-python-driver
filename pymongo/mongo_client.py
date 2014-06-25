@@ -53,7 +53,6 @@ from pymongo import (auth,
                      pool,
                      thread_util,
                      uri_parser)
-from pymongo.common import HAS_SSL
 from pymongo.cursor_manager import CursorManager
 from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
@@ -65,6 +64,12 @@ from pymongo.errors import (AutoReconnect,
 from pymongo.member import Member
 from pymongo.read_preferences import ReadPreference
 
+if common.HAS_SSL:
+    import ssl
+    try:
+        from ssl import SSLContext
+    except ImportError:
+        from pymongo.ssl_context import SSLContext
 
 EMPTY = b""
 
@@ -300,34 +305,42 @@ class MongoClient(common.BaseObject):
         self.__wait_queue_timeout = options.get('waitqueuetimeoutms')
         self.__wait_queue_multiple = options.get('waitqueuemultiple')
 
-        self.__use_ssl = options.get('ssl', None)
-        self.__ssl_keyfile = options.get('ssl_keyfile', None)
-        self.__ssl_certfile = options.get('ssl_certfile', None)
-        self.__ssl_cert_reqs = options.get('ssl_cert_reqs', None)
-        self.__ssl_ca_certs = options.get('ssl_ca_certs', None)
+        self.__ssl_ctx = None
+        use_ssl = options.get('ssl', None)
+        keyfile = options.get('ssl_keyfile', None)
+        certfile = options.get('ssl_certfile', None)
+        cert_reqs = options.get('ssl_cert_reqs', None)
+        ca_certs = options.get('ssl_ca_certs', None)
 
         ssl_kwarg_keys = [k for k in kwargs if k.startswith('ssl_')]
-        if self.__use_ssl == False and ssl_kwarg_keys:
+        if use_ssl == False and ssl_kwarg_keys:
             raise ConfigurationError("ssl has not been enabled but the "
                                      "following ssl parameters have been set: "
                                      "%s. Please set `ssl=True` or remove."
                                      % ', '.join(ssl_kwarg_keys))
 
-        if self.__ssl_cert_reqs and not self.__ssl_ca_certs:
+        if cert_reqs and not ca_certs:
             raise ConfigurationError("If `ssl_cert_reqs` is not "
                                      "`ssl.CERT_NONE` then you must "
                                      "include `ssl_ca_certs` to be able "
                                      "to validate the server.")
 
-        if ssl_kwarg_keys and self.__use_ssl is None:
+        if ssl_kwarg_keys and use_ssl is None:
             # ssl options imply ssl = True
-            self.__use_ssl = True
+            use_ssl = True
 
-        if self.__use_ssl and not HAS_SSL:
-            raise ConfigurationError("The ssl module is not available. If you "
-                                     "are using a python version previous to "
-                                     "2.6 you must install the ssl package "
-                                     "from PyPI.")
+        if use_ssl and not common.HAS_SSL:
+            raise ConfigurationError("The ssl module is not available.")
+
+        if use_ssl is True:
+            ctx = SSLContext(ssl.PROTOCOL_SSLv23)
+            if certfile is not None:
+                ctx.load_cert_chain(certfile, keyfile)
+            if ca_certs is not None:
+                ctx.load_verify_locations(ca_certs)
+            if cert_reqs is not None:
+                ctx.verify_mode = cert_reqs
+            self.__ssl_ctx = ctx
 
         self.__use_greenlets = options.get('use_greenlets', False)
         self.__pool_class = pool_class
@@ -473,12 +486,8 @@ class MongoClient(common.BaseObject):
             self.__max_pool_size,
             self.__net_timeout,
             self.__conn_timeout,
-            self.__use_ssl,
+            self.__ssl_ctx,
             use_greenlets=self.__use_greenlets,
-            ssl_keyfile=self.__ssl_keyfile,
-            ssl_certfile=self.__ssl_certfile,
-            ssl_cert_reqs=self.__ssl_cert_reqs,
-            ssl_ca_certs=self.__ssl_ca_certs,
             wait_queue_timeout=self.__wait_queue_timeout,
             wait_queue_multiple=self.__wait_queue_multiple)
 

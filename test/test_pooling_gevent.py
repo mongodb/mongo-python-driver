@@ -47,7 +47,7 @@ class TestPoolingGeventSpecial(unittest.TestCase):
             max_size=10,
             net_timeout=1000,
             conn_timeout=1000,
-            use_ssl=False,
+            ssl_context=None,
             use_greenlets=True)
 
         socks = []
@@ -81,7 +81,7 @@ class TestPoolingGeventSpecial(unittest.TestCase):
             max_size=10,
             net_timeout=1000,
             conn_timeout=1000,
-            use_ssl=False,
+            ssl_context=None,
         )
 
         for use_greenlets, use_request, expect_success in [
@@ -222,7 +222,7 @@ class TestUseGreenletsWithoutGevent(unittest.TestCase):
             max_size=10,
             net_timeout=1000,
             conn_timeout=1000,
-            use_ssl=False,
+            ssl_context=None,
             use_greenlets=True)
 
         # Convince PyPy to call __del__.

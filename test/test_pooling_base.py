@@ -438,7 +438,7 @@ class _TestPooling(_TestPoolingBase):
     def test_independent_pools(self):
         # Test for regression of very early PyMongo bug: separate pools shared
         # state.
-        p = self.get_pool((host, port), 10, None, None, False)
+        p = self.get_pool((host, port), 10, None, None, None)
         self.c.start_request()
         self.c.pymongo_test.test.find_one()
         self.assertEqual(set(), p.sockets)
@@ -509,7 +509,7 @@ class _TestPooling(_TestPoolingBase):
             max_size=10,
             net_timeout=1000,
             conn_timeout=1000,
-            use_ssl=False
+            ssl_context=None
         )
 
         sock0 = cx_pool.get_socket()
@@ -547,7 +547,7 @@ class _TestPooling(_TestPoolingBase):
         # reset() is called after a fork, or after a socket error. Ensure that
         # a new request is begun if a request was in progress when the reset()
         # occurred, otherwise no request is begun.
-        p = self.get_pool((host, port), 10, None, None, False)
+        p = self.get_pool((host, port), 10, None, None, None)
         self.assertFalse(p.in_request())
         p.start_request()
         self.assertTrue(p.in_request())
@@ -560,7 +560,7 @@ class _TestPooling(_TestPoolingBase):
 
     def test_pool_reuses_open_socket(self):
         # Test Pool's _check_closed() method doesn't close a healthy socket
-        cx_pool = self.get_pool((host,port), 10, None, None, False)
+        cx_pool = self.get_pool((host,port), 10, None, None, None)
         cx_pool._check_interval_seconds = 0  # Always check.
         sock_info = cx_pool.get_socket()
         cx_pool.maybe_return_socket(sock_info)
@@ -573,7 +573,7 @@ class _TestPooling(_TestPoolingBase):
     def test_pool_removes_dead_socket(self):
         # Test that Pool removes dead socket and the socket doesn't return
         # itself PYTHON-344
-        cx_pool = self.get_pool((host,port), 10, None, None, False)
+        cx_pool = self.get_pool((host,port), 10, None, None, None)
         cx_pool._check_interval_seconds = 0  # Always check.
         sock_info = cx_pool.get_socket()
 
@@ -589,7 +589,7 @@ class _TestPooling(_TestPoolingBase):
 
     def test_pool_removes_dead_request_socket_after_check(self):
         # Test that Pool keeps request going even if a socket dies in request
-        cx_pool = self.get_pool((host,port), 10, None, None, False)
+        cx_pool = self.get_pool((host,port), 10, None, None, None)
         cx_pool._check_interval_seconds = 0  # Always check.
         cx_pool.start_request()
 
@@ -615,7 +615,7 @@ class _TestPooling(_TestPoolingBase):
 
     def test_pool_removes_dead_request_socket(self):
         # Test that Pool keeps request going even if a socket dies in request
-        cx_pool = self.get_pool((host,port), 10, None, None, False)
+        cx_pool = self.get_pool((host,port), 10, None, None, None)
         cx_pool.start_request()
 
         # Get the request socket
@@ -644,7 +644,7 @@ class _TestPooling(_TestPoolingBase):
     def test_pool_removes_dead_socket_after_request(self):
         # Test that Pool handles a socket dying that *used* to be the request
         # socket.
-        cx_pool = self.get_pool((host,port), 10, None, None, False)
+        cx_pool = self.get_pool((host,port), 10, None, None, None)
         cx_pool._check_interval_seconds = 0  # Always check.
         cx_pool.start_request()
 
@@ -673,7 +673,7 @@ class _TestPooling(_TestPoolingBase):
         # When a pool replaces a dead request socket, the semaphore it uses
         # to enforce max_size should remain unaffected.
         cx_pool = self.get_pool(
-            (host, port), 1, None, None, False, wait_queue_timeout=1)
+            (host, port), 1, None, None, None, wait_queue_timeout=1)
 
         cx_pool._check_interval_seconds = 0  # Always check.
         cx_pool.start_request()
@@ -706,7 +706,7 @@ class _TestPooling(_TestPoolingBase):
             max_size=10,
             net_timeout=1000,
             conn_timeout=1000,
-            use_ssl=False,
+            ssl_context=None,
         )
 
         self.assertEqual(0, len(cx_pool.sockets))
@@ -1017,7 +1017,7 @@ class _TestMaxPoolSize(_TestPoolingBase):
             max_size=1,
             net_timeout=1,
             conn_timeout=1,
-            use_ssl=False,
+            ssl_context=None,
             wait_queue_timeout=1,
             use_greenlets=self.use_greenlets)
 
@@ -1048,8 +1048,7 @@ class _TestMaxOpenSockets(_TestPoolingBase):
     """
     def get_pool_with_wait_queue_timeout(self, wait_queue_timeout):
         return self.get_pool((host, port),
-                             1, None, None,
-                             False,
+                             1, None, None, None,
                              wait_queue_timeout=wait_queue_timeout,
                              wait_queue_multiple=None)
 
@@ -1096,8 +1095,7 @@ class _TestWaitQueueMultiple(_TestPoolingBase):
     """
     def get_pool_with_wait_queue_multiple(self, wait_queue_multiple):
         return self.get_pool((host, port),
-                             2, None, None,
-                             False,
+                             2, None, None, None,
                              wait_queue_timeout=None,
                              wait_queue_multiple=wait_queue_multiple)
 

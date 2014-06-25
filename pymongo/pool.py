@@ -23,13 +23,14 @@ from pymongo import thread_util
 from pymongo.common import HAS_SSL
 from pymongo.errors import ConnectionFailure, ConfigurationError
 
-try:
-    from ssl import match_hostname
-except ImportError:
-    from pymongo.ssl_match_hostname import match_hostname
 
 if HAS_SSL:
     import ssl
+    try:
+        from ssl import match_hostname, CertificateError
+    except ImportError:
+        from pymongo.ssl_match_hostname import match_hostname, CertificateError
+
 
 if sys.platform.startswith('java'):
     from select import cpython_compatible_select as select
@@ -97,9 +98,8 @@ class SocketInfo(object):
 # Do *not* explicitly inherit from object or Jython won't call __del__
 # http://bugs.jython.org/issue1057
 class Pool:
-    def __init__(self, pair, max_size, net_timeout, conn_timeout, use_ssl,
-                 use_greenlets, ssl_keyfile=None, ssl_certfile=None,
-                 ssl_cert_reqs=None, ssl_ca_certs=None,
+    def __init__(self, pair, max_size, net_timeout,
+                 conn_timeout, ssl_context, use_greenlets,
                  wait_queue_timeout=None, wait_queue_multiple=None):
         """
         :Parameters:
@@ -110,27 +110,10 @@ class Pool:
              disable.
           - `net_timeout`: timeout in seconds for operations on open connection
           - `conn_timeout`: timeout in seconds for establishing connection
-          - `use_ssl`: bool, if True use an encrypted connection
+          - `ssl_context`: an SSLContext instance or None
           - `use_greenlets`: bool, if True then start_request() assigns a
               socket to the current greenlet - otherwise it is assigned to the
               current thread
-          - `ssl_keyfile`: The private keyfile used to identify the local
-            connection against mongod.  If included with the ``certfile` then
-            only the ``ssl_certfile`` is needed.  Implies ``ssl=True``.
-          - `ssl_certfile`: The certificate file used to identify the local
-            connection against mongod. Implies ``ssl=True``.
-          - `ssl_cert_reqs`: Specifies whether a certificate is required from
-            the other side of the connection, and whether it will be validated
-            if provided. It must be one of the three values ``ssl.CERT_NONE``
-            (certificates ignored), ``ssl.CERT_OPTIONAL``
-            (not required, but validated if provided), or ``ssl.CERT_REQUIRED``
-            (required and validated). If the value of this parameter is not
-            ``ssl.CERT_NONE``, then the ``ssl_ca_certs`` parameter must point
-            to a file of CA certificates. Implies ``ssl=True``.
-          - `ssl_ca_certs`: The ca_certs file contains a set of concatenated
-            "certification authority" certificates, which are used to validate
-            certificates passed from the other end of the connection.
-            Implies ``ssl=True``.
           - `wait_queue_timeout`: (integer) How long (in seconds) a
             thread will wait for a socket from the pool if the pool has no
             free sockets.
@@ -154,14 +137,7 @@ class Pool:
         self.conn_timeout = conn_timeout
         self.wait_queue_timeout = wait_queue_timeout
         self.wait_queue_multiple = wait_queue_multiple
-        self.use_ssl = use_ssl
-        self.ssl_keyfile = ssl_keyfile
-        self.ssl_certfile = ssl_certfile
-        self.ssl_cert_reqs = ssl_cert_reqs
-        self.ssl_ca_certs = ssl_ca_certs
-
-        if HAS_SSL and use_ssl and not ssl_cert_reqs:
-            self.ssl_cert_reqs = ssl.CERT_NONE
+        self.ssl_context = ssl_context
 
         # Map self._ident.get() -> request socket
         self._tid_to_sock = {}
@@ -265,20 +241,19 @@ class Pool:
         sock = self.create_connection()
         hostname = self.pair[0]
 
-        if self.use_ssl:
+        if self.ssl_context is not None:
             try:
-                sock = ssl.wrap_socket(sock,
-                                       certfile=self.ssl_certfile,
-                                       keyfile=self.ssl_keyfile,
-                                       ca_certs=self.ssl_ca_certs,
-                                       cert_reqs=self.ssl_cert_reqs)
-                if self.ssl_cert_reqs:
-                    match_hostname(sock.getpeercert(), hostname)
-
+                sock = self.ssl_context.wrap_socket(sock)
             except ssl.SSLError:
                 sock.close()
                 raise ConnectionFailure("SSL handshake failed. MongoDB may "
                                         "not be configured with SSL support.")
+            if self.ssl_context.verify_mode != ssl.CERT_NONE:
+                try:
+                    match_hostname(sock.getpeercert(), hostname)
+                except CertificateError:
+                    sock.close()
+                    raise
 
         sock.settimeout(self.net_timeout)
         return SocketInfo(sock, self.pool_id, hostname)
