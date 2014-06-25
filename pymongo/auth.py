@@ -24,6 +24,7 @@ try:
 except ImportError:
     HAVE_KERBEROS = False
 
+from collections import namedtuple
 from hashlib import md5
 
 from bson.binary import Binary
@@ -36,16 +37,20 @@ MECHANISMS = frozenset(['GSSAPI', 'MONGODB-CR', 'MONGODB-X509', 'PLAIN'])
 """The authentication mechanisms supported by PyMongo."""
 
 
+MongoCredential = namedtuple('MongoCredential',
+    ['mechanism', 'source', 'username', 'password', 'mechanism_properties'])
+
+
 def _build_credentials_tuple(mech, source, user, passwd, extra):
     """Build and return a mechanism specific credentials tuple.
     """
     if mech == 'GSSAPI':
-        gsn = extra.get('gssapiservicename', 'mongodb')
+        props = {'service_name': extra.get('gssapiservicename', 'mongodb')}
         # No password, source is always $external.
-        return (mech, '$external', user, gsn)
+        return MongoCredential(mech, '$external', user, None, props)
     elif mech == 'MONGODB-X509':
-        return (mech, '$external', user)
-    return (mech, source, user, passwd)
+        return MongoCredential(mech, '$external', user, None, None)
+    return MongoCredential(mech, source, user, passwd, None)
 
 
 def _password_digest(username, password):
@@ -80,7 +85,8 @@ def _authenticate_gssapi(credentials, sock_info, cmd_func):
     """Authenticate using GSSAPI.
     """
     try:
-        dummy, username, gsn = credentials
+        username = credentials.username
+        gsn = credentials.mechanism_properties['service_name']
         # Starting here and continuing through the while loop below - establish
         # the security context. See RFC 4752, Section 3.1, first paragraph.
         result, ctx = kerberos.authGSSClientInit(
@@ -159,7 +165,9 @@ def _authenticate_gssapi(credentials, sock_info, cmd_func):
 def _authenticate_plain(credentials, sock_info, cmd_func):
     """Authenticate using SASL PLAIN (RFC 4616)
     """
-    source, username, password = credentials
+    source = credentials.source
+    username = credentials.username
+    password = credentials.password
     payload = ('\x00%s\x00%s' % (username, password)).encode('utf-8')
     cmd = SON([('saslStart', 1),
                ('mechanism', 'PLAIN'),
@@ -171,7 +179,9 @@ def _authenticate_plain(credentials, sock_info, cmd_func):
 def _authenticate_cram_md5(credentials, sock_info, cmd_func):
     """Authenticate using CRAM-MD5 (RFC 2195)
     """
-    source, username, password = credentials
+    source = credentials.source
+    username = credentials.username
+    password = credentials.password
     # The password used as the mac key is the
     # same as what we use for MONGODB-CR
     passwd = _password_digest(username, password)
@@ -194,17 +204,18 @@ def _authenticate_cram_md5(credentials, sock_info, cmd_func):
 def _authenticate_x509(credentials, sock_info, cmd_func):
     """Authenticate using MONGODB-X509.
     """
-    dummy, username = credentials
     query = SON([('authenticate', 1),
                  ('mechanism', 'MONGODB-X509'),
-                 ('user', username)])
+                 ('user', credentials.username)])
     cmd_func(sock_info, '$external', query)
 
 
 def _authenticate_mongo_cr(credentials, sock_info, cmd_func):
     """Authenticate using MONGODB-CR.
     """
-    source, username, password = credentials
+    source = credentials.source
+    username = credentials.username
+    password = credentials.password
     # Get a nonce
     response, _ = cmd_func(sock_info, source, {'getnonce': 1})
     nonce = response['nonce']
@@ -230,11 +241,11 @@ _AUTH_MAP = {
 def authenticate(credentials, sock_info, cmd_func):
     """Authenticate sock_info.
     """
-    mechanism = credentials[0]
+    mechanism = credentials.mechanism
     if mechanism == 'GSSAPI':
         if not HAVE_KERBEROS:
             raise ConfigurationError('The "kerberos" module must be '
                                      'installed to use GSSAPI authentication.')
     auth_func = _AUTH_MAP.get(mechanism)
-    auth_func(credentials[1:], sock_info, cmd_func)
+    auth_func(credentials, sock_info, cmd_func)
 
