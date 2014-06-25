@@ -235,10 +235,11 @@ class TestAuthURIOptions(unittest.TestCase):
         client = MongoClient(host, port)
         response = client.admin.command('ismaster')
         self.set_name = str(response.get('setName', ''))
-        client.admin.add_user('admin', 'pass', roles=['userAdminAnyDatabase',
-                                                      'dbAdminAnyDatabase',
-                                                      'readWriteAnyDatabase',
-                                                      'clusterAdmin'])
+        client_context.client.admin.add_user('admin', 'pass',
+                                             roles=['userAdminAnyDatabase',
+                                                    'dbAdminAnyDatabase',
+                                                    'readWriteAnyDatabase',
+                                                    'clusterAdmin'])
         client.admin.authenticate('admin', 'pass')
         client.pymongo_test.add_user('user', 'pass',
                                      roles=['userAdmin', 'readWrite'])
@@ -314,26 +315,14 @@ class TestDelegatedAuth(unittest.TestCase):
     @client_context.require_version_max(2, 5, 3)
     @client_context.require_version_min(2, 4, 0)
     def setUp(self):
-        self.client = MongoClient(host, port)
-        # Give admin all privileges.
-        self.client.admin.add_user('admin', 'pass',
-                                   roles=['readAnyDatabase',
-                                          'readWriteAnyDatabase',
-                                          'userAdminAnyDatabase',
-                                          'dbAdminAnyDatabase',
-                                          'clusterAdmin'])
+        self.client = client_context.client
 
     def tearDown(self):
-        self.client.admin.authenticate('admin', 'pass')
         self.client.pymongo_test.remove_user('user')
         self.client.pymongo_test2.remove_user('user')
-        self.client.pymongo_test2.foo.remove()
-        self.client.admin.remove_user('admin')
-        self.client.admin.logout()
-        self.client = None
+        self.client.pymongo_test2.foo.drop()
 
     def test_delegated_auth(self):
-        self.client.admin.authenticate('admin', 'pass')
         self.client.pymongo_test2.foo.remove()
         self.client.pymongo_test2.foo.insert({})
         # User definition with no roles in pymongo_test.
@@ -342,27 +331,27 @@ class TestDelegatedAuth(unittest.TestCase):
         self.client.pymongo_test2.add_user('user',
                                            userSource='pymongo_test',
                                            roles=['read'])
-        self.client.admin.logout()
+        auth_c = MongoClient(host, port)
         self.assertRaises(OperationFailure,
-                          self.client.pymongo_test2.foo.find_one)
+                          auth_c.pymongo_test2.foo.find_one)
         # Auth must occur on the db where the user is defined.
         self.assertRaises(OperationFailure,
-                          self.client.pymongo_test2.authenticate,
+                          auth_c.pymongo_test2.authenticate,
                           'user', 'pass')
         # Auth directly
-        self.assertTrue(self.client.pymongo_test.authenticate('user', 'pass'))
-        self.assertTrue(self.client.pymongo_test2.foo.find_one())
-        self.client.pymongo_test.logout()
+        self.assertTrue(auth_c.pymongo_test.authenticate('user', 'pass'))
+        self.assertTrue(auth_c.pymongo_test2.foo.find_one())
+        auth_c.pymongo_test.logout()
         self.assertRaises(OperationFailure,
-                          self.client.pymongo_test2.foo.find_one)
+                          auth_c.pymongo_test2.foo.find_one)
         # Auth using source
-        self.assertTrue(self.client.pymongo_test2.authenticate(
+        self.assertTrue(auth_c.pymongo_test2.authenticate(
             'user', 'pass', source='pymongo_test'))
-        self.assertTrue(self.client.pymongo_test2.foo.find_one())
+        self.assertTrue(auth_c.pymongo_test2.foo.find_one())
         # Must logout from the db authenticate was called on.
-        self.client.pymongo_test2.logout()
+        auth_c.pymongo_test2.logout()
         self.assertRaises(OperationFailure,
-                          self.client.pymongo_test2.foo.find_one)
+                          auth_c.pymongo_test2.foo.find_one)
 
 
 if __name__ == "__main__":

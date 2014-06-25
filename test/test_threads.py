@@ -17,9 +17,8 @@
 import threading
 import traceback
 
-from test import SkipTest, unittest, client_context
-from test.utils import (joinall, remove_all_users,
-                        server_started_with_auth, RendezvousThread)
+from test import unittest, client_context, pair
+from test.utils import joinall, remove_all_users, RendezvousThread
 from test.test_client import get_client
 from test.utils import get_pool
 from pymongo.pool import SocketInfo, _closed
@@ -185,7 +184,7 @@ class BaseTestThreads(object):
         test_threads_replica_set_connection.py.
         """
         # Regular test client
-        return get_client()
+        return get_client(pair)
 
     def test_threading(self):
         self.db.drop_collection("test")
@@ -253,7 +252,7 @@ class BaseTestThreads(object):
         #
         # If we've fixed PYTHON-345, then only one AutoReconnect is raised,
         # and all the threads get new request sockets.
-        cx = get_client(auto_start_request=True)
+        cx = get_client(pair, auto_start_request=True)
         collection = cx.db.pymongo_test
 
         # acquire a request socket for the main thread
@@ -310,6 +309,11 @@ class BaseTestThreadsAuth(object):
     unittest imports this module, and once when unittest imports
     test_threads_replica_set_connection.py, which imports this module.)
     """
+    @classmethod
+    @client_context.require_auth
+    def setUpClass(cls):
+        pass
+
     def _get_client(self):
         """
         Intended for overriding in TestThreadsAuthReplicaSet. This method
@@ -317,18 +321,19 @@ class BaseTestThreadsAuth(object):
         test_threads_replica_set_connection.py.
         """
         # Regular test client
-        return get_client()
+        return get_client(pair)
 
     def setUp(self):
         client = self._get_client()
-        if not server_started_with_auth(client):
-            raise SkipTest("Authentication is not enabled on server")
         self.client = client
         self.client.admin.add_user('admin-user', 'password',
                                    roles=['clusterAdmin',
                                           'dbAdminAnyDatabase',
                                           'readWriteAnyDatabase',
                                           'userAdminAnyDatabase'])
+        # client returned from self._get_client() may already be authenticated
+        # to get around restricted localhost exception in MongoDB >= 2.7.1.
+        self.client.admin.logout()
         self.client.admin.authenticate("admin-user", "password")
         self.client.auth_test.add_user("test-user", "password",
                                        roles=['readWrite'])
@@ -338,17 +343,20 @@ class BaseTestThreadsAuth(object):
         self.client.admin.authenticate("admin-user", "password")
         remove_all_users(self.client.auth_test)
         self.client.drop_database('auth_test')
-        remove_all_users(self.client.admin)
+        self.client.admin.remove_user('admin-user')
+        self.client.admin.logout()
         # Clear client reference so that RSC's monitor thread
         # dies.
         self.client = None
 
     def test_auto_auth_login(self):
         client = self._get_client()
+        client.admin.logout()
         self.assertRaises(OperationFailure, client.auth_test.test.find_one)
 
         # Admin auth
         client = self._get_client()
+        client.admin.logout()
         client.admin.authenticate("admin-user", "password")
 
         nthreads = 10
@@ -365,6 +373,7 @@ class BaseTestThreadsAuth(object):
 
         # Database-specific auth
         client = self._get_client()
+        client.admin.logout()
         client.auth_test.authenticate("test-user", "password")
 
         threads = []

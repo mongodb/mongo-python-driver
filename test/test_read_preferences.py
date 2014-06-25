@@ -38,7 +38,9 @@ from test import (client_context,
                   SkipTest,
                   unittest,
                   utils,
-                  IntegrationTest)
+                  IntegrationTest,
+                  db_user,
+                  db_pwd)
 from test.version import Version
 
 
@@ -212,6 +214,8 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
             # Effectively ignore members' ping times so we can test the effect
             # of ReadPreference modes only
             latencyThresholdMS=1000*1000)
+        if client_context.auth_enabled:
+            self.c.admin.authenticate(db_user, db_pwd)
         self.client_version = Version.from_client(self.c)
 
     def tearDown(self):
@@ -516,7 +520,7 @@ class TestMovingAverage(unittest.TestCase):
 class TestMongosConnection(IntegrationTest):
 
     def test_mongos_connection(self):
-        c = get_client()
+        c = get_client(host, port)
         is_mongos = utils.is_mongos(c)
 
         # Test default mode, PRIMARY
@@ -547,7 +551,8 @@ class TestMongosConnection(IntegrationTest):
                 None, [{}]
             ):
                 # Create a client e.g. with read_preference=NEAREST
-                c = get_client(read_preference=mode(tag_sets=tag_sets))
+                c = get_client(host, port,
+                               read_preference=mode(tag_sets=tag_sets))
 
                 self.assertEqual(is_mongos, c.is_mongos)
                 cursor = c.pymongo_test.test.find()
@@ -586,7 +591,8 @@ class TestMongosConnection(IntegrationTest):
                 [{'dc': 'la'}, {'dc': 'sf'}],
                 [{'dc': 'la'}, {'dc': 'sf'}, {}],
             ):
-                c = get_client(read_preference=mode(tag_sets=tag_sets))
+                c = get_client(host, port,
+                               read_preference=mode(tag_sets=tag_sets))
 
                 self.assertEqual(is_mongos, c.is_mongos)
                 cursor = c.pymongo_test.test.find()
@@ -599,7 +605,7 @@ class TestMongosConnection(IntegrationTest):
                         '$readPreference' in cursor._Cursor__query_spec())
 
     def test_only_secondary_ok_commands_have_read_prefs(self):
-        c = get_client(read_preference=ReadPreference.SECONDARY)
+        c = get_client(host, port, read_preference=ReadPreference.SECONDARY)
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", UserWarning)

@@ -23,7 +23,10 @@ import threading
 from pymongo import MongoClient, MongoReplicaSetClient
 from pymongo.errors import AutoReconnect
 from pymongo.pool import NO_REQUEST, NO_SOCKET_YET, SocketInfo
-from test import host, port, SkipTest
+from test import (SkipTest,
+                  client_context,
+                  db_user,
+                  db_pwd)
 from test.version import Version
 
 
@@ -32,6 +35,20 @@ try:
     has_gevent = True
 except ImportError:
     has_gevent = False
+
+
+def get_client(*args, **kwargs):
+    client = MongoClient(*args, **kwargs)
+    if client_context.auth_enabled and kwargs.get("_connect", True):
+        client.admin.authenticate(db_user, db_pwd)
+    return client
+
+
+def get_rs_client(*args, **kwargs):
+    client = MongoReplicaSetClient(*args, **kwargs)
+    if client_context.auth_enabled and kwargs.get("_connect", True):
+        client.admin.authenticate(db_user, db_pwd)
+    return client
 
 
 # No functools in Python 2.4
@@ -126,9 +143,10 @@ def drop_collections(db):
 
 def remove_all_users(db):
     if Version.from_client(db.connection).at_least(2, 5, 3, -1):
-        db.command({"dropAllUsersFromDatabase": 1})
+        db.command({"dropAllUsersFromDatabase": 1,
+                    "writeConcern": {"w": "majority"}})
     else:
-        db.system.users.remove({})
+        db.system.users.remove({}, w="majority")
 
 
 def joinall(threads):
@@ -147,8 +165,10 @@ def enable_text_search(client):
 
     if isinstance(client, MongoReplicaSetClient):
         for host, port in client.secondaries:
-            MongoClient(host, port).admin.command(
-                'setParameter', textSearchEnabled=True)
+            client = MongoClient(host, port)
+            if client_context.auth_enabled:
+                client.admin.authenticate(db_user, db_pwd)
+            client.admin.command('setParameter', textSearchEnabled=True)
 
 def assertRaisesExactly(cls, fn, *args, **kwargs):
     """
@@ -448,7 +468,7 @@ def lazy_client_trial(reset, target, test, get_client, use_greenlets):
     if use_greenlets and not has_gevent:
         raise SkipTest('Gevent not installed')
 
-    collection = MongoClient(host, port).pymongo_test.test
+    collection = client_context.client.pymongo_test.test
 
     # Make concurrency bugs more likely to manifest.
     interval = None
@@ -463,8 +483,8 @@ def lazy_client_trial(reset, target, test, get_client, use_greenlets):
     try:
         for i in range(NTRIALS):
             reset(collection)
-            lazy_client = get_client(
-                _connect=False, use_greenlets=use_greenlets)
+            lazy_client = get_client(_connect=False,
+                                     use_greenlets=use_greenlets)
 
             lazy_collection = lazy_client.pymongo_test.test
             run_threads(lazy_collection, target, use_greenlets)

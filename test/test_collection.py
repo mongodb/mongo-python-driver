@@ -39,7 +39,6 @@ from pymongo import message as message_module
 from pymongo import MongoClient
 from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
-from pymongo.database import Database
 from pymongo.read_preferences import ReadPreference
 from pymongo.son_manipulator import SONManipulator
 from pymongo.errors import (DocumentTooLarge,
@@ -52,7 +51,7 @@ from pymongo.errors import (DocumentTooLarge,
 from test.test_client import get_client, IntegrationTest
 from test.utils import (is_mongos, joinall, enable_text_search, get_pool,
                         oid_generated_on_client)
-from test import client_context, host, port, qcheck, unittest
+from test import client_context, host, port, pair, qcheck, unittest
 
 
 class TestCollectionNoConnect(unittest.TestCase):
@@ -1715,7 +1714,7 @@ class TestCollection(IntegrationTest):
         # Insert enough documents to require more than one batch
         self.db.test.insert([{'i': i} for i in range(150)])
 
-        client = get_client(max_pool_size=1)
+        client = get_client(pair, max_pool_size=1)
         socks = get_pool(client).sockets
         self.assertEqual(1, len(socks))
 

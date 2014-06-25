@@ -20,8 +20,9 @@ sys.path[0:0] = [""]
 
 from bson import InvalidDocument, SON
 from bson.py3compat import string_type
+from pymongo import MongoClient
 from pymongo.errors import BulkWriteError, InvalidOperation, OperationFailure
-from test import client_context, unittest
+from test import client_context, unittest, host, port
 from test.utils import oid_generated_on_client, remove_all_users
 
 
@@ -1151,8 +1152,6 @@ class TestBulkAuthorization(BulkTestBase):
         super(TestBulkAuthorization, self).setUp()
         self.coll.remove()
 
-        self.db.add_user('dbOwner', 'pw', roles=['dbOwner'])
-        self.db.authenticate('dbOwner', 'pw')
         self.db.add_user('readonly', 'pw', roles=['read'])
         self.db.command(
             'createRole', 'noremove',
@@ -1163,38 +1162,36 @@ class TestBulkAuthorization(BulkTestBase):
             roles=[])
 
         self.db.add_user('noremove', 'pw', roles=['noremove'])
-        self.db.logout()
 
     def tearDown(self):
-        self.db.logout()
-        self.db.authenticate('dbOwner', 'pw')
         self.db.command('dropRole', 'noremove')
         remove_all_users(self.db)
-        self.db.logout()
-        self.db.connection.disconnect()
 
     def test_readonly(self):
         # We test that an authorization failure aborts the batch and is raised
         # as OperationFailure.
-        db = client_context.client.pymongo_test
+        cli = MongoClient(host, port)
+        db = cli.pymongo_test
+        coll = db.test
         db.authenticate('readonly', 'pw')
-        bulk = self.coll.initialize_ordered_bulk_op()
+        bulk = coll.initialize_ordered_bulk_op()
         bulk.insert({'x': 1})
         self.assertRaises(OperationFailure, bulk.execute)
 
     def test_no_remove(self):
         # We test that an authorization failure aborts the batch and is raised
         # as OperationFailure.
-        db = client_context.client.pymongo_test
+        cli = MongoClient(host, port)
+        db = cli.pymongo_test
+        coll = db.test
         db.authenticate('noremove', 'pw')
-        bulk = self.coll.initialize_ordered_bulk_op()
+        bulk = coll.initialize_ordered_bulk_op()
         bulk.insert({'x': 1})
         bulk.find({'x': 2}).upsert().replace_one({'x': 2})
         bulk.find({}).remove()  # Prohibited.
         bulk.insert({'x': 3})   # Never attempted.
         self.assertRaises(OperationFailure, bulk.execute)
         self.assertEqual(set([1, 2]), set(self.coll.distinct('x')))
-
 
 if __name__ == "__main__":
     unittest.main()

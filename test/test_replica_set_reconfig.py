@@ -57,7 +57,7 @@ class TestSecondaryBecomesStandalone(unittest.TestCase):
         c.disconnect()
 
         try:
-            c.db.collection.find_one()
+            c.db.command('ismaster')
         except ConfigurationError as e:
             self.assertTrue('not a member of replica set' in str(e))
         else:
@@ -147,7 +147,7 @@ class TestSecondaryAdded(unittest.TestCase):
         c.mock_ismaster_hosts.append('c:3')
 
         c.disconnect()
-        c.db.collection.find_one()
+        c.db.command('ismaster')
 
         self.assertEqual('a', c.host)
         self.assertEqual(1, c.port)

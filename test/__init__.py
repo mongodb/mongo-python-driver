@@ -45,6 +45,9 @@ port2 = int(os.environ.get("DB_PORT2", 27018))
 host3 = _unicode(os.environ.get("DB_IP3", 'localhost'))
 port3 = int(os.environ.get("DB_PORT3", 27019))
 
+db_user = _unicode(os.environ.get("DB_USER", "user"))
+db_pwd = _unicode(os.environ.get("DB_PASSWORD", "password"))
+
 
 class ClientContext(object):
 
@@ -70,12 +73,31 @@ class ClientContext(object):
             self.w = len(self.ismaster.get("hosts", [])) or 1
             self.setname = self.ismaster.get('setName', '')
             self.rs_client = None
+            self.version = Version.from_client(self.client)
             if self.setname:
                 self.rs_client = pymongo.MongoReplicaSetClient(
                     pair, replicaSet=self.setname)
-            self.cmd_line = self.client.admin.command('getCmdLineOpts')
-            self.version = Version.from_client(self.client)
-            self.auth_enabled = self._server_started_with_auth()
+            try:
+                self.cmd_line = self.client.admin.command('getCmdLineOpts')
+            except pymongo.errors.OperationFailure as e:
+                if e.code == 13:
+                    # Unauthorized.
+                    self.auth_enabled = True
+                else:
+                    raise
+            else:
+                self.auth_enabled = self._server_started_with_auth()
+            if self.auth_enabled:
+                roles = {}
+                if self.version.at_least(2, 5, 3, -1):
+                    roles = {'roles': ['root']}
+                self.client.admin.add_user(db_user, db_pwd, **roles)
+                self.client.admin.authenticate(db_user, db_pwd)
+                if self.rs_client:
+                    self.rs_client.admin.authenticate(db_user, db_pwd)
+                    self.cmd_line = self.client.admin.command('getCmdLineOpts')
+                # May not have this if OperationFailure was raised earlier.
+                self.cmd_line = self.client.admin.command('getCmdLineOpts')
             self.test_commands_enabled = ('testCommandsEnabled=1'
                                           in self.cmd_line['argv'])
             self.is_mongos = (self.ismaster.get('msg') == 'isdbgrid')
@@ -143,6 +165,12 @@ class ClientContext(object):
                           "Authentication is not enabled on the server",
                           func=func))
 
+    def require_no_auth(self, func):
+        """Run a test only if the server is running without auth enabled."""
+        return self._require(not self.auth_enabled,
+                             "Authentication must not be enabled on the server",
+                             func=func)
+
     def require_replica_set(self, func):
         """Run a test only if the client is connected to a replica set."""
         return self._require(self.rs_client is not None,
@@ -183,25 +211,27 @@ class IntegrationTest(unittest.TestCase):
         pass
 
 
+def connection_string(seeds=[pair]):
+    if client_context.auth_enabled:
+        return "mongodb://%s:%s@%s" % (db_user, db_pwd, ','.join(seeds))
+    return "mongodb://%s" % pair
+
+
 def setup():
     warnings.resetwarnings()
     warnings.simplefilter("always")
 
 
 def teardown():
-    try:
-        c = pymongo.MongoClient(host, port)
-    except pymongo.errors.ConnectionFailure:
-        # Tests where ssl=True can cause connection failures here.
-        # Ignore and continue.
-        return
-
+    c = client_context.client
     c.drop_database("pymongo-pooling-tests")
     c.drop_database("pymongo_test")
     c.drop_database("pymongo_test1")
     c.drop_database("pymongo_test2")
     c.drop_database("pymongo_test_mike")
     c.drop_database("pymongo_test_bernie")
+    if client_context.auth_enabled:
+        c.admin.remove_user(db_user)
 
 
 class PymongoTestRunner(unittest.TextTestRunner):

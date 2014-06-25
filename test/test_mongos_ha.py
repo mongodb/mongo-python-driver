@@ -29,19 +29,20 @@ def setUpModule():
     pass
 
 
-class FindOne(threading.Thread):
+class SimpleOp(threading.Thread):
+
     def __init__(self, client):
-        super(FindOne, self).__init__()
+        super(SimpleOp, self).__init__()
         self.client = client
         self.passed = False
 
     def run(self):
-        self.client.db.collection.find_one()
+        self.client.db.command('ismaster')
         self.passed = True  # No exception raised.
 
 
-def do_find_one(client, nthreads):
-    threads = [FindOne(client) for _ in range(nthreads)]
+def do_simple_op(client, nthreads):
+    threads = [SimpleOp(client) for _ in range(nthreads)]
     for t in threads:
         t.start()
 
@@ -67,7 +68,7 @@ class TestMongosHA(unittest.TestCase):
         self.assertEqual(0, len(client.nodes))
 
         # Trigger initial connection.
-        do_find_one(client, nthreads)
+        do_simple_op(client, nthreads)
         self.assertEqual(3, len(client.nodes))
 
     def test_reconnect(self):
@@ -77,7 +78,7 @@ class TestMongosHA(unittest.TestCase):
 
         # Trigger reconnect.
         client.disconnect()
-        do_find_one(client, nthreads)
+        do_simple_op(client, nthreads)
         self.assertEqual(3, len(client.nodes))
 
     def test_failover(self):
@@ -102,12 +103,12 @@ class TestMongosHA(unittest.TestCase):
 
         def f():
             try:
-                client.db.collection.find_one()
+                client.db.command('ismaster')
             except AutoReconnect:
                 errors.append(True)
 
                 # Second attempt succeeds.
-                client.db.collection.find_one()
+                client.db.command('ismaster')
 
             passed.append(True)
 

@@ -27,6 +27,7 @@ from pymongo.mongo_client import MongoClient
 from pymongo.mongo_replica_set_client import MongoReplicaSetClient
 from pymongo.errors import ConfigurationError, OperationFailure
 from test import client_context, pair, unittest
+from test.utils import get_client, get_rs_client
 
 
 @client_context.require_connection
@@ -208,7 +209,7 @@ class TestCommon(unittest.TestCase):
         self.assertEqual(wc.to_dict(), coll.write_concern)
 
     def test_mongo_client(self):
-        m = MongoClient(pair, w=0)
+        m = get_client(pair, w=0)
         coll = m.pymongo_test.write_concern_test
         coll.drop()
         doc = {"_id": ObjectId()}
@@ -217,16 +218,16 @@ class TestCommon(unittest.TestCase):
         self.assertTrue(coll.insert(doc))
         self.assertRaises(OperationFailure, coll.insert, doc, w=1)
 
-        m = MongoClient(pair)
+        m = get_client(pair)
         coll = m.pymongo_test.write_concern_test
         self.assertTrue(coll.insert(doc, w=0))
         self.assertRaises(OperationFailure, coll.insert, doc)
         self.assertRaises(OperationFailure, coll.insert, doc, w=1)
 
-        m = MongoClient("mongodb://%s/" % (pair,))
+        m = get_client("mongodb://%s/" % (pair,))
         coll = m.pymongo_test.write_concern_test
         self.assertRaises(OperationFailure, coll.insert, doc)
-        m = MongoClient("mongodb://%s/?w=0" % (pair,))
+        m = get_client("mongodb://%s/?w=0" % (pair,))
         coll = m.pymongo_test.write_concern_test
         self.assertTrue(coll.insert(doc))
 
@@ -237,7 +238,7 @@ class TestCommon(unittest.TestCase):
     @client_context.require_replica_set
     def test_mongo_replica_set_client(self):
         setname = client_context.setname
-        m = MongoReplicaSetClient(pair, replicaSet=setname, w=0)
+        m = get_rs_client(pair, replicaSet=setname, w=0)
         coll = m.pymongo_test.write_concern_test
         coll.drop()
         doc = {"_id": ObjectId()}

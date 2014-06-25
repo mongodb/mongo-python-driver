@@ -345,7 +345,7 @@ class _TestPoolingBase(object):
     def get_client(self, *args, **kwargs):
         opts = kwargs.copy()
         opts['use_greenlets'] = self.use_greenlets
-        return get_client(*args, **opts)
+        return get_client(host, port, *args, **opts)
 
     def get_pool(self, pair, *args, **kwargs):
         kwargs['use_greenlets'] = self.use_greenlets
@@ -1156,6 +1156,7 @@ class _TestPoolSocketSharing(_TestPoolingBase):
         gr0: get results
         """
         cx = get_client(
+            host, port,
             use_greenlets=self.use_greenlets,
             auto_start_request=False
         )
@@ -1189,16 +1190,7 @@ class _TestPoolSocketSharing(_TestPoolingBase):
 
             # Javascript function that pauses N seconds per document
             fn = delay(10)
-            if (is_mongos(db.connection) or not
-                    Version.from_client(db.connection).at_least(1, 7, 2)):
-                # mongos doesn't support eval so we have to use $where
-                # which is less reliable in this context.
-                self.assertEqual(1, db.test.find({"$where": fn}).count())
-            else:
-                # 'nolock' allows find_fast to start and finish while we're
-                # waiting for this to complete.
-                self.assertEqual({'ok': 1.0, 'retval': True},
-                                 db.command('eval', fn, nolock=True))
+            self.assertEqual(1, db.test.find({"$where": fn}).count())
 
             history.append('find_slow done')
 

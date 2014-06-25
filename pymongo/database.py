@@ -787,8 +787,9 @@ class Database(common.BaseObject):
             # users.
             if exc.code in common.COMMAND_NOT_FOUND_CODES:
                 self._legacy_add_user(name, password, read_only, **kwargs)
-            # Unauthorized. MongoDB >= 2.7.1 has a narrow localhost exception,
-            # and we must add a user before sending commands.
+                return
+            # Unauthorized. Attempt to create the user in case of
+            # localhost exception.
             elif exc.code == 13:
                 self._create_or_update_user(
                     True, name, password, read_only, **kwargs)

@@ -39,13 +39,18 @@ from pymongo.errors import (AutoReconnect,
                             ConnectionFailure,
                             InvalidName,
                             OperationFailure, InvalidOperation)
-from test import client_context, pair, port, SkipTest, unittest
+from test import (client_context,
+                  connection_string,
+                  pair,
+                  port,
+                  SkipTest,
+                  unittest)
 from test.pymongo_mocks import MockReplicaSetClient
 from test.utils import (
     delay, assertReadFrom, assertReadFromAll, read_from_which_host,
     remove_all_users, assertRaisesExactly, TestRequestMixin, one,
     server_started_with_auth, pools_from_rs_client, get_pool,
-    _TestLazyConnectMixin)
+    get_rs_client, _TestLazyConnectMixin)
 from test.version import Version
 
 
@@ -90,9 +95,8 @@ class TestReplicaSetClientBase(unittest.TestCase):
         ]
 
     def _get_client(self, **kwargs):
-        return MongoReplicaSetClient(pair,
-            replicaSet=self.name,
-            **kwargs)
+        return get_rs_client(connection_string(),
+                             replicaSet=self.name, **kwargs)
 
 
 class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
@@ -168,11 +172,9 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
     @client_context.require_auth
     def test_init_disconnected_with_auth(self):
         c = client_context.rs_client
-
-        c.admin.add_user("admin", "pass")
-        c.admin.authenticate("admin", "pass")
         try:
-            c.pymongo_test.add_user("user", "pass", roles=['readWrite', 'userAdmin'])
+            c.pymongo_test.add_user("user", "pass",
+                                    roles=['readWrite', 'userAdmin'])
 
             # Auth with lazy connection.
             host = one(self.hosts)
@@ -193,9 +195,6 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         finally:
             # Clean up.
             remove_all_users(c.pymongo_test)
-            remove_all_users(c.admin)
-            c.admin.logout()
-            c.disconnect()
 
     def test_connect(self):
         assertRaisesExactly(ConnectionFailure, MongoReplicaSetClient,
@@ -418,7 +417,8 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
             self.assertEqual("bar", c.pymongo_test1.test.find_one()["foo"])
 
         self.assertFalse(c.in_request())
-        c.copy_database("pymongo_test", "pymongo_test2", pair)
+
+        c.copy_database("pymongo_test", "pymongo_test2")
         # copy_database() didn't accidentally restart the request
         self.assertFalse(c.in_request())
 
@@ -431,8 +431,6 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
                 server_started_with_auth(c)):
             c.drop_database("pymongo_test1")
 
-            c.admin.add_user("admin", "password")
-            c.admin.authenticate("admin", "password")
             try:
                 c.pymongo_test.add_user("mike", "password")
 
@@ -455,10 +453,6 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
             finally:
                 # Cleanup
                 remove_all_users(c.pymongo_test)
-                c.admin.remove_user("admin")
-                c.admin.logout()
-                c.pymongo_test.logout()
-                c.disconnect()
 
     def test_get_default_database(self):
         host = one(self.hosts)
@@ -1090,7 +1084,7 @@ class TestReplicaSetWireVersion(unittest.TestCase):
         c.set_wire_version_range('a:1', 1, 5)
         c.set_wire_version_range('b:2', 0, 1)
         c.set_wire_version_range('c:3', 1, 2)
-        c.db.collection.find_one()  # Connect.
+        c.db.command('ismaster')  # Connect.
         self.assertEqual(c.min_wire_version, 1)
         self.assertEqual(c.max_wire_version, 5)
 
@@ -1113,9 +1107,13 @@ class TestReplicaSetClientLazyConnect(
         TestReplicaSetClientBase,
         _TestLazyConnectMixin):
 
+    @classmethod
+    def setUpClass(cls):
+        TestReplicaSetClientBase.setUpClass()
+
     def test_read_mode_secondary(self):
         client = MongoReplicaSetClient(
-            pair, replicaSet=self.name, _connect=False,
+            connection_string(), replicaSet=self.name, _connect=False,
             read_preference=ReadPreference.SECONDARY)
 
         # No error.
@@ -1128,18 +1126,27 @@ class TestReplicaSetClientLazyConnectGevent(
         _TestLazyConnectMixin):
     use_greenlets = True
 
+    @classmethod
+    def setUpClass(cls):
+        TestReplicaSetClientBase.setUpClass()
+
 
 class TestReplicaSetClientLazyConnectBadSeeds(
         TestReplicaSetClientBase,
         _TestLazyConnectMixin):
+
+    @classmethod
+    def setUpClass(cls):
+        TestReplicaSetClientBase.setUpClass()
 
     def _get_client(self, **kwargs):
         kwargs.setdefault('connectTimeoutMS', 500)
 
         # Assume there are no open mongods listening on a.com, b.com, ....
         bad_seeds = ['%s.com' % chr(ord('a') + i) for i in range(5)]
-        seeds = ','.join(bad_seeds + [pair])
-        client = MongoReplicaSetClient(seeds, replicaSet=self.name, **kwargs)
+        client = MongoReplicaSetClient(
+            connection_string(seeds=(bad_seeds + [pair])),
+            replicaSet=self.name, **kwargs)
 
         # In case of a slow test machine.
         client._refresh_timeout_sec = 30
@@ -1180,7 +1187,7 @@ class TestReplicaSetClientMaxWriteBatchSize(unittest.TestCase):
 
         # Starts with default max batch size.
         self.assertEqual(1000, c.max_write_batch_size)
-        c.db.collection.find_one()  # Connect.
+        c.db.command('ismaster')  # Connect.
 
         # Uses primary's max batch size.
         self.assertEqual(c.max_write_batch_size, 1)

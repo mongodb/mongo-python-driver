@@ -46,7 +46,13 @@ from pymongo.son_manipulator import (AutoReference,
                                      NamespaceInjector,
                                      SONManipulator,
                                      ObjectIdShuffler)
-from test import client_context, SkipTest, unittest, host, port, IntegrationTest
+from test import (client_context,
+                  SkipTest,
+                  unittest,
+                  host,
+                  port,
+                  pair,
+                  IntegrationTest)
 from test.utils import remove_all_users, server_started_with_auth
 from test.test_client import get_client
 
@@ -378,7 +384,9 @@ class TestDatabase(IntegrationTest):
                               "user", "password", digestPassword=True)
 
         self.client.admin.add_user("admin", "password")
-        self.client.admin.authenticate("admin", "password")
+        auth_c = MongoClient(pair)
+        auth_c.admin.authenticate("admin", "password")
+        db = auth_c.pymongo_test
 
         try:
             # Add / authenticate / remove
@@ -420,18 +428,17 @@ class TestDatabase(IntegrationTest):
         # Cleanup
         finally:
             remove_all_users(db)
-            self.client.pymongo_test.logout()
-            self.client.admin.remove_user("admin")
-            self.client.admin.logout()
-            self.client.disconnect()
+            db.logout()
+            auth_c.admin.remove_user("admin")
 
     @client_context.require_auth
     def test_make_user_readonly(self):
-        admin = self.client.admin
-        admin.add_user('admin', 'pw')
+        auth_c = MongoClient(pair)
+        admin = auth_c.admin
+        self.client.admin.add_user('admin', 'pw')
         admin.authenticate('admin', 'pw')
 
-        db = self.client.pymongo_test
+        db = auth_c.pymongo_test
 
         try:
             # Make a read-write user.
@@ -455,16 +462,14 @@ class TestDatabase(IntegrationTest):
             admin.authenticate('admin', 'pw')
             remove_all_users(db)
             admin.remove_user("admin")
-            admin.logout()
-            db.logout()
-            self.client.disconnect()
 
     @client_context.require_version_min(2, 5, 3, -1)
     @client_context.require_auth
     def test_default_roles(self):
         # "Admin" user
-        db = self.client.admin
-        db.add_user('admin', 'pass')
+        self.client.admin.add_user('admin', 'pass')
+        auth_c = MongoClient(pair)
+        db = auth_c.admin
         try:
             db.authenticate('admin', 'pass')
             info = db.command('usersInfo', 'admin')['users'][0]
@@ -481,22 +486,24 @@ class TestDatabase(IntegrationTest):
         # Cleanup
         finally:
             db.authenticate('admin', 'pass')
-            remove_all_users(db)
+            db.remove_user('ro-admin')
+            db.remove_user('admin')
             db.logout()
 
         db.connection.disconnect()
 
         # "Non-admin" user
-        db = self.client.pymongo_test
-        db.add_user('user', 'pass')
+        db = auth_c.pymongo_test
+        client_context.client.pymongo_test.add_user('user', 'pass')
         try:
             db.authenticate('user', 'pass')
             info = db.command('usersInfo', 'user')['users'][0]
             self.assertEqual("dbOwner", info['roles'][0]['role'])
+            db.logout()
 
             # Read only "Non-admin" user
-            db.add_user('ro-user', 'pass', read_only=True)
-            db.logout()
+            client_context.client.pymongo_test.add_user('ro-user', 'pass',
+                                                        read_only=True)
             db.authenticate('ro-user', 'pass')
             info = db.command('usersInfo', 'ro-user')['users'][0]
             self.assertEqual("read", info['roles'][0]['role'])
@@ -506,14 +513,15 @@ class TestDatabase(IntegrationTest):
         finally:
             db.authenticate('user', 'pass')
             remove_all_users(db)
-            db.logout()
-            self.client.disconnect()
 
     @client_context.require_version_min(2, 5, 3, -1)
     @client_context.require_auth
     def test_new_user_cmds(self):
-        db = self.client.pymongo_test
-        db.add_user("amalia", "password", roles=["userAdmin"])
+        auth_c = MongoClient(pair)
+        db = auth_c.pymongo_test
+        client_context.client.pymongo_test.add_user("amalia", "password",
+                                                    roles=["userAdmin"])
+
         db.authenticate("amalia", "password")
         try:
             # This tests the ability to update user attributes.
@@ -527,15 +535,15 @@ class TestDatabase(IntegrationTest):
             self.assertEqual(amalia_user["customData"], {"secret": "koalas"})
         finally:
             db.remove_user("amalia")
-            db.logout()
-            self.client.disconnect()
 
     @client_context.require_auth
     def test_authenticate_and_safe(self):
-        db = self.client.auth_test
+        auth_c = MongoClient(pair)
+        db = auth_c.auth_test
 
-        db.add_user("bernie", "password",
-                    roles=["userAdmin", "dbAdmin", "readWrite"])
+        client_context.client.auth_test.add_user(
+            "bernie", "password",
+            roles=["userAdmin", "dbAdmin", "readWrite"])
         db.authenticate("bernie", "password")
         try:
             db.test.remove({})
@@ -552,8 +560,6 @@ class TestDatabase(IntegrationTest):
             self.assertEqual(0, db.test.count())
         finally:
             db.remove_user("bernie")
-            db.logout()
-            self.client.disconnect()
 
     @client_context.require_auth
     def test_authenticate_and_request(self):
@@ -561,37 +567,38 @@ class TestDatabase(IntegrationTest):
         # always runs in a request, and that it restores the request state
         # (in or not in a request) properly when it's finished.
         self.assertFalse(self.client.auto_start_request)
-        db = self.client.pymongo_test
-        db.add_user("mike", "password",
-                    roles=["userAdmin", "dbAdmin", "readWrite"])
+        auth_c = MongoClient(pair)
+        db = auth_c.pymongo_test
+        client_context.client.pymongo_test.add_user(
+            "mike", "password",
+            roles=["userAdmin", "dbAdmin", "readWrite"])
         try:
-            self.assertFalse(self.client.in_request())
+            self.assertFalse(auth_c.in_request())
             self.assertTrue(db.authenticate("mike", "password"))
-            self.assertFalse(self.client.in_request())
+            self.assertFalse(auth_c.in_request())
 
-            request_cx = get_client(auto_start_request=True)
+            request_cx = get_client(pair, auto_start_request=True)
             request_db = request_cx.pymongo_test
             self.assertTrue(request_db.authenticate("mike", "password"))
             self.assertTrue(request_cx.in_request())
         finally:
             db.authenticate("mike", "password")
             db.remove_user("mike")
-            db.logout()
-            request_db.logout()
-            self.client.disconnect()
 
     @client_context.require_auth
     def test_authenticate_multiple(self):
         # Setup
-        users_db = self.client.pymongo_test
-        admin_db = self.client.admin
-        other_db = self.client.pymongo_test1
-        users_db.test.remove()
-        other_db.test.remove()
+        client_context.client.drop_database("pymongo_test")
+        client_context.client.drop_database("pymongo_test1")
+        auth_c = MongoClient(pair)
+        users_db = auth_c.pymongo_test
+        admin_db = auth_c.admin
+        other_db = auth_c.pymongo_test1
 
-        admin_db.add_user('admin', 'pass',
-                          roles=["userAdminAnyDatabase", "dbAdmin",
-                                 "clusterAdmin", "readWrite"])
+        client_context.client.admin.add_user(
+            'admin', 'pass',
+            roles=["userAdminAnyDatabase", "dbAdmin",
+                   "clusterAdmin", "readWrite"])
         try:
             self.assertTrue(admin_db.authenticate('admin', 'pass'))
 
@@ -621,7 +628,7 @@ class TestDatabase(IntegrationTest):
                               other_db.test.insert, {})
 
             # Force close all sockets
-            self.client.disconnect()
+            auth_c.disconnect()
 
             # We should still be able to write to the regular user's db
             self.assertTrue(users_db.test.remove())
@@ -634,10 +641,8 @@ class TestDatabase(IntegrationTest):
         # Cleanup
         finally:
             remove_all_users(users_db)
-            remove_all_users(admin_db)
-            admin_db.logout()
-            users_db.logout()
-            self.client.disconnect()
+            client_context.client.admin.remove_user('ro-admin')
+            client_context.client.admin.remove_user('admin')
 
     def test_id_ordering(self):
         # PyMongo attempts to have _id show up first
@@ -679,6 +684,7 @@ class TestDatabase(IntegrationTest):
         db.test.save(obj)
         self.assertEqual(obj, db.dereference(DBRef("test", 4)))
 
+    @client_context.require_no_auth
     def test_eval(self):
         db = self.client.pymongo_test
         db.test.remove({})
@@ -843,6 +849,7 @@ class TestDatabase(IntegrationTest):
         self.assertEqual("buzz", db.users.find_one()["messages"][0]["title"])
         self.assertEqual("bar", db.users.find_one()["messages"][1]["title"])
 
+    @client_context.require_no_auth
     def test_system_js(self):
         db = self.client.pymongo_test
         db.system.js.remove()

@@ -14,11 +14,10 @@
 
 """Test that pymongo is thread safe."""
 
-from pymongo.mongo_replica_set_client import MongoReplicaSetClient
-
 from test import unittest
 from test.test_threads import BaseTestThreads, BaseTestThreadsAuth
 from test.test_replica_set_client import TestReplicaSetClientBase, pair
+from test.utils import get_rs_client
 
 
 class TestThreadsReplicaSet(TestReplicaSetClientBase, BaseTestThreads):
@@ -40,6 +39,15 @@ class TestThreadsReplicaSet(TestReplicaSetClientBase, BaseTestThreads):
 
 class TestThreadsAuthReplicaSet(TestReplicaSetClientBase, BaseTestThreadsAuth):
 
+    @classmethod
+    def setUpClass(cls):
+        TestReplicaSetClientBase.setUpClass()
+        BaseTestThreadsAuth.setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        TestReplicaSetClientBase.tearDownClass()
+
     def setUp(self):
         """
         Prepare to test all the same things that TestThreads tests, but do it
@@ -57,7 +65,7 @@ class TestThreadsAuthReplicaSet(TestReplicaSetClientBase, BaseTestThreadsAuth):
         Override TestThreadsAuth, so its tests run on a MongoReplicaSetClient
         instead of a regular MongoClient.
         """
-        return MongoReplicaSetClient(pair, replicaSet=self.name)
+        return get_rs_client(pair, replicaSet=self.name)
 
 
 if __name__ == "__main__":
