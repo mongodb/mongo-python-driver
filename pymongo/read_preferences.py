@@ -41,7 +41,7 @@ def _validate_tag_sets(tag_sets):
     """Validate tag sets for a MongoReplicaSetClient.
     """
     if tag_sets is None:
-        return [{}]
+        return tag_sets
 
     if not isinstance(tag_sets, list):
         raise ConfigurationError((
@@ -82,6 +82,8 @@ class ServerMode(object):
     def document(self):
         """Read preference as a document.
         """
+        if self.__tag_sets in (None, [{}]):
+            return {'mode': self.__mongos_mode}
         return {'mode': self.__mongos_mode, 'tags': self.__tag_sets}
 
     @property
@@ -103,10 +105,10 @@ class ServerMode(object):
            .. seealso:: `Data-Center Awareness
                <http://www.mongodb.org/display/DOCS/Data+Center+Awareness>`_
         """
-        return self.__tag_sets
+        return self.__tag_sets or [{}]
 
     def __repr__(self):
-        return "%s(%r)" % (self.name, self.__tag_sets)
+        return "%s(tag_sets=%r)" % (self.name, self.__tag_sets)
 
     def __eq__(self, other):
         return self.mode == other.mode and self.tag_sets == other.tag_sets
