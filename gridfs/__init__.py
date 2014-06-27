@@ -324,6 +324,8 @@ class GridFS(object):
             examined when performing the query
           - `read_preference` (optional): The read preference for
             this query.
+          - `tag_sets` **DEPRECATED**
+          - `secondary_acceptable_latency_ms` **DEPRECATED**
           - `compile_re` (optional): if ``False``, don't attempt to compile
             BSON regex objects into Python regexes. Return instances of
             :class:`~bson.regex.Regex` instead.

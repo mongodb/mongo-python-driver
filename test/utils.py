@@ -276,8 +276,9 @@ class RendezvousThread(threading.Thread):
 
 def read_from_which_host(
     rsc,
-    mode,
+    pref,
     tag_sets=None,
+    secondary_acceptable_latency_ms=None
 ):
     """Read from a MongoReplicaSetClient with the given Read Preference mode,
        tags, and acceptable latency. Return the 'host:port' which was read from.
@@ -288,10 +289,16 @@ def read_from_which_host(
       - `tag_sets`: List of dicts of tags for data-center-aware reads
     """
     db = rsc.pymongo_test
-    db.read_preference = mode
+
     if isinstance(tag_sets, dict):
         tag_sets = [tag_sets]
-    db.tag_sets = tag_sets or [{}]
+    if tag_sets or secondary_acceptable_latency_ms:
+        mode = pref.mode
+        latency = secondary_acceptable_latency_ms or pref.latency_threshold_ms
+        tags = tag_sets or pref.tag_sets
+        pref = pref.__class__(mode, latency, tags)
+
+    db.read_preference = pref
 
     cursor = db.test.find()
     try:

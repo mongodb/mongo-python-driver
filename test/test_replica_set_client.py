@@ -238,11 +238,11 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
             ReadPreference.PRIMARY, cursor._Cursor__read_preference)
 
         tag_sets = [{'dc': 'la', 'rack': '2'}, {'foo': 'bar'}]
-        secondary = Secondary(tag_sets)
+        secondary = Secondary(tag_sets=tag_sets)
         c = MongoReplicaSetClient(pair, replicaSet=self.name, max_pool_size=25,
                                  document_class=SON, tz_aware=True,
                                  read_preference=secondary,
-                                 acceptablelatencyms=77)
+                                 secondaryacceptablelatencyms=77)
         self.assertEqual(c.primary, self.primary)
         self.assertEqual(c.hosts, self.hosts)
         self.assertEqual(c.arbiters, self.arbiters)
@@ -257,7 +257,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         self.assertEqual(
             secondary, cursor._Cursor__read_preference)
 
-        nearest = Nearest([{'dc': 'ny'}, {}])
+        nearest = Nearest(tag_sets=[{'dc': 'ny'}, {}])
         cursor = c.pymongo_test.test.find(read_preference=nearest)
 
         self.assertEqual(
@@ -1023,7 +1023,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
 
     def test_pinned_member(self):
         latency = 1000 * 1000
-        client = self._get_client(acceptablelatencyms=latency)
+        client = self._get_client(secondaryacceptablelatencyms=latency)
 
         host = read_from_which_host(client, ReadPreference.SECONDARY)
         self.assertTrue(host in client.secondaries)

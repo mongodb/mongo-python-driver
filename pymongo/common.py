@@ -14,11 +14,16 @@
 
 
 """Functions and classes common to multiple pymongo modules."""
+
 import sys
-from pymongo import read_preferences
+import warnings
 
 from pymongo.auth import MECHANISMS
 from pymongo.errors import ConfigurationError
+from pymongo.read_preferences import (make_read_preference,
+                                      read_pref_mode_from_name,
+                                      ReadPreference,
+                                      ServerMode)
 from pymongo.write_concern import WriteConcern
 from bson.binary import (OLD_UUID_SUBTYPE, UUID_SUBTYPE,
                          JAVA_LEGACY, CSHARP_LEGACY)
@@ -194,7 +199,7 @@ def validate_timeout_or_none(option, value):
 def validate_read_preference(dummy, value):
     """Validate a read preference.
     """
-    if not isinstance(value, read_preferences.ServerMode):
+    if not isinstance(value, ServerMode):
         raise ConfigurationError("%r is not a "
                                  "valid read preference." % (value,))
     return value
@@ -204,7 +209,7 @@ def validate_read_preference_mode(dummy, name):
     """Validate read preference mode for a MongoReplicaSetClient.
     """
     try:
-        return read_preferences.read_pref_mode_from_name(name)
+        return read_pref_mode_from_name(name)
     except ValueError:
         raise ConfigurationError("Not a valid read preference")
 
@@ -278,7 +283,8 @@ VALIDATORS = {
     'read_preference': validate_read_preference,
     'readpreference': validate_read_preference_mode,
     'readpreferencetags': validate_read_preference_tags,
-    'acceptablelatencyms': validate_positive_float,
+    'latencythresholdms': validate_positive_float,
+    'secondaryacceptablelatencyms': validate_positive_float,
     'auto_start_request': validate_boolean,
     'use_greenlets': validate_boolean,
     'authmechanism': validate_auth_mechanism,
@@ -329,10 +335,17 @@ class BaseObject(object):
 
     def __init__(self, **options):
 
-        self.__read_pref = read_preferences.ReadPreference.PRIMARY
+        self.__read_pref = None
         self.__uuid_subtype = OLD_UUID_SUBTYPE
         self.__write_concern = None
         self.__set_options(options)
+
+        if 'read_preference' not in options:
+            mode = options.get('readpreference', 0)
+            latency = options.get('secondaryacceptablelatencyms',
+                                  options.get('latencythresholdms', 15))
+            tags = options.get('readpreferencetags')
+            self.__read_pref = make_read_preference(mode, latency, tags)
 
     def __set_options(self, options):
         """Validates and sets all options passed to this object."""
@@ -340,14 +353,6 @@ class BaseObject(object):
         for option, value in iteritems(options):
             if option == 'read_preference':
                 self.__read_pref = validate_read_preference(option, value)
-            elif option == 'readpreference':
-                klass = read_preferences.read_pref_class_from_mode(value)
-                if value == 0:
-                    # Primary, no tags
-                    self.__read_pref = klass()
-                    continue
-                tags = options.get('readpreferencetags', None)
-                self.__read_pref = klass(tags)
             elif option == 'uuidrepresentation':
                 self.__uuid_subtype = validate_uuid_subtype(option, value)
             elif option in WRITE_CONCERN_OPTIONS:
@@ -435,6 +440,30 @@ class BaseObject(object):
         self.__read_pref = validate_read_preference(None, value)
 
     read_preference = property(__get_read_pref, __set_read_pref)
+
+    def __get_latency(self):
+        return self.__read_pref.latency_threshold_ms
+
+    def __set_latency(self, latency):
+        warnings.warn("The secondary_acceptable_latency_ms attribute is "
+                      "deprecated", DeprecationWarning, stacklevel=2)
+        mode = self.__read_pref.mode
+        tag_sets = self.__read_pref.tag_sets
+        self.__read_pref = make_read_preference(mode, latency, tag_sets)
+
+    secondary_acceptable_latency_ms = property(__get_latency, __set_latency)
+
+    def __get_tags(self):
+        return self.__read_pref.tag_sets
+
+    def __set_tags(self, tag_sets):
+        warnings.warn("The tag_sets attribute is deprecated",
+                      DeprecationWarning, stacklevel=2)
+        mode = self.__read_pref.mode
+        latency = self.__read_pref.latency_threshold_ms
+        self.__read_pref = make_read_preference(mode, latency, tag_sets)
+
+    tag_sets = property(__get_tags, __set_tags)
 
     def __get_uuid_subtype(self):
         """This attribute specifies which BSON Binary subtype is used when

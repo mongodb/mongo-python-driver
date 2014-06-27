@@ -14,6 +14,8 @@
 
 """Cursor class to iterate over Mongo query results."""
 import copy
+import warnings
+
 from collections import deque
 
 from bson import RE_TYPE
@@ -71,8 +73,9 @@ class Cursor(object):
                  timeout=True, snapshot=False, tailable=False, sort=None,
                  max_scan=None, as_class=None,
                  await_data=False, partial=False, manipulate=True,
-                 read_preference=None, exhaust=False, compile_re=True,
-                 _uuid_subtype=None):
+                 read_preference=None, tag_sets=None,
+                 secondary_acceptable_latency_ms=None,
+                 exhaust=False, compile_re=True, _uuid_subtype=None):
         """Create a new cursor.
 
         Should not be called directly by application developers - see
@@ -148,7 +151,6 @@ class Cursor(object):
         self.__comment = None
         self.__as_class = as_class
         self.__manipulate = manipulate
-        self.__read_preference = read_preference or collection.read_preference
         self.__tz_aware = collection.database.connection.tz_aware
         self.__compile_re = compile_re
         self.__uuid_subtype = _uuid_subtype or collection.uuid_subtype
@@ -158,10 +160,21 @@ class Cursor(object):
         self.__retrieved = 0
         self.__killed = False
 
+        self.__read_preference = read_preference or collection.read_preference
+        if secondary_acceptable_latency_ms or tag_sets:
+            warnings.warn("The secondary_acceptable_latency_ms "
+                          "and tag_sets options are deprecated",
+                          DeprecationWarning, stacklevel=3)
+            mode = self.__read_preference.mode
+            tags = tag_sets or self.__read_preference.tag_sets
+            latency = (secondary_acceptable_latency_ms or
+                       self.__read_preference.latency_threshold_ms)
+            self.__read_preference = make_read_preference(mode, latency, tags)
+
         self.__query_flags = 0
         if tailable:
             self.__query_flags |= _QUERY_OPTIONS["tailable_cursor"]
-        if self.__read_preference != ReadPreference.PRIMARY:
+        if self.__read_preference.mode != ReadPreference.PRIMARY.mode:
             self.__query_flags |= _QUERY_OPTIONS["slave_okay"]
         if not timeout:
             self.__query_flags |= _QUERY_OPTIONS["no_timeout"]
@@ -300,7 +313,7 @@ class Cursor(object):
         # PRIMARY to avoid problems with mongos versions that
         # don't support read preferences.
         if (self.__collection.database.connection.is_mongos and
-            self.__read_preference != ReadPreference.PRIMARY):
+            self.__read_preference.mode != ReadPreference.PRIMARY.mode):
 
             # For maximum backwards compatibility, don't set $readPreference
             # for SECONDARY_PREFERRED unless tags are in use. Just rely on

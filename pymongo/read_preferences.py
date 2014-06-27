@@ -63,14 +63,20 @@ class ServerMode(object):
     """Base class for all read preferences.
     """
 
-    __slots__ = ("__mode", "__mongos_mode", "__tag_sets")
+    __slots__ = ("__mongos_mode", "__mode", "__latency", "__tag_sets")
 
-    def __init__(self, mode, tag_sets=None):
+    def __init__(self, mode, latency_threshold_ms=15, tag_sets=None):
         if mode == _PRIMARY and tag_sets is not None:
-            raise ConfigurationError("PRIMARY cannot be combined with tags")
-        self.__mode = mode
+            raise ConfigurationError("Read preference primary "
+                                     "cannot be combined with tags")
         self.__mongos_mode = _MONGOS_MODES[mode]
+        self.__mode = mode
         self.__tag_sets = _validate_tag_sets(tag_sets)
+        try:
+            self.__latency = float(latency_threshold_ms)
+        except (ValueError, TypeError):
+            raise ConfigurationError("latency_threshold_ms must "
+                                     "be a positive integer or float")
 
     @property
     def name(self):
@@ -93,6 +99,17 @@ class ServerMode(object):
         return self.__mode
 
     @property
+    def latency_threshold_ms(self):
+        """int - Any replica-set member whose ping time is within
+        `~latency_threshold_ms` of the nearest member may accept reads.
+        When used with mongos high availability, any mongos whose ping
+        time is within `~latency_threshold_ms` of the nearest mongos
+        may be chosen as the new mongos during a failover. Default 15
+        milliseconds.
+        """
+        return self.__latency
+
+    @property
     def tag_sets(self):
         """Set ``tag_sets`` to a list of dictionaries like [{'dc': 'ny'}] to
         read only from members whose ``dc`` tag has the value ``"ny"``.
@@ -108,10 +125,13 @@ class ServerMode(object):
         return self.__tag_sets or [{}]
 
     def __repr__(self):
-        return "%s(tag_sets=%r)" % (self.name, self.__tag_sets)
+        return "%s(latency_threshold_ms=%d, tag_sets=%r)" % (
+            self.name, self.__latency, self.__tag_sets)
 
     def __eq__(self, other):
-        return self.mode == other.mode and self.tag_sets == other.tag_sets
+        return (self.mode == other.mode and
+                self.latency_threshold_ms == other.latency_threshold_ms and
+                self.tag_sets == other.tag_sets)
 
     def __ne__(self, other):
         return not self == other
@@ -125,19 +145,17 @@ class Primary(ServerMode):
     * When connected to a mongos queries are sent to the primary of a shard.
     * When connected to a replica set queries are sent to the primary of
       the replica set.
+
+    :Parameters:
+      - `latency_threshold_ms`: Used for mongos high availability. The
+        :attr:`~latency_threshold_ms` when selecting a failover mongos.
     """
 
-    def __init__(self):
-        super(Primary, self).__init__(_PRIMARY)
+    def __init__(self, latency_threshold_ms=15):
+        super(Primary, self).__init__(_PRIMARY, latency_threshold_ms)
 
     def __repr__(self):
-        return "Primary()"
-
-    def __eq__(self, other):
-        return other.mode == _PRIMARY
-
-    def __ne__(self, other):
-        return other.mode != _PRIMARY
+        return "Primary(latency_threshold_ms=%d)" % self.latency_threshold_ms
 
 
 class PrimaryPreferred(ServerMode):
@@ -151,12 +169,15 @@ class PrimaryPreferred(ServerMode):
       available, otherwise a secondary.
 
     :Parameters:
+      - `latency_threshold_ms`: The :attr:`~latency_threshold_ms` when
+        selecting a secondary.
       - `tag_sets`: The :attr:`~tag_sets` to use if the primary is not
         available.
     """
 
-    def __init__(self, tag_sets=None):
-        super(PrimaryPreferred, self).__init__(_PRIMARY_PREFERRED, tag_sets)
+    def __init__(self, latency_threshold_ms=15, tag_sets=None):
+        super(PrimaryPreferred, self).__init__(
+            _PRIMARY_PREFERRED, latency_threshold_ms, tag_sets)
 
 
 class Secondary(ServerMode):
@@ -170,11 +191,14 @@ class Secondary(ServerMode):
       secondaries. An error is raised if no secondaries are available.
 
     :Parameters:
+      - `latency_threshold_ms`: The :attr:`~latency_threshold_ms` when
+        selecting a secondary.
       - `tag_sets`: The :attr:`~tag_sets` to use with this read_preference
     """
 
-    def __init__(self, tag_sets=None):
-        super(Secondary, self).__init__(_SECONDARY, tag_sets)
+    def __init__(self, latency_threshold_ms=15, tag_sets=None):
+        super(Secondary, self).__init__(
+            _SECONDARY, latency_threshold_ms, tag_sets)
 
 
 class SecondaryPreferred(ServerMode):
@@ -188,11 +212,14 @@ class SecondaryPreferred(ServerMode):
       secondaries, or the primary if no secondary is available.
 
     :Parameters:
+      - `latency_threshold_ms`: The :attr:`~latency_threshold_ms` when
+        selecting a secondary.
       - `tag_sets`: The :attr:`~tag_sets` to use with this read_preference
     """
 
-    def __init__(self, tag_sets=None):
-        super(SecondaryPreferred, self).__init__(_SECONDARY_PREFERRED, tag_sets)
+    def __init__(self, latency_threshold_ms=15, tag_sets=None):
+        super(SecondaryPreferred, self).__init__(
+            _SECONDARY_PREFERRED, latency_threshold_ms, tag_sets)
 
 
 class Nearest(ServerMode):
@@ -206,21 +233,26 @@ class Nearest(ServerMode):
       members.
 
     :Parameters:
+      - `latency_threshold_ms`: The :attr:`~latency_threshold_ms` when
+        selecting a secondary.
       - `tag_sets`: The :attr:`~tag_sets` to use with this read_preference
     """
 
-    def __init__(self, tag_sets=None):
-        super(Nearest, self).__init__(_NEAREST, tag_sets)
+    def __init__(self, latency_threshold_ms=15, tag_sets=None):
+        super(Nearest, self).__init__(
+            _NEAREST, latency_threshold_ms, tag_sets)
 
 
 _ALL_READ_PREFERENCES = (Primary, PrimaryPreferred,
                          Secondary, SecondaryPreferred, Nearest)
 
-
-def read_pref_class_from_mode(mode):
-    """Get the read preference class for a specific mode.
-    """
-    return _ALL_READ_PREFERENCES[mode]
+def make_read_preference(mode, latency_threshold_ms, tag_sets):
+    if mode == _PRIMARY:
+        if tag_sets not in (None, [{}]):
+            raise ConfigurationError("Read preference primary "
+                                     "cannot be combined with tags")
+        return Primary(latency_threshold_ms)
+    return _ALL_READ_PREFERENCES[mode](latency_threshold_ms, tag_sets)
 
 
 _MODES = (

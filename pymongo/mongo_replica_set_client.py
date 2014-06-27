@@ -553,9 +553,6 @@ class MongoReplicaSetClient(common.BaseObject):
           - `read_preference`: The read preference for this client.
             See :class:`~pymongo.read_preferences.ReadPreference` for available
             options.
-          - `acceptableLatencyMS`: (integer) Any replica-set member
-            whose ping time is within acceptable_latency_ms of the
-            nearest member may accept reads. Default 15 milliseconds.
 
           | **SSL configuration:**
 
@@ -646,7 +643,6 @@ class MongoReplicaSetClient(common.BaseObject):
             raise ConfigurationError("the replicaSet "
                                      "keyword parameter is required.")
 
-        self.__acceptable_latency = self.__opts.get('acceptablelatencyms', 15)
         self.__net_timeout = self.__opts.get('sockettimeoutms')
         self.__conn_timeout = self.__opts.get('connecttimeoutms')
         self.__wait_queue_timeout = self.__opts.get('waitqueuetimeoutms')
@@ -1005,18 +1001,6 @@ class MongoReplicaSetClient(common.BaseObject):
         if rs_state.primary_member:
             return rs_state.primary_member.max_write_batch_size
         return common.MAX_WRITE_BATCH_SIZE
-
-    @property
-    def acceptable_latency_ms(self):
-        """Any replica-set member whose ping time is within
-        acceptable_latency_ms of the nearest member may accept
-        reads. Defaults to 15 milliseconds.
-
-        See :class:`~pymongo.read_preferences.ReadPreference`.
-
-        .. versionadded:: 2.3
-        """
-        return self.__acceptable_latency
 
     @property
     def auto_start_request(self):
@@ -1662,7 +1646,7 @@ class MongoReplicaSetClient(common.BaseObject):
                 members=members,
                 mode=pref.mode,
                 tag_sets=pref.tag_sets,
-                latency=self.__acceptable_latency)
+                latency=pref.latency_threshold_ms)
 
             if not member:
                 # Ran out of members to try

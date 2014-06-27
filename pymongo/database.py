@@ -295,25 +295,36 @@ class Database(common.BaseObject):
             fields = helpers._fields_list_to_dict(fields)
         command.update(kwargs)
 
-        orig = mode = read_preference or self.read_preference
+        orig = pref = read_preference or self.read_preference
+        latency = kwargs.pop('secondary_acceptable_latency_ms', None)
+        tags = kwargs.pop('tags_sets', None)
+        if latency or tags:
+            warnings.warn("The secondary_acceptable_latency_ms "
+                          "and tag_sets options are deprecated",
+                          DeprecationWarning, stacklevel=3)
+            mode = orig.mode
+            tags = tags or orig.tag_sets
+            latency = latency or orig.latency_threshold_ms
+            orig = make_read_preference(mode, latency, tags)
+
         if command_name not in SECONDARY_OK_COMMANDS:
-            mode = ReadPreference.PRIMARY
+             pref = ReadPreference.PRIMARY
 
         # Special-case: mapreduce can go to secondaries only if inline
         elif command_name == 'mapreduce':
             out = command.get('out')
             if not isinstance(out, dict) or not out.get('inline'):
-                mode = ReadPreference.PRIMARY
+                pref = ReadPreference.PRIMARY
 
         # Special-case: aggregate with $out cannot go to secondaries.
         elif command_name == 'aggregate':
             for stage in command.get('pipeline', []):
                 if '$out' in stage:
-                    mode = ReadPreference.PRIMARY
+                    pref = ReadPreference.PRIMARY
                     break
 
         # Warn if mode will override read_preference.
-        if mode != orig:
+        if pref.mode != orig.mode:
             warnings.warn("%s does not support %s read preference "
                           "and will be routed to the primary instead." %
                           (command_name, orig.name), UserWarning, stacklevel=3)
@@ -323,7 +334,7 @@ class Database(common.BaseObject):
                                    fields=fields,
                                    limit=-1,
                                    as_class=as_class,
-                                   read_preference=mode,
+                                   read_preference=pref,
                                    compile_re=compile_re,
                                    _uuid_subtype=uuid_subtype)
         for doc in cursor:
@@ -391,11 +402,13 @@ class Database(common.BaseObject):
             Python-incompatible regular expressions, for example from
             ``currentOp``
           - `read_preference`: The read preference for this operation.
+          - `tag_sets` **DEPRECATED**
+          - `secondary_acceptable_latency_ms` **DEPRECATED**
           - `**kwargs` (optional): additional keyword arguments will
             be added to the command document before it is sent
 
         .. versionchanged:: 3.0
-           Removed the `tag_sets` and `secondary_acceptable_latency_ms`
+           Deprecated the `tag_sets` and `secondary_acceptable_latency_ms`
            options.
         .. versionchanged:: 2.7
            Added ``compile_re`` option.

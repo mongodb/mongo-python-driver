@@ -95,15 +95,15 @@ class TestReadPreferences(TestReadPreferencesBase):
         self.assertRaises(ConfigurationError, ServerMode,
                           0, tag_sets=[{}])
 
-        S = Secondary([{}])
+        S = Secondary(tag_sets=[{}])
         self.assertEqual([{}],
             self._get_client(read_preference=S).read_preference.tag_sets)
 
-        S = Secondary([{'k': 'v'}])
+        S = Secondary(tag_sets=[{'k': 'v'}])
         self.assertEqual([{'k': 'v'}],
             self._get_client(read_preference=S).read_preference.tag_sets)
 
-        S = Secondary([{'k': 'v'}, {}])
+        S = Secondary(tag_sets=[{'k': 'v'}, {}])
         self.assertEqual([{'k': 'v'}, {}],
             self._get_client(read_preference=S).read_preference.tag_sets)
 
@@ -118,16 +118,16 @@ class TestReadPreferences(TestReadPreferencesBase):
 
     def test_latency_validation(self):
         self.assertEqual(17, self._get_client(
-            acceptableLatencyMS=17
-        ).acceptable_latency_ms)
+            latencyThresholdMS=17
+        ).read_preference.latency_threshold_ms)
 
         self.assertEqual(42, self._get_client(
-            acceptableLatencyMS=42
-        ).acceptable_latency_ms)
+            latencyThresholdMS=42
+        ).read_preference.latency_threshold_ms)
 
         self.assertEqual(666, self._get_client(
-            acceptablelatencyms=666
-        ).acceptable_latency_ms)
+            latencythresholdms=666
+        ).read_preference.latency_threshold_ms)
 
     def test_primary(self):
         self.assertReadsFrom('primary',
@@ -151,11 +151,11 @@ class TestReadPreferences(TestReadPreferencesBase):
             read_preference=ReadPreference.SECONDARY_PREFERRED)
 
     def test_nearest(self):
-        # With high acceptableLatencyMS, expect to read from any
+        # With high latencyThresholdMS, expect to read from any
         # member
         c = self._get_client(
             read_preference=ReadPreference.NEAREST,
-            acceptableLatencyMS=10000, # 10 seconds
+            latencyThresholdMS=10000, # 10 seconds
             auto_start_request=False)
 
         data_members = set(self.hosts).difference(set(self.arbiters))
@@ -203,7 +203,7 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
             replicaSet=self.name, auto_start_request=False,
             # Effectively ignore members' ping times so we can test the effect
             # of ReadPreference modes only
-            acceptableLatencyMS=1000*1000)
+            latencyThresholdMS=1000*1000)
         self.client_version = Version.from_client(self.c)
 
     def tearDown(self):
@@ -538,7 +538,7 @@ class TestMongosConnection(unittest.TestCase):
                 None, [{}]
             ):
                 # Create a client e.g. with read_preference=NEAREST
-                c = get_client(read_preference=mode(tag_sets))
+                c = get_client(read_preference=mode(tag_sets=tag_sets))
 
                 self.assertEqual(is_mongos, c.is_mongos)
                 cursor = c.pymongo_test.test.find()
@@ -577,7 +577,7 @@ class TestMongosConnection(unittest.TestCase):
                 [{'dc': 'la'}, {'dc': 'sf'}],
                 [{'dc': 'la'}, {'dc': 'sf'}, {}],
             ):
-                c = get_client(read_preference=mode(tag_sets))
+                c = get_client(read_preference=mode(tag_sets=tag_sets))
 
                 self.assertEqual(is_mongos, c.is_mongos)
                 cursor = c.pymongo_test.test.find()

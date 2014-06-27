@@ -203,10 +203,6 @@ class MongoClient(common.BaseObject):
             :class:`~pymongo.errors.AutoReconnect` "not master".
             See :class:`~pymongo.read_preferences.ReadPreference` for all
             available read preference options.
-          - `acceptableLatencyMS`: (integer) When used with mongos
-            high availability, any mongos whose ping time is within
-            acceptable_latency_ms of the nearest member may be chosen
-            as the new primary during a failover. Default 15 milliseconds.
 
           | **SSL configuration:**
 
@@ -299,7 +295,6 @@ class MongoClient(common.BaseObject):
         self.__repl = options.get('replicaset')
         self.__direct = len(seeds) == 1 and not self.__repl
 
-        self.__acceptable_latency = options.get('acceptablelatencyms', 15)
         self.__net_timeout = options.get('sockettimeoutms')
         self.__conn_timeout = options.get('connecttimeoutms')
         self.__wait_queue_timeout = options.get('waitqueuetimeoutms')
@@ -679,22 +674,6 @@ class MongoClient(common.BaseObject):
         return self.__member_property(
             'max_write_batch_size', common.MAX_WRITE_BATCH_SIZE)
 
-    @property
-    def acceptable_latency_ms(self):
-        """When used with mongos high availability, any mongos whose ping time
-        is within acceptable_latency_ms of the nearest mongos may be
-        chosen as the new primary during a failover. Default 15 milliseconds.
-
-        .. versionadded:: 2.3
-
-        .. note:: ``acceptable_latency_ms`` is ignored when talking
-          to a replica set *through* a mongos. The equivalent is the
-          localThreshold_ command line option.
-
-        .. _localThreshold: http://docs.mongodb.org/manual/reference/mongos/#cmdoption--localThreshold
-        """
-        return self.__acceptable_latency
-
     def __simple_command(self, sock_info, dbname, spec):
         """Send a command to the server.
         """
@@ -773,7 +752,7 @@ class MongoClient(common.BaseObject):
 
         Doesn't modify state.
         """
-        latency = self.__acceptable_latency
+        latency = self.read_preference.latency_threshold_ms
         # Only used for mongos high availability, ping_time is in seconds.
         fastest = min([
             member.ping_time for member in candidates])
