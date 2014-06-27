@@ -45,8 +45,8 @@ class TestGridFile(unittest.TestCase):
         cls.db = client_context.client.pymongo_test
 
     def setUp(self):
-        self.db.fs.files.remove({})
-        self.db.fs.chunks.remove({})
+        self.db.drop_collection('fs.files')
+        self.db.drop_collection('fs.chunks')
 
     def test_basic(self):
         f = GridIn(self.db.fs, filename="test")
