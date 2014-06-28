@@ -24,7 +24,7 @@ from bson.son import SON
 from pymongo.cursor import _QUERY_OPTIONS
 from pymongo.mongo_replica_set_client import MongoReplicaSetClient
 from pymongo.read_preferences import (ReadPreference, MovingAverage,
-                                      PrimaryPreferred,
+                                      Primary, PrimaryPreferred,
                                       Secondary, SecondaryPreferred,
                                       Nearest, ServerMode,
                                       SECONDARY_OK_COMMANDS)
@@ -241,13 +241,13 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
                     self.assertExecutedOn('primary', self.c, fn)
         else:
             for mode, expected_state in [
-                (ReadPreference.PRIMARY, 'primary'),
-                (ReadPreference.PRIMARY_PREFERRED, 'primary'),
-                (ReadPreference.SECONDARY, 'secondary'),
-                (ReadPreference.SECONDARY_PREFERRED, 'secondary'),
-                (ReadPreference.NEAREST, 'any'),
+                (Primary, 'primary'),
+                (PrimaryPreferred, 'primary'),
+                (Secondary, 'secondary'),
+                (SecondaryPreferred, 'secondary'),
+                (Nearest, 'any'),
             ]:
-                self.c.read_preference = mode
+                self.c.read_preference = mode(1000*1000)
                 for _ in range(10):
                     if expected_state in ('primary', 'secondary'):
                         self.assertExecutedOn(expected_state, self.c, fn)
