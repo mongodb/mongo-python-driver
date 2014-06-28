@@ -383,7 +383,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
 
         mongodb_socket = '/tmp/mongodb-27017.sock'
         if not os.access(mongodb_socket, os.R_OK):
-            raise SkipTest("Socket file is not accessable")
+            raise SkipTest("Socket file is not accessible")
 
         self.assertTrue(MongoClient("mongodb://%s" % mongodb_socket))
 
