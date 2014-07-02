@@ -212,10 +212,8 @@ def _update_rs_from_primary(sds, set_name, server_description):
             sds[new_address] = ServerDescription(new_address)
 
     # Remove hosts not in the response.
-    all_hosts = set(server_description.all_hosts)
-    for old_sd in list(sds.values()):
-        if old_sd.address not in all_hosts:
-            sds.pop(old_sd.address)
+    for addr in set(sds) - server_description.all_hosts:
+        sds.pop(addr)
 
     return cluster_type, set_name
 
