@@ -14,11 +14,13 @@
 
 import os
 import socket
+import struct
 import sys
 import time
 import threading
 import weakref
 
+from bson import EMPTY
 from pymongo import thread_util
 from pymongo.common import HAS_SSL
 from pymongo.errors import ConnectionFailure, ConfigurationError
@@ -67,6 +69,38 @@ class SocketInfo(object):
         # The pool's pool_id changes with each reset() so we can close sockets
         # created before the last reset.
         self.pool_id = pool_id
+
+    def send_message(self, message):
+        try:
+            self.sock.sendall(message)
+        except:
+            self.close()
+            raise
+
+    def receive_message(self, operation, request_id):
+        header = self.__receive_data_on_socket(16)
+        length = struct.unpack("<i", header[:4])[0]
+
+        # No request_id for exhaust cursor "getMore".
+        if request_id is not None:
+            response_id = struct.unpack("<i", header[8:12])[0]
+            assert request_id == response_id, "ids don't match %r %r" % (
+                request_id, response_id)
+
+        assert operation == struct.unpack("<i", header[12:])[0]
+        return self.__receive_data_on_socket(length - 16)
+
+    def __receive_data_on_socket(self, length):
+        message = EMPTY
+        while length:
+            chunk = self.sock.recv(length)
+            if chunk == EMPTY:
+                raise ConnectionFailure("connection closed")
+
+            length -= len(chunk)
+            message += chunk
+
+        return message
 
     def close(self):
         self.closed = True

@@ -43,7 +43,7 @@ if sys.platform.startswith('java'):
 
 # Defaults until we connect to a server and get updated limits.
 MAX_BSON_SIZE = 16 * (1024 ** 2)
-MAX_MESSAGE_SIZE = 2 * MAX_BSON_SIZE
+MAX_MESSAGE_SIZE = 2 * MAX_BSON_SIZE  # TODO: remove.
 MIN_WIRE_VERSION = 0
 MAX_WIRE_VERSION = 0
 MAX_WRITE_BATCH_SIZE = 1000
@@ -52,6 +52,12 @@ MAX_WRITE_BATCH_SIZE = 1000
 MIN_SUPPORTED_WIRE_VERSION = 0
 MAX_SUPPORTED_WIRE_VERSION = 2
 
+# Frequency to call ismaster on servers, in seconds.
+HEARTBEAT_FREQUENCY = 10
+
+# Spec requires at least 10ms between ismaster calls.
+MIN_HEARTBEAT_INTERVAL = 0.01
+
 # mongod/s 2.6 and above return code 59 when a
 # command doesn't exist. mongod versions previous
 # to 2.6 and mongos 2.4.x return no error code
@@ -59,6 +65,18 @@ MAX_SUPPORTED_WIRE_VERSION = 2
 # to 2.4.0 return code 13390 when a command does not
 # exist.
 COMMAND_NOT_FOUND_CODES = (59, 13390, None)
+
+
+def partition_node(node):
+    """Split a host:port string into (host, int(port)) pair."""
+    host = node
+    port = 27017
+    idx = node.rfind(':')
+    if idx != -1:
+        host, port = node[:idx], int(node[idx + 1:])
+    if host.startswith('['):
+        host = host[1:-1]
+    return host, port
 
 
 def raise_config_error(key, dummy):
