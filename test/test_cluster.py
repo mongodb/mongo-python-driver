@@ -21,6 +21,7 @@ sys.path[0:0] = [""]
 import socket
 import threading
 
+from bson.py3compat import imap
 from pymongo import common
 from pymongo.cluster import Cluster
 from pymongo.cluster_description import CLUSTER_TYPE
@@ -82,7 +83,7 @@ address = ('a', 27017)
 
 
 def create_mock_cluster(seeds=None, set_name=None, monitor_class=MockMonitor):
-    partitioned_seeds = map(common.partition_node, seeds or ['a'])
+    partitioned_seeds = list(imap(common.partition_node, seeds or ['a']))
     cluster_settings = ClusterSettings(
         partitioned_seeds,
         set_name=set_name,

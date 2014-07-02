@@ -213,7 +213,7 @@ def _update_rs_from_primary(sds, set_name, server_description):
 
     # Remove hosts not in the response.
     all_hosts = set(server_description.all_hosts)
-    for old_sd in sds.values():
+    for old_sd in list(sds.values()):
         if old_sd.address not in all_hosts:
             sds.pop(old_sd.address)
 

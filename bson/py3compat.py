@@ -24,6 +24,8 @@ if PY3:
     from io import BytesIO as StringIO
     MAXSIZE = sys.maxsize
 
+    imap = map
+
     def b(s):
         # BSON and socket operations deal in binary data. In
         # python 3 that means instances of `bytes`. In python
@@ -55,11 +57,14 @@ if PY3:
     string_type = str
     integer_types = int
 else:
+    import thread
+
+    from itertools import imap
     try:
         from cStringIO import StringIO
     except ImportError:
         from StringIO import StringIO
-    import thread
+
     MAXSIZE = sys.maxint
 
     def b(s):

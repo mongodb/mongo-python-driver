@@ -17,6 +17,7 @@
 import itertools
 from collections import namedtuple
 
+from bson.py3compat import imap
 from pymongo import common
 
 
@@ -65,10 +66,10 @@ class IsMaster(object):
     @property
     def all_hosts(self):
         """List of hosts, passives, and arbiters known to this server."""
-        return map(common.partition_node, itertools.chain(
+        return list(imap(common.partition_node, itertools.chain(
             self._doc.get('hosts', []),
             self._doc.get('passives', []),
-            self._doc.get('arbiters', [])))
+            self._doc.get('arbiters', []))))
 
     @property
     def tags(self):

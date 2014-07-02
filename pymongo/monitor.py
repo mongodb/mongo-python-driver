@@ -70,7 +70,7 @@ class Monitor(threading.Thread):
             try:
                 self._server_description = self._check_with_retry()
                 self._cluster.on_change(self._server_description)
-            except weakref.ReferenceError:
+            except ReferenceError:
                 # Cluster was garbage-collected.
                 self.close()
             else:
