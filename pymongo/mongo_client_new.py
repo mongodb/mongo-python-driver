@@ -23,6 +23,7 @@ from pymongo import (database,
                      pool,
                      uri_parser, ReadPreference)
 from pymongo.cluster import Cluster
+from pymongo.cluster_description import CLUSTER_TYPE
 from pymongo.errors import (ConfigurationError)
 from pymongo.server_selectors import (writable_server_selector,
                                       secondary_server_selector)
@@ -73,6 +74,11 @@ class MongoClientNew(object):
         self.uuid_subtype = 4
         self.write_concern = {}
         self.document_class = dict
+        self.tz_aware = False
+
+    @property
+    def is_mongos(self):
+        return self._cluster.description.cluster_type == CLUSTER_TYPE.Mongos
 
     # TODO: Remove. Database, Collection, etc. should use Cluster.
     def _send_message_with_response(
