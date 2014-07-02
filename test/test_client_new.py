@@ -18,41 +18,49 @@ import sys
 
 sys.path[0:0] = [""]
 
-from pymongo import MongoClient, ReadPreference
+from pymongo import ReadPreference
 from pymongo.mongo_client_new import MongoClientNew
-from test import host, port, unittest
+from test import host, port, unittest, IntegrationTest, client_context
+from test.utils import one
 
 
-class TestClientNew(unittest.TestCase):
+class TestClientNew(IntegrationTest):
     def test_buildinfo(self):
         c = MongoClientNew(host, port)
         assert 'version' in c.admin.command('buildinfo')
 
     def test_ismaster(self):
-        legacy = MongoClient(host, port)
-        name = legacy.admin.command('ismaster').get('setName')
-        c = MongoClientNew(
-            ['localhost:27017'],
-            replicaSet=name)
+        c = MongoClientNew(['%s:%d' % (host, port)])
+        response = c.admin.command('ismaster')
+        self.assertTrue('ismaster' in response)
 
-        primary_response = c.admin.command('ismaster')
-        self.assertTrue(primary_response['ismaster'])
+    @client_context.require_replica_set
+    def test_ismaster_primary(self):
+        primary_pair = client_context.rs_client.primary
+        c = MongoClientNew(['%s:%d' % primary_pair],
+                           replicaSet=client_context.setname)
+
+        response = c.admin.command('ismaster')
+        self.assertTrue(response['ismaster'])
+
+    @client_context.require_replica_set
+    def test_ismaster_secondary(self):
+        secondary_pair = one(client_context.rs_client.secondaries)
+        c = MongoClientNew(['%s:%d' % secondary_pair],
+                           replicaSet=client_context.setname)
 
         # 'ismaster' does not obey read preference, so hack it.
-        if 'setName' in primary_response:
-            secondary_response = c.admin['$cmd'].find_one(
-                {'ismaster': 1},
-                read_preference=ReadPreference.SECONDARY)
+        secondary_response = c.admin['$cmd'].find_one(
+            {'ismaster': 1},
+            read_preference=ReadPreference.SECONDARY)
 
-            # Make sure we really executed ismaster on a secondary.
-            self.assertTrue(secondary_response.get('secondary'))
+        # Make sure we really executed ismaster on a secondary.
+        self.assertTrue(secondary_response.get('secondary'))
 
     def test_find(self):
-        legacy = MongoClient(host, port)
-        legacy.test.test.drop()
-        legacy.test.test.insert({'_id': 1})
+        client_context.client.pymongo_test.test_collection.insert({'_id': 1})
         c = MongoClientNew(host, port)
-        docs = list(c.test.test.find())
+        docs = list(c.pymongo_test.test_collection.find())
         self.assertEqual([{'_id': 1}], docs)
 
 
