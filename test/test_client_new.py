@@ -32,7 +32,7 @@ class TestClientNew(unittest.TestCase):
         legacy = MongoClient(host, port)
         name = legacy.admin.command('ismaster').get('setName')
         c = MongoClientNew(
-            ['localhost:27017', 'localhost:27018'],
+            ['localhost:27017'],
             replicaSet=name)
 
         primary_response = c.admin.command('ismaster')
