@@ -39,12 +39,13 @@ class TestClientNew(unittest.TestCase):
         self.assertTrue(primary_response['ismaster'])
 
         # 'ismaster' does not obey read preference, so hack it.
-        secondary_response = c.admin['$cmd'].find_one(
-            {'ismaster': 1},
-            read_preference=ReadPreference.SECONDARY)
+        if 'setName' in primary_response:
+            secondary_response = c.admin['$cmd'].find_one(
+                {'ismaster': 1},
+                read_preference=ReadPreference.SECONDARY)
 
-        # Make sure we really executed ismaster on a secondary.
-        self.assertTrue(secondary_response.get('secondary'))
+            # Make sure we really executed ismaster on a secondary.
+            self.assertTrue(secondary_response.get('secondary'))
 
     def test_find(self):
         legacy = MongoClient(host, port)
