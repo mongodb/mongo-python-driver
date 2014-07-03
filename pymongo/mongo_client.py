@@ -287,20 +287,20 @@ class MongoClient(common.BaseObject):
             options[option] = value
         options.update(opts)
 
-        self.__max_pool_size = common.validate_positive_integer_or_none(
-            'max_pool_size', max_pool_size)
-
         self.__cursor_manager = CursorManager(self)
 
         self.__repl = options.get('replicaset')
         self.__direct = len(seeds) == 1 and not self.__repl
 
-        self.__net_timeout = options.get('sockettimeoutms')
-        self.__conn_timeout = options.get('connecttimeoutms')
-        self.__wait_queue_timeout = options.get('waitqueuetimeoutms')
-        self.__wait_queue_multiple = options.get('waitqueuemultiple')
+        max_pool_size = common.validate_positive_integer_or_none(
+            'max_pool_size', max_pool_size)
+        connect_timeout = options.get('connecttimeoutms')
+        socket_timeout = options.get('sockettimeoutms')
+        wait_queue_timeout = options.get('waitqueuetimeoutms')
+        wait_queue_multiple = options.get('waitqueuemultiple')
+        use_greenlets = options.get('use_greenlets', False)
 
-        self.__ssl_ctx = None
+        ssl_context = None
         use_ssl = options.get('ssl', None)
         keyfile = options.get('ssl_keyfile', None)
         certfile = options.get('ssl_certfile', None)
@@ -335,13 +335,21 @@ class MongoClient(common.BaseObject):
                 ctx.load_verify_locations(ca_certs)
             if cert_reqs is not None:
                 ctx.verify_mode = cert_reqs
-            self.__ssl_ctx = ctx
+            ssl_context = ctx
 
-        self.__use_greenlets = options.get('use_greenlets', False)
+        self.__pool_opts = pool.PoolOptions(
+            max_pool_size=max_pool_size,
+            connect_timeout=connect_timeout,
+            socket_timeout=socket_timeout,
+            wait_queue_timeout=wait_queue_timeout,
+            wait_queue_multiple=wait_queue_multiple,
+            ssl_context=ssl_context,
+            use_greenlets=use_greenlets)
+
         self.__pool_class = pool_class
 
         self.__connecting = False
-        if self.__use_greenlets:
+        if use_greenlets:
             # Greenlets don't need to lock around access to the Member;
             # they're only interrupted when they do I/O.
             self.__connecting_lock = thread_util.DummyLock()
@@ -352,7 +360,7 @@ class MongoClient(common.BaseObject):
             self.__event_class = event_class
         else:
             # Prevent a cycle; this lambda shouldn't refer to self.
-            g = self.__use_greenlets
+            g = use_greenlets
             event_class = lambda: thread_util.create_event(g)
             self.__event_class = event_class
 
@@ -476,15 +484,7 @@ class MongoClient(common.BaseObject):
             del self.__auth_credentials[source]
 
     def __create_pool(self, pair):
-        return self.__pool_class(
-            pair,
-            self.__max_pool_size,
-            self.__net_timeout,
-            self.__conn_timeout,
-            self.__ssl_ctx,
-            use_greenlets=self.__use_greenlets,
-            wait_queue_timeout=self.__wait_queue_timeout,
-            wait_queue_multiple=self.__wait_queue_multiple)
+        return self.__pool_class(pair, self.__pool_opts)
 
     def __check_auth(self, sock_info):
         """Authenticate using cached database credentials.
@@ -570,7 +570,7 @@ class MongoClient(common.BaseObject):
         .. versionchanged:: 2.6
         .. versionadded:: 1.11
         """
-        return self.__max_pool_size
+        return self.__pool_opts.max_pool_size
 
     @property
     def use_greenlets(self):
@@ -579,7 +579,7 @@ class MongoClient(common.BaseObject):
 
         .. versionadded:: 2.4.2
         """
-        return self.__use_greenlets
+        return self.__pool_opts.use_greenlets
 
     @property
     def nodes(self):

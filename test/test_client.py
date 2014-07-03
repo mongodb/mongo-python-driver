@@ -506,16 +506,16 @@ class TestClient(IntegrationTest, TestRequestMixin):
 
     def test_timeouts(self):
         client = MongoClient(host, port, connectTimeoutMS=10500)
-        self.assertEqual(10.5, get_pool(client).conn_timeout)
+        self.assertEqual(10.5, get_pool(client).opts.connect_timeout)
         client = MongoClient(host, port, socketTimeoutMS=10500)
-        self.assertEqual(10.5, get_pool(client).net_timeout)
+        self.assertEqual(10.5, get_pool(client).opts.socket_timeout)
 
     def test_socket_timeout_ms_validation(self):
         c = get_client(socketTimeoutMS=10 * 1000)
-        self.assertEqual(10, c._MongoClient__net_timeout)
+        self.assertEqual(10, c._MongoClient__pool_opts.socket_timeout)
 
         c = get_client(socketTimeoutMS=None)
-        self.assertEqual(None, c._MongoClient__net_timeout)
+        self.assertEqual(None, c._MongoClient__pool_opts.socket_timeout)
 
         self.assertRaises(ConfigurationError,
             get_client, socketTimeoutMS=0)
@@ -549,12 +549,12 @@ class TestClient(IntegrationTest, TestRequestMixin):
 
     def test_waitQueueTimeoutMS(self):
         client = MongoClient(host, port, waitQueueTimeoutMS=2000)
-        self.assertEqual(get_pool(client).wait_queue_timeout, 2)
+        self.assertEqual(get_pool(client).opts.wait_queue_timeout, 2)
 
     def test_waitQueueMultiple(self):
         client = MongoClient(host, port, max_pool_size=3, waitQueueMultiple=2)
         pool = get_pool(client)
-        self.assertEqual(pool.wait_queue_multiple, 2)
+        self.assertEqual(pool.opts.wait_queue_multiple, 2)
         self.assertEqual(pool._socket_semaphore.waiter_semaphore.counter, 6)
 
     def test_tz_aware(self):

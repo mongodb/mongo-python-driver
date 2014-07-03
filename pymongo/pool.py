@@ -55,6 +55,72 @@ def _closed(sock):
     return len(rd) > 0
 
 
+class PoolOptions(object):
+
+    __slots__ = ('__max_pool_size', '__connect_timeout', '__socket_timeout',
+                 '__wait_queue_timeout', '__wait_queue_multiple',
+                 '__ssl_context', '__use_greenlets')
+
+    def __init__(self, max_pool_size=100, connect_timeout=None,
+                 socket_timeout=None, wait_queue_timeout=None,
+                 wait_queue_multiple=None, ssl_context=None,
+                 use_greenlets=False):
+
+        self.__max_pool_size = max_pool_size
+        self.__connect_timeout = connect_timeout
+        self.__socket_timeout = socket_timeout
+        self.__wait_queue_timeout = wait_queue_timeout
+        self.__wait_queue_multiple = wait_queue_multiple
+        self.__ssl_context = ssl_context
+        self.__use_greenlets = use_greenlets
+
+    @property
+    def max_pool_size(self):
+        """The maximum number of connections that the pool will open
+        simultaneously. If this is set, operations will block if there
+        are `max_pool_size` outstanding connections.
+        """
+        return self.__max_pool_size
+
+    @property
+    def connect_timeout(self):
+        """How long a connection can take to be opened before timing out.
+        """
+        return self.__connect_timeout
+
+    @property
+    def socket_timeout(self):
+        """How long a send or receive on a socket can take before timing out.
+        """
+        return self.__socket_timeout
+
+    @property
+    def wait_queue_timeout(self):
+        """How long a thread will wait for a socket from the pool if the pool
+        has no free sockets.
+        """
+        return self.__wait_queue_timeout
+
+    @property
+    def wait_queue_multiple(self):
+        """Multiplied by max_pool_size to give the number of threads allowed
+        to wait for a socket at one time.
+        """
+        return self.__wait_queue_multiple
+
+    @property
+    def ssl_context(self):
+        """An SSLContext instance or None.
+        """
+        return self.__ssl_context
+
+    @property
+    def use_greenlets(self):
+        """Use greenlet ids for "thread affinity" in requests.
+        """
+        return self.__use_greenlets
+
+
 class SocketInfo(object):
     """Store a socket with some metadata
     """
@@ -137,27 +203,11 @@ class SocketInfo(object):
 # Do *not* explicitly inherit from object or Jython won't call __del__
 # http://bugs.jython.org/issue1057
 class Pool:
-    def __init__(self, pair, max_size, net_timeout,
-                 conn_timeout, ssl_context, use_greenlets,
-                 wait_queue_timeout=None, wait_queue_multiple=None):
+    def __init__(self, pair, options):
         """
         :Parameters:
           - `pair`: a (hostname, port) tuple
-          - `max_size`: The maximum number of open sockets. Calls to
-            `get_socket` will block if this is set, this pool has opened
-            `max_size` sockets, and there are none idle. Set to `None` to
-             disable.
-          - `net_timeout`: timeout in seconds for operations on open connection
-          - `conn_timeout`: timeout in seconds for establishing connection
-          - `ssl_context`: an SSLContext instance or None
-          - `use_greenlets`: bool, if True then start_request() assigns a
-              socket to the current greenlet - otherwise it is assigned to the
-              current thread
-          - `wait_queue_timeout`: (integer) How long (in seconds) a
-            thread will wait for a socket from the pool if the pool has no
-            free sockets.
-          - `wait_queue_multiple`: (integer) Multiplied by max_pool_size to give
-            the number of threads allowed to wait for a socket at one time.
+          - `options`: a PoolOptions instance
         """
         # Only check a socket's health with _closed() every once in a while.
         # Can override for testing: 0 to always check, None to never check.
@@ -171,34 +221,31 @@ class Pool:
         self.pool_id = 0
         self.pid = os.getpid()
         self.pair = pair
-        self.max_size = max_size
-        self.net_timeout = net_timeout
-        self.conn_timeout = conn_timeout
-        self.wait_queue_timeout = wait_queue_timeout
-        self.wait_queue_multiple = wait_queue_multiple
-        self.ssl_context = ssl_context
+        self.opts = options
 
         # Map self._ident.get() -> request socket
         self._tid_to_sock = {}
 
-        if use_greenlets and not thread_util.have_gevent:
+        if self.opts.use_greenlets and not thread_util.have_gevent:
             raise ConfigurationError(
                 "The Gevent module is not available. "
                 "Install the gevent package from PyPI."
             )
 
-        self._ident = thread_util.create_ident(use_greenlets)
+        self._ident = thread_util.create_ident(self.opts.use_greenlets)
 
         # Count the number of calls to start_request() per thread or greenlet
-        self._request_counter = thread_util.Counter(use_greenlets)
+        self._request_counter = thread_util.Counter(self.opts.use_greenlets)
 
-        if self.wait_queue_multiple is None or self.max_size is None:
+        if (self.opts.wait_queue_multiple is None or
+                self.opts.max_pool_size is None):
             max_waiters = None
         else:
-            max_waiters = self.max_size * self.wait_queue_multiple
+            max_waiters = (
+                self.opts.max_pool_size * self.opts.wait_queue_multiple)
 
         self._socket_semaphore = thread_util.create_semaphore(
-            self.max_size, max_waiters, use_greenlets)
+            self.opts.max_pool_size, max_waiters, self.opts.use_greenlets)
 
     def reset(self):
         # Ignore this race condition -- if many threads are resetting at once,
@@ -255,7 +302,7 @@ class Pool:
             try:
                 sock = socket.socket(af, socktype, proto)
                 sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-                sock.settimeout(self.conn_timeout or 20.0)
+                sock.settimeout(self.opts.connect_timeout or 20.0)
                 sock.connect(sa)
                 return sock
             except socket.error as e:
@@ -279,22 +326,23 @@ class Pool:
         """
         sock = self.create_connection()
         hostname = self.pair[0]
+        ssl_context = self.opts.ssl_context
 
-        if self.ssl_context is not None:
+        if ssl_context is not None:
             try:
-                sock = self.ssl_context.wrap_socket(sock)
+                sock = ssl_context.wrap_socket(sock)
             except ssl.SSLError:
                 sock.close()
                 raise ConnectionFailure("SSL handshake failed. MongoDB may "
                                         "not be configured with SSL support.")
-            if self.ssl_context.verify_mode != ssl.CERT_NONE:
+            if ssl_context.verify_mode != ssl.CERT_NONE:
                 try:
                     match_hostname(sock.getpeercert(), hostname)
                 except CertificateError:
                     sock.close()
                     raise
 
-        sock.settimeout(self.net_timeout)
+        sock.settimeout(self.opts.socket_timeout)
         return SocketInfo(sock, self.pool_id, hostname)
 
     def get_socket(self, force=False):
@@ -334,7 +382,8 @@ class Pool:
             # having acquired it for this socket.
             if not self._socket_semaphore.acquire(False):
                 forced = True
-        elif not self._socket_semaphore.acquire(True, self.wait_queue_timeout):
+        elif not self._socket_semaphore.acquire(
+                True, self.opts.wait_queue_timeout):
             self._raise_wait_queue_timeout()
 
         # We've now acquired the semaphore and must release it on error.
@@ -429,8 +478,9 @@ class Pool:
         """
         try:
             self.lock.acquire()
-            too_many_sockets = (self.max_size is not None
-                                and len(self.sockets) >= self.max_size)
+            max_size = self.opts.max_pool_size
+            too_many_sockets = (max_size is not None
+                                and len(self.sockets) >= max_size)
 
             if not too_many_sockets and sock_info.pool_id == self.pool_id:
                 self.sockets.add(sock_info)
@@ -535,7 +585,7 @@ class Pool:
         raise ConnectionFailure(
             'Timed out waiting for socket from pool with max_size %r and'
             ' wait_queue_timeout %r' % (
-                self.max_size, self.wait_queue_timeout))
+                self.opts.max_pool_size, self.opts.wait_queue_timeout))
 
     def __del__(self):
         # Avoid ResourceWarnings in Python 3

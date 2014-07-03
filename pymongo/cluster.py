@@ -22,6 +22,7 @@ from pymongo.cluster_description import (updated_cluster_description,
                                          CLUSTER_TYPE,
                                          ClusterDescription)
 from pymongo.errors import InvalidOperation, ConnectionFailure
+from pymongo.pool import PoolOptions
 from pymongo.server import Server
 
 
@@ -176,8 +177,7 @@ class Cluster(object):
         # TODO: Need PoolSettings, SocketSettings, and SSLContext classes.
         return self._settings.pool_class(
             address,
-            max_size=100,
-            net_timeout=None,
-            conn_timeout=20,
-            ssl_context=None,
-            use_greenlets=False)
+            PoolOptions(
+                max_pool_size=100,
+                connect_timeout=20)
+            )

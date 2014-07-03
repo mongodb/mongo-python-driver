@@ -48,12 +48,13 @@ class TestPoolingGeventSpecial(unittest.TestCase):
             raise SkipTest('Gevent not installed')
 
         cx_pool = pool.Pool(
-            pair=(host, port),
-            max_size=10,
-            net_timeout=1000,
-            conn_timeout=1000,
-            ssl_context=None,
-            use_greenlets=True)
+            (host, port),
+            pool.PoolOptions(
+                max_pool_size=10,
+                connect_timeout=1000,
+                socket_timeout=1000,
+                use_greenlets=True)
+        )
 
         socks = []
 
@@ -81,12 +82,11 @@ class TestPoolingGeventSpecial(unittest.TestCase):
         except ImportError:
             raise SkipTest('Gevent not installed')
 
-        pool_args = dict(
-            pair=(host,port),
-            max_size=10,
-            net_timeout=1000,
-            conn_timeout=1000,
-            ssl_context=None,
+        pair = (host, port)
+        pool_opts = dict(
+            max_pool_size=10,
+            connect_timeout=1000,
+            socket_timeout=1000,
         )
 
         for use_greenlets, use_request, expect_success in [
@@ -95,9 +95,9 @@ class TestPoolingGeventSpecial(unittest.TestCase):
             (False, True, False),
             (False, False, False),
         ]:
-            pool_args_cp = pool_args.copy()
-            pool_args_cp['use_greenlets'] = use_greenlets
-            cx_pool = pool.Pool(**pool_args_cp)
+            pool_opts_cp = pool_opts.copy()
+            pool_opts_cp['use_greenlets'] = use_greenlets
+            cx_pool = pool.Pool(pair, pool.PoolOptions(**pool_opts_cp))
 
             # Map: greenlet -> socket
             greenlet2socks = {}
@@ -223,12 +223,13 @@ class TestUseGreenletsWithoutGevent(unittest.TestCase):
         self.assertRaises(
             ConfigurationError,
             TestPool,
-            pair=(host, port),
-            max_size=10,
-            net_timeout=1000,
-            conn_timeout=1000,
-            ssl_context=None,
-            use_greenlets=True)
+            (host, port),
+            pool.PoolOptions(
+                max_pool_size=10,
+                connect_timeout=1000,
+                socket_timeout=1000,
+                use_greenlets=True)
+        )
 
         # Convince PyPy to call __del__.
         for _ in range(10):

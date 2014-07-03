@@ -605,10 +605,12 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
 
     def test_socket_timeout_ms_validation(self):
         c = self._get_client(socketTimeoutMS=10 * 1000)
-        self.assertEqual(10, c._MongoReplicaSetClient__net_timeout)
+        self.assertEqual(10,
+                         c._MongoReplicaSetClient__pool_opts.socket_timeout)
 
         c = self._get_client(socketTimeoutMS=None)
-        self.assertEqual(None, c._MongoReplicaSetClient__net_timeout)
+        self.assertEqual(None,
+                         c._MongoReplicaSetClient__pool_opts.socket_timeout)
 
         self.assertRaises(ConfigurationError,
             self._get_client, socketTimeoutMS=0)
@@ -691,12 +693,12 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
     def test_waitQueueTimeoutMS(self):
         client = self._get_client(waitQueueTimeoutMS=2000)
         pool = get_pool(client)
-        self.assertEqual(pool.wait_queue_timeout, 2)
+        self.assertEqual(pool.opts.wait_queue_timeout, 2)
 
     def test_waitQueueMultiple(self):
         client = self._get_client(max_pool_size=3, waitQueueMultiple=2)
         pool = get_pool(client)
-        self.assertEqual(pool.wait_queue_multiple, 2)
+        self.assertEqual(pool.opts.wait_queue_multiple, 2)
         self.assertEqual(pool._socket_semaphore.waiter_semaphore.counter, 6)
 
     def test_tz_aware(self):

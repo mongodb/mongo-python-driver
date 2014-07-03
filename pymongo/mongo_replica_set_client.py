@@ -584,8 +584,6 @@ class MongoReplicaSetClient(common.BaseObject):
         self.__index_cache = {}
         self.__auth_credentials = {}
 
-        self.__max_pool_size = common.validate_positive_integer_or_none(
-            'max_pool_size', max_pool_size)
         self.__tz_aware = common.validate_boolean('tz_aware', tz_aware)
         self.__document_class = document_class
         self.__monitor = None
@@ -624,6 +622,12 @@ class MongoReplicaSetClient(common.BaseObject):
             self.__opts[option] = value
         self.__opts.update(options)
 
+        max_pool_size = common.validate_positive_integer_or_none(
+            'max_pool_size', max_pool_size)
+        connect_timeout = self.__opts.get('connecttimeoutms')
+        socket_timeout = self.__opts.get('sockettimeoutms')
+        wait_queue_timeout = self.__opts.get('waitqueuetimeoutms')
+        wait_queue_multiple = self.__opts.get('waitqueuemultiple')
         self.__use_greenlets = self.__opts.get('use_greenlets', False)
         if self.__use_greenlets and not have_gevent:
             raise ConfigurationError(
@@ -643,12 +647,7 @@ class MongoReplicaSetClient(common.BaseObject):
             raise ConfigurationError("the replicaSet "
                                      "keyword parameter is required.")
 
-        self.__net_timeout = self.__opts.get('sockettimeoutms')
-        self.__conn_timeout = self.__opts.get('connecttimeoutms')
-        self.__wait_queue_timeout = self.__opts.get('waitqueuetimeoutms')
-        self.__wait_queue_multiple = self.__opts.get('waitqueuemultiple')
-
-        self.__ssl_ctx = None
+        ssl_context = None
         use_ssl = self.__opts.get('ssl', None)
         keyfile = self.__opts.get('ssl_keyfile', None)
         certfile = self.__opts.get('ssl_certfile', None)
@@ -683,7 +682,16 @@ class MongoReplicaSetClient(common.BaseObject):
                 ctx.load_verify_locations(ca_certs)
             if cert_reqs is not None:
                 ctx.verify_mode = cert_reqs
-            self.__ssl_ctx = ctx
+            ssl_context = ctx
+
+        self.__pool_opts = pool.PoolOptions(
+            max_pool_size=max_pool_size,
+            connect_timeout=connect_timeout,
+            socket_timeout=socket_timeout,
+            wait_queue_timeout=wait_queue_timeout,
+            wait_queue_multiple=wait_queue_multiple,
+            ssl_context=ssl_context,
+            use_greenlets=self.__use_greenlets)
 
         super(MongoReplicaSetClient, self).__init__(**self.__opts)
 
@@ -910,7 +918,7 @@ class MongoReplicaSetClient(common.BaseObject):
 
         .. versionchanged:: 2.6
         """
-        return self.__max_pool_size
+        return self.__pool_opts.max_pool_size
 
     @property
     def use_greenlets(self):
@@ -919,7 +927,7 @@ class MongoReplicaSetClient(common.BaseObject):
 
         .. versionadded:: 2.4.2
         """
-        return self.__use_greenlets
+        return self.__pool_opts.use_greenlets
 
     def get_document_class(self):
         """document_class getter"""
@@ -1031,15 +1039,7 @@ class MongoReplicaSetClient(common.BaseObject):
         """Directly call ismaster.
            Returns (response, connection_pool, ping_time in seconds).
         """
-        connection_pool = self.pool_class(
-            host,
-            self.__max_pool_size,
-            self.__net_timeout,
-            self.__conn_timeout,
-            self.__ssl_ctx,
-            use_greenlets=self.__use_greenlets,
-            wait_queue_timeout=self.__wait_queue_timeout,
-            wait_queue_multiple=self.__wait_queue_multiple)
+        connection_pool = self.pool_class(host, self.__pool_opts)
 
         if self.in_request():
             connection_pool.start_request()

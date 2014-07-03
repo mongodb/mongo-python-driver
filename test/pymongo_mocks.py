@@ -18,7 +18,7 @@ import socket
 
 from pymongo import common
 from pymongo import MongoClient, MongoReplicaSetClient
-from pymongo.pool import Pool
+from pymongo.pool import Pool, PoolOptions
 
 from test import host as default_host, port as default_port
 from test.utils import my_partial
@@ -31,14 +31,8 @@ class MockPool(Pool):
         self.mock_host, self.mock_port = pair
 
         # Actually connect to the default server.
-        Pool.__init__(
-            self,
-            pair=(default_host, default_port),
-            max_size=None,
-            net_timeout=None,
-            conn_timeout=20,
-            ssl_context=None,
-            use_greenlets=False)
+        Pool.__init__(self,
+            (default_host, default_port), PoolOptions(connect_timeout=20))
 
     def get_socket(self, force=False):
         client = self.client
