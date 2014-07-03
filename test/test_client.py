@@ -54,7 +54,8 @@ from test.utils import (assertRaisesExactly,
                         _TestLazyConnectMixin,
                         lazy_client_trial,
                         NTHREADS,
-                        get_pool)
+                        get_pool,
+                        one)
 
 
 class TestClient(unittest.TestCase, TestRequestMixin):
@@ -941,6 +942,25 @@ class TestClient(IntegrationTest, TestRequestMixin):
 
         client = get_client(connection_string(), _connect=False)
         client.pymongo_test.test.remove(w=0)
+
+    def test_exhaust_network_error(self):
+        # When doing an exhaust query, the socket stays checked out on success
+        # but must be checked in on error to avoid semaphore leaks.
+        client = get_client(max_pool_size=1)
+        collection = client.pymongo_test.test
+        pool = get_pool(client)
+
+        # Cause a network error.
+        sock_info = one(pool.sockets)
+        sock_info.sock.close()
+        cursor = collection.find(exhaust=True)
+        with self.assertRaises(ConnectionFailure):
+            next(cursor)
+
+        self.assertTrue(sock_info.closed)
+
+        # The semaphore was decremented despite the error.
+        self.assertTrue(pool._socket_semaphore.acquire(blocking=False))
 
 
 class TestClientLazyConnect(IntegrationTest, _TestLazyConnectMixin):

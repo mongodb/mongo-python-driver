@@ -802,14 +802,11 @@ class MongoReplicaSetClient(common.BaseObject):
                 raise AutoReconnect(
                     "No replica set members available for authentication")
 
-            sock_info = self.__socket(member)
-            try:
+            with self.__socket(member) as sock_info:
                 # Since __check_auth was called in __socket
                 # there is no need to call it here.
                 auth.authenticate(credentials, sock_info, self.__simple_command)
                 sock_info.authset.add(credentials)
-            finally:
-                member.pool.maybe_return_socket(sock_info)
 
         self.__auth_credentials[source] = credentials
 
@@ -1007,13 +1004,8 @@ class MongoReplicaSetClient(common.BaseObject):
         """
         rqst_id, msg, _ = message.query(0, dbname + '.$cmd', 0, -1, spec)
         start = time.time()
-        try:
-            sock_info.sock.sendall(msg)
-            response = self.__recv_msg(1, rqst_id, sock_info)
-        except:
-            sock_info.close()
-            raise
-
+        sock_info.send_message(msg)
+        response = sock_info.receive_message(1, rqst_id)
         end = time.time()
         response = helpers._unpack_response(response)['data'][0]
         msg = "command %r failed: %%s" % spec
@@ -1029,17 +1021,11 @@ class MongoReplicaSetClient(common.BaseObject):
         if self.in_request():
             connection_pool.start_request()
 
-        sock_info = connection_pool.get_socket()
-        try:
+        with connection_pool.get_socket() as sock_info:
             response, ping_time = self.__simple_command(
-                sock_info, 'admin', {'ismaster': 1}
-            )
+                sock_info, 'admin', {'ismaster': 1})
 
-            connection_pool.maybe_return_socket(sock_info)
             return response, connection_pool, ping_time
-        except (ConnectionFailure, socket.error):
-            connection_pool.discard_socket(sock_info)
-            raise
 
     def __schedule_refresh(self, sync=False):
         """Awake the monitor to update our view of the replica set's state.
@@ -1114,14 +1100,14 @@ class MongoReplicaSetClient(common.BaseObject):
 
         # Look for first member from which we can get a list of all members.
         for node in nodes:
-            member, sock_info = rs_state.get(node), None
+            member = rs_state.get(node)
             try:
                 if member:
-                    sock_info = self.__socket(member, force=True)
-                    response, ping_time = self.__simple_command(
-                        sock_info, 'admin', {'ismaster': 1})
-                    member.pool.maybe_return_socket(sock_info)
-                    new_member = member.clone_with(response, ping_time)
+                    with self.__socket(member, force=True) as sock_info:
+                        response, ping_time = self.__simple_command(
+                            sock_info, 'admin', {'ismaster': 1})
+
+                        new_member = member.clone_with(response, ping_time)
                 else:
                     response, pool, ping_time = self.__is_master(node)
                     new_member = Member(
@@ -1157,8 +1143,6 @@ class MongoReplicaSetClient(common.BaseObject):
                         writer = node
 
             except (ConnectionFailure, socket.error) as why:
-                if member:
-                    member.pool.discard_socket(sock_info)
                 errors.append("%s:%d: %s" % (node[0], node[1], str(why)))
             if hosts:
                 break
@@ -1175,19 +1159,18 @@ class MongoReplicaSetClient(common.BaseObject):
                 # This member was the first we connected to, in the loop above.
                 continue
 
-            member, sock_info = rs_state.get(host), None
+            member = rs_state.get(host)
             try:
                 if member:
-                    sock_info = self.__socket(member, force=True)
-                    res, ping_time = self.__simple_command(
-                        sock_info, 'admin', {'ismaster': 1})
+                    with self.__socket(member, force=True) as sock_info:
+                        res, ping_time = self.__simple_command(
+                            sock_info, 'admin', {'ismaster': 1})
 
-                    if res.get('setName') != self.__name:
-                        # Not a member of this set.
-                        continue
+                        if res.get('setName') != self.__name:
+                            # Not a member of this set.
+                            continue
 
-                    member.pool.maybe_return_socket(sock_info)
-                    new_member = member.clone_with(res, ping_time)
+                        new_member = member.clone_with(res, ping_time)
                 else:
                     res, connection_pool, ping_time = self.__is_master(host)
                     if res.get('setName') != self.__name:
@@ -1200,8 +1183,6 @@ class MongoReplicaSetClient(common.BaseObject):
                 members[host] = new_member
 
             except (ConnectionFailure, socket.error):
-                if member:
-                    member.pool.discard_socket(sock_info)
                 continue
 
             if res['ismaster']:
@@ -1355,21 +1336,16 @@ class MongoReplicaSetClient(common.BaseObject):
         # In the common case, a socket is available and was used recently, so
         # calling select() on it is a reasonable attempt to see if the OS has
         # reported an error.
-        primary, sock_info = None, None
         try:
-            try:
-                rs_state = self.__get_rs_state()
-                primary = rs_state.primary_member
-                if not primary:
-                    return False
-                else:
-                    sock_info = self.__socket(primary)
-                    return not pool._closed(sock_info.sock)
-            except (socket.error, ConnectionFailure):
+            rs_state = self.__get_rs_state()
+            primary = rs_state.primary_member
+            if not primary:
                 return False
-        finally:
-            if primary:
-                primary.pool.maybe_return_socket(sock_info)
+            else:
+                with self.__socket(primary) as sock_info:
+                    return not pool._closed(sock_info.sock)
+        except (socket.error, ConnectionFailure):
+            return False
 
     def __check_response_to_last_error(self, response, is_command):
         """Check a response to a lastError message for errors.
@@ -1402,37 +1378,6 @@ class MongoReplicaSetClient(common.BaseObject):
         if code in (11000, 11001, 12582):
             raise DuplicateKeyError(result["err"], code, result)
         raise OperationFailure(result["err"], code, result)
-
-    def __recv_data(self, length, sock_info):
-        """Lowest level receive operation.
-
-        Takes length to receive and repeatedly calls recv until able to
-        return a buffer of that length, raising ConnectionFailure on error.
-        """
-        message = EMPTY
-        while length:
-            chunk = sock_info.sock.recv(length)
-            if chunk == EMPTY:
-                raise ConnectionFailure("connection closed")
-            length -= len(chunk)
-            message += chunk
-        return message
-
-    def __recv_msg(self, operation, rqst_id, sock):
-        """Receive a message in response to `rqst_id` on `sock`.
-
-        Returns the response data with the header removed.
-        """
-        header = self.__recv_data(16, sock)
-        length = struct.unpack("<i", header[:4])[0]
-        # No rqst_id for exhaust cursor "getMore".
-        if rqst_id is not None:
-            resp_id = struct.unpack("<i", header[8:12])[0]
-            assert rqst_id == resp_id, "ids don't match %r %r" % (rqst_id,
-                                                                  resp_id)
-        assert operation == struct.unpack("<i", header[12:])[0]
-
-        return self.__recv_data(length - 16, sock)
 
     def __check_bson_size(self, msg, max_size):
         """Make sure the message doesn't include BSON documents larger
@@ -1476,58 +1421,42 @@ class MongoReplicaSetClient(common.BaseObject):
         else:
             member = self.__get_rs_state().get(_connection_to_use)
 
-        sock_info = None
-        try:
-            try:
-                sock_info = self.__socket(member)
-                rqst_id, data = self.__check_bson_size(
-                    msg, member.max_bson_size)
+        rqst_id, data = self.__check_bson_size(msg, member.max_bson_size)
 
-                sock_info.sock.sendall(data)
+        try:
+            with self.__socket(member) as sock_info:
+                sock_info.send_message(data)
                 # Safe mode. We pack the message together with a lastError
                 # message and send both. We then get the response (to the
                 # lastError) and raise OperationFailure if it is an error
                 # response.
                 rv = None
                 if with_last_error:
-                    response = self.__recv_msg(1, rqst_id, sock_info)
-                    rv = self.__check_response_to_last_error(response, command)
+                    response = sock_info.receive_message(1, rqst_id)
+                    rv = self.__check_response_to_last_error(response,
+                                                             command)
                 return rv
-            except OperationFailure:
-                raise
-            except(ConnectionFailure, socket.error) as why:
-                member.pool.discard_socket(sock_info)
-                if _connection_to_use in (None, -1):
-                    self.disconnect()
-                raise AutoReconnect(str(why))
-            except:
-                sock_info.close()
-                raise
-        finally:
-            member.pool.maybe_return_socket(sock_info)
+        except OperationFailure:
+            raise
+        except(ConnectionFailure, socket.error) as why:
+            if _connection_to_use in (None, -1):
+                self.disconnect()
+            raise AutoReconnect(str(why))
 
     def __send_and_receive(self, member, msg, **kwargs):
         """Send a message on the given socket and return the response data.
 
         Can raise socket.error.
         """
-        sock_info = None
-        exhaust = kwargs.get('exhaust')
         rqst_id, data = self.__check_bson_size(msg, member.max_bson_size)
-        try:
-            sock_info = self.__socket(member)
-            sock_info.sock.sendall(data)
-            response = self.__recv_msg(1, rqst_id, sock_info)
+        sock_info = self.__socket(member)
 
-            if not exhaust:
-                member.pool.maybe_return_socket(sock_info)
-
+        # For exhaust queries, tell the socket not to check itself back in.
+        sock_info.exhaust(kwargs.get('exhaust'))
+        with sock_info:
+            sock_info.send_message(data)
+            response = sock_info.receive_message(1, rqst_id)
             return response, sock_info, member.pool
-        except:
-            if sock_info is not None:
-                sock_info.close()
-                member.pool.maybe_return_socket(sock_info)
-            raise
 
     def __try_read(self, member, msg, **kwargs):
         """Attempt a read from a member; on failure mark the member "down" and
@@ -1671,11 +1600,6 @@ class MongoReplicaSetClient(common.BaseObject):
             msg += ". " + ', '.join(errors)
 
         raise AutoReconnect(msg, errors)
-
-    def _exhaust_next(self, sock_info):
-        """Used with exhaust cursors to get the next batch off the socket.
-        """
-        return self.__recv_msg(1, None, sock_info)
 
     def start_request(self):
         """Ensure the current thread or greenlet always uses the same socket

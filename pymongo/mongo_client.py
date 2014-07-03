@@ -451,14 +451,11 @@ class MongoClient(common.BaseObject):
 
         if connect:
             member = self.__ensure_member()
-            sock_info = self.__socket(member)
-            try:
+            with self.__socket(member) as sock_info:
                 # Since __check_auth was called in __socket
                 # there is no need to call it here.
                 auth.authenticate(credentials, sock_info, self.__simple_command)
                 sock_info.authset.add(credentials)
-            finally:
-                member.pool.maybe_return_socket(sock_info)
 
         self.__auth_credentials[source] = credentials
 
@@ -664,12 +661,8 @@ class MongoClient(common.BaseObject):
         """
         rqst_id, msg, _ = message.query(0, dbname + '.$cmd', 0, -1, spec)
         start = time.time()
-        try:
-            sock_info.sock.sendall(msg)
-            response = self.__receive_message_on_socket(1, rqst_id, sock_info)
-        except:
-            sock_info.close()
-            raise
+        sock_info.send_message(msg)
+        response = sock_info.receive_message(1, rqst_id)
 
         end = time.time()
         response = helpers._unpack_response(response)['data'][0]
@@ -687,13 +680,10 @@ class MongoClient(common.BaseObject):
         """
         # Call 'ismaster' directly so we can get a response time.
         connection_pool = self.__create_pool(node)
-        sock_info = connection_pool.get_socket()
-        try:
+        with connection_pool.get_socket() as sock_info:
             response, res_time = self.__simple_command(sock_info,
                                                        'admin',
                                                        {'ismaster': 1})
-        finally:
-            connection_pool.maybe_return_socket(sock_info)
 
         member = Member(
             node,
@@ -880,7 +870,7 @@ class MongoClient(common.BaseObject):
         return chosen_member, discovered_nodes
 
     def __socket(self, member):
-        """Get a SocketInfo.
+        """Get a SocketInfo or raise AutoReconnect.
 
         Calls disconnect() on error.
         """
@@ -973,15 +963,11 @@ class MongoClient(common.BaseObject):
         if not member:
             return False
         else:
-            sock_info = None
             try:
-                try:
-                    sock_info = member.pool.get_socket()
+                with member.pool.get_socket() as sock_info:
                     return not pool._closed(sock_info.sock)
-                except (socket.error, ConnectionFailure):
-                    return False
-            finally:
-                member.pool.maybe_return_socket(sock_info)
+            except (socket.error, ConnectionFailure):
+                return False
 
     def set_cursor_manager(self, manager_class):
         """Set this client's cursor manager.
@@ -1092,19 +1078,17 @@ class MongoClient(common.BaseObject):
             # The write won't succeed, bail as if we'd done a getLastError
             raise AutoReconnect("not master")
 
-        sock_info = self.__socket(member)
-        try:
+        with self.__socket(member) as sock_info:
             try:
                 (request_id, data) = self.__check_bson_size(message)
-                sock_info.sock.sendall(data)
+                sock_info.send_message(data)
                 # Safe mode. We pack the message together with a lastError
                 # message and send both. We then get the response (to the
                 # lastError) and raise OperationFailure if it is an error
                 # response.
                 rv = None
                 if with_last_error:
-                    response = self.__receive_message_on_socket(1, request_id,
-                                                                sock_info)
+                    response = sock_info.receive_message(1, request_id)
                     rv = self.__check_response_to_last_error(response, command)
 
                 return rv
@@ -1113,53 +1097,13 @@ class MongoClient(common.BaseObject):
             except (ConnectionFailure, socket.error) as e:
                 self.disconnect()
                 raise AutoReconnect(str(e))
-            except:
-                sock_info.close()
-                raise
-        finally:
-            member.pool.maybe_return_socket(sock_info)
-
-    def __receive_data_on_socket(self, length, sock_info):
-        """Lowest level receive operation.
-
-        Takes length to receive and repeatedly calls recv until able to
-        return a buffer of that length, raising ConnectionFailure on error.
-        """
-        message = EMPTY
-        while length:
-            chunk = sock_info.sock.recv(length)
-            if chunk == EMPTY:
-                raise ConnectionFailure("connection closed")
-            length -= len(chunk)
-            message += chunk
-        return message
-
-    def __receive_message_on_socket(self, operation, rqst_id, sock_info):
-        """Receive a message in response to `rqst_id` on `sock`.
-
-        Returns the response data with the header removed.
-        """
-        header = self.__receive_data_on_socket(16, sock_info)
-        length = struct.unpack("<i", header[:4])[0]
-        # No rqst_id for exhaust cursor "getMore".
-        if rqst_id is not None:
-            resp_id = struct.unpack("<i", header[8:12])[0]
-            assert rqst_id == resp_id, "ids don't match %r %r" % (rqst_id,
-                                                                  resp_id)
-        assert operation == struct.unpack("<i", header[12:])[0]
-
-        return self.__receive_data_on_socket(length - 16, sock_info)
 
     def __send_and_receive(self, message, sock_info):
         """Send a message on the given socket and return the response data.
         """
         (request_id, data) = self.__check_bson_size(message)
-        try:
-            sock_info.sock.sendall(data)
-            return self.__receive_message_on_socket(1, request_id, sock_info)
-        except:
-            sock_info.close()
-            raise
+        sock_info.send_message(data)
+        return sock_info.receive_message(1, request_id)
 
     def _send_message_with_response(self, message, **kwargs):
         """Send a message to Mongo and return the response.
@@ -1171,22 +1115,16 @@ class MongoClient(common.BaseObject):
         """
         member = self.__ensure_member()
         sock_info = self.__socket(member)
-        exhaust = kwargs.get('exhaust')
-        try:
+
+        # For exhaust queries, tell the socket not to check itself back in.
+        sock_info.exhaust(kwargs.get('exhaust'))
+        with sock_info:
             try:
                 response = self.__send_and_receive(message, sock_info)
                 return (None, (response, sock_info, member.pool))
             except (ConnectionFailure, socket.error) as e:
                 self.disconnect()
                 raise AutoReconnect(str(e))
-        finally:
-            if not exhaust:
-                member.pool.maybe_return_socket(sock_info)
-
-    def _exhaust_next(self, sock_info):
-        """Used with exhaust cursors to get the next batch off the socket.
-        """
-        return self.__receive_message_on_socket(1, None, sock_info)
 
     def start_request(self):
         """Ensure the current thread or greenlet always uses the same socket

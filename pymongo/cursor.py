@@ -58,6 +58,7 @@ class _SocketManager:
         """
         if not self.__closed:
             self.__closed = True
+            self.sock.exhaust(False)  # Make it a normal socket again.
             self.pool.maybe_return_socket(self.sock)
             self.sock, self.pool = None, None
 
@@ -877,8 +878,9 @@ class Cursor(object):
                 # due to a socket timeout.
                 self.__killed = True
                 raise
-        else: # exhaust cursor - no getMore message
-            response = client._exhaust_next(self.__exhaust_mgr.sock)
+        else:
+            # Exhaust cursor - no getMore message.
+            response = self.__exhaust_mgr.sock.receive_message(1, None)
 
         try:
             response = helpers._unpack_response(response, self.__id,

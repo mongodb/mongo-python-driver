@@ -1068,6 +1068,27 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
 
         self.assertFalse(client.alive())
 
+    def test_exhaust_network_error(self):
+        # When doing an exhaust query, the socket stays checked out on success
+        # but must be checked in on error to avoid semaphore leaks.
+        client = self._get_client(max_pool_size=1)
+        collection = client.pymongo_test.test
+
+        # Get the primary's pool.
+        pool = get_pool(client)
+
+        # Cause a network error.
+        sock_info = one(pool.sockets)
+        sock_info.sock.close()
+        cursor = collection.find(exhaust=True)
+        with self.assertRaises(ConnectionFailure):
+            next(cursor)
+
+        self.assertTrue(sock_info.closed)
+
+        # The semaphore was decremented despite the error.
+        self.assertTrue(pool._socket_semaphore.acquire(blocking=False))
+
 
 class TestReplicaSetWireVersion(unittest.TestCase):
 

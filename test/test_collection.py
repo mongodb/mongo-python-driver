@@ -50,7 +50,7 @@ from pymongo.errors import (DocumentTooLarge,
                             WTimeoutError)
 from test.test_client import get_client, IntegrationTest
 from test.utils import (is_mongos, joinall, enable_text_search, get_pool,
-                        oid_generated_on_client)
+                        oid_generated_on_client, one)
 from test import client_context, host, port, pair, qcheck, unittest
 
 
@@ -1726,10 +1726,14 @@ class TestCollection(IntegrationTest):
             pass
         self.assertEqual(1, len(socks))
 
+        # SocketInfo._exhaust was set back to False.
+        self.assertFalse(one(socks)._exhaust)
+
         # Same as previous but don't call next()
         for doc in client[self.db.name].test.find(exhaust=True):
             pass
         self.assertEqual(1, len(socks))
+        self.assertFalse(one(socks)._exhaust)
 
         # If the Cursor instance is discarded before being
         # completely iterated we have to close and

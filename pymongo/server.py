@@ -38,18 +38,9 @@ class Server(object):
         self._monitor.request_check()
 
     def send_message_with_response(self, message, request_id):
-        # TODO: make a context manager to use in a "with" statement.
-        sock_info = self._pool.get_socket()
-        try:
+        with self._pool.get_socket() as sock_info:
             sock_info.send_message(message)
-            response = sock_info.receive_message(1, request_id)
-        except:
-            sock_info.close()
-            raise
-        finally:
-            self._pool.maybe_return_socket(sock_info)
-        
-        return response
+            return sock_info.receive_message(1, request_id)
 
     @property
     def description(self):

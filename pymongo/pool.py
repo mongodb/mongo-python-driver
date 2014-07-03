@@ -115,17 +115,21 @@ class PoolOptions(object):
 class SocketInfo(object):
     """Store a socket with some metadata
     """
-    def __init__(self, sock, pool_id, host=None):
+    def __init__(self, sock, pool, host=None):
         self.sock = sock
         self.host = host
         self.authset = set()
         self.closed = False
         self.last_checkout = time.time()
         self.forced = False
+        self.pool_ref = weakref.ref(pool)
 
         # The pool's pool_id changes with each reset() so we can close sockets
         # created before the last reset.
-        self.pool_id = pool_id
+        self.pool_id = pool.pool_id
+
+        # Are we being used by an exhaust cursor?
+        self._exhaust = False
 
     def send_message(self, message):
         """Send a raw BSON message.
@@ -139,18 +143,25 @@ class SocketInfo(object):
             raise
 
     def receive_message(self, operation, request_id):
-        """Receive a raw BSON message."""
-        header = self.__receive_data_on_socket(16)
-        length = struct.unpack("<i", header[:4])[0]
+        """Receive a raw BSON message.
 
-        # No request_id for exhaust cursor "getMore".
-        if request_id is not None:
-            response_id = struct.unpack("<i", header[8:12])[0]
-            assert request_id == response_id, "ids don't match %r %r" % (
-                request_id, response_id)
+        If any exception is raised, the socket is closed.
+        """
+        try:
+            header = self.__receive_data_on_socket(16)
+            length = struct.unpack("<i", header[:4])[0]
 
-        assert operation == struct.unpack("<i", header[12:])[0]
-        return self.__receive_data_on_socket(length - 16)
+            # No request_id for exhaust cursor "getMore".
+            if request_id is not None:
+                response_id = struct.unpack("<i", header[8:12])[0]
+                assert request_id == response_id, "ids don't match %r %r" % (
+                    request_id, response_id)
+
+            assert operation == struct.unpack("<i", header[12:])[0]
+            return self.__receive_data_on_socket(length - 16)
+        except:
+            self.close()
+            raise
 
     def __receive_data_on_socket(self, length):
         message = EMPTY
@@ -171,6 +182,22 @@ class SocketInfo(object):
             self.sock.close()
         except:
             pass
+
+    def exhaust(self, exhaust):
+        self._exhaust = exhaust
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        # An exhaust cursor must keep its socket checked out, but on error
+        # it must be returned to avoid semaphore leaks.
+        if not self._exhaust or self.closed:
+            try:
+                self.pool_ref().maybe_return_socket(self)
+            except weakref.ReferenceError:
+                # Pool was garbage-collected.
+                pass
 
     def __eq__(self, other):
         # Need to check if other is NO_REQUEST or NO_SOCKET_YET, and then check
@@ -334,7 +361,7 @@ class Pool:
                     raise
 
         sock.settimeout(self.opts.socket_timeout)
-        return SocketInfo(sock, self.pool_id, hostname)
+        return SocketInfo(sock, self, hostname)
 
     def get_socket(self, force=False):
         """Get a socket from the pool.
@@ -432,19 +459,11 @@ class Pool:
                 if sock_info not in (NO_REQUEST, NO_SOCKET_YET):
                     self._return_socket(sock_info)
 
-    def discard_socket(self, sock_info):
-        """Close and discard the active socket.
-        """
-        if sock_info not in (NO_REQUEST, NO_SOCKET_YET):
-            sock_info.close()
-
-            if sock_info == self._get_request_state():
-                # Discarding request socket; prepare to use a new request
-                # socket on next get_socket().
-                self._set_request_state(NO_SOCKET_YET)
-
     def maybe_return_socket(self, sock_info):
-        """Return the socket to the pool unless it's the request socket.
+        """Return the socket to the pool.
+
+        If it is the request socket, it is not actually returned to the pool
+        of available sockets. If it is closed, discard it.
         """
         if sock_info in (NO_REQUEST, NO_SOCKET_YET):
             return

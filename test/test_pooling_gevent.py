@@ -111,11 +111,10 @@ class TestPoolingGeventSpecial(unittest.TestCase):
                 main.switch()
 
                 for _ in range(2):
-                    sock = cx_pool.get_socket()
-                    cx_pool.maybe_return_socket(sock)
-                    greenlet2socks.setdefault(
-                        greenlet.getcurrent(), []
-                    ).append(id(sock))
+                    with cx_pool.get_socket() as sock:
+                        greenlet2socks.setdefault(
+                            greenlet.getcurrent(), []
+                        ).append(id(sock))
 
                     main.switch()
 

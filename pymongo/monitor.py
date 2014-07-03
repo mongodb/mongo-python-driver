@@ -115,30 +115,23 @@ class Monitor(threading.Thread):
         Returns a ServerDescription, or None on error.
         """
         try:
-            sock_info = self._pool.get_socket()
+            with self._pool.get_socket() as sock_info:
+                response, round_trip_time = self._check_with_socket(sock_info)
+                old_rtts = self._server_description.round_trip_times
+                if old_rtts:
+                    new_rtts = old_rtts.clone_with(round_trip_time)
+                else:
+                    new_rtts = MovingAverage([round_trip_time])
+
+                sd = ServerDescription(
+                    self._server_description.address, response, new_rtts)
+
+                return sd
         except socket.error:
-            return None
-
-        try:
-            response, round_trip_time = self._check_with_socket(sock_info)
-            old_rtts = self._server_description.round_trip_times
-            if old_rtts:
-                new_rtts = old_rtts.clone_with(round_trip_time)
-            else:
-                new_rtts = MovingAverage([round_trip_time])
-
-            sd = ServerDescription(
-                self._server_description.address, response, new_rtts)
-
-            return sd
-        except socket.error:
-            sock_info.close()
             return None
         except Exception:
             # TODO: This is unexpected. Log.
             return None
-        finally:
-            self._pool.maybe_return_socket(sock_info)
 
     def _check_with_socket(self, sock_info):
         """Return (IsMaster, round_trip_time).
