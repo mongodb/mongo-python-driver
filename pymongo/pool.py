@@ -71,6 +71,10 @@ class SocketInfo(object):
         self.pool_id = pool_id
 
     def send_message(self, message):
+        """Send a raw BSON message.
+
+        If a network exception is raised, the socket is closed.
+        """
         try:
             self.sock.sendall(message)
         except:
@@ -78,6 +82,7 @@ class SocketInfo(object):
             raise
 
     def receive_message(self, operation, request_id):
+        """Receive a raw BSON message."""
         header = self.__receive_data_on_socket(16)
         length = struct.unpack("<i", header[:4])[0]
 

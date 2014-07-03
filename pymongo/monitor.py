@@ -55,6 +55,10 @@ class Monitor(threading.Thread):
         self._stopped = False
 
     def close(self):
+        """Disconnect and stop monitoring.
+
+        The Monitor cannot be used after closing.
+        """
         self._stopped = True
         self._pool.reset()
 
@@ -62,6 +66,7 @@ class Monitor(threading.Thread):
         self.request_check()
 
     def request_check(self):
+        """If the monitor is sleeping, wake and check the server soon."""
         with self._lock:
             self._condition.notify()
 

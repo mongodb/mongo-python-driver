@@ -44,6 +44,11 @@ class ClusterDescription(object):
         return address in self._server_descriptions
 
     def check_compatible(self):
+        """Raise ConfigurationError if any server is incompatible.
+
+        A server is incompatible if its wire protocol version range does not
+        overlap with PyMongo's.
+        """
         for s in self._server_descriptions.values():
             # s.min/max_wire_version is the server's wire protocol.
             # MIN/MAX_SUPPORTED_WIRE_VERSION is what PyMongo supports.
@@ -82,6 +87,7 @@ class ClusterDescription(object):
 
     @property
     def known_servers(self):
+        """List of Servers of types besides Unknown."""
         return [s for s in self._server_descriptions.values()
                 if s.is_server_type_known]
 

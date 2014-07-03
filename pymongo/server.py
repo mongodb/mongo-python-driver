@@ -19,6 +19,7 @@ from pymongo.ismaster import SERVER_TYPE
 
 class Server(object):
     def __init__(self, server_description, pool, monitor):
+        """Represent one MongoDB server."""
         self._description = server_description
         self._pool = pool
         self._monitor = monitor
@@ -33,6 +34,7 @@ class Server(object):
         self._pool.reset()
 
     def request_check(self):
+        """Check the server's state soon."""
         self._monitor.request_check()
 
     def send_message_with_response(self, message, request_id):
