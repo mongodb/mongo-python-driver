@@ -313,10 +313,9 @@ def read_from_which_host(
     if isinstance(tag_sets, dict):
         tag_sets = [tag_sets]
     if tag_sets or secondary_acceptable_latency_ms:
-        mode = pref.mode
         latency = secondary_acceptable_latency_ms or pref.latency_threshold_ms
         tags = tag_sets or pref.tag_sets
-        pref = pref.__class__(mode, latency, tags)
+        pref = pref.__class__(latency, tags)
 
     db.read_preference = pref
 
