@@ -34,7 +34,7 @@ default_dbpath = os.path.join(home, 'data', 'pymongo_high_availability')
 dbpath = os.environ.get('DBPATH', default_dbpath)
 default_logpath = os.path.join(home, 'log', 'pymongo_high_availability')
 logpath = os.environ.get('LOGPATH', default_logpath)
-hostname = os.environ.get('HOSTNAME', socket.gethostname())
+hostname = os.environ.get('HOSTNAME', 'localhost')
 port = int(os.environ.get('DBPORT', 27017))
 mongod = os.environ.get('MONGOD', 'mongod')
 mongos = os.environ.get('MONGOS', 'mongos')
@@ -450,13 +450,26 @@ def stepdown_primary():
         if ha_tools_debug:
             print('stepping down primary: %s' % (primary,))
         c = pymongo.MongoClient(primary, use_greenlets=use_greenlets)
-        # replSetStepDown causes mongod to close all connections
-        try:
-            c.admin.command('replSetStepDown', 20)
-        except Exception:
-            if ha_tools_debug:
-                exc = sys.exc_info()[1]
-                print('Exception from replSetStepDown: %s' % exc)
+
+        for _ in range(10):
+            try:
+                c.admin.command('replSetStepDown', 20)
+            except pymongo.errors.OperationFailure as exc:
+                if ha_tools_debug:
+                    print('Code %s from replSetStepDown: %s' % (exc.code, exc))
+                    print('Trying again in one second....')
+
+                time.sleep(1)
+            except pymongo.errors.ConnectionFailure as exc:
+                # replSetStepDown causes mongod to close all connections.
+                if ha_tools_debug:
+                    print('Exception from replSetStepDown: %s' % exc)
+
+                # Seems to have succeeded.
+                break
+        else:
+            raise AssertionError("Couldn't complete replSetStepDown")
+
         if ha_tools_debug:
             print('\tcalled replSetStepDown')
     elif ha_tools_debug:
