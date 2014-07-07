@@ -214,7 +214,7 @@ class IntegrationTest(unittest.TestCase):
 def connection_string(seeds=[pair]):
     if client_context.auth_enabled:
         return "mongodb://%s:%s@%s" % (db_user, db_pwd, ','.join(seeds))
-    return "mongodb://%s" % pair
+    return "mongodb://%s" % ','.join(seeds)
 
 
 def setup():
