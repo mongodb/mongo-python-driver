@@ -14,10 +14,10 @@
 
 """A fake SSLContext implementation."""
 
-from pymongo.common import HAS_SSL
-
-if HAS_SSL:
+try:
     import ssl
+except ImportError:
+    pass
 
 
 class SSLContext(object):

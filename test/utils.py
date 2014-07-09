@@ -143,8 +143,8 @@ def drop_collections(db):
 
 def remove_all_users(db):
     if Version.from_client(db.connection).at_least(2, 5, 3, -1):
-        db.command({"dropAllUsersFromDatabase": 1,
-                    "writeConcern": {"w": "majority"}})
+        db.command("dropAllUsersFromDatabase", 1,
+                   writeConcern={"w": "majority"})
     else:
         db.system.users.remove({}, w="majority")
 

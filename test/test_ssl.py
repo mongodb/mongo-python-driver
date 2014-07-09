@@ -33,10 +33,10 @@ except ImportError:
     from urllib import quote_plus
 
 from pymongo import MongoClient, MongoReplicaSetClient
-from pymongo.common import HAS_SSL
 from pymongo.errors import (ConfigurationError,
                             ConnectionFailure,
                             OperationFailure)
+from pymongo.ssl_support import HAVE_SSL
 from test import host, pair, port, SkipTest, unittest
 from test.utils import server_started_with_auth, remove_all_users
 from test.version import Version
@@ -79,7 +79,7 @@ def is_server_resolvable():
 # Shared ssl-enabled client for the tests
 ssl_client = None
 
-if HAS_SSL:
+if HAVE_SSL:
     import ssl
 
     # Check this all once instead of before every test method below.
@@ -110,7 +110,7 @@ class TestClientSSL(unittest.TestCase):
     def test_no_ssl_module(self):
         # Test that ConfigurationError is raised if the ssl
         # module isn't available.
-        if HAS_SSL:
+        if HAVE_SSL:
             raise SkipTest(
                 "The ssl module is available, can't test what happens "
                 "without it."
@@ -211,7 +211,7 @@ class TestSSL(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        if not HAS_SSL:
+        if not HAVE_SSL:
             raise SkipTest("The ssl module is not available.")
 
         if sys.version.startswith('3.0'):

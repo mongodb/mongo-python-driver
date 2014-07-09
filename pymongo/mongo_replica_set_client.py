@@ -52,9 +52,6 @@ from pymongo import (auth,
                      pool,
                      thread_util,
                      uri_parser)
-from pymongo.member import Member
-from pymongo.read_preferences import (
-    ReadPreference, select_member, MovingAverage)
 from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
                             ConnectionFailure,
@@ -62,14 +59,11 @@ from pymongo.errors import (AutoReconnect,
                             DuplicateKeyError,
                             OperationFailure,
                             InvalidOperation)
+from pymongo.member import Member
+from pymongo.read_preferences import (
+    ReadPreference, select_member, MovingAverage)
+from pymongo.ssl_support import get_ssl_context
 from pymongo.thread_util import DummyLock
-
-if common.HAS_SSL:
-    import ssl
-    try:
-        from ssl import SSLContext
-    except ImportError:
-        from pymongo.ssl_context import SSLContext
 
 EMPTY = b""
 MAX_RETRY = 3
@@ -649,10 +643,10 @@ class MongoReplicaSetClient(common.BaseObject):
 
         ssl_context = None
         use_ssl = self.__opts.get('ssl', None)
-        keyfile = self.__opts.get('ssl_keyfile', None)
         certfile = self.__opts.get('ssl_certfile', None)
-        cert_reqs = self.__opts.get('ssl_cert_reqs', None)
+        keyfile = self.__opts.get('ssl_keyfile', None)
         ca_certs = self.__opts.get('ssl_ca_certs', None)
+        cert_reqs = self.__opts.get('ssl_cert_reqs', None)
 
         ssl_kwarg_keys = [k for k in kwargs if k.startswith('ssl_')]
         if use_ssl is False and ssl_kwarg_keys:
@@ -671,18 +665,9 @@ class MongoReplicaSetClient(common.BaseObject):
             # ssl options imply ssl = True
             use_ssl = True
 
-        if use_ssl and not common.HAS_SSL:
-            raise ConfigurationError("The ssl module is not available.")
-
         if use_ssl is True:
-            ctx = SSLContext(ssl.PROTOCOL_SSLv23)
-            if certfile is not None:
-                ctx.load_cert_chain(certfile, keyfile)
-            if ca_certs is not None:
-                ctx.load_verify_locations(ca_certs)
-            if cert_reqs is not None:
-                ctx.verify_mode = cert_reqs
-            ssl_context = ctx
+            ssl_context = get_ssl_context(certfile, keyfile,
+                                          ca_certs, cert_reqs)
 
         self.__pool_opts = pool.PoolOptions(
             max_pool_size=max_pool_size,

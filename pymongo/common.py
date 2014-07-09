@@ -24,22 +24,11 @@ from pymongo.read_preferences import (make_read_preference,
                                       read_pref_mode_from_name,
                                       ReadPreference,
                                       ServerMode)
+from pymongo.ssl_support import validate_cert_reqs
 from pymongo.write_concern import WriteConcern
 from bson.binary import (OLD_UUID_SUBTYPE, UUID_SUBTYPE,
                          JAVA_LEGACY, CSHARP_LEGACY)
 from bson.py3compat import string_type, integer_types, iteritems
-
-HAS_SSL = True
-try:
-    import ssl
-except ImportError:
-    HAS_SSL = False
-
-
-# Jython 2.7 includes an incomplete ssl module. See PYTHON-498.
-if sys.platform.startswith('java'):
-    HAS_SSL = False
-
 
 # Defaults until we connect to a server and get updated limits.
 MAX_BSON_SIZE = 16 * (1024 ** 2)
@@ -137,23 +126,6 @@ def validate_readable(option, value):
     value = validate_string(option, value)
     open(value, 'r').close()
     return value
-
-
-def validate_cert_reqs(option, value):
-    """Validate the cert reqs are valid. It must be None or one of the three
-    values ``ssl.CERT_NONE``, ``ssl.CERT_OPTIONAL`` or ``ssl.CERT_REQUIRED``"""
-    if value is None:
-        return value
-    if HAS_SSL:
-        if value in (ssl.CERT_NONE, ssl.CERT_OPTIONAL, ssl.CERT_REQUIRED):
-            return value
-        raise ConfigurationError("The value of %s must be one of: "
-                                 "`ssl.CERT_NONE`, `ssl.CERT_OPTIONAL` or "
-                                 "`ssl.CERT_REQUIRED" % (option,))
-    else:
-        raise ConfigurationError("The value of %s is set but can't be "
-                                 "validated. The ssl module is not available"
-                                 % (option,))
 
 
 def validate_positive_integer_or_none(option, value):

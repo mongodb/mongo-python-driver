@@ -13,6 +13,7 @@
 # permissions and limitations under the License.
 
 import os
+import select
 import socket
 import struct
 import sys
@@ -22,23 +23,13 @@ import weakref
 
 from bson import EMPTY
 from pymongo import thread_util
-from pymongo.common import HAS_SSL
 from pymongo.errors import ConnectionFailure, ConfigurationError
 
-
-if HAS_SSL:
-    import ssl
-    try:
-        from ssl import match_hostname, CertificateError
-    except ImportError:
-        from pymongo.ssl_match_hostname import match_hostname, CertificateError
-
-
-if sys.platform.startswith('java'):
-    from select import cpython_compatible_select as select
-else:
-    from select import select
-
+try:
+    from ssl import match_hostname, CertificateError
+except ImportError:
+    # These don't require the ssl module
+    from pymongo.ssl_match_hostname import match_hostname, CertificateError
 
 NO_REQUEST = None
 NO_SOCKET_YET = -1
@@ -48,7 +39,7 @@ def _closed(sock):
     """Return True if we know socket has been closed, False otherwise.
     """
     try:
-        rd, _, _ = select([sock], [], [], 0)
+        rd, _, _ = select.select([sock], [], [], 0)
     # Any exception here is equally bad (select.error, ValueError, etc.).
     except:
         return True
@@ -331,11 +322,11 @@ class Pool:
         if ssl_context is not None:
             try:
                 sock = ssl_context.wrap_socket(sock)
-            except ssl.SSLError:
+            except IOError:
                 sock.close()
                 raise ConnectionFailure("SSL handshake failed. MongoDB may "
                                         "not be configured with SSL support.")
-            if ssl_context.verify_mode != ssl.CERT_NONE:
+            if ssl_context.verify_mode:
                 try:
                     match_hostname(sock.getpeercert(), hostname)
                 except CertificateError:
