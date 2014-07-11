@@ -237,18 +237,21 @@ def validate_uuid_subtype(dummy, value):
 def validate_read_preference_tags(name, value):
     """Parse readPreferenceTags if passed as a client kwarg.
     """
-    # Parsed in uri_parser.parse_uri
-    if isinstance(value, list):
-        return value
+    if not isinstance(value, list):
+        value = [value]
 
-    tags = {}
-    try:
-        for tag in value.split(","):
-            key, val = tag.split(":")
-            tags[key] = val
-    except Exception:
-        raise ConfigurationError("%r not a valid value for %s" % (value, name))
-    return [tags]
+    tag_sets = []
+    for tag_set in value:
+        if tag_set == '':
+            tag_sets.append({})
+            continue
+        try:
+            tag_sets.append(dict([tag.split(":")
+                                  for tag in tag_set.split(",")]))
+        except Exception:
+            raise ConfigurationError("%r not a valid "
+                                     "value for %s" % (tag_set, name))
+    return tag_sets
 
 
 # journal is an alias for j,

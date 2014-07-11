@@ -22,7 +22,7 @@ if PY3:
 else:
     from urllib import unquote_plus
 
-from pymongo.common import validate
+from pymongo.common import validate as _validate
 from pymongo.errors import (ConfigurationError,
                             InvalidURI,
                             UnsupportedOption)
@@ -153,19 +153,12 @@ def validate_options(opts):
     :Parameters:
         - `opts`: A dict of MongoDB URI options.
     """
-    normalized = {}
-    for option, value in iteritems(opts):
-        option, value = validate(option, value)
-        # str(option) to ensure that a unicode URI results in plain 'str'
-        # option names. 'normalized' is then suitable to be passed as kwargs
-        # in all Python versions.
-        normalized[str(option)] = value
-    return normalized
+    return dict([_validate(opt, val) for opt, val in iteritems(opts)])
 
 
 def _parse_options(opts, delim):
     """Helper method for split_options which creates the options dict.
-    Also handles the creation of a list of dicts for the URI tag_sets/
+    Also handles the creation of a list for the URI tag_sets/
     readpreferencetags portion."""
     options = {}
     for opt in opts.split(delim):
@@ -173,29 +166,21 @@ def _parse_options(opts, delim):
         if key.lower() == 'readpreferencetags':
             options.setdefault('readpreferencetags', []).append(val)
         else:
-            options[key] = val
-    if 'readpreferencetags' in options:
-        new_tag_sets = []
-        for tag_set in options['readpreferencetags']:
-            tag_dict = {}
-            try:
-                for tag in tag_set.split(","):
-                    tag_parts = tag.split(":")
-                    tag_dict[tag_parts[0]] = tag_parts[1]
-                new_tag_sets.append(tag_dict)
-            except IndexError:
-                new_tag_sets.append({})
-        options['readpreferencetags'] = new_tag_sets
+            # str(option) to ensure that a unicode URI results in plain 'str'
+            # option names. 'normalized' is then suitable to be passed as
+            # kwargs in all Python versions.
+            options[str(key)] = val
     return options
 
 
-def split_options(opts):
+def split_options(opts, validate=True):
     """Takes the options portion of a MongoDB URI, validates each option
-    and returns the options in a dictionary. The option names will be returned
-    lowercase even if camelCase options are used.
+    and returns the options in a dictionary.
 
     :Parameters:
         - `opt`: A string representing MongoDB URI options.
+        - `validate`: If ``True`` (the default), validate and normalize all
+          options.
     """
     and_idx = opts.find("&")
     semi_idx = opts.find(";")
@@ -213,7 +198,9 @@ def split_options(opts):
     except ValueError:
         raise InvalidURI("MongoDB URI options are key=value pairs.")
 
-    return validate_options(options)
+    if validate:
+        return validate_options(options)
+    return options
 
 
 def split_hosts(hosts, default_port=DEFAULT_PORT):
@@ -227,7 +214,7 @@ def split_hosts(hosts, default_port=DEFAULT_PORT):
     :Parameters:
         - `hosts`: A string of the form host1[:port],host2[:port],...
         - `default_port`: The port number to use when one wasn't specified
-                          for a host.
+          for a host.
     """
     nodes = []
     for entity in hosts.split(','):
@@ -242,7 +229,7 @@ def split_hosts(hosts, default_port=DEFAULT_PORT):
     return nodes
 
 
-def parse_uri(uri, default_port=DEFAULT_PORT):
+def parse_uri(uri, default_port=DEFAULT_PORT, validate=True):
     """Parse and validate a MongoDB URI.
 
     Returns a dict of the form::
@@ -259,7 +246,9 @@ def parse_uri(uri, default_port=DEFAULT_PORT):
     :Parameters:
         - `uri`: The MongoDB URI to parse.
         - `default_port`: The port number to use when one wasn't specified
-                          for a host in the URI.
+          for a host in the URI.
+        - `validate`: If ``True`` (the default), validate and normalize all
+          options.
     """
     if not uri.startswith(SCHEME):
         raise InvalidURI("Invalid URI scheme: URI "
@@ -310,7 +299,7 @@ def parse_uri(uri, default_port=DEFAULT_PORT):
                 dbase, collection = dbase.split('.', 1)
 
         if opts:
-            options = split_options(opts)
+            options = split_options(opts, validate)
 
     return {
         'nodelist': nodes,
