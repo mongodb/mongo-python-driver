@@ -686,7 +686,8 @@ class _TestPooling(_TestPoolingBase):
         cx_pool.end_request()
 
         # Semaphore value now 1; we can get a socket.
-        cx_pool.get_socket()
+        sock = cx_pool.get_socket()
+        sock.close()
 
     def test_socket_reclamation(self):
         if sys.platform.startswith('java'):
