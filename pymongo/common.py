@@ -284,6 +284,7 @@ VALIDATORS = {
     'authsource': validate_string,
     'gssapiservicename': validate_string,
     'uuidrepresentation': validate_uuid_representation,
+    'socketkeepalive': validate_boolean
 }
 
 

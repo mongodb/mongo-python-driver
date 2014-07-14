@@ -150,6 +150,9 @@ class MongoClient(common.BaseObject):
           - `waitQueueMultiple`: (integer) Multiplied by max_pool_size to give
             the number of threads allowed to wait for a socket at one time.
             Defaults to ``None`` (no waiters).
+          - `socketKeepAlive`: (boolean) Whether to send periodic keep-alive
+            packets on connected sockets. Defaults to ``False`` (do not send
+            keep-alive packets).
           - `auto_start_request`: If ``True``, each thread that accesses
             this :class:`MongoClient` has a socket allocated to it for the
             thread's lifetime.  This ensures consistent reads, even if you
@@ -293,6 +296,7 @@ class MongoClient(common.BaseObject):
         wait_queue_timeout = options.get('waitqueuetimeoutms')
         wait_queue_multiple = options.get('waitqueuemultiple')
         use_greenlets = options.get('use_greenlets', False)
+        socket_keepalive = options.get('socketkeepalive', False)
 
         ssl_context = None
         use_ssl = options.get('ssl', None)
@@ -329,7 +333,8 @@ class MongoClient(common.BaseObject):
             wait_queue_timeout=wait_queue_timeout,
             wait_queue_multiple=wait_queue_multiple,
             ssl_context=ssl_context,
-            use_greenlets=use_greenlets)
+            use_greenlets=use_greenlets,
+            socket_keepalive=socket_keepalive)
 
         self.__pool_class = pool_class
 

@@ -504,6 +504,9 @@ class MongoReplicaSetClient(common.BaseObject):
           - `waitQueueMultiple`: (integer) Multiplied by max_pool_size to give
             the number of threads allowed to wait for a socket at one time.
             Defaults to ``None`` (no waiters).
+          - `socketKeepAlive`: (boolean) Whether to send periodic keep-alive
+            packets on connected sockets. Defaults to ``False`` (do not send
+            keep-alive packets).
           - `auto_start_request`: If ``True``, each thread that accesses
             this :class:`MongoReplicaSetClient` has a socket allocated to it
             for the thread's lifetime, for each member of the set. For
@@ -642,6 +645,7 @@ class MongoReplicaSetClient(common.BaseObject):
                                      "keyword parameter is required.")
 
         ssl_context = None
+        socket_keepalive = options.get('socketkeepalive', False)
         use_ssl = self.__opts.get('ssl', None)
         certfile = self.__opts.get('ssl_certfile', None)
         keyfile = self.__opts.get('ssl_keyfile', None)
@@ -676,7 +680,9 @@ class MongoReplicaSetClient(common.BaseObject):
             wait_queue_timeout=wait_queue_timeout,
             wait_queue_multiple=wait_queue_multiple,
             ssl_context=ssl_context,
-            use_greenlets=self.__use_greenlets)
+            use_greenlets=self.__use_greenlets,
+            socket_keepalive=socket_keepalive
+        )
 
         super(MongoReplicaSetClient, self).__init__(**self.__opts)
 

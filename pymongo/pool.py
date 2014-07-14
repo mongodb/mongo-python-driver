@@ -50,12 +50,12 @@ class PoolOptions(object):
 
     __slots__ = ('__max_pool_size', '__connect_timeout', '__socket_timeout',
                  '__wait_queue_timeout', '__wait_queue_multiple',
-                 '__ssl_context', '__use_greenlets')
+                 '__ssl_context', '__use_greenlets', '__socket_keepalive')
 
     def __init__(self, max_pool_size=100, connect_timeout=None,
                  socket_timeout=None, wait_queue_timeout=None,
                  wait_queue_multiple=None, ssl_context=None,
-                 use_greenlets=False):
+                 use_greenlets=False, socket_keepalive=False):
 
         self.__max_pool_size = max_pool_size
         self.__connect_timeout = connect_timeout
@@ -64,6 +64,7 @@ class PoolOptions(object):
         self.__wait_queue_multiple = wait_queue_multiple
         self.__ssl_context = ssl_context
         self.__use_greenlets = use_greenlets
+        self.__socket_keepalive = socket_keepalive
 
     @property
     def max_pool_size(self):
@@ -110,6 +111,13 @@ class PoolOptions(object):
         """Use greenlet ids for "thread affinity" in requests.
         """
         return self.__use_greenlets
+
+    @property
+    def socket_keepalive(self):
+        """Whether to send periodic messages to determine if a connection
+        is closed.
+        """
+        return self.__socket_keepalive
 
 
 class SocketInfo(object):
@@ -321,6 +329,8 @@ class Pool:
                 sock = socket.socket(af, socktype, proto)
                 sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
                 sock.settimeout(self.opts.connect_timeout or 20.0)
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE,
+                                self.opts.socket_keepalive)
                 sock.connect(sa)
                 return sock
             except socket.error as e:
