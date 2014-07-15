@@ -279,7 +279,6 @@ VALIDATORS = {
     'latencythresholdms': validate_positive_float,
     'secondaryacceptablelatencyms': validate_positive_float,
     'auto_start_request': validate_boolean,
-    'use_greenlets': validate_boolean,
     'authmechanism': validate_auth_mechanism,
     'authsource': validate_string,
     'gssapiservicename': validate_string,

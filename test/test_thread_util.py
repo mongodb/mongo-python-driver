@@ -22,48 +22,36 @@ import time
 sys.path[0:0] = [""]
 
 from pymongo import thread_util
-if thread_util.have_gevent:
-    import greenlet         # Plain greenlets.
-    import gevent.greenlet  # Gevent's enhanced Greenlets.
-    import gevent.hub
-
 from test import SkipTest, unittest
-from test.utils import looplet, my_partial, RendezvousThread
+from test.utils import my_partial, RendezvousThread
 
 
 class TestIdent(unittest.TestCase):
-    """Ensure thread_util.Ident works for threads and greenlets. This has
-    gotten intricate from refactoring: we have classes, Watched and Unwatched,
-    that implement the logic for the two child threads / greenlets. For the
-    greenlet case it's easy to ensure the two children are alive at once, so
-    we run the Watched and Unwatched logic directly. For the thread case we
-    mix in the RendezvousThread class so we're sure both children are alive
-    when they call Ident.get().
+    def test_thread_ident(self):
+        # 1. Store main thread's id.
+        # 2. Start 2 child threads.
+        # 3. Store their values for Ident.get().
+        # 4. Children reach rendezvous point.
+        # 5. Children call Ident.watch().
+        # 6. One of the children calls Ident.unwatch().
+        # 7. Children terminate.
+        # 8. Assert that children got different ids from each other and from
+        #    main, and assert watched child's callback was executed, and that
+        #    unwatched child's callback was not.
 
-    1. Store main thread's / greenlet's id
-    2. Start 2 child threads / greenlets
-    3. Store their values for Ident.get()
-    4. Children reach rendezvous point
-    5. Children call Ident.watch()
-    6. One of the children calls Ident.unwatch()
-    7. Children terminate
-    8. Assert that children got different ids from each other and from main,
-      and assert watched child's callback was executed, and that unwatched
-      child's callback was not
-    """
-    def _test_ident(self, use_greenlets):
         if 'java' in sys.platform:
             raise SkipTest("Can't rely on weakref callbacks in Jython")
 
-        ident = thread_util.create_ident(use_greenlets)
+        ident = thread_util.ThreadIdent()
 
         ids = set([ident.get()])
         unwatched_id = []
-        done = set([ident.get()])  # Start with main thread's / greenlet's id.
+        done = set([ident.get()])  # Start with main thread's id.
         died = set()
 
-        class Watched(object):
-            def __init__(self, ident):
+        class WatchedThread(RendezvousThread):
+            def __init__(self, ident, state):
+                super(WatchedThread, self).__init__(state)
                 self._my_ident = ident
 
             def before_rendezvous(self):
@@ -76,56 +64,31 @@ class TestIdent(unittest.TestCase):
                 assert self._my_ident.watching()
                 done.add(self.my_id)
 
-        class Unwatched(Watched):
+        class UnwatchedThread(WatchedThread):
             def before_rendezvous(self):
-                Watched.before_rendezvous(self)
+                super(UnwatchedThread, self).before_rendezvous()
                 unwatched_id.append(self.my_id)
 
             def after_rendezvous(self):
-                Watched.after_rendezvous(self)
+                super(UnwatchedThread, self).after_rendezvous()
                 self._my_ident.unwatch(self.my_id)
                 assert not self._my_ident.watching()
 
-        if use_greenlets:
-            class WatchedGreenlet(Watched):
-                def run(self):
-                    self.before_rendezvous()
-                    self.after_rendezvous()
+        state = RendezvousThread.create_shared_state(2)
+        t_watched = WatchedThread(ident, state)
+        t_watched.start()
 
-            class UnwatchedGreenlet(Unwatched):
-                def run(self):
-                    self.before_rendezvous()
-                    self.after_rendezvous()
+        t_unwatched = UnwatchedThread(ident, state)
+        t_unwatched.start()
 
-            t_watched = greenlet.greenlet(WatchedGreenlet(ident).run)
-            t_unwatched = greenlet.greenlet(UnwatchedGreenlet(ident).run)
-            looplet([t_watched, t_unwatched])
-        else:
-            class WatchedThread(Watched, RendezvousThread):
-                def __init__(self, ident, state):
-                    Watched.__init__(self, ident)
-                    RendezvousThread.__init__(self, state)
+        RendezvousThread.wait_for_rendezvous(state)
+        RendezvousThread.resume_after_rendezvous(state)
 
-            class UnwatchedThread(Unwatched, RendezvousThread):
-                def __init__(self, ident, state):
-                    Unwatched.__init__(self, ident)
-                    RendezvousThread.__init__(self, state)
+        t_watched.join()
+        t_unwatched.join()
 
-            state = RendezvousThread.create_shared_state(2)
-            t_watched = WatchedThread(ident, state)
-            t_watched.start()
-
-            t_unwatched = UnwatchedThread(ident, state)
-            t_unwatched.start()
-
-            RendezvousThread.wait_for_rendezvous(state)
-            RendezvousThread.resume_after_rendezvous(state)
-
-            t_watched.join()
-            t_unwatched.join()
-
-            self.assertTrue(t_watched.passed)
-            self.assertTrue(t_unwatched.passed)
+        self.assertTrue(t_watched.passed)
+        self.assertTrue(t_unwatched.passed)
 
         # Remove references, let weakref callbacks run
         del t_watched
@@ -147,57 +110,10 @@ class TestIdent(unittest.TestCase):
         self.assertEqual(1, len(died))
         self.assertFalse(unwatched_id[0] in died)
 
-    def test_thread_ident(self):
-        self._test_ident(False)
-
-    def test_greenlet_ident(self):
-        if not thread_util.have_gevent:
-            raise SkipTest('greenlet not installed')
-
-        self._test_ident(True)
-
-
-class TestGreenletIdent(unittest.TestCase):
-
-    @classmethod
-    def setUpClass(cls):
-        if not thread_util.have_gevent:
-            raise SkipTest("need Gevent")
-
-    def test_unwatch_cleans_up(self):
-        # GreenletIdent.unwatch() should remove the on_thread_died callback
-        # from an enhanced Gevent Greenlet's list of links.
-        callback_ran = [False]
-
-        def on_greenlet_died(_):
-            callback_ran[0] = True
-
-        ident = thread_util.create_ident(use_greenlets=True)
-
-        def watch_and_unwatch():
-            ident.watch(on_greenlet_died)
-            ident.unwatch(ident.get())
-
-        g = gevent.greenlet.Greenlet(run=watch_and_unwatch)
-        g.start()
-        g.join(10)
-        the_hub = gevent.hub.get_hub()
-        if hasattr(the_hub, 'join'):
-            # Gevent 1.0
-            the_hub.join()
-        else:
-            # Gevent 0.13 and less
-            the_hub.shutdown()
-
-        self.assertTrue(g.successful())
-
-        # unwatch() canceled the callback.
-        self.assertFalse(callback_ran[0])
-
 
 class TestCounter(unittest.TestCase):
-    def _test_counter(self, use_greenlets):
-        counter = thread_util.Counter(use_greenlets)
+    def test_counter(self):
+        counter = thread_util.Counter()
 
         self.assertEqual(0, counter.dec())
         self.assertEqual(0, counter.get())
@@ -225,28 +141,17 @@ class TestCounter(unittest.TestCase):
 
             done.add(n)
 
-        if use_greenlets:
-            greenlets = [
-                greenlet.greenlet(my_partial(f, i)) for i in range(10)]
-            looplet(greenlets)
-        else:
-            threads = [
-                threading.Thread(target=my_partial(f, i)) for i in range(10)]
-            for t in threads:
-                t.start()
-            for t in threads:
-                t.join()
+        threads = [threading.Thread(target=my_partial(f, i))
+                   for i in range(10)]
+
+        for t in threads:
+            t.start()
+
+        for t in threads:
+            t.join()
 
         self.assertEqual(10, len(done))
 
-    def test_thread_counter(self):
-        self._test_counter(False)
-
-    def test_greenlet_counter(self):
-        if not thread_util.have_gevent:
-            raise SkipTest('greenlet not installed')
-
-        self._test_counter(True)
 
 if __name__ == "__main__":
     unittest.main()

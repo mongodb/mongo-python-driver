@@ -176,19 +176,6 @@ def assertRaisesExactly(cls, fn, *args, **kwargs):
     else:
         raise AssertionError("%s not raised" % cls)
 
-def looplet(greenlets):
-    """World's smallest event loop; run until all greenlets are done
-    """
-    while True:
-        done = True
-
-        for g in greenlets:
-            if not g.dead:
-                done = False
-                g.switch()
-
-        if done:
-            return
 
 class RendezvousThread(threading.Thread):
     """A thread that starts and pauses at a rendezvous point before resuming.

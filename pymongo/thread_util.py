@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Utilities to abstract the differences between threads and greenlets."""
+"""Utilities for multi-threading support."""
 
 import threading
 import sys
@@ -22,21 +22,6 @@ try:
 except ImportError:
     from time import time as _time
 
-have_gevent = True
-try:
-    import greenlet
-
-    try:
-        # gevent-1.0rc2 and later.
-        from gevent.lock import BoundedSemaphore as GeventBoundedSemaphore
-    except ImportError:
-        from gevent.coros import BoundedSemaphore as GeventBoundedSemaphore
-
-    from gevent.greenlet import SpawnedLink
-    from gevent.event import Event as GeventEvent
-
-except ImportError:
-    have_gevent = False
 
 from pymongo.errors import ExceededMaxWaiters
 
@@ -53,36 +38,28 @@ class DummyLock(object):
         pass
 
 
-class Ident(object):
+class ThreadIdent(object):
     def __init__(self):
         self._refs = {}
+        self._local = threading.local()
+        if issue1868:
+            self._lock = threading.Lock()
+        else:
+            self._lock = DummyLock()
 
     def watching(self):
-        """Is the current thread or greenlet being watched for death?"""
+        """Is the current thread being watched for death?"""
         return self.get() in self._refs
 
     def unwatch(self, tid):
         self._refs.pop(tid, None)
 
     def get(self):
-        """An id for this thread or greenlet"""
-        raise NotImplementedError
+        return id(self._make_vigil())
 
     def watch(self, callback):
-        """Run callback when this thread or greenlet dies. callback takes
-        one meaningless argument.
-        """
-        raise NotImplementedError
-
-
-class ThreadIdent(Ident):
-    def __init__(self):
-        super(ThreadIdent, self).__init__()
-        self._local = threading.local()
-        if issue1868:
-            self._lock = threading.Lock()
-        else:
-            self._lock = DummyLock()
+        vigil = self._make_vigil()
+        self._refs[id(vigil)] = weakref.ref(vigil, callback)
 
     # We watch for thread-death using a weakref callback to a thread local.
     # Weakrefs are permitted on subclasses of object but not object() itself.
@@ -103,56 +80,11 @@ class ThreadIdent(Ident):
 
         return vigil
 
-    def get(self):
-        return id(self._make_vigil())
-
-    def watch(self, callback):
-        vigil = self._make_vigil()
-        self._refs[id(vigil)] = weakref.ref(vigil, callback)
-
-
-class GreenletIdent(Ident):
-    def get(self):
-        return id(greenlet.getcurrent())
-
-    def watch(self, callback):
-        current = greenlet.getcurrent()
-        tid = self.get()
-
-        if hasattr(current, 'link'):
-            # This is a Gevent Greenlet (capital G), which inherits from
-            # greenlet and provides a 'link' method to detect when the
-            # Greenlet exits.
-            link = SpawnedLink(callback)
-            current.rawlink(link)
-            self._refs[tid] = link
-        else:
-            # This is a non-Gevent greenlet (small g), or it's the main
-            # greenlet.
-            self._refs[tid] = weakref.ref(current, callback)
-
-    def unwatch(self, tid):
-        """ call unlink if link before """
-        link = self._refs.pop(tid, None)
-        current = greenlet.getcurrent()
-        if hasattr(current, 'unlink'):
-            # This is a Gevent enhanced Greenlet. Remove the SpawnedLink we
-            # linked to it.
-            current.unlink(link)
-            
-            
-def create_ident(use_greenlets):
-    if use_greenlets:
-        return GreenletIdent()
-    else:
-        return ThreadIdent()
-
 
 class Counter(object):
-    """A thread- or greenlet-local counter.
-    """
-    def __init__(self, use_greenlets):
-        self.ident = create_ident(use_greenlets)
+    """A thread-local counter."""
+    def __init__(self):
+        self.ident = ThreadIdent()
         self._counters = {}
 
     def inc(self):
@@ -189,7 +121,7 @@ class Counter(object):
 class Future(object):
     """Minimal backport of concurrent.futures.Future.
 
-    event_class makes this Future adaptable for Gevent and other frameworks.
+    event_class makes this Future adaptable for async clients.
     """
     def __init__(self, event_class):
         self._event = event_class()
@@ -313,30 +245,11 @@ class MaxWaitersBoundedSemaphoreThread(MaxWaitersBoundedSemaphore):
             self, BoundedSemaphore, value, max_waiters)
 
 
-if have_gevent:
-    class MaxWaitersBoundedSemaphoreGevent(MaxWaitersBoundedSemaphore):
-        def __init__(self, value=1, max_waiters=1):
-            MaxWaitersBoundedSemaphore.__init__(
-                self, GeventBoundedSemaphore, value, max_waiters)
-
-
-def create_semaphore(max_size, max_waiters, use_greenlets):
+def create_semaphore(max_size, max_waiters):
     if max_size is None:
         return DummySemaphore()
-    elif use_greenlets:
-        if max_waiters is None:
-            return GeventBoundedSemaphore(max_size)
-        else:
-            return MaxWaitersBoundedSemaphoreGevent(max_size, max_waiters)
     else:
         if max_waiters is None:
             return BoundedSemaphore(max_size)
         else:
             return MaxWaitersBoundedSemaphoreThread(max_size, max_waiters)
-
-
-def create_event(use_greenlets):
-    if use_greenlets:
-        return GeventEvent()
-    else:
-        return threading.Event()

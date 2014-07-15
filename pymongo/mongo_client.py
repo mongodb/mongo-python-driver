@@ -292,7 +292,6 @@ class MongoClient(common.BaseObject):
         socket_timeout = options.get('sockettimeoutms')
         wait_queue_timeout = options.get('waitqueuetimeoutms')
         wait_queue_multiple = options.get('waitqueuemultiple')
-        use_greenlets = options.get('use_greenlets', False)
         socket_keepalive = options.get('socketkeepalive', False)
 
         ssl_context = None
@@ -330,26 +329,17 @@ class MongoClient(common.BaseObject):
             wait_queue_timeout=wait_queue_timeout,
             wait_queue_multiple=wait_queue_multiple,
             ssl_context=ssl_context,
-            use_greenlets=use_greenlets,
             socket_keepalive=socket_keepalive)
 
         self.__pool_class = pool_class
 
         self.__connecting = False
-        if use_greenlets:
-            # Greenlets don't need to lock around access to the Member;
-            # they're only interrupted when they do I/O.
-            self.__connecting_lock = thread_util.DummyLock()
-        else:
-            self.__connecting_lock = threading.Lock()
+        self.__connecting_lock = threading.Lock()
 
         if event_class:
             self.__event_class = event_class
         else:
-            # Prevent a cycle; this lambda shouldn't refer to self.
-            g = use_greenlets
-            event_class = lambda: thread_util.create_event(g)
-            self.__event_class = event_class
+            self.__event_class = threading.Event
 
         self.__future_member = None
         self.__document_class = document_class
@@ -555,15 +545,6 @@ class MongoClient(common.BaseObject):
         .. versionadded:: 1.11
         """
         return self.__pool_opts.max_pool_size
-
-    @property
-    def use_greenlets(self):
-        """Whether calling :meth:`start_request` assigns greenlet-local,
-        rather than thread-local, sockets.
-
-        .. versionadded:: 2.4.2
-        """
-        return self.__pool_opts.use_greenlets
 
     @property
     def nodes(self):

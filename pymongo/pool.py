@@ -50,12 +50,12 @@ class PoolOptions(object):
 
     __slots__ = ('__max_pool_size', '__connect_timeout', '__socket_timeout',
                  '__wait_queue_timeout', '__wait_queue_multiple',
-                 '__ssl_context', '__use_greenlets', '__socket_keepalive')
+                 '__ssl_context', '__socket_keepalive')
 
     def __init__(self, max_pool_size=100, connect_timeout=None,
                  socket_timeout=None, wait_queue_timeout=None,
                  wait_queue_multiple=None, ssl_context=None,
-                 use_greenlets=False, socket_keepalive=False):
+                 socket_keepalive=False):
 
         self.__max_pool_size = max_pool_size
         self.__connect_timeout = connect_timeout
@@ -63,7 +63,6 @@ class PoolOptions(object):
         self.__wait_queue_timeout = wait_queue_timeout
         self.__wait_queue_multiple = wait_queue_multiple
         self.__ssl_context = ssl_context
-        self.__use_greenlets = use_greenlets
         self.__socket_keepalive = socket_keepalive
 
     @property
@@ -105,12 +104,6 @@ class PoolOptions(object):
         """An SSLContext instance or None.
         """
         return self.__ssl_context
-
-    @property
-    def use_greenlets(self):
-        """Use greenlet ids for "thread affinity" in requests.
-        """
-        return self.__use_greenlets
 
     @property
     def socket_keepalive(self):
@@ -251,17 +244,10 @@ class Pool:
 
         # Map self._ident.get() -> request socket
         self._tid_to_sock = {}
-
-        if self.opts.use_greenlets and not thread_util.have_gevent:
-            raise ConfigurationError(
-                "The Gevent module is not available. "
-                "Install the gevent package from PyPI."
-            )
-
-        self._ident = thread_util.create_ident(self.opts.use_greenlets)
+        self._ident = thread_util.ThreadIdent()
 
         # Count the number of calls to start_request() per thread.
-        self._request_counter = thread_util.Counter(self.opts.use_greenlets)
+        self._request_counter = thread_util.Counter()
 
         if (self.opts.wait_queue_multiple is None or
                 self.opts.max_pool_size is None):
@@ -271,7 +257,7 @@ class Pool:
                 self.opts.max_pool_size * self.opts.wait_queue_multiple)
 
         self._socket_semaphore = thread_util.create_semaphore(
-            self.opts.max_pool_size, max_waiters, self.opts.use_greenlets)
+            self.opts.max_pool_size, max_waiters)
 
     def reset(self):
         # Ignore this race condition -- if many threads are resetting at once,

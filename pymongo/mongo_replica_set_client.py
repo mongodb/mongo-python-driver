@@ -109,7 +109,7 @@ def _partition_node(node):
 
 # Concurrency notes: A MongoReplicaSetClient keeps its view of the replica-set
 # state in an RSState instance. RSStates are immutable, except for
-# host-pinning. Pools, which are internally thread / greenlet safe, can be
+# host-pinning. Pools, which are internally thread-safe, can be
 # copied from old to new RSStates safely. The client updates its view of the
 # set's state not by modifying its RSState but by replacing it with an updated
 # copy.
@@ -133,7 +133,7 @@ def _partition_node(node):
 
 class RSState(object):
     def __init__(
-            self, threadlocal, hosts=None, host_to_member=None, arbiters=None,
+            self, threadlocal=None, hosts=None, host_to_member=None, arbiters=None,
             writer=None, error_message='No primary available', exc=None,
             initial=False):
         """An immutable snapshot of the client's view of the replica set state.
@@ -143,7 +143,7 @@ class RSState(object):
         in the most recent ismaster response.
 
         :Parameters:
-          - `threadlocal`: Thread-local storage
+          - `threadlocal`: Optional thread-local storage
           - `hosts`: Sequence of (host, port) pairs
           - `host_to_member`: Optional dict: (host, port) -> Member instance
           - `arbiters`: Optional sequence of arbiters as (host, port)
@@ -152,7 +152,7 @@ class RSState(object):
           - `exc`: Optional error if state is unusable
           - `initial`: Whether this is the initial client state
         """
-        self._threadlocal = threadlocal  # threading.local
+        self._threadlocal = threadlocal or threading.local()
         self._arbiters = frozenset(arbiters or [])  # set of (host, port)
         self._writer = writer  # (host, port) of the primary, or None
         self._error_message = error_message
@@ -191,17 +191,12 @@ class RSState(object):
                 self._error_message,
                 self._exc)
 
-    def clone_without_writer(self, threadlocal):
-        """Get a clone without a primary. Unpins all threads.
-
-        :Parameters:
-          - `threadlocal`: Thread-local storage
-        """
+    def clone_without_writer(self):
+        """Get a clone without a primary. Unpins all threads."""
         return RSState(
-            threadlocal,
-            self._hosts,
-            self._host_to_member,
-            self._arbiters)
+            hosts=self._hosts,
+            host_to_member=self._host_to_member,
+            arbiters=self._arbiters)
 
     def clone_with_error(self, exc):
         return RSState(
@@ -385,48 +380,6 @@ class MonitorThread(threading.Thread, Monitor):
         """Override Thread's run method.
         """
         self.monitor()
-
-
-have_gevent = False
-try:
-    from gevent import Greenlet
-    from gevent.event import Event
-
-    # Used by ReplicaSetConnection
-    from gevent.local import local as gevent_local
-    have_gevent = True
-
-    class MonitorGreenlet(Monitor, Greenlet):
-        """Greenlet based replica set monitor.
-        """
-        def __init__(self, rsc):
-            self.monitor_greenlet_alive = False
-            Monitor.__init__(self, rsc, Event)
-            Greenlet.__init__(self)
-
-        def start_sync(self):
-            self.monitor_greenlet_alive = True
-
-            # Call superclass.
-            Monitor.start_sync(self)
-
-        # Don't override `run` in a Greenlet. Add _run instead.
-        # Refer to gevent's Greenlet docs and source for more
-        # information.
-        def _run(self):
-            """Define Greenlet's _run method.
-            """
-            self.monitor()
-
-        def isAlive(self):
-            # bool(self) isn't immediately True after someone calls start(),
-            # but isAlive() is. Thus it's safe for greenlets to do:
-            # "if not monitor.isAlive(): monitor.start()"
-            # ... and be guaranteed only one greenlet starts the monitor.
-            return self.monitor_greenlet_alive
-
-except ImportError:
-    pass
 
 
 class MongoReplicaSetClient(common.BaseObject):
@@ -619,15 +572,10 @@ class MongoReplicaSetClient(common.BaseObject):
         socket_timeout = self.__opts.get('sockettimeoutms')
         wait_queue_timeout = self.__opts.get('waitqueuetimeoutms')
         wait_queue_multiple = self.__opts.get('waitqueuemultiple')
-        self.__use_greenlets = self.__opts.get('use_greenlets', False)
-        if self.__use_greenlets and not have_gevent:
-            raise ConfigurationError(
-                "The gevent module is not available. "
-                "Install the gevent package from PyPI.")
 
-        self.__rs_state = RSState(self.__make_threadlocal(), initial=True)
+        self.__rs_state = RSState(initial=True)
 
-        self.__request_counter = thread_util.Counter(self.__use_greenlets)
+        self.__request_counter = thread_util.Counter()
 
         self.__auto_start_request = self.__opts.get('auto_start_request', False)
         if self.__auto_start_request:
@@ -674,9 +622,7 @@ class MongoReplicaSetClient(common.BaseObject):
             wait_queue_timeout=wait_queue_timeout,
             wait_queue_multiple=wait_queue_multiple,
             ssl_context=ssl_context,
-            use_greenlets=self.__use_greenlets,
-            socket_keepalive=socket_keepalive
-        )
+            socket_keepalive=socket_keepalive)
 
         super(MongoReplicaSetClient, self).__init__(**self.__opts)
 
@@ -706,21 +652,9 @@ class MongoReplicaSetClient(common.BaseObject):
 
         # Start the monitor after we know the configuration is correct.
         if not self.__monitor_class:
-            if self.__use_greenlets:
-                self.__monitor_class = MonitorGreenlet
-            else:
-                # Common case: monitor RS with a background thread.
-                self.__monitor_class = MonitorThread
+            self.__monitor_class = MonitorThread
 
-        if self.__use_greenlets:
-            # Greenlets don't need to lock around access to the monitor.
-            # A Greenlet can safely do:
-            # "if not self.__monitor: self.__monitor = monitor_class()"
-            # because it won't be interrupted between the check and the
-            # assignment.
-            self.__monitor_lock = DummyLock()
-        else:
-            self.__monitor_lock = threading.Lock()
+        self.__monitor_lock = threading.Lock()
 
         if _connect:
             self.__ensure_monitor()
@@ -902,15 +836,6 @@ class MongoReplicaSetClient(common.BaseObject):
         """
         return self.__pool_opts.max_pool_size
 
-    @property
-    def use_greenlets(self):
-        """Whether calling :meth:`start_request` assigns greenlet-local,
-        rather than thread-local, sockets.
-
-        .. versionadded:: 2.4.2
-        """
-        return self.__pool_opts.use_greenlets
-
     def get_document_class(self):
         """document_class getter"""
         return self.__document_class
@@ -1059,12 +984,6 @@ class MongoReplicaSetClient(common.BaseObject):
         finally:
             self.__monitor_lock.release()
 
-    def __make_threadlocal(self):
-        if self.__use_greenlets:
-            return gevent_local()
-        else:
-            return threading.local()
-
     def refresh(self, initial=False):
         """Iterate through the existing host list, or possibly the
         seed list, to update the list of hosts and arbiters in this
@@ -1201,7 +1120,7 @@ class MongoReplicaSetClient(common.BaseObject):
         else:
             # We unpin threads from members if the primary has changed, since
             # no monotonic consistency can be promised now anyway.
-            threadlocal = self.__make_threadlocal()
+            threadlocal = None
 
         # Get list of hosts in the RS config, including unreachable ones.
         # Prefer the primary's list, otherwise any member's list.
@@ -1286,8 +1205,7 @@ class MongoReplicaSetClient(common.BaseObject):
         if rs_state.primary_member:
             rs_state.primary_member.pool.reset()
 
-        threadlocal = self.__make_threadlocal()
-        self.__rs_state = rs_state.clone_without_writer(threadlocal)
+        self.__rs_state = rs_state.clone_without_writer()
         self.__schedule_refresh()
 
     def close(self):
@@ -1307,7 +1225,7 @@ class MongoReplicaSetClient(common.BaseObject):
            The :meth:`close` method now terminates the replica set monitor.
         """
         self.__closed = True
-        self.__rs_state = RSState(self.__make_threadlocal())
+        self.__rs_state = RSState()
 
         monitor, self.__monitor = self.__monitor, None
         if monitor:
