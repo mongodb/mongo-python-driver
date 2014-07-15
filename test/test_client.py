@@ -34,8 +34,7 @@ from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
                             ConnectionFailure,
                             InvalidName,
-                            OperationFailure,
-                            PyMongoError)
+                            OperationFailure)
 from test import (client_context,
                   connection_string,
                   host,
