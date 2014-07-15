@@ -8,6 +8,20 @@ Changes in Version 3.0
   must use PyMongo with these versions of Python the 2.x branch of PyMongo
   will be minimally supported for some time.
 
+Gevent Support
+..............
+
+In previous versions, PyMongo supported Gevent in two modes: you could call
+``gevent.monkey.patch_socket()`` and pass ``use_greenlets=True`` to
+:class:`~pymongo.mongo_client.MongoClient`, or you could simply call
+``gevent.monkey.patch_all()`` and omit the ``use_greenlets`` argument.
+
+In PyMongo 3.0, the ``use_greenlets`` option is gone. To use PyMongo with
+Gevent simply call ``gevent.monkey.patch_all()``.
+
+For more information,
+see :doc:`PyMongo's Gevent documentation <examples/gevent>`.
+
 Issues Resolved
 ...............
 
