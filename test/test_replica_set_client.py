@@ -39,7 +39,10 @@ from pymongo.errors import (AutoReconnect,
                             ConnectionFailure,
                             InvalidName,
                             OperationFailure, InvalidOperation)
-from test import (client_context,
+from pymongo import auth
+from test import (db_user,
+                  db_pwd,
+                  client_context,
                   connection_string,
                   pair,
                   port,
@@ -1094,6 +1097,33 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
 
         # The semaphore was decremented despite the error.
         self.assertTrue(pool._socket_semaphore.acquire(blocking=False))
+
+    @client_context.require_auth
+    def test_auth_network_error(self):
+        # Make sure there's no semaphore leak if we get a network error
+        # when authenticating a new socket with cached credentials.
+
+        # Get a client with one socket so we detect if it's leaked.
+        c = self._get_client(max_pool_size=1, waitQueueTimeoutMS=1)
+
+        # Simulate an authenticate() call on a different socket.
+        credentials = auth._build_credentials_tuple(
+            'MONGODB-CR', 'admin', db_user, db_pwd, {})
+
+        c._cache_credentials('test', credentials, connect=False)
+
+        # Cause a network error on the actual socket.
+        pool = get_pool(c)
+        socket_info = one(pool.sockets)
+        socket_info.sock.close()
+
+        # In __check_auth, the client authenticates its socket with the
+        # new credential, but gets a socket.error. Should be reraised as
+        # AutoReconnect.
+        self.assertRaises(AutoReconnect, c.test.collection.find_one)
+
+        # No semaphore leak, the pool is allowed to make a new socket.
+        c.test.collection.find_one()
 
 
 class TestReplicaSetWireVersion(unittest.TestCase):
