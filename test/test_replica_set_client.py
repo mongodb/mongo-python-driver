@@ -26,7 +26,6 @@ import thread
 import threading
 import traceback
 import unittest
-from pymongo import auth
 
 sys.path[0:0] = [""]
 
@@ -46,6 +45,7 @@ from pymongo.errors import (AutoReconnect,
                             ConnectionFailure,
                             InvalidName,
                             OperationFailure, InvalidOperation)
+from pymongo import auth
 from test import version, port, pair
 from test.pymongo_mocks import MockReplicaSetClient
 from test.utils import (
