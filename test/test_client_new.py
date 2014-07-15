@@ -20,7 +20,7 @@ sys.path[0:0] = [""]
 
 from pymongo import ReadPreference
 from pymongo.mongo_client_new import MongoClientNew
-from test import host, port, unittest, IntegrationTest, client_context
+from test import host, port, unittest, IntegrationTest, client_context, SkipTest
 from test.utils import one
 
 
@@ -58,6 +58,10 @@ class TestClientNew(IntegrationTest):
         self.assertTrue(secondary_response.get('secondary'))
 
     def test_find(self):
+        # TODO: re-enable once MongoClientNew can do auth.
+        if client_context.auth_enabled:
+            raise SkipTest("MongoClientNew can't yet do auth")
+
         client_context.client.pymongo_test.test_collection.insert({'_id': 1})
         c = MongoClientNew(host, port)
         docs = list(c.pymongo_test.test_collection.find())
