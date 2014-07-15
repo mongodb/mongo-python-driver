@@ -39,7 +39,6 @@ port = int(os.environ.get('DBPORT', 27017))
 mongod = os.environ.get('MONGOD', 'mongod')
 mongos = os.environ.get('MONGOS', 'mongos')
 set_name = os.environ.get('SETNAME', 'repl0')
-use_greenlets = bool(os.environ.get('GREENLETS'))
 ha_tools_debug = bool(os.environ.get('HA_TOOLS_DEBUG'))
 
 
@@ -161,7 +160,7 @@ def start_replica_set(members, auth=False, fresh=True):
 
     config = {'_id': set_name, 'members': members}
     primary = members[0]['host']
-    c = pymongo.MongoClient(primary, use_greenlets=use_greenlets)
+    c = pymongo.MongoClient(primary)
     try:
         if ha_tools_debug:
             print('rs.initiate(%s)' % (config,))
@@ -276,8 +275,7 @@ def get_client():
         try:
             return pymongo.MongoClient(
                 node,
-                read_preference=ReadPreference.PRIMARY_PREFERRED,
-                use_greenlets=use_greenlets)
+                read_preference=ReadPreference.PRIMARY_PREFERRED)
         except pymongo.errors.ConnectionFailure:
             if i == len(nodes) - 1:
                 raise
@@ -397,7 +395,7 @@ def add_member(auth=False):
     host = '%s:%d' % (hostname, cur_port)
     primary = get_primary()
     assert primary
-    c = pymongo.MongoClient(primary, use_greenlets=use_greenlets)
+    c = pymongo.MongoClient(primary)
     config = c.local.system.replset.find_one()
     _id = max([member['_id'] for member in config['members']]) + 1
     member = {'_id': _id, 'host': host}
@@ -449,7 +447,7 @@ def stepdown_primary():
     if primary:
         if ha_tools_debug:
             print('stepping down primary: %s' % (primary,))
-        c = pymongo.MongoClient(primary, use_greenlets=use_greenlets)
+        c = pymongo.MongoClient(primary)
 
         for _ in range(10):
             try:
@@ -479,7 +477,7 @@ def stepdown_primary():
 def set_maintenance(member, value):
     """Put a member into RECOVERING state if value is True, else normal state.
     """
-    c = pymongo.MongoClient(member, use_greenlets=use_greenlets)
+    c = pymongo.MongoClient(member)
     c.admin.command('replSetMaintenance', value)
     start = time.time()
     while value != (member in get_recovering()):
