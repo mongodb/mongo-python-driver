@@ -157,9 +157,6 @@ class MongoClient(common.BaseObject):
             this :class:`MongoClient` has a socket allocated to it for the
             thread's lifetime.  This ensures consistent reads, even if you
             read after an unacknowledged write. Defaults to ``False``
-          - `use_greenlets`: If ``True``, :meth:`start_request()` will ensure
-            that the current greenlet uses the same socket for all
-            operations until :meth:`end_request()`
 
           | **Write Concern options:**
 
@@ -947,7 +944,7 @@ class MongoClient(common.BaseObject):
         server, else ``True``.
 
         This method attempts to check the status of the server with minimal I/O.
-        The current thread / greenlet retrieves a socket from the pool (its
+        The current thread retrieves a socket from the pool (its
         request socket if it's in a request, or a random idle socket if it's not
         in a request) and checks whether calling `select`_ on it raises an
         error. If there are currently no idle sockets, :meth:`alive` will
@@ -1132,7 +1129,7 @@ class MongoClient(common.BaseObject):
                 raise AutoReconnect(str(e))
 
     def start_request(self):
-        """Ensure the current thread or greenlet always uses the same socket
+        """Ensure the current thread always uses the same socket
         until it calls :meth:`end_request`. This ensures consistent reads,
         even if you read after an unacknowledged write.
 
@@ -1150,7 +1147,7 @@ class MongoClient(common.BaseObject):
         ...     # Definitely read the document after the final update completes
         ...     print db.test_collection.find({'_id': _id})
 
-        If a thread or greenlet calls start_request multiple times, an equal
+        If a thread calls start_request multiple times, an equal
         number of calls to :meth:`end_request` is required to end the request.
 
         .. versionchanged:: 2.4

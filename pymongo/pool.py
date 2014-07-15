@@ -260,7 +260,7 @@ class Pool:
 
         self._ident = thread_util.create_ident(self.opts.use_greenlets)
 
-        # Count the number of calls to start_request() per thread or greenlet
+        # Count the number of calls to start_request() per thread.
         self._request_counter = thread_util.Counter(self.opts.use_greenlets)
 
         if (self.opts.wait_queue_multiple is None or
@@ -458,7 +458,7 @@ class Pool:
         return bool(self._request_counter.get())
 
     def end_request(self):
-        # Check if start_request has ever been called in this thread / greenlet
+        # Check if start_request has ever been called in this thread.
         count = self._request_counter.get()
         if count:
             self._request_counter.dec()

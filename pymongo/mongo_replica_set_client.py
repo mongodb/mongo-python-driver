@@ -143,7 +143,7 @@ class RSState(object):
         in the most recent ismaster response.
 
         :Parameters:
-          - `threadlocal`: Thread- or greenlet-local storage
+          - `threadlocal`: Thread-local storage
           - `hosts`: Sequence of (host, port) pairs
           - `host_to_member`: Optional dict: (host, port) -> Member instance
           - `arbiters`: Optional sequence of arbiters as (host, port)
@@ -152,7 +152,7 @@ class RSState(object):
           - `exc`: Optional error if state is unusable
           - `initial`: Whether this is the initial client state
         """
-        self._threadlocal = threadlocal  # threading.local or gevent local
+        self._threadlocal = threadlocal  # threading.local
         self._arbiters = frozenset(arbiters or [])  # set of (host, port)
         self._writer = writer  # (host, port) of the primary, or None
         self._error_message = error_message
@@ -195,7 +195,7 @@ class RSState(object):
         """Get a clone without a primary. Unpins all threads.
 
         :Parameters:
-          - `threadlocal`: Thread- or greenlet-local storage
+          - `threadlocal`: Thread-local storage
         """
         return RSState(
             threadlocal,
@@ -267,7 +267,7 @@ class RSState(object):
         return self._host_to_member.get(host)
 
     def pin_host(self, host, pref):
-        """Pin this thread / greenlet to a member.
+        """Pin this thread to a member.
 
         `host` is a (host, port) pair. The `pref` parameter is a
         read_preferences.ServerMode subclass (the read preference).
@@ -279,16 +279,16 @@ class RSState(object):
         self._threadlocal.read_preference = pref
 
     def keep_pinned_host(self, pref):
-        """Does a read pref match the last used by this thread / greenlet?"""
+        """Does a read pref match the last used by this thread?"""
         return self._threadlocal.read_preference == pref
 
     @property
     def pinned_host(self):
-        """The (host, port) last used by this thread / greenlet, or None."""
+        """The (host, port) last used by this thread, or None."""
         return getattr(self._threadlocal, 'host', None)
 
     def unpin_host(self):
-        """Forget this thread / greenlet's last used member."""
+        """Forget this thread's last used member."""
         self._threadlocal.host = self._threadlocal.read_preference = None
 
     @property
@@ -514,12 +514,6 @@ class MongoReplicaSetClient(common.BaseObject):
             auto_start_request=True ensures consistent reads, even if you read
             after an unacknowledged write. For read preferences other than
             PRIMARY, there are no consistency guarantees. Default to ``False``.
-          - `use_greenlets`: If ``True``, use a background Greenlet instead of
-            a background thread to monitor state of replica set. Additionally,
-            :meth:`start_request()` assigns a greenlet-local, rather than
-            thread-local, socket.
-            `use_greenlets` with :class:`MongoReplicaSetClient` requires
-            `Gevent <http://gevent.org/>`_ to be installed.
 
           | **Write Concern options:**
 
@@ -1076,9 +1070,8 @@ class MongoReplicaSetClient(common.BaseObject):
         seed list, to update the list of hosts and arbiters in this
         replica set.
         """
-        # Only one thread / greenlet calls refresh() at a time: the one
-        # running __init__() or the monitor. We won't modify the state, only
-        # replace it.
+        # One thread calls refresh() at a time: the one running __init__() or
+        # the monitor. We won't modify the state, only replace it.
         rs_state = self.__rs_state
         try:
             self.__rs_state = self.__create_rs_state(rs_state, initial)
@@ -1327,7 +1320,7 @@ class MongoReplicaSetClient(common.BaseObject):
         primary, else ``True``.
 
         This method attempts to check the status of the primary with minimal
-        I/O. The current thread / greenlet retrieves a socket (its request
+        I/O. The current thread retrieves a socket (its request
         socket if it's in a request, or a random idle socket if it's not in a
         request) from the primary's connection pool and checks whether calling
         select_ on it raises an error. If there are currently no idle sockets,
@@ -1578,8 +1571,8 @@ class MongoReplicaSetClient(common.BaseObject):
 
                 # Success
                 if self.in_request():
-                    # Keep reading from this member in this thread / greenlet
-                    # unless read preference changes
+                    # Keep reading from this member in this thread
+                    # unless read preference changes.
                     rs_state.pin_host(member.host, pref)
                 return member.host, response
             except AutoReconnect as why:
@@ -1608,7 +1601,7 @@ class MongoReplicaSetClient(common.BaseObject):
         raise AutoReconnect(msg, errors)
 
     def start_request(self):
-        """Ensure the current thread or greenlet always uses the same socket
+        """Ensure the current thread always uses the same socket
         until it calls :meth:`end_request`. For
         :class:`~pymongo.read_preferences.ReadPreference` PRIMARY,
         auto_start_request=True ensures consistent reads, even if you read
@@ -1633,7 +1626,7 @@ class MongoReplicaSetClient(common.BaseObject):
            The :class:`~pymongo.pool.Request` return value.
            :meth:`start_request` previously returned None
         """
-        # We increment our request counter's thread- or greenlet-local value
+        # We increment our request counter's thread-local value
         # for every call to start_request; however, we only call each pool's
         # start_request once to start a request, and call each pool's
         # end_request once to end it. We don't let pools' request counters
@@ -1648,7 +1641,7 @@ class MongoReplicaSetClient(common.BaseObject):
     def in_request(self):
         """True if :meth:`start_request` has been called, but not
         :meth:`end_request`, or if `auto_start_request` is True and
-        :meth:`end_request` has not been called in this thread or greenlet.
+        :meth:`end_request` has not been called in this thread.
         """
         return bool(self.__request_counter.get())
 
