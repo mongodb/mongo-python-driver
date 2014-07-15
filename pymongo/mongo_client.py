@@ -673,13 +673,16 @@ class MongoClient(common.BaseObject):
             'max_write_batch_size', common.MAX_WRITE_BATCH_SIZE)
 
     def __simple_command(self, sock_info, dbname, spec):
-        """Send a command to the server.
+        """Send a command to the server. May raise AutoReconnect.
         """
         rqst_id, msg, _ = message.query(0, dbname + '.$cmd', 0, -1, spec)
         start = time.time()
         try:
             sock_info.sock.sendall(msg)
             response = self.__receive_message_on_socket(1, rqst_id, sock_info)
+        except socket.error, e:
+            sock_info.close()
+            raise AutoReconnect(e)
         except:
             sock_info.close()
             raise
@@ -916,7 +919,7 @@ class MongoClient(common.BaseObject):
                                 "%s %s" % (host_details, str(why)))
         try:
             self.__check_auth(sock_info)
-        except OperationFailure:
+        except:
             connection_pool.maybe_return_socket(sock_info)
             raise
         return sock_info
