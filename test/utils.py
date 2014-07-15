@@ -23,18 +23,10 @@ import threading
 from pymongo import MongoClient, MongoReplicaSetClient
 from pymongo.errors import AutoReconnect
 from pymongo.pool import NO_REQUEST, NO_SOCKET_YET, SocketInfo
-from test import (SkipTest,
-                  client_context,
+from test import (client_context,
                   db_user,
                   db_pwd)
 from test.version import Version
-
-
-try:
-    import gevent
-    has_gevent = True
-except ImportError:
-    has_gevent = False
 
 
 def get_client(*args, **kwargs):
@@ -428,7 +420,7 @@ NTRIALS = 5
 NTHREADS = 10
 
 
-def run_threads(collection, target, use_greenlets):
+def run_threads(collection, target):
     """Run a target function in many threads.
 
     target is a function taking a Collection and an integer.
@@ -436,24 +428,17 @@ def run_threads(collection, target, use_greenlets):
     threads = []
     for i in range(NTHREADS):
         bound_target = my_partial(target, collection, i)
-        if use_greenlets:
-            threads.append(gevent.Greenlet(run=bound_target))
-        else:
-            threads.append(threading.Thread(target=bound_target))
+        threads.append(threading.Thread(target=bound_target))
 
     for t in threads:
         t.start()
 
     for t in threads:
         t.join(30)
-        if use_greenlets:
-            # bool(Greenlet) is True if it's alive.
-            assert not t
-        else:
-            assert not t.isAlive()
+        assert not t.isAlive()
 
 
-def lazy_client_trial(reset, target, test, get_client, use_greenlets):
+def lazy_client_trial(reset, target, test, get_client):
     """Test concurrent operations on a lazily-connecting client.
 
     `reset` takes a collection and resets it for the next trial.
@@ -464,9 +449,6 @@ def lazy_client_trial(reset, target, test, get_client, use_greenlets):
     `test` takes the lazily-connecting collection and asserts a
     post-condition to prove `target` succeeded.
     """
-    if use_greenlets and not has_gevent:
-        raise SkipTest('Gevent not installed')
-
     collection = client_context.client.pymongo_test.test
 
     # Make concurrency bugs more likely to manifest.
@@ -482,11 +464,9 @@ def lazy_client_trial(reset, target, test, get_client, use_greenlets):
     try:
         for i in range(NTRIALS):
             reset(collection)
-            lazy_client = get_client(_connect=False,
-                                     use_greenlets=use_greenlets)
-
+            lazy_client = get_client(_connect=False)
             lazy_collection = lazy_client.pymongo_test.test
-            run_threads(lazy_collection, target, use_greenlets)
+            run_threads(lazy_collection, target)
             test(lazy_collection)
 
     finally:
@@ -503,11 +483,7 @@ class _TestLazyConnectMixin(object):
     Inherit from this class and from unittest.TestCase, and override
     _get_client(self, **kwargs), for testing a lazily-connecting
     client, i.e. a client initialized with _connect=False.
-
-    Set use_greenlets = True to test with Gevent.
     """
-    use_greenlets = False
-
     NTRIALS = 5
     NTHREADS = 10
 
@@ -521,9 +497,7 @@ class _TestLazyConnectMixin(object):
         def test(collection):
             self.assertEqual(NTHREADS, collection.count())
 
-        lazy_client_trial(
-            reset, insert, test,
-            self._get_client, self.use_greenlets)
+        lazy_client_trial(reset, insert, test, self._get_client)
 
     def test_save(self):
         def reset(collection):
@@ -535,9 +509,7 @@ class _TestLazyConnectMixin(object):
         def test(collection):
             self.assertEqual(NTHREADS, collection.count())
 
-        lazy_client_trial(
-            reset, save, test,
-            self._get_client, self.use_greenlets)
+        lazy_client_trial(reset, save, test, self._get_client)
 
     def test_update(self):
         def reset(collection):
@@ -551,9 +523,7 @@ class _TestLazyConnectMixin(object):
         def test(collection):
             self.assertEqual(NTHREADS, collection.find_one()['i'])
 
-        lazy_client_trial(
-            reset, update, test,
-            self._get_client, self.use_greenlets)
+        lazy_client_trial(reset, update, test, self._get_client)
 
     def test_remove(self):
         def reset(collection):
@@ -566,9 +536,7 @@ class _TestLazyConnectMixin(object):
         def test(collection):
             self.assertEqual(0, collection.count())
 
-        lazy_client_trial(
-            reset, remove, test,
-            self._get_client, self.use_greenlets)
+        lazy_client_trial(reset, remove, test, self._get_client)
 
     def test_find_one(self):
         results = []
@@ -584,9 +552,7 @@ class _TestLazyConnectMixin(object):
         def test(collection):
             self.assertEqual(NTHREADS, len(results))
 
-        lazy_client_trial(
-            reset, find_one, test,
-            self._get_client, self.use_greenlets)
+        lazy_client_trial(reset, find_one, test, self._get_client)
 
     def test_max_bson_size(self):
         # Client should have sane defaults before connecting, and should update

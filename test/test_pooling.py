@@ -14,13 +14,13 @@
 
 """Test built in connection-pooling with threads."""
 
+import gc
 import random
 import socket
 import sys
 import threading
 import time
-from multiprocessing import Process, Pipe
-import gc
+
 from pymongo import MongoClient
 from pymongo.errors import ConfigurationError, ConnectionFailure, \
     ExceededMaxWaiters
@@ -556,6 +556,11 @@ class TestPooling(_TestPoolingBase):
     def test_request_with_fork(self):
         if sys.platform == "win32":
             raise SkipTest("Can't test forking on Windows")
+
+        try:
+            from multiprocessing import Process, Pipe
+        except ImportError:
+            raise SkipTest("No multiprocessing module")
 
         coll = self.c.pymongo_test.test
         coll.remove()

@@ -31,7 +31,7 @@ from bson.son import SON
 from bson.tz_util import utc
 from pymongo.read_preferences import ReadPreference, Secondary, Nearest
 from pymongo.mongo_replica_set_client import MongoReplicaSetClient
-from pymongo.mongo_replica_set_client import _partition_node, have_gevent
+from pymongo.mongo_replica_set_client import _partition_node
 from pymongo.database import Database
 from pymongo.pool import SocketInfo
 from pymongo.errors import (AutoReconnect,
@@ -124,7 +124,6 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
 
         self.assertIsInstance(c.is_mongos, bool)
         self.assertIsInstance(c.max_pool_size, int)
-        self.assertIsInstance(c.use_greenlets, bool)
         self.assertIsInstance(c.auto_start_request, bool)
         self.assertIsInstance(c.tz_aware, bool)
         self.assertIsInstance(c.max_bson_size, int)
@@ -271,14 +270,6 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         else:
             self.assertEqual(c.max_bson_size, 4194304)
         c.close()
-
-    def test_use_greenlets(self):
-        self.assertFalse(
-            MongoReplicaSetClient(pair, replicaSet=self.name).use_greenlets)
-
-        if have_gevent:
-            self.assertTrue(MongoReplicaSetClient(
-                pair, replicaSet=self.name, use_greenlets=True).use_greenlets)
 
     def test_get_db(self):
         client = client_context.rs_client
@@ -1173,17 +1164,6 @@ class TestReplicaSetClientLazyConnect(
 
         # No error.
         client.pymongo_test.test_collection.find_one()
-
-
-# Test concurrent access to a lazily-connecting RS client, with Gevent.
-class TestReplicaSetClientLazyConnectGevent(
-        TestReplicaSetClientBase,
-        _TestLazyConnectMixin):
-    use_greenlets = True
-
-    @classmethod
-    def setUpClass(cls):
-        TestReplicaSetClientBase.setUpClass()
 
 
 class TestReplicaSetClientLazyConnectBadSeeds(

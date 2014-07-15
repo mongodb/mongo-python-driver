@@ -18,10 +18,9 @@
 # each method requires running setUp, which takes about 30 seconds to bring up
 # a replica set. Thus each method asserts everything we want to assert for a
 # given replica-set configuration.
-import os
 
+import os
 import time
-from time import sleep
 
 import ha_tools
 
@@ -91,7 +90,7 @@ class HATestCase(unittest.TestCase):
         ha_tools.kill_all_members()
         ha_tools.nodes.clear()
         ha_tools.routers.clear()
-        sleep(1)  # Let members really die.
+        time.sleep(1)  # Let members really die.
 
 
 class TestDirectConnection(HATestCase):
@@ -205,7 +204,7 @@ class TestPassiveAndHidden(HATestCase):
             utils.assertReadFromAll(self, self.c, passives, mode)
 
         ha_tools.kill_members(ha_tools.get_passives(), 2)
-        sleep(2 * MONITOR_INTERVAL)
+        time.sleep(2 * MONITOR_INTERVAL)
         utils.assertReadFrom(self, self.c, self.c.primary, SECONDARY_PREFERRED)
 
     def tearDown(self):
@@ -235,7 +234,7 @@ class TestMonitorRemovesRecoveringMember(HATestCase):
 
         secondary, recovering_secondary = secondaries
         ha_tools.set_maintenance(recovering_secondary, True)
-        sleep(2 * MONITOR_INTERVAL)
+        time.sleep(2 * MONITOR_INTERVAL)
 
         for mode in SECONDARY, SECONDARY_PREFERRED:
             # Don't read from recovering member
@@ -282,7 +281,7 @@ class TestTriggeredRefresh(HATestCase):
 
         # Wait for the immediate refresh to complete - we're not waiting for
         # the periodic refresh, which has been disabled
-        sleep(1)
+        time.sleep(1)
 
         for c in self.c_find_one, self.c_count:
             self.assertFalse(c.secondaries)
@@ -300,14 +299,14 @@ class TestTriggeredRefresh(HATestCase):
         ha_tools.stepdown_primary()
 
         # Make sure the stepdown completes
-        sleep(1)
+        time.sleep(1)
 
         # Trigger a refresh
         self.assertRaises(AutoReconnect, c_find_one.test.test.find_one)
 
         # Wait for the immediate refresh to complete - we're not waiting for
         # the periodic refresh, which has been disabled
-        sleep(1)
+        time.sleep(1)
 
         # We've detected the stepdown
         self.assertTrue(
@@ -336,7 +335,7 @@ class TestHealthMonitor(HATestCase):
             for _ in xrange(30):
                 if c.primary and c.primary != primary:
                     return True
-                sleep(1)
+                time.sleep(1)
             return False
 
         killed = ha_tools.kill_primary()
@@ -355,11 +354,11 @@ class TestHealthMonitor(HATestCase):
                 if c.secondaries != secondaries:
                     return True
 
-                sleep(1)
+                time.sleep(1)
             return False
 
         killed = ha_tools.kill_secondary()
-        sleep(2 * MONITOR_INTERVAL)
+        time.sleep(2 * MONITOR_INTERVAL)
         self.assertTrue(bool(len(killed)))
         self.assertEqual(primary, c.primary)
         self.assertTrue(readers_changed())
@@ -378,7 +377,7 @@ class TestHealthMonitor(HATestCase):
         # Wait for new primary
         patience_seconds = 30
         for _ in xrange(patience_seconds):
-            sleep(1)
+            time.sleep(1)
             rs_state = c._MongoReplicaSetClient__rs_state
             if rs_state.writer and rs_state.writer != primary:
                 if ha_tools.get_primary():
@@ -417,7 +416,7 @@ class TestWritesWithFailover(HATestCase):
 
         # Wait past pool's check interval, so it throws an error from
         # get_socket().
-        sleep(1)
+        time.sleep(1)
 
         # Verify that we only raise AutoReconnect, not some other error,
         # while we wait for new primary.
@@ -428,7 +427,7 @@ class TestWritesWithFailover(HATestCase):
                 # No error, found primary.
                 break
             except AutoReconnect:
-                sleep(.01)
+                time.sleep(.01)
         else:
             self.fail("Couldn't connect to new primary")
 
@@ -645,7 +644,7 @@ class TestReadPreference(HATestCase):
         killed = ha_tools.kill_primary()
 
         # Let monitor notice primary's gone
-        sleep(2 * MONITOR_INTERVAL)
+        time.sleep(2 * MONITOR_INTERVAL)
 
         #       PRIMARY
         assertReadFrom(None, PRIMARY)
@@ -683,13 +682,13 @@ class TestReadPreference(HATestCase):
         ha_tools.wait_for_primary()
 
         ha_tools.kill_members([unpartition_node(secondary)], 2)
-        sleep(5)
+        time.sleep(5)
         ha_tools.wait_for_primary()
         self.assertTrue(MongoClient(
             unpartition_node(primary), read_preference=PRIMARY_PREFERRED
         ).admin.command('ismaster')['ismaster'])
 
-        sleep(2 * MONITOR_INTERVAL)
+        time.sleep(2 * MONITOR_INTERVAL)
 
         #       PRIMARY
         assertReadFrom(primary, PRIMARY)
@@ -844,7 +843,7 @@ class TestReplicaSetAuth(HATestCase):
         ha_tools.kill_members(['%s:%d' % primary], 2)
 
         # Let monitor notice primary's gone
-        sleep(2 * MONITOR_INTERVAL)
+        time.sleep(2 * MONITOR_INTERVAL)
         self.assertFalse(primary == self.c.primary)
 
         # Make sure we can still authenticate
@@ -959,7 +958,7 @@ class TestReplicaSetRequest(HATestCase):
 
         # Fail over
         ha_tools.kill_primary()
-        sleep(5)
+        time.sleep(5)
 
         patience_seconds = 60
         for _ in range(patience_seconds):
@@ -972,7 +971,7 @@ class TestReplicaSetRequest(HATestCase):
             except ConnectionFailure:
                 pass
 
-            sleep(1)
+            time.sleep(1)
         else:
             self.fail("Problem with test: No new primary after %s seconds"
                 % patience_seconds)
@@ -1062,7 +1061,7 @@ class TestShipOfTheseus(HATestCase):
                 except (ConnectionFailure, OperationFailure):
                     pass
 
-                sleep(1)
+                time.sleep(1)
             else:
                 self.fail("Couldn't recover from reconfig")
 
@@ -1071,23 +1070,23 @@ class TestShipOfTheseus(HATestCase):
             if ha_tools.get_primary() and len(ha_tools.get_secondaries()) == 4:
                 break
 
-            sleep(1)
+            time.sleep(1)
         else:
             self.fail("New secondaries didn't join")
 
         ha_tools.kill_members([primary, secondary1], 9)
-        sleep(5)
+        time.sleep(5)
 
         # Wait for primary.
         for _ in xrange(30):
             if ha_tools.get_primary() and len(ha_tools.get_secondaries()) == 2:
                 break
 
-            sleep(1)
+            time.sleep(1)
         else:
             self.fail("No failover")
 
-        sleep(2 * MONITOR_INTERVAL)
+        time.sleep(2 * MONITOR_INTERVAL)
 
         # No error.
         find_one()
@@ -1104,7 +1103,7 @@ class TestShipOfTheseus(HATestCase):
         # Should be able to reconnect to set even though original seed
         # list is useless. Use SECONDARY so we don't have to wait for
         # the election, merely for the client to detect members are up.
-        sleep(2 * MONITOR_INTERVAL)
+        time.sleep(2 * MONITOR_INTERVAL)
         find_one(read_preference=SECONDARY)
 
         # Kill new members and switch back to original two members.
@@ -1123,12 +1122,12 @@ class TestShipOfTheseus(HATestCase):
             except ConnectionFailure:
                 pass
 
-            sleep(1)
+            time.sleep(1)
         else:
             self.fail("Original members didn't become secondaries")
 
         # Should be able to reconnect to set again.
-        sleep(2 * MONITOR_INTERVAL)
+        time.sleep(2 * MONITOR_INTERVAL)
         find_one(read_preference=SECONDARY)
 
 

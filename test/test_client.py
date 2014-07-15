@@ -29,16 +29,14 @@ from bson.tz_util import utc
 from pymongo.mongo_client import MongoClient
 from pymongo.database import Database
 from pymongo.pool import SocketInfo
-from pymongo import auth, thread_util
+from pymongo import auth
 from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
                             ConnectionFailure,
                             InvalidName,
                             OperationFailure,
                             PyMongoError)
-from test import (db_user,
-                  db_pwd,
-                  client_context,
+from test import (client_context,
                   connection_string,
                   host,
                   pair,
@@ -148,7 +146,6 @@ class TestClient(IntegrationTest, TestRequestMixin):
         self.assertIsInstance(c.is_primary, bool)
         self.assertIsInstance(c.is_mongos, bool)
         self.assertIsInstance(c.max_pool_size, int)
-        self.assertIsInstance(c.use_greenlets, bool)
         self.assertIsInstance(c.nodes, frozenset)
         self.assertIsInstance(c.auto_start_request, bool)
         self.assertEqual(dict, c.get_document_class())
@@ -212,13 +209,6 @@ class TestClient(IntegrationTest, TestRequestMixin):
         self.assertEqual(self.client.host, host)
         self.assertEqual(self.client.port, port)
         self.assertEqual(set([(host, port)]), self.client.nodes)
-
-    def test_use_greenlets(self):
-        self.assertFalse(MongoClient(host, port).use_greenlets)
-        if thread_util.have_gevent:
-            self.assertTrue(
-                MongoClient(
-                    host, port, use_greenlets=True).use_greenlets)
 
     def test_database_names(self):
         self.client.pymongo_test.test.save({"dummy": u("object")})
@@ -1028,9 +1018,7 @@ class TestClientLazyConnectBadSeeds(IntegrationTest):
             client = collection.database.connection
             self.assertEqual(0, len(client.nodes))
 
-        lazy_client_trial(
-            reset, connect, test,
-            self._get_client, use_greenlets=False)
+        lazy_client_trial(reset, connect, test, self._get_client)
 
 
 class TestClientLazyConnectOneGoodSeed(
@@ -1058,9 +1046,7 @@ class TestClientLazyConnectOneGoodSeed(
         def test(collection):
             self.assertEqual(NTHREADS, collection.count())
 
-        lazy_client_trial(
-            reset, insert, test,
-            self._get_client, use_greenlets=False)
+        lazy_client_trial(reset, insert, test, self._get_client)
 
 
 class TestMongoClientFailover(IntegrationTest):
