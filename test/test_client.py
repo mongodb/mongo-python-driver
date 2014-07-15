@@ -954,6 +954,7 @@ class TestClient(IntegrationTest, TestRequestMixin):
         client = get_client(connection_string(), _connect=False)
         client.pymongo_test.test.remove(w=0)
 
+    @client_context.require_no_mongos
     def test_exhaust_network_error(self):
         # When doing an exhaust query, the socket stays checked out on success
         # but must be checked in on error to avoid semaphore leaks.
