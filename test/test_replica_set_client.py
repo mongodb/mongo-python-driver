@@ -44,7 +44,9 @@ from test import (client_context,
                   pair,
                   port,
                   SkipTest,
-                  unittest)
+                  unittest,
+                  db_pwd,
+                  db_user)
 from test.pymongo_mocks import MockReplicaSetClient
 from test.utils import (
     delay, assertReadFrom, assertReadFromAll, read_from_which_host,
@@ -715,24 +717,28 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
 
     def test_ipv6(self):
         try:
-            client = MongoReplicaSetClient("[::1]:%d" % (port,),
-                                              replicaSet=self.name)
+            MongoReplicaSetClient("[::1]:%d" % (port,), replicaSet=self.name)
         except:
             # Either mongod was started without --ipv6
             # or the OS doesn't support it (or both).
             raise SkipTest("No IPv6")
 
         # Try a few simple things
-        client = MongoReplicaSetClient("mongodb://[::1]:%d" % (port,),
-                                          replicaSet=self.name)
-        client = MongoReplicaSetClient("mongodb://[::1]:%d/?w=0;"
-                                          "replicaSet=%s" % (port, self.name))
-        client = MongoReplicaSetClient("[::1]:%d,localhost:"
-                                          "%d" % (port, port),
-                                          replicaSet=self.name)
-        client = MongoReplicaSetClient("localhost:%d,[::1]:"
-                                          "%d" % (port, port),
-                                          replicaSet=self.name)
+        MongoReplicaSetClient("mongodb://[::1]:%d" % (port,),
+                              replicaSet=self.name)
+        MongoReplicaSetClient("mongodb://[::1]:%d/?w=0;"
+                              "replicaSet=%s" % (port, self.name))
+        MongoReplicaSetClient("[::1]:%d,localhost:"
+                              "%d" % (port, port),
+                              replicaSet=self.name)
+
+        if client_context.auth_enabled:
+            auth_str = "%s:%s@" % (db_user, db_pwd)
+        else:
+            auth_str = ""
+
+        uri = "mongodb://%slocalhost:%d,[::1]:%d" % (auth_str, port, port)
+        client = MongoReplicaSetClient(uri, replicaSet=self.name)
         client.pymongo_test.test.save({"dummy": u("object")})
         client.pymongo_test_bernie.test.save({"dummy": u("object")})
 

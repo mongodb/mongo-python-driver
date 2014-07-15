@@ -43,7 +43,9 @@ from test import (client_context,
                   port,
                   SkipTest,
                   unittest,
-                  IntegrationTest)
+                  IntegrationTest,
+                  db_pwd,
+                  db_user)
 from test.pymongo_mocks import MockClient
 from test.utils import (assertRaisesExactly,
                         delay,
@@ -570,7 +572,7 @@ class TestClient(IntegrationTest, TestRequestMixin):
 
     def test_ipv6(self):
         try:
-            client = MongoClient("[::1]")
+            MongoClient("[::1]")
         except:
             # Either mongod was started without --ipv6
             # or the OS doesn't support it (or both).
@@ -581,7 +583,13 @@ class TestClient(IntegrationTest, TestRequestMixin):
         MongoClient("mongodb://[::1]:%d/?w=0" % (port,))
         MongoClient("[::1]:%d,localhost:%d" % (port, port))
 
-        client = MongoClient("localhost:%d,[::1]:%d" % (port, port))
+        if client_context.auth_enabled:
+            auth_str = "%s:%s@" % (db_user, db_pwd)
+        else:
+            auth_str = ""
+
+        uri = "mongodb://%slocalhost:%d,[::1]:%d" % (auth_str, port, port)
+        client = MongoClient(uri)
         client.pymongo_test.test.save({"dummy": u("object")})
         client.pymongo_test_bernie.test.save({"dummy": u("object")})
 
