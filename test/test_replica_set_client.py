@@ -40,9 +40,7 @@ from pymongo.errors import (AutoReconnect,
                             InvalidName,
                             OperationFailure, InvalidOperation)
 from pymongo import auth
-from test import (db_user,
-                  db_pwd,
-                  client_context,
+from test import (client_context,
                   connection_string,
                   pair,
                   port,
