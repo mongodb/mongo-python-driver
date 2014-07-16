@@ -157,7 +157,7 @@ class TestBulk(BulkTestBase):
 
         self.assertEqual(1, self.coll.count())
         doc = self.coll.find_one()
-        self.assertTrue(oid_generated_on_client(doc))
+        self.assertTrue(oid_generated_on_client(doc['_id']))
 
         bulk = self.coll.initialize_unordered_bulk_op()
         bulk.insert({})

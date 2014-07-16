@@ -135,7 +135,7 @@ class SocketGetter(MongoThread):
 
 def run_cases(ut, cases):
     threads = []
-    n_runs = 10
+    n_runs = 5
 
     for case in cases:
         for i in range(n_runs):

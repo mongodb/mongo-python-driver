@@ -56,9 +56,9 @@ def one(s):
     """Get one element of a set"""
     return next(iter(s))
 
-def oid_generated_on_client(doc):
-    """Is this process's PID in the document's _id?"""
-    pid_from_doc = struct.unpack(">H", doc['_id'].binary[7:9])[0]
+def oid_generated_on_client(oid):
+    """Is this process's PID in this ObjectId?"""
+    pid_from_doc = struct.unpack(">H", oid.binary[7:9])[0]
     return (os.getpid() % 0xFFFF) == pid_from_doc
 
 def delay(sec):

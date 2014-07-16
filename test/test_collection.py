@@ -881,7 +881,7 @@ class TestCollection(IntegrationTest):
         server_doc = collection.find_one()
 
         # _id is not sent to server, so it's generated server-side.
-        self.assertFalse(oid_generated_on_client(server_doc))
+        self.assertFalse(oid_generated_on_client(server_doc['_id']))
 
         # Bulk insert. The return value is a list of None.
         self.assertEqual([None], collection.insert([{}], manipulate=False))

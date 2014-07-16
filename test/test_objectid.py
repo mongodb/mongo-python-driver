@@ -17,7 +17,7 @@
 import datetime
 import pickle
 import sys
-import time
+
 sys.path[0:0] = [""]
 
 from bson.errors import InvalidId
@@ -26,6 +26,7 @@ from bson.py3compat import PY3, u, _unicode
 from bson.tz_util import (FixedOffset,
                           utc)
 from test import SkipTest, unittest
+from test.utils import oid_generated_on_client
 
 
 def oid(x):
@@ -88,27 +89,8 @@ class TestObjectId(unittest.TestCase):
         self.assertEqual(a, ObjectId(a.binary))
         self.assertEqual(a, ObjectId(str(a)))
 
-    def test_multiprocessing(self):
-        # multiprocessing on windows is weird and I don't feel like figuring it
-        # out right now. this should fix buildbot.
-        if sys.platform == "win32":
-            raise SkipTest("Can't fork on Windows")
-
-        try:
-            import multiprocessing
-        except ImportError:
-            raise SkipTest("No multiprocessing module")
-
-        pool = multiprocessing.Pool(2)
-        ids = pool.map(oid, range(20))
-        pool.close()
-        pool.join()
-
-        map = {}
-
-        for id in ids:
-            self.assertTrue(id not in map)
-            map[id] = True
+    def test_pid(self):
+        self.assertTrue(oid_generated_on_client(ObjectId()))
 
     def test_generation_time(self):
         d1 = datetime.datetime.utcnow()
