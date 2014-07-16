@@ -119,5 +119,9 @@ The easiest way to run the tests is to run **python setup.py test** in
 the root of the distribution. Note that you will need unittest2_ to
 run the tests under Python 2.6.
 
+To verify that PyMongo works with Gevent's monkey-patching::
+
+    $ python -m gevent.monkey setup.py test
+
 .. _sphinx: http://sphinx.pocoo.org/
 .. _unittest2: https://pypi.python.org/pypi/unittest2
