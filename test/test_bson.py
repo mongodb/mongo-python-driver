@@ -30,6 +30,7 @@ from bson import (BSON,
                   is_valid,
                   Regex)
 from bson.binary import Binary, UUIDLegacy
+from bson.bsonint64 import BSONInt64
 from bson.code import Code
 from bson.objectid import ObjectId
 from bson.dbref import DBRef
@@ -234,10 +235,10 @@ class TestBSON(unittest.TestCase):
         helper({})
         helper({"test": u("hello")})
         self.assertTrue(isinstance(BSON.encode({"hello": "world"})
-                                .decode()["hello"],
+                                   .decode()["hello"],
                                    text_type))
         helper({"mike": -10120})
-        helper({"long": long(10)})
+        helper({"long": BSONInt64(10)})
         helper({"really big long": 2147483648})
         helper({u("hello"): 0.0013109})
         helper({"something": True})
@@ -372,18 +373,16 @@ class TestBSON(unittest.TestCase):
                           {"x": long(-9223372036854775809)})
 
     def test_small_long_encode_decode(self):
-        if PY3:
-            raise SkipTest("No long type in Python 3.")
-
         encoded1 = BSON.encode({'x': 256})
         decoded1 = BSON.decode(encoded1)['x']
         self.assertEqual(256, decoded1)
         self.assertEqual(type(256), type(decoded1))
 
-        encoded2 = BSON.encode({'x': long(256)})
+        encoded2 = BSON.encode({'x': BSONInt64(256)})
         decoded2 = BSON.decode(encoded2)['x']
-        self.assertEqual(long(256), decoded2)
-        self.assertEqual(type(long(256)), type(decoded2))
+        expected = BSONInt64(256)
+        self.assertEqual(expected, decoded2)
+        self.assertEqual(type(expected), type(decoded2))
 
         self.assertNotEqual(type(decoded1), type(decoded2))
 

@@ -50,6 +50,7 @@ struct module_state {
     PyObject* MaxKey;
     PyObject* UTC;
     PyTypeObject* REType;
+    PyObject* BSONInt64;
 };
 
 /* The Py_TYPE macro was introduced in CPython 2.6 */
@@ -330,6 +331,7 @@ static int _load_python_objects(PyObject* module) {
         _load_object(&state->UTC, "bson.tz_util", "utc") ||
         _load_object(&state->RECompile, "re", "compile") ||
         _load_object(&state->Regex, "bson.regex", "Regex") ||
+        _load_object(&state->BSONInt64, "bson.bsonint64", "BSONInt64") ||
         _load_object(&state->UUID, "uuid", "UUID")) {
         return 1;
     }
@@ -2028,16 +2030,17 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
         }
     case 18:
         {
+            PyObject* bsonint64_type = _get_object(state->BSONInt64, "bson.bsonint64", "BSONInt64");
+            if (!bsonint64_type)
+                goto invalid;
             long long ll;
             if (max < 8) {
                 goto invalid;
             }
             memcpy(&ll, buffer + *position, 8);
-            value = PyLong_FromLongLong(ll);
-            if (!value) {
-                goto invalid;
-            }
+            value = PyObject_CallFunction(bsonint64_type, "L", ll);
             *position += 8;
+            Py_DECREF(bsonint64_type);
             break;
         }
     case 255:

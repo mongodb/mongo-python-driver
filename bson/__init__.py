@@ -24,6 +24,7 @@ import uuid
 
 from bson.binary import (Binary, OLD_UUID_SUBTYPE,
                          JAVA_LEGACY, CSHARP_LEGACY)
+from bson.bsonint64 import BSONInt64
 from bson.code import Code
 from bson.dbref import DBRef
 from bson.errors import (InvalidBSON,
@@ -280,7 +281,7 @@ def _get_timestamp(
 def _get_long(data, position, as_class, tz_aware, uuid_subtype, compile_re):
     # Have to cast to long (for python 2.x); on 32-bit unpack may return
     # an int.
-    value = long(struct.unpack("<q", data[position:position + 8])[0])
+    value = BSONInt64(struct.unpack("<q", data[position:position + 8])[0])
     position += 8
     return value, position
 
@@ -416,6 +417,8 @@ def _element_to_bson(key, value, check_keys, uuid_subtype):
         return BSONBOO + name + ONE
     if value is False:
         return BSONBOO + name + ZERO
+    if isinstance(value, BSONInt64):
+        return BSONLON + name + struct.pack("<q", value)
     if isinstance(value, int):
         # TODO this is an ugly way to check for this...
         if value > MAX_INT64 or value < MIN_INT64:
