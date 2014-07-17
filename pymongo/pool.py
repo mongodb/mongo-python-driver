@@ -16,14 +16,14 @@ import os
 import select
 import socket
 import struct
-import sys
 import time
 import threading
 import weakref
 
 from bson import EMPTY
 from pymongo import thread_util
-from pymongo.errors import ConnectionFailure, ConfigurationError
+from pymongo.errors import ConnectionFailure
+
 
 try:
     from ssl import match_hostname, CertificateError

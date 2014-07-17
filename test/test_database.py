@@ -15,7 +15,6 @@
 """Test the database module."""
 
 import datetime
-import os
 import re
 import sys
 import warnings

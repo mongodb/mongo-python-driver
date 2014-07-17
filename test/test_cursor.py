@@ -36,7 +36,7 @@ from pymongo.errors import (InvalidOperation,
                             OperationFailure,
                             ExecutionTimeout)
 from test import client_context, SkipTest, unittest, host, port, IntegrationTest
-from test.utils import is_mongos, get_command_line, server_started_with_auth
+from test.utils import server_started_with_auth
 
 if PY3:
     long = int

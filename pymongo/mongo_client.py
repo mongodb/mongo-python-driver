@@ -35,7 +35,6 @@ access:
 import datetime
 import random
 import socket
-import struct
 import threading
 import time
 import warnings

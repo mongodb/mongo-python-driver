@@ -56,8 +56,7 @@ from test.utils import (assertRaisesExactly,
                         lazy_client_trial,
                         NTHREADS,
                         get_pool,
-                        one,
-                        server_started_with_auth)
+                        one)
 
 
 class TestClient(unittest.TestCase, TestRequestMixin):

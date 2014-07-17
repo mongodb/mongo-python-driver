@@ -27,7 +27,7 @@ import bson
 from bson.binary import *
 from bson.py3compat import u
 from bson.son import SON
-from test import client_context, unittest, SkipTest
+from test import client_context, unittest
 from pymongo.mongo_client import MongoClient
 
 

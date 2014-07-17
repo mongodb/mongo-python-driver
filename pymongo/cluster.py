@@ -16,8 +16,8 @@
 
 import threading
 import time
-from pymongo import common
 
+from pymongo import common
 from pymongo.cluster_description import (updated_cluster_description,
                                          CLUSTER_TYPE,
                                          ClusterDescription)

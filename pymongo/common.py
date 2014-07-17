@@ -15,14 +15,12 @@
 
 """Functions and classes common to multiple pymongo modules."""
 
-import sys
 import warnings
 
 from pymongo.auth import MECHANISMS
 from pymongo.errors import ConfigurationError
 from pymongo.read_preferences import (make_read_preference,
                                       read_pref_mode_from_name,
-                                      ReadPreference,
                                       ServerMode)
 from pymongo.ssl_support import validate_cert_reqs
 from pymongo.write_concern import WriteConcern

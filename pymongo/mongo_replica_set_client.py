@@ -34,7 +34,6 @@ attribute-style access:
 import atexit
 import datetime
 import socket
-import struct
 import threading
 import time
 import weakref
@@ -63,7 +62,7 @@ from pymongo.member import Member
 from pymongo.read_preferences import (
     ReadPreference, select_member, MovingAverage)
 from pymongo.ssl_support import get_ssl_context
-from pymongo.thread_util import DummyLock
+
 
 EMPTY = b""
 MAX_RETRY = 3

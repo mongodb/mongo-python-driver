@@ -19,7 +19,6 @@
 # a replica set. Thus each method asserts everything we want to assert for a
 # given replica-set configuration.
 
-import os
 import time
 
 import ha_tools

@@ -24,7 +24,7 @@ from bson.py3compat import (iteritems,
                             integer_types,
                             string_type)
 from bson.son import SON
-from pymongo import helpers, message, read_preferences
+from pymongo import helpers, message
 from pymongo.read_preferences import ReadPreference, SECONDARY_OK_COMMANDS
 from pymongo.errors import (AutoReconnect,
                             CursorNotFound,
