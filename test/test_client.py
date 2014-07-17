@@ -950,6 +950,7 @@ class TestClient(IntegrationTest, TestRequestMixin):
         client = get_client(max_pool_size=1)
         collection = client.pymongo_test.test
         pool = get_pool(client)
+        pool._check_interval_seconds = None  # Never check.
 
         # Cause a network error.
         sock_info = one(pool.sockets)
