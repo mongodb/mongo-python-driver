@@ -116,7 +116,7 @@ class PoolOptions(object):
 class SocketInfo(object):
     """Store a socket with some metadata
     """
-    def __init__(self, sock, pool, host=None):
+    def __init__(self, sock, pool, host):
         self.sock = sock
         self.host = host
         self.authset = set()
