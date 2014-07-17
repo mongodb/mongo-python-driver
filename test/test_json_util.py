@@ -22,6 +22,7 @@ import uuid
 sys.path[0:0] = [""]
 
 from bson import json_util
+from bson.bsonint64 import BSONInt64
 from bson.binary import Binary, MD5_SUBTYPE, USER_DEFINED_SUBTYPE
 from bson.code import Code
 from bson.dbref import DBRef
@@ -201,6 +202,15 @@ class TestJsonUtil(unittest.TestCase):
 
         # Check order.
         self.assertEqual('{"$code": "return z", "$scope": {"z": 2}}', res)
+
+    def test_undefined(self):
+        json = '{"name": {"$undefined": true}}'
+        self.assertIsNone(json_util.loads(json)['name'])
+
+    def test_numberlong(self):
+        json = '{"weight": {"$numberLong": 65535}}'
+        self.assertEqual(json_util.loads(json)['weight'],
+                         BSONInt64(65535))
 
 
 class TestJsonUtilRoundtrip(IntegrationTest):

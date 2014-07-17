@@ -89,6 +89,7 @@ except ImportError:
 
 from bson import EPOCH_AWARE, RE_TYPE, SON
 from bson.binary import Binary
+from bson.bsonint64 import BSONInt64
 from bson.code import Code
 from bson.dbref import DBRef
 from bson.max_key import MaxKey
@@ -193,6 +194,10 @@ def object_hook(dct, compile_re=True):
         return Code(dct["$code"], dct.get("$scope"))
     if "$uuid" in dct:
         return uuid.UUID(dct["$uuid"])
+    if "$undefined" in dct:
+        return None
+    if "$numberLong" in dct:
+        return BSONInt64(dct["$numberLong"])
     return dct
 
 
