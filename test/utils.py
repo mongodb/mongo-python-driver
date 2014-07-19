@@ -15,14 +15,16 @@
 """Utilities for testing pymongo
 """
 
+import gc
 import os
 import struct
 import sys
 import threading
+import time
 
 from nose.plugins.skip import SkipTest
 from pymongo import MongoClient, MongoReplicaSetClient
-from pymongo.errors import AutoReconnect
+from pymongo.errors import AutoReconnect, ConnectionFailure, OperationFailure
 from pymongo.pool import NO_REQUEST, NO_SOCKET_YET, SocketInfo
 from test import host, port, version
 
@@ -584,6 +586,130 @@ class _TestLazyConnectMixin(object):
             self.assertEqual(
                 ismaster['maxMessageSizeBytes'],
                 c.max_message_size)
+
+
+def collect_until(fn):
+    start = time.time()
+    while not fn():
+        if (time.time() - start) > 5:
+            raise AssertionError("timed out")
+
+        gc.collect()
+
+
+class _TestExhaustCursorMixin(object):
+    """Test that clients properly handle errors from exhaust cursors.
+
+    Inherit from this class and from unittest.TestCase, and override
+    _get_client(self, **kwargs).
+    """
+    def test_exhaust_query_server_error(self):
+        # When doing an exhaust query, the socket stays checked out on success
+        # but must be checked in on error to avoid semaphore leaks.
+        client = self._get_client(max_pool_size=1)
+        if is_mongos(client):
+            raise SkipTest("Can't use exhaust cursors with mongos")
+
+        collection = client.pymongo_test.test
+        pool = get_pool(client)
+
+        sock_info = one(pool.sockets)
+        cursor = collection.find({'$bad_query_operator': 1}, exhaust=True)
+        self.assertRaises(OperationFailure, cursor.next)
+        del cursor
+        collect_until(lambda: sock_info in pool.sockets)
+        self.assertFalse(sock_info.closed)
+
+        # The semaphore was decremented despite the error.
+        self.assertTrue(pool._socket_semaphore.acquire(blocking=False))
+
+    def test_exhaust_getmore_server_error(self):
+        # When doing a getmore on an exhaust cursor, the socket stays checked
+        # out on success but must be checked in on error to avoid semaphore
+        # leaks.
+        client = self._get_client(max_pool_size=1)
+        if is_mongos(client):
+            raise SkipTest("Can't use exhaust cursors with mongos")
+
+        # A separate client that doesn't affect the test client's pool.
+        client2 = self._get_client()
+
+        collection = client.pymongo_test.test
+        collection.remove()
+
+        # Enough data to ensure it streams down for a few milliseconds.
+        long_str = 'a' * (256 * 1024)
+        collection.insert([{'a': long_str} for _ in range(1000)])
+
+        pool = get_pool(client)
+        pool._check_interval_seconds = None  # Never check.
+        sock_info = one(pool.sockets)
+
+        cursor = collection.find(exhaust=True)
+
+        # Initial query succeeds.
+        cursor.next()
+
+        # Cause a server error on getmore.
+        client2.pymongo_test.test.drop()
+        self.assertRaises(OperationFailure, list, cursor)
+        del cursor
+        collect_until(lambda: sock_info.closed)
+        self.assertFalse(sock_info in pool.sockets)
+
+        # The semaphore was decremented despite the error.
+        self.assertTrue(pool._socket_semaphore.acquire(blocking=False))
+
+    def test_exhaust_query_network_error(self):
+        # When doing an exhaust query, the socket stays checked out on success
+        # but must be checked in on error to avoid semaphore leaks.
+        client = self._get_client(max_pool_size=1)
+        if is_mongos(client):
+            raise SkipTest("Can't use exhaust cursors with mongos")
+
+        collection = client.pymongo_test.test
+        pool = get_pool(client)
+        pool._check_interval_seconds = None  # Never check.
+
+        # Cause a network error.
+        sock_info = one(pool.sockets)
+        sock_info.sock.close()
+        cursor = collection.find(exhaust=True)
+        self.assertRaises(ConnectionFailure, cursor.next)
+        self.assertTrue(sock_info.closed)
+
+        # The semaphore was decremented despite the error.
+        self.assertTrue(pool._socket_semaphore.acquire(blocking=False))
+
+    def test_exhaust_getmore_network_error(self):
+        # When doing a getmore on an exhaust cursor, the socket stays checked
+        # out on success but must be checked in on error to avoid semaphore
+        # leaks.
+        client = self._get_client(max_pool_size=1)
+        if is_mongos(client):
+            raise SkipTest("Can't use exhaust cursors with mongos")
+
+        collection = client.pymongo_test.test
+        collection.remove()
+        collection.insert([{} for _ in range(200)])  # More than one batch.
+        pool = get_pool(client)
+        pool._check_interval_seconds = None  # Never check.
+
+        cursor = collection.find(exhaust=True)
+
+        # Initial query succeeds.
+        cursor.next()
+
+        # Cause a network error.
+        sock_info = cursor._Cursor__exhaust_mgr.sock
+        sock_info.sock.close()
+
+        # A getmore fails.
+        self.assertRaises(ConnectionFailure, list, cursor)
+        self.assertTrue(sock_info.closed)
+
+        # The semaphore was decremented despite the error.
+        self.assertTrue(pool._socket_semaphore.acquire(blocking=False))
 
 
 # Backport of WarningMessage from python 2.6, with fixed syntax for python 2.4.

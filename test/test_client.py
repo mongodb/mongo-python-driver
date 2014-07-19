@@ -52,6 +52,7 @@ from test.utils import (assertRaisesExactly,
                         server_started_with_auth,
                         TestRequestMixin,
                         _TestLazyConnectMixin,
+                        _TestExhaustCursorMixin,
                         lazy_client_trial,
                         NTHREADS,
                         get_pool,
@@ -1145,6 +1146,11 @@ class TestMongoClientFailover(unittest.TestCase):
         # So it can reconnect.
         c.revive_host('a:1')
         c.db.collection.find_one()
+
+
+class TestExhaustCursor(_TestExhaustCursorMixin, unittest.TestCase):
+    def _get_client(self, **kwargs):
+        return get_client(**kwargs)
 
 
 if __name__ == "__main__":

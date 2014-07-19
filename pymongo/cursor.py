@@ -56,6 +56,15 @@ class _SocketManager:
             self.pool.maybe_return_socket(self.sock)
             self.sock, self.pool = None, None
 
+    def error(self):
+        """Clean up after an error on the managed socket.
+        """
+        if self.sock:
+            self.sock.close()
+
+        # Return the closed socket to avoid a semaphore leak in the pool.
+        self.close()
+
 
 # TODO might be cool to be able to do find().include("foo") or
 # find().exclude(["bar", "baz"]) or find().slice("a", 1, 2) as an
@@ -914,8 +923,14 @@ class Cursor(object):
                 # due to a socket timeout.
                 self.__killed = True
                 raise
-        else: # exhaust cursor - no getMore message
-            response = client._exhaust_next(self.__exhaust_mgr.sock)
+        else:
+            # Exhaust cursor - no getMore message.
+            try:
+                response = client._exhaust_next(self.__exhaust_mgr.sock)
+            except:
+                self.__killed = True
+                self.__exhaust_mgr.error()
+                raise
 
         try:
             response = helpers._unpack_response(response, self.__id,
@@ -938,6 +953,7 @@ class Cursor(object):
             self.__killed = True
             client.disconnect()
             raise
+
         self.__id = response["cursor_id"]
 
         # starting from doesn't get set on getmore's for tailable cursors

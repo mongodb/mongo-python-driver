@@ -52,7 +52,7 @@ from test.utils import (
     delay, assertReadFrom, assertReadFromAll, read_from_which_host,
     remove_all_users, assertRaisesExactly, TestRequestMixin, one,
     server_started_with_auth, pools_from_rs_client, get_pool,
-    _TestLazyConnectMixin)
+    _TestLazyConnectMixin, _TestExhaustCursorMixin)
 
 
 class TestReplicaSetClientAgainstStandalone(unittest.TestCase):
@@ -1273,6 +1273,13 @@ class TestReplicaSetClientMaxWriteBatchSize(unittest.TestCase):
         c.refresh()
         self.assertEqual(c.max_write_batch_size, 2)
 
+
+class TestReplicaSetClientExhaustCursor(
+        _TestExhaustCursorMixin,
+        TestReplicaSetClientBase):
+
+    # Base class implements _get_client already.
+    pass
 
 if __name__ == "__main__":
     unittest.main()

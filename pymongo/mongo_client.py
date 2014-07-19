@@ -1192,27 +1192,35 @@ class MongoClient(common.BaseObject):
         sock_info = self.__socket(member)
         exhaust = kwargs.get('exhaust')
         try:
-            try:
-                if not exhaust and "network_timeout" in kwargs:
-                    sock_info.sock.settimeout(kwargs["network_timeout"])
-                response = self.__send_and_receive(message, sock_info)
+            if not exhaust and "network_timeout" in kwargs:
+                sock_info.sock.settimeout(kwargs["network_timeout"])
 
-                if not exhaust:
-                    if "network_timeout" in kwargs:
-                        sock_info.sock.settimeout(self.__net_timeout)
+            response = self.__send_and_receive(message, sock_info)
 
-                return (None, (response, sock_info, member.pool))
-            except (ConnectionFailure, socket.error), e:
-                self.disconnect()
-                raise AutoReconnect(str(e))
-        finally:
             if not exhaust:
+                if "network_timeout" in kwargs:
+                    sock_info.sock.settimeout(self.__net_timeout)
+
                 member.pool.maybe_return_socket(sock_info)
+
+            return (None, (response, sock_info, member.pool))
+        except (ConnectionFailure, socket.error), e:
+            self.disconnect()
+            member.pool.maybe_return_socket(sock_info)
+            raise AutoReconnect(str(e))
+        except:
+            member.pool.maybe_return_socket(sock_info)
+            raise
 
     def _exhaust_next(self, sock_info):
         """Used with exhaust cursors to get the next batch off the socket.
+
+        Can raise AutoReconnect.
         """
-        return self.__receive_message_on_socket(1, None, sock_info)
+        try:
+            return self.__receive_message_on_socket(1, None, sock_info)
+        except socket.error, e:
+            raise AutoReconnect(str(e))
 
     def start_request(self):
         """Ensure the current thread or greenlet always uses the same socket

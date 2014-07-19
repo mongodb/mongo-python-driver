@@ -1711,8 +1711,13 @@ class MongoReplicaSetClient(common.BaseObject):
 
     def _exhaust_next(self, sock_info):
         """Used with exhaust cursors to get the next batch off the socket.
+
+        Can raise AutoReconnect.
         """
-        return self.__recv_msg(1, None, sock_info)
+        try:
+            return self.__recv_msg(1, None, sock_info)
+        except socket.error, e:
+            raise AutoReconnect(str(e))
 
     def start_request(self):
         """Ensure the current thread or greenlet always uses the same socket
