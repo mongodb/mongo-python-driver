@@ -770,6 +770,21 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
                 *(buffer_get_buffer(buffer) + type_byte) = 0x11;
                 return 1;
             }
+        case 18:
+            {
+                /* BSONInt64 */
+                const long long ll = PyLong_AsLongLong(value);
+                if (PyErr_Occurred()) { /* Overflow */
+                    PyErr_SetString(PyExc_OverflowError,
+                                    "MongoDB can only handle up to 8-byte ints");
+                    return 0;
+                }
+                if (!buffer_write_bytes(buffer, (const char*)&ll, 8)) {
+                    return 0;
+                }
+                *(buffer_get_buffer(buffer) + type_byte) = 0x12;
+                return 1;
+            }
         case 100:
             {
                 /* DBRef */
