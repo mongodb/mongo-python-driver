@@ -17,6 +17,7 @@
 
 import calendar
 import datetime
+import itertools
 import re
 import struct
 import sys
@@ -114,23 +115,47 @@ def _get_c_string(data, position, length=None):
 
     return value, position
 
-
-def _make_c_string(string, check_null=False):
+def _make_c_string_check(string):
+    """Make a 'C' string, checking for embedded NUL characters."""
     if isinstance(string, bytes):
-        if check_null and ZERO in string:
+        if b"\x00" in string:
             raise InvalidDocument("BSON keys / regex patterns must not "
-                                  "contain a NULL character")
+                                  "contain a NUL character")
         try:
             string.decode("utf-8")
-            return string + ZERO
+            return string + b"\x00"
         except UnicodeError:
             raise InvalidStringData("strings in documents must be valid "
                                     "UTF-8: %r" % string)
     else:
-        if check_null and "\x00" in string:
+        if "\x00" in string:
             raise InvalidDocument("BSON keys / regex patterns must not "
-                                  "contain a NULL character")
-        return string.encode("utf-8") + ZERO
+                                  "contain a NUL character")
+        return string.encode("utf-8") + b"\x00"
+
+def _make_c_string(string):
+    """Make a 'C' string."""
+    if isinstance(string, bytes):
+        try:
+            string.decode("utf-8")
+            return string + b"\x00"
+        except UnicodeError:
+            raise InvalidStringData("strings in documents must be valid "
+                                    "UTF-8: %r" % string)
+    else:
+        return string.encode("utf-8") + b"\x00"
+
+if PY3:
+    def _make_name(string):
+        """Make a 'C' string suitable for a BSON key."""
+        # Keys can only be text in python 3.
+        if "\x00" in string:
+            raise InvalidDocument("BSON keys / regex patterns must not "
+                                  "contain a NUL character")
+        return string.encode("utf-8") + b"\x00"
+else:
+    # Keys can be unicode or bytes in python 2.
+    _make_name = _make_c_string_check
 
 
 def _get_number(data, position, as_class, tz_aware, uuid_subtype, compile_re):
@@ -346,149 +371,296 @@ if _use_c:
     _bson_to_dict = _cbson._bson_to_dict
 
 
-def _element_to_bson(key, value, check_keys, uuid_subtype):
-    if not isinstance(key, string_type):
-        raise InvalidDocument("documents must have only string keys, "
-                              "key was %r" % key)
+_PACK_FLOAT = struct.Struct("<d").pack
+_PACK_INT = struct.Struct("<i").pack
+_PACK_INT_INTO = struct.Struct("<i").pack_into
+_PACK_INT_SUB = struct.Struct("<iB").pack
+_PACK_LONG = struct.Struct("<q").pack
+_PACK_INC_TIME = struct.Struct("<II").pack
+_LIST_NAMES = tuple(b(str(i)) + b"\x00" for i in range(1000))
 
-    if check_keys:
-        if key.startswith("$"):
-            raise InvalidDocument("key %r must not start with '$'" % key)
-        if "." in key:
-            raise InvalidDocument("key %r must not contain '.'" % key)
 
-    name = _make_c_string(key, True)
-    if isinstance(value, float):
-        return BSONNUM + name + struct.pack("<d", value)
+def gen_list_name():
+    """Generate "keys" for encoded lists in the sequence
+    b"0\x00", b"1\x00", b"2\x00", ...
 
-    if isinstance(value, uuid.UUID):
-        # Java Legacy
-        if uuid_subtype == JAVA_LEGACY:
-            from_uuid = value.bytes
-            data = from_uuid[0:8][::-1] + from_uuid[8:16][::-1]
-            subtype = OLD_UUID_SUBTYPE
-        # C# legacy
-        elif uuid_subtype == CSHARP_LEGACY:
-            # Microsoft GUID representation.
-            data = value.bytes_le
-            subtype = OLD_UUID_SUBTYPE
-        # Python
-        else:
-            data = value.bytes
-            subtype = uuid_subtype
-        return (BSONBIN + name +
-                struct.pack("<i", len(data)) + b(chr(subtype)) + data)
+    The first 1000 keys are returned from a pre-built cache. All
+    subsequent keys are generated on the fly.
+    """
+    for name in _LIST_NAMES:
+        yield name
 
-    if isinstance(value, Binary):
-        subtype = value.subtype
-        if subtype == 2:
-            value = struct.pack("<i", len(value)) + value
-        return (BSONBIN + name +
-                struct.pack("<i", len(value)) + b(chr(subtype)) + value)
-    if isinstance(value, Code):
-        cstring = _make_c_string(value)
-        if not value.scope:
-            length = struct.pack("<i", len(cstring))
-            return BSONCOD + name + length + cstring
-        scope = _dict_to_bson(value.scope, False, uuid_subtype, False)
-        full_length = struct.pack("<i", 8 + len(cstring) + len(scope))
-        length = struct.pack("<i", len(cstring))
-        return BSONCWS + name + full_length + length + cstring + scope
-    if isinstance(value, bytes):
-        if PY3:
-            # Python3 special case. Store 'bytes' as BSON binary subtype 0.
-            return (BSONBIN + name +
-                    struct.pack("<i", len(value)) + ZERO + value)
-        cstring = _make_c_string(value)
-        length = struct.pack("<i", len(cstring))
-        return BSONSTR + name + length + cstring
-    if isinstance(value, text_type):
-        cstring = _make_c_string(value)
-        length = struct.pack("<i", len(cstring))
-        return BSONSTR + name + length + cstring
+    counter = itertools.count(1000)
+    while True:
+        yield b(str(next(counter))) + b"\x00"
+
+
+def _encode_float(name, value, dummy0, dummy1):
+    """Encode a float."""
+    return b"\x01" + name + _PACK_FLOAT(value)
+
+
+if PY3:
+    def _encode_bytes(name, value, dummy0, dummy1):
+        """Encode a python bytes."""
+        # Python3 special case. Store 'bytes' as BSON binary subtype 0.
+        return b"\x05" + name + _PACK_INT(len(value)) + b"\x00" + value
+else:
+    def _encode_bytes(name, value, dummy0, dummy1):
+        """Encode a python str (python 2.x)."""
+        try:
+            value.decode("utf-8")
+        except UnicodeError:
+            raise InvalidStringData("strings in documents must be valid "
+                                    "UTF-8: %r" % (value,))
+        return b"\x02" + name + _PACK_INT(len(value) + 1) + value + b"\x00"
+
+
+def _encode_dbref(name, value, check_keys, uuid_subtype):
+    """Encode bson.dbref.DBRef."""
+    buf = bytearray(b"\x03" + name + b"\x00\x00\x00\x00")
+    begin = len(buf) - 4
+
+    buf += _name_value_to_bson(b"$ref\x00",
+                               value.collection, check_keys, uuid_subtype)
+    buf += _name_value_to_bson(b"$id\x00",
+                               value.id, check_keys, uuid_subtype)
+    if value.database is not None:
+        buf += _name_value_to_bson(
+            b"$db\x00", value.database, check_keys, uuid_subtype)
+    for key, val in iteritems(value._DBRef__kwargs):
+        buf += _element_to_bson(key, val, check_keys, uuid_subtype)
+
+    buf += b"\x00"
+    _PACK_INT_INTO(buf, begin, len(buf) - begin)
+    return bytes(buf)
+
+
+def _encode_list(name, value, check_keys, uuid_subtype):
+    """Encode a list/tuple."""
+    lname = gen_list_name()
+    data = b"".join([_name_value_to_bson(next(lname), item,
+                                         check_keys, uuid_subtype)
+                     for item in value])
+    return b"\x04" + name + _PACK_INT(len(data) + 5) + data + b"\x00"
+
+
+def _encode_text(name, value, dummy0, dummy1):
+    """Encode a python unicode (python 2.x) / str (python 3.x)."""
+    value = value.encode("utf-8")
+    return b"\x02" + name + _PACK_INT(len(value) + 1) + value + b"\x00"
+
+
+def _encode_binary(name, value, dummy0, dummy1):
+    """Encode bson.binary.Binary."""
+    subtype = value.subtype
+    if subtype == 2:
+        value = _PACK_INT(len(value)) + value
+    return b"\x05" + name + _PACK_INT_SUB(len(value), subtype) + value
+
+
+def _encode_uuid(name, value, dummy, uuid_subtype):
+    """Encode uuid.UUID."""
+    # Python Legacy Common Case
+    if uuid_subtype == OLD_UUID_SUBTYPE:
+        return b"\x05" + name + b'\x10\x00\x00\x00\x03' + value.bytes
+    # Java Legacy
+    elif uuid_subtype == JAVA_LEGACY:
+        from_uuid = value.bytes
+        data = from_uuid[0:8][::-1] + from_uuid[8:16][::-1]
+        return b"\x05" + name + b'\x10\x00\x00\x00\x03' + data
+    # C# legacy
+    elif uuid_subtype == CSHARP_LEGACY:
+        # Microsoft GUID representation.
+        return b"\x05" + name + b'\x10\x00\x00\x00\x03' + value.bytes_le
+    # New
+    else:
+        return b"\x05" + name + b'\x10\x00\x00\x00\x04' + value.bytes
+
+
+def _encode_objectid(name, value, dummy0, dummy1):
+    """Encode bson.objectid.ObjectId."""
+    return b"\x07" + name + value.binary
+
+
+def _encode_bool(name, value, dummy0, dummy1):
+    """Encode a python boolean (True/False)."""
+    return b"\x08" + name + (value and b"\x01" or b"\x00")
+
+
+def _encode_datetime(name, value, dummy0, dummy1):
+    """Encode datetime.datetime."""
+    if value.utcoffset() is not None:
+        value = value - value.utcoffset()
+    millis = int(calendar.timegm(value.timetuple()) * 1000 +
+                 value.microsecond / 1000)
+    return b"\x09" + name + _PACK_LONG(millis)
+
+
+def _encode_none(name, dummy0, dummy1, dummy2):
+    """Encode python None."""
+    return b"\x0A" + name
+
+
+def _encode_regex(name, value, dummy0, dummy1):
+    """Encode a python regex or bson.regex.Regex."""
+    flags = value.flags
+    # Python 2 common case
+    if flags == 0:
+        return b"\x0B" + name + _make_c_string_check(value.pattern) + b"\x00"
+    # Python 3 common case
+    elif flags == re.UNICODE:
+        return b"\x0B" + name + _make_c_string_check(value.pattern) + b"u\x00"
+    else:
+        sflags = b""
+        if flags & re.IGNORECASE:
+            sflags += b"i"
+        if flags & re.LOCALE:
+            sflags += b"l"
+        if flags & re.MULTILINE:
+            sflags += b"m"
+        if flags & re.DOTALL:
+            sflags += b"s"
+        if flags & re.UNICODE:
+            sflags += b"u"
+        if flags & re.VERBOSE:
+            sflags += b"x"
+        sflags += b"\x00"
+        return b"\x0B" + name + _make_c_string_check(value.pattern) + sflags
+
+
+def _encode_code(name, value, dummy, uuid_subtype):
+    """Encode bson.code.Code."""
+    cstring = _make_c_string(value)
+    cstrlen = len(cstring)
+    if not value.scope:
+        return b"\x0D" + name + _PACK_INT(cstrlen) + cstring
+    scope = _dict_to_bson(value.scope, False, uuid_subtype, False)
+    full_length = _PACK_INT(8 + cstrlen + len(scope))
+    return b"\x0F" + name + full_length + _PACK_INT(cstrlen) + cstring + scope
+
+
+def _encode_int(name, value, dummy0, dummy1):
+    """Encode a python int."""
+    if -2147483648 <= value <= 2147483647:
+        return b"\x10" + name + _PACK_INT(value)
+    else:
+        try:
+            return b"\x12" + name + _PACK_LONG(value)
+        except struct.error:
+            raise OverflowError("BSON can only handle up to 8-byte ints")
+
+
+def _encode_timestamp(name, value, dummy0, dummy1):
+    """Encode bson.timestamp.Timestamp."""
+    return b"\x11" + name + _PACK_INC_TIME(value.inc, value.time)
+
+
+def _encode_long(name, value, dummy0, dummy1):
+    """Encode a python long (python 2.x)"""
+    try:
+        return b"\x12" + name + _PACK_LONG(value)
+    except struct.error:
+        raise OverflowError("BSON can only handle up to 8-byte ints")
+
+
+def _encode_minkey(name, dummy0, dummy1, dummy2):
+    """Encode bson.min_key.MinKey."""
+    return b"\xFF" + name
+
+
+def _encode_maxkey(name, dummy0, dummy1, dummy2):
+    """Encode bson.max_key.MaxKey."""
+    return b"\x7F" + name
+
+
+_ENCODERS = {
+    bool: _encode_bool,
+    bytes: _encode_bytes,
+    datetime.datetime: _encode_datetime,
+    float: _encode_float,
+    int: _encode_int,
+    list: _encode_list,
+    tuple: _encode_list,
+    type(None): _encode_none,
+    RE_TYPE: _encode_regex,
+    text_type: _encode_text,
+    uuid.UUID: _encode_uuid
+}
+
+
+_MARKERS = {
+    5: _encode_binary,
+    7: _encode_objectid,
+    11: _encode_regex,
+    13: _encode_code,
+    17: _encode_timestamp,
+    18: _encode_long,
+    100: _encode_dbref,
+    127: _encode_maxkey,
+    255: _encode_minkey,
+}
+
+if not PY3:
+    _ENCODERS[long] = _encode_long
+
+
+def _name_value_to_bson(name, value, check_keys, uuid_subtype):
+    """Encode a single name, value pair."""
+    func = _ENCODERS.get(type(value))
+    if func:
+        return func(name, value, check_keys, uuid_subtype)
+    marker = getattr(value, "_type_marker", None)
+    if marker in _MARKERS:
+        return _MARKERS.get(marker)(name, value, check_keys, uuid_subtype)
+
+    # Assume dict is the most likely type to be subclassed.
     if isinstance(value, dict):
-        return BSONOBJ + name + _dict_to_bson(value, check_keys, uuid_subtype, False)
-    if isinstance(value, (list, tuple)):
-        as_dict = SON(zip([str(i) for i in range(len(value))], value))
-        return BSONARR + name + _dict_to_bson(as_dict, check_keys, uuid_subtype, False)
-    if isinstance(value, ObjectId):
-        return BSONOID + name + value.binary
-    if value is True:
-        return BSONBOO + name + ONE
-    if value is False:
-        return BSONBOO + name + ZERO
-    if isinstance(value, BSONInt64):
-        return BSONLON + name + struct.pack("<q", value)
-    if isinstance(value, int):
-        # TODO this is an ugly way to check for this...
-        if value > MAX_INT64 or value < MIN_INT64:
-            raise OverflowError("BSON can only handle up to 8-byte ints")
-        if value > MAX_INT32 or value < MIN_INT32:
-            return BSONLON + name + struct.pack("<q", value)
-        return BSONINT + name + struct.pack("<i", value)
-    if not PY3 and isinstance(value, long):
-        if value > MAX_INT64 or value < MIN_INT64:
-            raise OverflowError("BSON can only handle up to 8-byte ints")
-        return BSONLON + name + struct.pack("<q", value)
-    if isinstance(value, datetime.datetime):
-        if value.utcoffset() is not None:
-            value = value - value.utcoffset()
-        millis = int(calendar.timegm(value.timetuple()) * 1000 +
-                     value.microsecond / 1000)
-        return BSONDAT + name + struct.pack("<q", millis)
-    if isinstance(value, Timestamp):
-        time = struct.pack("<I", value.time)
-        inc = struct.pack("<I", value.inc)
-        return BSONTIM + name + inc + time
-    if value is None:
-        return BSONNUL + name
-    if isinstance(value, (RE_TYPE, Regex)):
-        pattern = value.pattern
-        flags = ""
-        if value.flags & re.IGNORECASE:
-            flags += "i"
-        if value.flags & re.LOCALE:
-            flags += "l"
-        if value.flags & re.MULTILINE:
-            flags += "m"
-        if value.flags & re.DOTALL:
-            flags += "s"
-        if value.flags & re.UNICODE:
-            flags += "u"
-        if value.flags & re.VERBOSE:
-            flags += "x"
-        return BSONRGX + name + _make_c_string(pattern, True) + \
-            _make_c_string(flags)
-    if isinstance(value, DBRef):
-        return _element_to_bson(key, value.as_doc(), False, uuid_subtype)
-    if isinstance(value, MinKey):
-        return BSONMIN + name
-    if isinstance(value, MaxKey):
-        return BSONMAX + name
+        data = b"".join([_element_to_bson(key, val, check_keys, uuid_subtype)
+                         for key, val in iteritems(value)])
+        return b"\x03" + name + _PACK_INT(len(data) + 5) + data + b"\x00"
+
+    for base in _ENCODERS:
+        if isinstance(value, base):
+            return _ENCODERS[base](name, value, check_keys, uuid_subtype)
 
     raise InvalidDocument("cannot convert value of type %s to bson" %
                           type(value))
 
 
-def _dict_to_bson(dict, check_keys, uuid_subtype, top_level=True):
+def _element_to_bson(key, value, check_keys, uuid_subtype):
+    """Encode a single key, value pair."""
+    if not isinstance(key, string_type):
+        raise InvalidDocument("documents must have only string keys, "
+                              "key was %r" % (key,))
+    if check_keys:
+        if key.startswith("$"):
+            raise InvalidDocument("key %r must not start with '$'" % (key,))
+        if "." in key:
+            raise InvalidDocument("key %r must not contain '.'" % (key,))
+
+    name = _make_name(key)
+    return _name_value_to_bson(name, value, check_keys, uuid_subtype)
+
+
+def _dict_to_bson(doc, check_keys, uuid_subtype, top_level=True):
+    """Encode a document to BSON."""
     try:
         elements = []
-        if top_level and "_id" in dict:
-            elements.append(_element_to_bson("_id", dict["_id"],
-                                             check_keys, uuid_subtype))
-        for (key, value) in iteritems(dict):
+        if top_level and "_id" in doc:
+            elements.append(_name_value_to_bson(b"_id\x00", doc["_id"],
+                                                check_keys, uuid_subtype))
+        for (key, value) in iteritems(doc):
             if not top_level or key != "_id":
                 elements.append(_element_to_bson(key, value,
                                                  check_keys, uuid_subtype))
     except AttributeError:
-        raise TypeError("encoder expected a mapping type but got: %r" % dict)
+        raise TypeError("encoder expected a mapping type but got: %r" % (doc,))
 
-    encoded = EMPTY.join(elements)
-    length = len(encoded) + 5
-    return struct.pack("<i", length) + encoded + ZERO
+    encoded = b"".join(elements)
+    return _PACK_INT(len(encoded) + 5) + encoded + b"\x00"
 if _use_c:
     _dict_to_bson = _cbson._dict_to_bson
-
 
 
 def decode_all(data, as_class=dict,
