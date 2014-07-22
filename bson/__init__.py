@@ -611,7 +611,7 @@ def _name_value_to_bson(name, value, check_keys, uuid_subtype):
     if func:
         return func(name, value, check_keys, uuid_subtype)
     marker = getattr(value, "_type_marker", None)
-    if marker in _MARKERS:
+    if isinstance(marker, int) and marker in _MARKERS:
         return _MARKERS.get(marker)(name, value, check_keys, uuid_subtype)
 
     # Assume dict is the most likely type to be subclassed.
