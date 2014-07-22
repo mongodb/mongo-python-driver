@@ -273,10 +273,7 @@ class Cursor(object):
                 self.__exhaust_mgr.sock.close()
             else:
                 connection = self.__collection.database.connection
-                if self.__connection_id is not None:
-                    connection.close_cursor(self.__id, self.__connection_id)
-                else:
-                    connection.close_cursor(self.__id)
+                connection.close_cursor(self.__id, self.__connection_id)
         if self.__exhaust and self.__exhaust_mgr:
             self.__exhaust_mgr.close()
         self.__killed = True

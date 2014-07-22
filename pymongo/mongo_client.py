@@ -1215,7 +1215,7 @@ class MongoClient(common.BaseObject):
         """
         return self.__getattr__(name)
 
-    def close_cursor(self, cursor_id, _conn_id):
+    def close_cursor(self, cursor_id, address):
         """Close a single database cursor.
 
         Raises :class:`TypeError` if `cursor_id` is not an instance of
@@ -1224,6 +1224,7 @@ class MongoClient(common.BaseObject):
 
         :Parameters:
           - `cursor_id`: id of cursor to close
+          - `address`: (host, port) pair of the cursor's server
         """
         if not isinstance(cursor_id, integer_types):
             raise TypeError("cursor_id must be an instance of (int, long)")

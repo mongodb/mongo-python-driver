@@ -22,6 +22,12 @@ Gevent simply call ``gevent.monkey.patch_all()``.
 For more information,
 see :doc:`PyMongo's Gevent documentation <examples/gevent>`.
 
+:class:`~pymongo.MongoClient` Changes
+.....................................
+
+The second parameter to :meth:`~pymongo.MongoClient.close_cursor` is renamed
+from ``_conn_id`` to ``address`` and is no longer optional.
+
 Issues Resolved
 ...............
 

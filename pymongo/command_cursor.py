@@ -52,10 +52,7 @@ class CommandCursor(object):
         """
         if self.__id and not self.__killed:
             client = self.__collection.database.connection
-            if self.__conn_id is not None:
-                client.close_cursor(self.__id, self.__conn_id)
-            else:
-                client.close_cursor(self.__id)
+            client.close_cursor(self.__id, self.__conn_id)
         self.__killed = True
 
     def close(self):
