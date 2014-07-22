@@ -2045,10 +2045,11 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
         }
     case 18:
         {
-            PyObject* bsonint64_type = _get_object(state->BSONInt64, "bson.bsonint64", "BSONInt64");
+            long long ll;
+            PyObject* bsonint64_type = _get_object(state->BSONInt64,
+                                                   "bson.bsonint64", "BSONInt64");
             if (!bsonint64_type)
                 goto invalid;
-            long long ll;
             if (max < 8) {
                 goto invalid;
             }
