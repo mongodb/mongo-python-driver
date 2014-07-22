@@ -369,7 +369,7 @@ class Collection(common.BaseObject):
            Support for passing `getLastError` options as keyword
            arguments.
         .. versionchanged:: 1.1
-           Bulk insert works with any iterable
+           Bulk insert works with an iterable sequence of documents.
 
         .. mongodoc:: insert
         """
