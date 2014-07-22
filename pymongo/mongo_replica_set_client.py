@@ -61,6 +61,7 @@ from pymongo.errors import (AutoReconnect,
 from pymongo.member import Member
 from pymongo.read_preferences import (
     ReadPreference, select_member, MovingAverage)
+from pymongo.response import Response, ExhaustResponse
 from pymongo.ssl_support import get_ssl_context
 
 
@@ -1366,13 +1367,23 @@ class MongoReplicaSetClient(common.BaseObject):
         """
         rqst_id, data = self.__check_bson_size(msg, member.max_bson_size)
         sock_info = self.__socket(member)
+        exhaust = kwargs.get('exhaust')
 
         # For exhaust queries, tell the socket not to check itself back in.
-        sock_info.exhaust(kwargs.get('exhaust'))
+        sock_info.exhaust(exhaust)
         with sock_info:
             sock_info.send_message(data)
-            response = sock_info.receive_message(1, rqst_id)
-            return response, sock_info, member.pool
+            data = sock_info.receive_message(1, rqst_id)
+            if exhaust:
+                return ExhaustResponse(
+                    data=data,
+                    address=member.host,
+                    socket_info=sock_info,
+                    pool=member.pool)
+            else:
+                return Response(
+                    data=data,
+                    address=member.host)
 
     def __try_read(self, member, msg, **kwargs):
         """Attempt a read from a member; on failure mark the member "down" and
@@ -1400,9 +1411,7 @@ class MongoReplicaSetClient(common.BaseObject):
 
     def _send_message_with_response(self, msg,
                                     _connection_to_use=None, **kwargs):
-        """Send a message to Mongo and return the response.
-
-        Sends the given message and returns (host used, response).
+        """Send a message to MongoDB and return a Response object.
 
         :Parameters:
           - `msg`: (request_id, data) pair making up the message to send
@@ -1436,8 +1445,7 @@ class MongoReplicaSetClient(common.BaseObject):
                 if not member:
                     raise AutoReconnect(error_message)
 
-                return member.pool.pair, self.__try_read(
-                    member, msg, **kwargs)
+                return self.__try_read(member, msg, **kwargs)
         except AutoReconnect:
             if _connection_to_use in (-1, rs_state.writer):
                 # Primary's down. Refresh.
@@ -1457,9 +1465,7 @@ class MongoReplicaSetClient(common.BaseObject):
                 and pinned_member.matches_mode(pref.mode)
                 and rs_state.keep_pinned_host(pref)):
             try:
-                return (
-                    pinned_member.host,
-                    self.__try_read(pinned_member, msg, **kwargs))
+                return self.__try_read(pinned_member, msg, **kwargs)
             except AutoReconnect as why:
                 if pref == ReadPreference.PRIMARY:
                     self.disconnect()
@@ -1491,7 +1497,7 @@ class MongoReplicaSetClient(common.BaseObject):
                     # Keep reading from this member in this thread
                     # unless read preference changes.
                     rs_state.pin_host(member.host, pref)
-                return member.host, response
+                return response
             except AutoReconnect as why:
                 if pref == ReadPreference.PRIMARY:
                     raise

@@ -94,9 +94,8 @@ class CommandCursor(object):
         """
         client = self.__collection.database.connection
         try:
-            res = client._send_message_with_response(
+            response = client._send_message_with_response(
                 msg, _connection_to_use=self.__conn_id)
-            self.__conn_id, (response, dummy0, dummy1) = res
         except AutoReconnect:
             # Don't try to send kill cursors on another socket
             # or to another server. It can cause a _pinValue
@@ -106,9 +105,9 @@ class CommandCursor(object):
             raise
 
         try:
-            response = helpers._unpack_response(response,
-                                                self.__id,
-                                                *self.__decode_opts)
+            doc = helpers._unpack_response(response.data,
+                                           self.__id,
+                                           *self.__decode_opts)
         except CursorNotFound:
             self.__killed = True
             raise
@@ -118,14 +117,14 @@ class CommandCursor(object):
             self.__killed = True
             client.disconnect()
             raise
-        self.__id = response["cursor_id"]
+        self.__id = doc["cursor_id"]
 
-        assert response["starting_from"] == self.__retrieved, (
+        assert doc["starting_from"] == self.__retrieved, (
             "Result batch started from %s, expected %s" % (
-                response['starting_from'], self.__retrieved))
+                doc['starting_from'], self.__retrieved))
 
-        self.__retrieved += response["number_returned"]
-        self.__data = deque(response["data"])
+        self.__retrieved += doc["number_returned"]
+        self.__data = deque(doc["data"])
 
     def _refresh(self):
         """Refreshes the cursor with more data from the server.

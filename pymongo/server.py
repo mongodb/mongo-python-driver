@@ -15,6 +15,7 @@
 """Communicate with one MongoDB server in a cluster."""
 
 from pymongo.ismaster import SERVER_TYPE
+from pymongo.response import Response, ExhaustResponse
 
 
 class Server(object):
@@ -37,10 +38,29 @@ class Server(object):
         """Check the server's state soon."""
         self._monitor.request_check()
 
-    def send_message_with_response(self, message, request_id):
+    def send_message_with_response(self, message, request_id, exhaust):
+        """Send a message to MongoDB and return a Response object.
+
+        :Parameters:
+          - `message`: BSON bytes.
+          - `request_id`: A number.
+          - `exhaust`: If True, the socket used stays checked out. It is
+            returned along with its Pool in the Response.
+        """
         with self._pool.get_socket() as sock_info:
+            sock_info.exhaust(exhaust)
             sock_info.send_message(message)
-            return sock_info.receive_message(1, request_id)
+            response_data = sock_info.receive_message(1, request_id)
+            if exhaust:
+                return ExhaustResponse(
+                    data=response_data,
+                    address=self._description.address,
+                    socket_info=sock_info,
+                    pool=self._pool)
+            else:
+                return Response(
+                    data=response_data,
+                    address=self._description.address)
 
     @property
     def description(self):

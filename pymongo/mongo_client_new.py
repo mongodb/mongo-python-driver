@@ -86,11 +86,12 @@ class MongoClientNew(object):
             msg,
             read_preference=ReadPreference.PRIMARY,
             exhaust=False):
-        """Send a message to Mongo and return the response.
-
+        """Send a message to MongoDB and return a Response object.
 
         :Parameters:
-          - `message`: (request_id, data) pair making up the message to send
+          - `msg`: (request_id, data) pair making up the message to send.
+          - `read_preference`: A ReadPreference.
+          - `exhaust`: True for an exhaust cursor's initial query.
         """
         request_id, data, max_doc_size = msg
 
@@ -99,9 +100,9 @@ class MongoClientNew(object):
             servers = self._cluster.select_servers(writable_server_selector)
         else:
             servers = self._cluster.select_servers(secondary_server_selector)
+
         server = random.choice(servers)
-        response = server.send_message_with_response(data, request_id)
-        return server.description.address, (response, None, None)
+        return server.send_message_with_response(data, request_id, exhaust)
 
     def __getattr__(self, name):
         """Get a database by name.

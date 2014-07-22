@@ -62,6 +62,7 @@ from pymongo.errors import (AutoReconnect,
                             OperationFailure)
 from pymongo.member import Member
 from pymongo.read_preferences import ReadPreference
+from pymongo.response import Response, ExhaustResponse
 from pymongo.ssl_support import get_ssl_context
 
 EMPTY = b""
@@ -1088,9 +1089,7 @@ class MongoClient(common.BaseObject):
         return sock_info.receive_message(1, request_id)
 
     def _send_message_with_response(self, message, **kwargs):
-        """Send a message to Mongo and return the response.
-
-        Sends the given message and returns the response.
+        """Send a message to MongoDB and return a Response object.
 
         :Parameters:
           - `message`: (request_id, data) pair making up the message to send
@@ -1099,11 +1098,22 @@ class MongoClient(common.BaseObject):
         sock_info = self.__socket(member)
 
         # For exhaust queries, tell the socket not to check itself back in.
-        sock_info.exhaust(kwargs.get('exhaust'))
+        exhaust = kwargs.get('exhaust')
+        sock_info.exhaust(exhaust)
         with sock_info:
             try:
-                response = self.__send_and_receive(message, sock_info)
-                return (None, (response, sock_info, member.pool))
+                data = self.__send_and_receive(message, sock_info)
+                if exhaust:
+                    return ExhaustResponse(
+                        data=data,
+                        address=member.host,
+                        socket_info=sock_info,
+                        pool=member.pool)
+                else:
+                    return Response(
+                        data=data,
+                        address=member.host)
+
             except (ConnectionFailure, socket.error) as e:
                 self.disconnect()
                 raise AutoReconnect(str(e))
@@ -1205,7 +1215,7 @@ class MongoClient(common.BaseObject):
         """
         return self.__getattr__(name)
 
-    def close_cursor(self, cursor_id):
+    def close_cursor(self, cursor_id, _conn_id):
         """Close a single database cursor.
 
         Raises :class:`TypeError` if `cursor_id` is not an instance of

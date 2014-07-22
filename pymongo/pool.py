@@ -114,7 +114,28 @@ class PoolOptions(object):
 
 
 class SocketInfo(object):
-    """Store a socket with some metadata
+    """Store a socket with some metadata.
+
+    The SocketInfo should always be used in a with-statement::
+
+        with pool.get_socket() as socket_info:
+            socket_info.send_message(msg)
+            data = socket_info.receive_message(op_code, request_id)
+
+    If the initial query for an exhaust cursor succeeds, the socket
+    should be kept checked out until the cursor is exhausted or there is
+    an error. But the socket must be checked in if there is any error
+    doing the query.
+
+    Call exhaust(True) to enforce these rules::
+
+        with pool.get_socket() as socket_info:
+            socket_info.exhaust(True)
+            socket_info.send_message(exhaust_query)
+            data = socket_info.receive_message(op_code, request_id)
+
+    When the SocketInfo is finally returned to the pool, its exhaust flag
+    is reset.
     """
     def __init__(self, sock, pool, host):
         self.sock = sock

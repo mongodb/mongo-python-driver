@@ -867,10 +867,14 @@ class Cursor(object):
                 kwargs["_connection_to_use"] = self.__connection_id
 
             try:
-                res = client._send_message_with_response(message, **kwargs)
-                self.__connection_id, (response, sock, pool) = res
+                response = client._send_message_with_response(message, **kwargs)
+                self.__connection_id = response.address
                 if self.__exhaust:
-                    self.__exhaust_mgr = _SocketManager(sock, pool)
+                    # 'response' is an ExhaustResponse.
+                    self.__exhaust_mgr = _SocketManager(response.socket_info,
+                                                        response.pool)
+
+                data = response.data
             except AutoReconnect:
                 # Don't try to send kill cursors on another socket
                 # or to another server. It can cause a _pinValue
@@ -880,14 +884,15 @@ class Cursor(object):
                 raise
         else:
             # Exhaust cursor - no getMore message.
-            response = self.__exhaust_mgr.sock.receive_message(1, None)
+            data = self.__exhaust_mgr.sock.receive_message(1, None)
 
         try:
-            response = helpers._unpack_response(response, self.__id,
-                                                self.__as_class,
-                                                self.__tz_aware,
-                                                self.__uuid_subtype,
-                                                self.__compile_re)
+            doc = helpers._unpack_response(response=data,
+                                           cursor_id=self.__id,
+                                           as_class=self.__as_class,
+                                           tz_aware=self.__tz_aware,
+                                           uuid_subtype=self.__uuid_subtype,
+                                           compile_re=self.__compile_re)
         except CursorNotFound:
             self.__killed = True
             # If this is a tailable cursor the error is likely
@@ -903,16 +908,16 @@ class Cursor(object):
             self.__killed = True
             client.disconnect()
             raise
-        self.__id = response["cursor_id"]
+        self.__id = doc["cursor_id"]
 
         # starting from doesn't get set on getmore's for tailable cursors
         if not (self.__query_flags & _QUERY_OPTIONS["tailable_cursor"]):
-            assert response["starting_from"] == self.__retrieved, (
+            assert doc["starting_from"] == self.__retrieved, (
                 "Result batch started from %s, expected %s" % (
-                    response['starting_from'], self.__retrieved))
+                    doc['starting_from'], self.__retrieved))
 
-        self.__retrieved += response["number_returned"]
-        self.__data = deque(response["data"])
+        self.__retrieved += doc["number_returned"]
+        self.__data = deque(doc["data"])
 
         if self.__limit and self.__id and self.__limit <= self.__retrieved:
             self.__die()
