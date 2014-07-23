@@ -16,6 +16,7 @@
 """
 
 import calendar
+import collections
 import datetime
 import itertools
 import re
@@ -614,7 +615,7 @@ def _name_value_to_bson(name, value, check_keys, uuid_subtype):
         return _MARKERS.get(marker)(name, value, check_keys, uuid_subtype)
 
     # Assume dict is the most likely type to be subclassed.
-    if isinstance(value, dict):
+    if isinstance(value, collections.Mapping):
         data = b"".join([_element_to_bson(key, val, check_keys, uuid_subtype)
                          for key, val in iteritems(value)])
         return b"\x03" + name + _PACK_INT(len(data) + 5) + data + b"\x00"

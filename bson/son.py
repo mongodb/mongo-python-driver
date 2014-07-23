@@ -18,6 +18,7 @@ Regular dictionaries can be used instead of SON objects, but not when the order
 of keys is important. A SON object can be used just like a normal Python
 dictionary."""
 
+import collections
 import copy
 import re
 
@@ -229,7 +230,7 @@ class SON(dict):
         def transform_value(value):
             if isinstance(value, list):
                 return [transform_value(v) for v in value]
-            elif isinstance(value, dict):
+            elif isinstance(value, collections.Mapping):
                 return dict([
                     (k, transform_value(v))
                     for k, v in iteritems(value)])

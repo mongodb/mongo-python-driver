@@ -15,6 +15,7 @@
 
 """Functions and classes common to multiple pymongo modules."""
 
+import collections
 import warnings
 
 from pymongo.auth import MECHANISMS
@@ -333,7 +334,7 @@ class BaseObject(object):
 
     def __set_write_concern(self, value):
         """Property setter for write_concern."""
-        if not isinstance(value, dict):
+        if not isinstance(value, collections.Mapping):
             raise ConfigurationError("write_concern must be an "
                                      "instance of dict or a subclass.")
         self.__write_concern = WriteConcern(**value)

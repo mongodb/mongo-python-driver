@@ -51,6 +51,7 @@ struct module_state {
     PyObject* UTC;
     PyTypeObject* REType;
     PyObject* BSONInt64;
+    PyObject* Mapping;
 };
 
 /* The Py_TYPE macro was introduced in CPython 2.6 */
@@ -332,7 +333,8 @@ static int _load_python_objects(PyObject* module) {
         _load_object(&state->RECompile, "re", "compile") ||
         _load_object(&state->Regex, "bson.regex", "Regex") ||
         _load_object(&state->BSONInt64, "bson.bsonint64", "BSONInt64") ||
-        _load_object(&state->UUID, "uuid", "UUID")) {
+        _load_object(&state->UUID, "uuid", "UUID") ||
+        _load_object(&state->Mapping, "collections", "Mapping")) {
         return 1;
     }
     /* Reload our REType hack too. */
@@ -553,6 +555,7 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
                                     unsigned char uuid_subtype) {
     struct module_state *state = GETSTATE(self);
     PyObject* type_marker = NULL;
+    PyObject* mapping_type;
     PyObject* uuid_type;
 
     /*
@@ -1023,11 +1026,27 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
     }
     
     /* 
-     * Try UUID last since we have to import
-     * it if we're in a sub-interpreter.
+     * Try Mapping and UUID last since we have to import
+     * them if we're in a sub-interpreter.
      */
+    mapping_type = _get_object(state->Mapping, "collections", "Mapping");
+    if (mapping_type && PyObject_IsInstance(value, mapping_type)) {
+        Py_DECREF(mapping_type);
+        // PyObject_IsInstance returns -1 on error
+        if (PyErr_Occurred()) {
+            return 0;
+        }
+        *(buffer_get_buffer(buffer) + type_byte) = 0x03;
+        return write_dict(self, buffer, value, check_keys, uuid_subtype, 0);
+    }
+
     uuid_type = _get_object(state->UUID, "uuid", "UUID");
     if (uuid_type && PyObject_IsInstance(value, uuid_type)) {
+        Py_DECREF(uuid_type);
+        // PyObject_IsInstance returns -1 on error
+        if (PyErr_Occurred()) {
+            return 0;
+        }
         /* Just a special case of Binary above, but
          * simpler to do as a separate case. */
         PyObject* bytes;
@@ -1036,8 +1055,6 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
         /* UUID is always 16 bytes */
         int size = 16;
         int subtype;
-
-        Py_DECREF(uuid_type);
 
         if (uuid_subtype == JAVA_LEGACY || uuid_subtype == CSHARP_LEGACY) {
             subtype = 3;
@@ -1091,6 +1108,7 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
         Py_DECREF(bytes);
         return 1;
     }
+    Py_XDECREF(mapping_type);
     Py_XDECREF(uuid_type);
     /* We can't determine value's type. Fail. */
     _set_cannot_encode(value);
@@ -1305,41 +1323,53 @@ int write_dict(PyObject* self, buffer_t buffer,
     char zero = 0;
     int length;
     int length_location;
+    struct module_state *state = GETSTATE(self);
+    PyObject* mapping_type = _get_object(state->Mapping,
+                                         "collections", "Mapping");
 
-    if (!PyDict_Check(dict)) {
-        PyObject* repr = PyObject_Repr(dict);
-        if (repr) {
+    if (mapping_type) {
+        if (!PyObject_IsInstance(dict, mapping_type)) {
+            Py_DECREF(mapping_type);
+            PyObject* repr = PyObject_Repr(dict);
+            if (repr) {
 #if PY_MAJOR_VERSION >= 3
-            PyObject* errmsg = PyUnicode_FromString(
-                "encoder expected a mapping type but got: ");
-            if (errmsg) {
-                PyObject* error = PyUnicode_Concat(errmsg, repr);
-                if (error) {
-                    PyErr_SetObject(PyExc_TypeError, error);
-                    Py_DECREF(error);
-                }
-                Py_DECREF(errmsg);
-                Py_DECREF(repr);
-            }
-#else
-            PyObject* errmsg = PyString_FromString(
-                "encoder expected a mapping type but got: ");
-            if (errmsg) {
-                PyString_ConcatAndDel(&errmsg, repr);
+                PyObject* errmsg = PyUnicode_FromString(
+                    "encoder expected a mapping type but got: ");
                 if (errmsg) {
-                    PyErr_SetObject(PyExc_TypeError, errmsg);
+                    PyObject* error = PyUnicode_Concat(errmsg, repr);
+                    if (error) {
+                        PyErr_SetObject(PyExc_TypeError, error);
+                        Py_DECREF(error);
+                    }
                     Py_DECREF(errmsg);
+                    Py_DECREF(repr);
                 }
-            }
+#else
+                PyObject* errmsg = PyString_FromString(
+                    "encoder expected a mapping type but got: ");
+                if (errmsg) {
+                    PyString_ConcatAndDel(&errmsg, repr);
+                    if (errmsg) {
+                        PyErr_SetObject(PyExc_TypeError, errmsg);
+                        Py_DECREF(errmsg);
+                    }
+                }
 #endif
-            else {
-                Py_DECREF(repr);
+                else {
+                    Py_DECREF(repr);
+                }
+            } else {
+                PyErr_SetString(PyExc_TypeError,
+                                "encoder expected a mapping type");
             }
-        } else {
-            PyErr_SetString(PyExc_TypeError,
-                            "encoder expected a mapping type");
+
+            return 0;
         }
-        return 0;
+        Py_DECREF(mapping_type);
+        // PyObject_IsInstance returns -1 on error
+        if (PyErr_Occurred()) {
+            return 0;
+        }
     }
 
     length_location = buffer_save_space(buffer, 4);
@@ -1349,14 +1379,17 @@ int write_dict(PyObject* self, buffer_t buffer,
     }
 
     /* Write _id first if this is a top level doc. */
-    if (top_level) {
-        PyObject* _id = PyDict_GetItemString(dict, "_id");
-        if (_id) {
-            if (!write_pair(self, buffer, "_id", 3,
-                            _id, check_keys, uuid_subtype, 1)) {
-                return 0;
-            }
+    if (top_level && PyMapping_HasKeyString(dict, "_id")) {
+        PyObject* _id = PyMapping_GetItemString(dict, "_id");
+        if (!_id) {
+            return 0;
         }
+        if (!write_pair(self, buffer, "_id", 3,
+                        _id, check_keys, uuid_subtype, 1)) {
+            Py_DECREF(_id);
+            return 0;
+        }
+        Py_DECREF(_id);
     }
 
     iter = PyObject_GetIter(dict);
@@ -1364,7 +1397,7 @@ int write_dict(PyObject* self, buffer_t buffer,
         return 0;
     }
     while ((key = PyIter_Next(iter)) != NULL) {
-        PyObject* value = PyDict_GetItem(dict, key);
+        PyObject* value = PyObject_GetItem(dict, key);
         if (!value) {
             PyErr_SetObject(PyExc_KeyError, key);
             Py_DECREF(key);
@@ -1374,10 +1407,12 @@ int write_dict(PyObject* self, buffer_t buffer,
         if (!decode_and_write_pair(self, buffer, key, value,
                                    check_keys, uuid_subtype, top_level)) {
             Py_DECREF(key);
+            Py_DECREF(value);
             Py_DECREF(iter);
             return 0;
         }
         Py_DECREF(key);
+        Py_DECREF(value);
     }
     Py_DECREF(iter);
 
@@ -1492,32 +1527,42 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
             }
 
             /* Decoding for DBRefs */
-            collection = PyDict_GetItemString(value, "$ref");
-            if (collection) { /* DBRef */
+            if (PyMapping_HasKeyString(value, "$ref")) { /* DBRef */
                 PyObject* dbref = NULL;
                 PyObject* dbref_type;
                 PyObject* id;
                 PyObject* database;
 
-                Py_INCREF(collection);
-                PyDict_DelItemString(value, "$ref");
+                collection = PyMapping_GetItemString(value, "$ref");
+                // PyMapping_GetItemString returns NULL to indicate error.
+                if (!collection) {
+                    goto invalid;
+                }
+                PyMapping_DelItemString(value, "$ref");
 
-                id = PyDict_GetItemString(value, "$id");
-                if (id == NULL) {
+                if (PyMapping_HasKeyString(value, "$id")) {
+                    id = PyMapping_GetItemString(value, "$id");
+                    if (!id) {
+                        Py_DECREF(collection);
+                        goto invalid;
+                    }
+                    PyMapping_DelItemString(value, "$id");
+                } else {
                     id = Py_None;
                     Py_INCREF(id);
-                } else {
-                    Py_INCREF(id);
-                    PyDict_DelItemString(value, "$id");
                 }
 
-                database = PyDict_GetItemString(value, "$db");
-                if (database == NULL) {
+                if (PyMapping_HasKeyString(value, "$db")) {
+                    database = PyMapping_GetItemString(value, "$db");
+                    if (!database) {
+                        Py_DECREF(collection);
+                        Py_DECREF(id);
+                        goto invalid;
+                    }
+                    PyMapping_DelItemString(value, "$db");
+                } else {
                     database = Py_None;
                     Py_INCREF(database);
-                } else {
-                    Py_INCREF(database);
-                    PyDict_DelItemString(value, "$db");
                 }
 
                 if ((dbref_type = _get_object(state->DBRef, "bson.dbref", "DBRef"))) {

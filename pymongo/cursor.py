@@ -16,7 +16,7 @@
 import copy
 import warnings
 
-from collections import deque
+from collections import deque, Mapping
 
 from bson import RE_TYPE
 from bson.code import Code
@@ -91,8 +91,8 @@ class Cursor(object):
         if spec is None:
             spec = {}
 
-        if not isinstance(spec, dict):
-            raise TypeError("spec must be an instance of dict")
+        if not isinstance(spec, Mapping):
+            raise TypeError("spec must be a mapping type.")
         if not isinstance(skip, int):
             raise TypeError("skip must be an instance of int")
         if not isinstance(limit, int):
@@ -113,7 +113,7 @@ class Cursor(object):
         if fields is not None:
             if not fields:
                 fields = {"_id": 1}
-            if not isinstance(fields, dict):
+            if not isinstance(fields, Mapping):
                 fields = helpers._fields_list_to_dict(fields)
 
         if as_class is None:
@@ -340,7 +340,8 @@ class Cursor(object):
                 elif command_name == 'mapreduce':
                     # mapreduce shouldn't be changed if its not inline
                     out = spec.get('out')
-                    if not isinstance(out, dict) or not out.get('inline'):
+                    if (not isinstance(out, Mapping) or not
+                            out.get('inline')):
                         return spec
 
             # White-listed commands must be wrapped in $query.

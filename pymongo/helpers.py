@@ -14,6 +14,7 @@
 
 """Bits and pieces used by the driver that don't really fit elsewhere."""
 
+import collections
 import random
 import struct
 
@@ -52,7 +53,7 @@ def _index_document(index_list):
 
     Takes a list of (key, direction) pairs.
     """
-    if isinstance(index_list, dict):
+    if isinstance(index_list, collections.Mapping):
         raise TypeError("passing a dict to sort/create_index/hint is not "
                         "allowed - use a list of tuples instead. did you "
                         "mean %r?" % list(iteritems(index_list)))
@@ -66,7 +67,7 @@ def _index_document(index_list):
     for (key, value) in index_list:
         if not isinstance(key, string_type):
             raise TypeError("first item in each key pair must be a string")
-        if not isinstance(value, (string_type, int, dict)):
+        if not isinstance(value, (string_type, int, collections.Mapping)):
             raise TypeError("second item in each key pair must be 1, -1, "
                             "'2d', 'geoHaystack', or another valid MongoDB "
                             "index specifier.")

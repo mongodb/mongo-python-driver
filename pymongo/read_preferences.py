@@ -16,7 +16,7 @@
 
 import random
 
-from collections import namedtuple
+from collections import Mapping, namedtuple
 
 from pymongo.errors import ConfigurationError
 
@@ -52,9 +52,9 @@ def _validate_tag_sets(tag_sets):
             " tags") % (tag_sets,))
 
     for tags in tag_sets:
-        if not isinstance(tags, dict):
+        if not isinstance(tags, Mapping):
             raise ConfigurationError(
-                "Tag set %r invalid, must be a dict" % (tags,))
+                "Tag set %r invalid, must be a mapping." % (tags,))
 
     return tag_sets
 

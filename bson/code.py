@@ -14,6 +14,8 @@
 
 """Tools for representing JavaScript code in BSON.
 """
+import collections
+
 from bson.py3compat import string_type
 
 
@@ -56,7 +58,7 @@ class Code(str):
             self.__scope = {}
 
         if scope is not None:
-            if not isinstance(scope, dict):
+            if not isinstance(scope, collections.Mapping):
                 raise TypeError("scope must be an instance of dict")
             self.__scope.update(scope)
 
