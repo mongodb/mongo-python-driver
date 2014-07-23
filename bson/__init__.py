@@ -373,7 +373,6 @@ if _use_c:
 
 _PACK_FLOAT = struct.Struct("<d").pack
 _PACK_INT = struct.Struct("<i").pack
-_PACK_INT_INTO = struct.Struct("<i").pack_into
 _PACK_INT_SUB = struct.Struct("<iB").pack
 _PACK_LONG = struct.Struct("<q").pack
 _PACK_INC_TIME = struct.Struct("<II").pack
@@ -432,7 +431,7 @@ def _encode_dbref(name, value, check_keys, uuid_subtype):
         buf += _element_to_bson(key, val, check_keys, uuid_subtype)
 
     buf += b"\x00"
-    _PACK_INT_INTO(buf, begin, len(buf) - begin)
+    buf[begin:begin + 4] = _PACK_INT(len(buf) - begin)
     return bytes(buf)
 
 
