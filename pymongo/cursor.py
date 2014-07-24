@@ -22,8 +22,8 @@ from bson.son import SON
 from pymongo import helpers, message, read_preferences
 from pymongo.read_preferences import ReadPreference, secondary_ok_commands
 from pymongo.errors import (AutoReconnect,
-                            CursorNotFound,
-                            InvalidOperation)
+                            InvalidOperation,
+                            OperationFailure)
 
 _QUERY_OPTIONS = {
     "tailable_cursor": 2,
@@ -927,7 +927,7 @@ class Cursor(object):
             # Exhaust cursor - no getMore message.
             try:
                 response = client._exhaust_next(self.__exhaust_mgr.sock)
-            except:
+            except AutoReconnect:
                 self.__killed = True
                 self.__exhaust_mgr.error()
                 raise
@@ -938,8 +938,10 @@ class Cursor(object):
                                                 self.__tz_aware,
                                                 self.__uuid_subtype,
                                                 self.__compile_re)
-        except CursorNotFound:
+        except OperationFailure:
             self.__killed = True
+            # Make sure exhaust socket is returned immediately, if necessary.
+            self.__die()
             # If this is a tailable cursor the error is likely
             # due to capped collection roll over. Setting
             # self.__killed to True ensures Cursor.alive will be
@@ -951,6 +953,8 @@ class Cursor(object):
             # Don't send kill cursors to another server after a "not master"
             # error. It's completely pointless.
             self.__killed = True
+            # Make sure exhaust socket is returned immediately, if necessary.
+            self.__die()
             client.disconnect()
             raise
 

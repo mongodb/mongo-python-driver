@@ -23,6 +23,8 @@ import threading
 import time
 
 from nose.plugins.skip import SkipTest
+
+from bson.son import SON
 from pymongo import MongoClient, MongoReplicaSetClient
 from pymongo.errors import AutoReconnect, ConnectionFailure, OperationFailure
 from pymongo.pool import NO_REQUEST, NO_SOCKET_YET, SocketInfo
@@ -588,15 +590,6 @@ class _TestLazyConnectMixin(object):
                 c.max_message_size)
 
 
-def collect_until(fn):
-    start = time.time()
-    while not fn():
-        if (time.time() - start) > 5:
-            raise AssertionError("timed out")
-
-        gc.collect()
-
-
 class _TestExhaustCursorMixin(object):
     """Test that clients properly handle errors from exhaust cursors.
 
@@ -609,15 +602,18 @@ class _TestExhaustCursorMixin(object):
         client = self._get_client(max_pool_size=1)
         if is_mongos(client):
             raise SkipTest("Can't use exhaust cursors with mongos")
+        if not version.at_least(client, (2, 2, 0)):
+            raise SkipTest("mongod < 2.2.0 closes exhaust socket on error")
 
         collection = client.pymongo_test.test
         pool = get_pool(client)
 
         sock_info = one(pool.sockets)
-        cursor = collection.find({'$bad_query_operator': 1}, exhaust=True)
+        # This will cause OperationFailure in all mongo versions since
+        # the value for $orderby must be a document.
+        cursor = collection.find(
+            SON([('$query', {}), ('$orderby', True)]), exhaust=True)
         self.assertRaises(OperationFailure, cursor.next)
-        del cursor
-        collect_until(lambda: sock_info in pool.sockets)
         self.assertFalse(sock_info.closed)
 
         # The semaphore was decremented despite the error.
@@ -639,7 +635,7 @@ class _TestExhaustCursorMixin(object):
 
         # Enough data to ensure it streams down for a few milliseconds.
         long_str = 'a' * (256 * 1024)
-        collection.insert([{'a': long_str} for _ in range(1000)])
+        collection.insert([{'a': long_str} for _ in range(200)])
 
         pool = get_pool(client)
         pool._check_interval_seconds = None  # Never check.
@@ -653,12 +649,9 @@ class _TestExhaustCursorMixin(object):
         # Cause a server error on getmore.
         client2.pymongo_test.test.drop()
         self.assertRaises(OperationFailure, list, cursor)
-        del cursor
-        collect_until(lambda: sock_info.closed)
-        self.assertFalse(sock_info in pool.sockets)
 
-        # The semaphore was decremented despite the error.
-        self.assertTrue(pool._socket_semaphore.acquire(blocking=False))
+        # Make sure the socket is still valid
+        self.assertEqual(0, collection.count())
 
     def test_exhaust_query_network_error(self):
         # When doing an exhaust query, the socket stays checked out on success
