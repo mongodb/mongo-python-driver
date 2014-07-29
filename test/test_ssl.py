@@ -91,18 +91,17 @@ if HAVE_SSL:
     except ConnectionFailure:
         pass
 
-    if SIMPLE_SSL:
-        # Is MongoDB configured with server.pem, ca.pem, and crl.pem from
-        # mongodb jstests/lib?
-        try:
-            ssl_client = MongoClient(host, port, connectTimeoutMS=100, ssl=True,
-                                     ssl_certfile=CLIENT_PEM)
-            CERT_SSL = True
-        except ConnectionFailure:
-            pass
+    # Is MongoDB configured with server.pem, ca.pem, and crl.pem from
+    # mongodb jstests/lib?
+    try:
+        ssl_client = MongoClient(host, port, connectTimeoutMS=100, ssl=True,
+                                 ssl_certfile=CLIENT_PEM)
+        CERT_SSL = True
+    except ConnectionFailure:
+        pass
 
-        if CERT_SSL:
-            SERVER_IS_RESOLVABLE = is_server_resolvable()
+    if CERT_SSL:
+        SERVER_IS_RESOLVABLE = is_server_resolvable()
 
 
 class TestClientSSL(unittest.TestCase):
