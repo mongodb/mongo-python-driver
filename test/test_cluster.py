@@ -94,7 +94,8 @@ def create_mock_cluster(seeds=None, set_name=None, monitor_class=MockMonitor):
         partitioned_seeds,
         set_name=set_name,
         pool_class=MockPool,
-        monitor_class=monitor_class)
+        monitor_class=monitor_class,
+        heartbeat_frequency=99999999)
 
     c = Cluster(cluster_settings)
     c.open()

@@ -81,7 +81,7 @@ class Monitor(threading.Thread):
             else:
                 with self._lock:
                     start = time.time()  # TODO: monotonic.
-                    self._condition.wait(common.HEARTBEAT_FREQUENCY)
+                    self._condition.wait(self._settings.heartbeat_frequency)
                     wait_time = time.time() - start
                     if wait_time < common.MIN_HEARTBEAT_INTERVAL:
                         # request_check() was called before min_wait passed.

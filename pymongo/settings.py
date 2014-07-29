@@ -16,7 +16,7 @@
 
 import threading
 
-from pymongo import monitor, pool
+from pymongo import common, monitor, pool
 from pymongo.cluster_description import CLUSTER_TYPE
 from pymongo.server_description import ServerDescription
 
@@ -28,7 +28,8 @@ class ClusterSettings(object):
         set_name=None,
         pool_class=None,
         monitor_class=monitor.Monitor,
-        condition_class=threading.Condition
+        condition_class=threading.Condition,
+        heartbeat_frequency=common.HEARTBEAT_FREQUENCY,
     ):
         """Represent MongoClient's configuration.
 
@@ -39,6 +40,7 @@ class ClusterSettings(object):
         self._pool_class = pool_class or pool.Pool
         self._monitor_class = monitor_class or monitor.Monitor
         self._condition_class = condition_class or threading.Condition
+        self._heartbeat_frequency = heartbeat_frequency
         self._direct = (len(self._seeds) == 1 and not set_name)
 
     @property
@@ -61,6 +63,10 @@ class ClusterSettings(object):
     @property
     def condition_class(self):
         return self._condition_class
+
+    @property
+    def heartbeat_frequency(self):
+        return self._heartbeat_frequency
 
     @property
     def direct(self):
