@@ -19,6 +19,9 @@ import random
 from collections import Mapping, namedtuple
 
 from pymongo.errors import ConfigurationError
+from pymongo.server_selectors import (near_enough_server_selector,
+                                      near_secondary_with_tags_server_selector,
+                                      writable_server_selector)
 
 
 _PRIMARY = 0
@@ -154,6 +157,10 @@ class Primary(ServerMode):
     def __init__(self, latency_threshold_ms=15):
         super(Primary, self).__init__(_PRIMARY, latency_threshold_ms)
 
+    def select_servers(self, server_descriptions):
+        """Return matching ServerDescriptions from a list."""
+        return writable_server_selector(server_descriptions)
+
     def __repr__(self):
         return "Primary(latency_threshold_ms=%d)" % self.latency_threshold_ms
 
@@ -179,6 +186,17 @@ class PrimaryPreferred(ServerMode):
         super(PrimaryPreferred, self).__init__(
             _PRIMARY_PREFERRED, latency_threshold_ms, tag_sets)
 
+    def select_servers(self, server_descriptions):
+        """Return matching ServerDescriptions from a list."""
+        writable_servers = writable_server_selector(server_descriptions)
+        if writable_servers:
+            return writable_servers
+        else:
+            return near_secondary_with_tags_server_selector(
+                self.tag_sets,
+                self.latency_threshold_ms,
+                server_descriptions)
+
 
 class Secondary(ServerMode):
     """Secondary read preference.
@@ -199,6 +217,13 @@ class Secondary(ServerMode):
     def __init__(self, latency_threshold_ms=15, tag_sets=None):
         super(Secondary, self).__init__(
             _SECONDARY, latency_threshold_ms, tag_sets)
+
+    def select_servers(self, server_descriptions):
+        """Return matching ServerDescriptions from a list."""
+        return near_secondary_with_tags_server_selector(
+            self.tag_sets,
+            self.latency_threshold_ms,
+            server_descriptions)
 
 
 class SecondaryPreferred(ServerMode):
@@ -221,6 +246,18 @@ class SecondaryPreferred(ServerMode):
         super(SecondaryPreferred, self).__init__(
             _SECONDARY_PREFERRED, latency_threshold_ms, tag_sets)
 
+    def select_servers(self, server_descriptions):
+        """Return matching ServerDescriptions from a list."""
+        secondaries = near_secondary_with_tags_server_selector(
+            self.tag_sets,
+            self.latency_threshold_ms,
+            server_descriptions)
+
+        if secondaries:
+            return secondaries
+        else:
+            return writable_server_selector(server_descriptions)
+
 
 class Nearest(ServerMode):
     """Nearest read preference.
@@ -241,6 +278,11 @@ class Nearest(ServerMode):
     def __init__(self, latency_threshold_ms=15, tag_sets=None):
         super(Nearest, self).__init__(
             _NEAREST, latency_threshold_ms, tag_sets)
+
+    def select_servers(self, server_descriptions):
+        """Return matching ServerDescriptions from a list."""
+        return near_enough_server_selector(server_descriptions,
+                                           self.latency_threshold_ms)
 
 
 _ALL_READ_PREFERENCES = (Primary, PrimaryPreferred,
@@ -307,6 +349,7 @@ def read_pref_mode_from_name(name):
     return _MONGOS_MODES.index(name)
 
 
+# TODO: DELETE
 def _select_primary(members):
     """Get the primary member.
     """
@@ -317,6 +360,7 @@ def _select_primary(members):
     return None
 
 
+# TODO: DELETE
 def _select_member_with_tags(members, tags, secondary_only, latency):
     """Get the member matching the given tags, and acceptable latency.
     """
@@ -345,6 +389,7 @@ def _select_member_with_tags(members, tags, secondary_only, latency):
     return random.choice(near_candidates)
 
 
+# TODO: DELETE
 def select_member(members, mode, tag_sets=[{}], latency=15):
     """Return a Member or None.
     """
