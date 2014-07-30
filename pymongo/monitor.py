@@ -20,7 +20,7 @@ import threading
 import time
 import weakref
 
-from pymongo import common, helpers, message
+from pymongo import common, helpers, message, thread_util
 from pymongo.ismaster import IsMaster, SERVER_TYPE
 from pymongo.read_preferences import MovingAverage
 from pymongo.server_description import ServerDescription
@@ -50,9 +50,8 @@ class Monitor(threading.Thread):
         self._cluster = weakref.proxy(cluster)
         self._pool = pool
         self._settings = cluster_settings
-        self._lock = threading.Lock()
-        self._condition = cluster_settings.condition_class(self._lock)
         self._stopped = False
+        self._event = thread_util.Event(self._settings.condition_class)
 
     def close(self):
         """Disconnect and stop monitoring.
@@ -67,8 +66,7 @@ class Monitor(threading.Thread):
 
     def request_check(self):
         """If the monitor is sleeping, wake and check the server soon."""
-        with self._lock:
-            self._condition.notify()
+        self._event.set()
 
     def run(self):
         while not self._stopped:
@@ -79,13 +77,13 @@ class Monitor(threading.Thread):
                 # Cluster was garbage-collected.
                 self.close()
             else:
-                with self._lock:
-                    start = time.time()  # TODO: monotonic.
-                    self._condition.wait(self._settings.heartbeat_frequency)
-                    wait_time = time.time() - start
-                    if wait_time < common.MIN_HEARTBEAT_INTERVAL:
-                        # request_check() was called before min_wait passed.
-                        time.sleep(common.MIN_HEARTBEAT_INTERVAL - wait_time)
+                start = time.time()  # TODO: monotonic.
+                self._event.wait(self._settings.heartbeat_frequency)
+                self._event.clear()
+                wait_time = time.time() - start
+                if wait_time < common.MIN_HEARTBEAT_INTERVAL:
+                    # request_check() was called before min_wait passed.
+                    time.sleep(common.MIN_HEARTBEAT_INTERVAL - wait_time)
 
     def _check_with_retry(self):
         """Call ismaster once or twice. Reset server's pool on error.
