@@ -27,7 +27,8 @@ from pymongo.errors import (CollectionInvalid,
                             ConfigurationError,
                             InvalidName,
                             OperationFailure)
-from pymongo.read_preferences import (ReadPreference,
+from pymongo.read_preferences import (make_read_preference,
+                                      ReadPreference,
                                       SECONDARY_OK_COMMANDS)
 
 
@@ -308,7 +309,7 @@ class Database(common.BaseObject):
             orig = make_read_preference(mode, latency, tags)
 
         if command_name not in SECONDARY_OK_COMMANDS:
-             pref = ReadPreference.PRIMARY
+            pref = ReadPreference.PRIMARY
 
         # Special-case: mapreduce can go to secondaries only if inline
         elif command_name == 'mapreduce':
