@@ -39,9 +39,7 @@ import threading
 import time
 import warnings
 
-from bson.py3compat import (_unicode,
-                            integer_types,
-                            iteritems,
+from bson.py3compat import (integer_types,
                             itervalues,
                             string_type)
 from pymongo import (auth,
@@ -52,6 +50,7 @@ from pymongo import (auth,
                      pool,
                      thread_util,
                      uri_parser)
+from pymongo.client_options import ClientOptions
 from pymongo.cursor_manager import CursorManager
 from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
@@ -63,7 +62,6 @@ from pymongo.errors import (AutoReconnect,
 from pymongo.member import Member
 from pymongo.read_preferences import ReadPreference
 from pymongo.response import Response, ExhaustResponse
-from pymongo.ssl_support import get_ssl_context
 
 EMPTY = b""
 
@@ -239,18 +237,16 @@ class MongoClient(common.BaseObject):
         seeds = set()
         username = None
         password = None
-        self.__default_database_name = None
+        dbase = None
         opts = {}
         for entity in host:
             if "://" in entity:
                 if entity.startswith("mongodb://"):
-                    res = uri_parser.parse_uri(entity, port)
+                    res = uri_parser.parse_uri(entity, port, False)
                     seeds.update(res["nodelist"])
                     username = res["username"] or username
                     password = res["password"] or password
-                    self.__default_database_name = (
-                        res["database"] or self.__default_database_name)
-
+                    dbase = res["database"] or dbase
                     opts = res["options"]
                 else:
                     idx = entity.find("://")
@@ -272,85 +268,37 @@ class MongoClient(common.BaseObject):
 
         # _pool_class and _event_class are for deep customization of PyMongo,
         # e.g. Motor. SHOULD NOT BE USED BY THIRD-PARTY DEVELOPERS.
-        pool_class = kwargs.pop('_pool_class', pool.Pool)
-        event_class = kwargs.pop('_event_class', None)
+        self.__pool_class = kwargs.pop('_pool_class', pool.Pool)
+        self.__event_class = kwargs.pop('_event_class', threading.Event)
 
-        options = {}
-        for option, value in iteritems(kwargs):
-            option, value = common.validate(option, value)
-            options[option] = value
-        options.update(opts)
+        kwargs['max_pool_size'] = max_pool_size
+        opts.update(kwargs)
+        options = ClientOptions(username, password, dbase, opts)
+
+        self.__default_database_name = dbase
 
         self.__cursor_manager = CursorManager(self)
 
-        self.__repl = options.get('replicaset')
+        self.__repl = options.replica_set_name
         self.__direct = len(seeds) == 1 and not self.__repl
 
-        max_pool_size = common.validate_positive_integer_or_none(
-            'max_pool_size', max_pool_size)
-        connect_timeout = options.get('connecttimeoutms')
-        socket_timeout = options.get('sockettimeoutms')
-        wait_queue_timeout = options.get('waitqueuetimeoutms')
-        wait_queue_multiple = options.get('waitqueuemultiple')
-        socket_keepalive = options.get('socketkeepalive', False)
-
-        ssl_context = None
-        use_ssl = options.get('ssl', None)
-        certfile = options.get('ssl_certfile', None)
-        keyfile = options.get('ssl_keyfile', None)
-        ca_certs = options.get('ssl_ca_certs', None)
-        cert_reqs = options.get('ssl_cert_reqs', None)
-
-        ssl_kwarg_keys = [k for k in kwargs if k.startswith('ssl_')]
-        if use_ssl == False and ssl_kwarg_keys:
-            raise ConfigurationError("ssl has not been enabled but the "
-                                     "following ssl parameters have been set: "
-                                     "%s. Please set `ssl=True` or remove."
-                                     % ', '.join(ssl_kwarg_keys))
-
-        if cert_reqs and not ca_certs:
-            raise ConfigurationError("If `ssl_cert_reqs` is not "
-                                     "`ssl.CERT_NONE` then you must "
-                                     "include `ssl_ca_certs` to be able "
-                                     "to validate the server.")
-
-        if ssl_kwarg_keys and use_ssl is None:
-            # ssl options imply ssl = True
-            use_ssl = True
-
-        if use_ssl is True:
-            ssl_context = get_ssl_context(certfile, keyfile,
-                                          ca_certs, cert_reqs)
-
-        self.__pool_opts = pool.PoolOptions(
-            max_pool_size=max_pool_size,
-            connect_timeout=connect_timeout,
-            socket_timeout=socket_timeout,
-            wait_queue_timeout=wait_queue_timeout,
-            wait_queue_multiple=wait_queue_multiple,
-            ssl_context=ssl_context,
-            socket_keepalive=socket_keepalive)
-
-        self.__pool_class = pool_class
+        self.__pool_opts = options.pool_options
 
         self.__connecting = False
         self.__connecting_lock = threading.Lock()
 
-        if event_class:
-            self.__event_class = event_class
-        else:
-            self.__event_class = threading.Event
-
         self.__future_member = None
         self.__document_class = document_class
         self.__tz_aware = common.validate_boolean('tz_aware', tz_aware)
-        self.__auto_start_request = options.get('auto_start_request', False)
+        self.__auto_start_request = opts.get('auto_start_request', False)
 
         # cache of existing indexes used by ensure_index ops
         self.__index_cache = {}
         self.__auth_credentials = {}
 
-        super(MongoClient, self).__init__(**options)
+        super(MongoClient, self).__init__(options.read_preference,
+                                          options.uuid_subtype,
+                                          options.write_concern.document)
 
         if _connect:
             try:
@@ -360,19 +308,10 @@ class MongoClient(common.BaseObject):
                 raise ConnectionFailure(str(e))
 
         if username:
-            mechanism = options.get('authmechanism', 'MONGODB-CR')
-            source = (
-                options.get('authsource')
-                or self.__default_database_name
-                or 'admin')
-
-            credentials = auth._build_credentials_tuple(mechanism,
-                                                        source,
-                                                        _unicode(username),
-                                                        _unicode(password),
-                                                        options)
+            credentials = options.credentials
             try:
-                self._cache_credentials(source, credentials, _connect)
+                self._cache_credentials(
+                    credentials.source, credentials, _connect)
             except OperationFailure as exc:
                 raise ConfigurationError(str(exc))
 

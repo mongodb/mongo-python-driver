@@ -26,7 +26,7 @@ from pymongo.ssl_support import validate_cert_reqs
 from pymongo.write_concern import WriteConcern
 from bson.binary import (OLD_UUID_SUBTYPE, UUID_SUBTYPE,
                          JAVA_LEGACY, CSHARP_LEGACY)
-from bson.py3compat import string_type, integer_types, iteritems
+from bson.py3compat import string_type, integer_types
 
 # Defaults until we connect to a server and get updated limits.
 MAX_BSON_SIZE = 16 * (1024 ** 2)
@@ -263,6 +263,8 @@ VALIDATORS = {
     'j': validate_boolean,
     'journal': validate_boolean,
     'connecttimeoutms': validate_timeout_or_none,
+    'max_pool_size': validate_positive_integer_or_none,
+    'socketkeepalive': validate_boolean,
     'sockettimeoutms': validate_timeout_or_none,
     'waitqueuetimeoutms': validate_timeout_or_none,
     'waitqueuemultiple': validate_positive_integer_or_none,
@@ -281,7 +283,6 @@ VALIDATORS = {
     'authsource': validate_string,
     'gssapiservicename': validate_string,
     'uuidrepresentation': validate_uuid_representation,
-    'socketkeepalive': validate_boolean
 }
 
 
@@ -324,36 +325,11 @@ class BaseObject(object):
     SHOULD NOT BE USED BY DEVELOPERS EXTERNAL TO MONGODB.
     """
 
-    def __init__(self, **options):
+    def __init__(self, read_preference, uuid_subtype, write_concern):
 
-        self.__read_pref = None
-        self.__uuid_subtype = OLD_UUID_SUBTYPE
-        self.__write_concern = None
-        self.__set_options(options)
-
-        if 'read_preference' not in options:
-            mode = options.get('readpreference', 0)
-            latency = options.get('secondaryacceptablelatencyms',
-                                  options.get('latencythresholdms', 15))
-            tags = options.get('readpreferencetags')
-            self.__read_pref = make_read_preference(mode, latency, tags)
-
-    def __set_options(self, options):
-        """Validates and sets all options passed to this object."""
-        wc_opts = {}
-        for option, value in iteritems(options):
-            if option == 'read_preference':
-                self.__read_pref = validate_read_preference(option, value)
-            elif option == 'uuidrepresentation':
-                self.__uuid_subtype = validate_uuid_subtype(option, value)
-            elif option in WRITE_CONCERN_OPTIONS:
-                if option == "journal":
-                    wc_opts["j"] = value
-                elif option == "wtimeoutms":
-                    wc_opts["wtimeout"] = value
-                else:
-                    wc_opts[option] = value
-        self.__write_concern = WriteConcern(**wc_opts)
+        self.__read_pref = read_preference
+        self.__uuid_subtype = uuid_subtype or OLD_UUID_SUBTYPE
+        self.__write_concern = WriteConcern(**write_concern)
 
     def __set_write_concern(self, value):
         """Property setter for write_concern."""

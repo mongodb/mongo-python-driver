@@ -62,10 +62,9 @@ class Database(common.BaseObject):
 
         .. mongodoc:: databases
         """
-        super(Database,
-              self).__init__(read_preference=connection.read_preference,
-                             uuidrepresentation=connection.uuid_subtype,
-                             **connection.write_concern)
+        super(Database, self).__init__(connection.read_preference,
+                                       connection.uuid_subtype,
+                                       connection.write_concern)
 
         if not isinstance(name, string_type):
             raise TypeError("name must be an instance "

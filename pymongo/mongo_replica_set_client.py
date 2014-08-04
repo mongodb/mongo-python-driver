@@ -38,9 +38,7 @@ import threading
 import time
 import weakref
 
-from bson.py3compat import (_unicode,
-                            integer_types,
-                            iteritems,
+from bson.py3compat import (integer_types,
                             itervalues,
                             string_type)
 from pymongo import (auth,
@@ -51,6 +49,7 @@ from pymongo import (auth,
                      pool,
                      thread_util,
                      uri_parser)
+from pymongo.client_options import ClientOptions
 from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
                             ConnectionFailure,
@@ -62,7 +61,6 @@ from pymongo.member import Member
 from pymongo.read_preferences import (
     ReadPreference, select_member, MovingAverage)
 from pymongo.response import Response, ExhaustResponse
-from pymongo.ssl_support import get_ssl_context
 
 
 EMPTY = b""
@@ -523,7 +521,6 @@ class MongoReplicaSetClient(common.BaseObject):
            Added additional ssl options
         .. versionadded:: 2.4
         """
-        self.__opts = {}
         self.__seeds = set()
         self.__index_cache = {}
         self.__auth_credentials = {}
@@ -542,17 +539,17 @@ class MongoReplicaSetClient(common.BaseObject):
 
         username = None
         password = None
-        self.__default_database_name = None
-        options = {}
+        dbase = None
+        opts = {}
         if host is None:
             self.__seeds.add(('localhost', port))
         elif '://' in host:
-            res = uri_parser.parse_uri(host, port)
+            res = uri_parser.parse_uri(host, port, False)
             self.__seeds.update(res['nodelist'])
             username = res['username']
             password = res['password']
-            self.__default_database_name = res['database']
-            options = res['options']
+            dbase = res['database']
+            opts = res['options']
         else:
             self.__seeds.update(uri_parser.split_hosts(host, port))
 
@@ -561,70 +558,31 @@ class MongoReplicaSetClient(common.BaseObject):
         self.pool_class = kwargs.pop('_pool_class', pool.Pool)
         self.__monitor_class = kwargs.pop('_monitor_class', None)
 
-        for option, value in iteritems(kwargs):
-            option, value = common.validate(option, value)
-            self.__opts[option] = value
-        self.__opts.update(options)
+        kwargs['max_pool_size'] = max_pool_size
+        opts.update(kwargs)
+        options = ClientOptions(username, password, dbase, opts)
 
-        max_pool_size = common.validate_positive_integer_or_none(
-            'max_pool_size', max_pool_size)
-        connect_timeout = self.__opts.get('connecttimeoutms')
-        socket_timeout = self.__opts.get('sockettimeoutms')
-        wait_queue_timeout = self.__opts.get('waitqueuetimeoutms')
-        wait_queue_multiple = self.__opts.get('waitqueuemultiple')
+        self.__default_database_name = dbase
 
         self.__rs_state = RSState(initial=True)
 
         self.__request_counter = thread_util.Counter()
 
-        self.__auto_start_request = self.__opts.get('auto_start_request', False)
+        self.__auto_start_request = opts.get('auto_start_request', False)
         if self.__auto_start_request:
             self.start_request()
 
-        self.__name = self.__opts.get('replicaset')
+        self.__name = options.replica_set_name
         if not self.__name:
             raise ConfigurationError("the replicaSet "
                                      "keyword parameter is required.")
 
-        ssl_context = None
-        socket_keepalive = options.get('socketkeepalive', False)
-        use_ssl = self.__opts.get('ssl', None)
-        certfile = self.__opts.get('ssl_certfile', None)
-        keyfile = self.__opts.get('ssl_keyfile', None)
-        ca_certs = self.__opts.get('ssl_ca_certs', None)
-        cert_reqs = self.__opts.get('ssl_cert_reqs', None)
+        self.__pool_opts = options.pool_options
 
-        ssl_kwarg_keys = [k for k in kwargs if k.startswith('ssl_')]
-        if use_ssl is False and ssl_kwarg_keys:
-            raise ConfigurationError("ssl has not been enabled but the "
-                                     "following ssl parameters have been set: "
-                                     "%s. Please set `ssl=True` or remove."
-                                     % ', '.join(ssl_kwarg_keys))
-
-        if cert_reqs and not ca_certs:
-            raise ConfigurationError("If `ssl_cert_reqs` is not "
-                                     "`ssl.CERT_NONE` then you must "
-                                     "include `ssl_ca_certs` to be able "
-                                     "to validate the server.")
-
-        if ssl_kwarg_keys and use_ssl is None:
-            # ssl options imply ssl = True
-            use_ssl = True
-
-        if use_ssl is True:
-            ssl_context = get_ssl_context(certfile, keyfile,
-                                          ca_certs, cert_reqs)
-
-        self.__pool_opts = pool.PoolOptions(
-            max_pool_size=max_pool_size,
-            connect_timeout=connect_timeout,
-            socket_timeout=socket_timeout,
-            wait_queue_timeout=wait_queue_timeout,
-            wait_queue_multiple=wait_queue_multiple,
-            ssl_context=ssl_context,
-            socket_keepalive=socket_keepalive)
-
-        super(MongoReplicaSetClient, self).__init__(**self.__opts)
+        super(MongoReplicaSetClient,
+              self).__init__(options.read_preference,
+                             options.uuid_subtype,
+                             options.write_concern.document)
 
         if _connect:
             try:
@@ -634,19 +592,10 @@ class MongoReplicaSetClient(common.BaseObject):
                 raise ConnectionFailure(str(e))
 
         if username:
-            mechanism = options.get('authmechanism', 'MONGODB-CR')
-            source = (
-                options.get('authsource')
-                or self.__default_database_name
-                or 'admin')
-
-            credentials = auth._build_credentials_tuple(mechanism,
-                                                        source,
-                                                        _unicode(username),
-                                                        _unicode(password),
-                                                        options)
+            credentials = options.credentials
             try:
-                self._cache_credentials(source, credentials, _connect)
+                self._cache_credentials(
+                    credentials.source, credentials, _connect)
             except OperationFailure as exc:
                 raise ConfigurationError(str(exc))
 
