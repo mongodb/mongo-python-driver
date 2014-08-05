@@ -59,7 +59,9 @@ from test.utils import (assertRaisesExactly,
                         one)
 
 
-class TestClient(unittest.TestCase, TestRequestMixin):
+class ClientUnitTest(unittest.TestCase, TestRequestMixin):
+    """MongoClient tests that don't require a server."""
+
     @classmethod
     def setUpClass(cls):
         cls.client = MongoClient(host, port, _connect=False)
