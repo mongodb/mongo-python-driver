@@ -179,5 +179,4 @@ class Cluster(object):
             address,
             PoolOptions(
                 max_pool_size=100,
-                connect_timeout=20)
-            )
+                connect_timeout=20))
