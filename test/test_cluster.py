@@ -568,12 +568,21 @@ class TestClusterErrors(unittest.TestCase):
     # Errors when calling ismaster.
 
     def test_pool_reset(self):
+        # ismaster succeeds at first, then always raises socket error.
+        ismaster_count = [0]
+
         class TestMonitor(Monitor):
             def _check_with_socket(self, sock_info):
-                raise socket.error()
+                ismaster_count[0] += 1
+                if ismaster_count[0] == 1:
+                    return IsMaster({'ok': 1}), 0
+                else:
+                    raise socket.error()
 
         c = create_mock_cluster(monitor_class=TestMonitor)
-        s = c.get_server_by_address(address)
+        # Await first ismaster call.
+        s = c.select_servers(writable_server_selector)[0]
+        self.assertEqual(1, ismaster_count[0])
         pool_id = s.pool.pool_id
 
         # Pool is reset by ismaster failure.
