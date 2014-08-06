@@ -22,7 +22,7 @@ import bson
 import pymongo
 
 from bson.binary import OLD_UUID_SUBTYPE
-from bson.py3compat import itervalues, string_type
+from bson.py3compat import itervalues, string_type, iteritems
 from bson.son import SON
 from pymongo.errors import (AutoReconnect,
                             CursorNotFound,
