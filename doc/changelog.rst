@@ -28,6 +28,8 @@ see :doc:`PyMongo's Gevent documentation <examples/gevent>`.
 The second parameter to :meth:`~pymongo.MongoClient.close_cursor` is renamed
 from ``_conn_id`` to ``address`` and is no longer optional.
 
+:meth:`~pymongo.MongoClient.set_cursor_manager` is no longer deprecated.
+
 Issues Resolved
 ...............
 

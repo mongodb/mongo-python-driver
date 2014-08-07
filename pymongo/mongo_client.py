@@ -903,12 +903,9 @@ class MongoClient(common.BaseObject):
         :Parameters:
           - `manager_class`: cursor manager to use
 
-        .. versionchanged:: 2.1+
-           Deprecated support for external cursor managers.
+        .. versionchanged:: 3.0
+           Undeprecated.
         """
-        warnings.warn("Support for external cursor managers is deprecated "
-                      "and will be removed in PyMongo 3.0.",
-                      DeprecationWarning, stacklevel=2)
         manager = manager_class(self)
         if not isinstance(manager, CursorManager):
             raise TypeError("manager_class must be a subclass of "
