@@ -21,7 +21,8 @@ import time
 import weakref
 
 from pymongo import common, helpers, message, thread_util
-from pymongo.ismaster import IsMaster, SERVER_TYPE
+from pymongo.server_type import SERVER_TYPE
+from pymongo.ismaster import IsMaster
 from pymongo.read_preferences import MovingAverage
 from pymongo.server_description import ServerDescription
 

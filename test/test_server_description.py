@@ -18,9 +18,10 @@ import sys
 
 sys.path[0:0] = [""]
 
+from pymongo.server_type import SERVER_TYPE
 from pymongo.ismaster import IsMaster
 from pymongo.read_preferences import MovingAverage
-from pymongo.server_description import ServerDescription, SERVER_TYPE
+from pymongo.server_description import ServerDescription
 from test import unittest
 
 address = ('localhost', 27017)

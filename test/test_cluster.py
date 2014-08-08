@@ -23,6 +23,7 @@ import threading
 
 from bson.py3compat import imap
 from pymongo import common
+from pymongo.server_type import SERVER_TYPE
 from pymongo.cluster import Cluster
 from pymongo.cluster_description import CLUSTER_TYPE
 from pymongo.errors import (ConfigurationError,
@@ -31,7 +32,7 @@ from pymongo.errors import (ConfigurationError,
 from pymongo.ismaster import IsMaster
 from pymongo.monitor import Monitor
 from pymongo.read_preferences import MovingAverage
-from pymongo.server_description import ServerDescription, SERVER_TYPE
+from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import (any_server_selector,
                                       writable_server_selector)
 from pymongo.settings import ClusterSettings

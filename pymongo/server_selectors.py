@@ -14,7 +14,7 @@
 
 """Criteria to select some ServerDescriptions out of a list."""
 
-from pymongo.ismaster import SERVER_TYPE
+from pymongo.server_type import SERVER_TYPE
 
 
 def any_server_selector(server_descriptions):

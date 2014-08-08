@@ -14,7 +14,7 @@
 
 """Communicate with one MongoDB server in a cluster."""
 
-from pymongo.ismaster import SERVER_TYPE
+from pymongo.server_type import SERVER_TYPE
 from pymongo.response import Response, ExhaustResponse
 
 

@@ -14,7 +14,8 @@
 
 """Represent one server in the cluster."""
 
-from pymongo.ismaster import IsMaster, SERVER_TYPE
+from pymongo.server_type import SERVER_TYPE
+from pymongo.ismaster import IsMaster
 
 
 class ServerDescription(object):

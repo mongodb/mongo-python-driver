@@ -15,16 +15,10 @@
 """Parse a response to the 'ismaster' command."""
 
 import itertools
-from collections import namedtuple
 
 from bson.py3compat import imap
 from pymongo import common
-
-
-SERVER_TYPE = namedtuple('ServerType',
-                         ['Unknown', 'Mongos', 'RSPrimary', 'RSSecondary',
-                          'RSArbiter', 'RSOther', 'RSGhost',
-                          'Standalone'])(*range(8))
+from pymongo.server_type import SERVER_TYPE
 
 
 def _get_server_type(doc):

@@ -17,8 +17,9 @@
 from collections import namedtuple
 
 from pymongo import common
+from pymongo.server_type import SERVER_TYPE
 from pymongo.errors import ConfigurationError
-from pymongo.server_description import ServerDescription, SERVER_TYPE
+from pymongo.server_description import ServerDescription
 
 
 CLUSTER_TYPE = namedtuple('ClusterType', ['Single', 'ReplicaSetNoPrimary',
