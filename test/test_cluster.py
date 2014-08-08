@@ -172,7 +172,7 @@ class TestSingleServerCluster(unittest.TestCase):
 
             # No matter whether the server is writable,
             # select_servers() returns it.
-            s = c.select_servers(writable_server_selector)[0]
+            s = c.select_server(writable_server_selector)
             self.assertEqual(server_type, s.description.server_type)
 
     def test_reopen(self):
@@ -192,7 +192,7 @@ class TestSingleServerCluster(unittest.TestCase):
                 return IsMaster({'ok': 1}), round_trip_time
 
         c = create_mock_cluster(monitor_class=TestMonitor)
-        s = c.select_servers(writable_server_selector)[0]
+        s = c.select_server(writable_server_selector)
         self.assertEqual(1, s.description.round_trip_time)
 
         round_trip_time = 3
@@ -532,7 +532,7 @@ class TestMultiServerCluster(unittest.TestCase):
         c = create_mock_cluster(seeds=['a', 'b'], set_name='rs')
 
         def write_batch_size():
-            s = c.select_servers(writable_server_selector)[0]
+            s = c.select_server(writable_server_selector)
             return s.description.max_write_batch_size
 
         got_ismaster(c, ('a', 27017), {
@@ -581,7 +581,7 @@ class TestClusterErrors(unittest.TestCase):
 
         c = create_mock_cluster(monitor_class=TestMonitor)
         # Await first ismaster call.
-        s = c.select_servers(writable_server_selector)[0]
+        s = c.select_server(writable_server_selector)
         self.assertEqual(1, ismaster_count[0])
         pool_id = s.pool.pool_id
 
@@ -604,7 +604,7 @@ class TestClusterErrors(unittest.TestCase):
         c = create_mock_cluster(monitor_class=TestMonitor)
 
         # Await first ismaster call.
-        s = c.select_servers(writable_server_selector)[0]
+        s = c.select_server(writable_server_selector)
         self.assertEqual(1, ismaster_count[0])
         self.assertEqual(SERVER_TYPE.Standalone, s.description.server_type)
 

@@ -14,6 +14,7 @@
 
 """Internal classes to monitor clusters of one or more servers."""
 
+import random
 import threading
 import time
 
@@ -83,6 +84,7 @@ class Cluster(object):
                     # ClusterDescription's stringification in exception msg.
                     raise ConnectionFailure("No suitable servers available")
 
+                self._ensure_opened()
                 self._request_check_all()
 
                 # Release the lock and wait for the cluster description to
@@ -95,6 +97,10 @@ class Cluster(object):
 
             return [self.get_server_by_address(sd.address)
                     for sd in server_descriptions]
+
+    def select_server(self, selector, server_wait_time=None):
+        """Like select_servers, but choose a random server if several match."""
+        return random.choice(self.select_servers(selector, server_wait_time))
 
     def on_change(self, server_description):
         """Process a new ServerDescription after an ismaster call completes."""
@@ -139,6 +145,12 @@ class Cluster(object):
     @property
     def description(self):
         return self._description
+
+    def _ensure_opened(self):
+        """Start monitors. Hold the lock when calling this."""
+        if not self._opened:
+            self._opened = True
+            self._update_servers()
 
     def _request_check_all(self):
         """Wake all monitors. Hold the lock when calling this."""
