@@ -178,7 +178,10 @@ class TestSingleServerCluster(unittest.TestCase):
 
     def test_reopen(self):
         c = create_mock_cluster()
-        self.assertRaises(InvalidOperation, c.open)
+
+        # Additional calls are permitted.
+        c.open()
+        c.open()
 
     def test_unavailable_seed(self):
         c = create_mock_cluster()
@@ -348,6 +351,45 @@ class TestMultiServerCluster(unittest.TestCase):
         # We don't remove E.
         self.assertEqual(SERVER_TYPE.Unknown, get_type(c, 'e'))
 
+    def test_reset(self):
+        c = create_mock_cluster(set_name='rs')
+        got_ismaster(c, ('a', 27017), {
+            'ok': 1,
+            'ismaster': True,
+            'setName': 'rs',
+            'hosts': ['a', 'b']})
+
+        got_ismaster(c, ('b', 27017), {
+            'ok': 1,
+            'ismaster': False,
+            'secondary': True,
+            'setName': 'rs',
+            'hosts': ['a', 'b']})
+
+        self.assertEqual(SERVER_TYPE.RSPrimary, get_type(c, 'a'))
+        self.assertEqual(SERVER_TYPE.RSSecondary, get_type(c, 'b'))
+        self.assertEqual(CLUSTER_TYPE.ReplicaSetWithPrimary,
+                         c.description.cluster_type)
+
+        c.reset()
+        self.assertEqual(2, len(c.description.server_descriptions()))
+        self.assertEqual(SERVER_TYPE.Unknown, get_type(c, 'a'))
+        self.assertEqual(SERVER_TYPE.Unknown, get_type(c, 'b'))
+        self.assertEqual('rs', c.description.set_name)
+        self.assertEqual(CLUSTER_TYPE.ReplicaSetNoPrimary,
+                         c.description.cluster_type)
+
+        got_ismaster(c, ('a', 27017), {
+            'ok': 1,
+            'ismaster': True,
+            'setName': 'rs',
+            'hosts': ['a', 'b']})
+
+        self.assertEqual(SERVER_TYPE.RSPrimary, get_type(c, 'a'))
+        self.assertEqual(SERVER_TYPE.Unknown, get_type(c, 'b'))
+        self.assertEqual(CLUSTER_TYPE.ReplicaSetWithPrimary,
+                         c.description.cluster_type)
+
     def test_discover_set_name_from_primary(self):
         # Discovering a replica set without the setName supplied by the user
         # is not yet supported by MongoClient, but Cluster can do it.
@@ -367,6 +409,19 @@ class TestMultiServerCluster(unittest.TestCase):
             'setName': 'rs',
             'hosts': ['a']})
 
+        self.assertEqual(c.description.set_name, 'rs')
+        self.assertEqual(c.description.cluster_type,
+                         CLUSTER_TYPE.ReplicaSetWithPrimary)
+
+        # Another response from the primary. Tests the code that processes
+        # primary response when cluster type is already ReplicaSetWithPrimary.
+        got_ismaster(c, address, {
+            'ok': 1,
+            'ismaster': True,
+            'setName': 'rs',
+            'hosts': ['a']})
+
+        # No change.
         self.assertEqual(c.description.set_name, 'rs')
         self.assertEqual(c.description.cluster_type,
                          CLUSTER_TYPE.ReplicaSetWithPrimary)

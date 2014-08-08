@@ -22,8 +22,7 @@ from pymongo import common
 from pymongo.cluster_description import (updated_cluster_description,
                                          CLUSTER_TYPE,
                                          ClusterDescription)
-from pymongo.errors import InvalidOperation, ConnectionFailure
-from pymongo.pool import PoolOptions
+from pymongo.errors import AutoReconnect
 from pymongo.server import Server
 
 
@@ -43,37 +42,42 @@ class Cluster(object):
         self._servers = {}
 
     def open(self):
-        """Start monitoring."""
+        """Start monitoring.
+
+        No effect if called multiple times.
+        """
         with self._lock:
-            if self._opened:
-                raise InvalidOperation('Cluster already opened')
+            self._ensure_opened()
 
-            self._opened = True
-            self._update_servers()
-
-    def select_servers(self, selector, server_wait_time=5):
+    def select_servers(self, selector, server_wait_time=None):
         """Return a list of Servers matching selector, or time out.
 
         :Parameters:
           - `selector`: function that takes a list of Servers and returns
             a subset of them.
-          - `server_wait_time` (optional): maximum seconds to wait.
+          - `server_wait_time` (optional): maximum seconds to wait. If not
+            provided, the initial ClusterSettings' value is used.
 
-        Raises exc:`ConnectionFailure` after `server_wait_time` if no
+        Raises exc:`AutoReconnect` after `server_wait_time` if no
         matching servers are found.
         """
+        if server_wait_time is not None:
+            wait_time = server_wait_time
+        else:
+            wait_time = self._settings.server_wait_time
+
         with self._lock:
             self._description.check_compatible()
 
             # TODO: use settings.server_wait_time.
             # TODO: use monotonic time if available.
             now = time.time()
-            end_time = now + server_wait_time
+            end_time = now + wait_time
             server_descriptions = self._apply_selector(selector)
 
             while not server_descriptions:
                 # No suitable servers.
-                if now > end_time:
+                if wait_time == 0 or now > end_time:
                     # TODO: more error diagnostics. E.g., if state is
                     # ReplicaSet but every server is Unknown, and the host list
                     # is non-empty, and doesn't intersect with settings.seeds,
@@ -82,7 +86,7 @@ class Cluster(object):
                     # ReplicaSet and clusterDescription.server_descriptions is
                     # empty, we have the wrong set_name. Include
                     # ClusterDescription's stringification in exception msg.
-                    raise ConnectionFailure("No suitable servers available")
+                    raise AutoReconnect("No suitable servers available")
 
                 self._ensure_opened()
                 self._request_check_all()
@@ -142,6 +146,18 @@ class Cluster(object):
             if server:
                 server.pool.reset()
 
+    def reset(self):
+        """Reset all pools and rediscover all servers."""
+        with self._lock:
+            for server in self._servers.values():
+                server.pool.reset()
+
+            # Mark all servers Unknown.
+            self._description = self._description.reset()
+            self._update_servers()
+
+            self._request_check_all()
+
     @property
     def description(self):
         return self._description
@@ -186,9 +202,4 @@ class Cluster(object):
                 self._servers.pop(address)
 
     def _create_pool(self, address):
-        # TODO: Need PoolSettings, SocketSettings, and SSLContext classes.
-        return self._settings.pool_class(
-            address,
-            PoolOptions(
-                max_pool_size=100,
-                connect_timeout=20))
+        return self._settings.pool_class(address, self._settings.pool_options)
