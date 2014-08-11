@@ -996,6 +996,15 @@ class SystemJS(object):
     def __getitem__(self, name):
         return self.__getattr__(name)
 
+    def __getstate__(self):
+        return self.__dict__
+
+    def __setstate__(self, dict):
+        self.__dict__ = dict
+
+    def __getnewargs__(self):
+        return (self.__connection, self.__name)
+
     def list(self):
         """Get a list of the names of the functions stored in this database.
 
