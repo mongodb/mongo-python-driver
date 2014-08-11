@@ -59,12 +59,11 @@ def gc_collect_until_done(threads, timeout=60):
 
 class MongoThread(threading.Thread):
     """A thread that uses a MongoClient."""
-    def __init__(self, test_case):
+    def __init__(self, client):
         super(MongoThread, self).__init__()
         self.daemon = True  # Don't hang whole test if thread hangs.
-        self.client = test_case.c
+        self.client = client
         self.db = self.client[DB]
-        self.ut = test_case
         self.passed = False
 
     def run(self):
@@ -80,7 +79,7 @@ class SaveAndFind(MongoThread):
         for _ in range(N):
             rand = random.randint(0, N)
             _id = self.db.sf.save({"x": rand})
-            self.ut.assertEqual(rand, self.db.sf.find_one(_id)["x"])
+            assert rand == self.db.sf.find_one(_id)["x"]
 
 
 class Unique(MongoThread):
@@ -96,7 +95,7 @@ class NonUnique(MongoThread):
         for _ in range(N):
             self.client.start_request()
             self.db.unique.insert({"_id": "jesse"}, w=0)
-            self.ut.assertNotEqual(None, self.db.error())
+            assert self.db.error() is not None
             self.client.end_request()
 
 
@@ -116,13 +115,13 @@ class NoRequest(MongoThread):
                 errors += 1
 
         self.client.end_request()
-        self.ut.assertEqual(0, errors)
+        assert errors == 0
 
 
 class SocketGetter(MongoThread):
     """Utility for _TestMaxOpenSockets and _TestWaitQueueMultiple"""
-    def __init__(self, test_case, pool):
-        super(SocketGetter, self).__init__(test_case)
+    def __init__(self, client, pool):
+        super(SocketGetter, self).__init__(client)
         self.state = 'init'
         self.pool = pool
         self.sock = None
@@ -133,13 +132,13 @@ class SocketGetter(MongoThread):
         self.state = 'sock'
 
 
-def run_cases(ut, cases):
+def run_cases(client, cases):
     threads = []
     n_runs = 5
 
     for case in cases:
         for i in range(n_runs):
-            t = case(ut)
+            t = case(client)
             t.start()
             threads.append(t)
 
@@ -162,9 +161,8 @@ class CreateAndReleaseSocket(MongoThread):
         def reset_ready(self):
             self.ready = threading.Event()
 
-    def __init__(self, ut, client, start_request, end_request, rendezvous):
-        super(CreateAndReleaseSocket, self).__init__(ut)
-        self.client = client
+    def __init__(self, client, start_request, end_request, rendezvous):
+        super(CreateAndReleaseSocket, self).__init__(client)
         self.start_request = start_request
         self.end_request = end_request
         self.rendezvous = rendezvous
@@ -199,15 +197,8 @@ class CreateAndReleaseSocket(MongoThread):
 
 class CreateAndReleaseSocketNoRendezvous(MongoThread):
     """Gets a socket and quits. No synchronization with other threads."""
-    class Rendezvous(object):
-        def __init__(self, nthreads):
-            self.nthreads = nthreads
-            self.nthreads_run = 0
-            self.lock = threading.Lock()
-            self.ready = threading.Event()
-
-    def __init__(self, ut, start_request, end_request):
-        super(CreateAndReleaseSocketNoRendezvous, self).__init__(ut)
+    def __init__(self, client, start_request, end_request):
+        super(CreateAndReleaseSocketNoRendezvous, self).__init__(client)
         self.start_request = start_request
         self.end_request = end_request
 
@@ -274,7 +265,7 @@ class TestPooling(_TestPoolingBase):
         self.assertEqual(c.max_pool_size, 100)
 
     def test_no_disconnect(self):
-        run_cases(self, [NoRequest, NonUnique, Unique, SaveAndFind])
+        run_cases(self.c, [NoRequest, NonUnique, Unique, SaveAndFind])
 
     def test_simple_disconnect(self):
         # MongoClient just created, expect 1 free socket.
@@ -306,7 +297,7 @@ class TestPooling(_TestPoolingBase):
         self.assert_no_request()
 
     def test_disconnect(self):
-        run_cases(self, [SaveAndFind, Disconnect, Unique])
+        run_cases(self.c, [SaveAndFind, Disconnect, Unique])
 
     def test_request(self):
         # Check that Pool gives two different sockets in two calls to
@@ -702,7 +693,7 @@ class TestPooling(_TestPoolingBase):
         
         # Reach max_size.
         with pool.get_socket() as s1:
-            t = SocketGetter(self, pool)
+            t = SocketGetter(self.c, pool)
             t.start()
             while t.state != 'get_socket':
                 time.sleep(0.1)
@@ -729,7 +720,7 @@ class TestPooling(_TestPoolingBase):
         # Reach max_size * wait_queue_multiple waiters.
         threads = []
         for _ in range(6):
-            t = SocketGetter(self, pool)
+            t = SocketGetter(self.c, pool)
             t.start()
             threads.append(t)
 
@@ -750,7 +741,7 @@ class TestPooling(_TestPoolingBase):
             socks.append(sock)
         threads = []
         for _ in range(30):
-            t = SocketGetter(self, pool)
+            t = SocketGetter(self.c, pool)
             t.start()
             threads.append(t)
         time.sleep(1)
@@ -787,7 +778,7 @@ class TestPoolMaxSize(_TestPoolingBase):
         threads = []
         for i in range(nthreads):
             t = CreateAndReleaseSocket(
-                self, c, start_request, end_request, rendezvous)
+                c, start_request, end_request, rendezvous)
             
             threads.append(t)
 
@@ -877,7 +868,7 @@ class TestPoolMaxSize(_TestPoolingBase):
         threads = []
         for i in range(nthreads):
             t = CreateAndReleaseSocketNoRendezvous(
-                self, start_request, end_request)
+                c, start_request, end_request)
             
             threads.append(t)
 
