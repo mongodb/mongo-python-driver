@@ -933,6 +933,15 @@ class Database(common.BaseObject):
         result = self.command("$eval", code, args=args)
         return result.get("retval", None)
 
+    def __getstate__(self):
+        return self.__dict__
+
+    def __setstate__(self, dict):
+        self.__dict__ = dict
+
+    def __getnewargs__(self):
+        return (self.__connection, self.__name)
+
     def __call__(self, *args, **kwargs):
         """This is only here so that some API misusages are easier to debug.
         """
@@ -995,15 +1004,6 @@ class SystemJS(object):
 
     def __getitem__(self, name):
         return self.__getattr__(name)
-
-    def __getstate__(self):
-        return self.__dict__
-
-    def __setstate__(self, dict):
-        self.__dict__ = dict
-
-    def __getnewargs__(self):
-        return (self.__connection, self.__name)
 
     def list(self):
         """Get a list of the names of the functions stored in this database.
