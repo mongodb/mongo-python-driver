@@ -1485,5 +1485,15 @@ class MongoClient(common.BaseObject):
     def __iter__(self):
         return self
 
+    def __getstate__(self):
+        return self.__dict__
+
+    def __setstate__(self, dict):
+        self.__dict__ = dict
+
+    def __getnewargs__(self):
+        return (self.host, self.port, self.__max_pool_size,
+                self.__document_class, self.__tz_aware)
+
     def next(self):
         raise TypeError("'MongoClient' object is not iterable")

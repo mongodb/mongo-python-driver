@@ -74,6 +74,10 @@ class Ident(object):
         """
         raise NotImplementedError
 
+# We watch for thread-death using a weakref callback to a thread local.
+# Weakrefs are permitted on subclasses of object but not object() itself.
+class ThreadVigil(object):
+    pass
 
 class ThreadIdent(Ident):
     def __init__(self):
@@ -84,11 +88,6 @@ class ThreadIdent(Ident):
         else:
             self._lock = DummyLock()
 
-    # We watch for thread-death using a weakref callback to a thread local.
-    # Weakrefs are permitted on subclasses of object but not object() itself.
-    class ThreadVigil(object):
-        pass
-
     def _make_vigil(self):
         # Threadlocals in Python <= 2.7.0 have race conditions when setting
         # attributes and possibly when getting them, too, leading to weakref
@@ -97,7 +96,7 @@ class ThreadIdent(Ident):
         try:
             vigil = getattr(self._local, 'vigil', None)
             if not vigil:
-                self._local.vigil = vigil = ThreadIdent.ThreadVigil()
+                self._local.vigil = vigil = ThreadVigil()
         finally:
             self._lock.release()
 
