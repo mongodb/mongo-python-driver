@@ -1669,6 +1669,9 @@ class Collection(common.BaseObject):
     def __setstate__(self, dict):
         self.__dict__ = dict
 
+    def __getnewargs__(self):
+        return (self.__database, self.__name)
+
     def next(self):
         raise TypeError("'Collection' object is not iterable")
 
