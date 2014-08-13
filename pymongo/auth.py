@@ -17,6 +17,7 @@
 from __future__ import unicode_literals
 
 import hmac
+import random
 
 HAVE_KERBEROS = True
 try:
@@ -24,16 +25,18 @@ try:
 except ImportError:
     HAVE_KERBEROS = False
 
+from base64 import standard_b64decode, standard_b64encode
 from collections import namedtuple
-from hashlib import md5
+from hashlib import md5, sha1
 
 from bson.binary import Binary
-from bson.py3compat import b, string_type, _unicode
+from bson.py3compat import b, string_type, _unicode, PY3
 from bson.son import SON
 from pymongo.errors import ConfigurationError, OperationFailure
 
 
-MECHANISMS = frozenset(['GSSAPI', 'MONGODB-CR', 'MONGODB-X509', 'PLAIN'])
+MECHANISMS = frozenset(
+    ['GSSAPI', 'MONGODB-CR', 'MONGODB-X509', 'PLAIN', 'SCRAM-SHA-1'])
 """The authentication mechanisms supported by PyMongo."""
 
 
@@ -51,6 +54,88 @@ def _build_credentials_tuple(mech, source, user, passwd, extra):
     elif mech == 'MONGODB-X509':
         return MongoCredential(mech, '$external', user, None, None)
     return MongoCredential(mech, source, user, passwd, None)
+
+
+if PY3:
+    def _xor(fir, sec):
+        """XOR two byte strings together (python 3.x)."""
+        return b"".join([bytes([x ^ y]) for x, y in zip(fir, sec)])
+else:
+    def _xor(fir, sec):
+        """XOR two byte strings together (python 2.x)."""
+        return b"".join([chr(ord(x) ^ ord(y)) for x, y in zip(fir, sec)])
+
+
+def _hi(data, salt, iterations):
+    """A simple implementation of PBKDF2."""
+    _ui = _u1 = hmac.HMAC(data, salt + b'\x00\x00\x00\x01', sha1).digest()
+    for _ in range(iterations - 1):
+        _u1 = hmac.HMAC(data, _u1, sha1).digest()
+        _ui = _xor(_ui, _u1)
+    return _ui
+
+
+def _parse_scram_response(response):
+    """Split a scram response into key, value pairs."""
+    return dict(item.split(b"=", 1) for item in response.split(b","))
+
+
+def _authenticate_scram_sha1(credentials, sock_info, cmd_func):
+    """Authenticate using SCRAM-SHA-1."""
+    username = credentials.username
+    password = credentials.password
+    source = credentials.source
+
+    user = username.encode("utf-8").replace(b"=", b"=3D").replace(b",", b"=2C")
+    nonce = standard_b64encode(
+        (("%s" % (random.random(),))[2:]).encode("utf-8"))
+    first_bare = b"n=" + user + b",r=" + nonce
+
+    cmd = SON([('saslStart', 1),
+               ('mechanism', 'SCRAM-SHA-1'),
+               ('payload', Binary(b"n,," + first_bare)),
+               ('autoAuthorize', 1)])
+    res, _ = cmd_func(sock_info, source, cmd)
+
+    server_first = res['payload']
+    parsed = _parse_scram_response(server_first)
+    iterations = int(parsed[b'i'])
+    salt = parsed[b's']
+    rnonce = parsed[b'r']
+    assert rnonce.startswith(nonce)
+
+    without_proof = b"c=biws,r=" + rnonce
+    salted_pass = _hi(_password_digest(username, password).encode("utf-8"),
+                      standard_b64decode(salt),
+                      iterations)
+    client_key = hmac.HMAC(salted_pass, b"Client Key", sha1).digest()
+    stored_key = sha1(client_key).digest()
+    auth_msg = b",".join((first_bare, server_first, without_proof))
+    client_sig = hmac.HMAC(stored_key, auth_msg, sha1).digest()
+    client_proof = b"p=" + standard_b64encode(_xor(client_key, client_sig))
+    client_final = b",".join((without_proof, client_proof))
+
+    server_key = hmac.HMAC(salted_pass, b"Server Key", sha1).digest()
+    server_sig = standard_b64encode(
+        hmac.HMAC(server_key, auth_msg, sha1).digest())
+
+    cmd = SON([('saslContinue', 1),
+               ('conversationId', res['conversationId']),
+               ('payload', Binary(client_final))])
+    res, _ = cmd_func(sock_info, source, cmd)
+
+    parsed = _parse_scram_response(res['payload'])
+    assert parsed[b'v'] == server_sig
+
+    # Depending on how it's configured, Cyrus SASL (which the server uses)
+    # requires a third empty challenge.
+    if not res['done']:
+        cmd = SON([('saslContinue', 1),
+                   ('conversationId', res['conversationId']),
+                   ('payload', Binary(b''))])
+        res, _ = cmd_func(sock_info, source, cmd)
+        if not res['done']:
+            raise OperationFailure('SASL conversation failed to complete.')
 
 
 def _password_digest(username, password):
@@ -235,6 +320,7 @@ _AUTH_MAP = {
     'MONGODB-CR': _authenticate_mongo_cr,
     'MONGODB-X509': _authenticate_x509,
     'PLAIN': _authenticate_plain,
+    'SCRAM-SHA-1': _authenticate_scram_sha1,
 }
 
 
