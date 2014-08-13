@@ -31,7 +31,7 @@ class TestSONManipulator(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        client = MongoClient(host, port, _connect=False)
+        client = MongoClient(host, port, connect=False)
         cls.db = client.pymongo_test
 
     def test_basic(self):

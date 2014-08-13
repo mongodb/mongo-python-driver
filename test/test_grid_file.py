@@ -35,14 +35,20 @@ from gridfs.errors import (NoFile,
                            UnsupportedAPI)
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
-from test import client_context, qcheck, unittest, host, port, IntegrationTest
+from test import (client_context,
+                  client_knobs,
+                  IntegrationTest,
+                  host,
+                  port,
+                  unittest,
+                  qcheck)
 
 
 class TestGridFileNoConnect(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        client = MongoClient(host, port, _connect=False)
+        client = MongoClient(host, port, connect=False)
         cls.db = client.pymongo_test
 
     def test_grid_file(self):
@@ -222,7 +228,9 @@ class TestGridFile(IntegrationTest):
     def test_grid_out_default_opts(self):
         self.assertRaises(TypeError, GridOut, "foo")
 
-        self.assertRaises(NoFile, GridOut, self.db.fs, 5)
+        gout = GridOut(self.db.fs, 5)
+        with self.assertRaises(NoFile):
+            gout.name
 
         a = GridIn(self.db.fs)
         a.close()
@@ -280,7 +288,9 @@ class TestGridFile(IntegrationTest):
         three = GridOut(self.db.fs, 5, file_document=self.db.fs.files.find_one())
         self.assertEqual(b"foo bar", three.read())
 
-        self.assertRaises(NoFile, GridOut, self.db.fs, file_document={})
+        four = GridOut(self.db.fs, file_document={})
+        with self.assertRaises(NoFile):
+            four.name
 
     def test_write_file_like(self):
         one = GridIn(self.db.fs)
@@ -588,23 +598,24 @@ Bye"""))
 
     def test_grid_out_lazy_connect(self):
         fs = self.db.fs
-        outfile = GridOut(fs, file_id=-1, _connect=False)
+        outfile = GridOut(fs, file_id=-1)
         self.assertRaises(NoFile, outfile.read)
         self.assertRaises(NoFile, getattr, outfile, 'filename')
 
         infile = GridIn(fs, filename=1)
         infile.close()
 
-        outfile = GridOut(fs, infile._id, _connect=False)
+        outfile = GridOut(fs, infile._id)
         outfile.read()
         outfile.filename
 
     def test_grid_in_lazy_connect(self):
-        client = MongoClient('badhost', _connect=False)
-        fs = client.db.fs
-        infile = GridIn(fs, file_id=-1, chunk_size=1)
-        self.assertRaises(ConnectionFailure, infile.write, b'data goes here')
-        self.assertRaises(ConnectionFailure, infile.close)
+        with client_knobs(server_wait_time=0.01):
+            client = MongoClient('badhost', connect=False)
+            fs = client.db.fs
+            infile = GridIn(fs, file_id=-1, chunk_size=1)
+            self.assertRaises(ConnectionFailure, infile.write, b'data')
+            self.assertRaises(ConnectionFailure, infile.close)
 
 
 if __name__ == "__main__":

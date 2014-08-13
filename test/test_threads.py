@@ -140,9 +140,11 @@ class FindPauseFind(RendezvousThread):
 
     def before_rendezvous(self):
         # acquire a socket
+        client = self.collection.database.connection
+        client.start_request()
         list(self.collection.find())
 
-        pool = get_pool(self.collection.database.connection)
+        pool = get_pool(client)
         socket_info = pool._get_request_state()
         assert isinstance(socket_info, SocketInfo)
         self.request_sock = socket_info.sock
@@ -241,7 +243,7 @@ class BaseTestThreads(object):
         # PYTHON-345, we need to make sure that threads' request sockets are
         # closed by disconnect().
         #
-        # 1. Create a client with auto_start_request=True
+        # 1. Create a client and start a request.
         # 2. Start N threads and do a find() in each to get a request socket
         # 3. Pause all threads
         # 4. In the main thread close all sockets, including threads' request
@@ -252,7 +254,8 @@ class BaseTestThreads(object):
         #
         # If we've fixed PYTHON-345, then only one AutoReconnect is raised,
         # and all the threads get new request sockets.
-        cx = get_client(pair, auto_start_request=True)
+        cx = get_client(pair)
+        cx.start_request()
         collection = cx.db.pymongo_test
 
         # acquire a request socket for the main thread

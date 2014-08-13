@@ -79,7 +79,7 @@ class Monitor(threading.Thread):
                 self.close()
             else:
                 start = time.time()  # TODO: monotonic.
-                self._event.wait(self._settings.heartbeat_frequency)
+                self._event.wait(common.HEARTBEAT_FREQUENCY)
                 self._event.clear()
                 wait_time = time.time() - start
                 if wait_time < common.MIN_HEARTBEAT_INTERVAL:

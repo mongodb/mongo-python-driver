@@ -24,10 +24,9 @@ from bson.code import Code
 from bson.objectid import ObjectId
 from bson.son import SON
 from pymongo.mongo_client import MongoClient
-from pymongo.mongo_replica_set_client import MongoReplicaSetClient
 from pymongo.errors import ConfigurationError, OperationFailure
 from test import client_context, pair, unittest
-from test.utils import get_client, get_rs_client
+from test.utils import get_client, connected
 
 
 @client_context.require_connection
@@ -232,33 +231,11 @@ class TestCommon(unittest.TestCase):
         self.assertTrue(coll.insert(doc))
 
         # Equality tests
-        self.assertEqual(m, MongoClient("mongodb://%s/?w=0" % (pair,)))
-        self.assertFalse(m != MongoClient("mongodb://%s/?w=0" % (pair,)))
+        self.assertEqual(m,
+                         connected(MongoClient("mongodb://%s/?w=0" % (pair,))))
 
-    @client_context.require_replica_set
-    def test_mongo_replica_set_client(self):
-        setname = client_context.setname
-        m = get_rs_client(pair, replicaSet=setname, w=0)
-        coll = m.pymongo_test.write_concern_test
-        coll.drop()
-        doc = {"_id": ObjectId()}
-        coll.insert(doc)
-        self.assertTrue(coll.insert(doc, w=0))
-        self.assertTrue(coll.insert(doc))
-        self.assertRaises(OperationFailure, coll.insert, doc, w=1)
-
-        m = client_context.rs_client
-        coll = m.pymongo_test.write_concern_test
-        self.assertTrue(coll.insert(doc, w=0))
-        self.assertRaises(OperationFailure, coll.insert, doc)
-        self.assertRaises(OperationFailure, coll.insert, doc, w=1)
-
-        m = MongoReplicaSetClient("mongodb://%s/?replicaSet=%s" % (pair, setname))
-        coll = m.pymongo_test.write_concern_test
-        self.assertRaises(OperationFailure, coll.insert, doc)
-        m = MongoReplicaSetClient("mongodb://%s/?replicaSet=%s;w=0" % (pair, setname))
-        coll = m.pymongo_test.write_concern_test
-        self.assertTrue(coll.insert(doc))
+        self.assertFalse(m !=
+                         connected(MongoClient("mongodb://%s/?w=0" % (pair,))))
 
 
 if __name__ == "__main__":

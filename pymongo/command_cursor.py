@@ -92,7 +92,7 @@ class CommandCursor(object):
         client = self.__collection.database.connection
         try:
             response = client._send_message_with_response(
-                msg, _connection_to_use=self.__conn_id)
+                msg, address=self.__conn_id)
         except AutoReconnect:
             # Don't try to send kill cursors on another socket
             # or to another server. It can cause a _pinValue

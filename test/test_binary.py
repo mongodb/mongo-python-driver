@@ -244,7 +244,7 @@ class TestBinary(unittest.TestCase):
     def test_uri_to_uuid(self):
 
         uri = "mongodb://foo/?uuidrepresentation=csharpLegacy"
-        client = MongoClient(uri, _connect=False)
+        client = MongoClient(uri, connect=False)
         self.assertEqual(client.pymongo_test.test.uuid_subtype, CSHARP_LEGACY)
 
     @client_context.require_connection

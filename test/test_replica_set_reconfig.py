@@ -18,10 +18,11 @@ import sys
 
 sys.path[0:0] = [""]
 
-from pymongo.errors import ConfigurationError, ConnectionFailure
+from pymongo.errors import ConnectionFailure, AutoReconnect
 from pymongo import ReadPreference
-from test import unittest, client_context
-from test.pymongo_mocks import MockClient, MockReplicaSetClient
+from test import unittest, client_context, client_knobs, MockClientTest
+from test.pymongo_mocks import MockClient
+from test.utils import wait_until
 
 
 @client_context.require_connection
@@ -29,7 +30,7 @@ def setUpModule():
     pass
 
 
-class TestSecondaryBecomesStandalone(unittest.TestCase):
+class TestSecondaryBecomesStandalone(MockClientTest):
     # An administrator removes a secondary from a 3-node set and
     # brings it back up as standalone, without updating the other
     # members' config. Verify we don't continue using it.
@@ -42,7 +43,7 @@ class TestSecondaryBecomesStandalone(unittest.TestCase):
             replicaSet='rs')
 
         # MongoClient connects to primary by default.
-        self.assertEqual('a', c.host)
+        wait_until(lambda: c.host == 'a', 'connect to primary')
         self.assertEqual(1, c.port)
 
         # C is brought up as a standalone.
@@ -56,79 +57,82 @@ class TestSecondaryBecomesStandalone(unittest.TestCase):
         # Force reconnect.
         c.disconnect()
 
-        try:
+        with self.assertRaises(AutoReconnect):
             c.db.command('ismaster')
-        except ConfigurationError as e:
-            self.assertTrue('not a member of replica set' in str(e))
-        else:
-            self.fail("MongoClient didn't raise AutoReconnect")
 
         self.assertEqual(None, c.host)
         self.assertEqual(None, c.port)
 
     def test_replica_set_client(self):
-        c = MockReplicaSetClient(
+        c = MockClient(
             standalones=[],
             members=['a:1', 'b:2', 'c:3'],
             mongoses=[],
             host='a:1,b:2,c:3',
             replicaSet='rs')
 
-        self.assertTrue(('b', 2) in c.secondaries)
-        self.assertTrue(('c', 3) in c.secondaries)
+        wait_until(lambda: ('b', 2) in c.secondaries,
+                   'discover host "b"')
+
+        wait_until(lambda: ('c', 3) in c.secondaries,
+                   'discover host "c"')
 
         # C is brought up as a standalone.
         c.mock_members.remove('c:3')
         c.mock_standalones.append('c:3')
-        c.refresh()
+
+        wait_until(lambda: set([('b', 2)]) == c.secondaries,
+                   'update the list of secondaries')
 
         self.assertEqual(('a', 1), c.primary)
-        self.assertEqual(set([('b', 2)]), c.secondaries)
 
 
-class TestSecondaryRemoved(unittest.TestCase):
+class TestSecondaryRemoved(MockClientTest):
     # An administrator removes a secondary from a 3-node set *without*
     # restarting it as standalone.
     def test_replica_set_client(self):
-        c = MockReplicaSetClient(
+        c = MockClient(
             standalones=[],
             members=['a:1', 'b:2', 'c:3'],
             mongoses=[],
             host='a:1,b:2,c:3',
             replicaSet='rs')
 
-        self.assertTrue(('b', 2) in c.secondaries)
-        self.assertTrue(('c', 3) in c.secondaries)
+        wait_until(lambda: ('b', 2) in c.secondaries, 'discover host "b"')
+        wait_until(lambda: ('c', 3) in c.secondaries, 'discover host "c"')
 
         # C is removed.
         c.mock_ismaster_hosts.remove('c:3')
-        c.refresh()
+        wait_until(lambda: set([('b', 2)]) == c.secondaries,
+                   'update list of secondaries')
 
         self.assertEqual(('a', 1), c.primary)
-        self.assertEqual(set([('b', 2)]), c.secondaries)
 
 
-class TestSocketError(unittest.TestCase):
+class TestSocketError(MockClientTest):
     def test_socket_error_marks_member_down(self):
-        c = MockReplicaSetClient(
-            standalones=[],
-            members=['a:1', 'b:2'],
-            mongoses=[],
-            host='a:1',
-            replicaSet='rs')
+        # Disable background refresh.
+        with client_knobs(heartbeat_frequency=9999999):
+            c = MockClient(
+                standalones=[],
+                members=['a:1', 'b:2'],
+                mongoses=[],
+                host='a:1',
+                replicaSet='rs')
 
-        self.assertEqual(2, len(c._MongoReplicaSetClient__rs_state.members))
+            wait_until(lambda: len(c.nodes) == 2, 'discover both nodes')
 
-        # b now raises socket.error.
-        c.mock_down_hosts.append('b:2')
-        self.assertRaises(
-            ConnectionFailure,
-            c.db.collection.find_one, read_preference=ReadPreference.SECONDARY)
+            # b now raises socket.error.
+            c.mock_down_hosts.append('b:2')
+            self.assertRaises(
+                ConnectionFailure,
+                c.db.collection.find_one,
+                read_preference=ReadPreference.SECONDARY)
 
-        self.assertEqual(1, len(c._MongoReplicaSetClient__rs_state.members))
+            self.assertEqual(1, len(c.nodes))
 
 
-class TestSecondaryAdded(unittest.TestCase):
+class TestSecondaryAdded(MockClientTest):
     def test_client(self):
         c = MockClient(
             standalones=[],
@@ -136,6 +140,8 @@ class TestSecondaryAdded(unittest.TestCase):
             mongoses=[],
             host='a:1',
             replicaSet='rs')
+
+        wait_until(lambda: len(c.nodes) == 2, 'discover both nodes')
 
         # MongoClient connects to primary by default.
         self.assertEqual('a', c.host)
@@ -151,26 +157,30 @@ class TestSecondaryAdded(unittest.TestCase):
 
         self.assertEqual('a', c.host)
         self.assertEqual(1, c.port)
-        self.assertEqual(set([('a', 1), ('b', 2), ('c', 3)]), c.nodes)
+
+        wait_until(lambda: set([('a', 1), ('b', 2), ('c', 3)]) == c.nodes,
+                   'reconnect to both secondaries')
 
     def test_replica_set_client(self):
-        c = MockReplicaSetClient(
+        c = MockClient(
             standalones=[],
             members=['a:1', 'b:2'],
             mongoses=[],
             host='a:1',
             replicaSet='rs')
 
-        self.assertEqual(('a', 1), c.primary)
-        self.assertEqual(set([('b', 2)]), c.secondaries)
+        wait_until(lambda: ('a', 1) == c.primary, 'discover the primary')
+        wait_until(lambda: set([('b', 2)]) == c.secondaries,
+                   'discover the secondary')
 
         # C is added.
         c.mock_members.append('c:3')
         c.mock_ismaster_hosts.append('c:3')
-        c.refresh()
+
+        wait_until(lambda: set([('b', 2), ('c', 3)]) == c.secondaries,
+                   'discover the new secondary')
 
         self.assertEqual(('a', 1), c.primary)
-        self.assertEqual(set([('b', 2), ('c', 3)]), c.secondaries)
 
 
 if __name__ == "__main__":

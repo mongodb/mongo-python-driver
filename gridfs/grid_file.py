@@ -49,10 +49,9 @@ NEWLN = b"\n"
 DEFAULT_CHUNK_SIZE = 255 * 1024
 
 
-def _create_property(field_name, docstring,
-                      read_only=False, closed_only=False):
-    """Helper for creating properties to read/write to files.
-    """
+def _grid_in_property(field_name, docstring, read_only=False,
+                      closed_only=False):
+    """Create a GridIn property."""
     def getter(self):
         if closed_only and not self._closed:
             raise AttributeError("can only get %r on a closed file" %
@@ -70,7 +69,7 @@ def _create_property(field_name, docstring,
         self._file[field_name] = value
 
     if read_only:
-        docstring = docstring + "\n\nThis attribute is read-only."
+        docstring += "\n\nThis attribute is read-only."
     elif closed_only:
         docstring = "%s\n\n%s" % (docstring, "This attribute is read-only and "
                                   "can only be read after :meth:`close` "
@@ -78,6 +77,20 @@ def _create_property(field_name, docstring,
 
     if not read_only and not closed_only:
         return property(getter, setter, doc=docstring)
+    return property(getter, doc=docstring)
+
+
+def _grid_out_property(field_name, docstring):
+    """Create a GridOut property."""
+    def getter(self):
+        self._ensure_file()
+
+        # Protect against PHP-237
+        if field_name == 'length':
+            return self._file.get(field_name, 0)
+        return self._file.get(field_name, None)
+
+    docstring += "\n\nThis attribute is read-only."
     return property(getter, doc=docstring)
 
 
@@ -177,19 +190,19 @@ class GridIn(object):
         """
         return self._closed
 
-    _id = _create_property("_id", "The ``'_id'`` value for this file.",
+    _id = _grid_in_property("_id", "The ``'_id'`` value for this file.",
                             read_only=True)
-    filename = _create_property("filename", "Name of this file.")
-    name = _create_property("filename", "Alias for `filename`.")
-    content_type = _create_property("contentType", "Mime-type for this file.")
-    length = _create_property("length", "Length (in bytes) of this file.",
+    filename = _grid_in_property("filename", "Name of this file.")
+    name = _grid_in_property("filename", "Alias for `filename`.")
+    content_type = _grid_in_property("contentType", "Mime-type for this file.")
+    length = _grid_in_property("length", "Length (in bytes) of this file.",
                                closed_only=True)
-    chunk_size = _create_property("chunkSize", "Chunk size for this file.",
+    chunk_size = _grid_in_property("chunkSize", "Chunk size for this file.",
                                    read_only=True)
-    upload_date = _create_property("uploadDate",
+    upload_date = _grid_in_property("uploadDate",
                                     "Date that this file was uploaded.",
                                     closed_only=True)
-    md5 = _create_property("md5", "MD5 of the contents of this file "
+    md5 = _grid_in_property("md5", "MD5 of the contents of this file "
                             "(generated on the server).",
                             closed_only=True)
 
@@ -370,8 +383,7 @@ class GridIn(object):
 class GridOut(object):
     """Class to read data out of GridFS.
     """
-    def __init__(self, root_collection, file_id=None, file_document=None,
-                 _connect=True):
+    def __init__(self, root_collection, file_id=None, file_document=None):
         """Read a file from GridFS
 
         Application developers should generally not need to
@@ -385,11 +397,13 @@ class GridOut(object):
 
         :Parameters:
           - `root_collection`: root collection to read from
-          - `file_id`: value of ``"_id"`` for the file to read
-          - `file_document`: file document from `root_collection.files`
+          - `file_id` (optional): value of ``"_id"`` for the file to read
+          - `file_document` (optional): file document from
+            `root_collection.files`
 
-        .. versionadded:: 1.9
-           The `file_document` parameter.
+        .. versionchanged:: 3.0
+           Creating a GridOut does not immediately retrieve the file metadata
+           from the server. Metadata is fetched when first needed.
         """
         if not isinstance(root_collection, Collection):
             raise TypeError("root_collection must be an "
@@ -401,27 +415,19 @@ class GridOut(object):
         self.__buffer = EMPTY
         self.__position = 0
         self._file = file_document
-        if _connect:
-            self._ensure_file()
 
-    _id = _create_property("_id", "The ``'_id'`` value for this file.", True)
-    filename = _create_property("filename", "Name of this file.", True)
-    name = _create_property("filename", "Alias for `filename`.", True)
-    content_type = _create_property("contentType", "Mime-type for this file.",
-                                     True)
-    length = _create_property("length", "Length (in bytes) of this file.",
-                               True)
-    chunk_size = _create_property("chunkSize", "Chunk size for this file.",
-                                   True)
-    upload_date = _create_property("uploadDate",
-                                    "Date that this file was first uploaded.",
-                                    True)
-    aliases = _create_property("aliases", "List of aliases for this file.",
-                                True)
-    metadata = _create_property("metadata", "Metadata attached to this file.",
-                                 True)
-    md5 = _create_property("md5", "MD5 of the contents of this file "
-                            "(generated on the server).", True)
+    _id = _grid_out_property("_id", "The ``'_id'`` value for this file.")
+    filename = _grid_out_property("filename", "Name of this file.")
+    name = _grid_out_property("filename", "Alias for `filename`.")
+    content_type = _grid_out_property("contentType", "Mime-type for this file.")
+    length = _grid_out_property("length", "Length (in bytes) of this file.")
+    chunk_size = _grid_out_property("chunkSize", "Chunk size for this file.")
+    upload_date = _grid_out_property("uploadDate",
+                                     "Date that this file was first uploaded.")
+    aliases = _grid_out_property("aliases", "List of aliases for this file.")
+    metadata = _grid_out_property("metadata", "Metadata attached to this file.")
+    md5 = _grid_out_property("md5", "MD5 of the contents of this file "
+                             "(generated on the server).")
 
     def _ensure_file(self):
         if not self._file:

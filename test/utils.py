@@ -19,10 +19,12 @@ import os
 import struct
 import sys
 import threading
+import time
 
 from pymongo import MongoClient, MongoReplicaSetClient
 from pymongo.errors import AutoReconnect
 from pymongo.pool import NO_REQUEST, NO_SOCKET_YET, SocketInfo
+from pymongo.server_selectors import writable_server_selector
 from test import (client_context,
                   db_user,
                   db_pwd)
@@ -31,7 +33,7 @@ from test.version import Version
 
 def get_client(*args, **kwargs):
     client = MongoClient(*args, **kwargs)
-    if client_context.auth_enabled and kwargs.get("_connect", True):
+    if client_context.auth_enabled and kwargs.get("connect", True):
         client.admin.authenticate(db_user, db_pwd)
     return client
 
@@ -146,6 +148,27 @@ def joinall(threads):
     for t in threads:
         t.join(300)
         assert not t.isAlive(), "Thread %s hung" % t
+
+def connected(client):
+    """Convenience to wait for a newly-constructed client to connect."""
+    client.admin.command('ismaster')  # Force connection.
+    return client
+
+def wait_until(predicate, success_description):
+    """Wait up to 10 seconds for predicate to be True.
+
+    E.g.:
+
+        wait_until(lambda: c.primary == ('a', 1),
+                   'connect to the primary')
+
+    If the lambda-expression isn't true after 10 seconds, we raise
+    AssertionError("Didn't ever connect to the primary").
+    """
+    start = time.time()
+    while not predicate():
+        if time.time() - start > 10:
+            raise AssertionError("Didn't ever %s" % success_description)
 
 def is_mongos(client):
     res = client.admin.command('ismaster')
@@ -343,13 +366,9 @@ def assertReadFromAll(testcase, rsc, members, *args, **kwargs):
     testcase.assertEqual(members, used)
 
 def get_pool(client):
-    if isinstance(client, MongoClient):
-        return client._MongoClient__member.pool
-    elif isinstance(client, MongoReplicaSetClient):
-        rs_state = client._MongoReplicaSetClient__rs_state
-        return rs_state.primary_member.pool
-    else:
-        raise TypeError(str(client))
+    cluster = client._get_cluster()
+    server = cluster.select_server(writable_server_selector)
+    return server.pool
 
 def pools_from_rs_client(client):
     """Get Pool instances from a MongoReplicaSetClient.
@@ -451,7 +470,7 @@ def lazy_client_trial(reset, target, test, get_client):
     try:
         for i in range(NTRIALS):
             reset(collection)
-            lazy_client = get_client(_connect=False)
+            lazy_client = get_client(connect=False)
             lazy_collection = lazy_client.pymongo_test.test
             run_threads(lazy_collection, target)
             test(lazy_collection)
@@ -469,7 +488,7 @@ class _TestLazyConnectMixin(object):
 
     Inherit from this class and from unittest.TestCase, and override
     _get_client(self, **kwargs), for testing a lazily-connecting
-    client, i.e. a client initialized with _connect=False.
+    client, i.e. a client initialized with connect=False.
     """
     NTRIALS = 5
     NTHREADS = 10
@@ -544,7 +563,7 @@ class _TestLazyConnectMixin(object):
     def test_max_bson_size(self):
         # Client should have sane defaults before connecting, and should update
         # its configuration once connected.
-        c = self._get_client(_connect=False)
+        c = self._get_client(connect=False)
         self.assertEqual(16 * (1024 ** 2), c.max_bson_size)
         self.assertEqual(2 * c.max_bson_size, c.max_message_size)
 

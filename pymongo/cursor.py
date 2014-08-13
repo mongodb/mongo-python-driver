@@ -864,7 +864,7 @@ class Cursor(object):
                 "exhaust": self.__exhaust,
             }
             if self.__connection_id is not None:
-                kwargs["_connection_to_use"] = self.__connection_id
+                kwargs["address"] = self.__connection_id
 
             try:
                 response = client._send_message_with_response(message, **kwargs)

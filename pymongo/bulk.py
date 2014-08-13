@@ -423,7 +423,6 @@ class _Bulk(object):
                                    'only be executed once.')
         self.executed = True
         client = self.collection.database.connection
-        client._ensure_connected(sync=True)
         write_concern = write_concern or self.collection.write_concern
 
         if self.ordered:
@@ -433,7 +432,7 @@ class _Bulk(object):
 
         if write_concern.get('w') == 0:
             self.execute_no_results(generator)
-        elif client.max_wire_version > 1:
+        elif client._writable_max_wire_version() > 1:
             return self.execute_command(generator, write_concern)
         else:
             return self.execute_legacy(generator, write_concern)

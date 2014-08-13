@@ -33,6 +33,7 @@ from bson.py3compat import u, StringIO, string_type
 from gridfs.errors import (FileExists,
                            NoFile)
 from test import (client_context,
+                  client_knobs,
                   connection_string,
                   unittest,
                   host,
@@ -77,7 +78,7 @@ class TestGridfsNoConnect(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        client = MongoClient(host, port, _connect=False)
+        client = MongoClient(host, port, connect=False)
         cls.db = client.pymongo_test
 
     def test_gridfs(self):
@@ -145,6 +146,24 @@ class TestGridfs(IntegrationTest):
         self.assertTrue(isinstance(raw["uploadDate"], datetime.datetime))
         self.assertEqual(255 * 1024, raw["chunkSize"])
         self.assertTrue(isinstance(raw["md5"], string_type))
+
+    def test_delete_ensures_index(self):
+        chunks = self.db.fs.chunks
+
+        # setUp has dropped collections.
+        self.assertFalse(chunks.index_information())
+
+        self.fs.delete(file_id=1)
+
+        # delete() has ensured an index on (files_id, n).
+        # index_information() is like:
+        # {
+        #     '_id_': {'key': [('_id', 1)]},
+        #     'files_id_1_n_1': {'key': [('files_id', 1), ('n', 1)]}
+        # }
+        self.assertTrue(any(
+            info.get('key') == [('files_id', 1), ('n', 1)]
+            for info in chunks.index_information().values()))
 
     def test_alt_collection(self):
         oid = self.alt.put(b"hello world")
@@ -375,13 +394,15 @@ class TestGridfs(IntegrationTest):
         self.assertFalse(self.db.connection.in_request())
 
     def test_gridfs_lazy_connect(self):
-        client = MongoClient('badhost', _connect=False)
-        db = client.db
-        self.assertRaises(ConnectionFailure, gridfs.GridFS, db)
+        with client_knobs(server_wait_time=0.01):
+            client = MongoClient('badhost', connect=False)
+            db = client.db
+            gfs = gridfs.GridFS(db)
+            self.assertRaises(ConnectionFailure, gfs.list)
 
-        fs = gridfs.GridFS(db, _connect=False)
-        f = fs.new_file()  # Still no connection.
-        self.assertRaises(ConnectionFailure, f.close)
+            fs = gridfs.GridFS(db)
+            f = fs.new_file()  # Still no connection.
+            self.assertRaises(ConnectionFailure, f.close)
 
     def test_gridfs_find(self):
         self.fs.put(b"test2", filename="two")
@@ -448,10 +469,10 @@ class TestGridfsReplicaSet(TestReplicaSetClientBase):
         client = MongoClient(
             connection_string(seeds=[secondary_pair]),
             read_preference=ReadPreference.SECONDARY,
-            _connect=False)
+            connect=False)
 
         # Still no connection.
-        fs = gridfs.GridFS(client.test_gridfs_secondary_lazy, _connect=False)
+        fs = gridfs.GridFS(client.test_gridfs_secondary_lazy)
 
         # Connects, doesn't create index.
         self.assertRaises(NoFile, fs.get_last_version)

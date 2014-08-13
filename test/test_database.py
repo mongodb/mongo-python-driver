@@ -64,7 +64,7 @@ class TestDatabaseNoConnect(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.client = MongoClient(host, port, _connect=False)
+        cls.client = MongoClient(host, port, connect=False)
 
     def test_name(self):
         self.assertRaises(TypeError, Database, self.client, 4)

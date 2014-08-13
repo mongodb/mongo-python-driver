@@ -46,7 +46,7 @@ class TestCursorNoConnect(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        client = MongoClient(host, port, _connect=False)
+        client = MongoClient(host, port, connect=False)
         cls.db = client.test
 
     def test_deepcopy_cursor_littered_with_regexes(self):

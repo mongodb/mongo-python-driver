@@ -20,8 +20,9 @@ import threading
 sys.path[0:0] = [""]
 
 from pymongo.errors import AutoReconnect
-from test import unittest, client_context
+from test import unittest, client_context, SkipTest, MockClientTest
 from test.pymongo_mocks import MockClient
+from test.utils import connected, wait_until
 
 
 @client_context.require_connection
@@ -53,18 +54,22 @@ def do_simple_op(client, nthreads):
         assert t.passed
 
 
-class TestMongosHA(unittest.TestCase):
-    def mock_client(self, connect):
+class TestMongosHA(MockClientTest):
+
+    def mock_client(self):
         return MockClient(
             standalones=[],
             members=[],
             mongoses=['a:1', 'b:2', 'c:3'],
             host='a:1,b:2,c:3',
-            _connect=connect)
+            connect=False)
         
     def test_lazy_connect(self):
+        # TODO: Reimplement Mongos HA with PyMongo 3's MongoClient.
+        raise SkipTest('Mongos HA must be reimplemented with 3.0 MongoClient')
+
         nthreads = 10
-        client = self.mock_client(False)
+        client = self.mock_client()
         self.assertEqual(0, len(client.nodes))
 
         # Trigger initial connection.
@@ -73,15 +78,24 @@ class TestMongosHA(unittest.TestCase):
 
     def test_reconnect(self):
         nthreads = 10
-        client = self.mock_client(True)
-        self.assertEqual(3, len(client.nodes))
+        client = connected(self.mock_client())
+
+        # connected() ensures we've contacted at least one mongos. Wait for
+        # all of them.
+        wait_until(lambda: len(client.nodes) == 3, 'connect to all mongoses')
 
         # Trigger reconnect.
         client.disconnect()
         do_simple_op(client, nthreads)
-        self.assertEqual(3, len(client.nodes))
+
+        wait_until(lambda: len(client.nodes) == 3,
+                   'reconnect to all mongoses')
 
     def test_failover(self):
+        # TODO: PyMongo 3's MongoClient currently picks a new Mongos at random
+        #       for each operation (besides getMore). Need to "pin".
+        raise SkipTest('Mongos HA must be reimplemented with 3.0 MongoClient')
+
         nthreads = 1
 
         # ['1:1', '2:2', '3:3', ...]

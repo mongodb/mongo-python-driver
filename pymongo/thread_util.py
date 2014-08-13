@@ -118,36 +118,6 @@ class Counter(object):
         return self._counters.get(self.ident.get(), 0)
 
 
-class Future(object):
-    """Minimal backport of concurrent.futures.Future.
-
-    event_class makes this Future adaptable for async clients.
-    """
-    def __init__(self, event_class):
-        self._event = event_class()
-        self._result = None
-        self._exception = None
-
-    def set_result(self, result):
-        self._result = result
-        self._event.set()
-
-    def set_exception(self, exc):
-        if hasattr(exc, 'with_traceback'):
-            # Python 3: avoid potential reference cycle.
-            self._exception = exc.with_traceback(None)
-        else:
-            self._exception = exc
-        self._event.set()
-
-    def result(self):
-        self._event.wait()
-        if self._exception:
-            raise self._exception
-        else:
-            return self._result
-
-
 ### Begin backport from CPython 3.2 for timeout support for Semaphore.acquire
 class Semaphore:
 

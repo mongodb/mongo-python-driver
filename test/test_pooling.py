@@ -24,6 +24,7 @@ import time
 from pymongo import MongoClient
 from pymongo.errors import ConfigurationError, ConnectionFailure, \
     ExceededMaxWaiters
+from pymongo.server_selectors import writable_server_selector
 
 sys.path[0:0] = [""]
 
@@ -231,9 +232,16 @@ class _TestPoolingBase(unittest.TestCase):
         return Pool(pair, PoolOptions(*args, **kwargs))
 
     def assert_no_request(self):
-        self.assertTrue(
-            self.c._MongoClient__member is None or
-            NO_REQUEST == get_pool(self.c)._get_request_state())
+        try:
+            server = self.c._cluster.select_server(
+                writable_server_selector,
+                server_wait_time=0)
+
+            self.assertEqual(NO_REQUEST, server.pool._get_request_state())
+        except ConnectionFailure:
+            # Success: we're asserting that we're not in a request, but there's
+            # no pool at all so the assertion is true.
+            pass
 
     def assert_request_without_socket(self):
         self.assertEqual(NO_SOCKET_YET, get_pool(self.c)._get_request_state())
@@ -244,9 +252,16 @@ class _TestPoolingBase(unittest.TestCase):
 
     def assert_pool_size(self, pool_size):
         if pool_size == 0:
-            self.assertTrue(
-                self.c._MongoClient__member is None
-                or not get_pool(self.c).sockets)
+            try:
+                server = self.c._cluster.select_server(
+                    writable_server_selector,
+                    server_wait_time=0)
+
+                self.assertEqual(0, len(server.pool.sockets))
+            except ConnectionFailure:
+                # Success: we're asserting that pool size is 0, and there's no
+                # pool at all so the assertion is true.
+                pass
         else:
             self.assertEqual(pool_size, len(get_pool(self.c).sockets))
 
@@ -634,7 +649,6 @@ class TestPooling(_TestPoolingBase):
 
         def loop(pipe):
             c = get_client()
-            self.assertEqual(1, len(get_pool(c).sockets))
             c.pymongo_test.test.find_one()
             self.assertEqual(1, len(get_pool(c).sockets))
             pipe.send(one(get_pool(c).sockets).sock.getsockname())

@@ -73,6 +73,33 @@ class ClusterDescription(object):
                        common.MIN_SUPPORTED_WIRE_VERSION,
                        common.MAX_SUPPORTED_WIRE_VERSION))
 
+    def reset_server(self, address):
+        """A copy of this description, with one server marked Unknown."""
+        sds = self.server_descriptions()
+
+        # The default ServerDescription's type is Unknown.
+        sds[address] = ServerDescription(address)
+
+        if self._cluster_type == CLUSTER_TYPE.ReplicaSetWithPrimary:
+            cluster_type = _check_has_primary(sds)
+        else:
+            cluster_type = self._cluster_type
+
+        return ClusterDescription(cluster_type, sds, self._set_name)
+
+    def reset(self):
+        """A copy of this description, with all servers marked Unknown."""
+        if self._cluster_type == CLUSTER_TYPE.ReplicaSetWithPrimary:
+            cluster_type = CLUSTER_TYPE.ReplicaSetNoPrimary
+        else:
+            cluster_type = self._cluster_type
+
+        # The default ServerDescription's type is Unknown.
+        sds = dict((address, ServerDescription(address))
+                   for address in self._server_descriptions)
+
+        return ClusterDescription(cluster_type, sds, self._set_name)
+
     def server_descriptions(self):
         """Dict of (address, ServerDescription)."""
         return self._server_descriptions.copy()
@@ -165,7 +192,7 @@ def updated_cluster_description(cluster_description, server_description):
             cluster_type = _check_has_primary(sds)
 
         elif server_type == SERVER_TYPE.RSPrimary:
-            cluster_type = _update_rs_from_primary(
+            cluster_type, set_name = _update_rs_from_primary(
                 sds, set_name, server_description)
 
         elif server_type in (

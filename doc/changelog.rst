@@ -25,8 +25,35 @@ see :doc:`PyMongo's Gevent documentation <examples/gevent>`.
 :class:`~pymongo.MongoClient` Changes
 .....................................
 
+:class:`~pymongo.mongo_client.MongoClient` is now the one and only
+client class for a standalone server, mongos, or replica set.
+It includes the functionality that had been split into
+``MongoReplicaSetClient``: it can connect to a replica set, discover all its
+members, and monitor the set for stepdowns, elections, and reconfigs.
+
+The obsolete ``MasterSlaveConnection`` class is removed.
+
+The :class:`~pymongo.mongo_client.MongoClient` constructor no
+longer blocks while connecting to the server or servers, and it no
+longer raises :class:`~pymongo.errors.ConnectionFailure` if they
+are unavailable, nor :class:`~pymongo.errors.ConfigurationError`
+if the user's credentials are wrong. Instead, the constructor
+returns immediately and launches the connection process on
+background threads.
+
+The ``connect`` option is added and ``auto_start_request`` is removed.
+
+In PyMongo 2.x, :class:`~pymongo.MongoClient` accepted a list of standalone
+MongoDB servers and used the first it could connect to::
+
+    MongoClient(['host1.com:27017', 'host2.com:27017'])
+
+A list of multiple standalones is no longer supported; if multiple servers
+are listed they must be members of the same replica set, or mongoses in the
+same sharded cluster.
+
 The second parameter to :meth:`~pymongo.MongoClient.close_cursor` is renamed
-from ``_conn_id`` to ``address`` and is no longer optional.
+from ``_conn_id`` to ``address``.
 
 :meth:`~pymongo.MongoClient.set_cursor_manager` is no longer deprecated.
 

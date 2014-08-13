@@ -41,6 +41,7 @@ from test import (client_context,
                   IntegrationTest,
                   db_user,
                   db_pwd)
+from test.utils import connected
 from test.version import Version
 
 
@@ -551,8 +552,8 @@ class TestMongosConnection(IntegrationTest):
                 None, [{}]
             ):
                 # Create a client e.g. with read_preference=NEAREST
-                c = get_client(host, port,
-                               read_preference=mode(tag_sets=tag_sets))
+                c = connected(get_client(
+                    host, port, read_preference=mode(tag_sets=tag_sets)))
 
                 self.assertEqual(is_mongos, c.is_mongos)
                 cursor = c.pymongo_test.test.find()
@@ -591,8 +592,8 @@ class TestMongosConnection(IntegrationTest):
                 [{'dc': 'la'}, {'dc': 'sf'}],
                 [{'dc': 'la'}, {'dc': 'sf'}, {}],
             ):
-                c = get_client(host, port,
-                               read_preference=mode(tag_sets=tag_sets))
+                c = connected(get_client(
+                    host, port, read_preference=mode(tag_sets=tag_sets)))
 
                 self.assertEqual(is_mongos, c.is_mongos)
                 cursor = c.pymongo_test.test.find()

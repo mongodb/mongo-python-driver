@@ -25,8 +25,7 @@ from gridfs.errors import (NoFile,
 from gridfs.grid_file import (GridIn,
                               GridOut,
                               GridOutCursor)
-from pymongo import (MongoClient,
-                     ASCENDING,
+from pymongo import (ASCENDING,
                      DESCENDING)
 from pymongo.database import Database
 
@@ -34,18 +33,21 @@ from pymongo.database import Database
 class GridFS(object):
     """An instance of GridFS on top of a single Database.
     """
-    def __init__(self, database, collection="fs", _connect=True):
+    def __init__(self, database, collection="fs"):
         """Create a new instance of :class:`GridFS`.
 
         Raises :class:`TypeError` if `database` is not an instance of
         :class:`~pymongo.database.Database`.
 
+        The `connect` parameter ensures that the underlying
+        :class:`~pymongo.mongo_client.MongoClient` is connected to a server,
+        and creates an index on the "chunks" collection if needed.
+
         :Parameters:
           - `database`: database to use
           - `collection` (optional): root collection to use
-
-        .. versionadded:: 1.6
-           The `collection` parameter.
+          - `connect` (optional): whether to begin connecting the client in
+            the background
 
         .. mongodoc:: gridfs
         """
@@ -56,15 +58,10 @@ class GridFS(object):
         self.__collection = database[collection]
         self.__files = self.__collection.files
         self.__chunks = self.__collection.chunks
-        if _connect:
-            self.__ensure_index_files_id()
 
     def __is_secondary(self):
         client = self.__database.connection
-
-        # Connect the client, so we know if it's connected to the primary.
-        client._ensure_connected()
-        return isinstance(client, MongoClient) and not client.is_primary
+        return not client._is_writable()
 
     def __ensure_index_files_id(self):
         if not self.__is_secondary():
@@ -156,7 +153,11 @@ class GridFS(object):
 
         .. versionadded:: 1.6
         """
-        return GridOut(self.__collection, file_id)
+        gout = GridOut(self.__collection, file_id)
+
+        # Raise NoFile now, instead of on first attribute access.
+        gout._ensure_file()
+        return gout
 
     def get_version(self, filename=None, version=-1, **kwargs):
         """Get a file from GridFS by ``"filename"`` or metadata fields.

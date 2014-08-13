@@ -30,6 +30,7 @@ from functools import wraps
 import pymongo
 
 from bson.py3compat import _unicode
+from pymongo import common
 from test.version import Version
 
 # hostnames retrieved by MongoReplicaSetClient from isMaster will be of unicode
@@ -64,7 +65,9 @@ class ClientContext(object):
         self.test_commands_enabled = False
         self.is_mongos = False
         try:
-            self.client = pymongo.MongoClient(host, port)
+            client = pymongo.MongoClient(host, port)
+            client.admin.command('ismaster')  # Can we connect?
+            self.client = client
         except pymongo.errors.ConnectionFailure:
             self.client = None
         else:
@@ -209,6 +212,58 @@ class IntegrationTest(unittest.TestCase):
     @client_context.require_connection
     def setUpClass(cls):
         pass
+
+
+class client_knobs(object):
+    def __init__(self, heartbeat_frequency=None, server_wait_time=None):
+        self.heartbeat_frequency = heartbeat_frequency
+        self.server_wait_time = server_wait_time
+
+        self.old_heartbeat_frequency = None
+        self.old_server_wait_time = None
+
+    def enable(self):
+        self.old_heartbeat_frequency = common.HEARTBEAT_FREQUENCY
+        self.old_server_wait_time = common.SERVER_WAIT_TIME
+        if self.heartbeat_frequency is not None:
+            common.HEARTBEAT_FREQUENCY = self.heartbeat_frequency
+
+        if self.server_wait_time is not None:
+            common.SERVER_WAIT_TIME = self.server_wait_time
+
+    def __enter__(self):
+        self.enable()
+
+    def disable(self):
+        common.HEARTBEAT_FREQUENCY = self.old_heartbeat_frequency
+        common.SERVER_WAIT_TIME = self.old_server_wait_time
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.disable()
+
+
+class MockClientTest(unittest.TestCase):
+    """Base class for TestCases that use MockClient.
+
+    This class is *not* an IntegrationTest: if properly written, MockClient
+    tests do not require a running server.
+
+    The class temporarily overrides HEARTBEAT_FREQUENCY and SERVER_WAIT_TIME
+    to speed up tests.
+    """
+
+    def setUp(self):
+        super(MockClientTest, self).setUp()
+
+        self.client_knobs = client_knobs(
+            heartbeat_frequency=0.001,
+            server_wait_time=0.1)
+
+        self.client_knobs.enable()
+
+    def tearDown(self):
+        self.client_knobs.disable()
+        super(MockClientTest, self).tearDown()
 
 
 def connection_string(seeds=[pair]):
