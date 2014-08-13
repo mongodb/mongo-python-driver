@@ -1,0 +1,32 @@
+description: "Direct connection to secondary"
+
+uri: "mongodb://A"
+
+phases: [
+    
+    {
+        responses: [
+
+                ["A:27017", {
+                    
+                    ok: 1,
+                    ismaster: false,
+                },],
+        ],
+
+        outcome: {
+
+            servers: {
+
+                "A:27017": {
+
+                    type: "Standalone",
+                    setName:,
+                },
+            },
+
+            clusterType: "Single",
+            setName:,        
+        },
+    },
+]

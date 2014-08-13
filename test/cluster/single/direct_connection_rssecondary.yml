@@ -1,0 +1,35 @@
+description: "Connect to RSSecondary"
+
+uri: "mongodb://A"
+
+phases: [
+    
+    {
+        responses: [
+
+                ["A:27017", {
+
+                    ok: 1,
+                    ismaster: false,
+                    secondary: true,
+                    hosts: ["a",],
+                    setName: "rs"
+                },],
+        ],
+
+        outcome: {
+
+            servers: {
+
+                "A:27017": {
+
+                    type: "RSSecondary",
+                    setName: "rs",
+                },
+            },
+
+            clusterType: "Single",
+            setName:,        
+        },
+    },
+]
