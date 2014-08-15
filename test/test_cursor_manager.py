@@ -20,7 +20,11 @@ sys.path[0:0] = [""]
 
 from pymongo.cursor_manager import CursorManager
 from pymongo.errors import CursorNotFound, InvalidOperation
-from test import client_context, unittest, IntegrationTest, connection_string
+from test import (client_context,
+                  unittest,
+                  IntegrationTest,
+                  connection_string,
+                  SkipTest)
 from test.utils import get_client, TestRequestMixin
 
 
@@ -40,6 +44,12 @@ class TestCursorManager(IntegrationTest, TestRequestMixin):
         cls.collection.remove()
 
     def test_cursor_manager(self):
+        if (client_context.is_mongos
+                and not client_context.version.at_least(2, 4, 7)):
+            # Old mongos sends incorrectly formatted error response when
+            # cursor isn't found, see SERVER-9738.
+            raise SkipTest("Can't test kill_cursors against old mongos")
+
         self.close_was_called = False
 
         test_case = self

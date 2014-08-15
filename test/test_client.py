@@ -818,6 +818,12 @@ class TestClient(IntegrationTest, TestRequestMixin):
         self.assertFalse(client.alive())
 
     def test_kill_cursors(self):
+        if (client_context.is_mongos
+                and not client_context.version.at_least(2, 4, 7)):
+            # Old mongos sends incorrectly formatted error response when
+            # cursor isn't found, see SERVER-9738.
+            raise SkipTest("Can't test kill_cursors against old mongos")
+
         self.collection = self.client.pymongo_test.test
         self.collection.remove()
         
