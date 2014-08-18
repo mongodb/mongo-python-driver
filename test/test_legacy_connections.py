@@ -27,9 +27,12 @@ import pymongo
 from pymongo.connection import Connection
 from pymongo.replica_set_connection import ReplicaSetConnection
 from pymongo.errors import ConfigurationError
-from test import host, port, pair
+from test import host, port, pair, skip_restricted_localhost
 from test.test_replica_set_client import TestReplicaSetClientBase
 from test.utils import catch_warnings, get_pool
+
+
+setUpModule = skip_restricted_localhost
 
 
 class TestConnection(unittest.TestCase):

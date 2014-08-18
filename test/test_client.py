@@ -34,20 +34,18 @@ from bson.tz_util import utc
 from pymongo.mongo_client import MongoClient
 from pymongo.database import Database
 from pymongo.pool import SocketInfo
-from pymongo import auth, thread_util, common
+from pymongo import thread_util
 from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
                             ConnectionFailure,
                             InvalidName,
-                            OperationFailure,
-                            PyMongoError)
-from test import version, host, port, pair
+                            OperationFailure)
+from test import version, host, port, pair, skip_restricted_localhost
 from test.pymongo_mocks import MockClient
 from test.utils import (assertRaisesExactly,
                         catch_warnings,
                         delay,
                         is_mongos,
-                        remove_all_users,
                         server_is_master_with_slave,
                         server_started_with_auth,
                         TestRequestMixin,
@@ -55,8 +53,9 @@ from test.utils import (assertRaisesExactly,
                         _TestExhaustCursorMixin,
                         lazy_client_trial,
                         NTHREADS,
-                        get_pool,
-                        one)
+                        get_pool)
+
+setUpModule = skip_restricted_localhost
 
 
 def get_client(*args, **kwargs):
@@ -266,36 +265,6 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         self.assertTrue("pymongo_test2" in c.database_names())
         self.assertEqual("bar", c.pymongo_test2.test.find_one()["foo"])
 
-        # See SERVER-6427 for mongos
-        if not is_mongos(c) and server_started_with_auth(c):
-
-            c.drop_database("pymongo_test1")
-
-            c.admin.add_user("admin", "password")
-            c.admin.authenticate("admin", "password")
-            try:
-                c.pymongo_test.add_user("mike", "password")
-
-                self.assertRaises(OperationFailure, c.copy_database,
-                                  "pymongo_test", "pymongo_test1",
-                                  username="foo", password="bar")
-                self.assertFalse("pymongo_test1" in c.database_names())
-
-                self.assertRaises(OperationFailure, c.copy_database,
-                                  "pymongo_test", "pymongo_test1",
-                                  username="mike", password="bar")
-                self.assertFalse("pymongo_test1" in c.database_names())
-
-                c.copy_database("pymongo_test", "pymongo_test1",
-                                username="mike", password="password")
-                self.assertTrue("pymongo_test1" in c.database_names())
-                self.assertEqual("bar", c.pymongo_test1.test.find_one()["foo"])
-            finally:
-                # Cleanup
-                remove_all_users(c.pymongo_test)
-                c.admin.remove_user("admin")
-                c.disconnect()
-
     def test_iteration(self):
         client = MongoClient(host, port)
 
@@ -347,75 +316,13 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         c = MongoClient(uri, _connect=False)
         self.assertEqual(Database(c, 'foo'), c.get_default_database())
 
-    def test_auth_from_uri(self):
-        c = MongoClient(host, port)
-        # Sharded auth not supported before MongoDB 2.0
-        if is_mongos(c) and not version.at_least(c, (2, 0, 0)):
-            raise SkipTest("Auth with sharding requires MongoDB >= 2.0.0")
-        if not server_started_with_auth(c):
-            raise SkipTest('Authentication is not enabled on server')
-
-        c.admin.add_user("admin", "pass")
-        c.admin.authenticate("admin", "pass")
-        try:
-            c.pymongo_test.add_user("user", "pass", roles=['userAdmin', 'readWrite'])
-
-            self.assertRaises(ConfigurationError, MongoClient,
-                              "mongodb://foo:bar@%s:%d" % (host, port))
-            self.assertRaises(ConfigurationError, MongoClient,
-                              "mongodb://admin:bar@%s:%d" % (host, port))
-            self.assertRaises(ConfigurationError, MongoClient,
-                              "mongodb://user:pass@%s:%d" % (host, port))
-            MongoClient("mongodb://admin:pass@%s:%d" % (host, port))
-
-            self.assertRaises(ConfigurationError, MongoClient,
-                              "mongodb://admin:pass@%s:%d/pymongo_test" %
-                              (host, port))
-            self.assertRaises(ConfigurationError, MongoClient,
-                              "mongodb://user:foo@%s:%d/pymongo_test" %
-                              (host, port))
-            MongoClient("mongodb://user:pass@%s:%d/pymongo_test" %
-                       (host, port))
-
-            # Auth with lazy connection.
-            MongoClient(
-                "mongodb://user:pass@%s:%d/pymongo_test" % (host, port),
-                _connect=False).pymongo_test.test.find_one()
-
-            # Wrong password.
-            bad_client = MongoClient(
-                "mongodb://user:wrong@%s:%d/pymongo_test" % (host, port),
-                _connect=False)
-
-            self.assertRaises(OperationFailure,
-                              bad_client.pymongo_test.test.find_one)
-
-        finally:
-            # Clean up.
-            remove_all_users(c.pymongo_test)
-            remove_all_users(c.admin)
-
-    def test_lazy_auth_raises_operation_failure(self):
-        # Check if we have the prerequisites to run this test.
-        c = MongoClient(host, port)
-        if not server_started_with_auth(c):
-            raise SkipTest('Authentication is not enabled on server')
-
-        if is_mongos(c) and not version.at_least(c, (2, 0, 0)):
-            raise SkipTest("Auth with sharding requires MongoDB >= 2.0.0")
-
-        lazy_client = MongoClient(
-            "mongodb://user:wrong@%s:%d/pymongo_test" % (host, port),
-            _connect=False)
-
-        assertRaisesExactly(
-            OperationFailure, lazy_client.test.collection.find_one)
-
     def test_unix_socket(self):
         if not hasattr(socket, "AF_UNIX"):
             raise SkipTest("UNIX-sockets are not supported on this system")
+        client = MongoClient(host, port)
         if (sys.platform == 'darwin' and
-            server_started_with_auth(MongoClient(host, port))):
+                server_started_with_auth(client) and
+                not version.at_least(client, (2, 7, 1))):
             raise SkipTest("SERVER-8492")
 
         mongodb_socket = '/tmp/mongodb-27017.sock'
@@ -1000,42 +907,6 @@ with client.start_request() as request:
 
         client = get_client(_connect=False)
         client.pymongo_test.test.remove(w=0)
-
-    def test_auth_network_error(self):
-        # Make sure there's no semaphore leak if we get a network error
-        # when authenticating a new socket with cached credentials.
-        auth_client = get_client()
-        if not server_started_with_auth(auth_client):
-            raise SkipTest('Authentication is not enabled on server')
-
-        auth_client.admin.add_user('admin', 'password')
-        auth_client.admin.authenticate('admin', 'password')
-        try:
-            # Get a client with one socket so we detect if it's leaked.
-            c = get_client(max_pool_size=1, waitQueueTimeoutMS=1)
-
-            # Simulate an authenticate() call on a different socket.
-            credentials = auth._build_credentials_tuple(
-                'MONGODB-CR', 'admin',
-                unicode('admin'), unicode('password'),
-                {})
-
-            c._cache_credentials('test', credentials, connect=False)
-
-            # Cause a network error on the actual socket.
-            pool = get_pool(c)
-            socket_info = one(pool.sockets)
-            socket_info.sock.close()
-
-            # In __check_auth, the client authenticates its socket with the
-            # new credential, but gets a socket.error. Should be reraised as
-            # AutoReconnect.
-            self.assertRaises(AutoReconnect, c.test.collection.find_one)
-
-            # No semaphore leak, the pool is allowed to make a new socket.
-            c.test.collection.find_one()
-        finally:
-            remove_all_users(auth_client.admin)
 
 
 class TestClientLazyConnect(unittest.TestCase, _TestLazyConnectMixin):

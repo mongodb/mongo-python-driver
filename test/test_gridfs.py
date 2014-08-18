@@ -32,9 +32,13 @@ from gridfs.errors import (FileExists, NoFile)
 from pymongo.errors import ConnectionFailure
 from pymongo.mongo_client import MongoClient
 from pymongo.read_preferences import ReadPreference
+from test import skip_restricted_localhost
 from test.test_client import get_client
 from test.test_replica_set_client import TestReplicaSetClientBase
 from test.utils import catch_warnings, joinall
+
+
+setUpModule = skip_restricted_localhost
 
 
 class JustWrite(threading.Thread):

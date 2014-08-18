@@ -23,11 +23,14 @@ sys.path[0:0] = [""]
 
 from nose.plugins.skip import SkipTest
 
-from test import host, port
+from test import host, port, skip_restricted_localhost
 from test.test_pooling_base import (
     _TestPooling, _TestMaxPoolSize, _TestMaxOpenSockets,
     _TestPoolSocketSharing, _TestWaitQueueMultiple, one)
 from test.utils import get_pool
+
+
+setUpModule = skip_restricted_localhost
 
 
 class TestPoolingThreads(_TestPooling, unittest.TestCase):

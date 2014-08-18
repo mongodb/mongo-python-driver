@@ -18,14 +18,13 @@ import datetime
 import pickle
 import unittest
 import sys
-import time
 sys.path[0:0] = [""]
 
 from nose.plugins.skip import SkipTest
 
 from bson.errors import InvalidId
 from bson.objectid import ObjectId
-from bson.py3compat import b, binary_type
+from bson.py3compat import b
 from bson.tz_util import (FixedOffset,
                           utc)
 

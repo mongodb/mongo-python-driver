@@ -30,7 +30,7 @@ from pymongo.connection import Connection
 from pymongo.mongo_client import MongoClient
 from pymongo.mongo_replica_set_client import MongoReplicaSetClient
 from pymongo.errors import ConfigurationError, OperationFailure
-from test import host, port, pair, version
+from test import host, port, pair, version, skip_restricted_localhost
 from test.utils import catch_warnings, drop_collections
 
 have_uuid = True
@@ -38,6 +38,9 @@ try:
     import uuid
 except ImportError:
     have_uuid = False
+
+
+setUpModule = skip_restricted_localhost
 
 
 class TestCommon(unittest.TestCase):

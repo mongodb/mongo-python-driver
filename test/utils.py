@@ -92,10 +92,8 @@ def server_started_with_auth(client):
         # MongoDB >= 2.6
         if 'security' in parsed:
             security = parsed['security']
-            # >= rc3
             if 'authorization' in security:
                 return security['authorization'] == 'enabled'
-            # < rc3
             return security.get('auth', False) or bool(security.get('keyFile'))
         return parsed.get('auth', False) or bool(parsed.get('keyFile'))
     # Legacy

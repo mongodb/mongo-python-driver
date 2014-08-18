@@ -33,8 +33,13 @@ from bson.binary import *
 from bson.py3compat import b, binary_type
 from bson.son import SON
 from nose.plugins.skip import SkipTest
+from test import skip_restricted_localhost
 from test.test_client import get_client
 from pymongo.mongo_client import MongoClient
+
+
+setUpModule = skip_restricted_localhost
+
 
 class TestBinary(unittest.TestCase):
     def test_binary(self):

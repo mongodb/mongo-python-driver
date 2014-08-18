@@ -19,7 +19,8 @@ import os
 import warnings
 
 import pymongo
-from pymongo.errors import ConnectionFailure
+from nose.plugins.skip import SkipTest
+from pymongo.errors import OperationFailure
 
 # hostnames retrieved by MongoReplicaSetClient from isMaster will be of unicode
 # type in Python 2, so ensure these hostnames are unicodes, too. It makes tests
@@ -34,6 +35,66 @@ port2 = int(os.environ.get("DB_PORT2", 27018))
 host3 = unicode(os.environ.get("DB_IP3", 'localhost'))
 port3 = int(os.environ.get("DB_PORT3", 27019))
 
+db_user = unicode(os.environ.get("DB_USER", "administrator"))
+db_pwd = unicode(os.environ.get("DB_PWD", "password"))
+
+
+class AuthContext(object):
+
+    def __init__(self):
+        self.client = pymongo.MongoClient(host, port)
+        self.auth_enabled = False
+        self.restricted_localhost = False
+        try:
+            command_line = self.client.admin.command('getCmdLineOpts')
+            if self._server_started_with_auth(command_line):
+                self.auth_enabled = True
+        except OperationFailure, e:
+            if e.code == 13:
+                self.auth_enabled = True
+                self.restricted_localhost = True
+            else:
+                raise
+
+    def _server_started_with_auth(self, command_line):
+        # MongoDB >= 2.0
+        if 'parsed' in command_line:
+            parsed = command_line['parsed']
+            # MongoDB >= 2.6
+            if 'security' in parsed:
+                security = parsed['security']
+                if 'authorization' in security:
+                    return security['authorization'] == 'enabled'
+                return security.get('auth', bool(security.get('keyFile')))
+            return parsed.get('auth', bool(parsed.get('keyFile')))
+        # Legacy
+        argv = command_line['argv']
+        return '--auth' in argv or '--keyFile' in argv
+
+    def add_user_and_log_in(self):
+        self.client.admin.add_user(db_user, db_pwd,
+                                   roles=('userAdminAnyDatabase',
+                                          'readWriteAnyDatabase',
+                                          'dbAdminAnyDatabase',
+                                          'clusterAdmin'))
+        self.client.admin.authenticate(db_user, db_pwd)
+
+    def remove_user_and_log_out(self):
+        self.client.admin.remove_user(db_user)
+        self.client.admin.logout()
+        self.client.disconnect()
+
+
+auth_context = AuthContext()
+
+
+def skip_restricted_localhost():
+    """Skip tests when the localhost exception is restricted (SERVER-12621)."""
+    if auth_context.restricted_localhost:
+        raise SkipTest("Cannot test with restricted localhost exception "
+                       "(SERVER-12621).")
+
+
 # Make sure warnings are always raised, regardless of
 # python version.
 def setup():
@@ -42,16 +103,16 @@ def setup():
 
 
 def teardown():
-    try:
-        c = pymongo.MongoClient(host, port)
-    except ConnectionFailure:
-        # Tests where ssl=True can cause connection failures here.
-        # Ignore and continue.
-        return
+    client = auth_context.client
+    if auth_context.auth_enabled:
+        auth_context.add_user_and_log_in()
 
-    c.drop_database("pymongo-pooling-tests")
-    c.drop_database("pymongo_test")
-    c.drop_database("pymongo_test1")
-    c.drop_database("pymongo_test2")
-    c.drop_database("pymongo_test_mike")
-    c.drop_database("pymongo_test_bernie")
+    client.drop_database("pymongo-pooling-tests")
+    client.drop_database("pymongo_test")
+    client.drop_database("pymongo_test1")
+    client.drop_database("pymongo_test2")
+    client.drop_database("pymongo_test_mike")
+    client.drop_database("pymongo_test_bernie")
+
+    if auth_context.auth_enabled:
+        auth_context.remove_user_and_log_out()

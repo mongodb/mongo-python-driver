@@ -15,7 +15,6 @@
 """Test the pymongo module itself."""
 
 import unittest
-import os
 import sys
 sys.path[0:0] = [""]
 

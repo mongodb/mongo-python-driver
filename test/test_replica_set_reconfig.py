@@ -21,7 +21,11 @@ sys.path[0:0] = [""]
 
 from pymongo.errors import ConfigurationError, ConnectionFailure
 from pymongo import ReadPreference
+from test import skip_restricted_localhost
 from test.pymongo_mocks import MockClient, MockReplicaSetClient
+
+
+setUpModule = skip_restricted_localhost
 
 
 class TestSecondaryBecomesStandalone(unittest.TestCase):

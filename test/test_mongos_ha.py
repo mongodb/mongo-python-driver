@@ -21,7 +21,11 @@ import unittest
 sys.path[0:0] = [""]
 
 from pymongo.errors import AutoReconnect
+from test import skip_restricted_localhost
 from test.pymongo_mocks import MockClient
+
+
+setUpModule = skip_restricted_localhost
 
 
 class FindOne(threading.Thread):

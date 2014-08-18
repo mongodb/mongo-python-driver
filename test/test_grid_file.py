@@ -39,7 +39,10 @@ from gridfs.errors import (NoFile,
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
 from test.test_client import get_client
-from test import qcheck
+from test import qcheck, skip_restricted_localhost
+
+
+setUpModule = skip_restricted_localhost
 
 
 class TestGridFile(unittest.TestCase):

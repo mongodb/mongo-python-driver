@@ -16,10 +16,12 @@
 
 import unittest
 
-from pymongo.mongo_replica_set_client import MongoReplicaSetClient
+from test import skip_restricted_localhost
+from test.test_threads import BaseTestThreads
+from test.test_replica_set_client import TestReplicaSetClientBase
 
-from test.test_threads import BaseTestThreads, BaseTestThreadsAuth
-from test.test_replica_set_client import TestReplicaSetClientBase, pair
+
+setUpModule = skip_restricted_localhost
 
 
 class TestThreadsReplicaSet(TestReplicaSetClientBase, BaseTestThreads):
@@ -39,31 +41,6 @@ class TestThreadsReplicaSet(TestReplicaSetClientBase, BaseTestThreads):
         return TestReplicaSetClientBase._get_client(self, **kwargs)
 
 
-class TestThreadsAuthReplicaSet(TestReplicaSetClientBase, BaseTestThreadsAuth):
-
-    def setUp(self):
-        """
-        Prepare to test all the same things that TestThreads tests, but do it
-        with a replica-set client
-        """
-        TestReplicaSetClientBase.setUp(self)
-        BaseTestThreadsAuth.setUp(self)
-
-    def tearDown(self):
-        TestReplicaSetClientBase.tearDown(self)
-        BaseTestThreadsAuth.tearDown(self)
-
-    def _get_client(self):
-        """
-        Override TestThreadsAuth, so its tests run on a MongoReplicaSetClient
-        instead of a regular MongoClient.
-        """
-        return MongoReplicaSetClient(pair, replicaSet=self.name)
-
-
 if __name__ == "__main__":
-    suite = unittest.TestSuite([
-        unittest.makeSuite(TestThreadsReplicaSet),
-        unittest.makeSuite(TestThreadsAuthReplicaSet)
-    ])
+    suite = unittest.makeSuite(TestThreadsReplicaSet)
     unittest.TextTestRunner(verbosity=2).run(suite)

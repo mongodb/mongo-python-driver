@@ -37,10 +37,13 @@ from pymongo.database import Database
 from pymongo.errors import (InvalidOperation,
                             OperationFailure,
                             ExecutionTimeout)
-from test import version
+from test import version, skip_restricted_localhost
 from test.test_client import get_client
 from test.utils import (catch_warnings, is_mongos,
                         get_command_line, server_started_with_auth)
+
+
+setUpModule = skip_restricted_localhost
 
 
 class TestCursor(unittest.TestCase):

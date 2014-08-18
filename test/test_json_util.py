@@ -37,6 +37,7 @@ from bson.son import RE_TYPE
 from bson.timestamp import Timestamp
 from bson.tz_util import utc
 
+from test import skip_restricted_localhost
 from test.test_client import get_client
 
 PY3 = sys.version_info[0] == 3
@@ -221,6 +222,7 @@ class TestJsonUtil(unittest.TestCase):
             self.assertEqual('{"$code": "return z", "$scope": {"z": 2}}', res)
 
     def test_cursor(self):
+        skip_restricted_localhost()
         db = self.db
 
         db.drop_collection("test")

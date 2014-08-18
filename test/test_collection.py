@@ -53,14 +53,16 @@ from pymongo.errors import (DocumentTooLarge,
 from test.test_client import get_client
 from test.utils import (catch_warnings, enable_text_search,
                         get_pool, is_mongos, joinall, oid_generated_on_client)
-from test import (qcheck,
-                  version)
+from test import qcheck, version, skip_restricted_localhost
 
 have_uuid = True
 try:
     import uuid
 except ImportError:
     have_uuid = False
+
+
+setUpModule = skip_restricted_localhost
 
 
 class TestCollection(unittest.TestCase):

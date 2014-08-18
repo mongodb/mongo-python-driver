@@ -15,7 +15,6 @@
 """Test for master slave connections."""
 
 import datetime
-import os
 import sys
 import threading
 import time
@@ -36,8 +35,14 @@ from pymongo.database import Database
 from pymongo.mongo_client import MongoClient
 from pymongo.collection import Collection
 from pymongo.master_slave_connection import MasterSlaveConnection
-from test import host, port, host2, port2, host3, port3
+from test import (host, port,
+                  host2, port2,
+                  host3, port3,
+                  skip_restricted_localhost)
 from test.utils import TestRequestMixin, catch_warnings, get_pool
+
+
+setUpModule = skip_restricted_localhost
 
 
 class TestMasterSlaveConnection(unittest.TestCase, TestRequestMixin):

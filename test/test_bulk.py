@@ -23,12 +23,13 @@ sys.path[0:0] = [""]
 
 from bson import InvalidDocument, SON
 from pymongo.errors import BulkWriteError, InvalidOperation, OperationFailure
-from test import version
+from test import version, skip_restricted_localhost
 from test.test_client import get_client
-from test.utils import (oid_generated_on_client,
-                        remove_all_users,
-                        server_started_with_auth,
-                        server_started_with_nojournal)
+from test.utils import oid_generated_on_client
+
+
+setUpModule = skip_restricted_localhost
+
 
 class BulkTestBase(unittest.TestCase):
 
@@ -1133,64 +1134,6 @@ class TestBulkNoResults(BulkTestBase):
         self.assertTrue(batch.execute({'w': 0}) is None)
         self.assertEqual(2, self.coll.count())
         self.assertTrue(self.coll.find_one({'_id': 1}) is None)
-
-
-class TestBulkAuthorization(BulkTestBase):
-
-    def setUp(self):
-        super(TestBulkAuthorization, self).setUp()
-        self.client = client = get_client()
-        if (not server_started_with_auth(client)
-                or not version.at_least(client, (2, 5, 3))):
-            raise SkipTest('Need at least MongoDB 2.5.3 with auth')
-
-        db = client.pymongo_test
-        self.coll = db.test
-        self.coll.remove()
-
-        db.add_user('dbOwner', 'pw', roles=['dbOwner'])
-        db.authenticate('dbOwner', 'pw')
-        db.add_user('readonly', 'pw', roles=['read'])
-        db.command(
-            'createRole', 'noremove',
-            privileges=[{
-                'actions': ['insert', 'update', 'find'],
-                'resource': {'db': 'pymongo_test', 'collection': 'test'}
-            }],
-            roles=[])
-
-        db.add_user('noremove', 'pw', roles=['noremove'])
-        db.logout()
-
-    def test_readonly(self):
-        # We test that an authorization failure aborts the batch and is raised
-        # as OperationFailure.
-        db = self.client.pymongo_test
-        db.authenticate('readonly', 'pw')
-        bulk = self.coll.initialize_ordered_bulk_op()
-        bulk.insert({'x': 1})
-        self.assertRaises(OperationFailure, bulk.execute)
-
-    def test_no_remove(self):
-        # We test that an authorization failure aborts the batch and is raised
-        # as OperationFailure.
-        db = self.client.pymongo_test
-        db.authenticate('noremove', 'pw')
-        bulk = self.coll.initialize_ordered_bulk_op()
-        bulk.insert({'x': 1})
-        bulk.find({'x': 2}).upsert().replace_one({'x': 2})
-        bulk.find({}).remove()  # Prohibited.
-        bulk.insert({'x': 3})   # Never attempted.
-        self.assertRaises(OperationFailure, bulk.execute)
-        self.assertEqual(set([1, 2]), set(self.coll.distinct('x')))
-
-    def tearDown(self):
-        db = self.client.pymongo_test
-        db.logout()
-        db.authenticate('dbOwner', 'pw')
-        db.command('dropRole', 'noremove')
-        remove_all_users(db)
-        db.logout()
 
 
 if __name__ == "__main__":

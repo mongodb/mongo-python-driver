@@ -18,14 +18,15 @@ import unittest
 import threading
 import traceback
 
-from nose.plugins.skip import SkipTest
-
-from test.utils import (joinall, remove_all_users,
-                        server_started_with_auth, RendezvousThread)
+from test import skip_restricted_localhost
+from test.utils import joinall, RendezvousThread
 from test.test_client import get_client
 from test.utils import get_pool
 from pymongo.pool import SocketInfo, _closed
-from pymongo.errors import AutoReconnect, OperationFailure
+from pymongo.errors import AutoReconnect
+
+
+setUpModule = skip_restricted_localhost
 
 
 class AutoAuthenticateThreads(threading.Thread):
@@ -299,85 +300,7 @@ class BaseTestThreads(object):
             self.assertTrue(t.passed, "%s threw exception" % t)
 
 
-class BaseTestThreadsAuth(object):
-    """
-    Base test class for TestThreadsAuth and TestThreadsAuthReplicaSet. (This is
-    not itself a unittest.TestCase, otherwise it'd be run twice -- once when
-    nose imports this module, and once when nose imports
-    test_threads_replica_set_connection.py, which imports this module.)
-    """
-    def _get_client(self):
-        """
-        Intended for overriding in TestThreadsAuthReplicaSet. This method
-        returns a MongoClient here, and a MongoReplicaSetClient in
-        test_threads_replica_set_connection.py.
-        """
-        # Regular test client
-        return get_client()
-
-    def setUp(self):
-        client = self._get_client()
-        if not server_started_with_auth(client):
-            raise SkipTest("Authentication is not enabled on server")
-        self.client = client
-        self.client.admin.add_user('admin-user', 'password',
-                                   roles=['clusterAdmin',
-                                          'dbAdminAnyDatabase',
-                                          'readWriteAnyDatabase',
-                                          'userAdminAnyDatabase'])
-        self.client.admin.authenticate("admin-user", "password")
-        self.client.auth_test.add_user("test-user", "password",
-                                       roles=['readWrite'])
-
-    def tearDown(self):
-        # Remove auth users from databases
-        self.client.admin.authenticate("admin-user", "password")
-        remove_all_users(self.client.auth_test)
-        self.client.drop_database('auth_test')
-        remove_all_users(self.client.admin)
-        # Clear client reference so that RSC's monitor thread
-        # dies.
-        self.client = None
-
-    def test_auto_auth_login(self):
-        client = self._get_client()
-        self.assertRaises(OperationFailure, client.auth_test.test.find_one)
-
-        # Admin auth
-        client = self._get_client()
-        client.admin.authenticate("admin-user", "password")
-
-        nthreads = 10
-        threads = []
-        for _ in xrange(nthreads):
-            t = AutoAuthenticateThreads(client.auth_test.test, 100)
-            t.start()
-            threads.append(t)
-
-        joinall(threads)
-
-        for t in threads:
-            self.assertTrue(t.success)
-
-        # Database-specific auth
-        client = self._get_client()
-        client.auth_test.authenticate("test-user", "password")
-
-        threads = []
-        for _ in xrange(nthreads):
-            t = AutoAuthenticateThreads(client.auth_test.test, 100)
-            t.start()
-            threads.append(t)
-
-        joinall(threads)
-
-        for t in threads:
-            self.assertTrue(t.success)
-
 class TestThreads(BaseTestThreads, unittest.TestCase):
-    pass
-
-class TestThreadsAuth(BaseTestThreadsAuth, unittest.TestCase):
     pass
 
 
