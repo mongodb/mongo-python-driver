@@ -3,7 +3,7 @@ description: "Non-Mongos server in sharded cluster"
 uri: "mongodb://A,B"
 
 phases: [
-    
+
     {
         responses: [
 
@@ -11,31 +11,31 @@ phases: [
 
                     ok: 1,
                     ismaster: true,
-                    msg: "isdbgrid",
-                },],
+                    msg: "isdbgrid"
+                }],
 
                 ["B:27017", {
 
                     ok: 1,
                     ismaster: true,
                     hosts: ["B:27017"],
-                    setName: "rs",
-                },],
+                    setName: "rs"
+                }]
         ],
 
         outcome: {
 
             servers: {
-                
+
                 "A:27017": {
 
                     type: "Mongos",
-                    setName:,
-                },
+                    setName:
+                }
             },
 
             clusterType: "Sharded",
-            setName:,
-        },
-    },
+            setName:
+        }
+    }
 ]

@@ -3,7 +3,7 @@ description: "Connect to RSSecondary"
 uri: "mongodb://A"
 
 phases: [
-    
+
     {
         responses: [
 
@@ -12,9 +12,9 @@ phases: [
                     ok: 1,
                     ismaster: false,
                     secondary: true,
-                    hosts: ["a",],
+                    hosts: ["a"],
                     setName: "rs"
-                },],
+                }]
         ],
 
         outcome: {
@@ -24,12 +24,12 @@ phases: [
                 "A:27017": {
 
                     type: "RSSecondary",
-                    setName: "rs",
-                },
+                    setName: "rs"
+                }
             },
 
             clusterType: "Single",
-            setName:,        
-        },
-    },
+            setName:
+        }
+    }
 ]

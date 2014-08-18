@@ -3,21 +3,21 @@ description: "Handle a not-ok ismaster response"
 uri: "mongodb://A"
 
 phases: [
-    
+
     {
         responses: [
 
                 ["A:27017", {
 
                     ok: 1,
-                    ismaster: true,
+                    ismaster: true
                 }],
 
                 ["A:27017", {
-                    
+
                     ok: 0,
-                    ismaster: true,
-                },],
+                    ismaster: true
+                }]
         ],
 
         outcome: {
@@ -28,12 +28,12 @@ phases: [
 
                     address: "A",
                     type: "Unknown",
-                    setName:,
-                },
+                    setName:
+                }
             },
 
             clusterType: "Single",
-            setName:,
-        },
-    },
+            setName:
+        }
+    }
 ]

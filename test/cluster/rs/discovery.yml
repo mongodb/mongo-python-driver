@@ -3,7 +3,7 @@ description: "Replica set discovery"
 uri: "mongodb://A/?replicaSet=rs"
 
 phases: [
-    
+
     # At first, A, B, and C are secondaries.
     {
         responses: [
@@ -14,36 +14,36 @@ phases: [
                     ismaster: false,
                     secondary: true,
                     setName: "rs",
-                    hosts: ["A", "B", "C",],
-                },],
+                    hosts: ["A", "B", "C"]
+                }]
         ],
 
         outcome: {
 
             servers: {
-                
+
                 "A:27017": {
 
                     type: "RSSecondary",
-                    setName: "rs",
+                    setName: "rs"
                 },
 
                 "B:27017": {
 
                     type: "Unknown",
-                    setName:,
+                    setName:
                 },
 
                 "C:27017": {
 
                     type: "Unknown",
-                    setName:,
-                },
+                    setName:
+                }
             },
 
             clusterType: "ReplicaSetNoPrimary",
-            setName: "rs",
-        },
+            setName: "rs"
+        }
     },
 
     # Admin removes A, adds a high-priority member D which becomes primary.
@@ -57,42 +57,42 @@ phases: [
                     secondary: true,
                     setName: "rs",
                     primary: "D",
-                    hosts: ["B", "C", "D",],
-                },],
+                    hosts: ["B", "C", "D"]
+                }]
         ],
 
         outcome: {
 
             servers: {
-                
+
                 "A:27017": {
 
                     type: "RSSecondary",
-                    setName: "rs",
+                    setName: "rs"
                 },
 
                 "B:27017": {
 
                     type: "RSSecondary",
-                    setName: "rs",
+                    setName: "rs"
                 },
 
                 "C:27017": {
 
                     type: "Unknown",
-                    setName:,
+                    setName:
                 },
 
                 "D:27017": {
 
                     type: "Unknown",
-                    setName:,
-                },
+                    setName:
+                }
             },
 
             clusterType: "ReplicaSetNoPrimary",
-            setName: "rs",
-        },
+            setName: "rs"
+        }
     },
 
     # Primary responds.
@@ -104,8 +104,8 @@ phases: [
                     ok: 1,
                     ismaster: true,
                     setName: "rs",
-                    hosts: ["B", "C", "D", "E",],
-                }],
+                    hosts: ["B", "C", "D", "E"]
+                }]
         ],
 
         outcome: {
@@ -116,31 +116,31 @@ phases: [
                 "B:27017": {
 
                     type: "RSSecondary",
-                    setName: "rs",
+                    setName: "rs"
                 },
 
                 "C:27017": {
 
                     type: "Unknown",
-                    setName:,
+                    setName:
                 },
 
                 "D:27017": {
 
                     type: "RSPrimary",
-                    setName: "rs",
+                    setName: "rs"
                 },
 
                 "E:27017": {
 
                     type: "Unknown",
-                    setName:,
-                },
+                    setName:
+                }
             },
 
             clusterType: "ReplicaSetWithPrimary",
-            setName: "rs",
-        },
+            setName: "rs"
+        }
     },
 
     # Stale response from C.
@@ -153,8 +153,8 @@ phases: [
                     ismaster: false,
                     secondary: true,
                     setName: "rs",
-                    hosts: ["A", "B", "C",],
-                },],
+                    hosts: ["A", "B", "C"]
+                }]
         ],
 
         outcome: {
@@ -166,30 +166,30 @@ phases: [
                 "B:27017": {
 
                     type: "RSSecondary",
-                    setName: "rs",
+                    setName: "rs"
                 },
 
                 "C:27017": {
 
                     type: "RSSecondary",
-                    setName: "rs",
+                    setName: "rs"
                 },
 
                 "D:27017": {
 
                     type: "RSPrimary",
-                    setName: "rs",
+                    setName: "rs"
                 },
 
                 "E:27017": {
 
                     type: "Unknown",
-                    setName:,
-                },
+                    setName:
+                }
             },
 
             clusterType: "ReplicaSetWithPrimary",
-            setName: "rs",
-        },
-    },
+            setName: "rs"
+        }
+    }
 ]

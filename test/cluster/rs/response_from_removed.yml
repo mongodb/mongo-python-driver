@@ -3,7 +3,7 @@ description: "Response from removed server"
 uri: "mongodb://A,B/?replicaSet=rs"
 
 phases: [
-    
+
     {
         responses: [
 
@@ -12,8 +12,8 @@ phases: [
                     ok: 1,
                     ismaster: true,
                     setName: "rs",
-                    hosts: ["A:27017",],
-                },],     
+                    hosts: ["A:27017"]
+                }]
         ],
 
         outcome: {
@@ -23,13 +23,13 @@ phases: [
                 "A:27017": {
 
                     type: "RSPrimary",
-                    setName: "rs",
-                },
+                    setName: "rs"
+                }
             },
 
             clusterType: "ReplicaSetWithPrimary",
-            setName: "rs",
-        },
+            setName: "rs"
+        }
     },
 
     {
@@ -41,8 +41,8 @@ phases: [
                     ismaster: false,
                     secondary: true,
                     setName: "rs",
-                    hosts: ["A:27017", "B:27017",],
-                },],        
+                    hosts: ["A:27017", "B:27017"]
+                }]
         ],
 
         outcome: {
@@ -52,12 +52,12 @@ phases: [
                 "A:27017": {
 
                     type: "RSPrimary",
-                    setName: "rs",
-                },
+                    setName: "rs"
+                }
             },
 
             clusterType: "ReplicaSetWithPrimary",
-            setName: "rs",
-        },
-    },
+            setName: "rs"
+        }
+    }
 ]

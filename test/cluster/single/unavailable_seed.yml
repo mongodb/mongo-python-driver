@@ -3,11 +3,11 @@ description: "Unavailable seed"
 uri: "mongodb://A"
 
 phases: [
-    
+
     {
         responses: [
 
-                ["A:27017", {},],
+                ["A:27017", {}]
         ],
 
         outcome: {
@@ -17,12 +17,12 @@ phases: [
                 "A:27017": {
 
                     type: "Unknown",
-                    setName:,
-                },
+                    setName:
+                }
             },
 
             clusterType: "Single",
-            setName:,        
-        },
-    },
+            setName:
+        }
+    }
 ]

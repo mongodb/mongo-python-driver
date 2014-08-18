@@ -3,15 +3,15 @@ description: "Standalone removed from multi-server cluster"
 uri: "mongodb://A,B"
 
 phases: [
-    
+
     {
         responses: [
 
                 ["A:27017", {
-                    
+
                     ok: 1,
-                    ismaster: true,
-                },],
+                    ismaster: true
+                }]
         ],
 
         outcome: {
@@ -21,12 +21,12 @@ phases: [
                 "B:27017": {
 
                     type: "Unknown",
-                    setName:,
-                },
+                    setName:
+                }
             },
 
             clusterType: "Unknown",
-            setName:,
-        },
-    },
+            setName:
+        }
+    }
 ]
