@@ -3,29 +3,29 @@ description: "Non replicaSet member responds"
 uri: "mongodb://A,B/?replicaSet=rs"
 
 phases: [
-    
+
     {
         responses: [
 
                 ["B:27017", {
 
-                    ok: 1,
-                },],      
+                    ok: 1
+                }]
         ],
 
         outcome: {
 
             servers: {
-                
+
                 "A:27017": {
 
                     type: "Unknown",
-                    setName:,
-                },
+                    setName:
+                }
             },
 
             clusterType: "ReplicaSetNoPrimary",
-            setName: "rs",
-        },
-    },
+            setName: "rs"
+        }
+    }
 ]

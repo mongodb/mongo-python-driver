@@ -3,7 +3,7 @@ description: "Unexpected mongos"
 uri: "mongodb://B/?replicaSet=rs"
 
 phases: [
-    
+
     {
         responses: [
 
@@ -11,8 +11,8 @@ phases: [
 
                     ok: 1,
                     ismaster: true,
-                    msg: "isdbgrid",
-                },],      
+                    msg: "isdbgrid"
+                }]
         ],
 
         outcome: {
@@ -20,7 +20,7 @@ phases: [
             servers: {},
 
             clusterType: "ReplicaSetNoPrimary",
-            setName: "rs",
-        },
-    },
+            setName: "rs"
+        }
+    }
 ]

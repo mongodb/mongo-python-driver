@@ -3,7 +3,7 @@ description: "Secondary wrong setName with primary"
 uri: "mongodb://A,B/?replicaSet=rs"
 
 phases: [
-    
+
     {
         responses: [
 
@@ -11,9 +11,9 @@ phases: [
 
                     ok: 1,
                     ismaster: true,
-                    hosts: ["A", "B",],
-                    setName: "rs",
-                },],      
+                    hosts: ["A", "B"],
+                    setName: "rs"
+                }]
         ],
 
         outcome: {
@@ -23,19 +23,19 @@ phases: [
                 "A:27017": {
 
                     type: "RSPrimary",
-                    setName: "rs",
+                    setName: "rs"
                 },
 
                 "B:27017": {
 
                     type: "Unknown",
-                    setName:,
-                },
+                    setName:
+                }
             },
 
             clusterType: "ReplicaSetWithPrimary",
-            setName: "rs",
-        },
+            setName: "rs"
+        }
     },
 
     {
@@ -46,9 +46,9 @@ phases: [
                     ok: 1,
                     ismaster: false,
                     secondary: true,
-                    hosts: ["A", "B",],
-                    setName: "wrong",
-                },],      
+                    hosts: ["A", "B"],
+                    setName: "wrong"
+                }]
         ],
 
         outcome: {
@@ -58,12 +58,12 @@ phases: [
                 "A:27017": {
 
                     type: "RSPrimary",
-                    setName: "rs",
-                },
+                    setName: "rs"
+                }
             },
 
             clusterType: "ReplicaSetWithPrimary",
-            setName: "rs",
-        },
-    },
+            setName: "rs"
+        }
+    }
 ]

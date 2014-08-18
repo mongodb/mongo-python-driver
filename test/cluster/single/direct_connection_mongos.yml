@@ -3,16 +3,16 @@ description: "Connect to mongos"
 uri: "mongodb://A"
 
 phases: [
-    
+
     {
         responses: [
 
                 ["A:27017", {
-                    
+
                     ok: 1,
                     ismaster: true,
-                    msg: "isdbgrid",
-                },],
+                    msg: "isdbgrid"
+                }]
         ],
 
         outcome: {
@@ -22,12 +22,12 @@ phases: [
                 "A:27017": {
 
                     type: "Mongos",
-                    setName:,
-                },
+                    setName:
+                }
             },
 
             clusterType: "Single",
-            setName:,        
-        },
-    },
+            setName:
+        }
+    }
 ]

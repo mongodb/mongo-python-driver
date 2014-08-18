@@ -3,7 +3,7 @@ description: "Discover passives"
 uri: "mongodb://A/?replicaSet=rs"
 
 phases: [
-    
+
     {
         responses: [
 
@@ -11,31 +11,31 @@ phases: [
 
                     ok: 1,
                     ismaster: true,
-                    hosts: ["A:27017",],
-                    passives: ["B:27017",],
-                    setName: "rs",
-                },],      
+                    hosts: ["A:27017"],
+                    passives: ["B:27017"],
+                    setName: "rs"
+                }]
         ],
 
         outcome: {
 
             servers: {
-                
+
                 "A:27017": {
 
                     type: "RSPrimary",
-                    setName: "rs",
+                    setName: "rs"
                 },
 
                 "B:27017": {
 
                     type: "Unknown",
-                    setName:,
-                },
+                    setName:
+                }
             },
 
             clusterType: "ReplicaSetWithPrimary",
-            setName: "rs",
-        },
-    },
+            setName: "rs"
+        }
+    }
 ]

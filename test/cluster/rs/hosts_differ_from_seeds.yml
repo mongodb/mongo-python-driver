@@ -3,7 +3,7 @@ description: "Host list differs from seeds"
 uri: "mongodb://A/?replicaSet=rs"
 
 phases: [
-    
+
     {
         responses: [
 
@@ -12,23 +12,23 @@ phases: [
                     ok: 1,
                     ismaster: true,
                     setName: "rs",
-                    hosts: ["B:27017",],
-                },],      
+                    hosts: ["B:27017"]
+                }]
         ],
 
         outcome: {
 
             servers: {
-                
+
                 "B:27017": {
 
                     type: "Unknown",
-                    setName:,
-                },
+                    setName:
+                }
             },
 
             clusterType: "ReplicaSetNoPrimary",
-            setName: "rs",
-        },
-    },
+            setName: "rs"
+        }
+    }
 ]

@@ -3,7 +3,7 @@ description: "Multiple mongoses"
 uri: "mongodb://A,B"
 
 phases: [
-    
+
     {
         responses: [
 
@@ -11,15 +11,15 @@ phases: [
 
                     ok: 1,
                     ismaster: true,
-                    msg: "isdbgrid",
-                },],
+                    msg: "isdbgrid"
+                }],
 
                 ["B:27017", {
-                    
+
                     ok: 1,
                     ismaster: true,
-                    msg: "isdbgrid",
-                },],        
+                    msg: "isdbgrid"
+                }]
         ],
 
         outcome: {
@@ -29,18 +29,18 @@ phases: [
                 "A:27017": {
 
                     type: "Mongos",
-                    setName:,
+                    setName:
                 },
 
                 "B:27017": {
 
                     type: "Mongos",
-                    setName:,
-                },
+                    setName:
+                }
             },
 
             clusterType: "Sharded",
-            setName:,
-        },
-    },
+            setName:
+        }
+    }
 ]

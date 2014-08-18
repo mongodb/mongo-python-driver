@@ -3,7 +3,7 @@ description: "Wrong setName"
 uri: "mongodb://A,B/?replicaSet=rs"
 
 phases: [
-    
+
     {
         responses: [
 
@@ -12,24 +12,24 @@ phases: [
                     ok: 1,
                     ismaster: false,
                     secondary: true,
-                    hosts: ["B:27017", "C:27017",],
-                    setName: "wrong",
-                },],      
+                    hosts: ["B:27017", "C:27017"],
+                    setName: "wrong"
+                }]
         ],
 
         outcome: {
 
             servers: {
-                
+
                 "A:27017": {
 
                     type: "Unknown",
-                    setName:,
-                },
+                    setName:
+                }
             },
 
             clusterType: "ReplicaSetNoPrimary",
-            setName: "rs",
-        },
-    },
+            setName: "rs"
+        }
+    }
 ]

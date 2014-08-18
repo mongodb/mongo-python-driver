@@ -3,18 +3,18 @@ description: "Replica set discovery from secondary"
 uri: "mongodb://B/?replicaSet=rs"
 
 phases: [
-    
+
     {
         responses: [
 
                 ["B:27017", {
-                    
+
                     ok: 1,
                     ismaster: false,
                     secondary: true,
                     setName: "rs",
-                    hosts: ["A:27017", "B:27017",],
-                },],      
+                    hosts: ["A:27017", "B:27017"]
+                }]
         ],
 
         outcome: {
@@ -24,18 +24,18 @@ phases: [
                 "A:27017": {
 
                     type: "Unknown",
-                    setName:,
+                    setName:
                 },
 
                 "B:27017": {
 
                     type: "RSSecondary",
-                    setName: "rs",
-                },
+                    setName: "rs"
+                }
             },
 
             clusterType: "ReplicaSetNoPrimary",
-            setName: "rs",
-        },
-    },
+            setName: "rs"
+        }
+    }
 ]

@@ -3,7 +3,7 @@ description: "Ghost discovered"
 uri: "mongodb://A,B/?replicaSet=rs"
 
 phases: [
-    
+
     {
         responses: [
 
@@ -11,29 +11,29 @@ phases: [
 
                     ok: 1,
                     ismaster: false,
-                    isreplicaset: true,
-                },],      
+                    isreplicaset: true
+                }]
         ],
 
         outcome: {
 
             servers: {
-                
+
                 "A:27017": {
 
                     type: "Unknown",
-                    setName:,
+                    setName:
                 },
 
                 "B:27017": {
 
                     type: "RSGhost",
-                    setName:,
-                },
+                    setName:
+                }
             },
 
             clusterType: "ReplicaSetNoPrimary",
-            setName: "rs",
-        },
-    },
+            setName: "rs"
+        }
+    }
 ]

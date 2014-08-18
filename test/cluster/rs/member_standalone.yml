@@ -3,15 +3,15 @@ description: "Member brought up as standalone"
 uri: "mongodb://A,B"
 
 phases: [
-    
+
     {
         responses: [
 
                 ["B:27017", {
 
                     ok: 1,
-                    ismaster: true,
-                },],     
+                    ismaster: true
+                }]
         ],
 
         outcome: {
@@ -21,25 +21,25 @@ phases: [
                 "A:27017": {
 
                     type: "Unknown",
-                    setName:,
+                    setName:
                 }
             },
 
             clusterType: "Unknown",
-            setName:,
-        },
+            setName:
+        }
     },
 
     {
         responses: [
 
                 ["A:27017", {
-                    
+
                     ok: 1,
                     ismaster: true,
                     setName: "rs",
-                    hosts: ["A:27017",],
-                },],        
+                    hosts: ["A:27017"]
+                }]
         ],
 
         outcome: {
@@ -49,12 +49,12 @@ phases: [
                 "A:27017": {
 
                     type: "RSPrimary",
-                    setName: "rs",
-                },
+                    setName: "rs"
+                }
             },
 
             clusterType: "ReplicaSetWithPrimary",
-            setName: "rs",
-        },
-    },
+            setName: "rs"
+        }
+    }
 ]

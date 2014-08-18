@@ -3,15 +3,15 @@ description: "Connect to standalone"
 uri: "mongodb://A"
 
 phases: [
-    
+
     {
         responses: [
 
                 ["A:27017", {
-                    
+
                     ok: 1,
-                    ismaster: true,
-                },],
+                    ismaster: true
+                }]
         ],
 
         outcome: {
@@ -21,12 +21,12 @@ phases: [
                 "A:27017": {
 
                     type: "Standalone",
-                    setName:,
-                },
+                    setName:
+                }
             },
 
             clusterType: "Single",
-            setName:,        
-        },
-    },
+            setName:
+        }
+    }
 ]
