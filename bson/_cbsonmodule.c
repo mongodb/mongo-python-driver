@@ -1032,7 +1032,7 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
     mapping_type = _get_object(state->Mapping, "collections", "Mapping");
     if (mapping_type && PyObject_IsInstance(value, mapping_type)) {
         Py_DECREF(mapping_type);
-        // PyObject_IsInstance returns -1 on error
+        /* PyObject_IsInstance returns -1 on error */
         if (PyErr_Occurred()) {
             return 0;
         }
@@ -1042,11 +1042,6 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
 
     uuid_type = _get_object(state->UUID, "uuid", "UUID");
     if (uuid_type && PyObject_IsInstance(value, uuid_type)) {
-        Py_DECREF(uuid_type);
-        // PyObject_IsInstance returns -1 on error
-        if (PyErr_Occurred()) {
-            return 0;
-        }
         /* Just a special case of Binary above, but
          * simpler to do as a separate case. */
         PyObject* bytes;
@@ -1055,6 +1050,12 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
         /* UUID is always 16 bytes */
         int size = 16;
         int subtype;
+
+        Py_DECREF(uuid_type);
+        /* PyObject_IsInstance returns -1 on error */
+        if (PyErr_Occurred()) {
+            return 0;
+        }
 
         if (uuid_subtype == JAVA_LEGACY || uuid_subtype == CSHARP_LEGACY) {
             subtype = 3;
@@ -1329,9 +1330,9 @@ int write_dict(PyObject* self, buffer_t buffer,
 
     if (mapping_type) {
         if (!PyObject_IsInstance(dict, mapping_type)) {
+            PyObject* repr;
             Py_DECREF(mapping_type);
-            PyObject* repr = PyObject_Repr(dict);
-            if (repr) {
+            if ((repr = PyObject_Repr(dict))) {
 #if PY_MAJOR_VERSION >= 3
                 PyObject* errmsg = PyUnicode_FromString(
                     "encoder expected a mapping type but got: ");
@@ -1366,7 +1367,7 @@ int write_dict(PyObject* self, buffer_t buffer,
             return 0;
         }
         Py_DECREF(mapping_type);
-        // PyObject_IsInstance returns -1 on error
+        /* PyObject_IsInstance returns -1 on error */
         if (PyErr_Occurred()) {
             return 0;
         }
@@ -1534,7 +1535,7 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
                 PyObject* database;
 
                 collection = PyMapping_GetItemString(value, "$ref");
-                // PyMapping_GetItemString returns NULL to indicate error.
+                /* PyMapping_GetItemString returns NULL to indicate error. */
                 if (!collection) {
                     goto invalid;
                 }
