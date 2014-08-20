@@ -49,18 +49,10 @@ from bson.tz_util import utc
 
 try:
     from bson import _cbson
-    _use_c = True
+    _USE_C = True
 except ImportError:
-    _use_c = False
+    _USE_C = False
 
-
-if PY3:
-    long = int
-
-MAX_INT32 = 2147483647
-MIN_INT32 = -2147483648
-MAX_INT64 = 9223372036854775807
-MIN_INT64 = -9223372036854775808
 
 EPOCH_AWARE = datetime.datetime.fromtimestamp(0, utc)
 EPOCH_NAIVE = datetime.datetime.utcfromtimestamp(0)
@@ -92,6 +84,7 @@ BSONMAX = b"\x7F" # Max key
 
 
 def _get_int(data, position, dummy):
+    """Decode a BSON int32 to python int."""
     try:
         value = struct.unpack("<i", data[position:position + 4])[0]
     except struct.error:
@@ -101,6 +94,7 @@ def _get_int(data, position, dummy):
 
 
 def _get_c_string(data, position, length=None):
+    """Decode a BSON 'C' string to python unicode string."""
     if length is None:
         try:
             end = data.index(ZERO, position)
@@ -112,6 +106,7 @@ def _get_c_string(data, position, length=None):
     position = end + 1
 
     return value, position
+
 
 def _make_c_string_check(string):
     """Make a 'C' string, checking for embedded NUL characters."""
@@ -131,6 +126,7 @@ def _make_c_string_check(string):
                                   "contain a NUL character")
         return string.encode("utf-8") + b"\x00"
 
+
 def _make_c_string(string):
     """Make a 'C' string."""
     if isinstance(string, bytes):
@@ -142,6 +138,7 @@ def _make_c_string(string):
                                     "UTF-8: %r" % string)
     else:
         return string.encode("utf-8") + b"\x00"
+
 
 if PY3:
     def _make_name(string):
@@ -156,13 +153,15 @@ else:
     _make_name = _make_c_string_check
 
 
-def _get_number(data, position, dummy):
+def _get_float(data, position, dummy):
+    """Decode a BSON double to python float."""
     num = struct.unpack("<d", data[position:position + 8])[0]
     position += 8
     return num, position
 
 
 def _get_string(data, position, dummy):
+    """Decode a BSON string to python unicode string."""
     length = struct.unpack("<i", data[position:position + 4])[0]
     if length <= 0 or (len(data) - position - 4) < length:
         raise InvalidBSON("invalid string length")
@@ -173,20 +172,22 @@ def _get_string(data, position, dummy):
 
 
 def _get_object(data, position, opts):
+    """Decode a BSON subdocument to as_class or bson.dbref.DBRef."""
     obj_size = struct.unpack("<i", data[position:position + 4])[0]
     if data[position + obj_size - 1:position + obj_size] != ZERO:
         raise InvalidBSON("bad eoo")
     encoded = data[position + 4:position + obj_size - 1]
-    object = _elements_to_dict(encoded, opts)
+    obj = _elements_to_dict(encoded, opts)
 
     position += obj_size
-    if "$ref" in object:
-        return (DBRef(object.pop("$ref"), object.pop("$id", None),
-                      object.pop("$db", None), object), position)
-    return object, position
+    if "$ref" in obj:
+        return (DBRef(obj.pop("$ref"), obj.pop("$id", None),
+                      obj.pop("$db", None), obj), position)
+    return obj, position
 
 
 def _get_array(data, position, opts):
+    """Decode a BSON array to python list."""
     obj, position = _get_object(data, position, opts)
     result = []
     i = 0
@@ -200,6 +201,7 @@ def _get_array(data, position, opts):
 
 
 def _get_binary(data, position, opts):
+    """Decode a BSON binary to bson.binary.Binary or python UUID."""
     length, position = _get_int(data, position, opts)
     subtype = ord(data[position:position + 1])
     position += 1
@@ -232,35 +234,40 @@ def _get_binary(data, position, opts):
 
 
 def _get_oid(data, position, dummy):
+    """Decode a BSON ObjectId to bson.objectid.ObjectId."""
     value = ObjectId(data[position:position + 12])
     position += 12
     return value, position
 
 
 def _get_boolean(data, position, dummy):
+    """Decode a BSON true/false to python True/False."""
     value = data[position:position + 1] == ONE
     position += 1
     return value, position
 
 
 def _get_date(data, position, opts):
+    """Decode a BSON datetime to python datetime.datetime."""
     millis = struct.unpack("<q", data[position:position + 8])[0]
     diff = millis % 1000
     seconds = (millis - diff) / 1000
     position += 8
     if opts[1]:
-        dt = EPOCH_AWARE + datetime.timedelta(seconds=seconds)
+        dtime = EPOCH_AWARE + datetime.timedelta(seconds=seconds)
     else:
-        dt = EPOCH_NAIVE + datetime.timedelta(seconds=seconds)
-    return dt.replace(microsecond=diff * 1000), position
+        dtime = EPOCH_NAIVE + datetime.timedelta(seconds=seconds)
+    return dtime.replace(microsecond=diff * 1000), position
 
 
 def _get_code(data, position, opts):
+    """Decode a BSON code to bson.code.Code."""
     code, position = _get_string(data, position, opts)
     return Code(code), position
 
 
 def _get_code_w_scope(data, position, opts):
+    """Decode a BSON code_w_scope to bson.code.Code."""
     _, position = _get_int(data, position, opts)
     code, position = _get_string(data, position, opts)
     scope, position = _get_object(data, position, opts)
@@ -268,6 +275,7 @@ def _get_code_w_scope(data, position, opts):
 
 
 def _get_regex(data, position, opts):
+    """Decode a BSON regex to bson.regex.Regex or a python pattern object."""
     pattern, position = _get_c_string(data, position)
     bson_flags, position = _get_c_string(data, position)
     bson_re = Regex(pattern, bson_flags)
@@ -278,26 +286,27 @@ def _get_regex(data, position, opts):
 
 
 def _get_ref(data, position, opts):
+    """Decode (deprecated) BSON DBPointer to bson.dbref.DBRef."""
     collection, position = _get_string(data, position, opts)
     oid, position = _get_oid(data, position, opts)
     return DBRef(collection, oid), position
 
 
 def _get_timestamp(data, position, dummy):
+    """Decode a BSON timestamp to bson.timestamp.Timestamp."""
     inc, timestamp = struct.unpack("<II", data[position:position + 8])
     return Timestamp(timestamp, inc), position + 8
 
 
-def _get_long(data, position, dummy):
-    # Have to cast to long (for python 2.x); on 32-bit unpack may return
-    # an int.
+def _get_int64(data, position, dummy):
+    """Decode a BSON int64 to bson.bsonint64.BSONInt64."""
     value = BSONInt64(struct.unpack("<q", data[position:position + 8])[0])
     position += 8
     return value, position
 
 
-_element_getter = {
-    BSONNUM: _get_number,
+_ELEMENT_GETTER = {
+    BSONNUM: _get_float,
     BSONSTR: _get_string,
     BSONOBJ: _get_object,
     BSONARR: _get_array,
@@ -314,20 +323,22 @@ _element_getter = {
     BSONCWS: _get_code_w_scope,
     BSONINT: _get_int,  # number_int
     BSONTIM: _get_timestamp,
-    BSONLON: _get_long,
+    BSONLON: _get_int64,
     BSONMIN: lambda x, y, z: (MinKey(), y),
     BSONMAX: lambda x, y, z: (MaxKey(), y)}
 
 
 def _element_to_dict(data, position, opts):
+    """Decode a single key, value pair."""
     element_type = data[position:position + 1]
     position += 1
     element_name, position = _get_c_string(data, position)
-    value, position = _element_getter[element_type](data, position, opts)
+    value, position = _ELEMENT_GETTER[element_type](data, position, opts)
     return element_name, value, position
 
 
 def _elements_to_dict(data, opts):
+    """Decode a BSON document."""
     result = opts[0]()
     position = 0
     end = len(data) - 1
@@ -336,7 +347,9 @@ def _elements_to_dict(data, opts):
         result[key] = value
     return result
 
+
 def _bson_to_dict(data, as_class, tz_aware, uuid_subtype, compile_re):
+    """Decode a BSON string to as_class."""
     obj_size = struct.unpack("<i", data[:4])[0]
     length = len(data)
     if length < obj_size:
@@ -348,7 +361,7 @@ def _bson_to_dict(data, as_class, tz_aware, uuid_subtype, compile_re):
                             (as_class, tz_aware, uuid_subtype, compile_re))
 
     return dct, data[obj_size:]
-if _use_c:
+if _USE_C:
     _bson_to_dict = _cbson._bson_to_dict
 
 
@@ -639,7 +652,7 @@ def _dict_to_bson(doc, check_keys, uuid_subtype, top_level=True):
 
     encoded = b"".join(elements)
     return _PACK_INT(len(encoded) + 5) + encoded + b"\x00"
-if _use_c:
+if _USE_C:
     _dict_to_bson = _cbson._dict_to_bson
 
 
@@ -685,11 +698,11 @@ def decode_all(data, as_class=dict,
         raise
     except Exception:
         # Change exception type to InvalidBSON but preserve traceback.
-        exc_type, exc_value, exc_tb = sys.exc_info()
+        _, exc_value, exc_tb = sys.exc_info()
         reraise(InvalidBSON, exc_value, exc_tb)
 
 
-if _use_c:
+if _USE_C:
     decode_all = _cbson.decode_all
 
 
@@ -709,7 +722,7 @@ def is_valid(bson):
     try:
         (_, remainder) = _bson_to_dict(bson, dict, True, OLD_UUID_SUBTYPE, True)
         return remainder == EMPTY
-    except:
+    except Exception:
         return False
 
 
@@ -783,4 +796,4 @@ def has_c():
 
     .. versionadded:: 1.9
     """
-    return _use_c
+    return _USE_C
