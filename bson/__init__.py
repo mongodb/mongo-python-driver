@@ -91,10 +91,9 @@ BSONMIN = b"\xFF" # Min key
 BSONMAX = b"\x7F" # Max key
 
 
-def _get_int(data, position, dummy, unsigned=False):
-    format = unsigned and "I" or "i"
+def _get_int(data, position, dummy):
     try:
-        value = struct.unpack("<%s" % format, data[position:position + 4])[0]
+        value = struct.unpack("<i", data[position:position + 4])[0]
     except struct.error:
         raise InvalidBSON()
     position += 4
@@ -284,10 +283,9 @@ def _get_ref(data, position, opts):
     return DBRef(collection, oid), position
 
 
-def _get_timestamp(data, position, opts):
-    inc, position = _get_int(data, position, opts, unsigned=True)
-    timestamp, position = _get_int(data, position, opts, unsigned=True)
-    return Timestamp(timestamp, inc), position
+def _get_timestamp(data, position, dummy):
+    inc, timestamp = struct.unpack("<II", data[position:position + 8])
+    return Timestamp(timestamp, inc), position + 8
 
 
 def _get_long(data, position, dummy):
