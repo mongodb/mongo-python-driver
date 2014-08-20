@@ -91,9 +91,7 @@ BSONMIN = b"\xFF" # Min key
 BSONMAX = b"\x7F" # Max key
 
 
-def _get_int(data, position, as_class=None,
-             tz_aware=False, uuid_subtype=OLD_UUID_SUBTYPE,
-             compile_re=True, unsigned=False):
+def _get_int(data, position, dummy, unsigned=False):
     format = unsigned and "I" or "i"
     try:
         value = struct.unpack("<%s" % format, data[position:position + 4])[0]
@@ -159,13 +157,13 @@ else:
     _make_name = _make_c_string_check
 
 
-def _get_number(data, position, as_class, tz_aware, uuid_subtype, compile_re):
+def _get_number(data, position, dummy):
     num = struct.unpack("<d", data[position:position + 8])[0]
     position += 8
     return num, position
 
 
-def _get_string(data, position, as_class, tz_aware, uuid_subtype, compile_re):
+def _get_string(data, position, dummy):
     length = struct.unpack("<i", data[position:position + 4])[0]
     if length <= 0 or (len(data) - position - 4) < length:
         raise InvalidBSON("invalid string length")
@@ -175,13 +173,12 @@ def _get_string(data, position, as_class, tz_aware, uuid_subtype, compile_re):
     return _get_c_string(data, position, length - 1)
 
 
-def _get_object(data, position, as_class, tz_aware, uuid_subtype, compile_re):
+def _get_object(data, position, opts):
     obj_size = struct.unpack("<i", data[position:position + 4])[0]
     if data[position + obj_size - 1:position + obj_size] != ZERO:
         raise InvalidBSON("bad eoo")
     encoded = data[position + 4:position + obj_size - 1]
-    object = _elements_to_dict(
-        encoded, as_class, tz_aware, uuid_subtype, compile_re)
+    object = _elements_to_dict(encoded, opts)
 
     position += obj_size
     if "$ref" in object:
@@ -190,9 +187,8 @@ def _get_object(data, position, as_class, tz_aware, uuid_subtype, compile_re):
     return object, position
 
 
-def _get_array(data, position, as_class, tz_aware, uuid_subtype, compile_re):
-    obj, position = _get_object(data, position,
-                                as_class, tz_aware, uuid_subtype, compile_re)
+def _get_array(data, position, opts):
+    obj, position = _get_object(data, position, opts)
     result = []
     i = 0
     while True:
@@ -204,17 +200,18 @@ def _get_array(data, position, as_class, tz_aware, uuid_subtype, compile_re):
     return result, position
 
 
-def _get_binary(data, position, as_class, tz_aware, uuid_subtype, compile_re):
-    length, position = _get_int(data, position)
+def _get_binary(data, position, opts):
+    length, position = _get_int(data, position, opts)
     subtype = ord(data[position:position + 1])
     position += 1
     if subtype == 2:
-        length2, position = _get_int(data, position)
+        length2, position = _get_int(data, position, opts)
         if length2 != length - 4:
             raise InvalidBSON("invalid binary (st 2) - lengths don't match!")
         length = length2
     if subtype in (3, 4):
         # Java Legacy
+        uuid_subtype = opts[2]
         if uuid_subtype == JAVA_LEGACY:
             java = data[position:position + length]
             value = uuid.UUID(bytes=java[0:8][::-1] + java[8:16][::-1])
@@ -235,76 +232,65 @@ def _get_binary(data, position, as_class, tz_aware, uuid_subtype, compile_re):
     return value, position
 
 
-def _get_oid(data, position, as_class=None,
-             tz_aware=False, uuid_subtype=OLD_UUID_SUBTYPE, compile_re=True):
+def _get_oid(data, position, dummy):
     value = ObjectId(data[position:position + 12])
     position += 12
     return value, position
 
 
-def _get_boolean(data, position, as_class, tz_aware, uuid_subtype, compile_re):
+def _get_boolean(data, position, dummy):
     value = data[position:position + 1] == ONE
     position += 1
     return value, position
 
 
-def _get_date(data, position, as_class, tz_aware, uuid_subtype, compile_re):
+def _get_date(data, position, opts):
     millis = struct.unpack("<q", data[position:position + 8])[0]
     diff = millis % 1000
     seconds = (millis - diff) / 1000
     position += 8
-    if tz_aware:
+    if opts[1]:
         dt = EPOCH_AWARE + datetime.timedelta(seconds=seconds)
     else:
         dt = EPOCH_NAIVE + datetime.timedelta(seconds=seconds)
     return dt.replace(microsecond=diff * 1000), position
 
 
-def _get_code(data, position, as_class, tz_aware, uuid_subtype, compile_re):
-    code, position = _get_string(data, position,
-                                 as_class, tz_aware, uuid_subtype, compile_re)
+def _get_code(data, position, opts):
+    code, position = _get_string(data, position, opts)
     return Code(code), position
 
 
-def _get_code_w_scope(
-        data, position, as_class, tz_aware, uuid_subtype, compile_re):
-    _, position = _get_int(data, position)
-    code, position = _get_string(data, position,
-                                 as_class, tz_aware, uuid_subtype, compile_re)
-    scope, position = _get_object(data, position,
-                                  as_class, tz_aware, uuid_subtype, compile_re)
+def _get_code_w_scope(data, position, opts):
+    _, position = _get_int(data, position, opts)
+    code, position = _get_string(data, position, opts)
+    scope, position = _get_object(data, position, opts)
     return Code(code, scope), position
 
 
-def _get_null(data, position, as_class, tz_aware, uuid_subtype, compile_re):
-    return None, position
-
-
-def _get_regex(data, position, as_class, tz_aware, uuid_subtype, compile_re):
+def _get_regex(data, position, opts):
     pattern, position = _get_c_string(data, position)
     bson_flags, position = _get_c_string(data, position)
     bson_re = Regex(pattern, bson_flags)
-    if compile_re:
+    if opts[3]:
         return bson_re.try_compile(), position
     else:
         return bson_re, position
 
 
-def _get_ref(data, position, as_class, tz_aware, uuid_subtype, compile_re):
-    collection, position = _get_string(data, position, as_class, tz_aware,
-                                       uuid_subtype, compile_re)
-    oid, position = _get_oid(data, position)
+def _get_ref(data, position, opts):
+    collection, position = _get_string(data, position, opts)
+    oid, position = _get_oid(data, position, opts)
     return DBRef(collection, oid), position
 
 
-def _get_timestamp(
-        data, position, as_class, tz_aware, uuid_subtype, compile_re):
-    inc, position = _get_int(data, position, unsigned=True)
-    timestamp, position = _get_int(data, position, unsigned=True)
+def _get_timestamp(data, position, opts):
+    inc, position = _get_int(data, position, opts, unsigned=True)
+    timestamp, position = _get_int(data, position, opts, unsigned=True)
     return Timestamp(timestamp, inc), position
 
 
-def _get_long(data, position, as_class, tz_aware, uuid_subtype, compile_re):
+def _get_long(data, position, dummy):
     # Have to cast to long (for python 2.x); on 32-bit unpack may return
     # an int.
     value = BSONInt64(struct.unpack("<q", data[position:position + 8])[0])
@@ -318,11 +304,11 @@ _element_getter = {
     BSONOBJ: _get_object,
     BSONARR: _get_array,
     BSONBIN: _get_binary,
-    BSONUND: _get_null,  # undefined
+    BSONUND: lambda x, y, z: (None, y),  # undefined
     BSONOID: _get_oid,
     BSONBOO: _get_boolean,
     BSONDAT: _get_date,
-    BSONNUL: _get_null,
+    BSONNUL: lambda x, y, z: (None, y),
     BSONRGX: _get_regex,
     BSONREF: _get_ref,
     BSONCOD: _get_code,  # code
@@ -331,28 +317,24 @@ _element_getter = {
     BSONINT: _get_int,  # number_int
     BSONTIM: _get_timestamp,
     BSONLON: _get_long,
-    BSONMIN: lambda u, v, w, x, y, z: (MinKey(), v),
-    BSONMAX: lambda u, v, w, x, y, z: (MaxKey(), v)}
+    BSONMIN: lambda x, y, z: (MinKey(), y),
+    BSONMAX: lambda x, y, z: (MaxKey(), y)}
 
 
-def _element_to_dict(
-        data, position, as_class, tz_aware, uuid_subtype, compile_re):
+def _element_to_dict(data, position, opts):
     element_type = data[position:position + 1]
     position += 1
     element_name, position = _get_c_string(data, position)
-    value, position = _element_getter[element_type](
-        data, position, as_class, tz_aware, uuid_subtype, compile_re)
-
+    value, position = _element_getter[element_type](data, position, opts)
     return element_name, value, position
 
 
-def _elements_to_dict(data, as_class, tz_aware, uuid_subtype, compile_re):
-    result = as_class()
+def _elements_to_dict(data, opts):
+    result = opts[0]()
     position = 0
     end = len(data) - 1
     while position < end:
-        (key, value, position) = _element_to_dict(
-            data, position, as_class, tz_aware, uuid_subtype, compile_re)
+        (key, value, position) = _element_to_dict(data, position, opts)
         result[key] = value
     return result
 
@@ -364,8 +346,8 @@ def _bson_to_dict(data, as_class, tz_aware, uuid_subtype, compile_re):
     if obj_size != length or data[obj_size - 1:obj_size] != ZERO:
         raise InvalidBSON("bad eoo")
     elements = data[4:obj_size - 1]
-    dct = _elements_to_dict(
-        elements, as_class, tz_aware, uuid_subtype, compile_re)
+    dct = _elements_to_dict(elements,
+                            (as_class, tz_aware, uuid_subtype, compile_re))
 
     return dct, data[obj_size:]
 if _use_c:
@@ -698,8 +680,8 @@ def decode_all(data, as_class=dict,
                 raise InvalidBSON("bad eoo")
             elements = data[position + 4:position + obj_size - 1]
             position += obj_size
-            docs.append(_elements_to_dict(elements, as_class,
-                                          tz_aware, uuid_subtype, compile_re))
+            docs.append(_elements_to_dict(elements,
+                (as_class, tz_aware, uuid_subtype, compile_re)))
         return docs
     except InvalidBSON:
         raise
