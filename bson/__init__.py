@@ -108,51 +108,6 @@ def _get_c_string(data, position, length=None):
     return value, position
 
 
-def _make_c_string_check(string):
-    """Make a 'C' string, checking for embedded NUL characters."""
-    if isinstance(string, bytes):
-        if b"\x00" in string:
-            raise InvalidDocument("BSON keys / regex patterns must not "
-                                  "contain a NUL character")
-        try:
-            string.decode("utf-8")
-            return string + b"\x00"
-        except UnicodeError:
-            raise InvalidStringData("strings in documents must be valid "
-                                    "UTF-8: %r" % string)
-    else:
-        if "\x00" in string:
-            raise InvalidDocument("BSON keys / regex patterns must not "
-                                  "contain a NUL character")
-        return string.encode("utf-8") + b"\x00"
-
-
-def _make_c_string(string):
-    """Make a 'C' string."""
-    if isinstance(string, bytes):
-        try:
-            string.decode("utf-8")
-            return string + b"\x00"
-        except UnicodeError:
-            raise InvalidStringData("strings in documents must be valid "
-                                    "UTF-8: %r" % string)
-    else:
-        return string.encode("utf-8") + b"\x00"
-
-
-if PY3:
-    def _make_name(string):
-        """Make a 'C' string suitable for a BSON key."""
-        # Keys can only be text in python 3.
-        if "\x00" in string:
-            raise InvalidDocument("BSON keys / regex patterns must not "
-                                  "contain a NUL character")
-        return string.encode("utf-8") + b"\x00"
-else:
-    # Keys can be unicode or bytes in python 2.
-    _make_name = _make_c_string_check
-
-
 def _get_float(data, position, dummy):
     """Decode a BSON double to python float."""
     num = struct.unpack("<d", data[position:position + 8])[0]
@@ -386,6 +341,51 @@ def gen_list_name():
     counter = itertools.count(1000)
     while True:
         yield b(str(next(counter))) + b"\x00"
+
+
+def _make_c_string_check(string):
+    """Make a 'C' string, checking for embedded NUL characters."""
+    if isinstance(string, bytes):
+        if b"\x00" in string:
+            raise InvalidDocument("BSON keys / regex patterns must not "
+                                  "contain a NUL character")
+        try:
+            string.decode("utf-8")
+            return string + b"\x00"
+        except UnicodeError:
+            raise InvalidStringData("strings in documents must be valid "
+                                    "UTF-8: %r" % string)
+    else:
+        if "\x00" in string:
+            raise InvalidDocument("BSON keys / regex patterns must not "
+                                  "contain a NUL character")
+        return string.encode("utf-8") + b"\x00"
+
+
+def _make_c_string(string):
+    """Make a 'C' string."""
+    if isinstance(string, bytes):
+        try:
+            string.decode("utf-8")
+            return string + b"\x00"
+        except UnicodeError:
+            raise InvalidStringData("strings in documents must be valid "
+                                    "UTF-8: %r" % string)
+    else:
+        return string.encode("utf-8") + b"\x00"
+
+
+if PY3:
+    def _make_name(string):
+        """Make a 'C' string suitable for a BSON key."""
+        # Keys can only be text in python 3.
+        if "\x00" in string:
+            raise InvalidDocument("BSON keys / regex patterns must not "
+                                  "contain a NUL character")
+        return string.encode("utf-8") + b"\x00"
+else:
+    # Keys can be unicode or bytes in python 2.
+    _make_name = _make_c_string_check
 
 
 def _encode_float(name, value, dummy0, dummy1):
