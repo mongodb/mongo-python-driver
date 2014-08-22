@@ -481,6 +481,7 @@ class TestCollection(IntegrationTest):
         db.test.insert({'i': 2})  # duplicate
         db.test.insert({'i': 3})
 
+    @client_context.require_version_max(2, 6)
     def test_index_drop_dups(self):
         # Try dropping duplicates
         db = self.db
