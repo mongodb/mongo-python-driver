@@ -208,13 +208,15 @@ def _get_date(data, position, opts):
     """Decode a BSON datetime to python datetime.datetime."""
     end = position + 8
     millis = _UNPACK_LONG(data[position:end])[0]
-    diff = millis % 1000
+    diff = ((millis % 1000) + 1000) % 1000
     seconds = (millis - diff) / 1000
+    micros = diff * 1000
     if opts[1]:
-        dtime = EPOCH_AWARE + datetime.timedelta(seconds=seconds)
+        return EPOCH_AWARE + datetime.timedelta(
+            seconds=seconds, microseconds=micros), end
     else:
-        dtime = EPOCH_NAIVE + datetime.timedelta(seconds=seconds)
-    return dtime.replace(microsecond=diff * 1000), end
+        return EPOCH_NAIVE + datetime.timedelta(
+            seconds=seconds, microseconds=micros), end
 
 
 def _get_code(data, position, opts):
