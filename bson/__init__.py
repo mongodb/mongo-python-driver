@@ -59,7 +59,6 @@ except ImportError:
 EPOCH_AWARE = datetime.datetime.fromtimestamp(0, utc)
 EPOCH_NAIVE = datetime.datetime.utcfromtimestamp(0)
 
-EMPTY = b""
 
 BSONNUM = b"\x01" # Floating point
 BSONSTR = b"\x02" # UTF-8 string

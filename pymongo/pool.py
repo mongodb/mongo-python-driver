@@ -20,7 +20,6 @@ import time
 import threading
 import weakref
 
-from bson import EMPTY
 from pymongo import thread_util
 from pymongo.errors import ConnectionFailure
 
@@ -186,10 +185,10 @@ class SocketInfo(object):
             raise
 
     def __receive_data_on_socket(self, length):
-        message = EMPTY
+        message = b""
         while length:
             chunk = self.sock.recv(length)
-            if chunk == EMPTY:
+            if chunk == b"":
                 raise ConnectionFailure("connection closed")
 
             length -= len(chunk)
