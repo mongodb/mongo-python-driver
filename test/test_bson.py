@@ -91,8 +91,12 @@ class TestBSON(unittest.TestCase):
 
     def check_encode_then_decode(self, doc_class=dict):
 
-        def helper(dict):
-            self.assertEqual(dict, (BSON.encode(doc_class(dict))).decode())
+        # Work around http://bugs.jython.org/issue1728
+        if sys.platform.startswith('java'):
+            doc_class = SON
+
+        def helper(doc):
+            self.assertEqual(doc, (BSON.encode(doc_class(doc))).decode())
         helper({})
         helper({"test": u("hello")})
         self.assertTrue(isinstance(BSON.encode({"hello": "world"})
