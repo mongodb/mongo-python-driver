@@ -2258,10 +2258,6 @@ static PyObject* _cbson_bson_to_dict(PyObject* self, PyObject* args) {
     unsigned char uuid_subtype;
     unsigned char compile_re;
 
-    PyObject* dict;
-    PyObject* remainder;
-    PyObject* result;
-
     if (!PyArg_ParseTuple(
             args, "OObbb", &bson, &as_class, &tz_aware, &uuid_subtype, &compile_re)) {
         return NULL;
@@ -2328,24 +2324,8 @@ static PyObject* _cbson_bson_to_dict(PyObject* self, PyObject* args) {
         return NULL;
     }
 
-    dict = elements_to_dict(self, string + 4, (unsigned)size - 5,
+    return elements_to_dict(self, string + 4, (unsigned)size - 5,
                             as_class, tz_aware, uuid_subtype, compile_re);
-    if (!dict) {
-        return NULL;
-    }
-#if PY_MAJOR_VERSION >= 3
-    remainder = PyBytes_FromStringAndSize(string + size, total_size - size);
-#else
-    remainder = PyString_FromStringAndSize(string + size, total_size - size);
-#endif
-    if (!remainder) {
-        Py_DECREF(dict);
-        return NULL;
-    }
-    result = Py_BuildValue("OO", dict, remainder);
-    Py_DECREF(dict);
-    Py_DECREF(remainder);
-    return result;
 }
 
 static PyObject* _cbson_decode_all(PyObject* self, PyObject* args) {

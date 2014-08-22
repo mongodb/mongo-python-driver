@@ -317,16 +317,14 @@ def _bson_to_dict(data, as_class, tz_aware, uuid_subtype, compile_re):
     # TODO - Eliminate this copy.
     elements = data[4:obj_size - 1]
     try:
-        dct = _elements_to_dict(elements,
-                                (as_class, tz_aware, uuid_subtype, compile_re))
+        return _elements_to_dict(
+            elements, (as_class, tz_aware, uuid_subtype, compile_re))
     except InvalidBSON:
         raise
     except Exception:
         # Change exception type to InvalidBSON but preserve traceback.
         _, exc_value, exc_tb = sys.exc_info()
         reraise(InvalidBSON, exc_value, exc_tb)
-    # TODO - Get rid of the second return value here and in the _cbson.
-    return dct, None
 if _USE_C:
     _bson_to_dict = _cbson._bson_to_dict
 
@@ -797,10 +795,8 @@ class BSON(bytes):
            Added ``compile_re`` option.
         .. versionadded:: 1.9
         """
-        (document, _) = _bson_to_dict(
+        return _bson_to_dict(
             self, as_class, tz_aware, uuid_subtype, compile_re)
-
-        return document
 
 
 def has_c():
