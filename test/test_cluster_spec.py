@@ -84,8 +84,9 @@ class MockMonitor(object):
 
 
 def create_mock_cluster(uri, monitor_class=MockMonitor):
-
-    parsed_uri = parse_uri(uri)
+    # Some tests in the spec include URIs like mongodb://A/?connect=direct,
+    # but PyMongo considers any single-seed URI with no setName to be "direct".
+    parsed_uri = parse_uri(uri.replace('connect=direct', ''))
     set_name = None
     if 'replicaset' in parsed_uri['options']:
         set_name = parsed_uri['options']['replicaset']
@@ -133,7 +134,15 @@ def check_outcome(self, cluster, outcome):
         self.assertTrue(cluster.has_server(node))
         actual_server_description = cluster.get_server_by_address(node).description
 
-        expected_server_type = getattr(SERVER_TYPE, expected_server['type'])
+        if expected_server['type'] == 'PossiblePrimary':
+            # Special case, some tests in the spec include the PossiblePrimary
+            # type, but only single-threaded drivers need that type. We call
+            # possible primaries Unknown.
+            expected_server_type = SERVER_TYPE.Unknown
+        else:
+            expected_server_type = getattr(
+                SERVER_TYPE, expected_server['type'])
+
         self.assertEqual(expected_server_type, actual_server_description.server_type)
         self.assertEqual(expected_server['setName'], actual_server_description.set_name)
 

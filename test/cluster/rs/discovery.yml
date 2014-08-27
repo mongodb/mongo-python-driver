@@ -85,7 +85,7 @@ phases: [
 
                 "D:27017": {
 
-                    type: "Unknown",
+                    type: "PossiblePrimary",
                     setName:
                 }
             },
