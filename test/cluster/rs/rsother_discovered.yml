@@ -1,0 +1,41 @@
+description: "RSOther discovered"
+
+uri: "mongodb://A,B/?replicaSet=rs"
+
+phases: [
+
+    {
+        responses: [
+
+                ["B:27017", {
+
+                    ok: 1,
+                    ismaster: false,
+                    secondary: false,
+                    hosts: ["A:27017", "B:27017"],
+                    setName: "rs"
+                }]
+        ],
+
+        outcome: {
+
+            servers: {
+
+                "A:27017": {
+
+                    type: "Unknown",
+                    setName:
+                },
+
+                "B:27017": {
+
+                    type: "RSOther",
+                    setName: "rs"
+                }
+            },
+
+            clusterType: "ReplicaSetNoPrimary",
+            setName: "rs"
+        }
+    }
+]

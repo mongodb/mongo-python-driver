@@ -164,7 +164,7 @@ def updated_cluster_description(cluster_description, server_description):
             cluster_type = _check_has_primary(sds)
 
         elif server_type == SERVER_TYPE.RSPrimary:
-            cluster_type = _update_rs_from_primary(
+            cluster_type, set_name = _update_rs_from_primary(
                 sds, set_name, server_description)
 
         elif server_type in (

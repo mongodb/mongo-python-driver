@@ -1,0 +1,56 @@
+description: "Disconnected from primary"
+
+uri: "mongodb://A/?replicaSet=rs"
+
+phases: [
+
+    {
+        responses: [
+
+                ["A:27017", {
+
+                    ok: 1,
+                    ismaster: true,
+                    hosts: ["A"],
+                    setName: "rs"
+                }]
+        ],
+
+        outcome: {
+
+            servers: {
+
+                "A:27017": {
+
+                    type: "RSPrimary",
+                    setName: "rs"
+                }
+            },
+
+            clusterType: "ReplicaSetWithPrimary",
+            setName: "rs"
+        }
+    },
+
+    {
+        responses: [
+
+                ["A:27017", {}]
+        ],
+
+        outcome: {
+
+            servers: {
+
+                "A:27017": {
+
+                    type: "Unknown",
+                    setName:
+                }
+            },
+
+            clusterType: "ReplicaSetNoPrimary",
+            setName: "rs"
+        }
+    }
+]

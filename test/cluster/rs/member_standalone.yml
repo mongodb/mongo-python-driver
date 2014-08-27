@@ -1,0 +1,60 @@
+description: "Member brought up as standalone"
+
+uri: "mongodb://A,B"
+
+phases: [
+
+    {
+        responses: [
+
+                ["B:27017", {
+
+                    ok: 1,
+                    ismaster: true
+                }]
+        ],
+
+        outcome: {
+
+            servers: {
+
+                "A:27017": {
+
+                    type: "Unknown",
+                    setName:
+                }
+            },
+
+            clusterType: "Unknown",
+            setName:
+        }
+    },
+
+    {
+        responses: [
+
+                ["A:27017", {
+
+                    ok: 1,
+                    ismaster: true,
+                    setName: "rs",
+                    hosts: ["A:27017"]
+                }]
+        ],
+
+        outcome: {
+
+            servers: {
+
+                "A:27017": {
+
+                    type: "RSPrimary",
+                    setName: "rs"
+                }
+            },
+
+            clusterType: "ReplicaSetWithPrimary",
+            setName: "rs"
+        }
+    }
+]

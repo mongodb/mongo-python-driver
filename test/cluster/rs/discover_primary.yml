@@ -1,0 +1,40 @@
+description: "Replica set discovery from primary"
+
+uri: "mongodb://A/?replicaSet=rs"
+
+phases: [
+
+    {
+        responses: [
+
+                ["A:27017", {
+
+                    ok: 1,
+                    ismaster: true,
+                    setName: "rs",
+                    hosts: ["A:27017", "B:27017"]
+                }]
+        ],
+
+        outcome: {
+
+            servers: {
+
+                "A:27017": {
+
+                    type: "RSPrimary",
+                    setName: "rs"
+                },
+
+                "B:27017": {
+
+                    type: "Unknown",
+                    setName:
+                }
+            },
+
+            clusterType: "ReplicaSetWithPrimary",
+            setName: "rs"
+        }
+    }
+]
