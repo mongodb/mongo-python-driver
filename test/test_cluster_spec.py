@@ -16,29 +16,26 @@
 
 import os
 import sys
+import threading
+
 import yaml
 
 sys.path[0:0] = [""]
 
-import socket
-import threading
-
-from bson.py3compat import imap
 from pymongo import common
 from pymongo.cluster import Cluster
 from pymongo.cluster_description import CLUSTER_TYPE
-from pymongo.errors import (ConfigurationError,
-                            ConnectionFailure,
-                            InvalidOperation)
 from pymongo.ismaster import IsMaster
-from pymongo.monitor import Monitor
 from pymongo.read_preferences import MovingAverage
 from pymongo.server_description import ServerDescription, SERVER_TYPE
-from pymongo.server_selectors import (any_server_selector,
-                                      writable_server_selector)
 from pymongo.settings import ClusterSettings
 from pymongo.uri_parser import parse_uri
 from test import unittest
+
+
+# Location of JSON test specifications.
+_TEST_PATH = os.path.join(
+    os.path.dirname(os.path.realpath(__file__)), 'cluster')
 
 
 class MockSocketInfo(object):
@@ -125,14 +122,17 @@ def check_outcome(self, cluster, outcome):
     expected_servers = outcome['servers']
 
     # Check weak equality before proceeding.
-    self.assertTrue(len(cluster.description.server_descriptions()) == len(expected_servers))
+    self.assertEqual(
+        len(cluster.description.server_descriptions()),
+        len(expected_servers))
 
-    # Since lengths are equal, every actual server must
-    # have a corresponding expected server
-    for expected_server_address, expected_server in expected_servers.iteritems():
+    # Since lengths are equal, every actual server must have a corresponding
+    # expected server.
+    for expected_server_address, expected_server in expected_servers.items():
         node = common.partition_node(expected_server_address)
         self.assertTrue(cluster.has_server(node))
-        actual_server_description = cluster.get_server_by_address(node).description
+        actual_server = cluster.get_server_by_address(node)
+        actual_server_description = actual_server.description
 
         if expected_server['type'] == 'PossiblePrimary':
             # Special case, some tests in the spec include the PossiblePrimary
@@ -143,8 +143,13 @@ def check_outcome(self, cluster, outcome):
             expected_server_type = getattr(
                 SERVER_TYPE, expected_server['type'])
 
-        self.assertEqual(expected_server_type, actual_server_description.server_type)
-        self.assertEqual(expected_server['setName'], actual_server_description.set_name)
+        self.assertEqual(
+            expected_server_type,
+            actual_server_description.server_type)
+
+        self.assertEqual(
+            expected_server['setName'],
+            actual_server_description.set_name)
 
     self.assertEqual(outcome['setName'], cluster.description.set_name)
     expected_cluster_type = getattr(CLUSTER_TYPE, outcome['clusterType'])
@@ -153,14 +158,13 @@ def check_outcome(self, cluster, outcome):
 
 def create_test(scenario_def):
     def run_scenario(self):
-
         c = create_mock_cluster(scenario_def['uri'])
         
         for phase in scenario_def['phases']:
-
             for response in phase['responses']:
-                address = response[0].split(':')
-                got_ismaster(c, common.partition_node(response[0]), response[1])
+                got_ismaster(c,
+                             common.partition_node(response[0]),
+                             response[1])
 
             check_outcome(self, c, phase['outcome'])
 
@@ -168,18 +172,18 @@ def create_test(scenario_def):
 
 
 def create_tests():
-    for dirpath, _, filenames in os.walk('./test/cluster'):
-
+    for dirpath, _, filenames in os.walk(_TEST_PATH):
         dirname = os.path.split(dirpath)[-1]
 
         for filename in filenames:
-
             with open(os.path.join(dirpath, filename)) as scenario_stream:
                 scenario_def = yaml.load(scenario_stream)
 
-            # Construct test from scenario
+            # Construct test from scenario.
             new_test = create_test(scenario_def)
-            test_name = 'test_{0}_{1}'.format(dirname, os.path.splitext(filename)[0])
+            test_name = 'test_%s_%s' % (
+                dirname, os.path.splitext(filename)[0])
+
             new_test.__name__ = test_name
             setattr(TestAllScenarios, new_test.__name__, new_test)
 
