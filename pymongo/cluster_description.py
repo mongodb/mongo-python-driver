@@ -218,7 +218,6 @@ def _update_rs_from_primary(sds, set_name, server_description):
 
     Returns (new cluster type, new set_name).
     """
-    cluster_type = CLUSTER_TYPE.ReplicaSetWithPrimary
     if set_name is None:
         set_name = server_description.set_name
 
@@ -249,7 +248,9 @@ def _update_rs_from_primary(sds, set_name, server_description):
     for addr in set(sds) - server_description.all_hosts:
         sds.pop(addr)
 
-    return cluster_type, set_name
+    # If the host list differs from the seed list, we may not have a primary
+    # after all.
+    return _check_has_primary(sds), set_name
 
 
 def _update_rs_with_primary_from_member(sds, set_name, server_description):
