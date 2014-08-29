@@ -50,6 +50,34 @@ db_user = _unicode(os.environ.get("DB_USER", "user"))
 db_pwd = _unicode(os.environ.get("DB_PASSWORD", "password"))
 
 
+class client_knobs(object):
+    def __init__(self, heartbeat_frequency=None, server_wait_time=None):
+        self.heartbeat_frequency = heartbeat_frequency
+        self.server_wait_time = server_wait_time
+
+        self.old_heartbeat_frequency = None
+        self.old_server_wait_time = None
+
+    def enable(self):
+        self.old_heartbeat_frequency = common.HEARTBEAT_FREQUENCY
+        self.old_server_wait_time = common.SERVER_WAIT_TIME
+        if self.heartbeat_frequency is not None:
+            common.HEARTBEAT_FREQUENCY = self.heartbeat_frequency
+
+        if self.server_wait_time is not None:
+            common.SERVER_WAIT_TIME = self.server_wait_time
+
+    def __enter__(self):
+        self.enable()
+
+    def disable(self):
+        common.HEARTBEAT_FREQUENCY = self.old_heartbeat_frequency
+        common.SERVER_WAIT_TIME = self.old_server_wait_time
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.disable()
+
+
 class ClientContext(object):
 
     def __init__(self):
@@ -65,8 +93,10 @@ class ClientContext(object):
         self.test_commands_enabled = False
         self.is_mongos = False
         try:
-            client = pymongo.MongoClient(host, port)
-            client.admin.command('ismaster')  # Can we connect?
+            with client_knobs(server_wait_time=0.1):
+                client = pymongo.MongoClient(host, port)
+                client.admin.command('ismaster')  # Can we connect?
+
             self.client = client
         except pymongo.errors.ConnectionFailure:
             self.client = None
@@ -212,34 +242,6 @@ class IntegrationTest(unittest.TestCase):
     @client_context.require_connection
     def setUpClass(cls):
         pass
-
-
-class client_knobs(object):
-    def __init__(self, heartbeat_frequency=None, server_wait_time=None):
-        self.heartbeat_frequency = heartbeat_frequency
-        self.server_wait_time = server_wait_time
-
-        self.old_heartbeat_frequency = None
-        self.old_server_wait_time = None
-
-    def enable(self):
-        self.old_heartbeat_frequency = common.HEARTBEAT_FREQUENCY
-        self.old_server_wait_time = common.SERVER_WAIT_TIME
-        if self.heartbeat_frequency is not None:
-            common.HEARTBEAT_FREQUENCY = self.heartbeat_frequency
-
-        if self.server_wait_time is not None:
-            common.SERVER_WAIT_TIME = self.server_wait_time
-
-    def __enter__(self):
-        self.enable()
-
-    def disable(self):
-        common.HEARTBEAT_FREQUENCY = self.old_heartbeat_frequency
-        common.SERVER_WAIT_TIME = self.old_server_wait_time
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.disable()
 
 
 class MockClientTest(unittest.TestCase):
