@@ -415,6 +415,13 @@ else:
         return b"\x02" + name + _PACK_INT(len(value) + 1) + value + b"\x00"
 
 
+def _encode_mapping(name, value, check_keys, uuid_subtype):
+    """Encode a mapping type."""
+    data = b"".join([_element_to_bson(key, val, check_keys, uuid_subtype)
+                     for key, val in iteritems(value)])
+    return b"\x03" + name + _PACK_INT(len(data) + 5) + data + b"\x00"
+
+
 def _encode_dbref(name, value, check_keys, uuid_subtype):
     """Encode bson.dbref.DBRef."""
     buf = bytearray(b"\x03" + name + b"\x00\x00\x00\x00")
@@ -577,14 +584,18 @@ _ENCODERS = {
     bool: _encode_bool,
     bytes: _encode_bytes,
     datetime.datetime: _encode_datetime,
+    dict: _encode_mapping,
     float: _encode_float,
     int: _encode_int,
     list: _encode_list,
     tuple: _encode_list,
     type(None): _encode_none,
     RE_TYPE: _encode_regex,
+    SON: _encode_mapping,
     text_type: _encode_text,
-    uuid.UUID: _encode_uuid
+    uuid.UUID: _encode_uuid,
+    # Special case. This will never be looked up directly.
+    collections.Mapping: _encode_mapping,
 }
 
 
@@ -613,15 +624,12 @@ def _name_value_to_bson(name, value, check_keys, uuid_subtype):
     if isinstance(marker, int) and marker in _MARKERS:
         return _MARKERS.get(marker)(name, value, check_keys, uuid_subtype)
 
-    # Assume dict is the most likely type to be subclassed.
-    if isinstance(value, collections.Mapping):
-        data = b"".join([_element_to_bson(key, val, check_keys, uuid_subtype)
-                         for key, val in iteritems(value)])
-        return b"\x03" + name + _PACK_INT(len(data) + 5) + data + b"\x00"
-
     for base in _ENCODERS:
         if isinstance(value, base):
-            return _ENCODERS[base](name, value, check_keys, uuid_subtype)
+            func = _ENCODERS[base]
+            # Cache this type for faster subsequent lookup.
+            _ENCODERS[type(value)] = func
+            return func(name, value, check_keys, uuid_subtype)
 
     raise InvalidDocument("cannot convert value of type %s to bson" %
                           type(value))
