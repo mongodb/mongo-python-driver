@@ -37,7 +37,7 @@ from pymongo.errors import (ConfigurationError,
                             ConnectionFailure,
                             OperationFailure)
 from pymongo.ssl_support import HAVE_SSL
-from test import host, pair, port, SkipTest, unittest
+from test import host, pair, port, SkipTest, unittest, client_knobs
 from test.utils import server_started_with_auth, remove_all_users, connected
 from test.version import Version
 
@@ -86,7 +86,9 @@ if HAVE_SSL:
 
     # Is MongoDB configured for SSL?
     try:
-        connected(MongoClient(host, port, connectTimeoutMS=100, ssl=True))
+        with client_knobs(server_wait_time=0.1):
+            connected(MongoClient(host, port, ssl=True))
+
         SIMPLE_SSL = True
     except ConnectionFailure:
         pass
@@ -94,8 +96,10 @@ if HAVE_SSL:
     # Is MongoDB configured with server.pem, ca.pem, and crl.pem from
     # mongodb jstests/lib?
     try:
-        ssl_client = connected(MongoClient(host, port, connectTimeoutMS=100,
-                                           ssl=True, ssl_certfile=CLIENT_PEM))
+        with client_knobs(server_wait_time=0.1):
+            ssl_client = connected(MongoClient(
+                host, port, ssl=True, ssl_certfile=CLIENT_PEM))
+
         CERT_SSL = True
     except ConnectionFailure:
         pass
