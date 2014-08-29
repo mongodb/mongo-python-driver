@@ -19,12 +19,7 @@
 import binascii
 import calendar
 import datetime
-try:
-    import hashlib
-    _md5func = hashlib.md5
-except ImportError:  # for Python < 2.5
-    import md5
-    _md5func = md5.new
+import hashlib
 import os
 import random
 import socket
@@ -33,16 +28,14 @@ import threading
 import time
 
 from bson.errors import InvalidId
-from bson.py3compat import PY3, bytes_from_hex, text_type
+from bson.py3compat import PY3, bytes_from_hex, string_type, text_type
 from bson.tz_util import utc
 
-EMPTY = b""
-ZERO  = b"\x00"
 
 def _machine_bytes():
     """Get the machine portion of an ObjectId.
     """
-    machine_hash = _md5func()
+    machine_hash = hashlib.md5()
     if PY3:
         # gethostname() returns a unicode string in python 3.x
         # while update() requires a byte string.
@@ -87,6 +80,8 @@ class ObjectId(object):
         """
         if oid is None:
             self.__generate()
+        elif isinstance(oid, bytes) and len(oid) == 12:
+            self.__id = oid
         else:
             self.__validate(oid)
 
@@ -126,8 +121,9 @@ class ObjectId(object):
         """
         if generation_time.utcoffset() is not None:
             generation_time = generation_time - generation_time.utcoffset()
-        ts = calendar.timegm(generation_time.timetuple())
-        oid = struct.pack(">i", int(ts)) + ZERO * 8
+        timestamp = calendar.timegm(generation_time.timetuple())
+        oid = struct.pack(
+            ">i", int(timestamp)) + b"\x00\x00\x00\x00\x00\x00\x00\x00"
         return cls(oid)
 
     @classmethod
@@ -151,10 +147,9 @@ class ObjectId(object):
     def __generate(self):
         """Generate a new value for this ObjectId.
         """
-        oid = EMPTY
 
         # 4 bytes current time
-        oid += struct.pack(">i", int(time.time()))
+        oid = struct.pack(">i", int(time.time()))
 
         # 3 bytes machine
         oid += ObjectId._machine_bytes
@@ -182,14 +177,10 @@ class ObjectId(object):
           - `oid`: a valid ObjectId
         """
         if isinstance(oid, ObjectId):
-            self.__id = oid.__id
-        elif isinstance(oid, (bytes, text_type)):
-            if len(oid) == 12:
-                if isinstance(oid, bytes):
-                    self.__id = oid
-                else:
-                    raise InvalidId("%s is not a valid ObjectId" % oid)
-            elif len(oid) == 24:
+            self.__id = oid.binary
+        # bytes or unicode in python 2, str in python 3
+        elif isinstance(oid, string_type):
+            if len(oid) == 24:
                 try:
                     self.__id = bytes_from_hex(oid)
                 except (TypeError, ValueError):
@@ -220,8 +211,8 @@ class ObjectId(object):
 
         .. versionadded:: 1.2
         """
-        t = struct.unpack(">i", self.__id[0:4])[0]
-        return datetime.datetime.fromtimestamp(t, utc)
+        timestamp = struct.unpack(">i", self.__id[0:4])[0]
+        return datetime.datetime.fromtimestamp(timestamp, utc)
 
     def __getstate__(self):
         """return value of object for pickling.
@@ -256,32 +247,32 @@ class ObjectId(object):
 
     def __eq__(self, other):
         if isinstance(other, ObjectId):
-            return self.__id == other.__id
+            return self.__id == other.binary
         return NotImplemented
 
     def __ne__(self, other):
         if isinstance(other, ObjectId):
-            return self.__id != other.__id
+            return self.__id != other.binary
         return NotImplemented
 
     def __lt__(self, other):
         if isinstance(other, ObjectId):
-            return self.__id < other.__id
+            return self.__id < other.binary
         return NotImplemented
 
     def __le__(self, other):
         if isinstance(other, ObjectId):
-            return self.__id <= other.__id
+            return self.__id <= other.binary
         return NotImplemented
 
     def __gt__(self, other):
         if isinstance(other, ObjectId):
-            return self.__id > other.__id
+            return self.__id > other.binary
         return NotImplemented
 
     def __ge__(self, other):
         if isinstance(other, ObjectId):
-            return self.__id >= other.__id
+            return self.__id >= other.binary
         return NotImplemented
 
     def __hash__(self):
