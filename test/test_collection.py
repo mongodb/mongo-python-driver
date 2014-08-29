@@ -498,6 +498,8 @@ class TestCollection(unittest.TestCase):
         db.test.insert({'i': 3})
 
     def test_index_drop_dups(self):
+        if version.at_least(self.client, (2, 7)):
+            raise SkipTest("dropDups no longer supported in MongoDB >=2.7.")
         # Try dropping duplicates
         db = self.db
         self._drop_dups_setup(db)
