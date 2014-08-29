@@ -978,8 +978,6 @@ class Collection(common.BaseObject):
           - `name`: custom name to use for this index - if none is
             given, a name will be generated
           - `unique`: if ``True`` creates a uniqueness constraint on the index
-          - `dropDups` or `drop_dups`: if ``True`` duplicate values are dropped
-            during index creation when creating a unique index
           - `background`: if ``True`` this index should be created in the
             background
           - `sparse`: if ``True``, omit from the index any documents that lack
@@ -995,6 +993,14 @@ class Collection(common.BaseObject):
             collection. MongoDB will automatically delete documents from
             this collection after <int> seconds. The indexed field must
             be a UTC datetime or the data will not expire.
+          - `dropDups` or `drop_dups` (**deprecated**): if ``True`` duplicate
+            values are dropped during index creation when creating a unique
+            index
+
+        .. warning:: `dropDups` / `drop_dups` is no longer supported by
+          MongoDB starting with server version 2.7.5. The option is silently
+          ignored by the server and unique index builds using the option will
+          fail if a duplicate value is detected.
 
         .. note:: `expireAfterSeconds` requires server version **>= 2.1.2**
 
@@ -1108,8 +1114,6 @@ class Collection(common.BaseObject):
           - `name`: custom name to use for this index - if none is
             given, a name will be generated
           - `unique`: if ``True`` creates a uniqueness constraint on the index
-          - `dropDups` or `drop_dups`: if ``True`` duplicate values are dropped
-            during index creation when creating a unique index
           - `background`: if ``True`` this index should be created in the
             background
           - `sparse`: if ``True``, omit from the index any documents that lack
@@ -1125,6 +1129,14 @@ class Collection(common.BaseObject):
             collection. MongoDB will automatically delete documents from
             this collection after <int> seconds. The indexed field must
             be a UTC datetime or the data will not expire.
+          - `dropDups` or `drop_dups` (**deprecated**): if ``True`` duplicate
+            values are dropped during index creation when creating a unique
+            index
+
+        .. warning:: `dropDups` / `drop_dups` is no longer supported by
+          MongoDB starting with server version 2.7.5. The option is silently
+          ignored by the server and unique index builds using the option will
+          fail if a duplicate value is detected.
 
         .. note:: `expireAfterSeconds` requires server version **>= 2.1.2**
 
