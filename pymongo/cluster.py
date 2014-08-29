@@ -51,8 +51,7 @@ class Cluster(object):
         with self._lock:
             self._ensure_opened()
 
-    def select_servers(self, selector,
-                       server_wait_time=common.SERVER_WAIT_TIME):
+    def select_servers(self, selector, server_wait_time=None):
         """Return a list of Servers matching selector, or time out.
 
         :Parameters:
@@ -64,17 +63,22 @@ class Cluster(object):
         Raises exc:`AutoReconnect` after `server_wait_time` if no
         matching servers are found.
         """
+        if server_wait_time is None:
+            wait_time = common.SERVER_WAIT_TIME
+        else:
+            wait_time = server_wait_time
+
         with self._lock:
             self._description.check_compatible()
 
             # TODO: use monotonic time if available.
             now = time.time()
-            end_time = now + server_wait_time
+            end_time = now + wait_time
             server_descriptions = self._apply_selector(selector)
 
             while not server_descriptions:
                 # No suitable servers.
-                if server_wait_time == 0 or now > end_time:
+                if wait_time == 0 or now > end_time:
                     # TODO: more error diagnostics. E.g., if state is
                     # ReplicaSet but every server is Unknown, and the host list
                     # is non-empty, and doesn't intersect with settings.seeds,
@@ -100,7 +104,7 @@ class Cluster(object):
             return [self.get_server_by_address(sd.address)
                     for sd in server_descriptions]
 
-    def select_server(self, selector, server_wait_time=common.SERVER_WAIT_TIME):
+    def select_server(self, selector, server_wait_time=None):
         """Like select_servers, but choose a random server if several match."""
         return random.choice(self.select_servers(selector, server_wait_time))
 
