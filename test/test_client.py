@@ -386,29 +386,27 @@ class TestClient(IntegrationTest, TestRequestMixin):
     def test_unix_socket(self):
         if not hasattr(socket, "AF_UNIX"):
             raise SkipTest("UNIX-sockets are not supported on this system")
-        if (sys.platform == 'darwin' and
-                client_context.auth_enabled and
-                not client_context.version.at_least(2, 7, 1)):
-            raise SkipTest("SERVER-8492")
 
         mongodb_socket = '/tmp/mongodb-27017.sock'
         if not os.access(mongodb_socket, os.R_OK):
             raise SkipTest("Socket file is not accessible")
 
-        # No error.
-        connected(MongoClient("mongodb://%s" % mongodb_socket))
+        if client_context.auth_enabled:
+            uri = "mongodb://%s:%s@%s" % (db_user, db_pwd, mongodb_socket)
+        else:
+            uri = "mongodb://%s" % mongodb_socket
 
-        client = MongoClient("mongodb://%s" % mongodb_socket)
+        # Confirm we can do operations via the socket.
+        client = MongoClient(uri)
         client.pymongo_test.test.save({"dummy": "object"})
-
-        # Confirm we can read via the socket
         dbs = client.database_names()
         self.assertTrue("pymongo_test" in dbs)
 
-        # Confirm it fails with a missing socket
-        self.assertRaises(
-            ConnectionFailure,
-            connected, MongoClient("mongodb:///tmp/non-existent.sock"))
+        # Confirm it fails with a missing socket.
+        with client_knobs(server_wait_time=0.1):
+            self.assertRaises(
+                ConnectionFailure,
+                connected, MongoClient("mongodb:///tmp/non-existent.sock"))
 
     def test_fork(self):
         # Test using a client before and after a fork.
