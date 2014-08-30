@@ -28,8 +28,9 @@ import warnings
 from functools import wraps
 
 import pymongo
+import pymongo.errors
 
-from bson.py3compat import _unicode
+from bson.py3compat import _unicode, reraise
 from pymongo import common
 from test.version import Version
 
@@ -124,7 +125,18 @@ class ClientContext(object):
                 roles = {}
                 if self.version.at_least(2, 5, 3, -1):
                     roles = {'roles': ['root']}
-                self.client.admin.add_user(db_user, db_pwd, **roles)
+
+                try:
+                    self.client.admin.add_user(db_user, db_pwd, **roles)
+                except pymongo.errors.OperationFailure:
+                    # Perhaps a previous test run wasn't cleaned up?
+                    add_user_err = sys.exc_info()
+                    try:
+                        self.client.admin.authenticate(db_user, db_pwd)
+                    except pymongo.errors.OperationFailure:
+                        # Don't know what's wrong. Raise add_user's error.
+                        reraise(*add_user_err)
+
                 self.client.admin.authenticate(db_user, db_pwd)
                 if self.rs_client:
                     self.rs_client.admin.authenticate(db_user, db_pwd)
