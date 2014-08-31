@@ -114,7 +114,7 @@ class Monitor(threading.Thread):
         Returns a ServerDescription, or None on error.
         """
         try:
-            with self._pool.get_socket() as sock_info:
+            with self._pool.get_socket(all_credentials={}) as sock_info:
                 response, round_trip_time = self._check_with_socket(sock_info)
                 old_rtts = self._server_description.round_trip_times
                 if old_rtts:

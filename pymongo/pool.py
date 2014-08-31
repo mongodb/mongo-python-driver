@@ -21,7 +21,7 @@ import threading
 import weakref
 
 from bson.py3compat import u
-from pymongo import helpers, message, thread_util
+from pymongo import auth, helpers, message, thread_util
 from pymongo.errors import ConnectionFailure
 
 # If the first getaddrinfo call of this interpreter's life is on a thread,
@@ -218,6 +218,37 @@ class SocketInfo(object):
 
         return message
 
+    def check_auth(self, all_credentials):
+        """Update this socket's authentication.
+
+        Log in or out to bring this socket's credentials up to date with
+        those provided. Can raise socket.error or OperationFailure.
+
+        :Parameters:
+          - `all_credentials`: dict, maps auth source to MongoCredential.
+        """
+        if all_credentials or self.authset:
+            cached = set(all_credentials.itervalues())
+            authset = self.authset.copy()
+
+            # Logout any credentials that no longer exist in the cache.
+            for credentials in authset - cached:
+                auth.logout(credentials.source, self)
+                self.authset.discard(credentials)
+
+            for credentials in cached - authset:
+                auth.authenticate(credentials, self)
+                self.authset.add(credentials)
+
+    def authenticate(self, credentials):
+        """Log in to the server and store these credentials in `authset`.
+
+        :Parameters:
+          - `credentials`: A MongoCredential.
+        """
+        auth.authenticate(credentials, self)
+        self.authset.add(credentials)
+
     def close(self):
         self.closed = True
         # Avoid exceptions on interpreter shutdown.
@@ -401,7 +432,7 @@ class Pool:
         sock.settimeout(self.opts.socket_timeout)
         return SocketInfo(sock, self, hostname)
 
-    def get_socket(self, force=False):
+    def get_socket(self, all_credentials, force=False):
         """Get a socket from the pool.
 
         Returns a :class:`SocketInfo` object wrapping a connected
@@ -409,9 +440,21 @@ class Pool:
         the pool or freshly created.
 
         :Parameters:
+          - `all_credentials`: dict, maps auth source to MongoCredential.
           - `force`: optional boolean, forces a connection to be returned
               without blocking, even if `max_size` has been reached.
         """
+        # First get a socket, then attempt authentication. Simplifies
+        # semaphore management in the face of network errors during auth.
+        sock_info = self._get_socket_no_auth(force)
+        try:
+            sock_info.check_auth(all_credentials)
+            return sock_info
+        except:
+            self.maybe_return_socket(sock_info)
+            raise
+
+    def _get_socket_no_auth(self, force):
         # We use the pid here to avoid issues with fork / multiprocessing.
         # See test.test_client:TestClient.test_fork for an example of
         # what could go wrong otherwise

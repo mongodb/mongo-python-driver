@@ -40,15 +40,22 @@ MECHANISMS = frozenset(
 """The authentication mechanisms supported by PyMongo."""
 
 
-MongoCredential = namedtuple('MongoCredential',
+MongoCredential = namedtuple(
+    'MongoCredential',
     ['mechanism', 'source', 'username', 'password', 'mechanism_properties'])
+"""A hashable namedtuple of values used for authentication."""
+
+
+GSSAPIProperties = namedtuple('GSSAPIProperties', ['service_name'])
+"""Mechanism properties for GSSAPI authentication."""
 
 
 def _build_credentials_tuple(mech, source, user, passwd, extra):
     """Build and return a mechanism specific credentials tuple.
     """
     if mech == 'GSSAPI':
-        props = {'service_name': extra.get('gssapiservicename', 'mongodb')}
+        service_name = extra.get('gssapiservicename', 'mongodb')
+        props = GSSAPIProperties(service_name=service_name)
         # No password, source is always $external.
         return MongoCredential(mech, '$external', user, None, props)
     elif mech == 'MONGODB-X509':
@@ -80,7 +87,7 @@ def _parse_scram_response(response):
     return dict(item.split(b"=", 1) for item in response.split(b","))
 
 
-def _authenticate_scram_sha1(credentials, sock_info, cmd_func):
+def _authenticate_scram_sha1(credentials, sock_info):
     """Authenticate using SCRAM-SHA-1."""
     username = credentials.username
     password = credentials.password
@@ -95,7 +102,7 @@ def _authenticate_scram_sha1(credentials, sock_info, cmd_func):
                ('mechanism', 'SCRAM-SHA-1'),
                ('payload', Binary(b"n,," + first_bare)),
                ('autoAuthorize', 1)])
-    res, _ = cmd_func(sock_info, source, cmd)
+    res = sock_info.command(source, cmd)
 
     server_first = res['payload']
     parsed = _parse_scram_response(server_first)
@@ -122,7 +129,7 @@ def _authenticate_scram_sha1(credentials, sock_info, cmd_func):
     cmd = SON([('saslContinue', 1),
                ('conversationId', res['conversationId']),
                ('payload', Binary(client_final))])
-    res, _ = cmd_func(sock_info, source, cmd)
+    res = sock_info.command(source, cmd)
 
     parsed = _parse_scram_response(res['payload'])
     assert parsed[b'v'] == server_sig
@@ -133,7 +140,7 @@ def _authenticate_scram_sha1(credentials, sock_info, cmd_func):
         cmd = SON([('saslContinue', 1),
                    ('conversationId', res['conversationId']),
                    ('payload', Binary(b''))])
-        res, _ = cmd_func(sock_info, source, cmd)
+        res = sock_info.command(source, cmd)
         if not res['done']:
             raise OperationFailure('SASL conversation failed to complete.')
 
@@ -166,12 +173,16 @@ def _auth_key(nonce, username, password):
     return _unicode(md5hash.hexdigest())
 
 
-def _authenticate_gssapi(credentials, sock_info, cmd_func):
+def _authenticate_gssapi(credentials, sock_info):
     """Authenticate using GSSAPI.
     """
+    if not HAVE_KERBEROS:
+        raise ConfigurationError('The "kerberos" module must be '
+                                 'installed to use GSSAPI authentication.')
+
     try:
         username = credentials.username
-        gsn = credentials.mechanism_properties['service_name']
+        gsn = credentials.mechanism_properties.service_name
         # Starting here and continuing through the while loop below - establish
         # the security context. See RFC 4752, Section 3.1, first paragraph.
         result, ctx = kerberos.authGSSClientInit(
@@ -198,7 +209,7 @@ def _authenticate_gssapi(credentials, sock_info, cmd_func):
                        ('mechanism', 'GSSAPI'),
                        ('payload', payload),
                        ('autoAuthorize', 1)])
-            response, _ = cmd_func(sock_info, '$external', cmd)
+            response = sock_info.command('$external', cmd)
 
             # Limit how many times we loop to catch protocol / library issues
             for _ in range(10):
@@ -213,7 +224,7 @@ def _authenticate_gssapi(credentials, sock_info, cmd_func):
                 cmd = SON([('saslContinue', 1),
                            ('conversationId', response['conversationId']),
                            ('payload', payload)])
-                response, _ = cmd_func(sock_info, '$external', cmd)
+                response = sock_info.command('$external', cmd)
 
                 if result == kerberos.AUTH_GSS_COMPLETE:
                     break
@@ -238,7 +249,7 @@ def _authenticate_gssapi(credentials, sock_info, cmd_func):
             cmd = SON([('saslContinue', 1),
                        ('conversationId', response['conversationId']),
                        ('payload', payload)])
-            response, _ = cmd_func(sock_info, '$external', cmd)
+            sock_info.command('$external', cmd)
 
         finally:
             kerberos.authGSSClientClean(ctx)
@@ -247,7 +258,7 @@ def _authenticate_gssapi(credentials, sock_info, cmd_func):
         raise OperationFailure(str(exc))
 
 
-def _authenticate_plain(credentials, sock_info, cmd_func):
+def _authenticate_plain(credentials, sock_info):
     """Authenticate using SASL PLAIN (RFC 4616)
     """
     source = credentials.source
@@ -258,10 +269,10 @@ def _authenticate_plain(credentials, sock_info, cmd_func):
                ('mechanism', 'PLAIN'),
                ('payload', Binary(payload)),
                ('autoAuthorize', 1)])
-    cmd_func(sock_info, source, cmd)
+    sock_info.command(source, cmd)
 
 
-def _authenticate_cram_md5(credentials, sock_info, cmd_func):
+def _authenticate_cram_md5(credentials, sock_info):
     """Authenticate using CRAM-MD5 (RFC 2195)
     """
     source = credentials.source
@@ -274,7 +285,7 @@ def _authenticate_cram_md5(credentials, sock_info, cmd_func):
                ('mechanism', 'CRAM-MD5'),
                ('payload', Binary(b'')),
                ('autoAuthorize', 1)])
-    response, _ = cmd_func(sock_info, source, cmd)
+    response = sock_info.command(source, cmd)
     # MD5 as implicit default digest for digestmod is deprecated
     # in python 3.4
     mac = hmac.HMAC(key=passwd.encode('utf-8'), digestmod=md5)
@@ -283,26 +294,26 @@ def _authenticate_cram_md5(credentials, sock_info, cmd_func):
     cmd = SON([('saslContinue', 1),
                ('conversationId', response['conversationId']),
                ('payload', Binary(challenge))])
-    cmd_func(sock_info, source, cmd)
+    sock_info.command(source, cmd)
 
 
-def _authenticate_x509(credentials, sock_info, cmd_func):
+def _authenticate_x509(credentials, sock_info):
     """Authenticate using MONGODB-X509.
     """
     query = SON([('authenticate', 1),
                  ('mechanism', 'MONGODB-X509'),
                  ('user', credentials.username)])
-    cmd_func(sock_info, '$external', query)
+    sock_info.command('$external', query)
 
 
-def _authenticate_mongo_cr(credentials, sock_info, cmd_func):
+def _authenticate_mongo_cr(credentials, sock_info):
     """Authenticate using MONGODB-CR.
     """
     source = credentials.source
     username = credentials.username
     password = credentials.password
     # Get a nonce
-    response, _ = cmd_func(sock_info, source, {'getnonce': 1})
+    response = sock_info.command(source, {'getnonce': 1})
     nonce = response['nonce']
     key = _auth_key(nonce, username, password)
 
@@ -311,7 +322,7 @@ def _authenticate_mongo_cr(credentials, sock_info, cmd_func):
                  ('user', username),
                  ('nonce', nonce),
                  ('key', key)])
-    cmd_func(sock_info, source, query)
+    sock_info.command(source, query)
 
 
 _AUTH_MAP = {
@@ -324,14 +335,13 @@ _AUTH_MAP = {
 }
 
 
-def authenticate(credentials, sock_info, cmd_func):
-    """Authenticate sock_info.
-    """
+def authenticate(credentials, sock_info):
+    """Authenticate sock_info."""
     mechanism = credentials.mechanism
-    if mechanism == 'GSSAPI':
-        if not HAVE_KERBEROS:
-            raise ConfigurationError('The "kerberos" module must be '
-                                     'installed to use GSSAPI authentication.')
     auth_func = _AUTH_MAP.get(mechanism)
-    auth_func(credentials, sock_info, cmd_func)
+    auth_func(credentials, sock_info)
 
+
+def logout(source, sock_info):
+    """Log out from a database."""
+    sock_info.command(source, {'logout': 1})

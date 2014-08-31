@@ -57,6 +57,7 @@ from pymongo.errors import (ConfigurationError,
                             DuplicateKeyError, InvalidOperation)
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_selectors import (any_server_selector,
+                                      writable_preferred_server_selector,
                                       writable_server_selector)
 from pymongo.server_type import SERVER_TYPE
 from pymongo.settings import ClusterSettings
@@ -286,13 +287,16 @@ class MongoClient(common.BaseObject):
 
         # Cache of existing indexes used by ensure_index ops.
         self.__index_cache = {}
-        self.__auth_credentials = {}
 
         super(MongoClient, self).__init__(options.read_preference,
                                           options.uuid_subtype,
                                           options.write_concern.document)
 
         self.__request_counter = thread_util.Counter()
+        self.__all_credentials = {}
+        creds = options.credentials
+        if creds:
+            self._cache_credentials(creds.source, creds)
 
         cluster_settings = ClusterSettings(
             seeds=seeds,
@@ -305,6 +309,38 @@ class MongoClient(common.BaseObject):
         self._cluster = Cluster(cluster_settings)
         if connect:
             self._cluster.open()
+
+    def _cache_credentials(self, source, credentials, connect=False):
+        """Save a set of authentication credentials.
+
+        The credentials are used to login a socket whenever one is created.
+        If `connect` is True, verify the credentials on the server first.
+        """
+        # Don't let other threads affect this call's data.
+        all_credentials = self.__all_credentials.copy()
+
+        if source in all_credentials:
+            # Nothing to do if we already have these credentials.
+            if credentials == all_credentials[source]:
+                return
+            raise OperationFailure('Another user is already authenticated '
+                                   'to this database. You must logout first.')
+
+        if connect:
+            server = self._get_cluster().select_server(
+                writable_preferred_server_selector)
+
+            # get_socket() logs out of the database if logged in with old
+            # credentials, and logs in with new ones.
+            with server.pool.get_socket(all_credentials) as sock_info:
+                sock_info.authenticate(credentials)
+
+        # If several threads run _cache_credentials at once, last one wins.
+        self.__all_credentials[source] = credentials
+
+    def _purge_credentials(self, source):
+        """Purge credentials from the authentication cache."""
+        self.__all_credentials.pop(source, None)
 
     def _cached(self, dbname, coll, index):
         """Test if `index` is cached."""
@@ -597,7 +633,9 @@ class MongoClient(common.BaseObject):
                 writable_server_selector,
                 server_wait_time=0)
 
-            with server.pool.get_socket() as sock_info:
+            # Avoid race when other threads log in or out.
+            all_credentials = self.__all_credentials.copy()
+            with server.pool.get_socket(all_credentials) as sock_info:
                 return not pool._closed(sock_info.sock)
 
         except (socket.error, ConnectionFailure):
@@ -721,7 +759,9 @@ class MongoClient(common.BaseObject):
         if with_last_error or command:
             response = self._reset_on_error(
                 server,
-                server.send_message_with_response, message)
+                server.send_message_with_response,
+                message,
+                self.__all_credentials)
 
             # Disconnects and raises ConnectionFailure if "not master"
             # or "recovering".
@@ -729,7 +769,11 @@ class MongoClient(common.BaseObject):
                                                        command)
         else:
             # Send the message. No response.
-            self._reset_on_error(server, server.send_message, message)
+            self._reset_on_error(
+                server,
+                server.send_message,
+                message,
+                self.__all_credentials)
 
     def _send_message_with_response(
             self, message, read_preference=None, exhaust=False, address=None):
@@ -760,7 +804,10 @@ class MongoClient(common.BaseObject):
 
         return self._reset_on_error(
             server,
-            server.send_message_with_response, message, exhaust)
+            server.send_message_with_response,
+            message,
+            self.__all_credentials,
+            exhaust)
 
     def _reset_on_error(self, server, fn, *args, **kwargs):
         """Execute an operation. Reset the pool on network error.
@@ -1012,7 +1059,9 @@ class MongoClient(common.BaseObject):
         if self.in_request() and not server.in_request():
             server.start_request()
 
-        with server.pool.get_socket() as sock:
+        # Avoid race when other threads log in or out.
+        all_credentials = self.__all_credentials.copy()
+        with server.pool.get_socket(all_credentials) as sock:
             if username is not None:
                 get_nonce_cmd = SON([("copydbgetnonce", 1),
                                      ("fromhost", from_host)])

@@ -688,8 +688,7 @@ class MongoReplicaSetClient(common.BaseObject):
             with self.__socket(member) as sock_info:
                 # Since __check_auth was called in __socket
                 # there is no need to call it here.
-                auth.authenticate(credentials, sock_info, self.__simple_command)
-                sock_info.authset.add(credentials)
+                sock_info.authenticate(credentials)
 
         self.__auth_credentials[source] = credentials
 
@@ -713,9 +712,7 @@ class MongoReplicaSetClient(common.BaseObject):
                 sock_info.authset.discard(credentials)
 
             for credentials in cached - authset:
-                auth.authenticate(credentials,
-                                  sock_info, self.__simple_command)
-                sock_info.authset.add(credentials)
+                sock_info.authenticate(credentials)
 
     @property
     def seeds(self):
@@ -895,7 +892,7 @@ class MongoReplicaSetClient(common.BaseObject):
         if self.in_request():
             connection_pool.start_request()
 
-        with connection_pool.get_socket() as sock_info:
+        with connection_pool.get_socket(self.__auth_credentials) as sock_info:
             response, ping_time = self.__simple_command(
                 sock_info, 'admin', {'ismaster': 1})
 
@@ -1126,7 +1123,7 @@ class MongoReplicaSetClient(common.BaseObject):
         if self.auto_start_request and not self.in_request():
             self.start_request()
 
-        sock_info = member.pool.get_socket(force=force)
+        sock_info = member.pool.get_socket(self.__auth_credentials, force=force)
 
         try:
             self.__check_auth(sock_info)

@@ -27,7 +27,7 @@ except ImportError:
 sys.path[0:0] = [""]
 
 from pymongo import MongoClient, MongoReplicaSetClient
-from pymongo.auth import HAVE_KERBEROS
+from pymongo.auth import HAVE_KERBEROS, _build_credentials_tuple
 from pymongo.errors import OperationFailure, ConfigurationError
 from pymongo.read_preferences import ReadPreference
 from test import client_context, host, port, SkipTest, unittest
@@ -69,28 +69,48 @@ class TestGSSAPI(unittest.TestCase):
         if not GSSAPI_HOST or not PRINCIPAL:
             raise SkipTest('Must set GSSAPI_HOST and PRINCIPAL to test GSSAPI')
 
-    def test_gssapi_simple(self):
+    def test_credentials_hashing(self):
+        # GSSAPI credentials are properly hashed.
+        creds0 = _build_credentials_tuple(
+            'GSSAPI', '', 'user', 'pass', {})
 
+        creds1 = _build_credentials_tuple(
+            'GSSAPI', '', 'user', 'pass', {'gssapiservicename': 'A'})
+
+        creds2 = _build_credentials_tuple(
+            'GSSAPI', '', 'user', 'pass', {'gssapiservicename': 'A'})
+
+        creds3 = _build_credentials_tuple(
+            'GSSAPI', '', 'user', 'pass', {'gssapiservicename': 'B'})
+
+        self.assertEqual(1, len(set([creds1, creds2])))
+        self.assertEqual(3, len(set([creds0, creds1, creds2, creds3])))
+
+    def test_gssapi_simple(self):
+        # Call authenticate() without gssapiServiceName.
         client = MongoClient(GSSAPI_HOST, GSSAPI_PORT)
-        # Without gssapiServiceName
         self.assertTrue(client.test.authenticate(PRINCIPAL,
                                                  mechanism='GSSAPI'))
-        self.assertTrue(client.database_names())
+        client.test.collection.find_one()
+
+        # Log in using URI, without gssapiServiceName.
         uri = ('mongodb://%s@%s:%d/?authMechanism='
                'GSSAPI' % (quote_plus(PRINCIPAL), GSSAPI_HOST, GSSAPI_PORT))
         client = MongoClient(uri)
-        self.assertTrue(client.database_names())
+        client.test.collection.find_one()
 
-        # With gssapiServiceName
+        # Call authenticate() with gssapiServiceName.
         self.assertTrue(client.test.authenticate(PRINCIPAL,
                                                  mechanism='GSSAPI',
                                                  gssapiServiceName='mongodb'))
-        self.assertTrue(client.database_names())
+        client.test.collection.find_one()
+
+        # Log in using URI, with gssapiServiceName.
         uri = ('mongodb://%s@%s:%d/?authMechanism='
                'GSSAPI;gssapiServiceName=mongodb' % (quote_plus(PRINCIPAL),
                                                      GSSAPI_HOST, GSSAPI_PORT))
         client = MongoClient(uri)
-        self.assertTrue(client.database_names())
+        client.test.collection.find_one()
 
         set_name = client.admin.command('ismaster').get('setName')
         if set_name:
@@ -122,15 +142,15 @@ class TestGSSAPI(unittest.TestCase):
 
     def test_gssapi_threaded(self):
 
-        # Use auto_start_request=True to make sure each thread
-        # uses a different socket.
-        client = MongoClient(GSSAPI_HOST, auto_start_request=True)
+        client = MongoClient(GSSAPI_HOST)
+        # Make sure each thread uses a different socket.
+        client.start_request()
         self.assertTrue(client.test.authenticate(PRINCIPAL,
                                                  mechanism='GSSAPI'))
 
         threads = []
         for _ in range(4):
-            threads.append(AutoAuthenticateThread(client.foo))
+            threads.append(AutoAuthenticateThread(client.test))
         for thread in threads:
             thread.start()
         for thread in threads:
@@ -145,7 +165,7 @@ class TestGSSAPI(unittest.TestCase):
                                            read_preference=preference)
             self.assertTrue(client.test.authenticate(PRINCIPAL,
                                                      mechanism='GSSAPI'))
-            self.assertTrue(client.foo.command('dbstats'))
+            self.assertTrue(client.test.command('dbstats'))
 
             threads = []
             for _ in range(4):

@@ -22,7 +22,7 @@ import threading
 import time
 
 from pymongo import MongoClient, MongoReplicaSetClient
-from pymongo.errors import AutoReconnect
+from pymongo.errors import AutoReconnect, OperationFailure
 from pymongo.pool import NO_REQUEST, NO_SOCKET_YET, SocketInfo
 from pymongo.server_selectors import writable_server_selector
 from test import (client_context,
@@ -92,7 +92,14 @@ def server_started_with_option(client, cmdline_opt, config_opt):
 
 
 def server_started_with_auth(client):
-    command_line = get_command_line(client)
+    try:
+        command_line = get_command_line(client)
+    except OperationFailure as e:
+        if e.code == 13:
+            # Unauthorized.
+            return True
+        raise
+
     # MongoDB >= 2.0
     if 'parsed' in command_line:
         parsed = command_line['parsed']
@@ -138,9 +145,9 @@ def drop_collections(db):
 def remove_all_users(db):
     if Version.from_client(db.connection).at_least(2, 5, 3, -1):
         db.command("dropAllUsersFromDatabase", 1,
-                   writeConcern={"w": "majority"})
+                   writeConcern={"w": client_context.w})
     else:
-        db.system.users.remove({}, w="majority")
+        db.system.users.remove({}, w=client_context.w)
 
 
 def joinall(threads):
@@ -382,15 +389,15 @@ class TestRequestMixin(object):
     convenient methods for testing connection pools and requests
     """
     def assertSameSock(self, pool):
-        sock_info0 = pool.get_socket()
-        sock_info1 = pool.get_socket()
+        sock_info0 = pool.get_socket(all_credentials={})
+        sock_info1 = pool.get_socket(all_credentials={})
         self.assertEqual(sock_info0, sock_info1)
         pool.maybe_return_socket(sock_info0)
         pool.maybe_return_socket(sock_info1)
 
     def assertDifferentSock(self, pool):
-        sock_info0 = pool.get_socket()
-        sock_info1 = pool.get_socket()
+        sock_info0 = pool.get_socket(all_credentials={})
+        sock_info1 = pool.get_socket(all_credentials={})
         self.assertNotEqual(sock_info0, sock_info1)
         pool.maybe_return_socket(sock_info0)
         pool.maybe_return_socket(sock_info1)

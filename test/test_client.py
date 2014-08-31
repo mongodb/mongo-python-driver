@@ -339,22 +339,20 @@ class TestClient(IntegrationTest, TestRequestMixin):
             self.client.pymongo_test.add_user(
                 "user", "pass", roles=['userAdmin', 'readWrite'])
 
-            self.assertRaises(ConfigurationError, MongoClient,
-                              "mongodb://foo:bar@%s:%d" % (host, port))
-            self.assertRaises(ConfigurationError, MongoClient,
-                              "mongodb://admin:bar@%s:%d" % (host, port))
-            self.assertRaises(ConfigurationError, MongoClient,
-                              "mongodb://user:pass@%s:%d" % (host, port))
-            MongoClient("mongodb://admin:pass@%s:%d" % (host, port))
+            with self.assertRaises(OperationFailure):
+                connected(MongoClient("mongodb://a:b@%s:%d" % (host, port)))
 
-            self.assertRaises(ConfigurationError, MongoClient,
-                              "mongodb://admin:pass@%s:%d/pymongo_test" %
-                              (host, port))
-            self.assertRaises(ConfigurationError, MongoClient,
-                              "mongodb://user:foo@%s:%d/pymongo_test" %
-                              (host, port))
-            MongoClient("mongodb://user:pass@%s:%d/pymongo_test" %
-                       (host, port))
+            # No error.
+            connected(MongoClient("mongodb://admin:pass@%s:%d" % (host, port)))
+
+            # Wrong database.
+            uri = "mongodb://admin:pass@%s:%d/pymongo_test" % (host, port)
+            with self.assertRaises(OperationFailure):
+                connected(MongoClient(uri))
+
+            # No error.
+            connected(MongoClient(
+                "mongodb://user:pass@%s:%d/pymongo_test" % (host, port)))
 
             # Auth with lazy connection.
             MongoClient(
@@ -373,6 +371,36 @@ class TestClient(IntegrationTest, TestRequestMixin):
             # Clean up.
             remove_all_users(self.client.pymongo_test)
             self.client.admin.remove_user('admin')
+
+    @client_context.require_auth
+    def test_multiple_logins(self):
+        self.client.pymongo_test.add_user('user1', 'pass', roles=['readWrite'])
+        self.client.pymongo_test.add_user('user2', 'pass', roles=['readWrite'])
+
+        try:
+            client = MongoClient("mongodb://user1:pass@%s:%d/pymongo_test" % (
+                host, port))
+
+            client.pymongo_test.test.find_one()
+            with self.assertRaises(OperationFailure):
+                # Can't log in to the same database with multiple users.
+                client.pymongo_test.authenticate('user2', 'pass')
+
+            client.pymongo_test.test.find_one()
+            client.pymongo_test.logout()
+            with self.assertRaises(OperationFailure):
+                client.pymongo_test.test.find_one()
+
+            client.pymongo_test.authenticate('user2', 'pass')
+            client.pymongo_test.test.find_one()
+
+            with self.assertRaises(OperationFailure):
+                client.pymongo_test.authenticate('user1', 'pass')
+
+            client.pymongo_test.test.find_one()
+
+        finally:
+            remove_all_users(self.client.pymongo_test)
 
     @client_context.require_auth
     def test_lazy_auth_raises_operation_failure(self):
@@ -899,9 +927,8 @@ class TestClient(IntegrationTest, TestRequestMixin):
         socket_info = one(pool.sockets)
         socket_info.sock.close()
 
-        # In __check_auth, the client authenticates its socket with the
-        # new credential, but gets a socket.error. Should be reraised as
-        # AutoReconnect.
+        # SocketInfo.check_auth logs in with the new credential, but gets a
+        # socket.error. Should be reraised as AutoReconnect.
         self.assertRaises(AutoReconnect, c.test.collection.find_one)
 
         # No semaphore leak, the pool is allowed to make a new socket.

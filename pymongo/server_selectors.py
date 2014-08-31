@@ -30,6 +30,11 @@ def secondary_server_selector(server_descriptions):
             if s.server_type == SERVER_TYPE.RSSecondary]
 
 
+def writable_preferred_server_selector(server_descriptions):
+    """Like PrimaryPreferred but doesn't use tags or latency."""
+    return writable_server_selector(server_descriptions) or server_descriptions
+
+
 def single_tag_set_server_selector(tag_set, server_descriptions):
     """All servers matching one tag set.
 

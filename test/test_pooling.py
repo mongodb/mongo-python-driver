@@ -129,7 +129,7 @@ class SocketGetter(MongoThread):
 
     def run_mongo_thread(self):
         self.state = 'get_socket'
-        self.sock = self.pool.get_socket()
+        self.sock = self.pool.get_socket(all_credentials={})
         self.state = 'sock'
 
 
@@ -323,16 +323,16 @@ class TestPooling(_TestPoolingBase):
             connect_timeout=1000,
             socket_timeout=1000)
 
-        sock0 = cx_pool.get_socket()
-        sock1 = cx_pool.get_socket()
+        sock0 = cx_pool.get_socket(all_credentials={})
+        sock1 = cx_pool.get_socket(all_credentials={})
 
         self.assertNotEqual(sock0, sock1)
 
         # Now in a request, we'll get the same socket both times
         cx_pool.start_request()
 
-        sock2 = cx_pool.get_socket()
-        sock3 = cx_pool.get_socket()
+        sock2 = cx_pool.get_socket(all_credentials={})
+        sock3 = cx_pool.get_socket(all_credentials={})
         self.assertEqual(sock2, sock3)
 
         # Pool didn't keep reference to sock0 or sock1; sock2 and 3 are new
@@ -342,8 +342,8 @@ class TestPooling(_TestPoolingBase):
         # Return the request sock to pool
         cx_pool.end_request()
 
-        sock4 = cx_pool.get_socket()
-        sock5 = cx_pool.get_socket()
+        sock4 = cx_pool.get_socket(all_credentials={})
+        sock5 = cx_pool.get_socket(all_credentials={})
 
         # Not in a request any more, we get different sockets
         self.assertNotEqual(sock4, sock5)
@@ -373,10 +373,10 @@ class TestPooling(_TestPoolingBase):
         # Test Pool's _check_closed() method doesn't close a healthy socket.
         cx_pool = self.create_pool(max_pool_size=10)
         cx_pool._check_interval_seconds = 0  # Always check.
-        sock_info = cx_pool.get_socket()
+        sock_info = cx_pool.get_socket(all_credentials={})
         cx_pool.maybe_return_socket(sock_info)
 
-        new_sock_info = cx_pool.get_socket()
+        new_sock_info = cx_pool.get_socket(all_credentials={})
         self.assertEqual(sock_info, new_sock_info)
         cx_pool.maybe_return_socket(new_sock_info)
         self.assertEqual(1, len(cx_pool.sockets))
@@ -387,13 +387,13 @@ class TestPooling(_TestPoolingBase):
         cx_pool = self.create_pool(max_pool_size=10)
         cx_pool._check_interval_seconds = 0  # Always check.
 
-        with cx_pool.get_socket() as sock_info:
+        with cx_pool.get_socket(all_credentials={}) as sock_info:
             # Simulate a closed socket without telling the SocketInfo it's
             # closed.
             sock_info.sock.close()
             self.assertTrue(_closed(sock_info.sock))
 
-        with cx_pool.get_socket() as new_sock_info:
+        with cx_pool.get_socket(all_credentials={}) as new_sock_info:
             self.assertEqual(0, len(cx_pool.sockets))
             self.assertNotEqual(sock_info, new_sock_info)
 
@@ -406,14 +406,14 @@ class TestPooling(_TestPoolingBase):
         cx_pool.start_request()
 
         # Get the request socket.
-        with cx_pool.get_socket() as sock_info:
+        with cx_pool.get_socket(all_credentials={}) as sock_info:
             self.assertEqual(0, len(cx_pool.sockets))
             self.assertEqual(sock_info, cx_pool._get_request_state())
             sock_info.sock.close()
 
         # Although the request socket died, we're still in a request with a
         # new socket.
-        with cx_pool.get_socket() as new_sock_info:
+        with cx_pool.get_socket(all_credentials={}) as new_sock_info:
             self.assertTrue(cx_pool.in_request())
             self.assertNotEqual(sock_info, new_sock_info)
             self.assertEqual(new_sock_info, cx_pool._get_request_state())
@@ -430,7 +430,7 @@ class TestPooling(_TestPoolingBase):
         cx_pool.start_request()
 
         # Get the request socket
-        with cx_pool.get_socket() as sock_info:
+        with cx_pool.get_socket(all_credentials={}) as sock_info:
             self.assertEqual(0, len(cx_pool.sockets))
             self.assertEqual(sock_info, cx_pool._get_request_state())
 
@@ -440,7 +440,7 @@ class TestPooling(_TestPoolingBase):
 
         # Although the request socket died, we're still in a request with a
         # new socket
-        with cx_pool.get_socket() as new_sock_info:
+        with cx_pool.get_socket(all_credentials={}) as new_sock_info:
             self.assertTrue(cx_pool.in_request())
             self.assertNotEqual(sock_info, new_sock_info)
             self.assertEqual(new_sock_info, cx_pool._get_request_state())
@@ -459,7 +459,7 @@ class TestPooling(_TestPoolingBase):
         cx_pool.start_request()
 
         # Get the request socket.
-        with cx_pool.get_socket() as sock_info:
+        with cx_pool.get_socket(all_credentials={}) as sock_info:
             self.assertEqual(sock_info, cx_pool._get_request_state())
 
         # End request.
@@ -470,7 +470,7 @@ class TestPooling(_TestPoolingBase):
         sock_info.sock.close()
 
         # Dead socket detected and removed.
-        with cx_pool.get_socket() as new_sock_info:
+        with cx_pool.get_socket(all_credentials={}) as new_sock_info:
             self.assertFalse(cx_pool.in_request())
             self.assertNotEqual(sock_info, new_sock_info)
             self.assertEqual(0, len(cx_pool.sockets))
@@ -486,17 +486,17 @@ class TestPooling(_TestPoolingBase):
         cx_pool.start_request()
 
         # Get and close the request socket.
-        with cx_pool.get_socket() as request_sock_info:
+        with cx_pool.get_socket(all_credentials={}) as request_sock_info:
             request_sock_info.sock.close()
 
         # Detects closed socket and creates new one, semaphore value still 0.
-        with cx_pool.get_socket() as request_sock_info_2:
+        with cx_pool.get_socket(all_credentials={}) as request_sock_info_2:
             self.assertNotEqual(request_sock_info, request_sock_info_2)
 
         cx_pool.end_request()
 
         # Semaphore value now 1; we can get a socket.
-        sock = cx_pool.get_socket()
+        sock = cx_pool.get_socket(all_credentials={})
         sock.close()
 
     def test_socket_reclamation(self):
@@ -519,7 +519,7 @@ class TestPooling(_TestPoolingBase):
             self.assertEqual(NO_REQUEST, cx_pool._get_request_state())
             cx_pool.start_request()
             self.assertEqual(NO_SOCKET_YET, cx_pool._get_request_state())
-            with cx_pool.get_socket() as sock_info:
+            with cx_pool.get_socket(all_credentials={}) as sock_info:
                 self.assertEqual(sock_info, cx_pool._get_request_state())
                 the_sock[0] = id(sock_info.sock)
 
@@ -608,8 +608,8 @@ class TestPooling(_TestPoolingBase):
 
         def run_in_request():
             p.start_request()
-            sock0 = p.get_socket()
-            sock1 = p.get_socket()
+            sock0 = p.get_socket(all_credentials={})
+            sock1 = p.get_socket(all_credentials={})
             sock_ids.extend([id(sock0), id(sock1)])
             p.maybe_return_socket(sock0)
             p.maybe_return_socket(sock1)
@@ -681,7 +681,7 @@ class TestPooling(_TestPoolingBase):
         self.assertTrue(b_sock != c_sock)
 
         # a_sock, created by parent process, is still in the pool
-        d_sock = get_pool(a).get_socket()
+        d_sock = get_pool(a).get_socket(all_credentials={})
         self.assertEqual(a_sock, d_sock)
         d_sock.close()
 
@@ -690,9 +690,11 @@ class TestPooling(_TestPoolingBase):
         pool = self.create_pool(
             max_pool_size=1, wait_queue_timeout=wait_queue_timeout)
         
-        sock_info = pool.get_socket()
+        sock_info = pool.get_socket(all_credentials={})
         start = time.time()
-        self.assertRaises(ConnectionFailure, pool.get_socket)
+        with self.assertRaises(ConnectionFailure):
+            pool.get_socket(all_credentials={})
+
         duration = time.time() - start
         self.assertTrue(
             abs(wait_queue_timeout - duration) < 1,
@@ -706,7 +708,7 @@ class TestPooling(_TestPoolingBase):
         pool = self.create_pool(max_pool_size=1)
         
         # Reach max_size.
-        with pool.get_socket() as s1:
+        with pool.get_socket(all_credentials={}) as s1:
             t = SocketGetter(self.c, pool)
             t.start()
             while t.state != 'get_socket':
@@ -728,8 +730,8 @@ class TestPooling(_TestPoolingBase):
             max_pool_size=2, wait_queue_multiple=wait_queue_multiple)
 
         # Reach max_size sockets.
-        socket_info_0 = pool.get_socket()
-        socket_info_1 = pool.get_socket()
+        socket_info_0 = pool.get_socket(all_credentials={})
+        socket_info_1 = pool.get_socket(all_credentials={})
 
         # Reach max_size * wait_queue_multiple waiters.
         threads = []
@@ -742,7 +744,8 @@ class TestPooling(_TestPoolingBase):
         for t in threads:
             self.assertEqual(t.state, 'get_socket')
 
-        self.assertRaises(ExceededMaxWaiters, pool.get_socket)
+        with self.assertRaises(ExceededMaxWaiters):
+            pool.get_socket(all_credentials={})
         socket_info_0.close()
         socket_info_1.close()
 
@@ -751,7 +754,7 @@ class TestPooling(_TestPoolingBase):
 
         socks = []
         for _ in range(2):
-            sock = pool.get_socket()
+            sock = pool.get_socket(all_credentials={})
             socks.append(sock)
         threads = []
         for _ in range(30):
@@ -985,7 +988,8 @@ class TestPoolMaxSize(_TestPoolingBase):
         # then the second call raises "ConnectionFailure: Timed out waiting for
         # socket from pool" instead of the socket.error.
         for i in range(2):
-            self.assertRaises(socket.error, test_pool.get_socket)
+            with self.assertRaises(socket.error):
+                test_pool.get_socket(all_credentials={})
 
 
 if __name__ == "__main__":

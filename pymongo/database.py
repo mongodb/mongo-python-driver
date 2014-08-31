@@ -889,11 +889,18 @@ class Database(common.BaseObject):
             normalized, val = common.validate_auth_option(option, value)
             validated_options[normalized] = val
 
-        credentials = auth._build_credentials_tuple(mechanism,
-                                source or self.name, _unicode(name),
-                                password and _unicode(password) or None,
-                                validated_options)
-        self.connection._cache_credentials(self.name, credentials)
+        credentials = auth._build_credentials_tuple(
+            mechanism,
+            source or self.name,
+            _unicode(name),
+            _unicode(password) if password else None,
+            validated_options)
+
+        self.connection._cache_credentials(
+            self.name,
+            credentials,
+            connect=True)
+
         return True
 
     def logout(self):

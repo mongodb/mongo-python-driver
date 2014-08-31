@@ -41,36 +41,40 @@ class Server(object):
         """Check the server's state soon."""
         self._monitor.request_check()
 
-    def send_message(self, message):
+    def send_message(self, message, all_credentials):
         """Send an unacknowledged message to MongoDB.
 
         Can raise ConnectionFailure.
 
         :Parameters:
           - `message`: (request_id, data).
-          - `request_id`: A number.
+          - `all_credentials`: dict, maps auth source to MongoCredential.
         """
         request_id, data = self._check_bson_size(message)
         try:
-            with self._pool.get_socket() as sock_info:
+            with self._pool.get_socket(all_credentials) as sock_info:
                 sock_info.send_message(data)
         except socket.error as exc:
             raise AutoReconnect(str(exc))
 
-    def send_message_with_response(self, message, exhaust=False):
+    def send_message_with_response(
+            self,
+            message,
+            all_credentials,
+            exhaust=False):
         """Send a message to MongoDB and return a Response object.
 
         Can raise ConnectionFailure.
 
         :Parameters:
           - `message`: (request_id, data, max_doc_size) or (request_id, data).
-          - `request_id`: A number.
+          - `all_credentials`: dict, maps auth source to MongoCredential.
           - `exhaust` (optional): If True, the socket used stays checked out.
             It is returned along with its Pool in the Response.
         """
         request_id, data = self._check_bson_size(message)
         try:
-            with self._pool.get_socket() as sock_info:
+            with self._pool.get_socket(all_credentials) as sock_info:
                 sock_info.exhaust(exhaust)
                 sock_info.send_message(data)
                 response_data = sock_info.receive_message(1, request_id)

@@ -1120,6 +1120,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
 class TestReplicaSetWireVersion(MockClientTest):
 
     @client_context.require_connection
+    @client_context.require_no_auth
     def test_wire_version(self):
         c = MockClient(
             standalones=[],

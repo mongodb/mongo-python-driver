@@ -54,7 +54,6 @@ from test import (client_context,
                   pair,
                   IntegrationTest)
 from test.utils import remove_all_users, server_started_with_auth
-from test.test_client import get_client
 
 if PY3:
     long = int
@@ -560,30 +559,6 @@ class TestDatabase(IntegrationTest):
             self.assertEqual(0, db.test.count())
         finally:
             db.remove_user("bernie")
-
-    @client_context.require_auth
-    def test_authenticate_and_request(self):
-        # Database.authenticate() needs to be in a request - check that it
-        # always runs in a request, and that it restores the request state
-        # (in or not in a request) properly when it's finished.
-        self.assertFalse(self.client.auto_start_request)
-        auth_c = MongoClient(pair)
-        db = auth_c.pymongo_test
-        client_context.client.pymongo_test.add_user(
-            "mike", "password",
-            roles=["userAdmin", "dbAdmin", "readWrite"])
-        try:
-            self.assertFalse(auth_c.in_request())
-            self.assertTrue(db.authenticate("mike", "password"))
-            self.assertFalse(auth_c.in_request())
-
-            request_cx = get_client(pair, auto_start_request=True)
-            request_db = request_cx.pymongo_test
-            self.assertTrue(request_db.authenticate("mike", "password"))
-            self.assertTrue(request_cx.in_request())
-        finally:
-            db.authenticate("mike", "password")
-            db.remove_user("mike")
 
     @client_context.require_auth
     def test_authenticate_multiple(self):
