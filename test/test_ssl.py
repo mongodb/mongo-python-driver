@@ -37,7 +37,12 @@ from pymongo.errors import (ConfigurationError,
                             ConnectionFailure,
                             OperationFailure)
 from pymongo.ssl_support import HAVE_SSL
-from test import host, pair, port, SkipTest, unittest, client_knobs
+from test import (client_knobs,
+                  host,
+                  pair,
+                  port,
+                  SkipTest,
+                  unittest)
 from test.utils import server_started_with_auth, remove_all_users, connected
 from test.version import Version
 
@@ -388,15 +393,15 @@ class TestSSL(unittest.TestCase):
 
         response = ssl_client.admin.command('ismaster')
 
-        try:
-            MongoClient(pair,
-                        ssl=True,
-                        ssl_certfile=CLIENT_PEM,
-                        ssl_cert_reqs=ssl.CERT_REQUIRED,
-                        ssl_ca_certs=CA_PEM)
+        with self.assertRaises(ConnectionFailure):
+            with client_knobs(server_wait_time=0.1):
+                connected(MongoClient(pair,
+                                      ssl=True,
+                                      ssl_certfile=CLIENT_PEM,
+                                      ssl_cert_reqs=ssl.CERT_REQUIRED,
+                                      ssl_ca_certs=CA_PEM))
+
             self.fail("Invalid hostname should have failed")
-        except CertificateError:
-            pass
 
         if 'setName' in response:
             try:
@@ -455,8 +460,11 @@ class TestSSL(unittest.TestCase):
             uri = ('mongodb://%s@%s:%d/?authMechanism='
                    'MONGODB-X509' % (
                        quote_plus("not the username"), host, port))
-            self.assertRaises(ConfigurationError, MongoClient, uri,
-                              ssl=True, ssl_certfile=CLIENT_PEM)
+
+            bad_client = MongoClient(uri, ssl=True, ssl_certfile=CLIENT_PEM)
+            with self.assertRaises(OperationFailure):
+                bad_client.pymongo_test.test.find_one()
+
             self.assertRaises(OperationFailure, ssl_client.admin.authenticate,
                               "not the username",
                               mechanism="MONGODB-X509")
@@ -468,14 +476,16 @@ class TestSSL(unittest.TestCase):
             # These tests will raise SSLError (>= 3.2) or ConnectionFailure
             # (2.x) depending on where OpenSSL first sees the PEM file.
             try:
-                MongoClient(uri, ssl=True, ssl_certfile=CA_PEM)
+                with client_knobs(server_wait_time=0.1):
+                    connected(MongoClient(uri, ssl=True, ssl_certfile=CA_PEM))
             except (ssl.SSLError, ConnectionFailure):
                 pass
             else:
                 self.fail("Invalid certificate accepted.")
 
             try:
-                MongoClient(pair, ssl=True, ssl_certfile=CA_PEM)
+                with client_knobs(server_wait_time=0.1):
+                    connected(MongoClient(pair, ssl=True, ssl_certfile=CA_PEM))
             except (ssl.SSLError, ConnectionFailure):
                 pass
             else:
