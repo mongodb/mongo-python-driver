@@ -1,4 +1,4 @@
-description: "Direct connection to secondary"
+description: "Direct connection to slave"
 
 uri: "mongodb://A/?connect=direct"
 
