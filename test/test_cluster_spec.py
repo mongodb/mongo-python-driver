@@ -118,6 +118,14 @@ class TestAllScenarios(unittest.TestCase):
     pass
 
 
+def cluster_type_name(cluster_type):
+    return CLUSTER_TYPE._fields[cluster_type]
+
+
+def server_type_name(server_type):
+    return SERVER_TYPE._fields[server_type]
+
+
 def check_outcome(self, cluster, outcome):
     expected_servers = outcome['servers']
 
@@ -144,8 +152,8 @@ def check_outcome(self, cluster, outcome):
                 SERVER_TYPE, expected_server['type'])
 
         self.assertEqual(
-            expected_server_type,
-            actual_server_description.server_type)
+            server_type_name(expected_server_type),
+            server_type_name(actual_server_description.server_type))
 
         self.assertEqual(
             expected_server['setName'],
@@ -153,7 +161,8 @@ def check_outcome(self, cluster, outcome):
 
     self.assertEqual(outcome['setName'], cluster.description.set_name)
     expected_cluster_type = getattr(CLUSTER_TYPE, outcome['clusterType'])
-    self.assertEqual(expected_cluster_type, cluster.description.cluster_type)
+    self.assertEqual(cluster_type_name(expected_cluster_type),
+                     cluster_type_name(cluster.description.cluster_type))
 
 
 def create_test(scenario_def):
