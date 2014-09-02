@@ -225,8 +225,7 @@ def _update_rs_from_primary(sds, set_name, server_description):
         # We found a primary but it doesn't have the set_name
         # provided by the user.
         sds.pop(server_description.address)
-        cluster_type = CLUSTER_TYPE.ReplicaSetNoPrimary
-        return cluster_type, set_name
+        return _check_has_primary(sds), set_name
 
     # We've heard from the primary. Is it the same primary as before?
     for server in sds.values():
