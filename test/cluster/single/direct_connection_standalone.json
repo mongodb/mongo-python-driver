@@ -1,0 +1,27 @@
+{
+    "description": "Connect to standalone", 
+    "phases": [
+        {
+            "outcome": {
+                "clusterType": "Single", 
+                "servers": {
+                    "A:27017": {
+                        "setName": null, 
+                        "type": "Standalone"
+                    }
+                }, 
+                "setName": null
+            }, 
+            "responses": [
+                [
+                    "A:27017", 
+                    {
+                        "ismaster": true, 
+                        "ok": 1
+                    }
+                ]
+            ]
+        }
+    ], 
+    "uri": "mongodb://A/?connect=direct"
+}

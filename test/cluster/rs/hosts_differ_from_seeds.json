@@ -1,0 +1,31 @@
+{
+    "description": "Host list differs from seeds", 
+    "phases": [
+        {
+            "outcome": {
+                "clusterType": "ReplicaSetNoPrimary", 
+                "servers": {
+                    "B:27017": {
+                        "setName": null, 
+                        "type": "Unknown"
+                    }
+                }, 
+                "setName": "rs"
+            }, 
+            "responses": [
+                [
+                    "A:27017", 
+                    {
+                        "hosts": [
+                            "B:27017"
+                        ], 
+                        "ismaster": true, 
+                        "ok": 1, 
+                        "setName": "rs"
+                    }
+                ]
+            ]
+        }
+    ], 
+    "uri": "mongodb://A/?replicaSet=rs"
+}

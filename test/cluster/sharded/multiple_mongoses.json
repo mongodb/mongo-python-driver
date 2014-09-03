@@ -1,0 +1,40 @@
+{
+    "description": "Multiple mongoses", 
+    "phases": [
+        {
+            "outcome": {
+                "clusterType": "Sharded", 
+                "servers": {
+                    "A:27017": {
+                        "setName": null, 
+                        "type": "Mongos"
+                    }, 
+                    "B:27017": {
+                        "setName": null, 
+                        "type": "Mongos"
+                    }
+                }, 
+                "setName": null
+            }, 
+            "responses": [
+                [
+                    "A:27017", 
+                    {
+                        "ismaster": true, 
+                        "msg": "isdbgrid", 
+                        "ok": 1
+                    }
+                ], 
+                [
+                    "B:27017", 
+                    {
+                        "ismaster": true, 
+                        "msg": "isdbgrid", 
+                        "ok": 1
+                    }
+                ]
+            ]
+        }
+    ], 
+    "uri": "mongodb://A,B"
+}

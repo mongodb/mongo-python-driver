@@ -1,0 +1,35 @@
+{
+    "description": "Handle a not-ok ismaster response", 
+    "phases": [
+        {
+            "outcome": {
+                "clusterType": "Single", 
+                "servers": {
+                    "A:27017": {
+                        "address": "A", 
+                        "setName": null, 
+                        "type": "Unknown"
+                    }
+                }, 
+                "setName": null
+            }, 
+            "responses": [
+                [
+                    "A:27017", 
+                    {
+                        "ismaster": true, 
+                        "ok": 1
+                    }
+                ], 
+                [
+                    "A:27017", 
+                    {
+                        "ismaster": true, 
+                        "ok": 0
+                    }
+                ]
+            ]
+        }
+    ], 
+    "uri": "mongodb://A"
+}

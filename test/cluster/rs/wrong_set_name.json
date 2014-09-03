@@ -1,0 +1,33 @@
+{
+    "description": "Wrong setName", 
+    "phases": [
+        {
+            "outcome": {
+                "clusterType": "ReplicaSetNoPrimary", 
+                "servers": {
+                    "A:27017": {
+                        "setName": null, 
+                        "type": "Unknown"
+                    }
+                }, 
+                "setName": "rs"
+            }, 
+            "responses": [
+                [
+                    "B:27017", 
+                    {
+                        "hosts": [
+                            "B:27017", 
+                            "C:27017"
+                        ], 
+                        "ismaster": false, 
+                        "ok": 1, 
+                        "secondary": true, 
+                        "setName": "wrong"
+                    }
+                ]
+            ]
+        }
+    ], 
+    "uri": "mongodb://A,B/?replicaSet=rs"
+}

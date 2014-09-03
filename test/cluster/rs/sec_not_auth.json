@@ -1,0 +1,49 @@
+{
+    "description": "Secondary's host list is not authoritative", 
+    "phases": [
+        {
+            "outcome": {
+                "clusterType": "ReplicaSetWithPrimary", 
+                "servers": {
+                    "A:27017": {
+                        "setName": "rs", 
+                        "type": "RSPrimary"
+                    }, 
+                    "B:27017": {
+                        "setName": "rs", 
+                        "type": "RSSecondary"
+                    }
+                }, 
+                "setName": "rs"
+            }, 
+            "responses": [
+                [
+                    "A:27017", 
+                    {
+                        "hosts": [
+                            "A:27017", 
+                            "B:27017"
+                        ], 
+                        "ismaster": true, 
+                        "ok": 1, 
+                        "setName": "rs"
+                    }
+                ], 
+                [
+                    "B:27017", 
+                    {
+                        "hosts": [
+                            "B:27017", 
+                            "C:27017"
+                        ], 
+                        "ismaster": false, 
+                        "ok": 1, 
+                        "secondary": true, 
+                        "setName": "rs"
+                    }
+                ]
+            ]
+        }
+    ], 
+    "uri": "mongodb://A/?replicaSet=rs"
+}

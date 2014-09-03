@@ -1,0 +1,24 @@
+{
+    "description": "Unavailable seed", 
+    "phases": [
+        {
+            "outcome": {
+                "clusterType": "Single", 
+                "servers": {
+                    "A:27017": {
+                        "setName": null, 
+                        "type": "Unknown"
+                    }
+                }, 
+                "setName": null
+            }, 
+            "responses": [
+                [
+                    "A:27017", 
+                    {}
+                ]
+            ]
+        }
+    ], 
+    "uri": "mongodb://A"
+}

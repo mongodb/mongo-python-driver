@@ -1,0 +1,58 @@
+{
+    "description": "Response from removed server", 
+    "phases": [
+        {
+            "outcome": {
+                "clusterType": "ReplicaSetWithPrimary", 
+                "servers": {
+                    "A:27017": {
+                        "setName": "rs", 
+                        "type": "RSPrimary"
+                    }
+                }, 
+                "setName": "rs"
+            }, 
+            "responses": [
+                [
+                    "A:27017", 
+                    {
+                        "hosts": [
+                            "A:27017"
+                        ], 
+                        "ismaster": true, 
+                        "ok": 1, 
+                        "setName": "rs"
+                    }
+                ]
+            ]
+        }, 
+        {
+            "outcome": {
+                "clusterType": "ReplicaSetWithPrimary", 
+                "servers": {
+                    "A:27017": {
+                        "setName": "rs", 
+                        "type": "RSPrimary"
+                    }
+                }, 
+                "setName": "rs"
+            }, 
+            "responses": [
+                [
+                    "B:27017", 
+                    {
+                        "hosts": [
+                            "A:27017", 
+                            "B:27017"
+                        ], 
+                        "ismaster": false, 
+                        "ok": 1, 
+                        "secondary": true, 
+                        "setName": "rs"
+                    }
+                ]
+            ]
+        }
+    ], 
+    "uri": "mongodb://A,B/?replicaSet=rs"
+}

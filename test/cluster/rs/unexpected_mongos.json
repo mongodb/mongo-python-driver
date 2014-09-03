@@ -1,0 +1,23 @@
+{
+    "description": "Unexpected mongos", 
+    "phases": [
+        {
+            "outcome": {
+                "clusterType": "ReplicaSetNoPrimary", 
+                "servers": {}, 
+                "setName": "rs"
+            }, 
+            "responses": [
+                [
+                    "B:27017", 
+                    {
+                        "ismaster": true, 
+                        "msg": "isdbgrid", 
+                        "ok": 1
+                    }
+                ]
+            ]
+        }
+    ], 
+    "uri": "mongodb://B/?replicaSet=rs"
+}

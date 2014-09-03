@@ -14,11 +14,10 @@
 
 """Test the cluster module."""
 
+import json
 import os
 import sys
 import threading
-
-import yaml
 
 sys.path[0:0] = [""]
 
@@ -186,7 +185,7 @@ def create_tests():
 
         for filename in filenames:
             with open(os.path.join(dirpath, filename)) as scenario_stream:
-                scenario_def = yaml.load(scenario_stream)
+                scenario_def = json.load(scenario_stream)
 
             # Construct test from scenario.
             new_test = create_test(scenario_def)

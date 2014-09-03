@@ -1,0 +1,38 @@
+{
+    "description": "Discover arbiters", 
+    "phases": [
+        {
+            "outcome": {
+                "clusterType": "ReplicaSetWithPrimary", 
+                "servers": {
+                    "A:27017": {
+                        "setName": "rs", 
+                        "type": "RSPrimary"
+                    }, 
+                    "B:27017": {
+                        "setName": null, 
+                        "type": "Unknown"
+                    }
+                }, 
+                "setName": "rs"
+            }, 
+            "responses": [
+                [
+                    "A:27017", 
+                    {
+                        "arbiters": [
+                            "B:27017"
+                        ], 
+                        "hosts": [
+                            "A:27017"
+                        ], 
+                        "ismaster": true, 
+                        "ok": 1, 
+                        "setName": "rs"
+                    }
+                ]
+            ]
+        }
+    ], 
+    "uri": "mongodb://A/?replicaSet=rs"
+}

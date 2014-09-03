@@ -1,0 +1,163 @@
+{
+    "description": "Replica set discovery", 
+    "phases": [
+        {
+            "outcome": {
+                "clusterType": "ReplicaSetNoPrimary", 
+                "servers": {
+                    "A:27017": {
+                        "setName": "rs", 
+                        "type": "RSSecondary"
+                    }, 
+                    "B:27017": {
+                        "setName": null, 
+                        "type": "Unknown"
+                    }, 
+                    "C:27017": {
+                        "setName": null, 
+                        "type": "Unknown"
+                    }
+                }, 
+                "setName": "rs"
+            }, 
+            "responses": [
+                [
+                    "A:27017", 
+                    {
+                        "hosts": [
+                            "A:27017", 
+                            "B:27017", 
+                            "C:27017"
+                        ], 
+                        "ismaster": false, 
+                        "ok": 1, 
+                        "secondary": true, 
+                        "setName": "rs"
+                    }
+                ]
+            ]
+        }, 
+        {
+            "outcome": {
+                "clusterType": "ReplicaSetNoPrimary", 
+                "servers": {
+                    "A:27017": {
+                        "setName": "rs", 
+                        "type": "RSSecondary"
+                    }, 
+                    "B:27017": {
+                        "setName": "rs", 
+                        "type": "RSSecondary"
+                    }, 
+                    "C:27017": {
+                        "setName": null, 
+                        "type": "Unknown"
+                    }, 
+                    "D:27017": {
+                        "setName": null, 
+                        "type": "PossiblePrimary"
+                    }
+                }, 
+                "setName": "rs"
+            }, 
+            "responses": [
+                [
+                    "B:27017", 
+                    {
+                        "hosts": [
+                            "B:27017", 
+                            "C:27017", 
+                            "D:27017"
+                        ], 
+                        "ismaster": false, 
+                        "ok": 1, 
+                        "primary": "D:27017", 
+                        "secondary": true, 
+                        "setName": "rs"
+                    }
+                ]
+            ]
+        }, 
+        {
+            "outcome": {
+                "clusterType": "ReplicaSetWithPrimary", 
+                "servers": {
+                    "B:27017": {
+                        "setName": "rs", 
+                        "type": "RSSecondary"
+                    }, 
+                    "C:27017": {
+                        "setName": null, 
+                        "type": "Unknown"
+                    }, 
+                    "D:27017": {
+                        "setName": "rs", 
+                        "type": "RSPrimary"
+                    }, 
+                    "E:27017": {
+                        "setName": null, 
+                        "type": "Unknown"
+                    }
+                }, 
+                "setName": "rs"
+            }, 
+            "responses": [
+                [
+                    "D:27017", 
+                    {
+                        "hosts": [
+                            "B:27017", 
+                            "C:27017", 
+                            "D:27017", 
+                            "E:27017"
+                        ], 
+                        "ismaster": true, 
+                        "ok": 1, 
+                        "setName": "rs"
+                    }
+                ]
+            ]
+        }, 
+        {
+            "outcome": {
+                "clusterType": "ReplicaSetWithPrimary", 
+                "servers": {
+                    "B:27017": {
+                        "setName": "rs", 
+                        "type": "RSSecondary"
+                    }, 
+                    "C:27017": {
+                        "setName": "rs", 
+                        "type": "RSSecondary"
+                    }, 
+                    "D:27017": {
+                        "setName": "rs", 
+                        "type": "RSPrimary"
+                    }, 
+                    "E:27017": {
+                        "setName": null, 
+                        "type": "Unknown"
+                    }
+                }, 
+                "setName": "rs"
+            }, 
+            "responses": [
+                [
+                    "C:27017", 
+                    {
+                        "hosts": [
+                            "A:27017", 
+                            "B:27017", 
+                            "C:27017"
+                        ], 
+                        "ismaster": false, 
+                        "ok": 1, 
+                        "secondary": true, 
+                        "setName": "rs"
+                    }
+                ]
+            ]
+        }
+    ], 
+    "uri": "mongodb://A/?replicaSet=rs"
+}

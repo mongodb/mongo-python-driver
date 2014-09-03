@@ -1,0 +1,27 @@
+{
+    "description": "Standalone removed from multi-server cluster", 
+    "phases": [
+        {
+            "outcome": {
+                "clusterType": "Unknown", 
+                "servers": {
+                    "B:27017": {
+                        "setName": null, 
+                        "type": "Unknown"
+                    }
+                }, 
+                "setName": null
+            }, 
+            "responses": [
+                [
+                    "A:27017", 
+                    {
+                        "ismaster": true, 
+                        "ok": 1
+                    }
+                ]
+            ]
+        }
+    ], 
+    "uri": "mongodb://A,B"
+}
