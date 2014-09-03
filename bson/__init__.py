@@ -27,7 +27,8 @@ import uuid
 from codecs import utf_8_decode as _utf_8_decode
 
 from bson.binary import (Binary, OLD_UUID_SUBTYPE,
-                         JAVA_LEGACY, CSHARP_LEGACY)
+                         JAVA_LEGACY, CSHARP_LEGACY,
+                         UUIDLegacy)
 from bson.bsonint64 import BSONInt64
 from bson.code import Code
 from bson.dbref import DBRef
@@ -588,12 +589,23 @@ _ENCODERS = {
     float: _encode_float,
     int: _encode_int,
     list: _encode_list,
+    # unicode in py2, str in py3
+    text_type: _encode_text,
     tuple: _encode_list,
     type(None): _encode_none,
+    uuid.UUID: _encode_uuid,
+    Binary: _encode_binary,
+    BSONInt64: _encode_long,
+    Code: _encode_code,
+    DBRef: _encode_dbref,
+    MaxKey: _encode_maxkey,
+    MinKey: _encode_minkey,
+    ObjectId: _encode_objectid,
+    Regex: _encode_regex,
     RE_TYPE: _encode_regex,
     SON: _encode_mapping,
-    text_type: _encode_text,
-    uuid.UUID: _encode_uuid,
+    Timestamp: _encode_timestamp,
+    UUIDLegacy: _encode_binary,
     # Special case. This will never be looked up directly.
     collections.Mapping: _encode_mapping,
 }
@@ -617,13 +629,26 @@ if not PY3:
 
 def _name_value_to_bson(name, value, check_keys, uuid_subtype):
     """Encode a single name, value pair."""
-    func = _ENCODERS.get(type(value))
-    if func:
-        return func(name, value, check_keys, uuid_subtype)
+
+    # First see if the type is already cached. KeyError will only ever
+    # happen once per subtype.
+    try:
+        return _ENCODERS[type(value)](name, value, check_keys, uuid_subtype)
+    except KeyError:
+        pass
+
+    # Second, fall back to trying _type_marker. This has to be done
+    # before the loop below since users could subclass one of our
+    # custom types that subclasses a python built-in (e.g. Binary)
     marker = getattr(value, "_type_marker", None)
     if isinstance(marker, int) and marker in _MARKERS:
-        return _MARKERS.get(marker)(name, value, check_keys, uuid_subtype)
+        func = _MARKERS[marker]
+        # Cache this type for faster subsequent lookup.
+        _ENCODERS[type(value)] = func
+        return func(name, value, check_keys, uuid_subtype)
 
+    # If all else fails test each base type. This will only happen once for
+    # a subtype of a supported base type.
     for base in _ENCODERS:
         if isinstance(value, base):
             func = _ENCODERS[base]
