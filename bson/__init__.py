@@ -24,7 +24,8 @@ import struct
 import sys
 import uuid
 
-from codecs import utf_8_decode as _utf_8_decode
+from codecs import (utf_8_decode as _utf_8_decode,
+                    utf_8_encode as _utf_8_encode)
 
 from bson.binary import (Binary, OLD_UUID_SUBTYPE,
                          JAVA_LEGACY, CSHARP_LEGACY,
@@ -99,7 +100,7 @@ def _get_int(data, position, dummy0, dummy1):
 def _get_c_string(data, position):
     """Decode a BSON 'C' string to python unicode string."""
     end = data.index(b"\x00", position)
-    return _utf_8_decode(data[position:end])[0], end + 1
+    return _utf_8_decode(data[position:end], None, True)[0], end + 1
 
 
 def _get_float(data, position, dummy0, dummy1):
@@ -117,7 +118,7 @@ def _get_string(data, position, obj_end, dummy):
     end = position + length - 1
     if data[end:end + 1] != b"\x00":
         raise InvalidBSON("invalid end of string")
-    return _utf_8_decode(data[position:end])[0], end + 1
+    return _utf_8_decode(data[position:end], None, True)[0], end + 1
 
 
 def _get_object(data, position, obj_end, opts):
@@ -357,7 +358,7 @@ def _make_c_string_check(string):
             raise InvalidDocument("BSON keys / regex patterns must not "
                                   "contain a NUL character")
         try:
-            string.decode("utf-8")
+            _utf_8_decode(string, None, True)
             return string + b"\x00"
         except UnicodeError:
             raise InvalidStringData("strings in documents must be valid "
@@ -366,20 +367,20 @@ def _make_c_string_check(string):
         if "\x00" in string:
             raise InvalidDocument("BSON keys / regex patterns must not "
                                   "contain a NUL character")
-        return string.encode("utf-8") + b"\x00"
+        return _utf_8_encode(string)[0] + b"\x00"
 
 
 def _make_c_string(string):
     """Make a 'C' string."""
     if isinstance(string, bytes):
         try:
-            string.decode("utf-8")
+            _utf_8_decode(string, None, True)
             return string + b"\x00"
         except UnicodeError:
             raise InvalidStringData("strings in documents must be valid "
                                     "UTF-8: %r" % string)
     else:
-        return string.encode("utf-8") + b"\x00"
+        return _utf_8_encode(string)[0] + b"\x00"
 
 
 if PY3:
@@ -389,7 +390,7 @@ if PY3:
         if "\x00" in string:
             raise InvalidDocument("BSON keys / regex patterns must not "
                                   "contain a NUL character")
-        return string.encode("utf-8") + b"\x00"
+        return _utf_8_encode(string)[0] + b"\x00"
 else:
     # Keys can be unicode or bytes in python 2.
     _make_name = _make_c_string_check
@@ -409,7 +410,7 @@ else:
     def _encode_bytes(name, value, dummy0, dummy1):
         """Encode a python str (python 2.x)."""
         try:
-            value.decode("utf-8")
+            _utf_8_decode(value, None, True)
         except UnicodeError:
             raise InvalidStringData("strings in documents must be valid "
                                     "UTF-8: %r" % (value,))
@@ -454,7 +455,7 @@ def _encode_list(name, value, check_keys, uuid_subtype):
 
 def _encode_text(name, value, dummy0, dummy1):
     """Encode a python unicode (python 2.x) / str (python 3.x)."""
-    value = value.encode("utf-8")
+    value = _utf_8_encode(value)[0]
     return b"\x02" + name + _PACK_INT(len(value) + 1) + value + b"\x00"
 
 
