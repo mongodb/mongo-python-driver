@@ -179,13 +179,13 @@ class TestClient(IntegrationTest, TestRequestMixin):
         bad_host = "somedomainthatdoesntexist.org"
         with client_knobs(server_wait_time=0.01):
             c = MongoClient(bad_host, port)
-        self.assertRaises(ConnectionFailure, c.pymongo_test.test.find_one)
+            self.assertRaises(ConnectionFailure, c.pymongo_test.test.find_one)
 
     def test_init_disconnected_with_auth(self):
         uri = "mongodb://user:pass@somedomainthatdoesntexist"
         with client_knobs(server_wait_time=0.01):
             c = MongoClient(uri)
-        self.assertRaises(ConnectionFailure, c.pymongo_test.test.find_one)
+            self.assertRaises(ConnectionFailure, c.pymongo_test.test.find_one)
 
     def test_equality(self):
         c = connected(MongoClient(host, port))
