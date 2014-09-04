@@ -17,7 +17,6 @@
 from __future__ import unicode_literals
 
 import hmac
-import random
 
 HAVE_KERBEROS = True
 try:
@@ -28,6 +27,7 @@ except ImportError:
 from base64 import standard_b64decode, standard_b64encode
 from collections import namedtuple
 from hashlib import md5, sha1
+from random import SystemRandom
 
 from bson.binary import Binary
 from bson.py3compat import b, string_type, _unicode, PY3
@@ -95,7 +95,7 @@ def _authenticate_scram_sha1(credentials, sock_info):
 
     user = username.encode("utf-8").replace(b"=", b"=3D").replace(b",", b"=2C")
     nonce = standard_b64encode(
-        (("%s" % (random.random(),))[2:]).encode("utf-8"))
+        (("%s" % (SystemRandom().random(),))[2:]).encode("utf-8"))
     first_bare = b"n=" + user + b",r=" + nonce
 
     cmd = SON([('saslStart', 1),
