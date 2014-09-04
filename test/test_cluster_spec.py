@@ -91,8 +91,7 @@ def create_mock_cluster(uri, monitor_class=MockMonitor):
         parsed_uri['nodelist'],
         set_name=set_name,
         pool_class=MockPool,
-        monitor_class=monitor_class,
-        heartbeat_frequency=99999999)
+        monitor_class=monitor_class)
 
     c = Cluster(cluster_settings)
     c.open()
