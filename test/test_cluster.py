@@ -125,7 +125,7 @@ class ClusterTest(unittest.TestCase):
 
     def setUp(self):
         super(ClusterTest, self).setUp()
-        self.client_knobs = client_knobs(heartbeat_frequency=9999999)
+        self.client_knobs = client_knobs(heartbeat_frequency=999999)
         self.client_knobs.enable()
 
     def tearDown(self):

@@ -1053,7 +1053,7 @@ class TestMongoClientFailover(MockClientTest):
 
     def test_discover_primary(self):
         # Disable background refresh.
-        with client_knobs(heartbeat_frequency=9999999):
+        with client_knobs(heartbeat_frequency=999999):
             c = MockClient(
                 standalones=[],
                 members=['a:1', 'b:2', 'c:3'],

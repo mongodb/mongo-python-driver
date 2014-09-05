@@ -112,7 +112,7 @@ class TestSecondaryRemoved(MockClientTest):
 class TestSocketError(MockClientTest):
     def test_socket_error_marks_member_down(self):
         # Disable background refresh.
-        with client_knobs(heartbeat_frequency=9999999):
+        with client_knobs(heartbeat_frequency=999999):
             c = MockClient(
                 standalones=[],
                 members=['a:1', 'b:2'],
