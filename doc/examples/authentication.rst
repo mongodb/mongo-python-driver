@@ -178,3 +178,19 @@ the SASL PLAIN mechanism::
   ...                      ssl_ca_certs='/path/to/ca.pem')
   >>>
 
+SCRAM-SHA-1 (RFC 5802)
+----------------------
+.. versionadded:: 2.8
+
+MongoDB 2.7.2 and above support the SCRAM-SHA-1 mechanism. Authentication is
+per-database and credentials can be specified through the MongoDB URI or passed
+to the :meth:`~pymongo.database.Database.authenticate` method::
+
+  >>> from pymongo import MongoClient
+  >>> client = MongoClient('example.com')
+  >>> client.the_database.authenticate('user', 'password', mechanism='SCRAM-SHA-1')
+  True
+  >>>
+  >>> uri = "mongodb://user:password@example.com/the_database?authMechanism=SCRAM-SHA-1"
+  >>> client = MongoClient(uri)
+  >>>

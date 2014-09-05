@@ -48,7 +48,8 @@ from test.utils import (is_mongos,
                         one,
                         catch_warnings,
                         TestRequestMixin,
-                        joinall)
+                        joinall,
+                        get_command_line)
 
 # YOU MUST RUN KINIT BEFORE RUNNING GSSAPI TESTS.
 GSSAPI_HOST = os.environ.get('GSSAPI_HOST')
@@ -188,7 +189,7 @@ class TestGSSAPI(unittest.TestCase):
                 self.assertTrue(thread.success)
 
 
-class TestSASL(unittest.TestCase):
+class TestSASLPlain(unittest.TestCase):
 
     def setUp(self):
         if not SASL_HOST or not SASL_USER or not SASL_PASS:
@@ -256,6 +257,59 @@ class TestSASL(unittest.TestCase):
                           auth_string('not-user', SASL_PASS))
         self.assertRaises(ConfigurationError, MongoClient,
                           auth_string(SASL_USER, 'not-pwd'))
+
+
+class TestSCRAMSHA1(unittest.TestCase):
+
+    def setUp(self):
+        client = auth_context.client
+        if not version.at_least(client, (2, 7, 2)):
+            raise SkipTest("SCRAM-SHA-1 requires MongoDB >= 2.7.2")
+        ismaster = client.admin.command('ismaster')
+        self.set_name = ismaster.get('setName')
+
+        cmd_line = get_command_line(client)
+        if 'SCRAM-SHA-1' not in cmd_line.get(
+            'parsed', {}).get('setParameter',
+                            {}).get('authenticationMechanisms', ''):
+            raise SkipTest('SCRAM-SHA-1 mechanism not enabled')
+
+        if self.set_name:
+            client.pymongo_test.add_user('user', 'pass',
+                roles=['userAdmin', 'readWrite'],
+                writeConcern={'w': len(ismaster['hosts'])})
+        else:
+            client.pymongo_test.add_user(
+                'user', 'pass', roles=['userAdmin', 'readWrite'])
+
+
+    def test_scram_sha1(self):
+        client = MongoClient(host, port)
+        self.assertTrue(client.pymongo_test.authenticate(
+            'user', 'pass', mechanism='SCRAM-SHA-1'))
+        client.pymongo_test.command('dbstats')
+
+        client = MongoClient('mongodb://user:pass@%s:%d/pymongo_test'
+                             '?authMechanism=SCRAM-SHA-1' % (host, port))
+        client.pymongo_test.command('dbstats')
+
+        if self.set_name:
+            client = MongoReplicaSetClient(host, port,
+                                           replicaSet='%s' % (self.set_name,))
+            self.assertTrue(client.pymongo_test.authenticate(
+                'user', 'pass', mechanism='SCRAM-SHA-1'))
+            client.pymongo_test.command('dbstats')
+
+            uri = ('mongodb://user:pass'
+                   '@%s:%d/pymongo_test?authMechanism=SCRAM-SHA-1'
+                   '&replicaSet=%s' % (host, port, self.set_name))
+            client = MongoReplicaSetClient(uri)
+            client.pymongo_test.command('dbstats')
+            client.read_preference = ReadPreference.SECONDARY
+            client.pymongo_test.command('dbstats')
+
+    def tearDown(self):
+        auth_context.client.pymongo_test.remove_user('user')
 
 
 class TestAuthURIOptions(unittest.TestCase):
