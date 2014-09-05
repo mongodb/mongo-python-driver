@@ -75,9 +75,17 @@ else:
 
 def _hi(data, salt, iterations):
     """A simple implementation of PBKDF2."""
-    _ui = _u1 = hmac.HMAC(data, salt + b'\x00\x00\x00\x01', sha1).digest()
+    mac = hmac.HMAC(data, None, sha1)
+
+    def _digest(msg, mac=mac):
+        """Get a digest for msg."""
+        _mac = mac.copy()
+        _mac.update(msg)
+        return _mac.digest()
+
+    _ui = _u1 = _digest(salt + b'\x00\x00\x00\x01')
     for _ in range(iterations - 1):
-        _u1 = hmac.HMAC(data, _u1, sha1).digest()
+        _u1 = _digest(_u1)
         _ui = _xor(_ui, _u1)
     return _ui
 
@@ -92,6 +100,10 @@ def _authenticate_scram_sha1(credentials, sock_info):
     username = credentials.username
     password = credentials.password
     source = credentials.source
+
+    # Make local
+    _hmac = hmac.HMAC
+    _sha1 = sha1
 
     user = username.encode("utf-8").replace(b"=", b"=3D").replace(b",", b"=2C")
     nonce = standard_b64encode(
@@ -115,16 +127,16 @@ def _authenticate_scram_sha1(credentials, sock_info):
     salted_pass = _hi(_password_digest(username, password).encode("utf-8"),
                       standard_b64decode(salt),
                       iterations)
-    client_key = hmac.HMAC(salted_pass, b"Client Key", sha1).digest()
-    stored_key = sha1(client_key).digest()
+    client_key = _hmac(salted_pass, b"Client Key", _sha1).digest()
+    stored_key = _sha1(client_key).digest()
     auth_msg = b",".join((first_bare, server_first, without_proof))
-    client_sig = hmac.HMAC(stored_key, auth_msg, sha1).digest()
+    client_sig = _hmac(stored_key, auth_msg, _sha1).digest()
     client_proof = b"p=" + standard_b64encode(_xor(client_key, client_sig))
     client_final = b",".join((without_proof, client_proof))
 
-    server_key = hmac.HMAC(salted_pass, b"Server Key", sha1).digest()
+    server_key = _hmac(salted_pass, b"Server Key", _sha1).digest()
     server_sig = standard_b64encode(
-        hmac.HMAC(server_key, auth_msg, sha1).digest())
+        _hmac(server_key, auth_msg, _sha1).digest())
 
     cmd = SON([('saslContinue', 1),
                ('conversationId', res['conversationId']),
