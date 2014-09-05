@@ -1052,7 +1052,8 @@ class MongoClient(common.BaseObject):
         if from_host is not None:
             command["fromhost"] = from_host
 
-        # _get_cluster() starts connecting, if we initialized with connect=False.
+        # _get_cluster() starts connecting, if we initialized with
+        # connect=False.
         server = self._get_cluster().select_server(
             writable_server_selector)
 
