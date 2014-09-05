@@ -266,20 +266,6 @@ class TestCollection(IntegrationTest):
         self.assertEqual(10001, coll.count())
         coll.drop()
 
-    def test_index_on_binary(self):
-        db = self.db
-        db.drop_collection("test")
-        db.test.save({"bin": Binary(b"def")})
-        db.test.save({"bin": Binary(b"abc")})
-        db.test.save({"bin": Binary(b"ghi")})
-
-        self.assertEqual(db.test.find({"bin": Binary(b"abc")})
-                         .explain()["nscanned"], 3)
-
-        db.test.create_index("bin")
-        self.assertEqual(db.test.find({"bin": Binary(b"abc")})
-                         .explain()["nscanned"], 1)
-
     def test_drop_index(self):
         db = self.db
         db.test.drop_indexes()
@@ -438,13 +424,19 @@ class TestCollection(IntegrationTest):
         self.assertEqual("geo_2dsphere",
                          db.test.create_index([("geo", GEOSPHERE)]))
 
+        for name, info in db.test.index_information().items():
+            field, idx_type = info['key'][0]
+            if field == 'geo' and idx_type == '2dsphere':
+                break
+        else:
+            self.fail("2dsphere index not found.")
+
         poly = {"type": "Polygon",
                 "coordinates": [[[40,5], [40,6], [41,6], [41,5], [40,5]]]}
         query = {"geo": {"$within": {"$geometry": poly}}}
 
-        cursor = db.test.find(query).explain()['cursor']
-        self.assertTrue('S2Cursor' in cursor or 'geo_2dsphere' in cursor)
-
+        # This query will error without a 2dsphere index.
+        db.test.find(query)
         db.test.drop_indexes()
 
     @client_context.require_version_min(2, 3, 2)
@@ -454,8 +446,13 @@ class TestCollection(IntegrationTest):
         self.assertEqual("a_hashed",
                          db.test.create_index([("a", HASHED)]))
 
-        self.assertEqual("BtreeCursor a_hashed",
-                db.test.find({'a': 1}).explain()['cursor'])
+        for name, info in db.test.index_information().items():
+            field, idx_type = info['key'][0]
+            if field == 'a' and idx_type == 'hashed':
+                break
+        else:
+            self.fail("hashed index not found.")
+
         db.test.drop_indexes()
 
     def test_index_sparse(self):

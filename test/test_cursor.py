@@ -218,16 +218,12 @@ class TestCursor(IntegrationTest):
 
     def test_explain(self):
         a = self.db.test.find()
-        b = a.explain()
+        a.explain()
         for _ in a:
             break
-        c = a.explain()
-        del b["millis"]
-        b.pop("oldPlan", None)
-        del c["millis"]
-        c.pop("oldPlan", None)
-        self.assertEqual(b, c)
-        self.assertTrue("cursor" in b)
+        b = a.explain()
+        # "cursor" pre MongoDB 2.7.6, "executionStats" post
+        self.assertTrue("cursor" in b or "executionStats" in b)
 
     def test_hint(self):
         db = self.db
@@ -244,15 +240,13 @@ class TestCursor(IntegrationTest):
                           db.test.find({"num": 17, "foo": 17})
                           .hint([("foo", ASCENDING)]).explain)
 
-        index = db.test.create_index("num")
+        spec = [("num", DESCENDING)]
+        index = db.test.create_index(spec)
 
-        spec = [("num", ASCENDING)]
-        self.assertEqual(db.test.find({}).explain()["cursor"], "BasicCursor")
-        self.assertEqual(db.test.find({}).hint(spec).explain()["cursor"],
-                         "BtreeCursor %s" % index)
-        self.assertEqual(db.test.find({}).hint(spec).hint(None)
-                         .explain()["cursor"],
-                         "BasicCursor")
+        first = next(db.test.find())
+        self.assertEqual(0, first.get('num'))
+        first = next(db.test.find().hint(spec))
+        self.assertEqual(99, first.get('num'))
         self.assertRaises(OperationFailure,
                           db.test.find({"num": 17, "foo": 17})
                           .hint([("foo", ASCENDING)]).explain)
