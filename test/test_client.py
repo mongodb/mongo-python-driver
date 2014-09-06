@@ -39,6 +39,7 @@ from pymongo.errors import (AutoReconnect,
                             OperationFailure,
                             CursorNotFound)
 from pymongo.server_selectors import writable_server_selector
+from pymongo.server_type import SERVER_TYPE
 from test import (client_context,
                   client_knobs,
                   connection_string,
@@ -1108,6 +1109,48 @@ class TestMongoClientFailover(MockClientTest):
         c._get_cluster().select_servers(writable_server_selector)
         self.assertEqual('a', c.host)
         self.assertEqual(1, c.port)
+
+    def test_network_error_on_operation(self):
+        # Verify only the disconnected server is reset by a network failure.
+
+        # Disable background refresh.
+        with client_knobs(heartbeat_frequency=999999):
+            c = MockClient(
+                standalones=[],
+                members=['a:1', 'b:2'],
+                mongoses=[],
+                host='a:1',
+                replicaSet='rs',
+                connect=False)
+
+            # Set host-specific information so we can test whether it is reset.
+            c.set_wire_version_range('a:1', 0, 1)
+            c.set_wire_version_range('b:2', 0, 2)
+
+            connected(c)
+            wait_until(lambda: len(c.nodes) == 2, 'connect')
+
+            sd = c._get_cluster().get_server_by_address(('a', 1)).description
+            self.assertEqual(SERVER_TYPE.RSPrimary, sd.server_type)
+            self.assertEqual(0, sd.min_wire_version)
+            self.assertEqual(1, sd.max_wire_version)
+
+            c.kill_host('a:1')
+
+            # MongoClient is disconnected from the primary.
+            self.assertRaises(AutoReconnect, c.db.collection.find_one)
+
+            # The primary's description is reset.
+            sd_a = c._get_cluster().get_server_by_address(('a', 1)).description
+            self.assertEqual(SERVER_TYPE.Unknown, sd_a.server_type)
+            self.assertEqual(0, sd_a.min_wire_version)
+            self.assertEqual(0, sd_a.max_wire_version)
+
+            # ...but not the secondary's.
+            sd_b = c._get_cluster().get_server_by_address(('b', 2)).description
+            self.assertEqual(SERVER_TYPE.RSSecondary, sd_b.server_type)
+            self.assertEqual(0, sd_b.min_wire_version)
+            self.assertEqual(2, sd_b.max_wire_version)
 
 
 if __name__ == "__main__":

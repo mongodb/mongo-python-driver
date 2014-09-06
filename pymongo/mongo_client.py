@@ -810,22 +810,17 @@ class MongoClient(common.BaseObject):
             exhaust)
 
     def _reset_on_error(self, server, fn, *args, **kwargs):
-        """Execute an operation. Reset the pool on network error.
+        """Execute an operation. Reset the server on network error.
 
         Returns fn()'s return value on success. On error, clears the server's
-        pool and marks the server Unknown or, if the server is the primary,
-        resets all pools and servers.
+        pool and marks the server Unknown.
 
         Re-raises any exception thrown by fn().
         """
         try:
             return fn(*args, **kwargs)
         except ConnectionFailure:
-            if server.description.is_writable:
-                self.disconnect()
-            else:
-                self._cluster.reset_server(server.address)
-
+            self._cluster.reset_server(server.description.address)
             raise
 
     def start_request(self):
