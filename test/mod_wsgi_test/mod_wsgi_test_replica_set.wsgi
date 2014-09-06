@@ -28,8 +28,7 @@ sys.path.insert(0, repository_path)
 import pymongo
 from pymongo.mongo_replica_set_client import MongoReplicaSetClient
 
-# auto_start_request is part of the PYTHON-353 pathology
-client = MongoReplicaSetClient(replicaSet='repl0', auto_start_request=True)
+client = MongoReplicaSetClient(replicaSet='repl0')
 collection = client.test.test
 
 ndocs = 20
@@ -45,6 +44,8 @@ except:
 
 
 def application(environ, start_response):
+    # Requests are part of the PYTHON-353 pathology.
+    client.start_request()
     results = list(collection.find().batch_size(10))
     assert len(results) == ndocs
     output = 'python %s, mod_wsgi %s, pymongo %s' % (
