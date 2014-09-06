@@ -958,33 +958,37 @@ class TestClientProperties(MockClientTest):
         self.assertRaises(ConfigurationError, c.db.collection.find_one)
 
     def test_max_wire_version(self):
-        c = MockClient(
-            standalones=[],
-            members=['a:1', 'b:2', 'c:3'],
-            mongoses=[],
-            host='b:2',  # Pass a secondary.
-            replicaSet='rs',
-            connect=False)
+        # Disable periodic monitoring.
+        with client_knobs(heartbeat_frequency=1e6):
+            c = MockClient(
+                standalones=[],
+                members=['a:1', 'b:2', 'c:3'],
+                mongoses=[],
+                host='b:2',  # Pass a secondary.
+                replicaSet='rs',
+                connect=False)
 
-        c.set_max_write_batch_size('a:1', 1)
-        c.set_max_write_batch_size('b:2', 2)
+            c.set_max_write_batch_size('a:1', 1)
+            c.set_max_write_batch_size('b:2', 2)
 
-        # Starts with default max batch size.
-        self.assertEqual(1000, c.max_write_batch_size)
-        c._get_cluster()
-        wait_until(lambda: len(c.nodes) == 3, 'connect')
+            # Starts with default max batch size.
+            self.assertEqual(1000, c.max_write_batch_size)
+            connected(c)
+            wait_until(lambda: len(c.nodes) == 3, 'connect')
 
-        # Uses primary's max batch size.
-        self.assertEqual(c.max_write_batch_size, 1)
+            # Uses primary's max batch size.
+            self.assertEqual(c.max_write_batch_size, 1)
 
-        # b becomes primary.
-        c.mock_primary = 'b:2'
-        c.disconnect()
-        self.assertEqual(1000, c.max_write_batch_size)
+            # b becomes primary.
+            c.mock_primary = 'b:2'
+            c.disconnect()
 
-        c._get_cluster()
-        wait_until(lambda: len(c.nodes) == 3, 'connect')
-        self.assertEqual(c.max_write_batch_size, 2)
+            # While disconnected, return to default max batch size.
+            self.assertEqual(1000, c.max_write_batch_size)
+
+            connected(c)
+            wait_until(lambda: len(c.nodes) == 3, 'connect')
+            self.assertEqual(c.max_write_batch_size, 2)
 
     def test_wire_version_mongos_ha(self):
         # TODO: Reimplement Mongos HA with PyMongo 3's MongoClient.
