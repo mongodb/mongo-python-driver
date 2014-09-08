@@ -20,7 +20,7 @@ import time
 import threading
 import weakref
 
-from bson.py3compat import u
+from bson.py3compat import u, itervalues
 from pymongo import auth, helpers, message, thread_util
 from pymongo.errors import ConnectionFailure
 
@@ -228,7 +228,7 @@ class SocketInfo(object):
           - `all_credentials`: dict, maps auth source to MongoCredential.
         """
         if all_credentials or self.authset:
-            cached = set(all_credentials.itervalues())
+            cached = set(itervalues(all_credentials))
             authset = self.authset.copy()
 
             # Logout any credentials that no longer exist in the cache.
