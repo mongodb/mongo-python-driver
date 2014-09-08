@@ -16,11 +16,13 @@
 
 import contextlib
 import datetime
+import multiprocessing
 import os
 import threading
 import socket
 import sys
 import time
+import traceback
 import warnings
 
 sys.path[0:0] = [""]
@@ -38,7 +40,8 @@ from pymongo.errors import (AutoReconnect,
                             InvalidName,
                             OperationFailure,
                             CursorNotFound)
-from pymongo.server_selectors import writable_server_selector
+from pymongo.server_selectors import (any_server_selector,
+                                      writable_server_selector)
 from pymongo.server_type import SERVER_TYPE
 from test import (client_context,
                   client_knobs,
@@ -442,56 +445,38 @@ class TestClient(IntegrationTest, TestRequestMixin):
         if sys.platform == "win32":
             raise SkipTest("Can't fork on windows")
 
-        try:
-            from multiprocessing import Process, Pipe
-        except ImportError:
-            raise SkipTest("No multiprocessing module")
-
         db = self.client.pymongo_test
 
-        # Failure occurs if the client is used before the fork
+        # Ensure a socket is opened before the fork.
         db.test.find_one()
-        db.connection.end_request()
 
-        def loop(pipe):
-            while True:
-                try:
-                    db.test.insert({"a": "b"})
-                    for _ in db.test.find():
-                        pass
-                except:
-                    pipe.send(True)
-                    os._exit(1)
+        def f(pipe):
+            try:
+                servers = self.client._cluster.select_servers(
+                    any_server_selector)
 
-        cp1, cc1 = Pipe()
-        cp2, cc2 = Pipe()
+                # In child, only the thread that called fork() is alive.
+                assert not any(s._monitor._thread.is_alive()
+                               for s in servers)
 
-        p1 = Process(target=loop, args=(cc1,))
-        p2 = Process(target=loop, args=(cc2,))
+                db.test.find_one()
 
-        p1.start()
-        p2.start()
+                wait_until(
+                    lambda: all(s._monitor._thread.is_alive() for s in servers),
+                    "restart monitor threads")
+            except:
+                traceback.print_exc()  # Aid debugging.
+                pipe.send(True)
 
-        p1.join(1)
-        p2.join(1)
+        parent_pipe, child_pipe = multiprocessing.Pipe()
+        p = multiprocessing.Process(target=f, args=(child_pipe,))
+        p.start()
+        p.join(10)
+        child_pipe.close()
 
-        p1.terminate()
-        p2.terminate()
-
-        p1.join()
-        p2.join()
-
-        cc1.close()
-        cc2.close()
-
-        # recv will only have data if the subprocess failed
+        # Pipe will only have data if the child process failed.
         try:
-            cp1.recv()
-            self.fail()
-        except EOFError:
-            pass
-        try:
-            cp2.recv()
+            parent_pipe.recv()
             self.fail()
         except EOFError:
             pass

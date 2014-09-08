@@ -29,7 +29,11 @@ class Server(object):
         self._monitor = monitor
 
     def open(self):
-        self._monitor.start()
+        """Start monitoring, or restart after a fork.
+
+        Multiple calls have no effect.
+        """
+        self._monitor.open()
 
     def close(self):
         self._monitor.close()

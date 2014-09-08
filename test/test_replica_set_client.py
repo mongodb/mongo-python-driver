@@ -520,47 +520,6 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         self.assertRaises(InvalidOperation, c.db.collection.find_one)
         self.assertRaises(InvalidOperation, c.db.collection.insert, {})
 
-    def test_fork(self):
-        # After a fork the monitor thread is gone.
-        # Verify that schedule_refresh restarts it.
-        if sys.platform == "win32":
-            raise SkipTest("Can't fork on Windows")
-
-        try:
-            from multiprocessing import Process, Pipe
-        except ImportError:
-            raise SkipTest("No multiprocessing module")
-
-        client = client_context.rs_client
-
-        def f(pipe):
-            try:
-                # Trigger a refresh.
-                self.assertFalse(
-                    client._MongoReplicaSetClient__monitor.isAlive())
-
-                client.disconnect()
-                self.assertSoon(
-                    lambda: client._MongoReplicaSetClient__monitor.isAlive())
-
-                client.db.collection.find_one()  # No error.
-            except:
-                traceback.print_exc()
-                pipe.send(True)
-
-        cp, cc = Pipe()
-        p = Process(target=f, args=(cc,))
-        p.start()
-        p.join(10)
-        cc.close()
-
-        # recv will only have data if the subprocess failed
-        try:
-            cp.recv()
-            self.fail()
-        except EOFError:
-            pass
-
     def test_document_class(self):
         c = client_context.rs_client
         db = c.pymongo_test

@@ -18,6 +18,7 @@ import random
 import threading
 import time
 
+from bson.py3compat import itervalues
 from pymongo import common
 from pymongo.cluster_description import (updated_cluster_description,
                                          CLUSTER_TYPE,
@@ -44,7 +45,7 @@ class Cluster(object):
         self._servers = {}
 
     def open(self):
-        """Start monitoring.
+        """Start monitoring, or restart after a fork.
 
         No effect if called multiple times.
         """
@@ -204,10 +205,17 @@ class Cluster(object):
         return self._description
 
     def _ensure_opened(self):
-        """Start monitors. Hold the lock when calling this."""
+        """Start monitors, or restart after a fork.
+
+        Hold the lock when calling this.
+        """
         if not self._opened:
             self._opened = True
             self._update_servers()
+        else:
+            # Restart monitors if we forked since previous call.
+            for server in itervalues(self._servers):
+                server.open()
 
     def _request_check_all(self):
         """Wake all monitors. Hold the lock when calling this."""

@@ -27,7 +27,7 @@ from pymongo.read_preferences import MovingAverage
 from pymongo.server_description import ServerDescription
 
 
-class Monitor(threading.Thread):
+class Monitor(object):
     def __init__(
             self,
             server_description,
@@ -43,13 +43,31 @@ class Monitor(threading.Thread):
         Monitor.
         """
         super(Monitor, self).__init__()
-        self.daemon = True  # Python 2.6's way to do setDaemon(True).
         self._server_description = server_description
         self._cluster = weakref.proxy(cluster)
         self._pool = pool
         self._settings = cluster_settings
         self._stopped = False
         self._event = thread_util.Event(self._settings.condition_class)
+        self._thread = None
+
+    def open(self):
+        """Start monitoring, or restart after a fork.
+
+        Multiple calls have no effect.
+        """
+        started = False
+        try:
+            started = self._thread and self._thread.is_alive()
+        except ReferenceError:
+            # Thread terminated.
+            pass
+
+        if not started:
+            thread = threading.Thread(target=self.run)
+            thread.daemon = True
+            self._thread = weakref.proxy(thread)
+            thread.start()
 
     def close(self):
         """Disconnect and stop monitoring.
@@ -61,6 +79,14 @@ class Monitor(threading.Thread):
 
         # Awake the thread so it notices that _stopped is True.
         self.request_check()
+
+    def join(self, timeout=None):
+        if self._thread is not None:
+            try:
+                self._thread.join(timeout)
+            except ReferenceError:
+                # Thread already terminated.
+                pass
 
     def request_check(self):
         """If the monitor is sleeping, wake and check the server soon."""
