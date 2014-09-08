@@ -39,9 +39,6 @@ class Monitor(threading.Thread):
         Pass an initial ServerDescription, a Cluster, a Pool, and a
         ClusterSettings.
 
-        Optionally override call_ismaster with a function that takes a
-        SocketInfo and returns (IsMaster, round_trip_time).
-
         The Cluster is weakly referenced. The Pool must be exclusive to this
         Monitor.
         """
