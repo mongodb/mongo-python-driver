@@ -677,6 +677,12 @@ class Cursor(object):
         `with_limit_and_skip` to ``True`` if that is the desired behavior.
         Raises :class:`~pymongo.errors.OperationFailure` on a database error.
 
+        When used with MongoDB >= 2.6, :meth:`~count` uses any :meth:`~hint`
+        applied to the query. In the following example the hint is passed to
+        the count command:
+
+          collection.find({'field': 'value'}).hint('field_1').count()
+
         With :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`,
         if `read_preference` is not
         :attr:`pymongo.read_preferences.ReadPreference.PRIMARY` or
@@ -690,6 +696,9 @@ class Cursor(object):
 
         .. note:: The `with_limit_and_skip` parameter requires server
            version **>= 1.1.4-**
+
+        .. versionchanged:: 2.8
+           The :meth:`~count` method now supports :meth:`~hint`.
 
         .. versionadded:: 1.1.1
            The `with_limit_and_skip` parameter.
@@ -706,6 +715,9 @@ class Cursor(object):
             command["maxTimeMS"] = self.__max_time_ms
         if self.__comment:
             command['$comment'] = self.__comment
+
+        if self.__hint is not None:
+            command['hint'] = self.__hint
 
         if with_limit_and_skip:
             if self.__limit:
@@ -792,20 +804,26 @@ class Cursor(object):
 
         `index` should be an index as passed to
         :meth:`~pymongo.collection.Collection.create_index`
-        (e.g. ``[('field', ASCENDING)]``). If `index`
-        is ``None`` any existing hints for this query are cleared. The
-        last hint applied to this cursor takes precedence over all
-        others.
+        (e.g. ``[('field', ASCENDING)]``) or the name of the index.
+        If `index` is ``None`` any existing hint for this query is
+        cleared. The last hint applied to this cursor takes precedence
+        over all others.
 
         :Parameters:
           - `index`: index to hint on (as an index specifier)
+
+        .. versionchanged:: 2.8
+           The :meth:`~hint` method accepts the name of the index.
         """
         self.__check_okay_to_chain()
         if index is None:
             self.__hint = None
             return self
 
-        self.__hint = helpers._index_document(index)
+        if isinstance(index, string_type):
+            self.__hint = index
+        else:
+            self.__hint = helpers._index_document(index)
         return self
 
     def comment(self, comment):

@@ -257,7 +257,18 @@ class TestCursor(IntegrationTest):
             break
         self.assertRaises(InvalidOperation, a.hint, spec)
 
-        self.assertRaises(TypeError, db.test.find().hint, index)
+    def test_hint_by_name(self):
+        db = self.db
+        db.test.drop()
+
+        for i in range(100):
+            db.test.insert({'i': i})
+
+        db.test.create_index([('i', DESCENDING)], name='fooindex')
+        first = next(db.test.find())
+        self.assertEqual(0, first.get('i'))
+        first = next(db.test.find().hint('fooindex'))
+        self.assertEqual(99, first.get('i'))
 
     def test_limit(self):
         db = self.db
@@ -577,6 +588,40 @@ class TestCursor(IntegrationTest):
         self.assertEqual(b, a.count())
 
         self.assertEqual(0, db.test.acollectionthatdoesntexist.find().count())
+
+    def test_count_with_hint(self):
+        collection = self.db.test
+        collection.drop()
+
+        collection.save({'i': 1})
+        collection.save({'i': 2})
+        self.assertEqual(2, collection.find().count())
+
+        collection.create_index([('i', 1)])
+
+        self.assertEqual(1, collection.find({'i': 1}).hint("_id_").count())
+        self.assertEqual(2, collection.find().hint("_id_").count())
+
+        if client_context.version.at_least(2, 6, 0):
+            # Count supports hint
+            self.assertRaises(OperationFailure,
+                              collection.find({'i': 1}).hint("BAD HINT").count)
+        else:
+            # Hint is ignored
+            self.assertEqual(
+                1, collection.find({'i': 1}).hint("BAD HINT").count())
+
+        # Create a sparse index which should have no entries.
+        collection.create_index([('x', 1)], sparse=True)
+
+        if client_context.version.at_least(2, 6, 0):
+            # Count supports hint
+            self.assertEqual(0, collection.find({'i': 1}).hint("x_1").count())
+        else:
+            # Hint is ignored
+            self.assertEqual(1, collection.find({'i': 1}).hint("x_1").count())
+
+        self.assertEqual(2, collection.find().hint("x_1").count())
 
     def test_where(self):
         db = self.db
