@@ -22,7 +22,7 @@ import weakref
 
 from bson.py3compat import u, itervalues
 from pymongo import auth, helpers, message, thread_util
-from pymongo.errors import ConnectionFailure
+from pymongo.errors import ConnectionFailure, AutoReconnect
 
 # If the first getaddrinfo call of this interpreter's life is on a thread,
 # while the main thread holds the import lock, getaddrinfo deadlocks trying
@@ -171,7 +171,7 @@ class SocketInfo(object):
         response = self.receive_message(1, request_id)
         unpacked = helpers._unpack_response(response)['data'][0]
         msg = "command %r failed: %%s" % spec
-        helpers._check_command_response(unpacked, None, msg)
+        helpers._check_command_response(unpacked, msg)
         return unpacked
 
     def send_message(self, message):
@@ -211,7 +211,7 @@ class SocketInfo(object):
         while length:
             chunk = self.sock.recv(length)
             if chunk == b"":
-                raise ConnectionFailure("connection closed")
+                raise AutoReconnect("connection closed")
 
             length -= len(chunk)
             message += chunk

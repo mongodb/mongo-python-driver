@@ -43,10 +43,37 @@ class AutoReconnect(ConnectionFailure):
     operations will attempt to open a new connection to the database (and
     will continue to raise this exception until the first successful
     connection is made).
+
+    Subclass of :exc:`~pymongo.errors.ConnectionFailure`.
     """
     def __init__(self, message='', errors=None):
         self.errors = errors or []
         ConnectionFailure.__init__(self, message)
+
+
+class NetworkTimeout(AutoReconnect):
+    """An operation on an open connection exceeded socketTimeoutMS.
+
+    The remaining connections in the pool stay open. In the case of a write
+    operation, you cannot know whether it succeeded or failed.
+
+    Subclass of :exc:`~pymongo.errors.AutoReconnect`.
+    """
+
+
+class NotMasterError(AutoReconnect):
+    """The server responded "not master" or "node is recovering".
+
+    These errors result from a query, write, or command. The operation failed
+    because the client thought it was using the primary but the primary has
+    stepped down, or the client thought it was using a healthy secondary but
+    the secondary is stale and trying to recover.
+
+    The client launches a refresh operation on a background thread, to update
+    its view of the server as soon as possible after throwing this exception.
+
+    Subclass of :exc:`~pymongo.errors.AutoReconnect`.
+    """
 
 
 class ConfigurationError(PyMongoError):

@@ -28,6 +28,7 @@ from stat import S_IRUSR
 import pymongo
 import pymongo.errors
 from pymongo.read_preferences import ReadPreference
+from test.utils import connected
 
 home = os.environ.get('HOME')
 default_dbpath = os.path.join(home, 'data', 'pymongo_high_availability')
@@ -273,9 +274,10 @@ def get_client():
     # secondary.
     for i, node in enumerate(nodes.keys()):
         try:
-            return pymongo.MongoClient(
-                node,
-                read_preference=ReadPreference.PRIMARY_PREFERRED)
+            return connected(
+                pymongo.MongoClient(
+                    node,
+                    read_preference=ReadPreference.PRIMARY_PREFERRED))
         except pymongo.errors.ConnectionFailure:
             if i == len(nodes) - 1:
                 raise

@@ -27,6 +27,7 @@ from pymongo.collection import Collection
 from pymongo.errors import (CollectionInvalid,
                             ConfigurationError,
                             InvalidName,
+                            NotMasterError,
                             OperationFailure)
 from pymongo.read_preferences import (make_read_preference,
                                       ReadPreference,
@@ -332,7 +333,6 @@ class Database(common.BaseObject):
                           "and will be routed to the primary instead." %
                           (command_name, orig.name), UserWarning, stacklevel=3)
 
-
         cursor = self["$cmd"].find(command,
                                    fields=fields,
                                    limit=-1,
@@ -340,14 +340,18 @@ class Database(common.BaseObject):
                                    read_preference=pref,
                                    compile_re=compile_re,
                                    _uuid_subtype=uuid_subtype)
+
         for doc in cursor:
             result = doc
 
         if check:
             msg = "command %s failed: %%s" % repr(command).replace("%", "%%")
-            helpers._check_command_response(result, self.connection.disconnect,
-                                            msg, allowable_errors)
 
+            try:
+                helpers._check_command_response(result, msg, allowable_errors)
+            except NotMasterError:
+                self.connection._reset_server_and_request_check(cursor.address)
+                raise
         return result, cursor.conn_id
 
     def command(self, command, value=1,
@@ -621,7 +625,11 @@ class Database(common.BaseObject):
         if error_msg is None:
             return None
         if error_msg.startswith("not master"):
-            self.__connection.disconnect()
+            # Reset primary server and request check, if another thread isn't
+            # doing so already.
+            primary = self.connection.primary
+            if primary:
+                self.connection._reset_server_and_request_check(primary)
         return error
 
     def last_status(self):

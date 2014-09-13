@@ -29,7 +29,6 @@
       .. autoattribute:: max_message_size
       .. autoattribute:: min_wire_version
       .. autoattribute:: max_wire_version
-      .. autoattribute:: auto_start_request
       .. autoattribute:: read_preference
       .. autoattribute:: acceptable_latency_ms
       .. autoattribute:: write_concern

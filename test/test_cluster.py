@@ -440,6 +440,15 @@ class TestMultiServerCluster(ClusterTest):
         self.assertEqual(CLUSTER_TYPE.ReplicaSetWithPrimary,
                          c.description.cluster_type)
 
+    def test_reset_removed_server(self):
+        c = create_mock_cluster(set_name='rs')
+
+        # No error resetting a server not in the ClusterDescription.
+        c.reset_server(('b', 27017))
+
+        # Server was *not* added as type Unknown.
+        self.assertFalse(c.has_server(('b', 27017)))
+
     def test_discover_set_name_from_primary(self):
         # Discovering a replica set without the setName supplied by the user
         # is not yet supported by MongoClient, but Cluster can do it.

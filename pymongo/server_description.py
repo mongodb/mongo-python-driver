@@ -118,8 +118,12 @@ class ServerDescription(object):
 
     @property
     def round_trip_time(self):
-        """The current average duration."""
-        return self._round_trip_times.get()
+        """The current average duration or None."""
+        # This override is for unittesting only!
+        if self._address in self._host_to_round_trip_time:
+            return self._host_to_round_trip_time[self._address]
+
+        return self._round_trip_times.get() if self._round_trip_times else None
 
     @property
     def is_writable(self):
@@ -132,3 +136,6 @@ class ServerDescription(object):
     @property
     def is_server_type_known(self):
         return self.server_type != SERVER_TYPE.Unknown
+
+    # For unittesting only. Use under no circumstances!
+    _host_to_round_trip_time = {}

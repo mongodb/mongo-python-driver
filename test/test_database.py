@@ -883,12 +883,11 @@ class TestDatabase(IntegrationTest):
         # Sometimes (SERVER-10891) the server's response to a badly-formatted
         # command document will have no 'ok' field. We should raise
         # OperationFailure instead of KeyError.
-        self.assertRaises(
-            OperationFailure,
-            helpers._check_command_response, {}, reset=None)
+        self.assertRaises(OperationFailure,
+                          helpers._check_command_response, {})
 
         try:
-            helpers._check_command_response({'$err': 'foo'}, reset=None)
+            helpers._check_command_response({'$err': 'foo'})
         except OperationFailure as e:
             self.assertEqual(e.args[0], 'foo')
         else:

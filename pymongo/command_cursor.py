@@ -18,7 +18,7 @@ from collections import deque
 
 from bson.py3compat import integer_types
 from pymongo import helpers, message
-from pymongo.errors import AutoReconnect, CursorNotFound
+from pymongo.errors import AutoReconnect, CursorNotFound, NotMasterError
 
 
 class CommandCursor(object):
@@ -108,11 +108,11 @@ class CommandCursor(object):
         except CursorNotFound:
             self.__killed = True
             raise
-        except AutoReconnect:
+        except NotMasterError:
             # Don't send kill cursors to another server after a "not master"
             # error. It's completely pointless.
             self.__killed = True
-            client.disconnect()
+            client._reset_server_and_request_check(self.address)
             raise
         self.__id = doc["cursor_id"]
 
@@ -152,6 +152,14 @@ class CommandCursor(object):
     def cursor_id(self):
         """Returns the id of the cursor."""
         return self.__id
+
+    @property
+    def address(self):
+        """The (host, port) of the server used, or None.
+
+        .. versionadded:: 3.0
+        """
+        return self.__conn_id
 
     def __iter__(self):
         return self

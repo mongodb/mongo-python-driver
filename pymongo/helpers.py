@@ -29,7 +29,8 @@ from pymongo.errors import (AutoReconnect,
                             DuplicateKeyError,
                             OperationFailure,
                             ExecutionTimeout,
-                            WTimeoutError)
+                            WTimeoutError,
+                            NotMasterError)
 
 
 def _index_list(key_or_list, direction=None):
@@ -83,6 +84,9 @@ def _unpack_response(response, cursor_id=None, as_class=dict,
     Check the response for errors and unpack, returning a dictionary
     containing the response data.
 
+    Can raise CursorNotFound, NotMasterError, ExecutionTimeout, or
+    OperationFailure.
+
     :Parameters:
       - `response`: byte string as returned from the database
       - `cursor_id` (optional): cursor_id we sent to get this response -
@@ -100,7 +104,7 @@ def _unpack_response(response, cursor_id=None, as_class=dict,
     elif response_flag & 2:
         error_object = bson.BSON(response[20:]).decode()
         if error_object["$err"].startswith("not master"):
-            raise AutoReconnect(error_object["$err"])
+            raise NotMasterError(error_object["$err"])
         elif error_object.get("code") == 50:
             raise ExecutionTimeout(error_object.get("$err"),
                                    error_object.get("code"),
@@ -121,7 +125,7 @@ def _unpack_response(response, cursor_id=None, as_class=dict,
     return result
 
 
-def _check_command_response(response, reset, msg=None, allowable_errors=None):
+def _check_command_response(response, msg=None, allowable_errors=None):
     """Check the response to a command for errors.
     """
     if "ok" not in response:
@@ -155,10 +159,8 @@ def _check_command_response(response, reset, msg=None, allowable_errors=None):
 
             # Server is "not master" or "recovering"
             if (errmsg.startswith("not master")
-                or errmsg.startswith("node is recovering")):
-                if reset is not None:
-                    reset()
-                raise AutoReconnect(errmsg)
+                    or errmsg.startswith("node is recovering")):
+                raise NotMasterError(errmsg)
 
             # Server assertion failures
             if errmsg == "db assertion failure":

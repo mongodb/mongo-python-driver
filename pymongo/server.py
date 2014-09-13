@@ -16,9 +16,9 @@
 
 import socket
 
-from pymongo.errors import AutoReconnect, DocumentTooLarge
-from pymongo.server_type import SERVER_TYPE
+from pymongo.errors import AutoReconnect, DocumentTooLarge, NetworkTimeout
 from pymongo.response import Response, ExhaustResponse
+from pymongo.server_type import SERVER_TYPE
 
 
 class Server(object):
@@ -41,6 +41,10 @@ class Server(object):
         # TODO: Add a close() method for consistency.
         self._pool.reset()
 
+    def reset(self):
+        """Clear the connection pool."""
+        self._pool.reset()
+
     def request_check(self):
         """Check the server's state soon."""
         self._monitor.request_check()
@@ -59,7 +63,7 @@ class Server(object):
             with self._pool.get_socket(all_credentials) as sock_info:
                 sock_info.send_message(data)
         except socket.error as exc:
-            raise AutoReconnect(str(exc))
+            self._raise_connection_failure(exc)
 
     def send_message_with_response(
             self,
@@ -93,7 +97,7 @@ class Server(object):
                         data=response_data,
                         address=self._description.address)
         except socket.error as exc:
-            raise AutoReconnect(str(exc))
+            self._raise_connection_failure(exc)
 
     def start_request(self):
         # TODO: Remove implicit threadlocal requests, use explicit requests.
@@ -138,6 +142,15 @@ class Server(object):
         else:
             # get_more and kill_cursors messages don't include BSON documents.
             return message
+
+    def _raise_connection_failure(self, exc):
+        host, port = self._description.address
+        msg = '%s:%d: %s' % (host, port, exc)
+
+        if isinstance(exc, socket.timeout):
+            raise NetworkTimeout(msg)
+        else:
+            raise AutoReconnect(msg)
 
     def __str__(self):
         d = self._description

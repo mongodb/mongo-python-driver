@@ -39,7 +39,7 @@ from test import (client_context,
                   host,
                   port,
                   IntegrationTest)
-from test.utils import joinall, get_client
+from test.utils import joinall, get_client, one
 
 
 class JustWrite(threading.Thread):
@@ -446,7 +446,7 @@ class TestGridfsReplicaSet(TestReplicaSetClientBase):
         primary_host, primary_port = self.primary
         primary_connection = get_client(primary_host, primary_port)
 
-        secondary_host, secondary_port = self.secondaries[0]
+        secondary_host, secondary_port = one(self.secondaries)
         secondary_connection = get_client(
             secondary_host, secondary_port,
             read_preference=ReadPreference.SECONDARY)
@@ -464,7 +464,7 @@ class TestGridfsReplicaSet(TestReplicaSetClientBase):
     def test_gridfs_secondary_lazy(self):
         # Should detect it's connected to secondary and not attempt to
         # create index.
-        secondary_host, secondary_port = self.secondaries[0]
+        secondary_host, secondary_port = one(self.secondaries)
         secondary_pair = '%s:%d' % (secondary_host, secondary_port)
         client = MongoClient(
             connection_string(seeds=[secondary_pair]),

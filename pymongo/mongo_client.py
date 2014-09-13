@@ -54,7 +54,9 @@ from pymongo.cluster import Cluster
 from pymongo.errors import (ConfigurationError,
                             ConnectionFailure,
                             InvalidURI, AutoReconnect, OperationFailure,
-                            DuplicateKeyError, InvalidOperation)
+                            DuplicateKeyError, InvalidOperation,
+                            NetworkTimeout,
+                            NotMasterError)
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_selectors import (any_server_selector,
                                       writable_preferred_server_selector,
@@ -298,7 +300,7 @@ class MongoClient(common.BaseObject):
         if creds:
             self._cache_credentials(creds.source, creds)
 
-        cluster_settings = ClusterSettings(
+        self._cluster_settings = ClusterSettings(
             seeds=seeds,
             set_name=options.replica_set_name,
             pool_class=pool_class,
@@ -306,7 +308,7 @@ class MongoClient(common.BaseObject):
             monitor_class=monitor_class,
             condition_class=condition_class)
 
-        self._cluster = Cluster(cluster_settings)
+        self._cluster = Cluster(self._cluster_settings)
         if connect:
             self._cluster.open()
 
@@ -465,6 +467,15 @@ class MongoClient(common.BaseObject):
         return self._cluster.get_secondaries()
 
     @property
+    def arbiters(self):
+        """Arbiters in the replica set.
+
+        A sequence of (host, port) pairs. Empty if this client is not
+        connected to a replica set.
+        """
+        return self._cluster.get_arbiters()
+
+    @property
     def is_primary(self):
         """If the current server can accept writes.
 
@@ -585,8 +596,12 @@ class MongoClient(common.BaseObject):
         """
         cluster = self._get_cluster()  # Starts monitors if necessary.
         try:
-            cluster.select_server(writable_server_selector)
-            return True
+            s = cluster.select_server(writable_server_selector)
+
+            # When directly connected to a secondary, arbiter, etc.,
+            # select_server returns it, whatever the selector. Check
+            # again if the server is writable.
+            return s.description.is_writable
         except ConnectionFailure:
             return False
 
@@ -672,7 +687,7 @@ class MongoClient(common.BaseObject):
         self._cluster.open()
         return self._cluster
 
-    def __check_response_to_last_error(self, response, is_command):
+    def __check_gle_response(self, response, is_command):
         """Check a response to a lastError message for errors.
 
         `response` is a byte string representing a response to the message.
@@ -685,9 +700,8 @@ class MongoClient(common.BaseObject):
         assert response["number_returned"] == 1
         result = response["data"][0]
 
-        # Raises AutoReconnect if "not master" or "node is recovering",
-        # OperationFailure for all other errors.
-        helpers._check_command_response(result, self.disconnect)
+        # Raises NotMasterError or OperationFailure.
+        helpers._check_command_response(result)
 
         # write commands - skip getLastError checking
         if is_command:
@@ -698,8 +712,7 @@ class MongoClient(common.BaseObject):
         if error_msg is None:
             return result
         if error_msg.startswith("not master"):
-            self.disconnect()
-            raise AutoReconnect(error_msg)
+            raise NotMasterError(error_msg)
 
         details = result
         # mongos returns the error code in an error object
@@ -763,10 +776,13 @@ class MongoClient(common.BaseObject):
                 message,
                 self.__all_credentials)
 
-            # Disconnects and raises ConnectionFailure if "not master"
-            # or "recovering".
-            return self.__check_response_to_last_error(response.data,
-                                                       command)
+            try:
+                return self.__check_gle_response(response.data, command)
+            except NotMasterError:
+                address = server.description.address
+                self._reset_server_and_request_check(address)
+                raise
+
         else:
             # Send the message. No response.
             self._reset_on_error(
@@ -819,9 +835,25 @@ class MongoClient(common.BaseObject):
         """
         try:
             return fn(*args, **kwargs)
-        except ConnectionFailure:
-            self._cluster.reset_server(server.description.address)
+        except NetworkTimeout:
+            # The socket has been closed. Don't reset the server.
             raise
+        except ConnectionFailure:
+            self.__reset_server(server.description.address)
+            raise
+
+    def __reset_server(self, address):
+        """Clear our connection pool for a server and mark it Unknown."""
+        self._cluster.reset_server(address)
+
+    def _reset_server_and_request_check(self, address):
+        """Clear our pool for a server, mark it Unknown, and check it soon."""
+        self._cluster.reset_server(address)
+        server = self._cluster.get_server_by_address(address)
+
+        # "server" is None if another thread removed it from the cluster.
+        if server:
+            server.request_check()
 
     def start_request(self):
         """Ensure the current thread always uses the same socket

@@ -39,7 +39,8 @@ from pymongo.errors import (AutoReconnect,
                             ConnectionFailure,
                             InvalidName,
                             OperationFailure,
-                            CursorNotFound)
+                            CursorNotFound,
+                            NetworkTimeout)
 from pymongo.server_selectors import (any_server_selector,
                                       writable_server_selector)
 from pymongo.server_type import SERVER_TYPE
@@ -545,7 +546,7 @@ class TestClient(IntegrationTest, TestRequestMixin):
             doc = next(db.test.find().where(where_func))
             return doc["x"]
         self.assertEqual(1, get_x(no_timeout.pymongo_test))
-        self.assertRaises(ConnectionFailure, get_x, timeout.pymongo_test)
+        self.assertRaises(NetworkTimeout, get_x, timeout.pymongo_test)
 
     def test_waitQueueTimeoutMS(self):
         client = MongoClient(host, port, waitQueueTimeoutMS=2000)

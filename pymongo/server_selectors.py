@@ -30,6 +30,11 @@ def secondary_server_selector(server_descriptions):
             if s.server_type == SERVER_TYPE.RSSecondary]
 
 
+def arbiter_server_selector(server_descriptions):
+    return [s for s in server_descriptions
+            if s.server_type == SERVER_TYPE.RSArbiter]
+
+
 def writable_preferred_server_selector(server_descriptions):
     """Like PrimaryPreferred but doesn't use tags or latency."""
     return writable_server_selector(server_descriptions) or server_descriptions
@@ -63,7 +68,7 @@ def tag_sets_server_selector(tag_sets, server_descriptions):
     preference.
     """
     for tag_set in tag_sets:
-        selected = single_tag_set_server_selector(server_descriptions, tag_set)
+        selected = single_tag_set_server_selector(tag_set, server_descriptions)
         if selected:
             return selected
 
@@ -99,3 +104,15 @@ def near_secondary_with_tags_server_selector(
         tag_sets_server_selector(
             tag_sets,
             secondary_server_selector(server_descriptions)))
+
+
+def near_member_with_tags_server_selector(
+        tag_sets,
+        latency_ms,
+        server_descriptions):
+    """All near-enough members matching the tag sets."""
+    return near_enough_server_selector(
+        latency_ms,
+        tag_sets_server_selector(
+            tag_sets,
+            server_descriptions))

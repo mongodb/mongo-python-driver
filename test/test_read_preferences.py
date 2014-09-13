@@ -22,12 +22,14 @@ sys.path[0:0] = [""]
 from bson.py3compat import MAXSIZE
 from bson.son import SON
 from pymongo.cursor import _QUERY_OPTIONS
-from pymongo.mongo_replica_set_client import MongoReplicaSetClient
+from pymongo.mongo_client import MongoClient
 from pymongo.read_preferences import (ReadPreference, MovingAverage,
                                       Primary, PrimaryPreferred,
                                       Secondary, SecondaryPreferred,
                                       Nearest, ServerMode,
                                       SECONDARY_OK_COMMANDS)
+from pymongo.server_selectors import any_server_selector
+from pymongo.server_type import SERVER_TYPE
 from pymongo.errors import ConfigurationError
 
 from test.test_replica_set_client import TestReplicaSetClientBase
@@ -41,7 +43,7 @@ from test import (client_context,
                   IntegrationTest,
                   db_user,
                   db_pwd)
-from test.utils import connected
+from test.utils import connected, one, wait_until
 from test.version import Version
 
 
@@ -82,9 +84,13 @@ class TestReadPreferencesBase(TestReplicaSetClientBase):
 
     def assertReadsFrom(self, expected, **kwargs):
         c = self._get_client(**kwargs)
+        wait_until(
+            lambda: len(c.nodes) == self.w,
+            "discovered all nodes")
+
         used = self.read_from_which_kind(c)
         self.assertEqual(expected, used, 'Cursor used %s, expected %s' % (
-            expected, used))
+            used, expected))
 
 
 class TestReadPreferences(TestReadPreferencesBase):
@@ -165,8 +171,7 @@ class TestReadPreferences(TestReadPreferencesBase):
         # member
         c = self._get_client(
             read_preference=ReadPreference.NEAREST,
-            latencyThresholdMS=10000, # 10 seconds
-            auto_start_request=False)
+            latencyThresholdMS=10000)  # 10 seconds
 
         data_members = set(self.hosts).difference(set(self.arbiters))
 
@@ -177,43 +182,40 @@ class TestReadPreferences(TestReadPreferencesBase):
         used = set()
         i = 0
         while data_members.difference(used) and i < 10000:
-            host = self.read_from_which_host(c)
-            used.add(host)
+            address = self.read_from_which_host(c)
+            used.add(address)
             i += 1
 
         not_used = data_members.difference(used)
         latencies = ', '.join(
-            '%s: %dms' % (member.host, member.ping_time.get())
-            for member in c._MongoReplicaSetClient__rs_state.members)
+            '%s: %dms' % (server.description.address,
+                          server.description.round_trip_time)
+            for server in c._get_cluster().select_servers(any_server_selector))
 
         self.assertFalse(not_used,
             "Expected to use primary and all secondaries for mode NEAREST,"
             " but didn't use %s\nlatencies: %s" % (not_used, latencies))
 
 
-class ReadPrefTester(MongoReplicaSetClient):
+class ReadPrefTester(MongoClient):
     def __init__(self, *args, **kwargs):
         self.has_read_from = set()
         super(ReadPrefTester, self).__init__(*args, **kwargs)
 
-    def _MongoReplicaSetClient__send_and_receive(self, member, *args, **kwargs):
-        self.has_read_from.add(member)
-        rsc = super(ReadPrefTester, self)
-        return rsc._MongoReplicaSetClient__send_and_receive(
-            member, *args, **kwargs)
+    def _reset_on_error(self, server, fn, *args, **kwargs):
+        self.has_read_from.add(server)
+        return super(ReadPrefTester, self)._reset_on_error(
+            server, fn, *args, **kwargs)
 
 
 class TestCommandAndReadPreference(TestReplicaSetClientBase):
 
     def setUp(self):
         super(TestCommandAndReadPreference, self).setUp()
-
-        # Need auto_start_request False to avoid pinning members.
         self.c = ReadPrefTester(
             '%s:%s' % (host, port),
-            replicaSet=self.name, auto_start_request=False,
-            # Effectively ignore members' ping times so we can test the effect
-            # of ReadPreference modes only
+            replicaSet=self.name,
+            # Ignore round trip times, to test ReadPreference modes only.
             latencyThresholdMS=1000*1000)
         if client_context.auth_enabled:
             self.c.admin.authenticate(db_user, db_pwd)
@@ -227,21 +229,17 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
         self.c = None
         super(TestCommandAndReadPreference, self).tearDown()
 
-    def executed_on_which_member(self, client, fn, *args, **kwargs):
+    def executed_on_which_server(self, client, fn, *args, **kwargs):
+        """Execute fn(*args, **kwargs) and return the Server instance used."""
         client.has_read_from.clear()
         fn(*args, **kwargs)
         self.assertEqual(1, len(client.has_read_from))
-        member, = client.has_read_from
-        return member
+        return one(client.has_read_from)
 
-    def assertExecutedOn(self, state, client, fn, *args, **kwargs):
-        member = self.executed_on_which_member(client, fn, *args, **kwargs)
-        if state == 'primary':
-            self.assertTrue(member.is_primary)
-        elif state == 'secondary':
-            self.assertFalse(member.is_primary)
-        else:
-            self.fail("Bad state %s" % repr(state))
+    def assertExecutedOn(self, server_type, client, fn, *args, **kwargs):
+        server = self.executed_on_which_server(client, fn, *args, **kwargs)
+        self.assertEqual(SERVER_TYPE._fields[server_type],
+                         SERVER_TYPE._fields[server.description.server_type])
 
     def _test_fn(self, obedient, fn):
         if not obedient:
@@ -251,25 +249,22 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
                 # Run it a few times to make sure we don't just get lucky the
                 # first time.
                 for _ in range(10):
-                    self.assertExecutedOn('primary', self.c, fn)
+                    self.assertExecutedOn(SERVER_TYPE.RSPrimary, self.c, fn)
         else:
-            for mode, expected_state in [
-                (Primary, 'primary'),
-                (PrimaryPreferred, 'primary'),
-                (Secondary, 'secondary'),
-                (SecondaryPreferred, 'secondary'),
+            for mode, server_type in [
+                (Primary, SERVER_TYPE.RSPrimary),
+                (PrimaryPreferred, SERVER_TYPE.RSPrimary),
+                (Secondary, SERVER_TYPE.RSSecondary),
+                (SecondaryPreferred, SERVER_TYPE.RSSecondary),
                 (Nearest, 'any'),
             ]:
-                self.c.read_preference = mode(1000*1000)
-                for _ in range(10):
-                    if expected_state in ('primary', 'secondary'):
-                        self.assertExecutedOn(expected_state, self.c, fn)
-                    elif expected_state == 'any':
+                self.c.read_preference = mode(latency_threshold_ms=1000*1000)
+                for i in range(10):
+                    if server_type == 'any':
                         used = set()
-                        for _ in range(1000):
-                            member = self.executed_on_which_member(
-                                self.c, fn)
-                            used.add(member.host)
+                        for j in range(1000):
+                            server = self.executed_on_which_server(self.c, fn)
+                            used.add(server.description.address)
                             if len(used) == len(self.c.secondaries) + 1:
                                 # Success
                                 break
@@ -281,6 +276,8 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
                             self.fail(
                                 "Some members not used for NEAREST: %s" % (
                                     unused))
+                    else:
+                        self.assertExecutedOn(server_type, self.c, fn)
 
     def test_command(self):
         # Test generic 'command' method. Some commands obey read preference,

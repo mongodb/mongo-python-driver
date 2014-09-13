@@ -25,7 +25,8 @@ from pymongo.cluster_description import (updated_cluster_description,
                                          ClusterDescription)
 from pymongo.errors import AutoReconnect
 from pymongo.server import Server
-from pymongo.server_selectors import (secondary_server_selector,
+from pymongo.server_selectors import (arbiter_server_selector,
+                                      secondary_server_selector,
                                       writable_server_selector)
 
 
@@ -146,8 +147,8 @@ class Cluster(object):
 
             return description.address
 
-    def get_secondaries(self):
-        """Return set of secondary addresses."""
+    def _get_replica_set_members(self, selector):
+        """Return set of replica set member addresses."""
         # Implemented here in Cluster instead of MongoClient, so it can lock.
         with self._lock:
             cluster_type = self._description.cluster_type
@@ -155,10 +156,16 @@ class Cluster(object):
                                     CLUSTER_TYPE.ReplicaSetNoPrimary):
                 return []
 
-            descriptions = secondary_server_selector(
-                self._description.known_servers)
-
+            descriptions = selector(self._description.known_servers)
             return set([d.address for d in descriptions])
+
+    def get_secondaries(self):
+        """Return set of secondary addresses."""
+        return self._get_replica_set_members(secondary_server_selector)
+
+    def get_arbiters(self):
+        """Return set of arbiter addresses."""
+        return self._get_replica_set_members(arbiter_server_selector)
 
     def close(self):
         # TODO.
@@ -179,12 +186,14 @@ class Cluster(object):
     def reset_server(self, address):
         with self._lock:
             server = self._servers.get(address)
+
+            # "server" is None if another thread removed it from the cluster.
             if server:
                 server.pool.reset()
 
-            # Mark this server Unknown.
-            self._description = self._description.reset_server(address)
-            self._update_servers()
+                # Mark this server Unknown.
+                self._description = self._description.reset_server(address)
+                self._update_servers()
 
     def reset(self):
         """Reset all pools and disconnect from all servers.

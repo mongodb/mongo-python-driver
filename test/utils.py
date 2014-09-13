@@ -24,7 +24,8 @@ import time
 from pymongo import MongoClient, MongoReplicaSetClient
 from pymongo.errors import AutoReconnect, OperationFailure
 from pymongo.pool import NO_REQUEST, NO_SOCKET_YET, SocketInfo
-from pymongo.server_selectors import writable_server_selector
+from pymongo.server_selectors import (any_server_selector,
+                                      writable_server_selector)
 from test import (client_context,
                   db_user,
                   db_pwd)
@@ -161,12 +162,12 @@ def connected(client):
     client.admin.command('ismaster')  # Force connection.
     return client
 
-def wait_until(predicate, success_description):
-    """Wait up to 10 seconds for predicate to be True.
+def wait_until(predicate, success_description, timeout=10):
+    """Wait up to 10 seconds (by default) for predicate to be True.
 
     E.g.:
 
-        wait_until(lambda: c.primary == ('a', 1),
+        wait_until(lambda: client.primary == ('a', 1),
                    'connect to the primary')
 
     If the lambda-expression isn't true after 10 seconds, we raise
@@ -174,7 +175,7 @@ def wait_until(predicate, success_description):
     """
     start = time.time()
     while not predicate():
-        if time.time() - start > 10:
+        if time.time() - start > timeout:
             raise AssertionError("Didn't ever %s" % success_description)
 
 def is_mongos(client):
@@ -381,8 +382,8 @@ def pools_from_rs_client(client):
     """Get Pool instances from a MongoReplicaSetClient.
     """
     return [
-        member.pool for member in
-        client._MongoReplicaSetClient__rs_state.members]
+        server.pool for server in
+        client._get_cluster().select_servers(any_server_selector)]
 
 class TestRequestMixin(object):
     """Inherit from this class and from unittest.TestCase to get some

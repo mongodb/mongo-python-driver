@@ -20,6 +20,7 @@ from collections import Mapping, namedtuple
 
 from pymongo.errors import ConfigurationError
 from pymongo.server_selectors import (near_enough_server_selector,
+                                      near_member_with_tags_server_selector,
                                       near_secondary_with_tags_server_selector,
                                       writable_server_selector)
 
@@ -281,8 +282,10 @@ class Nearest(ServerMode):
 
     def select_servers(self, server_descriptions):
         """Return matching ServerDescriptions from a list."""
-        return near_enough_server_selector(server_descriptions,
-                                           self.latency_threshold_ms)
+        return near_member_with_tags_server_selector(
+            self.tag_sets or [{}],
+            self.latency_threshold_ms,
+            server_descriptions)
 
 
 _ALL_READ_PREFERENCES = (Primary, PrimaryPreferred,
@@ -347,91 +350,6 @@ def read_pref_mode_from_name(name):
     """Get the read preference mode from mongos/uri name.
     """
     return _MONGOS_MODES.index(name)
-
-
-# TODO: DELETE
-def _select_primary(members):
-    """Get the primary member.
-    """
-    for member in members:
-        if member.is_primary:
-            return member
-
-    return None
-
-
-# TODO: DELETE
-def _select_member_with_tags(members, tags, secondary_only, latency):
-    """Get the member matching the given tags, and acceptable latency.
-    """
-    candidates = []
-
-    for candidate in members:
-        if secondary_only and candidate.is_primary:
-            continue
-
-        if not (candidate.is_primary or candidate.is_secondary):
-            # In RECOVERING or similar state
-            continue
-
-        if candidate.matches_tags(tags):
-            candidates.append(candidate)
-
-    if not candidates:
-        return None
-
-    # ping_time is in seconds
-    fastest = min([candidate.get_avg_ping_time() for candidate in candidates])
-    near_candidates = [
-        candidate for candidate in candidates
-        if candidate.get_avg_ping_time() - fastest < latency / 1000.]
-
-    return random.choice(near_candidates)
-
-
-# TODO: DELETE
-def select_member(members, mode, tag_sets=[{}], latency=15):
-    """Return a Member or None.
-    """
-    if mode == _PRIMARY:
-        return _select_primary(members)
-
-    elif mode == _PRIMARY_PREFERRED:
-        # Recurse.
-        candidate_primary = select_member(members, _PRIMARY, [{}], latency)
-        if candidate_primary:
-            return candidate_primary
-        else:
-            return select_member(members, _SECONDARY, tag_sets, latency)
-
-    elif mode == _SECONDARY:
-        for tags in tag_sets:
-            candidate = _select_member_with_tags(members, tags, True, latency)
-            if candidate:
-                return candidate
-
-        return None
-
-    elif mode == _SECONDARY_PREFERRED:
-        # Recurse.
-        candidate_secondary = select_member(
-            members, _SECONDARY, tag_sets, latency)
-        if candidate_secondary:
-            return candidate_secondary
-        else:
-            return select_member(members, _PRIMARY, [{}], latency)
-
-    elif mode == _NEAREST:
-        for tags in tag_sets:
-            candidate = _select_member_with_tags(members, tags, False, latency)
-            if candidate:
-                return candidate
-
-        # Ran out of tags.
-        return None
-
-    else:
-        raise ConfigurationError("Invalid mode %d" % (mode,))
 
 
 SECONDARY_OK_COMMANDS = frozenset([

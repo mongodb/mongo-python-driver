@@ -30,7 +30,8 @@ from pymongo.read_preferences import (make_read_preference,
                                       SECONDARY_OK_COMMANDS)
 from pymongo.errors import (AutoReconnect,
                             CursorNotFound,
-                            InvalidOperation)
+                            InvalidOperation,
+                            NotMasterError)
 
 _QUERY_OPTIONS = {
     "tailable_cursor": 2,
@@ -920,11 +921,11 @@ class Cursor(object):
             if self.__query_flags & _QUERY_OPTIONS["tailable_cursor"]:
                 return
             raise
-        except AutoReconnect:
+        except NotMasterError:
             # Don't send kill cursors to another server after a "not master"
             # error. It's completely pointless.
             self.__killed = True
-            client.disconnect()
+            client._reset_server_and_request_check(self.__connection_id)
             raise
         self.__id = doc["cursor_id"]
 
@@ -1015,6 +1016,14 @@ class Cursor(object):
         .. versionadded:: 2.2
         """
         return self.__id
+
+    @property
+    def address(self):
+        """The (host, port) of the server used, or None.
+
+        .. versionadded:: 3.0
+        """
+        return self.__connection_id
 
     def __iter__(self):
         return self
