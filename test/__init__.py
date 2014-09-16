@@ -114,38 +114,45 @@ class ClientContext(object):
             try:
                 self.cmd_line = self.client.admin.command('getCmdLineOpts')
             except pymongo.errors.OperationFailure as e:
-                if e.code == 13:
+                msg = e.details.get('errmsg', '')
+                if e.code == 13 or 'unauthorized' in msg or 'login' in msg:
                     # Unauthorized.
                     self.auth_enabled = True
                 else:
                     raise
             else:
                 self.auth_enabled = self._server_started_with_auth()
+
             if self.auth_enabled:
-                roles = {}
-                if self.version.at_least(2, 5, 3, -1):
-                    roles = {'roles': ['root']}
-
-                try:
+                # See if db_user already exists.
+                self.user_provided = self._check_user_provided()
+                if not self.user_provided:
+                    roles = {}
+                    if self.version.at_least(2, 5, 3, -1):
+                        roles = {'roles': ['root']}
                     self.client.admin.add_user(db_user, db_pwd, **roles)
-                except pymongo.errors.OperationFailure:
-                    # Perhaps a previous test run wasn't cleaned up?
-                    add_user_err = sys.exc_info()
-                    try:
-                        self.client.admin.authenticate(db_user, db_pwd)
-                    except pymongo.errors.OperationFailure:
-                        # Don't know what's wrong. Raise add_user's error.
-                        reraise(*add_user_err)
+                    self.client.admin.authenticate(db_user, db_pwd)
 
-                self.client.admin.authenticate(db_user, db_pwd)
                 if self.rs_client:
                     self.rs_client.admin.authenticate(db_user, db_pwd)
-                    self.cmd_line = self.client.admin.command('getCmdLineOpts')
+
                 # May not have this if OperationFailure was raised earlier.
                 self.cmd_line = self.client.admin.command('getCmdLineOpts')
             self.test_commands_enabled = ('testCommandsEnabled=1'
                                           in self.cmd_line['argv'])
             self.is_mongos = (self.ismaster.get('msg') == 'isdbgrid')
+
+    def _check_user_provided(self):
+        try:
+            self.client.admin.authenticate(db_user, db_pwd)
+            return True
+        except pymongo.errors.OperationFailure as e:
+            msg = e.details.get('errmsg', '')
+            if e.code == 18 or 'auth fails' in msg:
+                # Auth failed.
+                return False
+            else:
+                raise
 
     def _server_started_with_auth(self):
         # MongoDB >= 2.0
@@ -299,7 +306,7 @@ def teardown():
     c.drop_database("pymongo_test2")
     c.drop_database("pymongo_test_mike")
     c.drop_database("pymongo_test_bernie")
-    if client_context.auth_enabled:
+    if client_context.auth_enabled and not client_context.user_provided:
         c.admin.remove_user(db_user)
 
 
