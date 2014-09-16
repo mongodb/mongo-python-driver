@@ -341,6 +341,7 @@ class Database(common.BaseObject):
                                    compile_re=compile_re,
                                    _uuid_subtype=uuid_subtype)
 
+        result = {}
         for doc in cursor:
             result = doc
 
