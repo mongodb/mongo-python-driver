@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Test the cluster module."""
+"""Test the topology module."""
 
 import json
 import os
@@ -22,12 +22,12 @@ import threading
 sys.path[0:0] = [""]
 
 from pymongo import common
-from pymongo.topology import Cluster
-from pymongo.topology_description import CLUSTER_TYPE
+from pymongo.topology import Topology
+from pymongo.topology_description import TOPOLOGY_TYPE
 from pymongo.ismaster import IsMaster
 from pymongo.read_preferences import MovingAverage
 from pymongo.server_description import ServerDescription, SERVER_TYPE
-from pymongo.settings import ClusterSettings
+from pymongo.settings import TopologySettings
 from pymongo.uri_parser import parse_uri
 from test import unittest
 
@@ -65,9 +65,9 @@ class MockPool(object):
 
 
 class MockMonitor(object):
-    def __init__(self, server_description, cluster, pool, cluster_settings):
+    def __init__(self, server_description, topology, pool, topology_settings):
         self._server_description = server_description
-        self._cluster = cluster
+        self._topology = topology
 
     def open(self):
         pass
@@ -79,7 +79,7 @@ class MockMonitor(object):
         pass
 
 
-def create_mock_cluster(uri, monitor_class=MockMonitor):
+def create_mock_topology(uri, monitor_class=MockMonitor):
     # Some tests in the spec include URIs like mongodb://A/?connect=direct,
     # but PyMongo considers any single-seed URI with no setName to be "direct".
     parsed_uri = parse_uri(uri.replace('connect=direct', ''))
@@ -87,28 +87,28 @@ def create_mock_cluster(uri, monitor_class=MockMonitor):
     if 'replicaset' in parsed_uri['options']:
         set_name = parsed_uri['options']['replicaset']
 
-    cluster_settings = ClusterSettings(
+    topology_settings = TopologySettings(
         parsed_uri['nodelist'],
         set_name=set_name,
         pool_class=MockPool,
         monitor_class=monitor_class)
 
-    c = Cluster(cluster_settings)
+    c = Topology(topology_settings)
     c.open()
     return c
 
 
-def got_ismaster(cluster, server_address, ismaster_response):
+def got_ismaster(topology, server_address, ismaster_response):
     server_description = ServerDescription(
         server_address,
         IsMaster(ismaster_response),
         MovingAverage([0]))
 
-    cluster.on_change(server_description)
+    topology.on_change(server_description)
 
 
-def get_type(cluster, hostname):
-    description = cluster.get_server_by_address((hostname, 27017)).description
+def get_type(topology, hostname):
+    description = topology.get_server_by_address((hostname, 27017)).description
     return description.server_type
 
 
@@ -116,28 +116,28 @@ class TestAllScenarios(unittest.TestCase):
     pass
 
 
-def cluster_type_name(cluster_type):
-    return CLUSTER_TYPE._fields[cluster_type]
+def topology_type_name(topology_type):
+    return TOPOLOGY_TYPE._fields[topology_type]
 
 
 def server_type_name(server_type):
     return SERVER_TYPE._fields[server_type]
 
 
-def check_outcome(self, cluster, outcome):
+def check_outcome(self, topology, outcome):
     expected_servers = outcome['servers']
 
     # Check weak equality before proceeding.
     self.assertEqual(
-        len(cluster.description.server_descriptions()),
+        len(topology.description.server_descriptions()),
         len(expected_servers))
 
     # Since lengths are equal, every actual server must have a corresponding
     # expected server.
     for expected_server_address, expected_server in expected_servers.items():
         node = common.partition_node(expected_server_address)
-        self.assertTrue(cluster.has_server(node))
-        actual_server = cluster.get_server_by_address(node)
+        self.assertTrue(topology.has_server(node))
+        actual_server = topology.get_server_by_address(node)
         actual_server_description = actual_server.description
 
         if expected_server['type'] == 'PossiblePrimary':
@@ -157,15 +157,15 @@ def check_outcome(self, cluster, outcome):
             expected_server['setName'],
             actual_server_description.set_name)
 
-    self.assertEqual(outcome['setName'], cluster.description.set_name)
-    expected_cluster_type = getattr(CLUSTER_TYPE, outcome['clusterType'])
-    self.assertEqual(cluster_type_name(expected_cluster_type),
-                     cluster_type_name(cluster.description.cluster_type))
+    self.assertEqual(outcome['setName'], topology.description.set_name)
+    expected_topology_type = getattr(TOPOLOGY_TYPE, outcome['clusterType'])
+    self.assertEqual(topology_type_name(expected_topology_type),
+                     topology_type_name(topology.description.topology_type))
 
 
 def create_test(scenario_def):
     def run_scenario(self):
-        c = create_mock_cluster(scenario_def['uri'])
+        c = create_mock_topology(scenario_def['uri'])
         
         for phase in scenario_def['phases']:
             for response in phase['responses']:

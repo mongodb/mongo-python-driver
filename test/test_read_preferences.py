@@ -190,7 +190,7 @@ class TestReadPreferences(TestReadPreferencesBase):
         latencies = ', '.join(
             '%s: %dms' % (server.description.address,
                           server.description.round_trip_time)
-            for server in c._get_cluster().select_servers(any_server_selector))
+            for server in c._get_topology().select_servers(any_server_selector))
 
         self.assertFalse(not_used,
             "Expected to use primary and all secondaries for mode NEAREST,"

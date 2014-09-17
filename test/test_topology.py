@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Test the cluster module."""
+"""Test the topology module."""
 
 import sys
 
@@ -24,8 +24,8 @@ import threading
 from bson.py3compat import imap
 from pymongo import common
 from pymongo.server_type import SERVER_TYPE
-from pymongo.topology import Cluster
-from pymongo.topology_description import CLUSTER_TYPE
+from pymongo.topology import Topology
+from pymongo.topology_description import TOPOLOGY_TYPE
 from pymongo.errors import (ConfigurationError,
                             ConnectionFailure)
 from pymongo.ismaster import IsMaster
@@ -34,7 +34,7 @@ from pymongo.read_preferences import MovingAverage
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import (any_server_selector,
                                       writable_server_selector)
-from pymongo.settings import ClusterSettings
+from pymongo.settings import TopologySettings
 from test import unittest, client_knobs
 
 
@@ -66,9 +66,9 @@ class MockPool(object):
 
 
 class MockMonitor(object):
-    def __init__(self, server_description, cluster, pool, cluster_settings):
+    def __init__(self, server_description, topology, pool, topology_settings):
         self._server_description = server_description
-        self._cluster = cluster
+        self._topology = topology
 
     def open(self):
         pass
@@ -80,60 +80,60 @@ class MockMonitor(object):
         pass
 
 
-class SetNameDiscoverySettings(ClusterSettings):
-    def get_cluster_type(self):
-        return CLUSTER_TYPE.ReplicaSetNoPrimary
+class SetNameDiscoverySettings(TopologySettings):
+    def get_topology_type(self):
+        return TOPOLOGY_TYPE.ReplicaSetNoPrimary
 
 
 address = ('a', 27017)
 
 
-def create_mock_cluster(seeds=None, set_name=None, monitor_class=MockMonitor):
+def create_mock_topology(seeds=None, set_name=None, monitor_class=MockMonitor):
     partitioned_seeds = list(imap(common.partition_node, seeds or ['a']))
-    cluster_settings = ClusterSettings(
+    topology_settings = TopologySettings(
         partitioned_seeds,
         set_name=set_name,
         pool_class=MockPool,
         monitor_class=monitor_class)
 
-    c = Cluster(cluster_settings)
+    c = Topology(topology_settings)
     c.open()
     return c
 
 
-def got_ismaster(cluster, server_address, ismaster_response):
+def got_ismaster(topology, server_address, ismaster_response):
     server_description = ServerDescription(
         server_address,
         IsMaster(ismaster_response),
         MovingAverage([0]))
 
-    cluster.on_change(server_description)
+    topology.on_change(server_description)
 
 
-def disconnected(cluster, server_address):
+def disconnected(topology, server_address):
     # Create new description of server type Unknown.
-    cluster.on_change(ServerDescription(server_address))
+    topology.on_change(ServerDescription(server_address))
 
 
-def get_type(cluster, hostname):
-    description = cluster.get_server_by_address((hostname, 27017)).description
+def get_type(topology, hostname):
+    description = topology.get_server_by_address((hostname, 27017)).description
     return description.server_type
 
 
-class ClusterTest(unittest.TestCase):
+class TopologyTest(unittest.TestCase):
     """Disables periodic monitoring, to make tests deterministic."""
 
     def setUp(self):
-        super(ClusterTest, self).setUp()
+        super(TopologyTest, self).setUp()
         self.client_knobs = client_knobs(heartbeat_frequency=999999)
         self.client_knobs.enable()
 
     def tearDown(self):
         self.client_knobs.disable()
-        super(ClusterTest, self).tearDown()
+        super(TopologyTest, self).tearDown()
 
 
-class TestSingleServerCluster(ClusterTest):
+class TestSingleServerTopology(TopologyTest):
     def test_direct_connection(self):
         for server_type, ismaster_response in [
             (SERVER_TYPE.RSPrimary, {
@@ -170,7 +170,7 @@ class TestSingleServerCluster(ClusterTest):
                 'ok': 1,
                 'ismaster': False}),
         ]:
-            c = create_mock_cluster()
+            c = create_mock_topology()
 
             # Can't select a server while the only server is of type Unknown.
             self.assertRaises(
@@ -179,8 +179,8 @@ class TestSingleServerCluster(ClusterTest):
 
             got_ismaster(c, address, ismaster_response)
 
-            # Cluster type never changes.
-            self.assertEqual(CLUSTER_TYPE.Single, c.description.cluster_type)
+            # Topology type never changes.
+            self.assertEqual(TOPOLOGY_TYPE.Single, c.description.topology_type)
 
             # No matter whether the server is writable,
             # select_servers() returns it.
@@ -188,14 +188,14 @@ class TestSingleServerCluster(ClusterTest):
             self.assertEqual(server_type, s.description.server_type)
 
     def test_reopen(self):
-        c = create_mock_cluster()
+        c = create_mock_topology()
 
         # Additional calls are permitted.
         c.open()
         c.open()
 
     def test_unavailable_seed(self):
-        c = create_mock_cluster()
+        c = create_mock_topology()
         disconnected(c, address)
         self.assertEqual(SERVER_TYPE.Unknown, get_type(c, 'a'))
 
@@ -206,7 +206,7 @@ class TestSingleServerCluster(ClusterTest):
             def _check_with_socket(self, sock_info):
                 return IsMaster({'ok': 1}), round_trip_time
 
-        c = create_mock_cluster(monitor_class=TestMonitor)
+        c = create_mock_topology(monitor_class=TestMonitor)
         s = c.select_server(writable_server_selector)
         self.assertEqual(1, s.description.round_trip_time)
 
@@ -217,11 +217,11 @@ class TestSingleServerCluster(ClusterTest):
         self.assertEqual(2, s.description.round_trip_time)
 
 
-class TestMultiServerCluster(ClusterTest):
+class TestMultiServerTopology(TopologyTest):
     def test_unexpected_host(self):
-        # Received ismaster response from host not in cluster.
+        # Received ismaster response from host not in topology.
         # E.g., a race where the host is removed before it responds.
-        c = create_mock_cluster(['a', 'b'], set_name='rs')
+        c = create_mock_topology(['a', 'b'], set_name='rs')
 
         # 'b' is not in the set.
         got_ismaster(c, ('a', 27017), {
@@ -244,17 +244,17 @@ class TestMultiServerCluster(ClusterTest):
         self.assertFalse(c.has_server(('b', 27017)))
 
     def test_ghost_seed(self):
-        c = create_mock_cluster(['a', 'b'])
+        c = create_mock_topology(['a', 'b'])
         got_ismaster(c, address, {
             'ok': 1,
             'ismaster': False,
             'isreplicaset': True})
 
         self.assertEqual(SERVER_TYPE.RSGhost, get_type(c, 'a'))
-        self.assertEqual(CLUSTER_TYPE.Unknown, c.description.cluster_type)
+        self.assertEqual(TOPOLOGY_TYPE.Unknown, c.description.topology_type)
 
     def test_standalone_removed(self):
-        c = create_mock_cluster(['a', 'b'])
+        c = create_mock_topology(['a', 'b'])
         got_ismaster(c, ('a', 27017), {
             'ok': 1,
             'ismaster': True})
@@ -267,13 +267,13 @@ class TestMultiServerCluster(ClusterTest):
         self.assertEqual(0, len(c.description.server_descriptions()))
 
     def test_mongos_ha(self):
-        c = create_mock_cluster(['a', 'b'])
+        c = create_mock_topology(['a', 'b'])
         got_ismaster(c, ('a', 27017), {
             'ok': 1,
             'ismaster': True,
             'msg': 'isdbgrid'})
 
-        self.assertEqual(CLUSTER_TYPE.Sharded, c.description.cluster_type)
+        self.assertEqual(TOPOLOGY_TYPE.Sharded, c.description.topology_type)
         got_ismaster(c, ('b', 27017), {
             'ok': 1,
             'ismaster': True,
@@ -283,7 +283,7 @@ class TestMultiServerCluster(ClusterTest):
         self.assertEqual(SERVER_TYPE.Mongos, get_type(c, 'b'))
 
     def test_non_mongos_server(self):
-        c = create_mock_cluster(['a', 'b'])
+        c = create_mock_topology(['a', 'b'])
         got_ismaster(c, ('a', 27017), {
             'ok': 1,
             'ismaster': True,
@@ -294,7 +294,7 @@ class TestMultiServerCluster(ClusterTest):
         self.assertFalse(c.has_server(('b', 27017)))
 
     def test_rs_discovery(self):
-        c = create_mock_cluster(set_name='rs')
+        c = create_mock_topology(set_name='rs')
 
         # At first, A, B, and C are secondaries.
         got_ismaster(c, ('a', 27017), {
@@ -308,8 +308,8 @@ class TestMultiServerCluster(ClusterTest):
         self.assertEqual(SERVER_TYPE.RSSecondary, get_type(c, 'a'))
         self.assertEqual(SERVER_TYPE.Unknown, get_type(c, 'b'))
         self.assertEqual(SERVER_TYPE.Unknown, get_type(c, 'c'))
-        self.assertEqual(CLUSTER_TYPE.ReplicaSetNoPrimary,
-                         c.description.cluster_type)
+        self.assertEqual(TOPOLOGY_TYPE.ReplicaSetNoPrimary,
+                         c.description.topology_type)
 
         # Admin removes A, adds a high-priority member D which becomes primary.
         got_ismaster(c, ('b', 27017), {
@@ -325,8 +325,8 @@ class TestMultiServerCluster(ClusterTest):
         self.assertEqual(SERVER_TYPE.RSSecondary, get_type(c, 'b'))
         self.assertEqual(SERVER_TYPE.Unknown, get_type(c, 'c'))
         self.assertEqual(SERVER_TYPE.Unknown, get_type(c, 'd'))
-        self.assertEqual(CLUSTER_TYPE.ReplicaSetNoPrimary,
-                         c.description.cluster_type)
+        self.assertEqual(TOPOLOGY_TYPE.ReplicaSetNoPrimary,
+                         c.description.topology_type)
 
         # Primary responds.
         got_ismaster(c, ('d', 27017), {
@@ -342,8 +342,8 @@ class TestMultiServerCluster(ClusterTest):
 
         # E is new.
         self.assertEqual(SERVER_TYPE.Unknown, get_type(c, 'e'))
-        self.assertEqual(CLUSTER_TYPE.ReplicaSetWithPrimary,
-                         c.description.cluster_type)
+        self.assertEqual(TOPOLOGY_TYPE.ReplicaSetWithPrimary,
+                         c.description.topology_type)
 
         # Stale response from C.
         got_ismaster(c, ('c', 27017), {
@@ -363,7 +363,7 @@ class TestMultiServerCluster(ClusterTest):
         self.assertEqual(SERVER_TYPE.Unknown, get_type(c, 'e'))
 
     def test_reset(self):
-        c = create_mock_cluster(set_name='rs')
+        c = create_mock_topology(set_name='rs')
         got_ismaster(c, ('a', 27017), {
             'ok': 1,
             'ismaster': True,
@@ -379,16 +379,16 @@ class TestMultiServerCluster(ClusterTest):
 
         self.assertEqual(SERVER_TYPE.RSPrimary, get_type(c, 'a'))
         self.assertEqual(SERVER_TYPE.RSSecondary, get_type(c, 'b'))
-        self.assertEqual(CLUSTER_TYPE.ReplicaSetWithPrimary,
-                         c.description.cluster_type)
+        self.assertEqual(TOPOLOGY_TYPE.ReplicaSetWithPrimary,
+                         c.description.topology_type)
 
         c.reset()
         self.assertEqual(2, len(c.description.server_descriptions()))
         self.assertEqual(SERVER_TYPE.Unknown, get_type(c, 'a'))
         self.assertEqual(SERVER_TYPE.Unknown, get_type(c, 'b'))
         self.assertEqual('rs', c.description.set_name)
-        self.assertEqual(CLUSTER_TYPE.ReplicaSetNoPrimary,
-                         c.description.cluster_type)
+        self.assertEqual(TOPOLOGY_TYPE.ReplicaSetNoPrimary,
+                         c.description.topology_type)
 
         got_ismaster(c, ('a', 27017), {
             'ok': 1,
@@ -398,11 +398,11 @@ class TestMultiServerCluster(ClusterTest):
 
         self.assertEqual(SERVER_TYPE.RSPrimary, get_type(c, 'a'))
         self.assertEqual(SERVER_TYPE.Unknown, get_type(c, 'b'))
-        self.assertEqual(CLUSTER_TYPE.ReplicaSetWithPrimary,
-                         c.description.cluster_type)
+        self.assertEqual(TOPOLOGY_TYPE.ReplicaSetWithPrimary,
+                         c.description.topology_type)
 
     def test_reset_server(self):
-        c = create_mock_cluster(set_name='rs')
+        c = create_mock_topology(set_name='rs')
         got_ismaster(c, ('a', 27017), {
             'ok': 1,
             'ismaster': True,
@@ -420,8 +420,8 @@ class TestMultiServerCluster(ClusterTest):
         self.assertEqual(SERVER_TYPE.Unknown, get_type(c, 'a'))
         self.assertEqual(SERVER_TYPE.RSSecondary, get_type(c, 'b'))
         self.assertEqual('rs', c.description.set_name)
-        self.assertEqual(CLUSTER_TYPE.ReplicaSetNoPrimary,
-                         c.description.cluster_type)
+        self.assertEqual(TOPOLOGY_TYPE.ReplicaSetNoPrimary,
+                         c.description.topology_type)
 
         got_ismaster(c, ('a', 27017), {
             'ok': 1,
@@ -430,20 +430,20 @@ class TestMultiServerCluster(ClusterTest):
             'hosts': ['a', 'b']})
 
         self.assertEqual(SERVER_TYPE.RSPrimary, get_type(c, 'a'))
-        self.assertEqual(CLUSTER_TYPE.ReplicaSetWithPrimary,
-                         c.description.cluster_type)
+        self.assertEqual(TOPOLOGY_TYPE.ReplicaSetWithPrimary,
+                         c.description.topology_type)
 
         c.reset_server(('b', 27017))
         self.assertEqual(SERVER_TYPE.RSPrimary, get_type(c, 'a'))
         self.assertEqual(SERVER_TYPE.Unknown, get_type(c, 'b'))
         self.assertEqual('rs', c.description.set_name)
-        self.assertEqual(CLUSTER_TYPE.ReplicaSetWithPrimary,
-                         c.description.cluster_type)
+        self.assertEqual(TOPOLOGY_TYPE.ReplicaSetWithPrimary,
+                         c.description.topology_type)
 
     def test_reset_removed_server(self):
-        c = create_mock_cluster(set_name='rs')
+        c = create_mock_topology(set_name='rs')
 
-        # No error resetting a server not in the ClusterDescription.
+        # No error resetting a server not in the TopologyDescription.
         c.reset_server(('b', 27017))
 
         # Server was *not* added as type Unknown.
@@ -451,16 +451,16 @@ class TestMultiServerCluster(ClusterTest):
 
     def test_discover_set_name_from_primary(self):
         # Discovering a replica set without the setName supplied by the user
-        # is not yet supported by MongoClient, but Cluster can do it.
-        cluster_settings = SetNameDiscoverySettings(
+        # is not yet supported by MongoClient, but Topology can do it.
+        topology_settings = SetNameDiscoverySettings(
             seeds=[address],
             pool_class=MockPool,
             monitor_class=MockMonitor)
 
-        c = Cluster(cluster_settings)
+        c = Topology(topology_settings)
         self.assertEqual(c.description.set_name, None)
-        self.assertEqual(c.description.cluster_type,
-                         CLUSTER_TYPE.ReplicaSetNoPrimary)
+        self.assertEqual(c.description.topology_type,
+                         TOPOLOGY_TYPE.ReplicaSetNoPrimary)
 
         got_ismaster(c, address, {
             'ok': 1,
@@ -469,11 +469,11 @@ class TestMultiServerCluster(ClusterTest):
             'hosts': ['a']})
 
         self.assertEqual(c.description.set_name, 'rs')
-        self.assertEqual(c.description.cluster_type,
-                         CLUSTER_TYPE.ReplicaSetWithPrimary)
+        self.assertEqual(c.description.topology_type,
+                         TOPOLOGY_TYPE.ReplicaSetWithPrimary)
 
         # Another response from the primary. Tests the code that processes
-        # primary response when cluster type is already ReplicaSetWithPrimary.
+        # primary response when topology type is already ReplicaSetWithPrimary.
         got_ismaster(c, address, {
             'ok': 1,
             'ismaster': True,
@@ -482,21 +482,21 @@ class TestMultiServerCluster(ClusterTest):
 
         # No change.
         self.assertEqual(c.description.set_name, 'rs')
-        self.assertEqual(c.description.cluster_type,
-                         CLUSTER_TYPE.ReplicaSetWithPrimary)
+        self.assertEqual(c.description.topology_type,
+                         TOPOLOGY_TYPE.ReplicaSetWithPrimary)
 
     def test_discover_set_name_from_secondary(self):
         # Discovering a replica set without the setName supplied by the user
-        # is not yet supported by MongoClient, but Cluster can do it.
-        cluster_settings = SetNameDiscoverySettings(
+        # is not yet supported by MongoClient, but Topology can do it.
+        topology_settings = SetNameDiscoverySettings(
             seeds=[address],
             pool_class=MockPool,
             monitor_class=MockMonitor)
 
-        c = Cluster(cluster_settings)
+        c = Topology(topology_settings)
         self.assertEqual(c.description.set_name, None)
-        self.assertEqual(c.description.cluster_type,
-                         CLUSTER_TYPE.ReplicaSetNoPrimary)
+        self.assertEqual(c.description.topology_type,
+                         TOPOLOGY_TYPE.ReplicaSetNoPrimary)
 
         got_ismaster(c, address, {
             'ok': 1,
@@ -506,44 +506,44 @@ class TestMultiServerCluster(ClusterTest):
             'hosts': ['a']})
 
         self.assertEqual(c.description.set_name, 'rs')
-        self.assertEqual(c.description.cluster_type,
-                         CLUSTER_TYPE.ReplicaSetNoPrimary)
+        self.assertEqual(c.description.topology_type,
+                         TOPOLOGY_TYPE.ReplicaSetNoPrimary)
 
     def test_primary_disconnect(self):
-        c = create_mock_cluster(set_name='rs')
+        c = create_mock_topology(set_name='rs')
         got_ismaster(c, address, {
             'ok': 1,
             'ismaster': True,
             'setName': 'rs',
             'hosts': ['a']})
 
-        self.assertEqual(CLUSTER_TYPE.ReplicaSetWithPrimary,
-                         c.description.cluster_type)
+        self.assertEqual(TOPOLOGY_TYPE.ReplicaSetWithPrimary,
+                         c.description.topology_type)
 
         disconnected(c, address)
         self.assertTrue(c.has_server(address))  # Not removed.
-        self.assertEqual(CLUSTER_TYPE.ReplicaSetNoPrimary,
-                         c.description.cluster_type)
+        self.assertEqual(TOPOLOGY_TYPE.ReplicaSetNoPrimary,
+                         c.description.topology_type)
 
     def test_primary_becomes_standalone(self):
-        c = create_mock_cluster(set_name='rs')
+        c = create_mock_topology(set_name='rs')
         got_ismaster(c, address, {
             'ok': 1,
             'ismaster': True,
             'setName': 'rs',
             'hosts': ['a']})
 
-        self.assertEqual(CLUSTER_TYPE.ReplicaSetWithPrimary,
-                         c.description.cluster_type)
+        self.assertEqual(TOPOLOGY_TYPE.ReplicaSetWithPrimary,
+                         c.description.topology_type)
 
         # An administrator restarts primary as standalone.
         got_ismaster(c, address, {'ok': 1})
         self.assertFalse(c.has_server(address))
-        self.assertEqual(CLUSTER_TYPE.ReplicaSetNoPrimary,
-                         c.description.cluster_type)
+        self.assertEqual(TOPOLOGY_TYPE.ReplicaSetNoPrimary,
+                         c.description.topology_type)
 
     def test_primary_wrong_set_name(self):
-        c = create_mock_cluster(set_name='rs')
+        c = create_mock_topology(set_name='rs')
         got_ismaster(c, address, {
             'ok': 1,
             'ismaster': True,
@@ -551,11 +551,11 @@ class TestMultiServerCluster(ClusterTest):
             'hosts': ['a']})
 
         self.assertFalse(c.has_server(address))
-        self.assertEqual(CLUSTER_TYPE.ReplicaSetNoPrimary,
-                         c.description.cluster_type)
+        self.assertEqual(TOPOLOGY_TYPE.ReplicaSetNoPrimary,
+                         c.description.topology_type)
 
     def test_secondary_wrong_set_name(self):
-        c = create_mock_cluster(set_name='rs')
+        c = create_mock_topology(set_name='rs')
         got_ismaster(c, address, {
             'ok': 1,
             'ismaster': False,
@@ -564,11 +564,11 @@ class TestMultiServerCluster(ClusterTest):
             'hosts': ['a']})
 
         self.assertFalse(c.has_server(address))
-        self.assertEqual(CLUSTER_TYPE.ReplicaSetNoPrimary,
-                         c.description.cluster_type)
+        self.assertEqual(TOPOLOGY_TYPE.ReplicaSetNoPrimary,
+                         c.description.topology_type)
 
     def test_secondary_wrong_set_name_with_primary(self):
-        c = create_mock_cluster(['a', 'b'], set_name='rs')
+        c = create_mock_topology(['a', 'b'], set_name='rs')
 
         # Find the primary normally.
         got_ismaster(c, address, {
@@ -577,8 +577,8 @@ class TestMultiServerCluster(ClusterTest):
             'setName': 'rs',
             'hosts': ['a', 'b']})
 
-        self.assertEqual(CLUSTER_TYPE.ReplicaSetWithPrimary,
-                         c.description.cluster_type)
+        self.assertEqual(TOPOLOGY_TYPE.ReplicaSetWithPrimary,
+                         c.description.topology_type)
 
         self.assertTrue(c.has_server(('b', 27017)))
         got_ismaster(c, ('b', 27017), {
@@ -590,17 +590,17 @@ class TestMultiServerCluster(ClusterTest):
 
         # Secondary removed.
         self.assertFalse(c.has_server(('b', 27017)))
-        self.assertEqual(CLUSTER_TYPE.ReplicaSetWithPrimary,
-                         c.description.cluster_type)
+        self.assertEqual(TOPOLOGY_TYPE.ReplicaSetWithPrimary,
+                         c.description.topology_type)
 
     def test_non_rs_member(self):
-        c = create_mock_cluster(['a', 'b'], set_name='rs')
+        c = create_mock_topology(['a', 'b'], set_name='rs')
         self.assertTrue(c.has_server(('b', 27017)))
         got_ismaster(c, ('b', 27017), {'ok': 1})  # Standalone is removed.
         self.assertFalse(c.has_server(('b', 27017)))
 
     def test_wire_version(self):
-        c = create_mock_cluster(set_name='rs')
+        c = create_mock_topology(set_name='rs')
         c.description.check_compatible()  # No error.
 
         got_ismaster(c, address, {
@@ -644,7 +644,7 @@ class TestMultiServerCluster(ClusterTest):
             self.fail('No error with incompatible wire version')
 
     def test_max_write_batch_size(self):
-        c = create_mock_cluster(seeds=['a', 'b'], set_name='rs')
+        c = create_mock_topology(seeds=['a', 'b'], set_name='rs')
 
         def write_batch_size():
             s = c.select_server(writable_server_selector)
@@ -679,7 +679,7 @@ class TestMultiServerCluster(ClusterTest):
         self.assertEqual(2, write_batch_size())
 
 
-class TestClusterErrors(ClusterTest):
+class TestTopologyErrors(TopologyTest):
     # Errors when calling ismaster.
 
     def test_pool_reset(self):
@@ -694,7 +694,7 @@ class TestClusterErrors(ClusterTest):
                 else:
                     raise socket.error()
 
-        c = create_mock_cluster(monitor_class=TestMonitor)
+        c = create_mock_topology(monitor_class=TestMonitor)
         # Await first ismaster call.
         s = c.select_server(writable_server_selector)
         self.assertEqual(1, ismaster_count[0])
@@ -716,7 +716,7 @@ class TestClusterErrors(ClusterTest):
                 else:
                     raise socket.error()
 
-        c = create_mock_cluster(monitor_class=TestMonitor)
+        c = create_mock_topology(monitor_class=TestMonitor)
 
         # Await first ismaster call.
         s = c.select_server(writable_server_selector)
@@ -737,7 +737,7 @@ class TestClusterErrors(ClusterTest):
                 ismaster_count[0] += 1
                 raise socket.error()
 
-        c = create_mock_cluster(monitor_class=TestMonitor)
+        c = create_mock_topology(monitor_class=TestMonitor)
 
         self.assertRaises(
             ConnectionFailure,

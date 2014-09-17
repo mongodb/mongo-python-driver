@@ -12,7 +12,7 @@
 # implied.  See the License for the specific language governing
 # permissions and limitations under the License.
 
-"""Represent the cluster of servers."""
+"""Represent the topology of servers."""
 
 from collections import namedtuple
 
@@ -22,22 +22,22 @@ from pymongo.errors import ConfigurationError
 from pymongo.server_description import ServerDescription
 
 
-CLUSTER_TYPE = namedtuple('ClusterType', ['Single', 'ReplicaSetNoPrimary',
-                                          'ReplicaSetWithPrimary', 'Sharded',
-                                          'Unknown'])(*range(5))
+TOPOLOGY_TYPE = namedtuple('TopologyType', ['Single', 'ReplicaSetNoPrimary',
+                                            'ReplicaSetWithPrimary', 'Sharded',
+                                            'Unknown'])(*range(5))
 
 
-class ClusterDescription(object):
-    def __init__(self, cluster_type, server_descriptions, set_name):
-        """Represent a cluster of servers.
+class TopologyDescription(object):
+    def __init__(self, topology_type, server_descriptions, set_name):
+        """Represent a topology of servers.
 
         :Parameters:
-          - `cluster_type`: initial type
+          - `topology_type`: initial type
           - `server_descriptions`: dict of (address, ServerDescription) for
             all seeds
           - `set_name`: replica set name or None
         """
-        self._cluster_type = cluster_type
+        self._topology_type = topology_type
         self._set_name = set_name
         self._server_descriptions = server_descriptions
 
@@ -80,33 +80,33 @@ class ClusterDescription(object):
         # The default ServerDescription's type is Unknown.
         sds[address] = ServerDescription(address)
 
-        if self._cluster_type == CLUSTER_TYPE.ReplicaSetWithPrimary:
-            cluster_type = _check_has_primary(sds)
+        if self._topology_type == TOPOLOGY_TYPE.ReplicaSetWithPrimary:
+            topology_type = _check_has_primary(sds)
         else:
-            cluster_type = self._cluster_type
+            topology_type = self._topology_type
 
-        return ClusterDescription(cluster_type, sds, self._set_name)
+        return TopologyDescription(topology_type, sds, self._set_name)
 
     def reset(self):
         """A copy of this description, with all servers marked Unknown."""
-        if self._cluster_type == CLUSTER_TYPE.ReplicaSetWithPrimary:
-            cluster_type = CLUSTER_TYPE.ReplicaSetNoPrimary
+        if self._topology_type == TOPOLOGY_TYPE.ReplicaSetWithPrimary:
+            topology_type = TOPOLOGY_TYPE.ReplicaSetNoPrimary
         else:
-            cluster_type = self._cluster_type
+            topology_type = self._topology_type
 
         # The default ServerDescription's type is Unknown.
         sds = dict((address, ServerDescription(address))
                    for address in self._server_descriptions)
 
-        return ClusterDescription(cluster_type, sds, self._set_name)
+        return TopologyDescription(topology_type, sds, self._set_name)
 
     def server_descriptions(self):
         """Dict of (address, ServerDescription)."""
         return self._server_descriptions.copy()
 
     @property
-    def cluster_type(self):
-        return self._cluster_type
+    def topology_type(self):
+        return self._topology_type
 
     @property
     def set_name(self):
@@ -120,103 +120,103 @@ class ClusterDescription(object):
                 if s.is_server_type_known]
 
 
-# If cluster type is Unknown and we receive an ismaster response, what should
-# the new cluster type be?
-_SERVER_TYPE_TO_CLUSTER_TYPE = {
-    SERVER_TYPE.Mongos: CLUSTER_TYPE.Sharded,
-    SERVER_TYPE.RSPrimary: CLUSTER_TYPE.ReplicaSetWithPrimary,
-    SERVER_TYPE.RSSecondary: CLUSTER_TYPE.ReplicaSetNoPrimary,
-    SERVER_TYPE.RSArbiter: CLUSTER_TYPE.ReplicaSetNoPrimary,
-    SERVER_TYPE.RSOther: CLUSTER_TYPE.ReplicaSetNoPrimary,
+# If topology type is Unknown and we receive an ismaster response, what should
+# the new topology type be?
+_SERVER_TYPE_TO_TOPOLOGY_TYPE = {
+    SERVER_TYPE.Mongos: TOPOLOGY_TYPE.Sharded,
+    SERVER_TYPE.RSPrimary: TOPOLOGY_TYPE.ReplicaSetWithPrimary,
+    SERVER_TYPE.RSSecondary: TOPOLOGY_TYPE.ReplicaSetNoPrimary,
+    SERVER_TYPE.RSArbiter: TOPOLOGY_TYPE.ReplicaSetNoPrimary,
+    SERVER_TYPE.RSOther: TOPOLOGY_TYPE.ReplicaSetNoPrimary,
 }
 
 
-def updated_cluster_description(cluster_description, server_description):
-    """Return an updated copy of a ClusterDescription.
+def updated_topology_description(topology_description, server_description):
+    """Return an updated copy of a TopologyDescription.
 
     :Parameters:
-      - `cluster_description`: the current ClusterDescription
+      - `topology_description`: the current TopologyDescription
       - `server_description`: a new ServerDescription that resulted from
         an ismaster call
 
     Called after attempting (successfully or not) to call ismaster on the
-    server at server_description.address. Does not modify cluster_description.
+    server at server_description.address. Does not modify topology_description.
     """
     address = server_description.address
 
     # These values will be updated, if necessary, to form the new
-    # ClusterDescription.
-    cluster_type = cluster_description.cluster_type
-    set_name = cluster_description.set_name
+    # TopologyDescription.
+    topology_type = topology_description.topology_type
+    set_name = topology_description.set_name
     server_type = server_description.server_type
 
     # Don't mutate the original dict of server descriptions; copy it.
-    sds = cluster_description.server_descriptions()
+    sds = topology_description.server_descriptions()
 
     # Replace this server's description with the new one.
     sds[address] = server_description
 
-    if cluster_type == CLUSTER_TYPE.Single:
+    if topology_type == TOPOLOGY_TYPE.Single:
         # Single type never changes.
-        return ClusterDescription(CLUSTER_TYPE.Single, sds, set_name)
+        return TopologyDescription(TOPOLOGY_TYPE.Single, sds, set_name)
 
-    if cluster_type == CLUSTER_TYPE.Unknown:
+    if topology_type == TOPOLOGY_TYPE.Unknown:
         if server_type == SERVER_TYPE.Standalone:
             sds.pop(address)
 
         elif server_type not in (SERVER_TYPE.Unknown, SERVER_TYPE.RSGhost):
-            cluster_type = _SERVER_TYPE_TO_CLUSTER_TYPE[server_type]
+            topology_type = _SERVER_TYPE_TO_TOPOLOGY_TYPE[server_type]
 
-    if cluster_type == CLUSTER_TYPE.Sharded:
+    if topology_type == TOPOLOGY_TYPE.Sharded:
         if server_type != SERVER_TYPE.Mongos:
             sds.pop(address)
 
-    elif cluster_type == CLUSTER_TYPE.ReplicaSetNoPrimary:
+    elif topology_type == TOPOLOGY_TYPE.ReplicaSetNoPrimary:
         if server_type in (SERVER_TYPE.Standalone, SERVER_TYPE.Mongos):
             sds.pop(address)
 
         elif server_type == SERVER_TYPE.RSPrimary:
-            cluster_type, set_name = _update_rs_from_primary(
+            topology_type, set_name = _update_rs_from_primary(
                 sds, set_name, server_description)
 
         elif server_type in (
                 SERVER_TYPE.RSSecondary,
                 SERVER_TYPE.RSArbiter,
                 SERVER_TYPE.RSOther):
-            cluster_type, set_name = _update_rs_no_primary_from_member(
+            topology_type, set_name = _update_rs_no_primary_from_member(
                 sds, set_name, server_description)
 
-    elif cluster_type == CLUSTER_TYPE.ReplicaSetWithPrimary:
+    elif topology_type == TOPOLOGY_TYPE.ReplicaSetWithPrimary:
         if server_type in (SERVER_TYPE.Standalone, SERVER_TYPE.Mongos):
             sds.pop(address)
-            cluster_type = _check_has_primary(sds)
+            topology_type = _check_has_primary(sds)
 
         elif server_type == SERVER_TYPE.RSPrimary:
-            cluster_type, set_name = _update_rs_from_primary(
+            topology_type, set_name = _update_rs_from_primary(
                 sds, set_name, server_description)
 
         elif server_type in (
                 SERVER_TYPE.RSSecondary,
                 SERVER_TYPE.RSArbiter,
                 SERVER_TYPE.RSOther):
-            cluster_type = _update_rs_with_primary_from_member(
+            topology_type = _update_rs_with_primary_from_member(
                 sds, set_name, server_description)
 
         else:
             # Server type is Unknown or RSGhost: did we just lose the primary?
-            cluster_type = _check_has_primary(sds)
+            topology_type = _check_has_primary(sds)
 
     # Return updated copy.
-    return ClusterDescription(cluster_type, sds, set_name)
+    return TopologyDescription(topology_type, sds, set_name)
 
 
 def _update_rs_from_primary(sds, set_name, server_description):
-    """Update cluster description from a primary's ismaster response.
+    """Update topology description from a primary's ismaster response.
 
     Pass in a dict of ServerDescriptions, current replica set name, and the
     ServerDescription we are processing.
 
-    Returns (new cluster type, new set_name).
+    Returns (new topology type, new set_name).
     """
     if set_name is None:
         set_name = server_description.set_name
@@ -258,7 +258,7 @@ def _update_rs_with_primary_from_member(sds, set_name, server_description):
     Pass in a dict of ServerDescriptions, current replica set name, and the
     ServerDescription we are processing.
 
-    Returns new cluster type.
+    Returns new topology type.
     """
     assert set_name is not None
 
@@ -275,15 +275,15 @@ def _update_rs_no_primary_from_member(sds, set_name, server_description):
     Pass in a dict of ServerDescriptions, current replica set name, and the
     ServerDescription we are processing.
 
-    Returns (new cluster type, new set_name).
+    Returns (new topology type, new set_name).
     """
-    cluster_type = CLUSTER_TYPE.ReplicaSetNoPrimary
+    topology_type = TOPOLOGY_TYPE.ReplicaSetNoPrimary
     if set_name is None:
         set_name = server_description.set_name
 
     elif set_name != server_description.set_name:
         sds.pop(server_description.address)
-        return cluster_type, set_name
+        return topology_type, set_name
 
     # This isn't the primary's response, so don't remove any servers
     # it doesn't report. Only add new servers.
@@ -291,18 +291,18 @@ def _update_rs_no_primary_from_member(sds, set_name, server_description):
         if address not in sds:
             sds[address] = ServerDescription(address)
 
-    return cluster_type, set_name
+    return topology_type, set_name
 
 
 def _check_has_primary(sds):
-    """Current cluster type is ReplicaSetWithPrimary. Is primary still known?
+    """Current topology type is ReplicaSetWithPrimary. Is primary still known?
 
     Pass in a dict of ServerDescriptions.
 
-    Returns new cluster type.
+    Returns new topology type.
     """
     for s in sds.values():
         if s.server_type == SERVER_TYPE.RSPrimary:
-            return CLUSTER_TYPE.ReplicaSetWithPrimary
+            return TOPOLOGY_TYPE.ReplicaSetWithPrimary
     else:
-        return CLUSTER_TYPE.ReplicaSetNoPrimary
+        return TOPOLOGY_TYPE.ReplicaSetNoPrimary

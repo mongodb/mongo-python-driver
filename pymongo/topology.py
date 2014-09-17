@@ -12,7 +12,7 @@
 # implied.  See the License for the specific language governing
 # permissions and limitations under the License.
 
-"""Internal classes to monitor clusters of one or more servers."""
+"""Internal class to monitor a topology of one or more servers."""
 
 import random
 import threading
@@ -20,9 +20,9 @@ import time
 
 from bson.py3compat import itervalues
 from pymongo import common
-from pymongo.topology_description import (updated_cluster_description,
-                                          CLUSTER_TYPE,
-                                          ClusterDescription)
+from pymongo.topology_description import (updated_topology_description,
+                                          TOPOLOGY_TYPE,
+                                          TopologyDescription)
 from pymongo.errors import AutoReconnect
 from pymongo.server import Server
 from pymongo.server_selectors import (arbiter_server_selector,
@@ -30,16 +30,16 @@ from pymongo.server_selectors import (arbiter_server_selector,
                                       writable_server_selector)
 
 
-class Cluster(object):
-    """Monitor a cluster of one or more servers."""
-    def __init__(self, cluster_settings):
-        self._settings = cluster_settings
-        cluster_description = ClusterDescription(
-            cluster_settings.get_cluster_type(),
-            cluster_settings.get_server_descriptions(),
-            cluster_settings.set_name)
+class Topology(object):
+    """Monitor a topology of one or more servers."""
+    def __init__(self, topology_settings):
+        self._settings = topology_settings
+        topology_description = TopologyDescription(
+            topology_settings.get_topology_type(),
+            topology_settings.get_server_descriptions(),
+            topology_settings.set_name)
 
-        self._description = cluster_description
+        self._description = topology_description
         self._opened = False
         self._lock = threading.Lock()
         self._condition = self._settings.condition_class(self._lock)
@@ -82,19 +82,20 @@ class Cluster(object):
                 # No suitable servers.
                 if wait_time == 0 or now > end_time:
                     # TODO: more error diagnostics. E.g., if state is
-                    # ReplicaSet but every server is Unknown, and the host list
-                    # is non-empty, and doesn't intersect with settings.seeds,
-                    # the set is probably configured with internal hostnames or
-                    # IPs and we're connecting from outside. Or if state is
-                    # ReplicaSet and clusterDescription.server_descriptions is
-                    # empty, we have the wrong set_name. Include
-                    # ClusterDescription's stringification in exception msg.
+                    # ReplicaSet but every server is Unknown, and the host
+                    # list is non-empty, and doesn't intersect with
+                    # settings.seeds, the set is probably configured with
+                    # internal hostnames or IPs and we're connecting from
+                    # outside. Or if we're a replica set and
+                    # server_descriptions is empty, we have the wrong
+                    # set_name. Include TopologyDescription's str() in
+                    # exception msg.
                     raise AutoReconnect("No suitable servers available")
 
                 self._ensure_opened()
                 self._request_check_all()
 
-                # Release the lock and wait for the cluster description to
+                # Release the lock and wait for the topology description to
                 # change, or for a timeout. We won't miss any changes that
                 # came after our most recent selector() call, since we've
                 # held the lock until now.
@@ -114,12 +115,12 @@ class Cluster(object):
         """Process a new ServerDescription after an ismaster call completes."""
         # We do no I/O holding the lock.
         with self._lock:
-            # Any monitored server was definitely in the cluster description
+            # Any monitored server was definitely in the topology description
             # once. Check if it's still in the description or if some state-
             # change removed it. E.g., we got a host list from the primary
             # that didn't include this server.
             if self._description.has_server(server_description.address):
-                self._description = updated_cluster_description(
+                self._description = updated_topology_description(
                     self._description, server_description)
 
                 self._update_servers()
@@ -136,10 +137,10 @@ class Cluster(object):
 
     def get_primary(self):
         """Return primary's address or None."""
-        # Implemented here in Cluster instead of MongoClient, so it can lock.
+        # Implemented here in Topology instead of MongoClient, so it can lock.
         with self._lock:
-            cluster_type = self._description.cluster_type
-            if cluster_type != CLUSTER_TYPE.ReplicaSetWithPrimary:
+            topology_type = self._description.topology_type
+            if topology_type != TOPOLOGY_TYPE.ReplicaSetWithPrimary:
                 return None
 
             description = writable_server_selector(
@@ -149,11 +150,11 @@ class Cluster(object):
 
     def _get_replica_set_members(self, selector):
         """Return set of replica set member addresses."""
-        # Implemented here in Cluster instead of MongoClient, so it can lock.
+        # Implemented here in Topology instead of MongoClient, so it can lock.
         with self._lock:
-            cluster_type = self._description.cluster_type
-            if cluster_type not in (CLUSTER_TYPE.ReplicaSetWithPrimary,
-                                    CLUSTER_TYPE.ReplicaSetNoPrimary):
+            topology_type = self._description.topology_type
+            if topology_type not in (TOPOLOGY_TYPE.ReplicaSetWithPrimary,
+                                    TOPOLOGY_TYPE.ReplicaSetNoPrimary):
                 return []
 
             descriptions = selector(self._description.known_servers)
@@ -187,7 +188,7 @@ class Cluster(object):
         with self._lock:
             server = self._servers.get(address)
 
-            # "server" is None if another thread removed it from the cluster.
+            # "server" is None if another thread removed it from the topology.
             if server:
                 server.pool.reset()
 
@@ -198,7 +199,7 @@ class Cluster(object):
     def reset(self):
         """Reset all pools and disconnect from all servers.
 
-        The cluster reconnects on demand, or after common.HEARTBEAT_FREQUENCY
+        The Topology reconnects on demand, or after common.HEARTBEAT_FREQUENCY
         seconds.
         """
         with self._lock:
@@ -232,14 +233,14 @@ class Cluster(object):
             server.request_check()
 
     def _apply_selector(self, selector):
-        if self._description.cluster_type == CLUSTER_TYPE.Single:
+        if self._description.topology_type == TOPOLOGY_TYPE.Single:
             # Ignore the selector.
             return self._description.known_servers
         else:
             return selector(self._description.known_servers)
 
     def _update_servers(self):
-        """Sync our set of Servers from ClusterDescription.server_descriptions.
+        """Sync our set of Servers from TopologyDescription.server_descriptions.
 
         Hold the lock while calling this.
         """

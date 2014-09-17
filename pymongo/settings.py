@@ -17,12 +17,12 @@
 import threading
 
 from pymongo import common, monitor, pool
-from pymongo.topology_description import CLUSTER_TYPE
+from pymongo.topology_description import TOPOLOGY_TYPE
 from pymongo.pool import PoolOptions
 from pymongo.server_description import ServerDescription
 
 
-class ClusterSettings(object):
+class TopologySettings(object):
     def __init__(
         self,
         seeds=None,
@@ -77,13 +77,13 @@ class ClusterSettings(object):
         """
         return self._direct
 
-    def get_cluster_type(self):
+    def get_topology_type(self):
         if self.direct:
-            return CLUSTER_TYPE.Single
+            return TOPOLOGY_TYPE.Single
         elif self.set_name is not None:
-            return CLUSTER_TYPE.ReplicaSetNoPrimary
+            return TOPOLOGY_TYPE.ReplicaSetNoPrimary
         else:
-            return CLUSTER_TYPE.Unknown
+            return TOPOLOGY_TYPE.Unknown
 
     def get_server_descriptions(self):
         """Initial dict of (address, ServerDescription) for all seeds."""

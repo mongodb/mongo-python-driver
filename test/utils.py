@@ -374,8 +374,8 @@ def assertReadFromAll(testcase, rsc, members, *args, **kwargs):
     testcase.assertEqual(members, used)
 
 def get_pool(client):
-    cluster = client._get_cluster()
-    server = cluster.select_server(writable_server_selector)
+    topology = client._get_topology()
+    server = topology.select_server(writable_server_selector)
     return server.pool
 
 def pools_from_rs_client(client):
@@ -383,7 +383,7 @@ def pools_from_rs_client(client):
     """
     return [
         server.pool for server in
-        client._get_cluster().select_servers(any_server_selector)]
+        client._get_topology().select_servers(any_server_selector)]
 
 class TestRequestMixin(object):
     """Inherit from this class and from unittest.TestCase to get some

@@ -233,7 +233,7 @@ class _TestPoolingBase(unittest.TestCase):
 
     def assert_no_request(self):
         try:
-            server = self.c._cluster.select_server(
+            server = self.c._topology.select_server(
                 writable_server_selector,
                 server_wait_time=0)
 
@@ -253,7 +253,7 @@ class _TestPoolingBase(unittest.TestCase):
     def assert_pool_size(self, pool_size):
         if pool_size == 0:
             try:
-                server = self.c._cluster.select_server(
+                server = self.c._topology.select_server(
                     writable_server_selector,
                     server_wait_time=0)
 

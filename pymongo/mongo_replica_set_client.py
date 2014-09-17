@@ -45,6 +45,6 @@ class MongoReplicaSetClient(mongo_client.MongoClient):
         super(MongoReplicaSetClient, self).__init__(*args, **kwargs)
 
     def __repr__(self):
-        sds = self._cluster.description.server_descriptions()
+        sds = self._topology.description.server_descriptions()
         return "MongoReplicaSetClient(%r)" % (["%s:%d" % s.address
                                                for s in sds.values()],)

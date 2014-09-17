@@ -975,9 +975,9 @@ class TestReplicaSetRequest(HATestCase):
 
         self.assertTrue(self.c.in_request())
 
-        cluster = self.c._get_cluster()
-        primary_pool = cluster.select_server(writable_server_selector).pool
-        secondary_pool = cluster.select_server(secondary_server_selector).pool
+        topology = self.c._get_topology()
+        primary_pool = topology.select_server(writable_server_selector).pool
+        secondary_pool = topology.select_server(secondary_server_selector).pool
 
         # Trigger start_request on primary pool
         utils.assertReadFrom(self, self.c, primary, PRIMARY)

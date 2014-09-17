@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Represent one server in the cluster."""
+"""Represent one server in the topology."""
 
 from pymongo.server_type import SERVER_TYPE
 from pymongo.ismaster import IsMaster

@@ -77,7 +77,7 @@ class TestCursorManager(IntegrationTest, TestRequestMixin):
 
     @client_context.require_replica_set
     def test_cursor_manager_prohibited_with_rs(self):
-        # Test that kill_cursors() throws an error while the cluster type
+        # Test that kill_cursors() throws an error while the topology type
         # isn't Single or Sharded.
         client = get_client(connection_string(),
                             replicaSet=client_context.setname)

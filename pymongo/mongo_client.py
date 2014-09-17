@@ -48,9 +48,9 @@ from pymongo import (auth,
                      thread_util,
                      uri_parser)
 from pymongo.client_options import ClientOptions
-from pymongo.topology_description import CLUSTER_TYPE
+from pymongo.topology_description import TOPOLOGY_TYPE
 from pymongo.cursor_manager import CursorManager
-from pymongo.topology import Cluster
+from pymongo.topology import Topology
 from pymongo.errors import (ConfigurationError,
                             ConnectionFailure,
                             InvalidURI, AutoReconnect, OperationFailure,
@@ -62,7 +62,7 @@ from pymongo.server_selectors import (any_server_selector,
                                       writable_preferred_server_selector,
                                       writable_server_selector)
 from pymongo.server_type import SERVER_TYPE
-from pymongo.settings import ClusterSettings
+from pymongo.settings import TopologySettings
 
 
 def _partition_node(node):
@@ -300,7 +300,7 @@ class MongoClient(common.BaseObject):
         if creds:
             self._cache_credentials(creds.source, creds)
 
-        self._cluster_settings = ClusterSettings(
+        self._topology_settings = TopologySettings(
             seeds=seeds,
             set_name=options.replica_set_name,
             pool_class=pool_class,
@@ -308,9 +308,9 @@ class MongoClient(common.BaseObject):
             monitor_class=monitor_class,
             condition_class=condition_class)
 
-        self._cluster = Cluster(self._cluster_settings)
+        self._topology = Topology(self._topology_settings)
         if connect:
-            self._cluster.open()
+            self._topology.open()
 
     def _cache_credentials(self, source, credentials, connect=False):
         """Save a set of authentication credentials.
@@ -329,7 +329,7 @@ class MongoClient(common.BaseObject):
                                    'to this database. You must logout first.')
 
         if connect:
-            server = self._get_cluster().select_server(
+            server = self._get_topology().select_server(
                 writable_preferred_server_selector)
 
             # get_socket() logs out of the database if logged in with old
@@ -405,7 +405,7 @@ class MongoClient(common.BaseObject):
         ServerDescription first, then use its properties.
         """
         try:
-            server = self._cluster.select_server(
+            server = self._topology.select_server(
                 writable_server_selector, server_wait_time=0)
 
             return getattr(server.description, attr_name)
@@ -452,7 +452,7 @@ class MongoClient(common.BaseObject):
            MongoClient gained this property in version 3.0 when
            MongoReplicaSetClient's functionality was merged in.
         """
-        return self._cluster.get_primary()
+        return self._topology.get_primary()
 
     @property
     def secondaries(self):
@@ -464,7 +464,7 @@ class MongoClient(common.BaseObject):
            MongoClient gained this property in version 3.0 when
            MongoReplicaSetClient's functionality was merged in.
         """
-        return self._cluster.get_secondaries()
+        return self._topology.get_secondaries()
 
     @property
     def arbiters(self):
@@ -473,7 +473,7 @@ class MongoClient(common.BaseObject):
         A sequence of (host, port) pairs. Empty if this client is not
         connected to a replica set.
         """
-        return self._cluster.get_arbiters()
+        return self._topology.get_arbiters()
 
     @property
     def is_primary(self):
@@ -508,7 +508,7 @@ class MongoClient(common.BaseObject):
         Nodes are either specified when this instance was created,
         or discovered through the replica set discovery mechanism.
         """
-        description = self._cluster.description
+        description = self._topology.description
         return frozenset(s.address for s in description.known_servers)
 
     @property
@@ -587,16 +587,16 @@ class MongoClient(common.BaseObject):
 
         Can raise ConnectionFailure.
         """
-        cluster = self._get_cluster()  # Starts monitors if necessary.
-        server = cluster.select_server(writable_server_selector)
+        topology = self._get_topology()  # Starts monitors if necessary.
+        server = topology.select_server(writable_server_selector)
         return server.description.max_wire_version
 
     def _is_writable(self):
         """Attempt to connect to a writable server, or return False.
         """
-        cluster = self._get_cluster()  # Starts monitors if necessary.
+        topology = self._get_topology()  # Starts monitors if necessary.
         try:
-            s = cluster.select_server(writable_server_selector)
+            s = topology.select_server(writable_server_selector)
 
             # When directly connected to a secondary, arbiter, etc.,
             # select_server returns it, whatever the selector. Check
@@ -612,7 +612,7 @@ class MongoClient(common.BaseObject):
         pools. If this instance is used again it will be automatically
         re-opened.
         """
-        self._cluster.reset()
+        self._topology.reset()
 
     def close(self):
         """Alias for :meth:`disconnect`
@@ -644,7 +644,7 @@ class MongoClient(common.BaseObject):
         # reported an error.
         try:
             # TODO: Mongos pinning.
-            server = self._cluster.select_server(
+            server = self._topology.select_server(
                 writable_server_selector,
                 server_wait_time=0)
 
@@ -678,14 +678,14 @@ class MongoClient(common.BaseObject):
 
         self.__cursor_manager = manager
 
-    def _get_cluster(self):
-        """Get the internal :class:`~pymongo.cluster.Cluster` object.
+    def _get_topology(self):
+        """Get the internal :class:`~pymongo.topology.Topology` object.
 
-        If this client was created with "connect=False", calling _get_cluster
+        If this client was created with "connect=False", calling _get_topology
         launches the connection process in the background.
         """
-        self._cluster.open()
-        return self._cluster
+        self._topology.open()
+        return self._topology
 
     def __check_gle_response(self, response, is_command):
         """Check a response to a lastError message for errors.
@@ -749,15 +749,15 @@ class MongoClient(common.BaseObject):
           - `address` (optional): Optional address when sending a getMore or
             killCursors to a specific server.
         """
-        cluster = self._get_cluster()
+        topology = self._get_topology()
         if address:
             assert not check_primary, "Can't use check_primary with address"
-            server = cluster.get_server_by_address(address)
+            server = topology.get_server_by_address(address)
             if not server:
                 raise AutoReconnect('server %s:%d no longer available'
                                     % address)
         else:
-            server = cluster.select_server(writable_server_selector)
+            server = topology.select_server(writable_server_selector)
 
         is_writable = server.description.is_writable
         if check_primary and not with_last_error and not is_writable:
@@ -801,9 +801,9 @@ class MongoClient(common.BaseObject):
           - `exhaust` (optional): If True, the socket used stays checked out.
             It is returned along with its Pool in the Response.
         """
-        cluster = self._get_cluster()
+        topology = self._get_topology()
         if address:
-            server = cluster.get_server_by_address(address)
+            server = topology.get_server_by_address(address)
             if not server:
                 raise AutoReconnect('server %s:%d no longer available'
                                     % address)
@@ -813,7 +813,7 @@ class MongoClient(common.BaseObject):
             else:
                 selector = writable_server_selector
 
-            server = cluster.select_server(selector)
+            server = topology.select_server(selector)
 
         if self.in_request() and not server.in_request():
             server.start_request()
@@ -844,14 +844,14 @@ class MongoClient(common.BaseObject):
 
     def __reset_server(self, address):
         """Clear our connection pool for a server and mark it Unknown."""
-        self._cluster.reset_server(address)
+        self._topology.reset_server(address)
 
     def _reset_server_and_request_check(self, address):
         """Clear our pool for a server, mark it Unknown, and check it soon."""
-        self._cluster.reset_server(address)
-        server = self._cluster.get_server_by_address(address)
+        self._topology.reset_server(address)
+        server = self._topology.get_server_by_address(address)
 
-        # "server" is None if another thread removed it from the cluster.
+        # "server" is None if another thread removed it from the topology.
         if server:
             server.request_check()
 
@@ -883,7 +883,7 @@ class MongoClient(common.BaseObject):
             # lazily. These greedy calls are to make PyMongo 2.x's request
             # tests pass.
             try:
-                servers = self._cluster.select_servers(any_server_selector,
+                servers = self._topology.select_servers(any_server_selector,
                                                        server_wait_time=0)
 
                 for s in servers:
@@ -908,7 +908,7 @@ class MongoClient(common.BaseObject):
         """
         if 0 == self.__request_counter.dec():
             try:
-                servers = self._cluster.select_servers(any_server_selector,
+                servers = self._topology.select_servers(any_server_selector,
                                                        server_wait_time=0)
 
                 for s in servers:
@@ -926,7 +926,7 @@ class MongoClient(common.BaseObject):
         return not self == other
 
     def __repr__(self):
-        server_descriptions = self._cluster.description.server_descriptions()
+        server_descriptions = self._topology.description.server_descriptions()
         if len(server_descriptions) == 1:
             description, = server_descriptions.values()
             return "MongoClient(%r, %r)" % description.address
@@ -976,15 +976,15 @@ class MongoClient(common.BaseObject):
         # TODO: update this, pass address to cursor_manager.close().
         # PyMongo 2.x introduced a configurable CursorManager which sends
         # OP_KILLCURSORS to the server. The API doesn't handle a multi-server
-        # cluster, where we must pass the address of the server that receives
+        # topology, where we must pass the address of the server that receives
         # the message. Support CursorManager for backwards compatibility, but
         # only for single servers.
         if self.__cursor_manager:
-            cluster_type = self._cluster.description.cluster_type
-            if cluster_type not in (CLUSTER_TYPE.Single, CLUSTER_TYPE.Sharded):
+            topology_type = self._topology.description.topology_type
+            if topology_type not in (TOPOLOGY_TYPE.Single, TOPOLOGY_TYPE.Sharded):
                 raise InvalidOperation(
-                    "Can't use custom CursorManager with cluster type %s" %
-                    CLUSTER_TYPE._fields[cluster_type])
+                    "Can't use custom CursorManager with topology type %s" %
+                    TOPOLOGY_TYPE._fields[topology_type])
 
             self.__cursor_manager.close(cursor_id)
         else:
@@ -1079,9 +1079,9 @@ class MongoClient(common.BaseObject):
         if from_host is not None:
             command["fromhost"] = from_host
 
-        # _get_cluster() starts connecting, if we initialized with
+        # _get_topology() starts connecting, if we initialized with
         # connect=False.
-        server = self._get_cluster().select_server(
+        server = self._get_topology().select_server(
             writable_server_selector)
 
         if self.in_request() and not server.in_request():

@@ -453,7 +453,7 @@ class TestClient(IntegrationTest, TestRequestMixin):
 
         def f(pipe):
             try:
-                servers = self.client._cluster.select_servers(
+                servers = self.client._topology.select_servers(
                     any_server_selector)
 
                 # In child, only the thread that called fork() is alive.
@@ -935,13 +935,13 @@ class TestClientProperties(MockClientTest):
             connect=False)
 
         c.set_wire_version_range('a:1', 1, 5)
-        c._get_cluster().select_servers(writable_server_selector)  # Connect.
+        c._get_topology().select_servers(writable_server_selector)  # Connect.
         self.assertEqual(c.min_wire_version, 1)
         self.assertEqual(c.max_wire_version, 5)
 
         c.set_wire_version_range('a:1', 10, 11)
         c.disconnect()
-        c._get_cluster()
+        c._get_topology()
         self.assertRaises(ConfigurationError, c.db.collection.find_one)
 
     def test_max_wire_version(self):
@@ -1063,7 +1063,7 @@ class TestMongoClientFailover(MockClientTest):
             c.disconnect()
             self.assertEqual(0, len(c.nodes))
 
-            c._get_cluster().select_servers(writable_server_selector)
+            c._get_topology().select_servers(writable_server_selector)
             self.assertEqual('b', c.host)
             self.assertEqual(2, c.port)
 
@@ -1092,7 +1092,7 @@ class TestMongoClientFailover(MockClientTest):
 
         # But it can reconnect.
         c.revive_host('a:1')
-        c._get_cluster().select_servers(writable_server_selector)
+        c._get_topology().select_servers(writable_server_selector)
         self.assertEqual('a', c.host)
         self.assertEqual(1, c.port)
 
@@ -1116,7 +1116,7 @@ class TestMongoClientFailover(MockClientTest):
             connected(c)
             wait_until(lambda: len(c.nodes) == 2, 'connect')
 
-            sd = c._get_cluster().get_server_by_address(('a', 1)).description
+            sd = c._get_topology().get_server_by_address(('a', 1)).description
             self.assertEqual(SERVER_TYPE.RSPrimary, sd.server_type)
             self.assertEqual(0, sd.min_wire_version)
             self.assertEqual(1, sd.max_wire_version)
@@ -1127,13 +1127,13 @@ class TestMongoClientFailover(MockClientTest):
             self.assertRaises(AutoReconnect, c.db.collection.find_one)
 
             # The primary's description is reset.
-            sd_a = c._get_cluster().get_server_by_address(('a', 1)).description
+            sd_a = c._get_topology().get_server_by_address(('a', 1)).description
             self.assertEqual(SERVER_TYPE.Unknown, sd_a.server_type)
             self.assertEqual(0, sd_a.min_wire_version)
             self.assertEqual(0, sd_a.max_wire_version)
 
             # ...but not the secondary's.
-            sd_b = c._get_cluster().get_server_by_address(('b', 2)).description
+            sd_b = c._get_topology().get_server_by_address(('b', 2)).description
             self.assertEqual(SERVER_TYPE.RSSecondary, sd_b.server_type)
             self.assertEqual(0, sd_b.min_wire_version)
             self.assertEqual(2, sd_b.max_wire_version)

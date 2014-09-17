@@ -60,9 +60,9 @@ class MockMonitor(Monitor):
             self,
             client,
             server_description,
-            cluster,
+            topology,
             pool,
-            cluster_settings):
+            topology_settings):
         # MockMonitor gets a 'client' arg, regular monitors don't.
         self.client = client
         self.mock_address = server_description.address
@@ -71,9 +71,9 @@ class MockMonitor(Monitor):
         Monitor.__init__(
             self,
             ServerDescription((default_host, default_port)),
-            cluster,
+            topology,
             pool,
-            cluster_settings)
+            topology_settings)
 
     def _check_once(self):
         try:
@@ -90,10 +90,10 @@ class MockClient(MongoClient):
     def __init__(
             self, standalones, members, mongoses, ismaster_hosts=None,
             *args, **kwargs):
-        """A MongoClient connected to the default server, with a mock cluster.
+        """A MongoClient connected to the default server, with a mock topology.
 
         standalones, members, mongoses determine the configuration of the
-        cluster. They are formatted like ['a:1', 'b:2']. ismaster_hosts
+        topology. They are formatted like ['a:1', 'b:2']. ismaster_hosts
         provides an alternative host list for the server's mocked ismaster
         response; see test_connect_with_internal_ips.
         """

@@ -31,22 +31,22 @@ class Monitor(object):
     def __init__(
             self,
             server_description,
-            cluster,
+            topology,
             pool,
-            cluster_settings):
+            topology_settings):
         """Class to monitor a MongoDB server on a background thread.
 
-        Pass an initial ServerDescription, a Cluster, a Pool, and a
-        ClusterSettings.
+        Pass an initial ServerDescription, a Topology, a Pool, and
+        TopologySettings.
 
-        The Cluster is weakly referenced. The Pool must be exclusive to this
+        The Topology is weakly referenced. The Pool must be exclusive to this
         Monitor.
         """
         super(Monitor, self).__init__()
         self._server_description = server_description
-        self._cluster = weakref.proxy(cluster)
+        self._topology = weakref.proxy(topology)
         self._pool = pool
-        self._settings = cluster_settings
+        self._settings = topology_settings
         self._stopped = False
         self._event = thread_util.Event(self._settings.condition_class)
         self._thread = None
@@ -96,9 +96,9 @@ class Monitor(object):
         while not self._stopped:
             try:
                 self._server_description = self._check_with_retry()
-                self._cluster.on_change(self._server_description)
+                self._topology.on_change(self._server_description)
             except ReferenceError:
-                # Cluster was garbage-collected.
+                # Topology was garbage-collected.
                 self.close()
             else:
                 start = time.time()  # TODO: monotonic.
@@ -122,7 +122,7 @@ class Monitor(object):
         if new_server_description:
             return new_server_description
         else:
-            self._cluster.reset_pool(self._server_description.address)
+            self._topology.reset_pool(self._server_description.address)
             if retry:
                 server_description = self._check_once()
                 if server_description:

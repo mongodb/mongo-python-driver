@@ -12,7 +12,7 @@
 # implied.  See the License for the specific language governing
 # permissions and limitations under the License.
 
-"""Communicate with one MongoDB server in a cluster."""
+"""Communicate with one MongoDB server in a topology."""
 
 import socket
 

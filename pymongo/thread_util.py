@@ -229,7 +229,7 @@ class Event(object):
     """Copy of standard threading.Event, but uses a custom condition class.
 
     Allows async frameworks to override monitors' synchronization behavior
-    with ClusterSettings.condition_class.
+    with TopologySettings.condition_class.
 
     Copied from CPython's threading.py at hash c7960cc9.
     """
