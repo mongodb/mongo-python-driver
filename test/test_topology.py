@@ -24,8 +24,8 @@ import threading
 from bson.py3compat import imap
 from pymongo import common
 from pymongo.server_type import SERVER_TYPE
-from pymongo.cluster import Cluster
-from pymongo.cluster_description import CLUSTER_TYPE
+from pymongo.topology import Cluster
+from pymongo.topology_description import CLUSTER_TYPE
 from pymongo.errors import (ConfigurationError,
                             ConnectionFailure)
 from pymongo.ismaster import IsMaster

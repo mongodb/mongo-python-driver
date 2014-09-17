@@ -20,9 +20,9 @@ import time
 
 from bson.py3compat import itervalues
 from pymongo import common
-from pymongo.cluster_description import (updated_cluster_description,
-                                         CLUSTER_TYPE,
-                                         ClusterDescription)
+from pymongo.topology_description import (updated_cluster_description,
+                                          CLUSTER_TYPE,
+                                          ClusterDescription)
 from pymongo.errors import AutoReconnect
 from pymongo.server import Server
 from pymongo.server_selectors import (arbiter_server_selector,

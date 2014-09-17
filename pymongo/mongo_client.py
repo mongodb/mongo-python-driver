@@ -48,9 +48,9 @@ from pymongo import (auth,
                      thread_util,
                      uri_parser)
 from pymongo.client_options import ClientOptions
-from pymongo.cluster_description import CLUSTER_TYPE
+from pymongo.topology_description import CLUSTER_TYPE
 from pymongo.cursor_manager import CursorManager
-from pymongo.cluster import Cluster
+from pymongo.topology import Cluster
 from pymongo.errors import (ConfigurationError,
                             ConnectionFailure,
                             InvalidURI, AutoReconnect, OperationFailure,

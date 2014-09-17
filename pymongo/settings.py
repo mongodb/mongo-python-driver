@@ -17,7 +17,7 @@
 import threading
 
 from pymongo import common, monitor, pool
-from pymongo.cluster_description import CLUSTER_TYPE
+from pymongo.topology_description import CLUSTER_TYPE
 from pymongo.pool import PoolOptions
 from pymongo.server_description import ServerDescription
 

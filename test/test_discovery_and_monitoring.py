@@ -22,8 +22,8 @@ import threading
 sys.path[0:0] = [""]
 
 from pymongo import common
-from pymongo.cluster import Cluster
-from pymongo.cluster_description import CLUSTER_TYPE
+from pymongo.topology import Cluster
+from pymongo.topology_description import CLUSTER_TYPE
 from pymongo.ismaster import IsMaster
 from pymongo.read_preferences import MovingAverage
 from pymongo.server_description import ServerDescription, SERVER_TYPE
@@ -34,7 +34,7 @@ from test import unittest
 
 # Location of JSON test specifications.
 _TEST_PATH = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)), 'cluster')
+    os.path.dirname(os.path.realpath(__file__)), 'discovery_and_monitoring')
 
 
 class MockSocketInfo(object):
