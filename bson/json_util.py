@@ -193,6 +193,12 @@ def object_hook(dct, compile_re=True):
         return Code(dct["$code"], dct.get("$scope"))
     if bson.has_uuid() and "$uuid" in dct:
         return bson.uuid.UUID(dct["$uuid"])
+    if "$undefined" in dct:
+        return None
+    if "$numberLong" in dct:
+        # 2to3 will change this to int. PyMongo 3.0 supports
+        # a new type, Int64, to avoid round trip issues.
+        return long(dct["$numberLong"])
     return dct
 
 

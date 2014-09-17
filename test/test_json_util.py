@@ -221,6 +221,14 @@ class TestJsonUtil(unittest.TestCase):
             # Check order.
             self.assertEqual('{"$code": "return z", "$scope": {"z": 2}}', res)
 
+    def test_undefined(self):
+        json = '{"name": {"$undefined": true}}'
+        self.assertEqual(json_util.loads(json)['name'], None)
+
+    def test_numberlong(self):
+        json = '{"weight": {"$numberLong": 65535}}'
+        self.assertEqual(json_util.loads(json)['weight'], long(65535))
+
     def test_cursor(self):
         skip_restricted_localhost()
         db = self.db
