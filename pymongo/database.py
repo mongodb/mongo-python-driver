@@ -857,10 +857,6 @@ class Database(common.BaseObject):
             authentication profiles for different purposes you must use
             distinct client instances.
 
-          - To get authentication to apply immediately to all
-            existing sockets you may need to reset this client instance's
-            sockets using :meth:`~pymongo.mongo_client.MongoClient.disconnect`.
-
         :Parameters:
           - `name`: the name of the user to authenticate.
           - `password` (optional): the password of the user to authenticate.
@@ -913,13 +909,7 @@ class Database(common.BaseObject):
         return True
 
     def logout(self):
-        """Deauthorize use of this database for this client instance.
-
-        .. note:: Other databases may still be authenticated, and other
-           existing :class:`~socket.socket` connections may remain
-           authenticated for this database unless you reset all sockets
-           with :meth:`~pymongo.mongo_client.MongoClient.disconnect`.
-        """
+        """Deauthorize use of this database for this client instance."""
         # Sockets will be deauthenticated as they are used.
         self.connection._purge_credentials(self.name)
 
