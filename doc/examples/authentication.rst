@@ -8,7 +8,7 @@ Python module and MongoDB version dependencies.
 MONGODB-CR
 ----------
 MONGODB-CR is the default authentication mechanism supported by a MongoDB
-cluster configured for authentication. Authentication is per-database and
+deployment configured for authentication. Authentication is per-database and
 credentials can be specified through the MongoDB URI or passed to the
 :meth:`~pymongo.database.Database.authenticate` method::
 
