@@ -21,7 +21,7 @@ import uuid
 
 sys.path[0:0] = [""]
 
-from bson import json_util
+from bson import json_util, EPOCH_AWARE
 from bson.bsonint64 import BSONInt64
 from bson.binary import Binary, MD5_SUBTYPE, USER_DEFINED_SUBTYPE
 from bson.code import Code
@@ -71,6 +71,29 @@ class TestJsonUtil(unittest.TestCase):
         # only millis, not micros
         self.round_trip({"date": datetime.datetime(2009, 12, 9, 15,
                                                    49, 45, 191000, utc)})
+
+        jsn = '{"dt": { "$date" : "1970-01-01T00:00:00.000+0000"}}'
+        self.assertEqual(EPOCH_AWARE, json_util.loads(jsn)["dt"])
+        # No explicit offset
+        jsn = '{"dt": { "$date" : "1970-01-01T00:00:00.000"}}'
+        self.assertEqual(EPOCH_AWARE, json_util.loads(jsn)["dt"])
+        # Localtime behind UTC
+        jsn = '{"dt": { "$date" : "1969-12-31T16:00:00.000-0800"}}'
+        self.assertEqual(EPOCH_AWARE, json_util.loads(jsn)["dt"])
+        # Localtime ahead of UTC
+        jsn = '{"dt": { "$date" : "1970-01-01T01:00:00.000+0100"}}'
+        self.assertEqual(EPOCH_AWARE, json_util.loads(jsn)["dt"])
+
+        # Unsupported offset format
+        jsn = '{"dt": { "$date" : "1970-01-01T01:00:00.000+01:00"}}'
+        self.assertRaises(ValueError, json_util.loads, jsn)
+
+
+        dtm = datetime.datetime(1, 1, 1, 1, 1, 1, 0, utc)
+        jsn = '{"dt": {"$date": -62135593139000}}'
+        self.assertEqual(dtm, json_util.loads(jsn)["dt"])
+        jsn = '{"dt": {"$date": {"$numberLong": "-62135593139000"}}}'
+        self.assertEqual(dtm, json_util.loads(jsn)["dt"])
 
     def test_regex_object_hook(self):
         # simplejson or the builtin json module.
