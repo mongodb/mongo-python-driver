@@ -47,6 +47,10 @@ It won't handle :class:`~bson.binary.Binary` and :class:`~bson.code.Code`
 instances (as they are extended strings you can't provide custom defaults),
 but it will be faster as there is less recursion.
 
+.. versionchanged:: 2.8
+   Supports $numberLong and $undefined - new in MongoDB 2.6. Also supports
+   parsing $date in ISO-8601 format.
+
 .. versionchanged:: 2.7
    Preserves order when rendering SON, Timestamp, Code, Binary, and DBRef
    instances. (But not in Python 2.4.)
@@ -96,6 +100,7 @@ from bson.min_key import MinKey
 from bson.objectid import ObjectId
 from bson.regex import Regex
 from bson.timestamp import Timestamp
+from bson.tz_util import utc
 
 from bson.py3compat import PY3, binary_type, string_types
 
@@ -166,7 +171,30 @@ def object_hook(dct, compile_re=True):
     if "$ref" in dct:
         return DBRef(dct["$ref"], dct["$id"], dct.get("$db", None))
     if "$date" in dct:
-        secs = float(dct["$date"]) / 1000.0
+        dtm = dct["$date"]
+        # mongoexport 2.6 and newer
+        if isinstance(dtm, basestring):
+            aware = datetime.datetime.strptime(
+                dtm[:23], "%Y-%m-%dT%H:%M:%S.%f").replace(tzinfo=utc)
+            offset = dtm[23:]
+            if not offset:
+                # No offset, assume UTC.
+                return aware
+            elif len(offset) == 5:
+                # Offset from mongoexport is in format (+|-)HHMM
+                secs = (int(offset[1:3]) * 3600 + int(offset[3:]) * 60)
+                if offset[0] == "-":
+                    secs *= -1
+                return aware - datetime.timedelta(seconds=secs)
+            else:
+                # Some other tool created this, or mongoexport changed again?
+                raise ValueError("invalid format for offset")
+        # mongoexport 2.6 and newer, time before the epoch (SERVER-15275)
+        elif isinstance(dtm, dict):
+            secs = float(dtm["$numberLong"]) / 1000.0
+        # mongoexport before 2.6
+        else:
+            secs = float(dtm) / 1000.0
         return EPOCH_AWARE + datetime.timedelta(seconds=secs)
     if "$regex" in dct:
         flags = 0
