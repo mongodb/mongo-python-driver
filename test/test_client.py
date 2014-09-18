@@ -256,14 +256,17 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         self.assertEqual("bar", c.pymongo_test1.test.find_one()["foo"])
 
         c.end_request()
-        self.assertFalse(c.in_request())
-        c.copy_database("pymongo_test", "pymongo_test2",
-                        "%s:%d" % (host, port))
-        # copy_database() didn't accidentally restart the request
-        self.assertFalse(c.in_request())
 
-        self.assertTrue("pymongo_test2" in c.database_names())
-        self.assertEqual("bar", c.pymongo_test2.test.find_one()["foo"])
+        # XXX - SERVER-15318
+        if not (version.at_least(c, (2, 6, 4)) and is_mongos(c)):
+            self.assertFalse(c.in_request())
+            c.copy_database("pymongo_test", "pymongo_test2",
+                            "%s:%d" % (host, port))
+            # copy_database() didn't accidentally restart the request
+            self.assertFalse(c.in_request())
+
+            self.assertTrue("pymongo_test2" in c.database_names())
+            self.assertEqual("bar", c.pymongo_test2.test.find_one()["foo"])
 
     def test_iteration(self):
         client = MongoClient(host, port)
