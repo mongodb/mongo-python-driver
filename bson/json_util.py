@@ -80,6 +80,7 @@ import base64
 import calendar
 import datetime
 import re
+import time
 
 json_lib = True
 try:
@@ -174,8 +175,12 @@ def object_hook(dct, compile_re=True):
         dtm = dct["$date"]
         # mongoexport 2.6 and newer
         if isinstance(dtm, basestring):
-            aware = datetime.datetime.strptime(
-                dtm[:23], "%Y-%m-%dT%H:%M:%S.%f").replace(tzinfo=utc)
+            # datetime.datetime.strptime is new in python 2.5
+            naive = datetime.datetime(
+                *(time.strptime(dtm[:19], "%Y-%m-%dT%H:%M:%S")[0:6]))
+            # The %f format is new in python 2.6
+            micros = int(dtm[20:23]) * 1000
+            aware = naive.replace(microsecond=micros, tzinfo=utc)
             offset = dtm[23:]
             if not offset:
                 # No offset, assume UTC.

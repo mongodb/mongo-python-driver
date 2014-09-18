@@ -99,11 +99,15 @@ class TestJsonUtil(unittest.TestCase):
         jsn = '{"dt": { "$date" : "1970-01-01T01:00:00.000+01:00"}}'
         self.assertRaises(ValueError, json_util.loads, jsn)
 
-
         dtm = datetime.datetime(1, 1, 1, 1, 1, 1, 0, utc)
         jsn = '{"dt": {"$date": -62135593139000}}'
         self.assertEqual(dtm, json_util.loads(jsn)["dt"])
         jsn = '{"dt": {"$date": {"$numberLong": "-62135593139000"}}}'
+        self.assertEqual(dtm, json_util.loads(jsn)["dt"])
+
+        # Test support for microsecond accuracy
+        dtm = datetime.datetime(2014, 9, 17, 22, 41, 22, 201000, utc)
+        jsn = '{"dt": { "$date" : "2014-09-17T15:41:22.201-0700"}}'
         self.assertEqual(dtm, json_util.loads(jsn)["dt"])
 
     def test_regex_object_hook(self):
