@@ -16,7 +16,10 @@
 """
 
 import os
+import socket
 import sys
+from pymongo.mongo_client import _partition_node
+
 if sys.version_info[:2] == (2, 6):
     import unittest2 as unittest
     from unittest2 import SkipTest
@@ -34,9 +37,9 @@ from bson.py3compat import _unicode, reraise
 from pymongo import common
 from test.version import Version
 
-# hostnames retrieved by MongoReplicaSetClient from isMaster will be of unicode
-# type in Python 2, so ensure these hostnames are unicodes, too. It makes tests
-# like `test_repr` predictable.
+# hostnames retrieved from isMaster will be of unicode type in Python 2,
+# so ensure these hostnames are unicodes, too. It makes tests like
+# `test_repr` predictable.
 host = _unicode(os.environ.get("DB_IP", 'localhost'))
 port = int(os.environ.get("DB_PORT", 27017))
 pair = '%s:%d' % (host, port)
@@ -86,6 +89,7 @@ class ClientContext(object):
         self.connected = False
         self.ismaster = {}
         self.w = None
+        self.nodes = set()
         self.setname = None
         self.rs_client = None
         self.cmd_line = None
@@ -93,6 +97,9 @@ class ClientContext(object):
         self.auth_enabled = False
         self.test_commands_enabled = False
         self.is_mongos = False
+        self.is_rs = False
+        self.has_ipv6 = False
+
         try:
             with client_knobs(server_wait_time=0.1):
                 client = pymongo.MongoClient(host, port)
@@ -105,12 +112,20 @@ class ClientContext(object):
             self.connected = True
             self.ismaster = self.client.admin.command('ismaster')
             self.w = len(self.ismaster.get("hosts", [])) or 1
+            self.nodes = set([(host, port)])
             self.setname = self.ismaster.get('setName', '')
             self.rs_client = None
             self.version = Version.from_client(self.client)
             if self.setname:
-                self.rs_client = pymongo.MongoReplicaSetClient(
+                self.is_rs = True
+                self.rs_client = pymongo.MongoClient(
                     pair, replicaSet=self.setname)
+
+                self.nodes = set([_partition_node(node)
+                                  for node in self.ismaster.get('hosts', [])])
+
+            self.rs_or_standalone_client = self.rs_client or self.client
+
             try:
                 self.cmd_line = self.client.admin.command('getCmdLineOpts')
             except pymongo.errors.OperationFailure as e:
@@ -141,6 +156,7 @@ class ClientContext(object):
             self.test_commands_enabled = ('testCommandsEnabled=1'
                                           in self.cmd_line['argv'])
             self.is_mongos = (self.ismaster.get('msg') == 'isdbgrid')
+            self.has_ipv6 = self._server_started_with_ipv6()
 
     def _check_user_provided(self):
         try:
@@ -171,6 +187,27 @@ class ClientContext(object):
         # Legacy
         argv = self.cmd_line['argv']
         return '--auth' in argv or '--keyFile' in argv
+
+    def _server_started_with_ipv6(self):
+        if not socket.has_ipv6:
+            return False
+
+        if 'parsed' in self.cmd_line:
+            if not self.cmd_line['parsed'].get('net', {}).get('ipv6'):
+                return False
+        else:
+            if '--ipv6' not in self.cmd_line['argv']:
+                return False
+
+        # The server was started with --ipv6. Is there an IPv6 route to it?
+        try:
+            for info in socket.getaddrinfo(host, port):
+                if info[0] == socket.AF_INET6:
+                    return True
+        except socket.error:
+            pass
+
+        return False
 
     def _require(self, condition, msg, func=None):
         def make_wrapper(f):
@@ -225,8 +262,21 @@ class ClientContext(object):
 
     def require_replica_set(self, func):
         """Run a test only if the client is connected to a replica set."""
-        return self._require(self.rs_client is not None,
+        return self._require(self.is_rs,
                              "Not connected to a replica set",
+                             func=func)
+
+    def require_no_replica_set(self, func):
+        """Run a test if the client is *not* connected to a replica set."""
+        return self._require(
+            not self.is_rs,
+            "Connected to a replica set, not a standalone mongod",
+            func=func)
+
+    def require_ipv6(self, func):
+        """Run a test only if the client can connect to a server via IPv6."""
+        return self._require(self.has_ipv6,
+                             "No IPv6",
                              func=func)
 
     def require_no_mongos(self, func):

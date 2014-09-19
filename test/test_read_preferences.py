@@ -33,7 +33,6 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.errors import ConfigurationError
 
 from test.test_replica_set_client import TestReplicaSetClientBase
-from test.test_client import get_client
 from test import (client_context,
                   host,
                   port,
@@ -43,7 +42,7 @@ from test import (client_context,
                   IntegrationTest,
                   db_user,
                   db_pwd)
-from test.utils import connected, one, wait_until
+from test.utils import connected, get_client, one, wait_until
 from test.version import Version
 
 

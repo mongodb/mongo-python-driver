@@ -26,7 +26,7 @@ except ImportError:
 
 sys.path[0:0] = [""]
 
-from pymongo import MongoClient, MongoReplicaSetClient
+from pymongo import MongoClient
 from pymongo.auth import HAVE_KERBEROS, _build_credentials_tuple
 from pymongo.errors import OperationFailure, ConfigurationError
 from pymongo.read_preferences import ReadPreference
@@ -114,9 +114,9 @@ class TestGSSAPI(unittest.TestCase):
 
         set_name = client.admin.command('ismaster').get('setName')
         if set_name:
-            client = MongoReplicaSetClient(GSSAPI_HOST,
-                                           port=GSSAPI_PORT,
-                                           replicaSet=set_name)
+            client = MongoClient(GSSAPI_HOST,
+                                 port=GSSAPI_PORT,
+                                 replicaSet=set_name)
             # Without gssapiServiceName
             self.assertTrue(client.test.authenticate(PRINCIPAL,
                                                      mechanism='GSSAPI'))
@@ -124,7 +124,7 @@ class TestGSSAPI(unittest.TestCase):
             uri = ('mongodb://%s@%s:%d/?authMechanism=GSSAPI;replicaSet'
                    '=%s' % (quote_plus(PRINCIPAL),
                             GSSAPI_HOST, GSSAPI_PORT, str(set_name)))
-            client = MongoReplicaSetClient(uri)
+            client = MongoClient(uri)
             self.assertTrue(client.database_names())
 
             # With gssapiServiceName
@@ -137,7 +137,7 @@ class TestGSSAPI(unittest.TestCase):
                                                       GSSAPI_HOST,
                                                       GSSAPI_PORT,
                                                       str(set_name)))
-            client = MongoReplicaSetClient(uri)
+            client = MongoClient(uri)
             self.assertTrue(client.database_names())
 
     def test_gssapi_threaded(self):
@@ -160,9 +160,9 @@ class TestGSSAPI(unittest.TestCase):
         set_name = client.admin.command('ismaster').get('setName')
         if set_name:
             preference = ReadPreference.SECONDARY
-            client = MongoReplicaSetClient(GSSAPI_HOST,
-                                           replicaSet=set_name,
-                                           read_preference=preference)
+            client = MongoClient(GSSAPI_HOST,
+                                 replicaSet=set_name,
+                                 read_preference=preference)
             self.assertTrue(client.test.authenticate(PRINCIPAL,
                                                      mechanism='GSSAPI'))
             self.assertTrue(client.test.command('dbstats'))
@@ -201,9 +201,9 @@ class TestSASLPlain(unittest.TestCase):
 
         set_name = client.admin.command('ismaster').get('setName')
         if set_name:
-            client = MongoReplicaSetClient(SASL_HOST,
-                                           port=SASL_PORT,
-                                           replicaSet=set_name)
+            client = MongoClient(SASL_HOST,
+                                 port=SASL_PORT,
+                                 replicaSet=set_name)
             self.assertTrue(client.ldap.authenticate(SASL_USER, SASL_PASS,
                                                      SASL_DB, 'PLAIN'))
             client.ldap.test.find_one()
@@ -213,7 +213,7 @@ class TestSASLPlain(unittest.TestCase):
                                                     quote_plus(SASL_PASS),
                                                     SASL_HOST, SASL_PORT,
                                                     SASL_DB, str(set_name)))
-            client = MongoReplicaSetClient(uri)
+            client = MongoClient(uri)
             client.ldap.test.find_one()
 
     def test_sasl_plain_bad_credentials(self):
@@ -283,8 +283,8 @@ class TestSCRAMSHA1(unittest.TestCase):
         client.pymongo_test.command('dbstats')
 
         if self.set_name:
-            client = MongoReplicaSetClient(host, port,
-                                           replicaSet='%s' % (self.set_name,))
+            client = MongoClient(host, port,
+                                 replicaSet='%s' % (self.set_name,))
             self.assertTrue(client.pymongo_test.authenticate(
                 'user', 'pass', mechanism='SCRAM-SHA-1'))
             client.pymongo_test.command('dbstats')
@@ -292,7 +292,7 @@ class TestSCRAMSHA1(unittest.TestCase):
             uri = ('mongodb://user:pass'
                    '@%s:%d/pymongo_test?authMechanism=SCRAM-SHA-1'
                    '&replicaSet=%s' % (host, port, self.set_name))
-            client = MongoReplicaSetClient(uri)
+            client = MongoClient(uri)
             client.pymongo_test.command('dbstats')
             client.read_preference = ReadPreference.SECONDARY
             client.pymongo_test.command('dbstats')
@@ -321,8 +321,7 @@ class TestAuthURIOptions(unittest.TestCase):
             # GLE requires authentication.
             client.admin.authenticate('admin', 'pass')
             # Make sure the admin user is replicated after calling add_user
-            # above. This avoids a race in the MRSC tests below. Adding a
-            # user is just an insert into system.users.
+            # above. This avoids a race in the replica set tests below.
             client.admin.command('getLastError', w=len(response['hosts']))
         self.client = client
 
@@ -342,7 +341,7 @@ class TestAuthURIOptions(unittest.TestCase):
         if self.set_name:
             uri = ('mongodb://admin:pass'
                    '@%s:%d/?replicaSet=%s' % (host, port, self.set_name))
-            client = MongoReplicaSetClient(uri)
+            client = MongoClient(uri)
             self.assertTrue(client.admin.command('dbstats'))
             client.read_preference = ReadPreference.SECONDARY
             self.assertTrue(client.admin.command('dbstats'))
@@ -356,7 +355,7 @@ class TestAuthURIOptions(unittest.TestCase):
         if self.set_name:
             uri = ('mongodb://user:pass@%s:%d'
                    '/pymongo_test?replicaSet=%s' % (host, port, self.set_name))
-            client = MongoReplicaSetClient(uri)
+            client = MongoClient(uri)
             self.assertRaises(OperationFailure,
                               client.admin.command, 'dbstats')
             self.assertTrue(client.pymongo_test.command('dbstats'))
@@ -374,7 +373,7 @@ class TestAuthURIOptions(unittest.TestCase):
         if self.set_name:
             uri = ('mongodb://user:pass@%s:%d/pymongo_test2?replicaSet='
                    '%s;authSource=pymongo_test' % (host, port, self.set_name))
-            client = MongoReplicaSetClient(uri)
+            client = MongoClient(uri)
             self.assertRaises(OperationFailure,
                               client.pymongo_test2.command, 'dbstats')
             self.assertTrue(client.pymongo_test.command('dbstats'))

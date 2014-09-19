@@ -48,9 +48,10 @@ from pymongo.errors import (DocumentTooLarge,
                             InvalidOperation,
                             OperationFailure,
                             WTimeoutError)
-from test.test_client import get_client, IntegrationTest
+from test.test_client import IntegrationTest
 from test.utils import (is_mongos, joinall, enable_text_search, get_pool,
-                        oid_generated_on_client, one)
+                        oid_generated_on_client, one, ignore_deprecations,
+                        get_client)
 from test import client_context, host, port, pair, qcheck, unittest
 
 
@@ -232,8 +233,7 @@ class TestCollection(IntegrationTest):
             self.assertRaises(DeprecationWarning, lambda:
                               db.test.ensure_index("goodbye", ttl=10))
 
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", DeprecationWarning)
+        with ignore_deprecations():
             self.assertEqual("goodbye_1",
                              db.test.ensure_index("goodbye", ttl=10))
         self.assertEqual(None, db.test.ensure_index("goodbye"))
@@ -2187,8 +2187,7 @@ class TestCollection(IntegrationTest):
         for j in range(5):
             c.insert({'j': j, 'i': 0})
 
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", DeprecationWarning)
+        with ignore_deprecations():
             sort={'j': DESCENDING}
             self.assertEqual(4, c.find_and_modify({},
                                                   {'$inc': {'i': 1}},

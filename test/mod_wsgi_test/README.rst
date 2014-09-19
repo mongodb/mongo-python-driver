@@ -15,7 +15,8 @@ Test Matrix
 
 PyMongo should be tested with several versions of mod_wsgi and a selection
 of Python versions. Each combination of mod_wsgi and Python version should
-be tested with both MongoClient and MongoReplicaSetClient.
+be tested with a standalone and a replica set. ``mod_wsgi_test.wsgi``
+detects if the deployment is a replica set and connects to the whole set.
 
 Setup
 -----
@@ -56,25 +57,23 @@ Run the test
 Run the included ``test_client.py`` script::
 
     python test/mod_wsgi_test/test_client.py -n 2500 -t 100 parallel \
-         http://localhost/${mongodb_configuration}/${WORKSPACE}
+         http://localhost/${WORKSPACE}
 
 ...where the "n" argument is the total number of requests to make to Apache,
-and "t" specifies the number of threads. ``mongodb_configuration`` should be
-"single_server" or "replica_set", depending on how you started mongod.
-``WORKSPACE`` is the location of the PyMongo checkout.
+and "t" specifies the number of threads. ``WORKSPACE`` is the location of
+the PyMongo checkout.
 
 Run this script again with different arguments to make serial requests::
 
-    python ${WORKSPACE}/test/mod_wsgi_test/test_client.py -n 25000 serial \
-        http://localhost/${mongodb_configuration}/${WORKSPACE}
+    python test/mod_wsgi_test/test_client.py -n 25000 serial \
+        http://localhost/${WORKSPACE}
 
 The ``test_client.py`` script merely makes HTTP requests to Apache. Its
 exit code is non-zero if any of its requests fails, for example with an
 HTTP 500.
 
-The core of the test is in the WSGI scripts:
-``mod_wsgi_test_single_server.wsgi`` and ``mod_wsgi_test_replica_set.wsgi``.
-These scripts insert some documents into MongoDB at startup, then query
+The core of the test is in the WSGI script, ``mod_wsgi_test.wsgi`.
+This script inserts some documents into MongoDB at startup, then queries
 documents for each HTTP request.
 
 If PyMongo is leaking connections and "n" is much greater than the ulimit,
@@ -85,5 +84,5 @@ Automation
 
 At MongoDB, Inc. we use a Jenkins job that tests each combination in the
 matrix. The job copies the appropriate version of ``mod_wsgi.so`` into
-place, sets up Apache, and runs ``test_client.py`` with the proper
-arguments.
+place, sets up Apache, starts a single server or replica set,
+and runs ``test_client.py`` with the proper arguments.

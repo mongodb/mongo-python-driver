@@ -15,20 +15,24 @@
 """Utilities for testing pymongo
 """
 
+import contextlib
 import os
 import struct
 import sys
 import threading
 import time
+import warnings
 
-from pymongo import MongoClient, MongoReplicaSetClient
+from pymongo import MongoClient
 from pymongo.errors import AutoReconnect, OperationFailure
 from pymongo.pool import NO_REQUEST, NO_SOCKET_YET, SocketInfo
 from pymongo.server_selectors import (any_server_selector,
                                       writable_server_selector)
 from test import (client_context,
                   db_user,
-                  db_pwd)
+                  db_pwd,
+                  host,
+                  port)
 from test.version import Version
 
 
@@ -39,11 +43,27 @@ def get_client(*args, **kwargs):
     return client
 
 
-def get_rs_client(*args, **kwargs):
-    client = MongoReplicaSetClient(*args, **kwargs)
-    if client_context.auth_enabled and kwargs.get("_connect", True):
-        client.admin.authenticate(db_user, db_pwd)
-    return client
+def rs_or_single_client(h=host, p=port, **kwargs):
+    """Connect to the replica set if there is one, otherwise the standalone.
+
+    Authenticates if necessary.
+    """
+    if client_context.setname:
+        return get_client(h, p, replicaSet=client_context.setname, **kwargs)
+    else:
+        return get_client(h, p, **kwargs)
+
+
+def rs_or_single_client_noauth(h=host, p=port, **kwargs):
+    """Connect to the replica set if there is one, otherwise the standalone.
+
+    Like rs_or_single_client, but does not authenticate.
+    """
+    # Just call MongoClient(), not get_client() which does auth.
+    if client_context.setname:
+        return MongoClient(h, p, replicaSet=client_context.setname, **kwargs)
+    else:
+        return MongoClient(h, p, **kwargs)
 
 
 # No functools in Python 2.4
@@ -160,7 +180,12 @@ def joinall(threads):
 
 def connected(client):
     """Convenience to wait for a newly-constructed client to connect."""
-    client.admin.command('ismaster')  # Force connection.
+    with warnings.catch_warnings():
+        # Ignore warning that "ismaster" is always routed to primary even
+        # if client's read preference isn't PRIMARY.
+        warnings.simplefilter("ignore", UserWarning)
+        client.admin.command('ismaster')  # Force connection.
+
     return client
 
 def wait_until(predicate, success_description, timeout=10):
@@ -187,12 +212,11 @@ def enable_text_search(client):
     client.admin.command(
         'setParameter', textSearchEnabled=True)
 
-    if isinstance(client, MongoReplicaSetClient):
-        for host, port in client.secondaries:
-            client = MongoClient(host, port)
-            if client_context.auth_enabled:
-                client.admin.authenticate(db_user, db_pwd)
-            client.admin.command('setParameter', textSearchEnabled=True)
+    for host, port in client.secondaries:
+        client = MongoClient(host, port)
+        if client_context.auth_enabled:
+            client.admin.authenticate(db_user, db_pwd)
+        client.admin.command('setParameter', textSearchEnabled=True)
 
 def assertRaisesExactly(cls, fn, *args, **kwargs):
     """
@@ -208,6 +232,11 @@ def assertRaisesExactly(cls, fn, *args, **kwargs):
     else:
         raise AssertionError("%s not raised" % cls)
 
+@contextlib.contextmanager
+def ignore_deprecations():
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        yield
 
 class RendezvousThread(threading.Thread):
     """A thread that starts and pauses at a rendezvous point before resuming.
@@ -306,20 +335,22 @@ class RendezvousThread(threading.Thread):
         self.passed = True
 
 def read_from_which_host(
-    rsc,
+    client,
     pref,
     tag_sets=None,
     secondary_acceptable_latency_ms=None
 ):
-    """Read from a MongoReplicaSetClient with the given Read Preference mode,
-       tags, and acceptable latency. Return the 'host:port' which was read from.
+    """Read from a client with the given Read Preference.
+
+    Return the 'host:port' which was read from.
 
     :Parameters:
-      - `rsc`: A MongoReplicaSetClient
+      - `client`: A MongoClient
       - `mode`: A ReadPreference
       - `tag_sets`: List of dicts of tags for data-center-aware reads
+      - `secondary_acceptable_latency_ms`: Size of latency window
     """
-    db = rsc.pymongo_test
+    db = client.pymongo_test
 
     if isinstance(tag_sets, dict):
         tag_sets = [tag_sets]
@@ -342,27 +373,27 @@ def read_from_which_host(
     except AutoReconnect:
         return None
 
-def assertReadFrom(testcase, rsc, member, *args, **kwargs):
+def assertReadFrom(testcase, client, member, *args, **kwargs):
     """Check that a query with the given mode and tag_sets reads from
     the expected replica-set member.
 
     :Parameters:
       - `testcase`: A unittest.TestCase
-      - `rsc`: A MongoReplicaSetClient
+      - `client`: A MongoClient
       - `member`: A host:port expected to be used
       - `mode`: A ReadPreference
       - `tag_sets` (optional): List of dicts of tags for data-center-aware reads
     """
     for _ in range(10):
-        testcase.assertEqual(member, read_from_which_host(rsc, *args, **kwargs))
+        testcase.assertEqual(member, read_from_which_host(client, *args, **kwargs))
 
-def assertReadFromAll(testcase, rsc, members, *args, **kwargs):
+def assertReadFromAll(testcase, client, members, *args, **kwargs):
     """Check that a query with the given mode and tag_sets reads from all
     members in a set, and only members in that set.
 
     :Parameters:
       - `testcase`: A unittest.TestCase
-      - `rsc`: A MongoReplicaSetClient
+      - `client`: A MongoClient
       - `members`: Sequence of host:port expected to be used
       - `mode`: A ReadPreference
       - `tag_sets` (optional): List of dicts of tags for data-center-aware reads
@@ -370,18 +401,18 @@ def assertReadFromAll(testcase, rsc, members, *args, **kwargs):
     members = set(members)
     used = set()
     for _ in range(100):
-        used.add(read_from_which_host(rsc, *args, **kwargs))
+        used.add(read_from_which_host(client, *args, **kwargs))
 
     testcase.assertEqual(members, used)
 
 def get_pool(client):
+    """Get the standalone, primary, or mongos pool."""
     topology = client._get_topology()
     server = topology.select_server(writable_server_selector)
     return server.pool
 
-def pools_from_rs_client(client):
-    """Get Pool instances from a MongoReplicaSetClient.
-    """
+def get_pools(client):
+    """Get all pools."""
     return [
         server.pool for server in
         client._get_topology().select_servers(any_server_selector)]
@@ -479,7 +510,7 @@ def lazy_client_trial(reset, target, test, get_client):
     try:
         for i in range(NTRIALS):
             reset(collection)
-            lazy_client = get_client(connect=False)
+            lazy_client = get_client()
             lazy_collection = lazy_client.pymongo_test.test
             run_threads(lazy_collection, target)
             test(lazy_collection)
@@ -495,9 +526,8 @@ def lazy_client_trial(reset, target, test, get_client):
 class _TestLazyConnectMixin(object):
     """Test concurrent operations on a lazily-connecting client.
 
-    Inherit from this class and from unittest.TestCase, and override
-    _get_client(self, **kwargs), for testing a lazily-connecting
-    client, i.e. a client initialized with connect=False.
+    Inherit from this class and from IntegrationTest, and override
+    self._get_client() to return a client initialized with connect=False.
     """
     NTRIALS = 5
     NTHREADS = 10
@@ -572,7 +602,7 @@ class _TestLazyConnectMixin(object):
     def test_max_bson_size(self):
         # Client should have sane defaults before connecting, and should update
         # its configuration once connected.
-        c = self._get_client(connect=False)
+        c = self._get_client()
         self.assertEqual(16 * (1024 ** 2), c.max_bson_size)
         self.assertEqual(2 * c.max_bson_size, c.max_message_size)
 

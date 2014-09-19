@@ -32,7 +32,7 @@ except ImportError:
     # Python 2
     from urllib import quote_plus
 
-from pymongo import MongoClient, MongoReplicaSetClient
+from pymongo import MongoClient
 from pymongo.errors import (ConfigurationError,
                             ConnectionFailure,
                             OperationFailure)
@@ -65,8 +65,8 @@ MONGODB_X509_USERNAME = (
 # --sslWeakCertificateValidation
 # Also, make sure you have 'server' as an alias for localhost in /etc/hosts
 #
-# Note: For all tests to pass with MongoReplicaSetClient the replica
-# set configuration must use 'server' for the hostname of all hosts.
+# Note: For all replica set tests to pass, the replica set configuration must
+# use 'server' for the hostname of all hosts.
 
 def is_server_resolvable():
     """Returns True if 'server' is resolvable."""
@@ -127,15 +127,10 @@ class TestClientSSL(unittest.TestCase):
         # Explicit
         self.assertRaises(ConfigurationError,
                           MongoClient, ssl=True)
-        self.assertRaises(ConfigurationError,
-                          MongoReplicaSetClient, replicaSet='rs', ssl=True)
+
         # Implied
         self.assertRaises(ConfigurationError,
                           MongoClient, ssl_certfile=CLIENT_PEM)
-        self.assertRaises(ConfigurationError,
-                          MongoReplicaSetClient,
-                          replicaSet='rs',
-                          ssl_certfile=CLIENT_PEM)
 
     def test_config_ssl(self):
         # Tests various ssl configurations
@@ -148,39 +143,12 @@ class TestClientSSL(unittest.TestCase):
         self.assertRaises(TypeError, MongoClient, ssl=5.5)
         self.assertRaises(TypeError, MongoClient, ssl=[])
 
-        self.assertRaises(ConfigurationError,
-                          MongoReplicaSetClient, replicaSet='rs', ssl='foo')
-        self.assertRaises(ConfigurationError,
-                          MongoReplicaSetClient,
-                          replicaSet='rs',
-                          ssl=False,
-                          ssl_certfile=CLIENT_PEM)
-        self.assertRaises(TypeError,
-                          MongoReplicaSetClient, replicaSet='rs', ssl=0)
-        self.assertRaises(TypeError,
-                          MongoReplicaSetClient, replicaSet='rs', ssl=5.5)
-        self.assertRaises(TypeError,
-                          MongoReplicaSetClient, replicaSet='rs', ssl=[])
-
         self.assertRaises(IOError, MongoClient, ssl_certfile="NoSuchFile")
         self.assertRaises(TypeError, MongoClient, ssl_certfile=True)
         self.assertRaises(TypeError, MongoClient, ssl_certfile=[])
         self.assertRaises(IOError, MongoClient, ssl_keyfile="NoSuchFile")
         self.assertRaises(TypeError, MongoClient, ssl_keyfile=True)
         self.assertRaises(TypeError, MongoClient, ssl_keyfile=[])
-
-        self.assertRaises(IOError,
-                          MongoReplicaSetClient,
-                          replicaSet='rs',
-                          ssl_keyfile="NoSuchFile")
-        self.assertRaises(IOError,
-                          MongoReplicaSetClient,
-                          replicaSet='rs',
-                          ssl_certfile="NoSuchFile")
-        self.assertRaises(TypeError,
-                          MongoReplicaSetClient,
-                          replicaSet='rs',
-                          ssl_certfile=True)
 
         # Test invalid combinations
         self.assertRaises(ConfigurationError,
@@ -193,23 +161,6 @@ class TestClientSSL(unittest.TestCase):
                           ssl_certfile=CLIENT_PEM)
         self.assertRaises(ConfigurationError,
                           MongoClient,
-                          ssl=False,
-                          ssl_keyfile=CLIENT_PEM,
-                          ssl_certfile=CLIENT_PEM)
-
-        self.assertRaises(ConfigurationError,
-                          MongoReplicaSetClient,
-                          replicaSet='rs',
-                          ssl=False,
-                          ssl_keyfile=CLIENT_PEM)
-        self.assertRaises(ConfigurationError,
-                          MongoReplicaSetClient,
-                          replicaSet='rs',
-                          ssl=False,
-                          ssl_certfile=CLIENT_PEM)
-        self.assertRaises(ConfigurationError,
-                          MongoReplicaSetClient,
-                          replicaSet='rs',
                           ssl=False,
                           ssl_keyfile=CLIENT_PEM,
                           ssl_certfile=CLIENT_PEM)
@@ -235,10 +186,10 @@ class TestSSL(unittest.TestCase):
         client = MongoClient(host, port, ssl=True)
         response = client.admin.command('ismaster')
         if 'setName' in response:
-            client = MongoReplicaSetClient(pair,
-                                           replicaSet=response['setName'],
-                                           w=len(response['hosts']),
-                                           ssl=True)
+            client = MongoClient(pair,
+                                 replicaSet=response['setName'],
+                                 w=len(response['hosts']),
+                                 ssl=True)
 
         db = client.pymongo_ssl_test
         db.test.drop()
@@ -261,10 +212,10 @@ class TestSSL(unittest.TestCase):
         client = ssl_client
         response = ssl_client.admin.command('ismaster')
         if 'setName' in response:
-            client = MongoReplicaSetClient(pair,
-                                           replicaSet=response['setName'],
-                                           w=len(response['hosts']),
-                                           ssl=True, ssl_certfile=CLIENT_PEM)
+            client = MongoClient(pair,
+                                 replicaSet=response['setName'],
+                                 w=len(response['hosts']),
+                                 ssl=True, ssl_certfile=CLIENT_PEM)
 
         db = client.pymongo_ssl_test
         db.test.drop()
@@ -287,10 +238,10 @@ class TestSSL(unittest.TestCase):
         client = ssl_client
         response = ssl_client.admin.command('ismaster')
         if 'setName' in response:
-            client = MongoReplicaSetClient(pair,
-                                           replicaSet=response['setName'],
-                                           w=len(response['hosts']),
-                                           ssl_certfile=CLIENT_PEM)
+            client = MongoClient(pair,
+                                 replicaSet=response['setName'],
+                                 w=len(response['hosts']),
+                                 ssl_certfile=CLIENT_PEM)
 
         db = client.pymongo_ssl_test
         db.test.drop()
@@ -325,13 +276,13 @@ class TestSSL(unittest.TestCase):
                 raise SkipTest("No hosts in the replicaset for 'server'. "
                                "Cannot validate hostname in the certificate")
 
-            client = MongoReplicaSetClient('server',
-                                           replicaSet=response['setName'],
-                                           w=len(response['hosts']),
-                                           ssl=True,
-                                           ssl_certfile=CLIENT_PEM,
-                                           ssl_cert_reqs=ssl.CERT_REQUIRED,
-                                           ssl_ca_certs=CA_PEM)
+            client = MongoClient('server',
+                                 replicaSet=response['setName'],
+                                 w=len(response['hosts']),
+                                 ssl=True,
+                                 ssl_certfile=CLIENT_PEM,
+                                 ssl_cert_reqs=ssl.CERT_REQUIRED,
+                                 ssl_ca_certs=CA_PEM)
 
         db = client.pymongo_ssl_test
         db.test.drop()
@@ -367,13 +318,13 @@ class TestSSL(unittest.TestCase):
                 raise SkipTest("No hosts in the replicaset for 'server'. "
                                "Cannot validate hostname in the certificate")
 
-            client = MongoReplicaSetClient('server',
-                                           replicaSet=response['setName'],
-                                           w=len(response['hosts']),
-                                           ssl=True,
-                                           ssl_certfile=CLIENT_PEM,
-                                           ssl_cert_reqs=ssl.CERT_OPTIONAL,
-                                           ssl_ca_certs=CA_PEM)
+            client = MongoClient('server',
+                                 replicaSet=response['setName'],
+                                 w=len(response['hosts']),
+                                 ssl=True,
+                                 ssl_certfile=CLIENT_PEM,
+                                 ssl_cert_reqs=ssl.CERT_OPTIONAL,
+                                 ssl_ca_certs=CA_PEM)
 
         db = client.pymongo_ssl_test
         db.test.drop()
@@ -405,13 +356,13 @@ class TestSSL(unittest.TestCase):
 
         if 'setName' in response:
             try:
-                MongoReplicaSetClient(pair,
-                                      replicaSet=response['setName'],
-                                      w=len(response['hosts']),
-                                      ssl=True,
-                                      ssl_certfile=CLIENT_PEM,
-                                      ssl_cert_reqs=ssl.CERT_REQUIRED,
-                                      ssl_ca_certs=CA_PEM)
+                MongoClient(pair,
+                            replicaSet=response['setName'],
+                            w=len(response['hosts']),
+                            ssl=True,
+                            ssl_certfile=CLIENT_PEM,
+                            ssl_cert_reqs=ssl.CERT_REQUIRED,
+                            ssl_ca_certs=CA_PEM)
                 self.fail("Invalid hostname should have failed")
             except CertificateError:
                 pass

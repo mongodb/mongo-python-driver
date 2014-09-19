@@ -17,9 +17,11 @@
 import threading
 import traceback
 
-from test import unittest, client_context, pair
-from test.utils import joinall, remove_all_users, RendezvousThread
-from test.test_client import get_client
+from test import unittest, client_context, IntegrationTest
+from test.utils import (joinall,
+                        remove_all_users,
+                        RendezvousThread,
+                        rs_or_single_client)
 from test.utils import get_pool
 from pymongo.pool import SocketInfo, _closed
 from pymongo.errors import AutoReconnect, OperationFailure
@@ -163,30 +165,9 @@ class FindPauseFind(RendezvousThread):
         assert self.request_sock != pool._get_request_state().sock
 
 
-class BaseTestThreads(object):
-    """
-    Base test class for TestThreads and TestThreadsReplicaSet. (This
-    is not itself a unittest.TestCase, otherwise it'd be run twice --
-    once when unittest imports this module, and once when unittest
-    imports test_threads_replica_set_connection.py, which imports this
-    module.)
-    """
+class TestThreads(IntegrationTest):
     def setUp(self):
-        self.db = self._get_client().pymongo_test
-
-    def tearDown(self):
-        # Clear client reference so that RSC's monitor thread
-        # dies.
-        self.db = None
-
-    def _get_client(self):
-        """
-        Intended for overriding in TestThreadsReplicaSet. This method
-        returns a MongoClient here, and a MongoReplicaSetClient in
-        test_threads_replica_set_connection.py.
-        """
-        # Regular test client
-        return get_client(pair)
+        self.db = client_context.rs_or_standalone_client.pymongo_test
 
     def test_threading(self):
         self.db.drop_collection("test")
@@ -254,7 +235,7 @@ class BaseTestThreads(object):
         #
         # If we've fixed PYTHON-345, then only one AutoReconnect is raised,
         # and all the threads get new request sockets.
-        cx = get_client(pair)
+        cx = rs_or_single_client()
         cx.start_request()
         collection = cx.db.pymongo_test
 
@@ -305,37 +286,22 @@ class BaseTestThreads(object):
             self.assertTrue(t.passed, "%s threw exception" % t)
 
 
-class BaseTestThreadsAuth(object):
-    """
-    Base test class for TestThreadsAuth and TestThreadsAuthReplicaSet. (This is
-    not itself a unittest.TestCase, otherwise it'd be run twice -- once when
-    unittest imports this module, and once when unittest imports
-    test_threads_replica_set_connection.py, which imports this module.)
-    """
+class TestThreadsAuth(IntegrationTest):
     @classmethod
     @client_context.require_auth
     def setUpClass(cls):
-        pass
-
-    def _get_client(self):
-        """
-        Intended for overriding in TestThreadsAuthReplicaSet. This method
-        returns a MongoClient here, and a MongoReplicaSetClient in
-        test_threads_replica_set_connection.py.
-        """
-        # Regular test client
-        return get_client(pair)
+        super(TestThreadsAuth, cls).setUpClass()
 
     def setUp(self):
-        client = self._get_client()
-        self.client = client
+        self.client = rs_or_single_client()
         self.client.admin.add_user('admin-user', 'password',
                                    roles=['clusterAdmin',
                                           'dbAdminAnyDatabase',
                                           'readWriteAnyDatabase',
                                           'userAdminAnyDatabase'])
-        # client returned from self._get_client() may already be authenticated
-        # to get around restricted localhost exception in MongoDB >= 2.7.1.
+
+        # client is already authenticated to get around restricted
+        # localhost exception in MongoDB >= 2.7.1.
         self.client.admin.logout()
         self.client.admin.authenticate("admin-user", "password")
         self.client.auth_test.add_user("test-user", "password",
@@ -348,18 +314,13 @@ class BaseTestThreadsAuth(object):
         self.client.drop_database('auth_test')
         self.client.admin.remove_user('admin-user')
         self.client.admin.logout()
-        # Clear client reference so that RSC's monitor thread
-        # dies.
-        self.client = None
 
     def test_auto_auth_login(self):
-        client = self._get_client()
+        client = self.client
         client.admin.logout()
         self.assertRaises(OperationFailure, client.auth_test.test.find_one)
 
         # Admin auth
-        client = self._get_client()
-        client.admin.logout()
         client.admin.authenticate("admin-user", "password")
 
         nthreads = 10
@@ -375,7 +336,6 @@ class BaseTestThreadsAuth(object):
             self.assertTrue(t.success)
 
         # Database-specific auth
-        client = self._get_client()
         client.admin.logout()
         client.auth_test.authenticate("test-user", "password")
 
@@ -389,12 +349,6 @@ class BaseTestThreadsAuth(object):
 
         for t in threads:
             self.assertTrue(t.success)
-
-class TestThreads(BaseTestThreads, unittest.TestCase):
-    pass
-
-class TestThreadsAuth(BaseTestThreadsAuth, unittest.TestCase):
-    pass
 
 
 if __name__ == "__main__":

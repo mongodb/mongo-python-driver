@@ -18,7 +18,6 @@ import itertools
 import random
 import re
 import sys
-import warnings
 
 sys.path[0:0] = [""]
 
@@ -36,7 +35,7 @@ from pymongo.errors import (InvalidOperation,
                             OperationFailure,
                             ExecutionTimeout)
 from test import client_context, SkipTest, unittest, host, port, IntegrationTest
-from test.utils import server_started_with_auth
+from test.utils import ignore_deprecations, server_started_with_auth
 
 if PY3:
     long = int
@@ -1115,8 +1114,7 @@ class TestCursor(IntegrationTest):
 
         client = self.db.connection
         try:
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore", DeprecationWarning)
+            with ignore_deprecations():
                 client.set_cursor_manager(CManager)
             docs = []
             cursor = self.db.test.find().batch_size(10)
@@ -1130,8 +1128,7 @@ class TestCursor(IntegrationTest):
             docs.extend(ccursor)
             self.assertEqual(len(docs), 200)
         finally:
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore", DeprecationWarning)
+            with ignore_deprecations():
                 client.set_cursor_manager(CursorManager)
 
 if __name__ == "__main__":

@@ -28,6 +28,12 @@ import pymongo
 from pymongo.mongo_client import MongoClient
 
 client = MongoClient()
+
+# If the deployment is a replica set, connect to the whole set.
+replica_set_name = client.admin.command('ismaster').get('setName')
+if replica_set_name:
+    client = MongoClient(replicaSet=replica_set_name)
+
 collection = client.test.test
 
 ndocs = 20
