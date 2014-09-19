@@ -36,7 +36,7 @@ host3 = unicode(os.environ.get("DB_IP3", 'localhost'))
 port3 = int(os.environ.get("DB_PORT3", 27019))
 
 db_user = unicode(os.environ.get("DB_USER", "administrator"))
-db_pwd = unicode(os.environ.get("DB_PWD", "password"))
+db_pwd = unicode(os.environ.get("DB_PASSWORD", "password"))
 
 
 class AuthContext(object):
@@ -50,9 +50,20 @@ class AuthContext(object):
             if self._server_started_with_auth(command_line):
                 self.auth_enabled = True
         except OperationFailure, e:
-            if e.code == 13:
+            msg = e.details.get('errmsg', '')
+            if e.code == 13 or 'unauthorized' in msg or 'login' in msg:
                 self.auth_enabled = True
                 self.restricted_localhost = True
+            else:
+                raise
+        # See if the user has already been set up.
+        try:
+            self.client.admin.authenticate(db_user, db_pwd)
+            self.user_provided = True
+        except OperationFailure, e:
+            msg = e.details.get('errmsg', '')
+            if e.code == 18 or 'auth fails' in msg:
+                self.user_provided = False
             else:
                 raise
 
@@ -72,15 +83,17 @@ class AuthContext(object):
         return '--auth' in argv or '--keyFile' in argv
 
     def add_user_and_log_in(self):
-        self.client.admin.add_user(db_user, db_pwd,
-                                   roles=('userAdminAnyDatabase',
-                                          'readWriteAnyDatabase',
-                                          'dbAdminAnyDatabase',
-                                          'clusterAdmin'))
+        if not self.user_provided:
+            self.client.admin.add_user(db_user, db_pwd,
+                                       roles=('userAdminAnyDatabase',
+                                              'readWriteAnyDatabase',
+                                              'dbAdminAnyDatabase',
+                                              'clusterAdmin'))
         self.client.admin.authenticate(db_user, db_pwd)
 
     def remove_user_and_log_out(self):
-        self.client.admin.remove_user(db_user)
+        if not self.user_provided:
+            self.client.admin.remove_user(db_user)
         self.client.admin.logout()
         self.client.disconnect()
 
