@@ -530,6 +530,10 @@ class Collection(common.BaseObject):
             if first.startswith('$'):
                 check_keys = False
 
+                # Also make sure that the document does not contain an _id
+                if '_id' in document:
+                    del document['_id']
+
         if client.max_wire_version > 1 and safe:
             # Update command
             command = SON([('update', self.name)])
