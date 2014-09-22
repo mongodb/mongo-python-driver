@@ -142,7 +142,12 @@ def parse_host(entity, default_port=DEFAULT_PORT):
         if not port.isdigit():
             raise ConfigurationError("Port number must be an integer.")
         port = int(port)
-    return host, port
+
+    # Normalize hostname to lowercase, since DNS is case-insensitive:
+    # http://tools.ietf.org/html/rfc4343
+    # This prevents useless rediscovery if "foo.com" is in the seed list but
+    # "FOO.com" is in the ismaster response.
+    return host.lower(), port
 
 
 def validate_options(opts):

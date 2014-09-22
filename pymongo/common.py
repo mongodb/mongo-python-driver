@@ -73,6 +73,17 @@ def partition_node(node):
     return host, port
 
 
+def clean_node(node):
+    """Split and normalize a node name from an ismaster response."""
+    host, port = partition_node(node)
+
+    # Normalize hostname to lowercase, since DNS is case-insensitive:
+    # http://tools.ietf.org/html/rfc4343
+    # This prevents useless rediscovery if "foo.com" is in the seed list but
+    # "FOO.com" is in the ismaster response.
+    return host.lower(), port
+
+
 def raise_config_error(key, dummy):
     """Raise ConfigurationError with the given key name."""
     raise ConfigurationError("Unknown option %s" % (key,))
