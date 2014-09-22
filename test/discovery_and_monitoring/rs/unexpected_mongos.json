@@ -3,13 +3,13 @@
     "phases": [
         {
             "outcome": {
-                "clusterType": "ReplicaSetNoPrimary", 
                 "servers": {}, 
-                "setName": "rs"
+                "setName": "rs", 
+                "topologyType": "ReplicaSetNoPrimary"
             }, 
             "responses": [
                 [
-                    "B:27017", 
+                    "b:27017", 
                     {
                         "ismaster": true, 
                         "msg": "isdbgrid", 
@@ -19,5 +19,5 @@
             ]
         }
     ], 
-    "uri": "mongodb://B/?replicaSet=rs"
+    "uri": "mongodb://b/?replicaSet=rs"
 }

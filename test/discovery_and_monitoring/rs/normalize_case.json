@@ -1,5 +1,5 @@
 {
-    "description": "Primary becomes standalone", 
+    "description": "Replica set case normalization", 
     "phases": [
         {
             "outcome": {
@@ -7,6 +7,14 @@
                     "a:27017": {
                         "setName": "rs", 
                         "type": "RSPrimary"
+                    }, 
+                    "b:27017": {
+                        "setName": null, 
+                        "type": "Unknown"
+                    }, 
+                    "c:27017": {
+                        "setName": null, 
+                        "type": "Unknown"
                     }
                 }, 
                 "setName": "rs", 
@@ -16,31 +24,22 @@
                 [
                     "a:27017", 
                     {
+                        "arbiters": [
+                            "C:27017"
+                        ], 
                         "hosts": [
-                            "a"
+                            "A:27017"
                         ], 
                         "ismaster": true, 
                         "ok": 1, 
+                        "passives": [
+                            "B:27017"
+                        ], 
                         "setName": "rs"
-                    }
-                ]
-            ]
-        }, 
-        {
-            "outcome": {
-                "servers": {}, 
-                "setName": "rs", 
-                "topologyType": "ReplicaSetNoPrimary"
-            }, 
-            "responses": [
-                [
-                    "a:27017", 
-                    {
-                        "ok": 1
                     }
                 ]
             ]
         }
     ], 
-    "uri": "mongodb://a/?replicaSet=rs"
+    "uri": "mongodb://A/?replicaSet=rs"
 }

@@ -3,22 +3,22 @@
     "phases": [
         {
             "outcome": {
-                "clusterType": "ReplicaSetNoPrimary", 
                 "servers": {
-                    "A:27017": {
+                    "a:27017": {
                         "setName": null, 
                         "type": "Unknown"
                     }, 
-                    "B:27017": {
+                    "b:27017": {
                         "setName": null, 
                         "type": "RSGhost"
                     }
                 }, 
-                "setName": "rs"
+                "setName": "rs", 
+                "topologyType": "ReplicaSetNoPrimary"
             }, 
             "responses": [
                 [
-                    "B:27017", 
+                    "b:27017", 
                     {
                         "ismaster": false, 
                         "isreplicaset": true, 
@@ -28,5 +28,5 @@
             ]
         }
     ], 
-    "uri": "mongodb://A,B/?replicaSet=rs"
+    "uri": "mongodb://a,b/?replicaSet=rs"
 }

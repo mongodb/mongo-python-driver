@@ -3,22 +3,22 @@
     "phases": [
         {
             "outcome": {
-                "clusterType": "Sharded", 
                 "servers": {
-                    "A:27017": {
+                    "a:27017": {
                         "setName": null, 
                         "type": "Mongos"
                     }, 
-                    "B:27017": {
+                    "b:27017": {
                         "setName": null, 
                         "type": "Mongos"
                     }
                 }, 
-                "setName": null
+                "setName": null, 
+                "topologyType": "Sharded"
             }, 
             "responses": [
                 [
-                    "A:27017", 
+                    "a:27017", 
                     {
                         "ismaster": true, 
                         "msg": "isdbgrid", 
@@ -26,7 +26,7 @@
                     }
                 ], 
                 [
-                    "B:27017", 
+                    "b:27017", 
                     {
                         "ismaster": true, 
                         "msg": "isdbgrid", 
@@ -36,5 +36,5 @@
             ]
         }
     ], 
-    "uri": "mongodb://A,B"
+    "uri": "mongodb://a,b"
 }

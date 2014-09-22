@@ -158,7 +158,7 @@ def check_outcome(self, topology, outcome):
             actual_server_description.set_name)
 
     self.assertEqual(outcome['setName'], topology.description.set_name)
-    expected_topology_type = getattr(TOPOLOGY_TYPE, outcome['clusterType'])
+    expected_topology_type = getattr(TOPOLOGY_TYPE, outcome['topologyType'])
     self.assertEqual(topology_type_name(expected_topology_type),
                      topology_type_name(topology.description.topology_type))
 

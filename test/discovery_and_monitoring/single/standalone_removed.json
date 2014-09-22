@@ -1,20 +1,20 @@
 {
-    "description": "Standalone removed from multi-server cluster", 
+    "description": "Standalone removed from multi-server topology", 
     "phases": [
         {
             "outcome": {
-                "clusterType": "Unknown", 
                 "servers": {
-                    "B:27017": {
+                    "b:27017": {
                         "setName": null, 
                         "type": "Unknown"
                     }
                 }, 
-                "setName": null
+                "setName": null, 
+                "topologyType": "Unknown"
             }, 
             "responses": [
                 [
-                    "A:27017", 
+                    "a:27017", 
                     {
                         "ismaster": true, 
                         "ok": 1
@@ -23,5 +23,5 @@
             ]
         }
     ], 
-    "uri": "mongodb://A,B"
+    "uri": "mongodb://a,b"
 }
