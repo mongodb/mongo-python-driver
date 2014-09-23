@@ -57,4 +57,4 @@ def application(environ, start_response):
         sys.version, mod_wsgi_version, pymongo.version)
     response_headers = [('Content-Length', str(len(output)))]
     start_response('200 OK', response_headers)
-    return [output]
+    return [output.encode('ascii')]
