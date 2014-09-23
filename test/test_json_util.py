@@ -22,10 +22,10 @@ import uuid
 sys.path[0:0] = [""]
 
 from bson import json_util, EPOCH_AWARE
-from bson.bsonint64 import BSONInt64
 from bson.binary import Binary, MD5_SUBTYPE, USER_DEFINED_SUBTYPE
 from bson.code import Code
 from bson.dbref import DBRef
+from bson.int64 import Int64
 from bson.max_key import MaxKey
 from bson.min_key import MinKey
 from bson.objectid import ObjectId
@@ -233,7 +233,7 @@ class TestJsonUtil(unittest.TestCase):
     def test_numberlong(self):
         json = '{"weight": {"$numberLong": 65535}}'
         self.assertEqual(json_util.loads(json)['weight'],
-                         BSONInt64(65535))
+                         Int64(65535))
 
 
 class TestJsonUtilRoundtrip(IntegrationTest):

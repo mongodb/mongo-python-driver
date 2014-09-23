@@ -332,7 +332,7 @@ static int _load_python_objects(PyObject* module) {
         _load_object(&state->UTC, "bson.tz_util", "utc") ||
         _load_object(&state->RECompile, "re", "compile") ||
         _load_object(&state->Regex, "bson.regex", "Regex") ||
-        _load_object(&state->BSONInt64, "bson.bsonint64", "BSONInt64") ||
+        _load_object(&state->BSONInt64, "bson.int64", "Int64") ||
         _load_object(&state->UUID, "uuid", "UUID") ||
         _load_object(&state->Mapping, "collections", "Mapping")) {
         return 1;
@@ -775,7 +775,7 @@ static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
             }
         case 18:
             {
-                /* BSONInt64 */
+                /* Int64 */
                 const long long ll = PyLong_AsLongLong(value);
                 if (PyErr_Occurred()) { /* Overflow */
                     PyErr_SetString(PyExc_OverflowError,
@@ -2092,17 +2092,17 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
     case 18:
         {
             long long ll;
-            PyObject* bsonint64_type = _get_object(state->BSONInt64,
-                                                   "bson.bsonint64", "BSONInt64");
-            if (!bsonint64_type)
+            PyObject* bson_int64_type = _get_object(state->BSONInt64,
+                                                    "bson.int64", "Int64");
+            if (!bson_int64_type)
                 goto invalid;
             if (max < 8) {
                 goto invalid;
             }
             memcpy(&ll, buffer + *position, 8);
-            value = PyObject_CallFunction(bsonint64_type, "L", ll);
+            value = PyObject_CallFunction(bson_int64_type, "L", ll);
             *position += 8;
-            Py_DECREF(bsonint64_type);
+            Py_DECREF(bson_int64_type);
             break;
         }
     case 255:

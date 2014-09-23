@@ -31,8 +31,8 @@ from bson import (BSON,
                   is_valid,
                   Regex)
 from bson.binary import Binary, UUIDLegacy
-from bson.bsonint64 import BSONInt64
 from bson.code import Code
+from bson.int64 import Int64
 from bson.objectid import ObjectId
 from bson.dbref import DBRef
 from bson.py3compat import PY3, u, text_type, iteritems
@@ -103,7 +103,7 @@ class TestBSON(unittest.TestCase):
                                    .decode()["hello"],
                                    text_type))
         helper({"mike": -10120})
-        helper({"long": BSONInt64(10)})
+        helper({"long": Int64(10)})
         helper({"really big long": 2147483648})
         helper({u("hello"): 0.0013109})
         helper({"something": True})
@@ -416,9 +416,9 @@ class TestBSON(unittest.TestCase):
         self.assertEqual(256, decoded1)
         self.assertEqual(type(256), type(decoded1))
 
-        encoded2 = BSON.encode({'x': BSONInt64(256)})
+        encoded2 = BSON.encode({'x': Int64(256)})
         decoded2 = BSON.decode(encoded2)['x']
-        expected = BSONInt64(256)
+        expected = Int64(256)
         self.assertEqual(expected, decoded2)
         self.assertEqual(type(expected), type(decoded2))
 

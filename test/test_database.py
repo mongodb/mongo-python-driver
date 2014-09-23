@@ -21,8 +21,8 @@ import warnings
 
 sys.path[0:0] = [""]
 
-from bson.bsonint64 import BSONInt64
 from bson.code import Code
+from bson.int64 import Int64
 from bson.regex import Regex
 from bson.dbref import DBRef
 from bson.objectid import ObjectId
@@ -719,13 +719,13 @@ class TestDatabase(IntegrationTest):
         db.test.remove({})
         db.test.save({"x": long(9223372036854775807)})
         retrieved = db.test.find_one()['x']
-        self.assertEqual(BSONInt64(9223372036854775807), retrieved)
-        self.assertIsInstance(retrieved, BSONInt64)
+        self.assertEqual(Int64(9223372036854775807), retrieved)
+        self.assertIsInstance(retrieved, Int64)
         db.test.remove({})
-        db.test.insert({"x": BSONInt64(1)})
+        db.test.insert({"x": Int64(1)})
         retrieved = db.test.find_one()['x']
-        self.assertEqual(BSONInt64(1), retrieved)
-        self.assertIsInstance(retrieved, BSONInt64)
+        self.assertEqual(Int64(1), retrieved)
+        self.assertIsInstance(retrieved, Int64)
 
     def test_remove(self):
         db = self.client.pymongo_test

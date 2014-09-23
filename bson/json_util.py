@@ -94,9 +94,9 @@ except ImportError:
 
 from bson import EPOCH_AWARE, RE_TYPE, SON
 from bson.binary import Binary
-from bson.bsonint64 import BSONInt64
 from bson.code import Code
 from bson.dbref import DBRef
+from bson.int64 import Int64
 from bson.max_key import MaxKey
 from bson.min_key import MinKey
 from bson.objectid import ObjectId
@@ -226,7 +226,7 @@ def object_hook(dct, compile_re=True):
     if "$undefined" in dct:
         return None
     if "$numberLong" in dct:
-        return BSONInt64(dct["$numberLong"])
+        return Int64(dct["$numberLong"])
     return dct
 
 

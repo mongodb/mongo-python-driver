@@ -30,12 +30,12 @@ from codecs import (utf_8_decode as _utf_8_decode,
 from bson.binary import (Binary, OLD_UUID_SUBTYPE,
                          JAVA_LEGACY, CSHARP_LEGACY,
                          UUIDLegacy)
-from bson.bsonint64 import BSONInt64
 from bson.code import Code
 from bson.dbref import DBRef
 from bson.errors import (InvalidBSON,
                          InvalidDocument,
                          InvalidStringData)
+from bson.int64 import Int64
 from bson.max_key import MaxKey
 from bson.min_key import MinKey
 from bson.objectid import ObjectId
@@ -260,9 +260,9 @@ def _get_timestamp(data, position, dummy0, dummy1):
 
 
 def _get_int64(data, position, dummy0, dummy1):
-    """Decode a BSON int64 to bson.bsonint64.BSONInt64."""
+    """Decode a BSON int64 to bson.int64.Int64."""
     end = position + 8
-    return BSONInt64(_UNPACK_LONG(data[position:end])[0]), end
+    return Int64(_UNPACK_LONG(data[position:end])[0]), end
 
 
 _ELEMENT_GETTER = {
@@ -596,7 +596,7 @@ _ENCODERS = {
     type(None): _encode_none,
     uuid.UUID: _encode_uuid,
     Binary: _encode_binary,
-    BSONInt64: _encode_long,
+    Int64: _encode_long,
     Code: _encode_code,
     DBRef: _encode_dbref,
     MaxKey: _encode_maxkey,
