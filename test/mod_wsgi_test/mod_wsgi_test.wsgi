@@ -26,9 +26,18 @@ sys.path.insert(0, repository_path)
 
 import pymongo
 from pymongo.mongo_client import MongoClient
+from pymongo.mongo_replica_set_client import MongoReplicaSetClient
 
 # auto_start_request is part of the PYTHON-353 pathology
 client = MongoClient(auto_start_request=True)
+
+# If the deployment is a replica set, connect to the whole set.
+replica_set_name = client.admin.command('ismaster').get('setName')
+if replica_set_name:
+    client = MongoReplicaSetClient(
+        auto_start_request=True,
+        replicaSet=replica_set_name)
+
 collection = client.test.test
 
 ndocs = 20
