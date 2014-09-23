@@ -63,6 +63,17 @@ class Database(common.BaseObject):
           - `name`: database name
 
         .. mongodoc:: databases
+
+        .. versionchanged:: 3.0
+           :class:`~pymongo.database.Database` no longer returns an instance
+           of :class:`~pymongo.collection.Collection` for attribute names
+           with leading underscores. You must use dict-style lookups instead::
+
+               db['__my_collection__']
+
+           Not:
+
+               db.__my_collection__
         """
         super(Database, self).__init__(connection.read_preference,
                                        connection.uuid_subtype,
@@ -195,7 +206,9 @@ class Database(common.BaseObject):
         :Parameters:
           - `name`: the name of the collection to get
         """
-        return Collection(self, name)
+        if name.startswith('_'):
+            return super(Database, self).__getattr__(name)
+        return self.__getitem__(name)
 
     def __getitem__(self, name):
         """Get a collection of this database by name.
@@ -205,7 +218,7 @@ class Database(common.BaseObject):
         :Parameters:
           - `name`: the name of the collection to get
         """
-        return self.__getattr__(name)
+        return Collection(self, name)
 
     def create_collection(self, name, **kwargs):
         """Create a new :class:`~pymongo.collection.Collection` in this

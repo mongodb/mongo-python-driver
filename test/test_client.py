@@ -104,6 +104,12 @@ class ClientUnitTest(unittest.TestCase, TestRequestMixin):
         self.assertEqual(self.client.test, self.client["test"])
         self.assertEqual(self.client.test, Database(self.client, "test"))
 
+    def test_getattr(self):
+        self.assertTrue(isinstance(self.client['_does_not_exist'], Database))
+
+        with self.assertRaises(AttributeError):
+            self.client._does_not_exist
+
     def test_iteration(self):
         def iterate():
             [a for a in self.client]

@@ -238,6 +238,16 @@ class MongoClient(common.BaseObject):
 
            The ``connect`` option is added and ``auto_start_request`` is
            removed.
+
+           :class:`~pymongo.mongo_client.MongoClient` no longer returns an
+           instance of :class:`~pymongo.database.Database` for attribute names
+           with leading underscores. You must use dict-style lookups instead::
+
+               client['__my_database__']
+
+           Not:
+
+               client.__my_database__
         """
         if host is None:
             host = self.HOST
@@ -943,7 +953,9 @@ class MongoClient(common.BaseObject):
         :Parameters:
           - `name`: the name of the database to get
         """
-        return database.Database(self, name)
+        if name.startswith('_'):
+            return super(MongoClient, self).__getattr__(name)
+        return self.__getitem__(name)
 
     def __getitem__(self, name):
         """Get a database by name.
@@ -954,7 +966,7 @@ class MongoClient(common.BaseObject):
         :Parameters:
           - `name`: the name of the database to get
         """
-        return self.__getattr__(name)
+        return database.Database(self, name)
 
     def close_cursor(self, cursor_id, address=None):
         """Close a single database cursor.

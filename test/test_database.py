@@ -90,6 +90,13 @@ class TestDatabaseNoConnect(unittest.TestCase):
         self.assertNotEqual(db.test, Collection(db, "mike"))
         self.assertEqual(db.test.mike, db["test.mike"])
 
+    def test_getattr(self):
+        db = self.client.pymongo_test
+        self.assertTrue(isinstance(db['_does_not_exist'], Collection))
+
+        with self.assertRaises(AttributeError):
+            db._does_not_exist
+
     def test_iteration(self):
         self.assertRaises(TypeError, next, self.client.pymongo_test)
 

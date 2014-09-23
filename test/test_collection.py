@@ -86,6 +86,13 @@ class TestCollectionNoConnect(unittest.TestCase):
         self.assertEqual(self.db.test.mike, self.db["test.mike"])
         self.assertEqual(self.db.test["mike"], self.db["test.mike"])
 
+    def test_getattr(self):
+        coll = self.db.test
+        self.assertTrue(isinstance(coll['_does_not_exist'], Collection))
+
+        with self.assertRaises(AttributeError):
+            coll._does_not_exist
+
     def test_iteration(self):
         self.assertRaises(TypeError, next, self.db)
 

@@ -78,6 +78,18 @@ class Collection(common.BaseObject):
           - `**kwargs` (optional): additional keyword arguments will
             be passed as options for the create collection command
 
+        .. versionchanged:: 3.0
+           :class:`~pymongo.collection.Collection` no longer returns an
+           instance of :class:`~pymongo.collection.Collection` for attribute
+           names with leading underscores. You must use dict-style lookups
+           instead::
+
+               collection['__my_collection__']
+
+           Not:
+
+               collection.__my_collection__
+
         .. versionchanged:: 2.2
            Removed deprecated argument: options
 
@@ -141,10 +153,12 @@ class Collection(common.BaseObject):
         :Parameters:
           - `name`: the name of the collection to get
         """
-        return Collection(self.__database, "%s.%s" % (self.__name, name))
+        if name.startswith('_'):
+            return super(Collection, self).__getattr__(name)
+        return self.__getitem__(name)
 
     def __getitem__(self, name):
-        return self.__getattr__(name)
+        return Collection(self.__database, "%s.%s" % (self.__name, name))
 
     def __repr__(self):
         return "Collection(%r, %r)" % (self.__database, self.__name)
