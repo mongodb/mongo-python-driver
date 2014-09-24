@@ -62,6 +62,8 @@ class Topology(object):
           - `server_wait_time` (optional): maximum seconds to wait. If not
             provided, the default value common.SERVER_WAIT_TIME is used.
 
+        Calls self.open() if needed.
+
         Raises exc:`AutoReconnect` after `server_wait_time` if no
         matching servers are found.
         """
