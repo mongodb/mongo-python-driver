@@ -960,6 +960,30 @@ class TestDatabase(IntegrationTest):
         out = db.test.find_one()
         self.assertEqual('value', out.get('value'))
 
+    def test_son_manipulator_inheritance(self):
+        class Thing(object):
+            def __init__(self, value):
+                self.value = value
+
+        class ThingTransformer(SONManipulator):
+            def transform_incoming(self, thing, collection):
+                return {'value': thing.value}
+
+            def transform_outgoing(self, son, collection):
+                return Thing(son['value'])
+
+        class Child(ThingTransformer):
+            pass
+
+        db = self.client.foo
+        db.add_son_manipulator(Child())
+        t = Thing('value')
+
+        db.test.remove()
+        db.test.insert([t])
+        out = db.test.find_one()
+        self.assertTrue(isinstance(out, Thing))
+        self.assertEqual('value', out.value)
 
 
 if __name__ == "__main__":
