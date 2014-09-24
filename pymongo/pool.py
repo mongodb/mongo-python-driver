@@ -166,11 +166,13 @@ class SocketInfo(object):
           - `spec`: a command document as a dict, SON, or mapping object
         """
         # TODO: command should already be encoded.
-        request_id, msg, _ = message.query(0, dbname + '.$cmd', 0, -1, spec)
+        ns = dbname + '.$cmd'
+        request_id, msg, _ = message.query(0, ns, 0, -1, spec)
         self.send_message(msg)
         response = self.receive_message(1, request_id)
         unpacked = helpers._unpack_response(response)['data'][0]
-        msg = "command %s failed: %%s" % repr(spec).replace("%", "%%")
+        msg = "command %s on namespace %s failed: %%s" % (
+            repr(spec).replace("%", "%%"), ns)
         helpers._check_command_response(unpacked, msg)
         return unpacked
 
