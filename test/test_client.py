@@ -157,12 +157,6 @@ class TestClient(IntegrationTest, TestRequestMixin):
         # No error.
         connected(MongoClient())
 
-    def assertIsInstance(self, obj, cls, msg=None):
-        """Backport from Python 2.7."""
-        if not isinstance(obj, cls):
-            standardMsg = '%r is not an instance of %r' % (obj, cls)
-            self.fail(self._formatMessage(msg, standardMsg))
-
     def test_init_disconnected(self):
         c = rs_or_single_client(connect=False)
 
