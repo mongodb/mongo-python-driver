@@ -318,7 +318,10 @@ _MODES = (
 ReadPreference = namedtuple("ReadPreference", _MODES)(
     Primary(), PrimaryPreferred(), Secondary(), SecondaryPreferred(), Nearest())
 """An enum that defines the read preference modes supported by PyMongo.
-Used in three cases:
+
+See :doc:`/examples/high_availability` for code examples.
+
+A read preference is used in three cases:
 
 :class:`~pymongo.mongo_client.MongoClient` connected to a single mongod:
 
@@ -326,6 +329,18 @@ Used in three cases:
   set primary.
 * All other modes allow queries to standalone servers, to a replica set
   primary, or to replica set secondaries.
+
+:class:`~pymongo.mongo_client.MongoClient` initialized with the
+``replicaSet`` option:
+
+* `PRIMARY`: Queries are sent to the primary of the replica set.
+* `PRIMARY_PREFERRED`: Queries are sent to the primary if available,
+  otherwise a secondary.
+* `SECONDARY`: Queries are distributed among secondaries. An error
+  is raised if no secondaries are available.
+* `SECONDARY_PREFERRED`: Queries are distributed among secondaries,
+  or the primary if no secondary is available.
+* `NEAREST`: Queries are distributed among all members.
 
 :class:`~pymongo.mongo_client.MongoClient` connected to a mongos, with a
 sharded cluster of replica sets:
@@ -338,17 +353,6 @@ sharded cluster of replica sets:
 * `SECONDARY_PREFERRED`: Queries are distributed among shard secondaries,
   or the shard primary if no secondary is available.
 * `NEAREST`: Queries are distributed among all members of a shard.
-
-:class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`:
-
-* `PRIMARY`: Queries are sent to the primary of the replica set.
-* `PRIMARY_PREFERRED`: Queries are sent to the primary if available,
-  otherwise a secondary.
-* `SECONDARY`: Queries are distributed among secondaries. An error
-  is raised if no secondaries are available.
-* `SECONDARY_PREFERRED`: Queries are distributed among secondaries,
-  or the primary if no secondary is available.
-* `NEAREST`: Queries are distributed among all members.
 """
 
 
