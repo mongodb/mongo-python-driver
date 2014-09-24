@@ -29,6 +29,7 @@ from pymongo.errors import (CollectionInvalid,
 from pymongo.read_preferences import (modes,
                                       secondary_ok_commands,
                                       ReadPreference)
+from pymongo.son_manipulator import SONManipulator
 
 
 def _check_name(name):
@@ -94,9 +95,10 @@ class Database(common.BaseObject):
         :Parameters:
           - `manipulator`: the manipulator to add
         """
+        base = SONManipulator()
         def method_overwritten(instance, method):
-            return getattr(instance, method) != \
-                getattr(super(instance.__class__, instance), method)
+            return (getattr(
+                instance, method).im_func != getattr(base, method).im_func)
 
         if manipulator.will_copy():
             if method_overwritten(manipulator, "transform_incoming"):
