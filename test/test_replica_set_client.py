@@ -78,16 +78,6 @@ class TestReplicaSetClientBase(unittest.TestCase):
 
 
 class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
-    def assertSoon(self, fn, msg=None):
-        start = time.time()
-        while time.time() - start < 10:
-            if fn():
-                return
-
-            time.sleep(0.1)
-
-        self.fail(msg)
-
     def test_deprecated(self):
         with warnings.catch_warnings():
             warnings.simplefilter("error", DeprecationWarning)
