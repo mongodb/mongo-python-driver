@@ -1022,7 +1022,7 @@ class MongoReplicaSetClient(common.BaseObject):
 
         end = time.time()
         response = helpers._unpack_response(response)['data'][0]
-        msg = "command %r failed: %%s" % spec
+        msg = "command %s failed: %%s" % repr(spec).replace("%", "%%")
         helpers._check_command_response(response, None, msg)
         return response, end - start
 
