@@ -18,12 +18,13 @@ import gc
 import sys
 import threading
 import time
+from functools import partial
 
 sys.path[0:0] = [""]
 
 from pymongo import thread_util
 from test import SkipTest, unittest
-from test.utils import my_partial, RendezvousThread
+from test.utils import RendezvousThread
 
 
 class TestIdent(unittest.TestCase):
@@ -141,7 +142,7 @@ class TestCounter(unittest.TestCase):
 
             done.add(n)
 
-        threads = [threading.Thread(target=my_partial(f, i))
+        threads = [threading.Thread(target=partial(f, i))
                    for i in range(10)]
 
         for t in threads:

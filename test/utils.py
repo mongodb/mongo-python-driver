@@ -22,6 +22,7 @@ import sys
 import threading
 import time
 import warnings
+from functools import partial
 
 from pymongo import MongoClient
 from pymongo.errors import AutoReconnect, OperationFailure
@@ -64,16 +65,6 @@ def rs_or_single_client_noauth(h=host, p=port, **kwargs):
         return MongoClient(h, p, replicaSet=client_context.setname, **kwargs)
     else:
         return MongoClient(h, p, **kwargs)
-
-
-# No functools in Python 2.4
-def my_partial(f, *args, **kwargs):
-    def _f(*new_args, **new_kwargs):
-        final_kwargs = kwargs.copy()
-        final_kwargs.update(new_kwargs)
-        return f(*(args + new_args), **final_kwargs)
-
-    return _f
 
 def one(s):
     """Get one element of a set"""
@@ -473,7 +464,7 @@ def run_threads(collection, target):
     """
     threads = []
     for i in range(NTHREADS):
-        bound_target = my_partial(target, collection, i)
+        bound_target = partial(target, collection, i)
         threads.append(threading.Thread(target=bound_target))
 
     for t in threads:
