@@ -170,7 +170,7 @@ class SocketInfo(object):
         self.send_message(msg)
         response = self.receive_message(1, request_id)
         unpacked = helpers._unpack_response(response)['data'][0]
-        msg = "command %r failed: %%s" % spec
+        msg = "command %s failed: %%s" % repr(spec).replace("%", "%%")
         helpers._check_command_response(unpacked, msg)
         return unpacked
 
