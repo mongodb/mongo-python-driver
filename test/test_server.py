@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Test the server_description module."""
+"""Test the server module."""
 
 import sys
 
