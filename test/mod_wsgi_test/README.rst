@@ -21,6 +21,24 @@ detects if the deployment is a replica set and connects to the whole set.
 Setup
 -----
 
+Compile Python
+..............
+
+We need a Python interpreter built as a shared library. Download the
+source tarball for each Python version tested, untar it, and run::
+
+    ./configure --prefix=/some/directory --enable-shared
+    make
+    make install
+
+This results in an executable named "python" or "python3" and a shared
+library named something like "libpython2.7.so.1.0" or "libpython3.3m.so.1.0".
+It may be necessary to add /some/directory/lib to your system's
+LD_LIBRARY_PATH, or to make a symlink from your system's default library
+directory to the shared library. For example, on Ubuntu::
+
+    ln -s /some/directory/lib/libpython3.3m.so.1.0 /usr/lib64/
+
 Compile mod_wsgi
 ................
 
