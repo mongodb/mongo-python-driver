@@ -25,10 +25,10 @@ from test import (client_context,
                   IntegrationTest,
                   connection_string,
                   SkipTest)
-from test.utils import get_client, TestRequestMixin
+from test.utils import get_client
 
 
-class TestCursorManager(IntegrationTest, TestRequestMixin):
+class TestCursorManager(IntegrationTest):
 
     @classmethod
     def setUpClass(cls):
