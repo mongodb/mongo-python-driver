@@ -67,6 +67,7 @@ class Monitor(object):
             thread = threading.Thread(target=self.run)
             thread.daemon = True
             self._thread = weakref.proxy(thread)
+            register_monitor(self)
             thread.start()
 
     def close(self):
@@ -171,6 +172,11 @@ class Monitor(object):
         return IsMaster(result['data'][0]), time.time() - start
 
 
+# MONITORS has a weakref to each running Monitor. A Monitor is kept alive by
+# a strong reference from its Server and its Thread. Once both are destroyed
+# the Monitor is garbage-collected and removed from MONITORS. If, however,
+# any threads are still running when the interpreter begins to shut down,
+# we attempt to halt and join them to avoid spurious errors.
 MONITORS = set()
 
 
@@ -192,6 +198,6 @@ def shutdown_monitors():
         monitor = ref()
         if monitor:
             monitor.close()
-            monitor.join()
+            monitor.join(10)
 
 atexit.register(shutdown_monitors)
