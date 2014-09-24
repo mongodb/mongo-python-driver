@@ -1011,7 +1011,8 @@ class MongoReplicaSetClient(common.BaseObject):
         """Send a command to the server.
            Returns (response, ping_time in seconds).
         """
-        rqst_id, msg, _ = message.query(0, dbname + '.$cmd', 0, -1, spec)
+        ns = dbname + '.$cmd'
+        rqst_id, msg, _ = message.query(0, ns, 0, -1, spec)
         start = time.time()
         try:
             sock_info.sock.sendall(msg)
@@ -1022,7 +1023,8 @@ class MongoReplicaSetClient(common.BaseObject):
 
         end = time.time()
         response = helpers._unpack_response(response)['data'][0]
-        msg = "command %s failed: %%s" % repr(spec).replace("%", "%%")
+        msg = "command %s on namespace %s failed: %%s" % (
+            repr(spec).replace("%", "%%"), ns)
         helpers._check_command_response(response, None, msg)
         return response, end - start
 
