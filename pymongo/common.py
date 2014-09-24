@@ -426,6 +426,16 @@ class BaseObject(object):
     read_preference = property(__get_read_pref, __set_read_pref)
 
     def __get_latency(self):
+        """Deprecated. Use ``client.read_preference.latency_threshold_ms``.
+
+        See :class:`~pymongo.read_preferences.ReadPreference`.
+
+        .. note:: ``secondary_acceptable_latency_ms`` is ignored when talking
+          to a replica set *through* a mongos. The equivalent is the
+          localThreshold_ command line option.
+
+        .. _localThreshold: http://docs.mongodb.org/manual/reference/mongos/#cmdoption-mongos--localThreshold
+        """
         return self.__read_pref.latency_threshold_ms
 
     def __set_latency(self, latency):

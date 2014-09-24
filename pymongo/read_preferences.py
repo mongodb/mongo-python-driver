@@ -104,12 +104,18 @@ class ServerMode(object):
 
     @property
     def latency_threshold_ms(self):
-        """int - Any replica-set member whose ping time is within
-        `~latency_threshold_ms` of the nearest member may accept reads.
+        """An integer. Any replica-set member whose ping time is within
+        ``latency_threshold_ms`` of the nearest member may accept reads.
         When used with mongos high availability, any mongos whose ping
-        time is within `~latency_threshold_ms` of the nearest mongos
+        time is within ``latency_threshold_ms`` of the nearest mongos
         may be chosen as the new mongos during a failover. Default 15
         milliseconds.
+
+        .. note:: ``latency_threshold_ms`` is ignored when talking
+          to a replica set through a mongos. The equivalent is the
+          localThreshold_ command line option.
+
+        .. _localThreshold: http://docs.mongodb.org/manual/reference/mongos/#cmdoption-mongos--localThreshold
         """
         return self.__latency
 

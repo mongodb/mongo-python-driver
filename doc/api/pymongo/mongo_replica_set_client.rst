@@ -30,7 +30,7 @@
       .. autoattribute:: min_wire_version
       .. autoattribute:: max_wire_version
       .. autoattribute:: read_preference
-      .. autoattribute:: acceptable_latency_ms
+      .. autoattribute:: secondary_acceptable_latency_ms
       .. autoattribute:: write_concern
       .. autoattribute:: uuid_subtype
       .. automethod:: database_names
