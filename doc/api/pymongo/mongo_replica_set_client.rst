@@ -16,8 +16,6 @@
 
          Raises :class:`~pymongo.errors.InvalidName` if an invalid database name is used.
 
-      .. autoattribute:: seeds
-      .. autoattribute:: hosts
       .. autoattribute:: primary
       .. autoattribute:: secondaries
       .. autoattribute:: arbiters
