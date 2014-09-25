@@ -283,6 +283,11 @@ class TestCollection(IntegrationTest):
                          .count(), 3)
         self.assertEqual(name, "goodbye_1")
         db.test.drop_index(name)
+
+        # Drop it again.
+        with self.assertRaises(OperationFailure):
+            db.test.drop_index(name)
+
         self.assertEqual(db.system.indexes.find({"ns": u("pymongo_test.test")})
                          .count(), 2)
         self.assertTrue(u("hello_1") in
