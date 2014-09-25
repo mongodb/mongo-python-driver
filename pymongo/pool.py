@@ -370,8 +370,7 @@ class Pool:
                 sock.connect(host)
                 return sock
             except socket.error as e:
-                if sock is not None:
-                    sock.close()
+                sock.close()
                 raise e
 
         # Don't try IPv6 if we don't support it. Also skip it if host
