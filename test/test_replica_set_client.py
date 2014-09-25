@@ -16,7 +16,6 @@
 
 import socket
 import sys
-import time
 import warnings
 
 sys.path[0:0] = [""]

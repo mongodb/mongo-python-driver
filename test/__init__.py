@@ -33,7 +33,7 @@ from functools import wraps
 import pymongo
 import pymongo.errors
 
-from bson.py3compat import _unicode, reraise
+from bson.py3compat import _unicode
 from pymongo import common
 from test.version import Version
 
