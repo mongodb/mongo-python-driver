@@ -33,7 +33,7 @@ from bson.tz_util import utc
 from pymongo.mongo_client import MongoClient
 from pymongo.database import Database
 from pymongo.pool import SocketInfo
-from pymongo import auth
+from pymongo import auth, message
 from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
                             ConnectionFailure,
@@ -217,6 +217,13 @@ class TestClient(IntegrationTest, TestRequestMixin):
         self.assertEqual(repr(MongoClient(str(host), port)),
                          "MongoClient('%s', %d)" % (host, port))
 
+    @client_context.require_replica_set
+    def test_repr_replica_set(self):
+        # Like MongoClient(["localhost:27017", "localhost:27018"]).
+        self.assertIn("MongoClient([", repr(self.client))
+        for node in client_context.nodes:
+            self.assertIn("%s:%d" % node, repr(self.client))
+
     def test_getters(self):
         self.assertEqual(self.client.host, host)
         self.assertEqual(self.client.port, port)
@@ -234,21 +241,19 @@ class TestClient(IntegrationTest, TestRequestMixin):
         self.assertRaises(TypeError, self.client.drop_database, 5)
         self.assertRaises(TypeError, self.client.drop_database, None)
 
+        self.client.pymongo_test.test.save({"dummy": u("object")})
+        self.client.pymongo_test2.test.save({"dummy": u("object")})
+        dbs = self.client.database_names()
+        self.assertIn("pymongo_test", dbs)
+        self.assertIn("pymongo_test2", dbs)
+        self.client.drop_database("pymongo_test")
+        self.client.drop_database(self.client.pymongo_test2)
+
         raise SkipTest("This test often fails due to SERVER-2329")
 
-        self.client.pymongo_test.test.save({"dummy": u("object")})
         dbs = self.client.database_names()
-        self.assertTrue("pymongo_test" in dbs)
-        self.client.drop_database("pymongo_test")
-        dbs = self.client.database_names()
-        self.assertTrue("pymongo_test" not in dbs)
-
-        self.client.pymongo_test.test.save({"dummy": u("object")})
-        dbs = self.client.database_names()
-        self.assertTrue("pymongo_test" in dbs)
-        self.client.drop_database(self.client.pymongo_test)
-        dbs = self.client.database_names()
-        self.assertTrue("pymongo_test" not in dbs)
+        self.assertNotIn("pymongo_test", dbs)
+        self.assertNotIn("pymongo_test2", dbs)
 
     def test_copy_db(self):
         c = self.client
@@ -896,6 +901,25 @@ class TestClient(IntegrationTest, TestRequestMixin):
 
             with self.assertRaises(AutoReconnect):
                 client.test.test.find_one()
+
+    def test_stale_getmore(self):
+        # A cursor is created, but its member goes down and is removed from
+        # the topology before the getMore message is sent. Test that
+        # MongoClient._send_message_with_response handles the error.
+        with self.assertRaises(AutoReconnect):
+            self.client._send_message_with_response(
+                message=message.get_more('collection', 101, 1234),
+                address=('not-a-member', 27017))
+
+    def test_stale_killcursors(self):
+        # A cursor is created, but its member goes down and is removed from
+        # the topology before the killCursors message is sent. Test that
+        # MongoClient._send_message handles the error.
+        with self.assertRaises(AutoReconnect):
+            self.client._send_message(
+                message=message.kill_cursors([1234]),
+                check_primary=False,
+                address=('not-a-member', 27017))
 
 
 class TestClientProperties(MockClientTest):
