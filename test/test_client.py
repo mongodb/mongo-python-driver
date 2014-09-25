@@ -40,7 +40,8 @@ from pymongo.errors import (AutoReconnect,
                             InvalidName,
                             OperationFailure,
                             CursorNotFound,
-                            NetworkTimeout)
+                            NetworkTimeout,
+                            InvalidURI)
 from pymongo.server_selectors import (any_server_selector,
                                       writable_server_selector)
 from pymongo.server_type import SERVER_TYPE
@@ -350,6 +351,10 @@ class TestClient(IntegrationTest, TestRequestMixin):
         self.assertEqual(
             self.client,
             connected(rs_or_single_client("mongodb://%s:%d" % (host, port))))
+
+    def test_bad_uri(self):
+        with self.assertRaises(InvalidURI):
+            rs_or_single_client("http://localhost")
 
     @client_context.require_auth
     def test_auth_from_uri(self):
