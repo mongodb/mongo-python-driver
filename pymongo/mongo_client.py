@@ -774,7 +774,7 @@ class MongoClient(common.BaseObject):
             # When directly connected to a single server, we select it even
             # if it isn't writable. The write won't succeed, so bail as if
             # we'd done a getLastError.
-            raise AutoReconnect("not master")
+            raise NotMasterError("not master")
 
         if self.in_request() and not server.in_request():
             server.start_request()

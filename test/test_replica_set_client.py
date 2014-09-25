@@ -25,8 +25,10 @@ from bson.py3compat import u
 from bson.son import SON
 from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
-                            OperationFailure,
-                            NetworkTimeout, ConnectionFailure)
+                            ConnectionFailure,
+                            NetworkTimeout,
+                            NotMasterError,
+                            OperationFailure)
 from pymongo.mongo_client import MongoClient, _partition_node
 from pymongo.mongo_replica_set_client import MongoReplicaSetClient
 from pymongo.read_preferences import ReadPreference, Secondary, Nearest
@@ -44,7 +46,7 @@ from test.pymongo_mocks import MockClient
 from test.utils import (
     delay, assertReadFrom, assertReadFromAll, ignore_deprecations,
     read_from_which_host, assertRaisesExactly, TestRequestMixin, get_pools,
-    connected, wait_until, get_client, rs_or_single_client)
+    connected, wait_until, get_client, rs_or_single_client, one)
 from test.version import Version
 
 
@@ -368,6 +370,18 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         assertReadFromAll(
             self, client, list(client.secondaries) + [client.primary],
             ReadPreference.NEAREST, None)
+
+    def test_not_master_error(self):
+        secondary_address = one(self.secondaries)
+        direct_client = MongoClient(secondary_address[0], secondary_address[1])
+        with self.assertRaises(NotMasterError):
+            direct_client.pymongo_test.command('count', 'collection')
+
+        with self.assertRaises(NotMasterError):
+            direct_client.pymongo_test.collection.insert({})
+
+        with self.assertRaises(NotMasterError):
+            direct_client.pymongo_test.collection.insert({}, w=0)
 
 
 class TestReplicaSetWireVersion(MockClientTest):
