@@ -373,7 +373,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
 
     def test_not_master_error(self):
         secondary_address = one(self.secondaries)
-        direct_client = MongoClient(secondary_address[0], secondary_address[1])
+        direct_client = get_client(secondary_address[0], secondary_address[1])
         with self.assertRaises(NotMasterError):
             direct_client.pymongo_test.command('count', 'collection')
 
