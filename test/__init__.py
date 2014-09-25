@@ -18,7 +18,7 @@
 import os
 import socket
 import sys
-from pymongo.mongo_client import _partition_node
+from pymongo.common import partition_node
 
 if sys.version_info[:2] == (2, 6):
     import unittest2 as unittest
@@ -121,7 +121,7 @@ class ClientContext(object):
                 self.rs_client = pymongo.MongoClient(
                     pair, replicaSet=self.setname)
 
-                self.nodes = set([_partition_node(node)
+                self.nodes = set([partition_node(node)
                                   for node in self.ismaster.get('hosts', [])])
 
             self.rs_or_standalone_client = self.rs_client or self.client

@@ -23,13 +23,14 @@ sys.path[0:0] = [""]
 
 from bson.py3compat import u
 from bson.son import SON
+from pymongo.common import partition_node
 from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
                             ConnectionFailure,
                             NetworkTimeout,
                             NotMasterError,
                             OperationFailure)
-from pymongo.mongo_client import MongoClient, _partition_node
+from pymongo.mongo_client import MongoClient
 from pymongo.mongo_replica_set_client import MongoReplicaSetClient
 from pymongo.read_preferences import ReadPreference, Secondary, Nearest
 from test import (client_context,
@@ -58,8 +59,8 @@ class TestReplicaSetClientBase(unittest.TestCase):
         cls.name = client_context.setname
         ismaster = client_context.ismaster
         cls.w = client_context.w
-        cls.hosts = set(_partition_node(h) for h in ismaster['hosts'])
-        cls.arbiters = set(_partition_node(h)
+        cls.hosts = set(partition_node(h) for h in ismaster['hosts'])
+        cls.arbiters = set(partition_node(h)
                            for h in ismaster.get("arbiters", []))
 
         repl_set_status = client_context.client.admin.command(
@@ -69,9 +70,9 @@ class TestReplicaSetClientBase(unittest.TestCase):
             if m['stateStr'] == 'PRIMARY'
         ][0]
 
-        cls.primary = _partition_node(primary_info['name'])
+        cls.primary = partition_node(primary_info['name'])
         cls.secondaries = set(
-            _partition_node(m['name']) for m in repl_set_status['members']
+            partition_node(m['name']) for m in repl_set_status['members']
             if m['stateStr'] == 'SECONDARY')
 
     def _get_client(self, **kwargs):

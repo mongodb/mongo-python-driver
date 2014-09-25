@@ -65,20 +65,6 @@ from pymongo.server_type import SERVER_TYPE
 from pymongo.settings import TopologySettings
 
 
-def _partition_node(node):
-    """Split a host:port string returned from mongod/s into
-    a (host, int(port)) pair needed for socket.connect().
-    """
-    host = node
-    port = 27017
-    idx = node.rfind(':')
-    if idx != -1:
-        host, port = node[:idx], int(node[idx + 1:])
-    if host.startswith('['):
-        host = host[1:-1]
-    return host, port
-
-
 class MongoClient(common.BaseObject):
     HOST = "localhost"
     PORT = 27017

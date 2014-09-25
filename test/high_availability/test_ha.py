@@ -25,12 +25,13 @@ import time
 import ha_tools
 
 from pymongo import common
+from pymongo.common import partition_node
 from pymongo.errors import (AutoReconnect,
                             OperationFailure,
                             ConnectionFailure,
                             WTimeoutError)
 from pymongo.mongo_replica_set_client import MongoReplicaSetClient
-from pymongo.mongo_client import MongoClient, _partition_node
+from pymongo.mongo_client import MongoClient
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import (secondary_server_selector,
@@ -51,7 +52,7 @@ NEAREST = ReadPreference.NEAREST
 
 def partition_nodes(nodes):
     """Translate from ['host:port', ...] to [(host, port), ...]"""
-    return [_partition_node(node) for node in nodes]
+    return [partition_node(node) for node in nodes]
 
 
 class HATestCase(unittest.TestCase):
@@ -243,7 +244,7 @@ class TestMonitorRemovesRecoveringMember(HATestCase):
 
         for mode in SECONDARY, SECONDARY_PREFERRED:
             # Don't read from recovering member
-            utils.assertReadFrom(self, self.c, _partition_node(secondary), mode)
+            utils.assertReadFrom(self, self.c, partition_node(secondary), mode)
 
     def tearDown(self):
         self.c.close()
@@ -277,11 +278,11 @@ class TestTriggeredRefresh(HATestCase):
         # Pre-condition: just make sure they all connected OK
         for c in self.c_find_one, self.c_count:
             wait_until(
-                lambda: c.primary == _partition_node(primary),
+                lambda: c.primary == partition_node(primary),
                 'connect to the primary')
 
             wait_until(
-                lambda: one(c.secondaries) == _partition_node(secondary),
+                lambda: one(c.secondaries) == partition_node(secondary),
                 'connect to the secondary')
 
         ha_tools.set_maintenance(secondary, True)
@@ -295,10 +296,10 @@ class TestTriggeredRefresh(HATestCase):
         time.sleep(1)
 
         self.assertFalse(self.c_find_one.secondaries)
-        self.assertEqual(_partition_node(primary), self.c_find_one.primary)
+        self.assertEqual(partition_node(primary), self.c_find_one.primary)
 
         self.assertFalse(self.c_count.secondaries)
-        self.assertEqual(_partition_node(primary), self.c_count.primary)
+        self.assertEqual(partition_node(primary), self.c_count.primary)
 
     def test_stepdown_triggers_refresh(self):
         c_find_one = MongoReplicaSetClient(self.seed, replicaSet=self.name)
@@ -381,7 +382,7 @@ class TestHealthMonitor(HATestCase):
         # Wait for new primary.
         wait_until(lambda:
                    (ha_tools.get_primary()
-                    and c.primary == _partition_node(ha_tools.get_primary())),
+                    and c.primary == partition_node(ha_tools.get_primary())),
                    "discover new primary",
                    timeout=30)
 
@@ -494,7 +495,7 @@ class TestReadPreference(HATestCase):
         self.seed, self.name = res
 
         primary = ha_tools.get_primary()
-        self.primary = _partition_node(primary)
+        self.primary = partition_node(primary)
         self.primary_tags = ha_tools.get_tags(primary)
         # Make sure priority worked
         self.assertEqual('primary', self.primary_tags['name'])
@@ -507,7 +508,7 @@ class TestReadPreference(HATestCase):
             s for s in secondaries
             if ha_tools.get_tags(s)['name'] == 'secondary']
 
-        self.secondary = _partition_node(secondary)
+        self.secondary = partition_node(secondary)
         self.secondary_tags = ha_tools.get_tags(secondary)
         self.secondary_dc = {'dc': self.secondary_tags['dc']}
 
@@ -515,7 +516,7 @@ class TestReadPreference(HATestCase):
             s for s in secondaries
             if ha_tools.get_tags(s)['name'] == 'other_secondary']
 
-        self.other_secondary = _partition_node(other_secondary)
+        self.other_secondary = partition_node(other_secondary)
         self.other_secondary_tags = ha_tools.get_tags(other_secondary)
         self.other_secondary_dc = {'dc': self.other_secondary_tags['dc']}
 
@@ -944,8 +945,8 @@ class TestReplicaSetRequest(HATestCase):
         self.c.start_request()
 
     def test_request_during_failover(self):
-        primary = _partition_node(ha_tools.get_primary())
-        secondary = _partition_node(ha_tools.get_random_secondary())
+        primary = partition_node(ha_tools.get_primary())
+        secondary = partition_node(ha_tools.get_random_secondary())
 
         self.assertTrue(self.c.in_request())
 
