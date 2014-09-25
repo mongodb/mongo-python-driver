@@ -38,7 +38,7 @@ class MockPool(Pool):
         Pool.__init__(self,
             (default_host, default_port), PoolOptions(connect_timeout=20))
 
-    def get_socket(self, all_credentials, force=False):
+    def get_socket(self, all_credentials):
         client = self.client
         host_and_port = '%s:%s' % (self.mock_host, self.mock_port)
         if host_and_port in client.mock_down_hosts:
@@ -49,7 +49,7 @@ class MockPool(Pool):
             + client.mock_members
             + client.mock_mongoses), "bad host: %s" % host_and_port
 
-        sock_info = Pool.get_socket(self, all_credentials, force)
+        sock_info = Pool.get_socket(self, all_credentials)
         sock_info.mock_host = self.mock_host
         sock_info.mock_port = self.mock_port
         return sock_info
