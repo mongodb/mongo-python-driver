@@ -20,6 +20,7 @@ import time
 
 from bson.py3compat import itervalues
 from pymongo import common
+from pymongo.pool import PoolOptions
 from pymongo.topology_description import (updated_topology_description,
                                           TOPOLOGY_TYPE,
                                           TopologyDescription)
@@ -248,12 +249,19 @@ class Topology(object):
         """
         for address, sd in self._description.server_descriptions().items():
             if address not in self._servers:
-                m = self._settings.monitor_class(
-                    sd, self, self._create_pool(address), self._settings)
+                monitor = self._settings.monitor_class(
+                    server_description=sd,
+                    topology=self,
+                    pool=self._create_pool_for_monitor(address),
+                    topology_settings=self._settings)
 
-                s = Server(sd, self._create_pool(address), m)
-                self._servers[address] = s
-                s.open()
+                server = Server(
+                    server_description=sd,
+                    pool=self._create_pool_for_server(address),
+                    monitor=monitor)
+
+                self._servers[address] = server
+                server.open()
             else:
                 self._servers[address].description = sd
 
@@ -262,5 +270,18 @@ class Topology(object):
                 server.close()
                 self._servers.pop(address)
 
-    def _create_pool(self, address):
+    def _create_pool_for_server(self, address):
         return self._settings.pool_class(address, self._settings.pool_options)
+
+    def _create_pool_for_monitor(self, address):
+        options = self._settings.pool_options
+
+        # According to the Server Discovery And Monitoring Spec, monitors use
+        # connect_timeout for both connect_timeout and socket_timeout. The
+        # pool only has one socket so max_pool_size and so on aren't needed.
+        return self._settings.pool_class(
+            address,
+            PoolOptions(connect_timeout=options.connect_timeout,
+                        socket_timeout=options.connect_timeout,
+                        ssl_context=options.ssl_context,
+                        socket_keepalive=True))

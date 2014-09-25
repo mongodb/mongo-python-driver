@@ -30,6 +30,7 @@ from pymongo.errors import (ConfigurationError,
                             ConnectionFailure)
 from pymongo.ismaster import IsMaster
 from pymongo.monitor import Monitor
+from pymongo.pool import PoolOptions
 from pymongo.read_preferences import MovingAverage
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import (any_server_selector,
@@ -131,6 +132,24 @@ class TopologyTest(unittest.TestCase):
     def tearDown(self):
         self.client_knobs.disable()
         super(TopologyTest, self).tearDown()
+
+
+class TestTopologyConfiguration(TopologyTest):
+    def test_timeout_configuration(self):
+        pool_options = PoolOptions(connect_timeout=1, socket_timeout=2)
+        topology_settings = TopologySettings(pool_options=pool_options)
+        t = Topology(topology_settings=topology_settings)
+        server = t.select_server(any_server_selector)
+
+        # The pool for application operations obeys our settings.
+        self.assertEqual(1, server._pool.opts.connect_timeout)
+        self.assertEqual(2, server._pool.opts.socket_timeout)
+
+        # The pool for monitoring operations uses our connect_timeout as both
+        # its connect_timeout and its socket_timeout.
+        monitor = server._monitor
+        self.assertEqual(1, monitor._pool.opts.connect_timeout)
+        self.assertEqual(1, monitor._pool.opts.socket_timeout)
 
 
 class TestSingleServerTopology(TopologyTest):
