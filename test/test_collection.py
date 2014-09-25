@@ -2027,7 +2027,7 @@ class TestCollection(IntegrationTest):
         db[u("Employés")].find_one()
         list(db[u("Employés")].find())
 
-    def test_drop_indexes_non_existant(self):
+    def test_drop_indexes_non_existent(self):
         self.db.drop_collection("test")
         self.db.test.drop_indexes()
 
