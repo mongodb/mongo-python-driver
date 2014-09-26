@@ -666,6 +666,16 @@ class TestDatabase(IntegrationTest):
         db.test.save(obj)
         self.assertEqual(obj, db.dereference(DBRef("test", 4)))
 
+    def test_deref_kwargs(self):
+        db = self.client.pymongo_test
+        db.test.remove({})
+
+        db.test.insert({"_id": 4, "foo": "bar"})
+        self.assertEqual(SON([("foo", "bar")]),
+                         db.dereference(DBRef("test", 4),
+                                        fields={"_id": False},
+                                        as_class=SON))
+
     @client_context.require_no_auth
     def test_eval(self):
         db = self.client.pymongo_test
