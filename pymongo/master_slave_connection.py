@@ -179,6 +179,13 @@ class MasterSlaveConnection(BaseObject):
         for slave in self.__slaves:
             slave.disconnect()
 
+    def close(self):
+        """Alias for :meth:`disconnect`
+
+        .. seealso:: :meth:`end_request`
+        """
+        self.disconnect()
+
     def set_cursor_manager(self, manager_class):
         """Set the cursor manager for this connection.
 
@@ -366,3 +373,23 @@ class MasterSlaveConnection(BaseObject):
         return self.__master._purge_index(database_name,
                                           collection_name,
                                           index_name)
+
+    def server_info(self):
+        """Get information about the MongoDB
+        (master)server we're connected to.
+        """
+        return self.__master.admin.command("buildinfo")
+
+    def _cache_credentials(self, source, credentials, connect=True):
+        self.__master._cache_credentials(source,
+                                         credentials,
+                                         connect=connect)
+        for slave in self.__slaves:
+            slave._cache_credentials(source,
+                                     credentials,
+                                     connect=connect)
+
+    def _purge_credentials(self, source):
+        self.__master._purge_credentials(source)
+        for slave in self.__slaves:
+            slave._purge_credentials(source)
