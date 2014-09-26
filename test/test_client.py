@@ -606,6 +606,10 @@ class TestClient(IntegrationTest, TestRequestMixin):
         self.assertEqual(pool.opts.wait_queue_multiple, 2)
         self.assertEqual(pool._socket_semaphore.waiter_semaphore.counter, 6)
 
+    def test_socketKeepAlive(self):
+        client = rs_or_single_client(socketKeepAlive=True)
+        self.assertTrue(get_pool(client).opts.socket_keepalive)
+
     def test_tz_aware(self):
         self.assertRaises(ConfigurationError, MongoClient, tz_aware='foo')
 
