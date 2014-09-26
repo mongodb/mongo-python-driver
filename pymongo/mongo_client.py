@@ -149,6 +149,9 @@ class MongoClient(common.BaseObject):
           - `waitQueueMultiple`: (integer or None) Multiplied by max_pool_size
             to give the number of threads allowed to wait for a socket at one
             time. Defaults to ``None`` (no waiters).
+          - `socketKeepAlive`: (boolean) Whether to send periodic keep-alive
+            packets on connected sockets. Defaults to ``False`` (do not send
+            keep-alive packets).
           - `auto_start_request`: If ``True``, each thread that accesses
             this :class:`MongoClient` has a socket allocated to it for the
             thread's lifetime.  This ensures consistent reads, even if you
@@ -303,6 +306,7 @@ class MongoClient(common.BaseObject):
         self.__conn_timeout = options.get('connecttimeoutms', 20.0)
         self.__wait_queue_timeout = options.get('waitqueuetimeoutms')
         self.__wait_queue_multiple = options.get('waitqueuemultiple')
+        self.__socket_keepalive = options.get('socketkeepalive', False)
 
         self.__use_ssl = options.get('ssl', None)
         self.__ssl_keyfile = options.get('ssl_keyfile', None)
@@ -489,7 +493,8 @@ class MongoClient(common.BaseObject):
             ssl_cert_reqs=self.__ssl_cert_reqs,
             ssl_ca_certs=self.__ssl_ca_certs,
             wait_queue_timeout=self.__wait_queue_timeout,
-            wait_queue_multiple=self.__wait_queue_multiple)
+            wait_queue_multiple=self.__wait_queue_multiple,
+            socket_keepalive=self.__socket_keepalive)
 
     def __check_auth(self, sock_info):
         """Authenticate using cached database credentials.

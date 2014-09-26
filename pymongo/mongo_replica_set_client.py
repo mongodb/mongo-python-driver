@@ -500,6 +500,9 @@ class MongoReplicaSetClient(common.BaseObject):
           - `waitQueueMultiple`: (integer or None) Multiplied by max_pool_size
             to give the number of threads allowed to wait for a socket at one
             time. Defaults to ``None`` (no waiters).
+          - `socketKeepAlive`: (boolean) Whether to send periodic keep-alive
+            packets on connected sockets. Defaults to ``False`` (do not send
+            keep-alive packets).
           - `auto_start_request`: If ``True``, each thread that accesses
             this :class:`MongoReplicaSetClient` has a socket allocated to it
             for the thread's lifetime, for each member of the set. For
@@ -656,6 +659,7 @@ class MongoReplicaSetClient(common.BaseObject):
         self.__conn_timeout = self.__opts.get('connecttimeoutms', 20.0)
         self.__wait_queue_timeout = self.__opts.get('waitqueuetimeoutms')
         self.__wait_queue_multiple = self.__opts.get('waitqueuemultiple')
+        self.__socket_keepalive = self.__opts.get('socketkeepalive', False)
         self.__use_ssl = self.__opts.get('ssl', None)
         self.__ssl_keyfile = self.__opts.get('ssl_keyfile', None)
         self.__ssl_certfile = self.__opts.get('ssl_certfile', None)
@@ -1046,6 +1050,7 @@ class MongoReplicaSetClient(common.BaseObject):
             self.__use_ssl,
             wait_queue_timeout=self.__wait_queue_timeout,
             wait_queue_multiple=self.__wait_queue_multiple,
+            socket_keepalive=self.__socket_keepalive,
             use_greenlets=self.__use_greenlets,
             ssl_keyfile=self.__ssl_keyfile,
             ssl_certfile=self.__ssl_certfile,

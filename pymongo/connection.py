@@ -111,6 +111,9 @@ class Connection(MongoClient):
           - `waitQueueMultiple`: (integer or None) Multiplied by max_pool_size
             to give the number of threads allowed to wait for a socket at one
             time. Defaults to ``None`` (no waiters).
+          - `socketKeepAlive`: (boolean) Whether to send periodic keep-alive
+            packets on connected sockets. Defaults to ``False`` (do not send
+            keep-alive packets).
           - `auto_start_request`: If ``True`` (the default), each thread that
             accesses this Connection has a socket allocated to it for the
             thread's lifetime.  This ensures consistent reads, even if you read

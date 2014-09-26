@@ -100,7 +100,8 @@ class Pool:
     def __init__(self, pair, max_size, net_timeout, conn_timeout, use_ssl,
                  use_greenlets, ssl_keyfile=None, ssl_certfile=None,
                  ssl_cert_reqs=None, ssl_ca_certs=None,
-                 wait_queue_timeout=None, wait_queue_multiple=None):
+                 wait_queue_timeout=None, wait_queue_multiple=None,
+                 socket_keepalive=False):
         """
         :Parameters:
           - `pair`: a (hostname, port) tuple
@@ -136,6 +137,9 @@ class Pool:
             free sockets.
           - `wait_queue_multiple`: (integer) Multiplied by max_pool_size to give
             the number of threads allowed to wait for a socket at one time.
+          - `socket_keepalive`: (boolean) Whether to send periodic keep-alive
+            packets on connected sockets. Defaults to ``False`` (do not send
+            keep-alive packets).
         """
         # Only check a socket's health with _closed() every once in a while.
         # Can override for testing: 0 to always check, None to never check.
@@ -154,6 +158,7 @@ class Pool:
         self.conn_timeout = conn_timeout
         self.wait_queue_timeout = wait_queue_timeout
         self.wait_queue_multiple = wait_queue_multiple
+        self.socket_keepalive = socket_keepalive
         self.use_ssl = use_ssl
         self.ssl_keyfile = ssl_keyfile
         self.ssl_certfile = ssl_certfile
@@ -240,6 +245,8 @@ class Pool:
             try:
                 sock = socket.socket(af, socktype, proto)
                 sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE,
+                                self.socket_keepalive)
                 sock.settimeout(self.conn_timeout)
                 sock.connect(sa)
                 return sock

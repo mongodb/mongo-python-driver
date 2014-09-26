@@ -70,6 +70,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
                              connectTimeoutMS=20000,
                              waitQueueTimeoutMS=None,
                              waitQueueMultiple=None,
+                             socketKeepAlive=False,
                              auto_start_request=False,
                              use_greenlets=False,
                              replicaSet=None,
@@ -86,6 +87,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         self.assertEqual(20.0, client._MongoClient__conn_timeout)
         self.assertEqual(None, client._MongoClient__wait_queue_timeout)
         self.assertEqual(None, client._MongoClient__wait_queue_multiple)
+        self.assertFalse(client._MongoClient__socket_keepalive)
         self.assertFalse(client.auto_start_request)
         self.assertFalse(client.use_greenlets)
         self.assertEqual(None, client._MongoClient__repl)
@@ -531,6 +533,10 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         pool = get_pool(client)
         self.assertEqual(pool.wait_queue_multiple, 2)
         self.assertEqual(pool._socket_semaphore.waiter_semaphore.counter, 6)
+
+    def test_socketKeepAlive(self):
+        client = MongoClient(host, port, socketKeepAlive=True)
+        self.assertTrue(get_pool(client).socket_keepalive)
 
     def test_tz_aware(self):
         self.assertRaises(ConfigurationError, MongoClient, tz_aware='foo')
