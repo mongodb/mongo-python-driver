@@ -42,6 +42,7 @@ from pymongo.errors import (AutoReconnect,
                             CursorNotFound,
                             NetworkTimeout,
                             InvalidURI)
+from pymongo.read_preferences import ReadPreference
 from pymongo.server_selectors import (any_server_selector,
                                       writable_server_selector)
 from pymongo.server_type import SERVER_TYPE
@@ -80,6 +81,33 @@ class ClientUnitTest(unittest.TestCase, TestRequestMixin):
     @classmethod
     def setUpClass(cls):
         cls.client = MongoClient(host, port, connect=False)
+
+    def test_keyword_arg_defaults(self):
+        client = MongoClient(socketTimeoutMS=None,
+                             connectTimeoutMS=20000,
+                             waitQueueTimeoutMS=None,
+                             waitQueueMultiple=None,
+                             socketKeepAlive=False,
+                             replicaSet=None,
+                             read_preference=ReadPreference.PRIMARY,
+                             ssl=False,
+                             ssl_keyfile=None,
+                             ssl_certfile=None,
+                             ssl_cert_reqs=0,  # ssl.CERT_NONE
+                             ssl_ca_certs=None,
+                             connect=False)
+
+        options = client._MongoClient__options
+        pool_opts = options.pool_options
+        self.assertEqual(None, pool_opts.socket_timeout)
+        # socket.Socket.settimeout takes a float in seconds
+        self.assertEqual(20.0, pool_opts.connect_timeout)
+        self.assertEqual(None, pool_opts.wait_queue_timeout)
+        self.assertEqual(None, pool_opts.wait_queue_multiple)
+        self.assertFalse(pool_opts.socket_keepalive)
+        self.assertEqual(None, pool_opts.ssl_context)
+        self.assertEqual(None, options.replica_set_name)
+        self.assertEqual(ReadPreference.PRIMARY, client.read_preference)
 
     def test_types(self):
         self.assertRaises(TypeError, MongoClient, 1)

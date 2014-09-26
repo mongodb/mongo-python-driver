@@ -66,7 +66,8 @@ def _parse_ssl_options(options):
     ca_certs = options.get('ssl_ca_certs')
     cert_reqs = options.get('ssl_cert_reqs')
 
-    ssl_kwarg_keys = [k for k in options if k.startswith('ssl_')]
+    ssl_kwarg_keys = [k for k in options
+                      if k.startswith('ssl_') and options[k]]
     if use_ssl == False and ssl_kwarg_keys:
         raise ConfigurationError("ssl has not been enabled but the "
                                  "following ssl parameters have been set: "
@@ -91,7 +92,7 @@ def _parse_ssl_options(options):
 def _parse_pool_options(options):
     """Parse connection pool options."""
     max_pool_size = options.get('max_pool_size')
-    connect_timeout = options.get('connecttimeoutms')
+    connect_timeout = options.get('connecttimeoutms', 20.0)
     socket_keepalive = options.get('socketkeepalive', False)
     socket_timeout = options.get('sockettimeoutms')
     wait_queue_timeout = options.get('waitqueuetimeoutms')

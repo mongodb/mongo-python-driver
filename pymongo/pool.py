@@ -387,7 +387,7 @@ class Pool:
             try:
                 sock = socket.socket(af, socktype, proto)
                 sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-                sock.settimeout(self.opts.connect_timeout or 20.0)
+                sock.settimeout(self.opts.connect_timeout)
                 sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE,
                                 self.opts.socket_keepalive)
                 sock.connect(sa)
