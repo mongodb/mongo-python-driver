@@ -140,7 +140,6 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
                                        ssl=False,
                                        ssl_keyfile=None,
                                        ssl_certfile=None,
-                                       ssl_cert_reqs=0,  # ssl.CERT_NONE
                                        ssl_ca_certs=None,
                                        _connect=False)
         self.assertEqual(None,
@@ -162,8 +161,6 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         self.assertFalse(client._MongoReplicaSetClient__use_ssl)
         self.assertEqual(None, client._MongoReplicaSetClient__ssl_keyfile)
         self.assertEqual(None, client._MongoReplicaSetClient__ssl_certfile)
-        # Not using ssl.CERT_NONE to make testing on python 2.4 and 2.5 easier
-        self.assertEqual(0, client._MongoReplicaSetClient__ssl_cert_reqs)
         self.assertEqual(None, client._MongoReplicaSetClient__ssl_ca_certs)
 
     def test_init_disconnected(self):
