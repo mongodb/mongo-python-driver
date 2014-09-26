@@ -113,9 +113,8 @@ class ServerMode(object):
 
         .. note:: ``latency_threshold_ms`` is ignored when talking
           to a replica set through a mongos. The equivalent is the
-          localThreshold_ command line option.
-
-        .. _localThreshold: http://docs.mongodb.org/manual/reference/mongos/#cmdoption-mongos--localThreshold
+          `localThreshold <http://docs.mongodb.org/manual/reference/mongos/#cmdoption--localThreshold>`_
+          command line option.
         """
         return self.__latency
 
@@ -325,34 +324,55 @@ A read preference is used in three cases:
 
 :class:`~pymongo.mongo_client.MongoClient` connected to a single mongod:
 
-* `PRIMARY`: Queries are allowed if the server is standalone or a replica
+- ``PRIMARY``: Queries are allowed if the server is standalone or a replica
   set primary.
-* All other modes allow queries to standalone servers, to a replica set
+- All other modes allow queries to standalone servers, to a replica set
   primary, or to replica set secondaries.
 
 :class:`~pymongo.mongo_client.MongoClient` initialized with the
 ``replicaSet`` option:
 
-* `PRIMARY`: Queries are sent to the primary of the replica set.
-* `PRIMARY_PREFERRED`: Queries are sent to the primary if available,
-  otherwise a secondary.
-* `SECONDARY`: Queries are distributed among secondaries. An error
-  is raised if no secondaries are available.
-* `SECONDARY_PREFERRED`: Queries are distributed among secondaries,
-  or the primary if no secondary is available.
-* `NEAREST`: Queries are distributed among all members.
+- ``PRIMARY``: Read from the primary. This is the default, and provides the
+  strongest consistency. If no primary is available, raise
+  :class:`~pymongo.errors.AutoReconnect`.
+
+- ``PRIMARY_PREFERRED``: Read from the primary if available, or if there is
+  none, read from a secondary matching your choice of ``tag_sets`` and
+  ``latency_threshold_ms``.
+
+- ``SECONDARY``: Read from a secondary matching your choice of ``tag_sets`` and
+  ``latency_threshold_ms``. If no matching secondary is available,
+  raise :class:`~pymongo.errors.AutoReconnect`.
+
+- ``SECONDARY_PREFERRED``: Read from a secondary matching your choice of
+  ``tag_sets`` and ``latency_threshold_ms`` if available, otherwise
+  from primary (regardless of the primary's tags and latency).
+
+- ``NEAREST``: Read from any member matching your choice of ``tag_sets`` and
+  ``latency_threshold_ms``.
 
 :class:`~pymongo.mongo_client.MongoClient` connected to a mongos, with a
 sharded cluster of replica sets:
 
-* `PRIMARY`: Queries are sent to the primary of a shard.
-* `PRIMARY_PREFERRED`: Queries are sent to the shard primary if available,
-  otherwise a shard secondary.
-* `SECONDARY`: Queries are distributed among shard secondaries. An error
-  is raised if no secondaries are available.
-* `SECONDARY_PREFERRED`: Queries are distributed among shard secondaries,
-  or the shard primary if no secondary is available.
-* `NEAREST`: Queries are distributed among all members of a shard.
+- ``PRIMARY``: Read from the primary of the shard, or raise
+  :class:`~pymongo.errors.OperationFailure` if there is none.
+  This is the default.
+
+- ``PRIMARY_PREFERRED``: Read from the primary of the shard, or if there is
+  none, read from a secondary matching your choice of ``tag_sets``.
+
+- ``SECONDARY``: Read from a secondary matching your choice of ``tag_sets``,
+  or raise :class:`~pymongo.errors.OperationFailure` if there is none.
+
+- ``SECONDARY_PREFERRED``: Read from a secondary matching your choice of
+  ``tag_sets``, otherwise from primary.
+
+- ``NEAREST``: Read from any member matching your choice of ``tag_sets``.
+
+.. note:: ``latency_threshold_ms`` is ignored when talking to a
+  replica set *through* a mongos. The equivalent is the
+  `localThreshold <http://docs.mongodb.org/manual/reference/mongos/#cmdoption--localThreshold>`_
+  command line option.
 """
 
 

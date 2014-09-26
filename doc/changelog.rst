@@ -30,6 +30,8 @@ client class for a standalone server, mongos, or replica set.
 It includes the functionality that had been split into
 ``MongoReplicaSetClient``: it can connect to a replica set, discover all its
 members, and monitor the set for stepdowns, elections, and reconfigs.
+:class:`~pymongo.mongo_client.MongoClient` now also supports the full
+:class:`~pymongo.read_preferences.ReadPreference` API.
 
 The obsolete ``MasterSlaveConnection`` class is removed.
 
