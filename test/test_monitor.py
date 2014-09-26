@@ -16,6 +16,7 @@
 
 import gc
 import sys
+import time
 
 sys.path[0:0] = [""]
 
@@ -32,10 +33,16 @@ class TestMonitor(IntegrationTest):
                    'register new monitor')
 
         del client
-        gc.collect()
 
-        wait_until(lambda: len(MONITORS) == n_monitors,
-                   'unregister monitor')
+        start = time.time()
+        while time.time() - start < 30:
+            gc.collect()
+            if len(MONITORS) == n_monitors:
+                break
+
+            time.sleep(0.1)
+        else:
+            self.fail("Didn't ever unregister monitor")
 
 
 if __name__ == "__main__":
