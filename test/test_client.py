@@ -40,6 +40,7 @@ from pymongo.errors import (AutoReconnect,
                             ConnectionFailure,
                             InvalidName,
                             OperationFailure)
+from pymongo.read_preferences import ReadPreference
 from test import version, host, port, pair, skip_restricted_localhost
 from test.pymongo_mocks import MockClient
 from test.utils import (assertRaisesExactly,
@@ -63,6 +64,40 @@ def get_client(*args, **kwargs):
 
 
 class TestClient(unittest.TestCase, TestRequestMixin):
+
+    def test_keyword_arg_defaults(self):
+        client = MongoClient(socketTimeoutMS=None,
+                             connectTimeoutMS=20000,
+                             waitQueueTimeoutMS=None,
+                             waitQueueMultiple=None,
+                             auto_start_request=False,
+                             use_greenlets=False,
+                             replicaSet=None,
+                             read_preference=ReadPreference.PRIMARY,
+                             tag_sets=[{}],
+                             ssl=False,
+                             ssl_keyfile=None,
+                             ssl_certfile=None,
+                             ssl_cert_reqs=0,  # ssl.CERT_NONE
+                             ssl_ca_certs=None,
+                             _connect=False)
+        self.assertEqual(None, client._MongoClient__net_timeout)
+        # socket.Socket.settimeout takes a float in seconds
+        self.assertEqual(20.0, client._MongoClient__conn_timeout)
+        self.assertEqual(None, client._MongoClient__wait_queue_timeout)
+        self.assertEqual(None, client._MongoClient__wait_queue_multiple)
+        self.assertFalse(client.auto_start_request)
+        self.assertFalse(client.use_greenlets)
+        self.assertEqual(None, client._MongoClient__repl)
+        self.assertEqual(ReadPreference.PRIMARY, client.read_preference)
+        self.assertEqual([{}], client.tag_sets)
+        self.assertFalse(client._MongoClient__use_ssl)
+        self.assertEqual(None, client._MongoClient__ssl_keyfile)
+        self.assertEqual(None, client._MongoClient__ssl_certfile)
+        # Not using ssl.CERT_NONE to make testing on python 2.4 and 2.5 easier
+        self.assertEqual(0, client._MongoClient__ssl_cert_reqs)
+        self.assertEqual(None, client._MongoClient__ssl_ca_certs)
+
     def test_types(self):
         self.assertRaises(TypeError, MongoClient, 1)
         self.assertRaises(TypeError, MongoClient, 1.14)

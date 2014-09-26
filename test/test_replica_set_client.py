@@ -126,6 +126,44 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
             standardMsg = '%r is not an instance of %r' % (obj, cls)
             self.fail(self._formatMessage(msg, standardMsg))
 
+    def test_keyword_arg_defaults(self):
+        client = MongoReplicaSetClient(socketTimeoutMS=None,
+                                       connectTimeoutMS=20000,
+                                       waitQueueTimeoutMS=None,
+                                       waitQueueMultiple=None,
+                                       auto_start_request=False,
+                                       use_greenlets=False,
+                                       replicaSet='myreplset',  # Required
+                                       read_preference=ReadPreference.PRIMARY,
+                                       tag_sets=[{}],
+                                       ssl=False,
+                                       ssl_keyfile=None,
+                                       ssl_certfile=None,
+                                       ssl_cert_reqs=0,  # ssl.CERT_NONE
+                                       ssl_ca_certs=None,
+                                       _connect=False)
+        self.assertEqual(None,
+                         client._MongoReplicaSetClient__net_timeout)
+        # socket.Socket.settimeout takes a float in seconds
+        self.assertEqual(20.0,
+                         client._MongoReplicaSetClient__conn_timeout)
+        self.assertEqual(None,
+                         client._MongoReplicaSetClient__wait_queue_timeout)
+        self.assertEqual(None,
+                         client._MongoReplicaSetClient__wait_queue_multiple)
+        self.assertFalse(client.auto_start_request)
+        self.assertFalse(client.use_greenlets)
+        self.assertEqual('myreplset',
+                         client._MongoReplicaSetClient__name)
+        self.assertEqual(ReadPreference.PRIMARY, client.read_preference)
+        self.assertEqual([{}], client.tag_sets)
+        self.assertFalse(client._MongoReplicaSetClient__use_ssl)
+        self.assertEqual(None, client._MongoReplicaSetClient__ssl_keyfile)
+        self.assertEqual(None, client._MongoReplicaSetClient__ssl_certfile)
+        # Not using ssl.CERT_NONE to make testing on python 2.4 and 2.5 easier
+        self.assertEqual(0, client._MongoReplicaSetClient__ssl_cert_reqs)
+        self.assertEqual(None, client._MongoReplicaSetClient__ssl_ca_certs)
+
     def test_init_disconnected(self):
         c = self._get_client(_connect=False)
 

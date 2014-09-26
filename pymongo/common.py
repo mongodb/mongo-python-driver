@@ -109,6 +109,8 @@ def validate_positive_integer(option, value):
 def validate_readable(option, value):
     """Validates that 'value' is file-like and readable.
     """
+    if value is None:
+        return value
     # First make sure its a string py3.3 open(True, 'r') succeeds
     # Used in ssl cert checking due to poor ssl module error reporting
     value = validate_basestring(option, value)
@@ -148,6 +150,14 @@ def validate_basestring(option, value):
         return value
     raise TypeError("Wrong type for %s, value must be an "
                     "instance of %s" % (option, basestring.__name__))
+
+
+def validate_basestring_or_none(option, value):
+    """Validates that 'value' is an instance of `basestring` or `None`.
+    """
+    if value is None:
+        return value
+    return validate_basestring(option, value)
 
 
 def validate_int_or_basestring(option, value):
@@ -259,7 +269,7 @@ def validate_uuid_subtype(dummy, value):
 # wtimeoutms is an alias for wtimeout,
 # readpreferencetags is an alias for tag_sets.
 VALIDATORS = {
-    'replicaset': validate_basestring,
+    'replicaset': validate_basestring_or_none,
     'slaveok': validate_boolean,
     'slave_okay': validate_boolean,
     'safe': validate_boolean,

@@ -99,26 +99,25 @@ class Connection(MongoClient):
 
           | **Other optional parameters can be passed as keyword arguments:**
 
-          - `socketTimeoutMS`: (integer) How long (in milliseconds) a send or
-            receive on a socket can take before timing out. Defaults to ``None``
-            (no timeout).
-          - `connectTimeoutMS`: (integer) How long (in milliseconds) a
+          - `socketTimeoutMS`: (integer or None) How long (in milliseconds) a
+            send or receive on a socket can take before timing out. Defaults to
+            ``None`` (no timeout).
+          - `connectTimeoutMS`: (integer or None) How long (in milliseconds) a
             connection can take to be opened before timing out. Defaults to
             ``20000``.
-          - `waitQueueTimeoutMS`: (integer) How long (in milliseconds) a
-            thread will wait for a socket from the pool if the pool has no
+          - `waitQueueTimeoutMS`: (integer or None) How long (in milliseconds)
+            a thread will wait for a socket from the pool if the pool has no
             free sockets. Defaults to ``None`` (no timeout).
-          - `waitQueueMultiple`: (integer) Multiplied by max_pool_size to give
-            the number of threads allowed to wait for a socket at one time.
-            Defaults to ``None`` (no waiters).
-
+          - `waitQueueMultiple`: (integer or None) Multiplied by max_pool_size
+            to give the number of threads allowed to wait for a socket at one
+            time. Defaults to ``None`` (no waiters).
           - `auto_start_request`: If ``True`` (the default), each thread that
             accesses this Connection has a socket allocated to it for the
             thread's lifetime.  This ensures consistent reads, even if you read
             after an unsafe write.
           - `use_greenlets`: if ``True``, :meth:`start_request()` will ensure
             that the current greenlet uses the same socket for all operations
-            until :meth:`end_request()`
+            until :meth:`end_request()`. Defaults to ``False``.
 
           | **Write Concern options:**
 
@@ -155,27 +154,31 @@ class Connection(MongoClient):
             The driver will verify that the replica-set it connects to matches
             this name. Implies that the hosts specified are a seed list and the
             driver should attempt to find all members of the set. *Ignored by
-            mongos*.
+            mongos*. Defaults to ``None``.
           - `read_preference`: The read preference for this client. If
             connecting to a secondary then a read preference mode *other* than
             PRIMARY is required - otherwise all queries will throw a
             :class:`~pymongo.errors.AutoReconnect` "not master" error.
             See :class:`~pymongo.read_preferences.ReadPreference` for all
-            available read preference options.
+            available read preference options. Defaults to ``PRIMARY``.
           - `tag_sets`: Ignored unless connecting to a replica-set via mongos.
             Specify a priority-order for tag sets, provide a list of
             tag sets: ``[{'dc': 'ny'}, {'dc': 'la'}, {}]``. A final, empty tag
             set, ``{}``, means "read from any member that matches the mode,
-            ignoring tags.
+            ignoring tags. Defaults to ``[{}]``, meaning "ignore members'
+            tags."
 
           | **SSL configuration:**
 
           - `ssl`: If ``True``, create the connection to the server using SSL.
+            Defaults to ``False``.
           - `ssl_keyfile`: The private keyfile used to identify the local
             connection against mongod.  If included with the ``certfile` then
             only the ``ssl_certfile`` is needed.  Implies ``ssl=True``.
+            Defaults to ``None``.
           - `ssl_certfile`: The certificate file used to identify the local
-            connection against mongod. Implies ``ssl=True``.
+            connection against mongod. Implies ``ssl=True``. Defaults to
+            ``None``.
           - `ssl_cert_reqs`: The parameter cert_reqs specifies whether a
             certificate is required from the other side of the connection,
             and whether it will be validated if provided. It must be one of the
@@ -184,11 +187,11 @@ class Connection(MongoClient):
             ``ssl.CERT_REQUIRED`` (required and validated). If the value of
             this parameter is not ``ssl.CERT_NONE``, then the ``ssl_ca_certs``
             parameter must point to a file of CA certificates.
-            Implies ``ssl=True``.
+            Implies ``ssl=True``. Defaults to ``ssl.CERT_NONE``.
           - `ssl_ca_certs`: The ca_certs file contains a set of concatenated
             "certification authority" certificates, which are used to validate
             certificates passed from the other end of the connection.
-            Implies ``ssl=True``.
+            Implies ``ssl=True``. Defaults to ``None``.
 
         .. seealso:: :meth:`end_request`
         .. versionchanged:: 2.5

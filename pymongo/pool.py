@@ -240,7 +240,7 @@ class Pool:
             try:
                 sock = socket.socket(af, socktype, proto)
                 sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-                sock.settimeout(self.conn_timeout or 20.0)
+                sock.settimeout(self.conn_timeout)
                 sock.connect(sa)
                 return sock
             except socket.error, e:

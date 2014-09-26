@@ -488,18 +488,18 @@ class MongoReplicaSetClient(common.BaseObject):
             precedence.
           - `port`: For compatibility with :class:`~mongo_client.MongoClient`.
             The default port number to use for hosts.
-          - `socketTimeoutMS`: (integer) How long (in milliseconds) a send or
-            receive on a socket can take before timing out. Defaults to ``None``
-            (no timeout).
-          - `connectTimeoutMS`: (integer) How long (in milliseconds) a
+          - `socketTimeoutMS`: (integer or None) How long (in milliseconds) a
+            send or receive on a socket can take before timing out. Defaults to
+            ``None`` (no timeout).
+          - `connectTimeoutMS`: (integer or None) How long (in milliseconds) a
             connection can take to be opened before timing out. Defaults to
             ``20000``.
-          - `waitQueueTimeoutMS`: (integer) How long (in milliseconds) a
-            thread will wait for a socket from the pool if the pool has no
+          - `waitQueueTimeoutMS`: (integer or None) How long (in milliseconds)
+            a thread will wait for a socket from the pool if the pool has no
             free sockets. Defaults to ``None`` (no timeout).
-          - `waitQueueMultiple`: (integer) Multiplied by max_pool_size to give
-            the number of threads allowed to wait for a socket at one time.
-            Defaults to ``None`` (no waiters).
+          - `waitQueueMultiple`: (integer or None) Multiplied by max_pool_size
+            to give the number of threads allowed to wait for a socket at one
+            time. Defaults to ``None`` (no waiters).
           - `auto_start_request`: If ``True``, each thread that accesses
             this :class:`MongoReplicaSetClient` has a socket allocated to it
             for the thread's lifetime, for each member of the set. For
@@ -510,11 +510,12 @@ class MongoReplicaSetClient(common.BaseObject):
           - `use_greenlets`: If ``True``, use a background Greenlet instead of
             a background thread to monitor state of replica set. Additionally,
             :meth:`start_request()` assigns a greenlet-local, rather than
-            thread-local, socket.
+            thread-local, socket. Defaults to ``False``.
             `use_greenlets` with :class:`MongoReplicaSetClient` requires
             `Gevent <http://gevent.org/>`_ to be installed.
 
           | **Write Concern options:**
+          | (Only set if passed. No default values.)
 
           - `w`: (integer or string) Write operations will block until they have
             been replicated to the specified number or tagged set of servers.
@@ -542,14 +543,14 @@ class MongoReplicaSetClient(common.BaseObject):
 
           - `read_preference`: The read preference for this client.
             See :class:`~pymongo.read_preferences.ReadPreference` for available
-            options.
+            options. Defaults to ``PRIMARY``.
           - `tag_sets`: Read from replica-set members with these tags.
             To specify a priority-order for tag sets, provide a list of
             tag sets: ``[{'dc': 'ny'}, {'dc': 'la'}, {}]``. A final, empty tag
             set, ``{}``, means "read from any member that matches the mode,
             ignoring tags." :class:`MongoReplicaSetClient` tries each set of
             tags in turn until it finds a set of tags with at least one matching
-            member.
+            member. Defaults to ``[{}]``, meaning "ignore members' tags."
           - `secondary_acceptable_latency_ms`: (integer) Any replica-set member
             whose ping time is within secondary_acceptable_latency_ms of the
             nearest member may accept reads. Default 15 milliseconds.
@@ -559,11 +560,14 @@ class MongoReplicaSetClient(common.BaseObject):
           | **SSL configuration:**
 
           - `ssl`: If ``True``, create the connection to the servers using SSL.
+            Defaults to ``False``.
           - `ssl_keyfile`: The private keyfile used to identify the local
             connection against mongod.  If included with the ``certfile`` then
             only the ``ssl_certfile`` is needed.  Implies ``ssl=True``.
+            Defaults to ``None``.
           - `ssl_certfile`: The certificate file used to identify the local
-            connection against mongod. Implies ``ssl=True``.
+            connection against mongod. Implies ``ssl=True``. Defaults to
+            ``None``.
           - `ssl_cert_reqs`: Specifies whether a certificate is required from
             the other side of the connection, and whether it will be validated
             if provided. It must be one of the three values ``ssl.CERT_NONE``
@@ -571,11 +575,12 @@ class MongoReplicaSetClient(common.BaseObject):
             (not required, but validated if provided), or ``ssl.CERT_REQUIRED``
             (required and validated). If the value of this parameter is not
             ``ssl.CERT_NONE``, then the ``ssl_ca_certs`` parameter must point
-            to a file of CA certificates. Implies ``ssl=True``.
+            to a file of CA certificates. Implies ``ssl=True``. Defaults to
+            ``ssl.CERT_NONE``.
           - `ssl_ca_certs`: The ca_certs file contains a set of concatenated
             "certification authority" certificates, which are used to validate
             certificates passed from the other end of the connection.
-            Implies ``ssl=True``.
+            Implies ``ssl=True``. Defaults to ``None``.
 
         .. versionchanged:: 2.5
            Added additional ssl options
@@ -648,7 +653,7 @@ class MongoReplicaSetClient(common.BaseObject):
                                      "keyword parameter is required.")
 
         self.__net_timeout = self.__opts.get('sockettimeoutms')
-        self.__conn_timeout = self.__opts.get('connecttimeoutms')
+        self.__conn_timeout = self.__opts.get('connecttimeoutms', 20.0)
         self.__wait_queue_timeout = self.__opts.get('waitqueuetimeoutms')
         self.__wait_queue_multiple = self.__opts.get('waitqueuemultiple')
         self.__use_ssl = self.__opts.get('ssl', None)
@@ -657,7 +662,8 @@ class MongoReplicaSetClient(common.BaseObject):
         self.__ssl_cert_reqs = self.__opts.get('ssl_cert_reqs', None)
         self.__ssl_ca_certs = self.__opts.get('ssl_ca_certs', None)
 
-        ssl_kwarg_keys = [k for k in kwargs.keys() if k.startswith('ssl_')]
+        ssl_kwarg_keys = [k for k in kwargs.keys()
+                          if k.startswith('ssl_') and kwargs[k]]
         if self.__use_ssl is False and ssl_kwarg_keys:
             raise ConfigurationError("ssl has not been enabled but the "
                                      "following ssl parameters have been set: "

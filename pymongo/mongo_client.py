@@ -137,27 +137,28 @@ class MongoClient(common.BaseObject):
 
           | **Other optional parameters can be passed as keyword arguments:**
 
-          - `socketTimeoutMS`: (integer) How long (in milliseconds) a send or
-            receive on a socket can take before timing out. Defaults to ``None``
-            (no timeout).
-          - `connectTimeoutMS`: (integer) How long (in milliseconds) a
+          - `socketTimeoutMS`: (integer or None) How long (in milliseconds) a
+            send or receive on a socket can take before timing out. Defaults to
+            ``None`` (no timeout).
+          - `connectTimeoutMS`: (integer or None) How long (in milliseconds) a
             connection can take to be opened before timing out. Defaults to
             ``20000``.
-          - `waitQueueTimeoutMS`: (integer) How long (in milliseconds) a
-            thread will wait for a socket from the pool if the pool has no
+          - `waitQueueTimeoutMS`: (integer or None) How long (in milliseconds)
+            a thread will wait for a socket from the pool if the pool has no
             free sockets. Defaults to ``None`` (no timeout).
-          - `waitQueueMultiple`: (integer) Multiplied by max_pool_size to give
-            the number of threads allowed to wait for a socket at one time.
-            Defaults to ``None`` (no waiters).
+          - `waitQueueMultiple`: (integer or None) Multiplied by max_pool_size
+            to give the number of threads allowed to wait for a socket at one
+            time. Defaults to ``None`` (no waiters).
           - `auto_start_request`: If ``True``, each thread that accesses
             this :class:`MongoClient` has a socket allocated to it for the
             thread's lifetime.  This ensures consistent reads, even if you
-            read after an unacknowledged write. Defaults to ``False``
+            read after an unacknowledged write. Defaults to ``False``.
           - `use_greenlets`: If ``True``, :meth:`start_request()` will ensure
             that the current greenlet uses the same socket for all
-            operations until :meth:`end_request()`
+            operations until :meth:`end_request()`. Defaults to ``False``.
 
           | **Write Concern options:**
+          | (Only set if passed. No default values.)
 
           - `w`: (integer or string) If this is a replica set, write operations
             will block until they have been replicated to the specified number
@@ -185,31 +186,35 @@ class MongoClient(common.BaseObject):
             - either directly or via a mongos:**
           | (ignored by standalone mongod instances)
 
-          - `replicaSet`: (string) The name of the replica set to connect to.
-            The driver will verify that the replica set it connects to matches
-            this name. Implies that the hosts specified are a seed list and the
-            driver should attempt to find all members of the set. *Ignored by
-            mongos*.
+          - `replicaSet`: (string or None) The name of the replica set to
+            connect to. The driver will verify that the replica set it connects
+            to matches this name. Implies that the hosts specified are a seed
+            list and the driver should attempt to find all members of the set.
+            *Ignored by mongos*. Defaults to ``None``.
           - `read_preference`: The read preference for this client. If
             connecting to a secondary then a read preference mode *other* than
             PRIMARY is required - otherwise all queries will throw
             :class:`~pymongo.errors.AutoReconnect` "not master".
             See :class:`~pymongo.read_preferences.ReadPreference` for all
-            available read preference options.
+            available read preference options. Defaults to ``PRIMARY``.
           - `tag_sets`: Ignored unless connecting to a replica set via mongos.
             Specify a priority-order for tag sets, provide a list of
             tag sets: ``[{'dc': 'ny'}, {'dc': 'la'}, {}]``. A final, empty tag
             set, ``{}``, means "read from any member that matches the mode,
-            ignoring tags.
+            ignoring tags. Defaults to ``[{}]``, meaning "ignore members'
+            tags."
 
           | **SSL configuration:**
 
           - `ssl`: If ``True``, create the connection to the server using SSL.
+            Defaults to ``False``.
           - `ssl_keyfile`: The private keyfile used to identify the local
             connection against mongod.  If included with the ``certfile`` then
             only the ``ssl_certfile`` is needed.  Implies ``ssl=True``.
+            Defaults to ``None``.
           - `ssl_certfile`: The certificate file used to identify the local
-            connection against mongod. Implies ``ssl=True``.
+            connection against mongod. Implies ``ssl=True``. Defaults to
+            ``None``.
           - `ssl_cert_reqs`: Specifies whether a certificate is required from
             the other side of the connection, and whether it will be validated
             if provided. It must be one of the three values ``ssl.CERT_NONE``
@@ -217,11 +222,12 @@ class MongoClient(common.BaseObject):
             (not required, but validated if provided), or ``ssl.CERT_REQUIRED``
             (required and validated). If the value of this parameter is not
             ``ssl.CERT_NONE``, then the ``ssl_ca_certs`` parameter must point
-            to a file of CA certificates. Implies ``ssl=True``.
+            to a file of CA certificates. Implies ``ssl=True``. Defaults to
+            ``ssl.CERT_NONE``.
           - `ssl_ca_certs`: The ca_certs file contains a set of concatenated
             "certification authority" certificates, which are used to validate
             certificates passed from the other end of the connection.
-            Implies ``ssl=True``.
+            Implies ``ssl=True``. Defaults to ``None``.
 
         .. seealso:: :meth:`end_request`
 
@@ -294,7 +300,7 @@ class MongoClient(common.BaseObject):
         self.__direct = len(seeds) == 1 and not self.__repl
 
         self.__net_timeout = options.get('sockettimeoutms')
-        self.__conn_timeout = options.get('connecttimeoutms')
+        self.__conn_timeout = options.get('connecttimeoutms', 20.0)
         self.__wait_queue_timeout = options.get('waitqueuetimeoutms')
         self.__wait_queue_multiple = options.get('waitqueuemultiple')
 
@@ -304,7 +310,8 @@ class MongoClient(common.BaseObject):
         self.__ssl_cert_reqs = options.get('ssl_cert_reqs', None)
         self.__ssl_ca_certs = options.get('ssl_ca_certs', None)
 
-        ssl_kwarg_keys = [k for k in kwargs.keys() if k.startswith('ssl_')]
+        ssl_kwarg_keys = [k for k in kwargs.keys()
+                          if k.startswith('ssl_') and kwargs[k]]
         if self.__use_ssl == False and ssl_kwarg_keys:
             raise ConfigurationError("ssl has not been enabled but the "
                                      "following ssl parameters have been set: "
