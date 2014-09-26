@@ -916,7 +916,7 @@ class Database(common.BaseObject):
         # Sockets will be deauthenticated as they are used.
         self.connection._purge_credentials(self.name)
 
-    def dereference(self, dbref):
+    def dereference(self, dbref, **kwargs):
         """Dereference a :class:`~bson.dbref.DBRef`, getting the
         document it points to.
 
@@ -928,6 +928,9 @@ class Database(common.BaseObject):
 
         :Parameters:
           - `dbref`: the reference
+          - `**kwargs` (optional): any additional keyword arguments
+            are the same as the arguments to
+            :meth:`~pymongo.collection.Collection.find`.
         """
         if not isinstance(dbref, DBRef):
             raise TypeError("cannot dereference a %s" % type(dbref))
@@ -935,7 +938,7 @@ class Database(common.BaseObject):
             raise ValueError("trying to dereference a DBRef that points to "
                              "another database (%r not %r)" % (dbref.database,
                                                                self.__name))
-        return self[dbref.collection].find_one({"_id": dbref.id})
+        return self[dbref.collection].find_one({"_id": dbref.id}, **kwargs)
 
     def eval(self, code, *args):
         """Evaluate a JavaScript expression in MongoDB.
