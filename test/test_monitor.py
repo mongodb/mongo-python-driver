@@ -27,9 +27,10 @@ from test.utils import get_client, wait_until
 
 class TestMonitor(IntegrationTest):
     def test_atexit_hook(self):
-        n_monitors = len(MONITORS)
+        # Weakrefs to currently running Monitor instances.
+        prior_monitors = MONITORS.copy()
         client = get_client(host, port)
-        wait_until(lambda: len(MONITORS) == n_monitors + 1,
+        wait_until(lambda: MONITORS - prior_monitors,
                    'register new monitor')
 
         del client
@@ -37,7 +38,8 @@ class TestMonitor(IntegrationTest):
         start = time.time()
         while time.time() - start < 30:
             gc.collect()
-            if len(MONITORS) == n_monitors:
+            if MONITORS - prior_monitors:
+                # New monitor was unregistered.
                 break
 
             time.sleep(0.1)
