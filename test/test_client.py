@@ -959,6 +959,115 @@ class TestClient(IntegrationTest, TestRequestMixin):
                 address=('not-a-member', 27017))
 
 
+class TestExhaustCursor(IntegrationTest):
+    """Test that clients properly handle errors from exhaust cursors."""
+
+    def setUp(self):
+        super(TestExhaustCursor, self).setUp()
+        if client_context.is_mongos:
+            raise SkipTest("mongos doesn't support exhaust, SERVER-2627")
+
+    # mongod < 2.2.0 closes exhaust socket on error, so it behaves like
+    # test_exhaust_query_network_error. Here we test that on query error
+    # the client correctly keeps the socket *open* and checks it in.
+    @client_context.require_version_min(2, 2, 0)
+    def test_exhaust_query_server_error(self):
+        # When doing an exhaust query, the socket stays checked out on success
+        # but must be checked in on error to avoid semaphore leaks.
+        client = connected(rs_or_single_client(max_pool_size=1))
+
+        collection = client.pymongo_test.test
+        pool = get_pool(client)
+        sock_info = one(pool.sockets)
+
+        # This will cause OperationFailure in all mongo versions since
+        # the value for $orderby must be a document.
+        cursor = collection.find(
+            SON([('$query', {}), ('$orderby', True)]), exhaust=True)
+
+        self.assertRaises(OperationFailure, cursor.next)
+        self.assertFalse(sock_info.closed)
+
+        # The socket was checked in and the semaphore was decremented.
+        self.assertIn(sock_info, pool.sockets)
+        self.assertTrue(pool._socket_semaphore.acquire(blocking=False))
+
+    def test_exhaust_getmore_server_error(self):
+        # When doing a getmore on an exhaust cursor, the socket stays checked
+        # out on success but it's checked in on error to avoid semaphore leaks.
+        client = rs_or_single_client(max_pool_size=1)
+        collection = client.pymongo_test.test
+        collection.remove()
+
+        # Enough data to ensure it streams down for a few milliseconds.
+        long_str = 'a' * (256 * 1024)
+        collection.insert([{'a': long_str} for _ in range(200)])
+
+        pool = get_pool(client)
+        pool._check_interval_seconds = None  # Never check.
+        sock_info = one(pool.sockets)
+
+        cursor = collection.find(exhaust=True)
+
+        # Initial query succeeds.
+        cursor.next()
+
+        # Cause a server error on getmore.
+        client_context.client.pymongo_test.test.drop()
+        self.assertRaises(OperationFailure, list, cursor)
+
+        # The socket is still valid.
+        self.assertIn(sock_info, pool.sockets)
+        self.assertEqual(0, collection.count())
+
+    def test_exhaust_query_network_error(self):
+        # When doing an exhaust query, the socket stays checked out on success
+        # but must be checked in on error to avoid semaphore leaks.
+        client = connected(rs_or_single_client(max_pool_size=1))
+        collection = client.pymongo_test.test
+        pool = get_pool(client)
+        pool._check_interval_seconds = None  # Never check.
+
+        # Cause a network error.
+        sock_info = one(pool.sockets)
+        sock_info.sock.close()
+
+        cursor = collection.find(exhaust=True)
+        self.assertRaises(ConnectionFailure, cursor.next)
+        self.assertTrue(sock_info.closed)
+
+        # The socket was closed and the semaphore was decremented.
+        self.assertNotIn(sock_info, pool.sockets)
+        self.assertTrue(pool._socket_semaphore.acquire(blocking=False))
+
+    def test_exhaust_getmore_network_error(self):
+        # When doing a getmore on an exhaust cursor, the socket stays checked
+        # out on success but it's checked in on error to avoid semaphore leaks.
+        client = rs_or_single_client(max_pool_size=1)
+        collection = client.pymongo_test.test
+        collection.remove()
+        collection.insert([{} for _ in range(200)])  # More than one batch.
+        pool = get_pool(client)
+        pool._check_interval_seconds = None  # Never check.
+
+        cursor = collection.find(exhaust=True)
+
+        # Initial query succeeds.
+        cursor.next()
+
+        # Cause a network error.
+        sock_info = cursor._Cursor__exhaust_mgr.sock
+        sock_info.sock.close()
+
+        # A getmore fails.
+        self.assertRaises(ConnectionFailure, list, cursor)
+        self.assertTrue(sock_info.closed)
+
+        # The socket was closed and the semaphore was decremented.
+        self.assertNotIn(sock_info, pool.sockets)
+        self.assertTrue(pool._socket_semaphore.acquire(blocking=False))
+
+
 class TestClientProperties(MockClientTest):
 
     def test_wire_version_mongos_ha(self):

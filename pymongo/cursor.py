@@ -13,7 +13,9 @@
 # limitations under the License.
 
 """Cursor class to iterate over Mongo query results."""
+
 import copy
+import socket
 import warnings
 
 from collections import deque, Mapping
@@ -29,9 +31,9 @@ from pymongo.read_preferences import (make_read_preference,
                                       ReadPreference,
                                       SECONDARY_OK_COMMANDS)
 from pymongo.errors import (AutoReconnect,
-                            CursorNotFound,
                             InvalidOperation,
-                            NotMasterError)
+                            NotMasterError,
+                            OperationFailure)
 
 _QUERY_OPTIONS = {
     "tailable_cursor": 2,
@@ -874,6 +876,8 @@ class Cursor(object):
         If message is ``None`` this is an exhaust cursor, which reads
         the next result batch off the exhaust socket instead of
         sending getMore messages to the server.
+
+        Can raise ConnectionFailure.
         """
         client = self.__collection.database.connection
 
@@ -903,7 +907,11 @@ class Cursor(object):
                 raise
         else:
             # Exhaust cursor - no getMore message.
-            data = self.__exhaust_mgr.sock.receive_message(1, None)
+            try:
+                data = self.__exhaust_mgr.sock.receive_message(1, None)
+            except socket.error as exc:
+                self.__die()
+                raise AutoReconnect(str(exc))
 
         try:
             doc = helpers._unpack_response(response=data,
@@ -912,8 +920,12 @@ class Cursor(object):
                                            tz_aware=self.__tz_aware,
                                            uuid_subtype=self.__uuid_subtype,
                                            compile_re=self.__compile_re)
-        except CursorNotFound:
+        except OperationFailure:
             self.__killed = True
+
+            # Make sure exhaust socket is returned immediately, if necessary.
+            self.__die()
+
             # If this is a tailable cursor the error is likely
             # due to capped collection roll over. Setting
             # self.__killed to True ensures Cursor.alive will be
@@ -925,6 +937,10 @@ class Cursor(object):
             # Don't send kill cursors to another server after a "not master"
             # error. It's completely pointless.
             self.__killed = True
+
+            # Make sure exhaust socket is returned immediately, if necessary.
+            self.__die()
+
             client._reset_server_and_request_check(self.__connection_id)
             raise
         self.__id = doc["cursor_id"]
