@@ -45,7 +45,7 @@ MAX_WRITE_BATCH_SIZE = 1000
 
 # What this version of PyMongo supports.
 MIN_SUPPORTED_WIRE_VERSION = 0
-MAX_SUPPORTED_WIRE_VERSION = 2
+MAX_SUPPORTED_WIRE_VERSION = 3
 
 # mongod/s 2.6 and above return code 59 when a
 # command doesn't exist. mongod versions previous
