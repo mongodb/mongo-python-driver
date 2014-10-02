@@ -318,17 +318,15 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
         self._test_fn(True, lambda: self.c.pymongo_test.command(SON([
             ('distinct', 'test'), ('key', 'a'), ('query', {'a': 1})])))
 
-        # Geo stuff. Make sure a 2d index is created and replicated
-        self.c.pymongo_test.system.indexes.insert({
-            'key' : { 'location' : '2d' }, 'ns' : 'pymongo_test.test',
-            'name' : 'location_2d' }, w=self.w)
+        # Geo stuff.
+        self.c.pymongo_test.test.create_index([('location', '2d')])
 
-        self.c.pymongo_test.system.indexes.insert(SON([
-            ('ns', 'pymongo_test.test'),
-            ('key', SON([('location', 'geoHaystack'), ('key', 1)])),
-            ('bucketSize', 100),
-            ('name', 'location_geoHaystack'),
-        ]), w=self.w)
+        self.c.pymongo_test.test.create_index([('location', 'geoHaystack'),
+                                               ('key', 1)], bucketSize=100)
+
+        # Attempt to await replication of indexes replicated.
+        self.c.pymongo_test.test2.insert({}, w=self.w)
+        self.c.pymongo_test.test2.remove({}, w=self.w)
 
         self._test_fn(True, lambda: self.c.pymongo_test.command(
             'geoNear', 'test', near=[0, 0]))
@@ -365,8 +363,9 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
                 'name': 't_text',
                 'key': {'t': 'text'}}
 
-            db.system.indexes.insert(
-                index, manipulate=False, check_keys=False, w=self.w)
+            db.test.create_index([('t', 'text')])
+            db.test.insert({}, w=self.w)
+            db.test.remove({}, w=self.w)
 
             self._test_fn(True, lambda: self.c.pymongo_test.command(SON([
                 ('text', 'test'),

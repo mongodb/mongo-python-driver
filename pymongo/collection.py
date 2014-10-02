@@ -1244,7 +1244,7 @@ class Collection(common.BaseObject):
         guaranteed to contain at least a single key, ``"key"`` which
         is a list of (key, direction) pairs specifying the index (as
         passed to create_index()). It will also contain any other
-        information in `system.indexes`, except for the ``"ns"`` and
+        metadata about the indexes, except for the ``"ns"`` and
         ``"name"`` keys, which are cleaned. Example output might look
         like this:
 
@@ -1260,8 +1260,17 @@ class Collection(common.BaseObject):
            themselves, whose ``"key"`` item contains the list that was
            the value in previous versions of PyMongo.
         """
-        raw = self.__database.system.indexes.find({"ns": self.__full_name},
-                                                  {"ns": 0}, as_class=SON)
+        client = self.database.connection
+        client._ensure_connected(True)
+
+        if client.max_wire_version > 2:
+            raw = self.__database.command(
+                "listIndexes", self.__name, as_class=SON,
+                read_preference=ReadPreference.PRIMARY).get("indexes", [])
+        else:
+            raw = self.__database.system.indexes.find({"ns": self.__full_name},
+                                                      {"ns": 0}, as_class=SON,
+                                                      _must_use_master=True)
         info = {}
         for index in raw:
             index["key"] = index["key"].items()
