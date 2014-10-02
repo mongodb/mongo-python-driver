@@ -91,7 +91,6 @@ class TestGridfs(IntegrationTest):
     @classmethod
     def setUpClass(cls):
         super(TestGridfs, cls).setUpClass()
-        cls.db = client_context.client.pymongo_test
         cls.fs = gridfs.GridFS(cls.db)
         cls.alt = gridfs.GridFS(cls.db, "alt")
 

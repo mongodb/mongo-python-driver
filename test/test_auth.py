@@ -262,15 +262,11 @@ class TestSCRAMSHA1(unittest.TestCase):
                             {}).get('authenticationMechanisms', ''):
             raise SkipTest('SCRAM-SHA-1 mechanism not enabled')
 
-        client = client_context.client
-        if self.set_name:
-            client.pymongo_test.add_user('user', 'pass',
-                roles=['userAdmin', 'readWrite'],
-                writeConcern={'w': client_context.w})
-        else:
-            client.pymongo_test.add_user(
-                'user', 'pass', roles=['userAdmin', 'readWrite'])
-
+        client = client_context.rs_or_standalone_client
+        client.pymongo_test.add_user(
+            'user', 'pass',
+            roles=['userAdmin', 'readWrite'],
+            writeConcern={'w': client_context.w})
 
     def test_scram_sha1(self):
         client = MongoClient(host, port)
@@ -298,7 +294,9 @@ class TestSCRAMSHA1(unittest.TestCase):
             client.pymongo_test.command('dbstats')
 
     def tearDown(self):
-        client_context.client.pymongo_test.remove_user('user')
+        client_context.rs_or_standalone_client.pymongo_test.remove_user(
+            'user',
+            w=client_context.w)
 
 
 class TestAuthURIOptions(unittest.TestCase):
@@ -387,7 +385,7 @@ class TestDelegatedAuth(unittest.TestCase):
     @client_context.require_version_max(2, 5, 3)
     @client_context.require_version_min(2, 4, 0)
     def setUp(self):
-        self.client = client_context.client
+        self.client = client_context.rs_or_standalone_client
 
     def tearDown(self):
         self.client.pymongo_test.remove_user('user')

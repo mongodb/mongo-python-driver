@@ -238,11 +238,6 @@ class TestJsonUtil(unittest.TestCase):
 
 class TestJsonUtilRoundtrip(IntegrationTest):
 
-    @classmethod
-    def setUpClass(cls):
-        super(TestJsonUtilRoundtrip, cls).setUpClass()
-        cls.db = client_context.client.pymongo_test
-
     def setUp(self):
         if not json_util.json_lib:
             raise SkipTest("No json or simplejson module")

@@ -22,19 +22,21 @@ from bson import InvalidDocument, SON
 from bson.py3compat import string_type
 from pymongo import MongoClient
 from pymongo.errors import BulkWriteError, InvalidOperation, OperationFailure
-from test import client_context, unittest, host, port
+from test import client_context, unittest, host, port, IntegrationTest
 from test.utils import oid_generated_on_client, remove_all_users
 
 
-@client_context.require_connection
-def setUpModule():
-    pass
+class BulkTestBase(IntegrationTest):
 
-
-class BulkTestBase(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super(BulkTestBase, cls).setUpClass()
+        cls.coll = cls.db.test
+        cls.has_write_commands = (client_context.client.max_wire_version > 1)
 
     def setUp(self):
-        self.has_write_commands = (client_context.client.max_wire_version > 1)
+        super(BulkTestBase, self).setUp()
+        self.coll.remove()
 
     def assertEqualResponse(self, expected, actual):
         """Compare response from bulk.execute() to expected response."""
@@ -110,14 +112,6 @@ class BulkTestBase(unittest.TestCase):
 
 
 class TestBulk(BulkTestBase):
-
-    @classmethod
-    def setUpClass(cls):
-        cls.coll = client_context.client.pymongo_test.test
-
-    def setUp(self):
-        super(TestBulk, self).setUp()
-        self.coll.remove()
 
     def test_empty(self):
         bulk = self.coll.initialize_ordered_bulk_op()
@@ -913,13 +907,8 @@ class TestBulkWriteConcern(BulkTestBase):
 
     @classmethod
     def setUpClass(cls):
-        cls.is_repl = ('setName' in client_context.ismaster)
+        super(TestBulkWriteConcern, cls).setUpClass()
         cls.w = client_context.w
-        cls.coll = client_context.client.pymongo_test.test
-
-    def setUp(self):
-        super(TestBulkWriteConcern, self).setUp()
-        self.coll.remove()
 
     @client_context.require_version_min(1, 8, 2)
     def test_fsync_and_j(self):
@@ -1083,14 +1072,6 @@ class TestBulkWriteConcern(BulkTestBase):
 
 class TestBulkNoResults(BulkTestBase):
 
-    @classmethod
-    def setUpClass(cls):
-        cls.coll = client_context.client.pymongo_test.test
-
-    def setUp(self):
-        super(TestBulkNoResults, self).setUp()
-        self.coll.remove()
-
     def test_no_results_ordered_success(self):
 
         batch = self.coll.initialize_ordered_bulk_op()
@@ -1098,7 +1079,7 @@ class TestBulkNoResults(BulkTestBase):
         batch.find({'_id': 3}).upsert().update_one({'$set': {'b': 1}})
         batch.insert({'_id': 2})
         batch.find({'_id': 1}).remove_one()
-        with client_context.client.start_request():
+        with self.client.start_request():
             self.assertTrue(batch.execute({'w': 0}) is None)
             self.assertEqual(2, self.coll.count())
 
@@ -1110,7 +1091,7 @@ class TestBulkNoResults(BulkTestBase):
         batch.insert({'_id': 2})
         batch.insert({'_id': 1})
         batch.find({'_id': 1}).remove_one()
-        with client_context.client.start_request():
+        with self.client.start_request():
             self.assertTrue(batch.execute({'w': 0}) is None)
             self.assertEqual(3, self.coll.count())
 
@@ -1121,7 +1102,7 @@ class TestBulkNoResults(BulkTestBase):
         batch.find({'_id': 3}).upsert().update_one({'$set': {'b': 1}})
         batch.insert({'_id': 2})
         batch.find({'_id': 1}).remove_one()
-        with client_context.client.start_request():
+        with self.client.start_request():
             self.assertTrue(batch.execute({'w': 0}) is None)
             self.assertEqual(2, self.coll.count())
 
@@ -1133,7 +1114,7 @@ class TestBulkNoResults(BulkTestBase):
         batch.insert({'_id': 2})
         batch.insert({'_id': 1})
         batch.find({'_id': 1}).remove_one()
-        with client_context.client.start_request():
+        with self.client.start_request():
             self.assertTrue(batch.execute({'w': 0}) is None)
             self.assertEqual(2, self.coll.count())
             self.assertTrue(self.coll.find_one({'_id': 1}) is None)
@@ -1145,13 +1126,10 @@ class TestBulkAuthorization(BulkTestBase):
     @client_context.require_auth
     @client_context.require_version_min(2, 5, 3)
     def setUpClass(cls):
-        cls.db = client_context.client.pymongo_test
-        cls.coll = cls.db.test
+        super(TestBulkAuthorization, cls).setUpClass()
 
     def setUp(self):
         super(TestBulkAuthorization, self).setUp()
-        self.coll.remove()
-
         self.db.add_user('readonly', 'pw', roles=['read'])
         self.db.command(
             'createRole', 'noremove',

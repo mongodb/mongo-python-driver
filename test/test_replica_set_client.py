@@ -35,6 +35,7 @@ from pymongo.read_preferences import ReadPreference, Secondary, Nearest
 from test import (client_context,
                   client_knobs,
                   connection_string,
+                  IntegrationTest,
                   pair,
                   port,
                   SkipTest,
@@ -50,14 +51,16 @@ from test.utils import (
 from test.version import Version
 
 
-class TestReplicaSetClientBase(unittest.TestCase):
+class TestReplicaSetClientBase(IntegrationTest):
 
     @classmethod
     @client_context.require_replica_set
     def setUpClass(cls):
+        super(TestReplicaSetClientBase, cls).setUpClass()
         cls.name = client_context.setname
-        ismaster = client_context.ismaster
         cls.w = client_context.w
+
+        ismaster = client_context.ismaster
         cls.hosts = set(partition_node(h) for h in ismaster['hosts'])
         cls.arbiters = set(partition_node(h)
                            for h in ismaster.get("arbiters", []))

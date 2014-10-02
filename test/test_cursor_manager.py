@@ -33,7 +33,7 @@ class TestCursorManager(IntegrationTest):
     @classmethod
     def setUpClass(cls):
         super(TestCursorManager, cls).setUpClass()
-        cls.collection = client_context.client.pymongo_test.test
+        cls.collection = cls.db.test
         cls.collection.remove()
 
         # Ensure two batches.

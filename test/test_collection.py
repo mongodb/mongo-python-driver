@@ -109,7 +109,6 @@ class TestCollection(IntegrationTest):
     @classmethod
     def setUpClass(cls):
         super(TestCollection, cls).setUpClass()
-        cls.db = client_context.client.pymongo_test
         cls.w = client_context.w
 
     @classmethod
@@ -410,7 +409,7 @@ class TestCollection(IntegrationTest):
     @client_context.require_version_min(2, 3, 2)
     @client_context.require_no_mongos
     def test_index_text(self):
-        enable_text_search(client_context.client)
+        enable_text_search(self.client)
 
         db = self.db
         db.test.drop_indexes()
@@ -955,7 +954,7 @@ class TestCollection(IntegrationTest):
     def test_unique_index(self):
         db = self.db
 
-        with client_context.client.start_request():
+        with self.client.start_request():
             db.drop_collection("test")
             db.test.create_index("hello")
 
@@ -1041,7 +1040,7 @@ class TestCollection(IntegrationTest):
         docs.append({"four": 4})
         docs.append({"five": 5})
 
-        with client_context.client.start_request():
+        with self.client.start_request():
             db.test.insert(docs, manipulate=False, w=0)
             self.assertEqual(11000, db.error()['code'])
             self.assertEqual(1, db.test.count())
@@ -1093,7 +1092,7 @@ class TestCollection(IntegrationTest):
             db.test.insert, {"hello": {"a": 4, "b": 10}})
 
     def test_safe_insert(self):
-        with client_context.client.start_request():
+        with self.client.start_request():
             db = self.db
             db.drop_collection("test")
 
@@ -1145,7 +1144,7 @@ class TestCollection(IntegrationTest):
     def test_update_nmodified(self):
         db = self.db
         db.drop_collection("test")
-        used_write_commands = (client_context.client.max_wire_version > 1)
+        used_write_commands = (self.client.max_wire_version > 1)
 
         db.test.insert({'_id': 1})
         result = db.test.update({'_id': 1}, {'$set': {'x': 1}})
@@ -1190,7 +1189,7 @@ class TestCollection(IntegrationTest):
         self.assertEqual(2, db.test.find_one()["count"])
 
     def test_safe_update(self):
-        with client_context.client.start_request():
+        with self.client.start_request():
             db = self.db
             v113minus = client_context.version.at_least(1, 1, 3, -1)
             v19 = client_context.version.at_least(1, 9)
@@ -1264,7 +1263,7 @@ class TestCollection(IntegrationTest):
                             {})['n'])
 
     def test_safe_save(self):
-        with client_context.client.start_request():
+        with self.client.start_request():
             db = self.db
             db.drop_collection("test")
             db.test.create_index("hello", unique=True)
@@ -1844,7 +1843,7 @@ class TestCollection(IntegrationTest):
         self.db.test.update({"bar": "x"}, {"bar": "x" * (max_size - 32)})
 
     def test_insert_large_batch(self):
-        max_bson_size = client_context.client.max_bson_size
+        max_bson_size = self.client.max_bson_size
         if client_context.version.at_least(2, 5, 4, -1):
             # Write commands are limited to 16MB + 16k per batch
             big_string = 'x' * int(max_bson_size / 2)
@@ -1868,7 +1867,7 @@ class TestCollection(IntegrationTest):
 
         # Test that inserts fail after first error, unacknowledged.
         self.db.test.drop()
-        with client_context.client.start_request():
+        with self.client.start_request():
             self.assertTrue(self.db.test.insert(batch, w=0))
             self.assertEqual(1, self.db.test.count())
 
@@ -1887,7 +1886,7 @@ class TestCollection(IntegrationTest):
 
         # 2 batches, 2 errors, unacknowledged, continue on error
         self.db.test.drop()
-        with client_context.client.start_request():
+        with self.client.start_request():
             self.assertTrue(
                 self.db.test.insert(batch, continue_on_error=True, w=0))
             # Only the first and third documents should be inserted.
@@ -2002,7 +2001,7 @@ class TestCollection(IntegrationTest):
                 self.assertEqual(3, result.find_one({"_id": "cat"})["value"])
                 self.assertEqual(2, result.find_one({"_id": "dog"})["value"])
                 self.assertEqual(1, result.find_one({"_id": "mouse"})["value"])
-                client_context.client.drop_database('mrtestdb')
+                self.client.drop_database('mrtestdb')
 
         full_result = db.test.map_reduce(map, reduce,
                                          out='mrunittests', full_response=True)
@@ -2306,7 +2305,7 @@ class TestCollection(IntegrationTest):
                     son['foo'] += 2
                 return son
 
-        db = client_context.client.pymongo_test
+        db = self.client.pymongo_test
         db.add_son_manipulator(IncByTwo())
         c = db.test
         c.drop()

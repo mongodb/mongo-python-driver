@@ -310,7 +310,8 @@ class IntegrationTest(unittest.TestCase):
     @classmethod
     @client_context.require_connection
     def setUpClass(cls):
-        pass
+        cls.client = client_context.rs_or_standalone_client
+        cls.db = cls.client.pymongo_test
 
 
 class MockClientTest(unittest.TestCase):

@@ -138,11 +138,6 @@ class TestCursorNoConnect(unittest.TestCase):
 
 class TestCursor(IntegrationTest):
 
-    @classmethod
-    def setUpClass(cls):
-        super(TestCursor, cls).setUpClass()
-        cls.db = client_context.client.pymongo_test
-
     @client_context.require_version_min(2, 5, 3, -1)
     def test_max_time_ms(self):
         db = self.db
@@ -168,7 +163,7 @@ class TestCursor(IntegrationTest):
 
         self.assertTrue(coll.find_one(max_time_ms=1000))
 
-        client = client_context.client
+        client = self.client
         if "enableTestCommands=1" in client_context.cmd_line['argv']:
             # Cursor parses server timeout error in response to initial query.
             client.admin.command("configureFailPoint",
@@ -199,9 +194,9 @@ class TestCursor(IntegrationTest):
 
         # Send initial query before turning on failpoint.
         next(cursor)
-        client_context.client.admin.command("configureFailPoint",
-                                    "maxTimeAlwaysTimeOut",
-                                    mode="alwaysOn")
+        self.client.admin.command("configureFailPoint",
+                                  "maxTimeAlwaysTimeOut",
+                                  mode="alwaysOn")
         try:
             try:
                 # Iterate up to first getmore.
@@ -211,9 +206,9 @@ class TestCursor(IntegrationTest):
             else:
                 self.fail("ExecutionTimeout not raised")
         finally:
-            client_context.client.admin.command("configureFailPoint",
-                                        "maxTimeAlwaysTimeOut",
-                                        mode="off")
+            self.client.admin.command("configureFailPoint",
+                                      "maxTimeAlwaysTimeOut",
+                                      mode="off")
 
     def test_explain(self):
         a = self.db.test.find()
@@ -1101,8 +1096,14 @@ class TestCursor(IntegrationTest):
     def test_cursor_transfer(self):
 
         # This is just a test, don't try this at home...
-        self.db.test.remove({})
-        self.db.test.insert({'_id': i} for i in range(200))
+
+        # set_cursor_manager is only allowed on direct connections, not on
+        # replica set connections.
+        client = client_context.client
+        db = client.pymongo_test
+
+        db.test.remove({})
+        db.test.insert({'_id': i} for i in range(200))
 
         class CManager(CursorManager):
             def __init__(self, connection):
@@ -1112,12 +1113,11 @@ class TestCursor(IntegrationTest):
                 # Do absolutely nothing...
                 pass
 
-        client = self.db.connection
         try:
             with ignore_deprecations():
                 client.set_cursor_manager(CManager)
             docs = []
-            cursor = self.db.test.find().batch_size(10)
+            cursor = db.test.find().batch_size(10)
             docs.append(next(cursor))
             cursor.close()
             docs.extend(cursor)

@@ -169,11 +169,6 @@ class ClientUnitTest(unittest.TestCase, TestRequestMixin):
 
 class TestClient(IntegrationTest, TestRequestMixin):
 
-    @classmethod
-    def setUpClass(cls):
-        super(TestClient, cls).setUpClass()
-        cls.client = client_context.rs_or_standalone_client
-
     def test_constants(self):
         # Set bad defaults.
         MongoClient.HOST = "somedomainthatdoesntexist.org"

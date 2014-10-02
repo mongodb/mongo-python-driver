@@ -94,11 +94,6 @@ class TestGridFileNoConnect(unittest.TestCase):
 
 class TestGridFile(IntegrationTest):
 
-    @classmethod
-    def setUpClass(cls):
-        super(TestGridFile, cls).setUpClass()
-        cls.db = client_context.client.pymongo_test
-
     def setUp(self):
         self.db.drop_collection('fs.files')
         self.db.drop_collection('fs.chunks')

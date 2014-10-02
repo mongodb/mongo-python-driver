@@ -25,7 +25,7 @@ from bson.objectid import ObjectId
 from bson.son import SON
 from pymongo.mongo_client import MongoClient
 from pymongo.errors import ConfigurationError, OperationFailure
-from test import client_context, pair, unittest
+from test import client_context, pair, unittest, IntegrationTest
 from test.utils import get_client, connected
 
 
@@ -34,10 +34,9 @@ def setUpModule():
     pass
 
 
-class TestCommon(unittest.TestCase):
+class TestCommon(IntegrationTest):
 
     def test_uuid_subtype(self):
-        self.db = client_context.client.pymongo_test
         coll = self.db.uuid
         coll.drop()
 
