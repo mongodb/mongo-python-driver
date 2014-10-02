@@ -97,9 +97,9 @@ def create_mock_topology(seeds=None, set_name=None, monitor_class=MockMonitor):
         pool_class=MockPool,
         monitor_class=monitor_class)
 
-    c = Topology(topology_settings)
-    c.open()
-    return c
+    t = Topology(topology_settings)
+    t.open()
+    return t
 
 
 def got_ismaster(topology, server_address, ismaster_response):
@@ -189,34 +189,34 @@ class TestSingleServerTopology(TopologyTest):
                 'ok': 1,
                 'ismaster': False}),
         ]:
-            c = create_mock_topology()
+            t = create_mock_topology()
 
             # Can't select a server while the only server is of type Unknown.
             self.assertRaises(
                 ConnectionFailure,
-                c.select_servers, any_server_selector, server_wait_time=0)
+                t.select_servers, any_server_selector, server_wait_time=0)
 
-            got_ismaster(c, address, ismaster_response)
+            got_ismaster(t, address, ismaster_response)
 
             # Topology type never changes.
-            self.assertEqual(TOPOLOGY_TYPE.Single, c.description.topology_type)
+            self.assertEqual(TOPOLOGY_TYPE.Single, t.description.topology_type)
 
             # No matter whether the server is writable,
             # select_servers() returns it.
-            s = c.select_server(writable_server_selector)
+            s = t.select_server(writable_server_selector)
             self.assertEqual(server_type, s.description.server_type)
 
     def test_reopen(self):
-        c = create_mock_topology()
+        t = create_mock_topology()
 
         # Additional calls are permitted.
-        c.open()
-        c.open()
+        t.open()
+        t.open()
 
     def test_unavailable_seed(self):
-        c = create_mock_topology()
-        disconnected(c, address)
-        self.assertEqual(SERVER_TYPE.Unknown, get_type(c, 'a'))
+        t = create_mock_topology()
+        disconnected(t, address)
+        self.assertEqual(SERVER_TYPE.Unknown, get_type(t, 'a'))
 
     def test_round_trip_time(self):
         round_trip_time = 1
@@ -225,12 +225,12 @@ class TestSingleServerTopology(TopologyTest):
             def _check_with_socket(self, sock_info):
                 return IsMaster({'ok': 1}), round_trip_time
 
-        c = create_mock_topology(monitor_class=TestMonitor)
-        s = c.select_server(writable_server_selector)
+        t = create_mock_topology(monitor_class=TestMonitor)
+        s = t.select_server(writable_server_selector)
         self.assertEqual(1, s.description.round_trip_time)
 
         round_trip_time = 3
-        c.request_check_all()
+        t.request_check_all()
 
         # Average of 1 and 3.
         self.assertEqual(2, s.description.round_trip_time)
@@ -238,91 +238,91 @@ class TestSingleServerTopology(TopologyTest):
 
 class TestMultiServerTopology(TopologyTest):
     def test_reset(self):
-        c = create_mock_topology(set_name='rs')
-        got_ismaster(c, ('a', 27017), {
+        t = create_mock_topology(set_name='rs')
+        got_ismaster(t, ('a', 27017), {
             'ok': 1,
             'ismaster': True,
             'setName': 'rs',
             'hosts': ['a', 'b']})
 
-        got_ismaster(c, ('b', 27017), {
+        got_ismaster(t, ('b', 27017), {
             'ok': 1,
             'ismaster': False,
             'secondary': True,
             'setName': 'rs',
             'hosts': ['a', 'b']})
 
-        self.assertEqual(SERVER_TYPE.RSPrimary, get_type(c, 'a'))
-        self.assertEqual(SERVER_TYPE.RSSecondary, get_type(c, 'b'))
+        self.assertEqual(SERVER_TYPE.RSPrimary, get_type(t, 'a'))
+        self.assertEqual(SERVER_TYPE.RSSecondary, get_type(t, 'b'))
         self.assertEqual(TOPOLOGY_TYPE.ReplicaSetWithPrimary,
-                         c.description.topology_type)
+                         t.description.topology_type)
 
-        c.reset()
-        self.assertEqual(2, len(c.description.server_descriptions()))
-        self.assertEqual(SERVER_TYPE.Unknown, get_type(c, 'a'))
-        self.assertEqual(SERVER_TYPE.Unknown, get_type(c, 'b'))
-        self.assertEqual('rs', c.description.set_name)
+        t.reset()
+        self.assertEqual(2, len(t.description.server_descriptions()))
+        self.assertEqual(SERVER_TYPE.Unknown, get_type(t, 'a'))
+        self.assertEqual(SERVER_TYPE.Unknown, get_type(t, 'b'))
+        self.assertEqual('rs', t.description.set_name)
         self.assertEqual(TOPOLOGY_TYPE.ReplicaSetNoPrimary,
-                         c.description.topology_type)
+                         t.description.topology_type)
 
-        got_ismaster(c, ('a', 27017), {
+        got_ismaster(t, ('a', 27017), {
             'ok': 1,
             'ismaster': True,
             'setName': 'rs',
             'hosts': ['a', 'b']})
 
-        self.assertEqual(SERVER_TYPE.RSPrimary, get_type(c, 'a'))
-        self.assertEqual(SERVER_TYPE.Unknown, get_type(c, 'b'))
+        self.assertEqual(SERVER_TYPE.RSPrimary, get_type(t, 'a'))
+        self.assertEqual(SERVER_TYPE.Unknown, get_type(t, 'b'))
         self.assertEqual(TOPOLOGY_TYPE.ReplicaSetWithPrimary,
-                         c.description.topology_type)
+                         t.description.topology_type)
 
     def test_reset_server(self):
-        c = create_mock_topology(set_name='rs')
-        got_ismaster(c, ('a', 27017), {
+        t = create_mock_topology(set_name='rs')
+        got_ismaster(t, ('a', 27017), {
             'ok': 1,
             'ismaster': True,
             'setName': 'rs',
             'hosts': ['a', 'b']})
 
-        got_ismaster(c, ('b', 27017), {
+        got_ismaster(t, ('b', 27017), {
             'ok': 1,
             'ismaster': False,
             'secondary': True,
             'setName': 'rs',
             'hosts': ['a', 'b']})
 
-        c.reset_server(('a', 27017))
-        self.assertEqual(SERVER_TYPE.Unknown, get_type(c, 'a'))
-        self.assertEqual(SERVER_TYPE.RSSecondary, get_type(c, 'b'))
-        self.assertEqual('rs', c.description.set_name)
+        t.reset_server(('a', 27017))
+        self.assertEqual(SERVER_TYPE.Unknown, get_type(t, 'a'))
+        self.assertEqual(SERVER_TYPE.RSSecondary, get_type(t, 'b'))
+        self.assertEqual('rs', t.description.set_name)
         self.assertEqual(TOPOLOGY_TYPE.ReplicaSetNoPrimary,
-                         c.description.topology_type)
+                         t.description.topology_type)
 
-        got_ismaster(c, ('a', 27017), {
+        got_ismaster(t, ('a', 27017), {
             'ok': 1,
             'ismaster': True,
             'setName': 'rs',
             'hosts': ['a', 'b']})
 
-        self.assertEqual(SERVER_TYPE.RSPrimary, get_type(c, 'a'))
+        self.assertEqual(SERVER_TYPE.RSPrimary, get_type(t, 'a'))
         self.assertEqual(TOPOLOGY_TYPE.ReplicaSetWithPrimary,
-                         c.description.topology_type)
+                         t.description.topology_type)
 
-        c.reset_server(('b', 27017))
-        self.assertEqual(SERVER_TYPE.RSPrimary, get_type(c, 'a'))
-        self.assertEqual(SERVER_TYPE.Unknown, get_type(c, 'b'))
-        self.assertEqual('rs', c.description.set_name)
+        t.reset_server(('b', 27017))
+        self.assertEqual(SERVER_TYPE.RSPrimary, get_type(t, 'a'))
+        self.assertEqual(SERVER_TYPE.Unknown, get_type(t, 'b'))
+        self.assertEqual('rs', t.description.set_name)
         self.assertEqual(TOPOLOGY_TYPE.ReplicaSetWithPrimary,
-                         c.description.topology_type)
+                         t.description.topology_type)
 
     def test_reset_removed_server(self):
-        c = create_mock_topology(set_name='rs')
+        t = create_mock_topology(set_name='rs')
 
         # No error resetting a server not in the TopologyDescription.
-        c.reset_server(('b', 27017))
+        t.reset_server(('b', 27017))
 
         # Server was *not* added as type Unknown.
-        self.assertFalse(c.has_server(('b', 27017)))
+        self.assertFalse(t.has_server(('b', 27017)))
 
     def test_discover_set_name_from_primary(self):
         # Discovering a replica set without the setName supplied by the user
@@ -332,32 +332,32 @@ class TestMultiServerTopology(TopologyTest):
             pool_class=MockPool,
             monitor_class=MockMonitor)
 
-        c = Topology(topology_settings)
-        self.assertEqual(c.description.set_name, None)
-        self.assertEqual(c.description.topology_type,
+        t = Topology(topology_settings)
+        self.assertEqual(t.description.set_name, None)
+        self.assertEqual(t.description.topology_type,
                          TOPOLOGY_TYPE.ReplicaSetNoPrimary)
 
-        got_ismaster(c, address, {
+        got_ismaster(t, address, {
             'ok': 1,
             'ismaster': True,
             'setName': 'rs',
             'hosts': ['a']})
 
-        self.assertEqual(c.description.set_name, 'rs')
-        self.assertEqual(c.description.topology_type,
+        self.assertEqual(t.description.set_name, 'rs')
+        self.assertEqual(t.description.topology_type,
                          TOPOLOGY_TYPE.ReplicaSetWithPrimary)
 
         # Another response from the primary. Tests the code that processes
         # primary response when topology type is already ReplicaSetWithPrimary.
-        got_ismaster(c, address, {
+        got_ismaster(t, address, {
             'ok': 1,
             'ismaster': True,
             'setName': 'rs',
             'hosts': ['a']})
 
         # No change.
-        self.assertEqual(c.description.set_name, 'rs')
-        self.assertEqual(c.description.topology_type,
+        self.assertEqual(t.description.set_name, 'rs')
+        self.assertEqual(t.description.topology_type,
                          TOPOLOGY_TYPE.ReplicaSetWithPrimary)
 
     def test_discover_set_name_from_secondary(self):
@@ -368,38 +368,38 @@ class TestMultiServerTopology(TopologyTest):
             pool_class=MockPool,
             monitor_class=MockMonitor)
 
-        c = Topology(topology_settings)
-        self.assertEqual(c.description.set_name, None)
-        self.assertEqual(c.description.topology_type,
+        t = Topology(topology_settings)
+        self.assertEqual(t.description.set_name, None)
+        self.assertEqual(t.description.topology_type,
                          TOPOLOGY_TYPE.ReplicaSetNoPrimary)
 
-        got_ismaster(c, address, {
+        got_ismaster(t, address, {
             'ok': 1,
             'ismaster': False,
             'secondary': True,
             'setName': 'rs',
             'hosts': ['a']})
 
-        self.assertEqual(c.description.set_name, 'rs')
-        self.assertEqual(c.description.topology_type,
+        self.assertEqual(t.description.set_name, 'rs')
+        self.assertEqual(t.description.topology_type,
                          TOPOLOGY_TYPE.ReplicaSetNoPrimary)
 
     def test_wire_version(self):
-        c = create_mock_topology(set_name='rs')
-        c.description.check_compatible()  # No error.
+        t = create_mock_topology(set_name='rs')
+        t.description.check_compatible()  # No error.
 
-        got_ismaster(c, address, {
+        got_ismaster(t, address, {
             'ok': 1,
             'ismaster': True,
             'setName': 'rs',
             'hosts': ['a']})
 
         # Use defaults.
-        server = c.get_server_by_address(address)
+        server = t.get_server_by_address(address)
         self.assertEqual(server.description.min_wire_version, 0)
         self.assertEqual(server.description.max_wire_version, 0)
 
-        got_ismaster(c, address, {
+        got_ismaster(t, address, {
             'ok': 1,
             'ismaster': True,
             'setName': 'rs',
@@ -411,7 +411,7 @@ class TestMultiServerTopology(TopologyTest):
         self.assertEqual(server.description.max_wire_version, 5)
 
         # Incompatible.
-        got_ismaster(c, address, {
+        got_ismaster(t, address, {
             'ok': 1,
             'ismaster': True,
             'setName': 'rs',
@@ -420,7 +420,7 @@ class TestMultiServerTopology(TopologyTest):
             'maxWireVersion': 12})
 
         try:
-            c.select_servers(any_server_selector)
+            t.select_servers(any_server_selector)
         except ConfigurationError as e:
             # Error message should say which server failed and why.
             self.assertTrue('a:27017' in str(e))
@@ -429,20 +429,20 @@ class TestMultiServerTopology(TopologyTest):
             self.fail('No error with incompatible wire version')
 
     def test_max_write_batch_size(self):
-        c = create_mock_topology(seeds=['a', 'b'], set_name='rs')
+        t = create_mock_topology(seeds=['a', 'b'], set_name='rs')
 
         def write_batch_size():
-            s = c.select_server(writable_server_selector)
+            s = t.select_server(writable_server_selector)
             return s.description.max_write_batch_size
 
-        got_ismaster(c, ('a', 27017), {
+        got_ismaster(t, ('a', 27017), {
             'ok': 1,
             'ismaster': True,
             'setName': 'rs',
             'hosts': ['a', 'b'],
             'maxWriteBatchSize': 1})
 
-        got_ismaster(c, ('b', 27017), {
+        got_ismaster(t, ('b', 27017), {
             'ok': 1,
             'ismaster': False,
             'secondary': True,
@@ -454,7 +454,7 @@ class TestMultiServerTopology(TopologyTest):
         self.assertEqual(1, write_batch_size())
 
         # b becomes primary.
-        got_ismaster(c, ('b', 27017), {
+        got_ismaster(t, ('b', 27017), {
             'ok': 1,
             'ismaster': True,
             'setName': 'rs',
@@ -479,14 +479,14 @@ class TestTopologyErrors(TopologyTest):
                 else:
                     raise socket.error()
 
-        c = create_mock_topology(monitor_class=TestMonitor)
+        t = create_mock_topology(monitor_class=TestMonitor)
         # Await first ismaster call.
-        s = c.select_server(writable_server_selector)
+        s = t.select_server(writable_server_selector)
         self.assertEqual(1, ismaster_count[0])
         pool_id = s.pool.pool_id
 
         # Pool is reset by ismaster failure.
-        c.request_check_all()
+        t.request_check_all()
         self.assertNotEqual(pool_id, s.pool.pool_id)
 
     def test_ismaster_retry(self):
@@ -501,17 +501,17 @@ class TestTopologyErrors(TopologyTest):
                 else:
                     raise socket.error()
 
-        c = create_mock_topology(monitor_class=TestMonitor)
+        t = create_mock_topology(monitor_class=TestMonitor)
 
         # Await first ismaster call.
-        s = c.select_server(writable_server_selector)
+        s = t.select_server(writable_server_selector)
         self.assertEqual(1, ismaster_count[0])
         self.assertEqual(SERVER_TYPE.Standalone, s.description.server_type)
 
         # Second ismaster call, then immediately the third.
-        c.request_check_all()
+        t.request_check_all()
         self.assertEqual(3, ismaster_count[0])
-        self.assertEqual(SERVER_TYPE.Standalone, get_type(c, 'a'))
+        self.assertEqual(SERVER_TYPE.Standalone, get_type(t, 'a'))
 
     def test_selection_failure(self):
         # While ismaster fails, ensure it's called about every 10 ms.
@@ -522,11 +522,11 @@ class TestTopologyErrors(TopologyTest):
                 ismaster_count[0] += 1
                 raise socket.error()
 
-        c = create_mock_topology(monitor_class=TestMonitor)
+        t = create_mock_topology(monitor_class=TestMonitor)
 
         self.assertRaises(
             ConnectionFailure,
-            c.select_servers, any_server_selector, server_wait_time=0.5)
+            t.select_servers, any_server_selector, server_wait_time=0.5)
 
         self.assertTrue(
             25 <= ismaster_count[0] <= 100,
