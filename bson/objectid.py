@@ -158,10 +158,9 @@ class ObjectId(object):
         oid += struct.pack(">H", os.getpid() % 0xFFFF)
 
         # 3 bytes inc
-        ObjectId._inc_lock.acquire()
-        oid += struct.pack(">i", ObjectId._inc)[1:4]
-        ObjectId._inc = (ObjectId._inc + 1) % 0xFFFFFF
-        ObjectId._inc_lock.release()
+        with ObjectId._inc_lock:
+            oid += struct.pack(">i", ObjectId._inc)[1:4]
+            ObjectId._inc = (ObjectId._inc + 1) % 0xFFFFFF
 
         self.__id = oid
 

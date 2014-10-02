@@ -339,15 +339,8 @@ class Pool:
         self.pool_id += 1
         self.pid = os.getpid()
 
-        sockets = None
-        try:
-            # Swapping variables is not atomic. We need to ensure no other
-            # thread is modifying self.sockets, or replacing it, in this
-            # critical section.
-            self.lock.acquire()
+        with self.lock:
             sockets, self.sockets = self.sockets, set()
-        finally:
-            self.lock.release()
 
         for sock_info in sockets:
             sock_info.close()
@@ -477,15 +470,11 @@ class Pool:
 
         # We've now acquired the semaphore and must release it on error.
         try:
-            sock_info, from_pool = None, None
             try:
-                try:
-                    # set.pop() isn't atomic in Jython less than 2.7, see
-                    # http://bugs.jython.org/issue1854
-                    self.lock.acquire()
+                # set.pop() isn't atomic in Jython less than 2.7, see
+                # http://bugs.jython.org/issue1854
+                with self.lock:
                     sock_info, from_pool = self.sockets.pop(), True
-                finally:
-                    self.lock.release()
             except KeyError:
                 sock_info, from_pool = self.connect(), False
 
@@ -551,8 +540,7 @@ class Pool:
     def _return_socket(self, sock_info):
         """Return socket to the pool. If pool is full the socket is discarded.
         """
-        try:
-            self.lock.acquire()
+        with self.lock:
             max_size = self.opts.max_pool_size
             too_many_sockets = (max_size is not None
                                 and len(self.sockets) >= max_size)
@@ -561,8 +549,6 @@ class Pool:
                 self.sockets.add(sock_info)
             else:
                 sock_info.close()
-        finally:
-            self.lock.release()
 
         self._socket_semaphore.release()
 

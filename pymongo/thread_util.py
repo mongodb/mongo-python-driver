@@ -37,6 +37,12 @@ class DummyLock(object):
     def release(self):
         pass
 
+    def __enter__(self):
+        pass
+
+    def __exit__(self, t, v, tb):
+        pass
+
 
 class ThreadIdent(object):
     def __init__(self):
@@ -70,13 +76,10 @@ class ThreadIdent(object):
         # Threadlocals in Python <= 2.7.0 have race conditions when setting
         # attributes and possibly when getting them, too, leading to weakref
         # callbacks not getting called later.
-        self._lock.acquire()
-        try:
+        with self._lock:
             vigil = getattr(self._local, 'vigil', None)
             if not vigil:
                 self._local.vigil = vigil = ThreadIdent.ThreadVigil()
-        finally:
-            self._lock.release()
 
         return vigil
 

@@ -104,10 +104,9 @@ class URLGetterThread(threading.Thread):
 
                 self.errors += 1
 
-            URLGetterThread.counter_lock.acquire()
-            URLGetterThread.counter += 1
-            counter = URLGetterThread.counter
-            URLGetterThread.counter_lock.release()
+            with URLGetterThread.counter_lock:
+                URLGetterThread.counter += 1
+                counter = URLGetterThread.counter
 
             should_print = options.verbose and not counter % 1000
 
