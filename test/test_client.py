@@ -65,14 +65,14 @@ from test.utils import (assertRaisesExactly,
                         remove_all_users,
                         server_is_master_with_slave,
                         TestRequestMixin,
-                        _TestLazyConnectMixin,
                         get_pool,
                         one,
                         connected,
                         wait_until,
                         rs_or_single_client,
                         rs_or_single_client_noauth,
-                        lazy_client_trial)
+                        lazy_client_trial,
+                        NTHREADS)
 
 
 class ClientUnitTest(unittest.TestCase, TestRequestMixin):
@@ -1103,9 +1103,94 @@ class TestClientProperties(MockClientTest):
         self.assertEqual(expected_max, c.max_wire_version)
 
 
-class TestClientLazyConnect(IntegrationTest, _TestLazyConnectMixin):
+class TestClientLazyConnect(IntegrationTest):
+    """Test concurrent operations on a lazily-connecting MongoClient."""
+
     def _get_client(self):
         return rs_or_single_client(connection_string(), connect=False)
+
+    def test_insert(self):
+        def reset(collection):
+            collection.drop()
+
+        def insert(collection, _):
+            collection.insert({})
+
+        def test(collection):
+            self.assertEqual(NTHREADS, collection.count())
+
+        lazy_client_trial(reset, insert, test, self._get_client)
+
+    def test_save(self):
+        def reset(collection):
+            collection.drop()
+
+        def save(collection, _):
+            collection.save({})
+
+        def test(collection):
+            self.assertEqual(NTHREADS, collection.count())
+
+        lazy_client_trial(reset, save, test, self._get_client)
+
+    def test_update(self):
+        def reset(collection):
+            collection.drop()
+            collection.insert([{'i': 0}])
+
+        # Update doc 10 times.
+        def update(collection, i):
+            collection.update({}, {'$inc': {'i': 1}})
+
+        def test(collection):
+            self.assertEqual(NTHREADS, collection.find_one()['i'])
+
+        lazy_client_trial(reset, update, test, self._get_client)
+
+    def test_remove(self):
+        def reset(collection):
+            collection.drop()
+            collection.insert([{'i': i} for i in range(NTHREADS)])
+
+        def remove(collection, i):
+            collection.remove({'i': i})
+
+        def test(collection):
+            self.assertEqual(0, collection.count())
+
+        lazy_client_trial(reset, remove, test, self._get_client)
+
+    def test_find_one(self):
+        results = []
+
+        def reset(collection):
+            collection.drop()
+            collection.insert({})
+            results[:] = []
+
+        def find_one(collection, _):
+            results.append(collection.find_one())
+
+        def test(collection):
+            self.assertEqual(NTHREADS, len(results))
+
+        lazy_client_trial(reset, find_one, test, self._get_client)
+
+    def test_max_bson_size(self):
+        # Client should have sane defaults before connecting, and should update
+        # its configuration once connected.
+        c = self._get_client()
+        self.assertEqual(16 * (1024 ** 2), c.max_bson_size)
+        self.assertEqual(2 * c.max_bson_size, c.max_message_size)
+
+        # Make the client connect, so that it sets its max_bson_size and
+        # max_message_size attributes.
+        ismaster = c.db.command('ismaster')
+        self.assertEqual(ismaster['maxBsonObjectSize'], c.max_bson_size)
+        if 'maxMessageSizeBytes' in ismaster:
+            self.assertEqual(
+                ismaster['maxMessageSizeBytes'],
+                c.max_message_size)
 
 
 class TestClientLazyConnectBadSeeds(IntegrationTest):
