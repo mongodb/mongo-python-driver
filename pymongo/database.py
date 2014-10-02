@@ -209,7 +209,9 @@ class Database(common.BaseObject):
           - `name`: the name of the collection to get
         """
         if name.startswith('_'):
-            return super(Database, self).__getattr__(name)
+            raise AttributeError(
+                "Database has no attribute %r. To access the %s"
+                " collection, use database[%r]." % (name, name, name))
         return self.__getitem__(name)
 
     def __getitem__(self, name):

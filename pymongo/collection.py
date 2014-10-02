@@ -154,7 +154,11 @@ class Collection(common.BaseObject):
           - `name`: the name of the collection to get
         """
         if name.startswith('_'):
-            return super(Collection, self).__getattr__(name)
+            full_name = '%s.%s' % (self.__name, name)
+            raise AttributeError(
+                "Collection has no attribute %r. To access the %s"
+                " collection, use database['%s']." % (
+                    name, full_name, full_name))
         return self.__getitem__(name)
 
     def __getitem__(self, name):

@@ -94,8 +94,14 @@ class TestDatabaseNoConnect(unittest.TestCase):
         db = self.client.pymongo_test
         self.assertTrue(isinstance(db['_does_not_exist'], Collection))
 
-        with self.assertRaises(AttributeError):
+        with self.assertRaises(AttributeError) as context:
             db._does_not_exist
+
+        # Message should be: "AttributeError: Database has no attribute
+        # '_does_not_exist'. To access the _does_not_exist collection,
+        # use database['_does_not_exist']".
+        self.assertIn("has no attribute '_does_not_exist'",
+                      str(context.exception))
 
     def test_iteration(self):
         self.assertRaises(TypeError, next, self.client.pymongo_test)

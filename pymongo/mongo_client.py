@@ -946,7 +946,9 @@ class MongoClient(common.BaseObject):
           - `name`: the name of the database to get
         """
         if name.startswith('_'):
-            return super(MongoClient, self).__getattr__(name)
+            raise AttributeError(
+                "MongoClient has no attribute %r. To access the %s"
+                " database, use client[%r]." % (name, name, name))
         return self.__getitem__(name)
 
     def __getitem__(self, name):

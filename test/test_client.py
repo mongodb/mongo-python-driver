@@ -136,8 +136,14 @@ class ClientUnitTest(unittest.TestCase, TestRequestMixin):
     def test_getattr(self):
         self.assertTrue(isinstance(self.client['_does_not_exist'], Database))
 
-        with self.assertRaises(AttributeError):
+        with self.assertRaises(AttributeError) as context:
             self.client._does_not_exist
+
+        # Message should be:
+        # "AttributeError: MongoClient has no attribute '_does_not_exist'. To
+        # access the _does_not_exist database, use client['_does_not_exist']".
+        self.assertIn("has no attribute '_does_not_exist'",
+                      str(context.exception))
 
     def test_iteration(self):
         def iterate():

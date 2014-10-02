@@ -90,8 +90,15 @@ class TestCollectionNoConnect(unittest.TestCase):
         coll = self.db.test
         self.assertTrue(isinstance(coll['_does_not_exist'], Collection))
 
-        with self.assertRaises(AttributeError):
+        with self.assertRaises(AttributeError) as context:
             coll._does_not_exist
+
+        # Message should be:
+        # "AttributeError: Collection has no attribute '_does_not_exist'. To
+        # access the test._does_not_exist collection, use
+        # database['test._does_not_exist']."
+        self.assertIn("has no attribute '_does_not_exist'",
+                      str(context.exception))
 
     def test_iteration(self):
         self.assertRaises(TypeError, next, self.db)
