@@ -491,9 +491,6 @@ class _TestLazyConnectMixin(object):
     """
     use_greenlets = False
 
-    NTRIALS = 5
-    NTHREADS = 10
-
     def test_insert(self):
         def reset(collection):
             collection.drop()
