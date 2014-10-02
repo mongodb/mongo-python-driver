@@ -114,8 +114,7 @@ def start_replica_set(members, auth=False, fresh=True):
 
         try:
             os.makedirs(dbpath)
-        except OSError:
-            exc = sys.exc_info()[1]
+        except OSError as exc:
             print(exc)
             print("\tWhile creating %s" % (dbpath,))
 
@@ -167,10 +166,9 @@ def start_replica_set(members, auth=False, fresh=True):
             print('rs.initiate(%s)' % (config,))
 
         c.admin.command('replSetInitiate', config)
-    except pymongo.errors.OperationFailure:
+    except pymongo.errors.OperationFailure as exc:
         # Already initialized from a previous run?
         if ha_tools_debug:
-            exc = sys.exc_info()[1]
             print(exc)
 
     expected_arbiters = 0
