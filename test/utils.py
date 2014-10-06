@@ -630,7 +630,7 @@ class _TestExhaustCursorMixin(object):
 
         # Enough data to ensure it streams down for a few milliseconds.
         long_str = 'a' * (256 * 1024)
-        collection.insert([{'a': long_str} for _ in range(200)])
+        collection.insert([{'a': long_str} for _ in range(500)])
 
         pool = get_pool(client)
         pool._check_interval_seconds = None  # Never check.
