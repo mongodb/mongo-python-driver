@@ -392,7 +392,7 @@ class TestClient(IntegrationTest, TestRequestMixin):
 
     @client_context.require_auth
     def test_auth_from_uri(self):
-        self.client.admin.add_user("admin", "pass")
+        self.client.admin.add_user("admin", "pass", roles=["root"])
         try:
             self.client.pymongo_test.add_user(
                 "user", "pass", roles=['userAdmin', 'readWrite'])

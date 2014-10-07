@@ -53,7 +53,11 @@ from test import (client_context,
                   port,
                   pair,
                   IntegrationTest)
-from test.utils import remove_all_users, server_started_with_auth
+from test.utils import (
+    ignore_deprecations,
+    remove_all_users,
+    server_started_with_auth)
+
 
 if PY3:
     long = int
@@ -392,17 +396,18 @@ class TestDatabase(IntegrationTest):
                 self.assertRaises(DeprecationWarning, db.add_user,
                                   "user", "password", True)
 
-            self.assertRaises(ConfigurationError, db.add_user,
-                              "user", "password", digestPassword=True)
+            with ignore_deprecations():
+                self.assertRaises(ConfigurationError, db.add_user,
+                                  "user", "password", digestPassword=True)
 
-        self.client.admin.add_user("admin", "password")
+        self.client.admin.add_user("admin", "password", roles=["root"])
         auth_c = MongoClient(pair)
         auth_c.admin.authenticate("admin", "password")
         db = auth_c.pymongo_test
 
         try:
             # Add / authenticate / remove
-            db.add_user("mike", "password")
+            db.add_user("mike", "password", roles=["dbOwner"])
             self.assertRaises(TypeError, db.authenticate, 5, "password")
             self.assertRaises(TypeError, db.authenticate, "mike", 5)
             self.assertRaises(OperationFailure,
@@ -421,9 +426,9 @@ class TestDatabase(IntegrationTest):
             # Add / authenticate / change password
             self.assertRaises(OperationFailure,
                               db.authenticate, "Gustave", u("Dor\xe9"))
-            db.add_user("Gustave", u("Dor\xe9"))
+            db.add_user("Gustave", u("Dor\xe9"), roles=["dbOwner"])
             self.assertTrue(db.authenticate("Gustave", u("Dor\xe9")))
-            db.add_user("Gustave", "password")
+            db.add_user("Gustave", "password", roles=["dbOwner"])
             db.logout()
             self.assertRaises(OperationFailure,
                               db.authenticate, "Gustave", u("Dor\xe9"))
@@ -431,7 +436,9 @@ class TestDatabase(IntegrationTest):
 
             if not client_context.version.at_least(2, 5, 3, -1):
                 # Add a readOnly user
-                db.add_user("Ross", "password", read_only=True)
+                with ignore_deprecations():
+                    db.add_user("Ross", "password", read_only=True)
+
                 db.logout()
                 self.assertTrue(db.authenticate("Ross", u("password")))
                 self.assertTrue(db.system.users.find({"readOnly": True}).count())
@@ -447,7 +454,7 @@ class TestDatabase(IntegrationTest):
     def test_make_user_readonly(self):
         auth_c = MongoClient(pair)
         admin = auth_c.admin
-        self.client.admin.add_user('admin', 'pw')
+        self.client.admin.add_user('admin', 'pw', roles=['root'])
         admin.authenticate('admin', 'pw')
 
         db = auth_c.pymongo_test
@@ -479,7 +486,9 @@ class TestDatabase(IntegrationTest):
     @client_context.require_auth
     def test_default_roles(self):
         # "Admin" user
-        self.client.admin.add_user('admin', 'pass')
+        with ignore_deprecations():
+            self.client.admin.add_user('admin', 'pass')
+
         auth_c = MongoClient(pair)
         db = auth_c.admin
         try:
