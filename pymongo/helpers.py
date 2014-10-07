@@ -143,8 +143,8 @@ def _check_command_response(response, reset, msg=None, allowable_errors=None):
         # for some errors.
         if "raw" in response:
             for shard in response["raw"].itervalues():
-                if not shard.get("ok"):
-                    # Just grab the first error...
+                # Grab the first non-empty raw error from a shard.
+                if shard.get("errmsg") and not shard.get("ok"):
                     details = shard
                     break
 
