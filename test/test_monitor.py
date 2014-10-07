@@ -22,7 +22,7 @@ sys.path[0:0] = [""]
 
 from pymongo.monitor import MONITORS
 from test import unittest, port, host, IntegrationTest
-from test.utils import single_client, wait_until
+from test.utils import single_client, wait_until, one
 
 
 class TestMonitor(IntegrationTest):
@@ -33,12 +33,16 @@ class TestMonitor(IntegrationTest):
         wait_until(lambda: MONITORS - prior_monitors,
                    'register new monitor')
 
+        # Just one new monitor should have been registered.
+        new_monitor_refs = MONITORS - prior_monitors
+        self.assertEqual(1, len(new_monitor_refs))
+        monitor_ref = one(new_monitor_refs)
         del client
 
         start = time.time()
         while time.time() - start < 30:
             gc.collect()
-            if MONITORS - prior_monitors:
+            if monitor_ref not in MONITORS:
                 # New monitor was unregistered.
                 break
 
