@@ -293,7 +293,6 @@ class TestThreadsAuth(IntegrationTest):
         super(TestThreadsAuth, cls).setUpClass()
 
     def setUp(self):
-        self.client = rs_or_single_client()
         self.client.admin.add_user('admin-user', 'password',
                                    roles=['clusterAdmin',
                                           'dbAdminAnyDatabase',
