@@ -338,12 +338,6 @@ class MockClientTest(unittest.TestCase):
         super(MockClientTest, self).tearDown()
 
 
-def connection_string(seeds=[pair]):
-    if client_context.auth_enabled:
-        return "mongodb://%s:%s@%s" % (db_user, db_pwd, ','.join(seeds))
-    return "mongodb://%s" % ','.join(seeds)
-
-
 def setup():
     warnings.resetwarnings()
     warnings.simplefilter("always")

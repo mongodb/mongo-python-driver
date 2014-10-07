@@ -51,8 +51,8 @@ from pymongo.errors import (DocumentTooLarge,
 from test.test_client import IntegrationTest
 from test.utils import (is_mongos, joinall, enable_text_search, get_pool,
                         oid_generated_on_client, one, ignore_deprecations,
-                        get_client)
-from test import client_context, host, port, pair, qcheck, unittest
+                        rs_or_single_client)
+from test import client_context, host, port, qcheck, unittest
 
 
 class TestCollectionNoConnect(unittest.TestCase):
@@ -1728,7 +1728,7 @@ class TestCollection(IntegrationTest):
         # Insert enough documents to require more than one batch
         self.db.test.insert([{'i': i} for i in range(150)])
 
-        client = get_client(pair, max_pool_size=1)
+        client = rs_or_single_client(max_pool_size=1)
         socks = get_pool(client).sockets
 
         # Make sure the socket is returned after exhaustion.

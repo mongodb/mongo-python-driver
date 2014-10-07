@@ -37,11 +37,52 @@ from test import (client_context,
 from test.version import Version
 
 
-def get_client(*args, **kwargs):
-    client = MongoClient(*args, **kwargs)
-    if client_context.auth_enabled and kwargs.get("connect", True):
-        client.admin.authenticate(db_user, db_pwd)
-    return client
+def _connection_string_noauth(h, p):
+    if h.startswith("mongodb://"):
+        return h
+    return "mongodb://%s:%d" % (h, p)
+
+
+def _connection_string(h, p):
+    if h.startswith("mongodb://"):
+        return h
+    elif client_context.auth_enabled:
+        return "mongodb://%s:%s@%s:%d" % (db_user, db_pwd, h, p)
+    else:
+        return _connection_string_noauth(h, p)
+
+
+def single_client_noauth(h=host, p=port, **kwargs):
+    """Make a direct connection. Don't authenticate."""
+    return MongoClient(_connection_string_noauth(h, p), **kwargs)
+
+
+def single_client(h=host, p=port, **kwargs):
+    """Make a direct connection, and authenticate if necessary."""
+    return MongoClient(_connection_string(h, p), **kwargs)
+
+
+def rs_client_noauth(h=host, p=port, **kwargs):
+    """Connect to the replica set. Don't authenticate."""
+    return MongoClient(_connection_string_noauth(h, p),
+                       replicaSet=client_context.setname, **kwargs)
+
+
+def rs_client(h=host, p=port, **kwargs):
+    """Connect to the replica set and authenticate if necessary."""
+    return MongoClient(_connection_string(h, p),
+                       replicaSet=client_context.setname, **kwargs)
+
+
+def rs_or_single_client_noauth(h=host, p=port, **kwargs):
+    """Connect to the replica set if there is one, otherwise the standalone.
+
+    Like rs_or_single_client, but does not authenticate.
+    """
+    if client_context.setname:
+        return rs_client_noauth(h, p, **kwargs)
+    else:
+        return single_client_noauth(h, p, **kwargs)
 
 
 def rs_or_single_client(h=host, p=port, **kwargs):
@@ -50,21 +91,10 @@ def rs_or_single_client(h=host, p=port, **kwargs):
     Authenticates if necessary.
     """
     if client_context.setname:
-        return get_client(h, p, replicaSet=client_context.setname, **kwargs)
+        return rs_client(h, p, **kwargs)
     else:
-        return get_client(h, p, **kwargs)
+        return single_client(h, p, **kwargs)
 
-
-def rs_or_single_client_noauth(h=host, p=port, **kwargs):
-    """Connect to the replica set if there is one, otherwise the standalone.
-
-    Like rs_or_single_client, but does not authenticate.
-    """
-    # Just call MongoClient(), not get_client() which does auth.
-    if client_context.setname:
-        return MongoClient(h, p, replicaSet=client_context.setname, **kwargs)
-    else:
-        return MongoClient(h, p, **kwargs)
 
 def one(s):
     """Get one element of a set"""

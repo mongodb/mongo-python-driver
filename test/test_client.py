@@ -48,7 +48,6 @@ from pymongo.server_selectors import (any_server_selector,
 from pymongo.server_type import SERVER_TYPE
 from test import (client_context,
                   client_knobs,
-                  connection_string,
                   host,
                   pair,
                   port,
@@ -376,14 +375,9 @@ class TestClient(IntegrationTest, TestRequestMixin):
 
         coll.count()
 
-    def test_from_uri(self):
-        self.assertEqual(
-            self.client,
-            connected(rs_or_single_client("mongodb://%s:%d" % (host, port))))
-
     def test_bad_uri(self):
         with self.assertRaises(InvalidURI):
-            rs_or_single_client("http://localhost")
+            MongoClient("http://localhost")
 
     @client_context.require_auth
     def test_auth_from_uri(self):
@@ -393,7 +387,7 @@ class TestClient(IntegrationTest, TestRequestMixin):
                 "user", "pass", roles=['userAdmin', 'readWrite'])
 
             with self.assertRaises(OperationFailure):
-                connected(rs_or_single_client_noauth(
+                connected(rs_or_single_client(
                     "mongodb://a:b@%s:%d" % (host, port)))
 
             # No error.
@@ -403,19 +397,19 @@ class TestClient(IntegrationTest, TestRequestMixin):
             # Wrong database.
             uri = "mongodb://admin:pass@%s:%d/pymongo_test" % (host, port)
             with self.assertRaises(OperationFailure):
-                connected(rs_or_single_client_noauth(uri))
+                connected(rs_or_single_client(uri))
 
             # No error.
             connected(rs_or_single_client_noauth(
                 "mongodb://user:pass@%s:%d/pymongo_test" % (host, port)))
 
             # Auth with lazy connection.
-            rs_or_single_client_noauth(
+            rs_or_single_client(
                 "mongodb://user:pass@%s:%d/pymongo_test" % (host, port),
                 connect=False).pymongo_test.test.find_one()
 
             # Wrong password.
-            bad_client = rs_or_single_client_noauth(
+            bad_client = rs_or_single_client(
                 "mongodb://user:wrong@%s:%d/pymongo_test" % (host, port),
                 connect=False)
 
@@ -672,7 +666,7 @@ class TestClient(IntegrationTest, TestRequestMixin):
         self.assertFalse(locked)
 
     def test_contextlib(self):
-        client = rs_or_single_client(pair)
+        client = rs_or_single_client()
         client.pymongo_test.drop_collection("test")
         client.pymongo_test.test.insert({"foo": "bar"})
 
@@ -828,7 +822,7 @@ class TestClient(IntegrationTest, TestRequestMixin):
     def test_operation_failure_with_request(self):
         # Ensure MongoClient doesn't close socket after it gets an error
         # response to getLastError. PYTHON-395.
-        c = rs_or_single_client(pair)
+        c = rs_or_single_client()
         c.start_request()
         pool = get_pool(c)
 
@@ -912,7 +906,8 @@ class TestClient(IntegrationTest, TestRequestMixin):
         # when authenticating a new socket with cached credentials.
 
         # Get a client with one socket so we detect if it's leaked.
-        c = rs_or_single_client(max_pool_size=1, waitQueueTimeoutMS=1)
+        c = connected(rs_or_single_client(max_pool_size=1,
+                                          waitQueueTimeoutMS=1))
 
         # Simulate an authenticate() call on a different socket.
         credentials = auth._build_credentials_tuple(
@@ -1108,7 +1103,7 @@ class TestClientLazyConnect(IntegrationTest):
     """Test concurrent operations on a lazily-connecting MongoClient."""
 
     def _get_client(self):
-        return rs_or_single_client(connection_string(), connect=False)
+        return rs_or_single_client(connect=False)
 
     def test_insert(self):
         def reset(collection):
@@ -1198,7 +1193,10 @@ class TestClientLazyConnectBadSeeds(IntegrationTest):
     def _get_client(self):
         # Assume there are no open mongods listening on a.com, b.com, ....
         bad_seeds = ['%s.com' % chr(ord('a') + i) for i in range(10)]
-        return rs_or_single_client(bad_seeds, connect=False)
+        return MongoClient(
+            bad_seeds,
+            replicaSet=client_context.setname,
+            connect=False)
 
     def test_connect(self):
         def reset(dummy):

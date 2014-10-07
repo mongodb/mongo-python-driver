@@ -23,9 +23,8 @@ from pymongo.errors import CursorNotFound, InvalidOperation
 from test import (client_context,
                   unittest,
                   IntegrationTest,
-                  connection_string,
                   SkipTest)
-from test.utils import get_client
+from test.utils import single_client, rs_client
 
 
 class TestCursorManager(IntegrationTest):
@@ -62,7 +61,7 @@ class TestCursorManager(IntegrationTest):
                 test_case.close_was_called = True
                 super(CM, self).close(cursor_id)
 
-        client = get_client(max_pool_size=1)
+        client = single_client(max_pool_size=1)
         client.set_cursor_manager(CM)
 
         # Create a cursor on the same client so we're certain the getMore is
@@ -79,9 +78,7 @@ class TestCursorManager(IntegrationTest):
     def test_cursor_manager_prohibited_with_rs(self):
         # Test that kill_cursors() throws an error while the topology type
         # isn't Single or Sharded.
-        client = get_client(connection_string(),
-                            replicaSet=client_context.setname)
-
+        client = rs_client()
         client.set_cursor_manager(CursorManager)
         cursor = client.pymongo_test.test.find()
         next(cursor)

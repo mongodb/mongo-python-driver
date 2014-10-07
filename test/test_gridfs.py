@@ -34,12 +34,11 @@ from gridfs.errors import (FileExists,
                            NoFile)
 from test import (client_context,
                   client_knobs,
-                  connection_string,
                   unittest,
                   host,
                   port,
                   IntegrationTest)
-from test.utils import joinall, get_client, one
+from test.utils import joinall, single_client, one, rs_client
 
 
 class JustWrite(threading.Thread):
@@ -453,7 +452,7 @@ class TestGridfs(IntegrationTest):
 class TestGridfsReplicaSet(TestReplicaSetClientBase):
 
     def test_gridfs_replica_set(self):
-        rsc = self._get_client(
+        rsc = rs_client(
             w=self.w, wtimeout=5000,
             read_preference=ReadPreference.SECONDARY)
 
@@ -467,10 +466,10 @@ class TestGridfsReplicaSet(TestReplicaSetClientBase):
 
     def test_gridfs_secondary(self):
         primary_host, primary_port = self.primary
-        primary_connection = get_client(primary_host, primary_port)
+        primary_connection = single_client(primary_host, primary_port)
 
         secondary_host, secondary_port = one(self.secondaries)
-        secondary_connection = get_client(
+        secondary_connection = single_client(
             secondary_host, secondary_port,
             read_preference=ReadPreference.SECONDARY)
 
@@ -488,9 +487,9 @@ class TestGridfsReplicaSet(TestReplicaSetClientBase):
         # Should detect it's connected to secondary and not attempt to
         # create index.
         secondary_host, secondary_port = one(self.secondaries)
-        secondary_pair = '%s:%d' % (secondary_host, secondary_port)
-        client = MongoClient(
-            connection_string(seeds=[secondary_pair]),
+        client = single_client(
+            secondary_host,
+            secondary_port,
             read_preference=ReadPreference.SECONDARY,
             connect=False)
 

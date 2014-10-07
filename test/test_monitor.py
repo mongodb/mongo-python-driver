@@ -22,14 +22,14 @@ sys.path[0:0] = [""]
 
 from pymongo.monitor import MONITORS
 from test import unittest, port, host, IntegrationTest
-from test.utils import get_client, wait_until
+from test.utils import single_client, wait_until
 
 
 class TestMonitor(IntegrationTest):
     def test_atexit_hook(self):
         # Weakrefs to currently running Monitor instances.
         prior_monitors = MONITORS.copy()
-        client = get_client(host, port)
+        client = single_client(host, port)
         wait_until(lambda: MONITORS - prior_monitors,
                    'register new monitor')
 

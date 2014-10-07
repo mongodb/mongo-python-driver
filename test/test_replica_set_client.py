@@ -34,7 +34,7 @@ from pymongo.mongo_replica_set_client import MongoReplicaSetClient
 from pymongo.read_preferences import ReadPreference, Secondary, Nearest
 from test import (client_context,
                   client_knobs,
-                  connection_string,
+                  host,
                   IntegrationTest,
                   pair,
                   port,
@@ -47,7 +47,8 @@ from test.pymongo_mocks import MockClient
 from test.utils import (
     delay, assertReadFrom, assertReadFromAll, ignore_deprecations,
     read_from_which_host, assertRaisesExactly, TestRequestMixin, get_pools,
-    connected, wait_until, get_client, rs_or_single_client, one)
+    connected, wait_until, single_client, rs_or_single_client, one,
+    rs_client)
 from test.version import Version
 
 
@@ -77,10 +78,6 @@ class TestReplicaSetClientBase(IntegrationTest):
             partition_node(m['name']) for m in repl_set_status['members']
             if m['stateStr'] == 'SECONDARY')
 
-    def _get_client(self, **kwargs):
-        return get_client(connection_string(),
-                          replicaSet=self.name, **kwargs)
-
 
 class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
     def test_deprecated(self):
@@ -98,7 +95,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
 
     def test_repr(self):
         with ignore_deprecations():
-            client = MongoReplicaSetClient(connection_string(),
+            client = MongoReplicaSetClient(host, port,
                                            replicaSet=self.name)
 
         wait_until(lambda: client.primary == self.primary, "discover primary")
@@ -108,8 +105,8 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         # repr should be something like
         # MongoReplicaSetClient(["localhost:27017", "localhost:27018"]).
         self.assertIn("MongoReplicaSetClient([", repr(client))
-        for host in self.hosts:
-            self.assertIn("%s:%d" % host, repr(client))
+        for h in self.hosts:
+            self.assertIn("%s:%d" % h, repr(client))
 
     def test_properties(self):
         c = client_context.rs_client
@@ -190,7 +187,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
 
         # Disable background refresh.
         with client_knobs(heartbeat_frequency=999999):
-            c = self._get_client(socketTimeoutMS=3000)
+            c = rs_client(socketTimeoutMS=3000)
             collection = c.pymongo_test.test
             collection.insert({}, w=self.w)
 
@@ -246,7 +243,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         client.close()
 
     def _test_kill_cursor_explicit(self, read_pref):
-        c = self._get_client(read_preference=read_pref)
+        c = rs_client(read_preference=read_pref)
         db = c.pymongo_test
         db.drop_collection("test")
 
@@ -335,7 +332,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         raise SkipTest("Secondary pinning not implemented in PyMongo 3")
 
         latency = 1000 * 1000
-        client = self._get_client(secondaryacceptablelatencyms=latency)
+        client = rs_client(secondaryacceptablelatencyms=latency)
 
         host = read_from_which_host(client, ReadPreference.SECONDARY)
         self.assertTrue(host in client.secondaries)
@@ -376,7 +373,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
 
     def test_not_master_error(self):
         secondary_address = one(self.secondaries)
-        direct_client = get_client(secondary_address[0], secondary_address[1])
+        direct_client = single_client(*secondary_address)
         with self.assertRaises(NotMasterError):
             direct_client.pymongo_test.command('count', 'collection')
 

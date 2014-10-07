@@ -26,7 +26,7 @@ from bson.son import SON
 from pymongo.mongo_client import MongoClient
 from pymongo.errors import ConfigurationError, OperationFailure
 from test import client_context, pair, unittest, IntegrationTest
-from test.utils import get_client, connected
+from test.utils import connected, rs_or_single_client
 
 
 @client_context.require_connection
@@ -207,7 +207,7 @@ class TestCommon(IntegrationTest):
         self.assertEqual(wc.to_dict(), coll.write_concern)
 
     def test_mongo_client(self):
-        m = get_client(pair, w=0)
+        m = rs_or_single_client(w=0)
         coll = m.pymongo_test.write_concern_test
         coll.drop()
         doc = {"_id": ObjectId()}
@@ -216,16 +216,20 @@ class TestCommon(IntegrationTest):
         self.assertTrue(coll.insert(doc))
         self.assertRaises(OperationFailure, coll.insert, doc, w=1)
 
-        m = get_client(pair)
+        m = rs_or_single_client()
         coll = m.pymongo_test.write_concern_test
         self.assertTrue(coll.insert(doc, w=0))
         self.assertRaises(OperationFailure, coll.insert, doc)
         self.assertRaises(OperationFailure, coll.insert, doc, w=1)
 
-        m = get_client("mongodb://%s/" % (pair,))
+        m = MongoClient("mongodb://%s/" % (pair,),
+                        replicaSet=client_context.setname)
+
         coll = m.pymongo_test.write_concern_test
         self.assertRaises(OperationFailure, coll.insert, doc)
-        m = get_client("mongodb://%s/?w=0" % (pair,))
+        m = MongoClient("mongodb://%s/?w=0" % (pair,),
+                        replicaSet=client_context.setname)
+
         coll = m.pymongo_test.write_concern_test
         self.assertTrue(coll.insert(doc))
 

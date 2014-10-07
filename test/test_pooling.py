@@ -35,7 +35,7 @@ from pymongo.pool import (NO_REQUEST,
                           PoolOptions,
                           SocketInfo, _closed)
 from test import host, port, SkipTest, unittest, client_context
-from test.utils import get_pool, get_client, one
+from test.utils import get_pool, one, rs_or_single_client
 
 
 @client_context.require_connection
@@ -221,7 +221,7 @@ class _TestPoolingBase(unittest.TestCase):
     """Base class for all connection-pool tests."""
 
     def setUp(self):
-        self.c = get_client()
+        self.c = rs_or_single_client()
         db = self.c[DB]
         db.unique.drop()
         db.test.drop()
@@ -640,7 +640,7 @@ class TestPooling(_TestPoolingBase):
         except ImportError:
             raise SkipTest("No multiprocessing module")
 
-        a = get_client()
+        a = rs_or_single_client()
         a.pymongo_test.test.remove()
         a.pymongo_test.test.insert({'_id':1})
         a.pymongo_test.test.find_one()
@@ -648,7 +648,7 @@ class TestPooling(_TestPoolingBase):
         a_sock = one(get_pool(a).sockets)
 
         def loop(pipe):
-            c = get_client()
+            c = rs_or_single_client()
             c.pymongo_test.test.find_one()
             self.assertEqual(1, len(get_pool(c).sockets))
             pipe.send(one(get_pool(c).sockets).sock.getsockname())
@@ -789,7 +789,7 @@ class TestPoolMaxSize(_TestPoolingBase):
             if max_pool_size is not None and max_pool_size < nthreads:
                 raise AssertionError("Deadlock")
 
-        c = get_client(max_pool_size=max_pool_size)
+        c = rs_or_single_client(max_pool_size=max_pool_size)
         rendezvous = CreateAndReleaseSocket.Rendezvous(nthreads)
 
         threads = []
@@ -866,7 +866,7 @@ class TestPoolMaxSize(_TestPoolingBase):
 
     def _test_max_pool_size_no_rendezvous(self, start_request, end_request):
         max_pool_size = 5
-        c = get_client(max_pool_size=max_pool_size)
+        c = rs_or_single_client(max_pool_size=max_pool_size)
 
         # nthreads had better be much larger than max_pool_size to ensure that
         # max_pool_size sockets are actually required at some point in this

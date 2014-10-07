@@ -42,7 +42,7 @@ from test import (client_context,
                   IntegrationTest,
                   db_user,
                   db_pwd)
-from test.utils import connected, get_client, one, wait_until
+from test.utils import connected, single_client, one, wait_until, rs_client
 from test.version import Version
 
 
@@ -82,7 +82,7 @@ class TestReadPreferencesBase(TestReplicaSetClientBase):
                     connection_id, client.primary, client.secondaries))
 
     def assertReadsFrom(self, expected, **kwargs):
-        c = self._get_client(**kwargs)
+        c = rs_client(**kwargs)
         wait_until(
             lambda: len(c.nodes) == self.w,
             "discovered all nodes")
@@ -95,11 +95,13 @@ class TestReadPreferencesBase(TestReplicaSetClientBase):
 class TestReadPreferences(TestReadPreferencesBase):
     def test_mode_validation(self):
         for mode in ReadPreference:
-            self.assertEqual(mode, self._get_client(
-                read_preference=mode).read_preference)
+            self.assertEqual(
+                mode,
+                rs_client(read_preference=mode).read_preference)
 
-        self.assertRaises(ConfigurationError, self._get_client,
-            read_preference='foo')
+        self.assertRaises(
+            ConfigurationError,
+            rs_client, read_preference='foo')
 
     def test_tag_sets_validation(self):
         # Can't use tags with PRIMARY
@@ -111,16 +113,19 @@ class TestReadPreferences(TestReadPreferencesBase):
                           0, tag_sets=[{}])
 
         S = Secondary(tag_sets=[{}])
-        self.assertEqual([{}],
-            self._get_client(read_preference=S).read_preference.tag_sets)
+        self.assertEqual(
+            [{}],
+            rs_client(read_preference=S).read_preference.tag_sets)
 
         S = Secondary(tag_sets=[{'k': 'v'}])
-        self.assertEqual([{'k': 'v'}],
-            self._get_client(read_preference=S).read_preference.tag_sets)
+        self.assertEqual(
+            [{'k': 'v'}],
+            rs_client(read_preference=S).read_preference.tag_sets)
 
         S = Secondary(tag_sets=[{'k': 'v'}, {}])
-        self.assertEqual([{'k': 'v'}, {}],
-            self._get_client(read_preference=S).read_preference.tag_sets)
+        self.assertEqual(
+            [{'k': 'v'}, {}],
+            rs_client(read_preference=S).read_preference.tag_sets)
 
         self.assertRaises(ConfigurationError, Secondary, tag_sets=[])
 
@@ -132,15 +137,15 @@ class TestReadPreferences(TestReadPreferencesBase):
         self.assertRaises(ConfigurationError, Secondary, tag_sets=['foo'])
 
     def test_latency_validation(self):
-        self.assertEqual(17, self._get_client(
+        self.assertEqual(17, rs_client(
             latencyThresholdMS=17
         ).read_preference.latency_threshold_ms)
 
-        self.assertEqual(42, self._get_client(
+        self.assertEqual(42, rs_client(
             latencyThresholdMS=42
         ).read_preference.latency_threshold_ms)
 
-        self.assertEqual(666, self._get_client(
+        self.assertEqual(666, rs_client(
             latencythresholdms=666
         ).read_preference.latency_threshold_ms)
 
@@ -150,8 +155,9 @@ class TestReadPreferences(TestReadPreferencesBase):
 
     def test_primary_with_tags(self):
         # Tags not allowed with PRIMARY
-        self.assertRaises(ConfigurationError,
-            self._get_client, tag_sets=[{'dc': 'ny'}])
+        self.assertRaises(
+            ConfigurationError,
+            rs_client, tag_sets=[{'dc': 'ny'}])
 
     def test_primary_preferred(self):
         self.assertReadsFrom('primary',
@@ -168,7 +174,7 @@ class TestReadPreferences(TestReadPreferencesBase):
     def test_nearest(self):
         # With high latencyThresholdMS, expect to read from any
         # member
-        c = self._get_client(
+        c = rs_client(
             read_preference=ReadPreference.NEAREST,
             latencyThresholdMS=10000)  # 10 seconds
 
@@ -517,7 +523,7 @@ class TestMovingAverage(unittest.TestCase):
 class TestMongosConnection(IntegrationTest):
 
     def test_mongos_connection(self):
-        c = get_client(host, port)
+        c = single_client(host, port)
         is_mongos = utils.is_mongos(c)
 
         # Test default mode, PRIMARY
@@ -548,7 +554,7 @@ class TestMongosConnection(IntegrationTest):
                 None, [{}]
             ):
                 # Create a client e.g. with read_preference=NEAREST
-                c = connected(get_client(
+                c = connected(single_client(
                     host, port, read_preference=mode(tag_sets=tag_sets)))
 
                 self.assertEqual(is_mongos, c.is_mongos)
@@ -588,7 +594,7 @@ class TestMongosConnection(IntegrationTest):
                 [{'dc': 'la'}, {'dc': 'sf'}],
                 [{'dc': 'la'}, {'dc': 'sf'}, {}],
             ):
-                c = connected(get_client(
+                c = connected(single_client(
                     host, port, read_preference=mode(tag_sets=tag_sets)))
 
                 self.assertEqual(is_mongos, c.is_mongos)
@@ -602,7 +608,7 @@ class TestMongosConnection(IntegrationTest):
                         '$readPreference' in cursor._Cursor__query_spec())
 
     def test_only_secondary_ok_commands_have_read_prefs(self):
-        c = get_client(host, port, read_preference=ReadPreference.SECONDARY)
+        c = single_client(host, port, read_preference=ReadPreference.SECONDARY)
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", UserWarning)
