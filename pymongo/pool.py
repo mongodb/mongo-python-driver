@@ -535,8 +535,11 @@ class Pool:
         for sock_info in self.sockets:
             sock_info.close()
 
-        for request_sock in self._tid_to_sock.values():
-            if request_sock not in (NO_REQUEST, NO_SOCKET_YET):
+        # Don't use self._tid_to_sock.values(): 2to3 would translate to
+        # list(self._tid_to_sock.values()), but during interpreter shutdown
+        # list() may already be set to None.
+        for request_sock in self._tid_to_sock.itervalues():
+            if request_sock not in (None, -1):
                 request_sock.close()
 
 
