@@ -87,7 +87,7 @@ def shutdown_monitors():
         monitor = ref()
         if monitor:
             monitor.shutdown()
-            monitor.join()
+            monitor.join(10)
 atexit.register(shutdown_monitors)
 
 def _partition_node(node):
