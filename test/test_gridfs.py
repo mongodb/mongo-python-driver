@@ -400,6 +400,15 @@ class TestGridfs(unittest.TestCase):
         cursor.close()
         self.assertRaises(TypeError, self.fs.find, {}, {"_id": True})
 
+    def test_grid_in_non_int_chunksize(self):
+        # Lua, and perhaps other buggy GridFS clients, store size as a float.
+        data = b('data')
+        self.fs.put(data, filename='f')
+        self.db.fs.files.update({'filename': 'f'},
+                                {'$set': {'chunkSize': 100.0}})
+
+        self.assertEqual(data, self.fs.get_version('f').read())
+
 
 class TestGridfsReplicaSet(TestReplicaSetClientBase):
     def test_gridfs_replica_set(self):
