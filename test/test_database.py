@@ -658,10 +658,12 @@ class TestDatabase(unittest.TestCase):
             'errmsg': 'outer',
             'raw': {'shard0/host0,host1': {'ok': 0, 'errmsg': 'inner'}}}
 
-        with self.assertRaises(OperationFailure) as context:
+        try:
             helpers._check_command_response(error_document, reset=None)
-
-        self.assertEqual('inner', str(context.exception))
+        except OperationFailure, exc:
+            self.assertEqual('inner', str(exc))
+        else:
+            self.fail('OperationFailure not raised')
 
         # If a shard has no primary and you run a command like dbstats, which
         # cannot be run on a secondary, mongos's response includes empty "raw"
@@ -671,10 +673,12 @@ class TestDatabase(unittest.TestCase):
             'errmsg': 'outer',
             'raw': {'shard0/host0,host1': {}}}
 
-        with self.assertRaises(OperationFailure) as context:
+        try:
             helpers._check_command_response(error_document, reset=None)
-
-        self.assertEqual('outer', str(context.exception))
+        except OperationFailure, exc:
+            self.assertEqual('outer', str(exc))
+        else:
+            self.fail('OperationFailure not raised')
 
         # Raw error has ok: 0 but no errmsg. Not a known case, but test it.
         error_document = {
@@ -682,10 +686,12 @@ class TestDatabase(unittest.TestCase):
             'errmsg': 'outer',
             'raw': {'shard0/host0,host1': {'ok': 0}}}
 
-        with self.assertRaises(OperationFailure) as context:
+        try:
             helpers._check_command_response(error_document, reset=None)
-
-        self.assertEqual('outer', str(context.exception))
+        except OperationFailure, exc:
+            self.assertEqual('outer', str(exc))
+        else:
+            self.fail('OperationFailure not raised')
 
     def test_command_read_pref_warning(self):
         ctx = catch_warnings()
