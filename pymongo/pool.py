@@ -650,8 +650,11 @@ class Pool:
         for sock_info in self.sockets:
             sock_info.close()
 
+        # Close request sockets that aren't NO_REQUEST or NO_SOCKET_YET.
+        # Those globals may already be set to None during interpreter shutdown,
+        # so compare directly to None and -1.
         for request_sock in self._tid_to_sock.values():
-            if request_sock not in (NO_REQUEST, NO_SOCKET_YET):
+            if request_sock not in (None, -1):
                 request_sock.close()
 
 
