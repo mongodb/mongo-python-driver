@@ -5,6 +5,10 @@ Installing / Upgrading
 **PyMongo** is in the `Python Package Index
 <http://pypi.python.org/pypi/pymongo/>`_.
 
+.. warning:: **Do not install the "bson" package.** PyMongo comes with its own
+   bson package; doing "pip install bson" or "easy_install bson" installs a
+   third-party package that is incompatible with PyMongo.
+
 Microsoft Windows
 -----------------
 
