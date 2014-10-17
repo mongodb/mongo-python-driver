@@ -110,7 +110,7 @@ class GridIn(object):
             for the file
 
           - ``"chunkSize"`` or ``"chunk_size"``: size of each of the
-            chunks, in bytes (default: 256 kb)
+            chunks, in bytes (default: 255 kb)
 
           - ``"encoding"``: encoding used for this file. In Python 2,
             any :class:`unicode` that is written to the file will be
