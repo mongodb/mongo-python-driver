@@ -413,7 +413,7 @@ class TestGridfs(unittest.TestCase):
 class TestGridfsReplicaSet(TestReplicaSetClientBase):
     def test_gridfs_replica_set(self):
         rsc = self._get_client(
-            w=self.w, wtimeout=5000,
+            w=self.w, wtimeout=30000,
             read_preference=ReadPreference.SECONDARY)
 
         try:
