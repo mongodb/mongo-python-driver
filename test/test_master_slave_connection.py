@@ -338,36 +338,6 @@ class TestMasterSlaveConnection(unittest.TestCase, TestRequestMixin):
         self.assertRaises(OperationFailure,
                           self.db.test.save, {'username': 'mike'})
 
-    # NOTE this test is non-deterministic, but I expect
-    # some failures unless the db is pulling instantaneously...
-    def test_insert_find_one_with_slaves(self):
-        count = 0
-        for i in range(100):
-            self.db.test.remove({})
-            self.db.test.insert({"x": i})
-            try:
-                if i != self.db.test.find_one()["x"]:
-                    count += 1
-            except:
-                count += 1
-        self.assertTrue(count)
-
-    # NOTE this test is non-deterministic, but hopefully we pause long enough
-    # for the slaves to pull...
-    def test_insert_find_one_with_pause(self):
-        count = 0
-
-        self.db.test.remove({})
-        self.db.test.insert({"x": 5586})
-        time.sleep(11)
-        for _ in range(10):
-            try:
-                if 5586 != self.db.test.find_one()["x"]:
-                    count += 1
-            except:
-                count += 1
-        self.assertFalse(count)
-
     def test_kill_cursor_explicit(self):
         c = self.client
         c.read_preference = ReadPreference.SECONDARY_PREFERRED
