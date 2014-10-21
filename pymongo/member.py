@@ -145,6 +145,31 @@ class Member(object):
 
         return False
 
+    def get_socket(self, force=False):
+        sock_info = self.pool.get_socket(force)
+        sock_info.set_wire_version_range(self.min_wire_version,
+                                         self.max_wire_version)
+
+        return sock_info
+
+    def maybe_return_socket(self, sock_info):
+        self.pool.maybe_return_socket(sock_info)
+
+    def discard_socket(self, sock_info):
+        self.pool.discard_socket(sock_info)
+
+    def start_request(self):
+        self.pool.start_request()
+
+    def in_request(self):
+        return self.pool.in_request()
+
+    def end_request(self):
+        self.pool.end_request()
+
+    def reset(self):
+        self.pool.reset()
+
     def __str__(self):
         return '<Member "%s:%s" primary=%r>' % (
             self.host[0], self.host[1], self.is_primary)

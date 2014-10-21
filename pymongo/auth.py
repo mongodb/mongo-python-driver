@@ -44,7 +44,7 @@ from pymongo.errors import ConfigurationError, OperationFailure
 
 
 MECHANISMS = frozenset(
-    ['GSSAPI', 'MONGODB-CR', 'MONGODB-X509', 'PLAIN', 'SCRAM-SHA-1'])
+    ['GSSAPI', 'MONGODB-CR', 'MONGODB-X509', 'PLAIN', 'SCRAM-SHA-1', 'DEFAULT'])
 """The authentication mechanisms supported by PyMongo."""
 
 
@@ -327,6 +327,13 @@ def _authenticate_mongo_cr(credentials, sock_info, cmd_func):
     cmd_func(sock_info, source, query)
 
 
+def _authenticate_default(credentials, sock_info, cmd_func):
+    if sock_info.max_wire_version >= 3:
+        return _authenticate_scram_sha1(credentials, sock_info, cmd_func)
+    else:
+        return _authenticate_mongo_cr(credentials, sock_info, cmd_func)
+
+
 _AUTH_MAP = {
     'CRAM-MD5': _authenticate_cram_md5,
     'GSSAPI': _authenticate_gssapi,
@@ -334,6 +341,7 @@ _AUTH_MAP = {
     'MONGODB-X509': _authenticate_x509,
     'PLAIN': _authenticate_plain,
     'SCRAM-SHA-1': _authenticate_scram_sha1,
+    'DEFAULT': _authenticate_default,
 }
 
 

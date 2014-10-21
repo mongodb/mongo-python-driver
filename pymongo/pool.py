@@ -63,6 +63,9 @@ class SocketInfo(object):
         self.last_checkout = time.time()
         self.forced = False
 
+        self._min_wire_version = None
+        self._max_wire_version = None
+
         # The pool's pool_id changes with each reset() so we can close sockets
         # created before the last reset.
         self.pool_id = pool_id
@@ -74,6 +77,20 @@ class SocketInfo(object):
             self.sock.close()
         except:
             pass
+        
+    def set_wire_version_range(self, min_wire_version, max_wire_version):
+        self._min_wire_version = min_wire_version
+        self._max_wire_version = max_wire_version
+        
+    @property
+    def min_wire_version(self):
+        assert self._min_wire_version is not None
+        return self._min_wire_version
+        
+    @property
+    def max_wire_version(self):
+        assert self._max_wire_version is not None
+        return self._max_wire_version
 
     def __eq__(self, other):
         # Need to check if other is NO_REQUEST or NO_SOCKET_YET, and then check

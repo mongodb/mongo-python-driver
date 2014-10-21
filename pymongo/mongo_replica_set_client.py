@@ -704,7 +704,7 @@ class MongoReplicaSetClient(common.BaseObject):
                 raise ConnectionFailure(str(e))
 
         if username:
-            mechanism = options.get('authmechanism', 'MONGODB-CR')
+            mechanism = options.get('authmechanism', 'DEFAULT')
             source = (
                 options.get('authsource')
                 or self.__default_database_name
@@ -825,7 +825,7 @@ class MongoReplicaSetClient(common.BaseObject):
                 auth.authenticate(credentials, sock_info, self.__simple_command)
                 sock_info.authset.add(credentials)
             finally:
-                member.pool.maybe_return_socket(sock_info)
+                member.maybe_return_socket(sock_info)
 
         self.__auth_credentials[source] = credentials
 
@@ -1151,7 +1151,7 @@ class MongoReplicaSetClient(common.BaseObject):
                     sock_info = self.__socket(member, force=True)
                     response, ping_time = self.__simple_command(
                         sock_info, 'admin', {'ismaster': 1})
-                    member.pool.maybe_return_socket(sock_info)
+                    member.maybe_return_socket(sock_info)
                     new_member = member.clone_with(response, ping_time)
                 else:
                     response, pool, ping_time = self.__is_master(node)
@@ -1189,7 +1189,7 @@ class MongoReplicaSetClient(common.BaseObject):
 
             except (ConnectionFailure, socket.error), why:
                 if member:
-                    member.pool.discard_socket(sock_info)
+                    member.discard_socket(sock_info)
                 errors.append("%s:%d: %s" % (node[0], node[1], str(why)))
             if hosts:
                 break
@@ -1217,7 +1217,7 @@ class MongoReplicaSetClient(common.BaseObject):
                         # Not a member of this set.
                         continue
 
-                    member.pool.maybe_return_socket(sock_info)
+                    member.maybe_return_socket(sock_info)
                     new_member = member.clone_with(res, ping_time)
                 else:
                     res, connection_pool, ping_time = self.__is_master(host)
@@ -1232,7 +1232,7 @@ class MongoReplicaSetClient(common.BaseObject):
 
             except (ConnectionFailure, socket.error):
                 if member:
-                    member.pool.discard_socket(sock_info)
+                    member.discard_socket(sock_info)
                 continue
 
             if res['ismaster']:
@@ -1309,12 +1309,12 @@ class MongoReplicaSetClient(common.BaseObject):
         if self.auto_start_request and not self.in_request():
             self.start_request()
 
-        sock_info = member.pool.get_socket(force=force)
+        sock_info = member.get_socket(force=force)
 
         try:
             self.__check_auth(sock_info)
         except OperationFailure:
-            member.pool.maybe_return_socket(sock_info)
+            member.maybe_return_socket(sock_info)
             raise
         return sock_info
 
@@ -1335,7 +1335,7 @@ class MongoReplicaSetClient(common.BaseObject):
         """
         rs_state = self.__rs_state
         if rs_state.primary_member:
-            rs_state.primary_member.pool.reset()
+            rs_state.primary_member.reset()
 
         threadlocal = self.__make_threadlocal()
         self.__rs_state = rs_state.clone_without_writer(threadlocal)
@@ -1400,7 +1400,7 @@ class MongoReplicaSetClient(common.BaseObject):
                 return False
         finally:
             if primary:
-                primary.pool.maybe_return_socket(sock_info)
+                primary.maybe_return_socket(sock_info)
 
     def __check_response_to_last_error(self, response, is_command):
         """Check a response to a lastError message for errors.
@@ -1527,7 +1527,7 @@ class MongoReplicaSetClient(common.BaseObject):
             except OperationFailure:
                 raise
             except(ConnectionFailure, socket.error), why:
-                member.pool.discard_socket(sock_info)
+                member.discard_socket(sock_info)
                 if _connection_to_use in (None, -1):
                     self.disconnect()
                 raise AutoReconnect(str(why))
@@ -1535,7 +1535,7 @@ class MongoReplicaSetClient(common.BaseObject):
                 sock_info.close()
                 raise
         finally:
-            member.pool.maybe_return_socket(sock_info)
+            member.maybe_return_socket(sock_info)
 
     def __send_and_receive(self, member, msg, **kwargs):
         """Send a message on the given socket and return the response data.
@@ -1557,13 +1557,13 @@ class MongoReplicaSetClient(common.BaseObject):
             if not exhaust:
                 if "network_timeout" in kwargs:
                     sock_info.sock.settimeout(self.__net_timeout)
-                member.pool.maybe_return_socket(sock_info)
+                member.maybe_return_socket(sock_info)
 
             return response, sock_info, member.pool
         except:
             if sock_info is not None:
                 sock_info.close()
-                member.pool.maybe_return_socket(sock_info)
+                member.maybe_return_socket(sock_info)
             raise
 
     def __try_read(self, member, msg, **kwargs):
@@ -1637,7 +1637,7 @@ class MongoReplicaSetClient(common.BaseObject):
                 if not member:
                     raise AutoReconnect(error_message)
 
-                return member.pool.pair, self.__try_read(
+                return member.pair, self.__try_read(
                     member, msg, **kwargs)
         except AutoReconnect:
             if _connection_to_use in (-1, rs_state.writer):
@@ -1766,7 +1766,7 @@ class MongoReplicaSetClient(common.BaseObject):
         # within a request.
         if 1 == self.__request_counter.inc():
             for member in self.__rs_state.members:
-                member.pool.start_request()
+                member.start_request()
 
         return pool.Request(self)
 
@@ -1795,7 +1795,7 @@ class MongoReplicaSetClient(common.BaseObject):
         if 0 == self.__request_counter.dec():
             for member in rs_state.members:
                 # No effect if not in a request
-                member.pool.end_request()
+                member.end_request()
 
             rs_state.unpin_host()
 

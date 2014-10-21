@@ -583,7 +583,7 @@ class TestClientAuth(unittest.TestCase):
 
             # Simulate an authenticate() call on a different socket.
             credentials = auth._build_credentials_tuple(
-                'MONGODB-CR', 'admin',
+                'DEFAULT', 'admin',
                 unicode('admin'), unicode('password'),
                 {})
 
@@ -996,7 +996,7 @@ class TestReplicaSetClientAuth(TestReplicaSetClientBase, TestRequestMixin):
 
             # Simulate an authenticate() call on a different socket.
             credentials = auth._build_credentials_tuple(
-                'MONGODB-CR', 'admin',
+                'DEFAULT', 'admin',
                 unicode('admin'), unicode('password'),
                 {})
 

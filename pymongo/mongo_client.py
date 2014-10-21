@@ -380,7 +380,7 @@ class MongoClient(common.BaseObject):
                 raise ConnectionFailure(str(e))
 
         if username:
-            mechanism = options.get('authmechanism', 'MONGODB-CR')
+            mechanism = options.get('authmechanism', 'DEFAULT')
             source = (
                 options.get('authsource')
                 or self.__default_database_name
@@ -470,7 +470,7 @@ class MongoClient(common.BaseObject):
                 auth.authenticate(credentials, sock_info, self.__simple_command)
                 sock_info.authset.add(credentials)
             finally:
-                member.pool.maybe_return_socket(sock_info)
+                member.maybe_return_socket(sock_info)
 
         self.__auth_credentials[source] = credentials
 
@@ -914,12 +914,11 @@ class MongoClient(common.BaseObject):
 
         Calls disconnect() on error.
         """
-        connection_pool = member.pool
         try:
-            if self.auto_start_request and not connection_pool.in_request():
-                connection_pool.start_request()
+            if self.auto_start_request and not member.in_request():
+                member.start_request()
 
-            sock_info = connection_pool.get_socket()
+            sock_info = member.get_socket()
         except socket.error, why:
             self.disconnect()
 
@@ -934,7 +933,7 @@ class MongoClient(common.BaseObject):
         try:
             self.__check_auth(sock_info)
         except:
-            connection_pool.maybe_return_socket(sock_info)
+            member.maybe_return_socket(sock_info)
             raise
         return sock_info
 
@@ -961,7 +960,7 @@ class MongoClient(common.BaseObject):
 
         # Close sockets promptly.
         if member:
-            member.pool.reset()
+            member.reset()
 
     def close(self):
         """Alias for :meth:`disconnect`
@@ -1006,12 +1005,12 @@ class MongoClient(common.BaseObject):
             sock_info = None
             try:
                 try:
-                    sock_info = member.pool.get_socket()
+                    sock_info = member.get_socket()
                     return not pool._closed(sock_info.sock)
                 except (socket.error, ConnectionFailure):
                     return False
             finally:
-                member.pool.maybe_return_socket(sock_info)
+                member.maybe_return_socket(sock_info)
 
     def set_cursor_manager(self, manager_class):
         """Set this client's cursor manager.
@@ -1147,7 +1146,7 @@ class MongoClient(common.BaseObject):
                 sock_info.close()
                 raise
         finally:
-            member.pool.maybe_return_socket(sock_info)
+            member.maybe_return_socket(sock_info)
 
     def __receive_data_on_socket(self, length, sock_info):
         """Lowest level receive operation.
@@ -1215,15 +1214,15 @@ class MongoClient(common.BaseObject):
                 if "network_timeout" in kwargs:
                     sock_info.sock.settimeout(self.__net_timeout)
 
-                member.pool.maybe_return_socket(sock_info)
+                member.maybe_return_socket(sock_info)
 
             return (None, (response, sock_info, member.pool))
         except (ConnectionFailure, socket.error), e:
             self.disconnect()
-            member.pool.maybe_return_socket(sock_info)
+            member.maybe_return_socket(sock_info)
             raise AutoReconnect(str(e))
         except:
-            member.pool.maybe_return_socket(sock_info)
+            member.maybe_return_socket(sock_info)
             raise
 
     def _exhaust_next(self, sock_info):
@@ -1267,7 +1266,7 @@ class MongoClient(common.BaseObject):
            :meth:`start_request` previously returned None
         """
         member = self.__ensure_member()
-        member.pool.start_request()
+        member.start_request()
         return pool.Request(self)
 
     def in_request(self):
@@ -1275,7 +1274,7 @@ class MongoClient(common.BaseObject):
         reserved for its exclusive use.
         """
         member = self.__member  # Don't try to connect if disconnected.
-        return member and member.pool.in_request()
+        return member and member.in_request()
 
     def end_request(self):
         """Undo :meth:`start_request`. If :meth:`end_request` is called as many
@@ -1295,7 +1294,7 @@ class MongoClient(common.BaseObject):
         """
         member = self.__member  # Don't try to connect if disconnected.
         if member:
-            member.pool.end_request()
+            member.end_request()
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
