@@ -1637,7 +1637,7 @@ class MongoReplicaSetClient(common.BaseObject):
                 if not member:
                     raise AutoReconnect(error_message)
 
-                return member.pair, self.__try_read(
+                return member.pool.pair, self.__try_read(
                     member, msg, **kwargs)
         except AutoReconnect:
             if _connection_to_use in (-1, rs_state.writer):
