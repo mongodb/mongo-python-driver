@@ -28,7 +28,7 @@ def _parse_credentials(username, password, database, options):
     """Parse authentication credentials."""
     if username is None:
         return None
-    mechanism = options.get('authmechanism', 'MONGODB-CR')
+    mechanism = options.get('authmechanism', 'DEFAULT')
     source = options.get('authsource', database or 'admin')
     return _build_credentials_tuple(
         mechanism, source, _unicode(username), _unicode(password), options)

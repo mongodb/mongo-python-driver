@@ -336,7 +336,7 @@ class MongoClient(common.BaseObject):
 
             # get_socket() logs out of the database if logged in with old
             # credentials, and logs in with new ones.
-            with server.pool.get_socket(all_credentials) as sock_info:
+            with server.get_socket(all_credentials) as sock_info:
                 sock_info.authenticate(credentials)
 
         # If several threads run _cache_credentials at once, last one wins.
@@ -652,7 +652,7 @@ class MongoClient(common.BaseObject):
 
             # Avoid race when other threads log in or out.
             all_credentials = self.__all_credentials.copy()
-            with server.pool.get_socket(all_credentials) as sock_info:
+            with server.get_socket(all_credentials) as sock_info:
                 return not pool._closed(sock_info.sock)
 
         except (socket.error, ConnectionFailure):
@@ -1095,7 +1095,7 @@ class MongoClient(common.BaseObject):
 
         # Avoid race when other threads log in or out.
         all_credentials = self.__all_credentials.copy()
-        with server.pool.get_socket(all_credentials) as sock:
+        with server.get_socket(all_credentials) as sock:
             if username is not None:
                 get_nonce_cmd = SON([("copydbgetnonce", 1),
                                      ("fromhost", from_host)])

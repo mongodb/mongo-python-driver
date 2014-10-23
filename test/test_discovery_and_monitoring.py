@@ -53,12 +53,6 @@ class MockPool(object):
         self.pool_id = 0
         self._lock = threading.Lock()
 
-    def get_socket(self):
-        return MockSocketInfo()
-
-    def maybe_return_socket(self, _):
-        pass
-
     def reset(self):
         with self._lock:
             self.pool_id += 1

@@ -916,7 +916,7 @@ class TestClient(IntegrationTest, TestRequestMixin):
 
         # Simulate an authenticate() call on a different socket.
         credentials = auth._build_credentials_tuple(
-            'MONGODB-CR', 'admin', db_user, db_pwd, {})
+            'DEFAULT', 'admin', db_user, db_pwd, {})
 
         c._cache_credentials('test', credentials, connect=False)
 

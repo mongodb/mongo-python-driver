@@ -60,7 +60,7 @@ class Server(object):
         """
         request_id, data = self._check_bson_size(message)
         try:
-            with self._pool.get_socket(all_credentials) as sock_info:
+            with self.get_socket(all_credentials) as sock_info:
                 sock_info.send_message(data)
         except socket.error as exc:
             self._raise_connection_failure(exc)
@@ -82,7 +82,7 @@ class Server(object):
         """
         request_id, data = self._check_bson_size(message)
         try:
-            with self._pool.get_socket(all_credentials) as sock_info:
+            with self.get_socket(all_credentials) as sock_info:
                 sock_info.exhaust(exhaust)
                 sock_info.send_message(data)
                 response_data = sock_info.receive_message(1, request_id)
@@ -98,6 +98,20 @@ class Server(object):
                         address=self._description.address)
         except socket.error as exc:
             self._raise_connection_failure(exc)
+
+    def get_socket(self, all_credentials):
+        sd = self.description
+        sock_info = self.pool.get_socket(all_credentials=all_credentials,
+                                         min_wire_version=sd.min_wire_version,
+                                         max_wire_version=sd.max_wire_version)
+
+        return sock_info
+
+    def maybe_return_socket(self, sock_info):
+        self.pool.maybe_return_socket(sock_info)
+
+    def discard_socket(self, sock_info):
+        self.pool.discard_socket(sock_info)
 
     def start_request(self):
         # TODO: Remove implicit threadlocal requests, use explicit requests.

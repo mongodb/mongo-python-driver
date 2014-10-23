@@ -150,6 +150,9 @@ class SocketInfo(object):
         self.last_checkout = time.time()
         self.pool_ref = weakref.ref(pool)
 
+        self._min_wire_version = None
+        self._max_wire_version = None
+
         # The pool's pool_id changes with each reset() so we can close sockets
         # created before the last reset.
         self.pool_id = pool.pool_id
@@ -257,6 +260,20 @@ class SocketInfo(object):
             self.sock.close()
         except:
             pass
+        
+    def set_wire_version_range(self, min_wire_version, max_wire_version):
+        self._min_wire_version = min_wire_version
+        self._max_wire_version = max_wire_version
+        
+    @property
+    def min_wire_version(self):
+        assert self._min_wire_version is not None
+        return self._min_wire_version
+        
+    @property
+    def max_wire_version(self):
+        assert self._max_wire_version is not None
+        return self._max_wire_version
 
     def exhaust(self, exhaust):
         self._exhaust = exhaust
@@ -425,19 +442,25 @@ class Pool:
         sock.settimeout(self.opts.socket_timeout)
         return SocketInfo(sock, self, hostname)
 
-    def get_socket(self, all_credentials):
+    def get_socket(self, all_credentials, min_wire_version, max_wire_version):
         """Get a socket from the pool.
 
         Returns a :class:`SocketInfo` object wrapping a connected
-        :class:`socket.socket`, and a bool saying whether the socket was from
-        the pool or freshly created.
+        :class:`socket.socket`.
+
+        The socket is logged in or out as necessary to match ``all_credentials``
+        using the correct authentication mechanism for the server's wire
+        protocol version.
 
         :Parameters:
           - `all_credentials`: dict, maps auth source to MongoCredential.
+          - `min_wire_version`: int, minimum protocol the server supports.
+          - `max_wire_version`: int, maximum protocol the server supports.
         """
         # First get a socket, then attempt authentication. Simplifies
         # semaphore management in the face of network errors during auth.
         sock_info = self._get_socket_no_auth()
+        sock_info.set_wire_version_range(min_wire_version, max_wire_version)
         try:
             sock_info.check_auth(all_credentials)
             return sock_info

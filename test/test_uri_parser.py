@@ -132,6 +132,10 @@ class TestURI(unittest.TestCase):
                          split_options('authMechanism=GSSAPI'))
         self.assertEqual({'authmechanism': 'MONGODB-CR'},
                          split_options('authMechanism=MONGODB-CR'))
+        self.assertEqual({'authmechanism': 'SCRAM-SHA-1'},
+                         split_options('authMechanism=SCRAM-SHA-1'))
+        self.assertRaises(ConfigurationError,
+                          split_options, 'authMechanism=foo')
         self.assertEqual({'authsource': 'foobar'}, split_options('authSource=foobar'))
         # maxPoolSize isn't yet a documented URI option.
         self.assertRaises(ConfigurationError, split_options, 'maxpoolsize=50')

@@ -30,7 +30,7 @@ from pymongo import MongoClient
 from pymongo.auth import HAVE_KERBEROS, _build_credentials_tuple
 from pymongo.errors import OperationFailure, ConfigurationError
 from pymongo.read_preferences import ReadPreference
-from test import client_context, host, port, SkipTest, unittest
+from test import client_context, host, port, SkipTest, unittest, Version
 
 # YOU MUST RUN KINIT BEFORE RUNNING GSSAPI TESTS.
 GSSAPI_HOST = os.environ.get('GSSAPI_HOST')
@@ -256,11 +256,13 @@ class TestSCRAMSHA1(unittest.TestCase):
     def setUp(self):
         self.set_name = client_context.setname
 
-        cmd_line = client_context.cmd_line
-        if 'SCRAM-SHA-1' not in cmd_line.get(
-            'parsed', {}).get('setParameter',
-                            {}).get('authenticationMechanisms', ''):
-            raise SkipTest('SCRAM-SHA-1 mechanism not enabled')
+        # Before 2.7.7, SCRAM-SHA-1 had to be enabled from the command line.
+        if client_context.version < Version(2, 7, 7):
+            cmd_line = client_context.cmd_line
+            if 'SCRAM-SHA-1' not in cmd_line.get(
+                    'parsed', {}).get('setParameter',
+                    {}).get('authenticationMechanisms', ''):
+                raise SkipTest('SCRAM-SHA-1 mechanism not enabled')
 
         client = client_context.rs_or_standalone_client
         client.pymongo_test.add_user(
@@ -294,9 +296,7 @@ class TestSCRAMSHA1(unittest.TestCase):
             client.pymongo_test.command('dbstats')
 
     def tearDown(self):
-        client_context.rs_or_standalone_client.pymongo_test.remove_user(
-            'user',
-            w=client_context.w)
+        client_context.rs_or_standalone_client.pymongo_test.remove_user('user')
 
 
 class TestAuthURIOptions(unittest.TestCase):

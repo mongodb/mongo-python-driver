@@ -851,7 +851,7 @@ class Database(common.BaseObject):
             raise
 
     def authenticate(self, name, password=None,
-                     source=None, mechanism='MONGODB-CR', **kwargs):
+                     source=None, mechanism='DEFAULT', **kwargs):
         """Authenticate to use this database.
 
         Authentication lasts for the life of the underlying client
@@ -883,10 +883,14 @@ class Database(common.BaseObject):
             specified the current database is used.
           - `mechanism` (optional): See
             :data:`~pymongo.auth.MECHANISMS` for options.
-            Defaults to MONGODB-CR (MongoDB Challenge Response protocol)
+            By default, use SCRAM-SHA-1 with MongoDB 2.8 and later,
+            MONGODB-CR (MongoDB Challenge Response protocol) for older servers.
           - `gssapiServiceName` (optional): Used with the GSSAPI mechanism
             to specify the service name portion of the service principal name.
             Defaults to 'mongodb'.
+
+        .. versionadded:: 2.8
+           Use SCRAM-SHA-1 with MongoDB 2.8 and later.
 
         .. versionchanged:: 2.5
            Added the `source` and `mechanism` parameters. :meth:`authenticate`

@@ -413,15 +413,15 @@ class TestRequestMixin(object):
     convenient methods for testing connection pools and requests
     """
     def assertSameSock(self, pool):
-        sock_info0 = pool.get_socket(all_credentials={})
-        sock_info1 = pool.get_socket(all_credentials={})
+        sock_info0 = pool.get_socket({}, 0, 0)
+        sock_info1 = pool.get_socket({}, 0, 0)
         self.assertEqual(sock_info0, sock_info1)
         pool.maybe_return_socket(sock_info0)
         pool.maybe_return_socket(sock_info1)
 
     def assertDifferentSock(self, pool):
-        sock_info0 = pool.get_socket(all_credentials={})
-        sock_info1 = pool.get_socket(all_credentials={})
+        sock_info0 = pool.get_socket({}, 0, 0)
+        sock_info1 = pool.get_socket({}, 0, 0)
         self.assertNotEqual(sock_info0, sock_info1)
         pool.maybe_return_socket(sock_info0)
         pool.maybe_return_socket(sock_info1)
