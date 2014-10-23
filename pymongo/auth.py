@@ -73,21 +73,38 @@ else:
         return b"".join([chr(ord(x) ^ ord(y)) for x, y in zip(fir, sec)])
 
 
-def _hi(data, salt, iterations):
-    """A simple implementation of PBKDF2."""
-    mac = hmac.HMAC(data, None, sha1)
+try:
+    # The fastest option, if it's been compiled to use OpenSSL's HMAC.
+    from backports.pbkdf2 import pbkdf2_hmac
 
-    def _digest(msg, mac=mac):
-        """Get a digest for msg."""
-        _mac = mac.copy()
-        _mac.update(msg)
-        return _mac.digest()
+    def _hi(data, salt, iterations):
+        return pbkdf2_hmac('sha1', data, salt, iterations)
 
-    _ui = _u1 = _digest(salt + b'\x00\x00\x00\x01')
-    for _ in range(iterations - 1):
-        _u1 = _digest(_u1)
-        _ui = _xor(_ui, _u1)
-    return _ui
+except ImportError:
+    try:
+        # Python 2.7.8+, or Python 3.4+.
+        from hashlib import pbkdf2_hmac
+
+        def _hi(data, salt, iterations):
+            return pbkdf2_hmac('sha1', data, salt, iterations)
+
+    except ImportError:
+
+        def _hi(data, salt, iterations):
+            """A simple implementation of PBKDF2."""
+            mac = hmac.HMAC(data, None, sha1)
+
+            def _digest(msg, mac=mac):
+                """Get a digest for msg."""
+                _mac = mac.copy()
+                _mac.update(msg)
+                return _mac.digest()
+
+            _ui = _u1 = _digest(salt + b'\x00\x00\x00\x01')
+            for _ in range(iterations - 1):
+                _u1 = _digest(_u1)
+                _ui = _xor(_ui, _u1)
+            return _ui
 
 
 def _parse_scram_response(response):
