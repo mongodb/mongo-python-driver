@@ -5,24 +5,50 @@ MongoDB supports several different authentication mechanisms. These examples
 cover all authentication methods currently supported by PyMongo, documenting
 Python module and MongoDB version dependencies.
 
-MONGODB-CR
-----------
-MONGODB-CR is the default authentication mechanism supported by a MongoDB
-deployment configured for authentication. Authentication is per-database and
-credentials can be specified through the MongoDB URI or passed to the
-:meth:`~pymongo.database.Database.authenticate` method::
+SCRAM-SHA-1 (RFC 5802)
+----------------------
+.. versionadded:: 2.8
+
+SCRAM-SHA-1 is the default authentication mechanism supported by a cluster
+configured for authentication with MongoDB 2.8 or later. Authentication is
+per-database and credentials can be specified through the MongoDB URI or
+passed to the :meth:`~pymongo.database.Database.authenticate` method::
 
   >>> from pymongo import MongoClient
   >>> client = MongoClient('example.com')
-  >>> client.the_database.authenticate('user', 'password')
+  >>> client.the_database.authenticate('user', 'password', mechanism='SCRAM-SHA-1')
   True
   >>>
-  >>> uri = "mongodb://user:password@example.com/the_database"
+  >>> uri = "mongodb://user:password@example.com/the_database?authMechanism=SCRAM-SHA-1"
   >>> client = MongoClient(uri)
-  >>>
 
-When using MongoDB's delegated authentication features, a separate
-authentication source can be specified (using PyMongo 2.5 or newer)::
+MONGODB-CR
+----------
+
+Before MongoDB 2.8 the default authentication mechanism was MONGODB-CR,
+the "MongoDB Challenge-Response" protocol::
+
+  >>> from pymongo import MongoClient
+  >>> client = MongoClient('example.com')
+  >>> client.the_database.authenticate('user', 'password', mechanism='MONGODB-CR')
+  True
+  >>>
+  >>> uri = "mongodb://user:password@example.com/the_database?authMechanism=MONGODB-CR"
+  >>> client = MongoClient(uri)
+
+Default Authentication Mechanism
+--------------------------------
+
+If no mechanism is specified, PyMongo automatically uses MONGODB-CR when
+connected to a pre-2.8 version of MongoDB, and SCRAM-SHA-1 when connected to
+a recent version.
+
+Delegated Authentication
+------------------------
+.. versionadded: 2.5
+
+In MongoDB 2.4.x a separate authentication source can be specified.
+This feature was introduced in MongoDB 2.4 and removed in 2.6::
 
   >>> from pymongo import MongoClient
   >>> client = MongoClient('example.com')
@@ -170,23 +196,5 @@ the SASL PLAIN mechanism::
   ...                      ssl_certfile='/path/to/client.pem',
   ...                      ssl_cert_reqs=ssl.CERT_REQUIRED,
   ...                      ssl_ca_certs='/path/to/ca.pem')
-  >>>
-
-SCRAM-SHA-1 (RFC 5802)
-----------------------
-.. versionadded:: 2.8
-
-MongoDB Enterprise Edition 2.7.2 and above support the SCRAM-SHA-1 mechanism.
-Authentication is per-database and credentials can be specified through the
-MongoDB URI or passed to the
-:meth:`~pymongo.database.Database.authenticate` method::
-
-  >>> from pymongo import MongoClient
-  >>> client = MongoClient('example.com')
-  >>> client.the_database.authenticate('user', 'password', mechanism='SCRAM-SHA-1')
-  True
-  >>>
-  >>> uri = "mongodb://user:password@example.com/the_database?authMechanism=SCRAM-SHA-1"
-  >>> client = MongoClient(uri)
   >>>
 
