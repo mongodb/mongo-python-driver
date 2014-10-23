@@ -85,7 +85,7 @@ class TestCommon(unittest.TestCase):
             self.assertEqual((False, {}), coll._get_write_mode())
             coll.safe = False
             coll.write_concern.update(w=1)
-            self.assertEqual((True, {}), coll._get_write_mode())
+            self.assertEqual((True, {"w": 1}), coll._get_write_mode())
             coll.write_concern.update(w=3)
             self.assertEqual((True, {'w': 3}), coll._get_write_mode())
 
@@ -117,7 +117,7 @@ class TestCommon(unittest.TestCase):
             self.assertEqual((True, {}), coll._get_write_mode())
             coll.safe = False
             coll.write_concern.update(w=1)
-            self.assertEqual((True, {}), coll._get_write_mode())
+            self.assertEqual((True, {"w": 1}), coll._get_write_mode())
             coll.write_concern.update(w=3)
             self.assertEqual((True, {'w': 3}), coll._get_write_mode())
 

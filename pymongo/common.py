@@ -699,12 +699,6 @@ class BaseObject(object):
 
         .. versionadded:: 2.3
         """
-        # Don't ever send w=1 to the server.
-        def pop1(dct):
-            if dct.get('w') == 1:
-                dct.pop('w')
-            return dct
-
         if safe is not None:
             warnings.warn("The safe parameter is deprecated. Please use "
                           "write concern options instead.", DeprecationWarning,
@@ -715,7 +709,7 @@ class BaseObject(object):
         if safe is not None or options:
             if safe or options:
                 if not options:
-                    options = self.__write_concern.copy()
+                    options = self.__write_concern
                     # Backwards compatability edge case. Call getLastError
                     # with no options if safe=True was passed but collection
                     # level defaults have been disabled with w=0.
@@ -725,7 +719,7 @@ class BaseObject(object):
                     if options.get('w') == 0:
                         return True, {}
                 # Passing w=0 overrides passing safe=True.
-                return options.get('w') != 0, pop1(options)
+                return options.get('w') != 0, options
             return False, {}
 
         # Fall back to collection level defaults.
@@ -733,6 +727,6 @@ class BaseObject(object):
         if self.__write_concern.get('w') == 0:
             return False, {}
         elif self.safe or self.__write_concern.get('w', 0) != 0:
-            return True, pop1(self.__write_concern.copy())
+            return True, self.__write_concern
 
         return False, {}
