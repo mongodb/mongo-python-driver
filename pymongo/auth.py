@@ -87,25 +87,43 @@ else:
 
 _BIGONE = b('\x00\x00\x00\x01')
 
-def _hi(data, salt, iterations):
-    """A simple implementation of PBKDF2."""
-    mac = hmac.HMAC(data, None, _SHA1MOD)
+try:
+    # The fastest option, if it's been compiled to use OpenSSL's HMAC.
+    from backports.pbkdf2 import pbkdf2_hmac
 
-    def _digest(msg, mac=mac):
-        """Get a digest for msg."""
-        _mac = mac.copy()
-        _mac.update(msg)
-        return _mac.digest()
+    def _hi(data, salt, iterations):
+        return pbkdf2_hmac('sha1', data, salt, iterations)
 
-    from_bytes = _from_bytes
-    to_bytes = _to_bytes
+except ImportError:
+    try:
+        # Python 2.7.8+, or Python 3.4+.
+        from hashlib import pbkdf2_hmac
 
-    _u1 = _digest(salt + _BIGONE)
-    _ui = from_bytes(_u1, 'big')
-    for _ in range(iterations - 1):
-        _u1 = _digest(_u1)
-        _ui ^= from_bytes(_u1, 'big')
-    return to_bytes(_ui, 20, 'big')
+        def _hi(data, salt, iterations):
+            return pbkdf2_hmac('sha1', data, salt, iterations)
+
+    except ImportError:
+
+        def _hi(data, salt, iterations):
+            """A simple implementation of PBKDF2."""
+            mac = hmac.HMAC(data, None, _SHA1MOD)
+
+            def _digest(msg, mac=mac):
+                """Get a digest for msg."""
+                _mac = mac.copy()
+                _mac.update(msg)
+                return _mac.digest()
+
+            from_bytes = _from_bytes
+            to_bytes = _to_bytes
+
+            _u1 = _digest(salt + _BIGONE)
+            _ui = from_bytes(_u1, 'big')
+            for _ in range(iterations - 1):
+                _u1 = _digest(_u1)
+                _ui ^= from_bytes(_u1, 'big')
+            return to_bytes(_ui, 20, 'big')
+
 
 _EMPTY = b("")
 _COMMA = b(",")
