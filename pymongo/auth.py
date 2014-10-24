@@ -64,10 +64,26 @@ if PY3:
     def _xor(fir, sec):
         """XOR two byte strings together (python 3.x)."""
         return _EMPTY.join([bytes([x ^ y]) for x, y in zip(fir, sec)])
+
+    _from_bytes = int.from_bytes
+    _to_bytes = int.to_bytes
 else:
+
+    from binascii import (hexlify as _hexlify,
+                          unhexlify as _unhexlify)
+
     def _xor(fir, sec):
         """XOR two byte strings together (python 2.x)."""
         return _EMPTY.join([chr(ord(x) ^ ord(y)) for x, y in zip(fir, sec)])
+
+    def _from_bytes(value, dummy, int=int, _hexlify=_hexlify):
+        """An implementation of int.from_bytes for python 2.x."""
+        return int(_hexlify(value), 16)
+
+    def _to_bytes(value, dummy0, dummy1, _unhexlify=_unhexlify):
+        """An implementation of int.to_bytes for python 2.x."""
+        return _unhexlify('%040x' % value)
+
 
 _BIGONE = b('\x00\x00\x00\x01')
 
@@ -81,11 +97,15 @@ def _hi(data, salt, iterations):
         _mac.update(msg)
         return _mac.digest()
 
-    _ui = _u1 = _digest(salt + _BIGONE)
+    from_bytes = _from_bytes
+    to_bytes = _to_bytes
+
+    _u1 = _digest(salt + _BIGONE)
+    _ui = from_bytes(_u1, 'big')
     for _ in range(iterations - 1):
         _u1 = _digest(_u1)
-        _ui = _xor(_ui, _u1)
-    return _ui
+        _ui ^= from_bytes(_u1, 'big')
+    return to_bytes(_ui, 20, 'big')
 
 _EMPTY = b("")
 _COMMA = b(",")
