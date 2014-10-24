@@ -100,7 +100,7 @@ class SON(dict):
         return "SON([%s])" % ", ".join(result)
 
     def __setitem__(self, key, value):
-        if key not in self:
+        if key not in self.__keys:
             self.__keys.append(key)
         dict.__setitem__(self, key, value)
 
@@ -124,9 +124,6 @@ class SON(dict):
             yield k
 
     def has_key(self, key):
-        return key in self.__keys
-
-    def __contains__(self, key):
         return key in self.__keys
 
     # third level takes advantage of second level definitions
