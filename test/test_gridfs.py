@@ -400,6 +400,21 @@ class TestGridfs(unittest.TestCase):
         cursor.close()
         self.assertRaises(TypeError, self.fs.find, {}, {"_id": True})
 
+    def test_gridfs_find_one(self):
+        self.assertEqual(None, self.fs.find_one())
+
+        id1 = self.fs.put(b('test1'), filename='file1')
+        self.assertEqual(b('test1'), self.fs.find_one().read())
+
+        id2 = self.fs.put(b('test2'), filename='file2', meta='data')
+        self.assertEqual(b('test1'), self.fs.find_one(id1).read())
+        self.assertEqual(b('test2'), self.fs.find_one(id2).read())
+
+        self.assertEqual(b('test1'),
+                         self.fs.find_one({'filename': 'file1'}).read())
+
+        self.assertEqual('data', self.fs.find_one(id2).meta)
+
     def test_grid_in_non_int_chunksize(self):
         # Lua, and perhaps other buggy GridFS clients, store size as a float.
         data = b('data')
