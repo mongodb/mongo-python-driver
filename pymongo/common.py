@@ -709,7 +709,7 @@ class BaseObject(object):
         if safe is not None or options:
             if safe or options:
                 if not options:
-                    options = self.__write_concern
+                    options = self.__write_concern.copy()
                     # Backwards compatability edge case. Call getLastError
                     # with no options if safe=True was passed but collection
                     # level defaults have been disabled with w=0.
@@ -727,6 +727,6 @@ class BaseObject(object):
         if self.__write_concern.get('w') == 0:
             return False, {}
         elif self.safe or self.__write_concern.get('w', 0) != 0:
-            return True, self.__write_concern
+            return True, self.__write_concern.copy()
 
         return False, {}
