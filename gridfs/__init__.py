@@ -285,28 +285,25 @@ class GridFS(object):
 
         All arguments to :meth:`find` are also valid arguments for
         :meth:`find_one`, although any `limit` argument will be
-        ignored. Returns a single gridfs file, or ``None`` if no matching
-        file is found. For example::
+        ignored. Returns a single :class:`~gridfs.grid_file.GridOut`,
+        or ``None`` if no matching file is found. For example::
 
             file = fs.find_one({"filename": "lisa.txt"})
 
         :Parameters:
-
-            - `spec_or_id` (optional): a dictionary specifying
+          - `spec_or_id` (optional): a dictionary specifying
             the query to be performing OR any other type to be used  as
             the value for a query for ``"_id"`` in the file collection.
-
-            - `*args` (optional): any additional positional arguments are
+          - `*args` (optional): any additional positional arguments are
             the same as the arguments to :meth:`find`.
-
-            - `**kwargs` (optional): any additional keyword arguments
+          - `**kwargs` (optional): any additional keyword arguments
             are the same as the arguments to :meth:`find`.
         """
         if spec_or_id is not None and not isinstance(spec_or_id, dict):
             spec_or_id = {"_id": spec_or_id}
 
-        for file in self.find(spec_or_id, *args, **kwargs):
-            return file
+        for f in self.find(spec_or_id, *args, **kwargs):
+            return f
 
         return None
 
