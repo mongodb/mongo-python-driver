@@ -586,15 +586,6 @@ class TestCollection(unittest.TestCase):
     def test_options(self):
         db = self.db
         db.drop_collection("test")
-        db.test.save({})
-        expected = {}
-        if version.at_least(db.connection, (2, 7, 0)):
-            # usePowerOf2Sizes server default
-            expected["flags"] = 1
-        self.assertEqual(db.test.options(), expected)
-        self.assertEqual(db.test.doesnotexist.options(), {})
-
-        db.drop_collection("test")
         if version.at_least(db.connection, (1, 9)):
             db.create_collection("test", capped=True, size=4096)
             result = db.test.options()
