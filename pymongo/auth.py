@@ -15,6 +15,7 @@
 """Authentication helpers."""
 
 import hmac
+import warnings
 try:
     import hashlib
     _MD5 = hashlib.md5
@@ -52,7 +53,17 @@ def _build_credentials_tuple(mech, source, user, passwd, extra):
     """Build and return a mechanism specific credentials tuple.
     """
     if mech == 'GSSAPI':
-        gsn = extra.get('gssapiservicename', 'mongodb')
+        gsn = 'mongodb'
+        if "gssapiservicename" in extra:
+            gsn = extra.get('gssapiservicename')
+            msg = ('The gssapiServiceName option is deprecated. Use '
+                   '"authMechanismProperties=SERVICE_NAME:%s" instead.' % gsn)
+            warnings.warn(msg, DeprecationWarning, stacklevel=3)
+        # SERVICE_NAME overrides gssapiServiceName.
+        if 'authmechanismproperties' in extra:
+            props = extra['authmechanismproperties']
+            if 'SERVICE_NAME' in props:
+                gsn = props.get('SERVICE_NAME')
         # No password, source is always $external.
         return (mech, '$external', user, gsn)
     elif mech == 'MONGODB-X509':

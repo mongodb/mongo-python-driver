@@ -265,6 +265,28 @@ def validate_uuid_subtype(dummy, value):
     return value
 
 
+_MECHANISM_PROPS = frozenset(['SERVICE_NAME'])
+
+
+def validate_auth_mechanism_properties(option, value):
+    """Validate authMechanismProperties."""
+    value = validate_basestring(option, value)
+    props = {}
+    for opt in value.split(','):
+        try:
+            key, val = opt.split(':')
+            if key not in _MECHANISM_PROPS:
+                raise ConfigurationError("%s is not a supported auth "
+                                         "mechanism property. Must be one of "
+                                         "%s." % (key, tuple(_MECHANISM_PROPS)))
+            props[key] = val
+        except ValueError:
+            raise ConfigurationError("auth mechanism properties must be "
+                                     "key:value pairs like SERVICE_NAME:"
+                                     "mongodb, not %s." % (opt,))
+    return props
+
+
 # jounal is an alias for j,
 # wtimeoutms is an alias for wtimeout,
 # readpreferencetags is an alias for tag_sets.
@@ -299,12 +321,13 @@ VALIDATORS = {
     'authmechanism': validate_auth_mechanism,
     'authsource': validate_basestring,
     'gssapiservicename': validate_basestring,
+    'authmechanismproperties': validate_auth_mechanism_properties,
     'uuidrepresentation': validate_uuid_representation,
     'socketkeepalive': validate_boolean
 }
 
 
-_AUTH_OPTIONS = frozenset(['gssapiservicename'])
+_AUTH_OPTIONS = frozenset(['gssapiservicename', 'authmechanismproperties'])
 
 
 def validate_auth_option(option, value):

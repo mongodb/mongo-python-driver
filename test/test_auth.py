@@ -107,22 +107,27 @@ class TestGSSAPI(unittest.TestCase):
         # Without gssapiServiceName
         self.assertTrue(client.test.authenticate(PRINCIPAL,
                                                  mechanism='GSSAPI'))
-        self.assertTrue(client.database_names())
+        client.database_names()
         uri = ('mongodb://%s@%s:%d/?authMechanism='
                'GSSAPI' % (quote_plus(PRINCIPAL), GSSAPI_HOST, GSSAPI_PORT))
         client = MongoClient(uri)
-        self.assertTrue(client.database_names())
+        client.database_names()
 
         # With gssapiServiceName
         self.assertTrue(client.test.authenticate(PRINCIPAL,
                                                  mechanism='GSSAPI',
                                                  gssapiServiceName='mongodb'))
-        self.assertTrue(client.database_names())
+        client.database_names()
         uri = ('mongodb://%s@%s:%d/?authMechanism='
                'GSSAPI;gssapiServiceName=mongodb' % (quote_plus(PRINCIPAL),
                                                      GSSAPI_HOST, GSSAPI_PORT))
         client = MongoClient(uri)
-        self.assertTrue(client.database_names())
+        client.database_names()
+        uri = ('mongodb://%s@%s:%d/?authMechanism='
+               'GSSAPI;authMechanismProperties=SERVICE_NAME:mongodb' % (
+               quote_plus(PRINCIPAL), GSSAPI_HOST, GSSAPI_PORT))
+        client = MongoClient(uri)
+        client.database_names()
 
         set_name = client.admin.command('ismaster').get('setName')
         if set_name:
@@ -132,25 +137,31 @@ class TestGSSAPI(unittest.TestCase):
             # Without gssapiServiceName
             self.assertTrue(client.test.authenticate(PRINCIPAL,
                                                      mechanism='GSSAPI'))
-            self.assertTrue(client.database_names())
+            client.database_names()
             uri = ('mongodb://%s@%s:%d/?authMechanism=GSSAPI;replicaSet'
                    '=%s' % (quote_plus(PRINCIPAL),
                             GSSAPI_HOST, GSSAPI_PORT, str(set_name)))
             client = MongoReplicaSetClient(uri)
-            self.assertTrue(client.database_names())
+            client.database_names()
 
             # With gssapiServiceName
             self.assertTrue(client.test.authenticate(PRINCIPAL,
                                                      mechanism='GSSAPI',
                                                      gssapiServiceName='mongodb'))
-            self.assertTrue(client.database_names())
+            client.database_names()
             uri = ('mongodb://%s@%s:%d/?authMechanism=GSSAPI;replicaSet'
                    '=%s;gssapiServiceName=mongodb' % (quote_plus(PRINCIPAL),
                                                       GSSAPI_HOST,
                                                       GSSAPI_PORT,
                                                       str(set_name)))
             client = MongoReplicaSetClient(uri)
-            self.assertTrue(client.database_names())
+            client.database_names()
+            uri = ('mongodb://%s@%s:%d/?authMechanism=GSSAPI;replicaSet=%s;'
+                   'authMechanismProperties=SERVICE_NAME:mongodb' % (
+                   quote_plus(PRINCIPAL),
+                   GSSAPI_HOST, GSSAPI_PORT, str(set_name)))
+            client = MongoReplicaSetClient(uri)
+            client.database_names()
 
     def test_gssapi_threaded(self):
 
