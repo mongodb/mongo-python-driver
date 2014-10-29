@@ -339,7 +339,7 @@ class TestMasterSlaveConnection(unittest.TestCase, TestRequestMixin):
                           self.db.test.save, {'username': 'mike'})
 
     def test_insert(self):
-        w = len(self.slaves)
+        w = len(self.slaves) + 1
         self.db.test.remove(w=w)
         self.assertEqual(0, self.db.test.count())
         doc = {}
