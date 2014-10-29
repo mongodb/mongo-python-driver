@@ -338,6 +338,14 @@ class TestMasterSlaveConnection(unittest.TestCase, TestRequestMixin):
         self.assertRaises(OperationFailure,
                           self.db.test.save, {'username': 'mike'})
 
+    def test_insert(self):
+        w = len(self.slaves)
+        self.db.test.remove(w=w)
+        self.assertEqual(0, self.db.test.count())
+        doc = {}
+        self.db.test.insert(doc, w=w)
+        self.assertEqual(doc, self.db.test.find_one())
+
     def test_kill_cursor_explicit(self):
         c = self.client
         c.read_preference = ReadPreference.SECONDARY_PREFERRED
