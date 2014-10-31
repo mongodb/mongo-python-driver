@@ -59,6 +59,13 @@ from ``_conn_id`` to ``address``.
 
 :meth:`~pymongo.MongoClient.set_cursor_manager` is no longer deprecated.
 
+:mod:`~gridfs` Changes
+......................
+
+Since PyMongo 1.6, methods ``open`` and ``close`` of :class:`~gridfs.GridFS`
+raised an ``UnsupportedAPI`` exception, as did the entire ``GridFile`` class.
+The unsupported methods, the class, and the exception are all deleted.
+
 Issues Resolved
 ...............
 

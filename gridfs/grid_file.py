@@ -23,8 +23,7 @@ from bson.objectid import ObjectId
 from bson.py3compat import text_type, StringIO
 from gridfs.errors import (CorruptGridFile,
                            FileExists,
-                           NoFile,
-                           UnsupportedAPI)
+                           NoFile)
 from pymongo import ASCENDING
 from pymongo.collection import Collection
 from pymongo.cursor import Cursor
@@ -610,17 +609,6 @@ class GridOutIterator(object):
         return bytes(chunk["data"])
 
     __next__ = next
-
-
-class GridFile(object):
-    """No longer supported.
-
-    .. versionchanged:: 1.6
-       The GridFile class is no longer supported.
-    """
-    def __init__(self, *args, **kwargs):
-        raise UnsupportedAPI("The GridFile class is no longer supported. "
-                             "Please use GridIn or GridOut instead.")
 
 
 class GridOutCursor(Cursor):

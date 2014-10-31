@@ -20,8 +20,7 @@ The :mod:`gridfs` package is an implementation of GridFS on top of
 .. mongodoc:: gridfs
 """
 
-from gridfs.errors import (NoFile,
-                           UnsupportedAPI)
+from gridfs.errors import NoFile
 from gridfs.grid_file import (GridIn,
                               GridOut,
                               GridOutCursor)
@@ -376,20 +375,3 @@ class GridFS(object):
         if kwargs:
             return self.__files.find_one(kwargs, ["_id"]) is not None
         return self.__files.find_one(document_or_id, ["_id"]) is not None
-
-    def open(self, *args, **kwargs):
-        """No longer supported.
-
-        .. versionchanged:: 1.6
-           The open method is no longer supported.
-        """
-        raise UnsupportedAPI("The open method is no longer supported.")
-
-    def remove(self, *args, **kwargs):
-        """No longer supported.
-
-        .. versionchanged:: 1.6
-           The remove method is no longer supported.
-        """
-        raise UnsupportedAPI("The remove method is no longer supported. "
-                             "Please use the delete method instead.")
