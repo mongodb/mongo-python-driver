@@ -153,12 +153,12 @@ class TestCollection(IntegrationTest):
         db.test.drop_indexes()
         self.assertEqual(len(db.test.index_information()), 1)
         db.test.create_index("hello")
-        self.assertTrue(u"hello_1" in db.test.index_information())
+        self.assertTrue("hello_1" in db.test.index_information())
 
         db.test.drop_indexes()
         self.assertEqual(len(db.test.index_information()), 1)
         db.test.create_index([("hello", DESCENDING), ("world", ASCENDING)])
-        self.assertTrue(u"hello_-1_world_1" in db.test.index_information())
+        self.assertTrue("hello_-1_world_1" in db.test.index_information())
 
         db.test.drop()
         db.test.insert({'a': 1})
@@ -283,7 +283,7 @@ class TestCollection(IntegrationTest):
         with self.assertRaises(OperationFailure):
             db.test.drop_index(name)
         self.assertEqual(len(db.test.index_information()), 2)
-        self.assertTrue(u"hello_1" in db.test.index_information())
+        self.assertTrue("hello_1" in db.test.index_information())
 
         db.test.drop_indexes()
         db.test.create_index("hello")
@@ -293,7 +293,7 @@ class TestCollection(IntegrationTest):
         self.assertEqual(name, "goodbye_1")
         db.test.drop_index([("goodbye", ASCENDING)])
         self.assertEqual(len(db.test.index_information()), 2)
-        self.assertTrue(u"hello_1" in db.test.index_information())
+        self.assertTrue("hello_1" in db.test.index_information())
 
     def test_reindex(self):
         db = self.db
