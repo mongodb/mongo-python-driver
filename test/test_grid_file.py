@@ -28,15 +28,12 @@ from gridfs.grid_file import (DEFAULT_CHUNK_SIZE,
                               _SEEK_CUR,
                               _SEEK_END,
                               GridIn,
-                              GridFile,
                               GridOut,
                               GridOutCursor)
-from gridfs.errors import (NoFile,
-                           UnsupportedAPI)
+from gridfs.errors import NoFile
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
-from test import (client_context,
-                  client_knobs,
+from test import (client_knobs,
                   IntegrationTest,
                   host,
                   port,
@@ -50,9 +47,6 @@ class TestGridFileNoConnect(unittest.TestCase):
     def setUpClass(cls):
         client = MongoClient(host, port, connect=False)
         cls.db = client.pymongo_test
-
-    def test_grid_file(self):
-        self.assertRaises(UnsupportedAPI, GridFile)
 
     def test_grid_in_custom_opts(self):
         self.assertRaises(TypeError, GridIn, "foo")
