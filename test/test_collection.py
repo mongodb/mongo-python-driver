@@ -135,8 +135,7 @@ class TestCollection(IntegrationTest):
 
         db.test.drop_indexes()
         db.test.insert({})
-        self.assertEqual(db.system.indexes.find({"ns": u("pymongo_test.test")})
-                         .count(), 1)
+        self.assertEqual(len(db.test.index_information()), 1)
 
         db.test.create_index("hello")
         db.test.create_index([("hello", DESCENDING), ("world", ASCENDING)])
@@ -144,10 +143,7 @@ class TestCollection(IntegrationTest):
         # Tuple instead of list.
         db.test.create_index((("world", ASCENDING),))
 
-        count = 0
-        for _ in db.system.indexes.find({"ns": u("pymongo_test.test")}):
-            count += 1
-        self.assertEqual(count, 4)
+        self.assertEqual(len(db.test.index_information()), 4)
 
         db.test.drop_indexes()
         ix = db.test.create_index([("hello", DESCENDING),
@@ -155,20 +151,14 @@ class TestCollection(IntegrationTest):
         self.assertEqual(ix, "hello_world")
 
         db.test.drop_indexes()
-        self.assertEqual(db.system.indexes.find({"ns": u("pymongo_test.test")})
-                         .count(), 1)
+        self.assertEqual(len(db.test.index_information()), 1)
         db.test.create_index("hello")
-        self.assertTrue(u("hello_1") in
-                        [a["name"] for a in db.system.indexes
-                         .find({"ns": u("pymongo_test.test")})])
+        self.assertTrue(u"hello_1" in db.test.index_information())
 
         db.test.drop_indexes()
-        self.assertEqual(db.system.indexes.find({"ns": u("pymongo_test.test")})
-                         .count(), 1)
+        self.assertEqual(len(db.test.index_information()), 1)
         db.test.create_index([("hello", DESCENDING), ("world", ASCENDING)])
-        self.assertTrue(u("hello_-1_world_1") in
-                        [a["name"] for a in db.system.indexes
-                         .find({"ns": u("pymongo_test.test")})])
+        self.assertTrue(u"hello_-1_world_1" in db.test.index_information())
 
         db.test.drop()
         db.test.insert({'a': 1})
@@ -285,34 +275,25 @@ class TestCollection(IntegrationTest):
         db.test.create_index("hello")
         name = db.test.create_index("goodbye")
 
-        self.assertEqual(db.system.indexes.find({"ns": u("pymongo_test.test")})
-                         .count(), 3)
+        self.assertEqual(len(db.test.index_information()), 3)
         self.assertEqual(name, "goodbye_1")
         db.test.drop_index(name)
 
         # Drop it again.
         with self.assertRaises(OperationFailure):
             db.test.drop_index(name)
-
-        self.assertEqual(db.system.indexes.find({"ns": u("pymongo_test.test")})
-                         .count(), 2)
-        self.assertTrue(u("hello_1") in
-                        [a["name"] for a in db.system.indexes
-                         .find({"ns": u("pymongo_test.test")})])
+        self.assertEqual(len(db.test.index_information()), 2)
+        self.assertTrue(u"hello_1" in db.test.index_information())
 
         db.test.drop_indexes()
         db.test.create_index("hello")
         name = db.test.create_index("goodbye")
 
-        self.assertEqual(db.system.indexes.find({"ns": u("pymongo_test.test")})
-                         .count(), 3)
+        self.assertEqual(len(db.test.index_information()), 3)
         self.assertEqual(name, "goodbye_1")
         db.test.drop_index([("goodbye", ASCENDING)])
-        self.assertEqual(db.system.indexes.find({"ns": u("pymongo_test.test")})
-                         .count(), 2)
-        self.assertTrue(u("hello_1") in
-                        [a["name"] for a in db.system.indexes
-                         .find({"ns": u("pymongo_test.test")})])
+        self.assertEqual(len(db.test.index_information()), 2)
+        self.assertTrue(u"hello_1" in db.test.index_information())
 
     def test_reindex(self):
         db = self.db

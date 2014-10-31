@@ -1176,7 +1176,7 @@ class Collection(common.BaseObject):
         guaranteed to contain at least a single key, ``"key"`` which
         is a list of (key, direction) pairs specifying the index (as
         passed to create_index()). It will also contain any other
-        information in `system.indexes`, except for the ``"ns"`` and
+        metadata about the indexes, except for the ``"ns"`` and
         ``"name"`` keys, which are cleaned. Example output might look
         like this:
 
@@ -1186,8 +1186,14 @@ class Collection(common.BaseObject):
         {u'_id_': {u'key': [(u'_id', 1)]},
          u'x_1': {u'unique': True, u'key': [(u'x', 1)]}}
         """
-        raw = self.__database.system.indexes.find({"ns": self.__full_name},
-                                                  {"ns": 0}, as_class=SON)
+        client = self.__database.connection
+        if client._writable_max_wire_version() > 2:
+            raw = self.__database.command(
+                "listIndexes", self.__name, as_class=SON,
+                read_preference=ReadPreference.PRIMARY).get("indexes", [])
+        else:
+            raw = self.__database.system.indexes.find({"ns": self.__full_name},
+                                                      {"ns": 0}, as_class=SON)
         info = {}
         for index in raw:
             index["key"] = index["key"].items()

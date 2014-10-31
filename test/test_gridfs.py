@@ -146,10 +146,11 @@ class TestGridfs(IntegrationTest):
         self.assertTrue(isinstance(raw["md5"], string_type))
 
     def test_delete_ensures_index(self):
-        chunks = self.db.fs.chunks
-
         # setUp has dropped collections.
-        self.assertFalse(chunks.index_information())
+        names = self.db.collection_names()
+        self.assertFalse([name for name in names if name.startswith('fs')])
+
+        chunks = self.db.fs.chunks
 
         self.fs.delete(file_id=1)
 
