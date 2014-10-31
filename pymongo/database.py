@@ -993,8 +993,6 @@ class SystemJS(object):
           >>> del db.system_js.add1
           >>> db.system.js.find({"_id": "add1"}).count()
           0
-
-        .. note:: Requires server version **>= 1.1.1**
         """
         # can't just assign it since we've overridden __setattr__
         object.__setattr__(self, "_db", database)

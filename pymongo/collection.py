@@ -1375,8 +1375,6 @@ class Collection(common.BaseObject):
 
         :Parameters:
           - `key`: name of key for which we want to get the distinct values
-
-        .. note:: Requires server version **>= 1.1.0**
         """
         return self.find().distinct(key)
 
@@ -1405,8 +1403,6 @@ class Collection(common.BaseObject):
             helper method, e.g.::
 
             >>> db.test.map_reduce(map, reduce, "myresults", limit=2)
-
-        .. note:: Requires server version **>= 1.1.1**
 
         .. seealso:: :doc:`/examples/aggregation`
 
@@ -1466,8 +1462,6 @@ class Collection(common.BaseObject):
             helper method, e.g.::
 
             >>> db.test.inline_map_reduce(map, reduce, limit=2)
-
-        .. note:: Requires server version **>= 1.7.4**
         """
 
         mode = read_preference or self.read_preference
@@ -1522,8 +1516,6 @@ class Collection(common.BaseObject):
         .. mongodoc:: findAndModify
 
         .. _findAndModify: http://dochub.mongodb.org/core/findAndModify
-
-        .. note:: Requires server version **>= 1.3.0**
 
         .. versionchanged:: 2.5
            Added the optional full_response parameter

@@ -22,8 +22,6 @@ DESCENDING = -1
 GEO2D = "2d"
 """Index specifier for a 2-dimensional `geospatial index`_.
 
-.. note:: Geo-spatial indexing requires server version **>= 1.3.3**.
-
 .. _geospatial index: http://docs.mongodb.org/manual/core/2d/
 """
 
@@ -31,8 +29,6 @@ GEOHAYSTACK = "geoHaystack"
 """Index specifier for a 2-dimensional `haystack index`_.
 
 .. versionadded:: 2.1
-
-.. note:: Geo-spatial indexing requires server version **>= 1.5.6**.
 
 .. _haystack index: http://docs.mongodb.org/manual/core/geohaystack/
 """

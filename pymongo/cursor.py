@@ -583,8 +583,6 @@ class Cursor(object):
 
         :Parameters:
           - `max_scan`: the maximum number of documents to scan
-
-        .. note:: Requires server version **>= 1.5.1**
         """
         self.__check_okay_to_chain()
         self.__max_scan = max_scan
@@ -743,8 +741,6 @@ class Cursor(object):
 
         :Parameters:
           - `key`: name of key for which we want to get the distinct values
-
-        .. note:: Requires server version **>= 1.1.3+**
 
         .. seealso:: :meth:`pymongo.collection.Collection.distinct`
         """
