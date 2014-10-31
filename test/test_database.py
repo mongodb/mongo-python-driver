@@ -148,21 +148,13 @@ class TestDatabase(IntegrationTest):
         self.assertRaises(InvalidName, db.create_collection, "coll..ection")
 
         test = db.create_collection("test")
+        self.assertTrue(u("test") in db.collection_names())
         test.save({"hello": u("world")})
         self.assertEqual(db.test.find_one()["hello"], "world")
-        self.assertTrue(u("test") in db.collection_names())
 
         db.drop_collection("test.foo")
         db.create_collection("test.foo")
         self.assertTrue(u("test.foo") in db.collection_names())
-        expected = {}
-        if client_context.version.at_least(2, 7, 0):
-            # usePowerOf2Sizes server default
-            expected["flags"] = 1
-        result = db.test.foo.options()
-        # mongos 2.2.x adds an $auth field when auth is enabled.
-        result.pop('$auth', None)
-        self.assertEqual(result, expected)
         self.assertRaises(CollectionInvalid, db.create_collection, "test.foo")
 
     def test_collection_names(self):
