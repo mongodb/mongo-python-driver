@@ -138,15 +138,17 @@ or using :meth:`~pymongo.database.Database.authenticate`::
   True
 
 The default service name used by MongoDB and PyMongo is `mongodb`. You can
-specify a custom service name with the ``gssapiServiceName`` option::
+specify a custom service name with the ``authMechanismProperties`` option::
 
   >>> from pymongo import MongoClient
-  >>> uri = "mongodb://mongodbuser%40EXAMPLE.COM@example.com/?authMechanism=GSSAPI&gssapiServiceName=myservicename"
+  >>> uri = "mongodb://mongodbuser%40EXAMPLE.COM@example.com/?authMechanism=GSSAPI&authMechanismProperties=SERVICE_NAME:myservicename"
   >>> client = MongoClient(uri)
   >>>
   >>> client = MongoClient('example.com')
   >>> db = client.test
-  >>> db.authenticate('mongodbuser@EXAMPLE.COM', mechanism='GSSAPI', gssapiServiceName='myservicename')
+  >>> db.authenticate(
+  ...     'mongodbuser@EXAMPLE.COM', mechanism='GSSAPI',
+  ...     authMechanismProperties='SERVICE_NAME:myservicename')
   True
 
 .. note::

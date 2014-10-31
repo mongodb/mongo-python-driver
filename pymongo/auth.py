@@ -54,7 +54,8 @@ def _build_credentials_tuple(mech, source, user, passwd, extra):
     """Build and return a mechanism specific credentials tuple.
     """
     if mech == 'GSSAPI':
-        service_name = extra.get('gssapiservicename', 'mongodb')
+        properties = extra.get('authmechanismproperties', {})
+        service_name = properties.get('SERVICE_NAME', 'mongodb')
         props = GSSAPIProperties(service_name=service_name)
         # No password, source is always $external.
         return MongoCredential(mech, '$external', user, None, props)

@@ -885,9 +885,10 @@ class Database(common.BaseObject):
             :data:`~pymongo.auth.MECHANISMS` for options.
             By default, use SCRAM-SHA-1 with MongoDB 2.8 and later,
             MONGODB-CR (MongoDB Challenge Response protocol) for older servers.
-          - `gssapiServiceName` (optional): Used with the GSSAPI mechanism
-            to specify the service name portion of the service principal name.
-            Defaults to 'mongodb'.
+          - `authMechanismProperties` (optional): Used to specify
+            authentication mechanism specific options. To specify the service
+            name for GSSAPI authentication pass
+            authMechanismProperties='SERVICE_NAME:<service name>'
 
         .. versionadded:: 2.8
            Use SCRAM-SHA-1 with MongoDB 2.8 and later.

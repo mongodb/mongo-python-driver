@@ -280,6 +280,28 @@ def validate_read_preference_tags(name, value):
     return tag_sets
 
 
+_MECHANISM_PROPS = frozenset(['SERVICE_NAME'])
+
+
+def validate_auth_mechanism_properties(option, value):
+    """Validate authMechanismProperties."""
+    value = validate_string(option, value)
+    props = {}
+    for opt in value.split(','):
+        try:
+            key, val = opt.split(':')
+            if key not in _MECHANISM_PROPS:
+                raise ConfigurationError("%s is not a supported auth "
+                                         "mechanism property. Must be one of "
+                                         "%s." % (key, tuple(_MECHANISM_PROPS)))
+            props[key] = val
+        except ValueError:
+            raise ConfigurationError("auth mechanism properties must be "
+                                     "key:value pairs like SERVICE_NAME:"
+                                     "mongodb, not %s." % (opt,))
+    return props
+
+
 # journal is an alias for j,
 # wtimeoutms is an alias for wtimeout,
 VALIDATORS = {
@@ -308,12 +330,12 @@ VALIDATORS = {
     'secondaryacceptablelatencyms': validate_positive_float,
     'authmechanism': validate_auth_mechanism,
     'authsource': validate_string,
-    'gssapiservicename': validate_string,
+    'authmechanismproperties': validate_auth_mechanism_properties,
     'uuidrepresentation': validate_uuid_representation,
 }
 
 
-_AUTH_OPTIONS = frozenset(['gssapiservicename'])
+_AUTH_OPTIONS = frozenset(['authmechanismproperties'])
 
 
 def validate_auth_option(option, value):
