@@ -27,8 +27,7 @@ class PyMongoError(Exception):
 
 
 class ConnectionFailure(PyMongoError):
-    """Raised when a connection to the database cannot be made or is lost.
-    """
+    """Raised when a connection to the database cannot be made or is lost."""
 
 
 class AutoReconnect(ConnectionFailure):

@@ -139,8 +139,7 @@ class Database(common.BaseObject):
 
     @property
     def incoming_manipulators(self):
-        """List all incoming SON manipulators
-        installed on this instance.
+        """All incoming SON manipulators installed on this instance.
 
         .. versionadded:: 2.0
         """
@@ -149,8 +148,7 @@ class Database(common.BaseObject):
 
     @property
     def incoming_copying_manipulators(self):
-        """List all incoming SON copying manipulators
-        installed on this instance.
+        """All incoming SON copying manipulators installed on this instance.
 
         .. versionadded:: 2.0
         """
