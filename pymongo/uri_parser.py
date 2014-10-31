@@ -23,9 +23,7 @@ else:
     from urllib import unquote_plus
 
 from pymongo.common import validate as _validate
-from pymongo.errors import (ConfigurationError,
-                            InvalidURI,
-                            UnsupportedOption)
+from pymongo.errors import ConfigurationError, InvalidURI
 
 
 SCHEME = 'mongodb://'
@@ -321,6 +319,6 @@ if __name__ == '__main__':
     import sys
     try:
         pprint.pprint(parse_uri(sys.argv[1]))
-    except (InvalidURI, UnsupportedOption) as e:
+    except InvalidURI as e:
         print(e)
     sys.exit(0)

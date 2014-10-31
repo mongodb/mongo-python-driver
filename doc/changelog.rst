@@ -59,6 +59,11 @@ from ``_conn_id`` to ``address``.
 
 :meth:`~pymongo.MongoClient.set_cursor_manager` is no longer deprecated.
 
+:mod:`~pymongo.errors` Changes
+..............................
+
+The exception class ``UnsupportedOption`` is deleted.
+
 :mod:`~gridfs` Changes
 ......................
 

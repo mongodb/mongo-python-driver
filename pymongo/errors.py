@@ -172,13 +172,6 @@ class InvalidURI(ConfigurationError):
     """Raised when trying to parse an invalid mongodb URI."""
 
 
-class UnsupportedOption(ConfigurationError):
-    """Exception for unsupported options.
-
-    .. versionadded:: 2.0
-    """
-
-
 class ExceededMaxWaiters(Exception):
     """Raised when a thread tries to get a connection from a pool and
     ``max_pool_size * waitQueueMultiple`` threads are already waiting.
