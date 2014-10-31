@@ -96,12 +96,6 @@ class Collection(common.BaseObject):
         .. versionadded:: 2.1
            uuid_subtype attribute
 
-        .. versionchanged:: 1.5
-           deprecating `options` in favor of kwargs
-
-        .. versionadded:: 1.5
-           the `create` parameter
-
         .. mongodoc:: collections
         """
         super(Collection, self).__init__(database.read_preference,
@@ -182,28 +176,18 @@ class Collection(common.BaseObject):
         """The full name of this :class:`Collection`.
 
         The full name is of the form `database_name.collection_name`.
-
-        .. versionchanged:: 1.3
-           ``full_name`` is now a property rather than a method.
         """
         return self.__full_name
 
     @property
     def name(self):
-        """The name of this :class:`Collection`.
-
-        .. versionchanged:: 1.3
-           ``name`` is now a property rather than a method.
-        """
+        """The name of this :class:`Collection`."""
         return self.__name
 
     @property
     def database(self):
         """The :class:`~pymongo.database.Database` that this
         :class:`Collection` is a part of.
-
-        .. versionchanged:: 1.3
-           ``database`` is now a property rather than a method.
         """
         return self.__database
 
@@ -296,9 +280,6 @@ class Collection(common.BaseObject):
 
         .. versionchanged:: 3.0
            Removed the `safe` parameter
-        .. versionadded:: 1.8
-           Support for passing `getLastError` options as keyword
-           arguments.
 
         .. mongodoc:: insert
         """
@@ -383,11 +364,6 @@ class Collection(common.BaseObject):
            Removed the `safe` parameter
         .. versionadded:: 2.1
            Support for continue_on_error.
-        .. versionadded:: 1.8
-           Support for passing `getLastError` options as keyword
-           arguments.
-        .. versionchanged:: 1.1
-           Bulk insert works with an iterable sequence of documents.
 
         .. mongodoc:: insert
         """
@@ -533,13 +509,6 @@ class Collection(common.BaseObject):
 
         .. versionchanged:: 3.0
            Removed the `safe` parameter
-        .. versionadded:: 1.8
-           Support for passing `getLastError` options as keyword
-           arguments.
-        .. versionchanged:: 1.4
-           Return the response to *lastError* if `safe` is ``True``.
-        .. versionadded:: 1.1.1
-           The `multi` parameter.
 
         .. _update modifiers: http://www.mongodb.org/display/DOCS/Updating
 
@@ -610,8 +579,6 @@ class Collection(common.BaseObject):
 
           >>> db.foo.drop()
           >>> db.drop_collection("foo")
-
-        .. versionadded:: 1.8
         """
         self.__database.drop_collection(self.__name)
 
@@ -671,19 +638,6 @@ class Collection(common.BaseObject):
 
         .. versionchanged:: 3.0
            Removed the `safe` parameter
-        .. versionadded:: 1.8
-           Support for passing `getLastError` options as keyword arguments.
-        .. versionchanged:: 1.7 Accept any type other than a ``dict``
-           instance for removal by ``"_id"``, not just
-           :class:`~bson.objectid.ObjectId` instances.
-        .. versionchanged:: 1.4
-           Return the response to *lastError* if `safe` is ``True``.
-        .. versionchanged:: 1.2
-           The `spec_or_id` parameter is now optional. If it is
-           not specified *all* documents in the collection will be
-           removed.
-        .. versionadded:: 1.1
-           The `safe` parameter.
 
         .. mongodoc:: remove
         """
@@ -742,14 +696,6 @@ class Collection(common.BaseObject):
             specified as part of `**kwargs`, e.g.
 
               >>> find_one(max_time_ms=100)
-
-        .. versionchanged:: 1.7
-           Allow passing any of the arguments that are valid for
-           :meth:`find`.
-
-        .. versionchanged:: 1.7 Accept any type other than a ``dict``
-           instance as an ``"_id"`` query, not just
-           :class:`~bson.objectid.ObjectId` instances.
         """
         if (spec_or_id is not None and not
                 isinstance(spec_or_id, collections.Mapping)):
@@ -876,22 +822,6 @@ class Collection(common.BaseObject):
 
         .. versionadded:: 2.3
            The `tag_sets` and `secondary_acceptable_latency_ms` parameters.
-
-        .. versionadded:: 1.11+
-           The `await_data`, `partial`, and `manipulate` parameters.
-
-        .. versionadded:: 1.8
-           The `network_timeout` parameter.
-
-        .. versionadded:: 1.7
-           The `sort`, `max_scan` and `as_class` parameters.
-
-        .. versionchanged:: 1.7
-           The `fields` parameter can now be a dict or any iterable in
-           addition to a list.
-
-        .. versionadded:: 1.1
-           The `tailable` parameter.
 
         .. mongodoc:: find
         """
@@ -1041,12 +971,6 @@ class Collection(common.BaseObject):
         .. versionchanged:: 2.2
            Removed deprecated argument: deprecated_unique
 
-        .. versionchanged:: 1.5.1
-           Accept kwargs to support all index creation options.
-
-        .. versionadded:: 1.5
-           The `name` parameter.
-
         .. seealso:: :meth:`ensure_index`
 
         .. mongodoc:: indexes
@@ -1176,12 +1100,6 @@ class Collection(common.BaseObject):
         .. versionchanged:: 2.2
            Removed deprecated argument: deprecated_unique
 
-        .. versionchanged:: 1.5.1
-           Accept kwargs to support all index creation options.
-
-        .. versionadded:: 1.5
-           The `name` parameter.
-
         .. seealso:: :meth:`create_index`
         """
         if "name" in kwargs:
@@ -1245,8 +1163,6 @@ class Collection(common.BaseObject):
         .. warning:: reindex blocks all other operations (indexes
            are built in the foreground) and will be slow for large
            collections.
-
-        .. versionadded:: 1.11+
         """
         return self.__database.command("reIndex", self.__name,
                                        read_preference=ReadPreference.PRIMARY)
@@ -1269,12 +1185,6 @@ class Collection(common.BaseObject):
         >>> db.test.index_information()
         {u'_id_': {u'key': [(u'_id', 1)]},
          u'x_1': {u'unique': True, u'key': [(u'x', 1)]}}
-
-
-        .. versionchanged:: 1.7
-           The values in the resultant dictionary are now dictionaries
-           themselves, whose ``"key"`` item contains the list that was
-           the value in previous versions of PyMongo.
         """
         raw = self.__database.system.indexes.find({"ns": self.__full_name},
                                                   {"ns": 0}, as_class=SON)
@@ -1402,15 +1312,7 @@ class Collection(common.BaseObject):
 
         .. versionchanged:: 2.2
            Removed deprecated argument: command
-
-        .. versionchanged:: 1.4
-           The `key` argument can now be ``None`` or a JavaScript function,
-           in addition to a :class:`list` of keys.
-
-        .. versionchanged:: 1.3
-           The `command` argument now defaults to ``True`` and is deprecated.
         """
-
         group = {}
         if isinstance(key, string_type):
             group["$keyf"] = Code(key)
@@ -1443,9 +1345,6 @@ class Collection(common.BaseObject):
           - `**kwargs` (optional): any additional rename options
             should be passed as keyword arguments
             (i.e. ``dropTarget=True``)
-
-        .. versionadded:: 1.7
-           support for accepting keyword arguments for rename options
         """
         if not isinstance(new_name, string_type):
             raise TypeError("new_name must be an "
@@ -1478,8 +1377,6 @@ class Collection(common.BaseObject):
           - `key`: name of key for which we want to get the distinct values
 
         .. note:: Requires server version **>= 1.1.0**
-
-        .. versionadded:: 1.1.1
         """
         return self.find().distinct(key)
 
@@ -1515,11 +1412,6 @@ class Collection(common.BaseObject):
 
         .. versionchanged:: 2.2
            Removed deprecated arguments: merge_output and reduce_output
-
-        .. versionchanged:: 1.11+
-           DEPRECATED The merge_output and reduce_output parameters.
-
-        .. versionadded:: 1.2
 
         .. _map reduce command: http://www.mongodb.org/display/DOCS/MapReduce
 
@@ -1576,8 +1468,6 @@ class Collection(common.BaseObject):
             >>> db.test.inline_map_reduce(map, reduce, limit=2)
 
         .. note:: Requires server version **>= 1.7.4**
-
-        .. versionadded:: 1.10
         """
 
         mode = read_preference or self.read_preference
@@ -1640,8 +1530,6 @@ class Collection(common.BaseObject):
 
         .. versionchanged:: 2.4
            Deprecated the use of mapping types for the sort parameter
-
-        .. versionadded:: 1.10
         """
         if (not update and not kwargs.get('remove', None)):
             raise ValueError("Must either update or remove")

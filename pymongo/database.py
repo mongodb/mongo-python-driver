@@ -124,27 +124,17 @@ class Database(common.BaseObject):
         """A :class:`SystemJS` helper for this :class:`Database`.
 
         See the documentation for :class:`SystemJS` for more details.
-
-        .. versionadded:: 1.5
         """
         return SystemJS(self)
 
     @property
     def connection(self):
-        """The client instance for this :class:`Database`.
-
-        .. versionchanged:: 1.3
-           ``connection`` is now a property rather than a method.
-        """
+        """The client instance for this :class:`Database`."""
         return self.__connection
 
     @property
     def name(self):
-        """The name of this :class:`Database`.
-
-        .. versionchanged:: 1.3
-           ``name`` is now a property rather than a method.
-        """
+        """The name of this :class:`Database`."""
         return self.__name
 
     @property
@@ -249,9 +239,6 @@ class Database(common.BaseObject):
 
         .. versionchanged:: 2.2
            Removed deprecated argument: options
-
-        .. versionchanged:: 1.5
-           deprecating `options` in favor of kwargs
         """
         opts = {"create": True}
         opts.update(kwargs)
@@ -443,12 +430,6 @@ class Database(common.BaseObject):
         .. versionchanged:: 2.2
            Added support for `as_class` - the class you want to use for
            the resulting documents
-        .. versionchanged:: 1.6
-           Added the `value` argument for string commands, and keyword
-           arguments for additional command options.
-        .. versionchanged:: 1.5
-           `command` can be a string in addition to a full document.
-        .. versionadded:: 1.4
 
         .. mongodoc:: commands
         """
@@ -513,11 +494,6 @@ class Database(common.BaseObject):
             collection. Use with `scandata` for a thorough scan
             of the structure of the collection and the individual
             documents. Ignored in MongoDB versions before 1.9.
-
-        .. versionchanged:: 1.11
-           validate_collection previously returned a string.
-        .. versionadded:: 1.11
-           Added `scandata` and `full` options.
         """
         name = name_or_collection
         if isinstance(name, Collection):
@@ -788,8 +764,6 @@ class Database(common.BaseObject):
 
         .. versionchanged:: 2.2
            Added support for read only users
-
-        .. versionadded:: 1.4
         """
         if not isinstance(name, string_type):
             raise TypeError("name must be an "
@@ -834,8 +808,6 @@ class Database(common.BaseObject):
 
         :Parameters:
           - `name`: the name of the user to remove
-
-        .. versionadded:: 1.4
         """
 
         try:
@@ -1023,8 +995,6 @@ class SystemJS(object):
           0
 
         .. note:: Requires server version **>= 1.1.1**
-
-        .. versionadded:: 1.5
         """
         # can't just assign it since we've overridden __setattr__
         object.__setattr__(self, "_db", database)
@@ -1052,8 +1022,5 @@ class SystemJS(object):
         return self.__getattr__(name)
 
     def list(self):
-        """Get a list of the names of the functions stored in this database.
-
-        .. versionadded:: 1.9
-        """
+        """Get a list of the names of the functions stored in this database."""
         return [x["_id"] for x in self._db.system.js.find(fields=["_id"])]

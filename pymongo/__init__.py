@@ -22,8 +22,6 @@ DESCENDING = -1
 GEO2D = "2d"
 """Index specifier for a 2-dimensional `geospatial index`_.
 
-.. versionadded:: 1.5.1
-
 .. note:: Geo-spatial indexing requires server version **>= 1.3.3**.
 
 .. _geospatial index: http://docs.mongodb.org/manual/core/2d/
@@ -93,10 +91,7 @@ from pymongo.mongo_replica_set_client import MongoReplicaSetClient
 from pymongo.read_preferences import ReadPreference
 
 def has_c():
-    """Is the C extension installed?
-
-    .. versionadded:: 1.5
-    """
+    """Is the C extension installed?"""
     try:
         from pymongo import _cmessage
         return True

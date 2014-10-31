@@ -195,8 +195,6 @@ class Cursor(object):
     def collection(self):
         """The :class:`~pymongo.collection.Collection` that this
         :class:`Cursor` is iterating.
-
-        .. versionadded:: 1.1
         """
         return self.__collection
 
@@ -455,8 +453,6 @@ class Cursor(object):
 
         :Parameters:
           - `batch_size`: The size of each batch of results requested.
-
-        .. versionadded:: 1.9
         """
         if not isinstance(batch_size, integer_types):
             raise TypeError("batch_size must be an integer")
@@ -589,8 +585,6 @@ class Cursor(object):
           - `max_scan`: the maximum number of documents to scan
 
         .. note:: Requires server version **>= 1.5.1**
-
-        .. versionadded:: 1.7
         """
         self.__check_okay_to_chain()
         self.__max_scan = max_scan
@@ -702,11 +696,6 @@ class Cursor(object):
 
         .. versionchanged:: 2.8
            The :meth:`~count` method now supports :meth:`~hint`.
-
-        .. versionadded:: 1.1.1
-           The `with_limit_and_skip` parameter.
-           :meth:`~pymongo.cursor.Cursor.__len__` was deprecated in favor of
-           calling :meth:`count` with `with_limit_and_skip` set to ``True``.
         """
         if not isinstance(with_limit_and_skip, bool):
             raise TypeError("with_limit_and_skip must be an instance of bool")
@@ -758,8 +747,6 @@ class Cursor(object):
         .. note:: Requires server version **>= 1.1.3+**
 
         .. seealso:: :meth:`pymongo.collection.Collection.distinct`
-
-        .. versionadded:: 1.2
         """
         if not isinstance(key, string_type):
             raise TypeError("key must be an "
@@ -1016,8 +1003,6 @@ class Cursor(object):
         <http://www.mongodb.org/display/DOCS/Tailable+Cursors>`_
         since they will stop iterating even though they *may* return more
         results in the future.
-
-        .. versionadded:: 1.5
         """
         return bool(len(self.__data) or (not self.__killed))
 

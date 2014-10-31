@@ -23,14 +23,10 @@ BINARY_SUBTYPE = 0
 """BSON binary subtype for binary data.
 
 This is the default subtype for binary data.
-
-.. versionadded:: 1.5
 """
 
 FUNCTION_SUBTYPE = 1
 """BSON binary subtype for functions.
-
-.. versionadded:: 1.5
 """
 
 OLD_BINARY_SUBTYPE = 2
@@ -38,8 +34,6 @@ OLD_BINARY_SUBTYPE = 2
 
 This is the old default subtype, the current
 default is :data:`BINARY_SUBTYPE`.
-
-.. versionadded:: 1.7
 """
 
 OLD_UUID_SUBTYPE = 3
@@ -60,7 +54,6 @@ change to this in a future release.
 
 .. versionchanged:: 2.1
    Changed to subtype 4.
-.. versionadded:: 1.5
 """
 
 JAVA_LEGACY = 5
@@ -89,14 +82,10 @@ ALL_UUID_SUBTYPES = (OLD_UUID_SUBTYPE, UUID_SUBTYPE, JAVA_LEGACY, CSHARP_LEGACY)
 
 MD5_SUBTYPE = 5
 """BSON binary subtype for an MD5 hash.
-
-.. versionadded:: 1.5
 """
 
 USER_DEFINED_SUBTYPE = 128
 """BSON binary subtype for any user defined structure.
-
-.. versionadded:: 1.5
 """
 
 

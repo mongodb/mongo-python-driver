@@ -87,8 +87,6 @@ class GridFS(object):
 
         :Parameters:
           - `**kwargs` (optional): keyword arguments for file creation
-
-        .. versionadded:: 1.6
         """
         # No need for __ensure_index_files_id() here; GridIn ensures
         # the (files_id, n) index when needed.
@@ -121,12 +119,6 @@ class GridFS(object):
         :Parameters:
           - `data`: data to be written as a file.
           - `**kwargs` (optional): keyword arguments for file creation
-
-        .. versionadded:: 1.9
-           The ability to write :class:`unicode`, if an `encoding` has
-           been specified as a keyword argument.
-
-        .. versionadded:: 1.6
         """
         grid_file = GridIn(self.__collection, **kwargs)
 
@@ -150,8 +142,6 @@ class GridFS(object):
 
         :Parameters:
           - `file_id`: ``"_id"`` of the file to get
-
-        .. versionadded:: 1.6
         """
         gout = GridOut(self.__collection, file_id)
 
@@ -189,12 +179,6 @@ class GridFS(object):
           - `version` (optional): version of the file to get (defaults
             to -1, the most recent version uploaded)
           - `**kwargs` (optional): find files by custom metadata.
-
-        .. versionchanged:: 1.11
-           `filename` defaults to None;
-        .. versionadded:: 1.11
-           Accept keyword arguments to find files by custom metadata.
-        .. versionadded:: 1.9
         """
         self.__ensure_index_filename()
         query = kwargs
@@ -223,13 +207,6 @@ class GridFS(object):
         :Parameters:
           - `filename`: ``"filename"`` of the file to get, or `None`
           - `**kwargs` (optional): find files by custom metadata.
-
-        .. versionchanged:: 1.11
-           `filename` defaults to None;
-        .. versionadded:: 1.11
-           Accept keyword arguments to find files by custom metadata. See
-           :meth:`get_version`.
-        .. versionadded:: 1.6
         """
         return self.get_version(filename=filename, **kwargs)
 
@@ -250,8 +227,6 @@ class GridFS(object):
 
         :Parameters:
           - `file_id`: ``"_id"`` of the file to delete
-
-        .. versionadded:: 1.6
         """
         self.__ensure_index_files_id()
         self.__files.remove({"_id": file_id},
@@ -268,9 +243,6 @@ class GridFS(object):
 
         .. versionchanged:: 2.7
            ``list`` ensures an index, the same as ``get_version``.
-
-        .. versionchanged:: 1.6
-           Removed the `collection` argument.
         """
         self.__ensure_index_filename()
 
@@ -400,8 +372,6 @@ class GridFS(object):
             document to check for
           - `**kwargs` (optional): keyword arguments are used as a
             query document, if they're present.
-
-        .. versionadded:: 1.8
         """
         if kwargs:
             return self.__files.find_one(kwargs, ["_id"]) is not None

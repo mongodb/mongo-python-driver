@@ -717,7 +717,6 @@ def decode_all(data, as_class=dict,
 
     .. versionchanged:: 2.7
        Added `compile_re` option.
-    .. versionadded:: 1.9
     """
     opts = (as_class, tz_aware, uuid_subtype, compile_re)
     docs = []
@@ -787,8 +786,6 @@ class BSON(bytes):
           - `check_keys` (optional): check if keys start with '$' or
             contain '.', raising :class:`~bson.errors.InvalidDocument` in
             either case
-
-        .. versionadded:: 1.9
         """
         return cls(_dict_to_bson(document, check_keys, uuid_subtype))
 
@@ -823,7 +820,6 @@ class BSON(bytes):
 
         .. versionchanged:: 2.7
            Added ``compile_re`` option.
-        .. versionadded:: 1.9
         """
         return _bson_to_dict(
             self, as_class, tz_aware, uuid_subtype, compile_re)
@@ -831,7 +827,5 @@ class BSON(bytes):
 
 def has_c():
     """Is the C extension installed?
-
-    .. versionadded:: 1.9
     """
     return _USE_C

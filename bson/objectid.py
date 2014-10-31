@@ -72,10 +72,6 @@ class ObjectId(object):
           - `oid` (optional): a valid ObjectId (12 byte binary or 24 character
             hex string)
 
-        .. versionadded:: 1.2.1
-           The `oid` parameter can be a ``unicode`` instance (that contains
-           only hexadecimal digits).
-
         .. mongodoc:: objectids
         """
         if oid is None:
@@ -112,12 +108,6 @@ class ObjectId(object):
         :Parameters:
           - `generation_time`: :class:`~datetime.datetime` to be used
             as the generation time for the resulting ObjectId.
-
-        .. versionchanged:: 1.8
-           Properly handle timezone aware values for
-           `generation_time`.
-
-        .. versionadded:: 1.6
         """
         if generation_time.utcoffset() is not None:
             generation_time = generation_time - generation_time.utcoffset()
@@ -204,11 +194,6 @@ class ObjectId(object):
         The :class:`datetime.datetime` is timezone aware, and
         represents the generation time in UTC. It is precise to the
         second.
-
-        .. versionchanged:: 1.8
-           Now return an aware datetime instead of a naive one.
-
-        .. versionadded:: 1.2
         """
         timestamp = struct.unpack(">i", self.__id[0:4])[0]
         return datetime.datetime.fromtimestamp(timestamp, utc)
@@ -275,8 +260,5 @@ class ObjectId(object):
         return NotImplemented
 
     def __hash__(self):
-        """Get a hash value for this :class:`ObjectId`.
-
-        .. versionadded:: 1.1
-        """
+        """Get a hash value for this :class:`ObjectId`."""
         return hash(self.__id)

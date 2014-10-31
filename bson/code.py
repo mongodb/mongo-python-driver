@@ -38,9 +38,6 @@ class Code(str):
         strings) to values
       - `**kwargs` (optional): scope variables can also be passed as
         keyword arguments
-
-    .. versionadded:: 1.9
-       Ability to pass scope values using keyword arguments.
     """
 
     _type_marker = 13

@@ -59,21 +59,6 @@ but it will be faster as there is less recursion.
    Added dumps and loads helpers to automatically handle conversion to and
    from json and supports :class:`~bson.binary.Binary` and
    :class:`~bson.code.Code`
-
-.. versionchanged:: 1.9
-   Handle :class:`uuid.UUID` instances, whenever possible.
-
-.. versionchanged:: 1.8
-   Handle timezone aware datetime instances on encode, decode to
-   timezone aware datetime instances.
-
-.. versionchanged:: 1.8
-   Added support for encoding/decoding :class:`~bson.max_key.MaxKey`
-   and :class:`~bson.min_key.MinKey`, and for encoding
-   :class:`~bson.timestamp.Timestamp`.
-
-.. versionchanged:: 1.2
-   Added support for encoding/decoding datetimes and regular expressions.
 """
 
 import base64

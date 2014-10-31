@@ -23,10 +23,7 @@ except ImportError:
 
 
 class PyMongoError(Exception):
-    """Base class for all PyMongo exceptions.
-
-    .. versionadded:: 1.4
-    """
+    """Base class for all PyMongo exceptions."""
 
 
 class ConnectionFailure(PyMongoError):
@@ -86,9 +83,6 @@ class OperationFailure(PyMongoError):
 
     .. versionadded:: 2.7
        The :attr:`details` attribute.
-
-    .. versionadded:: 1.8
-       The :attr:`code` attribute.
     """
 
     def __init__(self, error, code=None, details=None):
@@ -135,8 +129,6 @@ class ExecutionTimeout(OperationFailure):
 
 class TimeoutError(OperationFailure):
     """DEPRECATED - will be removed in PyMongo 3.0. See WTimeoutError instead.
-
-    .. versionadded:: 1.8
     """
 
 
@@ -152,12 +144,7 @@ class WTimeoutError(TimeoutError):
 
 
 class DuplicateKeyError(OperationFailure):
-    """Raised when a safe insert or update fails due to a duplicate key error.
-
-    .. note:: Requires server version **>= 1.3.0**
-
-    .. versionadded:: 1.4
-    """
+    """Raised when an insert or update fails due to a duplicate key error."""
 
 
 class BulkWriteError(OperationFailure):
@@ -171,25 +158,19 @@ class BulkWriteError(OperationFailure):
 
 
 class InvalidOperation(PyMongoError):
-    """Raised when a client attempts to perform an invalid operation.
-    """
+    """Raised when a client attempts to perform an invalid operation."""
 
 
 class InvalidName(PyMongoError):
-    """Raised when an invalid name is used.
-    """
+    """Raised when an invalid name is used."""
 
 
 class CollectionInvalid(PyMongoError):
-    """Raised when collection validation fails.
-    """
+    """Raised when collection validation fails."""
 
 
 class InvalidURI(ConfigurationError):
-    """Raised when trying to parse an invalid mongodb URI.
-
-    .. versionadded:: 1.5
-    """
+    """Raised when trying to parse an invalid mongodb URI."""
 
 
 class UnsupportedOption(ConfigurationError):

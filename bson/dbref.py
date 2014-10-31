@@ -43,11 +43,6 @@ class DBRef(object):
           - `**kwargs` (optional): additional keyword arguments will
             create additional, custom fields
 
-        .. versionchanged:: 1.8
-           Now takes keyword arguments to specify additional fields.
-        .. versionadded:: 1.1.1
-           The `database` parameter.
-
         .. mongodoc:: dbrefs
         """
         if not isinstance(collection, string_type):
@@ -80,8 +75,6 @@ class DBRef(object):
         """Get the name of this DBRef's database.
 
         Returns None if this DBRef doesn't specify a database.
-
-        .. versionadded:: 1.1.1
         """
         return self.__database
 
@@ -130,18 +123,12 @@ class DBRef(object):
         return not self == other
 
     def __hash__(self):
-        """Get a hash value for this :class:`DBRef`.
-
-        .. versionadded:: 1.1
-        """
+        """Get a hash value for this :class:`DBRef`."""
         return hash((self.__collection, self.__id, self.__database,
                      tuple(sorted(self.__kwargs.items()))))
 
     def __deepcopy__(self, memo):
-        """Support function for `copy.deepcopy()`.
-
-        .. versionadded:: 1.10
-        """
+        """Support function for `copy.deepcopy()`."""
         return DBRef(deepcopy(self.__collection, memo),
                      deepcopy(self.__id, memo),
                      deepcopy(self.__database, memo),

@@ -46,9 +46,6 @@ class Timestamp(object):
             :class:`~datetime.datetime`, or an aware
             :class:`~datetime.datetime`
           - `inc`: the incrementing counter
-
-        .. versionchanged:: 1.7
-           `time` can now be a :class:`~datetime.datetime` instance.
         """
         if isinstance(time, datetime.datetime):
             if time.utcoffset() is not None:
@@ -114,7 +111,6 @@ class Timestamp(object):
         """Return a :class:`~datetime.datetime` instance corresponding
         to the time portion of this :class:`Timestamp`.
 
-        .. versionchanged:: 1.8
-           The returned datetime is now timezone aware.
+        The returned datetime's timezone is UTC.
         """
         return datetime.datetime.fromtimestamp(self.__time, utc)

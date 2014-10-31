@@ -318,10 +318,6 @@ class GridIn(object):
         :Parameters:
           - `data`: string of bytes or file-like object to be written
             to the file
-
-        .. versionadded:: 1.9
-           The ability to write :class:`unicode`, if the file has an
-           :attr:`encoding` attribute.
         """
         if self._closed:
             raise ValueError("cannot write to a closed file")
@@ -504,8 +500,6 @@ class GridOut(object):
 
         :Parameters:
          - `size` (optional): the maximum number of bytes to read
-
-        .. versionadded:: 1.9
         """
         if size == 0:
             return b''
