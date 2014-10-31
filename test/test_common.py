@@ -26,7 +26,7 @@ from bson.son import SON
 from pymongo.mongo_client import MongoClient
 from pymongo.errors import ConfigurationError, OperationFailure
 from test import client_context, pair, unittest, IntegrationTest
-from test.utils import connected, rs_or_single_client
+from test.utils import connected, rs_or_single_client, single_client
 
 
 @client_context.require_connection
@@ -234,10 +234,11 @@ class TestCommon(IntegrationTest):
         self.assertTrue(coll.insert(doc))
 
         # Equality tests
-        self.assertEqual(m,
+        direct = single_client(w=0)
+        self.assertEqual(direct,
                          connected(MongoClient("mongodb://%s/?w=0" % (pair,))))
 
-        self.assertFalse(m !=
+        self.assertFalse(direct !=
                          connected(MongoClient("mongodb://%s/?w=0" % (pair,))))
 
 

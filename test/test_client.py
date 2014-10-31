@@ -254,8 +254,8 @@ class TestClient(IntegrationTest, TestRequestMixin):
             self.assertIn("%s:%d" % node, repr(self.client))
 
     def test_getters(self):
-        self.assertEqual(self.client.host, host)
-        self.assertEqual(self.client.port, port)
+        self.assertEqual(client_context.client.host, host)
+        self.assertEqual(client_context.client.port, port)
         self.assertEqual(client_context.nodes, self.client.nodes)
 
     def test_database_names(self):
