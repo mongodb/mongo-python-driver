@@ -1,11 +1,11 @@
 language: python
 
 python:
-  - 2.5
   - 2.6
   - 2.7
   - 3.2
   - 3.3
+  - 3.4
   - pypy
 
 services:
@@ -14,5 +14,5 @@ services:
 script: python setup.py test
 
 install:
-    #Temporary solution for Travis CI mutiprocessing issue #155
+    # Temporary solution for Travis CI multiprocessing issue #943
     - sudo rm -rf /dev/shm && sudo ln -s /run/shm /dev/shm
