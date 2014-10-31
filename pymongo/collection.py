@@ -1209,8 +1209,20 @@ class Collection(common.BaseObject):
         information on the possible options. Returns an empty
         dictionary if the collection has not been created yet.
         """
-        result = self.__database.system.namespaces.find_one(
-            {"name": self.__full_name})
+        client = self.__database.connection
+
+        result = None
+        if client._writable_max_wire_version() > 2:
+            res = self.__database.command(
+                "listCollections",
+                filter={"name": self.__name},
+                read_preference=ReadPreference.PRIMARY)
+            for doc in res.get("collections", []):
+                result = doc
+                break
+        else:
+            result = self.__database.system.namespaces.find_one(
+                {"name": self.__full_name})
 
         if not result:
             return {}

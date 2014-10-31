@@ -442,11 +442,19 @@ class Database(common.BaseObject):
           - `include_system_collections` (optional): if ``False`` list
             will not include system collections (e.g ``system.indexes``)
         """
-        results = self["system.namespaces"].find(
-            read_preference=ReadPreference.PRIMARY)
-        names = [r["name"] for r in results]
-        names = [n[len(self.__name) + 1:] for n in names
-                 if n.startswith(self.__name + ".") and "$" not in n]
+        client = self.__connection
+
+        if client._writable_max_wire_version() > 2:
+            results = self.command("listCollections",
+                read_preference=ReadPreference.PRIMARY).get("collections", [])
+            names = [result["name"] for result in results]
+        else:
+            names = [result["name"] for result
+                     in self["system.namespaces"].find(
+                         read_preference=ReadPreference.PRIMARY)]
+            names = [n[len(self.__name) + 1:] for n in names
+                     if n.startswith(self.__name + ".") and "$" not in n]
+
         if not include_system_collections:
             names = [n for n in names if not n.startswith("system.")]
         return names
