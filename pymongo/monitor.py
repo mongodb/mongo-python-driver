@@ -44,7 +44,12 @@ class Monitor(object):
         """
         super(Monitor, self).__init__()
         self._server_description = server_description
-        self._topology = weakref.proxy(topology)
+
+        # A weakref callback, takes ref to the dead topology as its parameter.
+        def close(dummy):
+            self.close()
+
+        self._topology = weakref.proxy(topology, close)
         self._pool = pool
         self._settings = topology_settings
         self._stopped = False

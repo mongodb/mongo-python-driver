@@ -49,7 +49,6 @@ class TestMonitor(IntegrationTest):
         ref = wait_until(partial(find_monitor_ref, monitor),
                          'register monitor')
 
-        client.close()
         del monitor
         del client
 
