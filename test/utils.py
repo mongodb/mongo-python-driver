@@ -210,7 +210,7 @@ def connected(client):
     return client
 
 def wait_until(predicate, success_description, timeout=10):
-    """Wait up to 10 seconds (by default) for predicate to be True.
+    """Wait up to 10 seconds (by default) for predicate to be true.
 
     E.g.:
 
@@ -219,11 +219,19 @@ def wait_until(predicate, success_description, timeout=10):
 
     If the lambda-expression isn't true after 10 seconds, we raise
     AssertionError("Didn't ever connect to the primary").
+
+    Returns the predicate's first true value.
     """
     start = time.time()
-    while not predicate():
+    while True:
+        retval = predicate()
+        if retval:
+            return retval
+
         if time.time() - start > timeout:
             raise AssertionError("Didn't ever %s" % success_description)
+
+        time.sleep(0.1)
 
 def is_mongos(client):
     res = client.admin.command('ismaster')
@@ -505,6 +513,28 @@ def run_threads(collection, target):
         assert not t.isAlive()
 
 
+@contextlib.contextmanager
+def frequent_thread_switches():
+    """Make concurrency bugs more likely to manifest."""
+    interval = None
+    if not sys.platform.startswith('java'):
+        if hasattr(sys, 'getswitchinterval'):
+            interval = sys.getswitchinterval()
+            sys.setswitchinterval(1e-6)
+        else:
+            interval = sys.getcheckinterval()
+            sys.setcheckinterval(1)
+
+    try:
+        yield
+    finally:
+        if not sys.platform.startswith('java'):
+            if hasattr(sys, 'setswitchinterval'):
+                sys.setswitchinterval(interval)
+            else:
+                sys.setcheckinterval(interval)
+
+
 def lazy_client_trial(reset, target, test, get_client):
     """Test concurrent operations on a lazily-connecting client.
 
@@ -518,27 +548,10 @@ def lazy_client_trial(reset, target, test, get_client):
     """
     collection = client_context.client.pymongo_test.test
 
-    # Make concurrency bugs more likely to manifest.
-    interval = None
-    if not sys.platform.startswith('java'):
-        if hasattr(sys, 'getswitchinterval'):
-            interval = sys.getswitchinterval()
-            sys.setswitchinterval(1e-6)
-        else:
-            interval = sys.getcheckinterval()
-            sys.setcheckinterval(1)
-
-    try:
+    with frequent_thread_switches():
         for i in range(NTRIALS):
             reset(collection)
             lazy_client = get_client()
             lazy_collection = lazy_client.pymongo_test.test
             run_threads(lazy_collection, target)
             test(lazy_collection)
-
-    finally:
-        if not sys.platform.startswith('java'):
-            if hasattr(sys, 'setswitchinterval'):
-                sys.setswitchinterval(interval)
-            else:
-                sys.setcheckinterval(interval)

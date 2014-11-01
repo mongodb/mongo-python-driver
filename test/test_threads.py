@@ -18,7 +18,8 @@ import threading
 import traceback
 
 from test import unittest, client_context, IntegrationTest
-from test.utils import (joinall,
+from test.utils import (frequent_thread_switches,
+                        joinall,
                         remove_all_users,
                         RendezvousThread,
                         rs_or_single_client)
@@ -57,12 +58,15 @@ class SaveAndFind(threading.Thread):
         threading.Thread.__init__(self)
         self.collection = collection
         self.setDaemon(True)
+        self.passed = False
 
     def run(self):
         sum = 0
         for document in self.collection.find():
             sum += document["x"]
+
         assert sum == 499500, "sum was %d not 499500" % sum
+        self.passed = True
 
 
 class Insert(threading.Thread):
@@ -112,6 +116,21 @@ class Update(threading.Thread):
 
             if self.expect_exception:
                 assert error
+
+
+class Disconnect(threading.Thread):
+
+    def __init__(self, client, n):
+        threading.Thread.__init__(self)
+        self.client = client
+        self.n = n
+        self.passed = False
+
+    def run(self):
+        for _ in range(self.n):
+            self.client.disconnect()
+
+        self.passed = True
 
 
 class IgnoreAutoReconnect(threading.Thread):
@@ -284,6 +303,26 @@ class TestThreads(IntegrationTest):
 
         for t in threads:
             self.assertTrue(t.passed, "%s threw exception" % t)
+
+    def test_client_disconnect(self):
+        self.db.drop_collection("test")
+        for i in range(1000):
+            self.db.test.save({"x": i})
+
+        # Start 10 threads that execute a query, and 10 threads that call
+        # client.disconnect() 10 times in a row.
+        threads = [SaveAndFind(self.db.test) for _ in range(10)]
+        threads.extend(Disconnect(self.db.connection, 10) for _ in range(10))
+
+        with frequent_thread_switches():
+            for t in threads:
+                t.start()
+
+            for t in threads:
+                t.join(30)
+
+            for t in threads:
+                self.assertTrue(t.passed)
 
 
 class TestThreadsAuth(IntegrationTest):

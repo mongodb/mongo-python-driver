@@ -42,8 +42,9 @@ class Server(object):
         self._pool.reset()
 
     def reset(self):
-        """Clear the connection pool."""
+        """Clear the connection pool and stop the monitor."""
         self._pool.reset()
+        self._monitor.close()
 
     def request_check(self):
         """Check the server's state soon."""

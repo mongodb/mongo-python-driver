@@ -17,38 +17,43 @@
 import gc
 import sys
 import time
+from functools import partial
 
 sys.path[0:0] = [""]
 
 from pymongo.monitor import MONITORS
 from test import unittest, port, host, IntegrationTest
-from test.utils import single_client, wait_until, one
+from test.utils import single_client, one, connected, wait_until
+
+
+def find_monitor_ref(monitor):
+    for ref in MONITORS.copy():
+        if ref() is monitor:
+            return ref
+
+    return None
+
+
+def unregistered(ref):
+    gc.collect()
+    return ref not in MONITORS
 
 
 class TestMonitor(IntegrationTest):
     def test_atexit_hook(self):
-        # Weakrefs to currently running Monitor instances.
-        prior_monitors = MONITORS.copy()
         client = single_client(host, port)
-        wait_until(lambda: MONITORS - prior_monitors,
-                   'register new monitor')
+        monitor = one(client._topology._servers.values())._monitor
+        connected(client)
 
-        # Just one new monitor should have been registered.
-        new_monitor_refs = MONITORS - prior_monitors
-        self.assertEqual(1, len(new_monitor_refs))
-        monitor_ref = one(new_monitor_refs)
+        # The client registers a weakref to the monitor.
+        ref = wait_until(partial(find_monitor_ref, monitor),
+                         'register monitor')
+
+        client.close()
+        del monitor
         del client
 
-        start = time.time()
-        while time.time() - start < 30:
-            gc.collect()
-            if monitor_ref not in MONITORS:
-                # New monitor was unregistered.
-                break
-
-            time.sleep(0.1)
-        else:
-            self.fail("Didn't ever unregister monitor")
+        wait_until(partial(unregistered, ref), 'unregister monitor')
 
 
 if __name__ == "__main__":

@@ -207,7 +207,7 @@ class Topology(object):
         """
         with self._lock:
             for server in self._servers.values():
-                server.pool.reset()
+                server.reset()
 
             # Mark all servers Unknown.
             self._description = self._description.reset()

@@ -56,6 +56,7 @@ class Monitor(object):
 
         Multiple calls have no effect.
         """
+        self._stopped = False
         started = False
         try:
             started = self._thread and self._thread.is_alive()
@@ -73,12 +74,12 @@ class Monitor(object):
     def close(self):
         """Disconnect and stop monitoring.
 
-        The Monitor cannot be used after closing.
+        open() restarts the monitor after closing.
         """
         self._stopped = True
         self._pool.reset()
 
-        # Awake the thread so it notices that _stopped is True.
+        # Wake the thread so it notices that _stopped is True.
         self.request_check()
 
     def join(self, timeout=None):
