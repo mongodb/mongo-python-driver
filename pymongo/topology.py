@@ -171,10 +171,6 @@ class Topology(object):
         """Return set of arbiter addresses."""
         return self._get_replica_set_members(arbiter_server_selector)
 
-    def close(self):
-        # TODO.
-        raise NotImplementedError
-
     def request_check_all(self, wait_time=5):
         """Wake all monitors, wait for at least one to check its server."""
         with self._lock:
@@ -193,21 +189,17 @@ class Topology(object):
 
             # "server" is None if another thread removed it from the topology.
             if server:
-                server.pool.reset()
+                server.reset()
 
                 # Mark this server Unknown.
                 self._description = self._description.reset_server(address)
                 self._update_servers()
 
-    def reset(self):
-        """Reset all pools and disconnect from all servers.
-
-        The Topology reconnects on demand, or after common.HEARTBEAT_FREQUENCY
-        seconds.
-        """
+    def close(self):
+        """Clear pools and terminate monitors. Topology reopens on demand."""
         with self._lock:
             for server in self._servers.values():
-                server.reset()
+                server.close()
 
             # Mark all servers Unknown.
             self._description = self._description.reset()

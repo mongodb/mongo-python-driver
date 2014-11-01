@@ -237,7 +237,7 @@ class TestSingleServerTopology(TopologyTest):
 
 
 class TestMultiServerTopology(TopologyTest):
-    def test_reset(self):
+    def test_close(self):
         t = create_mock_topology(set_name='rs')
         got_ismaster(t, ('a', 27017), {
             'ok': 1,
@@ -257,7 +257,7 @@ class TestMultiServerTopology(TopologyTest):
         self.assertEqual(TOPOLOGY_TYPE.ReplicaSetWithPrimary,
                          t.description.topology_type)
 
-        t.reset()
+        t.close()
         self.assertEqual(2, len(t.description.server_descriptions()))
         self.assertEqual(SERVER_TYPE.Unknown, get_type(t, 'a'))
         self.assertEqual(SERVER_TYPE.Unknown, get_type(t, 'b'))

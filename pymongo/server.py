@@ -35,16 +35,17 @@ class Server(object):
         """
         self._monitor.open()
 
-    def close(self):
-        self._monitor.close()
-
-        # TODO: Add a close() method for consistency.
-        self._pool.reset()
-
     def reset(self):
-        """Clear the connection pool and stop the monitor."""
-        self._pool.reset()
+        """Clear the connection pool."""
+        self.pool.reset()
+
+    def close(self):
+        """Clear the connection pool and stop the monitor.
+
+        Reconnect with open().
+        """
         self._monitor.close()
+        self._pool.reset()
 
     def request_check(self):
         """Check the server's state soon."""

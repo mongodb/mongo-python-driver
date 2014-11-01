@@ -614,7 +614,7 @@ class MongoClient(common.BaseObject):
         pools. If this instance is used again it will be automatically
         re-opened.
         """
-        self._topology.reset()
+        self._topology.close()
 
     def close(self):
         """Alias for :meth:`disconnect`
