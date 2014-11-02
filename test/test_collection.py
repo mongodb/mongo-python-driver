@@ -2320,9 +2320,10 @@ class TestCollection(IntegrationTest):
                 copy['collection'] = collection.name
                 return copy
 
-        self.db.add_son_manipulator(AddCollectionNameManipulator())
+        db = self.client.pymongo_test
+        db.add_son_manipulator(AddCollectionNameManipulator())
 
-        c = self.db.test
+        c = db.test
         c.drop()
         c.insert({'_id': 1, 'i': 1})
 
