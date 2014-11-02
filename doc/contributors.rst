@@ -72,3 +72,4 @@ The following is a list of people who have contributed to
 - Jaroslav Semančík (girogiro)
 - Don Mitchell (dmitchell)
 - Can Zhang (cannium)
+- Sergey Azovskov (last-g)
