@@ -381,13 +381,15 @@ class MasterSlaveConnection(BaseObject):
         return self.__master.admin.command("buildinfo")
 
     def _cache_credentials(self, source, credentials, connect=True):
-        self.__master._cache_credentials(source,
-                                         credentials,
-                                         connect=connect)
+        self.__master._cache_credentials(source, credentials, connect)
         for slave in self.__slaves:
-            slave._cache_credentials(source,
-                                     credentials,
-                                     connect=connect)
+            # Use connect=False here so that credentials are cached
+            # on the slaves no matter what. Since auth succeeded on the
+            # master we know the credentials are correct and the slaves
+            # will authenticate as needed. This avoids issues with slave
+            # auth problems due to problems other than bad credentials
+            # (e.g. network errors).
+            slave._cache_credentials(source, credentials, connect=False)
 
     def _purge_credentials(self, source):
         self.__master._purge_credentials(source)
