@@ -1668,6 +1668,9 @@ class Collection(common.BaseObject):
 
         .. note:: Requires server version **>= 1.3.0**
 
+        .. versionchanged:: 2.8
+           Added the optional manipulate parameter
+
         .. versionchanged:: 2.5
            Added the optional full_response parameter
 
