@@ -2329,17 +2329,17 @@ class TestCollection(IntegrationTest):
         # Test correct findAndModify
         # With manipulators
         self.assertEqual({'_id': 1, 'i': 1, 'collection': 'test'},
-                         c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}}))
+                         c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
+                                           manipulate=True))
         self.assertEqual({'_id': 1, 'i': 3, 'collection': 'test'},
                          c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
-                                           new=True))
+                                           new=True, manipulate=True))
         # With out manipulators
         self.assertEqual({'_id': 1, 'i': 3},
-                         c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
-                                           manipulate=False))
+                         c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}}))
         self.assertEqual({'_id': 1, 'i': 5},
                          c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
-                                           new=True, manipulate=False))
+                                           new=True))
 
 
 if __name__ == "__main__":

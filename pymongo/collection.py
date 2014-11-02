@@ -1496,7 +1496,7 @@ class Collection(common.BaseObject):
 
     def find_and_modify(self, query={}, update=None,
                         upsert=False, sort=None, full_response=False,
-                        manipulate=True, **kwargs):
+                        manipulate=False, **kwargs):
         """Update and return an object.
 
         This is a thin wrapper around the findAndModify_ command. The
@@ -1528,9 +1528,9 @@ class Collection(common.BaseObject):
             - `new`: return updated rather than original object
               (default ``False``)
             - `fields`: see second argument to :meth:`find` (default all)
-            - `manipulate`: (optional): If True (the default), apply any
-               outgoing SON manipulators before returning. Do not works when
-               `full_response` is set to True.
+            - `manipulate`: (optional): If ``True``, apply any outgoing SON
+              manipulators before returning. Ignored when `full_response`
+              is set to True. Defaults to ``False``.
             - `**kwargs`: any other options the findAndModify_ command
               supports can be passed here.
 
