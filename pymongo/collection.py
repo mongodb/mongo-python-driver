@@ -1539,6 +1539,9 @@ class Collection(common.BaseObject):
 
         .. _findAndModify: http://dochub.mongodb.org/core/findAndModify
 
+        .. versionchanged:: 2.8
+           Added the optional manipulate parameter
+
         .. versionchanged:: 2.5
            Added the optional full_response parameter
 
