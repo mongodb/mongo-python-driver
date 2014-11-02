@@ -183,6 +183,7 @@ class MasterSlaveConnection(BaseObject):
         """Alias for :meth:`disconnect`
 
         .. seealso:: :meth:`end_request`
+        .. versionadded:: 2.8
         """
         self.disconnect()
 
@@ -375,8 +376,9 @@ class MasterSlaveConnection(BaseObject):
                                           index_name)
 
     def server_info(self):
-        """Get information about the MongoDB
-        (master)server we're connected to.
+        """Get information about the MongoDB master we're connected to.
+
+        .. versionadded:: 2.8
         """
         return self.__master.admin.command("buildinfo")
 
