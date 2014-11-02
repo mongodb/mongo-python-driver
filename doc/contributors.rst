@@ -71,3 +71,5 @@ The following is a list of people who have contributed to
 - Luke Lovett (lovett89)
 - Jaroslav Semančík (girogiro)
 - Don Mitchell (dmitchell)
+- Can Zhang (cannium)
+- Sergey Azovskov (last-g)
