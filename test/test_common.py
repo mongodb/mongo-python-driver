@@ -234,7 +234,7 @@ class TestCommon(IntegrationTest):
         self.assertTrue(coll.insert(doc))
 
         # Equality tests
-        direct = single_client(w=0)
+        direct = connected(single_client(w=0))
         self.assertEqual(direct,
                          connected(MongoClient("mongodb://%s/?w=0" % (pair,))))
 
