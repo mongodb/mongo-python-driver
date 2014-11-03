@@ -679,7 +679,7 @@ class TestClient(IntegrationTest, TestRequestMixin):
             self.assertEqual(1, len(get_pool(client).sockets))
         self.assertEqual(0, len(get_pool(client).sockets))
 
-        with self.client as client:
+        with client as client:
             self.assertEqual("bar", client.pymongo_test.test.find_one()["foo"])
         self.assertEqual(0, len(get_pool(client).sockets))
 
