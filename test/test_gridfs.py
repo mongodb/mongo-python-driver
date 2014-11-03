@@ -19,19 +19,18 @@
 import sys
 sys.path[0:0] = [""]
 
-from pymongo.mongo_client import MongoClient
-from pymongo.errors import ConnectionFailure
-from pymongo.read_preferences import ReadPreference
-from test.test_replica_set_client import TestReplicaSetClientBase
-
 import datetime
 import threading
 import time
 import gridfs
 
 from bson.py3compat import u, StringIO, string_type
+from pymongo.mongo_client import MongoClient
+from pymongo.errors import ConnectionFailure
+from pymongo.read_preferences import ReadPreference
 from gridfs.errors import (FileExists,
                            NoFile)
+from test.test_replica_set_client import TestReplicaSetClientBase
 from test import (client_context,
                   client_knobs,
                   unittest,
