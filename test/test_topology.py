@@ -37,6 +37,7 @@ from pymongo.server_selectors import (any_server_selector,
                                       writable_server_selector)
 from pymongo.settings import TopologySettings
 from test import unittest, client_knobs
+from test.utils import wait_until
 
 
 class MockSocketInfo(object):
@@ -464,6 +465,23 @@ class TestMultiServerTopology(TopologyTest):
         self.assertEqual(2, write_batch_size())
 
 
+def wait_for_master(topology):
+    """Wait for a Topology to discover a writable server.
+
+    If the monitor is currently calling ismaster, a blocking call to
+    select_server from this thread can trigger a spurious wake of the monitor
+    thread. In applications this is harmless but it would break some tests,
+    so we pass server_wait_time=0 and poll instead.
+    """
+    def get_master():
+        try:
+            return topology.select_server(writable_server_selector, 0)
+        except ConnectionFailure:
+            return None
+
+    return wait_until(get_master, 'find master')
+
+
 class TestTopologyErrors(TopologyTest):
     # Errors when calling ismaster.
 
@@ -480,14 +498,13 @@ class TestTopologyErrors(TopologyTest):
                     raise socket.error()
 
         t = create_mock_topology(monitor_class=TestMonitor)
-        # Await first ismaster call.
-        s = t.select_server(writable_server_selector)
+        server = wait_for_master(t)
         self.assertEqual(1, ismaster_count[0])
-        pool_id = s.pool.pool_id
+        pool_id = server.pool.pool_id
 
         # Pool is reset by ismaster failure.
         t.request_check_all()
-        self.assertNotEqual(pool_id, s.pool.pool_id)
+        self.assertNotEqual(pool_id, server.pool.pool_id)
 
     def test_ismaster_retry(self):
         # ismaster succeeds at first, then raises socket error, then succeeds.
@@ -502,11 +519,10 @@ class TestTopologyErrors(TopologyTest):
                     raise socket.error()
 
         t = create_mock_topology(monitor_class=TestMonitor)
-
-        # Await first ismaster call.
-        s = t.select_server(writable_server_selector)
+        server = wait_for_master(t)
         self.assertEqual(1, ismaster_count[0])
-        self.assertEqual(SERVER_TYPE.Standalone, s.description.server_type)
+        self.assertEqual(SERVER_TYPE.Standalone,
+                         server.description.server_type)
 
         # Second ismaster call, then immediately the third.
         t.request_check_all()
