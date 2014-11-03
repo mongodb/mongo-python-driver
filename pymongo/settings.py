@@ -29,8 +29,8 @@ class TopologySettings(object):
         set_name=None,
         pool_class=None,
         pool_options=None,
-        monitor_class=monitor.Monitor,
-        condition_class=threading.Condition,
+        monitor_class=None,
+        condition_class=None,
     ):
         """Represent MongoClient's configuration.
 
