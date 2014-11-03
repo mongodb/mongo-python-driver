@@ -17,7 +17,7 @@
 import threading
 import traceback
 
-from test import unittest, client_context, IntegrationTest
+from test import unittest, client_context, IntegrationTest, db_user, db_pwd
 from test.utils import (frequent_thread_switches,
                         joinall,
                         remove_all_users,
@@ -352,6 +352,7 @@ class TestThreadsAuth(IntegrationTest):
         self.client.drop_database('auth_test')
         self.client.admin.remove_user('admin-user')
         self.client.admin.logout()
+        self.client.admin.authenticate(db_user, db_pwd)
 
     def test_auto_auth_login(self):
         client = self.client
