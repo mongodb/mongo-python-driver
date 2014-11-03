@@ -90,8 +90,3 @@ class TopologySettings(object):
         return dict([
             (address, ServerDescription(address))
             for address in self.seeds])
-
-
-class SocketSettings(object):
-    # TODO.
-    pass
