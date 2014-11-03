@@ -591,7 +591,7 @@ class TestPooling(_TestPoolingBase):
         parent_conn, child_conn = Pipe()
         p = Process(target=f, args=(child_conn,))
         p.start()
-        p.join(1)
+        p.join(30)
         p.terminate()
         child_conn.close()
         self.assertEqual("success", parent_conn.recv())
