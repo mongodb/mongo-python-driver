@@ -41,15 +41,9 @@ class TopologyDescription(object):
         self._set_name = set_name
         self._server_descriptions = server_descriptions
 
-    def has_server(self, address):
-        return address in self._server_descriptions
+        # Is PyMongo compatible with all servers' wire protocols?
+        self._incompatible_err = None
 
-    def check_compatible(self):
-        """Raise ConfigurationError if any server is incompatible.
-
-        A server is incompatible if its wire protocol version range does not
-        overlap with PyMongo's.
-        """
         for s in self._server_descriptions.values():
             # s.min/max_wire_version is the server's wire protocol.
             # MIN/MAX_SUPPORTED_WIRE_VERSION is what PyMongo supports.
@@ -64,7 +58,7 @@ class TopologyDescription(object):
                 and s.max_wire_version < common.MIN_SUPPORTED_WIRE_VERSION)
 
             if server_too_new or server_too_old:
-                raise ConfigurationError(
+                self._incompatible_err = (
                     "Server at %s:%d "
                     "uses wire protocol versions %d through %d, "
                     "but PyMongo only supports %d through %d"
@@ -72,6 +66,20 @@ class TopologyDescription(object):
                        s.min_wire_version, s.max_wire_version,
                        common.MIN_SUPPORTED_WIRE_VERSION,
                        common.MAX_SUPPORTED_WIRE_VERSION))
+
+                break
+
+    def check_compatible(self):
+        """Raise ConfigurationError if any server is incompatible.
+
+        A server is incompatible if its wire protocol version range does not
+        overlap with PyMongo's.
+        """
+        if self._incompatible_err:
+            raise ConfigurationError(self._incompatible_err)
+
+    def has_server(self, address):
+        return address in self._server_descriptions
 
     def reset_server(self, address):
         """A copy of this description, with one server marked Unknown."""
