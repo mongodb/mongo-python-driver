@@ -246,11 +246,11 @@ class TestSASLPlain(unittest.TestCase):
                                       SASL_HOST, SASL_PORT, SASL_DB))
             return uri
 
-        # Just assert that we raise the right exception
-        self.assertRaises(ConfigurationError, MongoClient,
-                          auth_string('not-user', SASL_PASS))
-        self.assertRaises(ConfigurationError, MongoClient,
-                          auth_string(SASL_USER, 'not-pwd'))
+        bad_user = MongoClient(auth_string('not-user', SASL_PASS))
+        bad_pwd = MongoClient(auth_string(SASL_USER, 'not-pwd'))
+        # OperationFailure raised upon connecting.
+        self.assertRaises(OperationFailure, bad_user.admin.command, 'ismaster')
+        self.assertRaises(OperationFailure, bad_pwd.admin.command, 'ismaster')
 
 
 
