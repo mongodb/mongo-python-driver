@@ -324,13 +324,23 @@ class TestClient(IntegrationTest, TestRequestMixin):
         # XXX - SERVER-15318
         if not (client_context.version.at_least(2, 6, 4) and
                 client_context.is_mongos):
-            c.copy_database("pymongo_test", "pymongo_test2",
-                            "%s:%d" % (host, port))
-            # copy_database() didn't accidentally restart the request
-            self.assertFalse(c.in_request())
+            # Add a user to the source database.
+            credentials = {}
+            if client_context.auth_enabled:
+                credentials = {'username': 'luke', 'password': 'pass'}
+                with ignore_deprecations():
+                    self.db.add_user('luke', 'pass')
+            try:
+                c.copy_database("pymongo_test", "pymongo_test2",
+                                "%s:%d" % (host, port), **credentials)
+                # copy_database() didn't accidentally restart the request
+                self.assertFalse(c.in_request())
 
-            self.assertTrue("pymongo_test2" in c.database_names())
-            self.assertEqual("bar", c.pymongo_test2.test.find_one()["foo"])
+                self.assertTrue("pymongo_test2" in c.database_names())
+                self.assertEqual("bar", c.pymongo_test2.test.find_one()["foo"])
+            finally:
+                if client_context.auth_enabled:
+                    self.db.remove_user('luke')
 
         # See SERVER-6427 for mongos
         if not client_context.is_mongos and client_context.auth_enabled:
