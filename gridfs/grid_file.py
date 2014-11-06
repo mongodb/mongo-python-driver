@@ -441,6 +441,7 @@ class GridOut(object):
         """Reads a chunk at a time. If the current position is within a
         chunk the remainder of the chunk is returned.
         """
+        self._ensure_file()
         received = len(self.__buffer)
         chunk_data = EMPTY
         chunk_size = int(self.chunk_size)
