@@ -22,9 +22,12 @@ import pymongo
 
 from bson.binary import OLD_UUID_SUBTYPE
 from bson.son import SON
+from pymongo import auth
 from pymongo.errors import (AutoReconnect,
                             CursorNotFound,
                             DuplicateKeyError,
+                            InvalidName,
+                            InvalidOperation,
                             OperationFailure,
                             ExecutionTimeout,
                             WTimeoutError)
@@ -221,6 +224,116 @@ def _fields_list_to_dict(fields):
                             "each an instance of %s" % (basestring.__name__,))
         as_dict[field] = 1
     return as_dict
+
+
+def _check_database_name(name):
+    """Check if a database name is valid."""
+    if not name:
+        raise InvalidName("database name cannot be the empty string")
+
+    for invalid_char in [" ", ".", "$", "/", "\\", "\x00"]:
+        if invalid_char in name:
+            raise InvalidName("database names cannot contain the "
+                              "character %r" % invalid_char)
+
+
+def _copy_database(
+        fromdb,
+        todb,
+        fromhost,
+        mechanism,
+        username,
+        password,
+        sock_info,
+        cmd_func):
+    """Copy a database, perhaps from a remote host.
+
+    :Parameters:
+      - `fromdb`: Source database.
+      - `todb`: Target database.
+      - `fromhost`: Source host like 'foo.com', 'foo.com:27017', or None.
+      - `mechanism`: An authentication mechanism.
+      - `username`: A str or unicode, or None.
+      - `password`: A str or unicode, or None.
+      - `sock_info`: A SocketInfo instance.
+      - `cmd_func`: A callback taking args sock_info, database, command doc.
+    """
+    if not isinstance(fromdb, basestring):
+        raise TypeError('from_name must be an instance '
+                        'of %s' % (basestring.__name__,))
+    if not isinstance(todb, basestring):
+        raise TypeError('to_name must be an instance '
+                        'of %s' % (basestring.__name__,))
+
+    _check_database_name(todb)
+
+    # It would be better if the user told us what mechanism to use, but for
+    # backwards compatibility with earlier PyMongos we don't require the
+    # mechanism. Hope 'fromhost' runs the same version as the target.
+    if mechanism == 'DEFAULT':
+        if sock_info.max_wire_version >= 3:
+            mechanism = 'SCRAM-SHA-1'
+        else:
+            mechanism = 'MONGODB-CR'
+
+    if username is not None:
+        if mechanism == 'SCRAM-SHA-1':
+            credentials = auth._build_credentials_tuple(mech=mechanism,
+                                                        source='admin',
+                                                        user=username,
+                                                        passwd=password,
+                                                        extra=None)
+
+            try:
+                auth._copydb_scram_sha1(credentials=credentials,
+                                        sock_info=sock_info,
+                                        cmd_func=cmd_func,
+                                        fromdb=fromdb,
+                                        todb=todb,
+                                        fromhost=fromhost)
+            except OperationFailure, exc:
+                errmsg = exc.details and exc.details.get('errmsg') or ''
+                if 'no such cmd: saslStart' in errmsg:
+                    explanation = (
+                        "%s doesn't support SCRAM-SHA-1, pass"
+                        " mechanism='MONGODB-CR' to copy_database" % fromhost)
+
+                    raise OperationFailure(explanation,
+                                           exc.code,
+                                           exc.details)
+                else:
+                    raise
+
+        elif mechanism == 'MONGODB-CR':
+            get_nonce_cmd = SON([('copydbgetnonce', 1),
+                                 ('fromhost', fromhost)])
+
+            get_nonce_response, _ = cmd_func(sock_info, 'admin', get_nonce_cmd)
+            nonce = get_nonce_response['nonce']
+            copydb_cmd = SON([('copydb', 1),
+                              ('fromdb', fromdb),
+                              ('todb', todb)])
+
+            copydb_cmd['username'] = username
+            copydb_cmd['nonce'] = nonce
+            copydb_cmd['key'] = auth._auth_key(nonce, username, password)
+            if fromhost is not None:
+                copydb_cmd['fromhost'] = fromhost
+
+            cmd_func(sock_info, 'admin', copydb_cmd)
+        else:
+            raise InvalidOperation('Authentication mechanism %r not supported'
+                                   ' for copy_database' % mechanism)
+    else:
+        # No username.
+        copydb_cmd = SON([('copydb', 1),
+                          ('fromdb', fromdb),
+                          ('todb', todb)])
+
+        if fromhost:
+            copydb_cmd['fromhost'] = fromhost
+
+        cmd_func(sock_info, 'admin', copydb_cmd)
 
 
 def shuffled(sequence):

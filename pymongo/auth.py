@@ -144,8 +144,26 @@ def _parse_scram_response(response):
     """Split a scram response into key, value pairs."""
     return dict([item.split(_EQUAL, 1) for item in response.split(_COMMA)])
 
-def _authenticate_scram_sha1(credentials, sock_info, cmd_func):
-    """Authenticate using SCRAM-SHA-1."""
+
+def _scram_sha1_conversation(
+        credentials,
+        sock_info,
+        cmd_func,
+        sasl_start,
+        sasl_continue):
+    """Authenticate or copydb using SCRAM-SHA-1.
+
+    sasl_start and sasl_continue are SONs, the base command documents for
+    beginning and continuing the SASL conversation. They may be modified
+    by the callee.
+
+    :Parameters:
+      - `credentials`: A credentials tuple from _build_credentials_tuple.
+      - `sock_info`: A SocketInfo instance.
+      - `cmd_func`: A callback taking args sock_info, database, command doc.
+      - `sasl_start`: A SON.
+      - `sasl_continue`: A SON.
+    """
     source, username, password = credentials
 
     # Make local
@@ -159,11 +177,8 @@ def _authenticate_scram_sha1(credentials, sock_info, cmd_func):
         (("%s" % (SystemRandom().random(),))[2:]).encode("utf-8"))
     first_bare = b("n=") + user + b(",r=") + nonce
 
-    cmd = SON([('saslStart', 1),
-               ('mechanism', 'SCRAM-SHA-1'),
-               ('payload', Binary(b("n,,") + first_bare)),
-               ('autoAuthorize', 1)])
-    res, _ = cmd_func(sock_info, source, cmd)
+    sasl_start['payload'] = Binary(b("n,,") + first_bare)
+    res, _ = cmd_func(sock_info, source, sasl_start)
 
     server_first = res['payload']
     parsed = _parse_scram_response(server_first)
@@ -187,9 +202,9 @@ def _authenticate_scram_sha1(credentials, sock_info, cmd_func):
     server_sig = standard_b64encode(
         _hmac(server_key, auth_msg, _SHA1MOD).digest())
 
-    cmd = SON([('saslContinue', 1),
-               ('conversationId', res['conversationId']),
-               ('payload', Binary(client_final))])
+    cmd = sasl_continue.copy()
+    cmd['conversationId'] = res['conversationId']
+    cmd['payload'] = Binary(client_final)
     res, _ = cmd_func(sock_info, source, cmd)
 
     parsed = _parse_scram_response(res['payload'])
@@ -198,12 +213,60 @@ def _authenticate_scram_sha1(credentials, sock_info, cmd_func):
     # Depending on how it's configured, Cyrus SASL (which the server uses)
     # requires a third empty challenge.
     if not res['done']:
-        cmd = SON([('saslContinue', 1),
-                   ('conversationId', res['conversationId']),
-                   ('payload', Binary(_EMPTY))])
+        cmd = sasl_continue.copy()
+        cmd['conversationId'] = res['conversationId']
+        cmd['payload'] = Binary(_EMPTY)
         res, _ = cmd_func(sock_info, source, cmd)
         if not res['done']:
             raise OperationFailure('SASL conversation failed to complete.')
+
+
+def _authenticate_scram_sha1(credentials, sock_info, cmd_func):
+    """Authenticate using SCRAM-SHA-1."""
+    # Base commands for starting and continuing SASL authentication.
+    sasl_start = SON([('saslStart', 1),
+                      ('mechanism', 'SCRAM-SHA-1'),
+                      ('autoAuthorize', 1)])
+    sasl_continue = SON([('saslContinue', 1)])
+    _scram_sha1_conversation(credentials, sock_info, cmd_func,
+                             sasl_start, sasl_continue)
+
+
+def _copydb_scram_sha1(
+        credentials,
+        sock_info,
+        cmd_func,
+        fromdb,
+        todb,
+        fromhost):
+    """Copy a database using SCRAM-SHA-1 authentication.
+
+    :Parameters:
+      - `credentials`: A tuple, (mechanism, source, username, password).
+      - `sock_info`: A SocketInfo instance.
+      - `cmd_func`: A callback taking args sock_info, database, command doc.
+      - `fromdb`: Source database.
+      - `todb`: Target database.
+      - `fromhost`: Source host or None.
+    """
+    assert credentials[0] == 'SCRAM-SHA-1'
+
+    sasl_start = SON([('copydbsaslstart', 1),
+                      ('mechanism', 'SCRAM-SHA-1'),
+                      ('autoAuthorize', 1),
+                      ('fromdb', fromdb),
+                      ('fromhost', fromhost)])
+
+    sasl_continue = SON([('copydb', 1),
+                         ('fromdb', fromdb),
+                         ('fromhost', fromhost),
+                         ('todb', todb)])
+
+    _scram_sha1_conversation(credentials[1:],
+                             sock_info,
+                             cmd_func,
+                             sasl_start,
+                             sasl_continue)
 
 
 def _password_digest(username, password):

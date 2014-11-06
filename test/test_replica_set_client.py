@@ -417,43 +417,20 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
 
     def test_copy_db(self):
         c = self._get_client()
-        # We test copy twice; once starting in a request and once not. In
-        # either case the copy should succeed (because it starts a request
-        # internally) and should leave us in the same state as before the copy.
-        c.start_request()
-
         self.assertRaises(TypeError, c.copy_database, 4, "foo")
         self.assertRaises(TypeError, c.copy_database, "foo", 4)
-
         self.assertRaises(InvalidName, c.copy_database, "foo", "$foo")
 
         c.pymongo_test.test.drop()
-        c.drop_database("pymongo_test1")
-        c.drop_database("pymongo_test2")
-
         c.pymongo_test.test.insert({"foo": "bar"})
 
+        c.drop_database("pymongo_test1")
         self.assertFalse("pymongo_test1" in c.database_names())
-        self.assertFalse("pymongo_test2" in c.database_names())
 
         c.copy_database("pymongo_test", "pymongo_test1")
-        # copy_database() didn't accidentally end the request
-        self.assertTrue(c.in_request())
-
         self.assertTrue("pymongo_test1" in c.database_names())
         self.assertEqual("bar", c.pymongo_test1.test.find_one()["foo"])
-
-        c.end_request()
-
-        self.assertFalse(c.in_request())
-        c.copy_database("pymongo_test", "pymongo_test2", pair)
-        # copy_database() didn't accidentally restart the request
-        self.assertFalse(c.in_request())
-
-        time.sleep(1)
-
-        self.assertTrue("pymongo_test2" in c.database_names())
-        self.assertEqual("bar", c.pymongo_test2.test.find_one()["foo"])
+        c.drop_database("pymongo_test1")
 
     def test_get_default_database(self):
         host = one(self.hosts)

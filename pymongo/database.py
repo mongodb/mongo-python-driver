@@ -24,24 +24,11 @@ from pymongo import auth, common, helpers
 from pymongo.collection import Collection
 from pymongo.errors import (CollectionInvalid,
                             ConfigurationError,
-                            InvalidName,
                             OperationFailure)
 from pymongo.read_preferences import (modes,
                                       secondary_ok_commands,
                                       ReadPreference)
 from pymongo.son_manipulator import SONManipulator
-
-
-def _check_name(name):
-    """Check if a database name is valid.
-    """
-    if not name:
-        raise InvalidName("database name cannot be the empty string")
-
-    for invalid_char in [" ", ".", "$", "/", "\\", "\x00"]:
-        if invalid_char in name:
-            raise InvalidName("database names cannot contain the "
-                              "character %r" % invalid_char)
 
 
 class Database(common.BaseObject):
@@ -77,7 +64,7 @@ class Database(common.BaseObject):
                             "of %s" % (basestring.__name__,))
 
         if name != '$external':
-            _check_name(name)
+            helpers._check_database_name(name)
 
         self.__name = unicode(name)
         self.__connection = connection

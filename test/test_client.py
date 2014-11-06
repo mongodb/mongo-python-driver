@@ -261,46 +261,34 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         # from a master in a master-slave pair.
         if server_is_master_with_slave(c):
             raise SkipTest("SERVER-2329")
-        if (not version.at_least(c, (2, 6, 0)) and
-                is_mongos(c) and server_started_with_auth(c)):
-            raise SkipTest("Need mongos >= 2.6.0 to test with authentication")
-        # We test copy twice; once starting in a request and once not. In
-        # either case the copy should succeed (because it starts a request
-        # internally) and should leave us in the same state as before the copy.
-        c.start_request()
 
         self.assertRaises(TypeError, c.copy_database, 4, "foo")
         self.assertRaises(TypeError, c.copy_database, "foo", 4)
-
         self.assertRaises(InvalidName, c.copy_database, "foo", "$foo")
 
         c.pymongo_test.test.drop()
-        c.drop_database("pymongo_test1")
-        c.drop_database("pymongo_test2")
-        self.assertFalse("pymongo_test1" in c.database_names())
-        self.assertFalse("pymongo_test2" in c.database_names())
-
         c.pymongo_test.test.insert({"foo": "bar"})
 
-        c.copy_database("pymongo_test", "pymongo_test1")
-        # copy_database() didn't accidentally end the request
-        self.assertTrue(c.in_request())
+        c.drop_database("pymongo_test1")
+        self.assertFalse("pymongo_test1" in c.database_names())
 
+        c.copy_database("pymongo_test", "pymongo_test1")
         self.assertTrue("pymongo_test1" in c.database_names())
         self.assertEqual("bar", c.pymongo_test1.test.find_one()["foo"])
-
-        c.end_request()
+        c.drop_database("pymongo_test1")
 
         # XXX - SERVER-15318
         if not (version.at_least(c, (2, 6, 4)) and is_mongos(c)):
             self.assertFalse(c.in_request())
-            c.copy_database("pymongo_test", "pymongo_test2",
+            c.copy_database("pymongo_test", "pymongo_test1",
                             "%s:%d" % (host, port))
             # copy_database() didn't accidentally restart the request
             self.assertFalse(c.in_request())
 
-            self.assertTrue("pymongo_test2" in c.database_names())
-            self.assertEqual("bar", c.pymongo_test2.test.find_one()["foo"])
+            self.assertTrue("pymongo_test1" in c.database_names())
+            self.assertEqual("bar", c.pymongo_test1.test.find_one()["foo"])
+
+        c.drop_database("pymongo_test1")
 
     def test_iteration(self):
         client = MongoClient(host, port)

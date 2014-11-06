@@ -36,7 +36,7 @@ from pymongo.errors import (OperationFailure,
                             ConnectionFailure,
                             AutoReconnect)
 from pymongo.read_preferences import ReadPreference
-from test import version, host, port, pair, auth_context
+from test import version, host, port, pair, auth_context, db_user, db_pwd
 from test.test_bulk import BulkTestBase
 from test.test_client import get_client
 from test.test_pooling_base import get_pool
@@ -279,11 +279,13 @@ class TestSCRAMSHA1(unittest.TestCase):
         ismaster = client.admin.command('ismaster')
         self.set_name = ismaster.get('setName')
 
-        cmd_line = get_command_line(client)
-        if 'SCRAM-SHA-1' not in cmd_line.get(
-            'parsed', {}).get('setParameter',
-                            {}).get('authenticationMechanisms', ''):
-            raise SkipTest('SCRAM-SHA-1 mechanism not enabled')
+        # SCRAM-SHA-1 is always enabled beginning in 2.7.8.
+        if not version.at_least(client, (2, 7, 8)):
+            cmd_line = get_command_line(client)
+            if 'SCRAM-SHA-1' not in cmd_line.get(
+                'parsed', {}).get('setParameter',
+                                  {}).get('authenticationMechanisms', ''):
+                raise SkipTest('SCRAM-SHA-1 mechanism not enabled')
 
         if self.set_name:
             client.pymongo_test.add_user('user', 'pass',
@@ -305,8 +307,8 @@ class TestSCRAMSHA1(unittest.TestCase):
         client.pymongo_test.command('dbstats')
 
         if self.set_name:
-            client = MongoReplicaSetClient(host, port,
-                                           replicaSet='%s' % (self.set_name,))
+            client = MongoReplicaSetClient(
+                'mongodb://localhost:%d/?replicaSet=%s' % (port, self.set_name))
             self.assertTrue(client.pymongo_test.authenticate(
                 'user', 'pass', mechanism='SCRAM-SHA-1'))
             client.pymongo_test.command('dbstats')
@@ -318,6 +320,43 @@ class TestSCRAMSHA1(unittest.TestCase):
             client.pymongo_test.command('dbstats')
             client.read_preference = ReadPreference.SECONDARY
             client.pymongo_test.command('dbstats')
+
+    def test_copy_db_scram_sha_1(self):
+        auth_context.client.drop_database('pymongo_test2')
+
+        if self.set_name:
+            client = MongoReplicaSetClient(
+                'mongodb://localhost:%d/?replicaSet=%s' % (port, self.set_name))
+        else:
+            client = MongoClient(host, port)
+
+        client.admin.authenticate(db_user, db_pwd, mechanism='SCRAM-SHA-1')
+        try:
+            client.pymongo_test.collection.insert({})
+
+            # No from_host.
+            client.copy_database(from_name='pymongo_test',
+                                 to_name='pymongo_test2',
+                                 username='user',
+                                 password='pass')
+
+            self.assertTrue('pymongo_test2'
+                            in auth_context.client.database_names())
+
+            # With from_host.
+            client.copy_database(from_name='pymongo_test',
+                                 to_name='pymongo_test3',
+                                 from_host='%s:%s' % (host, port),
+                                 username='user',
+                                 password='pass')
+
+            self.assertTrue('pymongo_test3'
+                            in auth_context.client.database_names())
+
+        finally:
+            auth_context.client.drop_database('pymongo_test')
+            auth_context.client.drop_database('pymongo_test2')
+            auth_context.client.drop_database('pymongo_test3')
 
     def tearDown(self):
         auth_context.client.pymongo_test.remove_user('user')

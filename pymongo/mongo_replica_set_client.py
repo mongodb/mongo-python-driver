@@ -1885,7 +1885,8 @@ class MongoReplicaSetClient(common.BaseObject):
                            read_preference=ReadPreference.PRIMARY)
 
     def copy_database(self, from_name, to_name,
-                      from_host=None, username=None, password=None):
+                      from_host=None, username=None, password=None,
+                      mechanism='DEFAULT'):
         """Copy a database, potentially from another host.
 
         Raises :class:`TypeError` if `from_name` or `to_name` is not
@@ -1897,7 +1898,9 @@ class MongoReplicaSetClient(common.BaseObject):
         source. Otherwise the database is copied from `from_host`.
 
         If the source database requires authentication, `username` and
-        `password` must be specified.
+        `password` must be specified. By default, use SCRAM-SHA-1 with
+        MongoDB 2.8 and later, MONGODB-CR (MongoDB Challenge Response
+        protocol) for older servers.
 
         :Parameters:
           - `from_name`: the name of the source database
@@ -1905,40 +1908,27 @@ class MongoReplicaSetClient(common.BaseObject):
           - `from_host` (optional): host name to copy from
           - `username` (optional): username for source database
           - `password` (optional): password for source database
+          - `mechanism` (optional): auth method, 'MONGODB-CR' or 'SCRAM-SHA-1'
 
-        .. note:: Specifying `username` and `password` requires server
-           version **>= 1.3.3+**.
+        .. seealso:: The :doc:`copy_database examples </examples/copydb>`.
+
+        .. versionadded:: 2.8
+           SCRAM-SHA-1 support.
         """
-        if not isinstance(from_name, basestring):
-            raise TypeError("from_name must be an instance "
-                            "of %s" % (basestring.__name__,))
-        if not isinstance(to_name, basestring):
-            raise TypeError("to_name must be an instance "
-                            "of %s" % (basestring.__name__,))
-
-        database._check_name(to_name)
-
-        command = {"fromdb": from_name, "todb": to_name}
-
-        if from_host is not None:
-            command["fromhost"] = from_host
-
+        member = self.__find_primary()
+        sock_info = self.__socket(member)
         try:
-            self.start_request()
-
-            if username is not None:
-                nonce = self.admin.command("copydbgetnonce",
-                    read_preference=ReadPreference.PRIMARY,
-                    fromhost=from_host)["nonce"]
-                command["username"] = username
-                command["nonce"] = nonce
-                command["key"] = auth._auth_key(nonce, username, password)
-
-            return self.admin.command("copydb",
-                                      read_preference=ReadPreference.PRIMARY,
-                                      **command)
+            helpers._copy_database(
+                fromdb=from_name,
+                todb=to_name,
+                fromhost=from_host,
+                mechanism=mechanism,
+                username=username,
+                password=password,
+                sock_info=sock_info,
+                cmd_func=self.__simple_command)
         finally:
-            self.end_request()
+            member.pool.maybe_return_socket(sock_info)
 
     def get_default_database(self):
         """Get the database named in the MongoDB connection URI.
