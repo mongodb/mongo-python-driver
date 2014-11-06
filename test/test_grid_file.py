@@ -589,6 +589,9 @@ with GridOut(self.db.fs, infile._id) as outfile:
         outfile.read()
         outfile.filename
 
+        outfile = GridOut(fs, infile._id, _connect=False)
+        outfile.readchunk()
+
     def test_grid_in_lazy_connect(self):
         client = MongoClient('badhost', _connect=False)
         fs = client.db.fs
