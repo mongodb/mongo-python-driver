@@ -512,6 +512,7 @@ class TestClientAuth(unittest.TestCase):
 
         authed_client.admin.add_user("admin", "password")
         c.admin.authenticate("admin", "password")
+        c.drop_database("pymongo_test")
         c.drop_database("pymongo_test1")
         c.pymongo_test.test.insert({"foo": "bar"})
 
