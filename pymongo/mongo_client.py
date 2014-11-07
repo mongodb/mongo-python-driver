@@ -152,10 +152,7 @@ class MongoClient(common.BaseObject):
           - `socketKeepAlive`: (boolean) Whether to send periodic keep-alive
             packets on connected sockets. Defaults to ``False`` (do not send
             keep-alive packets).
-          - `auto_start_request`: If ``True``, each thread that accesses
-            this :class:`MongoClient` has a socket allocated to it for the
-            thread's lifetime.  This ensures consistent reads, even if you
-            read after an unacknowledged write. Defaults to ``False``.
+          - `auto_start_request`: Deprecated.
           - `use_greenlets`: If ``True``, :meth:`start_request()` will ensure
             that the current greenlet uses the same socket for all
             operations until :meth:`end_request()`. Defaults to ``False``.
@@ -604,8 +601,7 @@ class MongoClient(common.BaseObject):
 
     @property
     def auto_start_request(self):
-        """Is auto_start_request enabled?
-        """
+        """**DEPRECATED** Is auto_start_request enabled?"""
         return self.__auto_start_request
 
     def get_document_class(self):
@@ -1236,26 +1232,17 @@ class MongoClient(common.BaseObject):
             raise AutoReconnect(str(e))
 
     def start_request(self):
-        """Ensure the current thread or greenlet always uses the same socket
-        until it calls :meth:`end_request`. This ensures consistent reads,
-        even if you read after an unacknowledged write.
+        """DEPRECATED: start_request will be removed in PyMongo 3.0.
 
-        In Python 2.6 and above, or in Python 2.5 with
-        "from __future__ import with_statement", :meth:`start_request` can be
-        used as a context manager:
+        When doing w=0 writes to MongoDB 2.4 or earlier, :meth:`start_request`
+        was sometimes useful to ensure the current thread always used the same
+        socket until it called :meth:`end_request`. This made consistent reads
+        more likely after an unacknowledged write. Requests are no longer
+        useful in modern MongoDB applications, see
+        `PYTHON-785 <https://jira.mongodb.org/browse/PYTHON-785>`_.
 
-        >>> client = pymongo.MongoClient(auto_start_request=False)
-        >>> db = client.test
-        >>> _id = db.test_collection.insert({})
-        >>> with client.start_request():
-        ...     for i in range(100):
-        ...         db.test_collection.update({'_id': _id}, {'$set': {'i':i}})
-        ...
-        ...     # Definitely read the document after the final update completes
-        ...     print db.test_collection.find({'_id': _id})
-
-        If a thread or greenlet calls start_request multiple times, an equal
-        number of calls to :meth:`end_request` is required to end the request.
+        .. versionchanged:: 2.8
+           Deprecated.
 
         .. versionchanged:: 2.4
            Now counts the number of calls to start_request and doesn't end
@@ -1270,17 +1257,17 @@ class MongoClient(common.BaseObject):
         return pool.Request(self)
 
     def in_request(self):
-        """True if this thread is in a request, meaning it has a socket
-        reserved for its exclusive use.
+        """**DEPRECATED**: True if this thread is in a request, meaning it has
+        a socket reserved for its exclusive use.
         """
         member = self.__member  # Don't try to connect if disconnected.
         return member and member.in_request()
 
     def end_request(self):
-        """Undo :meth:`start_request`. If :meth:`end_request` is called as many
-        times as :meth:`start_request`, the request is over and this thread's
-        connection returns to the pool. Extra calls to :meth:`end_request` have
-        no effect.
+        """**DEPRECATED**: Undo :meth:`start_request`. If :meth:`end_request`
+        is called as many times as :meth:`start_request`, the request is over
+        and this thread's connection returns to the pool. Extra calls to
+        :meth:`end_request` have no effect.
 
         Ending a request allows the :class:`~socket.socket` that has
         been reserved for this thread by :meth:`start_request` to be returned to

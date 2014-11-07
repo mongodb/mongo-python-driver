@@ -503,17 +503,11 @@ class MongoReplicaSetClient(common.BaseObject):
           - `socketKeepAlive`: (boolean) Whether to send periodic keep-alive
             packets on connected sockets. Defaults to ``False`` (do not send
             keep-alive packets).
-          - `auto_start_request`: If ``True``, each thread that accesses
-            this :class:`MongoReplicaSetClient` has a socket allocated to it
-            for the thread's lifetime, for each member of the set. For
-            :class:`~pymongo.read_preferences.ReadPreference` PRIMARY,
-            auto_start_request=True ensures consistent reads, even if you read
-            after an unacknowledged write. For read preferences other than
-            PRIMARY, there are no consistency guarantees. Default to ``False``.
+          - `auto_start_request`: Deprecated.
           - `use_greenlets`: If ``True``, use a background Greenlet instead of
-            a background thread to monitor state of replica set. Additionally,
-            :meth:`start_request()` assigns a greenlet-local, rather than
-            thread-local, socket. Defaults to ``False``.
+            a background thread to monitor the state of the replica set.
+            Additionally, :meth:`start_request` assigns a greenlet-local,
+            rather than thread-local, socket. Defaults to ``False``.
             `use_greenlets` with :class:`MongoReplicaSetClient` requires
             `Gevent <http://gevent.org/>`_ to be installed.
 
@@ -1013,8 +1007,7 @@ class MongoReplicaSetClient(common.BaseObject):
 
     @property
     def auto_start_request(self):
-        """Is auto_start_request enabled?
-        """
+        """**DEPRECATED** Is auto_start_request enabled?"""
         return self.__auto_start_request
 
     def __simple_command(self, sock_info, dbname, spec):
@@ -1371,10 +1364,9 @@ class MongoReplicaSetClient(common.BaseObject):
         primary, else ``True``.
 
         This method attempts to check the status of the primary with minimal
-        I/O. The current thread / greenlet retrieves a socket (its request
-        socket if it's in a request, or a random idle socket if it's not in a
-        request) from the primary's connection pool and checks whether calling
-        select_ on it raises an error. If there are currently no idle sockets,
+        I/O. The current thread / greenlet retrieves a socket from the
+        primary's connection pool and checks whether calling select_ on it
+        raises an error. If there are currently no idle sockets,
         :meth:`alive` attempts to connect a new socket.
 
         A more certain way to determine primary availability is to ping it::
@@ -1733,26 +1725,17 @@ class MongoReplicaSetClient(common.BaseObject):
             raise AutoReconnect(str(e))
 
     def start_request(self):
-        """Ensure the current thread or greenlet always uses the same socket
-        until it calls :meth:`end_request`. For
-        :class:`~pymongo.read_preferences.ReadPreference` PRIMARY,
-        auto_start_request=True ensures consistent reads, even if you read
-        after an unacknowledged write. For read preferences other than PRIMARY,
-        there are no consistency guarantees.
+        """DEPRECATED: start_request will be removed in PyMongo 3.0.
 
-        In Python 2.6 and above, or in Python 2.5 with
-        "from __future__ import with_statement", :meth:`start_request` can be
-        used as a context manager:
+        When doing w=0 writes to MongoDB 2.4 or earlier, :meth:`start_request`
+        was sometimes useful to ensure the current thread always used the same
+        socket until it called :meth:`end_request`. This made consistent reads
+        more likely after an unacknowledged write. Requests are no longer
+        useful in modern MongoDB applications, see
+        `PYTHON-785 <https://jira.mongodb.org/browse/PYTHON-785>`_.
 
-        >>> client = pymongo.MongoReplicaSetClient()
-        >>> db = client.test
-        >>> _id = db.test_collection.insert({})
-        >>> with client.start_request():
-        ...     for i in range(100):
-        ...         db.test_collection.update({'_id': _id}, {'$set': {'i':i}})
-        ...
-        ...     # Definitely read the document after the final update completes
-        ...     print db.test_collection.find({'_id': _id})
+        .. versionchanged:: 2.8
+           Deprecated.
 
         .. versionadded:: 2.2
            The :class:`~pymongo.pool.Request` return value.
@@ -1771,26 +1754,14 @@ class MongoReplicaSetClient(common.BaseObject):
         return pool.Request(self)
 
     def in_request(self):
-        """True if :meth:`start_request` has been called, but not
-        :meth:`end_request`, or if `auto_start_request` is True and
+        """**DEPRECATED**: True if :meth:`start_request` has been called, but
+        not :meth:`end_request`, or if `auto_start_request` is True and
         :meth:`end_request` has not been called in this thread or greenlet.
         """
         return bool(self.__request_counter.get())
 
     def end_request(self):
-        """Undo :meth:`start_request` and allow this thread's connections to
-        replica set members to return to the pool.
-
-        Calling :meth:`end_request` allows the :class:`~socket.socket` that has
-        been reserved for this thread by :meth:`start_request` to be returned
-        to the pool. Other threads will then be able to re-use that
-        :class:`~socket.socket`. If your application uses many threads, or has
-        long-running threads that infrequently perform MongoDB operations, then
-        judicious use of this method can lead to performance gains. Care should
-        be taken, however, to make sure that :meth:`end_request` is not called
-        in the middle of a sequence of operations in which ordering is
-        important. This could lead to unexpected results.
-        """
+        """**DEPRECATED**: Undo :meth:`start_request`."""
         rs_state = self.__rs_state
         if 0 == self.__request_counter.dec():
             for member in rs_state.members:

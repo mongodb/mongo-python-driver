@@ -123,11 +123,8 @@ class ReplicaSetConnection(MongoReplicaSetClient):
             keep-alive packets).
           - `auto_start_request`: If ``True`` (the default), each thread that
             accesses this :class:`ReplicaSetConnection` has a socket allocated
-            to it for the thread's lifetime, for each member of the set. For
-            :class:`~pymongo.read_preferences.ReadPreference` PRIMARY,
-            auto_start_request=True ensures consistent reads, even if you read
-            after an unsafe write. For read preferences other than PRIMARY,
-            there are no consistency guarantees.
+            to it for each member of the set until the thread calls
+            :meth:`end_request` or terminates.
           - `use_greenlets`: if ``True``, use a background Greenlet instead of
             a background thread to monitor state of replica set. Additionally,
             :meth:`start_request()` will ensure that the current greenlet uses

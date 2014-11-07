@@ -116,8 +116,7 @@ class Connection(MongoClient):
             keep-alive packets).
           - `auto_start_request`: If ``True`` (the default), each thread that
             accesses this Connection has a socket allocated to it for the
-            thread's lifetime.  This ensures consistent reads, even if you read
-            after an unsafe write.
+            thread's lifetime, or until :meth:`end_request` is called.
           - `use_greenlets`: if ``True``, :meth:`start_request()` will ensure
             that the current greenlet uses the same socket for all operations
             until :meth:`end_request()`. Defaults to ``False``.
