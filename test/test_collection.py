@@ -1306,18 +1306,23 @@ class TestCollection(unittest.TestCase):
         ismaster = self.client.admin.command("ismaster")
         if ismaster.get("setName"):
             w = len(ismaster["hosts"]) + 1
-            self.assertRaises(WTimeoutError, self.db.test.save,
+
+            # MongoDB 2.8+ raises error code 100, CannotSatisfyWriteConcern,
+            # if w > number of members. Older versions just time out after 1 ms
+            # as if they had enough secondaries but some are lagging. They
+            # return an error with 'wtimeout': True and no code.
+            self.assertRaises(OperationFailure, self.db.test.save,
                               {"x": 1}, w=w, wtimeout=1)
-            self.assertRaises(WTimeoutError, self.db.test.insert,
+            self.assertRaises(OperationFailure, self.db.test.insert,
                               {"x": 1}, w=w, wtimeout=1)
-            self.assertRaises(WTimeoutError, self.db.test.update,
+            self.assertRaises(OperationFailure, self.db.test.update,
                               {"x": 1}, {"y": 2}, w=w, wtimeout=1)
-            self.assertRaises(WTimeoutError, self.db.test.remove,
+            self.assertRaises(OperationFailure, self.db.test.remove,
                               {"x": 1}, w=w, wtimeout=1)
 
             try:
                 self.db.test.save({"x": 1}, w=w, wtimeout=1)
-            except WTimeoutError, exc:
+            except OperationFailure, exc:
                 # Just check that we set the error document. Fields
                 # vary by MongoDB version.
                 self.assertTrue(exc.details is not None)
