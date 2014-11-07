@@ -12,12 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Master-Slave connection to Mongo.
+"""**DEPRECATED**: Master-Slave connection to Mongo.
 
 Performs all writes to Master instance and distributes reads among all
 slaves. Reads are tried on each slave in turn until the read succeeds
 or all slaves failed.
+
+MasterSlaveConnection is deprecated and will be removed in PyMongo 3.0.
+Deploy your MongoDB servers as a replica set instead of a master-slave set,
+and use a :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`.
+If you cannot replace your master-slave set with a replica set, connect
+directly to the master and each slave with instances of
+:class:`~pymongo.mongo_client.MongoClient`.
+
+.. seealso:: `replica set documentation <http://dochub.mongodb.org/core/rs>`_.
+
+.. versionchanged:: 2.8
+   Deprecated.
 """
+
+import warnings
 
 from pymongo import helpers, thread_util
 from pymongo import ReadPreference
@@ -28,9 +42,6 @@ from pymongo.errors import AutoReconnect
 
 
 class MasterSlaveConnection(BaseObject):
-    """A master-slave connection to Mongo.
-    """
-
     def __init__(self, master, slaves=[], document_class=dict, tz_aware=False):
         """Create a new Master-Slave connection.
 
@@ -66,6 +77,10 @@ class MasterSlaveConnection(BaseObject):
             if not isinstance(slave, MongoClient):
                 raise TypeError("slave %r is not an instance of MongoClient" %
                                 slave)
+
+        warnings.warn("MasterSlaveConnection is deprecated, and will be"
+                      " removed in PyMongo 3.0.",
+                      DeprecationWarning, stacklevel=2)
 
         super(MasterSlaveConnection,
               self).__init__(read_preference=ReadPreference.SECONDARY,
