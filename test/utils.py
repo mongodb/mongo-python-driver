@@ -100,10 +100,12 @@ def one(s):
     """Get one element of a set"""
     return next(iter(s))
 
+
 def oid_generated_on_client(oid):
     """Is this process's PID in this ObjectId?"""
     pid_from_doc = struct.unpack(">H", oid.binary[7:9])[0]
     return (os.getpid() % 0xFFFF) == pid_from_doc
+
 
 def delay(sec):
     # Javascript sleep() only available in MongoDB since version ~1.9
@@ -112,10 +114,12 @@ def delay(sec):
         while (d > (new Date())) { }; return true;
     }''' % sec
 
+
 def get_command_line(client):
     command_line = client.admin.command('getCmdLineOpts')
     assert command_line['ok'] == 1, "getCmdLineOpts() failed"
     return command_line
+
 
 def server_started_with_option(client, cmdline_opt, config_opt):
     """Check if the server was started with a particular option.
@@ -180,10 +184,12 @@ def server_is_master_with_slave(client):
         return command_line['parsed'].get('master', False)
     return '--master' in command_line['argv']
 
+
 def drop_collections(db):
     for coll in db.collection_names():
         if not coll.startswith('system'):
             db.drop_collection(coll)
+
 
 def remove_all_users(db):
     if Version.from_client(db.connection).at_least(2, 5, 3, -1):
@@ -199,6 +205,7 @@ def joinall(threads):
         t.join(300)
         assert not t.isAlive(), "Thread %s hung" % t
 
+
 def connected(client):
     """Convenience to wait for a newly-constructed client to connect."""
     with warnings.catch_warnings():
@@ -208,6 +215,7 @@ def connected(client):
         client.admin.command('ismaster')  # Force connection.
 
     return client
+
 
 def wait_until(predicate, success_description, timeout=10):
     """Wait up to 10 seconds (by default) for predicate to be true.
@@ -233,9 +241,11 @@ def wait_until(predicate, success_description, timeout=10):
 
         time.sleep(0.1)
 
+
 def is_mongos(client):
     res = client.admin.command('ismaster')
     return res.get('msg', '') == 'isdbgrid'
+
 
 def enable_text_search(client):
     client.admin.command(
@@ -246,6 +256,7 @@ def enable_text_search(client):
         if client_context.auth_enabled:
             client.admin.authenticate(db_user, db_pwd)
         client.admin.command('setParameter', textSearchEnabled=True)
+
 
 def assertRaisesExactly(cls, fn, *args, **kwargs):
     """
@@ -261,11 +272,13 @@ def assertRaisesExactly(cls, fn, *args, **kwargs):
     else:
         raise AssertionError("%s not raised" % cls)
 
+
 @contextlib.contextmanager
 def ignore_deprecations():
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", DeprecationWarning)
         yield
+
 
 class RendezvousThread(threading.Thread):
     """A thread that starts and pauses at a rendezvous point before resuming.
@@ -285,21 +298,22 @@ class RendezvousThread(threading.Thread):
     8. Assert that all threads' "passed" attribute is True
     9. Test post-conditions
     """
+
     class RendezvousState(object):
         def __init__(self, nthreads):
             # Number of threads total
             self.nthreads = nthreads
-    
+
             # Number of threads that have arrived at rendezvous point
             self.arrived_threads = 0
             self.arrived_threads_lock = threading.Lock()
-    
+
             # Set when all threads reach rendezvous
             self.ev_arrived = threading.Event()
-    
+
             # Set by resume_after_rendezvous() so threads can continue.
             self.ev_resume = threading.Event()
-            
+
 
     @classmethod
     def create_shared_state(cls, nthreads):
@@ -363,11 +377,12 @@ class RendezvousThread(threading.Thread):
         self.after_rendezvous()
         self.passed = True
 
+
 def read_from_which_host(
-    client,
-    pref,
-    tag_sets=None,
-    secondary_acceptable_latency_ms=None
+        client,
+        pref,
+        tag_sets=None,
+        secondary_acceptable_latency_ms=None
 ):
     """Read from a client with the given Read Preference.
 
@@ -402,6 +417,7 @@ def read_from_which_host(
     except AutoReconnect:
         return None
 
+
 def assertReadFrom(testcase, client, member, *args, **kwargs):
     """Check that a query with the given mode and tag_sets reads from
     the expected replica-set member.
@@ -414,7 +430,9 @@ def assertReadFrom(testcase, client, member, *args, **kwargs):
       - `tag_sets` (optional): List of dicts of tags for data-center-aware reads
     """
     for _ in range(10):
-        testcase.assertEqual(member, read_from_which_host(client, *args, **kwargs))
+        testcase.assertEqual(member,
+                             read_from_which_host(client, *args, **kwargs))
+
 
 def assertReadFromAll(testcase, client, members, *args, **kwargs):
     """Check that a query with the given mode and tag_sets reads from all
@@ -434,11 +452,13 @@ def assertReadFromAll(testcase, client, members, *args, **kwargs):
 
     testcase.assertEqual(members, used)
 
+
 def get_pool(client):
     """Get the standalone, primary, or mongos pool."""
     topology = client._get_topology()
     server = topology.select_server(writable_server_selector)
     return server.pool
+
 
 def get_pools(client):
     """Get all pools."""
@@ -446,10 +466,12 @@ def get_pools(client):
         server.pool for server in
         client._get_topology().select_servers(any_server_selector)]
 
+
 class TestRequestMixin(object):
     """Inherit from this class and from unittest.TestCase to get some
     convenient methods for testing connection pools and requests
     """
+
     def assertSameSock(self, pool):
         sock_info0 = pool.get_socket({}, 0, 0)
         sock_info1 = pool.get_socket({}, 0, 0)
