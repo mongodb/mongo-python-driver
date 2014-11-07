@@ -16,6 +16,7 @@
 
 import random
 import struct
+import warnings
 
 import bson
 import pymongo
@@ -266,6 +267,11 @@ def _copy_database(
                         'of %s' % (basestring.__name__,))
 
     _check_database_name(todb)
+
+    warnings.warn("copy_database is deprecated. Use the raw 'copydb' command"
+                  " or db.copyDatabase() in the mongo shell. See"
+                  " doc/examples/copydb.",
+                  DeprecationWarning, stacklevel=2)
 
     # It would be better if the user told us what mechanism to use, but for
     # backwards compatibility with earlier PyMongos we don't require the

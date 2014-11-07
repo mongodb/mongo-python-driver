@@ -1887,7 +1887,10 @@ class MongoReplicaSetClient(common.BaseObject):
     def copy_database(self, from_name, to_name,
                       from_host=None, username=None, password=None,
                       mechanism='DEFAULT'):
-        """Copy a database, potentially from another host.
+        """**DEPRECATED**: Copy a database, potentially from another host.
+
+        :meth:`copy_database` will be removed in PyMongo 3.0. See the
+        :doc:`copy_database examples </examples/copydb>` for alternatives.
 
         Raises :class:`TypeError` if `from_name` or `to_name` is not
         an instance of :class:`basestring` (:class:`str` in python 3).
@@ -1913,7 +1916,7 @@ class MongoReplicaSetClient(common.BaseObject):
         .. seealso:: The :doc:`copy_database examples </examples/copydb>`.
 
         .. versionadded:: 2.8
-           SCRAM-SHA-1 support.
+           Deprecated copy_database, and added SCRAM-SHA-1 support.
         """
         member = self.__find_primary()
         sock_info = self.__socket(member)

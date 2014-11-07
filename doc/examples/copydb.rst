@@ -38,7 +38,12 @@ See the :doc:`authentication examples </examples/authentication>`.
 
 The current version of PyMongo provides a helper method,
 :meth:`~pymongo.mongo_client.MongoClient.copy_database`, to copy a database
-from a password-protected mongod server to the target server::
+from a password-protected mongod server to the target server.
+This method is deprecated and will be removed in PyMongo 3.0.
+Use the `copyDatabase function in the mongo shell`_ instead.
+
+Until the method is removed from PyMongo, you can copy a database from a
+password-protected server like so::
 
   >>> client = MongoClient('target.example.com')
   >>> client.copy_database(from_name='source_db_name',
@@ -61,3 +66,6 @@ connected to a pre-2.8 version of MongoDB, and SCRAM-SHA-1 when connected to
 a recent version. However, since PyMongo cannot determine the MongoDB
 version of the **source** host, it is better if you specify a mechanism
 yourself.
+
+.. _copyDatabase function in the mongo shell:
+   http://docs.mongodb.org/manual/reference/method/db.copyDatabase/
