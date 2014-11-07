@@ -598,6 +598,9 @@ Bye"""))
         outfile.read()
         outfile.filename
 
+        outfile = GridOut(fs, infile._id)
+        outfile.readchunk()
+
     def test_grid_in_lazy_connect(self):
         with client_knobs(server_wait_time=0.01):
             client = MongoClient('badhost', connect=False)
