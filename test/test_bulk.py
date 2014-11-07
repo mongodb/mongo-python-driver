@@ -23,9 +23,10 @@ sys.path[0:0] = [""]
 
 from bson import InvalidDocument, SON
 from pymongo.errors import BulkWriteError, InvalidOperation, OperationFailure
+from pymongo.mongo_client import _partition_node, MongoClient
 from test import version, skip_restricted_localhost
 from test.test_client import get_client
-from test.utils import oid_generated_on_client
+from test.utils import oid_generated_on_client, get_command_line
 
 
 setUpModule = skip_restricted_localhost
@@ -916,9 +917,46 @@ class TestBulkWriteConcern(BulkTestBase):
         ismaster = client.test.command('ismaster')
         self.is_repl = bool(ismaster.get('setName'))
         self.w = len(ismaster.get("hosts", []))
+
+        self.secondary = None
+        if self.w > 1:
+            for member in ismaster['hosts']:
+                if member != ismaster['primary']:
+                    host, port = _partition_node(member)
+                    self.secondary = MongoClient(host, port)
+                    break
+
         self.client = client
         self.coll = client.pymongo_test.test
         self.coll.remove()
+
+        # We tested wtimeout errors by specifying a write concern greater than
+        # the number of members, but in MongoDB 2.7.8+ this causes a different
+        # sort of error, "Not enough data-bearing nodes". In recent servers we
+        # use a failpoint to pause replication on a secondary.
+        self.need_replication_stopped = version.at_least(self.client,
+                                                         (2, 7, 8))
+
+        self.test_commands_enabled = ("enableTestCommands=1"
+                                      in get_command_line(self.client)["argv"])
+
+    def cause_wtimeout(self, batch):
+        if self.need_replication_stopped:
+            if not self.test_commands_enabled:
+                raise SkipTest("Test commands must be enabled.")
+
+            self.secondary.admin.command('configureFailPoint',
+                                         'rsSyncApplyStop',
+                                         mode='alwaysOn')
+
+            try:
+                return batch.execute({'w': self.w, 'wtimeout': 1})
+            finally:
+                self.secondary.admin.command('configureFailPoint',
+                                             'rsSyncApplyStop',
+                                             mode='off')
+        else:
+            return batch.execute({'w': self.w + 1, 'wtimeout': 1})
 
     def test_fsync_and_j(self):
         if not version.at_least(self.client, (1, 8, 2)):
@@ -945,7 +983,7 @@ class TestBulkWriteConcern(BulkTestBase):
         # Replication wtimeout is a 'soft' error.
         # It shouldn't stop batch processing.
         try:
-            batch.execute({'w': self.w + 1, 'wtimeout': 1})
+            self.cause_wtimeout(batch)
         except BulkWriteError, exc:
             result = exc.details
             self.assertEqual(exc.code, 65)
@@ -982,7 +1020,7 @@ class TestBulkWriteConcern(BulkTestBase):
             batch.insert({'a': 1})
             batch.insert({'a': 2})
             try:
-                batch.execute({'w': self.w + 1, 'wtimeout': 1})
+                self.cause_wtimeout(batch)
             except BulkWriteError, exc:
                 result = exc.details
                 self.assertEqual(exc.code, 65)
@@ -1026,7 +1064,7 @@ class TestBulkWriteConcern(BulkTestBase):
         # Replication wtimeout is a 'soft' error.
         # It shouldn't stop batch processing.
         try:
-            batch.execute({'w': self.w + 1, 'wtimeout': 1})
+            self.cause_wtimeout(batch)
         except BulkWriteError, exc:
             result = exc.details
             self.assertEqual(exc.code, 65)
@@ -1053,7 +1091,7 @@ class TestBulkWriteConcern(BulkTestBase):
             batch.insert({'a': 1})
             batch.insert({'a': 2})
             try:
-                batch.execute({'w': self.w + 1, 'wtimeout': 1})
+                self.cause_wtimeout(batch)
             except BulkWriteError, exc:
                 result = exc.details
                 self.assertEqual(exc.code, 65)
