@@ -1311,14 +1311,22 @@ class TestCollection(unittest.TestCase):
             # if w > number of members. Older versions just time out after 1 ms
             # as if they had enough secondaries but some are lagging. They
             # return an error with 'wtimeout': True and no code.
-            self.assertRaises(OperationFailure, self.db.test.save,
-                              {"x": 1}, w=w, wtimeout=1)
-            self.assertRaises(OperationFailure, self.db.test.insert,
-                              {"x": 1}, w=w, wtimeout=1)
-            self.assertRaises(OperationFailure, self.db.test.update,
-                              {"x": 1}, {"y": 2}, w=w, wtimeout=1)
-            self.assertRaises(OperationFailure, self.db.test.remove,
-                              {"x": 1}, w=w, wtimeout=1)
+            def wtimeout_err(f, *args, **kwargs):
+                try:
+                    f(*args, **kwargs)
+                except WTimeoutError:
+                    pass
+                except OperationFailure, exc:
+                    self.assertTrue(exc.code == 100,
+                                    "Unexpected error: %r" % exc)
+                else:
+                    self.fail("%s should have failed" % f)
+
+            coll = self.db.test
+            wtimeout_err(coll.save, {"x": 1}, w=w, wtimeout=1)
+            wtimeout_err(coll.insert, {"x": 1}, w=w, wtimeout=1)
+            wtimeout_err(coll.remove, {"x": 1}, w=w, wtimeout=1)
+            wtimeout_err(coll.update, {"x": 1}, {"y": 2}, w=w, wtimeout=1)
 
             try:
                 self.db.test.save({"x": 1}, w=w, wtimeout=1)
