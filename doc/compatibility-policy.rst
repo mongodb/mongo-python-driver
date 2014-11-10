@@ -18,9 +18,9 @@ effort to release at least one minor version that *deprecates* it. We add
 `DeprecationWarning`_. You can ensure your code is future-proof by running
 your code with the latest PyMongo release and looking for DeprecationWarnings.
 
-The Python interpreter silences DeprecationWarnings by default. For example,
-the following code uses the deprecated ``slave_okay`` option but does not
-raise any warning:
+Starting with Python 2.7, the interpreter silences DeprecationWarnings by
+default. For example, the following code uses the deprecated ``slave_okay``
+option but does not raise any warning:
 
 .. code-block:: python
 
