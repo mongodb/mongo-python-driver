@@ -53,7 +53,7 @@ Please include all of the following information when opening an issue:
   $ python -c "import pymongo; print(pymongo.version); print(pymongo.has_c())"
 
 - The operating system and version (e.g. Windows 7, OSX 10.8, ...)
-- Web framework or asynchonous network library used, if any, with version (e.g.
+- Web framework or asynchronous network library used, if any, with version (e.g.
   Django 1.7, mod_wsgi 4.3.0, gevent 1.0.1, Tornado 4.0.2, ...)
 
 Security Vulnerabilities
