@@ -79,6 +79,38 @@ in this release.
 
 .. _PyMongo 3.0 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/12501
 
+Changes in Version 2.8
+------------------------
+
+Version 2.8 is a major release that provides full support for MongoDB 2.8 and
+fixes a number of bugs. Highlights include:
+
+- Support for the SCRAM-SHA-1 authentication mechanism.
+- JSON decoder support for the new $numberLong and $undefined types.
+- JSON decoder support for the $date type as an ISO-8601 string.
+- Support passing an index name to :meth:`~pymongo.cursor.Cursor.hint`.
+- The :meth:`~pymongo.cursor.Cursor.count` method will use a hint if one
+  has been provided through :meth:`~pymongo.cursor.Cursor.hint`.
+- A new socketKeepAlive option for the connection pool.
+- Internal changes to support alternative storage engines like wiredtiger.
+
+.. note:: There are a number of deprecations in this release for features that
+  will be removed in PyMongo 3.0. These include:
+
+  - :meth:`~pymongo.mongo_client.MongoClient.start_request`
+  - :meth:`~pymongo.mongo_client.MongoClient.in_request`
+  - :meth:`~pymongo.mongo_client.MongoClient.end_request`
+  - :meth:`~pymongo.mongo_client.MongoClient.copy_database`
+  - :class:`~pymongo.master_slave_connection.MasterSlaveConnection`
+
+Issues Resolved
+...............
+
+See the `PyMongo 2.8 release notes in JIRA`_ for the list of resolved issues
+in this release.
+
+.. _PyMongo 2.8 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/14223
+
 Changes in Version 2.7
 ----------------------
 
