@@ -1405,6 +1405,10 @@ class MongoClient(common.BaseObject):
         MongoDB 2.8 and later, MONGODB-CR (MongoDB Challenge Response
         protocol) for older servers.
 
+        .. note:: mongos does not support copying a database from a server
+           with authentication, see
+           `SERVER-6427 <https://jira.mongodb.org/browse/SERVER-6427>`_.
+
         :Parameters:
           - `from_name`: the name of the source database
           - `to_name`: the name of the target database
