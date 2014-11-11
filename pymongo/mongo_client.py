@@ -1232,7 +1232,7 @@ class MongoClient(common.BaseObject):
             raise AutoReconnect(str(e))
 
     def start_request(self):
-        """DEPRECATED: start_request will be removed in PyMongo 3.0.
+        """**DEPRECATED**: start_request will be removed in PyMongo 3.0.
 
         When doing w=0 writes to MongoDB 2.4 or earlier, :meth:`start_request`
         was sometimes useful to ensure the current thread always used the same

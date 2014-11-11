@@ -42,6 +42,7 @@
       .. automethod:: get_default_database
       .. automethod:: server_info
       .. automethod:: start_request
+      .. automethod:: in_request
       .. automethod:: end_request
       .. automethod:: close_cursor
       .. automethod:: kill_cursors
