@@ -23,7 +23,7 @@ fixes a number of bugs. Highlights include:
   - :meth:`~pymongo.mongo_client.MongoClient.in_request`
   - :meth:`~pymongo.mongo_client.MongoClient.end_request`
   - :meth:`~pymongo.mongo_client.MongoClient.copy_database`
-  - :meth:`~pymongo.master_slave_connection.MasterSlaveConnection`
+  - :class:`~pymongo.master_slave_connection.MasterSlaveConnection`
 
 Issues Resolved
 ...............
