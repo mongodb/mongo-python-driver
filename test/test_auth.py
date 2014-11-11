@@ -277,6 +277,7 @@ class TestSCRAMSHA1(unittest.TestCase):
         if not version.at_least(client, (2, 7, 2)):
             raise SkipTest("SCRAM-SHA-1 requires MongoDB >= 2.7.2")
         ismaster = client.admin.command('ismaster')
+        self.is_mongos = ismaster.get('msg') == 'isdbgrid'
         self.set_name = ismaster.get('setName')
 
         # SCRAM-SHA-1 is always enabled beginning in 2.7.8.
@@ -322,6 +323,9 @@ class TestSCRAMSHA1(unittest.TestCase):
             client.pymongo_test.command('dbstats')
 
     def test_copy_db_scram_sha_1(self):
+        if self.is_mongos:
+            raise SkipTest("mongos can't do copydb with auth")
+
         auth_context.client.drop_database('pymongo_test2')
 
         if self.set_name:
