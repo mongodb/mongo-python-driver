@@ -231,6 +231,9 @@ class MongoClient(common.BaseObject):
            The ``connect`` option is added and ``auto_start_request`` is
            removed.
 
+           The ``copy_database`` method is removed, see the
+           :doc:`copy_database examples </examples/copydb>` for alternatives.
+
            :class:`~pymongo.mongo_client.MongoClient` no longer returns an
            instance of :class:`~pymongo.database.Database` for attribute names
            with leading underscores. You must use dict-style lookups instead::
@@ -1047,66 +1050,6 @@ class MongoClient(common.BaseObject):
         self._purge_index(name)
         self[name].command("dropDatabase",
                            read_preference=ReadPreference.PRIMARY)
-
-    def copy_database(self, from_name, to_name,
-                      from_host=None, username=None, password=None):
-        """Copy a database, potentially from another host.
-
-        Raises :class:`TypeError` if `from_name` or `to_name` is not
-        an instance of :class:`basestring` (:class:`str` in python 3).
-        Raises :class:`~pymongo.errors.InvalidName` if `to_name` is
-        not a valid database name.
-
-        If `from_host` is ``None`` the current host is used as the
-        source. Otherwise the database is copied from `from_host`.
-
-        If the source database requires authentication, `username` and
-        `password` must be specified.
-
-        :Parameters:
-          - `from_name`: the name of the source database
-          - `to_name`: the name of the target database
-          - `from_host` (optional): host name to copy from
-          - `username` (optional): username for source database
-          - `password` (optional): password for source database
-        """
-        if not isinstance(from_name, string_type):
-            raise TypeError("from_name must be an "
-                            "instance of %s" % (string_type.__name__,))
-        if not isinstance(to_name, string_type):
-            raise TypeError("to_name must be an "
-                            "instance of %s" % (string_type.__name__,))
-
-        database._check_name(to_name)
-
-        command = SON([
-            ("copydb", 1), ("fromdb", from_name), ("todb", to_name)])
-
-        if from_host is not None:
-            command["fromhost"] = from_host
-
-        # _get_topology() starts connecting, if we initialized with
-        # connect=False.
-        server = self._get_topology().select_server(
-            writable_server_selector)
-
-        if self.in_request() and not server.in_request():
-            server.start_request()
-
-        # Avoid race when other threads log in or out.
-        all_credentials = self.__all_credentials.copy()
-        with server.get_socket(all_credentials) as sock:
-            if username is not None:
-                get_nonce_cmd = SON([("copydbgetnonce", 1),
-                                     ("fromhost", from_host)])
-
-                nonce = sock.command("admin", get_nonce_cmd)["nonce"]
-
-                command["username"] = username
-                command["nonce"] = nonce
-                command["key"] = auth._auth_key(nonce, username, password)
-
-            return sock.command("admin", command)
 
     def get_default_database(self):
         """Get the database named in the MongoDB connection URI.

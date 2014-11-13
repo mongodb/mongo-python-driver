@@ -54,6 +54,9 @@ A list of multiple standalones is no longer supported; if multiple servers
 are listed they must be members of the same replica set, or mongoses in the
 same sharded cluster.
 
+The ``copy_database`` method is removed, see the
+:doc:`copy_database examples </examples/copydb>` for alternatives.
+
 The second parameter to :meth:`~pymongo.MongoClient.close_cursor` is renamed
 from ``_conn_id`` to ``address``.
 
