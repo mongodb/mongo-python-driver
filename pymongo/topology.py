@@ -43,6 +43,8 @@ class Topology(object):
             topology_settings.replica_set_name)
 
         self._description = topology_description
+        # Store the seed list to help diagnose errors in _error_message().
+        self._seed_addresses = list(topology_description.server_descriptions())
         self._opened = False
         self._lock = threading.Lock()
         self._condition = self._settings.condition_class(self._lock)
@@ -95,7 +97,7 @@ class Topology(object):
                     # server_descriptions is empty, we have the wrong
                     # replica_set_name. Include TopologyDescription's str() in
                     # exception msg.
-                    raise AutoReconnect("No suitable servers available")
+                    raise AutoReconnect(self._error_message(selector))
 
                 self._ensure_opened()
                 self._request_check_all()
@@ -330,3 +332,60 @@ class Topology(object):
                         socket_timeout=options.connect_timeout,
                         ssl_context=options.ssl_context,
                         socket_keepalive=True))
+
+    def _error_message(self, selector):
+        """Format an error message if server selection fails.
+
+        Hold the lock when calling this.
+        """
+        is_replica_set = self._description.topology_type in (
+            TOPOLOGY_TYPE.ReplicaSetWithPrimary,
+            TOPOLOGY_TYPE.ReplicaSetNoPrimary)
+
+        if is_replica_set:
+            server_plural = 'replica set members'
+        elif self._description.topology_type == TOPOLOGY_TYPE.Sharded:
+            server_plural = 'mongoses'
+        else:
+            server_plural = 'servers'
+
+        if self._description.known_servers:
+            # We've connected, but no servers match the selector.
+            if selector is writable_server_selector:
+                if is_replica_set:
+                    return 'No primary available for writes'
+                else:
+                    return 'No %s available for writes' % server_plural
+            else:
+                return 'No %s match selector "%s"' % (server_plural, selector)
+        else:
+            addresses = list(self._description.server_descriptions())
+            servers = list(self._description.server_descriptions().values())
+            if not servers:
+                if is_replica_set:
+                    # We removed all servers because of the wrong setName?
+                    return 'No %s available for replica set name "%s"' % (
+                        server_plural, self._settings.set_name)
+                else:
+                    return 'No %s available' % server_plural
+
+            # 1 or more servers, all Unknown. Are they unknown for one reason?
+            error = servers[0].error
+            same = all(server.error == error for server in servers[1:])
+            if same:
+                if error is None:
+                    # We're still discovering.
+                    return 'No %s found yet' % server_plural
+
+                if (is_replica_set and not
+                        set(addresses).intersection(self._seed_addresses)):
+                    # We replaced our seeds with new hosts but can't reach any.
+                    return (
+                        'Could not reach any servers in %s. Replica set is'
+                        ' configured with internal hostnames or IPs?' %
+                        addresses)
+
+                return str(error)
+            else:
+                return ','.join(str(server.error) for server in servers
+                                if server.error)

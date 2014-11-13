@@ -813,11 +813,7 @@ class MongoClient(common.BaseObject):
                 raise AutoReconnect('server %s:%d no longer available'
                                     % address)
         else:
-            if read_preference:
-                selector = read_preference.select_servers
-            else:
-                selector = writable_server_selector
-
+            selector = read_preference or writable_server_selector
             server = topology.select_server(selector)
 
         if self.in_request() and not server.in_request():
@@ -884,7 +880,7 @@ class MongoClient(common.BaseObject):
             # tests pass.
             try:
                 servers = self._topology.select_servers(any_server_selector,
-                                                       server_wait_time=0)
+                                                        server_wait_time=0)
 
                 for s in servers:
                     s.start_request()
@@ -909,7 +905,7 @@ class MongoClient(common.BaseObject):
         if 0 == self.__request_counter.dec():
             try:
                 servers = self._topology.select_servers(any_server_selector,
-                                                       server_wait_time=0)
+                                                        server_wait_time=0)
 
                 for s in servers:
                     s.end_request()
@@ -985,7 +981,8 @@ class MongoClient(common.BaseObject):
         # only for single servers.
         if self.__cursor_manager:
             topology_type = self._topology.description.topology_type
-            if topology_type not in (TOPOLOGY_TYPE.Single, TOPOLOGY_TYPE.Sharded):
+            if topology_type not in (TOPOLOGY_TYPE.Single,
+                                     TOPOLOGY_TYPE.Sharded):
                 raise InvalidOperation(
                     "Can't use custom CursorManager with topology type %s" %
                     TOPOLOGY_TYPE._fields[topology_type])

@@ -23,6 +23,7 @@ import threading
 
 from bson.py3compat import imap
 from pymongo import common
+from pymongo.read_preferences import ReadPreference, Secondary
 from pymongo.server_type import SERVER_TYPE
 from pymongo.topology import Topology
 from pymongo.topology_description import TOPOLOGY_TYPE
@@ -137,13 +138,21 @@ class TopologyTest(unittest.TestCase):
         self.client_knobs.disable()
         super(TopologyTest, self).tearDown()
 
+# Use assertRaisesRegex if available, otherwise use Python 2.7's
+# deprecated assertRaisesRegexp, with a 'p'.
+if not hasattr(unittest.TestCase, 'assertRaisesRegex'):
+    TopologyTest.assertRaisesRegex = unittest.TestCase.assertRaisesRegexp
+
 
 class TestTopologyConfiguration(TopologyTest):
     def test_timeout_configuration(self):
         pool_options = PoolOptions(connect_timeout=1, socket_timeout=2)
         topology_settings = TopologySettings(pool_options=pool_options)
         t = Topology(topology_settings=topology_settings)
-        server = t.select_server(any_server_selector)
+        t.open()
+
+        # Get the default server.
+        server = t.get_server_by_address(('localhost', 27017))
 
         # The pool for application operations obeys our settings.
         self.assertEqual(1, server._pool.opts.connect_timeout)
@@ -196,9 +205,9 @@ class TestSingleServerTopology(TopologyTest):
             t = create_mock_topology()
 
             # Can't select a server while the only server is of type Unknown.
-            self.assertRaises(
-                ConnectionFailure,
-                t.select_servers, any_server_selector, server_wait_time=0)
+            with self.assertRaisesRegex(ConnectionFailure,
+                                        'No servers found yet'):
+                t.select_servers(any_server_selector, server_wait_time=0)
 
             got_ismaster(t, address, ismaster_response)
 
@@ -224,10 +233,14 @@ class TestSingleServerTopology(TopologyTest):
 
     def test_round_trip_time(self):
         round_trip_time = 1
+        available = True
 
         class TestMonitor(Monitor):
             def _check_with_socket(self, sock_info):
-                return IsMaster({'ok': 1}), round_trip_time
+                if available:
+                    return IsMaster({'ok': 1}), round_trip_time
+                else:
+                    raise socket.error()
 
         t = create_mock_topology(monitor_class=TestMonitor)
         s = t.select_server(writable_server_selector)
@@ -237,6 +250,14 @@ class TestSingleServerTopology(TopologyTest):
         t.request_check_all()
 
         # Average of 1 and 3.
+        self.assertEqual(2, s.description.round_trip_time)
+
+        available = False
+        t.request_check_all()
+        with self.assertRaises(ConnectionFailure):
+            t.select_server(writable_server_selector, server_wait_time=0.1)
+
+        # The server is temporarily down but we haven't cleared its RTT.
         self.assertEqual(2, s.description.round_trip_time)
 
 
@@ -539,18 +560,100 @@ class TestTopologyErrors(TopologyTest):
         class TestMonitor(Monitor):
             def _check_with_socket(self, sock_info):
                 ismaster_count[0] += 1
-                raise socket.error()
+                raise socket.error('my error')
 
         t = create_mock_topology(monitor_class=TestMonitor)
 
-        self.assertRaises(
-            ConnectionFailure,
-            t.select_servers, any_server_selector, server_wait_time=0.5)
+        with self.assertRaisesRegex(ConnectionFailure, 'my error'):
+            t.select_servers(any_server_selector, server_wait_time=0.5)
 
         self.assertTrue(
             25 <= ismaster_count[0] <= 100,
             "Expected ismaster to be attempted about 50 times, not %d" %
             ismaster_count[0])
+
+    def test_internal_monitor_error(self):
+        exception = AssertionError('internal error')
+
+        class TestMonitor(Monitor):
+            def _check_with_socket(self, sock_info):
+                raise exception
+
+        t = create_mock_topology(monitor_class=TestMonitor)
+        with self.assertRaisesRegex(ConnectionFailure, 'internal error'):
+            t.select_server(any_server_selector, server_wait_time=0.5)
+
+
+class TestServerSelectionErrors(TopologyTest):
+    def assertMessage(self, message, topology, selector=any_server_selector):
+        with self.assertRaises(ConnectionFailure) as context:
+            topology.select_server(selector, server_wait_time=0)
+
+        self.assertEqual(message, str(context.exception))
+
+    def test_no_primary(self):
+        t = create_mock_topology(set_name='rs')
+        got_ismaster(t, address, {
+            'ok': 1,
+            'ismaster': False,
+            'secondary': True,
+            'setName': 'rs',
+            'hosts': ['a']})
+
+        self.assertMessage('No replica set members match selector "Primary"',
+                           t, ReadPreference.PRIMARY)
+
+        self.assertMessage('No primary available for writes',
+                           t, writable_server_selector)
+
+    def test_no_secondary(self):
+        t = create_mock_topology(set_name='rs')
+        got_ismaster(t, address, {
+            'ok': 1,
+            'ismaster': True,
+            'setName': 'rs',
+            'hosts': ['a']})
+
+        self.assertMessage(
+            'No replica set members match selector'
+            ' "Secondary(latency_threshold_ms=15, tag_sets=None)"',
+            t, ReadPreference.SECONDARY)
+
+        self.assertMessage(
+            "No replica set members match selector"
+            " \"Secondary(latency_threshold_ms=15, tag_sets=[{'dc': 'ny'}])\"",
+            t, Secondary(tag_sets=[{'dc': 'ny'}]))
+
+    def test_bad_set_name(self):
+        t = create_mock_topology(set_name='rs')
+        got_ismaster(t, address, {
+            'ok': 1,
+            'ismaster': False,
+            'secondary': True,
+            'setName': 'wrong',
+            'hosts': ['a']})
+
+        self.assertMessage(
+            'No replica set members available for replica set name "rs"', t)
+
+    def test_multiple_standalones(self):
+        # Standalones are removed from a topology with multiple seeds.
+        t = create_mock_topology(seeds=['a', 'b'])
+        got_ismaster(t, ('a', 27017), {'ok': 1})
+        got_ismaster(t, ('b', 27017), {'ok': 1})
+        self.assertMessage('No servers available', t)
+
+    def test_no_mongoses(self):
+        # Standalones are removed from a topology with multiple seeds.
+        t = create_mock_topology(seeds=['a', 'b'])
+
+        # Discover a mongos and change topology type to Sharded.
+        got_ismaster(t, ('a', 27017), {'ok': 1, 'msg': 'isdbgrid'})
+
+        # Oops, both servers are standalone now. Remove them.
+        got_ismaster(t, ('a', 27017), {'ok': 1})
+        got_ismaster(t, ('b', 27017), {'ok': 1})
+        self.assertMessage('No mongoses available', t)
 
 
 if __name__ == "__main__":

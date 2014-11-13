@@ -160,12 +160,12 @@ class Primary(ServerMode):
     def __init__(self, latency_threshold_ms=15):
         super(Primary, self).__init__(_PRIMARY, latency_threshold_ms)
 
-    def select_servers(self, server_descriptions):
+    def __call__(self, server_descriptions):
         """Return matching ServerDescriptions from a list."""
         return writable_server_selector(server_descriptions)
 
     def __repr__(self):
-        return "Primary(latency_threshold_ms=%d)" % self.latency_threshold_ms
+        return "Primary"
 
 
 class PrimaryPreferred(ServerMode):
@@ -189,7 +189,7 @@ class PrimaryPreferred(ServerMode):
         super(PrimaryPreferred, self).__init__(
             _PRIMARY_PREFERRED, latency_threshold_ms, tag_sets)
 
-    def select_servers(self, server_descriptions):
+    def __call__(self, server_descriptions):
         """Return matching ServerDescriptions from a list."""
         writable_servers = writable_server_selector(server_descriptions)
         if writable_servers:
@@ -221,7 +221,7 @@ class Secondary(ServerMode):
         super(Secondary, self).__init__(
             _SECONDARY, latency_threshold_ms, tag_sets)
 
-    def select_servers(self, server_descriptions):
+    def __call__(self, server_descriptions):
         """Return matching ServerDescriptions from a list."""
         return near_secondary_with_tags_server_selector(
             self.tag_sets,
@@ -249,7 +249,7 @@ class SecondaryPreferred(ServerMode):
         super(SecondaryPreferred, self).__init__(
             _SECONDARY_PREFERRED, latency_threshold_ms, tag_sets)
 
-    def select_servers(self, server_descriptions):
+    def __call__(self, server_descriptions):
         """Return matching ServerDescriptions from a list."""
         secondaries = near_secondary_with_tags_server_selector(
             self.tag_sets,
@@ -282,7 +282,7 @@ class Nearest(ServerMode):
         super(Nearest, self).__init__(
             _NEAREST, latency_threshold_ms, tag_sets)
 
-    def select_servers(self, server_descriptions):
+    def __call__(self, server_descriptions):
         """Return matching ServerDescriptions from a list."""
         return near_member_with_tags_server_selector(
             self.tag_sets or [{}],

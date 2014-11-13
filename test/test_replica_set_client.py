@@ -430,10 +430,8 @@ class TestReplicaSetClientInternalIPs(MockClientTest):
     def test_connect_with_internal_ips(self):
         # Client is passed an IP it can reach, 'a:1', but the RS config
         # only contains unreachable IPs like 'internal-ip'. PYTHON-608.
-        assertRaisesExactly(
-            AutoReconnect,
-            connected,
-            MockClient(
+        with self.assertRaises(AutoReconnect) as context:
+            connected(MockClient(
                 standalones=[],
                 members=['a:1'],
                 mongoses=[],
@@ -441,6 +439,10 @@ class TestReplicaSetClientInternalIPs(MockClientTest):
                 host='a:1',
                 replicaSet='rs'))
 
+        self.assertEqual(
+            "Could not reach any servers in [('internal-ip', 27017)]."
+            " Replica set is configured with internal hostnames or IPs?",
+            str(context.exception))
 
 class TestReplicaSetClientMaxWriteBatchSize(MockClientTest):
 

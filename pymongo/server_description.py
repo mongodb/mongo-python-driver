@@ -25,19 +25,21 @@ class ServerDescription(object):
       - `address`: A (host, port) pair
       - `ismaster`: Optional IsMaster instance
       - `round_trip_times`: Optional MovingAverage
+      - `error`: Optional, the last error attempting to connect to the server
     """
 
     __slots__ = (
         '_address', '_server_type', '_all_hosts', '_tags', '_replica_set_name',
         '_primary', '_max_bson_size', '_max_message_size',
         '_max_write_batch_size', '_min_wire_version', '_max_wire_version',
-        '_round_trip_times', '_is_writable', '_is_readable')
+        '_round_trip_times', '_is_writable', '_is_readable', '_error')
 
     def __init__(
             self,
             address,
             ismaster=None,
-            round_trip_times=None):
+            round_trip_times=None,
+            error=None):
         self._address = address
         if not ismaster:
             ismaster = IsMaster({})
@@ -63,6 +65,7 @@ class ServerDescription(object):
             or self._is_writable)
 
         self._round_trip_times = round_trip_times
+        self._error = error
 
     @property
     def address(self):
@@ -124,6 +127,11 @@ class ServerDescription(object):
             return self._host_to_round_trip_time[self._address]
 
         return self._round_trip_times.get() if self._round_trip_times else None
+
+    @property
+    def error(self):
+        """The last error attempting to connect to the server, or None."""
+        return self._error
 
     @property
     def is_writable(self):

@@ -124,43 +124,50 @@ class Monitor(object):
         # According to the spec, if an ismaster call fails we reset the
         # server's pool. If a server was once connected, change its type
         # to Unknown only after retrying once.
+        address = self._server_description.address
         retry = self._server_description.server_type != SERVER_TYPE.Unknown
-        new_server_description = self._check_once()
-        if new_server_description:
-            return new_server_description
-        else:
-            self._topology.reset_pool(self._server_description.address)
-            if retry:
-                server_description = self._check_once()
-                if server_description:
-                    return server_description
+        old_rtts = self._server_description.round_trip_times
 
-        # Server type defaults to Unknown.
-        return ServerDescription(self._server_description.address)
+        try:
+            return self._check_once()
+        except ReferenceError:
+            raise
+        except Exception as error:
+            self._topology.reset_pool(address)
+            default = ServerDescription(
+                address,
+                round_trip_times=old_rtts,
+                error=error)
+
+            if not retry:
+                # Server type defaults to Unknown.
+                return default
+
+            # Try a second and final time. If it fails return original error.
+            try:
+                return self._check_once()
+            except ReferenceError:
+                raise
+            except Exception:
+                return default
 
     def _check_once(self):
         """A single attempt to call ismaster.
 
-        Returns a ServerDescription, or None on error.
+        Returns a ServerDescription, or raises an exception.
         """
-        try:
-            with self._pool.get_socket({}, 0, 0) as sock_info:
-                response, round_trip_time = self._check_with_socket(sock_info)
-                old_rtts = self._server_description.round_trip_times
-                if old_rtts:
-                    new_rtts = old_rtts.clone_with(round_trip_time)
-                else:
-                    new_rtts = MovingAverage([round_trip_time])
+        with self._pool.get_socket({}, 0, 0) as sock_info:
+            response, round_trip_time = self._check_with_socket(sock_info)
+            old_rtts = self._server_description.round_trip_times
+            if old_rtts:
+                new_rtts = old_rtts.clone_with(round_trip_time)
+            else:
+                new_rtts = MovingAverage([round_trip_time])
 
-                sd = ServerDescription(
-                    self._server_description.address, response, new_rtts)
+            sd = ServerDescription(
+                self._server_description.address, response, new_rtts)
 
-                return sd
-        except socket.error:
-            return None
-        except Exception:
-            # TODO: This is unexpected. Log.
-            return None
+            return sd
 
     def _check_with_socket(self, sock_info):
         """Return (IsMaster, round_trip_time).

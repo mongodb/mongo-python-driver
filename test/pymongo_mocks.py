@@ -67,25 +67,20 @@ class MockMonitor(Monitor):
             topology_settings):
         # MockMonitor gets a 'client' arg, regular monitors don't.
         self.client = client
-        self.mock_address = server_description.address
-
-        # Actually connect to the default server.
         Monitor.__init__(
             self,
-            ServerDescription((default_host, default_port)),
+            server_description,
             topology,
             pool,
             topology_settings)
 
     def _check_once(self):
-        try:
-            response = self.client.mock_is_master('%s:%d' % self.mock_address)
-            return ServerDescription(
-                self.mock_address,
-                IsMaster(response),
-                MovingAverage([0]))
-        except socket.error:
-            return None
+        address = self._server_description.address
+        response = self.client.mock_is_master('%s:%d' % address)
+        return ServerDescription(
+            address,
+            IsMaster(response),
+            MovingAverage([0]))
 
 
 class MockClient(MongoClient):
