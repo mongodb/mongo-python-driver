@@ -153,7 +153,7 @@ class ClientContext(object):
 
                 # May not have this if OperationFailure was raised earlier.
                 self.cmd_line = self.client.admin.command('getCmdLineOpts')
-            self.test_commands_enabled = ('testCommandsEnabled=1'
+            self.test_commands_enabled = ('enableTestCommands=1'
                                           in self.cmd_line['argv'])
             self.is_mongos = (self.ismaster.get('msg') == 'isdbgrid')
             self.has_ipv6 = self._server_started_with_ipv6()
