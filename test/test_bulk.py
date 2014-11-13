@@ -21,8 +21,14 @@ sys.path[0:0] = [""]
 from bson import InvalidDocument, SON
 from bson.py3compat import string_type
 from pymongo import MongoClient
+from pymongo.common import partition_node
 from pymongo.errors import BulkWriteError, InvalidOperation, OperationFailure
-from test import client_context, unittest, host, port, IntegrationTest
+from test import (client_context,
+                  unittest,
+                  host,
+                  port,
+                  IntegrationTest,
+                  SkipTest)
 from test.utils import oid_generated_on_client, remove_all_users
 
 
@@ -909,6 +915,36 @@ class TestBulkWriteConcern(BulkTestBase):
     def setUpClass(cls):
         super(TestBulkWriteConcern, cls).setUpClass()
         cls.w = client_context.w
+        cls.secondary = None
+        if cls.w > 1:
+            for member in client_context.ismaster['hosts']:
+                if member != client_context.ismaster['primary']:
+                    cls.secondary = MongoClient(*partition_node(member))
+                    break
+
+        # We tested wtimeout errors by specifying a write concern greater than
+        # the number of members, but in MongoDB 2.7.8+ this causes a different
+        # sort of error, "Not enough data-bearing nodes". In recent servers we
+        # use a failpoint to pause replication on a secondary.
+        cls.need_replication_stopped = client_context.version.at_least(2, 7, 8)
+
+    def cause_wtimeout(self, batch):
+        if self.need_replication_stopped:
+            if not client_context.test_commands_enabled:
+                raise SkipTest("Test commands must be enabled.")
+
+            self.secondary.admin.command('configureFailPoint',
+                                         'rsSyncApplyStop',
+                                         mode='alwaysOn')
+
+            try:
+                return batch.execute({'w': self.w, 'wtimeout': 1})
+            finally:
+                self.secondary.admin.command('configureFailPoint',
+                                             'rsSyncApplyStop',
+                                             mode='off')
+        else:
+            return batch.execute({'w': self.w + 1, 'wtimeout': 1})
 
     @client_context.require_version_min(1, 8, 2)
     def test_fsync_and_j(self):
@@ -932,7 +968,7 @@ class TestBulkWriteConcern(BulkTestBase):
         # Replication wtimeout is a 'soft' error.
         # It shouldn't stop batch processing.
         try:
-            batch.execute({'w': self.w + 1, 'wtimeout': 1})
+            self.cause_wtimeout(batch)
         except BulkWriteError as exc:
             result = exc.details
             self.assertEqual(exc.code, 65)
@@ -969,7 +1005,7 @@ class TestBulkWriteConcern(BulkTestBase):
             batch.insert({'a': 1})
             batch.insert({'a': 2})
             try:
-                batch.execute({'w': self.w + 1, 'wtimeout': 1})
+                self.cause_wtimeout(batch)
             except BulkWriteError as exc:
                 result = exc.details
                 self.assertEqual(exc.code, 65)
@@ -1011,7 +1047,7 @@ class TestBulkWriteConcern(BulkTestBase):
         # Replication wtimeout is a 'soft' error.
         # It shouldn't stop batch processing.
         try:
-            batch.execute({'w': self.w + 1, 'wtimeout': 1})
+            self.cause_wtimeout(batch)
         except BulkWriteError as exc:
             result = exc.details
             self.assertEqual(exc.code, 65)
@@ -1038,7 +1074,7 @@ class TestBulkWriteConcern(BulkTestBase):
             batch.insert({'a': 1})
             batch.insert({'a': 2})
             try:
-                batch.execute({'w': self.w + 1, 'wtimeout': 1})
+                self.cause_wtimeout(batch)
             except BulkWriteError as exc:
                 result = exc.details
                 self.assertEqual(exc.code, 65)

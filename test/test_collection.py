@@ -1281,23 +1281,28 @@ class TestCollection(IntegrationTest):
         if client_context.setname:
             # client_context.w is the number of hosts in the replica set
             w = client_context.w + 1
-            self.assertRaises(WTimeoutError, self.db.test.save,
-                              {"x": 1}, w=w, wtimeout=1)
-            self.assertRaises(WTimeoutError, self.db.test.insert,
-                              {"x": 1}, w=w, wtimeout=1)
-            self.assertRaises(WTimeoutError, self.db.test.update,
-                              {"x": 1}, {"y": 2}, w=w, wtimeout=1)
-            self.assertRaises(WTimeoutError, self.db.test.remove,
-                              {"x": 1}, w=w, wtimeout=1)
 
-            try:
-                self.db.test.save({"x": 1}, w=w, wtimeout=1)
-            except WTimeoutError as exc:
-                # Just check that we set the error document. Fields
-                # vary by MongoDB version.
-                self.assertTrue(exc.details is not None)
-            else:
-                self.fail("WTimeoutError was not raised")
+            # MongoDB 2.8+ raises error code 100, CannotSatisfyWriteConcern,
+            # if w > number of members. Older versions just time out after 1 ms
+            # as if they had enough secondaries but some are lagging. They
+            # return an error with 'wtimeout': True and no code.
+            def wtimeout_err(f, *args, **kwargs):
+                try:
+                    f(*args, **kwargs)
+                except WTimeoutError as exc:
+                    self.assertIsNotNone(exc.details)
+                except OperationFailure as exc:
+                    self.assertIsNotNone(exc.details)
+                    self.assertEqual(100, exc.code,
+                                     "Unexpected error: %r" % exc)
+                else:
+                    self.fail("%s should have failed" % f)
+
+            coll = self.db.test
+            wtimeout_err(coll.save, {"x": 1}, w=w, wtimeout=1)
+            wtimeout_err(coll.insert, {"x": 1}, w=w, wtimeout=1)
+            wtimeout_err(coll.update, {"x": 1}, {"y": 2}, w=w, wtimeout=1)
+            wtimeout_err(coll.remove, {"x": 1}, w=w, wtimeout=1)
 
         # can't use fsync and j options together
         if client_context.version.at_least(1, 8, 2):
