@@ -14,6 +14,7 @@
 
 """Tools for mocking parts of PyMongo to test other parts."""
 
+import contextlib
 import socket
 from functools import partial
 
@@ -37,7 +38,13 @@ class MockPool(Pool):
         Pool.__init__(self,
             (default_host, default_port), PoolOptions(connect_timeout=20))
 
-    def get_socket(self, all_credentials, min_wire_version, max_wire_version):
+    @contextlib.contextmanager
+    def get_socket(
+            self,
+            all_credentials,
+            min_wire_version,
+            max_wire_version,
+            checkout=False):
         client = self.client
         host_and_port = '%s:%s' % (self.mock_host, self.mock_port)
         if host_and_port in client.mock_down_hosts:
@@ -48,12 +55,13 @@ class MockPool(Pool):
             + client.mock_members
             + client.mock_mongoses), "bad host: %s" % host_and_port
 
-        sock_info = Pool.get_socket(
-            self, all_credentials, min_wire_version, max_wire_version)
-
-        sock_info.mock_host = self.mock_host
-        sock_info.mock_port = self.mock_port
-        return sock_info
+        with Pool.get_socket(self,
+                             all_credentials,
+                             min_wire_version,
+                             max_wire_version) as sock_info:
+            sock_info.mock_host = self.mock_host
+            sock_info.mock_port = self.mock_port
+            yield sock_info
 
 
 class MockMonitor(Monitor):

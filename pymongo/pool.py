@@ -12,12 +12,12 @@
 # implied.  See the License for the specific language governing
 # permissions and limitations under the License.
 
+import contextlib
 import os
 import select
 import socket
 import struct
 import threading
-import weakref
 
 from bson.py3compat import u, itervalues
 from pymongo import auth, helpers, message, thread_util
@@ -116,36 +116,13 @@ class PoolOptions(object):
 
 
 class SocketInfo(object):
-    """Store a socket with some metadata.
-
-    The SocketInfo should always be used in a with-statement::
-
-        with pool.get_socket() as socket_info:
-            socket_info.send_message(msg)
-            data = socket_info.receive_message(op_code, request_id)
-
-    If the initial query for an exhaust cursor succeeds, the socket
-    should be kept checked out until the cursor is exhausted or there is
-    an error. But the socket must be checked in if there is any error
-    doing the query.
-
-    Call exhaust(True) to enforce these rules::
-
-        with pool.get_socket() as socket_info:
-            socket_info.exhaust(True)
-            socket_info.send_message(exhaust_query)
-            data = socket_info.receive_message(op_code, request_id)
-
-    When the SocketInfo is finally returned to the pool, its exhaust flag
-    is reset.
-    """
+    """Store a socket with some metadata."""
     def __init__(self, sock, pool, host):
         self.sock = sock
         self.host = host
         self.authset = set()
         self.closed = False
         self.last_checkout = _time()
-        self.pool_ref = weakref.ref(pool)
 
         self._min_wire_version = None
         self._max_wire_version = None
@@ -153,9 +130,6 @@ class SocketInfo(object):
         # The pool's pool_id changes with each reset() so we can close sockets
         # created before the last reset.
         self.pool_id = pool.pool_id
-
-        # Are we being used by an exhaust cursor?
-        self._exhaust = False
 
     def command(self, dbname, spec):
         """Execute a command over the socket, or raise socket.error.
@@ -271,22 +245,6 @@ class SocketInfo(object):
     def max_wire_version(self):
         assert self._max_wire_version is not None
         return self._max_wire_version
-
-    def exhaust(self, exhaust):
-        self._exhaust = exhaust
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        # An exhaust cursor must keep its socket checked out, but on error
-        # it must be returned to avoid semaphore leaks.
-        if not self._exhaust or self.closed:
-            try:
-                self.pool_ref().maybe_return_socket(self)
-            except weakref.ReferenceError:
-                # Pool was garbage-collected.
-                pass
 
     def __eq__(self, other):
         return self.sock == other.sock
@@ -430,13 +388,28 @@ class Pool:
         sock.settimeout(self.opts.socket_timeout)
         return SocketInfo(sock, self, hostname)
 
-    def get_socket(self, all_credentials, min_wire_version, max_wire_version):
-        """Get a socket from the pool.
+    @contextlib.contextmanager
+    def get_socket(
+            self,
+            all_credentials,
+            min_wire_version,
+            max_wire_version,
+            checkout=False):
+        """Get a socket from the pool. Use with a "with" statement.
 
         Returns a :class:`SocketInfo` object wrapping a connected
         :class:`socket.socket`.
 
-        The socket is logged in or out as necessary to match ``all_credentials``
+        This method should always be used in a with-statement::
+
+            with pool.get_socket(credentials,
+                                 min_wire_version,
+                                 max_wire_version,
+                                 checkout) as socket_info:
+                socket_info.send_message(msg)
+                data = socket_info.receive_message(op_code, request_id)
+
+        The socket is logged in or out as needed to match ``all_credentials``
         using the correct authentication mechanism for the server's wire
         protocol version.
 
@@ -444,6 +417,7 @@ class Pool:
           - `all_credentials`: dict, maps auth source to MongoCredential.
           - `min_wire_version`: int, minimum protocol the server supports.
           - `max_wire_version`: int, maximum protocol the server supports.
+          - `checkout` (optional): keep socket checked out.
         """
         # First get a socket, then attempt authentication. Simplifies
         # semaphore management in the face of network errors during auth.
@@ -451,10 +425,19 @@ class Pool:
         sock_info.set_wire_version_range(min_wire_version, max_wire_version)
         try:
             sock_info.check_auth(all_credentials)
-            return sock_info
+            yield sock_info
+        except (socket.error, ConnectionFailure):
+            sock_info.close()
+
+            # Decrement semaphore.
+            self.maybe_return_socket(sock_info)
+            raise
         except:
             self.maybe_return_socket(sock_info)
             raise
+        else:
+            if not checkout:
+                self.maybe_return_socket(sock_info)
 
     def _get_socket_no_auth(self):
         # We use the pid here to avoid issues with fork / multiprocessing.

@@ -14,6 +14,7 @@
 
 """Communicate with one MongoDB server in a topology."""
 
+import contextlib
 import socket
 
 from pymongo.errors import AutoReconnect, DocumentTooLarge, NetworkTimeout
@@ -84,8 +85,7 @@ class Server(object):
         """
         request_id, data = self._check_bson_size(message)
         try:
-            with self.get_socket(all_credentials) as sock_info:
-                sock_info.exhaust(exhaust)
+            with self.get_socket(all_credentials, exhaust) as sock_info:
                 sock_info.send_message(data)
                 response_data = sock_info.receive_message(1, request_id)
                 if exhaust:
@@ -101,13 +101,14 @@ class Server(object):
         except socket.error as exc:
             self._raise_connection_failure(exc)
 
-    def get_socket(self, all_credentials):
+    @contextlib.contextmanager
+    def get_socket(self, all_credentials, checkout=False):
         sd = self.description
-        sock_info = self.pool.get_socket(all_credentials=all_credentials,
-                                         min_wire_version=sd.min_wire_version,
-                                         max_wire_version=sd.max_wire_version)
-
-        return sock_info
+        with self.pool.get_socket(all_credentials,
+                                  sd.min_wire_version,
+                                  sd.max_wire_version,
+                                  checkout) as sock_info:
+            yield sock_info
 
     def maybe_return_socket(self, sock_info):
         self.pool.maybe_return_socket(sock_info)

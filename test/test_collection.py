@@ -1662,14 +1662,10 @@ class TestCollection(IntegrationTest):
             pass
         self.assertEqual(1, len(socks))
 
-        # SocketInfo._exhaust was set back to False.
-        self.assertFalse(one(socks)._exhaust)
-
         # Same as previous but don't call next()
         for doc in client[self.db.name].test.find(exhaust=True):
             pass
         self.assertEqual(1, len(socks))
-        self.assertFalse(one(socks)._exhaust)
 
         # If the Cursor instance is discarded before being
         # completely iterated we have to close and

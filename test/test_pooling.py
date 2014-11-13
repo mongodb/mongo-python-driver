@@ -116,7 +116,11 @@ class SocketGetter(MongoThread):
 
     def run_mongo_thread(self):
         self.state = 'get_socket'
-        self.sock = self.pool.get_socket({}, 0, 0)
+
+        # Pass 'checkout' so we can hold the socket.
+        with self.pool.get_socket({}, 0, 0, checkout=True) as sock:
+            self.sock = sock
+
         self.state = 'sock'
 
 
@@ -175,12 +179,25 @@ class TestPooling(_TestPoolingBase):
         # Test Pool's _check_closed() method doesn't close a healthy socket.
         cx_pool = self.create_pool(max_pool_size=10)
         cx_pool._check_interval_seconds = 0  # Always check.
-        sock_info = cx_pool.get_socket({}, 0, 0)
-        cx_pool.maybe_return_socket(sock_info)
+        with cx_pool.get_socket({}, 0, 0) as sock_info:
+            pass
 
-        new_sock_info = cx_pool.get_socket({}, 0, 0)
-        self.assertEqual(sock_info, new_sock_info)
-        cx_pool.maybe_return_socket(new_sock_info)
+        with cx_pool.get_socket({}, 0, 0) as new_sock_info:
+            self.assertEqual(sock_info, new_sock_info)
+
+        self.assertEqual(1, len(cx_pool.sockets))
+
+    def test_get_socket_and_exception(self):
+        # get_socket() returns socket after a non-network error.
+        cx_pool = self.create_pool(max_pool_size=1, wait_queue_timeout=1)
+        with self.assertRaises(ZeroDivisionError):
+            with cx_pool.get_socket({}, 0, 0) as sock_info:
+                1 / 0
+
+        # Socket was returned, not closed.
+        with cx_pool.get_socket({}, 0, 0) as new_sock_info:
+            self.assertEqual(sock_info, new_sock_info)
+
         self.assertEqual(1, len(cx_pool.sockets))
 
     def test_pool_removes_dead_socket(self):
@@ -253,19 +270,19 @@ class TestPooling(_TestPoolingBase):
         self.assertTrue(b_sock != c_sock)
 
         # a_sock, created by parent process, is still in the pool
-        d_sock = get_pool(a).get_socket({}, 0, 0)
-        self.assertEqual(a_sock, d_sock)
-        d_sock.close()
+        with get_pool(a).get_socket({}, 0, 0) as d_sock:
+            self.assertEqual(a_sock, d_sock)
 
     def test_wait_queue_timeout(self):
         wait_queue_timeout = 2  # Seconds
         pool = self.create_pool(
             max_pool_size=1, wait_queue_timeout=wait_queue_timeout)
         
-        sock_info = pool.get_socket({}, 0, 0)
-        start = time.time()
-        with self.assertRaises(ConnectionFailure):
-            pool.get_socket({}, 0, 0)
+        with pool.get_socket({}, 0, 0) as sock_info:
+            start = time.time()
+            with self.assertRaises(ConnectionFailure):
+                with pool.get_socket({}, 0, 0):
+                    pass
 
         duration = time.time() - start
         self.assertTrue(
@@ -302,32 +319,33 @@ class TestPooling(_TestPoolingBase):
             max_pool_size=2, wait_queue_multiple=wait_queue_multiple)
 
         # Reach max_size sockets.
-        socket_info_0 = pool.get_socket({}, 0, 0)
-        socket_info_1 = pool.get_socket({}, 0, 0)
+        with pool.get_socket({}, 0, 0):
+            with pool.get_socket({}, 0, 0):
 
-        # Reach max_size * wait_queue_multiple waiters.
-        threads = []
-        for _ in range(6):
-            t = SocketGetter(self.c, pool)
-            t.start()
-            threads.append(t)
+                # Reach max_size * wait_queue_multiple waiters.
+                threads = []
+                for _ in range(6):
+                    t = SocketGetter(self.c, pool)
+                    t.start()
+                    threads.append(t)
 
-        time.sleep(1)
-        for t in threads:
-            self.assertEqual(t.state, 'get_socket')
+                time.sleep(1)
+                for t in threads:
+                    self.assertEqual(t.state, 'get_socket')
 
-        with self.assertRaises(ExceededMaxWaiters):
-            pool.get_socket({}, 0, 0)
-        socket_info_0.close()
-        socket_info_1.close()
+                with self.assertRaises(ExceededMaxWaiters):
+                    with pool.get_socket({}, 0, 0):
+                        pass
 
     def test_no_wait_queue_multiple(self):
         pool = self.create_pool(max_pool_size=2)
 
         socks = []
         for _ in range(2):
-            sock = pool.get_socket({}, 0, 0)
-            socks.append(sock)
+            # Pass 'checkout' so we can hold the socket.
+            with pool.get_socket({}, 0, 0, checkout=True) as sock:
+                socks.append(sock)
+
         threads = []
         for _ in range(30):
             t = SocketGetter(self.c, pool)
@@ -428,7 +446,8 @@ class TestPoolMaxSize(_TestPoolingBase):
         # socket from pool" instead of the socket.error.
         for i in range(2):
             with self.assertRaises(socket.error):
-                test_pool.get_socket({}, 0, 0)
+                with test_pool.get_socket({}, 0, 0, checkout=True):
+                    pass
 
 
 if __name__ == "__main__":

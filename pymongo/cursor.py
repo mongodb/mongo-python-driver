@@ -63,7 +63,6 @@ class _SocketManager:
         """
         if not self.__closed:
             self.__closed = True
-            self.sock.exhaust(False)  # Make it a normal socket again.
             self.pool.maybe_return_socket(self.sock)
             self.sock, self.pool = None, None
 
