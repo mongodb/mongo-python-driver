@@ -74,7 +74,7 @@ Map/Reduce
 ----------
 
 Another option for aggregation is to use the map reduce framework.  Here we
-will define **map** and **reduce** functions to also count he number of
+will define **map** and **reduce** functions to also count the number of
 occurrences for each tag in the ``tags`` array, across the entire collection.
 
 Our **map** function just emits a single `(key, 1)` pair for each tag in
@@ -171,7 +171,7 @@ reduce function.
 .. note:: Doesn't work with sharded MongoDB configurations, use aggregation or
           map/reduce instead of group().
 
-Here we are doing a simple group and count of the occurrences ``x`` values:
+Here we are doing a simple group and count of the occurrences of ``x`` values:
 
 .. doctest::
 
