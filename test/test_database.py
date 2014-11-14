@@ -387,7 +387,8 @@ class TestDatabase(IntegrationTest):
                 self.assertRaises(ConfigurationError, db.add_user,
                                   "user", "password", digestPassword=True)
 
-        self.client.admin.add_user("admin", "password", roles=["root"])
+        self.client.admin.add_user("admin", "password",
+                                   roles=["root", "userAdminAnyDatabase"])
         auth_c = MongoClient(pair)
         auth_c.admin.authenticate("admin", "password")
         db = auth_c.pymongo_test
@@ -441,7 +442,8 @@ class TestDatabase(IntegrationTest):
     def test_make_user_readonly(self):
         auth_c = MongoClient(pair)
         admin = auth_c.admin
-        self.client.admin.add_user('admin', 'pw', roles=['root'])
+        self.client.admin.add_user('admin', 'pw',
+                                   roles=['root', 'userAdminAnyDatabase'])
         admin.authenticate('admin', 'pw')
 
         db = auth_c.pymongo_test
