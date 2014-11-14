@@ -751,13 +751,13 @@ class MongoClient(common.BaseObject):
           - `check_primary` (optional): don't try to write to a non-primary;
             see kill_cursors for an exception to this rule.
           - `command` (optional): True for a write command.
-          - `address` (optional): Optional address when sending a getMore or
-            killCursors to a specific server.
+          - `address` (optional): Optional address when sending a message
+            to a specific server, used for killCursors.
         """
         topology = self._get_topology()
         if address:
             assert not check_primary, "Can't use check_primary with address"
-            server = topology.get_server_by_address(address)
+            server = topology.select_server_by_address(address)
             if not server:
                 raise AutoReconnect('server %s:%d no longer available'
                                     % address)
@@ -805,10 +805,12 @@ class MongoClient(common.BaseObject):
           - `read_preference` (optional): A ReadPreference.
           - `exhaust` (optional): If True, the socket used stays checked out.
             It is returned along with its Pool in the Response.
+          - `address` (optional): Optional address when sending a message
+            to a specific server, used for getMore.
         """
         topology = self._get_topology()
         if address:
-            server = topology.get_server_by_address(address)
+            server = topology.select_server_by_address(address)
             if not server:
                 raise AutoReconnect('server %s:%d no longer available'
                                     % address)
@@ -853,12 +855,7 @@ class MongoClient(common.BaseObject):
 
     def _reset_server_and_request_check(self, address):
         """Clear our pool for a server, mark it Unknown, and check it soon."""
-        self._topology.reset_server(address)
-        server = self._topology.get_server_by_address(address)
-
-        # "server" is None if another thread removed it from the topology.
-        if server:
-            server.request_check()
+        self._topology.reset_server_and_request_check(address)
 
     def start_request(self):
         """Ensure the current thread always uses the same socket

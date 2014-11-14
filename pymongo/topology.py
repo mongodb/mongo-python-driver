@@ -17,6 +17,7 @@
 import random
 import threading
 import time
+from functools import partial
 
 from bson.py3compat import itervalues
 from pymongo import common
@@ -26,7 +27,8 @@ from pymongo.topology_description import (updated_topology_description,
                                           TopologyDescription)
 from pymongo.errors import AutoReconnect
 from pymongo.server import Server
-from pymongo.server_selectors import (arbiter_server_selector,
+from pymongo.server_selectors import (address_server_selector,
+                                      arbiter_server_selector,
                                       secondary_server_selector,
                                       writable_server_selector)
 
@@ -114,6 +116,26 @@ class Topology(object):
         """Like select_servers, but choose a random server if several match."""
         return random.choice(self.select_servers(selector, server_wait_time))
 
+    def select_server_by_address(self, address, server_wait_time=None):
+        """Return a Server for "address", reconnecting if necessary.
+
+        If the server's type is not known, request an immediate check of all
+        servers. Time out after "server_wait_time" if the server cannot be
+        reached.
+
+        :Parameters:
+          - `address`: A (host, port) pair.
+          - `server_wait_time` (optional): maximum seconds to wait. If not
+            provided, the default value common.SERVER_WAIT_TIME is used.
+
+        Calls self.open() if needed.
+
+        Raises exc:`AutoReconnect` after `server_wait_time` if no
+        matching servers are found.
+        """
+        selector = partial(address_server_selector, address)
+        return self.select_server(selector, server_wait_time)
+
     def on_change(self, server_description):
         """Process a new ServerDescription after an ismaster call completes."""
         # We do no I/O holding the lock.
@@ -132,7 +154,13 @@ class Topology(object):
                 self._condition.notify_all()
 
     def get_server_by_address(self, address):
-        """Get a Server or None."""
+        """Get a Server or None.
+
+        Returns the current version of the server immediately, even if it's
+        Unknown or absent from the topology. Only use this in unittests.
+        In driver code, use select_server_by_address, since then you're
+        assured a recent view of the server's type and wire protocol version.
+        """
         return self._servers.get(address)
 
     def has_server(self, address):
@@ -184,16 +212,18 @@ class Topology(object):
                 server.pool.reset()
 
     def reset_server(self, address):
+        """Clear our pool for a server and mark it Unknown.
+
+        Do *not* request an immediate check.
+        """
         with self._lock:
-            server = self._servers.get(address)
+            self._reset_server(address)
 
-            # "server" is None if another thread removed it from the topology.
-            if server:
-                server.reset()
-
-                # Mark this server Unknown.
-                self._description = self._description.reset_server(address)
-                self._update_servers()
+    def reset_server_and_request_check(self, address):
+        """Clear our pool for a server, mark it Unknown, and check it soon."""
+        with self._lock:
+            self._reset_server(address)
+            self._request_check(address)
 
     def close(self):
         """Clear pools and terminate monitors. Topology reopens on demand."""
@@ -221,6 +251,29 @@ class Topology(object):
             # Restart monitors if we forked since previous call.
             for server in itervalues(self._servers):
                 server.open()
+
+    def _reset_server(self, address):
+        """Clear our pool for a server and mark it Unknown.
+
+        Hold the lock when calling this. Does *not* request an immediate check.
+        """
+        server = self._servers.get(address)
+
+        # "server" is None if another thread removed it from the topology.
+        if server:
+            server.reset()
+
+            # Mark this server Unknown.
+            self._description = self._description.reset_server(address)
+            self._update_servers()
+
+    def _request_check(self, address):
+        """Wake one monitor. Hold the lock when calling this."""
+        server = self._servers.get(address)
+
+        # "server" is None if another thread removed it from the topology.
+        if server:
+            server.request_check()
 
     def _request_check_all(self):
         """Wake all monitors. Hold the lock when calling this."""
