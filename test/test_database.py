@@ -51,11 +51,12 @@ from test import (client_context,
                   unittest,
                   host,
                   port,
-                  pair,
-                  IntegrationTest)
+                  IntegrationTest,
+                  db_user)
 from test.utils import (
     ignore_deprecations,
     remove_all_users,
+    rs_or_single_client_noauth,
     server_started_with_auth)
 
 
@@ -365,58 +366,58 @@ class TestDatabase(IntegrationTest):
 
     @client_context.require_auth
     def test_authenticate_add_remove_user(self):
-        db = self.client.pymongo_test
+        # "self.client" is logged in as root.
+        auth_db = self.client.pymongo_test
+        db = rs_or_single_client_noauth().pymongo_test
 
         # Configuration errors
-        self.assertRaises(ValueError, db.add_user, "user", '')
-        self.assertRaises(TypeError, db.add_user, "user", 'password', 15)
-        self.assertRaises(ConfigurationError, db.add_user,
+        self.assertRaises(ValueError, auth_db.add_user, "user", '')
+        self.assertRaises(TypeError, auth_db.add_user, "user", 'password', 15)
+        self.assertRaises(ConfigurationError, auth_db.add_user,
                           "user", 'password', 'True')
-        self.assertRaises(ConfigurationError, db.add_user,
+        self.assertRaises(ConfigurationError, auth_db.add_user,
                           "user", 'password', True, roles=['read'])
 
         if client_context.version.at_least(2, 5, 3, -1):
             with warnings.catch_warnings():
                 warnings.simplefilter("error", DeprecationWarning)
-                self.assertRaises(DeprecationWarning, db.add_user,
+                self.assertRaises(DeprecationWarning, auth_db.add_user,
                                   "user", "password")
-                self.assertRaises(DeprecationWarning, db.add_user,
+                self.assertRaises(DeprecationWarning, auth_db.add_user,
                                   "user", "password", True)
 
             with ignore_deprecations():
-                self.assertRaises(ConfigurationError, db.add_user,
+                self.assertRaises(ConfigurationError, auth_db.add_user,
                                   "user", "password", digestPassword=True)
-
-        self.client.admin.add_user("admin", "password",
-                                   roles=["root", "userAdminAnyDatabase"])
-        auth_c = MongoClient(pair)
-        auth_c.admin.authenticate("admin", "password")
-        db = auth_c.pymongo_test
 
         try:
             # Add / authenticate / remove
-            db.add_user("mike", "password", roles=["dbOwner"])
+            auth_db.add_user("mike", "password", roles=["dbOwner"])
             self.assertRaises(TypeError, db.authenticate, 5, "password")
             self.assertRaises(TypeError, db.authenticate, "mike", 5)
             self.assertRaises(OperationFailure,
                               db.authenticate, "mike", "not a real password")
             self.assertRaises(OperationFailure,
                               db.authenticate, "faker", "password")
-            self.assertTrue(db.authenticate("mike", "password"))
-            db.logout()
-            self.assertTrue(db.authenticate(u("mike"), u("password")))
-            db.remove_user("mike")
+            db.authenticate("mike", "password")
             db.logout()
 
+            # Unicode name and password.
+            db.authenticate(u("mike"), u("password"))
+            db.logout()
+
+            auth_db.remove_user("mike")
             self.assertRaises(OperationFailure,
                               db.authenticate, "mike", "password")
 
             # Add / authenticate / change password
             self.assertRaises(OperationFailure,
                               db.authenticate, "Gustave", u("Dor\xe9"))
-            db.add_user("Gustave", u("Dor\xe9"), roles=["dbOwner"])
-            self.assertTrue(db.authenticate("Gustave", u("Dor\xe9")))
-            db.add_user("Gustave", "password", roles=["dbOwner"])
+            auth_db.add_user("Gustave", u("Dor\xe9"), roles=["dbOwner"])
+            db.authenticate("Gustave", u("Dor\xe9"))
+
+            # Change password.
+            auth_db.add_user("Gustave", "password", roles=["dbOwner"])
             db.logout()
             self.assertRaises(OperationFailure,
                               db.authenticate, "Gustave", u("Dor\xe9"))
@@ -425,33 +426,24 @@ class TestDatabase(IntegrationTest):
             if not client_context.version.at_least(2, 5, 3, -1):
                 # Add a readOnly user
                 with ignore_deprecations():
-                    db.add_user("Ross", "password", read_only=True)
+                    auth_db.add_user("Ross", "password", read_only=True)
 
                 db.logout()
-                self.assertTrue(db.authenticate("Ross", u("password")))
-                self.assertTrue(db.system.users.find({"readOnly": True}).count())
-                db.logout()
-
-        # Cleanup
+                db.authenticate("Ross", u("password"))
+                self.assertTrue(
+                    auth_db.system.users.find({"readOnly": True}).count())
         finally:
-            remove_all_users(db)
-            db.logout()
-            auth_c.admin.remove_user("admin")
+            remove_all_users(auth_db)
 
     @client_context.require_auth
     def test_make_user_readonly(self):
-        auth_c = MongoClient(pair)
-        admin = auth_c.admin
-        self.client.admin.add_user('admin', 'pw',
-                                   roles=['root', 'userAdminAnyDatabase'])
-        admin.authenticate('admin', 'pw')
-
-        db = auth_c.pymongo_test
+        # "self.client" is logged in as root.
+        auth_db = self.client.pymongo_test
+        db = rs_or_single_client_noauth().pymongo_test
 
         try:
             # Make a read-write user.
-            db.add_user('jesse', 'pw')
-            admin.logout()
+            auth_db.add_user('jesse', 'pw')
 
             # Check that we're read-write by default.
             db.authenticate('jesse', 'pw')
@@ -459,81 +451,54 @@ class TestDatabase(IntegrationTest):
             db.logout()
 
             # Make the user read-only.
-            admin.authenticate('admin', 'pw')
-            db.add_user('jesse', 'pw', read_only=True)
-            admin.logout()
+            auth_db.add_user('jesse', 'pw', read_only=True)
 
             db.authenticate('jesse', 'pw')
             self.assertRaises(OperationFailure, db.collection.insert, {})
         finally:
-            # Cleanup
-            admin.authenticate('admin', 'pw')
-            remove_all_users(db)
-            admin.remove_user("admin")
+            remove_all_users(auth_db)
 
     @client_context.require_version_min(2, 5, 3, -1)
     @client_context.require_auth
     def test_default_roles(self):
-        # "Admin" user
-        with ignore_deprecations():
-            self.client.admin.add_user('admin', 'pass')
-
-        auth_c = MongoClient(pair)
-        db = auth_c.admin
+        # "self.client" is logged in as root.
+        auth_admin = self.client.admin
         try:
-            db.authenticate('admin', 'pass')
-            info = db.command('usersInfo', 'admin')['users'][0]
+            info = auth_admin.command('usersInfo', db_user)['users'][0]
             self.assertEqual("root", info['roles'][0]['role'])
 
             # Read only "admin" user
-            db.add_user('ro-admin', 'pass', read_only=True)
-            db.logout()
-            db.authenticate('ro-admin', 'pass')
-            info = db.command('usersInfo', 'ro-admin')['users'][0]
+            auth_admin.add_user('ro-admin', 'pass', read_only=True)
+            info = auth_admin.command('usersInfo', 'ro-admin')['users'][0]
             self.assertEqual("readAnyDatabase", info['roles'][0]['role'])
-            db.logout()
-
-        # Cleanup
         finally:
-            db.authenticate('admin', 'pass')
-            db.remove_user('ro-admin')
-            db.remove_user('admin')
-            db.logout()
-
-        db.connection.disconnect()
+            auth_admin.remove_user('ro-admin')
 
         # "Non-admin" user
-        db = auth_c.pymongo_test
-        self.client.pymongo_test.add_user('user', 'pass')
+        auth_db = self.client.pymongo_test
+        auth_db.add_user('user', 'pass')
         try:
-            db.authenticate('user', 'pass')
-            info = db.command('usersInfo', 'user')['users'][0]
+            info = auth_db.command('usersInfo', 'user')['users'][0]
             self.assertEqual("dbOwner", info['roles'][0]['role'])
-            db.logout()
 
             # Read only "Non-admin" user
-            self.client.pymongo_test.add_user('ro-user', 'pass',
-                                              read_only=True)
-            db.authenticate('ro-user', 'pass')
-            info = db.command('usersInfo', 'ro-user')['users'][0]
+            auth_db.add_user('ro-user', 'pass', read_only=True)
+            info = auth_db.command('usersInfo', 'ro-user')['users'][0]
             self.assertEqual("read", info['roles'][0]['role'])
-            db.logout()
-
-        # Cleanup
         finally:
-            db.authenticate('user', 'pass')
-            remove_all_users(db)
+            remove_all_users(auth_db)
 
     @client_context.require_version_min(2, 5, 3, -1)
     @client_context.require_auth
     def test_new_user_cmds(self):
-        auth_c = MongoClient(pair)
-        db = auth_c.pymongo_test
-        self.client.pymongo_test.add_user("amalia", "password",
-                                          roles=["userAdmin"])
+        # "self.client" is logged in as root.
+        auth_db = self.client.pymongo_test
+        auth_db.add_user("amalia", "password", roles=["userAdmin"])
 
-        db.authenticate("amalia", "password")
         try:
+            db = rs_or_single_client_noauth().pymongo_test
+            db.authenticate("amalia", "password")
+
             # This tests the ability to update user attributes.
             db.add_user("amalia", "new_password",
                         customData={"secret": "koalas"})
@@ -544,61 +509,33 @@ class TestDatabase(IntegrationTest):
             self.assertEqual(amalia_user["user"], "amalia")
             self.assertEqual(amalia_user["customData"], {"secret": "koalas"})
         finally:
-            db.remove_user("amalia")
-
-    @client_context.require_auth
-    def test_authenticate_and_safe(self):
-        auth_c = MongoClient(pair)
-        db = auth_c.auth_test
-
-        self.client.auth_test.add_user(
-            "bernie", "password",
-            roles=["userAdmin", "dbAdmin", "readWrite"])
-        db.authenticate("bernie", "password")
-        try:
-            db.test.remove({})
-            self.assertTrue(db.test.insert({"bim": "baz"}))
-            self.assertEqual(1, db.test.count())
-
-            self.assertEqual(1,
-                             db.test.update({"bim": "baz"},
-                                            {"$set": {"bim": "bar"}}).get('n'))
-
-            self.assertEqual(1,
-                             db.test.remove({}).get('n'))
-
-            self.assertEqual(0, db.test.count())
-        finally:
-            db.remove_user("bernie")
+            auth_db.remove_user("amalia")
 
     @client_context.require_auth
     def test_authenticate_multiple(self):
-        # Setup
+        # "self.client" is logged in as root.
         self.client.drop_database("pymongo_test")
         self.client.drop_database("pymongo_test1")
-        auth_c = MongoClient(pair)
-        users_db = auth_c.pymongo_test
-        admin_db = auth_c.admin
-        other_db = auth_c.pymongo_test1
+        admin_db_auth = self.client.admin
+        users_db_auth = self.client.pymongo_test
 
-        self.client.admin.add_user(
-            'admin', 'pass',
-            roles=["userAdminAnyDatabase", "dbAdmin",
-                   "clusterAdmin", "readWrite"])
+        # Non-root client.
+        client = rs_or_single_client_noauth()
+        admin_db = client.admin
+        users_db = client.pymongo_test
+        other_db = client.pymongo_test1
+
         try:
-            self.assertTrue(admin_db.authenticate('admin', 'pass'))
+            self.assertRaises(OperationFailure, users_db.test.find_one)
 
             if client_context.version.at_least(2, 5, 3, -1):
-                admin_db.add_user('ro-admin', 'pass',
-                                  roles=["userAdmin", "readAnyDatabase"])
+                admin_db_auth.add_user('ro-admin', 'pass',
+                                       roles=["userAdmin", "readAnyDatabase"])
             else:
-                admin_db.add_user('ro-admin', 'pass', read_only=True)
+                admin_db_auth.add_user('ro-admin', 'pass', read_only=True)
 
-            users_db.add_user('user', 'pass',
-                              roles=["userAdmin", "readWrite"])
-
-            admin_db.logout()
-            self.assertRaises(OperationFailure, users_db.test.find_one)
+            users_db_auth.add_user('user', 'pass',
+                                   roles=["userAdmin", "readWrite"])
 
             # Regular user should be able to query its own db, but
             # no other.
@@ -613,22 +550,21 @@ class TestDatabase(IntegrationTest):
             self.assertRaises(OperationFailure,
                               other_db.test.insert, {})
 
-            # Force close all sockets
-            auth_c.disconnect()
+            # Close all sockets.
+            client.disconnect()
 
-            # We should still be able to write to the regular user's db
+            # We should still be able to write to the regular user's db.
             self.assertTrue(users_db.test.remove())
+
             # And read from other dbs...
             self.assertEqual(0, other_db.test.count())
-            # But still not write to other dbs...
+
+            # But still not write to other dbs.
             self.assertRaises(OperationFailure,
                               other_db.test.insert, {})
-
-        # Cleanup
         finally:
-            remove_all_users(users_db)
-            self.client.admin.remove_user('ro-admin')
-            self.client.admin.remove_user('admin')
+            remove_all_users(users_db_auth)
+            admin_db_auth.remove_user('ro-admin')
 
     def test_id_ordering(self):
         # PyMongo attempts to have _id show up first

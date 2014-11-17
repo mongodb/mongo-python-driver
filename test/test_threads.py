@@ -15,14 +15,13 @@
 """Test that pymongo is thread safe."""
 
 import threading
-import traceback
 
 from test import unittest, client_context, IntegrationTest, db_user, db_pwd
 from test.utils import (frequent_thread_switches,
                         joinall,
-                        remove_all_users,
                         RendezvousThread,
-                        rs_or_single_client)
+                        rs_or_single_client,
+                        rs_or_single_client_noauth)
 from test.utils import get_pool
 from pymongo.pool import SocketInfo, _closed
 from pymongo.errors import AutoReconnect, OperationFailure
@@ -39,17 +38,15 @@ class AutoAuthenticateThreads(threading.Thread):
         threading.Thread.__init__(self)
         self.coll = collection
         self.num = num
-        self.success = True
+        self.success = False
         self.setDaemon(True)
 
     def run(self):
-        try:
-            for i in range(self.num):
-                self.coll.insert({'num':i})
-                self.coll.find_one({'num':i})
-        except Exception:
-            traceback.print_exc()
-            self.success = False
+        for i in range(self.num):
+            self.coll.insert({'num': i})
+            self.coll.find_one({'num': i})
+
+        self.success = True
 
 
 class SaveAndFind(threading.Thread):
@@ -331,56 +328,17 @@ class TestThreadsAuth(IntegrationTest):
     def setUpClass(cls):
         super(TestThreadsAuth, cls).setUpClass()
 
-    def setUp(self):
-        self.client.admin.add_user('admin-user', 'password',
-                                   roles=['clusterAdmin',
-                                          'dbAdminAnyDatabase',
-                                          'readWriteAnyDatabase',
-                                          'userAdminAnyDatabase'])
-
-        # client is already authenticated to get around restricted
-        # localhost exception in MongoDB >= 2.7.1.
-        self.client.admin.logout()
-        self.client.admin.authenticate("admin-user", "password")
-        self.client.auth_test.add_user("test-user", "password",
-                                       roles=['readWrite'])
-
-    def tearDown(self):
-        # Remove auth users from databases
-        self.client.admin.authenticate("admin-user", "password")
-        remove_all_users(self.client.auth_test)
-        self.client.drop_database('auth_test')
-        self.client.admin.remove_user('admin-user')
-        self.client.admin.logout()
-        self.client.admin.authenticate(db_user, db_pwd)
-
     def test_auto_auth_login(self):
-        client = self.client
-        client.admin.logout()
+        client = rs_or_single_client_noauth()
         self.assertRaises(OperationFailure, client.auth_test.test.find_one)
 
         # Admin auth
-        client.admin.authenticate("admin-user", "password")
+        client.admin.authenticate(db_user, db_pwd)
 
         nthreads = 10
         threads = []
         for _ in range(nthreads):
-            t = AutoAuthenticateThreads(client.auth_test.test, 100)
-            t.start()
-            threads.append(t)
-
-        joinall(threads)
-
-        for t in threads:
-            self.assertTrue(t.success)
-
-        # Database-specific auth
-        client.admin.logout()
-        client.auth_test.authenticate("test-user", "password")
-
-        threads = []
-        for _ in range(nthreads):
-            t = AutoAuthenticateThreads(client.auth_test.test, 100)
+            t = AutoAuthenticateThreads(client.auth_test.test, 10)
             t.start()
             threads.append(t)
 
