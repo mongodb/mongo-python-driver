@@ -1115,30 +1115,6 @@ class TestClientLazyConnect(IntegrationTest):
                 c.max_message_size)
 
 
-class TestClientLazyConnectBadSeeds(IntegrationTest):
-    def _get_client(self):
-        # Assume there are no open mongods listening on a.com, b.com, ....
-        bad_seeds = ['%s.com' % chr(ord('a') + i) for i in range(10)]
-        return MongoClient(
-            bad_seeds,
-            replicaSet=client_context.replica_set_name,
-            connect=False)
-
-    def test_connect(self):
-        def reset(dummy):
-            pass
-
-        def connect(collection, dummy):
-            self.assertRaises(AutoReconnect, collection.find_one)
-
-        def test(collection):
-            client = collection.database.connection
-            self.assertEqual(0, len(client.nodes))
-
-        with client_knobs(server_wait_time=0.01):
-            lazy_client_trial(reset, connect, test, self._get_client)
-
-
 class TestMongoClientFailover(MockClientTest):
 
     def test_discover_primary(self):
