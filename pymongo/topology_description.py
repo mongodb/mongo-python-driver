@@ -28,17 +28,17 @@ TOPOLOGY_TYPE = namedtuple('TopologyType', ['Single', 'ReplicaSetNoPrimary',
 
 
 class TopologyDescription(object):
-    def __init__(self, topology_type, server_descriptions, set_name):
+    def __init__(self, topology_type, server_descriptions, replica_set_name):
         """Represent a topology of servers.
 
         :Parameters:
           - `topology_type`: initial type
           - `server_descriptions`: dict of (address, ServerDescription) for
             all seeds
-          - `set_name`: replica set name or None
+          - `replica_set_name`: replica set name or None
         """
         self._topology_type = topology_type
-        self._set_name = set_name
+        self._replica_set_name = replica_set_name
         self._server_descriptions = server_descriptions
 
         # Is PyMongo compatible with all servers' wire protocols?
@@ -93,7 +93,7 @@ class TopologyDescription(object):
         else:
             topology_type = self._topology_type
 
-        return TopologyDescription(topology_type, sds, self._set_name)
+        return TopologyDescription(topology_type, sds, self._replica_set_name)
 
     def reset(self):
         """A copy of this description, with all servers marked Unknown."""
@@ -106,7 +106,7 @@ class TopologyDescription(object):
         sds = dict((address, ServerDescription(address))
                    for address in self._server_descriptions)
 
-        return TopologyDescription(topology_type, sds, self._set_name)
+        return TopologyDescription(topology_type, sds, self._replica_set_name)
 
     def server_descriptions(self):
         """Dict of (address, ServerDescription)."""
@@ -117,9 +117,9 @@ class TopologyDescription(object):
         return self._topology_type
 
     @property
-    def set_name(self):
+    def replica_set_name(self):
         """The replica set name."""
-        return self._set_name
+        return self._replica_set_name
 
     @property
     def known_servers(self):
@@ -155,7 +155,7 @@ def updated_topology_description(topology_description, server_description):
     # These values will be updated, if necessary, to form the new
     # TopologyDescription.
     topology_type = topology_description.topology_type
-    set_name = topology_description.set_name
+    set_name = topology_description.replica_set_name
     server_type = server_description.server_type
 
     # Don't mutate the original dict of server descriptions; copy it.
@@ -218,22 +218,22 @@ def updated_topology_description(topology_description, server_description):
     return TopologyDescription(topology_type, sds, set_name)
 
 
-def _update_rs_from_primary(sds, set_name, server_description):
+def _update_rs_from_primary(sds, replica_set_name, server_description):
     """Update topology description from a primary's ismaster response.
 
     Pass in a dict of ServerDescriptions, current replica set name, and the
     ServerDescription we are processing.
 
-    Returns (new topology type, new set_name).
+    Returns (new topology type, new replica_set_name).
     """
-    if set_name is None:
-        set_name = server_description.set_name
+    if replica_set_name is None:
+        replica_set_name = server_description.replica_set_name
 
-    elif set_name != server_description.set_name:
-        # We found a primary but it doesn't have the set_name
+    elif replica_set_name != server_description.replica_set_name:
+        # We found a primary but it doesn't have the replica_set_name
         # provided by the user.
         sds.pop(server_description.address)
-        return _check_has_primary(sds), set_name
+        return _check_has_primary(sds), replica_set_name
 
     # We've heard from the primary. Is it the same primary as before?
     for server in sds.values():
@@ -257,10 +257,13 @@ def _update_rs_from_primary(sds, set_name, server_description):
 
     # If the host list differs from the seed list, we may not have a primary
     # after all.
-    return _check_has_primary(sds), set_name
+    return _check_has_primary(sds), replica_set_name
 
 
-def _update_rs_with_primary_from_member(sds, set_name, server_description):
+def _update_rs_with_primary_from_member(
+        sds,
+        replica_set_name,
+        server_description):
     """RS with known primary. Process a response from a non-primary.
 
     Pass in a dict of ServerDescriptions, current replica set name, and the
@@ -268,30 +271,33 @@ def _update_rs_with_primary_from_member(sds, set_name, server_description):
 
     Returns new topology type.
     """
-    assert set_name is not None
+    assert replica_set_name is not None
 
-    if set_name != server_description.set_name:
+    if replica_set_name != server_description.replica_set_name:
         sds.pop(server_description.address)
 
     # Had this member been the primary?
     return _check_has_primary(sds)
 
 
-def _update_rs_no_primary_from_member(sds, set_name, server_description):
+def _update_rs_no_primary_from_member(
+        sds,
+        replica_set_name,
+        server_description):
     """RS without known primary. Update from a non-primary's response.
 
     Pass in a dict of ServerDescriptions, current replica set name, and the
     ServerDescription we are processing.
 
-    Returns (new topology type, new set_name).
+    Returns (new topology type, new replica_set_name).
     """
     topology_type = TOPOLOGY_TYPE.ReplicaSetNoPrimary
-    if set_name is None:
-        set_name = server_description.set_name
+    if replica_set_name is None:
+        replica_set_name = server_description.replica_set_name
 
-    elif set_name != server_description.set_name:
+    elif replica_set_name != server_description.replica_set_name:
         sds.pop(server_description.address)
-        return topology_type, set_name
+        return topology_type, replica_set_name
 
     # This isn't the primary's response, so don't remove any servers
     # it doesn't report. Only add new servers.
@@ -299,7 +305,7 @@ def _update_rs_no_primary_from_member(sds, set_name, server_description):
         if address not in sds:
             sds[address] = ServerDescription(address)
 
-    return topology_type, set_name
+    return topology_type, replica_set_name
 
 
 def _check_has_primary(sds):

@@ -552,7 +552,7 @@ class TestClient(IntegrationTest, TestRequestMixin):
 
         uri = "mongodb://%s[::1]:%d" % (auth_str, port)
         if client_context.is_rs:
-            uri += '/?replicaSet=' + client_context.setname
+            uri += '/?replicaSet=' + client_context.replica_set_name
 
         client = rs_or_single_client_noauth(uri)
         client.pymongo_test.test.save({"dummy": u("object")})
@@ -1121,7 +1121,7 @@ class TestClientLazyConnectBadSeeds(IntegrationTest):
         bad_seeds = ['%s.com' % chr(ord('a') + i) for i in range(10)]
         return MongoClient(
             bad_seeds,
-            replicaSet=client_context.setname,
+            replicaSet=client_context.replica_set_name,
             connect=False)
 
     def test_connect(self):

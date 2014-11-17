@@ -305,7 +305,7 @@ class MongoClient(common.BaseObject):
 
         self._topology_settings = TopologySettings(
             seeds=seeds,
-            set_name=options.replica_set_name,
+            replica_set_name=options.replica_set_name,
             pool_class=pool_class,
             pool_options=options.pool_options,
             monitor_class=monitor_class,

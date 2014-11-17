@@ -79,7 +79,7 @@ class IsMaster(object):
             return None
 
     @property
-    def set_name(self):
+    def replica_set_name(self):
         """Replica set name or None."""
         return self._doc.get('setName')
 

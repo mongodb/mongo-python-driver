@@ -90,7 +90,7 @@ class ClientContext(object):
         self.ismaster = {}
         self.w = None
         self.nodes = set()
-        self.setname = None
+        self.replica_set_name = None
         self.rs_client = None
         self.cmd_line = None
         self.version = Version(-1)  # Needs to be comparable with Version
@@ -113,13 +113,13 @@ class ClientContext(object):
             self.ismaster = self.client.admin.command('ismaster')
             self.w = len(self.ismaster.get("hosts", [])) or 1
             self.nodes = set([(host, port)])
-            self.setname = self.ismaster.get('setName', '')
+            self.replica_set_name = self.ismaster.get('setName', '')
             self.rs_client = None
             self.version = Version.from_client(self.client)
-            if self.setname:
+            if self.replica_set_name:
                 self.is_rs = True
                 self.rs_client = pymongo.MongoClient(
-                    pair, replicaSet=self.setname)
+                    pair, replicaSet=self.replica_set_name)
 
                 self.nodes = set([partition_node(node)
                                   for node in self.ismaster.get('hosts', [])])

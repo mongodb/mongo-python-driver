@@ -90,11 +90,14 @@ class SetNameDiscoverySettings(TopologySettings):
 address = ('a', 27017)
 
 
-def create_mock_topology(seeds=None, set_name=None, monitor_class=MockMonitor):
+def create_mock_topology(
+        seeds=None,
+        replica_set_name=None,
+        monitor_class=MockMonitor):
     partitioned_seeds = list(imap(common.partition_node, seeds or ['a']))
     topology_settings = TopologySettings(
         partitioned_seeds,
-        set_name=set_name,
+        replica_set_name=replica_set_name,
         pool_class=MockPool,
         monitor_class=monitor_class)
 
@@ -239,7 +242,7 @@ class TestSingleServerTopology(TopologyTest):
 
 class TestMultiServerTopology(TopologyTest):
     def test_close(self):
-        t = create_mock_topology(set_name='rs')
+        t = create_mock_topology(replica_set_name='rs')
         got_ismaster(t, ('a', 27017), {
             'ok': 1,
             'ismaster': True,
@@ -262,7 +265,7 @@ class TestMultiServerTopology(TopologyTest):
         self.assertEqual(2, len(t.description.server_descriptions()))
         self.assertEqual(SERVER_TYPE.Unknown, get_type(t, 'a'))
         self.assertEqual(SERVER_TYPE.Unknown, get_type(t, 'b'))
-        self.assertEqual('rs', t.description.set_name)
+        self.assertEqual('rs', t.description.replica_set_name)
         self.assertEqual(TOPOLOGY_TYPE.ReplicaSetNoPrimary,
                          t.description.topology_type)
 
@@ -278,7 +281,7 @@ class TestMultiServerTopology(TopologyTest):
                          t.description.topology_type)
 
     def test_reset_server(self):
-        t = create_mock_topology(set_name='rs')
+        t = create_mock_topology(replica_set_name='rs')
         got_ismaster(t, ('a', 27017), {
             'ok': 1,
             'ismaster': True,
@@ -295,7 +298,7 @@ class TestMultiServerTopology(TopologyTest):
         t.reset_server(('a', 27017))
         self.assertEqual(SERVER_TYPE.Unknown, get_type(t, 'a'))
         self.assertEqual(SERVER_TYPE.RSSecondary, get_type(t, 'b'))
-        self.assertEqual('rs', t.description.set_name)
+        self.assertEqual('rs', t.description.replica_set_name)
         self.assertEqual(TOPOLOGY_TYPE.ReplicaSetNoPrimary,
                          t.description.topology_type)
 
@@ -312,12 +315,12 @@ class TestMultiServerTopology(TopologyTest):
         t.reset_server(('b', 27017))
         self.assertEqual(SERVER_TYPE.RSPrimary, get_type(t, 'a'))
         self.assertEqual(SERVER_TYPE.Unknown, get_type(t, 'b'))
-        self.assertEqual('rs', t.description.set_name)
+        self.assertEqual('rs', t.description.replica_set_name)
         self.assertEqual(TOPOLOGY_TYPE.ReplicaSetWithPrimary,
                          t.description.topology_type)
 
     def test_reset_removed_server(self):
-        t = create_mock_topology(set_name='rs')
+        t = create_mock_topology(replica_set_name='rs')
 
         # No error resetting a server not in the TopologyDescription.
         t.reset_server(('b', 27017))
@@ -334,7 +337,7 @@ class TestMultiServerTopology(TopologyTest):
             monitor_class=MockMonitor)
 
         t = Topology(topology_settings)
-        self.assertEqual(t.description.set_name, None)
+        self.assertEqual(t.description.replica_set_name, None)
         self.assertEqual(t.description.topology_type,
                          TOPOLOGY_TYPE.ReplicaSetNoPrimary)
 
@@ -344,7 +347,7 @@ class TestMultiServerTopology(TopologyTest):
             'setName': 'rs',
             'hosts': ['a']})
 
-        self.assertEqual(t.description.set_name, 'rs')
+        self.assertEqual(t.description.replica_set_name, 'rs')
         self.assertEqual(t.description.topology_type,
                          TOPOLOGY_TYPE.ReplicaSetWithPrimary)
 
@@ -357,7 +360,7 @@ class TestMultiServerTopology(TopologyTest):
             'hosts': ['a']})
 
         # No change.
-        self.assertEqual(t.description.set_name, 'rs')
+        self.assertEqual(t.description.replica_set_name, 'rs')
         self.assertEqual(t.description.topology_type,
                          TOPOLOGY_TYPE.ReplicaSetWithPrimary)
 
@@ -370,7 +373,7 @@ class TestMultiServerTopology(TopologyTest):
             monitor_class=MockMonitor)
 
         t = Topology(topology_settings)
-        self.assertEqual(t.description.set_name, None)
+        self.assertEqual(t.description.replica_set_name, None)
         self.assertEqual(t.description.topology_type,
                          TOPOLOGY_TYPE.ReplicaSetNoPrimary)
 
@@ -381,12 +384,12 @@ class TestMultiServerTopology(TopologyTest):
             'setName': 'rs',
             'hosts': ['a']})
 
-        self.assertEqual(t.description.set_name, 'rs')
+        self.assertEqual(t.description.replica_set_name, 'rs')
         self.assertEqual(t.description.topology_type,
                          TOPOLOGY_TYPE.ReplicaSetNoPrimary)
 
     def test_wire_version(self):
-        t = create_mock_topology(set_name='rs')
+        t = create_mock_topology(replica_set_name='rs')
         t.description.check_compatible()  # No error.
 
         got_ismaster(t, address, {
@@ -430,7 +433,7 @@ class TestMultiServerTopology(TopologyTest):
             self.fail('No error with incompatible wire version')
 
     def test_max_write_batch_size(self):
-        t = create_mock_topology(seeds=['a', 'b'], set_name='rs')
+        t = create_mock_topology(seeds=['a', 'b'], replica_set_name='rs')
 
         def write_batch_size():
             s = t.select_server(writable_server_selector)

@@ -77,13 +77,13 @@ def create_mock_topology(uri, monitor_class=MockMonitor):
     # Some tests in the spec include URIs like mongodb://A/?connect=direct,
     # but PyMongo considers any single-seed URI with no setName to be "direct".
     parsed_uri = parse_uri(uri.replace('connect=direct', ''))
-    set_name = None
+    replica_set_name = None
     if 'replicaset' in parsed_uri['options']:
-        set_name = parsed_uri['options']['replicaset']
+        replica_set_name = parsed_uri['options']['replicaset']
 
     topology_settings = TopologySettings(
         parsed_uri['nodelist'],
-        set_name=set_name,
+        replica_set_name=replica_set_name,
         pool_class=MockPool,
         monitor_class=monitor_class)
 
@@ -149,9 +149,9 @@ def check_outcome(self, topology, outcome):
 
         self.assertEqual(
             expected_server['setName'],
-            actual_server_description.set_name)
+            actual_server_description.replica_set_name)
 
-    self.assertEqual(outcome['setName'], topology.description.set_name)
+    self.assertEqual(outcome['setName'], topology.description.replica_set_name)
     expected_topology_type = getattr(TOPOLOGY_TYPE, outcome['topologyType'])
     self.assertEqual(topology_type_name(expected_topology_type),
                      topology_type_name(topology.description.topology_type))

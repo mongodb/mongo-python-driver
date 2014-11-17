@@ -223,12 +223,12 @@ class TestCommon(IntegrationTest):
         self.assertRaises(OperationFailure, coll.insert, doc, w=1)
 
         m = MongoClient("mongodb://%s/" % (pair,),
-                        replicaSet=client_context.setname)
+                        replicaSet=client_context.replica_set_name)
 
         coll = m.pymongo_test.write_concern_test
         self.assertRaises(OperationFailure, coll.insert, doc)
         m = MongoClient("mongodb://%s/?w=0" % (pair,),
-                        replicaSet=client_context.setname)
+                        replicaSet=client_context.replica_set_name)
 
         coll = m.pymongo_test.write_concern_test
         self.assertTrue(coll.insert(doc))

@@ -39,7 +39,7 @@ hostname = os.environ.get('HOSTNAME', 'localhost')
 port = int(os.environ.get('DBPORT', 27017))
 mongod = os.environ.get('MONGOD', 'mongod')
 mongos = os.environ.get('MONGOS', 'mongos')
-set_name = os.environ.get('SETNAME', 'repl0')
+replica_set_name = os.environ.get('SETNAME', 'repl0')
 ha_tools_debug = bool(os.environ.get('HA_TOOLS_DEBUG'))
 
 
@@ -140,7 +140,7 @@ def start_replica_set(members, auth=False, fresh=True):
         cmd = [mongod,
                '--dbpath', path,
                '--port', str(cur_port),
-               '--replSet', set_name,
+               '--replSet', replica_set_name,
                '--nojournal', '--oplogSize', '64',
                '--logappend', '--logpath', member_logpath]
         if auth:
@@ -158,7 +158,7 @@ def start_replica_set(members, auth=False, fresh=True):
         if not res:
             return None
 
-    config = {'_id': set_name, 'members': members}
+    config = {'_id': replica_set_name, 'members': members}
     primary = members[0]['host']
     c = pymongo.MongoClient(primary)
     try:
@@ -196,7 +196,7 @@ def start_replica_set(members, auth=False, fresh=True):
         kill_all_members()
         raise Exception(
             "Replica set still not initalized after %s minutes" % patience)
-    return primary, set_name
+    return primary, replica_set_name
 
 
 def create_sharded_cluster(num_routers=3):
@@ -410,7 +410,7 @@ def add_member(auth=False):
     cmd = [mongod,
            '--dbpath', path,
            '--port', str(cur_port),
-           '--replSet', set_name,
+           '--replSet', replica_set_name,
            '--nojournal', '--oplogSize', '64',
            '--logappend', '--logpath', member_logpath]
     if auth:

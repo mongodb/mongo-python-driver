@@ -40,7 +40,7 @@ class Topology(object):
         topology_description = TopologyDescription(
             topology_settings.get_topology_type(),
             topology_settings.get_server_descriptions(),
-            topology_settings.set_name)
+            topology_settings.replica_set_name)
 
         self._description = topology_description
         self._opened = False
@@ -93,7 +93,7 @@ class Topology(object):
                     # internal hostnames or IPs and we're connecting from
                     # outside. Or if we're a replica set and
                     # server_descriptions is empty, we have the wrong
-                    # set_name. Include TopologyDescription's str() in
+                    # replica_set_name. Include TopologyDescription's str() in
                     # exception msg.
                     raise AutoReconnect("No suitable servers available")
 

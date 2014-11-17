@@ -65,13 +65,13 @@ def single_client(h=host, p=port, **kwargs):
 def rs_client_noauth(h=host, p=port, **kwargs):
     """Connect to the replica set. Don't authenticate."""
     return MongoClient(_connection_string_noauth(h, p),
-                       replicaSet=client_context.setname, **kwargs)
+                       replicaSet=client_context.replica_set_name, **kwargs)
 
 
 def rs_client(h=host, p=port, **kwargs):
     """Connect to the replica set and authenticate if necessary."""
     return MongoClient(_connection_string(h, p),
-                       replicaSet=client_context.setname, **kwargs)
+                       replicaSet=client_context.replica_set_name, **kwargs)
 
 
 def rs_or_single_client_noauth(h=host, p=port, **kwargs):
@@ -79,7 +79,7 @@ def rs_or_single_client_noauth(h=host, p=port, **kwargs):
 
     Like rs_or_single_client, but does not authenticate.
     """
-    if client_context.setname:
+    if client_context.replica_set_name:
         return rs_client_noauth(h, p, **kwargs)
     else:
         return single_client_noauth(h, p, **kwargs)
@@ -90,7 +90,7 @@ def rs_or_single_client(h=host, p=port, **kwargs):
 
     Authenticates if necessary.
     """
-    if client_context.setname:
+    if client_context.replica_set_name:
         return rs_client(h, p, **kwargs)
     else:
         return single_client(h, p, **kwargs)

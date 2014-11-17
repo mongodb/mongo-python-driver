@@ -1277,7 +1277,7 @@ class TestCollection(IntegrationTest):
         self.db.test.remove({"x": 1}, w=1, wtimeout=1)
         self.db.test.update({"x": 1}, {"y": 2}, w=1, wtimeout=1)
 
-        if client_context.setname:
+        if client_context.replica_set_name:
             # client_context.w is the number of hosts in the replica set
             w = client_context.w + 1
 
@@ -1362,7 +1362,7 @@ class TestCollection(IntegrationTest):
     @client_context.require_version_min(2, 5, 1)
     def test_aggregation_cursor(self):
         db = self.db
-        if client_context.setname:
+        if client_context.replica_set_name:
             # Test that getMore messages are sent to the right server.
             db.read_preference = ReadPreference.SECONDARY
 
@@ -1388,7 +1388,7 @@ class TestCollection(IntegrationTest):
     def test_parallel_scan(self):
         db = self.db
         db.drop_collection("test")
-        if client_context.setname:
+        if client_context.replica_set_name:
             # Test that getMore messages are sent to the right server.
             db.read_preference = ReadPreference.SECONDARY
 

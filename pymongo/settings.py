@@ -26,7 +26,7 @@ class TopologySettings(object):
     def __init__(
         self,
         seeds=None,
-        set_name=None,
+        replica_set_name=None,
         pool_class=None,
         pool_options=None,
         monitor_class=None,
@@ -37,12 +37,12 @@ class TopologySettings(object):
         Take a list of (host, port) pairs and optional replica set name.
         """
         self._seeds = seeds or [('localhost', 27017)]
-        self._set_name = set_name
+        self._replica_set_name = replica_set_name
         self._pool_class = pool_class or pool.Pool
         self._pool_options = pool_options or PoolOptions()
         self._monitor_class = monitor_class or monitor.Monitor
         self._condition_class = condition_class or threading.Condition
-        self._direct = (len(self._seeds) == 1 and not set_name)
+        self._direct = (len(self._seeds) == 1 and not replica_set_name)
 
     @property
     def seeds(self):
@@ -50,8 +50,8 @@ class TopologySettings(object):
         return self._seeds
 
     @property
-    def set_name(self):
-        return self._set_name
+    def replica_set_name(self):
+        return self._replica_set_name
 
     @property
     def pool_class(self):
@@ -73,14 +73,14 @@ class TopologySettings(object):
     def direct(self):
         """Connect directly to a single server, or use a set of servers?
 
-        True if there is one seed and no set_name.
+        True if there is one seed and no replica_set_name.
         """
         return self._direct
 
     def get_topology_type(self):
         if self.direct:
             return TOPOLOGY_TYPE.Single
-        elif self.set_name is not None:
+        elif self.replica_set_name is not None:
             return TOPOLOGY_TYPE.ReplicaSetNoPrimary
         else:
             return TOPOLOGY_TYPE.Unknown

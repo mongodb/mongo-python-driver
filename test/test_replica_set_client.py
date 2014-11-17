@@ -58,7 +58,7 @@ class TestReplicaSetClientBase(IntegrationTest):
     @client_context.require_replica_set
     def setUpClass(cls):
         super(TestReplicaSetClientBase, cls).setUpClass()
-        cls.name = client_context.setname
+        cls.name = client_context.replica_set_name
         cls.w = client_context.w
 
         ismaster = client_context.ismaster

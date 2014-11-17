@@ -28,7 +28,7 @@ class ServerDescription(object):
     """
 
     __slots__ = (
-        '_address', '_server_type', '_all_hosts', '_tags', '_set_name',
+        '_address', '_server_type', '_all_hosts', '_tags', '_replica_set_name',
         '_primary', '_max_bson_size', '_max_message_size',
         '_max_write_batch_size', '_min_wire_version', '_max_wire_version',
         '_round_trip_times', '_is_writable', '_is_readable')
@@ -45,7 +45,7 @@ class ServerDescription(object):
         self._server_type = ismaster.server_type
         self._all_hosts = ismaster.all_hosts
         self._tags = ismaster.tags
-        self._set_name = ismaster.set_name
+        self._replica_set_name = ismaster.replica_set_name
         self._primary = ismaster.primary
         self._max_bson_size = ismaster.max_bson_size
         self._max_message_size = ismaster.max_message_size
@@ -82,9 +82,9 @@ class ServerDescription(object):
         return self._tags
 
     @property
-    def set_name(self):
+    def replica_set_name(self):
         """Replica set name or None."""
-        return self._set_name
+        return self._replica_set_name
 
     @property
     def primary(self):
