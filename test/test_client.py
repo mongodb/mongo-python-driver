@@ -238,7 +238,7 @@ class TestClient(IntegrationTest, TestRequestMixin):
     def test_host_w_port(self):
         with client_knobs(server_wait_time=0.01):
             with self.assertRaises(AutoReconnect):
-                connected(MongoClient("%s:1234567"))
+                connected(MongoClient("%s:1234567" % host, connectTimeoutMS=1))
 
     def test_repr(self):
         # Making host a str avoids the 'u' prefix in Python 2, so the repr is
