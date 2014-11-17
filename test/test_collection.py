@@ -1876,41 +1876,6 @@ class TestCollection(IntegrationTest):
         self.assertEqual(n_docs, self.db.test.count())
         self.db.test.remove()
 
-    # Starting in PyMongo 2.6 we no longer use message.insert for inserts, but
-    # message.insert is part of the public API. Do minimal testing here; there
-    # isn't really a better place.
-    def test_insert_message_creation(self):
-        send = self.db.connection._send_message
-        name = "%s.%s" % (self.db.name, "test")
-
-        def do_insert(args):
-            send(message_module.insert(*args), args[3])
-
-        self.db.drop_collection("test")
-        self.db.test.insert({'_id': 0}, w=1)
-        self.assertTrue(1, self.db.test.count())
-
-        simple_args = (name, [{'_id': 0}], True, False, {}, False, 3)
-        gle_args = (name, [{'_id': 0}], True, True, {'w': 1}, False, 3)
-        coe_args = (name, [{'_id': 0}, {'_id': 1}],
-                    True, True, {'w': 1}, True, 3)
-
-        self.assertEqual(None, do_insert(simple_args))
-        self.assertTrue(1, self.db.test.count())
-        self.assertRaises(DuplicateKeyError, do_insert, gle_args)
-        self.assertTrue(1, self.db.test.count())
-        self.assertRaises(DuplicateKeyError, do_insert, coe_args)
-        self.assertTrue(2, self.db.test.count())
-
-        doc = {'_id': 2, 'uuid': uuid.uuid4()}
-        uuid_sub_args = (name, [doc],
-                         True, True, {'w': 1}, True, 6)
-        do_insert(uuid_sub_args)
-        coll = self.db.test
-        self.assertNotEqual(doc, coll.find_one({'_id': 2}))
-        coll.uuid_subtype = 6
-        self.assertEqual(doc, coll.find_one({'_id': 2}))
-
     @client_context.require_version_min(1, 1, 1)
     def test_map_reduce(self):
         db = self.db

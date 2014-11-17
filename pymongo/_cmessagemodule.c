@@ -158,10 +158,8 @@ static int init_insert_buffer(buffer_t buffer, int request_id, int options,
 }
 
 static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
-    /* Note: As of PyMongo 2.6, this function is no longer used. It
-     * is being kept (with tests) for backwards compatibility with 3rd
-     * party libraries that may currently be using it, but will likely
-     * be removed in a future release. */
+    /* Used by the Bulk API to insert into pre-2.6 servers. Collection.insert
+     * uses _cbson_do_batched_insert. */
     struct module_state *state = GETSTATE(self);
 
     /* NOTE just using a random number as the request_id */
@@ -278,14 +276,6 @@ static PyObject* _cbson_insert_message(PyObject* self, PyObject* args) {
     buffer_free(buffer);
     return result;
 }
-
-PyDoc_STRVAR(_cbson_insert_message_doc,
-"Create an insert message to be sent to MongoDB\n\
-\n\
-Note: As of PyMongo 2.6, this function is no longer used. It\n\
-is being kept (with tests) for backwards compatibility with 3rd\n\
-party libraries that may currently be using it, but will likely\n\
-be removed in a future release.");
 
 static PyObject* _cbson_update_message(PyObject* self, PyObject* args) {
     /* NOTE just using a random number as the request_id */
@@ -1196,7 +1186,7 @@ cmdfail:
 
 static PyMethodDef _CMessageMethods[] = {
     {"_insert_message", _cbson_insert_message, METH_VARARGS,
-     _cbson_insert_message_doc},
+     "Create an insert message to be sent to MongoDB"},
     {"_update_message", _cbson_update_message, METH_VARARGS,
      "create an update message to be sent to MongoDB"},
     {"_query_message", _cbson_query_message, METH_VARARGS,
