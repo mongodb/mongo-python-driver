@@ -15,7 +15,6 @@
 """Bits and pieces used by the driver that don't really fit elsewhere."""
 
 import collections
-import random
 import struct
 
 import bson
@@ -24,8 +23,7 @@ import pymongo
 from bson.binary import OLD_UUID_SUBTYPE
 from bson.py3compat import itervalues, string_type, iteritems
 from bson.son import SON
-from pymongo.errors import (AutoReconnect,
-                            CursorNotFound,
+from pymongo.errors import (CursorNotFound,
                             DuplicateKeyError,
                             OperationFailure,
                             ExecutionTimeout,

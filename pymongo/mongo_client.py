@@ -38,9 +38,7 @@ import warnings
 
 from bson.py3compat import (integer_types,
                             string_type)
-from bson.son import SON
-from pymongo import (auth,
-                     common,
+from pymongo import (common,
                      database,
                      helpers,
                      message,

@@ -14,13 +14,10 @@
 
 """Utilities for choosing which member of a replica set to read from."""
 
-import random
-
 from collections import Mapping, namedtuple
 
 from pymongo.errors import ConfigurationError
-from pymongo.server_selectors import (near_enough_server_selector,
-                                      near_member_with_tags_server_selector,
+from pymongo.server_selectors import (near_member_with_tags_server_selector,
                                       near_secondary_with_tags_server_selector,
                                       writable_server_selector)
 
