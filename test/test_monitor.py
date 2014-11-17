@@ -16,7 +16,6 @@
 
 import gc
 import sys
-import time
 from functools import partial
 
 sys.path[0:0] = [""]

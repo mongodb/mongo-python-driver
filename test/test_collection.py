@@ -26,7 +26,6 @@ import warnings
 
 sys.path[0:0] = [""]
 
-from bson.binary import Binary
 from bson.regex import Regex
 from bson.code import Code
 from bson.dbref import DBRef

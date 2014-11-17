@@ -34,7 +34,7 @@ from bson.son import RE_TYPE
 from bson.timestamp import Timestamp
 from bson.tz_util import utc
 
-from test import client_context, SkipTest, unittest, IntegrationTest
+from test import SkipTest, unittest, IntegrationTest
 
 PY3 = sys.version_info[0] == 3
 

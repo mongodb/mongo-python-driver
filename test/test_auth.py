@@ -28,7 +28,7 @@ sys.path[0:0] = [""]
 
 from pymongo import MongoClient
 from pymongo.auth import HAVE_KERBEROS, _build_credentials_tuple
-from pymongo.errors import OperationFailure, ConfigurationError
+from pymongo.errors import OperationFailure
 from pymongo.read_preferences import ReadPreference
 from test import client_context, host, port, SkipTest, unittest, Version
 
