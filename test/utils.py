@@ -413,7 +413,7 @@ def read_from_which_host(
             # No documents in collection, that's fine
             pass
 
-        return cursor._Cursor__connection_id
+        return cursor.address
     except AutoReconnect:
         return None
 

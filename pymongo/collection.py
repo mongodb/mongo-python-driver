@@ -876,13 +876,13 @@ class Collection(common.BaseObject):
                    ('numCursors', num_cursors)])
 
         mode = read_preference or self.read_preference
-        result, conn_id = self.__database._command(cmd,
+        result, address = self.__database._command(cmd,
                                                    read_preference=mode,
                                                    **kwargs)
 
         return [CommandCursor(self,
                               cursor['cursor'],
-                              conn_id,
+                              address,
                               compile_re) for cursor in result['cursors']]
 
     def count(self):
@@ -1282,7 +1282,7 @@ class Collection(common.BaseObject):
         compile_re = kwargs.get('compile_re', True)
 
         mode = read_preference or self.read_preference
-        result, conn_id = self.__database._command(
+        result, address = self.__database._command(
             cmd, uuid_subtype=self.uuid_subtype,
             read_preference=mode, **kwargs)
 
@@ -1290,7 +1290,7 @@ class Collection(common.BaseObject):
             return CommandCursor(
                 self,
                 result['cursor'],
-                conn_id,
+                address,
                 compile_re)
         else:
             return result

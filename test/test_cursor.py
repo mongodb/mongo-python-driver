@@ -1124,7 +1124,7 @@ class TestCursor(IntegrationTest):
             self.assertEqual(len(docs), 10)
             cmd_cursor = {'id': cursor.cursor_id, 'firstBatch': []}
             ccursor = CommandCursor(cursor.collection, cmd_cursor,
-                                    cursor.conn_id, retrieved=cursor.retrieved)
+                                    cursor.address, retrieved=cursor.retrieved)
             docs.extend(ccursor)
             self.assertEqual(len(docs), 200)
         finally:

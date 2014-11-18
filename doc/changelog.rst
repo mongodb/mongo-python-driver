@@ -62,6 +62,11 @@ from ``_conn_id`` to ``address``.
 
 :meth:`~pymongo.MongoClient.set_cursor_manager` is no longer deprecated.
 
+:class:`~pymongo.cursor.Cursor` Changes
+.......................................
+
+The ``conn_id`` property is renamed to :attr:`~pymongo.cursor.Cursor.address`.
+
 :mod:`~pymongo.errors` Changes
 ..............................
 

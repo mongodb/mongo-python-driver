@@ -162,7 +162,7 @@ class Cursor(object):
         self.__uuid_subtype = _uuid_subtype or collection.uuid_subtype
 
         self.__data = deque()
-        self.__connection_id = None
+        self.__address = None
         self.__retrieved = 0
         self.__killed = False
 
@@ -199,16 +199,6 @@ class Cursor(object):
         return self.__collection
 
     @property
-    def conn_id(self):
-        """The server/client/pool this cursor lives on.
-
-        Could be (host, port), -1, or None depending on what
-        client class executed the initial query or this cursor
-        being advanced at all.
-        """
-        return self.__connection_id
-
-    @property
     def retrieved(self):
         """The number of documents retrieved so far.
         """
@@ -229,7 +219,7 @@ class Cursor(object):
         """
         self.__data = deque()
         self.__id = None
-        self.__connection_id = None
+        self.__address = None
         self.__retrieved = 0
         self.__killed = False
 
@@ -276,7 +266,7 @@ class Cursor(object):
                 self.__exhaust_mgr.sock.close()
             else:
                 connection = self.__collection.database.connection
-                connection.close_cursor(self.__id, self.__connection_id)
+                connection.close_cursor(self.__id, self.__address)
         if self.__exhaust and self.__exhaust_mgr:
             self.__exhaust_mgr.close()
         self.__killed = True
@@ -869,12 +859,12 @@ class Cursor(object):
                 "read_preference": self.__read_preference,
                 "exhaust": self.__exhaust,
             }
-            if self.__connection_id is not None:
-                kwargs["address"] = self.__connection_id
+            if self.__address is not None:
+                kwargs["address"] = self.__address
 
             try:
                 response = client._send_message_with_response(message, **kwargs)
-                self.__connection_id = response.address
+                self.__address = response.address
                 if self.__exhaust:
                     # 'response' is an ExhaustResponse.
                     self.__exhaust_mgr = _SocketManager(response.socket_info,
@@ -924,7 +914,7 @@ class Cursor(object):
             # Make sure exhaust socket is returned immediately, if necessary.
             self.__die()
 
-            client._reset_server_and_request_check(self.__connection_id)
+            client._reset_server_and_request_check(self.__address)
             raise
         self.__id = doc["cursor_id"]
 
@@ -1018,9 +1008,10 @@ class Cursor(object):
     def address(self):
         """The (host, port) of the server used, or None.
 
-        .. versionadded:: 3.0
+        .. versionchanged:: 3.0
+           Renamed from "conn_id".
         """
-        return self.__connection_id
+        return self.__address
 
     def __iter__(self):
         return self

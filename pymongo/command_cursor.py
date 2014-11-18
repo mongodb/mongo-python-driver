@@ -26,12 +26,12 @@ class CommandCursor(object):
     """
 
     def __init__(self, collection, cursor_info,
-                 conn_id, compile_re=True, retrieved=0):
+                 address, compile_re=True, retrieved=0):
         """Create a new command cursor.
         """
         self.__collection = collection
         self.__id = cursor_info['id']
-        self.__conn_id = conn_id
+        self.__address = address
         self.__data = deque(cursor_info['firstBatch'])
         self.__decode_opts = (
             collection.database.connection.document_class,
@@ -52,7 +52,7 @@ class CommandCursor(object):
         """
         if self.__id and not self.__killed:
             client = self.__collection.database.connection
-            client.close_cursor(self.__id, self.__conn_id)
+            client.close_cursor(self.__id, self.__address)
         self.__killed = True
 
     def close(self):
@@ -92,7 +92,7 @@ class CommandCursor(object):
         client = self.__collection.database.connection
         try:
             response = client._send_message_with_response(
-                msg, address=self.__conn_id)
+                msg, address=self.__address)
         except AutoReconnect:
             # Don't try to send kill cursors on another socket
             # or to another server. It can cause a _pinValue
@@ -159,7 +159,7 @@ class CommandCursor(object):
 
         .. versionadded:: 3.0
         """
-        return self.__conn_id
+        return self.__address
 
     def __iter__(self):
         return self

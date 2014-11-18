@@ -464,7 +464,7 @@ class TestReadWithFailover(HATestCase):
         cursor = db.test.find().batch_size(5)
         next(cursor)
         self.assertEqual(5, cursor._Cursor__retrieved)
-        self.assertTrue(cursor._Cursor__connection_id in c.secondaries)
+        self.assertTrue(cursor.address in c.secondaries)
         ha_tools.kill_primary()
         # Primary failure shouldn't interrupt the cursor
         self.assertTrue(iter_cursor(cursor))

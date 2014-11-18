@@ -64,22 +64,22 @@ class TestReadPreferencesBase(TestReplicaSetClientBase):
         """
         cursor = client.pymongo_test.test.find()
         next(cursor)
-        return cursor._Cursor__connection_id
+        return cursor.address
 
     def read_from_which_kind(self, client):
         """Do a find() on the client and return 'primary' or 'secondary'
            depending on which the client used.
         """
-        connection_id = self.read_from_which_host(client)
-        if connection_id == client.primary:
+        address = self.read_from_which_host(client)
+        if address == client.primary:
             return 'primary'
-        elif connection_id in client.secondaries:
+        elif address in client.secondaries:
             return 'secondary'
         else:
             self.fail(
-                'Cursor used connection id %s, expected either primary '
+                'Cursor used address %s, expected either primary '
                 '%s or secondaries %s' % (
-                    connection_id, client.primary, client.secondaries))
+                    address, client.primary, client.secondaries))
 
     def assertReadsFrom(self, expected, **kwargs):
         c = rs_client(**kwargs)

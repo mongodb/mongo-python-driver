@@ -255,16 +255,15 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
         next(cursor)
         self.assertNotEqual(0, cursor.cursor_id)
 
-        connection_id = cursor._Cursor__connection_id
         if read_pref == ReadPreference.PRIMARY:
-            msg = "Expected cursor's connection_id to be %s, got %s" % (
-                c.primary, connection_id)
+            msg = "Expected cursor's address to be %s, got %s" % (
+                c.primary, cursor.address)
 
-            self.assertEqual(connection_id, c.primary, msg)
+            self.assertEqual(cursor.address, c.primary, msg)
         else:
             self.assertNotEqual(
-                connection_id, c.primary,
-                "Expected cursor's connection_id not to be primary")
+                cursor.address, c.primary,
+                "Expected cursor's address not to be primary")
 
         cursor_id = cursor.cursor_id
 

@@ -356,7 +356,7 @@ class Database(common.BaseObject):
             except NotMasterError:
                 self.connection._reset_server_and_request_check(cursor.address)
                 raise
-        return result, cursor.conn_id
+        return result, cursor.address
 
     def command(self, command, value=1,
                 check=True, allowable_errors=[],
