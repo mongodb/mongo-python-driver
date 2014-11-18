@@ -592,7 +592,7 @@ class TestServerSelectionErrors(TopologyTest):
         self.assertEqual(message, str(context.exception))
 
     def test_no_primary(self):
-        t = create_mock_topology(set_name='rs')
+        t = create_mock_topology(replica_set_name='rs')
         got_ismaster(t, address, {
             'ok': 1,
             'ismaster': False,
@@ -607,7 +607,7 @@ class TestServerSelectionErrors(TopologyTest):
                            t, writable_server_selector)
 
     def test_no_secondary(self):
-        t = create_mock_topology(set_name='rs')
+        t = create_mock_topology(replica_set_name='rs')
         got_ismaster(t, address, {
             'ok': 1,
             'ismaster': True,
@@ -624,8 +624,8 @@ class TestServerSelectionErrors(TopologyTest):
             " \"Secondary(latency_threshold_ms=15, tag_sets=[{'dc': 'ny'}])\"",
             t, Secondary(tag_sets=[{'dc': 'ny'}]))
 
-    def test_bad_set_name(self):
-        t = create_mock_topology(set_name='rs')
+    def test_bad_replica_set_name(self):
+        t = create_mock_topology(replica_set_name='rs')
         got_ismaster(t, address, {
             'ok': 1,
             'ismaster': False,

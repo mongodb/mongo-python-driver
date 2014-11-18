@@ -365,7 +365,7 @@ class Topology(object):
                 if is_replica_set:
                     # We removed all servers because of the wrong setName?
                     return 'No %s available for replica set name "%s"' % (
-                        server_plural, self._settings.set_name)
+                        server_plural, self._settings.replica_set_name)
                 else:
                     return 'No %s available' % server_plural
 
