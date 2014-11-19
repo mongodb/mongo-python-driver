@@ -54,6 +54,13 @@ def _machine_bytes():
     return machine_hash.digest()[0:3]
 
 
+def _raise_invalid_id(oid):
+    raise InvalidId(
+        "%r is not a valid ObjectId, it must be a 12-byte input"
+        " of type %r or a 24-character hex string" % (
+            oid, binary_type.__name__))
+
+
 class ObjectId(object):
     """A MongoDB ObjectId.
     """
@@ -70,19 +77,41 @@ class ObjectId(object):
     def __init__(self, oid=None):
         """Initialize a new ObjectId.
 
-        If `oid` is ``None``, create a new (unique) ObjectId. If `oid`
-        is an instance of (:class:`basestring` (:class:`str` or :class:`bytes`
-        in python 3), :class:`ObjectId`) validate it and use that.  Otherwise,
-        a :class:`TypeError` is raised. If `oid` is invalid,
-        :class:`~bson.errors.InvalidId` is raised.
+        An ObjectId is a 12-byte unique identifier consisting of:
+
+          - a 4-byte value representing the seconds since the Unix epoch,
+          - a 3-byte machine identifier,
+          - a 2-byte process id, and
+          - a 3-byte counter, starting with a random value.
+
+        By default, ``ObjectId()`` creates a new unique identifier. The
+        optional parameter `oid` can be an :class:`ObjectId`, or any 12
+        :class:`bytes` or, in Python 2, any 12-character :class:`str`.
+
+        For example, the 12 bytes b'foo-bar-quux' do not follow the ObjectId
+        specification but they are acceptable input::
+
+          >>> ObjectId(b'foo-bar-quux')
+          ObjectId('666f6f2d6261722d71757578')
+
+        `oid` can also be a :class:`unicode` or :class:`str` of 24 hex digits::
+
+          >>> ObjectId('0123456789ab0123456789ab')
+          ObjectId('0123456789ab0123456789ab')
+          >>>
+          >>> # A u-prefixed unicode literal:
+          >>> ObjectId(u'0123456789ab0123456789ab')
+          ObjectId('0123456789ab0123456789ab')
+
+        Raises :class:`~bson.errors.InvalidId` if `oid` is not 12 bytes nor
+        24 hex digits, or :class:`TypeError` if `oid` is not an accepted type.
 
         :Parameters:
-          - `oid` (optional): a valid ObjectId (12 byte binary or 24 character
-            hex string)
+          - `oid` (optional): a valid ObjectId.
 
         .. versionadded:: 1.2.1
            The `oid` parameter can be a ``unicode`` instance (that contains
-           only hexadecimal digits).
+           24 hexadecimal digits).
 
         .. mongodoc:: objectids
         """
@@ -189,14 +218,14 @@ class ObjectId(object):
                 if isinstance(oid, binary_type):
                     self.__id = oid
                 else:
-                    raise InvalidId("%s is not a valid ObjectId" % oid)
+                    _raise_invalid_id(oid)
             elif len(oid) == 24:
                 try:
                     self.__id = bytes_from_hex(oid)
                 except (TypeError, ValueError):
-                    raise InvalidId("%s is not a valid ObjectId" % oid)
+                    _raise_invalid_id(oid)
             else:
-                raise InvalidId("%s is not a valid ObjectId" % oid)
+                _raise_invalid_id(oid)
         else:
             raise TypeError("id must be an instance of (%s, %s, ObjectId), "
                             "not %s" % (binary_type.__name__,
