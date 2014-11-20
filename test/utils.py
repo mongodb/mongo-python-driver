@@ -107,11 +107,7 @@ def oid_generated_on_client(oid):
 
 
 def delay(sec):
-    # Javascript sleep() only available in MongoDB since version ~1.9
-    return '''function() {
-        var d = new Date((new Date()).getTime() + %s * 1000);
-        while (d > (new Date())) { }; return true;
-    }''' % sec
+    return '''function() { sleep(%f * 1000); return true; }''' % sec
 
 
 def get_command_line(client):
