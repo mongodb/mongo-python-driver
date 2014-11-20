@@ -17,12 +17,8 @@
 import threading
 import sys
 import weakref
-try:
-    from time import monotonic as _time
-except ImportError:
-    from time import time as _time
 
-
+from pymongo.monotonic import time as _time
 from pymongo.errors import ExceededMaxWaiters
 
 

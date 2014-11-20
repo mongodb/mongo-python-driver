@@ -16,13 +16,13 @@ import os
 import select
 import socket
 import struct
-import time
 import threading
 import weakref
 
 from bson.py3compat import u, itervalues
 from pymongo import auth, helpers, message, thread_util
 from pymongo.errors import ConnectionFailure, AutoReconnect
+from pymongo.monotonic import time as _time
 
 # If the first getaddrinfo call of this interpreter's life is on a thread,
 # while the main thread holds the import lock, getaddrinfo deadlocks trying
@@ -147,7 +147,7 @@ class SocketInfo(object):
         self.host = host
         self.authset = set()
         self.closed = False
-        self.last_checkout = time.time()
+        self.last_checkout = _time()
         self.pool_ref = weakref.ref(pool)
 
         self._min_wire_version = None
@@ -483,7 +483,7 @@ class Pool:
             if checked_sock != req_state:
                 self._set_request_state(checked_sock)
 
-            checked_sock.last_checkout = time.time()
+            checked_sock.last_checkout = _time()
             return checked_sock
 
         # We're not in a request, just get any free socket or create one.
@@ -513,7 +513,7 @@ class Pool:
             self._socket_semaphore.release()
             raise
 
-        sock_info.last_checkout = time.time()
+        sock_info.last_checkout = _time()
         return sock_info
 
     def start_request(self):
@@ -591,7 +591,7 @@ class Pool:
         error = False
 
         # How long since socket was last checked out.
-        age = time.time() - sock_info.last_checkout
+        age = _time() - sock_info.last_checkout
 
         if sock_info.closed:
             error = True

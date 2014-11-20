@@ -23,6 +23,7 @@ import weakref
 from pymongo import common, helpers, message, thread_util
 from pymongo.server_type import SERVER_TYPE
 from pymongo.ismaster import IsMaster
+from pymongo.monotonic import time as _time
 from pymongo.read_preferences import MovingAverage
 from pymongo.server_description import ServerDescription
 
@@ -108,10 +109,10 @@ class Monitor(object):
                 # Topology was garbage-collected.
                 self.close()
             else:
-                start = time.time()  # TODO: monotonic.
+                start = _time()
                 self._event.wait(common.HEARTBEAT_FREQUENCY)
                 self._event.clear()
-                wait_time = time.time() - start
+                wait_time = _time() - start
                 if wait_time < common.MIN_HEARTBEAT_INTERVAL:
                     # request_check() was called before min_wait passed.
                     time.sleep(common.MIN_HEARTBEAT_INTERVAL - wait_time)
@@ -174,15 +175,14 @@ class Monitor(object):
 
         Can raise socket.error or PyMongoError.
         """
-        # TODO: monotonic time.
-        start = time.time()
+        start = _time()
         request_id, msg, _ = message.query(
             0, 'admin.$cmd', 0, -1, {'ismaster': 1})
 
         sock_info.send_message(msg)
         raw_response = sock_info.receive_message(1, request_id)
         result = helpers._unpack_response(raw_response)
-        return IsMaster(result['data'][0]), time.time() - start
+        return IsMaster(result['data'][0]), _time() - start
 
 
 # MONITORS has a weakref to each running Monitor. A Monitor is kept alive by
