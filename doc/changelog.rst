@@ -2,7 +2,7 @@ Changelog
 =========
 
 Changes in Version 2.8
-------------------------
+----------------------
 
 Version 2.8 is a major release that provides full support for MongoDB 2.8 and
 fixes a number of bugs.
