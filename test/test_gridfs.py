@@ -369,28 +369,6 @@ class TestGridfs(IntegrationTest):
 
         self.assertTrue(iterate_file(f))
 
-    def test_request(self):
-        c = self.db.connection
-        c.start_request()
-        n = 5
-        for i in range(n):
-            file = self.fs.new_file(filename="test")
-            file.write(b"hello")
-            file.close()
-
-        c.end_request()
-
-        self.assertEqual(
-            n,
-            self.db.fs.files.find({'filename':'test'}).count()
-        )
-
-    def test_gridfs_request(self):
-        self.assertFalse(self.db.connection.in_request())
-        self.fs.put(b"hello world")
-        # Request started and ended by put(), we're back to original state
-        self.assertFalse(self.db.connection.in_request())
-
     def test_gridfs_lazy_connect(self):
         with client_knobs(server_wait_time=0.01):
             client = MongoClient('badhost', connect=False)

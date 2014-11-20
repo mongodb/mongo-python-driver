@@ -17,14 +17,9 @@
 import threading
 
 from test import unittest, client_context, IntegrationTest, db_user, db_pwd
-from test.utils import (frequent_thread_switches,
-                        joinall,
-                        RendezvousThread,
-                        rs_or_single_client,
-                        rs_or_single_client_noauth)
-from test.utils import get_pool
-from pymongo.pool import SocketInfo, _closed
-from pymongo.errors import AutoReconnect, OperationFailure
+from test.utils import rs_or_single_client_noauth
+from test.utils import frequent_thread_switches, joinall
+from pymongo.errors import OperationFailure
 
 
 @client_context.require_connection
@@ -130,57 +125,6 @@ class Disconnect(threading.Thread):
         self.passed = True
 
 
-class IgnoreAutoReconnect(threading.Thread):
-
-    def __init__(self, collection, n):
-        threading.Thread.__init__(self)
-        self.c = collection
-        self.n = n
-        self.setDaemon(True)
-
-    def run(self):
-        for _ in range(self.n):
-            try:
-                self.c.find_one()
-            except AutoReconnect:
-                pass
-
-
-class FindPauseFind(RendezvousThread):
-    """See test_server_disconnect() for details"""
-    def __init__(self, collection, state):
-        """Params:
-          `collection`: A collection for testing
-          `state`: A shared state object from RendezvousThread.shared_state()
-        """
-        super(FindPauseFind, self).__init__(state)
-        self.collection = collection
-
-    def before_rendezvous(self):
-        # acquire a socket
-        client = self.collection.database.connection
-        client.start_request()
-        list(self.collection.find())
-
-        pool = get_pool(client)
-        socket_info = pool._get_request_state()
-        assert isinstance(socket_info, SocketInfo)
-        self.request_sock = socket_info.sock
-        assert not _closed(self.request_sock)
-
-    def after_rendezvous(self):
-        # test_server_disconnect() has closed this socket, but that's ok
-        # because it's not our request socket anymore
-        assert _closed(self.request_sock)
-
-        # if disconnect() properly replaced the pool, then this won't raise
-        # AutoReconnect because it will acquire a new socket
-        list(self.collection.find())
-        assert self.collection.database.connection.in_request()
-        pool = get_pool(self.collection.database.connection)
-        assert self.request_sock != pool._get_request_state().sock
-
-
 class TestThreads(IntegrationTest):
     def setUp(self):
         self.db = client_context.rs_or_standalone_client.pymongo_test
@@ -235,71 +179,6 @@ class TestThreads(IntegrationTest):
 
         error.join()
         okay.join()
-
-    def test_server_disconnect(self):
-        # PYTHON-345, we need to make sure that threads' request sockets are
-        # closed by disconnect().
-        #
-        # 1. Create a client and start a request.
-        # 2. Start N threads and do a find() in each to get a request socket
-        # 3. Pause all threads
-        # 4. In the main thread close all sockets, including threads' request
-        #       sockets
-        # 5. In main thread, do a find(), which raises AutoReconnect and resets
-        #       pool
-        # 6. Resume all threads, do a find() in them
-        #
-        # If we've fixed PYTHON-345, then only one AutoReconnect is raised,
-        # and all the threads get new request sockets.
-        cx = rs_or_single_client()
-        cx.start_request()
-        collection = cx.db.pymongo_test
-
-        # acquire a request socket for the main thread
-        collection.find_one()
-        pool = get_pool(collection.database.connection)
-        socket_info = pool._get_request_state()
-        assert isinstance(socket_info, SocketInfo)
-        request_sock = socket_info.sock
-
-        state = FindPauseFind.create_shared_state(nthreads=10)
-
-        threads = [
-            FindPauseFind(collection, state)
-            for _ in range(state.nthreads)
-        ]
-
-        # Each thread does a find(), thus acquiring a request socket
-        for t in threads:
-            t.start()
-
-        # Wait for the threads to reach the rendezvous
-        FindPauseFind.wait_for_rendezvous(state)
-
-        try:
-            # Simulate an event that closes all sockets, e.g. primary stepdown
-            for t in threads:
-                t.request_sock.close()
-
-            # Finally, ensure the main thread's socket's last_checkout is
-            # updated:
-            collection.find_one()
-
-            # ... and close it:
-            request_sock.close()
-
-            # Doing an operation on the client raises an AutoReconnect and
-            # resets the pool behind the scenes
-            self.assertRaises(AutoReconnect, collection.find_one)
-
-        finally:
-            # Let threads do a second find()
-            FindPauseFind.resume_after_rendezvous(state)
-
-        joinall(threads)
-
-        for t in threads:
-            self.assertTrue(t.passed, "%s threw exception" % t)
 
     def test_client_disconnect(self):
         self.db.drop_collection("test")

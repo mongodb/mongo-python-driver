@@ -18,7 +18,6 @@ import contextlib
 import datetime
 import multiprocessing
 import os
-import threading
 import socket
 import sys
 import time
@@ -32,7 +31,6 @@ from bson.son import SON
 from bson.tz_util import utc
 from pymongo.mongo_client import MongoClient
 from pymongo.database import Database
-from pymongo.pool import SocketInfo
 from pymongo import auth, message
 from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
@@ -63,7 +61,6 @@ from test.utils import (assertRaisesExactly,
                         ignore_deprecations,
                         remove_all_users,
                         server_is_master_with_slave,
-                        TestRequestMixin,
                         get_pool,
                         one,
                         connected,
@@ -74,7 +71,7 @@ from test.utils import (assertRaisesExactly,
                         NTHREADS)
 
 
-class ClientUnitTest(unittest.TestCase, TestRequestMixin):
+class ClientUnitTest(unittest.TestCase):
     """MongoClient tests that don't require a server."""
 
     @classmethod
@@ -166,7 +163,7 @@ class ClientUnitTest(unittest.TestCase, TestRequestMixin):
         self.assertEqual(Database(c, 'foo'), c.get_default_database())
 
 
-class TestClient(IntegrationTest, TestRequestMixin):
+class TestClient(IntegrationTest):
 
     def test_constants(self):
         # Set bad defaults.
@@ -605,80 +602,6 @@ class TestClient(IntegrationTest, TestRequestMixin):
             self.assertEqual("bar", client.pymongo_test.test.find_one()["foo"])
         self.assertEqual(0, len(get_pool(client).sockets))
 
-    def test_with_start_request(self):
-        pool = get_pool(self.client)
-
-        # No request started
-        self.assertNoRequest(pool)
-        self.assertDifferentSock(pool)
-
-        # Start a request
-        request_context_mgr = self.client.start_request()
-        self.assertTrue(
-            isinstance(request_context_mgr, object)
-        )
-
-        self.assertNoSocketYet(pool)
-        self.assertSameSock(pool)
-        self.assertRequestSocket(pool)
-
-        # End request
-        request_context_mgr.__exit__(None, None, None)
-        self.assertNoRequest(pool)
-        self.assertDifferentSock(pool)
-
-        # Test the 'with' statement
-        with self.client.start_request() as request:
-            self.assertEqual(self.client, request.connection)
-            self.assertNoSocketYet(pool)
-            self.assertSameSock(pool)
-            self.assertRequestSocket(pool)
-
-        # Request has ended
-        self.assertNoRequest(pool)
-        self.assertDifferentSock(pool)
-
-    def test_request_threads(self):
-        client = self.client
-        pool = get_pool(client)
-        self.assertNotInRequestAndDifferentSock(client, pool)
-
-        started_request, ended_request = threading.Event(), threading.Event()
-        checked_request = threading.Event()
-        thread_done = [False]
-
-        # Starting a request in one thread doesn't put the other thread in a
-        # request
-        def f():
-            self.assertNotInRequestAndDifferentSock(client, pool)
-            client.start_request()
-            self.assertInRequestAndSameSock(client, pool)
-            started_request.set()
-            checked_request.wait()
-            checked_request.clear()
-            self.assertInRequestAndSameSock(client, pool)
-            client.end_request()
-            self.assertNotInRequestAndDifferentSock(client, pool)
-            ended_request.set()
-            checked_request.wait()
-            thread_done[0] = True
-
-        t = threading.Thread(target=f)
-        t.setDaemon(True)
-        t.start()
-        # It doesn't matter in what order the main thread or t initially get
-        # to started_request.set() / wait(); by waiting here we ensure that t
-        # has called client.start_request() before we assert on the next line.
-        started_request.wait()
-        self.assertNotInRequestAndDifferentSock(client, pool)
-        checked_request.set()
-        ended_request.wait()
-        self.assertNotInRequestAndDifferentSock(client, pool)
-        checked_request.set()
-        t.join()
-        self.assertNotInRequestAndDifferentSock(client, pool)
-        self.assertTrue(thread_done[0], "Thread didn't complete")
-
     def test_interrupt_signal(self):
         if sys.platform.startswith('java'):
             # We can't figure out how to raise an exception on a thread that's
@@ -724,7 +647,7 @@ class TestClient(IntegrationTest, TestRequestMixin):
             next(db.foo.find())
         )
 
-    def test_operation_failure_without_request(self):
+    def test_operation_failure(self):
         # Ensure MongoClient doesn't close socket after it gets an error
         # response to getLastError. PYTHON-395.
         pool = get_pool(self.client)
@@ -740,27 +663,6 @@ class TestClient(IntegrationTest, TestRequestMixin):
         self.assertEqual(socket_count, len(pool.sockets))
         new_sock_info = next(iter(pool.sockets))
         self.assertEqual(old_sock_info, new_sock_info)
-
-    def test_operation_failure_with_request(self):
-        # Ensure MongoClient doesn't close socket after it gets an error
-        # response to getLastError. PYTHON-395.
-        c = rs_or_single_client()
-        c.start_request()
-        pool = get_pool(c)
-
-        # Pool reserves a socket for this thread.
-        c.pymongo_test.test.find_one()
-        self.assertTrue(isinstance(pool._get_request_state(), SocketInfo))
-
-        old_sock_info = pool._get_request_state()
-        c.pymongo_test.test.drop()
-        c.pymongo_test.test.insert({'_id': 'foo'})
-        self.assertRaises(
-            OperationFailure,
-            c.pymongo_test.test.insert, {'_id': 'foo'})
-
-        # OperationFailure doesn't affect the request socket
-        self.assertEqual(old_sock_info, pool._get_request_state())
 
     def test_alive(self):
         self.assertTrue(self.client.alive())

@@ -31,6 +31,7 @@ from pymongo.auth import HAVE_KERBEROS, _build_credentials_tuple
 from pymongo.errors import OperationFailure
 from pymongo.read_preferences import ReadPreference
 from test import client_context, host, port, SkipTest, unittest, Version
+from test.utils import delay
 
 # YOU MUST RUN KINIT BEFORE RUNNING GSSAPI TESTS.
 GSSAPI_HOST = os.environ.get('GSSAPI_HOST')
@@ -46,18 +47,22 @@ SASL_DB   = os.environ.get('SASL_DB', '$external')
 
 class AutoAuthenticateThread(threading.Thread):
     """Used in testing threaded authentication.
+
+    This does collection.find_one() with a 1-second delay to ensure it must
+    check out and authenticate multiple sockets from the pool concurrently.
+
+    :Parameters:
+      `collection`: An auth-protected collection containing one document.
     """
 
-    def __init__(self, database):
+    def __init__(self, collection):
         super(AutoAuthenticateThread, self).__init__()
-        self.database = database
-        self.success = True
+        self.collection = collection
+        self.success = False
 
     def run(self):
-        try:
-            self.database.command('dbstats')
-        except OperationFailure:
-            self.success = False
+        assert self.collection.find_one({'$where': delay(1)}) is not None
+        self.success = True
 
 
 class TestGSSAPI(unittest.TestCase):
@@ -148,14 +153,20 @@ class TestGSSAPI(unittest.TestCase):
     def test_gssapi_threaded(self):
 
         client = MongoClient(GSSAPI_HOST)
-        # Make sure each thread uses a different socket.
-        client.start_request()
         self.assertTrue(client.test.authenticate(PRINCIPAL,
                                                  mechanism='GSSAPI'))
 
+        # Need one document in the collection. AutoAuthenticateThread does
+        # collection.find_one with a 1-second delay, forcing it to check out
+        # multiple sockets from the pool concurrently, proving that
+        # auto-authentication works with GSSAPI.
+        collection = client.test.collection
+        collection.remove()
+        collection.insert({'_id': 1})
+
         threads = []
         for _ in range(4):
-            threads.append(AutoAuthenticateThread(client.test))
+            threads.append(AutoAuthenticateThread(collection))
         for thread in threads:
             thread.start()
         for thread in threads:
@@ -174,7 +185,7 @@ class TestGSSAPI(unittest.TestCase):
 
             threads = []
             for _ in range(4):
-                threads.append(AutoAuthenticateThread(client.foo))
+                threads.append(AutoAuthenticateThread(collection))
             for thread in threads:
                 thread.start()
             for thread in threads:

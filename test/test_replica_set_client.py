@@ -38,17 +38,19 @@ from test import (client_context,
                   IntegrationTest,
                   pair,
                   port,
-                  SkipTest,
                   unittest,
                   db_pwd,
                   db_user,
                   MockClientTest)
 from test.pymongo_mocks import MockClient
-from test.utils import (
-    delay, assertReadFrom, assertReadFromAll, ignore_deprecations,
-    read_from_which_host, assertRaisesExactly, TestRequestMixin, get_pools,
-    connected, wait_until, single_client, rs_or_single_client, one,
-    rs_client)
+from test.utils import (assertRaisesExactly,
+                        connected,
+                        delay,
+                        ignore_deprecations,
+                        one,
+                        rs_client,
+                        single_client,
+                        wait_until)
 from test.version import Version
 
 
@@ -79,7 +81,7 @@ class TestReplicaSetClientBase(IntegrationTest):
             if m['stateStr'] == 'SECONDARY')
 
 
-class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
+class TestReplicaSetClient(TestReplicaSetClientBase):
     def test_deprecated(self):
         with warnings.catch_warnings():
             warnings.simplefilter("error", DeprecationWarning)
@@ -287,88 +289,6 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
 
     def test_kill_cursor_explicit_secondary(self):
         self._test_kill_cursor_explicit(ReadPreference.SECONDARY)
-
-    def test_nested_request(self):
-        client = rs_or_single_client()
-        connected(client)
-        client.start_request()
-        try:
-            pools = get_pools(client)
-            self.assertTrue(client.in_request())
-
-            # Start and end request - we're still in "outer" original request
-            client.start_request()
-            self.assertInRequestAndSameSock(client, pools)
-            client.end_request()
-            self.assertInRequestAndSameSock(client, pools)
-
-            # Double-nesting
-            client.start_request()
-            client.start_request()
-
-            for pool in pools:
-                # Client only called start_request() once per pool, although
-                # its own counter is 3.
-                self.assertEqual(1, pool._request_counter.get())
-
-            client.end_request()
-            client.end_request()
-            self.assertInRequestAndSameSock(client, pools)
-
-            for pool in pools:
-                self.assertEqual(1, pool._request_counter.get())
-
-            # Finally, end original request
-            client.end_request()
-            for pool in pools:
-                self.assertFalse(pool.in_request())
-
-            self.assertNotInRequestAndDifferentSock(client, pools)
-        finally:
-            client.close()
-
-    def test_pinned_member(self):
-        raise SkipTest("Secondary pinning not implemented in PyMongo 3")
-
-        latency = 1000 * 1000
-        client = rs_client(secondaryacceptablelatencyms=latency)
-
-        host = read_from_which_host(client, ReadPreference.SECONDARY)
-        self.assertTrue(host in client.secondaries)
-
-        # No pinning since we're not in a request
-        assertReadFromAll(
-            self, client, client.secondaries,
-            ReadPreference.SECONDARY, None)
-
-        assertReadFromAll(
-            self, client, list(client.secondaries) + [client.primary],
-            ReadPreference.NEAREST, None)
-
-        client.start_request()
-        host = read_from_which_host(client, ReadPreference.SECONDARY)
-        self.assertTrue(host in client.secondaries)
-        assertReadFrom(self, client, host, ReadPreference.SECONDARY)
-
-        # Changing any part of read preference (mode, tag_sets)
-        # unpins the current host and pins to a new one
-        primary = client.primary
-        assertReadFrom(self, client, primary, ReadPreference.PRIMARY_PREFERRED)
-
-        host = read_from_which_host(client, ReadPreference.NEAREST)
-        assertReadFrom(self, client, host, ReadPreference.NEAREST)
-
-        assertReadFrom(self, client, primary, ReadPreference.PRIMARY_PREFERRED)
-
-        host = read_from_which_host(client, ReadPreference.SECONDARY_PREFERRED)
-        self.assertTrue(host in client.secondaries)
-        assertReadFrom(self, client, host, ReadPreference.SECONDARY_PREFERRED)
-
-        # Unpin
-        client.end_request()
-        assertReadFromAll(
-            self, client, list(client.secondaries) + [client.primary],
-            ReadPreference.NEAREST, None)
 
     def test_not_master_error(self):
         secondary_address = one(self.secondaries)

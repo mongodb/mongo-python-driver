@@ -50,7 +50,7 @@ from pymongo.errors import (DocumentTooLarge,
 from test.test_client import IntegrationTest
 from test.utils import (is_mongos, joinall, enable_text_search, get_pool,
                         oid_generated_on_client, one, ignore_deprecations,
-                        rs_or_single_client)
+                        rs_or_single_client, wait_until)
 from test import client_context, host, port, qcheck, unittest
 
 
@@ -793,14 +793,15 @@ class TestCollection(IntegrationTest):
         db.drop_collection("test")
         db.test.ensure_index([('i', ASCENDING)], unique=True)
 
-        with db.connection.start_request():
-            # No error
-            db.test.insert([{'i': i} for i in range(5, 10)], w=0)
-            db.test.remove()
+        # No error
+        db.test.insert([{'i': i} for i in range(5, 10)], w=0)
+        wait_until(lambda: 5 == db.test.count(), 'insert 5 documents')
 
-            # No error
-            db.test.insert([{'i': 1}] * 2, w=0)
-            self.assertEqual(1, db.test.count())
+        db.test.remove()
+
+        # No error
+        db.test.insert([{'i': 1}] * 2, w=0)
+        wait_until(lambda: 1 == db.test.count(), 'insert 1 document')
 
         self.assertRaises(
             DuplicateKeyError,
@@ -811,20 +812,19 @@ class TestCollection(IntegrationTest):
         wc = db.write_concern
         db.write_concern = {"w": 0}
         try:
-            with db.connection.start_request():
-                db.test.ensure_index([('i', ASCENDING)], unique=True)
+            db.test.ensure_index([('i', ASCENDING)], unique=True)
 
-                # No error
-                db.test.insert([{'i': 1}] * 2)
-                self.assertEqual(1, db.test.count())
+            # No error.
+            db.test.insert([{'i': 1}] * 2)
+            wait_until(lambda: 1 == db.test.count(), 'insert 1 document')
 
-            # Implied safe
+            # Implied acknowledged.
             self.assertRaises(
                 DuplicateKeyError,
                 lambda: db.test.insert([{'i': 2}] * 2, fsync=True),
             )
 
-            # Explicit safe
+            # Explicit acknowledged.
             self.assertRaises(
                 DuplicateKeyError,
                 lambda: db.test.insert([{'i': 2}] * 2, w=1),
@@ -902,7 +902,7 @@ class TestCollection(IntegrationTest):
             self.db.test.find_one({'_id': 'explicit_id'})['hello']
         )
 
-        # Safe mode
+        # Acknowledged mode.
         self.db.test.create_index("hello", unique=True)
         # No exception, even though we duplicate the first doc's "hello" value
         self.db.test.save({'_id': 'explicit_id', 'hello': 'world'}, w=0)
@@ -924,23 +924,19 @@ class TestCollection(IntegrationTest):
 
     def test_unique_index(self):
         db = self.db
+        db.drop_collection("test")
+        db.test.create_index("hello")
 
-        with self.client.start_request():
-            db.drop_collection("test")
-            db.test.create_index("hello")
+        # No error.
+        db.test.save({"hello": "world"})
+        db.test.save({"hello": "world"})
 
+        db.drop_collection("test")
+        db.test.create_index("hello", unique=True)
+
+        with self.assertRaises(DuplicateKeyError):
             db.test.save({"hello": "world"})
-            db.test.save({"hello": "mike"})
             db.test.save({"hello": "world"})
-            self.assertFalse(db.error())
-
-            db.drop_collection("test")
-            db.test.create_index("hello", unique=True)
-
-            db.test.save({"hello": "world"})
-            db.test.save({"hello": "mike"})
-            db.test.save({"hello": "world"}, w=0)
-            self.assertTrue(db.error())
 
     def test_duplicate_key_error(self):
         db = self.db
@@ -949,41 +945,17 @@ class TestCollection(IntegrationTest):
         db.test.create_index("x", unique=True)
 
         db.test.insert({"_id": 1, "x": 1})
-        db.test.insert({"_id": 2, "x": 2})
 
-        with db.connection.start_request():
-            # No error
-            db.test.insert({"_id": 1, "x": 1}, w=0)
-            db.test.save({"_id": 1, "x": 1}, w=0)
-            db.test.insert({"_id": 2, "x": 2}, w=0)
-            db.test.save({"_id": 2, "x": 2}, w=0)
+        with self.assertRaises(DuplicateKeyError) as context:
+            db.test.insert({"x": 1})
 
-            # But all those statements didn't do anything
-            self.assertEqual(2, db.test.count())
+        self.assertIsNotNone(context.exception.details)
 
-        expected_error = OperationFailure
-        if client_context.version.at_least(1, 3):
-            expected_error = DuplicateKeyError
+        with self.assertRaises(DuplicateKeyError) as context:
+            db.test.save({"x": 1})
 
-        self.assertRaises(expected_error,
-                          db.test.insert, {"_id": 1})
-        self.assertRaises(expected_error,
-                          db.test.insert, {"x": 1})
-
-        self.assertRaises(expected_error,
-                          db.test.save, {"x": 2})
-        self.assertRaises(expected_error,
-                          db.test.update, {"x": 1},
-                          {"$inc": {"x": 1}})
-
-        try:
-            db.test.insert({"_id": 1})
-        except expected_error as exc:
-            # Just check that we set the error document. Fields
-            # vary by MongoDB version.
-            self.assertTrue(exc.details is not None)
-        else:
-            self.fail("%s was not raised" % (expected_error.__name__,))
+        self.assertIsNotNone(context.exception.details)
+        self.assertEqual(1, db.test.count())
 
     def test_wtimeout(self):
         # Ensure setting wtimeout doesn't disable write concern altogether.
@@ -1006,33 +978,33 @@ class TestCollection(IntegrationTest):
         self.assertEqual(1, db.test.count())
 
         docs = []
-        docs.append({"_id": oid, "two": 2})
+        docs.append({"_id": oid, "two": 2})  # Duplicate _id.
         docs.append({"three": 3})
         docs.append({"four": 4})
         docs.append({"five": 5})
 
-        with self.client.start_request():
-            db.test.insert(docs, manipulate=False, w=0)
-            self.assertEqual(11000, db.error()['code'])
-            self.assertEqual(1, db.test.count())
+        with self.assertRaises(DuplicateKeyError):
+            db.test.insert(docs, manipulate=False)
 
-            db.test.insert(docs, manipulate=False, continue_on_error=True, w=0)
-            self.assertEqual(11000, db.error()['code'])
-            self.assertEqual(4, db.test.count())
+        self.assertEqual(1, db.test.count())
 
-            db.drop_collection("test")
-            oid = db.test.insert({"_id": oid, "one": 1}, w=0)
-            self.assertEqual(1, db.test.count())
-            docs[0].pop("_id")
-            docs[2]["_id"] = oid
+        with self.assertRaises(DuplicateKeyError):
+            db.test.insert(docs, manipulate=False, continue_on_error=True)
 
-            db.test.insert(docs, manipulate=False, w=0)
-            self.assertEqual(11000, db.error()['code'])
-            self.assertEqual(3, db.test.count())
+        self.assertEqual(4, db.test.count())
 
-            db.test.insert(docs, manipulate=False, continue_on_error=True, w=0)
-            self.assertEqual(11000, db.error()['code'])
-            self.assertEqual(6, db.test.count())
+        db.drop_collection("test")
+        oid = db.test.insert({"_id": oid, "one": 1}, w=0)
+        self.assertEqual(1, db.test.count())
+        docs[0].pop("_id")
+        docs[2]["_id"] = oid
+
+        with self.assertRaises(DuplicateKeyError):
+            db.test.insert(docs, manipulate=False)
+
+        self.assertEqual(3, db.test.count())
+        db.test.insert(docs, manipulate=False, continue_on_error=True, w=0)
+        self.assertEqual(6, db.test.count())
 
     def test_error_code(self):
         try:
@@ -1062,17 +1034,14 @@ class TestCollection(IntegrationTest):
         self.assertRaises(DuplicateKeyError,
             db.test.insert, {"hello": {"a": 4, "b": 10}})
 
-    def test_safe_insert(self):
-        with self.client.start_request():
-            db = self.db
-            db.drop_collection("test")
+    def test_acknowledged_insert(self):
+        db = self.db
+        db.drop_collection("test")
 
-            a = {"hello": "world"}
-            db.test.insert(a)
-            db.test.insert(a, w=0)
-            self.assertTrue("E11000" in db.error()["err"])
-
-            self.assertRaises(OperationFailure, db.test.insert, a)
+        a = {"hello": "world"}
+        db.test.insert(a)
+        db.test.insert(a, w=0)
+        self.assertRaises(OperationFailure, db.test.insert, a)
 
     def test_update(self):
         db = self.db
@@ -1159,36 +1128,25 @@ class TestCollection(IntegrationTest):
         self.assertEqual(1, db.test.count())
         self.assertEqual(2, db.test.find_one()["count"])
 
-    def test_safe_update(self):
-        with self.client.start_request():
-            db = self.db
-            v113minus = client_context.version.at_least(1, 1, 3, -1)
-            v19 = client_context.version.at_least(1, 9)
+    def test_acknowledged_update(self):
+        db = self.db
+        db.drop_collection("test")
+        db.test.create_index("x", unique=True)
 
-            db.drop_collection("test")
-            db.test.create_index("x", unique=True)
+        db.test.insert({"x": 5})
+        id = db.test.insert({"x": 4})
 
-            db.test.insert({"x": 5})
-            id = db.test.insert({"x": 4})
+        self.assertEqual(
+            None, db.test.update({"_id": id}, {"$inc": {"x": 1}}, w=0))
 
-            self.assertEqual(
-                None, db.test.update({"_id": id}, {"$inc": {"x": 1}}, w=0))
+        self.assertRaises(DuplicateKeyError, db.test.update,
+                          {"_id": id}, {"$inc": {"x": 1}})
 
-            if v19:
-                self.assertTrue("E11000" in db.error()["err"])
-            elif v113minus:
-                self.assertTrue(db.error()["err"].startswith("E11001"))
-            else:
-                self.assertTrue(db.error()["err"].startswith("E12011"))
+        self.assertEqual(1, db.test.update({"_id": id},
+                                           {"$inc": {"x": 2}})["n"])
 
-            self.assertRaises(OperationFailure, db.test.update,
-                              {"_id": id}, {"$inc": {"x": 1}})
-
-            self.assertEqual(1, db.test.update({"_id": id},
-                                               {"$inc": {"x": 2}})["n"])
-
-            self.assertEqual(0, db.test.update({"_id": "foo"},
-                                               {"$inc": {"x": 2}})["n"])
+        self.assertEqual(0, db.test.update({"_id": "foo"},
+                                           {"$inc": {"x": 2}})["n"])
 
     def test_update_with_invalid_keys(self):
         self.db.drop_collection("test")
@@ -1233,20 +1191,17 @@ class TestCollection(IntegrationTest):
         self.assertNotEqual(0, self.db.test.update({"hello": "world"},
                             {})['n'])
 
-    def test_safe_save(self):
-        with self.client.start_request():
-            db = self.db
-            db.drop_collection("test")
-            db.test.create_index("hello", unique=True)
+    def test_acknowledged_save(self):
+        db = self.db
+        db.drop_collection("test")
+        db.test.create_index("hello", unique=True)
 
-            db.test.save({"hello": "world"})
-            db.test.save({"hello": "world"}, w=0)
-            self.assertTrue("E11000" in db.error()["err"])
+        db.test.save({"hello": "world"})
+        db.test.save({"hello": "world"}, w=0)
+        self.assertRaises(DuplicateKeyError, db.test.save,
+                          {"hello": "world"})
 
-            self.assertRaises(OperationFailure, db.test.save,
-                              {"hello": "world"})
-
-    def test_safe_remove(self):
+    def test_acknowledged_remove(self):
         db = self.db
         db.drop_collection("test")
         db.create_collection("test", capped=True, size=1000)
@@ -1254,16 +1209,8 @@ class TestCollection(IntegrationTest):
         db.test.insert({"x": 1})
         self.assertEqual(1, db.test.count())
 
-        with db.connection.start_request():
-            self.assertEqual(None, db.test.remove({"x": 1}, w=0))
-            self.assertEqual(1, db.test.count())
-
-        if client_context.version.at_least(1, 1, 3, -1):
-            self.assertRaises(OperationFailure, db.test.remove,
-                              {"x": 1})
-        else:  # Just test that it doesn't blow up
-            db.test.remove({"x": 1})
-
+        # Can't remove from capped collection.
+        self.assertRaises(OperationFailure, db.test.remove, {"x": 1})
         db.drop_collection("test")
         db.test.insert({"x": 1})
         db.test.insert({"x": 1})
@@ -1836,16 +1783,16 @@ class TestCollection(IntegrationTest):
 
         batch[1]['_id'] = batch[0]['_id']
 
-        # Test that inserts fail after first error, acknowledged.
+        # Test that inserts fail after first error.
         self.db.test.drop()
-        self.assertRaises(DuplicateKeyError, self.db.test.insert, batch, w=1)
+        self.assertRaises(DuplicateKeyError, self.db.test.insert, batch)
         self.assertEqual(1, self.db.test.count())
 
-        # Test that inserts fail after first error, unacknowledged.
+        # 2 batches, 2 errors, continue on error.
         self.db.test.drop()
-        with self.client.start_request():
-            self.assertTrue(self.db.test.insert(batch, w=0))
-            self.assertEqual(1, self.db.test.count())
+        self.assertTrue(self.db.test.insert(batch, w=0))
+        wait_until(lambda: 1 == self.db.test.count(),
+                   'insert 1 document')
 
         # 2 batches, 2 errors, acknowledged, continue on error
         self.db.test.drop()
@@ -1862,11 +1809,11 @@ class TestCollection(IntegrationTest):
 
         # 2 batches, 2 errors, unacknowledged, continue on error
         self.db.test.drop()
-        with self.client.start_request():
-            self.assertTrue(
-                self.db.test.insert(batch, continue_on_error=True, w=0))
-            # Only the first and third documents should be inserted.
-            self.assertEqual(2, self.db.test.count())
+        self.assertTrue(
+            self.db.test.insert(batch, continue_on_error=True, w=0))
+        # Only the first and third documents should be inserted.
+        wait_until(lambda: 2 == self.db.test.count(),
+                   'insert 2 documents')
 
     def test_numerous_inserts(self):
         # Ensure we don't exceed server's 1000-document batch size limit.
