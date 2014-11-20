@@ -20,7 +20,6 @@ sys.path[0:0] = [""]
 
 from pymongo.server_type import SERVER_TYPE
 from pymongo.ismaster import IsMaster
-from pymongo.read_preferences import MovingAverage
 from pymongo.server_description import ServerDescription
 from test import unittest
 
@@ -154,17 +153,6 @@ class TestServerDescription(unittest.TestCase):
         self.assertEqual(
             [('a', 27017), ('b', 27018), ('c', 27017)],
             sorted(s.all_hosts))
-
-    def test_round_trip_time(self):
-        response = {'ok': 1, 'ismaster': True}
-        s = ServerDescription(
-            address,
-            IsMaster(response),
-            MovingAverage([1]))
-
-        self.assertEqual(1, s.round_trip_time)
-        rtts = s.round_trip_times
-        self.assertEqual([1], rtts.samples)
 
 
 if __name__ == "__main__":

@@ -25,7 +25,6 @@ from pymongo import common
 from pymongo.topology import Topology
 from pymongo.topology_description import TOPOLOGY_TYPE
 from pymongo.ismaster import IsMaster
-from pymongo.read_preferences import MovingAverage
 from pymongo.server_description import ServerDescription, SERVER_TYPE
 from pymongo.settings import TopologySettings
 from pymongo.uri_parser import parse_uri
@@ -94,9 +93,7 @@ def create_mock_topology(uri, monitor_class=MockMonitor):
 
 def got_ismaster(topology, server_address, ismaster_response):
     server_description = ServerDescription(
-        server_address,
-        IsMaster(ismaster_response),
-        MovingAverage([0]))
+        server_address, IsMaster(ismaster_response), 0)
 
     topology.on_change(server_description)
 

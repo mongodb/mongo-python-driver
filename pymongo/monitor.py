@@ -55,6 +55,7 @@ class Monitor(object):
         self._stopped = False
         self._event = thread_util.Event(self._settings.condition_class)
         self._thread = None
+        self._avg_round_trip_time = MovingAverage()
 
     def open(self):
         """Start monitoring, or restart after a fork.
@@ -126,7 +127,6 @@ class Monitor(object):
         # to Unknown only after retrying once.
         address = self._server_description.address
         retry = self._server_description.server_type != SERVER_TYPE.Unknown
-        old_rtts = self._server_description.round_trip_times
 
         try:
             return self._check_once()
@@ -134,11 +134,7 @@ class Monitor(object):
             raise
         except Exception as error:
             self._topology.reset_pool(address)
-            default = ServerDescription(
-                address,
-                round_trip_times=old_rtts,
-                error=error)
-
+            default = ServerDescription(address, error=error)
             if not retry:
                 # Server type defaults to Unknown.
                 return default
@@ -158,14 +154,11 @@ class Monitor(object):
         """
         with self._pool.get_socket({}, 0, 0) as sock_info:
             response, round_trip_time = self._check_with_socket(sock_info)
-            old_rtts = self._server_description.round_trip_times
-            if old_rtts:
-                new_rtts = old_rtts.clone_with(round_trip_time)
-            else:
-                new_rtts = MovingAverage([round_trip_time])
-
+            self._avg_round_trip_time.add_sample(round_trip_time)
             sd = ServerDescription(
-                self._server_description.address, response, new_rtts)
+                address=self._server_description.address,
+                ismaster=response,
+                round_trip_time=self._avg_round_trip_time.get())
 
             return sd
 

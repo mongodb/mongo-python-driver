@@ -24,7 +24,7 @@ class ServerDescription(object):
     :Parameters:
       - `address`: A (host, port) pair
       - `ismaster`: Optional IsMaster instance
-      - `round_trip_times`: Optional MovingAverage
+      - `round_trip_time`: Optional float
       - `error`: Optional, the last error attempting to connect to the server
     """
 
@@ -32,13 +32,13 @@ class ServerDescription(object):
         '_address', '_server_type', '_all_hosts', '_tags', '_replica_set_name',
         '_primary', '_max_bson_size', '_max_message_size',
         '_max_write_batch_size', '_min_wire_version', '_max_wire_version',
-        '_round_trip_times', '_is_writable', '_is_readable', '_error')
+        '_round_trip_time', '_is_writable', '_is_readable', '_error')
 
     def __init__(
             self,
             address,
             ismaster=None,
-            round_trip_times=None,
+            round_trip_time=None,
             error=None):
         self._address = address
         if not ismaster:
@@ -64,7 +64,7 @@ class ServerDescription(object):
             self.server_type == SERVER_TYPE.RSSecondary
             or self._is_writable)
 
-        self._round_trip_times = round_trip_times
+        self._round_trip_time = round_trip_time
         self._error = error
 
     @property
@@ -115,18 +115,13 @@ class ServerDescription(object):
         return self._max_wire_version
 
     @property
-    def round_trip_times(self):
-        """A MovingAverage or None."""
-        return self._round_trip_times
-
-    @property
     def round_trip_time(self):
-        """The current average duration or None."""
+        """The current average latency or None."""
         # This override is for unittesting only!
         if self._address in self._host_to_round_trip_time:
             return self._host_to_round_trip_time[self._address]
 
-        return self._round_trip_times.get() if self._round_trip_times else None
+        return self._round_trip_time
 
     @property
     def error(self):

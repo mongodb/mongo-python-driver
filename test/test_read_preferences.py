@@ -499,24 +499,15 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
 
 
 class TestMovingAverage(unittest.TestCase):
-    def test_empty_init(self):
-        self.assertRaises(AssertionError, MovingAverage, [])
-
     def test_moving_average(self):
-        avg = MovingAverage([10])
-        self.assertEqual(10, avg.get())
-        avg2 = avg.clone_with(20)
-        self.assertEqual(15, avg2.get())
-        avg3 = avg2.clone_with(30)
-        self.assertEqual(20, avg3.get())
-        avg4 = avg3.clone_with(-100)
-        self.assertEqual((10 + 20 + 30 - 100) / 4., avg4.get())
-        avg5 = avg4.clone_with(17)
-        self.assertEqual((10 + 20 + 30 - 100 + 17) / 5., avg5.get())
-        avg6 = avg5.clone_with(43)
-        self.assertEqual((20 + 30 - 100 + 17 + 43) / 5., avg6.get())
-        avg7 = avg6.clone_with(-1111)
-        self.assertEqual((30 - 100 + 17 + 43 - 1111) / 5., avg7.get())
+        avg = MovingAverage()
+        self.assertIsNone(avg.get())
+        avg.add_sample(10)
+        self.assertAlmostEqual(10, avg.get())
+        avg.add_sample(20)
+        self.assertAlmostEqual(12, avg.get())
+        avg.add_sample(30)
+        self.assertAlmostEqual(15.6, avg.get())
 
 
 class TestMongosConnection(IntegrationTest):

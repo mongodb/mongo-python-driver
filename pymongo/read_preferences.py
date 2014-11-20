@@ -390,18 +390,18 @@ SECONDARY_OK_COMMANDS = frozenset([
 
 
 class MovingAverage(object):
-    """Immutable structure to track a 5-sample moving average.
-    """
-    def __init__(self, samples):
-        self.samples = samples[-5:]
-        assert self.samples
-        self.average = sum(self.samples) / float(len(self.samples))
+    """Tracks an exponentially-weighted moving average."""
+    def __init__(self):
+        self.average = None
 
-    def clone_with(self, sample):
-        """Get a copy of this instance plus a new sample"""
-        return MovingAverage(self.samples + [sample])
+    def add_sample(self, sample):
+        if self.average is None:
+            self.average = sample
+        else:
+            # The Server Selection Spec requires an exponentially weighted
+            # average with alpha = 0.2.
+            self.average = 0.8 * self.average + 0.2 * sample
 
     def get(self):
-        """Get the calculated average.
-        """
+        """Get the calculated average, or None if no samples yet."""
         return self.average

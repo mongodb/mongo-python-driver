@@ -22,7 +22,6 @@ from pymongo import MongoClient
 from pymongo.ismaster import IsMaster
 from pymongo.monitor import Monitor
 from pymongo.pool import Pool, PoolOptions
-from pymongo.read_preferences import MovingAverage
 from pymongo.server_description import ServerDescription
 
 from test import host as default_host, port as default_port
@@ -77,10 +76,7 @@ class MockMonitor(Monitor):
     def _check_once(self):
         address = self._server_description.address
         response = self.client.mock_is_master('%s:%d' % address)
-        return ServerDescription(
-            address,
-            IsMaster(response),
-            MovingAverage([0]))
+        return ServerDescription(address, IsMaster(response), 0)
 
 
 class MockClient(MongoClient):

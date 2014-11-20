@@ -109,9 +109,7 @@ def create_mock_topology(
 
 def got_ismaster(topology, server_address, ismaster_response):
     server_description = ServerDescription(
-        server_address,
-        IsMaster(ismaster_response),
-        MovingAverage([0]))
+        server_address, IsMaster(ismaster_response), 0)
 
     topology.on_change(server_description)
 
@@ -232,7 +230,7 @@ class TestSingleServerTopology(TopologyTest):
         self.assertEqual(SERVER_TYPE.Unknown, get_type(t, 'a'))
 
     def test_round_trip_time(self):
-        round_trip_time = 1
+        round_trip_time = 125
         available = True
 
         class TestMonitor(Monitor):
@@ -244,21 +242,29 @@ class TestSingleServerTopology(TopologyTest):
 
         t = create_mock_topology(monitor_class=TestMonitor)
         s = t.select_server(writable_server_selector)
-        self.assertEqual(1, s.description.round_trip_time)
+        self.assertEqual(125, s.description.round_trip_time)
 
-        round_trip_time = 3
+        round_trip_time = 25
         t.request_check_all()
 
-        # Average of 1 and 3.
-        self.assertEqual(2, s.description.round_trip_time)
+        # Exponential weighted average: .8 * 125 + .2 * 25 = 105.
+        self.assertAlmostEqual(105, s.description.round_trip_time)
 
         available = False
         t.request_check_all()
         with self.assertRaises(ConnectionFailure):
             t.select_server(writable_server_selector, server_wait_time=0.1)
 
-        # The server is temporarily down but we haven't cleared its RTT.
-        self.assertEqual(2, s.description.round_trip_time)
+        # The server is temporarily down.
+        self.assertIsNone(s.description.round_trip_time)
+
+        # Bring it back, RTT is now 30 milliseconds.
+        available = True
+        round_trip_time = 20
+        t.request_check_all()
+
+        # We didn't forget prior average: .8 * 105 + .2 * 20 = 88.
+        self.assertAlmostEqual(88, s.description.round_trip_time)
 
 
 class TestMultiServerTopology(TopologyTest):
