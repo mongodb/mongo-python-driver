@@ -83,6 +83,18 @@ The PyMongo distribution is supported and tested on Python 2.x (where
 x >= 6) and Python 3.x (where x >= 2). PyMongo versions before 3.0 also
 support Python 2.4, 2.5, and 3.1.
 
+Optional packages:
+
+- `backports.pbkdf2 <https://pypi.python.org/pypi/backports.pbkdf2/>`_,
+  improves authentication performance with SCRAM-SHA-1, the default
+  authentication mechanism for MongoDB 2.8+. It especially improves
+  performance on Python older than 2.7.8, or on Python 3 before Python 3.4.
+- `pykerberos <https://pypi.python.org/pypi/pykerberos>`_ is required for
+  the GSSAPI authentication mechanism.
+- `Monotime <https://pypi.python.org/pypi/Monotime>`_ adds support for
+  a monotonic clock, which improves reliability in environments
+  where clock adjustments are frequent. Not needed in Python 3.3+.
+
 Additional dependencies are:
 
 - (to generate documentation) sphinx_
