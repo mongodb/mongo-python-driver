@@ -161,13 +161,12 @@ class TestJsonUtil(unittest.TestCase):
         self.round_trip({"m": MaxKey()})
 
     def test_timestamp(self):
-        res = json_util.dumps({"ts": Timestamp(4, 13)}, default=json_util.default)
-        # Check order.
-        self.assertEqual('{"ts": {"t": 4, "i": 13}}', res)
+        dct = {"ts": Timestamp(4, 13)}
+        res = json_util.dumps(dct, default=json_util.default)
+        self.assertEqual('{"ts": {"$timestamp": {"t": 4, "i": 13}}}', res)
 
-        dct = json_util.loads(res)
-        self.assertEqual(dct['ts']['t'], 4)
-        self.assertEqual(dct['ts']['i'], 13)
+        rtdct = json_util.loads(res)
+        self.assertEqual(dct, rtdct)
 
     def test_uuid(self):
         self.round_trip(

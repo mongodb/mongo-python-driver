@@ -48,7 +48,13 @@ instances (as they are extended strings you can't provide custom defaults),
 but it will be faster as there is less recursion.
 
 .. versionchanged:: 2.8
-   Supports $numberLong and $undefined - new in MongoDB 2.6. Also supports
+   The output format for :class:`~bson.timestamp.Timestamp` has changed from
+   '{"t": <int>, "i": <int>}' to '{"$timestamp": {"t": <int>, "i": <int>}}'.
+   This new format will be decoded to an instance of
+   :class:`~bson.timestamp.Timestamp`. The old format will continue to be
+   decoded to a python dict as before. Encoding to the old format is no longer
+   supported as it was never correct and loses type information.
+   Added support for $numberLong and $undefined - new in MongoDB 2.6 - and
    parsing $date in ISO-8601 format.
 
 .. versionchanged:: 2.7
@@ -212,6 +218,9 @@ def object_hook(dct, compile_re=True):
         return None
     if "$numberLong" in dct:
         return Int64(dct["$numberLong"])
+    if "$timestamp" in dct:
+        tsp = dct["$timestamp"]
+        return Timestamp(tsp["t"], tsp["i"])
     return dct
 
 
@@ -256,7 +265,7 @@ def default(obj):
     if isinstance(obj, MaxKey):
         return {"$maxKey": 1}
     if isinstance(obj, Timestamp):
-        return SON([("t", obj.time), ("i", obj.inc)])
+        return {"$timestamp": SON([("t", obj.time), ("i", obj.inc)])}
     if isinstance(obj, Code):
         return SON([('$code', str(obj)), ('$scope', obj.scope)])
     if isinstance(obj, Binary):
