@@ -30,6 +30,13 @@ Highlights include:
   - :meth:`~pymongo.mongo_client.MongoClient.copy_database`
   - :class:`~pymongo.master_slave_connection.MasterSlaveConnection`
 
+  The JSON format for :class:`~bson.timestamp.Timestamp` has changed from
+  '{"t": <int>, "i": <int>}' to '{"$timestamp": {"t": <int>, "i": <int>}}'.
+  This new format will be decoded to an instance of
+  :class:`~bson.timestamp.Timestamp`. The old format will continue to be
+  decoded to a python dict as before. Encoding to the old format is no
+  longer supported as it was never correct and loses type information.
+
 Issues Resolved
 ...............
 
