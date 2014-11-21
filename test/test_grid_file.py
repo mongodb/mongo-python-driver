@@ -32,13 +32,14 @@ from gridfs.grid_file import (DEFAULT_CHUNK_SIZE,
                               GridOutCursor)
 from gridfs.errors import NoFile
 from pymongo import MongoClient
-from pymongo.errors import ConnectionFailure
+from pymongo.errors import ConnectionFailure, InvalidOperation
 from test import (client_knobs,
                   IntegrationTest,
                   host,
                   port,
                   unittest,
                   qcheck)
+from test.utils import rs_or_single_client
 
 
 class TestGridFileNoConnect(unittest.TestCase):
@@ -608,6 +609,13 @@ Bye"""))
             infile = GridIn(fs, file_id=-1, chunk_size=1)
             self.assertRaises(ConnectionFailure, infile.write, b'data')
             self.assertRaises(ConnectionFailure, infile.close)
+
+    def test_unacknowledged(self):
+        # w=0 is prohibited.
+        infile = GridIn(rs_or_single_client(w=0).pymongo_test.fs)
+
+        with self.assertRaises(InvalidOperation):
+            infile.write(b'data')
 
 
 if __name__ == "__main__":

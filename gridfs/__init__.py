@@ -118,19 +118,16 @@ class GridFS(object):
         :Parameters:
           - `data`: data to be written as a file.
           - `**kwargs` (optional): keyword arguments for file creation
+
+        .. versionchanged:: 3.0
+           w=0 writes to GridFS are now prohibited.
         """
         grid_file = GridIn(self.__collection, **kwargs)
-
-        # Start a request - necessary if w=0, harmless otherwise
-        request = self.__collection.database.connection.start_request()
         try:
-            try:
-                grid_file.write(data)
-            finally:
-                grid_file.close()
+            grid_file.write(data)
         finally:
-            # Ensure request is ended even if close() throws error
-            request.end()
+            grid_file.close()
+
         return grid_file._id
 
     def get(self, file_id):

@@ -27,7 +27,7 @@ from gridfs.errors import (CorruptGridFile,
 from pymongo import ASCENDING
 from pymongo.collection import Collection
 from pymongo.cursor import Cursor
-from pymongo.errors import DuplicateKeyError
+from pymongo.errors import DuplicateKeyError, InvalidOperation
 from pymongo.read_preferences import ReadPreference
 
 try:
@@ -130,29 +130,12 @@ class GridIn(object):
             that is written to the file will be converted to
             :class:`bytes`.
 
-        If you turn off write-acknowledgment for performance reasons, it is
-        critical to wrap calls to :meth:`write` and :meth:`close` within a
-        single request:
-
-           >>> from pymongo import MongoClient
-           >>> from gridfs import GridFS
-           >>> client = MongoClient(w=0) # turn off write acknowledgment
-           >>> fs = GridFS(client.database)
-           >>> gridin = fs.new_file()
-           >>> request = client.start_request()
-           >>> try:
-           ...     for i in range(10):
-           ...         gridin.write('foo')
-           ...     gridin.close()
-           ... finally:
-           ...     request.end()
-
-        In Python 2.5 and later this code can be simplified with a
-        with-statement, see :doc:`/examples/requests` for more information.
-
         :Parameters:
           - `root_collection`: root collection to write to
           - `**kwargs` (optional): file level options (see above)
+
+        .. versionchanged:: 3.0
+           w=0 writes to GridFS are now prohibited.
         """
         if not isinstance(root_collection, Collection):
             raise TypeError("root_collection must be an "
@@ -320,6 +303,10 @@ class GridIn(object):
         """
         if self._closed:
             raise ValueError("cannot write to a closed file")
+
+        # With w=0, 'filemd5' might run before the final chunks are written.
+        if 0 == self._coll.database.connection.write_concern.get('w'):
+            raise InvalidOperation('Cannot write file to GridFS with w=0')
 
         try:
             # file-like
