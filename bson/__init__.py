@@ -745,8 +745,8 @@ if _USE_C:
     decode_all = _cbson.decode_all
 
 
-def decode_iter(data, as_class=dict,
-                tz_aware=True, uuid_subtype=OLD_UUID_SUBTYPE):
+def decode_iter(data, as_class=dict, tz_aware=True,
+                uuid_subtype=OLD_UUID_SUBTYPE, compile_re=True):
     """Decode BSON data to multiple documents as a generator. Works
     similarly to the decode_all function, but yields one document
     at a time.
@@ -760,6 +760,13 @@ def decode_iter(data, as_class=dict,
         documents
       - `tz_aware` (optional): if ``True``, return timezone-aware
         :class:`~datetime.datetime` instances
+      - `compile_re` (optional): if ``False``, don't attempt to compile
+        BSON regular expressions into Python regular expressions. Return
+        instances of
+        :class:`~bson.regex.Regex` instead. Can avoid
+        :exc:`~bson.errors.InvalidBSON` errors when receiving
+        Python-incompatible regular expressions, for example from
+        ``currentOp``
 
     .. versionadded:: 2.5
     """
@@ -774,11 +781,12 @@ def decode_iter(data, as_class=dict,
         elements = data[position + 4:position + obj_size - 1]
         position += obj_size
 
-        yield _elements_to_dict(elements, as_class, tz_aware, uuid_subtype)
+        yield _elements_to_dict(elements, as_class,
+                                tz_aware, uuid_subtype, compile_re)
 
 
 def decode_file_iter(file_obj, as_class=dict, tz_aware=True,
-                     uuid_subtype=OLD_UUID_SUBTYPE):
+                     uuid_subtype=OLD_UUID_SUBTYPE, compile_re=True):
     """Decode bson data from a file to multiple documents as a generator. Works
     similarly to the decode_all function, but reads from the file object in
     chunks and parses bson in chunks, yielding one document at a time.
@@ -789,6 +797,13 @@ def decode_file_iter(file_obj, as_class=dict, tz_aware=True,
         documents
       - `tz_aware` (optional): if ``True``, return timezone-aware
         :class:`~datetime.datetime` instances
+      - `compile_re` (optional): if ``False``, don't attempt to compile
+        BSON regular expressions into Python regular expressions. Return
+        instances of
+        :class:`~bson.regex.Regex` instead. Can avoid
+        :exc:`~bson.errors.InvalidBSON` errors when receiving
+        Python-incompatible regular expressions, for example from
+        ``currentOp``
 
     .. versionadded:: 2.5
     """
@@ -818,7 +833,7 @@ def decode_file_iter(file_obj, as_class=dict, tz_aware=True,
             raise InvalidBSON("bad eoo")
 
         yield _elements_to_dict(elements[:-1], as_class,
-                                tz_aware, uuid_subtype)
+                                tz_aware, uuid_subtype, compile_re)
 
 
 def is_valid(bson):
