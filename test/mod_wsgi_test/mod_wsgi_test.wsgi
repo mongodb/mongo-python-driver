@@ -49,8 +49,6 @@ except:
 
 
 def application(environ, start_response):
-    # Requests are part of the PYTHON-353 pathology.
-    client.start_request()
     results = list(collection.find().batch_size(10))
     assert len(results) == ndocs
     output = 'python %s, mod_wsgi %s, pymongo %s' % (
