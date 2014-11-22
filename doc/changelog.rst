@@ -41,9 +41,8 @@ longer raises :class:`~pymongo.errors.ConnectionFailure` if they
 are unavailable, nor :class:`~pymongo.errors.ConfigurationError`
 if the user's credentials are wrong. Instead, the constructor
 returns immediately and launches the connection process on
-background threads.
-
-The ``connect`` option is added and ``auto_start_request`` is removed.
+background threads. The ``connect`` option is added to control whether
+these threads are started immediately, or when the client is first used.
 
 In PyMongo 2.x, :class:`~pymongo.MongoClient` accepted a list of standalone
 MongoDB servers and used the first it could connect to::
@@ -53,6 +52,10 @@ MongoDB servers and used the first it could connect to::
 A list of multiple standalones is no longer supported; if multiple servers
 are listed they must be members of the same replica set, or mongoses in the
 same sharded cluster.
+
+The client methods ``start_request``, ``in_request``, and ``end_request``
+are removed, and so is the ``auto_start_request`` option. See
+:doc:`/examples/requests`.
 
 The ``copy_database`` method is removed, see the
 :doc:`copy_database examples </examples/copydb>` for alternatives.

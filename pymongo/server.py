@@ -115,16 +115,6 @@ class Server(object):
     def discard_socket(self, sock_info):
         self.pool.discard_socket(sock_info)
 
-    def start_request(self):
-        # TODO: Remove implicit threadlocal requests, use explicit requests.
-        self.pool.start_request()
-
-    def in_request(self):
-        return self.pool.in_request()
-
-    def end_request(self):
-        self.pool.end_request()
-
     @property
     def description(self):
         return self._description

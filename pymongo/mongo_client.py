@@ -43,7 +43,6 @@ from pymongo import (common,
                      helpers,
                      message,
                      pool,
-                     thread_util,
                      uri_parser)
 from pymongo.client_options import ClientOptions
 from pymongo.topology_description import TOPOLOGY_TYPE
@@ -56,8 +55,7 @@ from pymongo.errors import (ConfigurationError,
                             NetworkTimeout,
                             NotMasterError)
 from pymongo.read_preferences import ReadPreference
-from pymongo.server_selectors import (any_server_selector,
-                                      writable_preferred_server_selector,
+from pymongo.server_selectors import (writable_preferred_server_selector,
                                       writable_server_selector)
 from pymongo.server_type import SERVER_TYPE
 from pymongo.settings import TopologySettings
@@ -226,8 +224,11 @@ class MongoClient(common.BaseObject):
            servers are listed they must be members of the same replica set, or
            mongoses in the same sharded cluster.
 
-           The ``connect`` option is added and ``auto_start_request`` is
-           removed.
+           The ``connect`` option is added.
+
+           The ``start_request``, ``in_request``, and ``end_request`` methods
+           are removed, as well as the ``auto_start_request`` option. See
+           :doc:`/examples/requests`.
 
            The ``copy_database`` method is removed, see the
            :doc:`copy_database examples </examples/copydb>` for alternatives.
@@ -297,7 +298,6 @@ class MongoClient(common.BaseObject):
                                           options.uuid_subtype,
                                           options.write_concern.document)
 
-        self.__request_counter = thread_util.Counter()
         self.__all_credentials = {}
         creds = options.credentials
         if creds:
@@ -769,9 +769,6 @@ class MongoClient(common.BaseObject):
             # we'd done a getLastError.
             raise NotMasterError("not master")
 
-        if self.in_request() and not server.in_request():
-            server.start_request()
-
         if with_last_error or command:
             response = self._reset_on_error(
                 server,
@@ -816,9 +813,6 @@ class MongoClient(common.BaseObject):
             selector = read_preference or writable_server_selector
             server = topology.select_server(selector)
 
-        if self.in_request() and not server.in_request():
-            server.start_request()
-
         return self._reset_on_error(
             server,
             server.send_message_with_response,
@@ -850,68 +844,6 @@ class MongoClient(common.BaseObject):
     def _reset_server_and_request_check(self, address):
         """Clear our pool for a server, mark it Unknown, and check it soon."""
         self._topology.reset_server_and_request_check(address)
-
-    def start_request(self):
-        """Ensure the current thread always uses the same socket
-        until it calls :meth:`end_request`. This ensures consistent reads,
-        even if you read after an unacknowledged write.
-
-        :meth:`start_request` can be used as a context manager:
-
-        >>> client = pymongo.MongoClient()
-        >>> db = client.test
-        >>> _id = db.test_collection.insert({})
-        >>> with client.start_request():
-        ...     for i in range(100):
-        ...         db.test_collection.update({'_id': _id}, {'$set': {'i':i}})
-        ...
-        ...     # Definitely read the document after the final update completes
-        ...     print db.test_collection.find({'_id': _id})
-
-        If a thread calls start_request multiple times, an equal
-        number of calls to :meth:`end_request` is required to end the request.
-        """
-        # TODO: Remove implicit threadlocal requests, use explicit requests.
-        # TODO: Start / end replica set member pinning?
-        if 1 == self.__request_counter.inc():
-            # Start requests on all existing pools. New pools created while
-            # this thread is in a request will have start_request() called
-            # lazily. These greedy calls are to make PyMongo 2.x's request
-            # tests pass.
-            try:
-                servers = self._topology.select_servers(any_server_selector,
-                                                        server_wait_time=0)
-
-                for s in servers:
-                    s.start_request()
-            except AutoReconnect:
-                # No servers available.
-                pass
-
-        return pool.Request(self)
-
-    def in_request(self):
-        """True if this thread is in a request, meaning it has a socket
-        reserved for its exclusive use.
-        """
-        return bool(self.__request_counter.get())
-
-    def end_request(self):
-        """Undo :meth:`start_request`. If :meth:`end_request` is called as many
-        times as :meth:`start_request`, the request is over and this thread's
-        connection returns to the pool. Extra calls to :meth:`end_request` have
-        no effect.
-        """
-        if 0 == self.__request_counter.dec():
-            try:
-                servers = self._topology.select_servers(any_server_selector,
-                                                        server_wait_time=0)
-
-                for s in servers:
-                    s.end_request()
-            except ConnectionFailure:
-                # No servers, we've disconnected.
-                pass
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):

@@ -802,10 +802,6 @@ class Collection(common.BaseObject):
             :class:`~socket.socket` connection will be closed and discarded
             without being returned to the connection pool.
 
-            4. A :class:`~pymongo.cursor.Cursor` instance created with the
-            `exhaust` option in a :doc:`request </examples/requests>` **must**
-            be completely iterated before executing any other operation.
-
         .. note:: The `manipulate` and `compile_re` parameters may default to
            False in future releases.
 

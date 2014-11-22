@@ -16,10 +16,3 @@ PyMongo uses thread and socket functions from the Python standard library.
 Gevent's monkey-patching replaces those standard functions so that PyMongo
 does asynchronous I/O with non-blocking sockets, and schedules operations
 on greenlets instead of threads.
-
-With monkey-patching activated,
-:meth:`~pymongo.mongo_client.MongoClient.start_request()` ensures the
-current greenlet (not merely the current thread) uses the same socket for all
-operations until :meth:`~pymongo.mongo_client.MongoClient.end_request()` is
-called. See the :doc:`requests documentation <requests>` for details on
-requests in PyMongo.

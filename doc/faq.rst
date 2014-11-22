@@ -78,8 +78,6 @@ all sockets are closed.
 :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient` maintains one
 connection pool per server in your replica set.
 
-.. seealso:: :doc:`examples/requests`
-
 Does PyMongo support Python 3?
 ------------------------------
 

@@ -15,106 +15,13 @@
 """Utilities for multi-threading support."""
 
 import threading
-import sys
-import weakref
+try:
+    from time import monotonic as _time
+except ImportError:
+    from time import time as _time
 
 from pymongo.monotonic import time as _time
 from pymongo.errors import ExceededMaxWaiters
-
-
-# Do we have to work around http://bugs.python.org/issue1868?
-issue1868 = (sys.version_info[:3] <= (2, 7, 0))
-
-
-class DummyLock(object):
-    def acquire(self):
-        pass
-
-    def release(self):
-        pass
-
-    def __enter__(self):
-        pass
-
-    def __exit__(self, t, v, tb):
-        pass
-
-
-class ThreadIdent(object):
-    def __init__(self):
-        self._refs = {}
-        self._local = threading.local()
-        if issue1868:
-            self._lock = threading.Lock()
-        else:
-            self._lock = DummyLock()
-
-    def watching(self):
-        """Is the current thread being watched for death?"""
-        return self.get() in self._refs
-
-    def unwatch(self, tid):
-        self._refs.pop(tid, None)
-
-    def get(self):
-        return id(self._make_vigil())
-
-    def watch(self, callback):
-        vigil = self._make_vigil()
-        self._refs[id(vigil)] = weakref.ref(vigil, callback)
-
-    # We watch for thread-death using a weakref callback to a thread local.
-    # Weakrefs are permitted on subclasses of object but not object() itself.
-    class ThreadVigil(object):
-        pass
-
-    def _make_vigil(self):
-        # Threadlocals in Python <= 2.7.0 have race conditions when setting
-        # attributes and possibly when getting them, too, leading to weakref
-        # callbacks not getting called later.
-        with self._lock:
-            vigil = getattr(self._local, 'vigil', None)
-            if not vigil:
-                self._local.vigil = vigil = ThreadIdent.ThreadVigil()
-
-        return vigil
-
-
-class Counter(object):
-    """A thread-local counter."""
-    def __init__(self):
-        self.ident = ThreadIdent()
-        self._counters = {}
-
-    def inc(self):
-        # Copy these references so on_thread_died needn't close over self
-        ident = self.ident
-        _counters = self._counters
-
-        tid = ident.get()
-        _counters.setdefault(tid, 0)
-        _counters[tid] += 1
-
-        if not ident.watching():
-            # Before the tid is possibly reused, remove it from _counters
-            def on_thread_died(ref):
-                ident.unwatch(tid)
-                _counters.pop(tid, None)
-
-            ident.watch(on_thread_died)
-
-        return _counters[tid]
-
-    def dec(self):
-        tid = self.ident.get()
-        if self._counters.get(tid, 0) > 0:
-            self._counters[tid] -= 1
-            return self._counters[tid]
-        else:
-            return 0
-
-    def get(self):
-        return self._counters.get(self.ident.get(), 0)
 
 
 ### Begin backport from CPython 3.2 for timeout support for Semaphore.acquire

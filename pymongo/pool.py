@@ -36,9 +36,6 @@ except ImportError:
     # These don't require the ssl module
     from pymongo.ssl_match_hostname import match_hostname, CertificateError
 
-NO_REQUEST = None
-NO_SOCKET_YET = -1
-
 
 def _closed(sock):
     """Return True if we know socket has been closed, False otherwise.
@@ -292,9 +289,7 @@ class SocketInfo(object):
                 pass
 
     def __eq__(self, other):
-        # Need to check if other is NO_REQUEST or NO_SOCKET_YET, and then check
-        # if its sock is the same as ours
-        return hasattr(other, 'sock') and self.sock == other.sock
+        return self.sock == other.sock
 
     def __ne__(self, other):
         return not self == other
@@ -332,13 +327,6 @@ class Pool:
         self.pid = os.getpid()
         self.pair = pair
         self.opts = options
-
-        # Map self._ident.get() -> request socket
-        self._tid_to_sock = {}
-        self._ident = thread_util.ThreadIdent()
-
-        # Count the number of calls to start_request() per thread.
-        self._request_counter = thread_util.Counter()
 
         if (self.opts.wait_queue_multiple is None or
                 self.opts.max_pool_size is None):
@@ -475,18 +463,7 @@ class Pool:
         if self.pid != os.getpid():
             self.reset()
 
-        # Have we opened a socket for this request?
-        req_state = self._get_request_state()
-        if req_state not in (NO_SOCKET_YET, NO_REQUEST):
-            # There's a socket for this request, check it and return it
-            checked_sock = self._check(req_state)
-            if checked_sock != req_state:
-                self._set_request_state(checked_sock)
-
-            checked_sock.last_checkout = _time()
-            return checked_sock
-
-        # We're not in a request, just get any free socket or create one.
+        # Get a free socket or create one.
         if not self._socket_semaphore.acquire(
                 True, self.opts.wait_queue_timeout):
             self._raise_wait_queue_timeout()
@@ -504,11 +481,6 @@ class Pool:
             if from_pool:
                 sock_info = self._check(sock_info)
 
-            if req_state == NO_SOCKET_YET:
-                # start_request has been called but we haven't assigned a
-                # socket to the request yet. Let's use this socket for this
-                # request until end_request.
-                self._set_request_state(sock_info)
         except:
             self._socket_semaphore.release()
             raise
@@ -516,48 +488,15 @@ class Pool:
         sock_info.last_checkout = _time()
         return sock_info
 
-    def start_request(self):
-        if self._get_request_state() == NO_REQUEST:
-            # Add a placeholder value so we know we're in a request, but we
-            # have no socket assigned to the request yet.
-            self._set_request_state(NO_SOCKET_YET)
-
-        self._request_counter.inc()
-
-    def in_request(self):
-        return bool(self._request_counter.get())
-
-    def end_request(self):
-        # Check if start_request has ever been called in this thread.
-        count = self._request_counter.get()
-        if count:
-            self._request_counter.dec()
-            if count == 1:
-                # End request
-                sock_info = self._get_request_state()
-                self._set_request_state(NO_REQUEST)
-                if sock_info not in (NO_REQUEST, NO_SOCKET_YET):
-                    self._return_socket(sock_info)
-
     def maybe_return_socket(self, sock_info):
-        """Return the socket to the pool.
-
-        If it is the request socket, it is not actually returned to the pool
-        of available sockets. If it is closed, discard it.
-        """
-        if sock_info in (NO_REQUEST, NO_SOCKET_YET):
-            return
-
+        """Return the socket to the pool, or if it's closed discard it."""
         if self.pid != os.getpid():
             self._socket_semaphore.release()
             self.reset()
         else:
             if sock_info.closed:
-                if sock_info != self._get_request_state():
-                    self._socket_semaphore.release()
-                return
-
-            if sock_info != self._get_request_state():
+                self._socket_semaphore.release()
+            else:
                 self._return_socket(sock_info)
 
     def _return_socket(self, sock_info):
@@ -617,51 +556,6 @@ class Pool:
                 self.reset()
                 raise
 
-    def _set_request_state(self, sock_info):
-        ident = self._ident
-        tid = ident.get()
-
-        if sock_info == NO_REQUEST:
-            # Ending a request
-            ident.unwatch(tid)
-            self._tid_to_sock.pop(tid, None)
-        else:
-            self._tid_to_sock[tid] = sock_info
-
-            if not ident.watching():
-                # Closure over tid, poolref, and ident. Don't refer directly to
-                # self, otherwise there's a cycle.
-
-                # Do not access threadlocals in this function, or any
-                # function it calls! In the case of the Pool subclass and
-                # mod_wsgi 2.x, on_thread_died() is triggered when mod_wsgi
-                # calls PyThreadState_Clear(), which deferences the
-                # ThreadVigil and triggers the weakref callback. Accessing
-                # thread locals in this function, while PyThreadState_Clear()
-                # is in progress can cause leaks, see PYTHON-353.
-                poolref = weakref.ref(self)
-
-                def on_thread_died(ref):
-                    try:
-                        ident.unwatch(tid)
-                        pool = poolref()
-                        if pool:
-                            # End the request
-                            request_sock = pool._tid_to_sock.pop(tid, None)
-
-                            # Was thread ever assigned a socket before it died?
-                            if request_sock not in (NO_REQUEST, NO_SOCKET_YET):
-                                pool._return_socket(request_sock)
-                    except:
-                        # Random exceptions on interpreter shutdown.
-                        pass
-
-                ident.watch(on_thread_died)
-
-    def _get_request_state(self):
-        tid = self._ident.get()
-        return self._tid_to_sock.get(tid, NO_REQUEST)
-
     def _raise_wait_queue_timeout(self):
         raise ConnectionFailure(
             'Timed out waiting for socket from pool with max_size %r and'
@@ -672,31 +566,3 @@ class Pool:
         # Avoid ResourceWarnings in Python 3
         for sock_info in self.sockets:
             sock_info.close()
-
-        # Close request sockets that aren't NO_REQUEST or NO_SOCKET_YET.
-        # Those globals may already be set to None during interpreter shutdown,
-        # so compare directly to None and -1.
-        for request_sock in self._tid_to_sock.values():
-            if request_sock not in (None, -1):
-                request_sock.close()
-
-
-class Request(object):
-    """
-    A context manager returned by :meth:`start_request`, so you can do
-    `with client.start_request(): do_something()` in Python 2.5+.
-    """
-    def __init__(self, connection):
-        self.connection = connection
-
-    def end(self):
-        self.connection.end_request()
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.end()
-        # Returning False means, "Don't suppress exceptions if any were
-        # thrown within the block"
-        return False
