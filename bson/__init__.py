@@ -333,7 +333,10 @@ def _elements_to_dict(data, as_class, tz_aware, uuid_subtype, compile_re):
     return result
 
 def _bson_to_dict(data, as_class, tz_aware, uuid_subtype, compile_re):
-    obj_size = struct.unpack("<i", data[:4])[0]
+    try:
+        obj_size = struct.unpack("<i", data[:4])[0]
+    except struct.error, e:
+        raise InvalidBSON(str(e))
     length = len(data)
     if length < obj_size:
         raise InvalidBSON("objsize too large")
@@ -571,15 +574,10 @@ def decode_iter(data, as_class=dict, tz_aware=True,
     end = len(data) - 1
     while position < end:
         obj_size = struct.unpack("<i", data[position:position + 4])[0]
-        if len(data) - position < obj_size:
-            raise InvalidBSON("objsize too large")
-        if data[position + obj_size - 1:position + obj_size] != ZERO:
-            raise InvalidBSON("bad eoo")
-        elements = data[position + 4:position + obj_size - 1]
+        elements = data[position:position + obj_size]
         position += obj_size
-
-        yield _elements_to_dict(elements, as_class,
-                                tz_aware, uuid_subtype, compile_re)
+        yield _bson_to_dict(elements, as_class,
+                            tz_aware, uuid_subtype, compile_re)[0]
 
 
 def decode_file_iter(file_obj, as_class=dict, tz_aware=True,
@@ -611,26 +609,10 @@ def decode_file_iter(file_obj, as_class=dict, tz_aware=True,
             break  # Finished with file normaly.
         elif len(size_data) != 4:
             raise InvalidBSON("cut off in middle of objsize")
-        obj_size = struct.unpack("<i", size_data)[0]
-        if obj_size < 5:
-            # The obj_size should at least be big enough to encode the
-            # obj_size and EOO itself, even on a zero-sized elements.
-            raise InvalidBSON("objsize too small")
-
-        # Actual data for elements is total size - size_prefix - suffix, but
-        # we read the suffix together with the element to reduce number of
-        # reads.
-        elements_size = obj_size - 4
-
-        # Read object itself and the EOO in one read (to reduce num reads).
-        elements = file_obj.read(elements_size)
-        if len(elements) != elements_size:
-            raise InvalidBSON("objsize too large")
-        if elements[-1] != ZERO:
-            raise InvalidBSON("bad eoo")
-
-        yield _elements_to_dict(elements[:-1], as_class,
-                                tz_aware, uuid_subtype, compile_re)
+        obj_size = struct.unpack("<i", size_data)[0] - 4
+        elements = size_data + file_obj.read(obj_size)
+        yield _bson_to_dict(elements, as_class,
+                            tz_aware, uuid_subtype, compile_re)[0]
 
 
 def is_valid(bson):
