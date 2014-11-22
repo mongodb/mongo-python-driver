@@ -934,67 +934,6 @@ class TestMongosHighAvailability(HATestCase):
         super(TestMongosHighAvailability, self).tearDown()
 
 
-class TestReplicaSetRequest(HATestCase):
-    def setUp(self):
-        super(TestReplicaSetRequest, self).setUp()
-
-        members = [{}, {}, {'arbiterOnly': True}]
-        res = ha_tools.start_replica_set(members)
-        self.c = MongoClient(res[0], replicaSet=res[1])
-        self.c.start_request()
-
-    def test_request_during_failover(self):
-        primary = partition_node(ha_tools.get_primary())
-        secondary = partition_node(ha_tools.get_random_secondary())
-
-        self.assertTrue(self.c.in_request())
-
-        topology = self.c._get_topology()
-        primary_pool = topology.select_server(writable_server_selector).pool
-        secondary_pool = topology.select_server(secondary_server_selector).pool
-
-        # Trigger start_request on primary pool
-        utils.assertReadFrom(self, self.c, primary, PRIMARY)
-        self.assertTrue(primary_pool.in_request())
-
-        # Fail over
-        ha_tools.kill_primary()
-        time.sleep(5)
-
-        patience_seconds = 60
-        for _ in range(patience_seconds):
-            try:
-                if ha_tools.ha_tools_debug:
-                    print('Waiting for failover')
-                if ha_tools.get_primary():
-                    # We have a new primary
-                    break
-            except ConnectionFailure:
-                pass
-
-            time.sleep(1)
-        else:
-            self.fail("Problem with test: No new primary after %s seconds"
-                % patience_seconds)
-
-        try:
-            # Trigger start_request on secondary_pool, which is becoming new
-            # primary
-            self.c.test.test.find_one()
-        except AutoReconnect:
-            # We've noticed the failover now
-            pass
-
-        # The old secondary is now primary
-        utils.assertReadFrom(self, self.c, secondary, PRIMARY)
-        self.assertTrue(self.c.in_request())
-        self.assertTrue(secondary_pool.in_request())
-
-    def tearDown(self):
-        self.c.close()
-        super(TestReplicaSetRequest, self).tearDown()
-
-
 class TestLastErrorDefaults(HATestCase):
 
     def setUp(self):
