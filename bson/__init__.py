@@ -496,7 +496,6 @@ if _use_c:
     _dict_to_bson = _cbson._dict_to_bson
 
 
-
 def decode_all(data, as_class=dict,
                tz_aware=True, uuid_subtype=OLD_UUID_SUBTYPE, compile_re=True):
     """Decode BSON data to multiple documents.
@@ -510,6 +509,8 @@ def decode_all(data, as_class=dict,
         documents
       - `tz_aware` (optional): if ``True``, return timezone-aware
         :class:`~datetime.datetime` instances
+      - `uuid_subtype` (optional): The BSON representation to use for UUIDs.
+        See the :mod:`bson.binary` module for all options.
       - `compile_re` (optional): if ``False``, don't attempt to compile
         BSON regular expressions into Python regular expressions. Return
         instances of :class:`~bson.regex.Regex` instead. Can avoid
@@ -561,6 +562,8 @@ def decode_iter(data, as_class=dict, tz_aware=True,
         documents
       - `tz_aware` (optional): if ``True``, return timezone-aware
         :class:`~datetime.datetime` instances
+      - `uuid_subtype` (optional): The BSON representation to use for UUIDs.
+        See the :mod:`bson.binary` module for all options.
       - `compile_re` (optional): if ``False``, don't attempt to compile
         BSON regular expressions into Python regular expressions. Return
         instances of
@@ -594,6 +597,8 @@ def decode_file_iter(file_obj, as_class=dict, tz_aware=True,
         documents
       - `tz_aware` (optional): if ``True``, return timezone-aware
         :class:`~datetime.datetime` instances
+      - `uuid_subtype` (optional): The BSON representation to use for UUIDs.
+        See the :mod:`bson.binary` module for all options.
       - `compile_re` (optional): if ``False``, don't attempt to compile
         BSON regular expressions into Python regular expressions. Return
         instances of
