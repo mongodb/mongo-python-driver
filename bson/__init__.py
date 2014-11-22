@@ -868,6 +868,8 @@ class BSON(bytes):
           - `check_keys` (optional): check if keys start with '$' or
             contain '.', raising :class:`~bson.errors.InvalidDocument` in
             either case
+          - `uuid_subtype` (optional): The BSON representation to use for
+            UUIDs. See the :mod:`bson.binary` module for all options.
         """
         return cls(_dict_to_bson(document, check_keys, uuid_subtype))
 
@@ -892,6 +894,8 @@ class BSON(bytes):
             document
           - `tz_aware` (optional): if ``True``, return timezone-aware
             :class:`~datetime.datetime` instances
+          - `uuid_subtype` (optional): The BSON representation to use for
+            UUIDs. See the :mod:`bson.binary` module for all options.
           - `compile_re` (optional): if ``False``, don't attempt to compile
             BSON regular expressions into Python regular expressions. Return
             instances of
