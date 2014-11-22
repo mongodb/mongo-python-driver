@@ -750,9 +750,10 @@ if _USE_C:
 
 def decode_iter(data, as_class=dict, tz_aware=True,
                 uuid_subtype=OLD_UUID_SUBTYPE, compile_re=True):
-    """Decode BSON data to multiple documents as a generator. Works
-    similarly to the decode_all function, but yields one document
-    at a time.
+    """Decode BSON data to multiple documents as a generator.
+
+    Works similarly to the decode_all function, but yields one document at a
+    time.
 
     `data` must be a string of concatenated, valid, BSON-encoded
     documents.
@@ -771,7 +772,7 @@ def decode_iter(data, as_class=dict, tz_aware=True,
         Python-incompatible regular expressions, for example from
         ``currentOp``
 
-    .. versionadded:: 2.5
+    .. versionadded:: 2.8
     """
     position = 0
     end = len(data) - 1
@@ -786,9 +787,10 @@ def decode_iter(data, as_class=dict, tz_aware=True,
 
 def decode_file_iter(file_obj, as_class=dict, tz_aware=True,
                      uuid_subtype=OLD_UUID_SUBTYPE, compile_re=True):
-    """Decode bson data from a file to multiple documents as a generator. Works
-    similarly to the decode_all function, but reads from the file object in
-    chunks and parses bson in chunks, yielding one document at a time.
+    """Decode bson data from a file to multiple documents as a generator.
+
+    Works similarly to the decode_all function, but reads from the file object
+    in chunks and parses bson in chunks, yielding one document at a time.
 
     :Parameters:
       - `file_obj`: A file object containing BSON data.
@@ -804,7 +806,7 @@ def decode_file_iter(file_obj, as_class=dict, tz_aware=True,
         Python-incompatible regular expressions, for example from
         ``currentOp``
 
-    .. versionadded:: 2.5
+    .. versionadded:: 2.8
     """
     while True:
         # Read size of next object.
