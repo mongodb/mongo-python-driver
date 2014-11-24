@@ -1088,20 +1088,12 @@ class TestMongoClientFailover(MockClientTest):
                 members=['a:1', 'b:2'],
                 mongoses=[],
                 host='a:1',
-                replicaSet='rs',
-                connect=False)
+                replicaSet='rs')
 
             # Set host-specific information so we can test whether it is reset.
             c.set_wire_version_range('a:1', 0, 1)
             c.set_wire_version_range('b:2', 0, 2)
-
-            connected(c)
             wait_until(lambda: len(c.nodes) == 2, 'connect')
-
-            sd = c._get_topology().get_server_by_address(('a', 1)).description
-            self.assertEqual(SERVER_TYPE.RSPrimary, sd.server_type)
-            self.assertEqual(0, sd.min_wire_version)
-            self.assertEqual(1, sd.max_wire_version)
 
             c.kill_host('a:1')
 
