@@ -15,7 +15,6 @@
 """Class to monitor a MongoDB server on a background thread."""
 
 import atexit
-import socket
 import threading
 import time
 import weakref
