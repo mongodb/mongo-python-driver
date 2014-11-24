@@ -691,14 +691,19 @@ class TestClient(IntegrationTest):
             list(cursor)
 
     def test_lazy_connect_w0(self):
+        # Ensure that connect-on-demand works when the first operation is
+        # an unacknowledged write. This exercises _writable_max_wire_version().
+
+        # Use a separate collection to avoid races where we're still
+        # completing an operation on a collection while the next test begins.
         client = rs_or_single_client(connect=False)
-        client.pymongo_test.test.insert({}, w=0)
+        client.test_lazy_connect_w0.test.insert({}, w=0)
 
         client = rs_or_single_client(connect=False)
-        client.pymongo_test.test.update({}, {'$set': {'x': 1}}, w=0)
+        client.test_lazy_connect_w0.test.update({}, {'$set': {'x': 1}}, w=0)
 
         client = rs_or_single_client(connect=False)
-        client.pymongo_test.test.remove(w=0)
+        client.test_lazy_connect_w0.test.remove(w=0)
 
     @client_context.require_no_mongos
     def test_exhaust_network_error(self):
