@@ -355,17 +355,16 @@ class TestSSL(unittest.TestCase):
             self.fail("Invalid hostname should have failed")
 
         if 'setName' in response:
-            try:
-                MongoClient(pair,
-                            replicaSet=response['setName'],
-                            w=len(response['hosts']),
-                            ssl=True,
-                            ssl_certfile=CLIENT_PEM,
-                            ssl_cert_reqs=ssl.CERT_REQUIRED,
-                            ssl_ca_certs=CA_PEM)
+            with self.assertRaises(ConnectionFailure):
+                with client_knobs(server_wait_time=0.1):
+                    connected(MongoClient(pair,
+                                          replicaSet=response['setName'],
+                                          ssl=True,
+                                          ssl_certfile=CLIENT_PEM,
+                                          ssl_cert_reqs=ssl.CERT_REQUIRED,
+                                          ssl_ca_certs=CA_PEM))
+
                 self.fail("Invalid hostname should have failed")
-            except CertificateError:
-                pass
 
     def test_mongodb_x509_auth(self):
         # Expects the server to be running with the server.pem, ca.pem
