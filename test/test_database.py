@@ -463,7 +463,10 @@ class TestDatabase(IntegrationTest):
         # "self.client" is logged in as root.
         auth_admin = self.client.admin
         try:
-            info = auth_admin.command('usersInfo', db_user)['users'][0]
+            auth_admin.add_user('test_default_roles', 'pass')
+            info = auth_admin.command(
+                'usersInfo', 'test_default_roles')['users'][0]
+
             self.assertEqual("root", info['roles'][0]['role'])
 
             # Read only "admin" user
@@ -471,6 +474,7 @@ class TestDatabase(IntegrationTest):
             info = auth_admin.command('usersInfo', 'ro-admin')['users'][0]
             self.assertEqual("readAnyDatabase", info['roles'][0]['role'])
         finally:
+            auth_admin.remove_user('test_default_roles')
             auth_admin.remove_user('ro-admin')
 
         # "Non-admin" user
