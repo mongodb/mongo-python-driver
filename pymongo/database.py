@@ -208,14 +208,17 @@ class Database(common.BaseObject):
         creation. :class:`~pymongo.errors.CollectionInvalid` will be
         raised if the collection already exists.
 
-        Options should be passed as keyword arguments to this
-        method. Any of the following options are valid:
+        Options should be passed as keyword arguments to this method. Supported
+        options vary with MongoDB release. Some examples include:
 
           - "size": desired initial size for the collection (in
             bytes). For capped collections this size is the max
             size of the collection.
           - "capped": if True, this is a capped collection
           - "max": maximum number of objects if capped (optional)
+
+        See the MongoDB documentation for a full list of supported options by
+        server version.
 
         :Parameters:
           - `name`: the name of the collection to create

@@ -976,7 +976,7 @@ class Collection(common.BaseObject):
           >>> my_collection.create_index([("mike", pymongo.DESCENDING)],
           ...                            background=True)
 
-        Valid options include:
+        Valid options include, but are not limited to:
 
           - `name`: custom name to use for this index - if none is
             given, a name will be generated
@@ -999,6 +999,9 @@ class Collection(common.BaseObject):
           - `dropDups` or `drop_dups` (**deprecated**): if ``True`` duplicate
             values are dropped during index creation when creating a unique
             index
+
+        See the MongoDB documentation for a full list of supported options by
+        server version.
 
         .. warning:: `dropDups` / `drop_dups` is no longer supported by
           MongoDB starting with server version 2.7.5. The option is silently
@@ -1111,7 +1114,8 @@ class Collection(common.BaseObject):
         ``None`` if the index is already cached.
 
         All optional index creation parameters should be passed as
-        keyword arguments to this method. Valid options include:
+        keyword arguments to this method. Valid options include, but are not
+        limited to:
 
           - `name`: custom name to use for this index - if none is
             given, a name will be generated
@@ -1134,6 +1138,9 @@ class Collection(common.BaseObject):
           - `dropDups` or `drop_dups` (**deprecated**): if ``True`` duplicate
             values are dropped during index creation when creating a unique
             index
+
+        See the MongoDB documentation for a full list of supported options by
+        server version.
 
         .. warning:: `dropDups` / `drop_dups` is no longer supported by
           MongoDB starting with server version 2.7.5. The option is silently
