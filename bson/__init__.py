@@ -781,7 +781,7 @@ def decode_iter(data, as_class=dict, tz_aware=True,
     position = 0
     end = len(data) - 1
     while position < end:
-        obj_size = struct.unpack("<i", data[position:position + 4])[0]
+        obj_size = _UNPACK_INT(data[position:position + 4])[0]
         elements = data[position:position + obj_size]
         position += obj_size
 
@@ -821,7 +821,7 @@ def decode_file_iter(file_obj, as_class=dict, tz_aware=True,
             break  # Finished with file normaly.
         elif len(size_data) != 4:
             raise InvalidBSON("cut off in middle of objsize")
-        obj_size = struct.unpack("<i", size_data)[0] - 4
+        obj_size = _UNPACK_INT(size_data)[0] - 4
         elements = size_data + file_obj.read(obj_size)
         yield _bson_to_dict(elements, as_class,
                             tz_aware, uuid_subtype, compile_re)
