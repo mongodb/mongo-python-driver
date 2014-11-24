@@ -32,7 +32,11 @@ sys.path[0:0] = [""]
 
 from pymongo.pool import Pool, PoolOptions, _closed
 from test import host, port, SkipTest, unittest, client_context
-from test.utils import get_pool, one, rs_or_single_client, connected, joinall
+from test.utils import (get_pool,
+                        joinall,
+                        delay,
+                        one,
+                        rs_or_single_client)
 
 
 @client_context.require_connection
@@ -341,20 +345,25 @@ class TestPooling(_TestPoolingBase):
 class TestPoolMaxSize(_TestPoolingBase):
     def test_max_pool_size(self):
         max_pool_size = 4
-        c = connected(rs_or_single_client(max_pool_size=max_pool_size))
-        cx_pool = get_pool(c)
+        c = rs_or_single_client(max_pool_size=max_pool_size)
+        collection = c[DB].test
+
+        # Need one document.
+        collection.remove()
+        collection.insert({})
 
         # nthreads had better be much larger than max_pool_size to ensure that
         # max_pool_size sockets are actually required at some point in this
         # test's execution.
+        cx_pool = get_pool(c)
         nthreads = 10
         threads = []
         lock = threading.Lock()
         self.n_passed = 0
 
         def f():
-            for _ in range(N):
-                c[DB].test.find_one()
+            for _ in range(5):
+                collection.find_one({'$where': delay(0.1)})
                 assert len(cx_pool.sockets) <= max_pool_size
 
             with lock:
@@ -371,17 +380,22 @@ class TestPoolMaxSize(_TestPoolingBase):
         self.assertEqual(max_pool_size, cx_pool._socket_semaphore.counter)
 
     def test_max_pool_size_none(self):
-        c = connected(rs_or_single_client(max_pool_size=None))
-        cx_pool = get_pool(c)
+        c = rs_or_single_client(max_pool_size=None)
+        collection = c[DB].test
 
+        # Need one document.
+        collection.remove()
+        collection.insert({})
+
+        cx_pool = get_pool(c)
         nthreads = 10
         threads = []
         lock = threading.Lock()
         self.n_passed = 0
 
         def f():
-            for _ in range(N):
-                c[DB].test.find_one()
+            for _ in range(5):
+                collection.find_one({'$where': delay(0.1)})
 
             with lock:
                 self.n_passed += 1
@@ -393,7 +407,7 @@ class TestPoolMaxSize(_TestPoolingBase):
 
         joinall(threads)
         self.assertEqual(nthreads, self.n_passed)
-        self.assertTrue(len(cx_pool.sockets) >= 1)
+        self.assertTrue(len(cx_pool.sockets) > 1)
 
     def test_max_pool_size_with_connection_failure(self):
         # The pool acquires its semaphore before attempting to connect; ensure
