@@ -26,7 +26,6 @@ from pymongo.errors import (ConfigurationError,
                             ConnectionFailure,
                             DuplicateKeyError,
                             ExceededMaxWaiters)
-from pymongo.server_selectors import writable_server_selector
 
 sys.path[0:0] = [""]
 
