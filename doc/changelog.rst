@@ -7,8 +7,8 @@ Changes in Version 2.8
 Version 2.8 is a major release that provides full support for MongoDB 2.8 and
 fixes a number of bugs.
 
-Special thanks to Don Mitchell, Ximing, Can Zhang, and Sergey Azovskov for
-their contributions to this release.
+Special thanks to Don Mitchell, Ximing, Can Zhang, Sergey Azovskov, and Heewa
+Barfchin for their contributions to this release.
 
 Highlights include:
 
@@ -19,6 +19,8 @@ Highlights include:
 - The :meth:`~pymongo.cursor.Cursor.count` method will use a hint if one
   has been provided through :meth:`~pymongo.cursor.Cursor.hint`.
 - A new socketKeepAlive option for the connection pool.
+- New generator based BSON decode functions, :func:`~bson.decode_iter`
+  and :func:`~bson.decode_file_iter`.
 - Internal changes to support alternative storage engines like wiredtiger.
 
 .. note:: There are a number of deprecations in this release for features that
