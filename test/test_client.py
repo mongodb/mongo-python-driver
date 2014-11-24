@@ -425,7 +425,8 @@ class TestClient(IntegrationTest):
                 db.test.find_one()
 
                 wait_until(
-                    lambda: all(s._monitor._thread.is_alive() for s in servers),
+                    lambda: all(s._monitor._thread.is_alive()
+                                for s in servers),
                     "restart monitor threads")
             except:
                 traceback.print_exc()  # Aid debugging.
@@ -537,8 +538,8 @@ class TestClient(IntegrationTest):
         self.assertEqual(None, naive.pymongo_test.test.find_one()["x"].tzinfo)
         self.assertEqual(utc, aware.pymongo_test.test.find_one()["x"].tzinfo)
         self.assertEqual(
-                aware.pymongo_test.test.find_one()["x"].replace(tzinfo=None),
-                naive.pymongo_test.test.find_one()["x"])
+            aware.pymongo_test.test.find_one()["x"].replace(tzinfo=None),
+            naive.pymongo_test.test.find_one()["x"])
 
     @client_context.require_ipv6
     def test_ipv6(self):
@@ -968,7 +969,7 @@ class TestClientLazyConnect(IntegrationTest):
             collection.insert([{'i': 0}])
 
         # Update doc 10 times.
-        def update(collection, i):
+        def update(collection, _):
             collection.update({}, {'$inc': {'i': 1}})
 
         def test(collection):
@@ -1101,13 +1102,15 @@ class TestMongoClientFailover(MockClientTest):
             self.assertRaises(AutoReconnect, c.db.collection.find_one)
 
             # The primary's description is reset.
-            sd_a = c._get_topology().get_server_by_address(('a', 1)).description
+            server_a = c._get_topology().get_server_by_address(('a', 1))
+            sd_a = server_a.description
             self.assertEqual(SERVER_TYPE.Unknown, sd_a.server_type)
             self.assertEqual(0, sd_a.min_wire_version)
             self.assertEqual(0, sd_a.max_wire_version)
 
             # ...but not the secondary's.
-            sd_b = c._get_topology().get_server_by_address(('b', 2)).description
+            server_b = c._get_topology().get_server_by_address(('b', 2))
+            sd_b = server_b.description
             self.assertEqual(SERVER_TYPE.RSSecondary, sd_b.server_type)
             self.assertEqual(0, sd_b.min_wire_version)
             self.assertEqual(2, sd_b.max_wire_version)
