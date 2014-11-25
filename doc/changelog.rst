@@ -54,8 +54,7 @@ are listed they must be members of the same replica set, or mongoses in the
 same sharded cluster.
 
 The client methods ``start_request``, ``in_request``, and ``end_request``
-are removed, and so is the ``auto_start_request`` option. See
-:doc:`/examples/requests`.
+are removed, and so is the ``auto_start_request`` option.
 
 The ``copy_database`` method is removed, see the
 :doc:`copy_database examples </examples/copydb>` for alternatives.
@@ -466,8 +465,8 @@ Important New Features:
   See the :doc:`python3` for more information.
 - Support for Gevent -
   See :doc:`examples/gevent` for more information.
-- Improved connection pooling -
-  See :doc:`examples/requests` for more information.
+- Improved connection pooling.
+  See `PYTHON-287 <https://jira.mongodb.org/browse/PYTHON-287>`_.
 
 .. warning::
 
@@ -1325,4 +1324,3 @@ Changes in Version 0.9.7
 
    python3
    examples/gevent
-   examples/requests

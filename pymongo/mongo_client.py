@@ -227,8 +227,7 @@ class MongoClient(common.BaseObject):
            The ``connect`` option is added.
 
            The ``start_request``, ``in_request``, and ``end_request`` methods
-           are removed, as well as the ``auto_start_request`` option. See
-           :doc:`/examples/requests`.
+           are removed, as well as the ``auto_start_request`` option.
 
            The ``copy_database`` method is removed, see the
            :doc:`copy_database examples </examples/copydb>` for alternatives.
