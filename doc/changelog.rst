@@ -54,7 +54,13 @@ are listed they must be members of the same replica set, or mongoses in the
 same sharded cluster.
 
 The client methods ``start_request``, ``in_request``, and ``end_request``
-are removed, and so is the ``auto_start_request`` option.
+are removed, and so is the ``auto_start_request`` option. Requests were
+designed to make read-your-writes consistency more likely with the ``w=0``
+write concern. Additionally, a thread in a request used the same member for
+all secondary reads in a replica set. To ensure read-your-writes consistency
+in PyMongo 3.0, do not override the default write concern with ``w=0``, and
+do not override the default :ref:`read preference <secondary-reads>` of
+PRIMARY.
 
 The ``copy_database`` method is removed, see the
 :doc:`copy_database examples </examples/copydb>` for alternatives.
