@@ -1046,13 +1046,16 @@ class TestMongoClientFailover(MockClientTest):
             c.disconnect()
             self.assertEqual(0, len(c.nodes))
 
-            c._get_topology().select_servers(writable_server_selector)
+            t = c._get_topology()
+            t.select_servers(writable_server_selector)  # Reconnect.
             self.assertEqual('b', c.host)
             self.assertEqual(2, c.port)
 
             # a:1 not longer in nodes.
             self.assertLess(len(c.nodes), 3)
-            wait_until(lambda: len(c.nodes) == 2, 'discover node "c"')
+
+            # c:3 is rediscovered.
+            t.select_server_by_address(('c', 3))
 
     def test_reconnect(self):
         # Verify the node list isn't forgotten during a network failure.
