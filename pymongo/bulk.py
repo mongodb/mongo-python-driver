@@ -82,16 +82,6 @@ def _make_error(index, code, errmsg, operation):
 def _merge_legacy(run, full_result, result, index):
     """Merge a result from a legacy opcode into the full results.
     """
-    # MongoDB 2.6 returns {'ok': 0, 'code': 2, ...} if the j write
-    # concern option is used with --nojournal or w > 1 is used with
-    # a standalone mongod instance. Raise immediately here for
-    # consistency when talking to older servers. Since these are
-    # configuration errors related to write concern the entire batch
-    # will fail.
-    note = result.get("jnote", result.get("wnote"))
-    if note:
-        raise OperationFailure(note, _BAD_VALUE, result)
-
     affected = result.get('n', 0)
 
     errmsg = result.get("errmsg", result.get("err", ""))
@@ -111,13 +101,25 @@ def _merge_legacy(run, full_result, result, index):
 
     if run.op_type == _INSERT:
         full_result['nInserted'] += 1
+
     elif run.op_type == _UPDATE:
         if "upserted" in result:
             doc = {u"index": run.index(index), u"_id": result["upserted"]}
             full_result["upserted"].append(doc)
             full_result['nUpserted'] += affected
+        # Versions of MongoDB before 2.6 don't return the _id for an
+        # upsert if _id is not an ObjectId.
+        elif result.get("updatedExisting") == False and affected == 1:
+            op = run.ops[index]
+            # If _id is in both the update document *and* the query spec
+            # the update document _id takes precedence.
+            _id = op['u'].get('_id', op['q'].get('_id'))
+            doc = {u"index": run.index(index), u"_id": _id}
+            full_result["upserted"].append(doc)
+            full_result['nUpserted'] += affected
         else:
             full_result['nMatched'] += affected
+
     elif run.op_type == _DELETE:
         full_result['nRemoved'] += affected
 

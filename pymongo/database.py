@@ -26,7 +26,9 @@ from pymongo.errors import (CollectionInvalid,
                             ConfigurationError,
                             InvalidName,
                             OperationFailure)
-from pymongo import read_preferences as rp
+from pymongo.read_preferences import (modes,
+                                      secondary_ok_commands,
+                                      ReadPreference)
 
 
 def _check_name(name):
@@ -245,6 +247,16 @@ class Database(common.BaseObject):
 
         return Collection(self, name, **opts)
 
+    def _apply_incoming_manipulators(self, son, collection):
+        for manipulator in self.__incoming_manipulators:
+            son = manipulator.transform_incoming(son, collection)
+        return son
+
+    def _apply_incoming_copying_manipulators(self, son, collection):
+        for manipulator in self.__incoming_copying_manipulators:
+            son = manipulator.transform_incoming(son, collection)
+        return son
+
     def _fix_incoming(self, son, collection):
         """Apply manipulators to an incoming SON object before it gets stored.
 
@@ -252,10 +264,8 @@ class Database(common.BaseObject):
           - `son`: the son object going into the database
           - `collection`: the collection the son object is being saved in
         """
-        for manipulator in self.__incoming_manipulators:
-            son = manipulator.transform_incoming(son, collection)
-        for manipulator in self.__incoming_copying_manipulators:
-            son = manipulator.transform_incoming(son, collection)
+        son = self._apply_incoming_manipulators(son, collection)
+        son = self._apply_incoming_copying_manipulators(son, collection)
         return son
 
     def _fix_outgoing(self, son, collection):
@@ -282,7 +292,7 @@ class Database(common.BaseObject):
 
         command_name = command.keys()[0].lower()
         must_use_master = kwargs.pop('_use_master', False)
-        if command_name not in rp.secondary_ok_commands:
+        if command_name not in secondary_ok_commands:
             must_use_master = True
 
         # Special-case: mapreduce can go to secondaries only if inline
@@ -323,13 +333,13 @@ class Database(common.BaseObject):
         command.update(kwargs)
 
         # Warn if must_use_master will override read_preference.
-        if (extra_opts['read_preference'] != rp.ReadPreference.PRIMARY and
+        if (extra_opts['read_preference'] != ReadPreference.PRIMARY and
                 extra_opts['_must_use_master']):
             warnings.warn("%s does not support %s read preference "
                           "and will be routed to the primary instead." %
                           (command_name,
-                           rp.modes[extra_opts['read_preference']]),
-                          UserWarning)
+                           modes[extra_opts['read_preference']]),
+                          UserWarning, stacklevel=3)
 
         cursor = self["$cmd"].find(command, **extra_opts).limit(-1)
         for doc in cursor:
@@ -466,7 +476,8 @@ class Database(common.BaseObject):
 
         self.__connection._purge_index(self.__name, name)
 
-        self.command("drop", unicode(name), allowable_errors=["ns not found"])
+        self.command("drop", unicode(name), allowable_errors=["ns not found"],
+                     read_preference=ReadPreference.PRIMARY)
 
     def validate_collection(self, name_or_collection,
                             scandata=False, full=False):
@@ -504,7 +515,8 @@ class Database(common.BaseObject):
                             "%s or Collection" % (basestring.__name__,))
 
         result = self.command("validate", unicode(name),
-                              scandata=scandata, full=full)
+                              scandata=scandata, full=full,
+                              read_preference=ReadPreference.PRIMARY)
 
         valid = True
         # Pre 1.9 results
@@ -553,7 +565,8 @@ class Database(common.BaseObject):
 
         .. mongodoc:: profiling
         """
-        result = self.command("profile", -1)
+        result = self.command("profile", -1,
+                              read_preference=ReadPreference.PRIMARY)
 
         assert result["was"] >= 0 and result["was"] <= 2
         return result["was"]
@@ -593,9 +606,11 @@ class Database(common.BaseObject):
             raise TypeError("slow_ms must be an integer")
 
         if slow_ms is not None:
-            self.command("profile", level, slowms=slow_ms)
+            self.command("profile", level, slowms=slow_ms,
+                         read_preference=ReadPreference.PRIMARY)
         else:
-            self.command("profile", level)
+            self.command("profile", level,
+                         read_preference=ReadPreference.PRIMARY)
 
     def profiling_info(self):
         """Returns a list containing current profiling information.
@@ -610,7 +625,8 @@ class Database(common.BaseObject):
         Return None if the last operation was error-free. Otherwise return the
         error that occurred.
         """
-        error = self.command("getlasterror")
+        error = self.command("getlasterror",
+                             read_preference=ReadPreference.PRIMARY)
         error_msg = error.get("err", "")
         if error_msg is None:
             return None
@@ -623,7 +639,8 @@ class Database(common.BaseObject):
 
         Returns a SON object with status information.
         """
-        return self.command("getlasterror")
+        return self.command("getlasterror",
+                            read_preference=ReadPreference.PRIMARY)
 
     def previous_error(self):
         """Get the most recent error to have occurred on this database.
@@ -632,7 +649,8 @@ class Database(common.BaseObject):
         `Database.reset_error_history`. Returns None if no such errors have
         occurred.
         """
-        error = self.command("getpreverror")
+        error = self.command("getpreverror",
+                             read_preference=ReadPreference.PRIMARY)
         if error.get("err", 0) is None:
             return None
         return error
@@ -643,7 +661,8 @@ class Database(common.BaseObject):
         Calls to `Database.previous_error` will only return errors that have
         occurred since the most recent call to this method.
         """
-        self.command("reseterror")
+        self.command("reseterror",
+                     read_preference=ReadPreference.PRIMARY)
 
     def __iter__(self):
         return self
@@ -697,7 +716,8 @@ class Database(common.BaseObject):
         else:
             command_name = "updateUser"
 
-        self.command(command_name, name, **opts)
+        self.command(command_name, name,
+                     read_preference=ReadPreference.PRIMARY, **opts)
 
     def _legacy_add_user(self, name, password, read_only, **kwargs):
         """Uses v1 system to add users, i.e. saving to system.users.
@@ -715,6 +735,11 @@ class Database(common.BaseObject):
             # First admin user add fails gle in MongoDB >= 2.1.2
             # See SERVER-4225 for more information.
             if 'login' in str(exc):
+                pass
+            # First admin user add fails gle from mongos 2.0.x
+            # and 2.2.x.
+            elif (exc.details and
+                    'getlasterror' in exc.details.get('note', '')):
                 pass
             else:
                 raise
@@ -763,21 +788,22 @@ class Database(common.BaseObject):
                                          "read_only and roles together")
 
         try:
-            uinfo = self.command("usersInfo", name)
+            uinfo = self.command("usersInfo", name,
+                                 read_preference=ReadPreference.PRIMARY)
+            self._create_or_update_user(
+                (not uinfo["users"]), name, password, read_only, **kwargs)
         except OperationFailure, exc:
             # MongoDB >= 2.5.3 requires the use of commands to manage
-            # users. "No such command" error didn't return an error
-            # code (59) before MongoDB 2.4.7 so we assume that an error
-            # code of None means the userInfo command doesn't exist and
-            # we should fall back to the legacy add user code.
-            if exc.code in (59, None):
+            # users.
+            if exc.code in common.COMMAND_NOT_FOUND_CODES:
                 self._legacy_add_user(name, password, read_only, **kwargs)
-                return
-            raise
-
-        # Create the user if not found in uinfo, otherwise update one.
-        self._create_or_update_user(
-            (not uinfo["users"]), name, password, read_only, **kwargs)
+            # Unauthorized. MongoDB >= 2.7.1 has a narrow localhost exception,
+            # and we must add a user before sending commands.
+            elif exc.code == 13:
+                self._create_or_update_user(
+                    True, name, password, read_only, **kwargs)
+            else:
+                raise
 
     def remove_user(self, name):
         """Remove user `name` from this :class:`Database`.
@@ -793,10 +819,11 @@ class Database(common.BaseObject):
 
         try:
             self.command("dropUser", name,
+                         read_preference=ReadPreference.PRIMARY,
                          writeConcern=self._get_wc_override())
         except OperationFailure, exc:
             # See comment in add_user try / except above.
-            if exc.code in (59, None):
+            if exc.code in common.COMMAND_NOT_FOUND_CODES:
                 self.system.users.remove({"user": name},
                                          **self._get_wc_override())
                 return
@@ -930,7 +957,9 @@ class Database(common.BaseObject):
         if not isinstance(code, Code):
             code = Code(code)
 
-        result = self.command("$eval", code, args=args)
+        result = self.command("$eval", code,
+                              read_preference=ReadPreference.PRIMARY,
+                              args=args)
         return result.get("retval", None)
 
     def __call__(self, *args, **kwargs):

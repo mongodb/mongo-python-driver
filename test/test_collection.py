@@ -36,7 +36,7 @@ from bson.objectid import ObjectId
 from bson.py3compat import b
 from bson.son import SON, RE_TYPE
 from pymongo import (ASCENDING, DESCENDING, GEO2D,
-                     GEOHAYSTACK, GEOSPHERE, HASHED)
+                     GEOHAYSTACK, GEOSPHERE, HASHED, TEXT)
 from pymongo import message as message_module
 from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
@@ -51,8 +51,8 @@ from pymongo.errors import (DocumentTooLarge,
                             OperationFailure,
                             WTimeoutError)
 from test.test_client import get_client
-from test.utils import (is_mongos, joinall, enable_text_search, get_pool,
-                        oid_generated_on_client)
+from test.utils import (catch_warnings, enable_text_search,
+                        get_pool, is_mongos, joinall, oid_generated_on_client)
 from test import (qcheck,
                   version)
 
@@ -226,19 +226,21 @@ class TestCollection(unittest.TestCase):
     def test_deprecated_ttl_index_kwarg(self):
         db = self.db
 
-        # In Python 2.6+ we could use the catch_warnings context
-        # manager to test this warning nicely. As we can't do that
-        # we must test raising errors before the ignore filter is applied.
-        warnings.simplefilter("error", DeprecationWarning)
+        ctx = catch_warnings()
         try:
+            warnings.simplefilter("error", DeprecationWarning)
             self.assertRaises(DeprecationWarning, lambda:
                               db.test.ensure_index("goodbye", ttl=10))
         finally:
-            warnings.resetwarnings()
-            warnings.simplefilter("ignore")
+            ctx.exit()
 
-        self.assertEqual("goodbye_1",
-                         db.test.ensure_index("goodbye", ttl=10))
+        ctx = catch_warnings()
+        try:
+            warnings.simplefilter("ignore", DeprecationWarning)
+            self.assertEqual("goodbye_1",
+                             db.test.ensure_index("goodbye", ttl=10))
+        finally:
+            ctx.exit()
         self.assertEqual(None, db.test.ensure_index("goodbye"))
 
     def test_ensure_unique_index_threaded(self):
@@ -417,7 +419,7 @@ class TestCollection(unittest.TestCase):
 
         db = self.db
         db.test.drop_indexes()
-        self.assertEqual("t_text", db.test.create_index([("t", "text")]))
+        self.assertEqual("t_text", db.test.create_index([("t", TEXT)]))
         index_info = db.test.index_information()["t_text"]
         self.assertTrue("weights" in index_info)
 
@@ -601,13 +603,20 @@ class TestCollection(unittest.TestCase):
         db = self.db
         db.drop_collection("test")
         db.test.save({})
-        self.assertEqual(db.test.options(), {})
+        expected = {}
+        if version.at_least(db.connection, (2, 7, 0)):
+            # usePowerOf2Sizes server default
+            expected["flags"] = 1
+        self.assertEqual(db.test.options(), expected)
         self.assertEqual(db.test.doesnotexist.options(), {})
 
         db.drop_collection("test")
         if version.at_least(db.connection, (1, 9)):
             db.create_collection("test", capped=True, size=4096)
-            self.assertEqual(db.test.options(), {"capped": True, 'size': 4096})
+            result = db.test.options()
+            # mongos 2.2.x adds an $auth field when auth is enabled.
+            result.pop('$auth', None)
+            self.assertEqual(result, {"capped": True, 'size': 4096})
         else:
             db.create_collection("test", capped=True)
             self.assertEqual(db.test.options(), {"capped": True})
@@ -853,10 +862,15 @@ class TestCollection(unittest.TestCase):
         )
 
         # Misconfigured value for safe
-        self.assertRaises(
-            TypeError,
-            lambda: db.test.insert([{'i': 2}] * 2, safe=1),
-        )
+        ctx = catch_warnings()
+        try:
+            warnings.simplefilter("ignore", DeprecationWarning)
+            self.assertRaises(
+                TypeError,
+                lambda: db.test.insert([{'i': 2}] * 2, safe=1),
+            )
+        finally:
+            ctx.exit()
 
     def test_insert_iterables(self):
         db = self.db
@@ -979,10 +993,16 @@ class TestCollection(unittest.TestCase):
         db.test.insert({"_id": 2, "x": 2})
 
         # No error
-        db.test.insert({"_id": 1, "x": 1}, safe=False)
-        db.test.save({"_id": 1, "x": 1}, safe=False)
-        db.test.insert({"_id": 2, "x": 2}, safe=False)
-        db.test.save({"_id": 2, "x": 2}, safe=False)
+        ctx = catch_warnings()
+        try:
+            warnings.simplefilter("ignore", DeprecationWarning)
+            db.test.insert({"_id": 1, "x": 1}, safe=False)
+            db.test.save({"_id": 1, "x": 1}, safe=False)
+            db.test.insert({"_id": 2, "x": 2}, safe=False)
+            db.test.save({"_id": 2, "x": 2}, safe=False)
+        finally:
+            ctx.exit()
+
         db.test.insert({"_id": 1, "x": 1}, w=0)
         db.test.save({"_id": 1, "x": 1}, w=0)
         db.test.insert({"_id": 2, "x": 2}, w=0)
@@ -1330,8 +1350,9 @@ class TestCollection(unittest.TestCase):
                 self.fail("WTimeoutError was not raised")
 
         # can't use fsync and j options together
-        self.assertRaises(OperationFailure, self.db.test.insert,
-                          {"_id": 1}, j=True, fsync=True)
+        if version.at_least(self.client, (1, 8, 2)):
+            self.assertRaises(OperationFailure, self.db.test.insert,
+                              {"_id": 1}, j=True, fsync=True)
 
     def test_manual_last_error(self):
         self.db.test.save({"x": 1}, w=0)
@@ -2064,7 +2085,16 @@ class TestCollection(unittest.TestCase):
     # (Shame on me)
     def test_bad_encode(self):
         c = self.db.test
+        c.drop()
         self.assertRaises(InvalidDocument, c.save, {"x": c})
+
+        class BadGetAttr(dict):
+            def __getattr__(self, name):
+                pass
+
+        bad = BadGetAttr([('foo', 'bar')])
+        c.insert({'bad': bad})
+        self.assertEqual('bar', c.find_one()['bad']['foo'])
 
     def test_bad_dbref(self):
         c = self.db.test
@@ -2194,53 +2224,71 @@ class TestCollection(unittest.TestCase):
                                     as_class=ExtendedDict)
         self.assertTrue(isinstance(result, ExtendedDict))
 
+    def test_update_backward_compat(self):
+        # MongoDB versions >= 2.6.0 don't return the updatedExisting field
+        # and return upsert _id in an array subdocument. This test should
+        # pass regardless of server version or type (mongod/s).
+        c = self.db.test
+        c.drop()
+        oid = ObjectId()
+        res = c.update({'_id': oid}, {'$set': {'a': 'a'}}, upsert=True)
+        self.assertFalse(res.get('updatedExisting'))
+        self.assertEqual(oid, res.get('upserted'))
+
+        res = c.update({'_id': oid}, {'$set': {'b': 'b'}})
+        self.assertTrue(res.get('updatedExisting'))
+
     def test_find_and_modify_with_sort(self):
         c = self.db.test
         c.drop()
         for j in xrange(5):
             c.insert({'j': j, 'i': 0})
 
-        sort={'j': DESCENDING}
-        self.assertEqual(4, c.find_and_modify({},
-                                              {'$inc': {'i': 1}},
-                                              sort=sort)['j'])
-        sort={'j': ASCENDING}
-        self.assertEqual(0, c.find_and_modify({},
-                                              {'$inc': {'i': 1}},
-                                              sort=sort)['j'])
-        sort=[('j', DESCENDING)]
-        self.assertEqual(4, c.find_and_modify({},
-                                              {'$inc': {'i': 1}},
-                                              sort=sort)['j'])
-        sort=[('j', ASCENDING)]
-        self.assertEqual(0, c.find_and_modify({},
-                                              {'$inc': {'i': 1}},
-                                              sort=sort)['j'])
-        sort=SON([('j', DESCENDING)])
-        self.assertEqual(4, c.find_and_modify({},
-                                              {'$inc': {'i': 1}},
-                                              sort=sort)['j'])
-        sort=SON([('j', ASCENDING)])
-        self.assertEqual(0, c.find_and_modify({},
-                                              {'$inc': {'i': 1}},
-                                              sort=sort)['j'])
+        ctx = catch_warnings()
         try:
-            from collections import OrderedDict
-            sort=OrderedDict([('j', DESCENDING)])
+            warnings.simplefilter("ignore", DeprecationWarning)
+            sort={'j': DESCENDING}
             self.assertEqual(4, c.find_and_modify({},
                                                   {'$inc': {'i': 1}},
                                                   sort=sort)['j'])
-            sort=OrderedDict([('j', ASCENDING)])
+            sort={'j': ASCENDING}
             self.assertEqual(0, c.find_and_modify({},
                                                   {'$inc': {'i': 1}},
                                                   sort=sort)['j'])
-        except ImportError:
-            pass
-        # Test that a standard dict with two keys is rejected.
-        sort={'j': DESCENDING, 'foo': DESCENDING}
-        self.assertRaises(TypeError, c.find_and_modify, {},
-                                                         {'$inc': {'i': 1}},
-                                                         sort=sort)
+            sort=[('j', DESCENDING)]
+            self.assertEqual(4, c.find_and_modify({},
+                                                  {'$inc': {'i': 1}},
+                                                  sort=sort)['j'])
+            sort=[('j', ASCENDING)]
+            self.assertEqual(0, c.find_and_modify({},
+                                                  {'$inc': {'i': 1}},
+                                                  sort=sort)['j'])
+            sort=SON([('j', DESCENDING)])
+            self.assertEqual(4, c.find_and_modify({},
+                                                  {'$inc': {'i': 1}},
+                                                  sort=sort)['j'])
+            sort=SON([('j', ASCENDING)])
+            self.assertEqual(0, c.find_and_modify({},
+                                                  {'$inc': {'i': 1}},
+                                                  sort=sort)['j'])
+            try:
+                from collections import OrderedDict
+                sort=OrderedDict([('j', DESCENDING)])
+                self.assertEqual(4, c.find_and_modify({},
+                                                      {'$inc': {'i': 1}},
+                                                      sort=sort)['j'])
+                sort=OrderedDict([('j', ASCENDING)])
+                self.assertEqual(0, c.find_and_modify({},
+                                                      {'$inc': {'i': 1}},
+                                                      sort=sort)['j'])
+            except ImportError:
+                pass
+            # Test that a standard dict with two keys is rejected.
+            sort={'j': DESCENDING, 'foo': DESCENDING}
+            self.assertRaises(TypeError, c.find_and_modify,
+                              {}, {'$inc': {'i': 1}}, sort=sort)
+        finally:
+            ctx.exit()
 
     def test_find_with_nested(self):
         if not version.at_least(self.db.connection, (2, 0, 0)):

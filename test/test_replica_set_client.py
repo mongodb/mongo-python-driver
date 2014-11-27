@@ -45,13 +45,14 @@ from pymongo.errors import (AutoReconnect,
                             ConnectionFailure,
                             InvalidName,
                             OperationFailure, InvalidOperation)
+from pymongo import auth
 from test import version, port, pair
 from test.pymongo_mocks import MockReplicaSetClient
 from test.utils import (
     delay, assertReadFrom, assertReadFromAll, read_from_which_host,
     remove_all_users, assertRaisesExactly, TestRequestMixin, one,
     server_started_with_auth, pools_from_rs_client, get_pool,
-    _TestLazyConnectMixin)
+    _TestLazyConnectMixin, _TestExhaustCursorMixin)
 
 
 class TestReplicaSetClientAgainstStandalone(unittest.TestCase):
@@ -260,7 +261,6 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
                                  read_preference=ReadPreference.SECONDARY,
                                  tag_sets=copy.deepcopy(tag_sets),
                                  secondary_acceptable_latency_ms=77)
-        c.admin.command('ping')
         self.assertEqual(c.primary, self.primary)
         self.assertEqual(c.hosts, self.hosts)
         self.assertEqual(c.arbiters, self.arbiters)
@@ -1127,6 +1127,42 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
 
         self.assertFalse(client.alive())
 
+    def test_auth_network_error(self):
+        # Make sure there's no semaphore leak if we get a network error
+        # when authenticating a new socket with cached credentials.
+        auth_client = self._get_client()
+        if not server_started_with_auth(auth_client):
+            raise SkipTest('Authentication is not enabled on server')
+
+        auth_client.admin.add_user('admin', 'password')
+        auth_client.admin.authenticate('admin', 'password')
+        try:
+            # Get a client with one socket so we detect if it's leaked.
+            c = self._get_client(max_pool_size=1, waitQueueTimeoutMS=1)
+
+            # Simulate an authenticate() call on a different socket.
+            credentials = auth._build_credentials_tuple(
+                'MONGODB-CR', 'admin',
+                unicode('admin'), unicode('password'),
+                {})
+
+            c._cache_credentials('test', credentials, connect=False)
+
+            # Cause a network error on the actual socket.
+            pool = get_pool(c)
+            socket_info = one(pool.sockets)
+            socket_info.sock.close()
+
+            # In __check_auth, the client authenticates its socket with the
+            # new credential, but gets a socket.error. Should be reraised as
+            # AutoReconnect.
+            self.assertRaises(AutoReconnect, c.test.collection.find_one)
+
+            # No semaphore leak, the pool is allowed to make a new socket.
+            c.test.collection.find_one()
+        finally:
+            remove_all_users(auth_client.admin)
+
 
 class TestReplicaSetWireVersion(unittest.TestCase):
     def test_wire_version(self):
@@ -1237,6 +1273,13 @@ class TestReplicaSetClientMaxWriteBatchSize(unittest.TestCase):
         c.refresh()
         self.assertEqual(c.max_write_batch_size, 2)
 
+
+class TestReplicaSetClientExhaustCursor(
+        _TestExhaustCursorMixin,
+        TestReplicaSetClientBase):
+
+    # Base class implements _get_client already.
+    pass
 
 if __name__ == "__main__":
     unittest.main()

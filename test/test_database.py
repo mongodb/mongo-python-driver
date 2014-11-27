@@ -45,10 +45,11 @@ from pymongo.errors import (CollectionInvalid,
                             OperationFailure)
 from pymongo.son_manipulator import (AutoReference,
                                      NamespaceInjector,
+                                     SONManipulator,
                                      ObjectIdShuffler)
 from test import version
-from test.utils import (get_command_line, is_mongos,
-                        remove_all_users, server_started_with_auth)
+from test.utils import (catch_warnings, get_command_line,
+                        is_mongos, remove_all_users, server_started_with_auth)
 from test.test_client import get_client
 
 
@@ -110,7 +111,14 @@ class TestDatabase(unittest.TestCase):
         db.drop_collection("test.foo")
         db.create_collection("test.foo")
         self.assertTrue(u"test.foo" in db.collection_names())
-        self.assertEqual(db.test.foo.options(), {})
+        expected = {}
+        if version.at_least(self.client, (2, 7, 0)):
+            # usePowerOf2Sizes server default
+            expected["flags"] = 1
+        result = db.test.foo.options()
+        # mongos 2.2.x adds an $auth field when auth is enabled.
+        result.pop('$auth', None)
+        self.assertEqual(result, expected)
         self.assertRaises(CollectionInvalid, db.create_collection, "test.foo")
 
     def test_collection_names(self):
@@ -368,15 +376,15 @@ class TestDatabase(unittest.TestCase):
                           "user", 'password', True, roles=['read'])
 
         if version.at_least(self.client, (2, 5, 3, -1)):
-            warnings.simplefilter("error", DeprecationWarning)
+            ctx = catch_warnings()
             try:
+                warnings.simplefilter("error", DeprecationWarning)
                 self.assertRaises(DeprecationWarning, db.add_user,
                                   "user", "password")
                 self.assertRaises(DeprecationWarning, db.add_user,
                                   "user", "password", True)
             finally:
-                warnings.resetwarnings()
-                warnings.simplefilter("ignore")
+                ctx.exit()
 
             self.assertRaises(ConfigurationError, db.add_user,
                               "user", "password", digestPassword=True)
@@ -601,8 +609,8 @@ class TestDatabase(unittest.TestCase):
     def test_authenticate_multiple(self):
         client = get_client()
         if (is_mongos(client) and not
-            version.at_least(self.client, (2, 0, 0))):
-            raise SkipTest("Auth with sharding requires MongoDB >= 2.0.0")
+                version.at_least(self.client, (2, 2, 0))):
+            raise SkipTest("Need mongos >= 2.2.0")
         if not server_started_with_auth(client):
             raise SkipTest("Authentication is not enabled on server")
 
@@ -947,18 +955,18 @@ class TestDatabase(unittest.TestCase):
             self.fail("_check_command_response didn't raise OperationFailure")
 
     def test_command_read_pref_warning(self):
-        warnings.simplefilter("error", UserWarning)
+        ctx = catch_warnings()
         try:
+            warnings.simplefilter("error", UserWarning)
             self.assertRaises(UserWarning, self.client.pymongo_test.command,
                               'ping', read_preference=ReadPreference.SECONDARY)
             try:
-                self.client.pymongo_test.command(
-                    'dbStats', read_preference=ReadPreference.SECONDARY)
+                self.client.pymongo_test.command('dbStats',
+                    read_preference=ReadPreference.SECONDARY_PREFERRED)
             except UserWarning:
                 self.fail("Shouldn't have raised UserWarning.")
         finally:
-            warnings.resetwarnings()
-            warnings.simplefilter("ignore")
+            ctx.exit()
 
     def test_command_max_time_ms(self):
         if not version.at_least(self.client, (2, 5, 3, -1)):
@@ -988,6 +996,29 @@ class TestDatabase(unittest.TestCase):
             self.client.admin.command("configureFailPoint",
                                       "maxTimeAlwaysTimeOut",
                                       mode="off")
+
+    def test_object_to_dict_transformer(self):
+        # PYTHON-709: Some users rely on their custom SONManipulators to run
+        # before any other checks, so they can insert non-dict objects and
+        # have them dictified before the _id is inserted or any other
+        # processing.
+        class Thing(object):
+            def __init__(self, value):
+                self.value = value
+
+        class ThingTransformer(SONManipulator):
+            def transform_incoming(self, thing, collection):
+                return {'value': thing.value}
+
+        db = self.client.foo
+        db.add_son_manipulator(ThingTransformer())
+        t = Thing('value')
+
+        db.test.remove()
+        db.test.insert([t])
+        out = db.test.find_one()
+        self.assertEqual('value', out.get('value'))
+
 
 
 if __name__ == "__main__":

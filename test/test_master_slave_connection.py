@@ -20,6 +20,8 @@ import sys
 import threading
 import time
 import unittest
+import warnings
+
 sys.path[0:0] = [""]
 
 from nose.plugins.skip import SkipTest
@@ -35,7 +37,7 @@ from pymongo.mongo_client import MongoClient
 from pymongo.collection import Collection
 from pymongo.master_slave_connection import MasterSlaveConnection
 from test import host, port, host2, port2, host3, port3
-from test.utils import TestRequestMixin, get_pool
+from test.utils import TestRequestMixin, catch_warnings, get_pool
 
 
 class TestMasterSlaveConnection(unittest.TestCase, TestRequestMixin):
@@ -363,7 +365,7 @@ class TestMasterSlaveConnection(unittest.TestCase, TestRequestMixin):
 
     def test_kill_cursor_explicit(self):
         c = self.client
-        c.slave_okay = True
+        c.read_preference = ReadPreference.SECONDARY_PREFERRED
         db = c.pymongo_test
 
         test = db.master_slave_test_kill_cursor_explicit
@@ -412,60 +414,65 @@ class TestMasterSlaveConnection(unittest.TestCase, TestRequestMixin):
         self.assertRaises(OperationFailure, lambda: list(cursor2))
 
     def test_base_object(self):
-        c = self.client
-        self.assertFalse(c.slave_okay)
-        self.assertTrue(bool(c.read_preference))
-        self.assertTrue(c.safe)
-        self.assertEqual({}, c.get_lasterror_options())
-        db = c.pymongo_test
-        self.assertFalse(db.slave_okay)
-        self.assertTrue(bool(c.read_preference))
-        self.assertTrue(db.safe)
-        self.assertEqual({}, db.get_lasterror_options())
-        coll = db.test
-        coll.drop()
-        self.assertFalse(coll.slave_okay)
-        self.assertTrue(bool(c.read_preference))
-        self.assertTrue(coll.safe)
-        self.assertEqual({}, coll.get_lasterror_options())
-        cursor = coll.find()
-        self.assertFalse(cursor._Cursor__slave_okay)
-        self.assertTrue(bool(cursor._Cursor__read_preference))
+        ctx = catch_warnings()
+        try:
+            warnings.simplefilter("ignore", DeprecationWarning)
+            c = self.client
+            self.assertFalse(c.slave_okay)
+            self.assertTrue(bool(c.read_preference))
+            self.assertTrue(c.safe)
+            self.assertEqual({}, c.get_lasterror_options())
+            db = c.pymongo_test
+            self.assertFalse(db.slave_okay)
+            self.assertTrue(bool(c.read_preference))
+            self.assertTrue(db.safe)
+            self.assertEqual({}, db.get_lasterror_options())
+            coll = db.test
+            coll.drop()
+            self.assertFalse(coll.slave_okay)
+            self.assertTrue(bool(c.read_preference))
+            self.assertTrue(coll.safe)
+            self.assertEqual({}, coll.get_lasterror_options())
+            cursor = coll.find()
+            self.assertFalse(cursor._Cursor__slave_okay)
+            self.assertTrue(bool(cursor._Cursor__read_preference))
 
-        w = 1 + len(self.slaves)
-        wtimeout=10000 # Wait 10 seconds for replication to complete
-        c.set_lasterror_options(w=w, wtimeout=wtimeout)
-        self.assertFalse(c.slave_okay)
-        self.assertTrue(bool(c.read_preference))
-        self.assertTrue(c.safe)
-        self.assertEqual({'w': w, 'wtimeout': wtimeout}, c.get_lasterror_options())
-        db = c.pymongo_test
-        self.assertFalse(db.slave_okay)
-        self.assertTrue(bool(c.read_preference))
-        self.assertTrue(db.safe)
-        self.assertEqual({'w': w, 'wtimeout': wtimeout}, db.get_lasterror_options())
-        coll = db.test
-        self.assertFalse(coll.slave_okay)
-        self.assertTrue(bool(c.read_preference))
-        self.assertTrue(coll.safe)
-        self.assertEqual({'w': w, 'wtimeout': wtimeout},
-                         coll.get_lasterror_options())
-        cursor = coll.find()
-        self.assertFalse(cursor._Cursor__slave_okay)
-        self.assertTrue(bool(cursor._Cursor__read_preference))
+            w = 1 + len(self.slaves)
+            wtimeout=10000 # Wait 10 seconds for replication to complete
+            c.set_lasterror_options(w=w, wtimeout=wtimeout)
+            self.assertFalse(c.slave_okay)
+            self.assertTrue(bool(c.read_preference))
+            self.assertTrue(c.safe)
+            self.assertEqual({'w': w, 'wtimeout': wtimeout}, c.get_lasterror_options())
+            db = c.pymongo_test
+            self.assertFalse(db.slave_okay)
+            self.assertTrue(bool(c.read_preference))
+            self.assertTrue(db.safe)
+            self.assertEqual({'w': w, 'wtimeout': wtimeout}, db.get_lasterror_options())
+            coll = db.test
+            self.assertFalse(coll.slave_okay)
+            self.assertTrue(bool(c.read_preference))
+            self.assertTrue(coll.safe)
+            self.assertEqual({'w': w, 'wtimeout': wtimeout},
+                             coll.get_lasterror_options())
+            cursor = coll.find()
+            self.assertFalse(cursor._Cursor__slave_okay)
+            self.assertTrue(bool(cursor._Cursor__read_preference))
 
-        coll.insert({'foo': 'bar'})
-        self.assertEqual(1, coll.find({'foo': 'bar'}).count())
-        self.assertTrue(coll.find({'foo': 'bar'}))
-        coll.remove({'foo': 'bar'})
-        self.assertEqual(0, coll.find({'foo': 'bar'}).count())
+            coll.insert({'foo': 'bar'})
+            self.assertEqual(1, coll.find({'foo': 'bar'}).count())
+            self.assertTrue(coll.find({'foo': 'bar'}))
+            coll.remove({'foo': 'bar'})
+            self.assertEqual(0, coll.find({'foo': 'bar'}).count())
 
-        c.safe = False
-        c.unset_lasterror_options()
-        self.assertFalse(self.client.slave_okay)
-        self.assertTrue(bool(self.client.read_preference))
-        self.assertFalse(self.client.safe)
-        self.assertEqual({}, self.client.get_lasterror_options())
+            c.safe = False
+            c.unset_lasterror_options()
+            self.assertFalse(self.client.slave_okay)
+            self.assertTrue(bool(self.client.read_preference))
+            self.assertFalse(self.client.safe)
+            self.assertEqual({}, self.client.get_lasterror_options())
+        finally:
+            ctx.exit()
 
     def test_document_class(self):
         c = MasterSlaveConnection(self.master, self.slaves)

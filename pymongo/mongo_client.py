@@ -61,6 +61,9 @@ from pymongo.errors import (AutoReconnect,
                             InvalidURI,
                             OperationFailure)
 from pymongo.member import Member
+from pymongo.read_preferences import ReadPreference
+
+
 EMPTY = b("")
 
 
@@ -670,13 +673,16 @@ class MongoClient(common.BaseObject):
             'max_write_batch_size', common.MAX_WRITE_BATCH_SIZE)
 
     def __simple_command(self, sock_info, dbname, spec):
-        """Send a command to the server.
+        """Send a command to the server. May raise AutoReconnect.
         """
         rqst_id, msg, _ = message.query(0, dbname + '.$cmd', 0, -1, spec)
         start = time.time()
         try:
             sock_info.sock.sendall(msg)
             response = self.__receive_message_on_socket(1, rqst_id, sock_info)
+        except socket.error, e:
+            sock_info.close()
+            raise AutoReconnect(e)
         except:
             sock_info.close()
             raise
@@ -913,7 +919,7 @@ class MongoClient(common.BaseObject):
                                 "%s %s" % (host_details, str(why)))
         try:
             self.__check_auth(sock_info)
-        except OperationFailure:
+        except:
             connection_pool.maybe_return_socket(sock_info)
             raise
         return sock_info
@@ -1050,7 +1056,7 @@ class MongoClient(common.BaseObject):
         # for some errors.
         if "errObjects" in result:
             for errobj in result["errObjects"]:
-                if errobj["err"] == error_msg:
+                if errobj.get("err") == error_msg:
                     details = errobj
                     break
 
@@ -1186,27 +1192,35 @@ class MongoClient(common.BaseObject):
         sock_info = self.__socket(member)
         exhaust = kwargs.get('exhaust')
         try:
-            try:
-                if not exhaust and "network_timeout" in kwargs:
-                    sock_info.sock.settimeout(kwargs["network_timeout"])
-                response = self.__send_and_receive(message, sock_info)
+            if not exhaust and "network_timeout" in kwargs:
+                sock_info.sock.settimeout(kwargs["network_timeout"])
 
-                if not exhaust:
-                    if "network_timeout" in kwargs:
-                        sock_info.sock.settimeout(self.__net_timeout)
+            response = self.__send_and_receive(message, sock_info)
 
-                return (None, (response, sock_info, member.pool))
-            except (ConnectionFailure, socket.error), e:
-                self.disconnect()
-                raise AutoReconnect(str(e))
-        finally:
             if not exhaust:
+                if "network_timeout" in kwargs:
+                    sock_info.sock.settimeout(self.__net_timeout)
+
                 member.pool.maybe_return_socket(sock_info)
+
+            return (None, (response, sock_info, member.pool))
+        except (ConnectionFailure, socket.error), e:
+            self.disconnect()
+            member.pool.maybe_return_socket(sock_info)
+            raise AutoReconnect(str(e))
+        except:
+            member.pool.maybe_return_socket(sock_info)
+            raise
 
     def _exhaust_next(self, sock_info):
         """Used with exhaust cursors to get the next batch off the socket.
+
+        Can raise AutoReconnect.
         """
-        return self.__receive_message_on_socket(1, None, sock_info)
+        try:
+            return self.__receive_message_on_socket(1, None, sock_info)
+        except socket.error, e:
+            raise AutoReconnect(str(e))
 
     def start_request(self):
         """Ensure the current thread or greenlet always uses the same socket
@@ -1337,13 +1351,15 @@ class MongoClient(common.BaseObject):
     def server_info(self):
         """Get information about the MongoDB server we're connected to.
         """
-        return self.admin.command("buildinfo")
+        return self.admin.command("buildinfo",
+                                  read_preference=ReadPreference.PRIMARY)
 
     def database_names(self):
         """Get a list of the names of all databases on the connected server.
         """
         return [db["name"] for db in
-                self.admin.command("listDatabases")["databases"]]
+                self.admin.command("listDatabases",
+                    read_preference=ReadPreference.PRIMARY)["databases"]]
 
     def drop_database(self, name_or_database):
         """Drop a database.
@@ -1365,7 +1381,8 @@ class MongoClient(common.BaseObject):
                             "%s or Database" % (basestring.__name__,))
 
         self._purge_index(name)
-        self[name].command("dropDatabase")
+        self[name].command("dropDatabase",
+                           read_preference=ReadPreference.PRIMARY)
 
     def copy_database(self, from_name, to_name,
                       from_host=None, username=None, password=None):
@@ -1413,12 +1430,15 @@ class MongoClient(common.BaseObject):
 
             if username is not None:
                 nonce = self.admin.command("copydbgetnonce",
-                                           fromhost=from_host)["nonce"]
+                    read_preference=ReadPreference.PRIMARY,
+                    fromhost=from_host)["nonce"]
                 command["username"] = username
                 command["nonce"] = nonce
                 command["key"] = auth._auth_key(nonce, username, password)
 
-            return self.admin.command("copydb", **command)
+            return self.admin.command("copydb",
+                                      read_preference=ReadPreference.PRIMARY,
+                                      **command)
         finally:
             self.end_request()
 
@@ -1467,7 +1487,8 @@ class MongoClient(common.BaseObject):
 
         .. versionadded:: 2.0
         """
-        self.admin.command("fsync", **kwargs)
+        self.admin.command("fsync",
+                           read_preference=ReadPreference.PRIMARY, **kwargs)
 
     def unlock(self):
         """Unlock a previously locked server.

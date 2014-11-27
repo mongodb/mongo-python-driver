@@ -1112,8 +1112,10 @@ _cbson_do_batched_write_command(PyObject* self, PyObject* args) {
              */
             buffer_update_position(buffer, sub_doc_begin);
 
-            if (!buffer_write_bytes(buffer, "\x00\x00", 2))
+            if (!buffer_write_bytes(buffer, "\x00\x00", 2)) {
+                buffer_free(new_buffer);
                 goto cmditerfail;
+            }
 
             result = _send_write_command(client, buffer,
                                          lst_len_loc, cmd_len_loc, &errors);

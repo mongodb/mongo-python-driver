@@ -22,6 +22,7 @@ import sys
 import time
 import thread
 import unittest
+import warnings
 
 
 sys.path[0:0] = [""]
@@ -33,7 +34,7 @@ from bson.tz_util import utc
 from pymongo.mongo_client import MongoClient
 from pymongo.database import Database
 from pymongo.pool import SocketInfo
-from pymongo import thread_util, common
+from pymongo import auth, thread_util, common
 from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
                             ConnectionFailure,
@@ -43,6 +44,7 @@ from pymongo.errors import (AutoReconnect,
 from test import version, host, port, pair
 from test.pymongo_mocks import MockClient
 from test.utils import (assertRaisesExactly,
+                        catch_warnings,
                         delay,
                         is_mongos,
                         remove_all_users,
@@ -50,9 +52,11 @@ from test.utils import (assertRaisesExactly,
                         server_started_with_auth,
                         TestRequestMixin,
                         _TestLazyConnectMixin,
+                        _TestExhaustCursorMixin,
                         lazy_client_trial,
                         NTHREADS,
-                        get_pool)
+                        get_pool,
+                        one)
 
 
 def get_client(*args, **kwargs):
@@ -224,6 +228,9 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         # from a master in a master-slave pair.
         if server_is_master_with_slave(c):
             raise SkipTest("SERVER-2329")
+        if (not version.at_least(c, (2, 6, 0)) and
+                is_mongos(c) and server_started_with_auth(c)):
+            raise SkipTest("Need mongos >= 2.6.0 to test with authentication")
         # We test copy twice; once starting in a request and once not. In
         # either case the copy should succeed (because it starts a request
         # internally) and should leave us in the same state as before the copy.
@@ -260,8 +267,7 @@ class TestClient(unittest.TestCase, TestRequestMixin):
         self.assertEqual("bar", c.pymongo_test2.test.find_one()["foo"])
 
         # See SERVER-6427 for mongos
-        if (version.at_least(c, (1, 3, 3, 1)) and
-            not is_mongos(c) and server_started_with_auth(c)):
+        if not is_mongos(c) and server_started_with_auth(c):
 
             c.drop_database("pymongo_test1")
 
@@ -315,11 +321,16 @@ class TestClient(unittest.TestCase, TestRequestMixin):
     def test_from_uri(self):
         c = MongoClient(host, port)
 
-        self.assertEqual(c, MongoClient("mongodb://%s:%d" % (host, port)))
-        self.assertTrue(MongoClient(
-            "mongodb://%s:%d" % (host, port), slave_okay=True).slave_okay)
-        self.assertTrue(MongoClient(
-            "mongodb://%s:%d/?slaveok=true;w=2" % (host, port)).slave_okay)
+        ctx = catch_warnings()
+        try:
+            warnings.simplefilter("ignore", DeprecationWarning)
+            self.assertEqual(c, MongoClient("mongodb://%s:%d" % (host, port)))
+            self.assertTrue(MongoClient(
+                "mongodb://%s:%d" % (host, port), slave_okay=True).slave_okay)
+            self.assertTrue(MongoClient(
+                "mongodb://%s:%d/?slaveok=true;w=2" % (host, port)).slave_okay)
+        finally:
+            ctx.exit()
 
     def test_get_default_database(self):
         c = MongoClient("mongodb://%s:%d/foo" % (host, port), _connect=False)
@@ -990,6 +1001,42 @@ with client.start_request() as request:
         client = get_client(_connect=False)
         client.pymongo_test.test.remove(w=0)
 
+    def test_auth_network_error(self):
+        # Make sure there's no semaphore leak if we get a network error
+        # when authenticating a new socket with cached credentials.
+        auth_client = get_client()
+        if not server_started_with_auth(auth_client):
+            raise SkipTest('Authentication is not enabled on server')
+
+        auth_client.admin.add_user('admin', 'password')
+        auth_client.admin.authenticate('admin', 'password')
+        try:
+            # Get a client with one socket so we detect if it's leaked.
+            c = get_client(max_pool_size=1, waitQueueTimeoutMS=1)
+
+            # Simulate an authenticate() call on a different socket.
+            credentials = auth._build_credentials_tuple(
+                'MONGODB-CR', 'admin',
+                unicode('admin'), unicode('password'),
+                {})
+
+            c._cache_credentials('test', credentials, connect=False)
+
+            # Cause a network error on the actual socket.
+            pool = get_pool(c)
+            socket_info = one(pool.sockets)
+            socket_info.sock.close()
+
+            # In __check_auth, the client authenticates its socket with the
+            # new credential, but gets a socket.error. Should be reraised as
+            # AutoReconnect.
+            self.assertRaises(AutoReconnect, c.test.collection.find_one)
+
+            # No semaphore leak, the pool is allowed to make a new socket.
+            c.test.collection.find_one()
+        finally:
+            remove_all_users(auth_client.admin)
+
 
 class TestClientLazyConnect(unittest.TestCase, _TestLazyConnectMixin):
     def _get_client(self, **kwargs):
@@ -1099,6 +1146,11 @@ class TestMongoClientFailover(unittest.TestCase):
         # So it can reconnect.
         c.revive_host('a:1')
         c.db.collection.find_one()
+
+
+class TestExhaustCursor(_TestExhaustCursorMixin, unittest.TestCase):
+    def _get_client(self, **kwargs):
+        return get_client(**kwargs)
 
 
 if __name__ == "__main__":

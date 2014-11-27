@@ -22,8 +22,8 @@ from bson.son import SON
 from pymongo import helpers, message, read_preferences
 from pymongo.read_preferences import ReadPreference, secondary_ok_commands
 from pymongo.errors import (AutoReconnect,
-                            CursorNotFound,
-                            InvalidOperation)
+                            InvalidOperation,
+                            OperationFailure)
 
 _QUERY_OPTIONS = {
     "tailable_cursor": 2,
@@ -55,6 +55,15 @@ class _SocketManager:
             self.__closed = True
             self.pool.maybe_return_socket(self.sock)
             self.sock, self.pool = None, None
+
+    def error(self):
+        """Clean up after an error on the managed socket.
+        """
+        if self.sock:
+            self.sock.close()
+
+        # Return the closed socket to avoid a semaphore leak in the pool.
+        self.close()
 
 
 # TODO might be cool to be able to do find().include("foo") or
@@ -914,8 +923,14 @@ class Cursor(object):
                 # due to a socket timeout.
                 self.__killed = True
                 raise
-        else: # exhaust cursor - no getMore message
-            response = client._exhaust_next(self.__exhaust_mgr.sock)
+        else:
+            # Exhaust cursor - no getMore message.
+            try:
+                response = client._exhaust_next(self.__exhaust_mgr.sock)
+            except AutoReconnect:
+                self.__killed = True
+                self.__exhaust_mgr.error()
+                raise
 
         try:
             response = helpers._unpack_response(response, self.__id,
@@ -923,8 +938,10 @@ class Cursor(object):
                                                 self.__tz_aware,
                                                 self.__uuid_subtype,
                                                 self.__compile_re)
-        except CursorNotFound:
+        except OperationFailure:
             self.__killed = True
+            # Make sure exhaust socket is returned immediately, if necessary.
+            self.__die()
             # If this is a tailable cursor the error is likely
             # due to capped collection roll over. Setting
             # self.__killed to True ensures Cursor.alive will be
@@ -936,8 +953,11 @@ class Cursor(object):
             # Don't send kill cursors to another server after a "not master"
             # error. It's completely pointless.
             self.__killed = True
+            # Make sure exhaust socket is returned immediately, if necessary.
+            self.__die()
             client.disconnect()
             raise
+
         self.__id = response["cursor_id"]
 
         # starting from doesn't get set on getmore's for tailable cursors
