@@ -110,12 +110,6 @@ class Server(object):
                                   checkout) as sock_info:
             yield sock_info
 
-    def maybe_return_socket(self, sock_info):
-        self.pool.maybe_return_socket(sock_info)
-
-    def discard_socket(self, sock_info):
-        self.pool.discard_socket(sock_info)
-
     @property
     def description(self):
         return self._description
