@@ -53,6 +53,7 @@ GSSAPIProperties = namedtuple('GSSAPIProperties', ['service_name'])
 def _build_credentials_tuple(mech, source, user, passwd, extra):
     """Build and return a mechanism specific credentials tuple.
     """
+    user = _unicode(user)
     if mech == 'GSSAPI':
         properties = extra.get('authmechanismproperties', {})
         service_name = properties.get('SERVICE_NAME', 'mongodb')
@@ -61,7 +62,10 @@ def _build_credentials_tuple(mech, source, user, passwd, extra):
         return MongoCredential(mech, '$external', user, None, props)
     elif mech == 'MONGODB-X509':
         return MongoCredential(mech, '$external', user, None, None)
-    return MongoCredential(mech, source, user, passwd, None)
+    else:
+        if passwd is None:
+            raise ConfigurationError("A password is required.")
+        return MongoCredential(mech, source, user, _unicode(passwd), None)
 
 
 if PY3:
@@ -220,7 +224,7 @@ def _auth_key(nonce, username, password):
     """
     digest = _password_digest(username, password)
     md5hash = md5()
-    data = "%s%s%s" % (nonce, _unicode(username), digest)
+    data = "%s%s%s" % (nonce, username, digest)
     md5hash.update(data.encode('utf-8'))
     return _unicode(md5hash.hexdigest())
 

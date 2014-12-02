@@ -14,7 +14,7 @@
 
 """Tools to parse mongo client options."""
 
-from bson.py3compat import iteritems, _unicode
+from bson.py3compat import iteritems
 from pymongo.auth import _build_credentials_tuple
 from pymongo.common import validate
 from pymongo.errors import ConfigurationError
@@ -31,7 +31,7 @@ def _parse_credentials(username, password, database, options):
     mechanism = options.get('authmechanism', 'DEFAULT')
     source = options.get('authsource', database or 'admin')
     return _build_credentials_tuple(
-        mechanism, source, _unicode(username), _unicode(password), options)
+        mechanism, source, username, password, options)
 
 
 def _parse_read_preference(options):

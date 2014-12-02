@@ -901,8 +901,8 @@ class Database(common.BaseObject):
         credentials = auth._build_credentials_tuple(
             mechanism,
             source or self.name,
-            _unicode(name),
-            _unicode(password) if password else None,
+            name,
+            password,
             validated_options)
 
         self.connection._cache_credentials(
