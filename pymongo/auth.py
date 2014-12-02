@@ -189,7 +189,8 @@ def _scram_sha1_conversation(
     iterations = int(parsed[b('i')])
     salt = parsed[b('s')]
     rnonce = parsed[b('r')]
-    assert rnonce.startswith(nonce)
+    if not rnonce.startswith(nonce):
+        raise OperationFailure("Server returned an invalid nonce.")
 
     without_proof = b("c=biws,r=") + rnonce
     salted_pass = _hi(_password_digest(username, password).encode("utf-8"),
@@ -212,7 +213,8 @@ def _scram_sha1_conversation(
     res, _ = cmd_func(sock_info, source, cmd)
 
     parsed = _parse_scram_response(res['payload'])
-    assert parsed[b('v')] == server_sig
+    if parsed[b('v')] != server_sig:
+        raise OperationFailure("Server returned an invalid signature.")
 
     # Depending on how it's configured, Cyrus SASL (which the server uses)
     # requires a third empty challenge.
