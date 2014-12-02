@@ -902,9 +902,8 @@ class Database(common.BaseObject):
             validated_options[normalized] = val
 
         credentials = auth._build_credentials_tuple(mechanism,
-                                source or self.name, unicode(name),
-                                password and unicode(password) or None,
-                                validated_options)
+                                source or self.name, name,
+                                password, validated_options)
         self.connection._cache_credentials(self.name, credentials)
         return True
 

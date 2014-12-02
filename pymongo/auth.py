@@ -52,6 +52,7 @@ MECHANISMS = frozenset(
 def _build_credentials_tuple(mech, source, user, passwd, extra):
     """Build and return a mechanism specific credentials tuple.
     """
+    user = unicode(user)
     if mech == 'GSSAPI':
         gsn = 'mongodb'
         if "gssapiservicename" in extra:
@@ -68,7 +69,10 @@ def _build_credentials_tuple(mech, source, user, passwd, extra):
         return (mech, '$external', user, gsn)
     elif mech == 'MONGODB-X509':
         return (mech, '$external', user)
-    return (mech, source, user, passwd)
+    else:
+        if passwd is None:
+            raise ConfigurationError("A password is required.")
+        return (mech, source, user, unicode(passwd))
 
 
 if PY3:
@@ -292,7 +296,7 @@ def _auth_key(nonce, username, password):
     """
     digest = _password_digest(username, password)
     md5hash = _MD5()
-    data = "%s%s%s" % (nonce, unicode(username), digest)
+    data = "%s%s%s" % (nonce, username, digest)
     md5hash.update(data.encode('utf-8'))
     return unicode(md5hash.hexdigest())
 

@@ -706,8 +706,8 @@ class MongoReplicaSetClient(common.BaseObject):
 
             credentials = auth._build_credentials_tuple(mechanism,
                                                         source,
-                                                        unicode(username),
-                                                        unicode(password),
+                                                        username,
+                                                        password,
                                                         options)
             try:
                 self._cache_credentials(source, credentials, _connect)
