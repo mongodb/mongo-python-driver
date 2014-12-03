@@ -286,7 +286,7 @@ class MongoClient(common.BaseObject):
             username, password, dbase, opts)
 
         self.__default_database_name = dbase
-        self.__cursor_manager = None
+        self.__cursor_manager = CursorManager(self)
         self.__document_class = document_class
         self.__tz_aware = common.validate_boolean('tz_aware', tz_aware)
 
@@ -904,40 +904,27 @@ class MongoClient(common.BaseObject):
         if not isinstance(cursor_id, integer_types):
             raise TypeError("cursor_id must be an instance of (int, long)")
 
-        # TODO: update this, pass address to cursor_manager.close().
-        # PyMongo 2.x introduced a configurable CursorManager which sends
-        # OP_KILLCURSORS to the server. The API doesn't handle a multi-server
-        # topology, where we must pass the address of the server that receives
-        # the message. Support CursorManager for backwards compatibility, but
-        # only for single servers.
-        if self.__cursor_manager:
-            topology_type = self._topology.description.topology_type
-            if topology_type not in (TOPOLOGY_TYPE.Single,
-                                     TOPOLOGY_TYPE.Sharded):
-                raise InvalidOperation(
-                    "Can't use custom CursorManager with topology type %s" %
-                    TOPOLOGY_TYPE._fields[topology_type])
+        self.__cursor_manager.close(cursor_id, address)
 
-            self.__cursor_manager.close(cursor_id)
-        else:
-            return self._send_message(
-                message.kill_cursors([cursor_id]),
-                check_primary=False,
-                address=address)
-
-    def kill_cursors(self, cursor_ids):
-        """Send a kill cursors message with the given ids to the primary.
+    def kill_cursors(self, cursor_ids, address=None):
+        """Send a kill cursors message with the given ids.
 
         Raises :class:`TypeError` if `cursor_ids` is not an instance of
         ``list``.
 
         :Parameters:
           - `cursor_ids`: list of cursor ids to kill
+          - `address` (optional): (host, port) of server to send message to
+
+        .. versionchanged:: 3.0
+           Now accepts an `address` argument.
         """
         if not isinstance(cursor_ids, list):
             raise TypeError("cursor_ids must be a list")
         return self._send_message(
-            message.kill_cursors(cursor_ids), check_primary=False)
+            message.kill_cursors(cursor_ids),
+            address=address,
+            check_primary=False)
 
     def server_info(self):
         """Get information about the MongoDB server we're connected to."""

@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""DEPRECATED - Different managers to handle when cursors are killed after
-they are closed.
+"""A manager to handle when cursors are killed after they are closed.
 
 New cursor managers should be defined as subclasses of CursorManager and can be
 installed on a connection by calling
-`pymongo.mongo_client.MongoClient.set_cursor_manager`.
+:meth:`~pymongo.mongo_client.MongoClient.set_cursor_manager`.
 
-.. versionchanged:: 2.1+
-   Deprecated.
+.. versionchanged:: 3.0
+   Undeprecated. :meth:`~pymongo.cursor_manager.CursorManager.close` now
+   requires an `address` argument. The ``BatchCursorManager`` class is removed.
 """
 
 import weakref
@@ -28,10 +28,7 @@ from bson.py3compat import integer_types
 
 
 class CursorManager(object):
-    """The default cursor manager.
-
-    This manager will kill cursors one at a time as they are closed.
-    """
+    """The cursor manager base class."""
 
     def __init__(self, connection):
         """Instantiate the manager.
@@ -41,54 +38,19 @@ class CursorManager(object):
         """
         self.__connection = weakref.ref(connection)
 
-    def close(self, cursor_id):
-        """Close a cursor by killing it immediately.
+    def close(self, cursor_id, address):
+        """Kill a cursor.
 
         Raises TypeError if cursor_id is not an instance of (int, long).
 
         :Parameters:
           - `cursor_id`: cursor id to close
+          - `address`: the cursor's server's (host, port) pair
+
+        .. versionchanged:: 3.0
+           Now requires an `address` argument.
         """
         if not isinstance(cursor_id, integer_types):
             raise TypeError("cursor_id must be an integer")
 
-        self.__connection().kill_cursors([cursor_id])
-
-
-class BatchCursorManager(CursorManager):
-    """A cursor manager that kills cursors in batches.
-    """
-
-    def __init__(self, connection):
-        """Instantiate the manager.
-
-        :Parameters:
-          - `connection`: a MongoClient
-        """
-        self.__dying_cursors = []
-        self.__max_dying_cursors = 20
-        self.__connection = weakref.ref(connection)
-
-        CursorManager.__init__(self, connection)
-
-    def __del__(self):
-        """Cleanup - be sure to kill any outstanding cursors.
-        """
-        self.__connection().kill_cursors(self.__dying_cursors)
-
-    def close(self, cursor_id):
-        """Close a cursor by killing it in a batch.
-
-        Raises TypeError if cursor_id is not an instance of (int, long).
-
-        :Parameters:
-          - `cursor_id`: cursor id to close
-        """
-        if not isinstance(cursor_id, integer_types):
-            raise TypeError("cursor_id must be an integer")
-
-        self.__dying_cursors.append(cursor_id)
-
-        if len(self.__dying_cursors) > self.__max_dying_cursors:
-            self.__connection().kill_cursors(self.__dying_cursors)
-            self.__dying_cursors = []
+        self.__connection().kill_cursors([cursor_id], address)

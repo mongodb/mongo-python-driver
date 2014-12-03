@@ -35,7 +35,7 @@ from pymongo.errors import (InvalidOperation,
                             OperationFailure,
                             ExecutionTimeout)
 from test import client_context, SkipTest, unittest, host, port, IntegrationTest
-from test.utils import ignore_deprecations, server_started_with_auth
+from test.utils import server_started_with_auth
 
 if PY3:
     long = int
@@ -1097,9 +1097,7 @@ class TestCursor(IntegrationTest):
 
         # This is just a test, don't try this at home...
 
-        # set_cursor_manager is only allowed on direct connections, not on
-        # replica set connections.
-        client = client_context.client
+        client = client_context.rs_or_standalone_client
         db = client.pymongo_test
 
         db.test.remove({})
@@ -1109,13 +1107,12 @@ class TestCursor(IntegrationTest):
             def __init__(self, connection):
                 super(CManager, self).__init__(connection)
 
-            def close(self, dummy):
+            def close(self, dummy, dummy2):
                 # Do absolutely nothing...
                 pass
 
         try:
-            with ignore_deprecations():
-                client.set_cursor_manager(CManager)
+            client.set_cursor_manager(CManager)
             docs = []
             cursor = db.test.find().batch_size(10)
             docs.append(next(cursor))
@@ -1128,8 +1125,7 @@ class TestCursor(IntegrationTest):
             docs.extend(ccursor)
             self.assertEqual(len(docs), 200)
         finally:
-            with ignore_deprecations():
-                client.set_cursor_manager(CursorManager)
+            client.set_cursor_manager(CursorManager)
 
 if __name__ == "__main__":
     unittest.main()

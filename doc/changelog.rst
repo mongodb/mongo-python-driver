@@ -65,15 +65,24 @@ PRIMARY.
 The ``copy_database`` method is removed, see the
 :doc:`copy_database examples </examples/copydb>` for alternatives.
 
-The second parameter to :meth:`~pymongo.MongoClient.close_cursor` is renamed
-from ``_conn_id`` to ``address``.
-
-:meth:`~pymongo.MongoClient.set_cursor_manager` is no longer deprecated.
-
 :class:`~pymongo.cursor.Cursor` Changes
 .......................................
 
 The ``conn_id`` property is renamed to :attr:`~pymongo.cursor.Cursor.address`.
+
+Cursor management changes
+.........................
+
+:class:`~pymongo.cursor_manager.CursorManager`  and
+:meth:`~pymongo.MongoClient.set_cursor_manager` are no longer deprecated.
+If you subclass :class:`~pymongo.cursor_manager.CursorManager` your
+implementation of :meth:`~pymongo.cursor_manager.CursorManager.close` must now
+take a second parameter, `address`. The ``BatchCursorManager`` class is
+removed.
+
+The second parameter to :meth:`~pymongo.MongoClient.close_cursor` is renamed
+from ``_conn_id`` to ``address``. :meth:`~pymongo.MongoClient.kill_cursors`
+now accepts an `address` parameter.
 
 :mod:`~pymongo.errors` Changes
 ..............................

@@ -19,12 +19,12 @@ import sys
 sys.path[0:0] = [""]
 
 from pymongo.cursor_manager import CursorManager
-from pymongo.errors import CursorNotFound, InvalidOperation
+from pymongo.errors import CursorNotFound
 from test import (client_context,
                   unittest,
                   IntegrationTest,
                   SkipTest)
-from test.utils import single_client, rs_client
+from test.utils import rs_or_single_client
 
 
 class TestCursorManager(IntegrationTest):
@@ -42,6 +42,10 @@ class TestCursorManager(IntegrationTest):
     def tearDownClass(cls):
         cls.collection.remove()
 
+    def test_cursor_manager_validation(self):
+        with self.assertRaises(TypeError):
+            client_context.client.set_cursor_manager(1)
+
     def test_cursor_manager(self):
         if (client_context.is_mongos
                 and not client_context.version.at_least(2, 4, 7)):
@@ -57,11 +61,11 @@ class TestCursorManager(IntegrationTest):
             def __init__(self, connection):
                 super(CM, self).__init__(connection)
 
-            def close(self, cursor_id):
+            def close(self, cursor_id, address):
                 test_case.close_was_called = True
-                super(CM, self).close(cursor_id)
+                super(CM, self).close(cursor_id, address)
 
-        client = single_client(max_pool_size=1)
+        client = rs_or_single_client(max_pool_size=1)
         client.set_cursor_manager(CM)
 
         # Create a cursor on the same client so we're certain the getMore is
@@ -73,24 +77,6 @@ class TestCursorManager(IntegrationTest):
             list(cursor)
 
         self.assertTrue(self.close_was_called)
-
-    @client_context.require_replica_set
-    def test_cursor_manager_prohibited_with_rs(self):
-        # Test that kill_cursors() throws an error while the topology type
-        # isn't Single or Sharded.
-        client = rs_client()
-        client.set_cursor_manager(CursorManager)
-        cursor = client.pymongo_test.test.find()
-        next(cursor)
-
-        with self.assertRaises(InvalidOperation):
-            cursor.close()
-
-        with self.assertRaises(InvalidOperation):
-            client.close_cursor(cursor.cursor_id)
-
-        # Avoid error message from cursor.__del__.
-        cursor._Cursor__cursor_id = None
 
 
 if __name__ == "__main__":
