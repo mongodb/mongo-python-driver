@@ -71,17 +71,9 @@ import base64
 import calendar
 import collections
 import datetime
+import json
 import re
 import uuid
-
-json_lib = True
-try:
-    import json
-except ImportError:
-    try:
-        import simplejson as json
-    except ImportError:
-        json_lib = False
 
 from bson import EPOCH_AWARE, RE_TYPE, SON
 from bson.binary import Binary
@@ -118,8 +110,6 @@ def dumps(obj, *args, **kwargs):
        Preserves order when rendering SON, Timestamp, Code, Binary, and DBRef
        instances.
     """
-    if not json_lib:
-        raise Exception("No json library available")
     return json.dumps(_json_convert(obj), *args, **kwargs)
 
 
@@ -136,9 +126,6 @@ def loads(s, *args, **kwargs):
     .. versionchanged:: 2.7
        Added ``compile_re`` option.
     """
-    if not json_lib:
-        raise Exception("No json library available")
-
     compile_re = kwargs.pop('compile_re', True)
     kwargs['object_hook'] = lambda dct: object_hook(dct, compile_re)
     return json.loads(s, *args, **kwargs)
@@ -226,10 +213,7 @@ def object_hook(dct, compile_re=True):
 
 def default(obj):
     # We preserve key order when rendering SON, DBRef, etc. as JSON by
-    # returning a SON for those types instead of a dict. This works with
-    # the "json" standard library in Python 2.6+ and with simplejson
-    # 2.1.0+ in Python 2.6+, because those libraries iterate the SON
-    # using PyIter_Next.
+    # returning a SON for those types instead of a dict.
     if isinstance(obj, ObjectId):
         return {"$oid": str(obj)}
     if isinstance(obj, DBRef):

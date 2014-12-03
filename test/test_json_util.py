@@ -15,6 +15,7 @@
 """Test some utilities for working with JSON and PyMongo."""
 
 import datetime
+import json
 import re
 import sys
 import uuid
@@ -34,17 +35,12 @@ from bson.son import RE_TYPE
 from bson.timestamp import Timestamp
 from bson.tz_util import utc
 
-from test import SkipTest, unittest, IntegrationTest
+from test import unittest, IntegrationTest
 
 PY3 = sys.version_info[0] == 3
 
 
 class TestJsonUtil(unittest.TestCase):
-
-    def setUp(self):
-        if not json_util.json_lib:
-            raise SkipTest("No json or simplejson module")
-
     def round_tripped(self, doc):
         return json_util.loads(json_util.dumps(doc))
 
@@ -96,9 +92,6 @@ class TestJsonUtil(unittest.TestCase):
         self.assertEqual(dtm, json_util.loads(jsn)["dt"])
 
     def test_regex_object_hook(self):
-        # simplejson or the builtin json module.
-        from bson.json_util import json
-
         # Extended JSON format regular expression.
         pat = 'a*b'
         json_re = '{"$regex": "%s", "$options": "u"}' % pat
@@ -236,11 +229,6 @@ class TestJsonUtil(unittest.TestCase):
 
 
 class TestJsonUtilRoundtrip(IntegrationTest):
-
-    def setUp(self):
-        if not json_util.json_lib:
-            raise SkipTest("No json or simplejson module")
-
     def test_cursor(self):
         db = self.db
 

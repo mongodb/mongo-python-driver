@@ -257,8 +257,7 @@ The :mod:`json` module won't work out of the box with all documents
 from PyMongo as PyMongo supports some special types (like
 :class:`~bson.objectid.ObjectId` and :class:`~bson.dbref.DBRef`)
 that are not supported in JSON. We've added some utilities for working
-with :mod:`json` and :mod:`simplejson` in the
-:mod:`~bson.json_util` module.
+with JSON in the :mod:`~bson.json_util` module.
 
 Why do I get OverflowError decoding dates stored by another language's driver?
 ------------------------------------------------------------------------------
