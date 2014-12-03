@@ -63,7 +63,7 @@ class _SocketManager:
         """
         if not self.__closed:
             self.__closed = True
-            self.pool.maybe_return_socket(self.sock)
+            self.pool.return_socket(self.sock)
             self.sock, self.pool = None, None
 
 

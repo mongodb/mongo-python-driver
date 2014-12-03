@@ -430,14 +430,14 @@ class Pool:
             sock_info.close()
 
             # Decrement semaphore.
-            self.maybe_return_socket(sock_info)
+            self.return_socket(sock_info)
             raise
         except:
-            self.maybe_return_socket(sock_info)
+            self.return_socket(sock_info)
             raise
         else:
             if not checkout:
-                self.maybe_return_socket(sock_info)
+                self.return_socket(sock_info)
 
     def _get_socket_no_auth(self):
         # We use the pid here to avoid issues with fork / multiprocessing.
@@ -471,7 +471,7 @@ class Pool:
         sock_info.last_checkout = _time()
         return sock_info
 
-    def maybe_return_socket(self, sock_info):
+    def return_socket(self, sock_info):
         """Return the socket to the pool, or if it's closed discard it."""
         if self.pid != os.getpid():
             self._socket_semaphore.release()
