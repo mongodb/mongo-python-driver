@@ -17,6 +17,7 @@
 import contextlib
 import socket
 from functools import partial
+import weakref
 
 from pymongo import common
 from pymongo import MongoClient
@@ -30,8 +31,9 @@ from test import host as default_host, port as default_port
 
 class MockPool(Pool):
     def __init__(self, client, pair, *args, **kwargs):
-        # MockPool gets a 'client' arg, regular pools don't.
-        self.client = client
+        # MockPool gets a 'client' arg, regular pools don't. Weakref it to
+        # avoid cycle with __del__, causing ResourceWarnings in Python 3.3.
+        self.client = weakref.proxy(client)
         self.mock_host, self.mock_port = pair
 
         # Actually connect to the default server.
