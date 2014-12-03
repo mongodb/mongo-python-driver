@@ -105,7 +105,7 @@ in this release.
 .. _PyMongo 3.0 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/12501
 
 Changes in Version 2.8
-------------------------
+----------------------
 
 Version 2.8 is a major release that provides full support for MongoDB 2.8 and
 fixes a number of bugs.
@@ -464,7 +464,7 @@ in this release.
 .. _PyMongo 2.2.1 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/11185
 
 Changes in Version 2.2
------------------------
+----------------------
 
 Version 2.2 adds a few more frequently requested features and fixes a
 number of bugs.
@@ -529,7 +529,7 @@ in this release.
 .. _PyMongo 2.1.1 release notes in JIRA: https://jira.mongodb.org/browse/PYTHON/fixforversion/11081
 
 Changes in Version 2.1
-------------------------
+----------------------
 
 Version 2.1 adds a few frequently requested features and includes the usual
 round of bug fixes and improvements.
