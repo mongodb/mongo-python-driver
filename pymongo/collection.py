@@ -805,9 +805,6 @@ class Collection(common.BaseObject):
         .. note:: The `manipulate` and `compile_re` parameters may default to
            False in future releases.
 
-        .. note:: The `max_scan` parameter requires server
-           version **>= 1.5.1**
-
         .. versionchanged:: 3.0
            Removed the `network_timeout` parameter.
            Deprecated the `tag_sets`, and
