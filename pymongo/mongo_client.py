@@ -778,8 +778,9 @@ class MongoClient(common.BaseObject):
             try:
                 return self.__check_gle_response(response.data, command)
             except NotMasterError:
-                address = server.description.address
-                self._reset_server_and_request_check(address)
+                self._reset_server_and_request_check(
+                    server.description.address)
+
                 raise
 
         else:
