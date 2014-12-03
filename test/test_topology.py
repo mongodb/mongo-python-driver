@@ -253,7 +253,7 @@ class TestSingleServerTopology(TopologyTest):
         available = False
         t.request_check_all()
         with self.assertRaises(ConnectionFailure):
-            t.select_server(writable_server_selector, server_wait_time=0.1)
+            t.select_server(writable_server_selector, server_wait_time=1)
 
         # The server is temporarily down.
         self.assertIsNone(s.description.round_trip_time)
@@ -261,10 +261,13 @@ class TestSingleServerTopology(TopologyTest):
         # Bring it back, RTT is now 30 milliseconds.
         available = True
         round_trip_time = 20
-        t.request_check_all()
 
-        # We didn't forget prior average: .8 * 105 + .2 * 20 = 88.
-        self.assertAlmostEqual(88, s.description.round_trip_time)
+        def test():
+            t.request_check_all()
+            # We didn't forget prior average: .8 * 105 + .2 * 20 = 88.
+            return round(abs(88 - s.description.round_trip_time), 7) == 0
+
+        wait_until(test, 'calculate correct new average')
 
 
 class TestMultiServerTopology(TopologyTest):
