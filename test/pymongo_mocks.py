@@ -38,7 +38,8 @@ class MockPool(Pool):
 
         # Actually connect to the default server.
         Pool.__init__(self,
-            (default_host, default_port), PoolOptions(connect_timeout=20))
+                      (default_host, default_port),
+                      PoolOptions(connect_timeout=20))
 
     @contextlib.contextmanager
     def get_socket(
