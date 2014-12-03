@@ -779,9 +779,6 @@ class Collection(common.BaseObject):
             this query.
           - `tag_sets` **DEPRECATED**
           - `secondary_acceptable_latency_ms` **DEPRECATED**
-          - `compile_re` (optional): if ``False``, don't attempt to compile
-            BSON regex objects into Python regexes. Return instances of
-            :class:`~bson.regex.Regex` instead.
           - `exhaust` (optional): If ``True`` create an "exhaust" cursor.
             MongoDB will stream batched results to the client without waiting
             for the client to request each batch, reducing latency.
@@ -802,19 +799,29 @@ class Collection(common.BaseObject):
             :class:`~socket.socket` connection will be closed and discarded
             without being returned to the connection pool.
 
-        .. note:: The `manipulate` and `compile_re` parameters may default to
-           False in future releases.
+        .. note:: The `manipulate` parameter may default to False in a future
+           release.
 
         .. versionchanged:: 3.0
            Removed the `network_timeout` parameter.
            Deprecated the `tag_sets`, and
            `secondary_acceptable_latency_ms` parameters.
+           Removed `compile_re` option: PyMongo now always represents BSON
+           regular expressions as :class:`~bson.regex.Regex` objects. Use
+           :meth:`~bson.regex.Regex.try_compile` to attempt to convert from a
+           BSON regular expression to a Python regular expression object.
 
-        .. versionadded:: 2.7
-           The ``compile_re`` parameter.
+        .. versionchanged:: 2.7
+           Added `compile_re` option. If set to False, PyMongo represented BSON
+           regular expressions as :class:`~bson.regex.Regex` objects instead of
+           attempting to compile BSON regular expressions as Python native
+           regular expressions, thus preventing errors for some incompatible
+           patterns, see `PYTHON-500`_.
 
         .. versionadded:: 2.3
            The `tag_sets` and `secondary_acceptable_latency_ms` parameters.
+
+        .. _PYTHON-500: https://jira.mongodb.org/browse/PYTHON-500
 
         .. mongodoc:: find
         """
@@ -863,8 +870,6 @@ class Collection(common.BaseObject):
         .. note:: Requires server version **>= 2.5.5**.
 
         """
-        compile_re = kwargs.get('compile_re', False)
-
         cmd = SON([('parallelCollectionScan', self.__name),
                    ('numCursors', num_cursors)])
 
@@ -875,8 +880,7 @@ class Collection(common.BaseObject):
 
         return [CommandCursor(self,
                               cursor['cursor'],
-                              address,
-                              compile_re) for cursor in result['cursors']]
+                              address) for cursor in result['cursors']]
 
     def count(self):
         """Get the number of documents in this collection.
@@ -1279,8 +1283,6 @@ class Collection(common.BaseObject):
         cmd = SON([("aggregate", self.__name),
                    ("pipeline", pipeline)])
 
-        compile_re = kwargs.get('compile_re', True)
-
         mode = read_preference or self.read_preference
         result, address = self.__database._command(
             cmd, uuid_subtype=self.uuid_subtype,
@@ -1290,8 +1292,7 @@ class Collection(common.BaseObject):
             return CommandCursor(
                 self,
                 result['cursor'],
-                address,
-                compile_re)
+                address)
         else:
             return result
 

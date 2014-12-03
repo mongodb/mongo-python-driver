@@ -96,11 +96,6 @@ class TestJsonUtil(unittest.TestCase):
         pat = 'a*b'
         json_re = '{"$regex": "%s", "$options": "u"}' % pat
         loaded = json_util.object_hook(json.loads(json_re))
-        self.assertTrue(isinstance(loaded, RE_TYPE))
-        self.assertEqual(pat, loaded.pattern)
-        self.assertEqual(re.U, loaded.flags)
-
-        loaded = json_util.object_hook(json.loads(json_re), compile_re=False)
         self.assertTrue(isinstance(loaded, Regex))
         self.assertEqual(pat, loaded.pattern)
         self.assertEqual(re.U, loaded.flags)
@@ -127,16 +122,12 @@ class TestJsonUtil(unittest.TestCase):
 
         # Some tools may not add $options if no flags are set.
         res = json_util.loads('{"r": {"$regex": "a*b"}}')['r']
-        expected_flags = 0
-        if PY3:
-            expected_flags = re.U
-        self.assertEqual(expected_flags, res.flags)
+        self.assertEqual(0, res.flags)
 
         self.assertEqual(
             Regex('.*', 'ilm'),
             json_util.loads(
-                '{"r": {"$regex": ".*", "$options": "ilm"}}',
-                compile_re=False)['r'])
+                '{"r": {"$regex": ".*", "$options": "ilm"}}')['r'])
 
         # Check order.
         self.assertEqual(

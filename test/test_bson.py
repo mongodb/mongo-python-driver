@@ -20,7 +20,6 @@ import collections
 import datetime
 import re
 import sys
-import traceback
 import uuid
 
 sys.path[0:0] = [""]
@@ -636,7 +635,7 @@ class TestBSON(unittest.TestCase):
             b'\x00')                         # document terminator
 
         self.assertEqual(doc1_bson, BSON.encode(doc1))
-        self.assertEqual(doc1, BSON(doc1_bson).decode(compile_re=False))
+        self.assertEqual(doc1, BSON(doc1_bson).decode())
 
         # Valid Python regex, with flags.
         re2 = re.compile('.*', re.I | re.L | re.M | re.S | re.U | re.X)
@@ -652,12 +651,8 @@ class TestBSON(unittest.TestCase):
         self.assertEqual(doc2_bson, BSON.encode(doc2_with_re))
         self.assertEqual(doc2_bson, BSON.encode(doc2_with_bson_re))
 
-        # Built-in re objects don't support ==. Compare pattern and flags.
         self.assertEqual(re2.pattern, BSON(doc2_bson).decode()['r'].pattern)
         self.assertEqual(re2.flags, BSON(doc2_bson).decode()['r'].flags)
-
-        self.assertEqual(
-            doc2_with_bson_re, BSON(doc2_bson).decode(compile_re=False))
 
     def test_regex_from_native(self):
         self.assertEqual('.*', Regex.from_native(re.compile('.*')).pattern)
@@ -673,30 +668,17 @@ class TestBSON(unittest.TestCase):
 
     def test_exception_wrapping(self):
         # No matter what exception is raised while trying to decode BSON,
-        # the final exception always matches InvalidBSON and the original
-        # traceback is preserved.
+        # the final exception always matches InvalidBSON.
 
-        # Invalid Python regex, though valid PCRE.
-        # Causes an error in re.compile().
-        bad_doc = BSON.encode({'r': Regex(r'[\w-\.]')})
+        # {'s': '\xff'}, will throw attempting to decode utf-8.
+        bad_doc = b'\x0f\x00\x00\x00\x02s\x00\x03\x00\x00\x00\xff\x00\x00\x00'
 
-        try:
+        with self.assertRaises(InvalidBSON) as context:
             decode_all(bad_doc)
-        except InvalidBSON:
-            exc_type, exc_value, exc_tb = sys.exc_info()
-            # Original re error was captured and wrapped in InvalidBSON.
-            self.assertEqual(exc_value.args[0], 'bad character range')
 
-            # Traceback includes bson module's call into re module.
-            for filename, lineno, fname, text in traceback.extract_tb(exc_tb):
-                if filename.endswith('re.py') and fname == 'compile':
-                    # Traceback was correctly preserved.
-                    break
-            else:
-                self.fail('Traceback not captured')
-        else:
-            self.fail('InvalidBSON not raised')
-            
+        self.assertIn("codec can't decode byte 0xff",
+                      str(context.exception))
+
     def test_minkey_maxkey_comparison(self):
         # MinKey's <, <=, >, >=, !=, and ==.
         self.assertTrue(MinKey() < None)

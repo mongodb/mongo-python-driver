@@ -25,8 +25,7 @@ class CommandCursor(object):
     """A cursor / iterator over command cursors.
     """
 
-    def __init__(self, collection, cursor_info,
-                 address, compile_re=True, retrieved=0):
+    def __init__(self, collection, cursor_info, address, retrieved=0):
         """Create a new command cursor.
         """
         self.__collection = collection
@@ -36,9 +35,8 @@ class CommandCursor(object):
         self.__decode_opts = (
             collection.database.connection.document_class,
             collection.database.connection.tz_aware,
-            collection.uuid_subtype,
-            compile_re
-        )
+            collection.uuid_subtype)
+
         self.__retrieved = retrieved
         self.__batch_size = 0
         self.__killed = False

@@ -239,10 +239,7 @@ def _get_regex(data, position, dummy, opts):
     pattern, position = _get_c_string(data, position)
     bson_flags, position = _get_c_string(data, position)
     bson_re = Regex(pattern, bson_flags)
-    if opts[3]:
-        return bson_re.try_compile(), position
-    else:
-        return bson_re, position
+    return bson_re, position
 
 
 def _get_ref(data, position, obj_end, opts):
@@ -308,9 +305,9 @@ def _elements_to_dict(data, position, obj_end, opts):
     return result
 
 
-def _bson_to_dict(data, as_class, tz_aware, uuid_subtype, compile_re):
+def _bson_to_dict(data, as_class, tz_aware, uuid_subtype):
     """Decode a BSON string to as_class."""
-    opts = (as_class, tz_aware, uuid_subtype, compile_re)
+    opts = (as_class, tz_aware, uuid_subtype)
     try:
         obj_size = _UNPACK_INT(data[:4])[0]
     except struct.error as e:
@@ -700,7 +697,7 @@ if _USE_C:
 
 
 def decode_all(data, as_class=dict,
-               tz_aware=True, uuid_subtype=OLD_UUID_SUBTYPE, compile_re=True):
+               tz_aware=True, uuid_subtype=OLD_UUID_SUBTYPE):
     """Decode BSON data to multiple documents.
 
     `data` must be a string of concatenated, valid, BSON-encoded
@@ -714,16 +711,23 @@ def decode_all(data, as_class=dict,
         :class:`~datetime.datetime` instances
       - `uuid_subtype` (optional): The BSON representation to use for UUIDs.
         See the :mod:`bson.binary` module for all options.
-      - `compile_re` (optional): if ``False``, don't attempt to compile
-        BSON regular expressions into Python regular expressions. Return
-        instances of :class:`~bson.regex.Regex` instead. Can avoid
-        :exc:`~bson.errors.InvalidBSON` errors when receiving
-        Python-incompatible regular expressions, for example from ``currentOp``
+
+    .. versionchanged:: 3.0
+       Removed `compile_re` option: PyMongo now always represents BSON regular
+       expressions as :class:`~bson.regex.Regex` objects. Use
+       :meth:`~bson.regex.Regex.try_compile` to attempt to convert from a
+       BSON regular expression to a Python regular expression object.
 
     .. versionchanged:: 2.7
-       Added `compile_re` option.
+       Added `compile_re` option. If set to False, PyMongo represented BSON
+       regular expressions as :class:`~bson.regex.Regex` objects instead of
+       attempting to compile BSON regular expressions as Python native
+       regular expressions, thus preventing errors for some incompatible
+       patterns, see `PYTHON-500`_.
+
+    .. _PYTHON-500: https://jira.mongodb.org/browse/PYTHON-500
     """
-    opts = (as_class, tz_aware, uuid_subtype, compile_re)
+    opts = (as_class, tz_aware, uuid_subtype)
     docs = []
     position = 0
     end = len(data) - 1
@@ -751,7 +755,7 @@ if _USE_C:
 
 
 def decode_iter(data, as_class=dict, tz_aware=True,
-                uuid_subtype=OLD_UUID_SUBTYPE, compile_re=True):
+                uuid_subtype=OLD_UUID_SUBTYPE):
     """Decode BSON data to multiple documents as a generator.
 
     Works similarly to the decode_all function, but yields one document at a
@@ -768,13 +772,6 @@ def decode_iter(data, as_class=dict, tz_aware=True,
         :class:`~datetime.datetime` instances
       - `uuid_subtype` (optional): The BSON representation to use for UUIDs.
         See the :mod:`bson.binary` module for all options.
-      - `compile_re` (optional): if ``False``, don't attempt to compile
-        BSON regular expressions into Python regular expressions. Return
-        instances of
-        :class:`~bson.regex.Regex` instead. Can avoid
-        :exc:`~bson.errors.InvalidBSON` errors when receiving
-        Python-incompatible regular expressions, for example from
-        ``currentOp``
 
     .. versionadded:: 2.8
     """
@@ -786,11 +783,11 @@ def decode_iter(data, as_class=dict, tz_aware=True,
         position += obj_size
 
         yield _bson_to_dict(elements, as_class,
-                            tz_aware, uuid_subtype, compile_re)
+                            tz_aware, uuid_subtype)
 
 
 def decode_file_iter(file_obj, as_class=dict, tz_aware=True,
-                     uuid_subtype=OLD_UUID_SUBTYPE, compile_re=True):
+                     uuid_subtype=OLD_UUID_SUBTYPE):
     """Decode bson data from a file to multiple documents as a generator.
 
     Works similarly to the decode_all function, but reads from the file object
@@ -804,13 +801,6 @@ def decode_file_iter(file_obj, as_class=dict, tz_aware=True,
         :class:`~datetime.datetime` instances
       - `uuid_subtype` (optional): The BSON representation to use for UUIDs.
         See the :mod:`bson.binary` module for all options.
-      - `compile_re` (optional): if ``False``, don't attempt to compile
-        BSON regular expressions into Python regular expressions. Return
-        instances of
-        :class:`~bson.regex.Regex` instead. Can avoid
-        :exc:`~bson.errors.InvalidBSON` errors when receiving
-        Python-incompatible regular expressions, for example from
-        ``currentOp``
 
     .. versionadded:: 2.8
     """
@@ -824,7 +814,7 @@ def decode_file_iter(file_obj, as_class=dict, tz_aware=True,
         obj_size = _UNPACK_INT(size_data)[0] - 4
         elements = size_data + file_obj.read(obj_size)
         yield _bson_to_dict(elements, as_class,
-                            tz_aware, uuid_subtype, compile_re)
+                            tz_aware, uuid_subtype)
 
 
 def is_valid(bson):
@@ -841,7 +831,7 @@ def is_valid(bson):
         raise TypeError("BSON data must be an instance of a subclass of bytes")
 
     try:
-        _bson_to_dict(bson, dict, True, OLD_UUID_SUBTYPE, True)
+        _bson_to_dict(bson, dict, True, OLD_UUID_SUBTYPE)
         return True
     except Exception:
         return False
@@ -874,7 +864,7 @@ class BSON(bytes):
         return cls(_dict_to_bson(document, check_keys, uuid_subtype))
 
     def decode(self, as_class=dict,
-               tz_aware=False, uuid_subtype=OLD_UUID_SUBTYPE, compile_re=True):
+               tz_aware=False, uuid_subtype=OLD_UUID_SUBTYPE):
         """Decode this BSON data.
 
         The default type to use for the resultant document is
@@ -896,19 +886,23 @@ class BSON(bytes):
             :class:`~datetime.datetime` instances
           - `uuid_subtype` (optional): The BSON representation to use for
             UUIDs. See the :mod:`bson.binary` module for all options.
-          - `compile_re` (optional): if ``False``, don't attempt to compile
-            BSON regular expressions into Python regular expressions. Return
-            instances of
-            :class:`~bson.regex.Regex` instead. Can avoid
-            :exc:`~bson.errors.InvalidBSON` errors when receiving
-            Python-incompatible regular expressions, for example from
-            ``currentOp``
+
+        .. versionchanged:: 3.0
+           Removed `compile_re` option: PyMongo now always represents BSON
+           regular expressions as :class:`~bson.regex.Regex` objects. Use
+           :meth:`~bson.regex.Regex.try_compile` to attempt to convert from a
+           BSON regular expression to a Python regular expression object.
 
         .. versionchanged:: 2.7
-           Added ``compile_re`` option.
+           Added `compile_re` option. If set to False, PyMongo represented BSON
+           regular expressions as :class:`~bson.regex.Regex` objects instead of
+           attempting to compile BSON regular expressions as Python native
+           regular expressions, thus preventing errors for some incompatible
+           patterns, see `PYTHON-500`_.
+
+        .. _PYTHON-500: https://jira.mongodb.org/browse/PYTHON-500
         """
-        return _bson_to_dict(
-            self, as_class, tz_aware, uuid_subtype, compile_re)
+        return _bson_to_dict(self, as_class, tz_aware, uuid_subtype)
 
 
 def has_c():

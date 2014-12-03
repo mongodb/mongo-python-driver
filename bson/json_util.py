@@ -117,17 +117,8 @@ def loads(s, *args, **kwargs):
     """Helper function that wraps :class:`json.loads`.
 
     Automatically passes the object_hook for BSON type conversion.
-
-    :Parameters:
-      - `compile_re` (optional): if ``False``, don't attempt to compile BSON
-        regular expressions into Python regular expressions. Return instances
-        of :class:`~bson.bsonregex.BSONRegex` instead.
-
-    .. versionchanged:: 2.7
-       Added ``compile_re`` option.
     """
-    compile_re = kwargs.pop('compile_re', True)
-    kwargs['object_hook'] = lambda dct: object_hook(dct, compile_re)
+    kwargs['object_hook'] = lambda dct: object_hook(dct)
     return json.loads(s, *args, **kwargs)
 
 
@@ -145,7 +136,7 @@ def _json_convert(obj):
         return obj
 
 
-def object_hook(dct, compile_re=True):
+def object_hook(dct):
     if "$oid" in dct:
         return ObjectId(str(dct["$oid"]))
     if "$ref" in dct:
@@ -181,11 +172,7 @@ def object_hook(dct, compile_re=True):
         # PyMongo always adds $options but some other tools may not.
         for opt in dct.get("$options", ""):
             flags |= _RE_OPT_TABLE.get(opt, 0)
-
-        if compile_re:
-            return re.compile(dct["$regex"], flags)
-        else:
-            return Regex(dct["$regex"], flags)
+        return Regex(dct["$regex"], flags)
     if "$minKey" in dct:
         return MinKey()
     if "$maxKey" in dct:

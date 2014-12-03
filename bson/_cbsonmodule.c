@@ -42,7 +42,6 @@ struct module_state {
     PyObject* Code;
     PyObject* ObjectId;
     PyObject* DBRef;
-    PyObject* RECompile;
     PyObject* Regex;
     PyObject* UUID;
     PyObject* Timestamp;
@@ -108,8 +107,7 @@ _downcast_and_check(Py_ssize_t size, int extra) {
 static PyObject* elements_to_dict(PyObject* self, const char* string,
                                   unsigned max, PyObject* as_class,
                                   unsigned char tz_aware,
-                                  unsigned char uuid_subtype,
-                                  unsigned char compile_re);
+                                  unsigned char uuid_subtype);
 
 static int _write_element_to_buffer(PyObject* self, buffer_t buffer,
                                     int type_byte, PyObject* value,
@@ -319,6 +317,7 @@ static int _load_object(PyObject** object, char* module_name, char* object_name)
  * Returns non-zero on failure. */
 static int _load_python_objects(PyObject* module) {
     PyObject* empty_string;
+    PyObject* re_compile;
     PyObject* compiled;
     struct module_state *state = GETSTATE(module);
 
@@ -330,7 +329,6 @@ static int _load_python_objects(PyObject* module) {
         _load_object(&state->MinKey, "bson.min_key", "MinKey") ||
         _load_object(&state->MaxKey, "bson.max_key", "MaxKey") ||
         _load_object(&state->UTC, "bson.tz_util", "utc") ||
-        _load_object(&state->RECompile, "re", "compile") ||
         _load_object(&state->Regex, "bson.regex", "Regex") ||
         _load_object(&state->BSONInt64, "bson.int64", "Int64") ||
         _load_object(&state->UUID, "uuid", "UUID") ||
@@ -347,7 +345,13 @@ static int _load_python_objects(PyObject* module) {
         state->REType = NULL;
         return 1;
     }
-    compiled = PyObject_CallFunction(state->RECompile, "O", empty_string);
+
+    if (_load_object(&re_compile, "re", "compile")) {
+        state->REType = NULL;
+        return 1;
+    }
+
+    compiled = PyObject_CallFunction(re_compile, "O", empty_string);
     if (compiled == NULL) {
         state->REType = NULL;
         Py_DECREF(empty_string);
@@ -1462,10 +1466,11 @@ static PyObject* _cbson_dict_to_bson(PyObject* self, PyObject* args) {
     return result;
 }
 
-static PyObject* get_value(PyObject* self, const char* buffer, unsigned* position,
-                           unsigned char type, unsigned max, PyObject* as_class,
-                           unsigned char tz_aware, unsigned char uuid_subtype,
-                           unsigned char compile_re) {
+static PyObject* get_value(PyObject* self, const char* buffer,
+                           unsigned* position, unsigned char type,
+                           unsigned max, PyObject* as_class,
+                           unsigned char tz_aware,
+                           unsigned char uuid_subtype) {
     struct module_state *state = GETSTATE(self);
 
     PyObject* value = NULL;
@@ -1521,8 +1526,8 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
                 goto invalid;
             }
             value = elements_to_dict(self, buffer + *position + 4,
-                                     size - 5, as_class, tz_aware, uuid_subtype,
-                                     compile_re);
+                                     size - 5, as_class, tz_aware,
+                                     uuid_subtype);
             if (!value) {
                 goto invalid;
             }
@@ -1621,8 +1626,7 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
                 }
                 to_append = get_value(self, buffer, position, bson_type,
                                       max - (unsigned)key_size,
-                                      as_class, tz_aware, uuid_subtype,
-                                      compile_re);
+                                      as_class, tz_aware, uuid_subtype);
                 Py_LeaveRecursiveCall();
                 if (!to_append) {
                     Py_DECREF(value);
@@ -1849,7 +1853,7 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
         }
     case 11:
         {
-            PyObject* compile_func;
+            PyObject* regex_class;
             PyObject* pattern;
             int flags;
             size_t flags_length, i;
@@ -1890,19 +1894,11 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
             }
             *position += (unsigned)flags_length + 1;
 
-            /*
-             * Use re.compile() if we're configured to compile regular
-             * expressions, else create an instance of our Regex class.
-             */
-            if (compile_re) {
-                compile_func = _get_object(state->RECompile, "re", "compile");
-            } else {
-                compile_func = _get_object(state->Regex, "bson.regex", "Regex");
-            }
-
-            if (compile_func) {
-                value = PyObject_CallFunction(compile_func, "Oi", pattern, flags);
-                Py_DECREF(compile_func);
+            regex_class = _get_object(state->Regex, "bson.regex", "Regex");
+            if (regex_class) {
+                value = PyObject_CallFunction(regex_class,
+                                              "Oi", pattern, flags);
+                Py_DECREF(regex_class);
             }
             Py_DECREF(pattern);
             break;
@@ -2040,7 +2036,7 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
             }
             scope = elements_to_dict(self, buffer + *position + 4,
                                      scope_size - 5, (PyObject*)&PyDict_Type,
-                                     tz_aware, uuid_subtype, compile_re);
+                                     tz_aware, uuid_subtype);
             if (!scope) {
                 Py_DECREF(code);
                 goto invalid;
@@ -2190,8 +2186,7 @@ static PyObject* get_value(PyObject* self, const char* buffer, unsigned* positio
 static PyObject* _elements_to_dict(PyObject* self, const char* string,
                                    unsigned max, PyObject* as_class,
                                    unsigned char tz_aware,
-                                   unsigned char uuid_subtype,
-                                   unsigned char compile_re) {
+                                   unsigned char uuid_subtype) {
     unsigned position = 0;
     PyObject* dict = PyObject_CallObject(as_class, NULL);
     if (!dict) {
@@ -2219,8 +2214,7 @@ static PyObject* _elements_to_dict(PyObject* self, const char* string,
         }
         position += (unsigned)name_length + 1;
         value = get_value(self, string, &position, type,
-                          max - position, as_class, tz_aware, uuid_subtype,
-                          compile_re);
+                          max - position, as_class, tz_aware, uuid_subtype);
         if (!value) {
             Py_DECREF(name);
             Py_DECREF(dict);
@@ -2237,13 +2231,12 @@ static PyObject* _elements_to_dict(PyObject* self, const char* string,
 static PyObject* elements_to_dict(PyObject* self, const char* string,
                                   unsigned max, PyObject* as_class,
                                   unsigned char tz_aware,
-                                  unsigned char uuid_subtype,
-                                  unsigned char compile_re) {
+                                  unsigned char uuid_subtype) {
     PyObject* result;
     if (Py_EnterRecursiveCall(" while decoding a BSON document"))
         return NULL;
     result = _elements_to_dict(self, string, max,
-                               as_class, tz_aware, uuid_subtype, compile_re);
+                               as_class, tz_aware, uuid_subtype);
     Py_LeaveRecursiveCall();
     return result;
 }
@@ -2256,10 +2249,9 @@ static PyObject* _cbson_bson_to_dict(PyObject* self, PyObject* args) {
     PyObject* as_class;
     unsigned char tz_aware;
     unsigned char uuid_subtype;
-    unsigned char compile_re;
 
     if (!PyArg_ParseTuple(
-            args, "OObbb", &bson, &as_class, &tz_aware, &uuid_subtype, &compile_re)) {
+            args, "OObb", &bson, &as_class, &tz_aware, &uuid_subtype)) {
         return NULL;
     }
 
@@ -2325,7 +2317,7 @@ static PyObject* _cbson_bson_to_dict(PyObject* self, PyObject* args) {
     }
 
     return elements_to_dict(self, string + 4, (unsigned)size - 5,
-                            as_class, tz_aware, uuid_subtype, compile_re);
+                            as_class, tz_aware, uuid_subtype);
 }
 
 static PyObject* _cbson_decode_all(PyObject* self, PyObject* args) {
@@ -2338,11 +2330,10 @@ static PyObject* _cbson_decode_all(PyObject* self, PyObject* args) {
     PyObject* as_class = (PyObject*)&PyDict_Type;
     unsigned char tz_aware = 1;
     unsigned char uuid_subtype = 3;
-    unsigned char compile_re = 1;
 
     if (!PyArg_ParseTuple(
-            args, "O|Obbb",
-            &bson, &as_class, &tz_aware, &uuid_subtype, &compile_re)) {
+            args, "O|Obb",
+            &bson, &as_class, &tz_aware, &uuid_subtype)) {
         return NULL;
     }
 
@@ -2413,7 +2404,7 @@ static PyObject* _cbson_decode_all(PyObject* self, PyObject* args) {
         }
 
         dict = elements_to_dict(self, string + 4, (unsigned)size - 5,
-                                as_class, tz_aware, uuid_subtype, compile_re);
+                                as_class, tz_aware, uuid_subtype);
         if (!dict) {
             Py_DECREF(result);
             return NULL;
@@ -2444,7 +2435,6 @@ static int _cbson_traverse(PyObject *m, visitproc visit, void *arg) {
     Py_VISIT(GETSTATE(m)->Code);
     Py_VISIT(GETSTATE(m)->ObjectId);
     Py_VISIT(GETSTATE(m)->DBRef);
-    Py_VISIT(GETSTATE(m)->RECompile);
     Py_VISIT(GETSTATE(m)->Regex);
     Py_VISIT(GETSTATE(m)->UUID);
     Py_VISIT(GETSTATE(m)->Timestamp);
@@ -2460,7 +2450,6 @@ static int _cbson_clear(PyObject *m) {
     Py_CLEAR(GETSTATE(m)->Code);
     Py_CLEAR(GETSTATE(m)->ObjectId);
     Py_CLEAR(GETSTATE(m)->DBRef);
-    Py_CLEAR(GETSTATE(m)->RECompile);
     Py_CLEAR(GETSTATE(m)->Regex);
     Py_CLEAR(GETSTATE(m)->UUID);
     Py_CLEAR(GETSTATE(m)->Timestamp);

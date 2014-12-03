@@ -1289,16 +1289,6 @@ class TestCollection(IntegrationTest):
             self.assertEqual(1.0, result['ok'])
             self.assertEqual([{'foo': [1, 2]}], result['result'])
 
-    @client_context.require_version_min(2, 3, 2)  # See SERVER-6470.
-    def test_aggregate_with_compile_re(self):
-        self.db.test.drop()
-        self.db.test.insert({'r': re.compile('.*')})
-
-        result = self.db.test.aggregate([])
-        self.assertTrue(isinstance(result['result'][0]['r'], RE_TYPE))
-        result = self.db.test.aggregate([], compile_re=False)
-        self.assertTrue(isinstance(result['result'][0]['r'], Regex))
-
     @client_context.require_version_min(2, 5, 1)
     def test_aggregation_cursor_validation(self):
         db = self.db
@@ -2200,20 +2190,13 @@ class TestCollection(IntegrationTest):
         self.assertEqual(2, c.find_one(manipulate=True)['foo'])
         c.remove({})
 
-    def test_compile_re(self):
+    def test_find_regex(self):
         c = self.db.test
         c.drop()
         c.insert({'r': re.compile('.*')})
 
-        # Test find_one with compile_re.
-        self.assertTrue(isinstance(c.find_one()['r'], RE_TYPE))
-        self.assertTrue(isinstance(c.find_one(compile_re=False)['r'], Regex))
-
-        # Test find with compile_re.
+        self.assertTrue(isinstance(c.find_one()['r'], Regex))
         for doc in c.find():
-            self.assertTrue(isinstance(doc['r'], RE_TYPE))
-
-        for doc in c.find(compile_re=False):
             self.assertTrue(isinstance(doc['r'], Regex))
 
     def test_find_and_modify_with_manipulator(self):

@@ -322,9 +322,6 @@ class GridFS(object):
             this query.
           - `tag_sets` **DEPRECATED**
           - `secondary_acceptable_latency_ms` **DEPRECATED**
-          - `compile_re` (optional): if ``False``, don't attempt to compile
-            BSON regex objects into Python regexes. Return instances of
-            :class:`~bson.regex.Regex` instead.
 
         Raises :class:`TypeError` if any of the arguments are of
         improper type. Returns an instance of

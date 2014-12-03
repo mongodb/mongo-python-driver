@@ -327,15 +327,15 @@ class TestDatabase(IntegrationTest):
     # retrieve a BSON regex from a collection using a command. But until
     # MongoDB 2.3.2, aggregation turned regexes into strings: SERVER-6470.
     @client_context.require_version_min(2, 3, 2)
-    def test_command_with_compile_re(self):
+    def test_command_with_regex(self):
         db = self.client.pymongo_test
         db.test.drop()
         db.test.insert({'r': re.compile('.*')})
+        db.test.insert({'r': Regex('.*')})
 
         result = db.command('aggregate', 'test', pipeline=[])
-        self.assertTrue(isinstance(result['result'][0]['r'], RE_TYPE))
-        result = db.command('aggregate', 'test', pipeline=[], compile_re=False)
-        self.assertTrue(isinstance(result['result'][0]['r'], Regex))
+        for doc in result['result']:
+            self.assertTrue(isinstance(doc['r'], Regex))
 
     def test_last_status(self):
         # We must call getlasterror on the same socket as the last operation.

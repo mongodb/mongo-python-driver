@@ -53,7 +53,8 @@ class SON(dict):
     list                                     array          both
     dict / `SON`                             object         both
     datetime.datetime [#dt]_ [#dt2]_         date           both
-    `bson.regex.Regex` / compiled re [#re]_  regex          both
+    `bson.regex.Regex`                       regex          both
+    compiled re [#re]_                       regex          py -> bson
     `bson.binary.Binary`                     binary         both
     `bson.objectid.ObjectId`                 oid            both
     `bson.dbref.DBRef`                       dbref          both
@@ -77,9 +78,8 @@ class SON(dict):
        should always use UTC.
     .. [#re] :class:`~bson.regex.Regex` instances and regular expression
        objects from ``re.compile()`` are both saved as BSON regular expressions.
-       BSON regular expressions are decoded as Python regular expressions by
-       default, or as :class:`~bson.regex.Regex` instances if the ``compile_re``
-       option is set to ``False``.
+       BSON regular expressions are decoded as :class:`~bson.regex.Regex`
+       instances.
     .. [#bytes] The bytes type from Python 3.x is encoded as BSON binary with
        subtype 0. In Python 3.x it will be decoded back to bytes. In Python 2.x
        it will be decoded to an instance of :class:`~bson.binary.Binary` with

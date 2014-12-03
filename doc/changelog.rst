@@ -96,6 +96,23 @@ Since PyMongo 1.6, methods ``open`` and ``close`` of :class:`~gridfs.GridFS`
 raised an ``UnsupportedAPI`` exception, as did the entire ``GridFile`` class.
 The unsupported methods, the class, and the exception are all deleted.
 
+:mod:`~bson` Changes
+....................
+
+The `compile_re` option is removed from all methods
+that accepted it in :mod:`~bson` and :mod:`~bson.json_util`. Additionally, it
+is removed from :meth:`~pymongo.collection.Collection.find`,
+:meth:`~pymongo.collection.Collection.find_one`,
+:meth:`~pymongo.collection.Collection.aggregate`,
+:meth:`~pymongo.database.Database.command`, and so on.
+PyMongo now always represents BSON regular expressions as
+:class:`~bson.regex.Regex` objects. This prevents errors for incompatible
+patterns, see `PYTHON-500`_. Use :meth:`~bson.regex.Regex.try_compile` to
+attempt to convert from a BSON regular expression to a Python regular
+expression object.
+
+.. _PYTHON-500: https://jira.mongodb.org/browse/PYTHON-500
+
 Issues Resolved
 ...............
 

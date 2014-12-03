@@ -80,7 +80,7 @@ class Cursor(object):
                  await_data=False, partial=False, manipulate=True,
                  read_preference=None, tag_sets=None,
                  secondary_acceptable_latency_ms=None,
-                 exhaust=False, compile_re=True, _uuid_subtype=None):
+                 exhaust=False, _uuid_subtype=None):
         """Create a new cursor.
 
         Should not be called directly by application developers - see
@@ -157,7 +157,6 @@ class Cursor(object):
         self.__as_class = as_class
         self.__manipulate = manipulate
         self.__tz_aware = collection.database.connection.tz_aware
-        self.__compile_re = compile_re
         self.__uuid_subtype = _uuid_subtype or collection.uuid_subtype
 
         self.__data = deque()
@@ -241,7 +240,7 @@ class Cursor(object):
                            "snapshot", "ordering", "explain", "hint",
                            "batch_size", "max_scan", "as_class",
                            "manipulate", "read_preference",
-                           "uuid_subtype", "compile_re", "query_flags")
+                           "uuid_subtype", "query_flags")
         data = dict((k, v) for k, v in iteritems(self.__dict__)
                     if k.startswith('_Cursor__') and k[9:] in values_to_clone)
         if deepcopy:
@@ -708,7 +707,6 @@ class Cursor(object):
         r = database.command("count", self.__collection.name,
                              allowable_errors=["ns missing"],
                              uuid_subtype=self.__uuid_subtype,
-                             compile_re=self.__compile_re,
                              read_preference=self.__read_preference,
                              **command)
         if r.get("errmsg", "") == "ns missing":
@@ -749,7 +747,6 @@ class Cursor(object):
         return database.command("distinct",
                                 self.__collection.name,
                                 uuid_subtype=self.__uuid_subtype,
-                                compile_re=self.__compile_re,
                                 read_preference=self.__read_preference,
                                 **options)["values"]
 
@@ -890,8 +887,7 @@ class Cursor(object):
                                            cursor_id=self.__id,
                                            as_class=self.__as_class,
                                            tz_aware=self.__tz_aware,
-                                           uuid_subtype=self.__uuid_subtype,
-                                           compile_re=self.__compile_re)
+                                           uuid_subtype=self.__uuid_subtype)
         except OperationFailure:
             self.__killed = True
 

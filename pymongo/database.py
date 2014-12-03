@@ -285,7 +285,7 @@ class Database(common.BaseObject):
 
     def _command(self, command, value=1,
                  check=True, allowable_errors=None,
-                 uuid_subtype=OLD_UUID_SUBTYPE, compile_re=True,
+                 uuid_subtype=OLD_UUID_SUBTYPE,
                  read_preference=None, **kwargs):
         """Internal command helper.
         """
@@ -343,7 +343,6 @@ class Database(common.BaseObject):
                                    limit=-1,
                                    as_class=as_class,
                                    read_preference=pref,
-                                   compile_re=compile_re,
                                    _uuid_subtype=uuid_subtype)
 
         result = {}
@@ -363,7 +362,7 @@ class Database(common.BaseObject):
 
     def command(self, command, value=1,
                 check=True, allowable_errors=[],
-                uuid_subtype=OLD_UUID_SUBTYPE, compile_re=True,
+                uuid_subtype=OLD_UUID_SUBTYPE,
                 read_preference=None, **kwargs):
         """Issue a MongoDB command.
 
@@ -409,12 +408,6 @@ class Database(common.BaseObject):
             in this list will be ignored by error-checking
           - `uuid_subtype` (optional): The BSON binary subtype to use
             for a UUID used in this command.
-          - `compile_re` (optional): if ``False``, don't attempt to compile
-            BSON regular expressions into Python regular expressions. Return
-            instances of :class:`~bson.regex.Regex` instead. Can avoid
-            :exc:`~bson.errors.InvalidBSON` errors when receiving
-            Python-incompatible regular expressions, for example from
-            ``currentOp``
           - `read_preference`: The read preference for this operation.
           - `tag_sets` **DEPRECATED**
           - `secondary_acceptable_latency_ms` **DEPRECATED**
@@ -424,19 +417,30 @@ class Database(common.BaseObject):
         .. versionchanged:: 3.0
            Deprecated the `tag_sets` and `secondary_acceptable_latency_ms`
            options.
+           Removed `compile_re` option: PyMongo now always represents BSON
+           regular expressions as :class:`~bson.regex.Regex` objects. Use
+           :meth:`~bson.regex.Regex.try_compile` to attempt to convert from a
+           BSON regular expression to a Python regular expression object.
+
         .. versionchanged:: 2.7
-           Added ``compile_re`` option.
+           Added `compile_re` option. If set to False, PyMongo represented BSON
+           regular expressions as :class:`~bson.regex.Regex` objects instead of
+           attempting to compile BSON regular expressions as Python native
+           regular expressions, thus preventing errors for some incompatible
+           patterns, see `PYTHON-500`_.
+
         .. versionchanged:: 2.3
            Added `tag_sets` and `secondary_acceptable_latency_ms` options.
         .. versionchanged:: 2.2
            Added support for `as_class` - the class you want to use for
            the resulting documents
 
+        .. _PYTHON-500: https://jira.mongodb.org/browse/PYTHON-500
+
         .. mongodoc:: commands
         """
         return self._command(command, value, check, allowable_errors,
-                             uuid_subtype, compile_re,
-                             read_preference, **kwargs)[0]
+                             uuid_subtype, read_preference, **kwargs)[0]
 
     def collection_names(self, include_system_collections=True):
         """Get a list of all the collection names in this database.
