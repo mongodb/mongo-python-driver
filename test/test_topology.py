@@ -265,7 +265,9 @@ class TestSingleServerTopology(TopologyTest):
         def test():
             t.request_check_all()
             # We didn't forget prior average: .8 * 105 + .2 * 20 = 88.
-            return round(abs(88 - s.description.round_trip_time), 7) == 0
+            description = s.description
+            return (description.round_trip_time is not None
+                    and round(abs(88 - description.round_trip_time), 7) == 0)
 
         wait_until(test, 'calculate correct new average')
 
