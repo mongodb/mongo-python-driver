@@ -260,30 +260,6 @@ that are not supported in JSON. We've added some utilities for working
 with :mod:`json` and :mod:`simplejson` in the
 :mod:`~bson.json_util` module.
 
-.. _year-2038-problem:
-
-Why do I get an error for dates on or after 2038?
--------------------------------------------------
-On Unix systems, dates are represented as seconds from 1 January 1970 and
-usually stored in the C :mod:`time_t` type. On most 32-bit operating systems
-:mod:`time_t` is a signed 4 byte integer which means it can't handle dates
-after 19 January 2038; this is known as the `year 2038 problem
-<http://en.wikipedia.org/wiki/Year_2038_problem>`_. Neither MongoDB nor Python
-uses :mod:`time_t` to represent dates internally so do not suffer from this
-problem, but Python's :mod:`datetime.datetime.fromtimestamp()` does, which
-means it is susceptible.
-
-Previous to version 2.0, PyMongo used :mod:`datetime.datetime.fromtimestamp()`
-in its pure Python :mod:`bson` module. Therefore, on 32-bit systems you may
-get an error retrieving dates after 2038 from MongoDB using older versions
-of PyMongo with the pure Python version of :mod:`bson`.
-
-This problem was fixed in the pure Python implementation of :mod:`bson` by
-commit ``b19ab334af2a29353529`` (8 June 2011 - PyMongo 2.0).
-
-The C implementation of :mod:`bson` also used to suffer from this problem but
-it was fixed in commit ``566bc9fb7be6f9ab2604`` (10 May 2010 - PyMongo 1.7).
-
 Why do I get OverflowError decoding dates stored by another language's driver?
 ------------------------------------------------------------------------------
 PyMongo decodes BSON datetime values to instances of Python's
