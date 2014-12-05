@@ -250,26 +250,33 @@ class TestSingleServerTopology(TopologyTest):
         # Exponential weighted average: .8 * 125 + .2 * 25 = 105.
         self.assertAlmostEqual(105, s.description.round_trip_time)
 
+        # The server is temporarily down.
         available = False
         t.request_check_all()
-        with self.assertRaises(ConnectionFailure):
-            t.select_server(writable_server_selector, server_wait_time=1)
 
-        # The server is temporarily down.
+        def raises_err():
+            try:
+                t.select_server(writable_server_selector, server_wait_time=0.1)
+            except ConnectionFailure:
+                return True
+            else:
+                return False
+
+        wait_until(raises_err, 'discover server is down')
         self.assertIsNone(s.description.round_trip_time)
 
         # Bring it back, RTT is now 30 milliseconds.
         available = True
         round_trip_time = 20
 
-        def test():
+        def new_average():
             t.request_check_all()
             # We didn't forget prior average: .8 * 105 + .2 * 20 = 88.
             description = s.description
             return (description.round_trip_time is not None
                     and round(abs(88 - description.round_trip_time), 7) == 0)
 
-        wait_until(test, 'calculate correct new average')
+        wait_until(new_average, 'calculate correct new average')
 
 
 class TestMultiServerTopology(TopologyTest):
