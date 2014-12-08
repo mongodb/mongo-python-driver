@@ -123,6 +123,10 @@ class SocketGetter(MongoThread):
 
         self.state = 'sock'
 
+    def __del__(self):
+        if self.sock:
+            self.sock.close()
+
 
 def run_cases(client, cases):
     threads = []
