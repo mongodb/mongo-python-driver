@@ -359,11 +359,6 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
             db = self.c.pymongo_test
 
             # Only way to create an index and wait for all members to build it.
-            index = {
-                'ns': 'pymongo_test.test',
-                'name': 't_text',
-                'key': {'t': 'text'}}
-
             db.test.create_index([('t', 'text')])
             db.test.insert({}, w=self.w)
             db.test.remove({}, w=self.w)
