@@ -71,7 +71,7 @@ Minimongo
   and provides a number of additional features, including a simple
   document-oriented interface, connection pooling, index management, and
   collection & database naming helpers. The `source is on github
-  <http://github.com/slacy/minimongo>`_.
+  <https://github.com/MiniMongo/minimongo>`_.
 
 Manga
   `Manga <http://pypi.python.org/pypi/manga>`_ aims to be a simpler ORM-like
