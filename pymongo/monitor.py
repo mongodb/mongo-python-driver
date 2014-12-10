@@ -114,7 +114,7 @@ class Monitor(object):
                 self._event.clear()
                 wait_time = _time() - start
                 if wait_time < common.MIN_HEARTBEAT_INTERVAL:
-                    # request_check() was called before min_wait passed.
+                    # request_check() was called before min interval passed.
                     time.sleep(common.MIN_HEARTBEAT_INTERVAL - wait_time)
 
     def _check_with_retry(self):
