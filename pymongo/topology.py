@@ -280,7 +280,7 @@ class Topology(object):
             return selector(self._description.known_servers)
 
     def _update_servers(self):
-        """Sync our set of Servers from TopologyDescription.server_descriptions.
+        """Sync our Servers from TopologyDescription.server_descriptions.
 
         Hold the lock while calling this.
         """
