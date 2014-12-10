@@ -43,8 +43,7 @@ from test import (client_context,
                   db_user,
                   MockClientTest)
 from test.pymongo_mocks import MockClient
-from test.utils import (assertRaisesExactly,
-                        connected,
+from test.utils import (connected,
                         delay,
                         ignore_deprecations,
                         one,

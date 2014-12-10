@@ -19,7 +19,6 @@ import sys
 sys.path[0:0] = [""]
 
 import datetime
-import cProfile
 
 from pymongo import mongo_client
 from pymongo import ASCENDING

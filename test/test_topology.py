@@ -32,7 +32,6 @@ from pymongo.errors import (ConfigurationError,
 from pymongo.ismaster import IsMaster
 from pymongo.monitor import Monitor
 from pymongo.pool import PoolOptions
-from pymongo.read_preferences import MovingAverage
 from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import (any_server_selector,
                                       writable_server_selector)

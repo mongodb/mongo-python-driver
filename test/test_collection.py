@@ -21,7 +21,6 @@ import re
 import sys
 import threading
 import time
-import uuid
 import warnings
 
 sys.path[0:0] = [""]
@@ -31,10 +30,9 @@ from bson.code import Code
 from bson.dbref import DBRef
 from bson.objectid import ObjectId
 from bson.py3compat import u, itervalues
-from bson.son import SON, RE_TYPE
+from bson.son import SON
 from pymongo import (ASCENDING, DESCENDING, GEO2D,
                      GEOHAYSTACK, GEOSPHERE, HASHED, TEXT)
-from pymongo import message as message_module
 from pymongo import MongoClient
 from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
@@ -49,7 +47,7 @@ from pymongo.errors import (DocumentTooLarge,
                             WTimeoutError)
 from test.test_client import IntegrationTest
 from test.utils import (is_mongos, joinall, enable_text_search, get_pool,
-                        oid_generated_on_client, one, ignore_deprecations,
+                        oid_generated_on_client, ignore_deprecations,
                         rs_or_single_client, wait_until)
 from test import client_context, host, port, qcheck, unittest
 

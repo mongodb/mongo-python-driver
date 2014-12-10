@@ -27,7 +27,7 @@ from bson.regex import Regex
 from bson.dbref import DBRef
 from bson.objectid import ObjectId
 from bson.py3compat import u, string_type, text_type, PY3
-from bson.son import SON, RE_TYPE
+from bson.son import SON
 from pymongo import (MongoClient,
                      ALL,
                      auth,
@@ -51,14 +51,12 @@ from test import (client_context,
                   unittest,
                   host,
                   port,
-                  IntegrationTest,
-                  db_user)
-from test.utils import (
-    ignore_deprecations,
-    remove_all_users,
-    rs_or_single_client_noauth,
-    rs_or_single_client,
-    server_started_with_auth)
+                  IntegrationTest)
+from test.utils import (ignore_deprecations,
+                        remove_all_users,
+                        rs_or_single_client_noauth,
+                        rs_or_single_client,
+                        server_started_with_auth)
 
 
 if PY3:

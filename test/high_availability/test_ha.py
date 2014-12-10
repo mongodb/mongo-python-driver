@@ -23,7 +23,6 @@ import itertools
 import time
 
 import ha_tools
-
 from pymongo import common
 from pymongo.common import partition_node
 from pymongo.errors import (AutoReconnect,
@@ -33,12 +32,10 @@ from pymongo.errors import (AutoReconnect,
 from pymongo.mongo_client import MongoClient
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_description import ServerDescription
-from pymongo.server_selectors import (secondary_server_selector,
-                                      writable_server_selector)
-
 from test import SkipTest, unittest, utils, client_knobs
 from test.utils import one, wait_until, connected
 from test.version import Version
+
 
 
 # To make the code terser, copy modes into module scope
