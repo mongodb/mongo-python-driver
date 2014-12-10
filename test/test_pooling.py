@@ -107,7 +107,12 @@ class Disconnect(MongoThread):
 
 
 class SocketGetter(MongoThread):
-    """Utility for _TestMaxOpenSockets and _TestWaitQueueMultiple"""
+    """Utility for TestPooling.
+
+    Checks out a socket and holds it forever. Used in
+    test_no_wait_queue_timeout, test_wait_queue_multiple, and
+    test_no_wait_queue_multiple.
+    """
     def __init__(self, client, pool):
         super(SocketGetter, self).__init__(client)
         self.state = 'init'
