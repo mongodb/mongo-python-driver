@@ -45,15 +45,16 @@ from pymongo import (common,
                      pool,
                      uri_parser)
 from pymongo.client_options import ClientOptions
-from pymongo.topology_description import TOPOLOGY_TYPE
 from pymongo.cursor_manager import CursorManager
 from pymongo.topology import Topology
-from pymongo.errors import (ConfigurationError,
+from pymongo.errors import (AutoReconnect,
+                            ConfigurationError,
                             ConnectionFailure,
-                            InvalidURI, AutoReconnect, OperationFailure,
-                            DuplicateKeyError, InvalidOperation,
+                            DuplicateKeyError,
+                            InvalidURI,
                             NetworkTimeout,
-                            NotMasterError)
+                            NotMasterError,
+                            OperationFailure)
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_selectors import (writable_preferred_server_selector,
                                       writable_server_selector)
