@@ -87,15 +87,6 @@ class Topology(object):
             while not server_descriptions:
                 # No suitable servers.
                 if wait_time == 0 or now > end_time:
-                    # TODO: more error diagnostics. E.g., if state is
-                    # ReplicaSet but every server is Unknown, and the host
-                    # list is non-empty, and doesn't intersect with
-                    # settings.seeds, the set is probably configured with
-                    # internal hostnames or IPs and we're connecting from
-                    # outside. Or if we're a replica set and
-                    # server_descriptions is empty, we have the wrong
-                    # replica_set_name. Include TopologyDescription's str() in
-                    # exception msg.
                     raise AutoReconnect(self._error_message(selector))
 
                 self._ensure_opened()
@@ -103,7 +94,7 @@ class Topology(object):
 
                 # Release the lock and wait for the topology description to
                 # change, or for a timeout. We won't miss any changes that
-                # came after our most recent selector() call, since we've
+                # came after our most recent _apply_selector call, since we've
                 # held the lock until now.
                 self._condition.wait(common.MIN_HEARTBEAT_INTERVAL)
                 self._description.check_compatible()
