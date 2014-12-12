@@ -157,8 +157,8 @@ class ClientContext(object):
             if 'enableTestCommands=1' in self.cmd_line['argv']:
                 self.test_commands_enabled = True
             elif 'parsed' in self.cmd_line:
-                params = self.cmd_line['parsed'].get('setParameter', {})
-                if params.get('enableTestCommands'):
+                params = self.cmd_line['parsed'].get('setParameter', [])
+                if 'enableTestCommands=1' in params:
                     self.test_commands_enabled = True
 
             self.is_mongos = (self.ismaster.get('msg') == 'isdbgrid')
