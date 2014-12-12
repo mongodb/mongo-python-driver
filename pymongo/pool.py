@@ -213,13 +213,12 @@ class Pool:
         self.pool_id += 1
         self.pid = os.getpid()
 
-        sockets = None
+        # Allocate outside the lock. Triggering a GC while holding the lock
+        # could run Cursor.__del__ and deadlock. See PYTHON-799.
+        new_sockets = set()
+        self.lock.acquire()
         try:
-            # Swapping variables is not atomic. We need to ensure no other
-            # thread is modifying self.sockets, or replacing it, in this
-            # critical section.
-            self.lock.acquire()
-            sockets, self.sockets = self.sockets, set()
+            sockets, self.sockets = self.sockets, new_sockets
         finally:
             self.lock.release()
 

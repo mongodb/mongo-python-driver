@@ -1096,7 +1096,7 @@ class MongoClient(common.BaseObject):
             return message
 
     def _send_message(self, message,
-                      with_last_error=False, command=False, check_primary=True):
+                      with_last_error=False, command=False):
         """Say something to Mongo.
 
         Raises ConnectionFailure if the message cannot be sent. Raises
@@ -1109,11 +1109,9 @@ class MongoClient(common.BaseObject):
           - `message`: message to send
           - `with_last_error`: check getLastError status after sending the
             message
-          - `check_primary`: don't try to write to a non-primary; see
-            kill_cursors for an exception to this rule
         """
         member = self.__ensure_member()
-        if check_primary and not with_last_error and not self.is_primary:
+        if not with_last_error and not self.is_primary:
             # The write won't succeed, bail as if we'd done a getLastError
             raise AutoReconnect("not master")
 
@@ -1345,8 +1343,24 @@ class MongoClient(common.BaseObject):
         """
         if not isinstance(cursor_ids, list):
             raise TypeError("cursor_ids must be a list")
-        return self._send_message(
-            message.kill_cursors(cursor_ids), check_primary=False)
+
+        member = self.__member
+
+        # We're disconnected, but can't risk taking the lock to reconnect
+        # if we're being called from Cursor.__del__, see PYTHON-799.
+        if not member:
+            raise AutoReconnect()
+
+        _, kill_cursors_msg = message.kill_cursors(cursor_ids)
+        sock_info = self.__socket(member)
+        try:
+            try:
+                sock_info.sock.sendall(kill_cursors_msg)
+            except:
+                sock_info.close()
+                raise
+        finally:
+            member.maybe_return_socket(sock_info)
 
     def server_info(self):
         """Get information about the MongoDB server we're connected to.
