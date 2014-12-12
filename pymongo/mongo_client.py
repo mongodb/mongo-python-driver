@@ -282,20 +282,20 @@ class MongoClient(common.BaseObject):
         condition_class = kwargs.pop('_condition_class', None)
 
         kwargs['max_pool_size'] = max_pool_size
+        kwargs['document_class'] = document_class
+        kwargs['tz_aware'] = tz_aware
         opts.update(kwargs)
         self.__options = options = ClientOptions(
             username, password, dbase, opts)
 
         self.__default_database_name = dbase
         self.__cursor_manager = CursorManager(self)
-        self.__document_class = document_class
-        self.__tz_aware = common.validate_boolean('tz_aware', tz_aware)
 
         # Cache of existing indexes used by ensure_index ops.
         self.__index_cache = {}
 
-        super(MongoClient, self).__init__(options.read_preference,
-                                          options.uuid_subtype,
+        super(MongoClient, self).__init__(options.codec_options,
+                                          options.read_preference,
                                           options.write_concern.document)
 
         self.__all_credentials = {}
@@ -521,7 +521,7 @@ class MongoClient(common.BaseObject):
         .. versionchanged:: 3.0
            Now read-only.
         """
-        return self.__document_class
+        return self.__options.codec_options.as_class
 
     def get_document_class(self):
         """Default class to use for documents returned from this client.
@@ -532,13 +532,13 @@ class MongoClient(common.BaseObject):
                       ' document_class property',
                       DeprecationWarning, stacklevel=2)
 
-        return self.__document_class
+        return self.__options.codec_options.as_class
 
     @property
     def tz_aware(self):
         """Does this client return timezone-aware datetimes?
         """
-        return self.__tz_aware
+        return self.__options.codec_options.tz_aware
 
     @property
     def max_bson_size(self):

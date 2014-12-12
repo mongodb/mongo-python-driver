@@ -14,8 +14,10 @@
 
 """Tools to parse mongo client options."""
 
+from bson.binary import OLD_UUID_SUBTYPE
 from bson.py3compat import iteritems
 from pymongo.auth import _build_credentials_tuple
+from pymongo.codec_options import CodecOptions
 from pymongo.common import validate
 from pymongo.errors import ConfigurationError
 from pymongo.pool import PoolOptions
@@ -32,6 +34,14 @@ def _parse_credentials(username, password, database, options):
     source = options.get('authsource', database or 'admin')
     return _build_credentials_tuple(
         mechanism, source, username, password, options)
+
+
+def _parse_codec_options(options):
+    """Parse BSON codec options."""
+    as_class = options.get('document_class', dict)
+    tz_aware = options.get('tz_aware', False)
+    uuid_rep = options.get('uuidrepresentation', OLD_UUID_SUBTYPE)
+    return CodecOptions(as_class, tz_aware, uuid_rep)
 
 
 def _parse_read_preference(options):
@@ -113,21 +123,20 @@ class ClientOptions(object):
 
         self.__credentials = _parse_credentials(
             username, password, database, options)
+        self.__codec_options = _parse_codec_options(options)
         self.__pool_options = _parse_pool_options(options)
         self.__read_preference = _parse_read_preference(options)
         self.__replica_set_name = options.get('replicaset')
         self.__write_concern = _parse_write_concern(options)
-        # TODO: BSONOptions
-        self.__uuid_subtype = options.get('uuidrepresentation')
 
     @property
     def credentials(self):
-        """A MongoCredentials instance or None."""
+        """A :class:`~pymongo.auth.MongoCredentials` instance or None."""
         return self.__credentials
 
     @property
     def pool_options(self):
-        """A PoolOptions instance."""
+        """A :class:`~pymongo.pool.PoolOptions` instance."""
         return self.__pool_options
 
     @property
@@ -141,11 +150,11 @@ class ClientOptions(object):
         return self.__replica_set_name
 
     @property
-    def uuid_subtype(self):
-        """BSON UUID representation."""
-        return self.__uuid_subtype
+    def codec_options(self):
+        """A :class:`~pymongo.codec_options.CodecOptions` instance."""
+        return self.__codec_options
 
     @property
     def write_concern(self):
-        """A WriteConcern instance."""
+        """A :class:`~pymongo.write_concern.WriteConcern` instance."""
         return self.__write_concern

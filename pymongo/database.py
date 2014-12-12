@@ -76,8 +76,8 @@ class Database(common.BaseObject):
 
                db.__my_collection__
         """
-        super(Database, self).__init__(connection.read_preference,
-                                       connection.uuid_subtype,
+        super(Database, self).__init__(connection.codec_options,
+                                       connection.read_preference,
                                        connection.write_concern)
 
         if not isinstance(name, string_type):

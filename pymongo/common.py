@@ -19,6 +19,7 @@ import collections
 import warnings
 
 from pymongo.auth import MECHANISMS
+from pymongo.codec_options import CodecOptions
 from pymongo.errors import ConfigurationError
 from pymongo.read_preferences import (make_read_preference,
                                       read_pref_mode_from_name,
@@ -302,6 +303,13 @@ def validate_auth_mechanism_properties(option, value):
     return props
 
 
+def validate_document_class(option, value):
+    if not issubclass(value, collections.MutableMapping):
+        raise ConfigurationError("%s must be a sublass of "
+                                 "collections.MutableMapping" % (option,))
+    return value
+
+
 # journal is an alias for j,
 # wtimeoutms is an alias for wtimeout,
 VALIDATORS = {
@@ -331,6 +339,8 @@ VALIDATORS = {
     'authmechanism': validate_auth_mechanism,
     'authsource': validate_string,
     'authmechanismproperties': validate_auth_mechanism_properties,
+    'document_class': validate_document_class,
+    'tz_aware': validate_boolean,
     'uuidrepresentation': validate_uuid_representation,
 }
 
@@ -374,11 +384,16 @@ class BaseObject(object):
     SHOULD NOT BE USED BY DEVELOPERS EXTERNAL TO MONGODB.
     """
 
-    def __init__(self, read_preference, uuid_subtype, write_concern):
+    def __init__(self, codec_options, read_preference, write_concern):
 
+        self.__codec_options = codec_options
         self.__read_pref = read_preference
-        self.__uuid_subtype = uuid_subtype or OLD_UUID_SUBTYPE
         self.__write_concern = WriteConcern(**write_concern)
+
+    @property
+    def codec_options(self):
+        """An instance of :class:`~pymongo.codec_options.CodecOptions`."""
+        return self.__codec_options
 
     def __set_write_concern(self, value):
         """Property setter for write_concern."""
@@ -498,11 +513,14 @@ class BaseObject(object):
         subtype 4. It can also be used to force legacy byte order and subtype
         compatibility with the Java and C# drivers. See the :mod:`bson.binary`
         module for all options."""
-        return self.__uuid_subtype
+        return self.__codec_options.uuid_representation
 
     def __set_uuid_subtype(self, value):
         """Sets the BSON Binary subtype to be used when storing UUIDs."""
-        self.__uuid_subtype = validate_uuid_subtype("uuid_subtype", value)
+        uuid_representation = validate_uuid_subtype("uuid_subtype", value)
+        self.__codec_options = CodecOptions(self.__codec_options.as_class,
+                                            self.__codec_options.tz_aware,
+                                            uuid_representation)
 
     uuid_subtype = property(__get_uuid_subtype, __set_uuid_subtype)
 

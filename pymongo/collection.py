@@ -98,8 +98,8 @@ class Collection(common.BaseObject):
 
         .. mongodoc:: collections
         """
-        super(Collection, self).__init__(database.read_preference,
-                                         database.uuid_subtype,
+        super(Collection, self).__init__(database.codec_options,
+                                         database.read_preference,
                                          database.write_concern)
 
         if not isinstance(name, string_type):
