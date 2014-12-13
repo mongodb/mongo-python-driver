@@ -1807,8 +1807,7 @@ class MongoReplicaSetClient(common.BaseObject):
         """Close a single database cursor.
 
         Raises :class:`TypeError` if `cursor_id` is not an instance of
-        ``(int, long)``. What closing the cursor actually means
-        depends on this client's cursor manager.
+        ``(int, long)``.
 
         :Parameters:
           - `cursor_id`: id of cursor to close
