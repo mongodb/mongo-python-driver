@@ -64,3 +64,13 @@ class CodecOptions(object):
     def uuid_representation(self):
         """Read only property for uuid_subtype."""
         return self.__uuid_rep
+
+    def __eq__(self, other):
+        if isinstance(other, CodecOptions):
+            return (self.__as_class == other.as_class and
+                    self.__tz_aware == other.tz_aware and
+                    self.__uuid_rep == other.uuid_representation)
+        raise NotImplementedError
+
+    def __ne__(self, other):
+        return self != other
