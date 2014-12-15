@@ -62,7 +62,7 @@ class CodecOptions(object):
 
     @property
     def uuid_representation(self):
-        """Read only property for uuid_subtype."""
+        """Read only property for uuid_representation."""
         return self.__uuid_rep
 
     def __eq__(self, other):
