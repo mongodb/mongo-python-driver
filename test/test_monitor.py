@@ -20,14 +20,14 @@ from functools import partial
 
 sys.path[0:0] = [""]
 
-from pymongo.monitor import MONITORS
+from pymongo.periodic_executor import _EXECUTORS
 from test import unittest, port, host, IntegrationTest
 from test.utils import single_client, one, connected, wait_until
 
 
-def find_monitor_ref(monitor):
-    for ref in MONITORS.copy():
-        if ref() is monitor:
+def registered(executor):
+    for ref in _EXECUTORS.copy():
+        if ref() is executor:
             return ref
 
     return None
@@ -35,23 +35,22 @@ def find_monitor_ref(monitor):
 
 def unregistered(ref):
     gc.collect()
-    return ref not in MONITORS
+    return ref not in _EXECUTORS
 
 
 class TestMonitor(IntegrationTest):
     def test_atexit_hook(self):
         client = single_client(host, port)
-        monitor = one(client._topology._servers.values())._monitor
+        executor = one(client._topology._servers.values())._monitor._executor
         connected(client)
 
-        # The client registers a weakref to the monitor.
-        ref = wait_until(partial(find_monitor_ref, monitor),
-                         'register monitor')
+        # The executor stores a weakref to itself in _EXECUTORS.
+        ref = wait_until(partial(registered, executor), 'register executor')
 
-        del monitor
+        del executor
         del client
 
-        wait_until(partial(unregistered, ref), 'unregister monitor')
+        wait_until(partial(unregistered, ref), 'unregister executor')
 
 
 if __name__ == "__main__":

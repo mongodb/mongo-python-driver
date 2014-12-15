@@ -14,12 +14,9 @@
 
 """Class to monitor a MongoDB server on a background thread."""
 
-import atexit
-import threading
-import time
 import weakref
 
-from pymongo import common, helpers, message, thread_util
+from pymongo import common, helpers, message, periodic_executor
 from pymongo.server_type import SERVER_TYPE
 from pymongo.ismaster import IsMaster
 from pymongo.monotonic import time as _time
@@ -42,7 +39,6 @@ class Monitor(object):
         The Topology is weakly referenced. The Pool must be exclusive to this
         Monitor.
         """
-        super(Monitor, self).__init__()
         self._server_description = server_description
 
         # A weakref callback, takes ref to the dead topology as its parameter.
@@ -52,70 +48,52 @@ class Monitor(object):
         self._topology = weakref.proxy(topology, close)
         self._pool = pool
         self._settings = topology_settings
-        self._stopped = False
-        self._event = thread_util.Event(self._settings.condition_class)
-        self._thread = None
         self._avg_round_trip_time = MovingAverage()
+
+        # We strongly reference the executor and it weakly references us via
+        # this closure. When the monitor is freed, a call to target() raises
+        # ReferenceError and stops the executor.
+        def target():
+            Monitor._run(weakref.proxy(self))
+
+        self._executor = periodic_executor.PeriodicExecutor(
+            condition_class=self._settings.condition_class,
+            interval=common.HEARTBEAT_FREQUENCY,
+            min_interval=common.MIN_HEARTBEAT_INTERVAL,
+            target=target)
 
     def open(self):
         """Start monitoring, or restart after a fork.
 
         Multiple calls have no effect.
         """
-        self._stopped = False
-        started = False
-        try:
-            started = self._thread and self._thread.is_alive()
-        except ReferenceError:
-            # Thread terminated.
-            pass
-
-        if not started:
-            thread = threading.Thread(target=self.run)
-            thread.daemon = True
-            self._thread = weakref.proxy(thread)
-            register_monitor(self)
-            thread.start()
+        self._executor.open()
 
     def close(self):
         """Disconnect and stop monitoring.
 
         open() restarts the monitor after closing.
         """
-        self._stopped = True
+        self._executor.close()
+
+        # Increment the pool_id and maybe close the socket. If the executor
+        # thread has the socket checked out, it will be closed when checked in.
         self._pool.reset()
 
-        # Wake the thread so it notices that _stopped is True.
-        self.request_check()
-
     def join(self, timeout=None):
-        if self._thread is not None:
-            try:
-                self._thread.join(timeout)
-            except ReferenceError:
-                # Thread already terminated.
-                pass
+        self._executor.join(timeout)
 
     def request_check(self):
         """If the monitor is sleeping, wake and check the server soon."""
-        self._event.set()
+        self._executor.wake()
 
-    def run(self):
-        while not self._stopped:
-            try:
-                self._server_description = self._check_with_retry()
-                self._topology.on_change(self._server_description)
-            except ReferenceError:
-                # Topology was garbage-collected.
-                self.close()
-            else:
-                start = _time()
-                self._event.wait(common.HEARTBEAT_FREQUENCY)
-                self._event.clear()
-                wait_time = _time() - start
-                if wait_time < common.MIN_HEARTBEAT_INTERVAL:
-                    # request_check() was called before min interval passed.
-                    time.sleep(common.MIN_HEARTBEAT_INTERVAL - wait_time)
+    def _run(self):
+        try:
+            self._server_description = self._check_with_retry()
+            self._topology.on_change(self._server_description)
+        except ReferenceError:
+            # Topology was garbage-collected.
+            self.close()
 
     def _check_with_retry(self):
         """Call ismaster once or twice. Reset server's pool on error.
@@ -175,34 +153,3 @@ class Monitor(object):
         raw_response = sock_info.receive_message(1, request_id)
         result = helpers._unpack_response(raw_response)
         return IsMaster(result['data'][0]), _time() - start
-
-
-# MONITORS has a weakref to each running Monitor. A Monitor is kept alive by
-# a strong reference from its Server and its Thread. Once both are destroyed
-# the Monitor is garbage-collected and removed from MONITORS. If, however,
-# any threads are still running when the interpreter begins to shut down,
-# we attempt to halt and join them to avoid spurious errors.
-MONITORS = set()
-
-
-def register_monitor(monitor):
-    ref = weakref.ref(monitor, _on_monitor_deleted)
-    MONITORS.add(ref)
-
-
-def _on_monitor_deleted(ref):
-    MONITORS.remove(ref)
-
-
-def shutdown_monitors():
-    # Keep a local copy of MONITORS as
-    # shutting down threads has a side effect
-    # of removing them from the MONITORS set()
-    monitors = list(MONITORS)
-    for ref in monitors:
-        monitor = ref()
-        if monitor:
-            monitor.close()
-            monitor.join(10)
-
-atexit.register(shutdown_monitors)

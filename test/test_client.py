@@ -431,13 +431,13 @@ class TestClient(IntegrationTest):
                     any_server_selector)
 
                 # In child, only the thread that called fork() is alive.
-                assert not any(s._monitor._thread.is_alive()
+                assert not any(s._monitor._executor._thread.is_alive()
                                for s in servers)
 
                 db.test.find_one()
 
                 wait_until(
-                    lambda: all(s._monitor._thread.is_alive()
+                    lambda: all(s._monitor._executor._thread.is_alive()
                                 for s in servers),
                     "restart monitor threads")
             except:
