@@ -24,6 +24,7 @@
       .. autoattribute:: full_name
       .. autoattribute:: name
       .. autoattribute:: database
+      .. autoattribute:: codec_options
       .. autoattribute:: read_preference
       .. autoattribute:: write_concern
       .. autoattribute:: uuid_subtype

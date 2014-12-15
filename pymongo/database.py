@@ -51,7 +51,8 @@ class Database(common.BaseObject):
     """A Mongo database.
     """
 
-    def __init__(self, connection, name):
+    def __init__(self, connection, name, codec_options=None,
+                 read_preference=None, write_concern=None):
         """Get a database by connection and name.
 
         Raises :class:`TypeError` if `name` is not an instance of
@@ -60,12 +61,21 @@ class Database(common.BaseObject):
         database name.
 
         :Parameters:
-          - `connection`: a client instance
-          - `name`: database name
+          - `connection`: A client instance.
+          - `name`: The database name.
+          - `codec_options` (optional): An instance of
+            :class:`~pymongo.codec_options.CodecOptions`. If ``None`` (the
+            default) connection.codec_options is used.
+          - `read_preference` (optional): The read preference to use. If
+            ``None`` (the default) connection.read_preference is used.
+          - `write_concern` (optional): An instance of
+            :class:`~pymongo.write_concern.WriteConcern`. If ``None`` (the
+            default) connection.write_concern is used.
 
         .. mongodoc:: databases
 
         .. versionchanged:: 3.0
+           Added the codec_options, read_preference, and write_concern options.
            :class:`~pymongo.database.Database` no longer returns an instance
            of :class:`~pymongo.collection.Collection` for attribute names
            with leading underscores. You must use dict-style lookups instead::
@@ -76,9 +86,10 @@ class Database(common.BaseObject):
 
                db.__my_collection__
         """
-        super(Database, self).__init__(connection.codec_options,
-                                       connection.read_preference,
-                                       connection.write_concern)
+        super(Database, self).__init__(
+            codec_options or connection.codec_options,
+            read_preference or connection.read_preference,
+            write_concern or connection.write_concern)
 
         if not isinstance(name, string_type):
             raise TypeError("name must be an instance "
@@ -211,6 +222,28 @@ class Database(common.BaseObject):
           - `name`: the name of the collection to get
         """
         return Collection(self, name)
+
+    def get_collection(self, name, codec_options=None,
+                       read_preference=None, write_concern=None):
+        """Get a :class:`~pymongo.collection.Collection` with the given name
+        and options.
+
+        :Parameters:
+          - `name`: The name of the collection - a string.
+          - `codec_options` (optional): An instance of
+            :class:`~pymongo.codec_options.CodecOptions`. If ``None`` (the
+            default) the :attr:`codec_options` of this :class:`Database` is
+            used.
+          - `read_preference` (optional): The read preference to use. If
+            ``None`` (the default) the :attr:`read_preference` of this
+            :class:`Database` is used.
+          - `write_concern` (optional): An instance of
+            :class:`~pymongo.write_concern.WriteConcern`. If ``None`` (the
+            default) the :attr:`write_concern` of this :class:`Database` is
+            used.
+        """
+        return Collection(
+            self, name, False, codec_options, read_preference, write_concern)
 
     def create_collection(self, name, **kwargs):
         """Create a new :class:`~pymongo.collection.Collection` in this

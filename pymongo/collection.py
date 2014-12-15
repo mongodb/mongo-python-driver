@@ -54,7 +54,8 @@ class Collection(common.BaseObject):
     """A Mongo collection.
     """
 
-    def __init__(self, database, name, create=False, **kwargs):
+    def __init__(self, database, name, create=False, codec_options=None,
+                 read_preference=None, write_concern=None, **kwargs):
         """Get / create a Mongo collection.
 
         Raises :class:`TypeError` if `name` is not an instance of
@@ -75,10 +76,19 @@ class Collection(common.BaseObject):
           - `name`: the name of the collection to get
           - `create` (optional): if ``True``, force collection
             creation even without options being set
+          - `codec_options` (optional): An instance of
+            :class:`~pymongo.codec_options.CodecOptions`. If ``None`` (the
+            default) database.codec_options is used.
+          - `read_preference` (optional): The read preference to use. If
+            ``None`` (the default) database.read_preference is used.
+          - `write_concern` (optional): An instance of
+            :class:`~pymongo.write_concern.WriteConcern`. If ``None`` (the
+            default) database.write_concern is used.
           - `**kwargs` (optional): additional keyword arguments will
             be passed as options for the create collection command
 
         .. versionchanged:: 3.0
+           Added the codec_options, read_preference, and write_concern options.
            :class:`~pymongo.collection.Collection` no longer returns an
            instance of :class:`~pymongo.collection.Collection` for attribute
            names with leading underscores. You must use dict-style lookups
@@ -98,9 +108,10 @@ class Collection(common.BaseObject):
 
         .. mongodoc:: collections
         """
-        super(Collection, self).__init__(database.codec_options,
-                                         database.read_preference,
-                                         database.write_concern)
+        super(Collection, self).__init__(
+            codec_options or database.codec_options,
+            read_preference or database.read_preference,
+            write_concern or database.write_concern)
 
         if not isinstance(name, string_type):
             raise TypeError("name must be an instance "

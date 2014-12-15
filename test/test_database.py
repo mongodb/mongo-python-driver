@@ -35,6 +35,7 @@ from pymongo import (MongoClient,
                      SLOW_ONLY,
                      helpers,
                      ReadPreference)
+from pymongo.codec_options import CodecOptions
 from pymongo.collection import Collection
 from pymongo.database import Database
 from pymongo.errors import (CollectionInvalid,
@@ -42,10 +43,12 @@ from pymongo.errors import (CollectionInvalid,
                             ExecutionTimeout,
                             InvalidName,
                             OperationFailure)
+from pymongo.read_preferences import ReadPreference
 from pymongo.son_manipulator import (AutoReference,
                                      NamespaceInjector,
                                      SONManipulator,
                                      ObjectIdShuffler)
+from pymongo.write_concern import WriteConcern
 from test import (client_context,
                   SkipTest,
                   unittest,
@@ -93,6 +96,16 @@ class TestDatabaseNoConnect(unittest.TestCase):
         self.assertEqual(db.test, Collection(db, "test"))
         self.assertNotEqual(db.test, Collection(db, "mike"))
         self.assertEqual(db.test.mike, db["test.mike"])
+
+    def test_get_collection(self):
+        codec_options = CodecOptions(tz_aware=True)
+        write_concern = WriteConcern(w=2, j=True)
+        coll = self.client.pymongo_test.get_collection(
+            'foo', codec_options, ReadPreference.SECONDARY, write_concern)
+        self.assertEqual('foo', coll.name)
+        self.assertEqual(codec_options, coll.codec_options)
+        self.assertEqual(ReadPreference.SECONDARY, coll.read_preference)
+        self.assertEqual(write_concern.document, coll.write_concern)
 
     def test_getattr(self):
         db = self.client.pymongo_test

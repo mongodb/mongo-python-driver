@@ -979,6 +979,28 @@ class MongoClient(common.BaseObject):
 
         return self[self.__default_database_name]
 
+    def get_database(self, name, codec_options=None,
+                     read_preference=None, write_concern=None):
+        """Get a :class:`~pymongo.database.Database` with the given name and
+        options.
+
+        :Parameters:
+          - `name`: The name of the database - a string.
+          - `codec_options` (optional): An instance of
+            :class:`~pymongo.codec_options.CodecOptions`. If ``None`` (the
+            default) the :attr:`codec_options` of this :class:`MongoClient` is
+            used.
+          - `read_preference` (optional): The read preference to use. If
+            ``None`` (the default) the :attr:`read_preference` of this
+            :class:`MongoClient` is used.
+          - `write_concern` (optional): An instance of
+            :class:`~pymongo.write_concern.WriteConcern`. If ``None`` (the
+            default) the :attr:`write_concern` of this :class:`MongoClient` is
+            used.
+        """
+        return database.Database(
+            self, name, codec_options, read_preference, write_concern)
+
     @property
     def is_locked(self):
         """Is this server locked? While locked, all write operations

@@ -386,9 +386,24 @@ class BaseObject(object):
 
     def __init__(self, codec_options, read_preference, write_concern):
 
+        if not isinstance(codec_options, CodecOptions):
+            raise TypeError("codec_options must be an instance of "
+                            "pymongo.codec_options.CodecOptions")
         self.__codec_options = codec_options
+
+        # TODO: Better error reporting for read preference.
+        if not isinstance(read_preference, ServerMode):
+            raise TypeError("read_preference is invalid")
         self.__read_pref = read_preference
-        self.__write_concern = WriteConcern(**write_concern)
+
+        # TODO: Remove support for arbitrary mappings.
+        if isinstance(write_concern, collections.Mapping):
+            self.__write_concern = WriteConcern(**write_concern)
+        elif isinstance(write_concern, WriteConcern):
+            self.__write_concern = write_concern
+        else:
+            raise TypeError("write_concern must be an instance of "
+                            "pymongo.write_concern.WriteConcern")
 
     @property
     def codec_options(self):

@@ -32,6 +32,7 @@ from bson.tz_util import utc
 from pymongo.mongo_client import MongoClient
 from pymongo.database import Database
 from pymongo import auth, message
+from pymongo.codec_options import CodecOptions
 from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
                             ConnectionFailure,
@@ -44,6 +45,7 @@ from pymongo.read_preferences import ReadPreference
 from pymongo.server_selectors import (any_server_selector,
                                       writable_server_selector)
 from pymongo.server_type import SERVER_TYPE
+from pymongo.write_concern import WriteConcern
 from test import (client_context,
                   client_knobs,
                   host,
@@ -128,6 +130,16 @@ class ClientUnitTest(unittest.TestCase):
         self.assertTrue(isinstance(self.client.test, Database))
         self.assertEqual(self.client.test, self.client["test"])
         self.assertEqual(self.client.test, Database(self.client, "test"))
+
+    def test_get_database(self):
+        codec_options = CodecOptions(tz_aware=True)
+        write_concern = WriteConcern(w=2, j=True)
+        db = self.client.get_database(
+            'foo', codec_options, ReadPreference.SECONDARY, write_concern)
+        self.assertEqual('foo', db.name)
+        self.assertEqual(codec_options, db.codec_options)
+        self.assertEqual(ReadPreference.SECONDARY, db.read_preference)
+        self.assertEqual(write_concern.document, db.write_concern)
 
     def test_getattr(self):
         self.assertTrue(isinstance(self.client['_does_not_exist'], Database))

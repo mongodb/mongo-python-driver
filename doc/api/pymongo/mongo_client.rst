@@ -28,6 +28,7 @@
       .. autoattribute:: max_message_size
       .. autoattribute:: min_wire_version
       .. autoattribute:: max_wire_version
+      .. autoattribute:: codec_options
       .. autoattribute:: read_preference
       .. autoattribute:: secondary_acceptable_latency_ms
       .. autoattribute:: write_concern
@@ -36,6 +37,7 @@
       .. automethod:: database_names
       .. automethod:: drop_database
       .. automethod:: get_default_database
+      .. automethod:: get_database
       .. automethod:: server_info
       .. automethod:: close_cursor
       .. automethod:: kill_cursors
