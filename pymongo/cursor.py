@@ -27,6 +27,7 @@ from bson.py3compat import (iteritems,
                             string_type)
 from bson.son import SON
 from pymongo import helpers, message
+from pymongo.codec_options import CodecOptions
 from pymongo.read_preferences import (make_read_preference,
                                       ReadPreference,
                                       SECONDARY_OK_COMMANDS)
@@ -79,8 +80,7 @@ class Cursor(object):
                  max_scan=None, as_class=None,
                  await_data=False, partial=False, manipulate=True,
                  read_preference=None, tag_sets=None,
-                 secondary_acceptable_latency_ms=None,
-                 exhaust=False, _uuid_subtype=None):
+                 secondary_acceptable_latency_ms=None, exhaust=False):
         """Create a new cursor.
 
         Should not be called directly by application developers - see
@@ -118,8 +118,16 @@ class Cursor(object):
             if not isinstance(fields, Mapping):
                 fields = helpers._fields_list_to_dict(fields)
 
+        # XXX: Continue to support passing as_class to find() and find_one()?
+        self.__as_class = as_class or collection.codec_options.as_class
+        self.__tz_aware = collection.codec_options.tz_aware
+        self.__uuid_subtype = collection.codec_options.uuid_representation
         if as_class is None:
-            as_class = collection.database.connection.document_class
+            self.__codec_options = collection.codec_options
+        else:
+            self.__codec_options = CodecOptions(as_class,
+                                                self.__tz_aware,
+                                                self.__uuid_subtype)
 
         self.__collection = collection
         self.__spec = spec
@@ -154,10 +162,7 @@ class Cursor(object):
         self.__explain = False
         self.__hint = None
         self.__comment = None
-        self.__as_class = as_class
         self.__manipulate = manipulate
-        self.__tz_aware = collection.database.connection.tz_aware
-        self.__uuid_subtype = _uuid_subtype or collection.uuid_subtype
 
         self.__data = deque()
         self.__address = None
@@ -685,33 +690,29 @@ class Cursor(object):
         """
         if not isinstance(with_limit_and_skip, bool):
             raise TypeError("with_limit_and_skip must be an instance of bool")
-        command = {
-            "query": self.__spec,
-            "fields": self.__fields,
-        }
+        cmd = SON([("count", self.__collection.name),
+                   ("query", self.__spec),
+                   ("fields", self.__fields)])
         if self.__max_time_ms is not None:
-            command["maxTimeMS"] = self.__max_time_ms
+            cmd["maxTimeMS"] = self.__max_time_ms
         if self.__comment:
-            command['$comment'] = self.__comment
+            cmd['$comment'] = self.__comment
 
         if self.__hint is not None:
-            command['hint'] = self.__hint
+            cmd['hint'] = self.__hint
 
         if with_limit_and_skip:
             if self.__limit:
-                command["limit"] = self.__limit
+                cmd["limit"] = self.__limit
             if self.__skip:
-                command["skip"] = self.__skip
+                cmd["skip"] = self.__skip
 
-        database = self.__collection.database
-        r = database.command("count", self.__collection.name,
-                             allowable_errors=["ns missing"],
-                             uuid_subtype=self.__uuid_subtype,
-                             read_preference=self.__read_preference,
-                             **command)
-        if r.get("errmsg", "") == "ns missing":
+        res = self.__collection._command(cmd,
+                                         self.__read_preference,
+                                         allowable_errors=["ns missing"])[0]
+        if res.get("errmsg", "") == "ns missing":
             return 0
-        return int(r["n"])
+        return int(res["n"])
 
     def distinct(self, key):
         """Get a list of distinct values for `key` among all documents
@@ -735,20 +736,17 @@ class Cursor(object):
             raise TypeError("key must be an "
                             "instance of %s" % (string_type.__name__,))
 
-        options = {"key": key}
+        cmd = SON([("distinct", self.__collection.name),
+                   ("key", key)])
         if self.__spec:
-            options["query"] = self.__spec
+            cmd["query"] = self.__spec
         if self.__max_time_ms is not None:
-            options['maxTimeMS'] = self.__max_time_ms
+            cmd['maxTimeMS'] = self.__max_time_ms
         if self.__comment:
-            options['$comment'] = self.__comment
+            cmd['$comment'] = self.__comment
 
-        database = self.__collection.database
-        return database.command("distinct",
-                                self.__collection.name,
-                                uuid_subtype=self.__uuid_subtype,
-                                read_preference=self.__read_preference,
-                                **options)["values"]
+        return self.__collection._command(cmd,
+                                          self.__read_preference)[0]["values"]
 
     def explain(self):
         """Returns an explain plan record for this cursor.

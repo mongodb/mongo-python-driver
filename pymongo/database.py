@@ -17,7 +17,6 @@
 import collections
 import warnings
 
-from bson.binary import OLD_UUID_SUBTYPE
 from bson.code import Code
 from bson.dbref import DBRef
 from bson.py3compat import iteritems, string_type, _unicode
@@ -27,7 +26,6 @@ from pymongo.collection import Collection
 from pymongo.errors import (CollectionInvalid,
                             ConfigurationError,
                             InvalidName,
-                            NotMasterError,
                             OperationFailure)
 from pymongo.read_preferences import (make_read_preference,
                                       ReadPreference,
@@ -318,7 +316,6 @@ class Database(common.BaseObject):
 
     def _command(self, command, value=1,
                  check=True, allowable_errors=None,
-                 uuid_subtype=OLD_UUID_SUBTYPE,
                  read_preference=None, **kwargs):
         """Internal command helper.
         """
@@ -328,12 +325,6 @@ class Database(common.BaseObject):
             command = SON([(command, value)])
         else:
             command_name = next(iter(command)).lower()
-
-        as_class = kwargs.pop('as_class', None)
-        fields = kwargs.pop('fields', None)
-        if (fields is not None and not
-                isinstance(fields, collections.Mapping)):
-            fields = helpers._fields_list_to_dict(fields)
         command.update(kwargs)
 
         orig = pref = read_preference or self.read_preference
@@ -371,31 +362,16 @@ class Database(common.BaseObject):
                           "and will be routed to the primary instead." %
                           (command_name, orig.name), UserWarning, stacklevel=3)
 
-        cursor = self["$cmd"].find(command,
-                                   fields=fields,
-                                   limit=-1,
-                                   as_class=as_class,
-                                   read_preference=pref,
-                                   _uuid_subtype=uuid_subtype)
-
-        result = {}
-        for doc in cursor:
-            result = doc
-
-        if check:
-            msg = "command %s on namespace %s failed: %%s" % (
-                repr(command).replace("%", "%%"), self.name + '.$cmd')
-
-            try:
-                helpers._check_command_response(result, msg, allowable_errors)
-            except NotMasterError:
-                self.connection._reset_server_and_request_check(cursor.address)
-                raise
-        return result, cursor.address
+        return helpers._command(self.connection,
+                                self.name + ".$cmd",
+                                command,
+                                pref,
+                                self.codec_options,
+                                check,
+                                allowable_errors)
 
     def command(self, command, value=1,
-                check=True, allowable_errors=[],
-                uuid_subtype=OLD_UUID_SUBTYPE,
+                check=True, allowable_errors=None,
                 read_preference=None, **kwargs):
         """Issue a MongoDB command.
 
@@ -439,8 +415,6 @@ class Database(common.BaseObject):
             :class:`~pymongo.errors.OperationFailure` if there are any
           - `allowable_errors`: if `check` is ``True``, error messages
             in this list will be ignored by error-checking
-          - `uuid_subtype` (optional): The BSON binary subtype to use
-            for a UUID used in this command.
           - `read_preference`: The read preference for this operation.
           - `tag_sets` **DEPRECATED**
           - `secondary_acceptable_latency_ms` **DEPRECATED**
@@ -454,6 +428,7 @@ class Database(common.BaseObject):
            regular expressions as :class:`~bson.regex.Regex` objects. Use
            :meth:`~bson.regex.Regex.try_compile` to attempt to convert from a
            BSON regular expression to a Python regular expression object.
+           Removed the as_class, uuid_subtype, and fields options.
 
         .. versionchanged:: 2.7
            Added `compile_re` option. If set to False, PyMongo represented BSON
@@ -473,7 +448,7 @@ class Database(common.BaseObject):
         .. mongodoc:: commands
         """
         return self._command(command, value, check, allowable_errors,
-                             uuid_subtype, read_preference, **kwargs)[0]
+                             read_preference, **kwargs)[0]
 
     def collection_names(self, include_system_collections=True):
         """Get a list of all the collection names in this database.

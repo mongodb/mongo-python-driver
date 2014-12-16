@@ -29,6 +29,7 @@ from pymongo.errors import (CursorNotFound,
                             ExecutionTimeout,
                             WTimeoutError,
                             NotMasterError)
+from pymongo.message import query
 
 
 def _index_list(key_or_list, direction=None):
@@ -176,6 +177,35 @@ def _check_command_response(response, msg=None, allowable_errors=None):
 
             msg = msg or "%s"
             raise OperationFailure(msg % errmsg, code, response)
+
+
+def _command(client, namespace, command, read_preference,
+             codec_options, check=True, allowable_errors=None):
+    """Internal command helper."""
+    as_class = codec_options.as_class
+    tz_aware = codec_options.tz_aware
+    uuid_rep = codec_options.uuid_representation
+
+    query_opts = 0
+    # XXX: Set slaveOkay flag when read preference mode is anything other
+    # than primary (0). Make this more clear when we finish refactoring
+    # read preferences.
+    if read_preference.mode:
+        query_opts = 4
+
+    msg = query(query_opts, namespace, 0, -1, command, None, uuid_rep)
+    response = client._send_message_with_response(msg, read_preference)
+    result = _unpack_response(
+        response.data, None, as_class, tz_aware, uuid_rep)['data'][0]
+    if check:
+        msg = "command %s on namespace %s failed: %%s" % (
+            repr(command).replace("%", "%%"), namespace)
+        try:
+            _check_command_response(result, msg, allowable_errors)
+        except NotMasterError:
+            client._reset_server_and_request_check(response.address)
+            raise
+    return result, response.address
 
 
 def _check_write_command_response(results):

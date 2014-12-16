@@ -103,13 +103,6 @@ class TestCommon(IntegrationTest):
         self.assertEqual(5, coll.find_one({'_id': uu})['i'])
 
         # Test command
-        no_obj_error = "No matching object found"
-        result = self.db.command('findAndModify', 'uuid',
-                                 allowable_errors=[no_obj_error],
-                                 uuid_subtype=UUID_SUBTYPE,
-                                 query={'_id': uu},
-                                 update={'$set': {'i': 6}})
-        self.assertEqual(None, result.get('value'))
         self.assertEqual(5, self.db.command('findAndModify', 'uuid',
                                             update={'$set': {'i': 6}},
                                             query={'_id': uu})['value']['i'])

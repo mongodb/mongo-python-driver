@@ -29,10 +29,11 @@ from pymongo import (bulk,
                      common,
                      helpers,
                      message)
+from pymongo.codec_options import CodecOptions
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import Cursor
 from pymongo.errors import InvalidName, OperationFailure
-from pymongo.helpers import _check_write_command_response
+from pymongo.helpers import _check_write_command_response, _command
 from pymongo.message import _INSERT, _UPDATE, _DELETE
 from pymongo.read_preferences import ReadPreference
 
@@ -136,19 +137,38 @@ class Collection(common.BaseObject):
         if create or kwargs:
             self.__create(kwargs)
 
+    def _command(
+            self, command, read_preference=None, codec_options=None, **kwargs):
+        """Internal command helper.
+        
+        :Parameters:
+          - `command` - The command itself, as a SON instance.
+          - `read_preference` (optional) - An subclass of
+            :class:`~pymongo.read_preferences.ServerMode`.
+          - `codec_options` (optional) - An instance of
+            :class:`~pymongo.codec_options.CodecOptions`.
+          - `**kwargs` - any optional keyword arguments accepted by
+            :func:`~pymongo.helpers._command`.
+
+        :Returns:
+          (result document, address of server the command was run on)
+        """
+        return _command(self.__database.connection,
+                        self.__database.name + ".$cmd",
+                        command,
+                        read_preference or self.read_preference,
+                        codec_options or self.codec_options,
+                        **kwargs)
+
     def __create(self, options):
         """Sends a create command with the given options.
         """
-
+        cmd = SON([("create", self.__name)])
         if options:
             if "size" in options:
                 options["size"] = float(options["size"])
-            self.__database.command("create", self.__name,
-                                    read_preference=ReadPreference.PRIMARY,
-                                    **options)
-        else:
-            self.__database.command("create", self.__name,
-                                    read_preference=ReadPreference.PRIMARY)
+            cmd.update(options)
+        self._command(cmd, ReadPreference.PRIMARY)
 
     def __getattr__(self, name):
         """Get a sub-collection of this collection by name.
@@ -883,11 +903,9 @@ class Collection(common.BaseObject):
         """
         cmd = SON([('parallelCollectionScan', self.__name),
                    ('numCursors', num_cursors)])
+        cmd.update(kwargs)
 
-        mode = read_preference or self.read_preference
-        result, address = self.__database._command(cmd,
-                                                   read_preference=mode,
-                                                   **kwargs)
+        result, address = self._command(cmd, read_preference)
 
         return [CommandCursor(self,
                               cursor['cursor'],
@@ -1011,10 +1029,10 @@ class Collection(common.BaseObject):
 
         index.update(kwargs)
 
+        cmd = SON([('createIndexes', self.name), ('indexes', [index])])
+
         try:
-            self.__database.command('createIndexes', self.name,
-                                    read_preference=ReadPreference.PRIMARY,
-                                    indexes=[index])
+            self._command(cmd, ReadPreference.PRIMARY)
         except OperationFailure as exc:
             if exc.code in common.COMMAND_NOT_FOUND_CODES:
                 index["ns"] = self.__full_name
@@ -1167,10 +1185,9 @@ class Collection(common.BaseObject):
 
         self.__database.connection._purge_index(self.__database.name,
                                                 self.__name, name)
-        self.__database.command("dropIndexes", self.__name,
-                                read_preference=ReadPreference.PRIMARY,
-                                index=name,
-                                allowable_errors=["ns not found"])
+        cmd = SON([("dropIndexes", self.__name), ("index", name)])
+        self._command(
+            cmd, ReadPreference.PRIMARY, allowable_errors=["ns not found"])
 
     def reindex(self):
         """Rebuilds all indexes on this collection.
@@ -1179,8 +1196,8 @@ class Collection(common.BaseObject):
            are built in the foreground) and will be slow for large
            collections.
         """
-        return self.__database.command("reIndex", self.__name,
-                                       read_preference=ReadPreference.PRIMARY)
+        cmd = SON([("reIndex", self.__name)])
+        return self._command(cmd, ReadPreference.PRIMARY)[0]
 
     def index_information(self):
         """Get information on this collection's indexes.
@@ -1203,9 +1220,11 @@ class Collection(common.BaseObject):
         """
         client = self.__database.connection
         if client._writable_max_wire_version() > 2:
-            raw = self.__database.command(
-                "listIndexes", self.__name, as_class=SON,
-                read_preference=ReadPreference.PRIMARY).get("indexes", [])
+            cmd = SON([("listIndexes", self.__name)])
+            result = self._command(cmd,
+                                   ReadPreference.PRIMARY,
+                                   CodecOptions(as_class=SON))[0]
+            raw = result.get("indexes", [])
         else:
             raw = self.__database.system.indexes.find({"ns": self.__full_name},
                                                       {"ns": 0}, as_class=SON)
@@ -1228,10 +1247,9 @@ class Collection(common.BaseObject):
 
         result = None
         if client._writable_max_wire_version() > 2:
-            res = self.__database.command(
-                "listCollections",
-                filter={"name": self.__name},
-                read_preference=ReadPreference.PRIMARY)
+            cmd = SON([("listCollections", self.__name),
+                       ("filter", {"name": self.__name})])
+            res = self._command(cmd, ReadPreference.PRIMARY)[0]
             for doc in res.get("collections", []):
                 result = doc
                 break
@@ -1293,11 +1311,15 @@ class Collection(common.BaseObject):
 
         cmd = SON([("aggregate", self.__name),
                    ("pipeline", pipeline)])
+        cmd.update(kwargs)
 
-        mode = read_preference or self.read_preference
-        result, address = self.__database._command(
-            cmd, uuid_subtype=self.uuid_subtype,
-            read_preference=mode, **kwargs)
+        # XXX: Keep doing this automatically?
+        for stage in pipeline:
+            if '$out' in stage:
+                read_preference = ReadPreference.PRIMARY
+                break
+
+        result, address = self._command(cmd, read_preference)
 
         if 'cursor' in result:
             return CommandCursor(
@@ -1355,11 +1377,10 @@ class Collection(common.BaseObject):
         if finalize is not None:
             group["finalize"] = Code(finalize)
 
-        mode = read_preference or self.read_preference
-        return self.__database.command("group", group,
-                                       uuid_subtype=self.uuid_subtype,
-                                       read_preference=mode,
-                                       **kwargs)["retval"]
+        cmd = SON([("group", group)])
+        cmd.update(kwargs)
+
+        return self._command(cmd, read_preference)[0]["retval"]
 
     def rename(self, new_name, **kwargs):
         """Rename this collection.
@@ -1388,10 +1409,10 @@ class Collection(common.BaseObject):
             raise InvalidName("collection names must not contain '$'")
 
         new_name = "%s.%s" % (self.__database.name, new_name)
-        client = self.__database.connection
-        client.admin.command("renameCollection", self.__full_name,
-                             read_preference=ReadPreference.PRIMARY,
-                             to=new_name, **kwargs)
+        cmd = SON([("renameCollection", self.__full_name), ("to", new_name)])
+        cmd.update(kwargs)
+        _command(self.__database.connection, "admin.$cmd", cmd,
+                 ReadPreference.PRIMARY, CodecOptions())
 
     def distinct(self, key):
         """Get a list of distinct values for `key` among all documents
@@ -1447,12 +1468,17 @@ class Collection(common.BaseObject):
             raise TypeError("'out' must be an instance of "
                             "%s or a mapping" % (string_type.__name__,))
 
-        mode = read_preference or self.read_preference
-        response = self.__database.command("mapreduce", self.__name,
-                                           uuid_subtype=self.uuid_subtype,
-                                           read_preference=mode,
-                                           map=map, reduce=reduce,
-                                           out=out, **kwargs)
+        cmd = SON([("mapreduce", self.__name),
+                   ("map", map),
+                   ("reduce", reduce),
+                   ("out", out)])
+        cmd.update(kwargs)
+
+        # XXX: Keep doing this automatically?
+        if not isinstance(out, collections.Mapping) or not out.get('inline'):
+            read_preference = ReadPreference.PRIMARY
+
+        response = self._command(cmd, read_preference)[0]
 
         if full_response or not response.get('result'):
             return response
@@ -1494,12 +1520,12 @@ class Collection(common.BaseObject):
             >>> db.test.inline_map_reduce(map, reduce, limit=2)
         """
 
-        mode = read_preference or self.read_preference
-        res = self.__database.command("mapreduce", self.__name,
-                                      uuid_subtype=self.uuid_subtype,
-                                      read_preference=mode,
-                                      map=map, reduce=reduce,
-                                      out={"inline": 1}, **kwargs)
+        cmd = SON([("mapreduce", self.__name),
+                   ("map", map),
+                   ("reduce", reduce),
+                   ("out", {"inline": 1})])
+        cmd.update(kwargs)
+        res = self._command(cmd, read_preference)[0]
 
         if full_response:
             return res
@@ -1592,11 +1618,17 @@ class Collection(common.BaseObject):
 
         no_obj_error = "No matching object found"
 
-        out = self.__database.command("findAndModify", self.__name,
-                                      allowable_errors=[no_obj_error],
-                                      read_preference=ReadPreference.PRIMARY,
-                                      uuid_subtype=self.uuid_subtype,
-                                      **kwargs)
+        # XXX: Keep supporting this?
+        fields = kwargs.pop("fields", None)
+        if (fields is not None and not
+                isinstance(fields, collections.Mapping)):
+            kwargs["fields"] = helpers._fields_list_to_dict(fields)
+
+        cmd = SON([("findAndModify", self.__name)])
+        cmd.update(kwargs)
+        out = self._command(cmd,
+                            ReadPreference.PRIMARY,
+                            allowable_errors=[no_obj_error])[0]
 
         if not out['ok']:
             if out["errmsg"] == no_obj_error:

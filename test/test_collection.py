@@ -34,6 +34,7 @@ from bson.son import SON
 from pymongo import (ASCENDING, DESCENDING, GEO2D,
                      GEOHAYSTACK, GEOSPHERE, HASHED, TEXT)
 from pymongo import MongoClient
+from pymongo.codec_options import CodecOptions
 from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
 from pymongo.read_preferences import ReadPreference
@@ -2052,9 +2053,10 @@ class TestCollection(IntegrationTest):
         result = c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
                                     new=True, fields={'i': 1})
         self.assertFalse(isinstance(result, ExtendedDict))
+        c = self.db.get_collection(
+            "test", codec_options=CodecOptions(as_class=ExtendedDict))
         result = c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
-                                    new=True, fields={'i': 1},
-                                    as_class=ExtendedDict)
+                                    new=True, fields={'i': 1})
         self.assertTrue(isinstance(result, ExtendedDict))
 
     def test_update_backward_compat(self):
