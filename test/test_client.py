@@ -946,7 +946,7 @@ with client.start_request() as request:
         collection = client.pymongo_test.test
         collection.insert({} for _ in range(4))
         cursor = collection.find().batch_size(1)
-        next(cursor)
+        cursor.next()
         client.disconnect()
         ctx = catch_warnings()
         try:
