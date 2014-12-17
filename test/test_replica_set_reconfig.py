@@ -126,8 +126,8 @@ class TestSocketError(MockClientTest):
             c.mock_down_hosts.append('b:2')
             self.assertRaises(
                 ConnectionFailure,
-                c.db.collection.find_one,
-                read_preference=ReadPreference.SECONDARY)
+                c.db.collection.with_options(
+                    read_preference=ReadPreference.SECONDARY).find_one)
 
             self.assertEqual(1, len(c.nodes))
 

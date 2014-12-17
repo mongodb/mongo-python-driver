@@ -318,16 +318,15 @@ class GridFS(object):
             :meth:`~pymongo.cursor.Cursor.sort` for details.
           - `max_scan` (optional): limit the number of file documents
             examined when performing the query
-          - `read_preference` (optional): The read preference for
-            this query.
-          - `tag_sets` **DEPRECATED**
-          - `secondary_acceptable_latency_ms` **DEPRECATED**
 
         Raises :class:`TypeError` if any of the arguments are of
         improper type. Returns an instance of
         :class:`~gridfs.grid_file.GridOutCursor`
         corresponding to this query.
 
+        .. versionchanged:: 3.0
+           Removed the read_preference, tag_sets, and
+           secondary_acceptable_latency_ms options.
         .. versionadded:: 2.7
         .. mongodoc:: find
         """

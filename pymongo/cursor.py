@@ -16,7 +16,6 @@
 
 import copy
 import socket
-import warnings
 
 from collections import deque, Mapping
 
@@ -28,8 +27,7 @@ from bson.py3compat import (iteritems,
 from bson.son import SON
 from pymongo import helpers, message
 from pymongo.codec_options import CodecOptions
-from pymongo.read_preferences import (make_read_preference,
-                                      ReadPreference,
+from pymongo.read_preferences import (ReadPreference,
                                       SECONDARY_OK_COMMANDS)
 from pymongo.errors import (AutoReconnect,
                             InvalidOperation,
@@ -77,10 +75,8 @@ class Cursor(object):
 
     def __init__(self, collection, spec=None, fields=None, skip=0, limit=0,
                  timeout=True, snapshot=False, tailable=False, sort=None,
-                 max_scan=None, as_class=None,
-                 await_data=False, partial=False, manipulate=True,
-                 read_preference=None, tag_sets=None,
-                 secondary_acceptable_latency_ms=None, exhaust=False):
+                 max_scan=None, as_class=None, await_data=False, partial=False,
+                 manipulate=True, exhaust=False):
         """Create a new cursor.
 
         Should not be called directly by application developers - see
@@ -169,16 +165,7 @@ class Cursor(object):
         self.__retrieved = 0
         self.__killed = False
 
-        self.__read_preference = read_preference or collection.read_preference
-        if secondary_acceptable_latency_ms or tag_sets:
-            warnings.warn("The secondary_acceptable_latency_ms "
-                          "and tag_sets options are deprecated",
-                          DeprecationWarning, stacklevel=3)
-            mode = self.__read_preference.mode
-            tags = tag_sets or self.__read_preference.tag_sets
-            latency = (secondary_acceptable_latency_ms or
-                       self.__read_preference.latency_threshold_ms)
-            self.__read_preference = make_read_preference(mode, latency, tags)
+        self.__read_preference = collection.read_preference
 
         self.__query_flags = 0
         if tailable:
@@ -671,11 +658,10 @@ class Cursor(object):
 
           collection.find({'field': 'value'}).hint('field_1').count()
 
-        With :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`,
-        if `read_preference` is not
-        :attr:`pymongo.read_preferences.ReadPreference.PRIMARY` or
-        :attr:`pymongo.read_preferences.ReadPreference.PRIMARY_PREFERRED`, the
-        count command will be sent to a secondary.
+        The :meth:`count` method obeys the
+        :attr:`~pymongo.collection.Collection.read_preference` of the
+        :class:`~pymongo.collection.Collection` instance on which
+        :meth:`~pymongo.collection.Collection.find` was called.
 
         :Parameters:
           - `with_limit_and_skip` (optional): take any :meth:`limit` or
@@ -708,7 +694,6 @@ class Cursor(object):
                 cmd["skip"] = self.__skip
 
         res = self.__collection._command(cmd,
-                                         self.__read_preference,
                                          allowable_errors=["ns missing"])[0]
         if res.get("errmsg", "") == "ns missing":
             return 0
@@ -721,11 +706,10 @@ class Cursor(object):
         Raises :class:`TypeError` if `key` is not an instance of
         :class:`basestring` (:class:`str` in python 3).
 
-        With :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`,
-        if `read_preference` is not
-        :attr:`pymongo.read_preferences.ReadPreference.PRIMARY` or
-        :attr:`pymongo.read_preferences.ReadPreference.PRIMARY_PREFERRED`, the
-        count command will be sent to a secondary.
+        The :meth:`distinct` method obeys the
+        :attr:`~pymongo.collection.Collection.read_preference` of the
+        :class:`~pymongo.collection.Collection` instance on which
+        :meth:`~pymongo.collection.Collection.find` was called.
 
         :Parameters:
           - `key`: name of key for which we want to get the distinct values
@@ -745,8 +729,7 @@ class Cursor(object):
         if self.__comment:
             cmd['$comment'] = self.__comment
 
-        return self.__collection._command(cmd,
-                                          self.__read_preference)[0]["values"]
+        return self.__collection._command(cmd)[0]["values"]
 
     def explain(self):
         """Returns an explain plan record for this cursor.

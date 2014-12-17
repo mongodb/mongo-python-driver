@@ -155,7 +155,8 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
             secondary, cursor._Cursor__read_preference)
 
         nearest = Nearest(tag_sets=[{'dc': 'ny'}, {}])
-        cursor = c.pymongo_test.test.find(read_preference=nearest)
+        cursor = c.pymongo_test.get_collection(
+            "test", read_preference=nearest).find()
 
         self.assertEqual(
             nearest, cursor._Cursor__read_preference)
@@ -178,7 +179,8 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
             socket.socket.sendall = raise_socket_error
 
             try:
-                cursor = db.test.find(read_preference=ReadPreference.SECONDARY)
+                cursor = db.get_collection(
+                    "test", read_preference=ReadPreference.SECONDARY).find()
                 self.assertRaises(AutoReconnect, cursor.next)
             finally:
                 socket.socket.sendall = old_sendall
@@ -201,17 +203,19 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
             self.assertTrue(c.primary)
             collection.find_one()  # No error.
 
+            coll = collection.with_options(
+                read_preference=ReadPreference.SECONDARY)
+
             # Query the secondary.
             self.assertRaises(
                 NetworkTimeout,
-                collection.find_one,
-                {'$where': delay(5)},
-                read_preference=ReadPreference.SECONDARY)
+                coll.find_one,
+                {'$where': delay(5)})
 
             self.assertTrue(c.secondaries)
 
             # No error.
-            collection.find_one(read_preference=ReadPreference.SECONDARY)
+            coll.find_one()
 
     @client_context.require_replica_set
     @client_context.require_ipv6

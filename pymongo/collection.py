@@ -222,6 +222,30 @@ class Collection(common.BaseObject):
         """
         return self.__database
 
+    def with_options(
+            self, codec_options=None, read_preference=None, write_concern=None):
+        """Get a clone of this collection changing the specified settings.
+
+        :Parameters:
+          - `codec_options` (optional): An instance of
+            :class:`~pymongo.codec_options.CodecOptions`. If ``None`` (the
+            default) the :attr:`codec_options` of this :class:`Collection`
+            is used.
+          - `read_preference` (optional): The read preference to use. If
+            ``None`` (the default) the :attr:`read_preference` of this
+            :class:`Collection` is used.
+          - `write_concern` (optional): An instance of
+            :class:`~pymongo.write_concern.WriteConcern`. If ``None`` (the
+            default) the :attr:`write_concern` of this :class:`Collection`
+            is used.
+        """
+        return Collection(self.__database,
+                          self.__name,
+                          False,
+                          codec_options or self.codec_options,
+                          read_preference or self.read_preference,
+                          write_concern or self.write_concern)
+
     def initialize_unordered_bulk_op(self):
         """Initialize an unordered batch of write operations.
 
@@ -711,6 +735,9 @@ class Collection(common.BaseObject):
         ignored. Returns a single document, or ``None`` if no matching
         document is found.
 
+        The :meth:`find_one` method obeys the :attr:`read_preference` of
+        this :class:`Collection`.
+
         :Parameters:
 
           - `spec_or_id` (optional): a dictionary specifying
@@ -759,6 +786,9 @@ class Collection(common.BaseObject):
         improper type. Returns an instance of
         :class:`~pymongo.cursor.Cursor` corresponding to this query.
 
+        The :meth:`find` method obeys the :attr:`read_preference` of
+        this :class:`Collection`.
+
         :Parameters:
           - `spec` (optional): a SON object specifying elements which
             must be present for a document to be included in the
@@ -806,10 +836,6 @@ class Collection(common.BaseObject):
             results if some shards are down instead of returning an error.
           - `manipulate`: (optional): If True (the default), apply any
             outgoing SON manipulators before returning.
-          - `read_preference` (optional): The read preference for
-            this query.
-          - `tag_sets` **DEPRECATED**
-          - `secondary_acceptable_latency_ms` **DEPRECATED**
           - `exhaust` (optional): If ``True`` create an "exhaust" cursor.
             MongoDB will stream batched results to the client without waiting
             for the client to request each batch, reducing latency.
@@ -834,8 +860,7 @@ class Collection(common.BaseObject):
            release.
 
         .. versionchanged:: 3.0
-           Removed the `network_timeout` parameter.
-           Deprecated the `tag_sets`, and
+           Removed the `network_timeout`, `read_preference`, `tag_sets`, and
            `secondary_acceptable_latency_ms` parameters.
            Removed `compile_re` option: PyMongo now always represents BSON
            regular expressions as :class:`~bson.regex.Regex` objects. Use
@@ -858,7 +883,7 @@ class Collection(common.BaseObject):
         """
         return Cursor(self, *args, **kwargs)
 
-    def parallel_scan(self, num_cursors, read_preference=None, **kwargs):
+    def parallel_scan(self, num_cursors):
         """Scan this entire collection in parallel.
 
         Returns a list of up to ``num_cursors`` cursors that can be iterated
@@ -888,24 +913,23 @@ class Collection(common.BaseObject):
 
             # All documents have now been processed.
 
-        With :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`,
-        if the `read_preference` attribute of this instance is not set to
-        :attr:`pymongo.read_preferences.ReadPreference.PRIMARY` or
-        :attr:`pymongo.read_preferences.ReadPreference.PRIMARY_PREFERRED`
-        the command will be sent to a secondary.
+        The :meth:`parallel_scan` method obeys the :attr:`read_preference` of
+        this :class:`Collection`.
 
         :Parameters:
           - `num_cursors`: the number of cursors to return
-          - `read_preference`: the read preference to use for this scan
 
         .. note:: Requires server version **>= 2.5.5**.
+
+        .. versionchanged:: 3.0
+           Removed support for arbitrary keyword arguments, since
+           the parallelCollectionScan command has no optional arguments.
 
         """
         cmd = SON([('parallelCollectionScan', self.__name),
                    ('numCursors', num_cursors)])
-        cmd.update(kwargs)
 
-        result, address = self._command(cmd, read_preference)
+        result, address = self._command(cmd)
 
         return [CommandCursor(self,
                               cursor['cursor'],
@@ -916,6 +940,9 @@ class Collection(common.BaseObject):
 
         To get the number of documents matching a specific query use
         :meth:`pymongo.cursor.Cursor.count`.
+
+        The :meth:`count` method obeys the :attr:`read_preference` of
+        this :class:`Collection`.
         """
         return self.find().count()
 
@@ -1266,20 +1293,17 @@ class Collection(common.BaseObject):
 
         return options
 
-    def aggregate(self, pipeline, read_preference=None, **kwargs):
+    def aggregate(self, pipeline, **kwargs):
         """Perform an aggregation using the aggregation framework on this
         collection.
 
-        With :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`,
-        if the `read_preference` attribute of this instance is not set to
-        :attr:`pymongo.read_preferences.ReadPreference.PRIMARY` or
-        :attr:`pymongo.read_preferences.ReadPreference.PRIMARY_PREFERRED`
-        the command will be sent to a secondary.
+        The :meth:`aggregate` method obeys the :attr:`read_preference` of this
+        :class:`Collection`.
 
         :Parameters:
           - `pipeline`: a single command or list of aggregation commands
-          - `read_preference`: read preference to use for this aggregate
-          - `**kwargs`: send arbitrary parameters to the aggregate command
+          - `**kwargs` (optional): additional arguments to the aggregate
+            command may be passed as keyword arguments to this helper method
 
         .. note:: Requires server version **>= 2.1.0**.
 
@@ -1314,6 +1338,7 @@ class Collection(common.BaseObject):
         cmd.update(kwargs)
 
         # XXX: Keep doing this automatically?
+        read_preference = self.read_preference
         for stage in pipeline:
             if '$out' in stage:
                 read_preference = ReadPreference.PRIMARY
@@ -1331,8 +1356,7 @@ class Collection(common.BaseObject):
 
     # TODO key and condition ought to be optional, but deprecation
     # could be painful as argument order would have to change.
-    def group(self, key, condition, initial,
-              reduce, finalize=None, read_preference=None, **kwargs):
+    def group(self, key, condition, initial, reduce, finalize=None, **kwargs):
         """Perform a query similar to an SQL *group by* operation.
 
         Returns an array of grouped items.
@@ -1347,11 +1371,8 @@ class Collection(common.BaseObject):
             function to be applied to each document, returning the key
             to group by.
 
-        With :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`,
-        if the `read_preference` attribute of this instance is not set to
-        :attr:`pymongo.read_preferences.ReadPreference.PRIMARY` or
-        :attr:`pymongo.read_preferences.ReadPreference.PRIMARY_PREFERRED`
-        the command will be sent to a secondary.
+        The :meth:`group` method obeys the :attr:`read_preference` of this
+        :class:`Collection`.
 
         :Parameters:
           - `key`: fields to group by (see above description)
@@ -1360,7 +1381,8 @@ class Collection(common.BaseObject):
           - `initial`: initial value of the aggregation counter object
           - `reduce`: aggregation function as a JavaScript string
           - `finalize`: function to be called on each object in output list.
-          - `read_preference`: read preference to use for this group
+          - `**kwargs` (optional): additional arguments to the group command
+            may be passed as keyword arguments to this helper method
 
         .. versionchanged:: 2.2
            Removed deprecated argument: command
@@ -1380,7 +1402,7 @@ class Collection(common.BaseObject):
         cmd = SON([("group", group)])
         cmd.update(kwargs)
 
-        return self._command(cmd, read_preference)[0]["retval"]
+        return self._command(cmd)[0]["retval"]
 
     def rename(self, new_name, **kwargs):
         """Rename this collection.
@@ -1393,8 +1415,8 @@ class Collection(common.BaseObject):
 
         :Parameters:
           - `new_name`: new name for this collection
-          - `**kwargs` (optional): any additional rename options
-            should be passed as keyword arguments
+          - `**kwargs` (optional): additional arguments to the rename command
+            may be passed as keyword arguments to this helper method
             (i.e. ``dropTarget=True``)
         """
         if not isinstance(new_name, string_type):
@@ -1424,19 +1446,24 @@ class Collection(common.BaseObject):
         To get the distinct values for a key in the result set of a
         query use :meth:`~pymongo.cursor.Cursor.distinct`.
 
+        The :meth:`distinct` method obeys the :attr:`read_preference` of
+        this :class:`Collection`.
+
         :Parameters:
           - `key`: name of key for which we want to get the distinct values
         """
         return self.find().distinct(key)
 
-    def map_reduce(self, map, reduce, out,
-                   full_response=False, read_preference=None, **kwargs):
+    def map_reduce(self, map, reduce, out, full_response=False, **kwargs):
         """Perform a map/reduce operation on this collection.
 
         If `full_response` is ``False`` (default) returns a
         :class:`~pymongo.collection.Collection` instance containing
         the results of the operation. Otherwise, returns the full
         response from the server to the `map reduce command`_.
+
+        The :meth:`map_reduce` method obeys the :attr:`read_preference` of this
+        :class:`Collection`.
 
         :Parameters:
           - `map`: map function (as a JavaScript string)
@@ -1448,7 +1475,6 @@ class Collection(common.BaseObject):
             e.g. SON([('replace', <collection name>), ('db', <database name>)])
           - `full_response` (optional): if ``True``, return full response to
             this command - otherwise just return the result collection
-          - `read_preference`: read preference to use for this map reduce
           - `**kwargs` (optional): additional arguments to the
             `map reduce command`_ may be passed as keyword arguments to this
             helper method, e.g.::
@@ -1475,6 +1501,7 @@ class Collection(common.BaseObject):
         cmd.update(kwargs)
 
         # XXX: Keep doing this automatically?
+        read_preference = self.read_preference
         if not isinstance(out, collections.Mapping) or not out.get('inline'):
             read_preference = ReadPreference.PRIMARY
 
@@ -1489,8 +1516,7 @@ class Collection(common.BaseObject):
         else:
             return self.__database[response["result"]]
 
-    def inline_map_reduce(self, map, reduce,
-                          full_response=False, read_preference=None, **kwargs):
+    def inline_map_reduce(self, map, reduce, full_response=False, **kwargs):
         """Perform an inline map/reduce operation on this collection.
 
         Perform the map/reduce operation on the server in RAM. A result
@@ -1501,31 +1527,26 @@ class Collection(common.BaseObject):
         result documents in a list. Otherwise, returns the full
         response from the server to the `map reduce command`_.
 
-        With :class:`~pymongo.mongo_replica_set_client.MongoReplicaSetClient`,
-        if the `read_preference` attribute of this instance is not set to
-        :attr:`pymongo.read_preferences.ReadPreference.PRIMARY` or
-        :attr:`pymongo.read_preferences.ReadPreference.PRIMARY_PREFERRED`
-        the command will be sent to a secondary.
+        The :meth:`inline_map_reduce` method obeys the :attr:`read_preference`
+        of this :class:`Collection`.
 
         :Parameters:
           - `map`: map function (as a JavaScript string)
           - `reduce`: reduce function (as a JavaScript string)
           - `full_response` (optional): if ``True``, return full response to
             this command - otherwise just return the result collection
-          - `read_preference`: read preference to use for this map reduce
           - `**kwargs` (optional): additional arguments to the
             `map reduce command`_ may be passed as keyword arguments to this
             helper method, e.g.::
 
             >>> db.test.inline_map_reduce(map, reduce, limit=2)
         """
-
         cmd = SON([("mapreduce", self.__name),
                    ("map", map),
                    ("reduce", reduce),
                    ("out", {"inline": 1})])
         cmd.update(kwargs)
-        res = self._command(cmd, read_preference)[0]
+        res = self._command(cmd)[0]
 
         if full_response:
             return res
@@ -1569,9 +1590,8 @@ class Collection(common.BaseObject):
             - `manipulate`: (optional): If ``True``, apply any outgoing SON
               manipulators before returning. Ignored when `full_response`
               is set to True. Defaults to ``False``.
-            - `**kwargs`: any other options the findAndModify_ command
-              supports can be passed here.
-
+            - `**kwargs` (optional): additional arguments to the findAndModify_
+              command may be passed as keyword arguments to this helper method
 
         .. mongodoc:: findAndModify
 
