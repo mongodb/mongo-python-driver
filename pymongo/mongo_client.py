@@ -1346,10 +1346,11 @@ class MongoClient(common.BaseObject):
 
         member = self.__member
 
-        # We're disconnected, but can't risk taking the lock to reconnect
-        # if we're being called from Cursor.__del__, see PYTHON-799.
+        # We can't risk taking the lock to reconnect if we're being called
+        # from Cursor.__del__, see PYTHON-799.
         if not member:
-            raise AutoReconnect()
+            warnings.warn("not connected, couldn't close cursor")
+            return
 
         _, kill_cursors_msg = message.kill_cursors(cursor_ids)
         sock_info = self.__socket(member)

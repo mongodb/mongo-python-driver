@@ -937,6 +937,28 @@ with client.start_request() as request:
         client = get_client(_connect=False)
         client.pymongo_test.test.remove(w=0)
 
+    def test_kill_cursors_warning(self):
+        # If kill_cursors is called while the client is disconnected, it
+        # can't risk taking the lock to reconnect, in case it's being called
+        # from Cursor.__del__, see PYTHON-799. Test that it shows a warning
+        # in this case.
+        client = MongoClient(host, port)
+        collection = client.pymongo_test.test
+        collection.insert({} for _ in range(4))
+        cursor = collection.find().batch_size(1)
+        next(cursor)
+        client.disconnect()
+        ctx = catch_warnings()
+        try:
+            warnings.simplefilter("error", UserWarning)
+            self.assertRaises(UserWarning, cursor.close)
+        finally:
+            ctx.exit()
+
+        # Reconnect.
+        collection.find_one()
+        cursor.close()
+
 
 class TestClientLazyConnect(unittest.TestCase, _TestLazyConnectMixin):
     def _get_client(self, **kwargs):
