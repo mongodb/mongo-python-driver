@@ -1815,8 +1815,25 @@ class MongoReplicaSetClient(common.BaseObject):
         if not isinstance(cursor_id, (int, long)):
             raise TypeError("cursor_id must be an instance of (int, long)")
 
-        self._send_message(message.kill_cursors([cursor_id]),
-                           _connection_to_use=_conn_id)
+        member = self.__get_rs_state().get(_conn_id)
+
+        # We can't risk taking the lock to reconnect if we're being called
+        # from Cursor.__del__, see PYTHON-799.
+        if not member:
+            warnings.warn("not connected, couldn't close cursor",
+                          stacklevel=2)
+            return
+
+        _, kill_cursors_msg = message.kill_cursors([cursor_id])
+        sock_info = self.__socket(member)
+        try:
+            try:
+                sock_info.sock.sendall(kill_cursors_msg)
+            except:
+                sock_info.close()
+                raise
+        finally:
+            member.maybe_return_socket(sock_info)
 
     def server_info(self):
         """Get information about the MongoDB primary we're connected to.
