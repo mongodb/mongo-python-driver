@@ -1104,11 +1104,13 @@ class TestMongoClientFailover(MockClientTest):
                 members=['a:1', 'b:2'],
                 mongoses=[],
                 host='a:1',
-                replicaSet='rs')
+                replicaSet='rs',
+                connect=False)
 
             # Set host-specific information so we can test whether it is reset.
             c.set_wire_version_range('a:1', 0, 1)
             c.set_wire_version_range('b:2', 0, 2)
+            connected(c)
             wait_until(lambda: len(c.nodes) == 2, 'connect')
 
             c.kill_host('a:1')
