@@ -26,7 +26,7 @@ class PeriodicExecutor(object):
     def __init__(self, condition_class, interval, min_interval, target):
         """"Run a target function periodically on a background thread.
 
-        If the function raises an exception, the executor stops.
+        If the target's return value is false, the executor stops.
 
         :Parameters:
           - `condition_class`: A class like threading.Condition.
@@ -84,11 +84,12 @@ class PeriodicExecutor(object):
     def _run(self):
         while not self._stopped:
             try:
-                self._target()
-            except Exception:
-                # It's the target's responsibility to report errors.
+                if not self._target():
+                    self._stopped = True
+                    break
+            except:
                 self._stopped = True
-                break
+                raise
 
             # Avoid running too frequently if wake() is called very often.
             time.sleep(self._min_interval)

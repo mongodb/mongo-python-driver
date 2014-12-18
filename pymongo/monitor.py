@@ -41,7 +41,7 @@ class Monitor(object):
         """
         self._server_description = server_description
 
-        # A weakref callback, takes ref to the dead topology as its parameter.
+        # A weakref callback, takes ref to the freed topology as its parameter.
         def close(dummy):
             self.close()
 
@@ -51,10 +51,15 @@ class Monitor(object):
         self._avg_round_trip_time = MovingAverage()
 
         # We strongly reference the executor and it weakly references us via
-        # this closure. When the monitor is freed, a call to target() raises
-        # ReferenceError and stops the executor.
+        # this closure. When the monitor is freed, stop the executor.
+        self_ref = weakref.ref(self)
+
         def target():
-            Monitor._run(weakref.proxy(self))
+            monitor = self_ref()
+            if monitor is None:
+                return False  # Stop the executor.
+            Monitor._run(monitor)
+            return True
 
         self._executor = periodic_executor.PeriodicExecutor(
             condition_class=self._settings.condition_class,
