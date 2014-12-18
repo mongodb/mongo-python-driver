@@ -22,6 +22,7 @@ from bson.dbref import DBRef
 from bson.son import SON
 from pymongo import auth, common, helpers
 from pymongo.collection import Collection
+from pymongo.command_cursor import CommandCursor
 from pymongo.errors import (CollectionInvalid,
                             ConfigurationError,
                             OperationFailure)
@@ -448,8 +449,17 @@ class Database(common.BaseObject):
         client._ensure_connected(True)
 
         if client.max_wire_version > 2:
-            results = self.command("listCollections",
-                read_preference=ReadPreference.PRIMARY).get("collections", [])
+            res, addr = self._command("listCollections",
+                                      cursor={},
+                                      read_preference=ReadPreference.PRIMARY)
+            # MongoDB 2.8rc2
+            if "collections" in res:
+                results = res["collections"]
+            # >= MongoDB 2.8rc3
+            else:
+                cur = res["cursor"]
+                coll = self[cur["ns"].split('.', 1)[1]]
+                results = CommandCursor(coll, cur, addr)
             names = [result["name"] for result in results]
         else:
             names = [result["name"] for result

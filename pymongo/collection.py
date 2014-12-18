@@ -1271,9 +1271,17 @@ class Collection(common.BaseObject):
         client._ensure_connected(True)
 
         if client.max_wire_version > 2:
-            raw = self.__database.command(
+            res, addr = self.__database._command(
                 "listIndexes", self.__name, as_class=SON,
-                read_preference=ReadPreference.PRIMARY).get("indexes", [])
+                cursor={}, read_preference=ReadPreference.PRIMARY)
+            # MongoDB 2.8rc2
+            if "indexes" in res:
+                raw = res["indexes"]
+            # >= MongoDB 2.8rc3
+            else:
+                cur = res["cursor"]
+                coll = self.__database[cur["ns"].split('.', 1)[1]]
+                raw = CommandCursor(coll, cur, addr)
         else:
             raw = self.__database.system.indexes.find({"ns": self.__full_name},
                                                       {"ns": 0}, as_class=SON,
@@ -1298,11 +1306,20 @@ class Collection(common.BaseObject):
 
         result = None
         if client.max_wire_version > 2:
-            res = self.__database.command(
+            res, addr = self.__database._command(
                 "listCollections",
+                cursor={},
                 filter={"name": self.__name},
                 read_preference=ReadPreference.PRIMARY)
-            for doc in res.get("collections", []):
+            # MongoDB 2.8rc2
+            if "collections" in res:
+                results = res["collections"]
+            # >= MongoDB 2.8rc3
+            else:
+                cur = res["cursor"]
+                coll = self.__database[cur["ns"].split('.', 1)[1]]
+                results = CommandCursor(coll, cur, addr)
+            for doc in results:
                 result = doc
                 break
         else:
