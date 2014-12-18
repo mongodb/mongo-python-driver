@@ -469,9 +469,7 @@ class Database(common.BaseObject):
                 results = res["collections"]
             # >= MongoDB 2.8rc3
             else:
-                cur = res["cursor"]
-                coll = self[cur["ns"].split('.', 1)[1]]
-                results = CommandCursor(coll, cur, addr)
+                results = CommandCursor(self["$cmd"], res["cursor"], addr)
             names = [result["name"] for result in results]
         else:
             names = [result["name"] for result

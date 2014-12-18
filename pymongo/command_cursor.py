@@ -41,6 +41,11 @@ class CommandCursor(object):
         self.__batch_size = 0
         self.__killed = False
 
+        if "ns" in cursor_info:
+            self.__ns = cursor_info["ns"]
+        else:
+            self.__ns = collection.full_name
+
     def __del__(self):
         if self.__id and not self.__killed:
             self.__die()
@@ -133,7 +138,7 @@ class CommandCursor(object):
 
         if self.__id:  # Get More
             self.__send_message(
-                message.get_more(self.__collection.full_name,
+                message.get_more(self.__ns,
                                  self.__batch_size, self.__id))
 
         else:  # Cursor id is zero nothing else to return

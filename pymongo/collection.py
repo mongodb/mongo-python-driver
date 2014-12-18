@@ -1256,9 +1256,7 @@ class Collection(common.BaseObject):
                 raw = res["indexes"]
             # >= MongoDB 2.8rc3
             else:
-                cur = res["cursor"]
-                coll = self.__database[cur["ns"].split('.', 1)[1]]
-                raw = CommandCursor(coll, cur, addr)
+                raw = CommandCursor(self, res["cursor"], addr)
         else:
             raw = self.__database.system.indexes.find({"ns": self.__full_name},
                                                       {"ns": 0}, as_class=SON)
@@ -1290,9 +1288,7 @@ class Collection(common.BaseObject):
                 results = res["collections"]
             # >= MongoDB 2.8rc3
             else:
-                cur = res["cursor"]
-                coll = self.__database[cur["ns"].split('.', 1)[1]]
-                results = CommandCursor(coll, cur, addr)
+                results = CommandCursor(self, res["cursor"], addr)
             for doc in results:
                 result = doc
                 break
