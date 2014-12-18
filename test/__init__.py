@@ -55,18 +55,29 @@ db_pwd = _unicode(os.environ.get("DB_PASSWORD", "password"))
 
 
 class client_knobs(object):
-    def __init__(self, heartbeat_frequency=None, server_wait_time=None):
+    def __init__(
+            self,
+            heartbeat_frequency=None,
+            kill_cursor_frequency=None,
+            server_wait_time=None):
         self.heartbeat_frequency = heartbeat_frequency
+        self.kill_cursor_frequency = kill_cursor_frequency
         self.server_wait_time = server_wait_time
 
         self.old_heartbeat_frequency = None
+        self.old_kill_cursor_frequency = None
         self.old_server_wait_time = None
 
     def enable(self):
         self.old_heartbeat_frequency = common.HEARTBEAT_FREQUENCY
+        self.old_kill_cursor_frequency = common.KILL_CURSOR_FREQUENCY
         self.old_server_wait_time = common.SERVER_WAIT_TIME
+
         if self.heartbeat_frequency is not None:
             common.HEARTBEAT_FREQUENCY = self.heartbeat_frequency
+
+        if self.kill_cursor_frequency is not None:
+            common.KILL_CURSOR_FREQUENCY = self.kill_cursor_frequency
 
         if self.server_wait_time is not None:
             common.SERVER_WAIT_TIME = self.server_wait_time
@@ -76,6 +87,7 @@ class client_knobs(object):
 
     def disable(self):
         common.HEARTBEAT_FREQUENCY = self.old_heartbeat_frequency
+        common.KILL_CURSOR_FREQUENCY = self.old_kill_cursor_frequency
         common.SERVER_WAIT_TIME = self.old_server_wait_time
 
     def __exit__(self, exc_type, exc_val, exc_tb):

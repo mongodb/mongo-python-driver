@@ -34,7 +34,10 @@ access:
 
 import datetime
 import socket
+import threading
 import warnings
+import weakref
+from collections import defaultdict
 
 from bson.py3compat import (integer_types,
                             string_type)
@@ -42,6 +45,7 @@ from pymongo import (common,
                      database,
                      helpers,
                      message,
+                     periodic_executor,
                      pool,
                      uri_parser)
 from pymongo.client_options import ClientOptions
@@ -289,7 +293,9 @@ class MongoClient(common.BaseObject):
             username, password, dbase, opts)
 
         self.__default_database_name = dbase
+        self.__lock = threading.Lock()
         self.__cursor_manager = CursorManager(self)
+        self.__kill_cursors_queue = []
 
         # Cache of existing indexes used by ensure_index ops.
         self.__index_cache = {}
@@ -314,6 +320,25 @@ class MongoClient(common.BaseObject):
         self._topology = Topology(self._topology_settings)
         if connect:
             self._topology.open()
+
+        # We strongly reference the executor and it weakly references us via
+        # this closure. When the client is freed, stop the executor.
+        self_ref = weakref.ref(self)
+
+        def target():
+            client = self_ref()
+            if client is None:
+                return False  # Stop the executor.
+            MongoClient._process_kill_cursors_queue(client)
+            return True
+
+        self._kill_cursors_executor = periodic_executor.PeriodicExecutor(
+            condition_class=self._topology_settings.condition_class,
+            interval=common.KILL_CURSOR_FREQUENCY,
+            min_interval=0,
+            target=target)
+
+        self._kill_cursors_executor.open()
 
     def _cache_credentials(self, source, credentials, connect=False):
         """Save a set of authentication credentials.
@@ -752,6 +777,10 @@ class MongoClient(common.BaseObject):
           - `address` (optional): Optional address when sending a message
             to a specific server, used for killCursors.
         """
+        with self.__lock:
+            # If needed, restart kill-cursors thread after a fork.
+            self._kill_cursors_executor.open()
+
         topology = self._get_topology()
         if address:
             assert not check_primary, "Can't use check_primary with address"
@@ -804,6 +833,10 @@ class MongoClient(common.BaseObject):
           - `address` (optional): Optional address when sending a message
             to a specific server, used for getMore.
         """
+        with self.__lock:
+            # If needed, restart kill-cursors thread after a fork.
+            self._kill_cursors_executor.open()
+
         topology = self._get_topology()
         if address:
             server = topology.select_server_by_address(address)
@@ -909,24 +942,53 @@ class MongoClient(common.BaseObject):
         self.__cursor_manager.close(cursor_id, address)
 
     def kill_cursors(self, cursor_ids, address=None):
-        """Send a kill cursors message with the given ids.
+        """Send a kill cursors message soon with the given ids.
 
         Raises :class:`TypeError` if `cursor_ids` is not an instance of
         ``list``.
+
+        This method may be called from a :class:`~pymongo.cursor.Cursor`
+        destructor during garbage collection, so it isn't safe to take a
+        lock or do network I/O. Instead, we schedule the cursor to be closed
+        soon on a background thread.
 
         :Parameters:
           - `cursor_ids`: list of cursor ids to kill
           - `address` (optional): (host, port) of server to send message to
 
         .. versionchanged:: 3.0
-           Now accepts an `address` argument.
+           Now accepts an `address` argument. Schedules the cursors to be
+           closed on a background thread instead of sending the message
+           immediately.
         """
         if not isinstance(cursor_ids, list):
             raise TypeError("cursor_ids must be a list")
-        return self._send_message(
-            message.kill_cursors(cursor_ids),
-            address=address,
-            check_primary=False)
+
+        # "Atomic", needs no lock.
+        self.__kill_cursors_queue.append((address, cursor_ids))
+
+    # This method is run periodically by a background thread.
+    def _process_kill_cursors_queue(self):
+        address_to_cursor_ids = defaultdict(list)
+
+        # Other threads or the GC may append to the queue concurrently.
+        while True:
+            try:
+                address, cursor_ids = self.__kill_cursors_queue.pop()
+            except IndexError:
+                break
+
+            address_to_cursor_ids[address].extend(cursor_ids)
+
+        for address, cursor_ids in address_to_cursor_ids.items():
+            try:
+                self._send_message(
+                    message.kill_cursors(cursor_ids),
+                    address=address,
+                    check_primary=False)
+            except ConnectionFailure as exc:
+                warnings.warn("couldn't close cursor on %s: %s"
+                              % (address, exc))
 
     def server_info(self):
         """Get information about the MongoDB server we're connected to."""

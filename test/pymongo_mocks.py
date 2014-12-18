@@ -195,3 +195,8 @@ class MockClient(MongoClient):
         # In test_internal_ips(), we try to connect to a host listed
         # in ismaster['hosts'] but not publicly accessible.
         raise socket.error('Unknown host: %s' % host)
+
+    def _process_kill_cursors_queue(self):
+        # Avoid the background thread causing races, e.g. a surprising
+        # reconnect while we're trying to test a disconnected client.
+        pass

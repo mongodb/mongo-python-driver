@@ -21,10 +21,11 @@ sys.path[0:0] = [""]
 from pymongo.cursor_manager import CursorManager
 from pymongo.errors import CursorNotFound
 from test import (client_context,
+                  client_knobs,
                   unittest,
                   IntegrationTest,
                   SkipTest)
-from test.utils import rs_or_single_client
+from test.utils import rs_or_single_client, wait_until
 
 
 class TestCursorManager(IntegrationTest):
@@ -65,18 +66,25 @@ class TestCursorManager(IntegrationTest):
                 test_case.close_was_called = True
                 super(CM, self).close(cursor_id, address)
 
-        client = rs_or_single_client(max_pool_size=1)
-        client.set_cursor_manager(CM)
+        with client_knobs(kill_cursor_frequency=0.01):
+            client = rs_or_single_client(max_pool_size=1)
+            client.set_cursor_manager(CM)
 
-        # Create a cursor on the same client so we're certain the getMore is
-        # sent after the killCursors message.
-        cursor = client.pymongo_test.test.find()
-        next(cursor)
-        client.close_cursor(cursor.cursor_id)
-        with self.assertRaises(CursorNotFound):
-            list(cursor)
+            # Create a cursor on the same client so we're certain the getMore
+            # is sent after the killCursors message.
+            cursor = client.pymongo_test.test.find().batch_size(1)
+            next(cursor)
+            client.close_cursor(cursor.cursor_id)
 
-        self.assertTrue(self.close_was_called)
+            def raises_cursor_not_found():
+                try:
+                    next(cursor)
+                    return False
+                except CursorNotFound:
+                    return True
+
+            wait_until(raises_cursor_not_found, 'close cursor')
+            self.assertTrue(self.close_was_called)
 
 
 if __name__ == "__main__":

@@ -427,6 +427,9 @@ class TestClient(IntegrationTest):
 
         def f(pipe):
             try:
+                kill_cursors_executor = self.client._kill_cursors_executor
+                assert not kill_cursors_executor._thread.is_alive()
+
                 servers = self.client._topology.select_servers(
                     any_server_selector)
 
@@ -440,6 +443,9 @@ class TestClient(IntegrationTest):
                     lambda: all(s._monitor._executor._thread.is_alive()
                                 for s in servers),
                     "restart monitor threads")
+
+                wait_until(lambda: kill_cursors_executor._thread.is_alive(),
+                           "restart kill-cursors executor")
             except:
                 traceback.print_exc()  # Aid debugging.
                 pipe.send(True)
@@ -693,15 +699,40 @@ class TestClient(IntegrationTest):
         self.collection = self.client.pymongo_test.test
         self.collection.remove()
         
-        # Ensure two batches.
         self.collection.insert({'_id': i} for i in range(200))
-
-        cursor = self.collection.find()
+        cursor = self.collection.find().batch_size(1)
         next(cursor)
         self.client.kill_cursors([cursor.cursor_id])
-        
-        with self.assertRaises(CursorNotFound):
-            list(cursor)
+
+        # Prevent killcursors from reaching the server while a getmore is in
+        # progress -- the server logs "Assertion: 16089:Cannot kill active
+        # cursor."
+        time.sleep(2)
+
+        def raises_cursor_not_found():
+            try:
+                next(cursor)
+                return False
+            except CursorNotFound:
+                return True
+
+        wait_until(raises_cursor_not_found, 'close cursor')
+
+    def test_kill_cursors_with_server_unavailable(self):
+        with client_knobs(server_wait_time=0, kill_cursor_frequency=9999999):
+            client = MongoClient('doesnt exist', connect=False)
+
+            # Wait for the first tick of the periodic kill-cursors to pass.
+            time.sleep(1)
+
+            # Enqueue a kill-cursors message.
+            client.close_cursor(1234, ('doesnt-exist', 27017))
+
+            with warnings.catch_warnings(record=True) as user_warnings:
+                client._process_kill_cursors_queue()
+
+            self.assertIn("couldn't close cursor on ('doesnt-exist', 27017)",
+                          str(user_warnings[0].message))
 
     def test_lazy_connect_w0(self):
         # Ensure that connect-on-demand works when the first operation is

@@ -17,6 +17,7 @@
 import socket
 import sys
 import warnings
+import time
 
 sys.path[0:0] = [""]
 
@@ -249,44 +250,45 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
         client.close()
 
     def _test_kill_cursor_explicit(self, read_pref):
-        c = rs_client(read_preference=read_pref)
-        db = c.pymongo_test
-        db.drop_collection("test")
+        with client_knobs(kill_cursor_frequency=0.01):
+            c = rs_client(read_preference=read_pref)
+            db = c.pymongo_test
+            db.drop_collection("test")
 
-        test = db.test
-        test.insert([{"i": i} for i in range(20)], w=self.w)
+            test = db.test
+            test.insert([{"i": i} for i in range(20)], w=self.w)
 
-        # Partially evaluate cursor so it's left alive, then kill it
-        cursor = test.find().batch_size(10)
-        next(cursor)
-        self.assertNotEqual(0, cursor.cursor_id)
+            # Partially evaluate cursor so it's left alive, then kill it
+            cursor = test.find().batch_size(10)
+            next(cursor)
+            self.assertNotEqual(0, cursor.cursor_id)
 
-        if read_pref == ReadPreference.PRIMARY:
-            msg = "Expected cursor's address to be %s, got %s" % (
-                c.primary, cursor.address)
+            if read_pref == ReadPreference.PRIMARY:
+                msg = "Expected cursor's address to be %s, got %s" % (
+                    c.primary, cursor.address)
 
-            self.assertEqual(cursor.address, c.primary, msg)
-        else:
-            self.assertNotEqual(
-                cursor.address, c.primary,
-                "Expected cursor's address not to be primary")
+                self.assertEqual(cursor.address, c.primary, msg)
+            else:
+                self.assertNotEqual(
+                    cursor.address, c.primary,
+                    "Expected cursor's address not to be primary")
 
-        cursor_id = cursor.cursor_id
+            cursor_id = cursor.cursor_id
 
-        # Cursor dead on server - trigger a getMore on the same cursor_id and
-        # check that the server returns an error.
-        cursor2 = cursor.clone()
-        cursor2._Cursor__id = cursor_id
+            # Cursor dead on server - trigger a getMore on the same cursor_id
+            # and check that the server returns an error.
+            cursor2 = cursor.clone()
+            cursor2._Cursor__id = cursor_id
 
-        if (sys.platform.startswith('java') or
-            'PyPy' in sys.version):
-            # Explicitly kill cursor.
-            cursor.close()
-        else:
-            # Implicitly kill it in CPython.
-            del cursor
+            if sys.platform.startswith('java') or 'PyPy' in sys.version:
+                # Explicitly kill cursor.
+                cursor.close()
+            else:
+                # Implicitly kill it in CPython.
+                del cursor
 
-        self.assertRaises(OperationFailure, lambda: list(cursor2))
+            time.sleep(5)
+            self.assertRaises(OperationFailure, lambda: list(cursor2))
 
     def test_kill_cursor_explicit_primary(self):
         self._test_kill_cursor_explicit(ReadPreference.PRIMARY)
