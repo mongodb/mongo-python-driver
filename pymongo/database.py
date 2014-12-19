@@ -244,7 +244,8 @@ class Database(common.BaseObject):
         return Collection(
             self, name, False, codec_options, read_preference, write_concern)
 
-    def create_collection(self, name, **kwargs):
+    def create_collection(self, name, codec_options=None,
+                          read_preference=None, write_concern=None, **kwargs):
         """Create a new :class:`~pymongo.collection.Collection` in this
         database.
 
@@ -267,19 +268,31 @@ class Database(common.BaseObject):
 
         :Parameters:
           - `name`: the name of the collection to create
+          - `codec_options` (optional): An instance of
+            :class:`~pymongo.codec_options.CodecOptions`. If ``None`` (the
+            default) the :attr:`codec_options` of this :class:`Database` is
+            used.
+          - `read_preference` (optional): The read preference to use. If
+            ``None`` (the default) the :attr:`read_preference` of this
+            :class:`Database` is used.
+          - `write_concern` (optional): An instance of
+            :class:`~pymongo.write_concern.WriteConcern`. If ``None`` (the
+            default) the :attr:`write_concern` of this :class:`Database` is
+            used.
           - `**kwargs` (optional): additional keyword arguments will
             be passed as options for the create collection command
+
+        .. versionchanged:: 3.0
+           Added the codec_options, read_preference, and write_concern options.
 
         .. versionchanged:: 2.2
            Removed deprecated argument: options
         """
-        opts = {"create": True}
-        opts.update(kwargs)
-
         if name in self.collection_names():
             raise CollectionInvalid("collection %s already exists" % name)
 
-        return Collection(self, name, **opts)
+        return Collection(self, name, True, codec_options,
+                          read_preference, write_concern, **kwargs)
 
     def _apply_incoming_manipulators(self, son, collection):
         for manipulator in self.__incoming_manipulators:
