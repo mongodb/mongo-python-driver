@@ -1247,11 +1247,18 @@ class Collection(common.BaseObject):
         """
         client = self.__database.connection
         if client._writable_max_wire_version() > 2:
-            cmd = SON([("listIndexes", self.__name)])
-            result = self._command(cmd,
-                                   ReadPreference.PRIMARY,
-                                   CodecOptions(as_class=SON))[0]
-            raw = result.get("indexes", [])
+            cmd = SON([("listIndexes", self.__name), ("cursor", {})])
+            res, addr = self._command(cmd,
+                                      ReadPreference.PRIMARY,
+                                      CodecOptions(as_class=SON))
+            # MongoDB 2.8rc2
+            if "indexes" in res:
+                raw = res["indexes"]
+            # >= MongoDB 2.8rc3
+            else:
+                cur = res["cursor"]
+                coll = self.__database[cur["ns"].split('.', 1)[1]]
+                raw = CommandCursor(coll, cur, addr)
         else:
             raw = self.__database.system.indexes.find({"ns": self.__full_name},
                                                       {"ns": 0}, as_class=SON)
@@ -1275,9 +1282,18 @@ class Collection(common.BaseObject):
         result = None
         if client._writable_max_wire_version() > 2:
             cmd = SON([("listCollections", self.__name),
-                       ("filter", {"name": self.__name})])
-            res = self._command(cmd, ReadPreference.PRIMARY)[0]
-            for doc in res.get("collections", []):
+                       ("filter", {"name": self.__name}),
+                       ("cursor", {})])
+            res, addr = self._command(cmd, ReadPreference.PRIMARY)
+            # MongoDB 2.8rc2
+            if "collections" in res:
+                results = res["collections"]
+            # >= MongoDB 2.8rc3
+            else:
+                cur = res["cursor"]
+                coll = self.__database[cur["ns"].split('.', 1)[1]]
+                results = CommandCursor(coll, cur, addr)
+            for doc in results:
                 result = doc
                 break
         else:
