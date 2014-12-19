@@ -652,11 +652,26 @@ class Database(common.BaseObject):
         return list(self["system.profile"].find())
 
     def error(self):
-        """Get a database error if one occured on the last operation.
+        """**DEPRECATED**: Get the error if one occurred on the last operation.
+
+        This method is obsolete: all MongoDB write operations (insert, update,
+        remove, and so on) use the write concern ``w=1`` and report their
+        errors by default.
+
+        This method must be called in the same
+        :doc:`request </examples/requests>` as the preceding operation,
+        otherwise it is unreliable. Requests are deprecated and will be removed
+        in PyMongo 3.0.
 
         Return None if the last operation was error-free. Otherwise return the
         error that occurred.
+
+        .. versionchanged:: 2.8
+           Deprecated.
         """
+        warnings.warn("Database.error() is deprecated",
+                      DeprecationWarning, stacklevel=2)
+
         error = self.command("getlasterror",
                              read_preference=ReadPreference.PRIMARY)
         error_msg = error.get("err", "")
@@ -671,20 +686,51 @@ class Database(common.BaseObject):
         return error
 
     def last_status(self):
-        """Get status information from the last operation.
+        """**DEPRECATED**: Get status information from the last operation.
+
+        This method is obsolete: all MongoDB write operations (insert, update,
+        remove, and so on) use the write concern ``w=1`` and report their
+        errors by default.
+
+        This method must be called in the same
+        :doc:`request </examples/requests>` as the preceding operation,
+        otherwise it is unreliable. Requests are deprecated and will be removed
+        in PyMongo 3.0.
 
         Returns a SON object with status information.
+
+        .. versionchanged:: 2.8
+           Deprecated.
         """
+        warnings.warn("last_status() is deprecated",
+                      DeprecationWarning, stacklevel=2)
+
         return self.command("getlasterror",
                             read_preference=ReadPreference.PRIMARY)
 
     def previous_error(self):
-        """Get the most recent error to have occurred on this database.
+        """**DEPRECATED**: Get the most recent error on this database.
+
+        This method is obsolete: all MongoDB write operations (insert, update,
+        remove, and so on) use the write concern ``w=1`` and report their
+        errors by default.
+
+        This method must be called in the same
+        :doc:`request </examples/requests>` as the preceding operation,
+        otherwise it is unreliable. Requests are deprecated and will be removed
+        in PyMongo 3.0. Furthermore, the underlying database command
+        ``getpreverror`` will be removed in a future MongoDB release.
 
         Only returns errors that have occurred since the last call to
-        `Database.reset_error_history`. Returns None if no such errors have
+        :meth:`reset_error_history`. Returns None if no such errors have
         occurred.
+
+        .. versionchanged:: 2.8
+           Deprecated.
         """
+        warnings.warn("previous_error() is deprecated",
+                      DeprecationWarning, stacklevel=2)
+
         error = self.command("getpreverror",
                              read_preference=ReadPreference.PRIMARY)
         if error.get("err", 0) is None:
@@ -692,11 +738,27 @@ class Database(common.BaseObject):
         return error
 
     def reset_error_history(self):
-        """Reset the error history of this database.
+        """**DEPRECATED**: Reset the error history of this database.
 
-        Calls to `Database.previous_error` will only return errors that have
+        This method is obsolete: all MongoDB write operations (insert, update,
+        remove, and so on) use the write concern ``w=1`` and report their
+        errors by default.
+
+        This method must be called in the same
+        :doc:`request </examples/requests>` as the preceding operation,
+        otherwise it is unreliable. Requests are deprecated and will be removed
+        in PyMongo 3.0. Furthermore, the underlying database command
+        ``reseterror`` will be removed in a future MongoDB release.
+
+        Calls to :meth:`previous_error` will only return errors that have
         occurred since the most recent call to this method.
+
+        .. versionchanged:: 2.8
+           Deprecated.
         """
+        warnings.warn("reset_error_history() is deprecated",
+                      DeprecationWarning, stacklevel=2)
+
         self.command("reseterror",
                      read_preference=ReadPreference.PRIMARY)
 
