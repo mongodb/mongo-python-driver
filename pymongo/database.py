@@ -486,8 +486,9 @@ class Database(common.BaseObject):
             names = [result["name"] for result in results]
         else:
             names = [result["name"] for result
-                     in self["system.namespaces"].find(
-                         read_preference=ReadPreference.PRIMARY)]
+                     in self.get_collection(
+                         "system.namespaces",
+                         read_preference=ReadPreference.PRIMARY).find()]
             names = [n[len(self.__name) + 1:] for n in names
                      if n.startswith(self.__name + ".") and "$" not in n]
 

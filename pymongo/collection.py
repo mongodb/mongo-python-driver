@@ -1258,8 +1258,10 @@ class Collection(common.BaseObject):
             else:
                 raw = CommandCursor(self, res["cursor"], addr)
         else:
-            raw = self.__database.system.indexes.find({"ns": self.__full_name},
-                                                      {"ns": 0}, as_class=SON)
+            raw = self.__database.get_collection(
+                "system.indexes",
+                read_preference=ReadPreference.PRIMARY).find(
+                    {"ns": self.__full_name}, {"ns": 0}, as_class=SON)
         info = {}
         for index in raw:
             index["key"] = index["key"].items()
@@ -1293,8 +1295,10 @@ class Collection(common.BaseObject):
                 result = doc
                 break
         else:
-            result = self.__database.system.namespaces.find_one(
-                {"name": self.__full_name})
+            result = self.__database.get_collection(
+                "system.namespaces",
+                read_preference=ReadPreference.PRIMARY).find_one(
+                    {"name": self.__full_name})
 
         if not result:
             return {}
