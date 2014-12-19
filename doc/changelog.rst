@@ -30,6 +30,10 @@ Highlights include:
   - :meth:`~pymongo.mongo_client.MongoClient.in_request`
   - :meth:`~pymongo.mongo_client.MongoClient.end_request`
   - :meth:`~pymongo.mongo_client.MongoClient.copy_database`
+  - :meth:`~pymongo.database.Database.error`
+  - :meth:`~pymongo.database.Database.last_status`
+  - :meth:`~pymongo.database.Database.previous_error`
+  - :meth:`~pymongo.database.Database.reset_error_history`
   - :class:`~pymongo.master_slave_connection.MasterSlaveConnection`
 
   The JSON format for :class:`~bson.timestamp.Timestamp` has changed from
