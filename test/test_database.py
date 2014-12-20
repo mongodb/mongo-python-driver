@@ -297,37 +297,38 @@ class TestDatabase(IntegrationTest):
 
     @client_context.require_no_mongos
     def test_errors(self):
-        # We must call getlasterror, etc. on same socket as the last operation.
-        db = rs_or_single_client(max_pool_size=1).pymongo_test
-        db.reset_error_history()
-        self.assertEqual(None, db.error())
-        self.assertEqual(None, db.previous_error())
+        with ignore_deprecations():
+            # We must call getlasterror, etc. on same socket as last operation.
+            db = rs_or_single_client(max_pool_size=1).pymongo_test
+            db.reset_error_history()
+            self.assertEqual(None, db.error())
+            self.assertEqual(None, db.previous_error())
 
-        db.command("forceerror", check=False)
-        self.assertTrue(db.error())
-        self.assertTrue(db.previous_error())
+            db.command("forceerror", check=False)
+            self.assertTrue(db.error())
+            self.assertTrue(db.previous_error())
 
-        db.command("forceerror", check=False)
-        self.assertTrue(db.error())
-        prev_error = db.previous_error()
-        self.assertEqual(prev_error["nPrev"], 1)
-        del prev_error["nPrev"]
-        prev_error.pop("lastOp", None)
-        error = db.error()
-        error.pop("lastOp", None)
-        # getLastError includes "connectionId" in recent
-        # server versions, getPrevError does not.
-        error.pop("connectionId", None)
-        self.assertEqual(error, prev_error)
+            db.command("forceerror", check=False)
+            self.assertTrue(db.error())
+            prev_error = db.previous_error()
+            self.assertEqual(prev_error["nPrev"], 1)
+            del prev_error["nPrev"]
+            prev_error.pop("lastOp", None)
+            error = db.error()
+            error.pop("lastOp", None)
+            # getLastError includes "connectionId" in recent
+            # server versions, getPrevError does not.
+            error.pop("connectionId", None)
+            self.assertEqual(error, prev_error)
 
-        db.test.find_one()
-        self.assertEqual(None, db.error())
-        self.assertTrue(db.previous_error())
-        self.assertEqual(db.previous_error()["nPrev"], 2)
+            db.test.find_one()
+            self.assertEqual(None, db.error())
+            self.assertTrue(db.previous_error())
+            self.assertEqual(db.previous_error()["nPrev"], 2)
 
-        db.reset_error_history()
-        self.assertEqual(None, db.error())
-        self.assertEqual(None, db.previous_error())
+            db.reset_error_history()
+            self.assertEqual(None, db.error())
+            self.assertEqual(None, db.previous_error())
 
     def test_command(self):
         db = self.client.admin
@@ -349,16 +350,17 @@ class TestDatabase(IntegrationTest):
             self.assertTrue(isinstance(doc['r'], Regex))
 
     def test_last_status(self):
-        # We must call getlasterror on the same socket as the last operation.
-        db = rs_or_single_client(max_pool_size=1).pymongo_test
-        db.test.remove({})
-        db.test.save({"i": 1})
+        with ignore_deprecations():
+            # We must call getlasterror on same socket as the last operation.
+            db = rs_or_single_client(max_pool_size=1).pymongo_test
+            db.test.remove({})
+            db.test.save({"i": 1})
 
-        db.test.update({"i": 1}, {"$set": {"i": 2}}, w=0)
-        self.assertTrue(db.last_status()["updatedExisting"])
+            db.test.update({"i": 1}, {"$set": {"i": 2}}, w=0)
+            self.assertTrue(db.last_status()["updatedExisting"])
 
-        db.test.update({"i": 1}, {"$set": {"i": 500}}, w=0)
-        self.assertFalse(db.last_status()["updatedExisting"])
+            db.test.update({"i": 1}, {"$set": {"i": 500}}, w=0)
+            self.assertFalse(db.last_status()["updatedExisting"])
 
     def test_password_digest(self):
         self.assertRaises(TypeError, auth._password_digest, 5)
