@@ -244,14 +244,6 @@ class GridIn(object):
             self.__flush_buffer()
 
             db = self._coll.database
-
-            # See PYTHON-417, "Sharded GridFS fails with exception: chunks out
-            # of order." Inserts via mongos, even if they use a single
-            # connection, can succeed out-of-order due to the writebackListener.
-            # We mustn't call "filemd5" until all inserts are complete, which
-            # we ensure by calling getLastError (and ignoring the result).
-            db.error()
-
             md5 = db.command(
                 "filemd5", self._id, root=self._coll.name,
                 read_preference=ReadPreference.PRIMARY)["md5"]
