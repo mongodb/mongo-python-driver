@@ -296,7 +296,7 @@ class MongoClient(common.BaseObject):
 
         super(MongoClient, self).__init__(options.codec_options,
                                           options.read_preference,
-                                          options.write_concern.document)
+                                          options.write_concern)
 
         self.__all_credentials = {}
         creds = options.credentials

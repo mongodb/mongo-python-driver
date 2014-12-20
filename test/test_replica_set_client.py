@@ -32,6 +32,7 @@ from pymongo.errors import (AutoReconnect,
 from pymongo.mongo_client import MongoClient
 from pymongo.mongo_replica_set_client import MongoReplicaSetClient
 from pymongo.read_preferences import ReadPreference, Secondary, Nearest
+from pymongo.write_concern import WriteConcern
 from test import (client_context,
                   client_knobs,
                   host,
@@ -129,7 +130,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
         # Collection.
         for obj in c, c.pymongo_test, c.pymongo_test.test:
             self.assertEqual(obj.read_preference, ReadPreference.PRIMARY)
-            self.assertEqual(obj.write_concern, {})
+            self.assertEqual(obj.write_concern, WriteConcern())
 
         cursor = c.pymongo_test.test.find()
         self.assertEqual(

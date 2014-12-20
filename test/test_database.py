@@ -105,7 +105,7 @@ class TestDatabaseNoConnect(unittest.TestCase):
         self.assertEqual('foo', coll.name)
         self.assertEqual(codec_options, coll.codec_options)
         self.assertEqual(ReadPreference.SECONDARY, coll.read_preference)
-        self.assertEqual(write_concern.document, coll.write_concern)
+        self.assertEqual(write_concern, coll.write_concern)
 
     def test_getattr(self):
         db = self.client.pymongo_test

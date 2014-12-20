@@ -37,8 +37,6 @@ from pymongo import MongoClient
 from pymongo.codec_options import CodecOptions
 from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
-from pymongo.read_preferences import ReadPreference
-from pymongo.son_manipulator import SONManipulator
 from pymongo.errors import (DocumentTooLarge,
                             DuplicateKeyError,
                             InvalidDocument,
@@ -46,6 +44,9 @@ from pymongo.errors import (DocumentTooLarge,
                             InvalidOperation,
                             OperationFailure,
                             WTimeoutError)
+from pymongo.read_preferences import ReadPreference
+from pymongo.son_manipulator import SONManipulator
+from pymongo.write_concern import WriteConcern
 from test.test_client import IntegrationTest
 from test.utils import (is_mongos, joinall, enable_text_search, get_pool,
                         oid_generated_on_client, ignore_deprecations,
@@ -809,7 +810,7 @@ class TestCollection(IntegrationTest):
 
         db.drop_collection("test")
         wc = db.write_concern
-        db.write_concern = {"w": 0}
+        db.write_concern = WriteConcern(w=0)
         try:
             db.test.ensure_index([('i', ASCENDING)], unique=True)
 
@@ -963,10 +964,10 @@ class TestCollection(IntegrationTest):
         collection.remove()
         collection.insert({'_id': 1})
 
-        collection.write_concern = {'w': 1, 'wtimeout': 1000}
+        collection.write_concern = WriteConcern(w=1, wtimeout=1000)
         self.assertRaises(DuplicateKeyError, collection.insert, {'_id': 1})
 
-        collection.write_concern = {'wtimeout': 1000}
+        collection.write_concern = WriteConcern(wtimeout=1000)
         self.assertRaises(DuplicateKeyError, collection.insert, {'_id': 1})
 
     @client_context.require_version_min(1, 9, 1)

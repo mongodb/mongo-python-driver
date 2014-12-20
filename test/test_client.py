@@ -139,7 +139,7 @@ class ClientUnitTest(unittest.TestCase):
         self.assertEqual('foo', db.name)
         self.assertEqual(codec_options, db.codec_options)
         self.assertEqual(ReadPreference.SECONDARY, db.read_preference)
-        self.assertEqual(write_concern.document, db.write_concern)
+        self.assertEqual(write_concern, db.write_concern)
 
     def test_getattr(self):
         self.assertTrue(isinstance(self.client['_does_not_exist'], Database))

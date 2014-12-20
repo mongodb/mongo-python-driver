@@ -396,14 +396,10 @@ class BaseObject(object):
             raise TypeError("read_preference is invalid")
         self.__read_pref = read_preference
 
-        # TODO: Remove support for arbitrary mappings.
-        if isinstance(write_concern, collections.Mapping):
-            self.__write_concern = WriteConcern(**write_concern)
-        elif isinstance(write_concern, WriteConcern):
-            self.__write_concern = write_concern
-        else:
+        if not isinstance(write_concern, WriteConcern):
             raise TypeError("write_concern must be an instance of "
                             "pymongo.write_concern.WriteConcern")
+        self.__write_concern = write_concern
 
     @property
     def codec_options(self):
@@ -412,62 +408,15 @@ class BaseObject(object):
 
     def __set_write_concern(self, value):
         """Property setter for write_concern."""
-        if not isinstance(value, collections.Mapping):
-            raise ConfigurationError("write_concern must be an "
-                                     "instance of dict or a subclass.")
-        self.__write_concern = WriteConcern(**value)
+        if not isinstance(value, WriteConcern):
+            raise TypeError("write_concern must be an instance "
+                            "of pymongo.write_concern.WriteConcern.")
+        self.__write_concern = value
 
     def __get_write_concern(self):
-        """The default write concern for this instance.
-
-        Supports dict style access for getting/setting write concern
-        options. Valid options include:
-
-        - `w`: (integer or string) If this is a replica set, write operations
-          will block until they have been replicated to the specified number
-          or tagged set of servers. `w=<int>` always includes the replica set
-          primary (e.g. w=3 means write to the primary and wait until
-          replicated to **two** secondaries). **Setting w=0 disables write
-          acknowledgement and all other write concern options.**
-        - `wtimeout`: (integer) Used in conjunction with `w`. Specify a value
-          in milliseconds to control how long to wait for write propagation
-          to complete. If replication does not complete in the given
-          timeframe, a timeout exception is raised.
-        - `j`: If ``True`` block until write operations have been committed
-          to the journal. Cannot be used in combination with `fsync`. Prior
-          to MongoDB 2.6 this option was ignored if the server was running
-          without journaling. Starting with MongoDB 2.6 write operations will
-          fail with an exception if this option is used when the server is
-          running without journaling.
-        - `fsync`: If ``True`` and the server is running without journaling,
-          blocks until the server has synced all data files to disk. If the
-          server is running with journaling, this acts the same as the `j`
-          option, blocking until write operations have been committed to the
-          journal. Cannot be used in combination with `j`.
-
-        >>> m = pymongo.MongoClient()
-        >>> m.write_concern
-        {}
-        >>> m.write_concern = {'w': 2, 'wtimeout': 1000}
-        >>> m.write_concern
-        {'wtimeout': 1000, 'w': 2}
-        >>> m.write_concern['j'] = True
-        >>> m.write_concern
-        {'wtimeout': 1000, 'j': True, 'w': 2}
-        >>> m.write_concern = {'j': True}
-        >>> m.write_concern
-        {'j': True}
-        >>> # Disable write acknowledgement and write concern
-        ...
-        >>> m.write_concern['w'] = 0
-
-
-        .. note:: Accessing :attr:`write_concern` returns its value
-           (a subclass of :class:`dict`), not a copy.
+        """The :class:`~pymongo.write_concern.WriteConcern` for this instance.
         """
-        # To support dict style access we have to return the actual
-        # WriteConcern here, not a copy.
-        return self.__write_concern.document
+        return self.__write_concern
 
     write_concern = property(__get_write_concern, __set_write_concern)
 

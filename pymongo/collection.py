@@ -451,7 +451,7 @@ class Collection(common.BaseObject):
                     ids.append(doc.get('_id'))
                     yield doc
 
-        concern = kwargs or self.write_concern
+        concern = kwargs or self.write_concern.document
         safe = concern.get("w") != 0
 
         if client._writable_max_wire_version() > 1 and safe:
@@ -579,7 +579,7 @@ class Collection(common.BaseObject):
         if manipulate:
             document = self.__database._fix_incoming(document, self)
 
-        concern = kwargs or self.write_concern
+        concern = kwargs or self.write_concern.document
         safe = concern.get("w") != 0
 
         if document:
@@ -701,7 +701,7 @@ class Collection(common.BaseObject):
         if not isinstance(spec_or_id, collections.Mapping):
             spec_or_id = {"_id": spec_or_id}
 
-        concern = kwargs or self.write_concern
+        concern = kwargs or self.write_concern.document
         safe = concern.get("w") != 0
 
         client = self.database.connection

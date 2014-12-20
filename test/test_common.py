@@ -25,6 +25,7 @@ from bson.objectid import ObjectId
 from bson.son import SON
 from pymongo.mongo_client import MongoClient
 from pymongo.errors import ConfigurationError, OperationFailure
+from pymongo.write_concern import WriteConcern
 from test import client_context, pair, unittest, IntegrationTest
 from test.utils import connected, rs_or_single_client, single_client
 
@@ -167,23 +168,18 @@ class TestCommon(IntegrationTest):
                                     {"count": 0}, reduce))
 
     def test_write_concern(self):
-        c = MongoClient(pair)
+        c = MongoClient(connect=False)
+        self.assertEqual(WriteConcern(), c.write_concern)
 
-        self.assertEqual({}, c.write_concern)
-        wc = {'w': 2, 'wtimeout': 1000}
+        wc = WriteConcern(w=2, wtimeout=1000)
         c.write_concern = wc
         self.assertEqual(wc, c.write_concern)
-        wc = {'w': 3, 'wtimeout': 1000}
-        c.write_concern['w'] = 3
-        self.assertEqual(wc, c.write_concern)
-        wc = {'w': 3}
-        del c.write_concern['wtimeout']
+
+        wc = WriteConcern(w=3, wtimeout=1000)
+        c = MongoClient(w=3, wtimeout=1000, connect=False)
         self.assertEqual(wc, c.write_concern)
 
-        wc = {'w': 3, 'wtimeout': 1000}
-        c = MongoClient(pair, w=3, wtimeout=1000)
-        self.assertEqual(wc, c.write_concern)
-        wc = {'w': 2, 'wtimeout': 1000}
+        wc = WriteConcern(w=2, wtimeout=1000)
         c.write_concern = wc
         self.assertEqual(wc, c.write_concern)
 
@@ -191,13 +187,10 @@ class TestCommon(IntegrationTest):
         self.assertEqual(wc, db.write_concern)
         coll = db.test
         self.assertEqual(wc, coll.write_concern)
-        coll.write_concern = {'j': True}
-        self.assertEqual({'j': True}, coll.write_concern)
-        self.assertEqual(wc, db.write_concern)
 
-        wc = SON([('w', 2)])
-        coll.write_concern = wc
-        self.assertEqual(wc.to_dict(), coll.write_concern)
+        coll.write_concern = WriteConcern(j=True)
+        self.assertEqual(WriteConcern(j=True), coll.write_concern)
+        self.assertEqual(wc, db.write_concern)
 
     def test_mongo_client(self):
         m = rs_or_single_client(w=0)

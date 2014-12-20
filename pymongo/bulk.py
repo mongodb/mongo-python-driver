@@ -423,7 +423,7 @@ class _Bulk(object):
                                    'only be executed once.')
         self.executed = True
         client = self.collection.database.connection
-        write_concern = write_concern or self.collection.write_concern
+        write_concern = write_concern or self.collection.write_concern.document
 
         if self.ordered:
             generator = self.gen_ordered()
