@@ -46,3 +46,4 @@ Sub-modules:
    son_manipulator
    cursor_manager
    uri_parser
+   write_concern
