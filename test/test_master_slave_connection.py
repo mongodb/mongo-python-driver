@@ -66,10 +66,13 @@ class TestMasterSlaveConnection(unittest.TestCase, TestRequestMixin):
         if not self.slaves:
             raise SkipTest("Not connected to master-slave set")
 
+        self.ctx = catch_warnings()
+        warnings.simplefilter("ignore", DeprecationWarning)
         self.client = MasterSlaveConnection(self.master, self.slaves)
         self.db = self.client.pymongo_test
 
     def tearDown(self):
+        self.ctx.exit()
         try:
             self.db.test.drop_indexes()
         except Exception:
