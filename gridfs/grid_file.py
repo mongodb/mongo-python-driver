@@ -256,7 +256,7 @@ class GridIn(object):
             # connection, can succeed out-of-order due to the writebackListener.
             # We mustn't call "filemd5" until all inserts are complete, which
             # we ensure by calling getLastError (and ignoring the result).
-            db.error()
+            db.command('getlasterror', read_preference=ReadPreference.PRIMARY)
 
             md5 = db.command(
                 "filemd5", self._id, root=self._coll.name,
