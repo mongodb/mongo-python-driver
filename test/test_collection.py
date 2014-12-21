@@ -948,15 +948,19 @@ class TestCollection(unittest.TestCase):
         db.test.save({"hello": "world"})
         db.test.save({"hello": "mike"})
         db.test.save({"hello": "world"})
-        self.assertFalse(db.error())
 
         db.drop_collection("test")
         db.test.create_index("hello", unique=True)
 
         db.test.save({"hello": "world"})
         db.test.save({"hello": "mike"})
-        db.test.save({"hello": "world"}, w=0)
-        self.assertTrue(db.error())
+
+        self.client.start_request()
+        try:
+            db.test.save({"hello": "world"}, w=0)
+            self.assertTrue(db.command('getlasterror').get('err'))
+        finally:
+            self.client.end_request()
 
     def test_duplicate_key_error(self):
         db = self.db
@@ -1039,11 +1043,11 @@ class TestCollection(unittest.TestCase):
         docs.append({"five": 5})
 
         db.test.insert(docs, manipulate=False, w=0)
-        self.assertEqual(11000, db.error()['code'])
+        self.assertEqual(11000, db.command('getlasterror')['code'])
         self.assertEqual(1, db.test.count())
 
         db.test.insert(docs, manipulate=False, continue_on_error=True, w=0)
-        self.assertEqual(11000, db.error()['code'])
+        self.assertEqual(11000, db.command('getlasterror')['code'])
         self.assertEqual(4, db.test.count())
 
         db.drop_collection("test")
@@ -1053,11 +1057,11 @@ class TestCollection(unittest.TestCase):
         docs[2]["_id"] = oid
 
         db.test.insert(docs, manipulate=False, w=0)
-        self.assertEqual(11000, db.error()['code'])
+        self.assertEqual(11000, db.command('getlasterror')['code'])
         self.assertEqual(3, db.test.count())
 
         db.test.insert(docs, manipulate=False, continue_on_error=True, w=0)
-        self.assertEqual(11000, db.error()['code'])
+        self.assertEqual(11000, db.command('getlasterror')['code'])
         self.assertEqual(6, db.test.count())
 
     def test_error_code(self):
@@ -1095,7 +1099,7 @@ class TestCollection(unittest.TestCase):
         a = {"hello": "world"}
         db.test.insert(a)
         db.test.insert(a, w=0)
-        self.assertTrue("E11000" in db.error()["err"])
+        self.assertTrue("E11000" in db.command('getlasterror')["err"])
 
         self.assertRaises(OperationFailure, db.test.insert, a)
 
@@ -1201,11 +1205,11 @@ class TestCollection(unittest.TestCase):
             None, db.test.update({"_id": id}, {"$inc": {"x": 1}}, w=0))
 
         if v19:
-            self.assertTrue("E11000" in db.error()["err"])
+            self.assertTrue("E11000" in db.command('getlasterror')["err"])
         elif v113minus:
-            self.assertTrue(db.error()["err"].startswith("E11001"))
+            self.assertTrue(db.command('getlasterror')["err"].startswith("E11001"))
         else:
-            self.assertTrue(db.error()["err"].startswith("E12011"))
+            self.assertTrue(db.command('getlasterror')["err"].startswith("E12011"))
 
         self.assertRaises(OperationFailure, db.test.update,
                           {"_id": id}, {"$inc": {"x": 1}})
@@ -1266,7 +1270,7 @@ class TestCollection(unittest.TestCase):
 
         db.test.save({"hello": "world"})
         db.test.save({"hello": "world"}, w=0)
-        self.assertTrue("E11000" in db.error()["err"])
+        self.assertTrue("E11000" in db.command('getlasterror')["err"])
 
         self.assertRaises(OperationFailure, db.test.save,
                           {"hello": "world"})

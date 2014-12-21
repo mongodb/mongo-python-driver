@@ -253,36 +253,40 @@ class TestDatabase(unittest.TestCase):
         if is_mongos(self.client):
             raise SkipTest('getpreverror not supported by mongos')
         db = self.client.pymongo_test
+        ctx = catch_warnings()
+        try:
+            warnings.simplefilter("ignore", DeprecationWarning)
+            db.reset_error_history()
+            self.assertEqual(None, db.error())
+            self.assertEqual(None, db.previous_error())
 
-        db.reset_error_history()
-        self.assertEqual(None, db.error())
-        self.assertEqual(None, db.previous_error())
+            db.command("forceerror", check=False)
+            self.assertTrue(db.error())
+            self.assertTrue(db.previous_error())
 
-        db.command("forceerror", check=False)
-        self.assertTrue(db.error())
-        self.assertTrue(db.previous_error())
+            db.command("forceerror", check=False)
+            self.assertTrue(db.error())
+            prev_error = db.previous_error()
+            self.assertEqual(prev_error["nPrev"], 1)
+            del prev_error["nPrev"]
+            prev_error.pop("lastOp", None)
+            error = db.error()
+            error.pop("lastOp", None)
+            # getLastError includes "connectionId" in recent
+            # server versions, getPrevError does not.
+            error.pop("connectionId", None)
+            self.assertEqual(error, prev_error)
 
-        db.command("forceerror", check=False)
-        self.assertTrue(db.error())
-        prev_error = db.previous_error()
-        self.assertEqual(prev_error["nPrev"], 1)
-        del prev_error["nPrev"]
-        prev_error.pop("lastOp", None)
-        error = db.error()
-        error.pop("lastOp", None)
-        # getLastError includes "connectionId" in recent
-        # server versions, getPrevError does not.
-        error.pop("connectionId", None)
-        self.assertEqual(error, prev_error)
+            db.test.find_one()
+            self.assertEqual(None, db.error())
+            self.assertTrue(db.previous_error())
+            self.assertEqual(db.previous_error()["nPrev"], 2)
 
-        db.test.find_one()
-        self.assertEqual(None, db.error())
-        self.assertTrue(db.previous_error())
-        self.assertEqual(db.previous_error()["nPrev"], 2)
-
-        db.reset_error_history()
-        self.assertEqual(None, db.error())
-        self.assertEqual(None, db.previous_error())
+            db.reset_error_history()
+            self.assertEqual(None, db.error())
+            self.assertEqual(None, db.previous_error())
+        finally:
+            ctx.exit()
 
     def test_command(self):
         db = self.client.admin
@@ -331,11 +335,16 @@ class TestDatabase(unittest.TestCase):
         db.test.remove({})
         db.test.save({"i": 1})
 
-        db.test.update({"i": 1}, {"$set": {"i": 2}}, w=0)
-        self.assertTrue(db.last_status()["updatedExisting"])
+        ctx = catch_warnings()
+        try:
+            warnings.simplefilter("ignore", DeprecationWarning)
+            db.test.update({"i": 1}, {"$set": {"i": 2}}, w=0)
+            self.assertTrue(db.last_status()["updatedExisting"])
 
-        db.test.update({"i": 1}, {"$set": {"i": 500}}, w=0)
-        self.assertFalse(db.last_status()["updatedExisting"])
+            db.test.update({"i": 1}, {"$set": {"i": 500}}, w=0)
+            self.assertFalse(db.last_status()["updatedExisting"])
+        finally:
+            ctx.exit()
 
     def test_password_digest(self):
         self.assertRaises(TypeError, auth._password_digest, 5)

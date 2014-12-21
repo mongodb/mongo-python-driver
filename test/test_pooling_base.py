@@ -134,7 +134,8 @@ class NonUnique(MongoThread):
         for _ in xrange(N):
             self.client.start_request()
             self.db.unique.insert({"_id": "jesse"}, w=0)
-            self.ut.assertNotEqual(None, self.db.error())
+            self.ut.assertNotEqual(None,
+                                   self.db.command('getlasterror').get('err'))
             self.client.end_request()
 
 
@@ -152,7 +153,7 @@ class NoRequest(MongoThread):
         errors = 0
         for _ in xrange(N):
             self.db.unique.insert({"_id": "jesse"}, w=0)
-            if not self.db.error():
+            if not self.db.command("getlasterror").get("err"):
                 errors += 1
 
         self.client.end_request()
