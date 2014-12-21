@@ -26,6 +26,7 @@ import thread
 import threading
 import traceback
 import unittest
+import warnings
 
 sys.path[0:0] = [""]
 
@@ -50,7 +51,7 @@ from test.pymongo_mocks import MockReplicaSetClient
 from test.utils import (
     delay, assertReadFrom, assertReadFromAll, read_from_which_host,
     assertRaisesExactly, TestRequestMixin, one, pools_from_rs_client, get_pool,
-    _TestLazyConnectMixin, _TestExhaustCursorMixin)
+    _TestLazyConnectMixin, _TestExhaustCursorMixin, catch_warnings)
 
 
 setUpModule = skip_restricted_localhost
@@ -417,20 +418,25 @@ class TestReplicaSetClient(TestReplicaSetClientBase, TestRequestMixin):
 
     def test_copy_db(self):
         c = self._get_client()
-        self.assertRaises(TypeError, c.copy_database, 4, "foo")
-        self.assertRaises(TypeError, c.copy_database, "foo", 4)
-        self.assertRaises(InvalidName, c.copy_database, "foo", "$foo")
+        ctx = catch_warnings()
+        try:
+            warnings.simplefilter("ignore", DeprecationWarning)
+            self.assertRaises(TypeError, c.copy_database, 4, "foo")
+            self.assertRaises(TypeError, c.copy_database, "foo", 4)
+            self.assertRaises(InvalidName, c.copy_database, "foo", "$foo")
 
-        c.pymongo_test.test.drop()
-        c.pymongo_test.test.insert({"foo": "bar"})
+            c.pymongo_test.test.drop()
+            c.pymongo_test.test.insert({"foo": "bar"})
 
-        c.drop_database("pymongo_test1")
-        self.assertFalse("pymongo_test1" in c.database_names())
+            c.drop_database("pymongo_test1")
+            self.assertFalse("pymongo_test1" in c.database_names())
 
-        c.copy_database("pymongo_test", "pymongo_test1")
-        self.assertTrue("pymongo_test1" in c.database_names())
-        self.assertEqual("bar", c.pymongo_test1.test.find_one()["foo"])
-        c.drop_database("pymongo_test1")
+            c.copy_database("pymongo_test", "pymongo_test1")
+            self.assertTrue("pymongo_test1" in c.database_names())
+            self.assertEqual("bar", c.pymongo_test1.test.find_one()["foo"])
+            c.drop_database("pymongo_test1")
+        finally:
+            ctx.exit()
 
     def test_get_default_database(self):
         host = one(self.hosts)
