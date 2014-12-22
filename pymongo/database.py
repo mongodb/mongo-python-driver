@@ -658,14 +658,6 @@ class Database(common.BaseObject):
         remove, and so on) use the write concern ``w=1`` and report their
         errors by default.
 
-        This method must be called in the same
-        :doc:`request </examples/requests>` as the preceding operation,
-        otherwise it is unreliable. Requests are deprecated and will be removed
-        in PyMongo 3.0.
-
-        Return None if the last operation was error-free. Otherwise return the
-        error that occurred.
-
         .. versionchanged:: 2.8
            Deprecated.
         """
@@ -692,11 +684,6 @@ class Database(common.BaseObject):
         remove, and so on) use the write concern ``w=1`` and report their
         errors by default.
 
-        This method must be called in the same
-        :doc:`request </examples/requests>` as the preceding operation,
-        otherwise it is unreliable. Requests are deprecated and will be removed
-        in PyMongo 3.0.
-
         Returns a SON object with status information.
 
         .. versionchanged:: 2.8
@@ -714,12 +701,6 @@ class Database(common.BaseObject):
         This method is obsolete: all MongoDB write operations (insert, update,
         remove, and so on) use the write concern ``w=1`` and report their
         errors by default.
-
-        This method must be called in the same
-        :doc:`request </examples/requests>` as the preceding operation,
-        otherwise it is unreliable. Requests are deprecated and will be removed
-        in PyMongo 3.0. Furthermore, the underlying database command
-        ``getpreverror`` will be removed in a future MongoDB release.
 
         Only returns errors that have occurred since the last call to
         :meth:`reset_error_history`. Returns None if no such errors have
@@ -743,12 +724,6 @@ class Database(common.BaseObject):
         This method is obsolete: all MongoDB write operations (insert, update,
         remove, and so on) use the write concern ``w=1`` and report their
         errors by default.
-
-        This method must be called in the same
-        :doc:`request </examples/requests>` as the preceding operation,
-        otherwise it is unreliable. Requests are deprecated and will be removed
-        in PyMongo 3.0. Furthermore, the underlying database command
-        ``reseterror`` will be removed in a future MongoDB release.
 
         Calls to :meth:`previous_error` will only return errors that have
         occurred since the most recent call to this method.
