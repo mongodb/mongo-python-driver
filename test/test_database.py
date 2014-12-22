@@ -780,8 +780,7 @@ class TestDatabase(IntegrationTest):
         self.assertEqual(db.test.c.find_one()["another test"], b)
         self.assertEqual(db.test.c.find_one(), c)
 
-    # some stuff the user marc wanted to be able to do, make sure it works
-    def test_marc(self):
+    def test_auto_ref_and_deref_list(self):
         db = self.client.pymongo_test
         db.add_son_manipulator(AutoReference(db))
         db.add_son_manipulator(NamespaceInjector())
@@ -794,12 +793,9 @@ class TestDatabase(IntegrationTest):
         message_2 = {"title": "bar"}
         db.messages.save(message_2)
 
-        user = {"name": "marc",
-                "messages": [message_1, message_2]}
+        user = {"messages": [message_1, message_2]}
         db.users.save(user)
-
-        message = db.messages.find_one()
-        db.messages.update(message, {"title": "buzz"})
+        db.messages.update(message_1, {"title": "buzz"})
 
         self.assertEqual("buzz", db.users.find_one()["messages"][0]["title"])
         self.assertEqual("bar", db.users.find_one()["messages"][1]["title"])
