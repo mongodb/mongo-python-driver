@@ -297,7 +297,7 @@ class GridIn(object):
             raise ValueError("cannot write to a closed file")
 
         # With w=0, 'filemd5' might run before the final chunks are written.
-        if not self._coll.acknowledged:
+        if not self._coll.write_concern.acknowledged:
             raise InvalidOperation('Cannot write file to GridFS with w=0')
 
         try:
