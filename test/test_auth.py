@@ -520,9 +520,7 @@ class TestClientAuth(unittest.TestCase):
         c.drop_database("pymongo_test1")
         c.pymongo_test.test.insert({"foo": "bar"})
 
-        ctx = catch_warnings()
         try:
-            warnings.simplefilter("ignore", DeprecationWarning)
             c.pymongo_test.add_user("mike", "password")
 
             self.assertRaises(OperationFailure, c.copy_database,
@@ -541,7 +539,6 @@ class TestClientAuth(unittest.TestCase):
             self.assertEqual("bar", c.pymongo_test1.test.find_one()["foo"])
         finally:
             # Cleanup
-            ctx.exit()
             remove_all_users(c.pymongo_test)
             c.admin.remove_user("admin")
             c.disconnect()
