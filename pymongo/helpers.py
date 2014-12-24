@@ -20,9 +20,9 @@ import struct
 import bson
 import pymongo
 
-from bson.binary import OLD_UUID_SUBTYPE
 from bson.py3compat import itervalues, string_type, iteritems
 from bson.son import SON
+from pymongo.codec_options import CodecOptions
 from pymongo.errors import (CursorNotFound,
                             DuplicateKeyError,
                             OperationFailure,
@@ -75,8 +75,7 @@ def _index_document(index_list):
     return index
 
 
-def _unpack_response(response, cursor_id=None, as_class=dict,
-                     tz_aware=False, uuid_subtype=OLD_UUID_SUBTYPE):
+def _unpack_response(response, cursor_id=None, codec_options=CodecOptions()):
     """Unpack a response from the database.
 
     Check the response for errors and unpack, returning a dictionary
@@ -90,7 +89,8 @@ def _unpack_response(response, cursor_id=None, as_class=dict,
       - `cursor_id` (optional): cursor_id we sent to get this response -
         used for raising an informative exception when we get cursor id not
         valid at server response
-      - `as_class` (optional): class to use for resulting documents
+      - `codec_options` (optional): an instance of
+        :class:`~pymongo.codec_options.CodecOptions`
     """
     response_flag = struct.unpack("<i", response[:4])[0]
     if response_flag & 1:
@@ -117,7 +117,9 @@ def _unpack_response(response, cursor_id=None, as_class=dict,
     result["starting_from"] = struct.unpack("<i", response[12:16])[0]
     result["number_returned"] = struct.unpack("<i", response[16:20])[0]
     result["data"] = bson.decode_all(response[20:],
-                                     as_class, tz_aware, uuid_subtype)
+                                     codec_options.as_class,
+                                     codec_options.tz_aware,
+                                     codec_options.uuid_representation)
     assert len(result["data"]) == result["number_returned"]
     return result
 
@@ -182,9 +184,6 @@ def _check_command_response(response, msg=None, allowable_errors=None):
 def _command(client, namespace, command, read_preference,
              codec_options, check=True, allowable_errors=None):
     """Internal command helper."""
-    as_class = codec_options.as_class
-    tz_aware = codec_options.tz_aware
-    uuid_rep = codec_options.uuid_representation
 
     query_opts = 0
     # XXX: Set slaveOkay flag when read preference mode is anything other
@@ -193,10 +192,10 @@ def _command(client, namespace, command, read_preference,
     if read_preference.mode:
         query_opts = 4
 
-    msg = query(query_opts, namespace, 0, -1, command, None, uuid_rep)
+    msg = query(query_opts, namespace, 0, -1,
+                command, None, codec_options.uuid_representation)
     response = client._send_message_with_response(msg, read_preference)
-    result = _unpack_response(
-        response.data, None, as_class, tz_aware, uuid_rep)['data'][0]
+    result = _unpack_response(response.data, None, codec_options)['data'][0]
     if check:
         msg = "command %s on namespace %s failed: %%s" % (
             repr(command).replace("%", "%%"), namespace)

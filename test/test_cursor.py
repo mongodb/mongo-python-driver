@@ -763,8 +763,8 @@ class TestCursor(IntegrationTest):
         self.assertEqual(cursor._Cursor__skip, cursor2._Cursor__skip)
         self.assertEqual(cursor._Cursor__limit, cursor2._Cursor__limit)
         self.assertEqual(cursor._Cursor__snapshot, cursor2._Cursor__snapshot)
-        self.assertEqual(type(cursor._Cursor__as_class),
-                         type(cursor2._Cursor__as_class))
+        self.assertEqual(type(cursor._Cursor__codec_options),
+                         type(cursor2._Cursor__codec_options))
         self.assertEqual(cursor._Cursor__manipulate,
                          cursor2._Cursor__manipulate)
         self.assertEqual(cursor._Cursor__query_flags,

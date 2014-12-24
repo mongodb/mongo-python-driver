@@ -423,6 +423,7 @@ class Collection(common.BaseObject):
         .. mongodoc:: insert
         """
         client = self.database.connection
+        uuid_representation = self.codec_options.uuid_representation
         docs = doc_or_docs
         return_one = False
         if isinstance(docs, collections.MutableMapping):
@@ -464,13 +465,13 @@ class Collection(common.BaseObject):
 
             results = message._do_batched_write_command(
                     self.database.name + ".$cmd", _INSERT, command,
-                    gen(), check_keys, self.uuid_subtype, client)
+                    gen(), check_keys, uuid_representation, client)
             _check_write_command_response(results)
         else:
             # Legacy batched OP_INSERT
             message._do_batched_insert(self.__full_name, gen(), check_keys,
                                        safe, concern, continue_on_error,
-                                       self.uuid_subtype, client)
+                                       uuid_representation, client)
 
         if return_one:
             return ids[0]
@@ -593,6 +594,7 @@ class Collection(common.BaseObject):
                 check_keys = False
 
         client = self.database.connection
+        uuid_representation = self.codec_options.uuid_representation
         if client._writable_max_wire_version() > 1 and safe:
             # Update command
             command = SON([('update', self.name)])
@@ -604,7 +606,7 @@ class Collection(common.BaseObject):
 
             results = message._do_batched_write_command(
                 self.database.name + '.$cmd', _UPDATE, command,
-                docs, check_keys, self.uuid_subtype, client)
+                docs, check_keys, uuid_representation, client)
             _check_write_command_response(results)
 
             _, result = results[0]
@@ -625,7 +627,7 @@ class Collection(common.BaseObject):
             return client._send_message(
                 message.update(self.__full_name, upsert, multi,
                                spec, document, safe, concern,
-                               check_keys, self.uuid_subtype), safe)
+                               check_keys, uuid_representation), safe)
 
     def drop(self):
         """Alias for :meth:`~pymongo.database.Database.drop_collection`.
@@ -705,6 +707,7 @@ class Collection(common.BaseObject):
         safe = concern.get("w") != 0
 
         client = self.database.connection
+        uuid_representation = self.codec_options.uuid_representation
         if client._writable_max_wire_version() > 1 and safe:
             # Delete command
             command = SON([('delete', self.name)])
@@ -715,7 +718,7 @@ class Collection(common.BaseObject):
 
             results = message._do_batched_write_command(
                 self.database.name + '.$cmd', _DELETE, command,
-                docs, False, self.uuid_subtype, client)
+                docs, False, uuid_representation, client)
             _check_write_command_response(results)
 
             _, result = results[0]
@@ -725,7 +728,8 @@ class Collection(common.BaseObject):
             # Legacy OP_DELETE
             return client._send_message(
                 message.delete(self.__full_name, spec_or_id, safe,
-                               concern, self.uuid_subtype, int(not multi)), safe)
+                               concern, uuid_representation,
+                               int(not multi)), safe)
 
     def find_one(self, spec_or_id=None, *args, **kwargs):
         """Get a single document from the database.

@@ -115,15 +115,13 @@ class Cursor(object):
                 fields = helpers._fields_list_to_dict(fields)
 
         # XXX: Continue to support passing as_class to find() and find_one()?
-        self.__as_class = as_class or collection.codec_options.as_class
-        self.__tz_aware = collection.codec_options.tz_aware
-        self.__uuid_subtype = collection.codec_options.uuid_representation
         if as_class is None:
             self.__codec_options = collection.codec_options
         else:
+            cco = collection.codec_options
             self.__codec_options = CodecOptions(as_class,
-                                                self.__tz_aware,
-                                                self.__uuid_subtype)
+                                                cco.tz_aware,
+                                                cco.uuid_representation)
 
         self.__collection = collection
         self.__spec = spec
@@ -228,11 +226,9 @@ class Cursor(object):
     def _clone(self, deepcopy=True):
         clone = self._clone_base()
         values_to_clone = ("spec", "fields", "skip", "limit", "max_time_ms",
-                           "comment", "max", "min",
-                           "snapshot", "ordering", "explain", "hint",
-                           "batch_size", "max_scan", "as_class",
-                           "manipulate", "read_preference",
-                           "uuid_subtype", "query_flags")
+                           "comment", "max", "min", "snapshot", "ordering",
+                           "explain", "hint", "batch_size", "max_scan",
+                           "manipulate", "query_flags", "codec_options")
         data = dict((k, v) for k, v in iteritems(self.__dict__)
                     if k.startswith('_Cursor__') and k[9:] in values_to_clone)
         if deepcopy:
@@ -866,9 +862,7 @@ class Cursor(object):
         try:
             doc = helpers._unpack_response(response=data,
                                            cursor_id=self.__id,
-                                           as_class=self.__as_class,
-                                           tz_aware=self.__tz_aware,
-                                           uuid_subtype=self.__uuid_subtype)
+                                           codec_options=self.__codec_options)
         except OperationFailure:
             self.__killed = True
 
@@ -933,7 +927,7 @@ class Cursor(object):
                               self.__collection.full_name,
                               self.__skip, ntoreturn,
                               self.__query_spec(), self.__fields,
-                              self.__uuid_subtype))
+                              self.__codec_options.uuid_representation))
             if not self.__id:
                 self.__killed = True
         elif self.__id:  # Get More

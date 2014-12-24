@@ -269,7 +269,7 @@ class _Bulk(object):
     def execute_command(self, generator, write_concern):
         """Execute using write commands.
         """
-        uuid_subtype = self.collection.uuid_subtype
+        uuid_representation = self.collection.codec_options.uuid_representation
         client = self.collection.database.connection
         # nModified is only reported for write commands, not legacy ops.
         full_result = {
@@ -288,8 +288,9 @@ class _Bulk(object):
             if write_concern:
                 cmd['writeConcern'] = write_concern
 
-            results = _do_batched_write_command(self.namespace,
-                run.op_type, cmd, run.ops, True, uuid_subtype, client)
+            results = _do_batched_write_command(
+                self.namespace, run.op_type, cmd,
+                run.ops, True, uuid_representation, client)
 
             _merge_command(run, full_result, results)
             # We're supposed to continue if errors are
@@ -346,10 +347,10 @@ class _Bulk(object):
         # We have to do this here since Collection.insert
         # throws away results and we need to check for jnote.
         client = self.collection.database.connection
-        uuid_subtype = self.collection.uuid_subtype
+        uuid_representation = self.collection.codec_options.uuid_representation
         return client._send_message(
             insert(self.name, [operation], True, True,
-                write_concern, False, uuid_subtype), True)
+                write_concern, False, uuid_representation), True)
 
     def execute_legacy(self, generator, write_concern):
         """Execute using legacy wire protocol ops.

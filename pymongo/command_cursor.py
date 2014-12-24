@@ -32,11 +32,6 @@ class CommandCursor(object):
         self.__id = cursor_info['id']
         self.__address = address
         self.__data = deque(cursor_info['firstBatch'])
-        self.__decode_opts = (
-            collection.database.connection.document_class,
-            collection.database.connection.tz_aware,
-            collection.uuid_subtype)
-
         self.__retrieved = retrieved
         self.__batch_size = 0
         self.__killed = False
@@ -107,7 +102,7 @@ class CommandCursor(object):
         try:
             doc = helpers._unpack_response(response.data,
                                            self.__id,
-                                           *self.__decode_opts)
+                                           self.__collection.codec_options)
         except CursorNotFound:
             self.__killed = True
             raise
