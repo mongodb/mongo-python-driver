@@ -16,7 +16,7 @@
 
 from collections import MutableMapping
 
-from bson.binary import OLD_UUID_SUBTYPE
+from bson.binary import ALL_UUID_REPRESENTATIONS, PYTHON_LEGACY
 
 
 class CodecOptions(object):
@@ -31,20 +31,21 @@ class CodecOptions(object):
         naive. Defaults to ``False``.
       - `uuid_representation`: The BSON representation to use when encoding
         and decoding instances of :class:`~uuid.UUID`. Defaults to
-        :data:`~bson.binary.OLD_UUID_SUBTYPE`.
+        :data:`~bson.binary.PYTHON_LEGACY`.
     """
 
     __slots__ = ("__as_class", "__tz_aware", "__uuid_rep")
 
     def __init__(self, as_class=dict,
-                 tz_aware=False, uuid_representation=OLD_UUID_SUBTYPE):
+                 tz_aware=False, uuid_representation=PYTHON_LEGACY):
         if not issubclass(as_class, MutableMapping):
             raise TypeError("document_class must be a "
                             "subclass of MutableMapping")
         if not isinstance(tz_aware, bool):
             raise TypeError("tz_aware must be a boolean")
-        if not isinstance(uuid_representation, int):
-            raise TypeError("uuid_representation must be an integer")
+        if uuid_representation not in ALL_UUID_REPRESENTATIONS:
+            raise ValueError("uuid_representation must be a value "
+                             "from bson.binary.ALL_UUID_REPRESENTATIONS")
 
         self.__as_class = as_class
         self.__tz_aware = tz_aware

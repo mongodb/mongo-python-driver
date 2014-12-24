@@ -14,7 +14,7 @@
 
 """Tools to parse mongo client options."""
 
-from bson.binary import OLD_UUID_SUBTYPE
+from bson.binary import PYTHON_LEGACY
 from bson.py3compat import iteritems
 from pymongo.auth import _build_credentials_tuple
 from pymongo.codec_options import CodecOptions
@@ -40,7 +40,7 @@ def _parse_codec_options(options):
     """Parse BSON codec options."""
     as_class = options.get('document_class', dict)
     tz_aware = options.get('tz_aware', False)
-    uuid_rep = options.get('uuidrepresentation', OLD_UUID_SUBTYPE)
+    uuid_rep = options.get('uuidrepresentation', PYTHON_LEGACY)
     return CodecOptions(as_class, tz_aware, uuid_rep)
 
 

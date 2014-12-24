@@ -56,29 +56,48 @@ change to this in a future release.
    Changed to subtype 4.
 """
 
-JAVA_LEGACY = 5
-"""Used with :attr:`pymongo.collection.Collection.uuid_subtype`
-to specify that UUIDs should be stored in the legacy byte order
-used by the Java driver.
+STANDARD = UUID_SUBTYPE
+"""The standard UUID representation.
 
-:class:`uuid.UUID` instances will automatically be encoded
-by :mod:`bson` using :data:`OLD_UUID_SUBTYPE`.
+:class:`uuid.UUID` instances will automatically be encoded to
+and decoded from BSON binary, using RFC-4122 byte order with
+binary subtype :data:`UUID_SUBTYPE`.
+
+.. versionadded:: 3.0
+"""
+
+PYTHON_LEGACY = OLD_UUID_SUBTYPE
+"""The Python legacy UUID representation.
+
+:class:`uuid.UUID` instances will automatically be encoded to
+and decoded from BSON binary, using RFC-4122 byte order with
+binary subtype :data:`OLD_UUID_SUBTYPE`.
+
+.. versionadded:: 3.0
+"""
+
+JAVA_LEGACY = 5
+"""The Java legacy UUID representation.
+
+:class:`uuid.UUID` instances will automatically be encoded to
+and decoded from BSON binary, using the Java driver's legacy
+byte order with binary subtype :data:`OLD_UUID_SUBTYPE`.
 
 .. versionadded:: 2.3
 """
 
 CSHARP_LEGACY = 6
-"""Used with :attr:`pymongo.collection.Collection.uuid_subtype`
-to specify that UUIDs should be stored in the legacy byte order
-used by the C# driver.
+"""The C#/.net legacy UUID representation.
 
-:class:`uuid.UUID` instances will automatically be encoded
-by :mod:`bson` using :data:`OLD_UUID_SUBTYPE`.
+:class:`uuid.UUID` instances will automatically be encoded to
+and decoded from BSON binary, using the C# driver's legacy
+byte order and binary subtype :data:`OLD_UUID_SUBTYPE`.
 
 .. versionadded:: 2.3
 """
 
-ALL_UUID_SUBTYPES = (OLD_UUID_SUBTYPE, UUID_SUBTYPE, JAVA_LEGACY, CSHARP_LEGACY)
+ALL_UUID_SUBTYPES = (OLD_UUID_SUBTYPE, UUID_SUBTYPE)
+ALL_UUID_REPRESENTATIONS = (STANDARD, PYTHON_LEGACY, JAVA_LEGACY, CSHARP_LEGACY)
 
 MD5_SUBTYPE = 5
 """BSON binary subtype for an MD5 hash.

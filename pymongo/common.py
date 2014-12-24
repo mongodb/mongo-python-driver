@@ -26,8 +26,9 @@ from pymongo.read_preferences import (make_read_preference,
                                       ServerMode)
 from pymongo.ssl_support import validate_cert_reqs
 from pymongo.write_concern import WriteConcern
-from bson.binary import (OLD_UUID_SUBTYPE, UUID_SUBTYPE,
-                         JAVA_LEGACY, CSHARP_LEGACY)
+from bson.binary import (STANDARD, PYTHON_LEGACY,
+                         JAVA_LEGACY, CSHARP_LEGACY,
+                         ALL_UUID_REPRESENTATIONS)
 from bson.py3compat import string_type, integer_types
 
 # Defaults until we connect to a server and get updated limits.
@@ -91,9 +92,9 @@ def raise_config_error(key, dummy):
 
 
 # Mapping of URI uuid representation options to valid subtypes.
-_UUID_SUBTYPES = {
-    'standard': UUID_SUBTYPE,
-    'pythonLegacy': OLD_UUID_SUBTYPE,
+_UUID_REPRESENTATIONS = {
+    'standard': STANDARD,
+    'pythonLegacy': PYTHON_LEGACY,
     'javaLegacy': JAVA_LEGACY,
     'csharpLegacy': CSHARP_LEGACY
 }
@@ -246,17 +247,18 @@ def validate_auth_mechanism(option, value):
 def validate_uuid_representation(dummy, value):
     """Validate the uuid representation option selected in the URI.
     """
-    if value not in _UUID_SUBTYPES:
+    try:
+        return _UUID_REPRESENTATIONS[value]
+    except KeyError:
         raise ConfigurationError("%s is an invalid UUID representation. "
                                  "Must be one of "
-                                 "%s" % (value, list(_UUID_SUBTYPES)))
-    return _UUID_SUBTYPES[value]
+                                 "%s" % (value, tuple(_UUID_REPRESENTATIONS)))
 
 
 def validate_uuid_subtype(dummy, value):
     """Validate the uuid subtype option, a numerical value whose acceptable
     values are defined in bson.binary."""
-    if value not in _UUID_SUBTYPES.values():
+    if value not in ALL_UUID_REPRESENTATIONS:
         raise ConfigurationError("Not a valid setting for uuid_subtype.")
     return value
 
