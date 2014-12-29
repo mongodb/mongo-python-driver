@@ -174,16 +174,15 @@ class Binary(bytes):
 
 
 class UUIDLegacy(Binary):
-    """UUID wrapper to support working with UUIDs stored as legacy
-    BSON binary subtype 3.
+    """UUID wrapper to support working with UUIDs stored as PYTHON_LEGACY.
 
     .. doctest::
 
       >>> import uuid
-      >>> from bson.binary import Binary, UUIDLegacy, UUID_SUBTYPE
+      >>> from bson.binary import Binary, UUIDLegacy, STANDARD
       >>> my_uuid = uuid.uuid4()
-      >>> coll = db.test
-      >>> coll.uuid_subtype = UUID_SUBTYPE
+      >>> coll = db.get_collection('test',
+      ...                          CodecOptions(uuid_representation=STANDARD))
       >>> coll.insert({'uuid': Binary(my_uuid.bytes, 3)})
       ObjectId('...')
       >>> coll.find({'uuid': my_uuid}).count()

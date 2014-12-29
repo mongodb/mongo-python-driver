@@ -19,10 +19,11 @@ import uuid
 
 sys.path[0:0] = [""]
 
-from bson.binary import UUIDLegacy, OLD_UUID_SUBTYPE, UUID_SUBTYPE
+from bson.binary import UUIDLegacy, PYTHON_LEGACY, STANDARD
 from bson.code import Code
 from bson.objectid import ObjectId
 from bson.son import SON
+from pymongo.codec_options import CodecOptions
 from pymongo.mongo_client import MongoClient
 from pymongo.errors import ConfigurationError, OperationFailure
 from pymongo.write_concern import WriteConcern
@@ -37,38 +38,41 @@ def setUpModule():
 
 class TestCommon(IntegrationTest):
 
-    def test_uuid_subtype(self):
+    def test_uuid_representation(self):
         coll = self.db.uuid
         coll.drop()
 
-        def change_subtype(collection, subtype):
-            collection.uuid_subtype = subtype
+        self.assertRaises(ValueError, CodecOptions, uuid_representation=7)
+        self.assertRaises(ValueError, CodecOptions, uuid_representation=2)
 
         # Test property
-        self.assertEqual(OLD_UUID_SUBTYPE, coll.uuid_subtype)
-        self.assertRaises(ConfigurationError, change_subtype, coll, 7)
-        self.assertRaises(ConfigurationError, change_subtype, coll, 2)
+        self.assertEqual(PYTHON_LEGACY,
+                         coll.codec_options.uuid_representation)
 
         # Test basic query
         uu = uuid.uuid4()
         # Insert as binary subtype 3
         coll.insert({'uu': uu})
         self.assertEqual(uu, coll.find_one({'uu': uu})['uu'])
-        coll.uuid_subtype = UUID_SUBTYPE
-        self.assertEqual(UUID_SUBTYPE, coll.uuid_subtype)
+        coll = self.db.get_collection(
+            "uuid", CodecOptions(uuid_representation=STANDARD))
+        self.assertEqual(STANDARD, coll.codec_options.uuid_representation)
         self.assertEqual(None, coll.find_one({'uu': uu}))
         self.assertEqual(uu, coll.find_one({'uu': UUIDLegacy(uu)})['uu'])
 
         # Test Cursor.count
         self.assertEqual(0, coll.find({'uu': uu}).count())
-        coll.uuid_subtype = OLD_UUID_SUBTYPE
+        coll = self.db.get_collection(
+            "uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
         self.assertEqual(1, coll.find({'uu': uu}).count())
 
         # Test remove
-        coll.uuid_subtype = UUID_SUBTYPE
+        coll = self.db.get_collection(
+            "uuid", CodecOptions(uuid_representation=STANDARD))
         coll.remove({'uu': uu})
         self.assertEqual(1, coll.count())
-        coll.uuid_subtype = OLD_UUID_SUBTYPE
+        coll = self.db.get_collection(
+            "uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
         coll.remove({'uu': uu})
         self.assertEqual(0, coll.count())
 
@@ -83,22 +87,26 @@ class TestCommon(IntegrationTest):
         self.assertEqual(1, coll.find_one({'_id': uu})['i'])
 
         # Test update
-        coll.uuid_subtype = UUID_SUBTYPE
+        coll = self.db.get_collection(
+            "uuid", CodecOptions(uuid_representation=STANDARD))
         coll.update({'_id': uu}, {'$set': {'i': 2}})
-        coll.uuid_subtype = OLD_UUID_SUBTYPE
+        coll = self.db.get_collection(
+            "uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
         self.assertEqual(1, coll.find_one({'_id': uu})['i'])
         coll.update({'_id': uu}, {'$set': {'i': 2}})
         self.assertEqual(2, coll.find_one({'_id': uu})['i'])
 
         # Test Cursor.distinct
         self.assertEqual([2], coll.find({'_id': uu}).distinct('i'))
-        coll.uuid_subtype = UUID_SUBTYPE
+        coll = self.db.get_collection(
+            "uuid", CodecOptions(uuid_representation=STANDARD))
         self.assertEqual([], coll.find({'_id': uu}).distinct('i'))
 
         # Test find_and_modify
         self.assertEqual(None, coll.find_and_modify({'_id': uu},
                                                      {'$set': {'i': 5}}))
-        coll.uuid_subtype = OLD_UUID_SUBTYPE
+        coll = self.db.get_collection(
+            "uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
         self.assertEqual(2, coll.find_and_modify({'_id': uu},
                                                   {'$set': {'i': 5}})['i'])
         self.assertEqual(5, coll.find_one({'_id': uu})['i'])
@@ -132,7 +140,8 @@ class TestCommon(IntegrationTest):
                       "  return total;"
                       "}")
 
-        coll.uuid_subtype = UUID_SUBTYPE
+        coll = self.db.get_collection(
+            "uuid", CodecOptions(uuid_representation=STANDARD))
         q = {"_id": uu}
         if client_context.version.at_least(1, 7, 4):
             result = coll.inline_map_reduce(map, reduce, query=q)
@@ -141,7 +150,8 @@ class TestCommon(IntegrationTest):
         result = coll.map_reduce(map, reduce, "results", query=q)
         self.assertEqual(0, self.db.results.count())
 
-        coll.uuid_subtype = OLD_UUID_SUBTYPE
+        coll = self.db.get_collection(
+            "uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
         q = {"_id": uu}
         if client_context.version.at_least(1, 7, 4):
             result = coll.inline_map_reduce(map, reduce, query=q)
@@ -158,11 +168,13 @@ class TestCommon(IntegrationTest):
         coll.insert({"_id": uuid.uuid4(), "a": 1})
 
         reduce = "function (obj, prev) { prev.count++; }"
-        coll.uuid_subtype = UUID_SUBTYPE
+        coll = self.db.get_collection(
+            "uuid", CodecOptions(uuid_representation=STANDARD))
         self.assertEqual([],
                          coll.group([], {"_id": uu},
                                      {"count": 0}, reduce))
-        coll.uuid_subtype = OLD_UUID_SUBTYPE
+        coll = self.db.get_collection(
+            "uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
         self.assertEqual([{"count": 1}],
                          coll.group([], {"_id": uu},
                                     {"count": 0}, reduce))

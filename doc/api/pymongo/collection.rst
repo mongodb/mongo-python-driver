@@ -27,7 +27,6 @@
       .. autoattribute:: codec_options
       .. autoattribute:: read_preference
       .. autoattribute:: write_concern
-      .. autoattribute:: uuid_subtype
       .. automethod:: with_options
       .. automethod:: insert(doc_or_docs[, manipulate=True[, check_keys=True[, continue_on_error=False[, **kwargs]]]])
       .. automethod:: save(to_save[, manipulate=True[, check_keys=True[, **kwargs]]])

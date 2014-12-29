@@ -90,6 +90,7 @@ class Collection(common.BaseObject):
 
         .. versionchanged:: 3.0
            Added the codec_options, read_preference, and write_concern options.
+           Removed the uuid_subtype attribute.
            :class:`~pymongo.collection.Collection` no longer returns an
            instance of :class:`~pymongo.collection.Collection` for attribute
            names with leading underscores. You must use dict-style lookups

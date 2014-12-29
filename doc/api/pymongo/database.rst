@@ -26,7 +26,6 @@
       .. autoattribute:: codec_options
       .. autoattribute:: read_preference
       .. autoattribute:: write_concern
-      .. autoattribute:: uuid_subtype
 
 
    .. autoclass:: pymongo.database.SystemJS

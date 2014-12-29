@@ -30,7 +30,6 @@
       .. autoattribute:: read_preference
       .. autoattribute:: secondary_acceptable_latency_ms
       .. autoattribute:: write_concern
-      .. autoattribute:: uuid_subtype
       .. automethod:: database_names
       .. automethod:: drop_database
       .. automethod:: get_default_database

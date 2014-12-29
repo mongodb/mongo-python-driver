@@ -28,6 +28,7 @@ from bson.binary import *
 from bson.py3compat import u
 from bson.son import SON
 from test import client_context, unittest
+from pymongo.codec_options import CodecOptions
 from pymongo.mongo_client import MongoClient
 
 
@@ -131,11 +132,11 @@ class TestBinary(unittest.TestCase):
     def test_legacy_java_uuid(self):
         # Test decoding
         data = self.java_data
-        docs = bson.decode_all(data, SON, False, OLD_UUID_SUBTYPE)
+        docs = bson.decode_all(data, SON, False, PYTHON_LEGACY)
         for d in docs:
             self.assertNotEqual(d['newguid'], uuid.UUID(d['newguidstring']))
 
-        docs = bson.decode_all(data, SON, False, UUID_SUBTYPE)
+        docs = bson.decode_all(data, SON, False, STANDARD)
         for d in docs:
             self.assertNotEqual(d['newguid'], uuid.UUID(d['newguidstring']))
 
@@ -149,11 +150,11 @@ class TestBinary(unittest.TestCase):
 
         # Test encoding
         encoded = b''.join([bson.BSON.encode(doc,
-                                             uuid_subtype=OLD_UUID_SUBTYPE)
+                                             uuid_subtype=PYTHON_LEGACY)
                             for doc in docs])
         self.assertNotEqual(data, encoded)
 
-        encoded = b''.join([bson.BSON.encode(doc, uuid_subtype=UUID_SUBTYPE)
+        encoded = b''.join([bson.BSON.encode(doc, uuid_subtype=STANDARD)
                             for doc in docs])
         self.assertNotEqual(data, encoded)
 
@@ -171,15 +172,17 @@ class TestBinary(unittest.TestCase):
         docs = bson.decode_all(data, SON, False, JAVA_LEGACY)
 
         client_context.client.pymongo_test.drop_collection('java_uuid')
-        coll = client_context.client.pymongo_test.java_uuid
-        coll.uuid_subtype = JAVA_LEGACY
+        db = client_context.client.pymongo_test
+        coll = db.get_collection(
+            'java_uuid', CodecOptions(uuid_representation=JAVA_LEGACY))
 
         coll.insert(docs)
         self.assertEqual(5, coll.count())
         for d in coll.find():
             self.assertEqual(d['newguid'], uuid.UUID(d['newguidstring']))
 
-        coll.uuid_subtype = OLD_UUID_SUBTYPE
+        coll = db.get_collection(
+            'java_uuid', CodecOptions(uuid_representation=PYTHON_LEGACY))
         for d in coll.find():
             self.assertNotEqual(d['newguid'], d['newguidstring'])
         client_context.client.pymongo_test.drop_collection('java_uuid')
@@ -188,11 +191,11 @@ class TestBinary(unittest.TestCase):
         data = self.csharp_data
 
         # Test decoding
-        docs = bson.decode_all(data, SON, False, OLD_UUID_SUBTYPE)
+        docs = bson.decode_all(data, SON, False, PYTHON_LEGACY)
         for d in docs:
             self.assertNotEqual(d['newguid'], uuid.UUID(d['newguidstring']))
 
-        docs = bson.decode_all(data, SON, False, UUID_SUBTYPE)
+        docs = bson.decode_all(data, SON, False, STANDARD)
         for d in docs:
             self.assertNotEqual(d['newguid'], uuid.UUID(d['newguidstring']))
 
@@ -206,11 +209,11 @@ class TestBinary(unittest.TestCase):
 
         # Test encoding
         encoded = b''.join([bson.BSON.encode(doc,
-                                             uuid_subtype=OLD_UUID_SUBTYPE)
+                                             uuid_subtype=PYTHON_LEGACY)
                             for doc in docs])
         self.assertNotEqual(data, encoded)
 
-        encoded = b''.join([bson.BSON.encode(doc, uuid_subtype=UUID_SUBTYPE)
+        encoded = b''.join([bson.BSON.encode(doc, uuid_subtype=STANDARD)
                             for doc in docs])
         self.assertNotEqual(data, encoded)
 
@@ -228,15 +231,17 @@ class TestBinary(unittest.TestCase):
         docs = bson.decode_all(data, SON, False, CSHARP_LEGACY)
 
         client_context.client.pymongo_test.drop_collection('csharp_uuid')
-        coll = client_context.client.pymongo_test.csharp_uuid
-        coll.uuid_subtype = CSHARP_LEGACY
+        db = client_context.client.pymongo_test
+        coll = db.get_collection(
+            'csharp_uuid', CodecOptions(uuid_representation=CSHARP_LEGACY))
 
         coll.insert(docs)
         self.assertEqual(5, coll.count())
         for d in coll.find():
             self.assertEqual(d['newguid'], uuid.UUID(d['newguidstring']))
 
-        coll.uuid_subtype = OLD_UUID_SUBTYPE
+        coll = db.get_collection(
+            'csharp_uuid', CodecOptions(uuid_representation=PYTHON_LEGACY))
         for d in coll.find():
             self.assertNotEqual(d['newguid'], d['newguidstring'])
         client_context.client.pymongo_test.drop_collection('csharp_uuid')
@@ -245,12 +250,15 @@ class TestBinary(unittest.TestCase):
 
         uri = "mongodb://foo/?uuidrepresentation=csharpLegacy"
         client = MongoClient(uri, connect=False)
-        self.assertEqual(client.pymongo_test.test.uuid_subtype, CSHARP_LEGACY)
+        self.assertEqual(
+            client.pymongo_test.test.codec_options.uuid_representation,
+            CSHARP_LEGACY)
 
     @client_context.require_connection
     def test_uuid_queries(self):
 
-        coll = client_context.client.pymongo_test.test
+        db = client_context.client.pymongo_test
+        coll = db.test
         coll.drop()
 
         uu = uuid.uuid4()
@@ -258,7 +266,8 @@ class TestBinary(unittest.TestCase):
         self.assertEqual(1, coll.count())
 
         # Test UUIDLegacy queries.
-        coll.uuid_subtype = 4
+        coll = db.get_collection("test",
+                                 CodecOptions(uuid_representation=STANDARD))
         self.assertEqual(0, coll.find({'uuid': uu}).count())
         cur = coll.find({'uuid': UUIDLegacy(uu)})
         self.assertEqual(1, cur.count())

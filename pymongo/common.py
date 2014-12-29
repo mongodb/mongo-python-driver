@@ -27,8 +27,7 @@ from pymongo.read_preferences import (make_read_preference,
 from pymongo.ssl_support import validate_cert_reqs
 from pymongo.write_concern import WriteConcern
 from bson.binary import (STANDARD, PYTHON_LEGACY,
-                         JAVA_LEGACY, CSHARP_LEGACY,
-                         ALL_UUID_REPRESENTATIONS)
+                         JAVA_LEGACY, CSHARP_LEGACY)
 from bson.py3compat import string_type, integer_types
 
 # Defaults until we connect to a server and get updated limits.
@@ -255,14 +254,6 @@ def validate_uuid_representation(dummy, value):
                                  "%s" % (value, tuple(_UUID_REPRESENTATIONS)))
 
 
-def validate_uuid_subtype(dummy, value):
-    """Validate the uuid subtype option, a numerical value whose acceptable
-    values are defined in bson.binary."""
-    if value not in ALL_UUID_REPRESENTATIONS:
-        raise ConfigurationError("Not a valid setting for uuid_subtype.")
-    return value
-
-
 def validate_read_preference_tags(name, value):
     """Parse readPreferenceTags if passed as a client kwarg.
     """
@@ -471,24 +462,6 @@ class BaseObject(object):
         self.__read_pref = make_read_preference(mode, latency, tag_sets)
 
     tag_sets = property(__get_tags, __set_tags)
-
-    def __get_uuid_subtype(self):
-        """This attribute specifies which BSON Binary subtype is used when
-        storing UUIDs. Historically UUIDs have been stored as BSON Binary
-        subtype 3. This attribute is used to switch to the newer BSON Binary
-        subtype 4. It can also be used to force legacy byte order and subtype
-        compatibility with the Java and C# drivers. See the :mod:`bson.binary`
-        module for all options."""
-        return self.__codec_options.uuid_representation
-
-    def __set_uuid_subtype(self, value):
-        """Sets the BSON Binary subtype to be used when storing UUIDs."""
-        uuid_representation = validate_uuid_subtype("uuid_subtype", value)
-        self.__codec_options = CodecOptions(self.__codec_options.as_class,
-                                            self.__codec_options.tz_aware,
-                                            uuid_representation)
-
-    uuid_subtype = property(__get_uuid_subtype, __set_uuid_subtype)
 
     def _get_wc_override(self):
         """Get write concern override.
