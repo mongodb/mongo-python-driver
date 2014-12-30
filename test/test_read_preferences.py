@@ -136,18 +136,18 @@ class TestReadPreferences(TestReadPreferencesBase):
 
         self.assertRaises(ConfigurationError, Secondary, tag_sets=['foo'])
 
-    def test_latency_validation(self):
+    def test_threshold_validation(self):
         self.assertEqual(17, rs_client(
-            latencyThresholdMS=17
-        ).read_preference.latency_threshold_ms)
+            localThresholdMS=17
+        ).read_preference.local_threshold_ms)
 
         self.assertEqual(42, rs_client(
-            latencyThresholdMS=42
-        ).read_preference.latency_threshold_ms)
+            localThresholdMS=42
+        ).read_preference.local_threshold_ms)
 
         self.assertEqual(666, rs_client(
-            latencythresholdms=666
-        ).read_preference.latency_threshold_ms)
+            localthresholdms=666
+        ).read_preference.local_threshold_ms)
 
     def test_primary(self):
         self.assertReadsFrom('primary',
@@ -172,11 +172,11 @@ class TestReadPreferences(TestReadPreferencesBase):
             read_preference=ReadPreference.SECONDARY_PREFERRED)
 
     def test_nearest(self):
-        # With high latencyThresholdMS, expect to read from any
+        # With high localThresholdMS, expect to read from any
         # member
         c = rs_client(
             read_preference=ReadPreference.NEAREST,
-            latencyThresholdMS=10000)  # 10 seconds
+            localThresholdMS=10000)  # 10 seconds
 
         data_members = set(self.hosts).difference(set(self.arbiters))
 
@@ -221,7 +221,7 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
             '%s:%s' % (host, port),
             replicaSet=self.name,
             # Ignore round trip times, to test ReadPreference modes only.
-            latencyThresholdMS=1000*1000)
+            localThresholdMS=1000*1000)
         if client_context.auth_enabled:
             self.c.admin.authenticate(db_user, db_pwd)
         self.client_version = Version.from_client(self.c)
@@ -263,7 +263,7 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
                 (SecondaryPreferred, SERVER_TYPE.RSSecondary),
                 (Nearest, 'any'),
             ]:
-                self.c.read_preference = mode(latency_threshold_ms=1000*1000)
+                self.c.read_preference = mode(local_threshold_ms=1000*1000)
                 for i in range(10):
                     if server_type == 'any':
                         used = set()

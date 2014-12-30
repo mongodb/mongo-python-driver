@@ -342,16 +342,16 @@ class Database(common.BaseObject):
         command.update(kwargs)
 
         orig = pref = read_preference or self.read_preference
-        latency = kwargs.pop('secondary_acceptable_latency_ms', None)
+        threshold = kwargs.pop('secondary_acceptable_latency_ms', None)
         tags = kwargs.pop('tags_sets', None)
-        if latency or tags:
+        if threshold or tags:
             warnings.warn("The secondary_acceptable_latency_ms "
                           "and tag_sets options are deprecated",
                           DeprecationWarning, stacklevel=3)
             mode = orig.mode
             tags = tags or orig.tag_sets
-            latency = latency or orig.latency_threshold_ms
-            orig = make_read_preference(mode, latency, tags)
+            threshold = threshold or orig.local_threshold_ms
+            orig = make_read_preference(mode, threshold, tags)
 
         if command_name not in SECONDARY_OK_COMMANDS:
             pref = ReadPreference.PRIMARY

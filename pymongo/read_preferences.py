@@ -64,9 +64,9 @@ class ServerMode(object):
     """Base class for all read preferences.
     """
 
-    __slots__ = ("__mongos_mode", "__mode", "__latency", "__tag_sets")
+    __slots__ = ("__mongos_mode", "__mode", "__threshold", "__tag_sets")
 
-    def __init__(self, mode, latency_threshold_ms=15, tag_sets=None):
+    def __init__(self, mode, local_threshold_ms=15, tag_sets=None):
         if mode == _PRIMARY and tag_sets is not None:
             raise ConfigurationError("Read preference primary "
                                      "cannot be combined with tags")
@@ -74,9 +74,9 @@ class ServerMode(object):
         self.__mode = mode
         self.__tag_sets = _validate_tag_sets(tag_sets)
         try:
-            self.__latency = float(latency_threshold_ms)
+            self.__threshold = float(local_threshold_ms)
         except (ValueError, TypeError):
-            raise ConfigurationError("latency_threshold_ms must "
+            raise ConfigurationError("local_threshold_ms must "
                                      "be a positive integer or float")
 
     @property
@@ -100,20 +100,20 @@ class ServerMode(object):
         return self.__mode
 
     @property
-    def latency_threshold_ms(self):
+    def local_threshold_ms(self):
         """An integer. Any replica-set member whose ping time is within
-        ``latency_threshold_ms`` of the nearest member may accept reads.
+        ``local_threshold_ms`` of the nearest member may accept reads.
         When used with mongos high availability, any mongos whose ping
-        time is within ``latency_threshold_ms`` of the nearest mongos
+        time is within ``local_threshold_ms`` of the nearest mongos
         may be chosen as the new mongos during a failover. Default 15
         milliseconds.
 
-        .. note:: ``latency_threshold_ms`` is ignored when talking
+        .. note:: ``local_threshold_ms`` is ignored when talking
           to a replica set through a mongos. The equivalent is the
           `localThreshold <http://docs.mongodb.org/manual/reference/mongos/#cmdoption--localThreshold>`_
           command line option.
         """
-        return self.__latency
+        return self.__threshold
 
     @property
     def tag_sets(self):
@@ -131,12 +131,12 @@ class ServerMode(object):
         return self.__tag_sets or [{}]
 
     def __repr__(self):
-        return "%s(latency_threshold_ms=%d, tag_sets=%r)" % (
-            self.name, self.__latency, self.__tag_sets)
+        return "%s(local_threshold_ms=%d, tag_sets=%r)" % (
+            self.name, self.__threshold, self.__tag_sets)
 
     def __eq__(self, other):
         return (self.mode == other.mode and
-                self.latency_threshold_ms == other.latency_threshold_ms and
+                self.local_threshold_ms == other.local_threshold_ms and
                 self.tag_sets == other.tag_sets)
 
     def __ne__(self, other):
@@ -153,12 +153,12 @@ class Primary(ServerMode):
       the replica set.
 
     :Parameters:
-      - `latency_threshold_ms`: Used for mongos high availability. The
-        :attr:`~latency_threshold_ms` when selecting a failover mongos.
+      - `local_threshold_ms`: Used for mongos high availability. The
+        :attr:`~local_threshold_ms` when selecting a failover mongos.
     """
 
-    def __init__(self, latency_threshold_ms=15):
-        super(Primary, self).__init__(_PRIMARY, latency_threshold_ms)
+    def __init__(self, local_threshold_ms=15):
+        super(Primary, self).__init__(_PRIMARY, local_threshold_ms)
 
     def __call__(self, server_descriptions):
         """Return matching ServerDescriptions from a list."""
@@ -179,15 +179,15 @@ class PrimaryPreferred(ServerMode):
       available, otherwise a secondary.
 
     :Parameters:
-      - `latency_threshold_ms`: The :attr:`~latency_threshold_ms` when
+      - `local_threshold_ms`: The :attr:`~local_threshold_ms` when
         selecting a secondary.
       - `tag_sets`: The :attr:`~tag_sets` to use if the primary is not
         available.
     """
 
-    def __init__(self, latency_threshold_ms=15, tag_sets=None):
+    def __init__(self, local_threshold_ms=15, tag_sets=None):
         super(PrimaryPreferred, self).__init__(
-            _PRIMARY_PREFERRED, latency_threshold_ms, tag_sets)
+            _PRIMARY_PREFERRED, local_threshold_ms, tag_sets)
 
     def __call__(self, server_descriptions):
         """Return matching ServerDescriptions from a list."""
@@ -197,7 +197,7 @@ class PrimaryPreferred(ServerMode):
         else:
             return near_secondary_with_tags_server_selector(
                 self.tag_sets,
-                self.latency_threshold_ms,
+                self.local_threshold_ms,
                 server_descriptions)
 
 
@@ -212,20 +212,20 @@ class Secondary(ServerMode):
       secondaries. An error is raised if no secondaries are available.
 
     :Parameters:
-      - `latency_threshold_ms`: The :attr:`~latency_threshold_ms` when
+      - `local_threshold_ms`: The :attr:`~local_threshold_ms` when
         selecting a secondary.
       - `tag_sets`: The :attr:`~tag_sets` to use with this read_preference
     """
 
-    def __init__(self, latency_threshold_ms=15, tag_sets=None):
+    def __init__(self, local_threshold_ms=15, tag_sets=None):
         super(Secondary, self).__init__(
-            _SECONDARY, latency_threshold_ms, tag_sets)
+            _SECONDARY, local_threshold_ms, tag_sets)
 
     def __call__(self, server_descriptions):
         """Return matching ServerDescriptions from a list."""
         return near_secondary_with_tags_server_selector(
             self.tag_sets,
-            self.latency_threshold_ms,
+            self.local_threshold_ms,
             server_descriptions)
 
 
@@ -240,20 +240,20 @@ class SecondaryPreferred(ServerMode):
       secondaries, or the primary if no secondary is available.
 
     :Parameters:
-      - `latency_threshold_ms`: The :attr:`~latency_threshold_ms` when
+      - `local_threshold_ms`: The :attr:`~local_threshold_ms` when
         selecting a secondary.
       - `tag_sets`: The :attr:`~tag_sets` to use with this read_preference
     """
 
-    def __init__(self, latency_threshold_ms=15, tag_sets=None):
+    def __init__(self, local_threshold_ms=15, tag_sets=None):
         super(SecondaryPreferred, self).__init__(
-            _SECONDARY_PREFERRED, latency_threshold_ms, tag_sets)
+            _SECONDARY_PREFERRED, local_threshold_ms, tag_sets)
 
     def __call__(self, server_descriptions):
         """Return matching ServerDescriptions from a list."""
         secondaries = near_secondary_with_tags_server_selector(
             self.tag_sets,
-            self.latency_threshold_ms,
+            self.local_threshold_ms,
             server_descriptions)
 
         if secondaries:
@@ -273,33 +273,33 @@ class Nearest(ServerMode):
       members.
 
     :Parameters:
-      - `latency_threshold_ms`: The :attr:`~latency_threshold_ms` when
+      - `local_threshold_ms`: The :attr:`~local_threshold_ms` when
         selecting a secondary.
       - `tag_sets`: The :attr:`~tag_sets` to use with this read_preference
     """
 
-    def __init__(self, latency_threshold_ms=15, tag_sets=None):
+    def __init__(self, local_threshold_ms=15, tag_sets=None):
         super(Nearest, self).__init__(
-            _NEAREST, latency_threshold_ms, tag_sets)
+            _NEAREST, local_threshold_ms, tag_sets)
 
     def __call__(self, server_descriptions):
         """Return matching ServerDescriptions from a list."""
         return near_member_with_tags_server_selector(
             self.tag_sets or [{}],
-            self.latency_threshold_ms,
+            self.local_threshold_ms,
             server_descriptions)
 
 
 _ALL_READ_PREFERENCES = (Primary, PrimaryPreferred,
                          Secondary, SecondaryPreferred, Nearest)
 
-def make_read_preference(mode, latency_threshold_ms, tag_sets):
+def make_read_preference(mode, local_threshold_ms, tag_sets):
     if mode == _PRIMARY:
         if tag_sets not in (None, [{}]):
             raise ConfigurationError("Read preference primary "
                                      "cannot be combined with tags")
-        return Primary(latency_threshold_ms)
-    return _ALL_READ_PREFERENCES[mode](latency_threshold_ms, tag_sets)
+        return Primary(local_threshold_ms)
+    return _ALL_READ_PREFERENCES[mode](local_threshold_ms, tag_sets)
 
 
 _MODES = (
@@ -335,18 +335,18 @@ A read preference is used in three cases:
 
 - ``PRIMARY_PREFERRED``: Read from the primary if available, or if there is
   none, read from a secondary matching your choice of ``tag_sets`` and
-  ``latency_threshold_ms``.
+  ``local_threshold_ms``.
 
 - ``SECONDARY``: Read from a secondary matching your choice of ``tag_sets`` and
-  ``latency_threshold_ms``. If no matching secondary is available,
+  ``local_threshold_ms``. If no matching secondary is available,
   raise :class:`~pymongo.errors.AutoReconnect`.
 
 - ``SECONDARY_PREFERRED``: Read from a secondary matching your choice of
-  ``tag_sets`` and ``latency_threshold_ms`` if available, otherwise
-  from primary (regardless of the primary's tags and latency).
+  ``tag_sets`` and ``local_threshold_ms`` if available, otherwise
+  from primary (regardless of the primary's tags and local threshold).
 
 - ``NEAREST``: Read from any member matching your choice of ``tag_sets`` and
-  ``latency_threshold_ms``.
+  ``local_threshold_ms``.
 
 :class:`~pymongo.mongo_client.MongoClient` connected to a mongos, with a
 sharded cluster of replica sets:
@@ -366,7 +366,7 @@ sharded cluster of replica sets:
 
 - ``NEAREST``: Read from any member matching your choice of ``tag_sets``.
 
-.. note:: ``latency_threshold_ms`` is ignored when talking to a
+.. note:: ``local_threshold_ms`` is ignored when talking to a
   replica set *through* a mongos. The equivalent is the
   `localThreshold <http://docs.mongodb.org/manual/reference/mongos/#cmdoption--localThreshold>`_
   command line option.

@@ -205,7 +205,7 @@ or a command::
   {...}
 
 Reads are configured using three options: **read_preference**, **tag_sets**,
-and **latency_threshold_ms**.
+and **local_threshold_ms**.
 
 **read_preference**:
 
@@ -215,18 +215,18 @@ and **latency_threshold_ms**.
 
 - ``PRIMARY_PREFERRED``: Read from the primary if available, or if there is
   none, read from a secondary matching your choice of ``tag_sets`` and
-  ``latency_threshold_ms``.
+  ``local_threshold_ms``.
 
 - ``SECONDARY``: Read from a secondary matching your choice of ``tag_sets`` and
-  ``latency_threshold_ms``. If no matching secondary is available,
+  ``local_threshold_ms``. If no matching secondary is available,
   raise :class:`~pymongo.errors.AutoReconnect`.
 
 - ``SECONDARY_PREFERRED``: Read from a secondary matching your choice of
-  ``tag_sets`` and ``latency_threshold_ms`` if available, otherwise
-  from primary (regardless of the primary's tags and latency).
+  ``tag_sets`` and ``local_threshold_ms`` if available, otherwise
+  from primary (regardless of the primary's tags and local threshold).
 
 - ``NEAREST``: Read from any member matching your choice of ``tag_sets`` and
-  ``latency_threshold_ms``.
+  ``local_threshold_ms``.
 
 **tag_sets**:
 
@@ -256,18 +256,18 @@ from any member that matches the mode, ignoring tags."
 
 See :mod:`~pymongo.read_preferences` for more information.
 
-**latency_threshold_ms**:
+**local_threshold_ms**:
 
 If multiple members match the mode and tag sets, PyMongo reads
 from among the nearest members, chosen according to ping time. By default,
 only members whose ping times are within 15 milliseconds of the nearest
 are used for queries. You can choose to distribute reads among members with
-higher latencies by setting ``latency_threshold_ms`` to a larger
+higher latencies by setting ``local_threshold_ms`` to a larger
 number. In that case, PyMongo distributes reads among matching
-members within ``latency_threshold_ms`` of the closest member's
+members within ``local_threshold_ms`` of the closest member's
 ping time.
 
-.. note:: ``latency_threshold_ms`` is ignored when talking to a
+.. note:: ``local_threshold_ms`` is ignored when talking to a
   replica set *through* a mongos. The equivalent is the localThreshold_ command
   line option.
 

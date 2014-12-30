@@ -50,10 +50,10 @@ def _parse_read_preference(options):
         return options['read_preference']
 
     mode = options.get('readpreference', 0)
-    latency = options.get('secondaryacceptablelatencyms',
-                          options.get('latencythresholdms', 15))
+    threshold = options.get('secondaryacceptablelatencyms',
+                            options.get('localthresholdms', 15))
     tags = options.get('readpreferencetags')
-    return make_read_preference(mode, latency, tags)
+    return make_read_preference(mode, threshold, tags)
 
 
 def _parse_write_concern(options):
