@@ -633,11 +633,6 @@ class TestReadPreference(HATestCase):
 
         assertReadFrom(other_secondary, NEAREST)
 
-        # High secondaryAcceptableLatencyMS, should read from all members
-        assertReadFromAll(
-            [primary, secondary, other_secondary],
-            NEAREST, secondary_acceptable_latency_ms=1000*1000)
-
         self.clear_ping_times()
 
         assertReadFromAll([primary, other_secondary], NEAREST, [{'dc': 'ny'}])
@@ -746,55 +741,6 @@ class TestReadPreference(HATestCase):
         assertReadFrom(None, NEAREST, self.secondary_dc)
 
         self.clear_ping_times()
-
-    def test_pinning(self):
-        raise SkipTest('Pinning not implemented in PyMongo 3')
-
-        c = MongoClient(self.seed, replicaSet=self.name)
-
-        # Verify that changing the mode unpins the member. We'll try it for
-        # every relevant change of mode.
-        for mode0, mode1 in itertools.permutations(
-            (PRIMARY, SECONDARY, SECONDARY_PREFERRED, NEAREST), 2
-        ):
-            # Try reading and then changing modes and reading again, see if we
-            # read from a different host
-            for _ in range(1000):
-                # pin to this host
-                host = utils.read_from_which_host(c, mode0)
-                # unpin?
-                new_host = utils.read_from_which_host(c, mode1)
-                if host != new_host:
-                    # Reading with a different mode unpinned, hooray!
-                    break
-            else:
-                self.fail("Changing from mode %r to mode "
-                          "%r never unpinned" % (mode0, mode1))
-
-        # Now verify changing the tag_sets unpins the member.
-        tags0 = [{'a': 'a'}, {}]
-        tags1 = [{'a': 'x'}, {}]
-        for _ in range(1000):
-            host = utils.read_from_which_host(c, NEAREST, tags0)
-            new_host = utils.read_from_which_host(c, NEAREST, tags1)
-            if host != new_host:
-                break
-        else:
-            self.fail(
-                "Changing from tags %s to tags %s never unpinned" % (
-                    tags0, tags1))
-
-        # Finally, verify changing the secondary_acceptable_latency_ms unpins
-        # the member.
-        for _ in range(1000):
-            host = utils.read_from_which_host(c, SECONDARY, None, 15)
-            new_host = utils.read_from_which_host(c, SECONDARY, None, 20)
-            if host != new_host:
-                break
-        else:
-            self.fail(
-                "Changing secondary_acceptable_latency_ms from 15 to 20"
-                " never unpinned")
 
     def tearDown(self):
         self.c.close()

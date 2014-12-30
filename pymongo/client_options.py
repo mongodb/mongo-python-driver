@@ -50,10 +50,8 @@ def _parse_read_preference(options):
         return options['read_preference']
 
     mode = options.get('readpreference', 0)
-    threshold = options.get('secondaryacceptablelatencyms',
-                            options.get('localthresholdms', 15))
     tags = options.get('readpreferencetags')
-    return make_read_preference(mode, threshold, tags)
+    return make_read_preference(mode, tags)
 
 
 def _parse_write_concern(options):
@@ -121,18 +119,29 @@ class ClientOptions(object):
     def __init__(self, username, password, database, options):
         options = dict([validate(opt, val) for opt, val in iteritems(options)])
 
+        self.__codec_options = _parse_codec_options(options)
         self.__credentials = _parse_credentials(
             username, password, database, options)
-        self.__codec_options = _parse_codec_options(options)
+        self.__local_threshold_ms = options.get('localthresholdms', 15)
         self.__pool_options = _parse_pool_options(options)
         self.__read_preference = _parse_read_preference(options)
         self.__replica_set_name = options.get('replicaset')
         self.__write_concern = _parse_write_concern(options)
 
     @property
+    def codec_options(self):
+        """A :class:`~pymongo.codec_options.CodecOptions` instance."""
+        return self.__codec_options
+
+    @property
     def credentials(self):
         """A :class:`~pymongo.auth.MongoCredentials` instance or None."""
         return self.__credentials
+
+    @property
+    def local_threshold_ms(self):
+        """The local threshold for this instance."""
+        return self.__local_threshold_ms
 
     @property
     def pool_options(self):
@@ -148,11 +157,6 @@ class ClientOptions(object):
     def replica_set_name(self):
         """Replica set name or None."""
         return self.__replica_set_name
-
-    @property
-    def codec_options(self):
-        """A :class:`~pymongo.codec_options.CodecOptions` instance."""
-        return self.__codec_options
 
     @property
     def write_concern(self):

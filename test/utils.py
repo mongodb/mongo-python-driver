@@ -279,7 +279,6 @@ def read_from_which_host(
         client,
         pref,
         tag_sets=None,
-        secondary_acceptable_latency_ms=None
 ):
     """Read from a client with the given Read Preference.
 
@@ -289,16 +288,14 @@ def read_from_which_host(
       - `client`: A MongoClient
       - `mode`: A ReadPreference
       - `tag_sets`: List of dicts of tags for data-center-aware reads
-      - `secondary_acceptable_latency_ms`: Size of latency window
     """
     db = client.pymongo_test
 
     if isinstance(tag_sets, dict):
         tag_sets = [tag_sets]
-    if tag_sets or secondary_acceptable_latency_ms:
-        threshold = secondary_acceptable_latency_ms or pref.local_threshold_ms
+    if tag_sets:
         tags = tag_sets or pref.tag_sets
-        pref = pref.__class__(threshold, tags)
+        pref = pref.__class__(tags)
 
     db.read_preference = pref
 

@@ -139,15 +139,15 @@ class TestReadPreferences(TestReadPreferencesBase):
     def test_threshold_validation(self):
         self.assertEqual(17, rs_client(
             localThresholdMS=17
-        ).read_preference.local_threshold_ms)
+        ).local_threshold_ms)
 
         self.assertEqual(42, rs_client(
             localThresholdMS=42
-        ).read_preference.local_threshold_ms)
+        ).local_threshold_ms)
 
         self.assertEqual(666, rs_client(
             localthresholdms=666
-        ).read_preference.local_threshold_ms)
+        ).local_threshold_ms)
 
     def test_primary(self):
         self.assertReadsFrom('primary',
@@ -263,7 +263,7 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
                 (SecondaryPreferred, SERVER_TYPE.RSSecondary),
                 (Nearest, 'any'),
             ]:
-                self.c.read_preference = mode(local_threshold_ms=1000*1000)
+                self.c.read_preference = mode()
                 for i in range(10):
                     if server_type == 'any':
                         used = set()

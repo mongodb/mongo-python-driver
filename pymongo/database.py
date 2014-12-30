@@ -342,16 +342,14 @@ class Database(common.BaseObject):
         command.update(kwargs)
 
         orig = pref = read_preference or self.read_preference
-        threshold = kwargs.pop('secondary_acceptable_latency_ms', None)
         tags = kwargs.pop('tags_sets', None)
-        if threshold or tags:
+        if tags:
             warnings.warn("The secondary_acceptable_latency_ms "
                           "and tag_sets options are deprecated",
                           DeprecationWarning, stacklevel=3)
             mode = orig.mode
             tags = tags or orig.tag_sets
-            threshold = threshold or orig.local_threshold_ms
-            orig = make_read_preference(mode, threshold, tags)
+            orig = make_read_preference(mode, tags)
 
         if command_name not in SECONDARY_OK_COMMANDS:
             pref = ReadPreference.PRIMARY
@@ -436,8 +434,8 @@ class Database(common.BaseObject):
             be added to the command document before it is sent
 
         .. versionchanged:: 3.0
-           Deprecated the `tag_sets` and `secondary_acceptable_latency_ms`
-           options.
+           Deprecated the `tag_sets` option.
+           Removed the `secondary_acceptable_latency_ms` option.
            Removed `compile_re` option: PyMongo now always represents BSON
            regular expressions as :class:`~bson.regex.Regex` objects. Use
            :meth:`~bson.regex.Regex.try_compile` to attempt to convert from a

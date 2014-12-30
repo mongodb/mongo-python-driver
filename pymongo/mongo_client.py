@@ -315,7 +315,8 @@ class MongoClient(common.BaseObject):
             pool_class=pool_class,
             pool_options=options.pool_options,
             monitor_class=monitor_class,
-            condition_class=condition_class)
+            condition_class=condition_class,
+            local_threshold_ms=options.local_threshold_ms)
 
         self._topology = Topology(self._topology_settings)
         if connect:
@@ -609,6 +610,11 @@ class MongoClient(common.BaseObject):
         """
         return self._server_property(
             'max_write_batch_size', common.MAX_WRITE_BATCH_SIZE)
+
+    @property
+    def local_threshold_ms(self):
+        """The local threshold for this instance."""
+        return self.__options.local_threshold_ms
 
     def _writable_max_wire_version(self):
         """Connect to a writable server and get its max wire protocol version.

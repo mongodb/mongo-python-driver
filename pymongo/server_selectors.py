@@ -22,8 +22,7 @@ def any_server_selector(server_descriptions):
 
 
 def address_server_selector(address, server_descriptions):
-        return [s for s in server_descriptions
-                if s.address == address]
+    return [s for s in server_descriptions if s.address == address]
 
 
 def writable_server_selector(server_descriptions):
@@ -80,7 +79,7 @@ def tag_sets_server_selector(tag_sets, server_descriptions):
     return []
 
 
-def near_enough_server_selector(latency_ms, server_descriptions):
+def apply_local_threshold(latency_ms, server_descriptions):
     """All servers with round trip times within latency_ms of the fastest one.
 
     No ServerDescription's round_trip_time can be None.
@@ -99,25 +98,12 @@ def near_enough_server_selector(latency_ms, server_descriptions):
         if (s.round_trip_time - fastest) < latency_ms / 1000.]
 
 
-def near_secondary_with_tags_server_selector(
-        tag_sets,
-        latency_ms,
-        server_descriptions):
+def secondary_with_tags_server_selector(tag_sets, server_descriptions):
     """All near-enough secondaries matching the tag sets."""
-    return near_enough_server_selector(
-        latency_ms,
-        tag_sets_server_selector(
-            tag_sets,
-            secondary_server_selector(server_descriptions)))
+    return tag_sets_server_selector(
+        tag_sets, secondary_server_selector(server_descriptions))
 
 
-def near_member_with_tags_server_selector(
-        tag_sets,
-        latency_ms,
-        server_descriptions):
+def member_with_tags_server_selector(tag_sets, server_descriptions):
     """All near-enough members matching the tag sets."""
-    return near_enough_server_selector(
-        latency_ms,
-        tag_sets_server_selector(
-            tag_sets,
-            server_descriptions))
+    return tag_sets_server_selector(tag_sets, server_descriptions)

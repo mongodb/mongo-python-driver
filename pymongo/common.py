@@ -331,7 +331,6 @@ VALIDATORS = {
     'readpreference': validate_read_preference_mode,
     'readpreferencetags': validate_read_preference_tags,
     'localthresholdms': validate_positive_float,
-    'secondaryacceptablelatencyms': validate_positive_float,
     'authmechanism': validate_auth_mechanism,
     'authsource': validate_string,
     'authmechanismproperties': validate_auth_mechanism_properties,
@@ -432,28 +431,6 @@ class BaseObject(object):
 
     read_preference = property(__get_read_pref, __set_read_pref)
 
-    def __get_latency(self):
-        """Deprecated. Use ``client.read_preference.local_threshold_ms``.
-
-        See :class:`~pymongo.read_preferences.ReadPreference`.
-
-        .. note:: ``secondary_acceptable_latency_ms`` is ignored when talking
-          to a replica set *through* a mongos. The equivalent is the
-          localThreshold_ command line option.
-
-        .. _localThreshold: http://docs.mongodb.org/manual/reference/mongos/#cmdoption-mongos--localThreshold
-        """
-        return self.__read_pref.local_threshold_ms
-
-    def __set_latency(self, threshold):
-        warnings.warn("The secondary_acceptable_latency_ms attribute is "
-                      "deprecated", DeprecationWarning, stacklevel=2)
-        mode = self.__read_pref.mode
-        tag_sets = self.__read_pref.tag_sets
-        self.__read_pref = make_read_preference(mode, threshold, tag_sets)
-
-    secondary_acceptable_latency_ms = property(__get_latency, __set_latency)
-
     def __get_tags(self):
         return self.__read_pref.tag_sets
 
@@ -461,8 +438,7 @@ class BaseObject(object):
         warnings.warn("The tag_sets attribute is deprecated",
                       DeprecationWarning, stacklevel=2)
         mode = self.__read_pref.mode
-        threshold = self.__read_pref.local_threshold_ms
-        self.__read_pref = make_read_preference(mode, threshold, tag_sets)
+        self.__read_pref = make_read_preference(mode, tag_sets)
 
     tag_sets = property(__get_tags, __set_tags)
 

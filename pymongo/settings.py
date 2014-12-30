@@ -31,6 +31,7 @@ class TopologySettings(object):
         pool_options=None,
         monitor_class=None,
         condition_class=None,
+        local_threshold_ms=15,
     ):
         """Represent MongoClient's configuration.
 
@@ -42,6 +43,7 @@ class TopologySettings(object):
         self._pool_options = pool_options or PoolOptions()
         self._monitor_class = monitor_class or monitor.Monitor
         self._condition_class = condition_class or threading.Condition
+        self._local_threshold_ms = local_threshold_ms
         self._direct = (len(self._seeds) == 1 and not replica_set_name)
 
     @property
@@ -68,6 +70,10 @@ class TopologySettings(object):
     @property
     def condition_class(self):
         return self._condition_class
+
+    @property
+    def local_threshold_ms(self):
+        return self._local_threshold_ms
 
     @property
     def direct(self):

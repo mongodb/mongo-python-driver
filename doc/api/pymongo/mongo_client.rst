@@ -28,9 +28,9 @@
       .. autoattribute:: max_message_size
       .. autoattribute:: min_wire_version
       .. autoattribute:: max_wire_version
+      .. autoattribute:: local_threshold_ms
       .. autoattribute:: codec_options
       .. autoattribute:: read_preference
-      .. autoattribute:: secondary_acceptable_latency_ms
       .. autoattribute:: write_concern
       .. autoattribute:: is_locked
       .. automethod:: database_names

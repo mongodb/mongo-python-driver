@@ -28,6 +28,7 @@ from pymongo.errors import AutoReconnect
 from pymongo.monotonic import time as _time
 from pymongo.server import Server
 from pymongo.server_selectors import (address_server_selector,
+                                      apply_local_threshold,
                                       arbiter_server_selector,
                                       secondary_server_selector,
                                       writable_server_selector)
@@ -277,7 +278,9 @@ class Topology(object):
             # Ignore the selector.
             return self._description.known_servers
         else:
-            return selector(self._description.known_servers)
+            sds = selector(self._description.known_servers)
+            return apply_local_threshold(
+                self._settings.local_threshold_ms, sds)
 
     def _update_servers(self):
         """Sync our Servers from TopologyDescription.server_descriptions.

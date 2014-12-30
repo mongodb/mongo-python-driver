@@ -143,7 +143,7 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
             pair, replicaSet=self.name, max_pool_size=25,
             document_class=SON, tz_aware=True,
             read_preference=secondary,
-            secondaryacceptablelatencyms=77)
+            localThresholdMS=77)
 
         self.assertEqual(c.max_pool_size, 25)
         self.assertEqual(c.document_class, SON)

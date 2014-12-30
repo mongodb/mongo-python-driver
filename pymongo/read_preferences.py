@@ -17,8 +17,8 @@
 from collections import Mapping, namedtuple
 
 from pymongo.errors import ConfigurationError
-from pymongo.server_selectors import (near_member_with_tags_server_selector,
-                                      near_secondary_with_tags_server_selector,
+from pymongo.server_selectors import (member_with_tags_server_selector,
+                                      secondary_with_tags_server_selector,
                                       writable_server_selector)
 
 
@@ -64,20 +64,15 @@ class ServerMode(object):
     """Base class for all read preferences.
     """
 
-    __slots__ = ("__mongos_mode", "__mode", "__threshold", "__tag_sets")
+    __slots__ = ("__mongos_mode", "__mode", "__tag_sets")
 
-    def __init__(self, mode, local_threshold_ms=15, tag_sets=None):
+    def __init__(self, mode, tag_sets=None):
         if mode == _PRIMARY and tag_sets is not None:
             raise ConfigurationError("Read preference primary "
                                      "cannot be combined with tags")
         self.__mongos_mode = _MONGOS_MODES[mode]
         self.__mode = mode
         self.__tag_sets = _validate_tag_sets(tag_sets)
-        try:
-            self.__threshold = float(local_threshold_ms)
-        except (ValueError, TypeError):
-            raise ConfigurationError("local_threshold_ms must "
-                                     "be a positive integer or float")
 
     @property
     def name(self):
@@ -100,22 +95,6 @@ class ServerMode(object):
         return self.__mode
 
     @property
-    def local_threshold_ms(self):
-        """An integer. Any replica-set member whose ping time is within
-        ``local_threshold_ms`` of the nearest member may accept reads.
-        When used with mongos high availability, any mongos whose ping
-        time is within ``local_threshold_ms`` of the nearest mongos
-        may be chosen as the new mongos during a failover. Default 15
-        milliseconds.
-
-        .. note:: ``local_threshold_ms`` is ignored when talking
-          to a replica set through a mongos. The equivalent is the
-          `localThreshold <http://docs.mongodb.org/manual/reference/mongos/#cmdoption--localThreshold>`_
-          command line option.
-        """
-        return self.__threshold
-
-    @property
     def tag_sets(self):
         """Set ``tag_sets`` to a list of dictionaries like [{'dc': 'ny'}] to
         read only from members whose ``dc`` tag has the value ``"ny"``.
@@ -131,13 +110,14 @@ class ServerMode(object):
         return self.__tag_sets or [{}]
 
     def __repr__(self):
-        return "%s(local_threshold_ms=%d, tag_sets=%r)" % (
-            self.name, self.__threshold, self.__tag_sets)
+        return "%s(tag_sets=%r)" % (
+            self.name, self.__tag_sets)
 
     def __eq__(self, other):
-        return (self.mode == other.mode and
-                self.local_threshold_ms == other.local_threshold_ms and
-                self.tag_sets == other.tag_sets)
+        if isinstance(other, ServerMode):
+            return (self.mode == other.mode and
+                    self.tag_sets == other.tag_sets)
+        raise NotImplementedError
 
     def __ne__(self, other):
         return not self == other
@@ -151,14 +131,10 @@ class Primary(ServerMode):
     * When connected to a mongos queries are sent to the primary of a shard.
     * When connected to a replica set queries are sent to the primary of
       the replica set.
-
-    :Parameters:
-      - `local_threshold_ms`: Used for mongos high availability. The
-        :attr:`~local_threshold_ms` when selecting a failover mongos.
     """
 
-    def __init__(self, local_threshold_ms=15):
-        super(Primary, self).__init__(_PRIMARY, local_threshold_ms)
+    def __init__(self):
+        super(Primary, self).__init__(_PRIMARY)
 
     def __call__(self, server_descriptions):
         """Return matching ServerDescriptions from a list."""
@@ -166,6 +142,11 @@ class Primary(ServerMode):
 
     def __repr__(self):
         return "Primary"
+
+    def __eq__(self, other):
+        if isinstance(other, ServerMode):
+            return other.mode == _PRIMARY
+        raise NotImplementedError
 
 
 class PrimaryPreferred(ServerMode):
@@ -179,15 +160,12 @@ class PrimaryPreferred(ServerMode):
       available, otherwise a secondary.
 
     :Parameters:
-      - `local_threshold_ms`: The :attr:`~local_threshold_ms` when
-        selecting a secondary.
       - `tag_sets`: The :attr:`~tag_sets` to use if the primary is not
         available.
     """
 
-    def __init__(self, local_threshold_ms=15, tag_sets=None):
-        super(PrimaryPreferred, self).__init__(
-            _PRIMARY_PREFERRED, local_threshold_ms, tag_sets)
+    def __init__(self, tag_sets=None):
+        super(PrimaryPreferred, self).__init__(_PRIMARY_PREFERRED, tag_sets)
 
     def __call__(self, server_descriptions):
         """Return matching ServerDescriptions from a list."""
@@ -195,9 +173,8 @@ class PrimaryPreferred(ServerMode):
         if writable_servers:
             return writable_servers
         else:
-            return near_secondary_with_tags_server_selector(
+            return secondary_with_tags_server_selector(
                 self.tag_sets,
-                self.local_threshold_ms,
                 server_descriptions)
 
 
@@ -212,20 +189,16 @@ class Secondary(ServerMode):
       secondaries. An error is raised if no secondaries are available.
 
     :Parameters:
-      - `local_threshold_ms`: The :attr:`~local_threshold_ms` when
-        selecting a secondary.
       - `tag_sets`: The :attr:`~tag_sets` to use with this read_preference
     """
 
-    def __init__(self, local_threshold_ms=15, tag_sets=None):
-        super(Secondary, self).__init__(
-            _SECONDARY, local_threshold_ms, tag_sets)
+    def __init__(self, tag_sets=None):
+        super(Secondary, self).__init__(_SECONDARY, tag_sets)
 
     def __call__(self, server_descriptions):
         """Return matching ServerDescriptions from a list."""
-        return near_secondary_with_tags_server_selector(
+        return secondary_with_tags_server_selector(
             self.tag_sets,
-            self.local_threshold_ms,
             server_descriptions)
 
 
@@ -240,20 +213,16 @@ class SecondaryPreferred(ServerMode):
       secondaries, or the primary if no secondary is available.
 
     :Parameters:
-      - `local_threshold_ms`: The :attr:`~local_threshold_ms` when
-        selecting a secondary.
       - `tag_sets`: The :attr:`~tag_sets` to use with this read_preference
     """
 
-    def __init__(self, local_threshold_ms=15, tag_sets=None):
-        super(SecondaryPreferred, self).__init__(
-            _SECONDARY_PREFERRED, local_threshold_ms, tag_sets)
+    def __init__(self, tag_sets=None):
+        super(SecondaryPreferred, self).__init__(_SECONDARY_PREFERRED, tag_sets)
 
     def __call__(self, server_descriptions):
         """Return matching ServerDescriptions from a list."""
-        secondaries = near_secondary_with_tags_server_selector(
+        secondaries = secondary_with_tags_server_selector(
             self.tag_sets,
-            self.local_threshold_ms,
             server_descriptions)
 
         if secondaries:
@@ -273,33 +242,29 @@ class Nearest(ServerMode):
       members.
 
     :Parameters:
-      - `local_threshold_ms`: The :attr:`~local_threshold_ms` when
-        selecting a secondary.
       - `tag_sets`: The :attr:`~tag_sets` to use with this read_preference
     """
 
-    def __init__(self, local_threshold_ms=15, tag_sets=None):
-        super(Nearest, self).__init__(
-            _NEAREST, local_threshold_ms, tag_sets)
+    def __init__(self, tag_sets=None):
+        super(Nearest, self).__init__(_NEAREST, tag_sets)
 
     def __call__(self, server_descriptions):
         """Return matching ServerDescriptions from a list."""
-        return near_member_with_tags_server_selector(
+        return member_with_tags_server_selector(
             self.tag_sets or [{}],
-            self.local_threshold_ms,
             server_descriptions)
 
 
 _ALL_READ_PREFERENCES = (Primary, PrimaryPreferred,
                          Secondary, SecondaryPreferred, Nearest)
 
-def make_read_preference(mode, local_threshold_ms, tag_sets):
+def make_read_preference(mode, tag_sets):
     if mode == _PRIMARY:
         if tag_sets not in (None, [{}]):
             raise ConfigurationError("Read preference primary "
                                      "cannot be combined with tags")
-        return Primary(local_threshold_ms)
-    return _ALL_READ_PREFERENCES[mode](local_threshold_ms, tag_sets)
+        return Primary()
+    return _ALL_READ_PREFERENCES[mode](tag_sets)
 
 
 _MODES = (
