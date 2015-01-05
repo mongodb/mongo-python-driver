@@ -350,9 +350,9 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
                 ('pipeline', [])
             ])))
 
-        # Text search.
-        if self.client_version.at_least(2, 3, 2):
-
+        # 'text' command introduced in 2.3 and removed in 2.8.
+        if (self.client_version.at_least(2, 3, 2)
+                and not self.client_version.at_least(2, 7, 9)):
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", UserWarning)
                 utils.enable_text_search(self.c)
