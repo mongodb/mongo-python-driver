@@ -16,5 +16,4 @@
       :inherited-members:
 
    .. autodata:: ReadPreference
-   .. autodata:: SECONDARY_OK_COMMANDS
 

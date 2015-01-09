@@ -14,7 +14,6 @@
 
 """Database level operations."""
 
-import collections
 import warnings
 
 from bson.code import Code
@@ -22,15 +21,14 @@ from bson.dbref import DBRef
 from bson.py3compat import iteritems, string_type, _unicode
 from bson.son import SON
 from pymongo import auth, common, helpers
+from pymongo.codec_options import CodecOptions
 from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
 from pymongo.errors import (CollectionInvalid,
                             ConfigurationError,
                             InvalidName,
                             OperationFailure)
-from pymongo.read_preferences import (make_read_preference,
-                                      ReadPreference,
-                                      SECONDARY_OK_COMMANDS)
+from pymongo.read_preferences import ReadPreference
 from pymongo.son_manipulator import SONManipulator
 
 
@@ -98,6 +96,7 @@ class Database(common.BaseObject):
             _check_name(name)
 
         self.__name = _unicode(name)
+        self.__cmd_name = _unicode(name + ".$cmd")
         self.__connection = connection
 
         self.__incoming_manipulators = []
@@ -328,63 +327,25 @@ class Database(common.BaseObject):
             son = manipulator.transform_outgoing(son, collection)
         return son
 
-    def _command(self, command, value=1,
-                 check=True, allowable_errors=None,
-                 read_preference=None, **kwargs):
-        """Internal command helper.
-        """
-
+    def _command(self, command, value=1, check=True,
+                 allowable_errors=None, read_preference=ReadPreference.PRIMARY,
+                 codec_options=CodecOptions(), **kwargs):
+        """Internal command helper."""
         if isinstance(command, string_type):
-            command_name = command.lower()
             command = SON([(command, value)])
-        else:
-            command_name = next(iter(command)).lower()
         command.update(kwargs)
 
-        orig = pref = read_preference or self.read_preference
-        tags = kwargs.pop('tags_sets', None)
-        if tags:
-            warnings.warn("The secondary_acceptable_latency_ms "
-                          "and tag_sets options are deprecated",
-                          DeprecationWarning, stacklevel=3)
-            mode = orig.mode
-            tags = tags or orig.tag_sets
-            orig = make_read_preference(mode, tags)
-
-        if command_name not in SECONDARY_OK_COMMANDS:
-            pref = ReadPreference.PRIMARY
-
-        # Special-case: mapreduce can go to secondaries only if inline
-        elif command_name == 'mapreduce':
-            out = command.get('out')
-            if (not isinstance(out, collections.Mapping) or not
-                    out.get('inline')):
-                pref = ReadPreference.PRIMARY
-
-        # Special-case: aggregate with $out cannot go to secondaries.
-        elif command_name == 'aggregate':
-            for stage in command.get('pipeline', []):
-                if '$out' in stage:
-                    pref = ReadPreference.PRIMARY
-                    break
-
-        # Warn if mode will override read_preference.
-        if pref.mode != orig.mode:
-            warnings.warn("%s does not support %s read preference "
-                          "and will be routed to the primary instead." %
-                          (command_name, orig.name), UserWarning, stacklevel=3)
-
-        return helpers._command(self.connection,
-                                self.name + ".$cmd",
+        return helpers._command(self.__connection,
+                                self.__cmd_name,
                                 command,
-                                pref,
-                                self.codec_options,
+                                read_preference,
+                                codec_options,
                                 check,
                                 allowable_errors)
 
-    def command(self, command, value=1,
-                check=True, allowable_errors=None,
-                read_preference=None, **kwargs):
+    def command(self, command, value=1, check=True,
+                allowable_errors=None, read_preference=ReadPreference.PRIMARY,
+                codec_options=CodecOptions(), **kwargs):
         """Issue a MongoDB command.
 
         Send command `command` to the database and return the
@@ -428,19 +389,23 @@ class Database(common.BaseObject):
           - `allowable_errors`: if `check` is ``True``, error messages
             in this list will be ignored by error-checking
           - `read_preference`: The read preference for this operation.
-          - `tag_sets` **DEPRECATED**
-          - `secondary_acceptable_latency_ms` **DEPRECATED**
+          - `codec_options`: A :class:`~pymongo.codec_options.CodecOptions`
+            instance.
           - `**kwargs` (optional): additional keyword arguments will
             be added to the command document before it is sent
 
+        .. note:: :meth:`command` does **not** obey :attr:`read_preference`
+           or :attr:`codec_options`. You must use the `read_preference` and
+           `codec_options` parameters instead.
+
         .. versionchanged:: 3.0
-           Deprecated the `tag_sets` option.
-           Removed the `secondary_acceptable_latency_ms` option.
+           Removed the `as_class`, `fields`, `uuid_subtype`, `tag_sets`,
+           and `secondary_acceptable_latency_ms` option.
            Removed `compile_re` option: PyMongo now always represents BSON
            regular expressions as :class:`~bson.regex.Regex` objects. Use
            :meth:`~bson.regex.Regex.try_compile` to attempt to convert from a
            BSON regular expression to a Python regular expression object.
-           Removed the as_class, uuid_subtype, and fields options.
+           Added the `codec_options` parameter.
 
         .. versionchanged:: 2.7
            Added `compile_re` option. If set to False, PyMongo represented BSON
@@ -460,7 +425,7 @@ class Database(common.BaseObject):
         .. mongodoc:: commands
         """
         return self._command(command, value, check, allowable_errors,
-                             read_preference, **kwargs)[0]
+                             read_preference, codec_options, **kwargs)[0]
 
     def collection_names(self, include_system_collections=True):
         """Get a list of all the collection names in this database.
@@ -472,9 +437,7 @@ class Database(common.BaseObject):
         client = self.__connection
 
         if client._writable_max_wire_version() > 2:
-            res, addr = self._command("listCollections",
-                                      cursor={},
-                                      read_preference=ReadPreference.PRIMARY)
+            res, addr = self._command("listCollections", cursor={})
             # MongoDB 2.8rc2
             if "collections" in res:
                 results = res["collections"]
@@ -511,8 +474,7 @@ class Database(common.BaseObject):
 
         self.__connection._purge_index(self.__name, name)
 
-        self.command("drop", _unicode(name), allowable_errors=["ns not found"],
-                     read_preference=ReadPreference.PRIMARY)
+        self.command("drop", _unicode(name), allowable_errors=["ns not found"])
 
     def validate_collection(self, name_or_collection,
                             scandata=False, full=False):
@@ -545,8 +507,7 @@ class Database(common.BaseObject):
                             "%s or Collection" % (string_type.__name__,))
 
         result = self.command("validate", _unicode(name),
-                              scandata=scandata, full=full,
-                              read_preference=ReadPreference.PRIMARY)
+                              scandata=scandata, full=full)
 
         valid = True
         # Pre 1.9 results
@@ -595,8 +556,7 @@ class Database(common.BaseObject):
 
         .. mongodoc:: profiling
         """
-        result = self.command("profile", -1,
-                              read_preference=ReadPreference.PRIMARY)
+        result = self.command("profile", -1)
 
         assert result["was"] >= 0 and result["was"] <= 2
         return result["was"]
@@ -636,11 +596,9 @@ class Database(common.BaseObject):
             raise TypeError("slow_ms must be an integer")
 
         if slow_ms is not None:
-            self.command("profile", level, slowms=slow_ms,
-                         read_preference=ReadPreference.PRIMARY)
+            self.command("profile", level, slowms=slow_ms)
         else:
-            self.command("profile", level,
-                         read_preference=ReadPreference.PRIMARY)
+            self.command("profile", level)
 
     def profiling_info(self):
         """Returns a list containing current profiling information.
@@ -662,8 +620,7 @@ class Database(common.BaseObject):
         warnings.warn("Database.error() is deprecated",
                       DeprecationWarning, stacklevel=2)
 
-        error = self.command("getlasterror",
-                             read_preference=ReadPreference.PRIMARY)
+        error = self.command("getlasterror")
         error_msg = error.get("err", "")
         if error_msg is None:
             return None
@@ -690,8 +647,7 @@ class Database(common.BaseObject):
         warnings.warn("last_status() is deprecated",
                       DeprecationWarning, stacklevel=2)
 
-        return self.command("getlasterror",
-                            read_preference=ReadPreference.PRIMARY)
+        return self.command("getlasterror")
 
     def previous_error(self):
         """**DEPRECATED**: Get the most recent error on this database.
@@ -710,8 +666,7 @@ class Database(common.BaseObject):
         warnings.warn("previous_error() is deprecated",
                       DeprecationWarning, stacklevel=2)
 
-        error = self.command("getpreverror",
-                             read_preference=ReadPreference.PRIMARY)
+        error = self.command("getpreverror")
         if error.get("err", 0) is None:
             return None
         return error
@@ -732,8 +687,7 @@ class Database(common.BaseObject):
         warnings.warn("reset_error_history() is deprecated",
                       DeprecationWarning, stacklevel=2)
 
-        self.command("reseterror",
-                     read_preference=ReadPreference.PRIMARY)
+        self.command("reseterror")
 
     def __iter__(self):
         return self
@@ -789,8 +743,7 @@ class Database(common.BaseObject):
         else:
             command_name = "updateUser"
 
-        self.command(command_name, name,
-                     read_preference=ReadPreference.PRIMARY, **opts)
+        self.command(command_name, name, **opts)
 
     def _legacy_add_user(self, name, password, read_only, **kwargs):
         """Uses v1 system to add users, i.e. saving to system.users.
@@ -859,8 +812,7 @@ class Database(common.BaseObject):
                                          "read_only and roles together")
 
         try:
-            uinfo = self.command("usersInfo", name,
-                                 read_preference=ReadPreference.PRIMARY)
+            uinfo = self.command("usersInfo", name)
             # Create the user if not found in uinfo, otherwise update one.
             self._create_or_update_user(
                 (not uinfo["users"]), name, password, read_only, **kwargs)
@@ -890,7 +842,6 @@ class Database(common.BaseObject):
 
         try:
             self.command("dropUser", name,
-                         read_preference=ReadPreference.PRIMARY,
                          writeConcern=self._get_wc_override())
         except OperationFailure as exc:
             # See comment in add_user try / except above.
@@ -1033,9 +984,7 @@ class Database(common.BaseObject):
         if not isinstance(code, Code):
             code = Code(code)
 
-        result = self.command("$eval", code,
-                              read_preference=ReadPreference.PRIMARY,
-                              args=args)
+        result = self.command("$eval", code, args=args)
         return result.get("retval", None)
 
     def __call__(self, *args, **kwargs):

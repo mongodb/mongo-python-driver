@@ -344,16 +344,6 @@ def read_pref_mode_from_name(name):
     return _MONGOS_MODES.index(name)
 
 
-SECONDARY_OK_COMMANDS = frozenset([
-    "group", "aggregate", "collstats", "dbstats", "count", "distinct",
-    "geonear", "geosearch", "geowalk", "mapreduce", "getnonce", "authenticate",
-    "text", "parallelcollectionscan"
-])
-"""Commands that may be sent to replica-set secondaries, depending on
-   ReadPreference and tags. All other commands are always run on the primary.
-"""
-
-
 class MovingAverage(object):
     """Tracks an exponentially-weighted moving average."""
     def __init__(self):

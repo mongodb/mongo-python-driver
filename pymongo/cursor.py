@@ -27,8 +27,7 @@ from bson.py3compat import (iteritems,
 from bson.son import SON
 from pymongo import helpers, message
 from pymongo.codec_options import CodecOptions
-from pymongo.read_preferences import (ReadPreference,
-                                      SECONDARY_OK_COMMANDS)
+from pymongo.read_preferences import ReadPreference
 from pymongo.errors import (AutoReconnect,
                             InvalidOperation,
                             NotMasterError,
@@ -289,37 +288,21 @@ class Cursor(object):
         # Only set $readPreference if it's something other than
         # PRIMARY to avoid problems with mongos versions that
         # don't support read preferences.
+        rpref = self.__read_preference
         if (self.__collection.database.connection.is_mongos and
-            self.__read_preference.mode != ReadPreference.PRIMARY.mode):
+                rpref != ReadPreference.PRIMARY):
 
             # For maximum backwards compatibility, don't set $readPreference
             # for SECONDARY_PREFERRED unless tags are in use. Just rely on
             # the slaveOkay bit (set automatically if read preference is not
             # PRIMARY), which has the same behavior.
-            mode = self.__read_preference.mode
-            tag_sets = self.__read_preference.tag_sets
-            if (mode != ReadPreference.SECONDARY_PREFERRED.mode or
-                tag_sets != [{}]):
-                operators['$readPreference'] = self.__read_preference.document
+            if (rpref.mode != ReadPreference.SECONDARY_PREFERRED.mode or
+                    rpref.tag_sets != [{}]):
+                operators['$readPreference'] = rpref.document
 
         if operators:
             # Make a shallow copy so we can cleanly rewind or clone.
             spec = self.__spec.copy()
-
-            # Only commands that can be run on secondaries should have any
-            # operators added to the spec.  Command queries can be issued
-            # by db.command or calling find_one on $cmd directly
-            if self.collection.name == "$cmd":
-                # Don't change commands that can't be sent to secondaries
-                command_name = spec and next(iter(spec)).lower() or ""
-                if command_name not in SECONDARY_OK_COMMANDS:
-                    return spec
-                elif command_name == 'mapreduce':
-                    # mapreduce shouldn't be changed if its not inline
-                    out = spec.get('out')
-                    if (not isinstance(out, Mapping) or not
-                            out.get('inline')):
-                        return spec
 
             # White-listed commands must be wrapped in $query.
             if "$query" not in spec:

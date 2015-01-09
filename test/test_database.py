@@ -897,18 +897,6 @@ class TestDatabase(IntegrationTest):
 
         self.assertEqual('outer', str(context.exception))
 
-    def test_command_read_pref_warning(self):
-        with warnings.catch_warnings():
-            warnings.simplefilter("error", UserWarning)
-            self.assertRaises(UserWarning, self.client.pymongo_test.command,
-                              'ping', read_preference=ReadPreference.SECONDARY)
-            try:
-                self.client.pymongo_test.command(
-                    'dbStats',
-                    read_preference=ReadPreference.SECONDARY_PREFERRED)
-            except UserWarning:
-                self.fail("Shouldn't have raised UserWarning.")
-
     @client_context.require_version_min(2, 5, 3, -1)
     @client_context.require_test_commands
     def test_command_max_time_ms(self):
