@@ -263,13 +263,91 @@ class SocketInfo(object):
         )
 
 
+def _create_connection(address, options):
+    """Given (host, port) and PoolOptions, connect and return a socket object.
+
+    This is a modified version of create_connection from CPython >= 2.6.
+    """
+    host, port = address
+
+    # Check if dealing with a unix domain socket
+    if host.endswith('.sock'):
+        if not hasattr(socket, "AF_UNIX"):
+            raise ConnectionFailure("UNIX-sockets are not supported "
+                                    "on this system")
+        sock = socket.socket(socket.AF_UNIX)
+        try:
+            sock.connect(host)
+            return sock
+        except socket.error as e:
+            sock.close()
+            raise e
+
+    # Don't try IPv6 if we don't support it. Also skip it if host
+    # is 'localhost' (::1 is fine). Avoids slow connect issues
+    # like PYTHON-356.
+    family = socket.AF_INET
+    if socket.has_ipv6 and host != 'localhost':
+        family = socket.AF_UNSPEC
+
+    err = None
+    for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
+        af, socktype, proto, dummy, sa = res
+        sock = socket.socket(af, socktype, proto)
+        try:
+            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+            sock.settimeout(options.connect_timeout)
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE,
+                            options.socket_keepalive)
+            sock.connect(sa)
+            return sock
+        except socket.error as e:
+            err = e
+            sock.close()
+
+    if err is not None:
+        raise err
+    else:
+        # This likely means we tried to connect to an IPv6 only
+        # host with an OS/kernel or Python interpreter that doesn't
+        # support IPv6. The test case is Jython2.5.1 which doesn't
+        # support IPv6 at all.
+        raise socket.error('getaddrinfo failed')
+
+
+def _configured_socket(address, options):
+    """Given (host, port) and PoolOptions, return a configured socket.
+
+    Sets socket's SSL and timeout options.
+    """
+    sock = _create_connection(address, options)
+    ssl_context = options.ssl_context
+
+    if ssl_context is not None:
+        try:
+            sock = ssl_context.wrap_socket(sock)
+        except IOError:
+            sock.close()
+            raise ConnectionFailure("SSL handshake failed. MongoDB may "
+                                    "not be configured with SSL support.")
+        if ssl_context.verify_mode:
+            try:
+                match_hostname(sock.getpeercert(), hostname=address[0])
+            except CertificateError:
+                sock.close()
+                raise
+
+    sock.settimeout(options.socket_timeout)
+    return sock
+
+
 # Do *not* explicitly inherit from object or Jython won't call __del__
 # http://bugs.jython.org/issue1057
 class Pool:
-    def __init__(self, pair, options):
+    def __init__(self, address, options):
         """
         :Parameters:
-          - `pair`: a (hostname, port) tuple
+          - `address`: a (hostname, port) tuple
           - `options`: a PoolOptions instance
         """
         # Only check a socket's health with _closed() every once in a while.
@@ -283,7 +361,7 @@ class Pool:
         # recent reset and close them.
         self.pool_id = 0
         self.pid = os.getpid()
-        self.pair = pair
+        self.address = address
         self.opts = options
 
         if (self.opts.wait_queue_multiple is None or
@@ -297,96 +375,21 @@ class Pool:
             self.opts.max_pool_size, max_waiters)
 
     def reset(self):
-        # Ignore this race condition -- if many threads are resetting at once,
-        # the pool_id will definitely change, which is all we care about.
-        self.pool_id += 1
-        self.pid = os.getpid()
-
         with self.lock:
+            self.pool_id += 1
+            self.pid = os.getpid()
             sockets, self.sockets = self.sockets, set()
 
         for sock_info in sockets:
             sock_info.close()
-
-    def create_connection(self):
-        """Connect and return a socket object.
-
-        This is a modified version of create_connection from
-        CPython >=2.6.
-        """
-        host, port = self.pair
-
-        # Check if dealing with a unix domain socket
-        if host.endswith('.sock'):
-            if not hasattr(socket, "AF_UNIX"):
-                raise ConnectionFailure("UNIX-sockets are not supported "
-                                        "on this system")
-            sock = socket.socket(socket.AF_UNIX)
-            try:
-                sock.connect(host)
-                return sock
-            except socket.error as e:
-                sock.close()
-                raise e
-
-        # Don't try IPv6 if we don't support it. Also skip it if host
-        # is 'localhost' (::1 is fine). Avoids slow connect issues
-        # like PYTHON-356.
-        family = socket.AF_INET
-        if socket.has_ipv6 and host != 'localhost':
-            family = socket.AF_UNSPEC
-
-        err = None
-        for res in socket.getaddrinfo(host, port, family, socket.SOCK_STREAM):
-            af, socktype, proto, dummy, sa = res
-            sock = None
-            try:
-                sock = socket.socket(af, socktype, proto)
-                sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-                sock.settimeout(self.opts.connect_timeout)
-                sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE,
-                                self.opts.socket_keepalive)
-                sock.connect(sa)
-                return sock
-            except socket.error as e:
-                err = e
-                if sock is not None:
-                    sock.close()
-
-        if err is not None:
-            raise err
-        else:
-            # This likely means we tried to connect to an IPv6 only
-            # host with an OS/kernel or Python interpreter that doesn't
-            # support IPv6. The test case is Jython2.5.1 which doesn't
-            # support IPv6 at all.
-            raise socket.error('getaddrinfo failed')
 
     def connect(self):
         """Connect to Mongo and return a new (connected) socket. Note that the
            pool does not keep a reference to the socket -- you must call
            return_socket() when you're done with it.
         """
-        sock = self.create_connection()
-        hostname = self.pair[0]
-        ssl_context = self.opts.ssl_context
-
-        if ssl_context is not None:
-            try:
-                sock = ssl_context.wrap_socket(sock)
-            except IOError:
-                sock.close()
-                raise ConnectionFailure("SSL handshake failed. MongoDB may "
-                                        "not be configured with SSL support.")
-            if ssl_context.verify_mode:
-                try:
-                    match_hostname(sock.getpeercert(), hostname)
-                except CertificateError:
-                    sock.close()
-                    raise
-
-        sock.settimeout(self.opts.socket_timeout)
-        return SocketInfo(sock, self, hostname)
+        sock = _configured_socket(self.address, self.opts)
+        return SocketInfo(sock, self, host=self.address[0])
 
     @contextlib.contextmanager
     def get_socket(
@@ -474,26 +477,12 @@ class Pool:
     def return_socket(self, sock_info):
         """Return the socket to the pool, or if it's closed discard it."""
         if self.pid != os.getpid():
-            self._socket_semaphore.release()
             self.reset()
         else:
-            if sock_info.closed:
-                self._socket_semaphore.release()
-            else:
-                self._return_socket(sock_info)
-
-    def _return_socket(self, sock_info):
-        """Return socket to the pool. If pool is full the socket is discarded.
-        """
-        with self.lock:
-            max_size = self.opts.max_pool_size
-            too_many_sockets = (max_size is not None
-                                and len(self.sockets) >= max_size)
-
-            if not too_many_sockets and sock_info.pool_id == self.pool_id:
-                self.sockets.add(sock_info)
-            else:
+            if sock_info.pool_id != self.pool_id:
                 sock_info.close()
+            elif not sock_info.closed:
+                self.sockets.add(sock_info)
 
         self._socket_semaphore.release()
 
@@ -514,15 +503,7 @@ class Pool:
 
         # How long since socket was last checked out.
         age = _time() - sock_info.last_checkout
-
-        if sock_info.closed:
-            error = True
-
-        elif self.pool_id != sock_info.pool_id:
-            sock_info.close()
-            error = True
-
-        elif (self._check_interval_seconds is not None
+        if (self._check_interval_seconds is not None
                 and (
                     0 == self._check_interval_seconds
                     or age > self._check_interval_seconds)):
@@ -533,11 +514,7 @@ class Pool:
         if not error:
             return sock_info
         else:
-            try:
-                return self.connect()
-            except socket.error:
-                self.reset()
-                raise
+            return self.connect()
 
     def _raise_wait_queue_timeout(self):
         raise ConnectionFailure(
