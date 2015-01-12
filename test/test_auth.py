@@ -175,10 +175,9 @@ class TestGSSAPI(unittest.TestCase):
 
         set_name = client.admin.command('ismaster').get('setName')
         if set_name:
-            preference = ReadPreference.SECONDARY
             client = MongoClient(GSSAPI_HOST,
                                  replicaSet=set_name,
-                                 read_preference=preference)
+                                 readPreference='secondary')
             self.assertTrue(client.test.authenticate(PRINCIPAL,
                                                      mechanism='GSSAPI'))
             self.assertTrue(client.test.command('dbstats'))
@@ -308,8 +307,9 @@ class TestSCRAMSHA1(unittest.TestCase):
                    '&replicaSet=%s' % (host, port, self.replica_set_name))
             client = MongoClient(uri)
             client.pymongo_test.command('dbstats')
-            client.read_preference = ReadPreference.SECONDARY
-            client.pymongo_test.command('dbstats')
+            db = client.get_database(
+                'pymongo_test', read_preference=ReadPreference.SECONDARY)
+            db.command('dbstats')
 
     def tearDown(self):
         client_context.rs_or_standalone_client.pymongo_test.remove_user('user')
@@ -357,8 +357,9 @@ class TestAuthURIOptions(unittest.TestCase):
                    '@%s:%d/?replicaSet=%s' % (host, port, self.replica_set_name))
             client = MongoClient(uri)
             self.assertTrue(client.admin.command('dbstats'))
-            client.read_preference = ReadPreference.SECONDARY
-            self.assertTrue(client.admin.command('dbstats'))
+            db = client.get_database(
+                'admin', read_preference=ReadPreference.SECONDARY)
+            self.assertTrue(db.command('dbstats'))
 
         # Test explicit database
         uri = 'mongodb://user:pass@%s:%d/pymongo_test' % (host, port)
@@ -373,8 +374,9 @@ class TestAuthURIOptions(unittest.TestCase):
             self.assertRaises(OperationFailure,
                               client.admin.command, 'dbstats')
             self.assertTrue(client.pymongo_test.command('dbstats'))
-            client.read_preference = ReadPreference.SECONDARY
-            self.assertTrue(client.pymongo_test.command('dbstats'))
+            db = client.get_database(
+                'pymongo_test', read_preference=ReadPreference.SECONDARY)
+            self.assertTrue(db.command('dbstats'))
 
         # Test authSource
         uri = ('mongodb://user:pass@%s:%d'
@@ -391,8 +393,9 @@ class TestAuthURIOptions(unittest.TestCase):
             self.assertRaises(OperationFailure,
                               client.pymongo_test2.command, 'dbstats')
             self.assertTrue(client.pymongo_test.command('dbstats'))
-            client.read_preference = ReadPreference.SECONDARY
-            self.assertTrue(client.pymongo_test.command('dbstats'))
+            db = client.get_database(
+                'pymongo_test', read_preference=ReadPreference.SECONDARY)
+            self.assertTrue(db.command('dbstats'))
 
 
 class TestDelegatedAuth(unittest.TestCase):
