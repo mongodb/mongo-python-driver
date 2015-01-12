@@ -50,7 +50,8 @@ class TestMonitor(IntegrationTest):
         del executor
         del client
 
-        wait_until(partial(unregistered, ref), 'unregister executor')
+        wait_until(partial(unregistered, ref), 'unregister executor',
+                   timeout=5)
 
 
 if __name__ == "__main__":
