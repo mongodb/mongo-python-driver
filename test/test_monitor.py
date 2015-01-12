@@ -25,14 +25,6 @@ from test import unittest, port, host, IntegrationTest
 from test.utils import single_client, one, connected, wait_until
 
 
-def registered(executor):
-    for ref in _EXECUTORS.copy():
-        if ref() is executor:
-            return ref
-
-    return None
-
-
 def unregistered(ref):
     gc.collect()
     return ref not in _EXECUTORS
@@ -45,7 +37,7 @@ class TestMonitor(IntegrationTest):
         connected(client)
 
         # The executor stores a weakref to itself in _EXECUTORS.
-        ref = wait_until(partial(registered, executor), 'register executor')
+        ref = one(r for r in _EXECUTORS.copy() if r() is executor)
 
         del executor
         del client
