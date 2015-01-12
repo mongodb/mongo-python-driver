@@ -51,8 +51,8 @@ class Monitor(object):
         self._avg_round_trip_time = MovingAverage()
 
         # We strongly reference the executor and it weakly references us via
-        # this closure. When the monitor is freed, stop the executor.
-        self_ref = weakref.ref(self)
+        # this closure. When the monitor is freed, stop the executor soon.
+        self_ref = weakref.ref(self, close)
 
         def target():
             monitor = self_ref()
