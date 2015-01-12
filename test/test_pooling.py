@@ -209,10 +209,20 @@ class TestPooling(_TestPoolingBase):
 
         self.assertEqual(1, len(cx_pool.sockets))
 
+    def test_pool_removes_closed_socket(self):
+        # Test that Pool removes explicitly closed socket.
+        cx_pool = self.create_pool()
+
+        with cx_pool.get_socket({}, 0, 0) as sock_info:
+            # Use SocketInfo's API to close the socket.
+            sock_info.close()
+
+        self.assertEqual(0, len(cx_pool.sockets))
+
     def test_pool_removes_dead_socket(self):
         # Test that Pool removes dead socket and the socket doesn't return
         # itself PYTHON-344
-        cx_pool = self.create_pool(max_pool_size=10)
+        cx_pool = self.create_pool(max_pool_size=1, wait_queue_timeout=1)
         cx_pool._check_interval_seconds = 0  # Always check.
 
         with cx_pool.get_socket({}, 0, 0) as sock_info:
@@ -226,6 +236,42 @@ class TestPooling(_TestPoolingBase):
             self.assertNotEqual(sock_info, new_sock_info)
 
         self.assertEqual(1, len(cx_pool.sockets))
+
+        # Semaphore was released.
+        with cx_pool.get_socket({}, 0, 0):
+            pass
+
+    def test_return_socket_after_reset(self):
+        pool = self.create_pool()
+        with pool.get_socket({}, 0, 0) as sock:
+            pool.reset()
+
+        self.assertTrue(sock.closed)
+        self.assertEqual(0, len(pool.sockets))
+
+    def test_pool_check(self):
+        # Test that Pool recovers from two connection failures in a row.
+        # This exercises code at the end of Pool._check().
+        cx_pool = self.create_pool(max_pool_size=1,
+                                   connect_timeout=1,
+                                   wait_queue_timeout=1)
+        cx_pool._check_interval_seconds = 0  # Always check.
+
+        with cx_pool.get_socket({}, 0, 0) as sock_info:
+            # Simulate a closed socket without telling the SocketInfo it's
+            # closed.
+            sock_info.sock.close()
+
+        # Swap pool's address with a bad one.
+        address, cx_pool.address = cx_pool.address, ('foo.com', 1234)
+        with self.assertRaises(socket.error):
+            with cx_pool.get_socket({}, 0, 0):
+                pass
+
+        # Back to normal, semaphore was correctly released.
+        cx_pool.address = address
+        with cx_pool.get_socket({}, 0, 0, checkout=True):
+            pass
 
     def test_pool_with_fork(self):
         # Test that separate MongoClients have separate Pools, and that the
@@ -438,11 +484,7 @@ class TestPoolMaxSize(_TestPoolingBase):
     def test_max_pool_size_with_connection_failure(self):
         # The pool acquires its semaphore before attempting to connect; ensure
         # it releases the semaphore on connection failure.
-        class TestPool(Pool):
-            def connect(self):
-                raise socket.error()
-
-        test_pool = TestPool(
+        test_pool = Pool(
             ('example.com', 27017),
             PoolOptions(
                 max_pool_size=1,
