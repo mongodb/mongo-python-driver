@@ -16,13 +16,11 @@
 """Functions and classes common to multiple pymongo modules."""
 
 import collections
-import warnings
 
 from pymongo.auth import MECHANISMS
 from pymongo.codec_options import CodecOptions
 from pymongo.errors import ConfigurationError
-from pymongo.read_preferences import (make_read_preference,
-                                      read_pref_mode_from_name,
+from pymongo.read_preferences import (read_pref_mode_from_name,
                                       ServerMode)
 from pymongo.ssl_support import validate_cert_reqs
 from pymongo.write_concern import WriteConcern
@@ -389,7 +387,7 @@ class BaseObject(object):
         # TODO: Better error reporting for read preference.
         if not isinstance(read_preference, ServerMode):
             raise TypeError("read_preference is invalid")
-        self.__read_pref = read_preference
+        self.__read_preference = read_preference
 
         if not isinstance(write_concern, WriteConcern):
             raise TypeError("write_concern must be an instance of "
@@ -401,21 +399,14 @@ class BaseObject(object):
         """An instance of :class:`~pymongo.codec_options.CodecOptions`."""
         return self.__codec_options
 
-    def __set_write_concern(self, value):
-        """Property setter for write_concern."""
-        if not isinstance(value, WriteConcern):
-            raise TypeError("write_concern must be an instance "
-                            "of pymongo.write_concern.WriteConcern.")
-        self.__write_concern = value
-
-    def __get_write_concern(self):
+    @property
+    def write_concern(self):
         """The :class:`~pymongo.write_concern.WriteConcern` for this instance.
         """
         return self.__write_concern
 
-    write_concern = property(__get_write_concern, __set_write_concern)
-
-    def __get_read_pref(self):
+    @property
+    def read_preference(self):
         """The read preference mode for this instance.
 
         See :class:`~pymongo.read_preferences.ReadPreference` for
@@ -423,24 +414,7 @@ class BaseObject(object):
 
         .. versionadded:: 2.1
         """
-        return self.__read_pref
-
-    def __set_read_pref(self, value):
-        """Property setter for read_preference"""
-        self.__read_pref = validate_read_preference(None, value)
-
-    read_preference = property(__get_read_pref, __set_read_pref)
-
-    def __get_tags(self):
-        return self.__read_pref.tag_sets
-
-    def __set_tags(self, tag_sets):
-        warnings.warn("The tag_sets attribute is deprecated",
-                      DeprecationWarning, stacklevel=2)
-        mode = self.__read_pref.mode
-        self.__read_pref = make_read_preference(mode, tag_sets)
-
-    tag_sets = property(__get_tags, __set_tags)
+        return self.__read_preference
 
     def _get_wc_override(self):
         """Get write concern override.

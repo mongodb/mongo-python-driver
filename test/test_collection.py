@@ -809,28 +809,26 @@ class TestCollection(IntegrationTest):
         )
 
         db.drop_collection("test")
-        wc = db.write_concern
-        db.write_concern = WriteConcern(w=0)
-        try:
-            db.test.ensure_index([('i', ASCENDING)], unique=True)
+        db = self.client.get_database(
+            db.name, write_concern=WriteConcern(w=0))
 
-            # No error.
-            db.test.insert([{'i': 1}] * 2)
-            wait_until(lambda: 1 == db.test.count(), 'insert 1 document')
+        db.test.ensure_index([('i', ASCENDING)], unique=True)
 
-            # Implied acknowledged.
-            self.assertRaises(
-                DuplicateKeyError,
-                lambda: db.test.insert([{'i': 2}] * 2, fsync=True),
-            )
+        # No error.
+        db.test.insert([{'i': 1}] * 2)
+        wait_until(lambda: 1 == db.test.count(), 'insert 1 document')
 
-            # Explicit acknowledged.
-            self.assertRaises(
-                DuplicateKeyError,
-                lambda: db.test.insert([{'i': 2}] * 2, w=1),
-            )
-        finally:
-            db.write_concern = wc
+        # Implied acknowledged.
+        self.assertRaises(
+            DuplicateKeyError,
+            lambda: db.test.insert([{'i': 2}] * 2, fsync=True),
+        )
+
+        # Explicit acknowledged.
+        self.assertRaises(
+            DuplicateKeyError,
+            lambda: db.test.insert([{'i': 2}] * 2, w=1),
+        )
 
     def test_insert_iterables(self):
         db = self.db
@@ -964,11 +962,13 @@ class TestCollection(IntegrationTest):
         collection.remove()
         collection.insert({'_id': 1})
 
-        collection.write_concern = WriteConcern(w=1, wtimeout=1000)
-        self.assertRaises(DuplicateKeyError, collection.insert, {'_id': 1})
+        coll = collection.with_options(
+            write_concern=WriteConcern(w=1, wtimeout=1000))
+        self.assertRaises(DuplicateKeyError, coll.insert, {'_id': 1})
 
-        collection.write_concern = WriteConcern(wtimeout=1000)
-        self.assertRaises(DuplicateKeyError, collection.insert, {'_id': 1})
+        coll = collection.with_options(
+            write_concern=WriteConcern(wtimeout=1000))
+        self.assertRaises(DuplicateKeyError, coll.insert, {'_id': 1})
 
     @client_context.require_version_min(1, 9, 1)
     def test_continue_on_error(self):
@@ -1301,24 +1301,22 @@ class TestCollection(IntegrationTest):
         db = self.db
         if client_context.replica_set_name:
             # Test that getMore messages are sent to the right server.
-            db.read_preference = ReadPreference.SECONDARY
+            db = self.client.get_database(
+                db.name, read_preference=ReadPreference.SECONDARY)
 
-        try:
-            for collection_size in (10, 1000):
-                db.drop_collection("test")
-                db.test.insert([{'_id': i} for i in range(collection_size)],
-                               w=self.w)
-                expected_sum = sum(range(collection_size))
-                # Use batchSize to ensure multiple getMore messages
-                cursor = db.test.aggregate(
-                    {'$project': {'_id': '$_id'}},
-                    cursor={'batchSize': 5})
+        for collection_size in (10, 1000):
+            db.drop_collection("test")
+            db.test.insert([{'_id': i} for i in range(collection_size)],
+                           w=self.w)
+            expected_sum = sum(range(collection_size))
+            # Use batchSize to ensure multiple getMore messages
+            cursor = db.test.aggregate(
+                {'$project': {'_id': '$_id'}},
+                cursor={'batchSize': 5})
 
-                self.assertEqual(
-                    expected_sum,
-                    sum(doc['_id'] for doc in cursor))
-        finally:
-            db.read_preference = ReadPreference.PRIMARY
+            self.assertEqual(
+                expected_sum,
+                sum(doc['_id'] for doc in cursor))
 
     @client_context.require_version_min(2, 5, 5)
     @client_context.require_no_mongos
@@ -1327,24 +1325,22 @@ class TestCollection(IntegrationTest):
         db.drop_collection("test")
         if client_context.replica_set_name:
             # Test that getMore messages are sent to the right server.
-            db.read_preference = ReadPreference.SECONDARY
+            db = self.client.get_database(
+                db.name, read_preference=ReadPreference.SECONDARY)
 
-        try:
-            coll = db.test
-            coll.insert(({'_id': i} for i in range(8000)), w=self.w)
-            docs = []
-            threads = [threading.Thread(target=docs.extend, args=(cursor,))
-                       for cursor in coll.parallel_scan(3)]
-            for t in threads:
-                t.start()
-            for t in threads:
-                t.join()
+        coll = db.test
+        coll.insert(({'_id': i} for i in range(8000)), w=self.w)
+        docs = []
+        threads = [threading.Thread(target=docs.extend, args=(cursor,))
+                   for cursor in coll.parallel_scan(3)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
 
-            self.assertEqual(
-                set(range(8000)),
-                set(doc['_id'] for doc in docs))
-        finally:
-            db.read_preference = ReadPreference.PRIMARY
+        self.assertEqual(
+            set(range(8000)),
+            set(doc['_id'] for doc in docs))
 
     def test_group(self):
         db = self.db

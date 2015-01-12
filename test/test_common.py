@@ -183,16 +183,8 @@ class TestCommon(IntegrationTest):
         c = MongoClient(connect=False)
         self.assertEqual(WriteConcern(), c.write_concern)
 
+        c = MongoClient(connect=False, w=2, wtimeout=1000)
         wc = WriteConcern(w=2, wtimeout=1000)
-        c.write_concern = wc
-        self.assertEqual(wc, c.write_concern)
-
-        wc = WriteConcern(w=3, wtimeout=1000)
-        c = MongoClient(w=3, wtimeout=1000, connect=False)
-        self.assertEqual(wc, c.write_concern)
-
-        wc = WriteConcern(w=2, wtimeout=1000)
-        c.write_concern = wc
         self.assertEqual(wc, c.write_concern)
 
         db = c.pymongo_test
@@ -200,8 +192,9 @@ class TestCommon(IntegrationTest):
         coll = db.test
         self.assertEqual(wc, coll.write_concern)
 
-        coll.write_concern = WriteConcern(j=True)
-        self.assertEqual(WriteConcern(j=True), coll.write_concern)
+        cwc = WriteConcern(j=True)
+        coll = db.get_collection('test', write_concern=cwc)
+        self.assertEqual(cwc, coll.write_concern)
         self.assertEqual(wc, db.write_concern)
 
     def test_mongo_client(self):
