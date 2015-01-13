@@ -37,7 +37,7 @@ class TestMonitor(IntegrationTest):
         connected(client)
 
         # The executor stores a weakref to itself in _EXECUTORS.
-        ref = one(r for r in _EXECUTORS.copy() if r() is executor)
+        ref = one([r for r in _EXECUTORS.copy() if r() is executor])
 
         del executor
         del client
