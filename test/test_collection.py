@@ -1281,19 +1281,19 @@ class TestCollection(IntegrationTest):
         self.assertRaises(TypeError, db.test.aggregate, "wow")
 
         pipeline = {"$project": {"_id": False, "foo": True}}
-        for result in [
-                db.test.aggregate(pipeline),
-                db.test.aggregate([pipeline]),
-                db.test.aggregate((pipeline,))]:
+        result = db.test.aggregate([pipeline], useCursor=False)
 
-            self.assertEqual(1.0, result['ok'])
-            self.assertEqual([{'foo': [1, 2]}], result['result'])
+        self.assertTrue(isinstance(result, CommandCursor))
+        self.assertEqual([{'foo': [1, 2]}], list(result))
 
     @client_context.require_version_min(2, 5, 1)
     def test_aggregation_cursor_validation(self):
         db = self.db
         projection = {'$project': {'_id': '$_id'}}
-        cursor = db.test.aggregate(projection, cursor={})
+        cursor = db.test.aggregate([projection], cursor={})
+        self.assertTrue(isinstance(cursor, CommandCursor))
+
+        cursor = db.test.aggregate([projection], useCursor=True)
         self.assertTrue(isinstance(cursor, CommandCursor))
 
     @client_context.require_version_min(2, 5, 1)
@@ -1311,8 +1311,8 @@ class TestCollection(IntegrationTest):
             expected_sum = sum(range(collection_size))
             # Use batchSize to ensure multiple getMore messages
             cursor = db.test.aggregate(
-                {'$project': {'_id': '$_id'}},
-                cursor={'batchSize': 5})
+                [{'$project': {'_id': '$_id'}}],
+                batchSize=5)
 
             self.assertEqual(
                 expected_sum,

@@ -29,6 +29,8 @@ aggregations on:
   >>> db.things.insert({"x": 3, "tags": []})
   ObjectId('...')
 
+.. _aggregate-examples:
+
 Aggregation Framework
 ---------------------
 
@@ -46,21 +48,24 @@ eg "$sort":
 
 .. note::
 
-    aggregate requires server version **>= 2.1.0**. The PyMongo
-    :meth:`~pymongo.collection.Collection.aggregate` helper requires
-    PyMongo version **>= 2.3**.
+    aggregate requires server version **>= 2.1.0**.
 
 .. doctest::
 
   >>> from bson.son import SON
-  >>> db.things.aggregate([
-  ...         {"$unwind": "$tags"},
-  ...         {"$group": {"_id": "$tags", "count": {"$sum": 1}}},
-  ...         {"$sort": SON([("count", -1), ("_id", -1)])}
-  ...     ])
-  ...
-  {u'ok': 1.0, u'result': [{u'count': 3, u'_id': u'cat'}, {u'count': 2, u'_id': u'dog'}, {u'count': 1, u'_id': u'mouse'}]}
+  >>> pipeline = [
+  ...     {"$unwind": "$tags"},
+  ...     {"$group": {"_id": "$tags", "count": {"$sum": 1}}},
+  ...     {"$sort": SON([("count", -1), ("_id", -1)])}
+  ... ]
+  >>> list(db.things.aggregate(pipeline))
+  [{u'count': 3, u'_id': u'cat'}, {u'count': 2, u'_id': u'dog'}, {u'count': 1, u'_id': u'mouse'}]
 
+To run an explain plan for this aggregation use the
+:meth:`~pymongo.database.Database.command` method::
+
+  >>> db.command('aggregate', 'things', pipeline=pipeline, explain=True)
+  {u'ok': 1.0, u'stages': [...]}
 
 As well as simple aggregations the aggregation framework provides projection
 capabilities to reshape the returned data. Using projections and aggregation,

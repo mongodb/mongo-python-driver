@@ -32,7 +32,7 @@ from pymongo import (bulk,
 from pymongo.codec_options import CodecOptions
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import Cursor
-from pymongo.errors import InvalidName, OperationFailure
+from pymongo.errors import ConfigurationError, InvalidName, OperationFailure
 from pymongo.helpers import _check_write_command_response, _command
 from pymongo.message import _INSERT, _UPDATE, _DELETE
 from pymongo.read_preferences import ReadPreference
@@ -1318,25 +1318,45 @@ class Collection(common.BaseObject):
         """Perform an aggregation using the aggregation framework on this
         collection.
 
+        All optional aggregate parameters should be passed as keyword arguments
+        to this method. Valid options include, but are not limited to:
+
+          - `allowDiskUse` (bool): Enables writing to temporary files. When set
+            to True, aggregation stages can write data to the _tmp subdirectory
+            of the --dbpath directory. The default is False.
+          - `batchSize` (int): The number of documents to return per batch.
+            Requires results to be returned from the server as a cursor.
+          - `maxTimeMS` (int): The maximum amount of time to allow the query to
+            run in milliseconds.
+          - `useCursor` (bool): Indicates if the *server* should return results
+            using a cursor. The default value for `useCursor` depends on
+            the version of the server. For MongoDB versions previous to 2.6
+            the default is False. Otherwise the default is True. The value
+            of useCursor, if provided, will be obeyed regardless of server
+            version.
+
+        .. warning:: When upgrading a pre-MongoDB 2.6 sharded cluster to any
+           newer version the useCursor option **must** be set to ``False``
+           until all shards have been upgraded.
+
+        .. note:: This method does not support the 'explain' option. Please
+           use :meth:`~pymongo.database.Database.command` instead. An
+           example is included in the :ref:`aggregate-examples` documentation.
+
         The :meth:`aggregate` method obeys the :attr:`read_preference` of this
         :class:`Collection`.
 
         :Parameters:
-          - `pipeline`: a single command or list of aggregation commands
-          - `**kwargs` (optional): additional arguments to the aggregate
-            command may be passed as keyword arguments to this helper method
+          - `pipeline`: a list of aggregation pipeline stages
+          - `**kwargs` (optional): See list of options above.
 
-        .. note:: Requires server version **>= 2.1.0**.
+        :Returns:
+          A :class:`~pymongo.command_cursor.CommandCursor` over the result
+          set.
 
-        With server version **>= 2.5.1**, pass
-        ``cursor={}`` to retrieve unlimited aggregation results
-        with a :class:`~pymongo.command_cursor.CommandCursor`::
-
-            pipeline = [{'$project': {'name': {'$toUpper': '$name'}}}]
-            cursor = collection.aggregate(pipeline, cursor={})
-            for doc in cursor:
-                print doc
-
+        .. versionchanged:: 3.0
+           The :meth:`aggregate` method always returns a CommandCursor. The
+           pipeline argument must be a list.
         .. versionchanged:: 2.7
            When the cursor option is used, return
            :class:`~pymongo.command_cursor.CommandCursor` instead of
@@ -1348,14 +1368,37 @@ class Collection(common.BaseObject):
         .. _aggregate command:
             http://docs.mongodb.org/manual/applications/aggregation
         """
-        if not isinstance(pipeline, (collections.Mapping, list, tuple)):
-            raise TypeError("pipeline must be a dict, list or tuple")
+        if not isinstance(pipeline, list):
+            raise TypeError("pipeline must be a list")
 
-        if isinstance(pipeline, collections.Mapping):
-            pipeline = [pipeline]
+        if "explain" in kwargs:
+            raise ConfigurationError("The explain option is not supported. "
+                                     "Use Database.command instead.")
 
         cmd = SON([("aggregate", self.__name),
                    ("pipeline", pipeline)])
+
+        client = self.database.connection
+
+        # Remove things that are not command options.
+        batch_size = kwargs.pop("batchSize", None)
+        # If useCursor is True or the "cursor" aggregate option is passed
+        # as a keyword argument we obey the user's wishes, regardless of
+        # server version.
+        use_cursor = kwargs.pop(
+            "useCursor",
+            ("cursor" in kwargs or client._writable_max_wire_version() > 0))
+        if not isinstance(use_cursor, bool):
+            raise ValueError("useCursor must be a bool")
+
+        if batch_size is not None and not use_cursor:
+            raise ConfigurationError("batchSize requires the use of a cursor")
+
+        if use_cursor and "cursor" not in kwargs:
+            kwargs["cursor"] = {}
+        if batch_size is not None:
+            kwargs["cursor"]["batchSize"] = batch_size
+
         cmd.update(kwargs)
 
         # XXX: Keep doing this automatically?
@@ -1367,13 +1410,16 @@ class Collection(common.BaseObject):
 
         result, address = self._command(cmd, read_preference)
 
-        if 'cursor' in result:
-            return CommandCursor(
-                self,
-                result['cursor'],
-                address)
+        if "cursor" in result:
+            cursor_info = result["cursor"]
         else:
-            return result
+            # Pre-MongoDB 2.6. Fake a cursor.
+            cursor_info = {
+                "id": 0,
+                "firstBatch": result["result"],
+                "ns": self.full_name,
+            }
+        return CommandCursor(self, cursor_info, address)
 
     # TODO key and condition ought to be optional, but deprecation
     # could be painful as argument order would have to change.
