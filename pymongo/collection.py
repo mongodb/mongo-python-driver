@@ -893,7 +893,7 @@ class Collection(common.BaseObject):
 
         Returns a list of up to ``num_cursors`` cursors that can be iterated
         concurrently. As long as the collection is not modified during
-        scanning, each document appears once in one of the cursors' result
+        scanning, each document appears once in one of the cursors result
         sets.
 
         For example, to process each document in a collection using some
