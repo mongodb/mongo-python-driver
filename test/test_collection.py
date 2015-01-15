@@ -1270,7 +1270,10 @@ class TestCollection(IntegrationTest):
         db.test.save({'foo': 'bar'})
         db.test.save({'foo': 'baz'})
         self.assertEqual(db.test.find({'foo': 'bar'}).count(), 1)
+        self.assertEqual(db.test.count({'foo': 'bar'}), 1)
         self.assertEqual(db.test.find({'foo': re.compile(r'ba.*')}).count(), 2)
+        self.assertEqual(
+            db.test.count({'foo': re.compile(r'ba.*')}), 2)
 
     @client_context.require_version_min(2, 1, 0)
     def test_aggregate(self):
@@ -1684,7 +1687,10 @@ class TestCollection(IntegrationTest):
 
         distinct = test.find({'a': {'$gt': 1}}).distinct("a")
         distinct.sort()
+        self.assertEqual([2, 3], distinct)
 
+        distinct = test.distinct('a', {'a': {'$gt': 1}})
+        distinct.sort()
         self.assertEqual([2, 3], distinct)
 
         self.db.drop_collection("test")

@@ -940,16 +940,42 @@ class Collection(common.BaseObject):
                               cursor['cursor'],
                               address) for cursor in result['cursors']]
 
-    def count(self):
+    def count(self, filter=None, **kwargs):
         """Get the number of documents in this collection.
 
-        To get the number of documents matching a specific query use
-        :meth:`pymongo.cursor.Cursor.count`.
+        All optional count parameters should be passed as keyword arguments
+        to this method. Valid options include:
+
+          - `hint` (string or list of tuples): The index to use. Specify either
+            the index name as a string or the index specification as a list of
+            tuples (e.g. [('a', pymongo.ASCENDING), ('b', pymongo.ASCENDING)]).
+          - `limit` (int): The maximum number of documents to count.
+          - `skip` (int): The number of matching documents to skip before
+            returning results.
+          - `maxTimeMS` (int): The maximum amount of time to allow the count
+            command to run, in milliseconds.
 
         The :meth:`count` method obeys the :attr:`read_preference` of
         this :class:`Collection`.
+
+        :Parameters:
+          - `filter` (optional): A query document that selects which documents
+            to count in the collection.
+          - `**kwargs` (optional): See list of options above.
         """
-        return self.find().count()
+        cmd = SON([("count", self.__name)])
+        if filter is not None:
+            if "query" in kwargs:
+                raise ConfigurationError("can't pass both filter and query")
+            kwargs["query"] = filter
+        if "hint" in kwargs and not isinstance(kwargs["hint"], string_type):
+            kwargs["hint"] = helpers._index_document(kwargs["hint"])
+        cmd.update(kwargs)
+        res = self._command(cmd,
+                            allowable_errors=["ns missing"])[0]
+        if res.get("errmsg", "") == "ns missing":
+            return 0
+        return int(res["n"])
 
     def create_index(self, key_or_list, cache_for=300, **kwargs):
         """Creates an index on this collection.
@@ -1503,23 +1529,40 @@ class Collection(common.BaseObject):
         _command(self.__database.connection, "admin.$cmd", cmd,
                  ReadPreference.PRIMARY, CodecOptions())
 
-    def distinct(self, key):
+    def distinct(self, key, filter=None, **kwargs):
         """Get a list of distinct values for `key` among all documents
         in this collection.
 
         Raises :class:`TypeError` if `key` is not an instance of
         :class:`basestring` (:class:`str` in python 3).
 
-        To get the distinct values for a key in the result set of a
-        query use :meth:`~pymongo.cursor.Cursor.distinct`.
+        All optional distinct parameters should be passed as keyword arguments
+        to this method. Valid options include:
+
+          - `maxTimeMS` (int): The maximum amount of time to allow the count
+            command to run, in milliseconds.
 
         The :meth:`distinct` method obeys the :attr:`read_preference` of
         this :class:`Collection`.
 
         :Parameters:
-          - `key`: name of key for which we want to get the distinct values
+          - `key`: name of the field for which we want to get the distinct
+            values
+          - `filter` (optional): A query document that specifies the documents
+            from which to retrieve the distinct values.
+          - `**kwargs` (optional): See list of options above.
         """
-        return self.find().distinct(key)
+        if not isinstance(key, string_type):
+            raise TypeError("key must be an "
+                            "instance of %s" % (string_type.__name__,))
+        cmd = SON([("distinct", self.__name),
+                   ("key", key)])
+        if filter is not None:
+            if "query" in kwargs:
+                raise ConfigurationError("can't pass both filter and query")
+            kwargs["query"] = filter
+        cmd.update(kwargs)
+        return self._command(cmd)[0]["values"]
 
     def map_reduce(self, map, reduce, out, full_response=False, **kwargs):
         """Perform a map/reduce operation on this collection.

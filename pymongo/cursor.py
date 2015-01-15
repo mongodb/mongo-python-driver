@@ -655,28 +655,22 @@ class Cursor(object):
         """
         if not isinstance(with_limit_and_skip, bool):
             raise TypeError("with_limit_and_skip must be an instance of bool")
-        cmd = SON([("count", self.__collection.name),
-                   ("query", self.__spec),
-                   ("fields", self.__fields)])
+        options = {"query": self.__spec}
         if self.__max_time_ms is not None:
-            cmd["maxTimeMS"] = self.__max_time_ms
+            options["maxTimeMS"] = self.__max_time_ms
         if self.__comment:
-            cmd['$comment'] = self.__comment
+            options["$comment"] = self.__comment
 
         if self.__hint is not None:
-            cmd['hint'] = self.__hint
+            options["hint"] = self.__hint
 
         if with_limit_and_skip:
             if self.__limit:
-                cmd["limit"] = self.__limit
+                options["limit"] = self.__limit
             if self.__skip:
-                cmd["skip"] = self.__skip
+                options["skip"] = self.__skip
 
-        res = self.__collection._command(cmd,
-                                         allowable_errors=["ns missing"])[0]
-        if res.get("errmsg", "") == "ns missing":
-            return 0
-        return int(res["n"])
+        return self.__collection.count(**options)
 
     def distinct(self, key):
         """Get a list of distinct values for `key` among all documents
@@ -695,20 +689,15 @@ class Cursor(object):
 
         .. seealso:: :meth:`pymongo.collection.Collection.distinct`
         """
-        if not isinstance(key, string_type):
-            raise TypeError("key must be an "
-                            "instance of %s" % (string_type.__name__,))
-
-        cmd = SON([("distinct", self.__collection.name),
-                   ("key", key)])
+        options = {}
         if self.__spec:
-            cmd["query"] = self.__spec
+            options["query"] = self.__spec
         if self.__max_time_ms is not None:
-            cmd['maxTimeMS'] = self.__max_time_ms
+            options['maxTimeMS'] = self.__max_time_ms
         if self.__comment:
-            cmd['$comment'] = self.__comment
+            options['$comment'] = self.__comment
 
-        return self.__collection._command(cmd)[0]["values"]
+        return self.__collection.distinct(key, **options)
 
     def explain(self):
         """Returns an explain plan record for this cursor.
