@@ -347,32 +347,6 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
                 ('pipeline', [])
             ])))
 
-        # Text search.
-        if version.at_least(self.c, (2, 3, 2)):
-            ctx = catch_warnings()
-            try:
-                warnings.simplefilter("ignore", UserWarning)
-                utils.enable_text_search(self.c)
-            finally:
-                ctx.exit()
-            db = self.c.pymongo_test
-
-            # Only way to create an index and wait for all members to build it.
-            index = {
-                'ns': 'pymongo_test.test',
-                'name': 't_text',
-                'key': {'t': 'text'}}
-
-            db.test.create_index([('t', 'text')])
-            db.test.insert({}, w=self.w)
-            db.test.remove({}, w=self.w)
-
-            self._test_fn(True, lambda: self.c.pymongo_test.command(SON([
-                ('text', 'test'),
-                ('search', 'foo')])))
-
-            self.c.pymongo_test.test.drop_indexes()
-
     def test_map_reduce_command(self):
         # mapreduce fails if no collection
         self.c.pymongo_test.test.insert({}, w=self.w)
