@@ -20,7 +20,6 @@ sys.path[0:0] = [""]
 
 import socket
 import threading
-from unittest import SkipTest
 
 from bson.py3compat import imap
 from pymongo import common
@@ -37,7 +36,7 @@ from pymongo.server_description import ServerDescription
 from pymongo.server_selectors import (any_server_selector,
                                       writable_server_selector)
 from pymongo.settings import TopologySettings
-from test import unittest, client_knobs
+from test import client_knobs, SkipTest, unittest
 from test.utils import wait_until
 
 
