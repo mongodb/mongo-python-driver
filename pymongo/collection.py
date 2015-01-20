@@ -732,7 +732,7 @@ class Collection(common.BaseObject):
                                concern, uuid_representation,
                                int(not multi)), safe)
 
-    def find_one(self, spec_or_id=None, *args, **kwargs):
+    def find_one(self, filter=None, *args, **kwargs):
         """Get a single document from the database.
 
         All arguments to :meth:`find` are also valid arguments for
@@ -745,7 +745,7 @@ class Collection(common.BaseObject):
 
         :Parameters:
 
-          - `spec_or_id` (optional): a dictionary specifying
+          - `filter` (optional): a dictionary specifying
             the query to be performed OR any other type to be used as
             the value for a query for ``"_id"``.
 
@@ -760,12 +760,12 @@ class Collection(common.BaseObject):
 
               >>> find_one(max_time_ms=100)
         """
-        if (spec_or_id is not None and not
-                isinstance(spec_or_id, collections.Mapping)):
-            spec_or_id = {"_id": spec_or_id}
+        if (filter is not None and not
+                isinstance(filter, collections.Mapping)):
+            filter = {"_id": filter}
 
         max_time_ms = kwargs.pop("max_time_ms", None)
-        cursor = self.find(spec_or_id,
+        cursor = self.find(filter,
                            *args, **kwargs).max_time_ms(max_time_ms)
 
         for result in cursor.limit(-1):
@@ -775,15 +775,15 @@ class Collection(common.BaseObject):
     def find(self, *args, **kwargs):
         """Query the database.
 
-        The `spec` argument is a prototype document that all results
+        The `filter` argument is a prototype document that all results
         must match. For example:
 
         >>> db.test.find({"hello": "world"})
 
         only matches documents that have a key "hello" with value
         "world".  Matches can have other keys *in addition* to
-        "hello". The `fields` argument is used to specify a subset of
-        fields that should be included in the result documents. By
+        "hello". The `projection` argument is used to specify a subset
+        of fields that should be included in the result documents. By
         limiting results to a certain subset of fields you can cut
         down on network traffic and decoding time.
 
@@ -795,78 +795,86 @@ class Collection(common.BaseObject):
         this :class:`Collection`.
 
         :Parameters:
-          - `spec` (optional): a SON object specifying elements which
+          - `filter` (optional): a SON object specifying elements which
             must be present for a document to be included in the
             result set
-          - `fields` (optional): a list of field names that should be
+          - `projection` (optional): a list of field names that should be
             returned in the result set or a dict specifying the fields
-            to include or exclude. If `fields` is a list "_id" will
+            to include or exclude. If `projection` is a list "_id" will
             always be returned. Use a dict to exclude fields from
-            the result (e.g. fields={'_id': False}).
+            the result (e.g. projection={'_id': False}).
           - `skip` (optional): the number of documents to omit (from
             the start of the result set) when returning the results
           - `limit` (optional): the maximum number of results to
             return
-          - `timeout` (optional): if True (the default), any returned
-            cursor is closed by the server after 10 minutes of
-            inactivity. If set to False, the returned cursor will never
+          - `no_cursor_timeout` (optional): if False (the default), any
+            returned cursor is closed by the server after 10 minutes of
+            inactivity. If set to True, the returned cursor will never
             time out on the server. Care should be taken to ensure that
-            cursors with timeout turned off are properly closed.
-          - `snapshot` (optional): if True, snapshot mode will be used
-            for this query. Snapshot mode assures no duplicates are
-            returned, or objects missed, which were present at both
-            the start and end of the query's execution. For details,
-            see the `snapshot documentation
-            <http://dochub.mongodb.org/core/snapshot>`_.
-          - `tailable` (optional): the result of this find call will
-            be a tailable cursor - tailable cursors aren't closed when
-            the last data is retrieved but are kept open and the
-            cursors location marks the final document's position. if
-            more data is received iteration of the cursor will
-            continue from the last document received. For details, see
-            the `tailable cursor documentation
-            <http://www.mongodb.org/display/DOCS/Tailable+Cursors>`_.
+            cursors with no_cursor_timeout turned on are properly closed.
+          - `cursor_type` (optional): the type of cursor to return. The valid
+            options are:
+
+            - :data:`~pymongo.cursor.NON_TAILABLE` - the result of this find
+              call will return a standard cursor over the result set.
+            - :data:`~pymongo.cursor.TAILABLE` - the result of this find call
+              will be a tailable cursor - tailable cursors are only for use
+              with capped collections. They are not closed when the last data
+              is retrieved but are kept open and the cursor location marks the
+              final document position. If more data is received iteration of
+              the cursor will continue from the last document received. For
+              details, see the `tailable cursor documentation
+              <http://www.mongodb.org/display/DOCS/Tailable+Cursors>`_.
+            - :data:`~pymongo.cursor.TAILABLE_AWAIT` - the result of this find
+              call will be a tailable cursor with the await flag set. The
+              server will wait for a few seconds after returning the full
+              result set so that it can capture and return additional data
+              added during the query.
+            - :data:`~pymongo.cursor.EXHAUST` - the result of this find call
+              will be an exhaust cursor. MongoDB will stream batched results to
+              the client without waiting for the client to request each batch,
+              reducing latency. See notes on compatibility below.
+
           - `sort` (optional): a list of (key, direction) pairs
             specifying the sort order for this query. See
             :meth:`~pymongo.cursor.Cursor.sort` for details.
-          - `max_scan` (optional): limit the number of documents
-            examined when performing the query
-          - `as_class` (optional): class to use for documents in the
-            query result (default is
-            :attr:`~pymongo.mongo_client.MongoClient.document_class`)
-          - `await_data` (optional): if True, the server will block for
-            some extra time before returning, waiting for more data to
-            return. Ignored if `tailable` is False.
-          - `partial` (optional): if True, mongos will return partial
-            results if some shards are down instead of returning an error.
+          - `allow_partial_results` (optional): if True, mongos will return
+            partial results if some shards are down instead of returning an
+            error.
+          - `oplog_replay` (optional): If True, set the oplogReplay query
+            flag.
+          - `modifiers` (optional): A dict specifying the MongoDB query
+            modifiers that should be used for this query.
           - `manipulate`: (optional): If True (the default), apply any
             outgoing SON manipulators before returning.
-          - `exhaust` (optional): If ``True`` create an "exhaust" cursor.
-            MongoDB will stream batched results to the client without waiting
-            for the client to request each batch, reducing latency.
 
-        .. note:: There are a number of caveats to using the `exhaust`
-           parameter:
+        .. note:: There are a number of caveats to using
+           :data:`~pymongo.cursor.EXHAUST` as cursor_type:
 
-            1. The `exhaust` and `limit` options are incompatible and can
-            not be used together.
+            1. The `limit` option can not be used with an exhaust cursor.
 
-            2. The `exhaust` option is not supported by mongos and can not be
+            2. Exhaust cursors are not supported by mongos and can not be
             used with a sharded cluster.
 
             3. A :class:`~pymongo.cursor.Cursor` instance created with the
-            `exhaust` option requires an exclusive :class:`~socket.socket`
-            connection to MongoDB. If the :class:`~pymongo.cursor.Cursor` is
-            discarded without being completely iterated the underlying
-            :class:`~socket.socket` connection will be closed and discarded
-            without being returned to the connection pool.
+            cursor.EXHAUST cursor_type requires an exclusive
+            :class:`~socket.socket` connection to MongoDB. If the
+            :class:`~pymongo.cursor.Cursor` is discarded without being
+            completely iterated the underlying :class:`~socket.socket`
+            connection will be closed and discarded without being returned to
+            the connection pool.
 
         .. note:: The `manipulate` parameter may default to False in a future
            release.
 
         .. versionchanged:: 3.0
-           Removed the `network_timeout`, `read_preference`, `tag_sets`, and
-           `secondary_acceptable_latency_ms` parameters.
+           Changed the parameter names `spec`, `fields`, `timeout`, and
+           `partial` to `filter`, `projection`, `no_cursor_timeout`, and
+           `allow_partial_results` respectively.
+           Added the `cursor_type`, `oplog_replay`, and `modifiers` options.
+           Removed the `network_timeout`, `read_preference`, `tag_sets`,
+           `secondary_acceptable_latency_ms`, `max_scan`, `snapshot`,
+           `tailable`, `await_data`, `exhaust`, and `as_class` parameters.
            Removed `compile_re` option: PyMongo now always represents BSON
            regular expressions as :class:`~bson.regex.Regex` objects. Use
            :meth:`~bson.regex.Regex.try_compile` to attempt to convert from a
@@ -1291,8 +1299,9 @@ class Collection(common.BaseObject):
         else:
             raw = self.__database.get_collection(
                 "system.indexes",
+                codec_options=CodecOptions(as_class=SON),
                 read_preference=ReadPreference.PRIMARY).find(
-                    {"ns": self.__full_name}, {"ns": 0}, as_class=SON)
+                    {"ns": self.__full_name}, {"ns": 0})
         info = {}
         for index in raw:
             index["key"] = index["key"].items()
@@ -1696,7 +1705,7 @@ class Collection(common.BaseObject):
             - `remove`: remove rather than updating (default ``False``)
             - `new`: return updated rather than original object
               (default ``False``)
-            - `fields`: see second argument to :meth:`find` (default all)
+            - `fields`: see `projection` argument to :meth:`find` (default all)
             - `manipulate`: (optional): If ``True``, apply any outgoing SON
               manipulators before returning. Ignored when `full_response`
               is set to True. Defaults to ``False``.

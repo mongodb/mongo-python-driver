@@ -30,6 +30,7 @@ from pymongo import (MongoClient,
                      ALL,
                      OFF)
 from pymongo.command_cursor import CommandCursor
+from pymongo.cursor import TAILABLE, TAILABLE_AWAIT, EXHAUST
 from pymongo.cursor_manager import CursorManager
 from pymongo.errors import (InvalidOperation,
                             OperationFailure,
@@ -67,18 +68,17 @@ class TestCursorNoConnect(unittest.TestCase):
         cursor = self.db.test.find()
         self.assertEqual(0, cursor._Cursor__query_flags)
         cursor.add_option(2)
-        cursor2 = self.db.test.find(tailable=True)
+        cursor2 = self.db.test.find(cursor_type=TAILABLE)
         self.assertEqual(2, cursor2._Cursor__query_flags)
         self.assertEqual(cursor._Cursor__query_flags,
                          cursor2._Cursor__query_flags)
         cursor.add_option(32)
-        cursor2 = self.db.test.find(tailable=True, await_data=True)
+        cursor2 = self.db.test.find(cursor_type=TAILABLE_AWAIT)
         self.assertEqual(34, cursor2._Cursor__query_flags)
         self.assertEqual(cursor._Cursor__query_flags,
                          cursor2._Cursor__query_flags)
         cursor.add_option(128)
-        cursor2 = self.db.test.find(tailable=True,
-                                    await_data=True).add_option(128)
+        cursor2 = self.db.test.find(cursor_type=TAILABLE_AWAIT).add_option(128)
         self.assertEqual(162, cursor2._Cursor__query_flags)
         self.assertEqual(cursor._Cursor__query_flags,
                          cursor2._Cursor__query_flags)
@@ -88,12 +88,12 @@ class TestCursorNoConnect(unittest.TestCase):
         self.assertEqual(162, cursor._Cursor__query_flags)
 
         cursor.remove_option(128)
-        cursor2 = self.db.test.find(tailable=True, await_data=True)
+        cursor2 = self.db.test.find(cursor_type=TAILABLE_AWAIT)
         self.assertEqual(34, cursor2._Cursor__query_flags)
         self.assertEqual(cursor._Cursor__query_flags,
                          cursor2._Cursor__query_flags)
         cursor.remove_option(32)
-        cursor2 = self.db.test.find(tailable=True)
+        cursor2 = self.db.test.find(cursor_type=TAILABLE)
         self.assertEqual(2, cursor2._Cursor__query_flags)
         self.assertEqual(cursor._Cursor__query_flags,
                          cursor2._Cursor__query_flags)
@@ -103,7 +103,7 @@ class TestCursorNoConnect(unittest.TestCase):
         self.assertEqual(2, cursor._Cursor__query_flags)
 
         # Timeout
-        cursor = self.db.test.find(timeout=False)
+        cursor = self.db.test.find(no_cursor_timeout=True)
         self.assertEqual(16, cursor._Cursor__query_flags)
         cursor2 = self.db.test.find().add_option(16)
         self.assertEqual(cursor._Cursor__query_flags,
@@ -112,7 +112,7 @@ class TestCursorNoConnect(unittest.TestCase):
         self.assertEqual(0, cursor._Cursor__query_flags)
 
         # Tailable / Await data
-        cursor = self.db.test.find(tailable=True, await_data=True)
+        cursor = self.db.test.find(cursor_type=TAILABLE_AWAIT)
         self.assertEqual(34, cursor._Cursor__query_flags)
         cursor2 = self.db.test.find().add_option(34)
         self.assertEqual(cursor._Cursor__query_flags,
@@ -121,7 +121,7 @@ class TestCursorNoConnect(unittest.TestCase):
         self.assertEqual(2, cursor._Cursor__query_flags)
 
         # Exhaust - which mongos doesn't support
-        cursor = self.db.test.find(exhaust=True)
+        cursor = self.db.test.find(cursor_type=EXHAUST)
         self.assertEqual(64, cursor._Cursor__query_flags)
         cursor2 = self.db.test.find().add_option(64)
         self.assertEqual(cursor._Cursor__query_flags,
@@ -132,7 +132,7 @@ class TestCursorNoConnect(unittest.TestCase):
         self.assertFalse(cursor._Cursor__exhaust)
 
         # Partial
-        cursor = self.db.test.find(partial=True)
+        cursor = self.db.test.find(allow_partial_results=True)
         self.assertEqual(128, cursor._Cursor__query_flags)
         cursor2 = self.db.test.find().add_option(128)
         self.assertEqual(cursor._Cursor__query_flags,
@@ -735,26 +735,14 @@ class TestCursor(IntegrationTest):
 
         self.assertNotEqual(cursor, cursor.clone())
 
-        class MyClass(dict):
-            pass
-
-        cursor = self.db.test.find(as_class=MyClass)
-        for e in cursor:
-            self.assertEqual(type(MyClass()), type(e))
-        cursor = self.db.test.find(as_class=MyClass)
-        self.assertEqual(type(MyClass()), type(cursor[0]))
-
         # Just test attributes
         cursor = self.db.test.find({"x": re.compile("^hello.*")},
                                    skip=1,
-                                   timeout=False,
-                                   snapshot=True,
-                                   tailable=True,
-                                   as_class=MyClass,
-                                   await_data=True,
-                                   partial=True,
+                                   no_cursor_timeout=True,
+                                   cursor_type=TAILABLE_AWAIT,
+                                   allow_partial_results=True,
                                    manipulate=False,
-                                   fields={'_id': False}).limit(2)
+                                   projection={'_id': False}).limit(2)
         cursor.min([('a', 1)]).max([('b', 3)])
         cursor.add_option(128)
         cursor.comment('hi!')
@@ -762,7 +750,6 @@ class TestCursor(IntegrationTest):
         cursor2 = cursor.clone()
         self.assertEqual(cursor._Cursor__skip, cursor2._Cursor__skip)
         self.assertEqual(cursor._Cursor__limit, cursor2._Cursor__limit)
-        self.assertEqual(cursor._Cursor__snapshot, cursor2._Cursor__snapshot)
         self.assertEqual(type(cursor._Cursor__codec_options),
                          type(cursor2._Cursor__codec_options))
         self.assertEqual(cursor._Cursor__manipulate,
@@ -778,17 +765,17 @@ class TestCursor(IntegrationTest):
 
         # Shallow copies can so can mutate
         cursor2 = copy.copy(cursor)
-        cursor2._Cursor__fields['cursor2'] = False
-        self.assertTrue('cursor2' in cursor._Cursor__fields)
+        cursor2._Cursor__projection['cursor2'] = False
+        self.assertTrue('cursor2' in cursor._Cursor__projection)
 
         # Deepcopies and shouldn't mutate
         cursor3 = copy.deepcopy(cursor)
-        cursor3._Cursor__fields['cursor3'] = False
-        self.assertFalse('cursor3' in cursor._Cursor__fields)
+        cursor3._Cursor__projection['cursor3'] = False
+        self.assertFalse('cursor3' in cursor._Cursor__projection)
 
         cursor4 = cursor.clone()
-        cursor4._Cursor__fields['cursor4'] = False
-        self.assertFalse('cursor4' in cursor._Cursor__fields)
+        cursor4._Cursor__projection['cursor4'] = False
+        self.assertFalse('cursor4' in cursor._Cursor__projection)
 
         # Test memo when deepcopying queries
         query = {"hello": "world"}
@@ -957,7 +944,7 @@ class TestCursor(IntegrationTest):
         db.create_collection("test", capped=True, size=1000, max=3)
 
         try:
-            cursor = db.test.find(tailable=True)
+            cursor = db.test.find(cursor_type=TAILABLE)
 
             db.test.insert({"x": 1})
             count = 0
@@ -1027,7 +1014,7 @@ class TestCursor(IntegrationTest):
             self.db.test.insert({})
 
         self.assertEqual(100, len(list(self.db.test.find())))
-        self.assertEqual(50, len(list(self.db.test.find(max_scan=50))))
+        self.assertEqual(50, len(list(self.db.test.find().max_scan(50))))
         self.assertEqual(50, len(list(self.db.test.find()
                                       .max_scan(90).max_scan(50))))
 

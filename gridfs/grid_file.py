@@ -594,8 +594,8 @@ class GridOutCursor(Cursor):
     """A cursor / iterator for returning GridOut objects as the result
     of an arbitrary query against the GridFS files collection.
     """
-    def __init__(self, collection, spec=None, skip=0, limit=0,
-                 timeout=True, sort=None, max_scan=None):
+    def __init__(self, collection, filter=None, skip=0, limit=0,
+                 no_cursor_timeout=False, sort=None):
         """Create a new cursor, similar to the normal
         :class:`~pymongo.cursor.Cursor`.
 
@@ -610,8 +610,8 @@ class GridOutCursor(Cursor):
         self.__root_collection = collection
 
         super(GridOutCursor, self).__init__(
-            collection.files, spec, skip=skip, limit=limit, timeout=timeout,
-            sort=sort, max_scan=max_scan)
+            collection.files, filter, skip=skip, limit=limit,
+            no_cursor_timeout=no_cursor_timeout, sort=sort)
 
     def next(self):
         """Get next GridOut object from cursor.

@@ -1048,4 +1048,4 @@ class SystemJS(object):
 
     def list(self):
         """Get a list of the names of the functions stored in this database."""
-        return [x["_id"] for x in self._db.system.js.find(fields=["_id"])]
+        return [x["_id"] for x in self._db.system.js.find(projection=["_id"])]

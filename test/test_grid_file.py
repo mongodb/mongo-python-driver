@@ -75,9 +75,7 @@ class TestGridFileNoConnect(unittest.TestCase):
 
     def test_grid_out_cursor_options(self):
         self.assertRaises(TypeError, GridOutCursor.__init__, self.db.fs, {},
-                          tailable=True)
-        self.assertRaises(TypeError, GridOutCursor.__init__, self.db.fs, {},
-                          fields={"filename": 1})
+                          projection={"filename": 1})
 
         cursor = GridOutCursor(self.db.fs, {})
         cursor_clone = cursor.clone()

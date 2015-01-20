@@ -394,7 +394,8 @@ class TestGridfs(IntegrationTest):
         self.fs.put(b"test2++", filename="two")
         self.assertEqual(3, self.fs.find({"filename":"two"}).count())
         self.assertEqual(4, self.fs.find().count())
-        cursor = self.fs.find(timeout=False).sort("uploadDate", -1).skip(1).limit(2)
+        cursor = self.fs.find(
+            no_cursor_timeout=False).sort("uploadDate", -1).skip(1).limit(2)
         gout = next(cursor)
         self.assertEqual(b"test1", gout.read())
         cursor.rewind()

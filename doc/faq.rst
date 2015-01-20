@@ -99,7 +99,7 @@ raised when attempting to iterate the cursor.
 How do I change the timeout value for cursors?
 ----------------------------------------------
 MongoDB doesn't support custom timeouts for cursors, but cursor
-timeouts can be turned off entirely. Pass ``timeout=False`` to
+timeouts can be turned off entirely. Pass ``no_cursor_timeout=True`` to
 :meth:`~pymongo.collection.Collection.find`.
 
 How can I store :mod:`decimal.Decimal` instances?
@@ -273,5 +273,5 @@ out documents with values outside of the range supported by
 Another option, assuming you don't need the datetime field, is to filter out
 just that field::
 
-  >>> cur = coll.find({}, fields={'dt': False})
+  >>> cur = coll.find({}, projection={'dt': False})
 

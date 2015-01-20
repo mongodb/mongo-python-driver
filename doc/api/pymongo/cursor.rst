@@ -4,7 +4,7 @@
 .. automodule:: pymongo.cursor
    :synopsis: Tools for iterating over MongoDB query results
 
-   .. autoclass:: pymongo.cursor.Cursor(collection, spec=None, fields=None, skip=0, limit=0, timeout=True, snapshot=False, tailable=False, sort=None, max_scan=None, as_class=None, await_data=False, partial=False, manipulate=True, exhaust=False)
+   .. autoclass:: pymongo.cursor.Cursor(collection, filter=None, projection=None, skip=0, limit=0, no_cursor_timeout=False, cursor_type=NON_TAILABLE, sort=None, allow_partial_results=False, oplog_replay=False, modifiers=None, manipulate=True)
       :members:
 
       .. describe:: c[index]

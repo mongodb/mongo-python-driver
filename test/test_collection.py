@@ -37,6 +37,7 @@ from pymongo import MongoClient
 from pymongo.codec_options import CodecOptions
 from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
+from pymongo.cursor import EXHAUST
 from pymongo.errors import (DocumentTooLarge,
                             DuplicateKeyError,
                             InvalidDocument,
@@ -606,17 +607,20 @@ class TestCollection(IntegrationTest):
         self.assertEqual(doc["_id"], id)
         self.assertTrue(isinstance(id, ObjectId))
 
-        doc_class = None
+        doc_class = dict
         # Work around http://bugs.jython.org/issue1728
         if (sys.platform.startswith('java') and
             sys.version_info[:3] >= (2, 5, 2)):
             doc_class = SON
 
+        db = self.client.get_database(
+            db.name, codec_options=CodecOptions(as_class=doc_class))
+
         def remove_insert_find_one(doc):
             db.test.remove({})
             db.test.insert(doc)
             # SON equality is order sensitive.
-            return db.test.find_one(as_class=doc_class) == doc.to_dict()
+            return db.test.find_one() == doc.to_dict()
 
         qcheck.check_unittest(self, remove_insert_find_one,
                               qcheck.gen_mongo_dict(3))
@@ -693,10 +697,10 @@ class TestCollection(IntegrationTest):
         self.assertEqual([1, 2, 3], db.test.find_one()["x"])
         if client_context.version.at_least(1, 5, 1):
             self.assertEqual([2, 3],
-                             db.test.find_one(fields={"x": {"$slice":
-                                                            -2}})["x"])
-        self.assertTrue("x" not in db.test.find_one(fields={"x": 0}))
-        self.assertTrue("mike" in db.test.find_one(fields={"x": 0}))
+                             db.test.find_one(
+                                 projection={"x": {"$slice": -2}})["x"])
+        self.assertTrue("x" not in db.test.find_one(projection={"x": 0}))
+        self.assertTrue("mike" in db.test.find_one(projection={"x": 0}))
 
     def test_find_w_regex(self):
         db = self.db
@@ -1515,16 +1519,6 @@ class TestCollection(IntegrationTest):
         self.assertRaises(OperationFailure, db.foo.rename, "test")
         db.foo.rename("test", dropTarget=True)
 
-    # doesn't really test functionality, just that the option is set correctly
-    def test_snapshot(self):
-        db = self.db
-
-        self.assertRaises(TypeError, db.test.find, snapshot=5)
-
-        list(db.test.find(snapshot=True))
-        self.assertRaises(OperationFailure, list,
-                          db.test.find(snapshot=True).sort("foo", 1))
-
     def test_find_one(self):
         db = self.db
         db.drop_collection("test")
@@ -1538,9 +1532,9 @@ class TestCollection(IntegrationTest):
         self.assertEqual(db.test.find_one({"hello": "world"}),
                                           db.test.find_one())
 
-        self.assertTrue("hello" in db.test.find_one(fields=["hello"]))
-        self.assertTrue("hello" not in db.test.find_one(fields=["foo"]))
-        self.assertEqual(["_id"], list(db.test.find_one(fields=[])))
+        self.assertTrue("hello" in db.test.find_one(projection=["hello"]))
+        self.assertTrue("hello" not in db.test.find_one(projection=["foo"]))
+        self.assertEqual(["_id"], list(db.test.find_one(projection=[])))
 
         self.assertEqual(None, db.test.find_one({"hello": "foo"}))
         self.assertEqual(None, db.test.find_one(ObjectId()))
@@ -1615,20 +1609,19 @@ class TestCollection(IntegrationTest):
 
     # TODO doesn't actually test functionality, just that it doesn't blow up
     def test_cursor_timeout(self):
-        list(self.db.test.find(timeout=False))
-        list(self.db.test.find(timeout=True))
+        list(self.db.test.find(no_cursor_timeout=True))
+        list(self.db.test.find(no_cursor_timeout=False))
 
     def test_exhaust(self):
         if is_mongos(self.db.connection):
             self.assertRaises(InvalidOperation,
-                              self.db.test.find, exhaust=True)
+                              self.db.test.find, cursor_type=EXHAUST)
             return
 
-        self.assertRaises(TypeError, self.db.test.find, exhaust=5)
         # Limit is incompatible with exhaust.
         self.assertRaises(InvalidOperation,
-                          self.db.test.find, exhaust=True, limit=5)
-        cur = self.db.test.find(exhaust=True)
+                          self.db.test.find, cursor_type=EXHAUST, limit=5)
+        cur = self.db.test.find(cursor_type=EXHAUST)
         self.assertRaises(InvalidOperation, cur.limit, 5)
         cur = self.db.test.find(limit=5)
         self.assertRaises(InvalidOperation, cur.add_option, 64)
@@ -1644,7 +1637,7 @@ class TestCollection(IntegrationTest):
         socks = get_pool(client).sockets
 
         # Make sure the socket is returned after exhaustion.
-        cur = client[self.db.name].test.find(exhaust=True)
+        cur = client[self.db.name].test.find(cursor_type=EXHAUST)
         next(cur)
         self.assertEqual(0, len(socks))
         for doc in cur:
@@ -1652,14 +1645,14 @@ class TestCollection(IntegrationTest):
         self.assertEqual(1, len(socks))
 
         # Same as previous but don't call next()
-        for doc in client[self.db.name].test.find(exhaust=True):
+        for doc in client[self.db.name].test.find(cursor_type=EXHAUST):
             pass
         self.assertEqual(1, len(socks))
 
         # If the Cursor instance is discarded before being
         # completely iterated we have to close and
         # discard the socket.
-        cur = client[self.db.name].test.find(exhaust=True)
+        cur = client[self.db.name].test.find(cursor_type=EXHAUST)
         next(cur)
         self.assertEqual(0, len(socks))
         if sys.platform.startswith('java') or 'PyPy' in sys.version:
@@ -1962,26 +1955,6 @@ class TestCollection(IntegrationTest):
             # DBRef without $ref is decoded as normal subdocument.
             c.insert(id_only, check_keys=False)
             self.assertEqual(id_only, c.find_one())
-
-    def test_as_class(self):
-        c = self.db.test
-        c.drop()
-        c.insert({"x": 1})
-
-        doc = next(c.find())
-        self.assertTrue(isinstance(doc, dict))
-        doc = next(c.find())
-        self.assertFalse(isinstance(doc, SON))
-        doc = next(c.find(as_class=SON))
-        self.assertTrue(isinstance(doc, SON))
-
-        self.assertTrue(isinstance(c.find_one(), dict))
-        self.assertFalse(isinstance(c.find_one(), SON))
-        self.assertTrue(isinstance(c.find_one(as_class=SON), SON))
-
-        self.assertEqual(1, c.find_one(as_class=SON)["x"])
-        doc = next(c.find(as_class=SON))
-        self.assertEqual(1, doc["x"])
 
     def test_find_and_modify(self):
         c = self.db.test

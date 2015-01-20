@@ -29,9 +29,9 @@ sys.path[0:0] = [""]
 from bson.py3compat import thread, u
 from bson.son import SON
 from bson.tz_util import utc
-from pymongo.mongo_client import MongoClient
-from pymongo.database import Database
 from pymongo import auth, message
+from pymongo.cursor import EXHAUST
+from pymongo.database import Database
 from pymongo.codec_options import CodecOptions
 from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
@@ -41,6 +41,7 @@ from pymongo.errors import (AutoReconnect,
                             CursorNotFound,
                             NetworkTimeout,
                             InvalidURI)
+from pymongo.mongo_client import MongoClient
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_selectors import (any_server_selector,
                                       writable_server_selector)
@@ -477,7 +478,6 @@ class TestClient(IntegrationTest):
 
         self.assertEqual(SON, c.document_class)
         self.assertTrue(isinstance(db.test.find_one(), SON))
-        self.assertFalse(isinstance(db.test.find_one(as_class=dict), SON))
 
         # document_class is read-only in PyMongo 3.0.
         with self.assertRaises(AttributeError):
@@ -764,7 +764,7 @@ class TestClient(IntegrationTest):
         # Cause a network error.
         sock_info = one(pool.sockets)
         sock_info.sock.close()
-        cursor = collection.find(exhaust=True)
+        cursor = collection.find(cursor_type=EXHAUST)
         with self.assertRaises(ConnectionFailure):
             next(cursor)
 
@@ -856,7 +856,7 @@ class TestExhaustCursor(IntegrationTest):
         # This will cause OperationFailure in all mongo versions since
         # the value for $orderby must be a document.
         cursor = collection.find(
-            SON([('$query', {}), ('$orderby', True)]), exhaust=True)
+            SON([('$query', {}), ('$orderby', True)]), cursor_type=EXHAUST)
 
         self.assertRaises(OperationFailure, cursor.next)
         self.assertFalse(sock_info.closed)
@@ -880,7 +880,7 @@ class TestExhaustCursor(IntegrationTest):
         pool._check_interval_seconds = None  # Never check.
         sock_info = one(pool.sockets)
 
-        cursor = collection.find(exhaust=True)
+        cursor = collection.find(cursor_type=EXHAUST)
 
         # Initial query succeeds.
         cursor.next()
@@ -905,7 +905,7 @@ class TestExhaustCursor(IntegrationTest):
         sock_info = one(pool.sockets)
         sock_info.sock.close()
 
-        cursor = collection.find(exhaust=True)
+        cursor = collection.find(cursor_type=EXHAUST)
         self.assertRaises(ConnectionFailure, cursor.next)
         self.assertTrue(sock_info.closed)
 
@@ -923,7 +923,7 @@ class TestExhaustCursor(IntegrationTest):
         pool = get_pool(client)
         pool._check_interval_seconds = None  # Never check.
 
-        cursor = collection.find(exhaust=True)
+        cursor = collection.find(cursor_type=EXHAUST)
 
         # Initial query succeeds.
         cursor.next()

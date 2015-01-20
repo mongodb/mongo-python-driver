@@ -594,7 +594,9 @@ class TestDatabase(IntegrationTest):
         db.test.insert(SON([("hello", "world"),
                             ("_id", 5)]))
 
-        cursor = db.test.find(as_class=SON)
+        db = self.client.get_database(
+            "pymongo_test", codec_options=CodecOptions(as_class=SON))
+        cursor = db.test.find()
         for x in cursor:
             for (k, v) in x.items():
                 self.assertEqual(k, "_id")
@@ -627,10 +629,11 @@ class TestDatabase(IntegrationTest):
         db.test.remove({})
 
         db.test.insert({"_id": 4, "foo": "bar"})
+        db = self.client.get_database(
+            "pymongo_test", codec_options=CodecOptions(as_class=SON))
         self.assertEqual(SON([("foo", "bar")]),
                          db.dereference(DBRef("test", 4),
-                                        fields={"_id": False},
-                                        as_class=SON))
+                                        projection={"_id": False}))
 
     @client_context.require_no_auth
     def test_eval(self):

@@ -11,6 +11,11 @@
    .. autodata:: pymongo.GEOSPHERE
    .. autodata:: pymongo.HASHED
    .. autodata:: pymongo.TEXT
+   .. autodata:: pymongo.cursor.NON_TAILABLE
+   .. autodata:: pymongo.cursor.TAILABLE
+   .. autodata:: pymongo.cursor.TAILABLE_AWAIT
+   .. autodata:: pymongo.cursor.EXHAUST
+
 
    .. autoclass:: pymongo.collection.Collection(database, name[, create=False[, **kwargs]]])
 
@@ -35,8 +40,8 @@
       .. automethod:: initialize_unordered_bulk_op
       .. automethod:: initialize_ordered_bulk_op
       .. automethod:: drop
-      .. automethod:: find([spec=None[, fields=None[, skip=0[, limit=0[, timeout=True[, snapshot=False[, tailable=False[, sort=None[, max_scan=None[, as_class=None[, await_data=False[, partial=False[, manipulate=True[, exhaust=False]]]]]]]]]]]]]])
-      .. automethod:: find_one([spec_or_id=None[, *args[, **kwargs]]])
+      .. automethod:: find([filter=None[, projection=None[, skip=0[, limit=0[, no_cursor_timeout=False[, cursor_type=NON_TAILABLE[, sort=None[, allow_partial_results=False[, oplog_replay=False[, modifiers=None[, manipulate=True]]]]]]]]]]])
+      .. automethod:: find_one([filter_or_id=None[, *args[, **kwargs]]])
       .. automethod:: parallel_scan
       .. automethod:: count
       .. automethod:: create_index

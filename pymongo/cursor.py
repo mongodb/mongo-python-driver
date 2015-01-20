@@ -26,7 +26,6 @@ from bson.py3compat import (iteritems,
                             string_type)
 from bson.son import SON
 from pymongo import helpers, message
-from pymongo.codec_options import CodecOptions
 from pymongo.read_preferences import ReadPreference
 from pymongo.errors import (AutoReconnect,
                             InvalidOperation,
@@ -41,6 +40,34 @@ _QUERY_OPTIONS = {
     "await_data": 32,
     "exhaust": 64,
     "partial": 128}
+
+
+NON_TAILABLE = 0
+"""The standard cursor type."""
+
+TAILABLE = _QUERY_OPTIONS["tailable_cursor"]
+"""The tailable cursor type.
+
+Tailable cursors are only for use with capped collections. They are not closed
+when the last data is retrieved but are kept open and the cursor location marks
+the final document position. If more data is received iteration of the cursor
+will continue from the last document received.
+"""
+
+TAILABLE_AWAIT = TAILABLE | _QUERY_OPTIONS["await_data"]
+"""A tailable cursor with the await option set.
+
+Creates a tailable cursor that will wait for a few seconds after returning the
+full result set so that it can capture and return additional data added during
+the query.
+"""
+
+EXHAUST = _QUERY_OPTIONS["exhaust"]
+"""An exhaust cursor.
+
+MongoDB will stream batched results to the client without waiting for the
+client to request each batch, reducing latency.
+"""
 
 
 # This has to be an old style class due to
@@ -65,17 +92,14 @@ class _SocketManager:
             self.sock, self.pool = None, None
 
 
-# TODO might be cool to be able to do find().include("foo") or
-# find().exclude(["bar", "baz"]) or find().slice("a", 1, 2) as an
-# alternative to the fields specifier.
 class Cursor(object):
     """A cursor / iterator over Mongo query results.
     """
 
-    def __init__(self, collection, spec=None, fields=None, skip=0, limit=0,
-                 timeout=True, snapshot=False, tailable=False, sort=None,
-                 max_scan=None, as_class=None, await_data=False, partial=False,
-                 manipulate=True, exhaust=False):
+    def __init__(self, collection, filter=None, projection=None, skip=0,
+                 limit=0, no_cursor_timeout=False, cursor_type=NON_TAILABLE,
+                 sort=None, allow_partial_results=False, oplog_replay=False,
+                 modifiers=None, manipulate=True):
         """Create a new cursor.
 
         Should not be called directly by application developers - see
@@ -85,61 +109,62 @@ class Cursor(object):
         """
         self.__id = None
 
+        spec = filter
         if spec is None:
             spec = {}
 
         if not isinstance(spec, Mapping):
-            raise TypeError("spec must be a mapping type.")
+            raise TypeError("filter must be a mapping type.")
         if not isinstance(skip, int):
             raise TypeError("skip must be an instance of int")
         if not isinstance(limit, int):
             raise TypeError("limit must be an instance of int")
-        if not isinstance(timeout, bool):
-            raise TypeError("timeout must be an instance of bool")
-        if not isinstance(snapshot, bool):
-            raise TypeError("snapshot must be an instance of bool")
-        if not isinstance(tailable, bool):
-            raise TypeError("tailable must be an instance of bool")
-        if not isinstance(await_data, bool):
-            raise TypeError("await_data must be an instance of bool")
-        if not isinstance(partial, bool):
-            raise TypeError("partial must be an instance of bool")
-        if not isinstance(exhaust, bool):
-            raise TypeError("exhaust must be an instance of bool")
+        if not isinstance(no_cursor_timeout, bool):
+            raise TypeError("no_cursor_timeout must be an instance of bool")
+        if cursor_type not in (NON_TAILABLE, TAILABLE,
+                               TAILABLE_AWAIT, EXHAUST):
+            raise ValueError("not a valid value for cursor_type")
+        if not isinstance(allow_partial_results, bool):
+            raise TypeError("allow_partial_results "
+                            "must be an instance of bool")
+        if not isinstance(oplog_replay, bool):
+            raise TypeError("oplog_replay must be an instance of bool")
+        if modifiers is not None and not isinstance(modifiers, Mapping):
+            raise TypeError("modifiers must be a mapping type.")
 
-        if fields is not None:
-            if not fields:
-                fields = {"_id": 1}
-            if not isinstance(fields, Mapping):
-                fields = helpers._fields_list_to_dict(fields)
-
-        # XXX: Continue to support passing as_class to find() and find_one()?
-        if as_class is None:
-            self.__codec_options = collection.codec_options
-        else:
-            cco = collection.codec_options
-            self.__codec_options = CodecOptions(as_class,
-                                                cco.tz_aware,
-                                                cco.uuid_representation)
+        if projection is not None:
+            if not projection:
+                projection = {"_id": 1}
+            if not isinstance(projection, Mapping):
+                projection = helpers._fields_list_to_dict(projection)
 
         self.__collection = collection
         self.__spec = spec
-        self.__fields = fields
+        self.__projection = projection
         self.__skip = skip
         self.__limit = limit
-        self.__max_time_ms = None
         self.__batch_size = 0
+        self.__modifiers = modifiers and modifiers.copy() or {}
+        self.__ordering = sort and helpers._index_document(sort) or None
+        self.__max_scan = None
+        self.__explain = False
+        self.__hint = None
+        self.__comment = None
+        self.__max_time_ms = None
         self.__max = None
         self.__min = None
+        self.__manipulate = manipulate
 
         # Exhaust cursor support
-        if self.__collection.database.connection.is_mongos and exhaust:
-            raise InvalidOperation('Exhaust cursors are '
-                                   'not supported by mongos')
-        if limit and exhaust:
-            raise InvalidOperation("Can't use limit and exhaust together.")
-        self.__exhaust = exhaust
+        self.__exhaust = False
         self.__exhaust_mgr = None
+        if cursor_type == EXHAUST:
+            if self.__collection.database.connection.is_mongos:
+                raise InvalidOperation('Exhaust cursors are '
+                                       'not supported by mongos')
+            if limit:
+                raise InvalidOperation("Can't use limit and exhaust together.")
+            self.__exhaust = True
 
         # This is ugly. People want to be able to do cursor[5:5] and
         # get an empty result set (old behavior was an
@@ -149,34 +174,23 @@ class Cursor(object):
         # it anytime we change __limit.
         self.__empty = False
 
-        self.__snapshot = snapshot
-        self.__ordering = sort and helpers._index_document(sort) or None
-        self.__max_scan = max_scan
-        self.__explain = False
-        self.__hint = None
-        self.__comment = None
-        self.__manipulate = manipulate
-
         self.__data = deque()
         self.__address = None
         self.__retrieved = 0
         self.__killed = False
 
+        self.__codec_options = collection.codec_options
         self.__read_preference = collection.read_preference
 
-        self.__query_flags = 0
-        if tailable:
-            self.__query_flags |= _QUERY_OPTIONS["tailable_cursor"]
-        if self.__read_preference.mode != ReadPreference.PRIMARY.mode:
+        self.__query_flags = cursor_type
+        if self.__read_preference != ReadPreference.PRIMARY:
             self.__query_flags |= _QUERY_OPTIONS["slave_okay"]
-        if not timeout:
+        if no_cursor_timeout:
             self.__query_flags |= _QUERY_OPTIONS["no_timeout"]
-        if tailable and await_data:
-            self.__query_flags |= _QUERY_OPTIONS["await_data"]
-        if exhaust:
-            self.__query_flags |= _QUERY_OPTIONS["exhaust"]
-        if partial:
+        if allow_partial_results:
             self.__query_flags |= _QUERY_OPTIONS["partial"]
+        if oplog_replay:
+            self.__query_flags |= _QUERY_OPTIONS["oplog_replay"]
 
     @property
     def collection(self):
@@ -224,10 +238,11 @@ class Cursor(object):
 
     def _clone(self, deepcopy=True):
         clone = self._clone_base()
-        values_to_clone = ("spec", "fields", "skip", "limit", "max_time_ms",
-                           "comment", "max", "min", "snapshot", "ordering",
-                           "explain", "hint", "batch_size", "max_scan",
-                           "manipulate", "query_flags", "codec_options")
+        values_to_clone = ("spec", "projection", "skip", "limit",
+                           "max_time_ms", "comment", "max", "min",
+                           "ordering", "explain", "hint", "batch_size",
+                           "max_scan", "manipulate", "query_flags",
+                           "modifiers")
         data = dict((k, v) for k, v in iteritems(self.__dict__)
                     if k.startswith('_Cursor__') and k[9:] in values_to_clone)
         if deepcopy:
@@ -266,7 +281,7 @@ class Cursor(object):
     def __query_spec(self):
         """Get the spec to use for a query.
         """
-        operators = {}
+        operators = self.__modifiers.copy()
         if self.__ordering:
             operators["$orderby"] = self.__ordering
         if self.__explain:
@@ -275,8 +290,6 @@ class Cursor(object):
             operators["$hint"] = self.__hint
         if self.__comment:
             operators["$comment"] = self.__comment
-        if self.__snapshot:
-            operators["$snapshot"] = True
         if self.__max_scan:
             operators["$maxScan"] = self.__max_scan
         if self.__max_time_ms is not None:
@@ -898,7 +911,7 @@ class Cursor(object):
                 message.query(self.__query_flags,
                               self.__collection.full_name,
                               self.__skip, ntoreturn,
-                              self.__query_spec(), self.__fields,
+                              self.__query_spec(), self.__projection,
                               self.__codec_options.uuid_representation))
             if not self.__id:
                 self.__killed = True

@@ -248,7 +248,7 @@ class GridFS(object):
             name for name in self.__files.distinct("filename")
             if name is not None]
 
-    def find_one(self, spec_or_id=None, *args, **kwargs):
+    def find_one(self, filter=None, *args, **kwargs):
         """Get a single file from gridfs.
 
         All arguments to :meth:`find` are also valid arguments for
@@ -259,18 +259,18 @@ class GridFS(object):
             file = fs.find_one({"filename": "lisa.txt"})
 
         :Parameters:
-          - `spec_or_id` (optional): a dictionary specifying
-            the query to be performing OR any other type to be used  as
+          - `filter` (optional): a dictionary specifying
+            the query to be performing OR any other type to be used as
             the value for a query for ``"_id"`` in the file collection.
           - `*args` (optional): any additional positional arguments are
             the same as the arguments to :meth:`find`.
           - `**kwargs` (optional): any additional keyword arguments
             are the same as the arguments to :meth:`find`.
         """
-        if spec_or_id is not None and not isinstance(spec_or_id, dict):
-            spec_or_id = {"_id": spec_or_id}
+        if filter is not None and not isinstance(filter, dict):
+            filter = {"_id": filter}
 
-        for f in self.find(spec_or_id, *args, **kwargs):
+        for f in self.find(filter, *args, **kwargs):
             return f
 
         return None
@@ -282,12 +282,14 @@ class GridFS(object):
         arbitrary queries on the files collection. Can be combined
         with other modifiers for additional control. For example::
 
-          for grid_out in fs.find({"filename": "lisa.txt"}, timeout=False):
+          for grid_out in fs.find({"filename": "lisa.txt"},
+                                  no_cursor_timeout=True):
               data = grid_out.read()
 
         would iterate through all versions of "lisa.txt" stored in GridFS.
-        Note that setting timeout to False may be important to prevent the
-        cursor from timing out during long multi-file processing work.
+        Note that setting no_cursor_timeout to True may be important to
+        prevent the cursor from timing out during long multi-file processing
+        work.
 
         As another example, the call::
 
@@ -301,23 +303,21 @@ class GridFS(object):
         in :class:`~pymongo.collection.Collection`.
 
         :Parameters:
-          - `spec` (optional): a SON object specifying elements which
+          - `filter` (optional): a SON object specifying elements which
             must be present for a document to be included in the
             result set
           - `skip` (optional): the number of files to omit (from
             the start of the result set) when returning the results
           - `limit` (optional): the maximum number of results to
             return
-          - `timeout` (optional): if True (the default), any returned
-            cursor is closed by the server after 10 minutes of
-            inactivity. If set to False, the returned cursor will never
+          - `no_cursor_timeout` (optional): if False (the default), any
+            returned cursor is closed by the server after 10 minutes of
+            inactivity. If set to True, the returned cursor will never
             time out on the server. Care should be taken to ensure that
-            cursors with timeout turned off are properly closed.
+            cursors with no_cursor_timeout turned on are properly closed.
           - `sort` (optional): a list of (key, direction) pairs
             specifying the sort order for this query. See
             :meth:`~pymongo.cursor.Cursor.sort` for details.
-          - `max_scan` (optional): limit the number of file documents
-            examined when performing the query
 
         Raises :class:`TypeError` if any of the arguments are of
         improper type. Returns an instance of
