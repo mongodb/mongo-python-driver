@@ -16,7 +16,12 @@
 
 import threading
 
-from test import unittest, client_context, IntegrationTest, db_user, db_pwd
+from test import (client_context,
+                  client_knobs,
+                  db_user,
+                  db_pwd,
+                  IntegrationTest,
+                  unittest)
 from test.utils import rs_or_single_client_noauth
 from test.utils import frequent_thread_switches, joinall
 from pymongo.errors import OperationFailure
@@ -191,14 +196,18 @@ class TestThreads(IntegrationTest):
         threads.extend(Disconnect(self.db.connection, 10) for _ in range(10))
 
         with frequent_thread_switches():
-            for t in threads:
-                t.start()
+            # Frequent thread switches hurt performance badly enough to
+            # prevent reconnection within 5 seconds, especially in Python 2
+            # on a Windows build slave.
+            with client_knobs(server_wait_time=30):
+                for t in threads:
+                    t.start()
 
-            for t in threads:
-                t.join(30)
+                for t in threads:
+                    t.join(30)
 
-            for t in threads:
-                self.assertTrue(t.passed)
+                for t in threads:
+                    self.assertTrue(t.passed)
 
 
 class TestThreadsAuth(IntegrationTest):

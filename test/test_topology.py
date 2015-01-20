@@ -20,6 +20,7 @@ sys.path[0:0] = [""]
 
 import socket
 import threading
+from unittest import SkipTest
 
 from bson.py3compat import imap
 from pymongo import common
@@ -575,6 +576,9 @@ class TestTopologyErrors(TopologyTest):
         self.assertEqual(SERVER_TYPE.Standalone, get_type(t, 'a'))
 
     def test_selection_failure(self):
+        if sys.platform == 'win32':
+            raise SkipTest('timing unreliable on Windows')
+
         # While ismaster fails, ensure it's called about every 10 ms.
         ismaster_count = [0]
 
