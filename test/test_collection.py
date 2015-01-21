@@ -1771,13 +1771,14 @@ class TestCollection(IntegrationTest):
         self.assertRaises(DuplicateKeyError, self.db.test.insert, batch)
         self.assertEqual(1, self.db.test.count())
 
-        # 2 batches, 2 errors, continue on error.
+        # 2 batches, 2nd insert fails, don't continue on error.
         self.db.test.drop()
         self.assertTrue(self.db.test.insert(batch, w=0))
         wait_until(lambda: 1 == self.db.test.count(),
                    'insert 1 document')
 
-        # 2 batches, 2 errors, acknowledged, continue on error
+        # 2 batches, ids of docs 0 and 1 are dupes, ids of docs 2 and 3 are
+        # dupes. Acknowledged, continue on error.
         self.db.test.drop()
         batch[3]['_id'] = batch[2]['_id']
         try:
