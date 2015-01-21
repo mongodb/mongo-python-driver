@@ -19,6 +19,7 @@ import datetime
 import multiprocessing
 import os
 import socket
+import struct
 import sys
 import time
 import traceback
@@ -26,6 +27,7 @@ import warnings
 
 sys.path[0:0] = [""]
 
+from bson import BSON
 from bson.py3compat import thread, u
 from bson.son import SON
 from bson.tz_util import utc
@@ -42,6 +44,7 @@ from pymongo.errors import (AutoReconnect,
                             NetworkTimeout,
                             InvalidURI)
 from pymongo.mongo_client import MongoClient
+from pymongo.pool import SocketInfo
 from pymongo.read_preferences import ReadPreference
 from pymongo.server_selectors import (any_server_selector,
                                       writable_server_selector)
@@ -872,26 +875,39 @@ class TestExhaustCursor(IntegrationTest):
         collection = client.pymongo_test.test
         collection.remove()
 
-        # Enough data to ensure it streams down for a few milliseconds.
-        long_str = 'a' * (256 * 1024)
-        collection.insert([{'a': long_str} for _ in range(200)])
+        collection.insert([{} for _ in range(200)])
 
-        pool = get_pool(client)
-        pool._check_interval_seconds = None  # Never check.
-        sock_info = one(pool.sockets)
+        try:
+            pool = get_pool(client)
+            pool._check_interval_seconds = None  # Never check.
+            sock_info = one(pool.sockets)
 
-        cursor = collection.find(cursor_type=EXHAUST)
+            cursor = collection.find(cursor_type=EXHAUST)
 
-        # Initial query succeeds.
-        cursor.next()
+            # Initial query succeeds.
+            cursor.next()
 
-        # Cause a server error on getmore.
-        client_context.client.pymongo_test.test.drop()
-        self.assertRaises(OperationFailure, list, cursor)
+            # Cause a server error on getmore.
+            def receive_message(operation, request_id):
+                # Discard the actual server response.
+                SocketInfo.receive_message(sock_info, operation, request_id)
 
-        # The socket is still valid.
-        self.assertIn(sock_info, pool.sockets)
-        self.assertEqual(0, collection.count())
+                # responseFlags bit 1 is QueryFailure.
+                msg = struct.pack('<iiiii', 1 << 1, 0, 0, 0, 0)
+                msg += BSON.encode({'$err': 'mock err', 'code': 0})
+                return msg
+
+            saved = sock_info.receive_message
+            sock_info.receive_message = receive_message
+            self.assertRaises(OperationFailure, list, cursor)
+            sock_info.receive_message = saved
+
+            # The socket is returned the pool and it still works.
+            self.assertEqual(200, collection.count())
+            self.assertIn(sock_info, pool.sockets)
+
+        finally:
+            client_context.client.pymongo_test.test.drop()
 
     def test_exhaust_query_network_error(self):
         # When doing an exhaust query, the socket stays checked out on success
