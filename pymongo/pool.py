@@ -482,7 +482,8 @@ class Pool:
             if sock_info.pool_id != self.pool_id:
                 sock_info.close()
             elif not sock_info.closed:
-                self.sockets.add(sock_info)
+                with self.lock:
+                    self.sockets.add(sock_info)
 
         self._socket_semaphore.release()
 
