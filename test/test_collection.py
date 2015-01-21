@@ -1008,7 +1008,9 @@ class TestCollection(IntegrationTest):
 
         self.assertEqual(3, db.test.count())
         db.test.insert(docs, manipulate=False, continue_on_error=True, w=0)
-        self.assertEqual(6, db.test.count())
+
+        wait_until(lambda: 6 == db.test.count(),
+                   'insert 3 documents')
 
     def test_error_code(self):
         try:
