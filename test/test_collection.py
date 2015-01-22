@@ -1749,57 +1749,59 @@ class TestCollection(IntegrationTest):
         self.db.test.update({"bar": "x"}, {"bar": "x" * (max_size - 32)})
 
     def test_insert_large_batch(self):
-        collection = self.db.test_insert_large_batch
+        db = self.client.test_insert_large_batch
+        self.addCleanup(self.client.drop_database, 'test_insert_large_batch')
         max_bson_size = self.client.max_bson_size
         if client_context.version.at_least(2, 5, 4, -1):
             # Write commands are limited to 16MB + 16k per batch
             big_string = 'x' * int(max_bson_size / 2)
         else:
             big_string = 'x' * (max_bson_size - 100)
-        collection.drop()
-        self.assertEqual(0, collection.count())
 
-        # Batch insert that requires 2 batches
-        batch = [{'x': big_string}, {'x': big_string},
-                 {'x': big_string}, {'x': big_string}]
-        self.assertTrue(collection.insert(batch, w=1))
-        self.assertEqual(4, collection.count())
-
-        batch[1]['_id'] = batch[0]['_id']
+        # Batch insert that requires 2 batches.
+        successful_insert = [{'x': big_string}, {'x': big_string},
+                             {'x': big_string}, {'x': big_string}]
+        db.collection_0.insert(successful_insert, w=1)
+        self.assertEqual(4, db.collection_0.count())
 
         # Test that inserts fail after first error.
-        collection.drop()
-        self.assertRaises(DuplicateKeyError, collection.insert, batch)
-        self.assertEqual(1, collection.count())
+        insert_second_fails = [{'_id': 'id0', 'x': big_string},
+                               {'_id': 'id0', 'x': big_string},
+                               {'_id': 'id1', 'x': big_string},
+                               {'_id': 'id2', 'x': big_string}]
+
+        with self.assertRaises(DuplicateKeyError):
+            db.collection_1.insert(insert_second_fails)
+
+        self.assertEqual(1, db.collection_1.count())
 
         # 2 batches, 2nd insert fails, don't continue on error.
-        collection.drop()
-        self.assertTrue(collection.insert(batch, w=0))
-        wait_until(lambda: 1 == collection.count(),
+        self.assertTrue(db.collection_2.insert(insert_second_fails, w=0))
+        wait_until(lambda: 1 == db.collection_2.count(),
                    'insert 1 document')
 
         # 2 batches, ids of docs 0 and 1 are dupes, ids of docs 2 and 3 are
         # dupes. Acknowledged, continue on error.
-        collection.drop()
-        batch[3]['_id'] = batch[2]['_id']
-        try:
-            collection.insert(batch, continue_on_error=True, w=1)
-        except OperationFailure as e:
-            # Make sure we report the last error, not the first.
-            self.assertTrue(str(batch[2]['_id']) in str(e))
-        else:
-            self.fail('OperationFailure not raised.')
-        # Only the first and third documents should be inserted.
-        self.assertEqual(2, collection.count())
+        insert_two_failures = [{'_id': 'id0', 'x': big_string},
+                               {'_id': 'id0', 'x': big_string},
+                               {'_id': 'id1', 'x': big_string},
+                               {'_id': 'id1', 'x': big_string}]
 
-        # 2 batches, 2 errors, unacknowledged, continue on error
-        collection.drop()
-        self.assertTrue(
-            collection.insert(batch, continue_on_error=True, w=0))
+        with self.assertRaises(OperationFailure) as context:
+            db.collection_3.insert(insert_two_failures,
+                                   continue_on_error=True, w=1)
+
+        self.assertIn('id1', str(context.exception))
+
         # Only the first and third documents should be inserted.
-        wait_until(lambda: 2 == collection.count(),
+        self.assertEqual(2, db.collection_3.count())
+
+        # 2 batches, 2 errors, unacknowledged, continue on error.
+        db.collection_4.insert(insert_two_failures, continue_on_error=True, w=0)
+
+        # Only the first and third documents are inserted.
+        wait_until(lambda: 2 == db.collection_4.count(),
                    'insert 2 documents')
-        collection.drop()
 
     def test_numerous_inserts(self):
         # Ensure we don't exceed server's 1000-document batch size limit.
