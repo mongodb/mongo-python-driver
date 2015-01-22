@@ -1778,7 +1778,7 @@ class TestCollection(IntegrationTest):
         # 2 batches, 2nd insert fails, don't continue on error.
         self.assertTrue(db.collection_2.insert(insert_second_fails, w=0))
         wait_until(lambda: 1 == db.collection_2.count(),
-                   'insert 1 document')
+                   'insert 1 document', timeout=60)
 
         # 2 batches, ids of docs 0 and 1 are dupes, ids of docs 2 and 3 are
         # dupes. Acknowledged, continue on error.
@@ -1801,7 +1801,7 @@ class TestCollection(IntegrationTest):
 
         # Only the first and third documents are inserted.
         wait_until(lambda: 2 == db.collection_4.count(),
-                   'insert 2 documents')
+                   'insert 2 documents', timeout=60)
 
     def test_numerous_inserts(self):
         # Ensure we don't exceed server's 1000-document batch size limit.
