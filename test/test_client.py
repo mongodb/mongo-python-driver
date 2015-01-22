@@ -221,8 +221,14 @@ class TestClient(IntegrationTest):
         self.assertFalse(c.secondaries)
 
         c.pymongo_test.command('ismaster')  # Auto-connect.
-        self.assertEqual(host, c.host)
-        self.assertEqual(port, c.port)
+
+        if client_context.is_rs:
+            # The primary's host and port are from the replica set config.
+            self.assertIsNotNone(c.host)
+            self.assertIsNotNone(c.port)
+        else:
+            self.assertEqual(host, c.host)
+            self.assertEqual(port, c.port)
 
         if client_context.version.at_least(2, 5, 4, -1):
             self.assertTrue(c.max_wire_version > 0)
