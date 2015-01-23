@@ -14,15 +14,17 @@
 
 import contextlib
 import os
-import select
 import socket
-import struct
 import threading
 
 from bson.py3compat import u, itervalues
-from pymongo import auth, helpers, message, thread_util
-from pymongo.errors import ConnectionFailure, AutoReconnect
+from pymongo import auth, thread_util
+from pymongo.errors import ConnectionFailure
 from pymongo.monotonic import time as _time
+from pymongo.network import (command,
+                             receive_message,
+                             socket_closed)
+
 
 # If the first getaddrinfo call of this interpreter's life is on a thread,
 # while the main thread holds the import lock, getaddrinfo deadlocks trying
@@ -35,17 +37,6 @@ try:
 except ImportError:
     # These don't require the ssl module
     from pymongo.ssl_match_hostname import match_hostname, CertificateError
-
-
-def _closed(sock):
-    """Return True if we know socket has been closed, False otherwise.
-    """
-    try:
-        rd, _, _ = select.select([sock], [], [], 0)
-    # Any exception here is equally bad (select.error, ValueError, etc.).
-    except:
-        return True
-    return len(rd) > 0
 
 
 class PoolOptions(object):
@@ -132,22 +123,17 @@ class SocketInfo(object):
         self.pool_id = pool.pool_id
 
     def command(self, dbname, spec):
-        """Execute a command over the socket, or raise socket.error.
+        """Execute a command or raise socket.error or OperationFailure.
 
         :Parameters:
           - `dbname`: name of the database on which to run the command
           - `spec`: a command document as a dict, SON, or mapping object
         """
-        # TODO: command should already be encoded.
-        ns = dbname + '.$cmd'
-        request_id, msg, _ = message.query(0, ns, 0, -1, spec)
-        self.send_message(msg)
-        response = self.receive_message(1, request_id)
-        unpacked = helpers._unpack_response(response)['data'][0]
-        msg = "command %s on namespace %s failed: %%s" % (
-            repr(spec).replace("%", "%%"), ns)
-        helpers._check_command_response(unpacked, msg)
-        return unpacked
+        try:
+            return command(self.sock, dbname, spec)
+        except socket.error:
+            self.close()
+            raise
 
     def send_message(self, message):
         """Send a raw BSON message or raise socket.error.
@@ -166,32 +152,10 @@ class SocketInfo(object):
         If any exception is raised, the socket is closed.
         """
         try:
-            header = self.__receive_data_on_socket(16)
-            length = struct.unpack("<i", header[:4])[0]
-
-            # No request_id for exhaust cursor "getMore".
-            if request_id is not None:
-                response_id = struct.unpack("<i", header[8:12])[0]
-                assert request_id == response_id, "ids don't match %r %r" % (
-                    request_id, response_id)
-
-            assert operation == struct.unpack("<i", header[12:])[0]
-            return self.__receive_data_on_socket(length - 16)
+            return receive_message(self.sock, operation, request_id)
         except:
             self.close()
             raise
-
-    def __receive_data_on_socket(self, length):
-        message = b""
-        while length:
-            chunk = self.sock.recv(length)
-            if chunk == b"":
-                raise AutoReconnect("connection closed")
-
-            length -= len(chunk)
-            message += chunk
-
-        return message
 
     def check_auth(self, all_credentials):
         """Update this socket's authentication.
@@ -350,7 +314,7 @@ class Pool:
           - `address`: a (hostname, port) tuple
           - `options`: a PoolOptions instance
         """
-        # Only check a socket's health with _closed() every once in a while.
+        # Check a socket's health with socket_closed() every once in a while.
         # Can override for testing: 0 to always check, None to never check.
         self._check_interval_seconds = 1
 
@@ -508,7 +472,7 @@ class Pool:
                 and (
                     0 == self._check_interval_seconds
                     or age > self._check_interval_seconds)):
-            if _closed(sock_info.sock):
+            if socket_closed(sock_info.sock):
                 sock_info.close()
                 error = True
 

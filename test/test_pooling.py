@@ -29,7 +29,8 @@ from pymongo.errors import (ConfigurationError,
 
 sys.path[0:0] = [""]
 
-from pymongo.pool import Pool, PoolOptions, _closed
+from pymongo.network import socket_closed
+from pymongo.pool import Pool, PoolOptions
 from test import host, port, SkipTest, unittest, client_context
 from test.utils import (get_pool,
                         joinall,
@@ -229,7 +230,7 @@ class TestPooling(_TestPoolingBase):
             # Simulate a closed socket without telling the SocketInfo it's
             # closed.
             sock_info.sock.close()
-            self.assertTrue(_closed(sock_info.sock))
+            self.assertTrue(socket_closed(sock_info.sock))
 
         with cx_pool.get_socket({}, 0, 0) as new_sock_info:
             self.assertEqual(0, len(cx_pool.sockets))

@@ -50,6 +50,7 @@ from pymongo import (common,
                      uri_parser)
 from pymongo.client_options import ClientOptions
 from pymongo.cursor_manager import CursorManager
+from pymongo.network import socket_closed
 from pymongo.topology import Topology
 from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
@@ -685,7 +686,7 @@ class MongoClient(common.BaseObject):
             # Avoid race when other threads log in or out.
             all_credentials = self.__all_credentials.copy()
             with server.get_socket(all_credentials) as sock_info:
-                return not pool._closed(sock_info.sock)
+                return not socket_closed(sock_info.sock)
 
         except (socket.error, ConnectionFailure):
             return False
