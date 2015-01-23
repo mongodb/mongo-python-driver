@@ -20,6 +20,8 @@ import struct
 from pymongo import helpers, message
 from pymongo.errors import AutoReconnect
 
+_UNPACK_INT = struct.Struct("<i").unpack
+
 
 def command(sock, dbname, spec):
     """Execute a command over the socket, or raise socket.error.
@@ -43,15 +45,15 @@ def command(sock, dbname, spec):
 def receive_message(sock, operation, request_id):
     """Receive a raw BSON message or raise socket.error."""
     header = _receive_data_on_socket(sock, 16)
-    length = struct.unpack("<i", header[:4])[0]
+    length = _UNPACK_INT(header[:4])[0]
 
     # No request_id for exhaust cursor "getMore".
     if request_id is not None:
-        response_id = struct.unpack("<i", header[8:12])[0]
+        response_id = _UNPACK_INT(header[8:12])[0]
         assert request_id == response_id, "ids don't match %r %r" % (
             request_id, response_id)
 
-    assert operation == struct.unpack("<i", header[12:])[0]
+    assert operation == _UNPACK_INT(header[12:])[0]
     return _receive_data_on_socket(sock, length - 16)
 
 

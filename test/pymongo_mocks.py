@@ -42,12 +42,7 @@ class MockPool(Pool):
                       PoolOptions(connect_timeout=20))
 
     @contextlib.contextmanager
-    def get_socket(
-            self,
-            all_credentials,
-            min_wire_version,
-            max_wire_version,
-            checkout=False):
+    def get_socket(self, all_credentials, checkout=False):
         client = self.client
         host_and_port = '%s:%s' % (self.mock_host, self.mock_port)
         if host_and_port in client.mock_down_hosts:
@@ -58,10 +53,7 @@ class MockPool(Pool):
             + client.mock_members
             + client.mock_mongoses), "bad host: %s" % host_and_port
 
-        with Pool.get_socket(self,
-                             all_credentials,
-                             min_wire_version,
-                             max_wire_version) as sock_info:
+        with Pool.get_socket(self, all_credentials) as sock_info:
             sock_info.mock_host = self.mock_host
             sock_info.mock_port = self.mock_port
             yield sock_info

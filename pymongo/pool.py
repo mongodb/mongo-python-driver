@@ -20,6 +20,7 @@ import threading
 from bson.py3compat import u, itervalues
 from pymongo import auth, thread_util
 from pymongo.errors import ConnectionFailure
+from pymongo.ismaster import IsMaster
 from pymongo.monotonic import time as _time
 from pymongo.network import (command,
                              receive_message,
@@ -107,16 +108,21 @@ class PoolOptions(object):
 
 
 class SocketInfo(object):
-    """Store a socket with some metadata."""
-    def __init__(self, sock, pool, host):
+    """Store a socket with some metadata.
+
+    :Parameters:
+      - `sock`: a raw socket object
+      - `pool`: a Pool instance
+      - `ismaster`: an IsMaster instance, response to ismaster call on `sock`
+      - `host`: a string, the server's hostname (without port)
+    """
+    def __init__(self, sock, pool, ismaster, host):
         self.sock = sock
         self.host = host
         self.authset = set()
         self.closed = False
         self.last_checkout = _time()
-
-        self._min_wire_version = None
-        self._max_wire_version = None
+        self.ismaster = ismaster
 
         # The pool's pool_id changes with each reset() so we can close sockets
         # created before the last reset.
@@ -196,19 +202,13 @@ class SocketInfo(object):
         except:
             pass
         
-    def set_wire_version_range(self, min_wire_version, max_wire_version):
-        self._min_wire_version = min_wire_version
-        self._max_wire_version = max_wire_version
-        
     @property
     def min_wire_version(self):
-        assert self._min_wire_version is not None
-        return self._min_wire_version
+        return self.ismaster.min_wire_version
         
     @property
     def max_wire_version(self):
-        assert self._max_wire_version is not None
-        return self._max_wire_version
+        return self.ismaster.max_wire_version
 
     def __eq__(self, other):
         return self.sock == other.sock
@@ -353,15 +353,16 @@ class Pool:
            return_socket() when you're done with it.
         """
         sock = _configured_socket(self.address, self.opts)
-        return SocketInfo(sock, self, host=self.address[0])
+        try:
+            ismaster = IsMaster(command(sock, 'admin', {'ismaster': 1}))
+        except:
+            sock.close()
+            raise
+
+        return SocketInfo(sock, self, ismaster, host=self.address[0])
 
     @contextlib.contextmanager
-    def get_socket(
-            self,
-            all_credentials,
-            min_wire_version,
-            max_wire_version,
-            checkout=False):
+    def get_socket(self, all_credentials, checkout=False):
         """Get a socket from the pool. Use with a "with" statement.
 
         Returns a :class:`SocketInfo` object wrapping a connected
@@ -369,10 +370,7 @@ class Pool:
 
         This method should always be used in a with-statement::
 
-            with pool.get_socket(credentials,
-                                 min_wire_version,
-                                 max_wire_version,
-                                 checkout) as socket_info:
+            with pool.get_socket(credentials, checkout) as socket_info:
                 socket_info.send_message(msg)
                 data = socket_info.receive_message(op_code, request_id)
 
@@ -382,14 +380,11 @@ class Pool:
 
         :Parameters:
           - `all_credentials`: dict, maps auth source to MongoCredential.
-          - `min_wire_version`: int, minimum protocol the server supports.
-          - `max_wire_version`: int, maximum protocol the server supports.
           - `checkout` (optional): keep socket checked out.
         """
         # First get a socket, then attempt authentication. Simplifies
         # semaphore management in the face of network errors during auth.
         sock_info = self._get_socket_no_auth()
-        sock_info.set_wire_version_range(min_wire_version, max_wire_version)
         try:
             sock_info.check_auth(all_credentials)
             yield sock_info

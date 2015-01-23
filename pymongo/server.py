@@ -103,11 +103,7 @@ class Server(object):
 
     @contextlib.contextmanager
     def get_socket(self, all_credentials, checkout=False):
-        sd = self.description
-        with self.pool.get_socket(all_credentials,
-                                  sd.min_wire_version,
-                                  sd.max_wire_version,
-                                  checkout) as sock_info:
+        with self.pool.get_socket(all_credentials, checkout) as sock_info:
             yield sock_info
 
     @property
