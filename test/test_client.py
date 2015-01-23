@@ -323,74 +323,68 @@ class TestClient(IntegrationTest):
     @client_context.require_auth
     def test_auth_from_uri(self):
         self.client.admin.add_user("admin", "pass", roles=["root"])
-        try:
-            self.client.pymongo_test.add_user(
-                "user", "pass", roles=['userAdmin', 'readWrite'])
+        self.addCleanup(self.client.admin.remove_user, 'admin')
+        self.addCleanup(remove_all_users, self.client.pymongo_test)
 
-            with self.assertRaises(OperationFailure):
-                connected(rs_or_single_client(
-                    "mongodb://a:b@%s:%d" % (host, port)))
+        self.client.pymongo_test.add_user(
+            "user", "pass", roles=['userAdmin', 'readWrite'])
 
-            # No error.
-            connected(rs_or_single_client_noauth(
-                "mongodb://admin:pass@%s:%d" % (host, port)))
+        with self.assertRaises(OperationFailure):
+            connected(rs_or_single_client(
+                "mongodb://a:b@%s:%d" % (host, port)))
 
-            # Wrong database.
-            uri = "mongodb://admin:pass@%s:%d/pymongo_test" % (host, port)
-            with self.assertRaises(OperationFailure):
-                connected(rs_or_single_client(uri))
+        # No error.
+        connected(rs_or_single_client_noauth(
+            "mongodb://admin:pass@%s:%d" % (host, port)))
 
-            # No error.
-            connected(rs_or_single_client_noauth(
-                "mongodb://user:pass@%s:%d/pymongo_test" % (host, port)))
+        # Wrong database.
+        uri = "mongodb://admin:pass@%s:%d/pymongo_test" % (host, port)
+        with self.assertRaises(OperationFailure):
+            connected(rs_or_single_client(uri))
 
-            # Auth with lazy connection.
-            rs_or_single_client(
-                "mongodb://user:pass@%s:%d/pymongo_test" % (host, port),
-                connect=False).pymongo_test.test.find_one()
+        # No error.
+        connected(rs_or_single_client_noauth(
+            "mongodb://user:pass@%s:%d/pymongo_test" % (host, port)))
 
-            # Wrong password.
-            bad_client = rs_or_single_client(
-                "mongodb://user:wrong@%s:%d/pymongo_test" % (host, port),
-                connect=False)
+        # Auth with lazy connection.
+        rs_or_single_client(
+            "mongodb://user:pass@%s:%d/pymongo_test" % (host, port),
+            connect=False).pymongo_test.test.find_one()
 
-            self.assertRaises(OperationFailure,
-                              bad_client.pymongo_test.test.find_one)
+        # Wrong password.
+        bad_client = rs_or_single_client(
+            "mongodb://user:wrong@%s:%d/pymongo_test" % (host, port),
+            connect=False)
 
-        finally:
-            # Clean up.
-            remove_all_users(self.client.pymongo_test)
-            self.client.admin.remove_user('admin')
+        self.assertRaises(OperationFailure,
+                          bad_client.pymongo_test.test.find_one)
 
     @client_context.require_auth
     def test_multiple_logins(self):
         self.client.pymongo_test.add_user('user1', 'pass', roles=['readWrite'])
         self.client.pymongo_test.add_user('user2', 'pass', roles=['readWrite'])
+        self.addCleanup(remove_all_users, self.client.pymongo_test)
 
-        try:
-            client = rs_or_single_client_noauth(
-                "mongodb://user1:pass@%s:%d/pymongo_test" % (host, port))
+        client = rs_or_single_client_noauth(
+            "mongodb://user1:pass@%s:%d/pymongo_test" % (host, port))
 
-            client.pymongo_test.test.find_one()
-            with self.assertRaises(OperationFailure):
-                # Can't log in to the same database with multiple users.
-                client.pymongo_test.authenticate('user2', 'pass')
-
-            client.pymongo_test.test.find_one()
-            client.pymongo_test.logout()
-            with self.assertRaises(OperationFailure):
-                client.pymongo_test.test.find_one()
-
+        client.pymongo_test.test.find_one()
+        with self.assertRaises(OperationFailure):
+            # Can't log in to the same database with multiple users.
             client.pymongo_test.authenticate('user2', 'pass')
+
+        client.pymongo_test.test.find_one()
+        client.pymongo_test.logout()
+        with self.assertRaises(OperationFailure):
             client.pymongo_test.test.find_one()
 
-            with self.assertRaises(OperationFailure):
-                client.pymongo_test.authenticate('user1', 'pass')
+        client.pymongo_test.authenticate('user2', 'pass')
+        client.pymongo_test.test.find_one()
 
-            client.pymongo_test.test.find_one()
+        with self.assertRaises(OperationFailure):
+            client.pymongo_test.authenticate('user1', 'pass')
 
-        finally:
-            remove_all_users(self.client.pymongo_test)
+        client.pymongo_test.test.find_one()
 
     @client_context.require_auth
     def test_lazy_auth_raises_operation_failure(self):
@@ -879,38 +873,35 @@ class TestExhaustCursor(IntegrationTest):
         collection.remove()
 
         collection.insert([{} for _ in range(200)])
+        self.addCleanup(client_context.client.pymongo_test.test.drop)
 
-        try:
-            pool = get_pool(client)
-            pool._check_interval_seconds = None  # Never check.
-            sock_info = one(pool.sockets)
+        pool = get_pool(client)
+        pool._check_interval_seconds = None  # Never check.
+        sock_info = one(pool.sockets)
 
-            cursor = collection.find(cursor_type=EXHAUST)
+        cursor = collection.find(cursor_type=EXHAUST)
 
-            # Initial query succeeds.
-            cursor.next()
+        # Initial query succeeds.
+        cursor.next()
 
-            # Cause a server error on getmore.
-            def receive_message(operation, request_id):
-                # Discard the actual server response.
-                SocketInfo.receive_message(sock_info, operation, request_id)
+        # Cause a server error on getmore.
+        def receive_message(operation, request_id):
+            # Discard the actual server response.
+            SocketInfo.receive_message(sock_info, operation, request_id)
 
-                # responseFlags bit 1 is QueryFailure.
-                msg = struct.pack('<iiiii', 1 << 1, 0, 0, 0, 0)
-                msg += BSON.encode({'$err': 'mock err', 'code': 0})
-                return msg
+            # responseFlags bit 1 is QueryFailure.
+            msg = struct.pack('<iiiii', 1 << 1, 0, 0, 0, 0)
+            msg += BSON.encode({'$err': 'mock err', 'code': 0})
+            return msg
 
-            saved = sock_info.receive_message
-            sock_info.receive_message = receive_message
-            self.assertRaises(OperationFailure, list, cursor)
-            sock_info.receive_message = saved
+        saved = sock_info.receive_message
+        sock_info.receive_message = receive_message
+        self.assertRaises(OperationFailure, list, cursor)
+        sock_info.receive_message = saved
 
-            # The socket is returned the pool and it still works.
-            self.assertEqual(200, collection.count())
-            self.assertIn(sock_info, pool.sockets)
-
-        finally:
-            client_context.client.pymongo_test.test.drop()
+        # The socket is returned the pool and it still works.
+        self.assertEqual(200, collection.count())
+        self.assertIn(sock_info, pool.sockets)
 
     def test_exhaust_query_network_error(self):
         # When doing an exhaust query, the socket stays checked out on success

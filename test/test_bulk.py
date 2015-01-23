@@ -643,78 +643,74 @@ class TestBulk(BulkTestBase):
 
     def test_single_error_ordered_batch(self):
         self.coll.ensure_index('a', unique=True)
+        self.addCleanup(self.coll.drop_index, [('a', 1)])
+        batch = self.coll.initialize_ordered_bulk_op()
+        batch.insert({'b': 1, 'a': 1})
+        batch.find({'b': 2}).upsert().update_one({'$set': {'a': 1}})
+        batch.insert({'b': 3, 'a': 2})
+
         try:
-            batch = self.coll.initialize_ordered_bulk_op()
-            batch.insert({'b': 1, 'a': 1})
-            batch.find({'b': 2}).upsert().update_one({'$set': {'a': 1}})
-            batch.insert({'b': 3, 'a': 2})
+            batch.execute()
+        except BulkWriteError as exc:
+            result = exc.details
+            self.assertEqual(exc.code, 65)
+        else:
+            self.fail("Error not raised")
 
-            try:
-                batch.execute()
-            except BulkWriteError as exc:
-                result = exc.details
-                self.assertEqual(exc.code, 65)
-            else:
-                self.fail("Error not raised")
-
-            self.assertEqualResponse(
-                {'nMatched': 0,
-                 'nModified': 0,
-                 'nUpserted': 0,
-                 'nInserted': 1,
-                 'nRemoved': 0,
-                 'upserted': [],
-                 'writeConcernErrors': [],
-                 'writeErrors': [
-                     {'index': 1,
-                      'code': 11000,
-                      'errmsg': '...',
-                      'op': {'q': {'b': 2},
-                             'u': {'$set': {'a': 1}},
-                             'multi': False,
-                             'upsert': True}}]},
-                result)
-        finally:
-            self.coll.drop_index([('a', 1)])
+        self.assertEqualResponse(
+            {'nMatched': 0,
+             'nModified': 0,
+             'nUpserted': 0,
+             'nInserted': 1,
+             'nRemoved': 0,
+             'upserted': [],
+             'writeConcernErrors': [],
+             'writeErrors': [
+                 {'index': 1,
+                  'code': 11000,
+                  'errmsg': '...',
+                  'op': {'q': {'b': 2},
+                         'u': {'$set': {'a': 1}},
+                         'multi': False,
+                         'upsert': True}}]},
+            result)
 
     def test_multiple_error_ordered_batch(self):
         self.coll.ensure_index('a', unique=True)
+        self.addCleanup(self.coll.drop_index, [('a', 1)])
+        batch = self.coll.initialize_ordered_bulk_op()
+        batch.insert({'b': 1, 'a': 1})
+        batch.find({'b': 2}).upsert().update_one({'$set': {'a': 1}})
+        batch.find({'b': 3}).upsert().update_one({'$set': {'a': 2}})
+        batch.find({'b': 2}).upsert().update_one({'$set': {'a': 1}})
+        batch.insert({'b': 4, 'a': 3})
+        batch.insert({'b': 5, 'a': 1})
+
         try:
-            batch = self.coll.initialize_ordered_bulk_op()
-            batch.insert({'b': 1, 'a': 1})
-            batch.find({'b': 2}).upsert().update_one({'$set': {'a': 1}})
-            batch.find({'b': 3}).upsert().update_one({'$set': {'a': 2}})
-            batch.find({'b': 2}).upsert().update_one({'$set': {'a': 1}})
-            batch.insert({'b': 4, 'a': 3})
-            batch.insert({'b': 5, 'a': 1})
+            batch.execute()
+        except BulkWriteError as exc:
+            result = exc.details
+            self.assertEqual(exc.code, 65)
+        else:
+            self.fail("Error not raised")
 
-            try:
-                batch.execute()
-            except BulkWriteError as exc:
-                result = exc.details
-                self.assertEqual(exc.code, 65)
-            else:
-                self.fail("Error not raised")
-
-            self.assertEqualResponse(
-                {'nMatched': 0,
-                 'nModified': 0,
-                 'nUpserted': 0,
-                 'nInserted': 1,
-                 'nRemoved': 0,
-                 'upserted': [],
-                 'writeConcernErrors': [],
-                 'writeErrors': [
-                     {'index': 1,
-                      'code': 11000,
-                      'errmsg': '...',
-                      'op': {'q': {'b': 2},
-                             'u': {'$set': {'a': 1}},
-                             'multi': False,
-                             'upsert': True}}]},
-                result)
-        finally:
-            self.coll.drop_index([('a', 1)])
+        self.assertEqualResponse(
+            {'nMatched': 0,
+             'nModified': 0,
+             'nUpserted': 0,
+             'nInserted': 1,
+             'nRemoved': 0,
+             'upserted': [],
+             'writeConcernErrors': [],
+             'writeErrors': [
+                 {'index': 1,
+                  'code': 11000,
+                  'errmsg': '...',
+                  'op': {'q': {'b': 2},
+                         'u': {'$set': {'a': 1}},
+                         'multi': False,
+                         'upsert': True}}]},
+            result)
 
     def test_single_unordered_batch(self):
         batch = self.coll.initialize_unordered_bulk_op()
@@ -737,85 +733,81 @@ class TestBulk(BulkTestBase):
 
     def test_single_error_unordered_batch(self):
         self.coll.ensure_index('a', unique=True)
+        self.addCleanup(self.coll.drop_index, [('a', 1)])
+        batch = self.coll.initialize_unordered_bulk_op()
+        batch.insert({'b': 1, 'a': 1})
+        batch.find({'b': 2}).upsert().update_one({'$set': {'a': 1}})
+        batch.insert({'b': 3, 'a': 2})
+
         try:
-            batch = self.coll.initialize_unordered_bulk_op()
-            batch.insert({'b': 1, 'a': 1})
-            batch.find({'b': 2}).upsert().update_one({'$set': {'a': 1}})
-            batch.insert({'b': 3, 'a': 2})
+            batch.execute()
+        except BulkWriteError as exc:
+            result = exc.details
+            self.assertEqual(exc.code, 65)
+        else:
+            self.fail("Error not raised")
 
-            try:
-                batch.execute()
-            except BulkWriteError as exc:
-                result = exc.details
-                self.assertEqual(exc.code, 65)
-            else:
-                self.fail("Error not raised")
-
-            self.assertEqualResponse(
-                {'nMatched': 0,
-                 'nModified': 0,
-                 'nUpserted': 0,
-                 'nInserted': 2,
-                 'nRemoved': 0,
-                 'upserted': [],
-                 'writeConcernErrors': [],
-                 'writeErrors': [
-                     {'index': 1,
-                      'code': 11000,
-                      'errmsg': '...',
-                      'op': {'q': {'b': 2},
-                             'u': {'$set': {'a': 1}},
-                             'multi': False,
-                             'upsert': True}}]},
-                result)
-        finally:
-            self.coll.drop_index([('a', 1)])
+        self.assertEqualResponse(
+            {'nMatched': 0,
+             'nModified': 0,
+             'nUpserted': 0,
+             'nInserted': 2,
+             'nRemoved': 0,
+             'upserted': [],
+             'writeConcernErrors': [],
+             'writeErrors': [
+                 {'index': 1,
+                  'code': 11000,
+                  'errmsg': '...',
+                  'op': {'q': {'b': 2},
+                         'u': {'$set': {'a': 1}},
+                         'multi': False,
+                         'upsert': True}}]},
+            result)
 
     def test_multiple_error_unordered_batch(self):
         self.coll.ensure_index('a', unique=True)
-        try:
-            batch = self.coll.initialize_unordered_bulk_op()
-            batch.insert({'b': 1, 'a': 1})
-            batch.find({'b': 2}).upsert().update_one({'$set': {'a': 3}})
-            batch.find({'b': 3}).upsert().update_one({'$set': {'a': 4}})
-            batch.find({'b': 4}).upsert().update_one({'$set': {'a': 3}})
-            batch.insert({'b': 5, 'a': 2})
-            batch.insert({'b': 6, 'a': 1})
+        self.addCleanup(self.coll.drop_index, [('a', 1)])
+        batch = self.coll.initialize_unordered_bulk_op()
+        batch.insert({'b': 1, 'a': 1})
+        batch.find({'b': 2}).upsert().update_one({'$set': {'a': 3}})
+        batch.find({'b': 3}).upsert().update_one({'$set': {'a': 4}})
+        batch.find({'b': 4}).upsert().update_one({'$set': {'a': 3}})
+        batch.insert({'b': 5, 'a': 2})
+        batch.insert({'b': 6, 'a': 1})
 
-            try:
-                batch.execute()
-            except BulkWriteError as exc:
-                result = exc.details
-                self.assertEqual(exc.code, 65)
-            else:
-                self.fail("Error not raised")
-            # Assume the update at index 1 runs before the update at index 3,
-            # although the spec does not require it. Same for inserts.
-            self.assertEqualResponse(
-                {'nMatched': 0,
-                 'nModified': 0,
-                 'nUpserted': 2,
-                 'nInserted': 2,
-                 'nRemoved': 0,
-                 'upserted': [
-                     {'index': 1, '_id': '...'},
-                     {'index': 2, '_id': '...'}],
-                 'writeConcernErrors': [],
-                 'writeErrors': [
-                     {'index': 3,
-                      'code': 11000,
-                      'errmsg': '...',
-                      'op': {'q': {'b': 4},
-                             'u': {'$set': {'a': 3}},
-                             'multi': False,
-                             'upsert': True}},
-                     {'index': 5,
-                      'code': 11000,
-                      'errmsg': '...',
-                      'op': {'_id': '...', 'b': 6, 'a': 1}}]},
-                result)
-        finally:
-            self.coll.drop_index([('a', 1)])
+        try:
+            batch.execute()
+        except BulkWriteError as exc:
+            result = exc.details
+            self.assertEqual(exc.code, 65)
+        else:
+            self.fail("Error not raised")
+        # Assume the update at index 1 runs before the update at index 3,
+        # although the spec does not require it. Same for inserts.
+        self.assertEqualResponse(
+            {'nMatched': 0,
+             'nModified': 0,
+             'nUpserted': 2,
+             'nInserted': 2,
+             'nRemoved': 0,
+             'upserted': [
+                 {'index': 1, '_id': '...'},
+                 {'index': 2, '_id': '...'}],
+             'writeConcernErrors': [],
+             'writeErrors': [
+                 {'index': 3,
+                  'code': 11000,
+                  'errmsg': '...',
+                  'op': {'q': {'b': 4},
+                         'u': {'$set': {'a': 3}},
+                         'multi': False,
+                         'upsert': True}},
+                 {'index': 5,
+                  'code': 11000,
+                  'errmsg': '...',
+                  'op': {'_id': '...', 'b': 6, 'a': 1}}]},
+            result)
 
     def test_large_inserts_ordered(self):
         big = 'x' * self.coll.database.connection.max_bson_size
@@ -994,42 +986,40 @@ class TestBulkWriteConcern(BulkTestBase):
 
         self.coll.remove()
         self.coll.ensure_index('a', unique=True)
+        self.addCleanup(self.coll.drop_index, [('a', 1)])
 
         # Fail due to write concern support as well
         # as duplicate key error on ordered batch.
+        batch = self.coll.initialize_ordered_bulk_op()
+        batch.insert({'a': 1})
+        batch.find({'a': 3}).upsert().replace_one({'b': 1})
+        batch.insert({'a': 1})
+        batch.insert({'a': 2})
         try:
-            batch = self.coll.initialize_ordered_bulk_op()
-            batch.insert({'a': 1})
-            batch.find({'a': 3}).upsert().replace_one({'b': 1})
-            batch.insert({'a': 1})
-            batch.insert({'a': 2})
-            try:
-                self.cause_wtimeout(batch)
-            except BulkWriteError as exc:
-                result = exc.details
-                self.assertEqual(exc.code, 65)
-            else:
-                self.fail("Error not raised")
+            self.cause_wtimeout(batch)
+        except BulkWriteError as exc:
+            result = exc.details
+            self.assertEqual(exc.code, 65)
+        else:
+            self.fail("Error not raised")
 
-            self.assertEqualResponse(
-                {'nMatched': 0,
-                 'nModified': 0,
-                 'nUpserted': 1,
-                 'nInserted': 1,
-                 'nRemoved': 0,
-                 'upserted': [{'index': 1, '_id': '...'}],
-                 'writeErrors': [
-                     {'index': 2,
-                      'code': 11000,
-                      'errmsg': '...',
-                      'op': {'_id': '...', 'a': 1}}]},
-                result)
+        self.assertEqualResponse(
+            {'nMatched': 0,
+             'nModified': 0,
+             'nUpserted': 1,
+             'nInserted': 1,
+             'nRemoved': 0,
+             'upserted': [{'index': 1, '_id': '...'}],
+             'writeErrors': [
+                 {'index': 2,
+                  'code': 11000,
+                  'errmsg': '...',
+                  'op': {'_id': '...', 'a': 1}}]},
+            result)
 
-            self.assertEqual(2, len(result['writeConcernErrors']))
-            failed = result['writeErrors'][0]
-            self.assertTrue("duplicate" in failed['errmsg'])
-        finally:
-            self.coll.drop_index([('a', 1)])
+        self.assertEqual(2, len(result['writeConcernErrors']))
+        failed = result['writeErrors'][0]
+        self.assertTrue("duplicate" in failed['errmsg'])
 
     @client_context.require_replica_set
     def test_write_concern_failure_unordered(self):
@@ -1062,47 +1052,45 @@ class TestBulkWriteConcern(BulkTestBase):
 
         self.coll.remove()
         self.coll.ensure_index('a', unique=True)
+        self.addCleanup(self.coll.drop_index, [('a', 1)])
 
         # Fail due to write concern support as well
         # as duplicate key error on unordered batch.
+        batch = self.coll.initialize_unordered_bulk_op()
+        batch.insert({'a': 1})
+        batch.find({'a': 3}).upsert().update_one({'$set': {'a': 3,
+                                                           'b': 1}})
+        batch.insert({'a': 1})
+        batch.insert({'a': 2})
         try:
-            batch = self.coll.initialize_unordered_bulk_op()
-            batch.insert({'a': 1})
-            batch.find({'a': 3}).upsert().update_one({'$set': {'a': 3,
-                                                               'b': 1}})
-            batch.insert({'a': 1})
-            batch.insert({'a': 2})
-            try:
-                self.cause_wtimeout(batch)
-            except BulkWriteError as exc:
-                result = exc.details
-                self.assertEqual(exc.code, 65)
-            else:
-                self.fail("Error not raised")
+            self.cause_wtimeout(batch)
+        except BulkWriteError as exc:
+            result = exc.details
+            self.assertEqual(exc.code, 65)
+        else:
+            self.fail("Error not raised")
 
-            self.assertEqual(2, result['nInserted'])
-            self.assertEqual(1, result['nUpserted'])
-            self.assertEqual(1, len(result['writeErrors']))
-            # When talking to legacy servers there will be a
-            # write concern error for each operation.
-            self.assertTrue(len(result['writeConcernErrors']) > 1)
+        self.assertEqual(2, result['nInserted'])
+        self.assertEqual(1, result['nUpserted'])
+        self.assertEqual(1, len(result['writeErrors']))
+        # When talking to legacy servers there will be a
+        # write concern error for each operation.
+        self.assertTrue(len(result['writeConcernErrors']) > 1)
 
-            failed = result['writeErrors'][0]
-            self.assertEqual(2, failed['index'])
-            self.assertEqual(11000, failed['code'])
-            self.assertTrue(isinstance(failed['errmsg'], string_type))
-            self.assertEqual(1, failed['op']['a'])
+        failed = result['writeErrors'][0]
+        self.assertEqual(2, failed['index'])
+        self.assertEqual(11000, failed['code'])
+        self.assertTrue(isinstance(failed['errmsg'], string_type))
+        self.assertEqual(1, failed['op']['a'])
 
-            failed = result['writeConcernErrors'][0]
-            self.assertEqual(64, failed['code'])
-            self.assertTrue(isinstance(failed['errmsg'], string_type))
+        failed = result['writeConcernErrors'][0]
+        self.assertEqual(64, failed['code'])
+        self.assertTrue(isinstance(failed['errmsg'], string_type))
 
-            upserts = result['upserted']
-            self.assertEqual(1, len(upserts))
-            self.assertEqual(1, upserts[0]['index'])
-            self.assertTrue(upserts[0].get('_id'))
-        finally:
-            self.coll.drop_index([('a', 1)])
+        upserts = result['upserted']
+        self.assertEqual(1, len(upserts))
+        self.assertEqual(1, upserts[0]['index'])
+        self.assertTrue(upserts[0].get('_id'))
 
 
 class TestBulkNoResults(BulkTestBase):

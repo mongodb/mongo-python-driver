@@ -934,43 +934,41 @@ class TestCursor(IntegrationTest):
         db = self.db
         db.drop_collection("test")
         db.create_collection("test", capped=True, size=1000, max=3)
+        self.addCleanup(db.drop_collection, "test")
+        cursor = db.test.find(cursor_type=TAILABLE)
 
-        try:
-            cursor = db.test.find(cursor_type=TAILABLE)
+        db.test.insert({"x": 1})
+        count = 0
+        for doc in cursor:
+            count += 1
+            self.assertEqual(1, doc["x"])
+        self.assertEqual(1, count)
 
-            db.test.insert({"x": 1})
-            count = 0
-            for doc in cursor:
-                count += 1
-                self.assertEqual(1, doc["x"])
-            self.assertEqual(1, count)
+        db.test.insert({"x": 2})
+        count = 0
+        for doc in cursor:
+            count += 1
+            self.assertEqual(2, doc["x"])
+        self.assertEqual(1, count)
 
-            db.test.insert({"x": 2})
-            count = 0
-            for doc in cursor:
-                count += 1
-                self.assertEqual(2, doc["x"])
-            self.assertEqual(1, count)
+        db.test.insert({"x": 3})
+        count = 0
+        for doc in cursor:
+            count += 1
+            self.assertEqual(3, doc["x"])
+        self.assertEqual(1, count)
 
-            db.test.insert({"x": 3})
-            count = 0
-            for doc in cursor:
-                count += 1
-                self.assertEqual(3, doc["x"])
-            self.assertEqual(1, count)
+        # Capped rollover - the collection can never
+        # have more than 3 documents. Just make sure
+        # this doesn't raise...
+        db.test.insert(({"x": i} for i in range(4, 7)))
+        self.assertEqual(0, len(list(cursor)))
 
-            # Capped rollover - the collection can never
-            # have more than 3 documents. Just make sure
-            # this doesn't raise...
-            db.test.insert(({"x": i} for i in range(4, 7)))
-            self.assertEqual(0, len(list(cursor)))
+        # and that the cursor doesn't think it's still alive.
+        self.assertFalse(cursor.alive)
 
-            # and that the cursor doesn't think it's still alive.
-            self.assertFalse(cursor.alive)
+        self.assertEqual(3, db.test.count())
 
-            self.assertEqual(3, db.test.count())
-        finally:
-            db.drop_collection("test")
 
     def test_distinct(self):
         self.db.drop_collection("test")
@@ -1089,21 +1087,19 @@ class TestCursor(IntegrationTest):
                 # Do absolutely nothing...
                 pass
 
-        try:
-            client.set_cursor_manager(CManager)
-            docs = []
-            cursor = db.test.find().batch_size(10)
-            docs.append(next(cursor))
-            cursor.close()
-            docs.extend(cursor)
-            self.assertEqual(len(docs), 10)
-            cmd_cursor = {'id': cursor.cursor_id, 'firstBatch': []}
-            ccursor = CommandCursor(cursor.collection, cmd_cursor,
-                                    cursor.address, retrieved=cursor.retrieved)
-            docs.extend(ccursor)
-            self.assertEqual(len(docs), 200)
-        finally:
-            client.set_cursor_manager(CursorManager)
+        client.set_cursor_manager(CManager)
+        self.addCleanup(client.set_cursor_manager, CursorManager)
+        docs = []
+        cursor = db.test.find().batch_size(10)
+        docs.append(next(cursor))
+        cursor.close()
+        docs.extend(cursor)
+        self.assertEqual(len(docs), 10)
+        cmd_cursor = {'id': cursor.cursor_id, 'firstBatch': []}
+        ccursor = CommandCursor(cursor.collection, cmd_cursor,
+                                cursor.address, retrieved=cursor.retrieved)
+        docs.extend(ccursor)
+        self.assertEqual(len(docs), 200)
 
 if __name__ == "__main__":
     unittest.main()
