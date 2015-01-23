@@ -121,11 +121,8 @@ def start_replica_set(members, auth=False, fresh=True):
     if auth:
         key_file = os.path.join(dbpath, 'key.txt')
         if not os.path.exists(key_file):
-            f = open(key_file, 'w')
-            try:
+            with open(key_file, 'w') as f:
                 f.write("my super secret system password")
-            finally:
-                f.close()
             os.chmod(key_file, S_IRUSR)
 
     for i in range(len(members)):
