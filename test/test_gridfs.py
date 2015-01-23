@@ -446,13 +446,10 @@ class TestGridfsReplicaSet(TestReplicaSetClientBase):
             w=self.w, wtimeout=5000,
             read_preference=ReadPreference.SECONDARY)
 
-        try:
-            fs = gridfs.GridFS(rsc.pymongo_test)
-            oid = fs.put(b'foo')
-            content = fs.get(oid).read()
-            self.assertEqual(b'foo', content)
-        finally:
-            rsc.close()
+        fs = gridfs.GridFS(rsc.pymongo_test)
+        oid = fs.put(b'foo')
+        content = fs.get(oid).read()
+        self.assertEqual(b'foo', content)
 
     def test_gridfs_secondary(self):
         primary_host, primary_port = self.primary

@@ -787,26 +787,23 @@ class TestAlive(HATestCase):
         secondary_cx = connected(MongoClient(secondary))
         rsc = connected(MongoClient(self.seed, replicaSet=self.name))
 
-        try:
-            self.assertTrue(primary_cx.alive())
-            self.assertTrue(secondary_cx.alive())
-            self.assertTrue(rsc.alive())
-    
-            ha_tools.kill_primary()
-            time.sleep(0.5)
+        self.assertTrue(primary_cx.alive())
+        self.assertTrue(secondary_cx.alive())
+        self.assertTrue(rsc.alive())
 
-            self.assertFalse(primary_cx.alive())
-            self.assertTrue(secondary_cx.alive())
-            self.assertFalse(rsc.alive())
-            
-            ha_tools.kill_members([secondary], 2)
-            time.sleep(0.5)
+        ha_tools.kill_primary()
+        time.sleep(0.5)
 
-            self.assertFalse(primary_cx.alive())
-            self.assertFalse(secondary_cx.alive())
-            self.assertFalse(rsc.alive())
-        finally:
-            rsc.close()
+        self.assertFalse(primary_cx.alive())
+        self.assertTrue(secondary_cx.alive())
+        self.assertFalse(rsc.alive())
+
+        ha_tools.kill_members([secondary], 2)
+        time.sleep(0.5)
+
+        self.assertFalse(primary_cx.alive())
+        self.assertFalse(secondary_cx.alive())
+        self.assertFalse(rsc.alive())
 
         
 class TestMongosHighAvailability(HATestCase):
