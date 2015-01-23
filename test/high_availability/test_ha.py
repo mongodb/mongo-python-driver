@@ -175,10 +175,6 @@ class TestDirectConnection(HATestCase):
                     'Unacknowledged insert into arbiter client %s should'
                     'have raised exception' % (client,))
         
-    def tearDown(self):
-        self.c.close()
-        super(TestDirectConnection, self).tearDown()
-
 
 class TestPassiveAndHidden(HATestCase):
 
@@ -207,10 +203,6 @@ class TestPassiveAndHidden(HATestCase):
         ha_tools.kill_members(ha_tools.get_passives(), 2)
         time.sleep(2 * self.heartbeat_frequency)
         utils.assertReadFrom(self, self.c, self.c.primary, SECONDARY_PREFERRED)
-
-    def tearDown(self):
-        self.c.close()
-        super(TestPassiveAndHidden, self).tearDown()
 
 
 class TestMonitorRemovesRecoveringMember(HATestCase):
@@ -241,10 +233,6 @@ class TestMonitorRemovesRecoveringMember(HATestCase):
         for mode in SECONDARY, SECONDARY_PREFERRED:
             # Don't read from recovering member
             utils.assertReadFrom(self, self.c, partition_node(secondary), mode)
-
-    def tearDown(self):
-        self.c.close()
-        super(TestMonitorRemovesRecoveringMember, self).tearDown()
 
 
 class TestTriggeredRefresh(HATestCase):
@@ -742,10 +730,6 @@ class TestReadPreference(HATestCase):
 
         self.clear_ping_times()
 
-    def tearDown(self):
-        self.c.close()
-        super(TestReadPreference, self).tearDown()
-
 
 class TestReplicaSetAuth(HATestCase):
     def setUp(self):
@@ -787,10 +771,6 @@ class TestReplicaSetAuth(HATestCase):
         # And still query.
         self.db.read_preference = PRIMARY_PREFERRED
         self.assertEqual('bar', self.db.foo.find_one()['foo'])
-
-    def tearDown(self):
-        self.c.close()
-        super(TestReplicaSetAuth, self).tearDown()
 
 
 class TestAlive(HATestCase):
@@ -872,10 +852,6 @@ class TestMongosHighAvailability(HATestCase):
         # Find new mongos
         self.assertEqual(1, coll.count())
 
-    def tearDown(self):
-        self.client.drop_database(self.dbname)
-        super(TestMongosHighAvailability, self).tearDown()
-
 
 class TestLastErrorDefaults(HATestCase):
 
@@ -908,10 +884,6 @@ class TestLastErrorDefaults(HATestCase):
                           {'_id': 0}, {"$set": {"a": 10}})
         self.assertRaises(WTimeoutError, self.c.pymongo_test.test.remove,
                           {'_id': 0})
-
-    def tearDown(self):
-        self.c.close()
-        super(TestLastErrorDefaults, self).tearDown()
 
 
 class TestShipOfTheseus(HATestCase):
