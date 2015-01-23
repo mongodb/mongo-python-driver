@@ -735,7 +735,8 @@ class Database(common.BaseObject):
             opts["pwd"] = auth._password_digest(name, password)
             opts["digestPassword"] = False
 
-        opts["writeConcern"] = self._get_wc_override()
+        opts["writeConcern"] = (
+            self._get_wc_override() or self.write_concern.document)
         opts.update(kwargs)
 
         if create:
@@ -841,8 +842,10 @@ class Database(common.BaseObject):
         """
 
         try:
+            write_concern = (
+                self._get_wc_override() or self.write_concern.document)
             self.command("dropUser", name,
-                         writeConcern=self._get_wc_override())
+                         writeConcern=write_concern)
         except OperationFailure as exc:
             # See comment in add_user try / except above.
             if exc.code in common.COMMAND_NOT_FOUND_CODES:
