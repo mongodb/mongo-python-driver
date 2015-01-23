@@ -130,10 +130,8 @@ class TopologyTest(unittest.TestCase):
         super(TopologyTest, self).setUp()
         self.client_knobs = client_knobs(heartbeat_frequency=999999)
         self.client_knobs.enable()
+        self.addCleanup(self.client_knobs.disable)
 
-    def tearDown(self):
-        self.client_knobs.disable()
-        super(TopologyTest, self).tearDown()
 
 # Use assertRaisesRegex if available, otherwise use Python 2.7's
 # deprecated assertRaisesRegexp, with a 'p'.

@@ -51,9 +51,7 @@ class TestReadPreferencesBase(TestReplicaSetClientBase):
         self.client.pymongo_test.test.insert(
             [{'_id': i} for i in range(10)], w=self.w)
 
-    def tearDown(self):
-        super(TestReadPreferencesBase, self).tearDown()
-        self.client.pymongo_test.test.drop()
+        self.addCleanup(self.client.pymongo_test.test.drop)
 
     def read_from_which_host(self, client):
         """Do a find() on the client and return which host was used
@@ -230,14 +228,7 @@ class TestCommandAndReadPreference(TestReplicaSetClientBase):
         if client_context.auth_enabled:
             self.c.admin.authenticate(db_user, db_pwd)
         self.client_version = Version.from_client(self.c)
-
-    def tearDown(self):
-        # We create a lot of collections and indexes in these tests, so drop
-        # the database.
-        self.c.drop_database('pymongo_test')
-        self.c.close()
-        self.c = None
-        super(TestCommandAndReadPreference, self).tearDown()
+        self.addCleanup(self.c.drop_database, 'pymongo_test')
 
     def executed_on_which_server(self, client, fn, *args, **kwargs):
         """Execute fn(*args, **kwargs) and return the Server instance used."""
