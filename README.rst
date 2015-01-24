@@ -87,7 +87,7 @@ Optional packages:
 
 - `backports.pbkdf2 <https://pypi.python.org/pypi/backports.pbkdf2/>`_,
   improves authentication performance with SCRAM-SHA-1, the default
-  authentication mechanism for MongoDB 2.8+. It especially improves
+  authentication mechanism for MongoDB 3.0+. It especially improves
   performance on Python older than 2.7.8, or on Python 3 before Python 3.4.
 - `pykerberos <https://pypi.python.org/pypi/pykerberos>`_ is required for
   the GSSAPI authentication mechanism.

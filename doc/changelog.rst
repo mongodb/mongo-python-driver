@@ -124,7 +124,7 @@ in this release.
 Changes in Version 2.8
 ----------------------
 
-Version 2.8 is a major release that provides full support for MongoDB 2.8 and
+Version 2.8 is a major release that provides full support for MongoDB 3.0 and
 fixes a number of bugs.
 
 Special thanks to Don Mitchell, Ximing, Can Zhang, Sergey Azovskov, and Heewa
@@ -132,7 +132,7 @@ Barfchin for their contributions to this release.
 
 Highlights include:
 
-- Support for the SCRAM-SHA-1 authentication mechanism (new in MongoDB 2.8).
+- Support for the SCRAM-SHA-1 authentication mechanism (new in MongoDB 3.0).
 - JSON decoder support for the new $numberLong and $undefined types.
 - JSON decoder support for the $date type as an ISO-8601 string.
 - Support passing an index name to :meth:`~pymongo.cursor.Cursor.hint`.

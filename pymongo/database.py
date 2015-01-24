@@ -887,7 +887,7 @@ class Database(common.BaseObject):
             specified the current database is used.
           - `mechanism` (optional): See
             :data:`~pymongo.auth.MECHANISMS` for options.
-            By default, use SCRAM-SHA-1 with MongoDB 2.8 and later,
+            By default, use SCRAM-SHA-1 with MongoDB 3.0 and later,
             MONGODB-CR (MongoDB Challenge Response protocol) for older servers.
           - `authMechanismProperties` (optional): Used to specify
             authentication mechanism specific options. To specify the service
@@ -895,7 +895,7 @@ class Database(common.BaseObject):
             authMechanismProperties='SERVICE_NAME:<service name>'
 
         .. versionadded:: 2.8
-           Use SCRAM-SHA-1 with MongoDB 2.8 and later.
+           Use SCRAM-SHA-1 with MongoDB 3.0 and later.
 
         .. versionchanged:: 2.5
            Added the `source` and `mechanism` parameters. :meth:`authenticate`
