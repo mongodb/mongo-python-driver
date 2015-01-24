@@ -1417,7 +1417,7 @@ class MongoClient(common.BaseObject):
 
         If the source database requires authentication, `username` and
         `password` must be specified. By default, use SCRAM-SHA-1 with
-        MongoDB 2.8 and later, MONGODB-CR (MongoDB Challenge Response
+        MongoDB 3.0 and later, MONGODB-CR (MongoDB Challenge Response
         protocol) for older servers.
 
         .. note:: mongos does not support copying a database from a server
@@ -1432,7 +1432,7 @@ class MongoClient(common.BaseObject):
           - `password` (optional): password for source database
           - `mechanism` (optional): auth method, 'MONGODB-CR' or 'SCRAM-SHA-1'
 
-        .. versionadded:: 2.8
+        .. versionchanged:: 2.8
            Deprecated copy_database, and added SCRAM-SHA-1 support.
         """
         member = self.__ensure_member()

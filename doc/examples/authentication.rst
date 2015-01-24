@@ -24,7 +24,7 @@ SCRAM-SHA-1 (RFC 5802)
 .. versionadded:: 2.8
 
 SCRAM-SHA-1 is the default authentication mechanism supported by a cluster
-configured for authentication with MongoDB 2.8 or later. Authentication is
+configured for authentication with MongoDB 3.0 or later. Authentication is
 per-database and credentials can be specified through the MongoDB URI or
 passed to the :meth:`~pymongo.database.Database.authenticate` method::
 
@@ -44,7 +44,7 @@ than 2.7.8, or on Python 3 before Python 3.4.
 MONGODB-CR
 ----------
 
-Before MongoDB 2.8 the default authentication mechanism was MONGODB-CR,
+Before MongoDB 3.0 the default authentication mechanism was MONGODB-CR,
 the "MongoDB Challenge-Response" protocol::
 
   >>> from pymongo import MongoClient
@@ -59,7 +59,7 @@ Default Authentication Mechanism
 --------------------------------
 
 If no mechanism is specified, PyMongo automatically uses MONGODB-CR when
-connected to a pre-2.8 version of MongoDB, and SCRAM-SHA-1 when connected to
+connected to a pre-3.0 version of MongoDB, and SCRAM-SHA-1 when connected to
 a recent version.
 
 Delegated Authentication

@@ -1889,7 +1889,7 @@ class MongoReplicaSetClient(common.BaseObject):
 
         If the source database requires authentication, `username` and
         `password` must be specified. By default, use SCRAM-SHA-1 with
-        MongoDB 2.8 and later, MONGODB-CR (MongoDB Challenge Response
+        MongoDB 3.0 and later, MONGODB-CR (MongoDB Challenge Response
         protocol) for older servers.
 
         :Parameters:
@@ -1902,7 +1902,7 @@ class MongoReplicaSetClient(common.BaseObject):
 
         .. seealso:: The :doc:`copy_database examples </examples/copydb>`.
 
-        .. versionadded:: 2.8
+        .. versionchanged:: 2.8
            Deprecated copy_database, and added SCRAM-SHA-1 support.
         """
         member = self.__find_primary()
