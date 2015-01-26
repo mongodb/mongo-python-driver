@@ -264,7 +264,7 @@ class TestSingleServerTopology(TopologyTest):
         wait_until(raises_err, 'discover server is down')
         self.assertIsNone(s.description.round_trip_time)
 
-        # Bring it back, RTT is now 30 milliseconds.
+        # Bring it back, RTT is now 20 milliseconds.
         available = True
         round_trip_time = 20
 
