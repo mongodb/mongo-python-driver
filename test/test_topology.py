@@ -269,10 +269,10 @@ class TestSingleServerTopology(TopologyTest):
         round_trip_time = 20
 
         def new_average():
-            # We didn't forget prior average: .8 * 105 + .2 * 20 = 88.
+            # We reset the average to the most recent measurement.
             description = s.description
             return (description.round_trip_time is not None
-                    and round(abs(88 - description.round_trip_time), 7) == 0)
+                    and round(abs(20 - description.round_trip_time), 7) == 0)
 
         tries = 0
         while not new_average():

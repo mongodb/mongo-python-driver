@@ -360,3 +360,6 @@ class MovingAverage(object):
     def get(self):
         """Get the calculated average, or None if no samples yet."""
         return self.average
+
+    def reset(self):
+        self.average = None

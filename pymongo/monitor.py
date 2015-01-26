@@ -119,6 +119,7 @@ class Monitor(object):
             self._topology.reset_pool(address)
             default = ServerDescription(address, error=error)
             if not retry:
+                self._avg_round_trip_time.reset()
                 # Server type defaults to Unknown.
                 return default
 
@@ -128,6 +129,7 @@ class Monitor(object):
             except ReferenceError:
                 raise
             except Exception:
+                self._avg_round_trip_time.reset()
                 return default
 
     def _check_once(self):
