@@ -468,6 +468,7 @@ class TestDatabase(IntegrationTest):
         # "self.client" is logged in as root.
         auth_admin = self.client.admin
         auth_admin.add_user('test_default_roles', 'pass')
+        self.addCleanup(auth_admin.remove_user, 'test_default_roles')
         info = auth_admin.command(
             'usersInfo', 'test_default_roles')['users'][0]
 
