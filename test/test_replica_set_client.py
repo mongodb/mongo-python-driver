@@ -160,13 +160,8 @@ class TestReplicaSetClient(TestReplicaSetClientBase):
         cursor = c.pymongo_test.get_collection(
             "test", read_preference=nearest).find()
 
-        self.assertEqual(
-            nearest, cursor._Cursor__read_preference)
-
-        if Version.from_client(c).at_least(1, 7, 4):
-            self.assertEqual(c.max_bson_size, 16777216)
-        else:
-            self.assertEqual(c.max_bson_size, 4194304)
+        self.assertEqual(nearest, cursor._Cursor__read_preference)
+        self.assertEqual(c.max_bson_size, 16777216)
         c.close()
 
     def test_auto_reconnect_exception_when_read_preference_is_secondary(self):

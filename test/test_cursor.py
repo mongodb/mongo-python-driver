@@ -799,14 +799,7 @@ class TestCursor(IntegrationTest):
     def test_count_with_fields(self):
         self.db.test.drop()
         self.db.test.save({"x": 1})
-
-        if not client_context.version.at_least(1, 1, 3, -1):
-            for _ in self.db.test.find({}, ["a"]):
-                self.fail()
-
-            self.assertEqual(0, self.db.test.find({}, ["a"]).count())
-        else:
-            self.assertEqual(1, self.db.test.find({}, ["a"]).count())
+        self.assertEqual(1, self.db.test.find({}, ["a"]).count())
 
     def test_bad_getitem(self):
         self.assertRaises(TypeError, lambda x: self.db.test.find()[x], "hello")
@@ -896,7 +889,6 @@ class TestCursor(IntegrationTest):
         self.assertRaises(IndexError,
                           lambda x: self.db.test.find().skip(50)[x], 50)
 
-    @client_context.require_version_min(1, 1, 4, -1)
     def test_count_with_limit_and_skip(self):
         self.assertRaises(TypeError, self.db.test.find().count, "foo")
 
@@ -980,7 +972,6 @@ class TestCursor(IntegrationTest):
         finally:
             db.drop_collection("test")
 
-    @client_context.require_version_min(1, 1, 3, 1)
     def test_distinct(self):
         self.db.drop_collection("test")
 
@@ -1007,7 +998,6 @@ class TestCursor(IntegrationTest):
 
         self.assertEqual(["b", "c"], distinct)
 
-    @client_context.require_version_min(1, 5, 1)
     def test_max_scan(self):
         self.db.drop_collection("test")
         for _ in range(100):
@@ -1033,7 +1023,6 @@ class TestCursor(IntegrationTest):
         self.assertFalse(c2.alive)
         self.assertTrue(c1.alive)
 
-    @client_context.require_version_min(2, 0)
     @client_context.require_no_mongos
     def test_comment(self):
         if server_started_with_auth(self.db.connection):

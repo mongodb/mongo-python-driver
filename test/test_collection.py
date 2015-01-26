@@ -483,24 +483,8 @@ class TestCollection(IntegrationTest):
         db = self.db
         self._drop_dups_setup(db)
 
-        if client_context.version.at_least(1, 9, 2):
-            # No error, just drop the duplicate
-            db.test.create_index(
-                [('i', ASCENDING)],
-                unique=True,
-                drop_dups=True
-            )
-        else:
-            # https://jira.mongodb.org/browse/SERVER-2054 "Creating an index
-            # with dropDups shouldn't assert". On Mongo < 1.9.2, the duplicate
-            # is dropped & the index created, but an error is thrown.
-            def test_create():
-                db.test.create_index(
-                    [('i', ASCENDING)],
-                    unique=True,
-                    drop_dups=True
-                )
-            self.assertRaises(DuplicateKeyError, test_create)
+        # No error, just drop the duplicate
+        db.test.create_index([('i', ASCENDING)], unique=True, drop_dups=True)
 
         # Duplicate was dropped
         self.assertEqual(3, db.test.count())
@@ -585,15 +569,11 @@ class TestCollection(IntegrationTest):
     def test_options(self):
         db = self.db
         db.drop_collection("test")
-        if client_context.version.at_least(1, 9):
-            db.create_collection("test", capped=True, size=4096)
-            result = db.test.options()
-            # mongos 2.2.x adds an $auth field when auth is enabled.
-            result.pop('$auth', None)
-            self.assertEqual(result, {"capped": True, 'size': 4096})
-        else:
-            db.create_collection("test", capped=True)
-            self.assertEqual(db.test.options(), {"capped": True})
+        db.create_collection("test", capped=True, size=4096)
+        result = db.test.options()
+        # mongos 2.2.x adds an $auth field when auth is enabled.
+        result.pop('$auth', None)
+        self.assertEqual(result, {"capped": True, 'size': 4096})
         db.drop_collection("test")
 
     def test_insert_find_one(self):
@@ -695,10 +675,9 @@ class TestCollection(IntegrationTest):
         db.test.insert({"x": [1, 2, 3], "mike": "awesome"})
 
         self.assertEqual([1, 2, 3], db.test.find_one()["x"])
-        if client_context.version.at_least(1, 5, 1):
-            self.assertEqual([2, 3],
-                             db.test.find_one(
-                                 projection={"x": {"$slice": -2}})["x"])
+        self.assertEqual([2, 3],
+                         db.test.find_one(
+                             projection={"x": {"$slice": -2}})["x"])
         self.assertTrue("x" not in db.test.find_one(projection={"x": 0}))
         self.assertTrue("mike" in db.test.find_one(projection={"x": 0}))
 
@@ -852,7 +831,6 @@ class TestCollection(IntegrationTest):
                                  itertools.repeat(None, 10)))
         self.assertEqual(db.test.find().count(), 10)
 
-    @client_context.require_version_min(2, 0)
     def test_insert_manipulate_false(self):
         # Test three aspects of insert with manipulate=False:
         #   1. The return value is None or [None] as appropriate.
@@ -974,7 +952,6 @@ class TestCollection(IntegrationTest):
             write_concern=WriteConcern(wtimeout=1000))
         self.assertRaises(DuplicateKeyError, coll.insert, {'_id': 1})
 
-    @client_context.require_version_min(1, 9, 1)
     def test_continue_on_error(self):
         db = self.db
         db.drop_collection("test")
@@ -1016,11 +993,10 @@ class TestCollection(IntegrationTest):
         try:
             self.db.test.update({}, {"$thismodifierdoesntexist": 1})
         except OperationFailure as exc:
-            if client_context.version.at_least(1, 3):
-                self.assertTrue(exc.code in (9, 10147, 16840, 17009))
-                # Just check that we set the error document. Fields
-                # vary by MongoDB version.
-                self.assertTrue(exc.details is not None)
+            self.assertTrue(exc.code in (9, 10147, 16840, 17009))
+            # Just check that we set the error document. Fields
+            # vary by MongoDB version.
+            self.assertTrue(exc.details is not None)
         else:
             self.fail("OperationFailure was not raised")
 
@@ -1106,7 +1082,6 @@ class TestCollection(IntegrationTest):
         else:
             self.assertFalse('nModified' in result)
 
-    @client_context.require_version_min(1, 1, 3, -1)
     def test_multi_update(self):
         db = self.db
         db.drop_collection("test")
@@ -1223,7 +1198,6 @@ class TestCollection(IntegrationTest):
         self.assertEqual(2, db.test.remove({})["n"])
         self.assertEqual(0, db.test.remove({})["n"])
 
-    @client_context.require_version_min(1, 5, 1)
     def test_last_error_options(self):
         self.db.test.save({"x": 1}, w=1, wtimeout=1)
         self.db.test.insert({"x": 1}, w=1, wtimeout=1)
@@ -1257,9 +1231,8 @@ class TestCollection(IntegrationTest):
             wtimeout_err(coll.remove, {"x": 1}, w=w, wtimeout=1)
 
         # can't use fsync and j options together
-        if client_context.version.at_least(1, 8, 2):
-            self.assertRaises(OperationFailure, self.db.test.insert,
-                              {"_id": 1}, j=True, fsync=True)
+        self.assertRaises(OperationFailure, self.db.test.insert,
+                          {"_id": 1}, j=True, fsync=True)
 
     def test_manual_last_error(self):
         self.db.test.save({"x": 1}, w=0)
@@ -1281,7 +1254,6 @@ class TestCollection(IntegrationTest):
         self.assertEqual(
             db.test.count({'foo': re.compile(r'ba.*')}), 2)
 
-    @client_context.require_version_min(2, 1, 0)
     def test_aggregate(self):
         db = self.db
         db.drop_collection("test")
@@ -1437,21 +1409,17 @@ class TestCollection(IntegrationTest):
                                        Code(reduce_function,
                                             {"inc_value": 0.5}))[0]['count'])
 
-        if client_context.version.at_least(1, 1):
-            self.assertEqual(2, db.test.group([], {}, {"count": 0},
-                                              Code(reduce_function,
-                                                   {"inc_value": 1}),
-                                             )[0]['count'])
+        self.assertEqual(2, db.test.group(
+            [], {}, {"count": 0},
+            Code(reduce_function, {"inc_value": 1}))[0]['count'])
 
-            self.assertEqual(4, db.test.group([], {}, {"count": 0},
-                                              Code(reduce_function,
-                                                   {"inc_value": 2}),
-                                             )[0]['count'])
+        self.assertEqual(4, db.test.group(
+            [], {}, {"count": 0},
+            Code(reduce_function, {"inc_value": 2}))[0]['count'])
 
-            self.assertEqual(1, db.test.group([], {}, {"count": 0},
-                                              Code(reduce_function,
-                                                   {"inc_value": 0.5}),
-                                             )[0]['count'])
+        self.assertEqual(1, db.test.group(
+            [], {}, {"count": 0},
+            Code(reduce_function, {"inc_value": 0.5}))[0]['count'])
 
     def test_large_limit(self):
         db = self.db
@@ -1664,7 +1632,6 @@ class TestCollection(IntegrationTest):
         # The socket should be discarded.
         self.assertEqual(0, len(socks))
 
-    @client_context.require_version_min(1, 1)
     def test_distinct(self):
         self.db.drop_collection("test")
 
@@ -1725,8 +1692,7 @@ class TestCollection(IntegrationTest):
     def test_insert_large_document(self):
         max_size = self.db.connection.max_bson_size
         half_size = int(max_size / 2)
-        if client_context.version.at_least(1, 7, 4):
-            self.assertEqual(max_size, 16777216)
+        self.assertEqual(max_size, 16777216)
 
         expected = DocumentTooLarge
         if client_context.version.at_least(2, 5, 4, -1):
@@ -1811,7 +1777,6 @@ class TestCollection(IntegrationTest):
         self.assertEqual(n_docs, self.db.test.count())
         self.db.test.remove()
 
-    @client_context.require_version_min(1, 1, 1)
     def test_map_reduce(self):
         db = self.db
         db.drop_collection("test")
@@ -1838,46 +1803,41 @@ class TestCollection(IntegrationTest):
         self.assertEqual(2, result.find_one({"_id": "dog"})["value"])
         self.assertEqual(1, result.find_one({"_id": "mouse"})["value"])
 
-        if client_context.version.at_least(1, 7, 4):
-            db.test.insert({"id": 5, "tags": ["hampster"]})
-            result = db.test.map_reduce(map, reduce, out='mrunittests')
-            self.assertEqual(1, result.find_one({"_id": "hampster"})["value"])
-            db.test.remove({"id": 5})
+        db.test.insert({"id": 5, "tags": ["hampster"]})
+        result = db.test.map_reduce(map, reduce, out='mrunittests')
+        self.assertEqual(1, result.find_one({"_id": "hampster"})["value"])
+        db.test.remove({"id": 5})
 
-            result = db.test.map_reduce(map, reduce,
-                                        out={'merge': 'mrunittests'})
-            self.assertEqual(3, result.find_one({"_id": "cat"})["value"])
-            self.assertEqual(1, result.find_one({"_id": "hampster"})["value"])
+        result = db.test.map_reduce(map, reduce,
+                                    out={'merge': 'mrunittests'})
+        self.assertEqual(3, result.find_one({"_id": "cat"})["value"])
+        self.assertEqual(1, result.find_one({"_id": "hampster"})["value"])
 
-            result = db.test.map_reduce(map, reduce,
-                                        out={'reduce': 'mrunittests'})
+        result = db.test.map_reduce(map, reduce,
+                                    out={'reduce': 'mrunittests'})
 
-            self.assertEqual(6, result.find_one({"_id": "cat"})["value"])
-            self.assertEqual(4, result.find_one({"_id": "dog"})["value"])
-            self.assertEqual(2, result.find_one({"_id": "mouse"})["value"])
-            self.assertEqual(1, result.find_one({"_id": "hampster"})["value"])
+        self.assertEqual(6, result.find_one({"_id": "cat"})["value"])
+        self.assertEqual(4, result.find_one({"_id": "dog"})["value"])
+        self.assertEqual(2, result.find_one({"_id": "mouse"})["value"])
+        self.assertEqual(1, result.find_one({"_id": "hampster"})["value"])
 
-            result = db.test.map_reduce(
-                map,
-                reduce,
-                out={'replace': 'mrunittests'}
-            )
-            self.assertEqual(3, result.find_one({"_id": "cat"})["value"])
-            self.assertEqual(2, result.find_one({"_id": "dog"})["value"])
-            self.assertEqual(1, result.find_one({"_id": "mouse"})["value"])
+        result = db.test.map_reduce(
+            map,
+            reduce,
+            out={'replace': 'mrunittests'}
+        )
+        self.assertEqual(3, result.find_one({"_id": "cat"})["value"])
+        self.assertEqual(2, result.find_one({"_id": "dog"})["value"])
+        self.assertEqual(1, result.find_one({"_id": "mouse"})["value"])
 
-            if (client_context.is_mongos and
-                    not client_context.version.at_least(2, 1, 2)):
-                pass
-            else:
-                result = db.test.map_reduce(map, reduce,
-                                            out=SON([('replace', 'mrunittests'),
-                                                     ('db', 'mrtestdb')
-                                                    ]))
-                self.assertEqual(3, result.find_one({"_id": "cat"})["value"])
-                self.assertEqual(2, result.find_one({"_id": "dog"})["value"])
-                self.assertEqual(1, result.find_one({"_id": "mouse"})["value"])
-                self.client.drop_database('mrtestdb')
+        result = db.test.map_reduce(map, reduce,
+                                    out=SON([('replace', 'mrunittests'),
+                                             ('db', 'mrtestdb')
+                                            ]))
+        self.assertEqual(3, result.find_one({"_id": "cat"})["value"])
+        self.assertEqual(2, result.find_one({"_id": "dog"})["value"])
+        self.assertEqual(1, result.find_one({"_id": "mouse"})["value"])
+        self.client.drop_database('mrtestdb')
 
         full_result = db.test.map_reduce(map, reduce,
                                          out='mrunittests', full_response=True)
@@ -1888,22 +1848,21 @@ class TestCollection(IntegrationTest):
         self.assertEqual(1, result.find_one({"_id": "dog"})["value"])
         self.assertEqual(None, result.find_one({"_id": "mouse"}))
 
-        if client_context.version.at_least(1, 7, 4):
-            result = db.test.map_reduce(map, reduce, out={'inline': 1})
-            self.assertTrue(isinstance(result, dict))
-            self.assertTrue('results' in result)
-            self.assertTrue(result['results'][1]["_id"] in ("cat",
-                                                            "dog",
-                                                            "mouse"))
+        result = db.test.map_reduce(map, reduce, out={'inline': 1})
+        self.assertTrue(isinstance(result, dict))
+        self.assertTrue('results' in result)
+        self.assertTrue(result['results'][1]["_id"] in ("cat",
+                                                        "dog",
+                                                        "mouse"))
 
-            result = db.test.inline_map_reduce(map, reduce)
-            self.assertTrue(isinstance(result, list))
-            self.assertEqual(3, len(result))
-            self.assertTrue(result[1]["_id"] in ("cat", "dog", "mouse"))
+        result = db.test.inline_map_reduce(map, reduce)
+        self.assertTrue(isinstance(result, list))
+        self.assertEqual(3, len(result))
+        self.assertTrue(result[1]["_id"] in ("cat", "dog", "mouse"))
 
-            full_result = db.test.inline_map_reduce(map, reduce,
-                                                    full_response=True)
-            self.assertEqual(6, full_result["counts"]["emit"])
+        full_result = db.test.inline_map_reduce(map, reduce,
+                                                full_response=True)
+        self.assertEqual(6, full_result["counts"]["emit"])
 
     def test_messages_with_unicode_collection_names(self):
         db = self.db
@@ -2012,23 +1971,20 @@ class TestCollection(IntegrationTest):
                          c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
                                            new=True, fields={'i': 1}))
 
-        # Test with full_response=True
-        # No lastErrorObject from mongos until 2.0
-        if (not client_context.is_mongos and
-                client_context.version.at_least(2, 0)):
-            result = c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
-                                               new=True, upsert=True,
-                                               full_response=True,
-                                               fields={'i': 1})
-            self.assertEqual({'_id': 1, 'i': 5}, result["value"])
-            self.assertEqual(True, result["lastErrorObject"]["updatedExisting"])
+        # Test with full_response=True.
+        result = c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
+                                   new=True, upsert=True,
+                                   full_response=True,
+                                   fields={'i': 1})
+        self.assertEqual({'_id': 1, 'i': 5}, result["value"])
+        self.assertEqual(True, result["lastErrorObject"]["updatedExisting"])
 
-            result = c.find_and_modify({'_id': 2}, {'$inc': {'i': 1}},
-                                               new=True, upsert=True,
-                                               full_response=True,
-                                               fields={'i': 1})
-            self.assertEqual({'_id': 2, 'i': 1}, result["value"])
-            self.assertEqual(False, result["lastErrorObject"]["updatedExisting"])
+        result = c.find_and_modify({'_id': 2}, {'$inc': {'i': 1}},
+                                   new=True, upsert=True,
+                                   full_response=True,
+                                   fields={'i': 1})
+        self.assertEqual({'_id': 2, 'i': 1}, result["value"])
+        self.assertEqual(False, result["lastErrorObject"]["updatedExisting"])
 
         class ExtendedDict(dict):
             pass
@@ -2105,7 +2061,6 @@ class TestCollection(IntegrationTest):
             self.assertRaises(TypeError, c.find_and_modify,
                               {}, {'$inc': {'i': 1}}, sort=sort)
 
-    @client_context.require_version_min(2, 0, 0)
     def test_find_with_nested(self):
         c = self.db.test
         c.drop()

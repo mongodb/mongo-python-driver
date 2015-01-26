@@ -283,16 +283,12 @@ class TestDatabase(IntegrationTest):
 
         self.assertTrue(len(info) >= 1)
         # These basically clue us in to server changes.
-        if client_context.version.at_least(1, 9, 1, -1):
-            self.assertTrue(isinstance(info[0]['responseLength'], int))
-            self.assertTrue(isinstance(info[0]['millis'], int))
-            self.assertTrue(isinstance(info[0]['client'], string_type))
-            self.assertTrue(isinstance(info[0]['user'], string_type))
-            self.assertTrue(isinstance(info[0]['ns'], string_type))
-            self.assertTrue(isinstance(info[0]['op'], string_type))
-        else:
-            self.assertTrue(isinstance(info[0]["info"], string_type))
-            self.assertTrue(isinstance(info[0]["millis"], float))
+        self.assertTrue(isinstance(info[0]['responseLength'], int))
+        self.assertTrue(isinstance(info[0]['millis'], int))
+        self.assertTrue(isinstance(info[0]['client'], string_type))
+        self.assertTrue(isinstance(info[0]['user'], string_type))
+        self.assertTrue(isinstance(info[0]['ns'], string_type))
+        self.assertTrue(isinstance(info[0]['op'], string_type))
         self.assertTrue(isinstance(info[0]["ts"], datetime.datetime))
 
     @client_context.require_no_mongos
@@ -822,9 +818,7 @@ class TestDatabase(IntegrationTest):
         self.assertEqual(6, db.system_js['add'](1, 5))
         del db.system_js['add']
         self.assertEqual(0, db.system.js.count())
-
-        if client_context.version.at_least(1, 3, 2, -1):
-            self.assertRaises(OperationFailure, db.system_js.add, 1, 5)
+        self.assertRaises(OperationFailure, db.system_js.add, 1, 5)
 
         # TODO right now CodeWScope doesn't work w/ system js
         # db.system_js.scope = Code("return hello;", {"hello": 8})

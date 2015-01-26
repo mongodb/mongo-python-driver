@@ -946,7 +946,6 @@ class TestBulkWriteConcern(BulkTestBase):
         else:
             return batch.execute({'w': self.w + 1, 'wtimeout': 1})
 
-    @client_context.require_version_min(1, 8, 2)
     def test_fsync_and_j(self):
         batch = self.coll.initialize_ordered_bulk_op()
         batch.insert({'a': 1})

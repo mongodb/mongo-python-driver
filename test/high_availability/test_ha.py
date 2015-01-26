@@ -888,9 +888,6 @@ class TestLastErrorDefaults(HATestCase):
         self.c = MongoClient(self.seed, replicaSet=self.name)
 
     def test_get_last_error_defaults(self):
-        if not Version.from_client(self.c).at_least(1, 9, 0):
-            raise SkipTest("Need MongoDB >= 1.9.0 to test getLastErrorDefaults")
-
         replset = self.c.local.system.replset.find_one()
         settings = replset.get('settings', {})
         # This should cause a WTimeoutError for every write command

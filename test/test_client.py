@@ -589,9 +589,6 @@ class TestClient(IntegrationTest):
 
     @client_context.require_no_mongos
     def test_fsync_lock_unlock(self):
-        if (not client_context.version.at_least(2, 0) and
-                client_context.auth_enabled):
-            raise SkipTest('Requires server >= 2.0 to test with auth')
         if (server_is_master_with_slave(client_context.client) and
                 client_context.version.at_least(2, 3, 0)):
             raise SkipTest('SERVER-7714')

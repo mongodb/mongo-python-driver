@@ -143,9 +143,8 @@ class TestCommon(IntegrationTest):
         coll = self.db.get_collection(
             "uuid", CodecOptions(uuid_representation=STANDARD))
         q = {"_id": uu}
-        if client_context.version.at_least(1, 7, 4):
-            result = coll.inline_map_reduce(map, reduce, query=q)
-            self.assertEqual([], result)
+        result = coll.inline_map_reduce(map, reduce, query=q)
+        self.assertEqual([], result)
 
         result = coll.map_reduce(map, reduce, "results", query=q)
         self.assertEqual(0, self.db.results.count())
@@ -153,9 +152,8 @@ class TestCommon(IntegrationTest):
         coll = self.db.get_collection(
             "uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
         q = {"_id": uu}
-        if client_context.version.at_least(1, 7, 4):
-            result = coll.inline_map_reduce(map, reduce, query=q)
-            self.assertEqual(2, len(result))
+        result = coll.inline_map_reduce(map, reduce, query=q)
+        self.assertEqual(2, len(result))
 
         result = coll.map_reduce(map, reduce, "results", query=q)
         self.assertEqual(2, self.db.results.count())
