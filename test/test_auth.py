@@ -468,6 +468,8 @@ class TestClientAuth(unittest.TestCase):
 
     def test_copy_db(self):
         authed_client = auth_context.client
+        if version.at_least(authed_client, (2, 7, 2)):
+            raise SkipTest("SERVER-17034")
         if is_mongos(authed_client):
             raise SkipTest("SERVER-6427")
 
@@ -966,9 +968,12 @@ class TestReplicaSetClientAuth(TestReplicaSetClientBase, TestRequestMixin):
             OperationFailure, lazy_client.test.collection.find_one)
 
     def test_copy_db(self):
-        c = self._get_client()
+        authed_client = auth_context.client
+        if version.at_least(authed_client, (2, 7, 2)):
+            raise SkipTest("SERVER-17034")
 
-        auth_context.client.admin.add_user("admin", "password")
+        authed_client.admin.add_user("admin", "password")
+        c = self._get_client()
         c.admin.authenticate("admin", "password")
         c.drop_database("pymongo_test1")
         c.pymongo_test.test.insert({"foo": "bar"})
