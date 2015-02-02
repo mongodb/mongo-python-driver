@@ -25,10 +25,10 @@ sys.path[0:0] = [""]
 import bson
 
 from bson.binary import *
+from bson.codec_options import CodecOptions
 from bson.py3compat import u
 from bson.son import SON
 from test import client_context, unittest
-from pymongo.codec_options import CodecOptions
 from pymongo.mongo_client import MongoClient
 
 

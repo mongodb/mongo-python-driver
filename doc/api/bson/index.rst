@@ -13,6 +13,7 @@ Sub-modules:
    binary
    regex
    code
+   codec_options
    dbref
    errors
    json_util

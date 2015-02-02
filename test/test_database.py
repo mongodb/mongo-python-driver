@@ -22,6 +22,7 @@ import warnings
 sys.path[0:0] = [""]
 
 from bson.code import Code
+from bson.codec_options import CodecOptions
 from bson.int64 import Int64
 from bson.regex import Regex
 from bson.dbref import DBRef
@@ -33,9 +34,7 @@ from pymongo import (MongoClient,
                      auth,
                      OFF,
                      SLOW_ONLY,
-                     helpers,
-                     ReadPreference)
-from pymongo.codec_options import CodecOptions
+                     helpers)
 from pymongo.collection import Collection
 from pymongo.database import Database
 from pymongo.errors import (CollectionInvalid,

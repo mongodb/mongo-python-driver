@@ -17,8 +17,8 @@
 
 import collections
 
+from bson.codec_options import CodecOptions
 from pymongo.auth import MECHANISMS
-from pymongo.codec_options import CodecOptions
 from pymongo.errors import ConfigurationError
 from pymongo.read_preferences import (read_pref_mode_from_name,
                                       ServerMode)
@@ -381,7 +381,7 @@ class BaseObject(object):
 
         if not isinstance(codec_options, CodecOptions):
             raise TypeError("codec_options must be an instance of "
-                            "pymongo.codec_options.CodecOptions")
+                            "bson.codec_options.CodecOptions")
         self.__codec_options = codec_options
 
         # TODO: Better error reporting for read preference.
@@ -396,7 +396,7 @@ class BaseObject(object):
 
     @property
     def codec_options(self):
-        """An instance of :class:`~pymongo.codec_options.CodecOptions`."""
+        """An instance of :class:`~bson.codec_options.CodecOptions`."""
         return self.__codec_options
 
     @property

@@ -19,10 +19,9 @@ import struct
 
 import bson
 import pymongo
-
+from bson.codec_options import CodecOptions
 from bson.py3compat import itervalues, string_type, iteritems
 from bson.son import SON
-from pymongo.codec_options import CodecOptions
 from pymongo.errors import (CursorNotFound,
                             DuplicateKeyError,
                             OperationFailure,
@@ -90,7 +89,7 @@ def _unpack_response(response, cursor_id=None, codec_options=CodecOptions()):
         used for raising an informative exception when we get cursor id not
         valid at server response
       - `codec_options` (optional): an instance of
-        :class:`~pymongo.codec_options.CodecOptions`
+        :class:`~bson.codec_options.CodecOptions`
     """
     response_flag = struct.unpack("<i", response[:4])[0]
     if response_flag & 1:

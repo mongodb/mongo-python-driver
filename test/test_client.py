@@ -28,13 +28,13 @@ import warnings
 sys.path[0:0] = [""]
 
 from bson import BSON
+from bson.codec_options import CodecOptions
 from bson.py3compat import thread, u
 from bson.son import SON
 from bson.tz_util import utc
 from pymongo import auth, message
 from pymongo.cursor import EXHAUST
 from pymongo.database import Database
-from pymongo.codec_options import CodecOptions
 from pymongo.errors import (AutoReconnect,
                             ConfigurationError,
                             ConnectionFailure,

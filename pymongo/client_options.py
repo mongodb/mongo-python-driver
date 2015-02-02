@@ -14,10 +14,9 @@
 
 """Tools to parse mongo client options."""
 
-from bson.binary import PYTHON_LEGACY
+from bson.codec_options import _parse_codec_options
 from bson.py3compat import iteritems
 from pymongo.auth import _build_credentials_tuple
-from pymongo.codec_options import CodecOptions
 from pymongo.common import validate
 from pymongo.errors import ConfigurationError
 from pymongo.pool import PoolOptions
@@ -34,14 +33,6 @@ def _parse_credentials(username, password, database, options):
     source = options.get('authsource', database or 'admin')
     return _build_credentials_tuple(
         mechanism, source, username, password, options)
-
-
-def _parse_codec_options(options):
-    """Parse BSON codec options."""
-    as_class = options.get('document_class', dict)
-    tz_aware = options.get('tz_aware', False)
-    uuid_rep = options.get('uuidrepresentation', PYTHON_LEGACY)
-    return CodecOptions(as_class, tz_aware, uuid_rep)
 
 
 def _parse_read_preference(options):
@@ -130,7 +121,7 @@ class ClientOptions(object):
 
     @property
     def codec_options(self):
-        """A :class:`~pymongo.codec_options.CodecOptions` instance."""
+        """A :class:`~bson.codec_options.CodecOptions` instance."""
         return self.__codec_options
 
     @property

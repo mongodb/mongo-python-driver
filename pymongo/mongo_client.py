@@ -1056,7 +1056,7 @@ class MongoClient(common.BaseObject):
         :Parameters:
           - `name`: The name of the database - a string.
           - `codec_options` (optional): An instance of
-            :class:`~pymongo.codec_options.CodecOptions`. If ``None`` (the
+            :class:`~bson.codec_options.CodecOptions`. If ``None`` (the
             default) the :attr:`codec_options` of this :class:`MongoClient` is
             used.
           - `read_preference` (optional): The read preference to use. If

@@ -75,3 +75,11 @@ class CodecOptions(object):
 
     def __ne__(self, other):
         return self != other
+
+
+def _parse_codec_options(options):
+    """Parse BSON codec options."""
+    as_class = options.get('document_class', dict)
+    tz_aware = options.get('tz_aware', False)
+    uuid_rep = options.get('uuidrepresentation', PYTHON_LEGACY)
+    return CodecOptions(as_class, tz_aware, uuid_rep)

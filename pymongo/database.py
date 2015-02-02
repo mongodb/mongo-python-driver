@@ -17,11 +17,11 @@
 import warnings
 
 from bson.code import Code
+from bson.codec_options import CodecOptions
 from bson.dbref import DBRef
 from bson.py3compat import iteritems, string_type, _unicode
 from bson.son import SON
 from pymongo import auth, common, helpers
-from pymongo.codec_options import CodecOptions
 from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
 from pymongo.errors import (CollectionInvalid,
@@ -61,7 +61,7 @@ class Database(common.BaseObject):
           - `connection`: A client instance.
           - `name`: The database name.
           - `codec_options` (optional): An instance of
-            :class:`~pymongo.codec_options.CodecOptions`. If ``None`` (the
+            :class:`~bson.codec_options.CodecOptions`. If ``None`` (the
             default) connection.codec_options is used.
           - `read_preference` (optional): The read preference to use. If
             ``None`` (the default) connection.read_preference is used.
@@ -229,7 +229,7 @@ class Database(common.BaseObject):
         :Parameters:
           - `name`: The name of the collection - a string.
           - `codec_options` (optional): An instance of
-            :class:`~pymongo.codec_options.CodecOptions`. If ``None`` (the
+            :class:`~bson.codec_options.CodecOptions`. If ``None`` (the
             default) the :attr:`codec_options` of this :class:`Database` is
             used.
           - `read_preference` (optional): The read preference to use. If
@@ -268,7 +268,7 @@ class Database(common.BaseObject):
         :Parameters:
           - `name`: the name of the collection to create
           - `codec_options` (optional): An instance of
-            :class:`~pymongo.codec_options.CodecOptions`. If ``None`` (the
+            :class:`~bson.codec_options.CodecOptions`. If ``None`` (the
             default) the :attr:`codec_options` of this :class:`Database` is
             used.
           - `read_preference` (optional): The read preference to use. If
@@ -389,7 +389,7 @@ class Database(common.BaseObject):
           - `allowable_errors`: if `check` is ``True``, error messages
             in this list will be ignored by error-checking
           - `read_preference`: The read preference for this operation.
-          - `codec_options`: A :class:`~pymongo.codec_options.CodecOptions`
+          - `codec_options`: A :class:`~bson.codec_options.CodecOptions`
             instance.
           - `**kwargs` (optional): additional keyword arguments will
             be added to the command document before it is sent

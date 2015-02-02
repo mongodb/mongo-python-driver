@@ -33,7 +33,6 @@ Sub-modules:
 
    database
    collection
-   codec_options
    command_cursor
    cursor
    bulk

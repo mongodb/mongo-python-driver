@@ -27,6 +27,7 @@ sys.path[0:0] = [""]
 
 from bson.regex import Regex
 from bson.code import Code
+from bson.codec_options import CodecOptions
 from bson.dbref import DBRef
 from bson.objectid import ObjectId
 from bson.py3compat import u, itervalues
@@ -34,7 +35,6 @@ from bson.son import SON
 from pymongo import (ASCENDING, DESCENDING, GEO2D,
                      GEOHAYSTACK, GEOSPHERE, HASHED, TEXT)
 from pymongo import MongoClient
-from pymongo.codec_options import CodecOptions
 from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import EXHAUST

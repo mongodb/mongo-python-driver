@@ -21,11 +21,10 @@ sys.path[0:0] = [""]
 
 from bson.binary import UUIDLegacy, PYTHON_LEGACY, STANDARD
 from bson.code import Code
+from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
-from bson.son import SON
-from pymongo.codec_options import CodecOptions
 from pymongo.mongo_client import MongoClient
-from pymongo.errors import ConfigurationError, OperationFailure
+from pymongo.errors import OperationFailure
 from pymongo.write_concern import WriteConcern
 from test import client_context, pair, unittest, IntegrationTest
 from test.utils import connected, rs_or_single_client, single_client

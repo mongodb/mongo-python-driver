@@ -24,12 +24,12 @@ from bson.objectid import ObjectId
 from bson.py3compat import (_unicode,
                             integer_types,
                             string_type)
+from bson.codec_options import CodecOptions
 from bson.son import SON
 from pymongo import (bulk,
                      common,
                      helpers,
                      message)
-from pymongo.codec_options import CodecOptions
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import Cursor
 from pymongo.errors import ConfigurationError, InvalidName, OperationFailure
@@ -78,7 +78,7 @@ class Collection(common.BaseObject):
           - `create` (optional): if ``True``, force collection
             creation even without options being set
           - `codec_options` (optional): An instance of
-            :class:`~pymongo.codec_options.CodecOptions`. If ``None`` (the
+            :class:`~bson.codec_options.CodecOptions`. If ``None`` (the
             default) database.codec_options is used.
           - `read_preference` (optional): The read preference to use. If
             ``None`` (the default) database.read_preference is used.
@@ -147,7 +147,7 @@ class Collection(common.BaseObject):
           - `read_preference` (optional) - An subclass of
             :class:`~pymongo.read_preferences.ServerMode`.
           - `codec_options` (optional) - An instance of
-            :class:`~pymongo.codec_options.CodecOptions`.
+            :class:`~bson.codec_options.CodecOptions`.
           - `**kwargs` - any optional keyword arguments accepted by
             :func:`~pymongo.helpers._command`.
 
@@ -229,7 +229,7 @@ class Collection(common.BaseObject):
 
         :Parameters:
           - `codec_options` (optional): An instance of
-            :class:`~pymongo.codec_options.CodecOptions`. If ``None`` (the
+            :class:`~bson.codec_options.CodecOptions`. If ``None`` (the
             default) the :attr:`codec_options` of this :class:`Collection`
             is used.
           - `read_preference` (optional): The read preference to use. If
