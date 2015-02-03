@@ -42,6 +42,243 @@ _WRITE_CONCERN_ERROR = 64
 _COMMANDS = ('insert', 'update', 'delete')
 
 
+class _WriteOp(object):
+    """Private base class for all write operations."""
+
+    __slots__ = ("_filter", "_doc", "_upsert")
+
+    def __init__(self, filter=None, doc=None, upsert=None):
+        if filter is not None and not isinstance(filter, collections.Mapping):
+            raise TypeError("filter must be a mapping type.")
+        if upsert is not None and not isinstance(upsert, bool):
+            raise TypeError("upsert must be True or False")
+        self._filter = filter
+        self._doc = doc
+        self._upsert = upsert
+
+
+class InsertOne(_WriteOp):
+    """Represents an insert_one operation."""
+
+    def __init__(self, document):
+        """Create an InsertOne instance.
+
+        For use with :meth:`~pymongo.collection.Collection.bulk_write`.
+
+        :Parameters:
+          - `document`: The document to insert. If the document is missing an
+            _id field one will be added.
+        """
+        super(InsertOne, self).__init__(doc=document)
+
+    def _add_to_bulk(self, bulkobj):
+        """Add this operation to the _Bulk instance `bulkobj`."""
+        bulkobj.add_insert(self._doc)
+
+    def __repr__(self):
+        return "InsertOne(%r)" % (self._doc,)
+
+
+class DeleteOne(_WriteOp):
+    """Represents a delete_one operation."""
+
+    def __init__(self, filter):
+        """Create a DeleteOne instance.
+
+        For use with :meth:`~pymongo.collection.Collection.bulk_write`.
+
+        :Parameters:
+          - `filter`: A query that matches the document to delete.
+        """
+        super(DeleteOne, self).__init__(filter)
+
+    def _add_to_bulk(self, bulkobj):
+        """Add this operation to the _Bulk instance `bulkobj`."""
+        bulkobj.add_delete(self._filter, 1)
+
+    def __repr__(self):
+        return "DeleteOne(%r)" % (self._filter,)
+
+
+class DeleteMany(_WriteOp):
+    """Represents a delete_many operation."""
+
+    def __init__(self, filter):
+        """Create a DeleteMany instance.
+
+        For use with :meth:`~pymongo.collection.Collection.bulk_write`.
+
+        :Parameters:
+          - `filter`: A query that matches the documents to delete.
+        """
+        super(DeleteMany, self).__init__(filter)
+
+    def _add_to_bulk(self, bulkobj):
+        """Add this operation to the _Bulk instance `bulkobj`."""
+        bulkobj.add_delete(self._filter, 0)
+
+    def __repr__(self):
+        return "DeleteMany(%r)" % (self._filter,)
+
+
+class ReplaceOne(_WriteOp):
+    """Represents a replace_one operation."""
+
+    def __init__(self, filter, replacement, upsert=False):
+        """Create a ReplaceOne instance.
+
+        For use with :meth:`~pymongo.collection.Collection.bulk_write`.
+
+        :Parameters:
+          - `filter`: A query that matches the document to replace.
+          - `replacement`: The new document.
+          - `upsert` (optional): If ``True``, perform an insert if no documents
+            match the filter.
+        """
+        super(ReplaceOne, self).__init__(filter, replacement, upsert)
+
+    def _add_to_bulk(self, bulkobj):
+        """Add this operation to the _Bulk instance `bulkobj`."""
+        bulkobj.add_replace(self._filter, self._doc, self._upsert)
+
+    def __repr__(self):
+        return "ReplaceOne(%r, %r, %r)" % (self._filter,
+                                           self._doc,
+                                           self._upsert)
+
+
+class UpdateOne(_WriteOp):
+    """Represents an update_one operation."""
+
+    def __init__(self, filter, update, upsert=False):
+        """Represents an update_one operation.
+
+        For use with :meth:`~pymongo.collection.Collection.bulk_write`.
+
+        :Parameters:
+          - `filter`: A query that matches the document to update.
+          - `update`: The modifications to apply.
+          - `upsert` (optional): If ``True``, perform an insert if no documents
+            match the filter.
+        """
+        super(UpdateOne, self).__init__(filter, update, upsert)
+
+    def _add_to_bulk(self, bulkobj):
+        """Add this operation to the _Bulk instance `bulkobj`."""
+        bulkobj.add_update(self._filter, self._doc, False, self._upsert)
+
+    def __repr__(self):
+        return "UpdateOne(%r, %r, %r)" % (self._filter,
+                                          self._doc,
+                                          self._upsert)
+
+
+class UpdateMany(_WriteOp):
+    """Represents an update_many operation."""
+
+    def __init__(self, filter, update, upsert=False):
+        """Create an UpdateMany instance.
+
+        For use with :meth:`~pymongo.collection.Collection.bulk_write`.
+
+        :Parameters:
+          - `filter`: A query that matches the documents to update.
+          - `update`: The modifications to apply.
+          - `upsert` (optional): If ``True``, perform an insert if no documents
+            match the filter.
+        """
+        super(UpdateMany, self).__init__(filter, update, upsert)
+
+    def _add_to_bulk(self, bulkobj):
+        """Add this operation to the _Bulk instance `bulkobj`."""
+        bulkobj.add_update(self._filter, self._doc, True, self._upsert)
+
+    def __repr__(self):
+        return "UpdateMany(%r, %r, %r)" % (self._filter,
+                                           self._doc,
+                                           self._upsert)
+
+
+class BulkWriteResult(object):
+    """An object wrapper for bulk API write results."""
+
+    __slots__ = ("__bulk_api_result", "__acknowledged")
+
+    def __init__(self, bulk_api_result, acknowledged):
+        """Create a BulkWriteResult instance.
+
+        :Parameters:
+          - `bulk_api_result`: A result dict from the bulk API
+          - `acknowledged`: Was this write result acknowledged? If ``False``
+            then all properties of this object will raise
+            :exc:`~pymongo.errors.InvalidOperation`.
+        """
+        self.__bulk_api_result = bulk_api_result
+        self.__acknowledged = acknowledged
+
+    def __raise_if_unacknowledged(self, property_name):
+        """Raise an exception on property access if unacknowledged."""
+        if not self.__acknowledged:
+            raise InvalidOperation("A value for %s is not available when "
+                                   "the write is unacknowledged. Check the "
+                                   "acknowledged attribute to avoid this "
+                                   "error." % (property_name,))
+
+    @property
+    def bulk_api_result(self):
+        """The raw bulk API result."""
+        return self.__bulk_api_result
+
+    @property
+    def acknowledged(self):
+        """Was this bulk write operation acknowledged?"""
+        return self.__acknowledged
+
+    @property
+    def inserted_count(self):
+        """The number of documents inserted."""
+        self.__raise_if_unacknowledged("inserted_count")
+        return self.__bulk_api_result.get("nInserted")
+
+    @property
+    def matched_count(self):
+        """The number of documents matched for an update."""
+        self.__raise_if_unacknowledged("matched_count")
+        return self.__bulk_api_result.get("nMatched")
+
+    @property
+    def modified_count(self):
+        """The number of documents modified.
+
+        .. note:: modified_count is only reported by MongoDB 2.6 and later.
+          When connected to an earlier server version, or in certain mixed
+          version sharding configurations, this attribute will be set to
+          ``None``.
+        """
+        self.__raise_if_unacknowledged("modified_count")
+        return self.__bulk_api_result.get("nModified")
+
+    @property
+    def deleted_count(self):
+        """The number of documents deleted."""
+        self.__raise_if_unacknowledged("deleted_count")
+        return self.__bulk_api_result.get("nRemoved")
+
+    @property
+    def upserted_count(self):
+        """The number of documents upserted."""
+        self.__raise_if_unacknowledged("upserted_count")
+        return self.__bulk_api_result.get("nUpserted")
+
+    @property
+    def upserted_ids(self):
+        """A map of operation index to the _id of the upserted document."""
+        self.__raise_if_unacknowledged("upserted_ids")
+        if self.__bulk_api_result:
+            return dict((upsert["index"], upsert["_id"])
+                        for upsert in self.bulk_api_result["upserted"])
+
+
 class _Run(object):
     """Represents a batch of write operations.
     """

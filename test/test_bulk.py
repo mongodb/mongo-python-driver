@@ -19,10 +19,13 @@ import sys
 sys.path[0:0] = [""]
 
 from bson import InvalidDocument, SON
+from bson.objectid import ObjectId
 from bson.py3compat import string_type
 from pymongo import MongoClient
+from pymongo.bulk import *
 from pymongo.common import partition_node
 from pymongo.errors import BulkWriteError, InvalidOperation, OperationFailure
+from pymongo.write_concern import WriteConcern
 from test import (client_context,
                   unittest,
                   host,
@@ -132,6 +135,17 @@ class TestBulk(BulkTestBase):
         bulk.find({})
 
     def test_insert(self):
+        expected = {
+            'nMatched': 0,
+            'nModified': 0,
+            'nUpserted': 0,
+            'nInserted': 1,
+            'nRemoved': 0,
+            'upserted': [],
+            'writeErrors': [],
+            'writeConcernErrors': []
+        }
+
         bulk = self.coll.initialize_ordered_bulk_op()
         self.assertRaises(TypeError, bulk.insert, 1)
 
@@ -144,16 +158,7 @@ class TestBulk(BulkTestBase):
 
         bulk.insert({})
         result = bulk.execute()
-        self.assertEqualResponse(
-            {'nMatched': 0,
-             'nModified': 0,
-             'nUpserted': 0,
-             'nInserted': 1,
-             'nRemoved': 0,
-             'upserted': [],
-             'writeErrors': [],
-             'writeConcernErrors': []},
-            result)
+        self.assertEqualResponse(expected, result)
 
         self.assertEqual(1, self.coll.count())
         doc = self.coll.find_one()
@@ -162,18 +167,14 @@ class TestBulk(BulkTestBase):
         bulk = self.coll.initialize_unordered_bulk_op()
         bulk.insert({})
         result = bulk.execute()
-        self.assertEqualResponse(
-            {'nMatched': 0,
-             'nModified': 0,
-             'nUpserted': 0,
-             'nInserted': 1,
-             'nRemoved': 0,
-             'upserted': [],
-             'writeErrors': [],
-             'writeConcernErrors': []},
-            result)
+        self.assertEqualResponse(expected, result)
 
         self.assertEqual(2, self.coll.count())
+
+        result = self.coll.bulk_write([InsertOne({})])
+        self.assertEqualResponse(expected, result.bulk_api_result)
+        self.assertEqual(1, result.inserted_count)
+        self.assertEqual(3, self.coll.count())
 
     def test_insert_check_keys(self):
         bulk = self.coll.initialize_ordered_bulk_op()
@@ -185,6 +186,17 @@ class TestBulk(BulkTestBase):
         self.assertRaises(InvalidDocument, bulk.execute)
 
     def test_update(self):
+
+        expected = {
+            'nMatched': 2,
+            'nModified': 2,
+            'nUpserted': 0,
+            'nInserted': 0,
+            'nRemoved': 0,
+            'upserted': [],
+            'writeErrors': [],
+            'writeConcernErrors': []
+        }
         self.coll.insert([{}, {}])
 
         bulk = self.coll.initialize_ordered_bulk_op()
@@ -201,18 +213,16 @@ class TestBulk(BulkTestBase):
         self.assertRaises(ValueError, bulk.find({}).update, {'foo': 'bar'})
         bulk.find({}).update({'$set': {'foo': 'bar'}})
         result = bulk.execute()
-        self.assertEqualResponse(
-            {'nMatched': 2,
-             'nModified': 2,
-             'nUpserted': 0,
-             'nInserted': 0,
-             'nRemoved': 0,
-             'upserted': [],
-             'writeErrors': [],
-             'writeConcernErrors': []},
-            result)
-
+        self.assertEqualResponse(expected, result)
         self.assertEqual(self.coll.find({'foo': 'bar'}).count(), 2)
+
+        self.coll.remove()
+        self.coll.insert([{}, {}])
+        result = self.coll.bulk_write([UpdateMany({},
+                                                  {'$set': {'foo': 'bar'}})])
+        self.assertEqualResponse(expected, result.bulk_api_result)
+        self.assertEqual(2, result.matched_count)
+        self.assertTrue(result.modified_count in (2, None))
 
         # All fields must be $-operators -- validated server-side.
         bulk = self.coll.initialize_ordered_bulk_op()
@@ -272,6 +282,18 @@ class TestBulk(BulkTestBase):
             result)
 
     def test_update_one(self):
+
+        expected = {
+            'nMatched': 1,
+            'nModified': 1,
+            'nUpserted': 0,
+            'nInserted': 0,
+            'nRemoved': 0,
+            'upserted': [],
+            'writeErrors': [],
+            'writeConcernErrors': []
+        }
+
         self.coll.insert([{}, {}])
 
         bulk = self.coll.initialize_ordered_bulk_op()
@@ -286,18 +308,17 @@ class TestBulk(BulkTestBase):
         self.assertRaises(ValueError, bulk.find({}).update_one, {'foo': 'bar'})
         bulk.find({}).update_one({'$set': {'foo': 'bar'}})
         result = bulk.execute()
-        self.assertEqualResponse(
-            {'nMatched': 1,
-             'nModified': 1,
-             'nUpserted': 0,
-             'nInserted': 0,
-             'nRemoved': 0,
-             'upserted': [],
-             'writeErrors': [],
-             'writeConcernErrors': []},
-            result)
+        self.assertEqualResponse(expected, result)
 
         self.assertEqual(self.coll.find({'foo': 'bar'}).count(), 1)
+
+        self.coll.remove()
+        self.coll.insert([{}, {}])
+        result = self.coll.bulk_write([UpdateOne({},
+                                                 {'$set': {'foo': 'bar'}})])
+        self.assertEqualResponse(expected, result.bulk_api_result)
+        self.assertEqual(1, result.matched_count)
+        self.assertTrue(result.modified_count in (1, None))
 
         self.coll.remove()
         self.coll.insert([{}, {}])
@@ -305,16 +326,7 @@ class TestBulk(BulkTestBase):
         bulk = self.coll.initialize_unordered_bulk_op()
         bulk.find({}).update_one({'$set': {'bim': 'baz'}})
         result = bulk.execute()
-        self.assertEqualResponse(
-            {'nMatched': 1,
-             'nModified': 1,
-             'nUpserted': 0,
-             'nInserted': 0,
-             'nRemoved': 0,
-             'upserted': [],
-             'writeErrors': [],
-             'writeConcernErrors': []},
-            result)
+        self.assertEqualResponse(expected, result)
 
         self.assertEqual(self.coll.find({'bim': 'baz'}).count(), 1)
 
@@ -325,6 +337,18 @@ class TestBulk(BulkTestBase):
         self.assertRaises(BulkWriteError, bulk.execute)
 
     def test_replace_one(self):
+
+        expected = {
+            'nMatched': 1,
+            'nModified': 1,
+            'nUpserted': 0,
+            'nInserted': 0,
+            'nRemoved': 0,
+            'upserted': [],
+            'writeErrors': [],
+            'writeConcernErrors': []
+        }
+
         self.coll.insert([{}, {}])
 
         bulk = self.coll.initialize_ordered_bulk_op()
@@ -333,18 +357,16 @@ class TestBulk(BulkTestBase):
                           bulk.find({}).replace_one, {'$set': {'foo': 'bar'}})
         bulk.find({}).replace_one({'foo': 'bar'})
         result = bulk.execute()
-        self.assertEqualResponse(
-            {'nMatched': 1,
-             'nModified': 1,
-             'nUpserted': 0,
-             'nInserted': 0,
-             'nRemoved': 0,
-             'upserted': [],
-             'writeErrors': [],
-             'writeConcernErrors': []},
-            result)
+        self.assertEqualResponse(expected, result)
 
         self.assertEqual(self.coll.find({'foo': 'bar'}).count(), 1)
+
+        self.coll.remove()
+        self.coll.insert([{}, {}])
+        result = self.coll.bulk_write([ReplaceOne({}, {'foo': 'bar'})])
+        self.assertEqualResponse(expected, result.bulk_api_result)
+        self.assertEqual(1, result.matched_count)
+        self.assertTrue(result.modified_count in (1, None))
 
         self.coll.remove()
         self.coll.insert([{}, {}])
@@ -352,21 +374,22 @@ class TestBulk(BulkTestBase):
         bulk = self.coll.initialize_unordered_bulk_op()
         bulk.find({}).replace_one({'bim': 'baz'})
         result = bulk.execute()
-        self.assertEqualResponse(
-            {'nMatched': 1,
-             'nModified': 1,
-             'nUpserted': 0,
-             'nInserted': 0,
-             'nRemoved': 0,
-             'upserted': [],
-             'writeErrors': [],
-             'writeConcernErrors': []},
-            result)
+        self.assertEqualResponse(expected, result)
 
         self.assertEqual(self.coll.find({'bim': 'baz'}).count(), 1)
 
     def test_remove(self):
         # Test removing all documents, ordered.
+        expected = {
+            'nMatched': 0,
+            'nModified': 0,
+            'nUpserted': 0,
+            'nInserted': 0,
+            'nRemoved': 2,
+            'upserted': [],
+            'writeErrors': [],
+            'writeConcernErrors': []
+        }
         self.coll.insert([{}, {}])
 
         bulk = self.coll.initialize_ordered_bulk_op()
@@ -375,18 +398,14 @@ class TestBulk(BulkTestBase):
         self.assertRaises(AttributeError, lambda: bulk.remove())
         bulk.find({}).remove()
         result = bulk.execute()
-        self.assertEqualResponse(
-            {'nMatched': 0,
-             'nModified': 0,
-             'nUpserted': 0,
-             'nInserted': 0,
-             'nRemoved': 2,
-             'upserted': [],
-             'writeErrors': [],
-             'writeConcernErrors': []},
-            result)
+        self.assertEqualResponse(expected, result)
 
         self.assertEqual(self.coll.count(), 0)
+
+        self.coll.insert([{}, {}])
+        result = self.coll.bulk_write([DeleteMany({})])
+        self.assertEqualResponse(expected, result.bulk_api_result)
+        self.assertEqual(2, result.deleted_count)
 
         # Test removing some documents, ordered.
         self.coll.insert([{}, {'x': 1}, {}, {'x': 1}])
@@ -458,19 +477,27 @@ class TestBulk(BulkTestBase):
         # Test removing one document, empty selector.
         # First ordered, then unordered.
         self.coll.insert([{}, {}])
+        expected = {
+            'nMatched': 0,
+            'nModified': 0,
+            'nUpserted': 0,
+            'nInserted': 0,
+            'nRemoved': 1,
+            'upserted': [],
+            'writeErrors': [],
+            'writeConcernErrors': []
+        }
+
         bulk.find({}).remove_one()
         result = bulk.execute()
-        self.assertEqualResponse(
-            {'nMatched': 0,
-             'nModified': 0,
-             'nUpserted': 0,
-             'nInserted': 0,
-             'nRemoved': 1,
-             'upserted': [],
-             'writeErrors': [],
-             'writeConcernErrors': []},
-            result)
+        self.assertEqualResponse(expected, result)
 
+        self.assertEqual(self.coll.count(), 1)
+
+        self.coll.insert({})
+        result = self.coll.bulk_write([DeleteOne({})])
+        self.assertEqualResponse(expected, result.bulk_api_result)
+        self.assertEqual(1, result.deleted_count)
         self.assertEqual(self.coll.count(), 1)
 
         self.coll.insert({})
@@ -478,16 +505,7 @@ class TestBulk(BulkTestBase):
         bulk = self.coll.initialize_unordered_bulk_op()
         bulk.find({}).remove_one()
         result = bulk.execute()
-        self.assertEqualResponse(
-            {'nMatched': 0,
-             'nModified': 0,
-             'nUpserted': 0,
-             'nInserted': 0,
-             'nRemoved': 1,
-             'upserted': [],
-             'writeErrors': [],
-             'writeConcernErrors': []},
-            result)
+        self.assertEqualResponse(expected, result)
 
         self.assertEqual(self.coll.count(), 1)
 
@@ -498,16 +516,7 @@ class TestBulk(BulkTestBase):
         bulk = self.coll.initialize_ordered_bulk_op()
         bulk.find({'x': 1}).remove_one()
         result = bulk.execute()
-        self.assertEqualResponse(
-            {'nMatched': 0,
-             'nModified': 0,
-             'nUpserted': 0,
-             'nInserted': 0,
-             'nRemoved': 1,
-             'upserted': [],
-             'writeErrors': [],
-             'writeConcernErrors': []},
-            result)
+        self.assertEqualResponse(expected, result)
 
         self.assertEqual([{}], list(self.coll.find({}, {'_id': False})))
         self.coll.insert({'x': 1})
@@ -515,16 +524,7 @@ class TestBulk(BulkTestBase):
         bulk = self.coll.initialize_unordered_bulk_op()
         bulk.find({'x': 1}).remove_one()
         result = bulk.execute()
-        self.assertEqualResponse(
-            {'nMatched': 0,
-             'nModified': 0,
-             'nUpserted': 0,
-             'nInserted': 0,
-             'nRemoved': 1,
-             'upserted': [],
-             'writeErrors': [],
-             'writeConcernErrors': []},
-            result)
+        self.assertEqualResponse(expected, result)
 
         self.assertEqual([{}], list(self.coll.find({}, {'_id': False})))
 
@@ -536,18 +536,29 @@ class TestBulk(BulkTestBase):
             AttributeError,
             lambda: bulk.upsert())
 
+        expected = {
+            'nMatched': 0,
+            'nModified': 0,
+            'nUpserted': 1,
+            'nInserted': 0,
+            'nRemoved': 0,
+            'upserted': [{'index': 0, '_id': '...'}]
+        }
+
         # Note, in MongoDB 2.4 the server won't return the
         # "upserted" field unless _id is an ObjectId
         bulk.find({}).upsert().replace_one({'foo': 'bar'})
         result = bulk.execute()
-        self.assertEqualResponse(
-            {'nMatched': 0,
-             'nModified': 0,
-             'nUpserted': 1,
-             'nInserted': 0,
-             'nRemoved': 0,
-             'upserted': [{'index': 0, '_id': '...'}]},
-            result)
+        self.assertEqualResponse(expected, result)
+
+        self.coll.remove()
+        result = self.coll.bulk_write([ReplaceOne({},
+                                                  {'foo': 'bar'},
+                                                  upsert=True)])
+        self.assertEqualResponse(expected, result.bulk_api_result)
+        self.assertEqual(1, result.upserted_count)
+        self.assertEqual(1, len(result.upserted_ids))
+        self.assertTrue(isinstance(result.upserted_ids.get(0), ObjectId))
 
         self.assertEqual(self.coll.find({'foo': 'bar'}).count(), 1)
 
@@ -1141,6 +1152,18 @@ class TestBulkNoResults(BulkTestBase):
         wait_until(lambda: 2 == self.coll.count(),
                    'insert 2 documents')
         self.assertTrue(self.coll.find_one({'_id': 1}) is None)
+
+    def test_bulk_write_no_results(self):
+
+        coll = self.coll.with_options(write_concern=WriteConcern(w=0))
+        result = coll.bulk_write([InsertOne({})])
+        self.assertFalse(result.acknowledged)
+        self.assertRaises(InvalidOperation, lambda: result.inserted_count)
+        self.assertRaises(InvalidOperation, lambda: result.matched_count)
+        self.assertRaises(InvalidOperation, lambda: result.modified_count)
+        self.assertRaises(InvalidOperation, lambda: result.deleted_count)
+        self.assertRaises(InvalidOperation, lambda: result.upserted_count)
+        self.assertRaises(InvalidOperation, lambda: result.upserted_ids)
 
 
 class TestBulkAuthorization(BulkTestBase):

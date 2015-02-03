@@ -26,10 +26,13 @@ from bson.py3compat import (_unicode,
                             string_type)
 from bson.codec_options import CodecOptions
 from bson.son import SON
-from pymongo import (bulk,
-                     common,
+from pymongo import (common,
                      helpers,
                      message)
+from pymongo.bulk import (BulkOperationBuilder,
+                          BulkWriteResult,
+                          _Bulk,
+                          _WriteOp)
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import Cursor
 from pymongo.errors import ConfigurationError, InvalidName, OperationFailure
@@ -259,7 +262,7 @@ class Collection(common.BaseObject):
 
         .. versionadded:: 2.7
         """
-        return bulk.BulkOperationBuilder(self, ordered=False)
+        return BulkOperationBuilder(self, ordered=False)
 
     def initialize_ordered_bulk_op(self):
         """Initialize an ordered batch of write operations.
@@ -274,7 +277,50 @@ class Collection(common.BaseObject):
 
         .. versionadded:: 2.7
         """
-        return bulk.BulkOperationBuilder(self, ordered=True)
+        return BulkOperationBuilder(self, ordered=True)
+
+    def bulk_write(self, requests, ordered=True):
+        """Send a batch of write operations to the server.
+
+        This is an alternative to the fluent bulk write API provided through
+        the :meth:`initialize_ordered_bulk_op` and
+        :meth:`initialize_unordered_bulk_op` methods. Write operations are
+        passed as a list using the write operation classes from the
+        :mod:`~pymongo.bulk` module::
+
+          >>> # DeleteOne, UpdateOne, and UpdateMany are also available.
+          ...
+          >>> from pymongo.bulk import InsertOne, DeleteMany, ReplaceOne
+          >>> requests = [InsertOne({'foo': 1}), DeleteMany({'bar': 2}),
+          ...             ReplaceOne({'bar': 1}, {'bim': 2}, upsert=True)]
+          >>> coll.bulk_write(requests)
+
+        :Parameters:
+          - `requests`: A list of write operations (see examples above).
+          - `ordered` (optional): If ``True`` (the default) requests will be
+            performed on the server serially, in the order provided. If an error
+            occurs all remaining operations are aborted. If ``False`` requests
+            will be performed on the server in arbitrary order, possibly in
+            parallel, and all operations will be attempted.
+
+        :Returns:
+          An instance of :class:`~pymongo.bulk.BulkWriteResult`.
+
+        .. versionadded:: 3.0
+        """
+        if not isinstance(requests, list):
+            raise TypeError("requests must be a list")
+
+        blk = _Bulk(self, ordered)
+        for request in requests:
+            if not isinstance(request, _WriteOp):
+                raise TypeError("%r is not a valid request" % (request,))
+            request._add_to_bulk(blk)
+
+        bulk_api_result = blk.execute(self.write_concern.document)
+        if bulk_api_result is not None:
+            return BulkWriteResult(bulk_api_result, True)
+        return BulkWriteResult({}, False)
 
     def save(self, to_save, manipulate=True, check_keys=True, **kwargs):
         """Save a document in this collection.

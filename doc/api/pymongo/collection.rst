@@ -39,6 +39,7 @@
       .. automethod:: remove([spec_or_id=None[, multi=True[, **kwargs]]])
       .. automethod:: initialize_unordered_bulk_op
       .. automethod:: initialize_ordered_bulk_op
+      .. automethod:: bulk_write
       .. automethod:: drop
       .. automethod:: find([filter=None[, projection=None[, skip=0[, limit=0[, no_cursor_timeout=False[, cursor_type=NON_TAILABLE[, sort=None[, allow_partial_results=False[, oplog_replay=False[, modifiers=None[, manipulate=True]]]]]]]]]]])
       .. automethod:: find_one([filter_or_id=None[, *args[, **kwargs]]])
