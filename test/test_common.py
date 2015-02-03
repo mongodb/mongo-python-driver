@@ -41,9 +41,6 @@ class TestCommon(IntegrationTest):
         coll = self.db.uuid
         coll.drop()
 
-        self.assertRaises(ValueError, CodecOptions, uuid_representation=7)
-        self.assertRaises(ValueError, CodecOptions, uuid_representation=2)
-
         # Test property
         self.assertEqual(PYTHON_LEGACY,
                          coll.codec_options.uuid_representation)

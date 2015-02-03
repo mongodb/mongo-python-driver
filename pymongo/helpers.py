@@ -115,10 +115,7 @@ def _unpack_response(response, cursor_id=None, codec_options=CodecOptions()):
     result["cursor_id"] = struct.unpack("<q", response[4:12])[0]
     result["starting_from"] = struct.unpack("<i", response[12:16])[0]
     result["number_returned"] = struct.unpack("<i", response[16:20])[0]
-    result["data"] = bson.decode_all(response[20:],
-                                     codec_options.as_class,
-                                     codec_options.tz_aware,
-                                     codec_options.uuid_representation)
+    result["data"] = bson.decode_all(response[20:], codec_options)
     assert len(result["data"]) == result["number_returned"]
     return result
 
@@ -192,7 +189,7 @@ def _command(client, namespace, command, read_preference,
         query_opts = 4
 
     msg = query(query_opts, namespace, 0, -1,
-                command, None, codec_options.uuid_representation)
+                command, None, codec_options)
     response = client._send_message_with_response(msg, read_preference)
     result = _unpack_response(response.data, None, codec_options)['data'][0]
     if check:

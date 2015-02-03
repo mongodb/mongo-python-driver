@@ -111,6 +111,22 @@ patterns, see `PYTHON-500`_. Use :meth:`~bson.regex.Regex.try_compile` to
 attempt to convert from a BSON regular expression to a Python regular
 expression object.
 
+The `as_class`, `tz_aware`, and `uuid_subtype` options are removed from all
+BSON encoding and decoding methods. Use
+:class:`~bson.codec_options.CodecOptions` to configure these options. The
+APIs affected are:
+
+- :func:`~bson.decode_all`
+- :func:`~bson.decode_iter`
+- :func:`~bson.decode_file_iter`
+- :meth:`~bson.BSON.encode`
+- :meth:`~bson.BSON.decode`
+
+This is a breaking change for any application that uses the BSON API directly
+and changes any of the named parameter defaults. No changes are required for
+applications that use the default values for these options. The behavior
+remains the same.
+
 .. _PYTHON-500: https://jira.mongodb.org/browse/PYTHON-500
 
 Issues Resolved

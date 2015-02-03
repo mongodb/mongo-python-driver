@@ -33,6 +33,7 @@ from bson import (BSON,
                   Regex)
 from bson.binary import Binary, UUIDLegacy
 from bson.code import Code
+from bson.codec_options import CodecOptions
 from bson.int64 import Int64
 from bson.objectid import ObjectId
 from bson.dbref import DBRef
@@ -130,7 +131,8 @@ class TestBSON(unittest.TestCase):
         helper({"$field": Code("return function(){ return x; }", scope={'x': False})})
 
         def encode_then_decode(doc):
-            return doc_class(doc) == BSON.encode(doc).decode(as_class=doc_class)
+            return doc_class(doc) == BSON.encode(doc).decode(
+                CodecOptions(as_class=doc_class))
 
         qcheck.check_unittest(self, encode_then_decode,
                               qcheck.gen_mongo_dict(3))
@@ -425,7 +427,8 @@ class TestBSON(unittest.TestCase):
         as_utc = (aware - aware.utcoffset()).replace(tzinfo=utc)
         self.assertEqual(datetime.datetime(1993, 4, 3, 16, 45, tzinfo=utc),
                          as_utc)
-        after = BSON.encode({"date": aware}).decode(tz_aware=True)["date"]
+        after = BSON.encode({"date": aware}).decode(
+            CodecOptions(tz_aware=True))["date"]
         self.assertEqual(utc, after.tzinfo)
         self.assertEqual(as_utc, after)
 
@@ -584,14 +587,19 @@ class TestBSON(unittest.TestCase):
                 raise
 
     def test_custom_class(self):
-        self.assertTrue(isinstance(BSON.encode({}).decode(), dict))
-        self.assertFalse(isinstance(BSON.encode({}).decode(), SON))
-        self.assertTrue(isinstance(BSON.encode({}).decode(SON), SON))
+        self.assertIsInstance(BSON.encode({}).decode(), dict)
+        self.assertNotIsInstance(BSON.encode({}).decode(), SON)
+        self.assertIsInstance(
+            BSON.encode({}).decode(CodecOptions(as_class=SON)),
+            SON)
 
-        self.assertEqual(1, BSON.encode({"x": 1}).decode(SON)["x"])
+        self.assertEqual(
+            1,
+            BSON.encode({"x": 1}).decode(CodecOptions(as_class=SON))["x"])
 
         x = BSON.encode({"x": [{"y": 1}]})
-        self.assertTrue(isinstance(x.decode(SON)["x"][0], SON))
+        self.assertIsInstance(x.decode(CodecOptions(as_class=SON))["x"][0],
+                              SON)
 
     def test_subclasses(self):
         # make sure we can serialize subclasses of native Python types.
@@ -620,7 +628,9 @@ class TestBSON(unittest.TestCase):
         except ImportError:
             raise SkipTest("No OrderedDict")
         d = OrderedDict([("one", 1), ("two", 2), ("three", 3), ("four", 4)])
-        self.assertEqual(d, BSON.encode(d).decode(as_class=OrderedDict))
+        self.assertEqual(
+            d,
+            BSON.encode(d).decode(CodecOptions(as_class=OrderedDict)))
 
     def test_bson_regex(self):
         # Invalid Python regex, though valid PCRE.
@@ -751,6 +761,42 @@ class TestBSON(unittest.TestCase):
         self.assertRaises(InvalidDocument, BSON.encode,
                           {"_id": {'$oid': "52d0b971b3ba219fdeb4170e"}}, True)
         BSON.encode({"_id": {'$oid': "52d0b971b3ba219fdeb4170e"}})
+
+
+class TestCodecOptions(unittest.TestCase):
+    def test_as_class(self):
+        self.assertRaises(TypeError, CodecOptions, as_class=object)
+        self.assertIs(SON, CodecOptions(as_class=SON).as_class)
+
+    def test_tz_aware(self):
+        self.assertRaises(TypeError, CodecOptions, tz_aware=1)
+        self.assertFalse(CodecOptions().tz_aware)
+        self.assertTrue(CodecOptions(tz_aware=True).tz_aware)
+
+    def test_uuid_representation(self):
+        self.assertRaises(ValueError, CodecOptions, uuid_representation=None)
+        self.assertRaises(ValueError, CodecOptions, uuid_representation=7)
+        self.assertRaises(ValueError, CodecOptions, uuid_representation=2)
+
+    def test_codec_options_repr(self):
+        r = ('CodecOptions(as_class=dict, tz_aware=False, '
+             'uuid_representation=PYTHON_LEGACY)')
+        self.assertEqual(r, repr(CodecOptions()))
+
+    def test_decode_all_defaults(self):
+        # Test decode_all()'s default as_class is dict and tz_aware is False.
+        # The default uuid_representation is PYTHON_LEGACY but this decodes
+        # same as STANDARD, so all this test proves about UUID decoding is
+        # that it's not CSHARP_LEGACY or JAVA_LEGACY.
+        doc = {'sub_document': {},
+               'uuid': uuid.uuid4(),
+               'dt': datetime.datetime.utcnow()}
+
+        decoded = bson.decode_all(bson.BSON.encode(doc))[0]
+        self.assertIsInstance(decoded['sub_document'], dict)
+        self.assertEqual(decoded['uuid'], doc['uuid'])
+        self.assertIsNone(decoded['dt'].tzinfo)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -24,7 +24,7 @@ import random
 import struct
 
 import bson
-from bson.binary import OLD_UUID_SUBTYPE
+from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from bson.py3compat import b, StringIO
 from bson.son import SON
 try:
@@ -62,7 +62,8 @@ def __last_error(namespace, args):
     cmd = SON([("getlasterror", 1)])
     cmd.update(args)
     splitns = namespace.split('.', 1)
-    return query(0, splitns[0] + '.$cmd', 0, -1, cmd)
+    return query(0, splitns[0] + '.$cmd', 0, -1, cmd,
+                 None, DEFAULT_CODEC_OPTIONS)
 
 
 def __pack_message(operation, data):
@@ -79,7 +80,7 @@ def __pack_message(operation, data):
 
 
 def insert(collection_name, docs, check_keys,
-           safe, last_error_args, continue_on_error, uuid_subtype):
+           safe, last_error_args, continue_on_error, opts):
     """Get an **insert** message.
 
     Used by the Bulk API to insert into pre-2.6 servers. Collection.insert
@@ -90,7 +91,7 @@ def insert(collection_name, docs, check_keys,
         options += 1
     data = struct.pack("<i", options)
     data += bson._make_c_string(collection_name)
-    encoded = [bson.BSON.encode(doc, check_keys, uuid_subtype) for doc in docs]
+    encoded = [bson.BSON.encode(doc, check_keys, opts) for doc in docs]
     if not encoded:
         raise InvalidOperation("cannot do an empty bulk insert")
     max_bson_size = max(map(len, encoded))
@@ -108,7 +109,7 @@ if _use_c:
 
 
 def update(collection_name, upsert, multi,
-           spec, doc, safe, last_error_args, check_keys, uuid_subtype):
+           spec, doc, safe, last_error_args, check_keys, opts):
     """Get an **update** message.
     """
     options = 0
@@ -120,8 +121,8 @@ def update(collection_name, upsert, multi,
     data = _ZERO_32
     data += bson._make_c_string(collection_name)
     data += struct.pack("<i", options)
-    data += bson.BSON.encode(spec, False, uuid_subtype)
-    encoded = bson.BSON.encode(doc, check_keys, uuid_subtype)
+    data += bson.BSON.encode(spec, False, opts)
+    encoded = bson.BSON.encode(doc, check_keys, opts)
     data += encoded
     if safe:
         (_, update_message) = __pack_message(2001, data)
@@ -136,19 +137,18 @@ if _use_c:
 
 
 def query(options, collection_name, num_to_skip,
-          num_to_return, query, field_selector=None,
-          uuid_subtype=OLD_UUID_SUBTYPE):
+          num_to_return, query, field_selector, opts):
     """Get a **query** message.
     """
     data = struct.pack("<I", options)
     data += bson._make_c_string(collection_name)
     data += struct.pack("<i", num_to_skip)
     data += struct.pack("<i", num_to_return)
-    encoded = bson.BSON.encode(query, False, uuid_subtype)
+    encoded = bson.BSON.encode(query, False, opts)
     data += encoded
     max_bson_size = len(encoded)
     if field_selector is not None:
-        encoded = bson.BSON.encode(field_selector, False, uuid_subtype)
+        encoded = bson.BSON.encode(field_selector, False, opts)
         data += encoded
         max_bson_size = max(len(encoded), max_bson_size)
     (request_id, query_message) = __pack_message(2004, data)
@@ -170,13 +170,18 @@ if _use_c:
 
 
 def delete(collection_name, spec, safe,
-           last_error_args, uuid_subtype, options=0):
+           last_error_args, opts, flags=0):
     """Get a **delete** message.
+
+    `opts` is a CodecOptions. `flags` is a bit vector that may contain
+    the SingleRemove flag or not:
+
+    http://docs.mongodb.org/meta-driver/latest/legacy/mongodb-wire-protocol/#op-delete
     """
     data = _ZERO_32
     data += bson._make_c_string(collection_name)
-    data += struct.pack("<I", options)
-    encoded = bson.BSON.encode(spec, False, uuid_subtype)
+    data += struct.pack("<I", flags)
+    encoded = bson.BSON.encode(spec, False, opts)
     data += encoded
     if safe:
         (_, remove_message) = __pack_message(2006, data)
@@ -199,7 +204,7 @@ def kill_cursors(cursor_ids):
 
 
 def _do_batched_insert(collection_name, docs, check_keys,
-           safe, last_error_args, continue_on_error, uuid_subtype, client):
+                       safe, last_error_args, continue_on_error, opts, client):
     """Insert `docs` using multiple batches.
     """
     def _insert_message(insert_message, send_safe):
@@ -220,7 +225,7 @@ def _do_batched_insert(collection_name, docs, check_keys,
     message_length = begin_loc = data.tell()
     has_docs = False
     for doc in docs:
-        encoded = bson.BSON.encode(doc, check_keys, uuid_subtype)
+        encoded = bson.BSON.encode(doc, check_keys, opts)
         encoded_length = len(encoded)
         too_large = (encoded_length > client.max_bson_size)
 
@@ -274,7 +279,7 @@ if _use_c:
 
 
 def _do_batched_write_command(namespace, operation, command,
-                              docs, check_keys, uuid_subtype, client):
+                              docs, check_keys, opts, client):
     """Execute a batch of insert, update, or delete commands.
     """
     max_bson_size = client.max_bson_size
@@ -350,7 +355,7 @@ def _do_batched_write_command(namespace, operation, command,
         has_docs = True
         # Encode the current operation
         key = b(str(idx))
-        value = bson.BSON.encode(doc, check_keys, uuid_subtype)
+        value = bson.BSON.encode(doc, check_keys, opts)
         # Send a batch?
         enough_data = (buf.tell() + len(key) + len(value) + 2) >= max_cmd_size
         enough_documents = (idx >= max_write_batch_size)

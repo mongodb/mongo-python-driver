@@ -14,12 +14,18 @@
 
 """Tools for specifying BSON codec options."""
 
-from collections import MutableMapping
+from collections import MutableMapping, namedtuple
 
-from bson.binary import ALL_UUID_REPRESENTATIONS, PYTHON_LEGACY
+from bson.binary import (ALL_UUID_REPRESENTATIONS,
+                         PYTHON_LEGACY,
+                         UUID_REPRESENTATION_NAMES)
 
 
-class CodecOptions(object):
+_options_base = namedtuple('CodecOptions',
+                           ('as_class', 'tz_aware', 'uuid_representation'))
+
+
+class CodecOptions(_options_base):
     """Encapsulates BSON options used in CRUD operations.
 
     :Parameters:
@@ -34,10 +40,8 @@ class CodecOptions(object):
         :data:`~bson.binary.PYTHON_LEGACY`.
     """
 
-    __slots__ = ("__as_class", "__tz_aware", "__uuid_rep")
-
-    def __init__(self, as_class=dict,
-                 tz_aware=False, uuid_representation=PYTHON_LEGACY):
+    def __new__(cls, as_class=dict,
+                tz_aware=False, uuid_representation=PYTHON_LEGACY):
         if not issubclass(as_class, MutableMapping):
             raise TypeError("document_class must be a "
                             "subclass of MutableMapping")
@@ -47,39 +51,29 @@ class CodecOptions(object):
             raise ValueError("uuid_representation must be a value "
                              "from bson.binary.ALL_UUID_REPRESENTATIONS")
 
-        self.__as_class = as_class
-        self.__tz_aware = tz_aware
-        self.__uuid_rep = uuid_representation
+        return tuple.__new__(cls, (as_class, tz_aware, uuid_representation))
 
-    @property
-    def as_class(self):
-        """Read only property for as_class."""
-        return self.__as_class
+    def __repr__(self):
+        as_class_repr = (
+            'dict' if self.as_class is dict else repr(self.as_class))
 
-    @property
-    def tz_aware(self):
-        """Read only property for tz_aware."""
-        return self.__tz_aware
+        uuid_rep_repr = UUID_REPRESENTATION_NAMES.get(self.uuid_representation,
+                                                      self.uuid_representation)
 
-    @property
-    def uuid_representation(self):
-        """Read only property for uuid_representation."""
-        return self.__uuid_rep
+        return (
+            'CodecOptions(as_class=%s, tz_aware=%r, uuid_representation=%s)'
+            % (as_class_repr, self.tz_aware, uuid_rep_repr))
 
-    def __eq__(self, other):
-        if isinstance(other, CodecOptions):
-            return (self.__as_class == other.as_class and
-                    self.__tz_aware == other.tz_aware and
-                    self.__uuid_rep == other.uuid_representation)
-        raise NotImplementedError
 
-    def __ne__(self, other):
-        return self != other
+DEFAULT_CODEC_OPTIONS = CodecOptions()
 
 
 def _parse_codec_options(options):
     """Parse BSON codec options."""
-    as_class = options.get('document_class', dict)
-    tz_aware = options.get('tz_aware', False)
-    uuid_rep = options.get('uuidrepresentation', PYTHON_LEGACY)
-    return CodecOptions(as_class, tz_aware, uuid_rep)
+    return CodecOptions(
+        as_class=options.get(
+            'document_class', DEFAULT_CODEC_OPTIONS.as_class),
+        tz_aware=options.get(
+            'tz_aware', DEFAULT_CODEC_OPTIONS.tz_aware),
+        uuid_representation=options.get(
+            'uuidrepresentation', DEFAULT_CODEC_OPTIONS.uuid_representation))

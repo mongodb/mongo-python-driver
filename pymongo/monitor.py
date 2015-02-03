@@ -16,6 +16,7 @@
 
 import weakref
 
+from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from pymongo import common, helpers, message, periodic_executor
 from pymongo.server_type import SERVER_TYPE
 from pymongo.ismaster import IsMaster
@@ -154,7 +155,8 @@ class Monitor(object):
         """
         start = _time()
         request_id, msg, _ = message.query(
-            0, 'admin.$cmd', 0, -1, {'ismaster': 1})
+            0, 'admin.$cmd', 0, -1, {'ismaster': 1},
+            None, DEFAULT_CODEC_OPTIONS)
 
         sock_info.send_message(msg)
         raw_response = sock_info.receive_message(1, request_id)

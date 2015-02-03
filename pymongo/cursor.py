@@ -912,7 +912,7 @@ class Cursor(object):
                               self.__collection.full_name,
                               self.__skip, ntoreturn,
                               self.__query_spec(), self.__projection,
-                              self.__codec_options.uuid_representation))
+                              self.__codec_options))
             if not self.__id:
                 self.__killed = True
         elif self.__id:  # Get More

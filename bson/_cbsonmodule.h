@@ -52,6 +52,12 @@ typedef int Py_ssize_t;
 #define STRCAT(dest, n, src) strcat((dest), (src))
 #endif
 
+typedef struct codec_options_t {
+    PyObject* as_class;
+    unsigned char tz_aware;
+    unsigned char uuid_rep;
+} codec_options_t;
+
 /* C API functions */
 #define _cbson_buffer_write_bytes_INDEX 0
 #define _cbson_buffer_write_bytes_RETURN int
@@ -59,18 +65,26 @@ typedef int Py_ssize_t;
 
 #define _cbson_write_dict_INDEX 1
 #define _cbson_write_dict_RETURN int
-#define _cbson_write_dict_PROTO (PyObject* self, buffer_t buffer, PyObject* dict, unsigned char check_keys, unsigned char uuid_subtype, unsigned char top_level)
+#define _cbson_write_dict_PROTO (PyObject* self, buffer_t buffer, PyObject* dict, unsigned char check_keys, const codec_options_t* options, unsigned char top_level)
 
 #define _cbson_write_pair_INDEX 2
 #define _cbson_write_pair_RETURN int
-#define _cbson_write_pair_PROTO (PyObject* self, buffer_t buffer, const char* name, int name_length, PyObject* value, unsigned char check_keys, unsigned char uuid_subtype, unsigned char allow_id)
+#define _cbson_write_pair_PROTO (PyObject* self, buffer_t buffer, const char* name, int name_length, PyObject* value, unsigned char check_keys, const codec_options_t* options, unsigned char allow_id)
 
 #define _cbson_decode_and_write_pair_INDEX 3
 #define _cbson_decode_and_write_pair_RETURN int
-#define _cbson_decode_and_write_pair_PROTO (PyObject* self, buffer_t buffer, PyObject* key, PyObject* value, unsigned char check_keys, unsigned char uuid_subtype, unsigned char top_level)
+#define _cbson_decode_and_write_pair_PROTO (PyObject* self, buffer_t buffer, PyObject* key, PyObject* value, unsigned char check_keys, const codec_options_t* options, unsigned char top_level)
+
+#define _cbson_convert_codec_options_INDEX 4
+#define _cbson_convert_codec_options_RETURN int
+#define _cbson_convert_codec_options_PROTO (PyObject* options_obj, void* p)
+
+#define _cbson_destroy_codec_options_INDEX 5
+#define _cbson_destroy_codec_options_RETURN void
+#define _cbson_destroy_codec_options_PROTO (codec_options_t* options)
 
 /* Total number of C API pointers */
-#define _cbson_API_POINTER_COUNT 4
+#define _cbson_API_POINTER_COUNT 6
 
 #ifdef _CBSON_MODULE
 /* This section is used when compiling _cbsonmodule */
@@ -82,6 +96,10 @@ static _cbson_write_dict_RETURN write_dict _cbson_write_dict_PROTO;
 static _cbson_write_pair_RETURN write_pair _cbson_write_pair_PROTO;
 
 static _cbson_decode_and_write_pair_RETURN decode_and_write_pair _cbson_decode_and_write_pair_PROTO;
+
+static _cbson_convert_codec_options_RETURN convert_codec_options _cbson_convert_codec_options_PROTO;
+
+static _cbson_destroy_codec_options_RETURN destroy_codec_options _cbson_destroy_codec_options_PROTO;
 
 #else
 /* This section is used in modules that use _cbsonmodule's API */
@@ -95,6 +113,10 @@ static void **_cbson_API;
 #define write_pair (*(_cbson_write_pair_RETURN (*)_cbson_write_pair_PROTO) _cbson_API[_cbson_write_pair_INDEX])
 
 #define decode_and_write_pair (*(_cbson_decode_and_write_pair_RETURN (*)_cbson_decode_and_write_pair_PROTO) _cbson_API[_cbson_decode_and_write_pair_INDEX])
+
+#define convert_codec_options (*(_cbson_convert_codec_options_RETURN (*)_cbson_convert_codec_options_PROTO) _cbson_API[_cbson_convert_codec_options_INDEX])
+
+#define destroy_codec_options (*(_cbson_destroy_codec_options_RETURN (*)_cbson_destroy_codec_options_PROTO) _cbson_API[_cbson_destroy_codec_options_INDEX])
 
 #define _cbson_IMPORT _cbson_API = (void **)PyCapsule_Import("_cbson._C_API", 0)
 

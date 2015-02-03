@@ -17,6 +17,7 @@
 import select
 import struct
 
+from bson.codec_options import DEFAULT_CODEC_OPTIONS
 from pymongo import helpers, message
 from pymongo.errors import AutoReconnect
 
@@ -32,7 +33,8 @@ def command(sock, dbname, spec):
       - `spec`: a command document as a dict, SON, or mapping object
     """
     ns = dbname + '.$cmd'
-    request_id, msg, _ = message.query(0, ns, 0, -1, spec)
+    request_id, msg, _ = message.query(0, ns, 0, -1, spec,
+                                       None, DEFAULT_CODEC_OPTIONS)
     sock.sendall(msg)
     response = receive_message(sock, 1, request_id)
     unpacked = helpers._unpack_response(response)['data'][0]

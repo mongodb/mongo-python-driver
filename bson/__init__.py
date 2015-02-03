@@ -31,6 +31,7 @@ from bson.binary import (Binary, OLD_UUID_SUBTYPE,
                          JAVA_LEGACY, CSHARP_LEGACY,
                          UUIDLegacy)
 from bson.code import Code
+from bson.codec_options import CodecOptions, DEFAULT_CODEC_OPTIONS
 from bson.dbref import DBRef
 from bson.errors import (InvalidBSON,
                          InvalidDocument,
@@ -122,7 +123,7 @@ def _get_string(data, position, obj_end, dummy):
 
 
 def _get_object(data, position, obj_end, opts):
-    """Decode a BSON subdocument to as_class or bson.dbref.DBRef."""
+    """Decode a BSON subdocument to opts.as_class or bson.dbref.DBRef."""
     obj_size = _UNPACK_INT(data[position:position + 4])[0]
     end = position + obj_size - 1
     if data[end:position + obj_size] != b"\x00":
@@ -175,12 +176,12 @@ def _get_binary(data, position, dummy, opts):
     end = position + length
     if subtype in (3, 4):
         # Java Legacy
-        uuid_subtype = opts[2]
-        if uuid_subtype == JAVA_LEGACY:
+        uuid_representation = opts.uuid_representation
+        if uuid_representation == JAVA_LEGACY:
             java = data[position:end]
             value = uuid.UUID(bytes=java[0:8][::-1] + java[8:16][::-1])
         # C# legacy
-        elif uuid_subtype == CSHARP_LEGACY:
+        elif uuid_representation == CSHARP_LEGACY:
             value = uuid.UUID(bytes_le=data[position:end])
         # Python
         else:
@@ -213,7 +214,7 @@ def _get_date(data, position, dummy, opts):
     diff = ((millis % 1000) + 1000) % 1000
     seconds = (millis - diff) / 1000
     micros = diff * 1000
-    if opts[1]:
+    if opts.tz_aware:
         return EPOCH_AWARE + datetime.timedelta(
             seconds=seconds, microseconds=micros), end
     else:
@@ -262,6 +263,11 @@ def _get_int64(data, position, dummy0, dummy1):
     return Int64(_UNPACK_LONG(data[position:end])[0]), end
 
 
+# Each decoder function's signature is:
+#   - data: bytes
+#   - position: int, beginning of object in 'data' to decode
+#   - obj_end: int, end of object to decode in 'data' if variable-length type
+#   - opts: a CodecOptions
 _ELEMENT_GETTER = {
     BSONNUM: _get_float,
     BSONSTR: _get_string,
@@ -297,7 +303,7 @@ def _element_to_dict(data, position, obj_end, opts):
 
 def _elements_to_dict(data, position, obj_end, opts):
     """Decode a BSON document."""
-    result = opts[0]()
+    result = opts.as_class()
     end = obj_end - 1
     while position < end:
         (key, value, position) = _element_to_dict(data, position, obj_end, opts)
@@ -305,9 +311,8 @@ def _elements_to_dict(data, position, obj_end, opts):
     return result
 
 
-def _bson_to_dict(data, as_class, tz_aware, uuid_subtype):
+def _bson_to_dict(data, opts):
     """Decode a BSON string to as_class."""
-    opts = (as_class, tz_aware, uuid_subtype)
     try:
         obj_size = _UNPACK_INT(data[:4])[0]
     except struct.error as e:
@@ -417,38 +422,38 @@ else:
         return b"\x02" + name + _PACK_INT(len(value) + 1) + value + b"\x00"
 
 
-def _encode_mapping(name, value, check_keys, uuid_subtype):
+def _encode_mapping(name, value, check_keys, opts):
     """Encode a mapping type."""
-    data = b"".join([_element_to_bson(key, val, check_keys, uuid_subtype)
+    data = b"".join([_element_to_bson(key, val, check_keys, opts)
                      for key, val in iteritems(value)])
     return b"\x03" + name + _PACK_INT(len(data) + 5) + data + b"\x00"
 
 
-def _encode_dbref(name, value, check_keys, uuid_subtype):
+def _encode_dbref(name, value, check_keys, opts):
     """Encode bson.dbref.DBRef."""
     buf = bytearray(b"\x03" + name + b"\x00\x00\x00\x00")
     begin = len(buf) - 4
 
     buf += _name_value_to_bson(b"$ref\x00",
-                               value.collection, check_keys, uuid_subtype)
+                               value.collection, check_keys, opts)
     buf += _name_value_to_bson(b"$id\x00",
-                               value.id, check_keys, uuid_subtype)
+                               value.id, check_keys, opts)
     if value.database is not None:
         buf += _name_value_to_bson(
-            b"$db\x00", value.database, check_keys, uuid_subtype)
+            b"$db\x00", value.database, check_keys, opts)
     for key, val in iteritems(value._DBRef__kwargs):
-        buf += _element_to_bson(key, val, check_keys, uuid_subtype)
+        buf += _element_to_bson(key, val, check_keys, opts)
 
     buf += b"\x00"
     buf[begin:begin + 4] = _PACK_INT(len(buf) - begin)
     return bytes(buf)
 
 
-def _encode_list(name, value, check_keys, uuid_subtype):
+def _encode_list(name, value, check_keys, opts):
     """Encode a list/tuple."""
     lname = gen_list_name()
     data = b"".join([_name_value_to_bson(next(lname), item,
-                                         check_keys, uuid_subtype)
+                                         check_keys, opts)
                      for item in value])
     return b"\x04" + name + _PACK_INT(len(data) + 5) + data + b"\x00"
 
@@ -467,18 +472,19 @@ def _encode_binary(name, value, dummy0, dummy1):
     return b"\x05" + name + _PACK_LENGTH_SUBTYPE(len(value), subtype) + value
 
 
-def _encode_uuid(name, value, dummy, uuid_subtype):
+def _encode_uuid(name, value, dummy, opts):
     """Encode uuid.UUID."""
+    uuid_representation = opts.uuid_representation
     # Python Legacy Common Case
-    if uuid_subtype == OLD_UUID_SUBTYPE:
+    if uuid_representation == OLD_UUID_SUBTYPE:
         return b"\x05" + name + b'\x10\x00\x00\x00\x03' + value.bytes
     # Java Legacy
-    elif uuid_subtype == JAVA_LEGACY:
+    elif uuid_representation == JAVA_LEGACY:
         from_uuid = value.bytes
         data = from_uuid[0:8][::-1] + from_uuid[8:16][::-1]
         return b"\x05" + name + b'\x10\x00\x00\x00\x03' + data
     # C# legacy
-    elif uuid_subtype == CSHARP_LEGACY:
+    elif uuid_representation == CSHARP_LEGACY:
         # Microsoft GUID representation.
         return b"\x05" + name + b'\x10\x00\x00\x00\x03' + value.bytes_le
     # New
@@ -537,13 +543,13 @@ def _encode_regex(name, value, dummy0, dummy1):
         return b"\x0B" + name + _make_c_string_check(value.pattern) + sflags
 
 
-def _encode_code(name, value, dummy, uuid_subtype):
+def _encode_code(name, value, dummy, opts):
     """Encode bson.code.Code."""
     cstring = _make_c_string(value)
     cstrlen = len(cstring)
     if not value.scope:
         return b"\x0D" + name + _PACK_INT(cstrlen) + cstring
-    scope = _dict_to_bson(value.scope, False, uuid_subtype, False)
+    scope = _dict_to_bson(value.scope, False, opts, False)
     full_length = _PACK_INT(8 + cstrlen + len(scope))
     return b"\x0F" + name + full_length + _PACK_INT(cstrlen) + cstring + scope
 
@@ -582,6 +588,11 @@ def _encode_maxkey(name, dummy0, dummy1, dummy2):
     return b"\x7F" + name
 
 
+# Each encoder function's signature is:
+#   - name: utf-8 bytes
+#   - value: a Python data type, e.g. a Python int for _encode_int
+#   - check_keys: bool, whether to check for invalid names
+#   - opts: a CodecOptions
 _ENCODERS = {
     bool: _encode_bool,
     bytes: _encode_bytes,
@@ -628,13 +639,13 @@ if not PY3:
     _ENCODERS[long] = _encode_long
 
 
-def _name_value_to_bson(name, value, check_keys, uuid_subtype):
+def _name_value_to_bson(name, value, check_keys, opts):
     """Encode a single name, value pair."""
 
     # First see if the type is already cached. KeyError will only ever
     # happen once per subtype.
     try:
-        return _ENCODERS[type(value)](name, value, check_keys, uuid_subtype)
+        return _ENCODERS[type(value)](name, value, check_keys, opts)
     except KeyError:
         pass
 
@@ -646,7 +657,7 @@ def _name_value_to_bson(name, value, check_keys, uuid_subtype):
         func = _MARKERS[marker]
         # Cache this type for faster subsequent lookup.
         _ENCODERS[type(value)] = func
-        return func(name, value, check_keys, uuid_subtype)
+        return func(name, value, check_keys, opts)
 
     # If all else fails test each base type. This will only happen once for
     # a subtype of a supported base type.
@@ -655,13 +666,13 @@ def _name_value_to_bson(name, value, check_keys, uuid_subtype):
             func = _ENCODERS[base]
             # Cache this type for faster subsequent lookup.
             _ENCODERS[type(value)] = func
-            return func(name, value, check_keys, uuid_subtype)
+            return func(name, value, check_keys, opts)
 
     raise InvalidDocument("cannot convert value of type %s to bson" %
                           type(value))
 
 
-def _element_to_bson(key, value, check_keys, uuid_subtype):
+def _element_to_bson(key, value, check_keys, opts):
     """Encode a single key, value pair."""
     if not isinstance(key, string_type):
         raise InvalidDocument("documents must have only string keys, "
@@ -673,20 +684,20 @@ def _element_to_bson(key, value, check_keys, uuid_subtype):
             raise InvalidDocument("key %r must not contain '.'" % (key,))
 
     name = _make_name(key)
-    return _name_value_to_bson(name, value, check_keys, uuid_subtype)
+    return _name_value_to_bson(name, value, check_keys, opts)
 
 
-def _dict_to_bson(doc, check_keys, uuid_subtype, top_level=True):
+def _dict_to_bson(doc, check_keys, opts, top_level=True):
     """Encode a document to BSON."""
     try:
         elements = []
         if top_level and "_id" in doc:
             elements.append(_name_value_to_bson(b"_id\x00", doc["_id"],
-                                                check_keys, uuid_subtype))
+                                                check_keys, opts))
         for (key, value) in iteritems(doc):
             if not top_level or key != "_id":
                 elements.append(_element_to_bson(key, value,
-                                                 check_keys, uuid_subtype))
+                                                 check_keys, opts))
     except AttributeError:
         raise TypeError("encoder expected a mapping type but got: %r" % (doc,))
 
@@ -696,8 +707,11 @@ if _USE_C:
     _dict_to_bson = _cbson._dict_to_bson
 
 
-def decode_all(data, as_class=dict,
-               tz_aware=True, uuid_subtype=OLD_UUID_SUBTYPE):
+_CODEC_OPTIONS_TYPE_ERROR = TypeError(
+    "codec_options must be an instance of CodecOptions")
+
+
+def decode_all(data, codec_options=DEFAULT_CODEC_OPTIONS):
     """Decode BSON data to multiple documents.
 
     `data` must be a string of concatenated, valid, BSON-encoded
@@ -705,18 +719,17 @@ def decode_all(data, as_class=dict,
 
     :Parameters:
       - `data`: BSON data
-      - `as_class` (optional): the class to use for the resulting
-        documents
-      - `tz_aware` (optional): if ``True``, return timezone-aware
-        :class:`~datetime.datetime` instances
-      - `uuid_subtype` (optional): The BSON representation to use for UUIDs.
-        See the :mod:`bson.binary` module for all options.
+      - `codec_options` (optional): An instance of
+        :class:`~bson.codec_options.CodecOptions`.
 
     .. versionchanged:: 3.0
        Removed `compile_re` option: PyMongo now always represents BSON regular
        expressions as :class:`~bson.regex.Regex` objects. Use
        :meth:`~bson.regex.Regex.try_compile` to attempt to convert from a
        BSON regular expression to a Python regular expression object.
+
+       Replaced `as_class`, `tz_aware`, and `uuid_subtype` options with
+       `codec_options`.
 
     .. versionchanged:: 2.7
        Added `compile_re` option. If set to False, PyMongo represented BSON
@@ -727,7 +740,9 @@ def decode_all(data, as_class=dict,
 
     .. _PYTHON-500: https://jira.mongodb.org/browse/PYTHON-500
     """
-    opts = (as_class, tz_aware, uuid_subtype)
+    if not isinstance(codec_options, CodecOptions):
+        raise _CODEC_OPTIONS_TYPE_ERROR
+
     docs = []
     position = 0
     end = len(data) - 1
@@ -739,7 +754,10 @@ def decode_all(data, as_class=dict,
             obj_end = position + obj_size - 1
             if data[obj_end:position + obj_size] != b"\x00":
                 raise InvalidBSON("bad eoo")
-            docs.append(_elements_to_dict(data, position + 4, obj_end, opts))
+            docs.append(_elements_to_dict(data,
+                                          position + 4,
+                                          obj_end,
+                                          codec_options))
             position += obj_size
         return docs
     except InvalidBSON:
@@ -754,8 +772,7 @@ if _USE_C:
     decode_all = _cbson.decode_all
 
 
-def decode_iter(data, as_class=dict, tz_aware=True,
-                uuid_subtype=OLD_UUID_SUBTYPE):
+def decode_iter(data, codec_options=DEFAULT_CODEC_OPTIONS):
     """Decode BSON data to multiple documents as a generator.
 
     Works similarly to the decode_all function, but yields one document at a
@@ -766,15 +783,18 @@ def decode_iter(data, as_class=dict, tz_aware=True,
 
     :Parameters:
       - `data`: BSON data
-      - `as_class` (optional): the class to use for the resulting
-        documents
-      - `tz_aware` (optional): if ``True``, return timezone-aware
-        :class:`~datetime.datetime` instances
-      - `uuid_subtype` (optional): The BSON representation to use for UUIDs.
-        See the :mod:`bson.binary` module for all options.
+      - `codec_options` (optional): An instance of
+        :class:`~bson.codec_options.CodecOptions`.
+
+    .. versionchanged:: 3.0
+       Replaced `as_class`, `tz_aware`, and `uuid_subtype` options with
+       `codec_options`.
 
     .. versionadded:: 2.8
     """
+    if not isinstance(codec_options, CodecOptions):
+        raise _CODEC_OPTIONS_TYPE_ERROR
+
     position = 0
     end = len(data) - 1
     while position < end:
@@ -782,12 +802,10 @@ def decode_iter(data, as_class=dict, tz_aware=True,
         elements = data[position:position + obj_size]
         position += obj_size
 
-        yield _bson_to_dict(elements, as_class,
-                            tz_aware, uuid_subtype)
+        yield _bson_to_dict(elements, codec_options)
 
 
-def decode_file_iter(file_obj, as_class=dict, tz_aware=True,
-                     uuid_subtype=OLD_UUID_SUBTYPE):
+def decode_file_iter(file_obj, codec_options=DEFAULT_CODEC_OPTIONS):
     """Decode bson data from a file to multiple documents as a generator.
 
     Works similarly to the decode_all function, but reads from the file object
@@ -795,12 +813,12 @@ def decode_file_iter(file_obj, as_class=dict, tz_aware=True,
 
     :Parameters:
       - `file_obj`: A file object containing BSON data.
-      - `as_class` (optional): the class to use for the resulting
-        documents
-      - `tz_aware` (optional): if ``True``, return timezone-aware
-        :class:`~datetime.datetime` instances
-      - `uuid_subtype` (optional): The BSON representation to use for UUIDs.
-        See the :mod:`bson.binary` module for all options.
+      - `codec_options` (optional): An instance of
+        :class:`~bson.codec_options.CodecOptions`.
+
+    .. versionchanged:: 3.0
+       Replaced `as_class`, `tz_aware`, and `uuid_subtype` options with
+       `codec_options`.
 
     .. versionadded:: 2.8
     """
@@ -813,8 +831,7 @@ def decode_file_iter(file_obj, as_class=dict, tz_aware=True,
             raise InvalidBSON("cut off in middle of objsize")
         obj_size = _UNPACK_INT(size_data)[0] - 4
         elements = size_data + file_obj.read(obj_size)
-        yield _bson_to_dict(elements, as_class,
-                            tz_aware, uuid_subtype)
+        yield _bson_to_dict(elements, codec_options)
 
 
 def is_valid(bson):
@@ -831,7 +848,7 @@ def is_valid(bson):
         raise TypeError("BSON data must be an instance of a subclass of bytes")
 
     try:
-        _bson_to_dict(bson, dict, True, OLD_UUID_SUBTYPE)
+        _bson_to_dict(bson, DEFAULT_CODEC_OPTIONS)
         return True
     except Exception:
         return False
@@ -842,7 +859,8 @@ class BSON(bytes):
     """
 
     @classmethod
-    def encode(cls, document, check_keys=False, uuid_subtype=OLD_UUID_SUBTYPE):
+    def encode(cls, document, check_keys=False,
+               codec_options=DEFAULT_CODEC_OPTIONS):
         """Encode a document to a new :class:`BSON` instance.
 
         A document can be any mapping type (like :class:`dict`).
@@ -858,40 +876,47 @@ class BSON(bytes):
           - `check_keys` (optional): check if keys start with '$' or
             contain '.', raising :class:`~bson.errors.InvalidDocument` in
             either case
-          - `uuid_subtype` (optional): The BSON representation to use for
-            UUIDs. See the :mod:`bson.binary` module for all options.
-        """
-        return cls(_dict_to_bson(document, check_keys, uuid_subtype))
+          - `codec_options` (optional): An instance of
+            :class:`~bson.codec_options.CodecOptions`.
 
-    def decode(self, as_class=dict,
-               tz_aware=False, uuid_subtype=OLD_UUID_SUBTYPE):
+        .. versionchanged:: 3.0
+           Replaced `uuid_subtype` option with `codec_options`.
+        """
+        if not isinstance(codec_options, CodecOptions):
+            raise _CODEC_OPTIONS_TYPE_ERROR
+
+        return cls(_dict_to_bson(document, check_keys, codec_options))
+
+    def decode(self, codec_options=DEFAULT_CODEC_OPTIONS):
         """Decode this BSON data.
 
-        The default type to use for the resultant document is
-        :class:`dict`. Any other class that supports
-        :meth:`__setitem__` can be used instead by passing it as the
-        `as_class` parameter.
+        By default, returns a BSON document represented as a Python
+        :class:`dict`. To use a different :class:`MutableMapping` class,
+        configure a :class:`~bson.codec_options.CodecOptions`::
 
-        If `tz_aware` is ``True`` (recommended), any
-        :class:`~datetime.datetime` instances returned will be
-        timezone-aware, with their timezone set to
-        :attr:`bson.tz_util.utc`. Otherwise (default), all
-        :class:`~datetime.datetime` instances will be naive (but
-        contain UTC).
+            >>> import collections  # From Python standard library.
+            >>> import bson
+            >>> from bson.codec_options import CodecOptions
+            >>> data = bson.BSON.encode({'a': 1})
+            >>> decoded_doc = bson.BSON.decode(data)
+            <type 'dict'>
+            >>> options = CodecOptions(as_class=collections.OrderedDict)
+            >>> decoded_doc = bson.BSON.decode(data, codec_options=options)
+            >>> type(decoded_doc)
+            <class 'collections.OrderedDict'>
 
         :Parameters:
-          - `as_class` (optional): the class to use for the resulting
-            document
-          - `tz_aware` (optional): if ``True``, return timezone-aware
-            :class:`~datetime.datetime` instances
-          - `uuid_subtype` (optional): The BSON representation to use for
-            UUIDs. See the :mod:`bson.binary` module for all options.
+          - `codec_options` (optional): An instance of
+            :class:`~bson.codec_options.CodecOptions`.
 
         .. versionchanged:: 3.0
            Removed `compile_re` option: PyMongo now always represents BSON
            regular expressions as :class:`~bson.regex.Regex` objects. Use
            :meth:`~bson.regex.Regex.try_compile` to attempt to convert from a
            BSON regular expression to a Python regular expression object.
+
+           Replaced `as_class`, `tz_aware`, and `uuid_subtype` options with
+           `codec_options`.
 
         .. versionchanged:: 2.7
            Added `compile_re` option. If set to False, PyMongo represented BSON
@@ -902,7 +927,10 @@ class BSON(bytes):
 
         .. _PYTHON-500: https://jira.mongodb.org/browse/PYTHON-500
         """
-        return _bson_to_dict(self, as_class, tz_aware, uuid_subtype)
+        if not isinstance(codec_options, CodecOptions):
+            raise _CODEC_OPTIONS_TYPE_ERROR
+
+        return _bson_to_dict(self, codec_options)
 
 
 def has_c():
