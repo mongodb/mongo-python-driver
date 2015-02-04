@@ -228,6 +228,9 @@ class MongoClient(common.BaseObject):
             "certification authority" certificates, which are used to validate
             certificates passed from the other end of the connection.
             Implies ``ssl=True``. Defaults to ``None``.
+          - `ssl_validate_hostname`: (boolean) Whether to validate the hostname
+            when a ``ssl_ca_cert`` is provided to be validated. Defaults to
+            ``True``.
 
         .. seealso:: :meth:`end_request`
 
@@ -310,10 +313,11 @@ class MongoClient(common.BaseObject):
         self.__ssl_certfile = options.get('ssl_certfile', None)
         self.__ssl_cert_reqs = options.get('ssl_cert_reqs', None)
         self.__ssl_ca_certs = options.get('ssl_ca_certs', None)
+        self.__ssl_validate_hostname = options.get('ssl_validate_hostname', True)
 
         ssl_kwarg_keys = [k for k in kwargs.keys()
                           if k.startswith('ssl_') and kwargs[k]]
-        if self.__use_ssl == False and ssl_kwarg_keys:
+        if self.__use_ssl is False and ssl_kwarg_keys:
             raise ConfigurationError("ssl has not been enabled but the "
                                      "following ssl parameters have been set: "
                                      "%s. Please set `ssl=True` or remove."
@@ -429,14 +433,14 @@ class MongoClient(common.BaseObject):
 
         If `collection_name` is None purge an entire database.
         """
-        if not database_name in self.__index_cache:
+        if database_name not in self.__index_cache:
             return
 
         if collection_name is None:
             del self.__index_cache[database_name]
             return
 
-        if not collection_name in self.__index_cache[database_name]:
+        if collection_name not in self.__index_cache[database_name]:
             return
 
         if index_name is None:
@@ -491,7 +495,8 @@ class MongoClient(common.BaseObject):
             ssl_ca_certs=self.__ssl_ca_certs,
             wait_queue_timeout=self.__wait_queue_timeout,
             wait_queue_multiple=self.__wait_queue_multiple,
-            socket_keepalive=self.__socket_keepalive)
+            socket_keepalive=self.__socket_keepalive,
+            ssl_validate_hostname=self.__ssl_validate_hostname)
 
     def __check_auth(self, sock_info):
         """Authenticate using cached database credentials.
@@ -543,6 +548,7 @@ class MongoClient(common.BaseObject):
             return member.host[1]
 
         return None
+
     @property
     def is_primary(self):
         """If this instance is connected to a standalone, a replica set

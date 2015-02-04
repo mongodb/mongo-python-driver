@@ -118,7 +118,7 @@ class Pool:
                  use_greenlets, ssl_keyfile=None, ssl_certfile=None,
                  ssl_cert_reqs=None, ssl_ca_certs=None,
                  wait_queue_timeout=None, wait_queue_multiple=None,
-                 socket_keepalive=False):
+                 socket_keepalive=False, ssl_validate_hostname=True):
         """
         :Parameters:
           - `pair`: a (hostname, port) tuple
@@ -157,6 +157,9 @@ class Pool:
           - `socket_keepalive`: (boolean) Whether to send periodic keep-alive
             packets on connected sockets. Defaults to ``False`` (do not send
             keep-alive packets).
+          - `ssl_validate_hostname`: (boolean) Whether to validate the hostname
+            when a ``ssl_ca_cert`` is provided to be validated. Defaults to
+            ``True``.
         """
         # Only check a socket's health with _closed() every once in a while.
         # Can override for testing: 0 to always check, None to never check.
@@ -181,6 +184,7 @@ class Pool:
         self.ssl_certfile = ssl_certfile
         self.ssl_cert_reqs = ssl_cert_reqs
         self.ssl_ca_certs = ssl_ca_certs
+        self.ssl_validate_hostname = ssl_validate_hostname
 
         if HAS_SSL and use_ssl and not ssl_cert_reqs:
             self.ssl_cert_reqs = ssl.CERT_NONE
@@ -295,7 +299,7 @@ class Pool:
                                        keyfile=self.ssl_keyfile,
                                        ca_certs=self.ssl_ca_certs,
                                        cert_reqs=self.ssl_cert_reqs)
-                if self.ssl_cert_reqs:
+                if self.ssl_cert_reqs and self.ssl_validate_hostname:
                     match_hostname(sock.getpeercert(), hostname)
 
             except ssl.SSLError:
