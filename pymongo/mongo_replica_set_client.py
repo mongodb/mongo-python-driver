@@ -1549,10 +1549,10 @@ class MongoReplicaSetClient(common.BaseObject):
             if not exhaust and "network_timeout" in kwargs:
                 sock_info.sock.settimeout(kwargs['network_timeout'])
 
-            self.log_protocol('>>>', msg)
+            self.log_protocol('>>>', '[__send_and_receive send]')
             sock_info.sock.sendall(data)
             response = self.__recv_msg(1, rqst_id, sock_info)
-            self.log_protocol('<<<', '[__send_and_receive data]')
+            self.log_protocol('<<<', '[__send_and_receive receive]')
 
             if not exhaust:
                 if "network_timeout" in kwargs:
