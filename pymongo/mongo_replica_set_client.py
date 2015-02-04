@@ -1949,4 +1949,5 @@ class MongoReplicaSetClient(common.BaseObject):
         return self[self.__default_database_name]
 
     def log_protocol(self, prefix, message):
-        print('{}{}'.format(prefix, message))
+        if LOG_PROTOCOL:
+            print('{}{}'.format(prefix, message))
