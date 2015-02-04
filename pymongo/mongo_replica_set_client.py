@@ -64,6 +64,7 @@ from pymongo.thread_util import DummyLock
 
 EMPTY = b("")
 MAX_RETRY = 3
+LOG_PROTOCOL = False
 
 MONITORS = set()
 
@@ -1018,6 +1019,7 @@ class MongoReplicaSetClient(common.BaseObject):
         rqst_id, msg, _ = message.query(0, ns, 0, -1, spec)
         start = time.time()
         try:
+            self.log_protocol('>>>', spec)
             sock_info.sock.sendall(msg)
             response = self.__recv_msg(1, rqst_id, sock_info)
         except:
@@ -1025,7 +1027,9 @@ class MongoReplicaSetClient(common.BaseObject):
             raise
 
         end = time.time()
-        response = helpers._unpack_response(response)['data'][0]
+        response = helpers._unpack_response(response)
+        self.log_protocol('<<<', response)
+        response = response['data'][0]
         msg = "command %s on namespace %s failed: %%s" % (
             repr(spec).replace("%", "%%"), ns)
         helpers._check_command_response(response, None, msg)
@@ -1403,6 +1407,7 @@ class MongoReplicaSetClient(common.BaseObject):
         Return the response as a document.
         """
         response = helpers._unpack_response(response)
+        self.log_protocol('<<<', response)
 
         assert response["number_returned"] == 1
         result = response["data"][0]
@@ -1506,6 +1511,7 @@ class MongoReplicaSetClient(common.BaseObject):
                 rqst_id, data = self.__check_bson_size(
                     msg, member.max_bson_size)
 
+                self.log_protocol('>>>', msg)
                 sock_info.sock.sendall(data)
                 # Safe mode. We pack the message together with a lastError
                 # message and send both. We then get the response (to the
@@ -1543,8 +1549,10 @@ class MongoReplicaSetClient(common.BaseObject):
             if not exhaust and "network_timeout" in kwargs:
                 sock_info.sock.settimeout(kwargs['network_timeout'])
 
+            self.log_protocol('>>>', msg)
             sock_info.sock.sendall(data)
             response = self.__recv_msg(1, rqst_id, sock_info)
+            self.log_protocol('<<<', '[__send_and_receive data]')
 
             if not exhaust:
                 if "network_timeout" in kwargs:
@@ -1720,9 +1728,12 @@ class MongoReplicaSetClient(common.BaseObject):
         Can raise AutoReconnect.
         """
         try:
-            return self.__recv_msg(1, None, sock_info)
+            response = self.__recv_msg(1, None, sock_info)
         except socket.error, e:
             raise AutoReconnect(str(e))
+
+        self.log_protocol('<<<', '[_exhaust_next data]')
+        return response
 
     def start_request(self):
         """**DEPRECATED**: start_request will be removed in PyMongo 3.0.
@@ -1828,6 +1839,7 @@ class MongoReplicaSetClient(common.BaseObject):
         sock_info = self.__socket(member)
         try:
             try:
+                self.log_protocol('>>>', {'kill_cursors': [cursor_id]})
                 sock_info.sock.sendall(kill_cursors_msg)
             except:
                 sock_info.close()
@@ -1935,3 +1947,6 @@ class MongoReplicaSetClient(common.BaseObject):
             raise ConfigurationError('No default database defined')
 
         return self[self.__default_database_name]
+
+    def log_protocol(self, prefix, message):
+        print('{}{}'.format(prefix, message))
