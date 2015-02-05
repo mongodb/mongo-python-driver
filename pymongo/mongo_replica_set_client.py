@@ -1142,15 +1142,20 @@ class MongoReplicaSetClient(common.BaseObject):
 
         # Look for first member from which we can get a list of all members.
         for node in nodes:
+            self.log_protocol('[refresh]', 'Loop 1: trying {}'.format(node))
             member, sock_info = rs_state.get(node), None
             try:
                 if member:
+                    self.log_protocol('[refresh]',
+                                      '{} found in rs_state'.format(node))
                     sock_info = self.__socket(member, force=True)
                     response, ping_time = self.__simple_command(
                         sock_info, 'admin', {'ismaster': 1})
                     member.maybe_return_socket(sock_info)
                     new_member = member.clone_with(response, ping_time)
                 else:
+                    self.log_protocol('[refresh]',
+                                      '{} not found in rs_state'.format(node))
                     response, pool, ping_time = self.__is_master(node)
                     new_member = Member(
                         node, pool, response, MovingAverage([ping_time]))
@@ -1159,6 +1164,8 @@ class MongoReplicaSetClient(common.BaseObject):
                 # Fail fast if we find a bad seed during __init__.
                 # Regular refreshes keep searching for valid nodes.
                 if response.get('setName') != self.__name:
+                    self.log_protocol('[refresh]',
+                                      '{} not in replica set'.format(node))
                     if initial:
                         host, port = node
                         raise ConfigurationError("%s:%d is not a member of "
@@ -1170,18 +1177,29 @@ class MongoReplicaSetClient(common.BaseObject):
                 if "arbiters" in response:
                     arbiters = set([
                         _partition_node(h) for h in response["arbiters"]])
+                    self.log_protocol('[refresh]',
+                                      'arbiters set to {}'.format(arbiters))
                 if "hosts" in response:
                     hosts.update([_partition_node(h)
                                   for h in response["hosts"]])
+                    self.log_protocol('[refresh]',
+                                      'hosts set to {}'.format(hosts))
                 if "passives" in response:
                     hosts.update([_partition_node(h)
                                   for h in response["passives"]])
+                    self.log_protocol('[refresh]',
+                                      'hosts set to {} from passives'.
+                                      format(hosts))
 
                 # Start off the new 'members' dict with this member
                 # but don't add seed list members.
                 if node in hosts:
+                    self.log_protocol('[refresh]',
+                                      'adding {} to members'.format(node))
                     members[node] = new_member
                     if response['ismaster']:
+                        self.log_protocol('[refresh]',
+                                          'setting primary to {}'.format(node))
                         writer = node
 
             except (ConnectionFailure, socket.error), why:
@@ -1191,6 +1209,7 @@ class MongoReplicaSetClient(common.BaseObject):
             if hosts:
                 break
         else:
+            self.log_protocol('[refresh]', 'failed to find any hosts')
             # We've changed nothing. On the next refresh, we'll try the same
             # list of hosts: rs_state.hosts or self.__seeds.
             if errors:
@@ -1199,32 +1218,44 @@ class MongoReplicaSetClient(common.BaseObject):
 
         # Ensure we have a pool for each member, and find the primary.
         for host in hosts:
+            self.log_protocol('[refresh]', 'Loop 2: trying {}'.format(host))
             if host in members:
+                self.log_protocol('[refresh]', 'Skipping {}'.format(host))
                 # This member was the first we connected to, in the loop above.
                 continue
 
             member, sock_info = rs_state.get(host), None
             try:
                 if member:
+                    self.log_protocol('[refresh]',
+                                      '{} found in rs_state'.format(host))
                     sock_info = self.__socket(member, force=True)
                     res, ping_time = self.__simple_command(
                         sock_info, 'admin', {'ismaster': 1})
 
                     if res.get('setName') != self.__name:
                         # Not a member of this set.
+                        self.log_protocol('[refresh]',
+                                          '{} not in replica set'.format(host))
                         continue
 
                     member.maybe_return_socket(sock_info)
                     new_member = member.clone_with(res, ping_time)
                 else:
+                    self.log_protocol('[refresh]',
+                                      '{} not found in rs_state'.format(host))
                     res, connection_pool, ping_time = self.__is_master(host)
                     if res.get('setName') != self.__name:
                         # Not a member of this set.
+                        self.log_protocol('[refresh]',
+                                          '{} not in replica set'.format(host))
                         continue
 
                     new_member = Member(
                         host, connection_pool, res, MovingAverage([ping_time]))
 
+                self.log_protocol('[refresh]',
+                                  'adding {} to members'.format(host))
                 members[host] = new_member
 
             except (ConnectionFailure, socket.error):
@@ -1233,22 +1264,27 @@ class MongoReplicaSetClient(common.BaseObject):
                 continue
 
             if res['ismaster']:
+                self.log_protocol('[refresh]',
+                                  'setting primary to {}'.format(host))
                 writer = host
 
         if not members:
             # In the first loop, we connected to a member in the seed list
             # and got a host list, but couldn't reach any members in that
             # list.
+            self.log_protocol('[refresh]', 'could not find any members')
             raise AutoReconnect(
                 "Couldn't reach any hosts in %s. Replica set is"
                 " configured with internal hostnames or IPs?"
                 % list(hosts))
 
         if writer == rs_state.writer:
+            self.log_protocol('[refresh]', 'primary has not changed')
             threadlocal = self.__rs_state.threadlocal
         else:
             # We unpin threads from members if the primary has changed, since
             # no monotonic consistency can be promised now anyway.
+            self.log_protocol('[refresh]', 'primary HAS changed')
             threadlocal = self.__make_threadlocal()
 
         # Get list of hosts in the RS config, including unreachable ones.
