@@ -1203,6 +1203,9 @@ class MongoReplicaSetClient(common.BaseObject):
                         writer = node
 
             except (ConnectionFailure, socket.error), why:
+                self.log_protocol('[refresh]',
+                                  'error connecting to {}: {}'.
+                                  format(node, why))
                 if member:
                     member.discard_socket(sock_info)
                 errors.append("%s:%d: %s" % (node[0], node[1], str(why)))
@@ -1258,7 +1261,10 @@ class MongoReplicaSetClient(common.BaseObject):
                                   'adding {} to members'.format(host))
                 members[host] = new_member
 
-            except (ConnectionFailure, socket.error):
+            except (ConnectionFailure, socket.error), why:
+                self.log_protocol('[refresh]',
+                                  'error connecting to {}: {}'.
+                                  format(host, why))
                 if member:
                     member.discard_socket(sock_info)
                 continue
