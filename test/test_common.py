@@ -99,12 +99,12 @@ class TestCommon(IntegrationTest):
         self.assertEqual([], coll.find({'_id': uu}).distinct('i'))
 
         # Test find_and_modify
-        self.assertEqual(None, coll.find_and_modify({'_id': uu},
-                                                     {'$set': {'i': 5}}))
+        self.assertEqual(None, coll.find_one_and_update({'_id': uu},
+                                                        {'$set': {'i': 5}}))
         coll = self.db.get_collection(
             "uuid", CodecOptions(uuid_representation=PYTHON_LEGACY))
-        self.assertEqual(2, coll.find_and_modify({'_id': uu},
-                                                  {'$set': {'i': 5}})['i'])
+        self.assertEqual(2, coll.find_one_and_update({'_id': uu},
+                                                     {'$set': {'i': 5}})['i'])
         self.assertEqual(5, coll.find_one({'_id': uu})['i'])
 
         # Test command

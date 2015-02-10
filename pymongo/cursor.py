@@ -135,8 +135,7 @@ class Cursor(object):
         if projection is not None:
             if not projection:
                 projection = {"_id": 1}
-            if not isinstance(projection, Mapping):
-                projection = helpers._fields_list_to_dict(projection)
+            projection = helpers._fields_list_to_dict(projection, "projection")
 
         self.__collection = collection
         self.__spec = spec

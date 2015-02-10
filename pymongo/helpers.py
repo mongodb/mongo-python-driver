@@ -230,7 +230,7 @@ def _check_write_command_response(results):
         raise OperationFailure(error.get("errmsg"), error.get("code"), error)
 
 
-def _fields_list_to_dict(fields):
+def _fields_list_to_dict(fields, option_name):
     """Takes a list of field names and returns a matching dictionary.
 
     ["a", "b"] becomes {"a": 1, "b": 1}
@@ -239,10 +239,17 @@ def _fields_list_to_dict(fields):
 
     ["a.b.c", "d", "a.c"] becomes {"a.b.c": 1, "d": 1, "a.c": 1}
     """
-    as_dict = {}
-    for field in fields:
-        if not isinstance(field, string_type):
-            raise TypeError("fields must be a list of key names, "
-                            "each an instance of %s" % (string_type.__name__,))
-        as_dict[field] = 1
-    return as_dict
+    if isinstance(fields, collections.Mapping):
+        return fields
+    elif isinstance(fields, list):
+        as_dict = {}
+        for field in fields:
+            if not isinstance(field, string_type):
+                raise TypeError("%s must be a list of key names, each an "
+                                "instance of %s" % (option_name,
+                                                    string_type.__name__))
+            as_dict[field] = 1
+        return as_dict
+    else:
+        raise TypeError("%s must be a mapping or "
+                        "list of key names" % (option_name,))

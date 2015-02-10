@@ -35,7 +35,7 @@ from bson.son import SON
 from pymongo import (ASCENDING, DESCENDING, GEO2D,
                      GEOHAYSTACK, GEOSPHERE, HASHED, TEXT)
 from pymongo import MongoClient
-from pymongo.collection import Collection
+from pymongo.collection import Collection, ReturnDocument
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import EXHAUST
 from pymongo.errors import (DocumentTooLarge,
@@ -1927,76 +1927,132 @@ class TestCollection(IntegrationTest):
         c.drop()
         c.insert({'_id': 1, 'i': 1})
 
-        # Test that we raise DuplicateKeyError when appropriate.
-        # MongoDB doesn't have a code field for DuplicateKeyError
-        # from commands before 2.2.
-        if client_context.version.at_least(2, 2):
-            c.ensure_index('i', unique=True)
-            self.assertRaises(DuplicateKeyError,
-                              c.find_and_modify, query={'i': 1, 'j': 1},
-                              update={'$set': {'k': 1}}, upsert=True)
-            c.drop_indexes()
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", DeprecationWarning)
+            self.assertRaises(DeprecationWarning, lambda:
+                              c.find_and_modify({'i': 5}, {}))
 
-        # Test correct findAndModify
+        with ignore_deprecations():
+            # Test that we raise DuplicateKeyError when appropriate.
+            # MongoDB doesn't have a code field for DuplicateKeyError
+            # from commands before 2.2.
+            if client_context.version.at_least(2, 2):
+                c.ensure_index('i', unique=True)
+                self.assertRaises(DuplicateKeyError,
+                                  c.find_and_modify, query={'i': 1, 'j': 1},
+                                  update={'$set': {'k': 1}}, upsert=True)
+                c.drop_indexes()
+
+            # Test correct findAndModify
+            self.assertEqual({'_id': 1, 'i': 1},
+                             c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}}))
+            self.assertEqual({'_id': 1, 'i': 3},
+                             c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
+                                               new=True))
+
+            self.assertEqual({'_id': 1, 'i': 3},
+                             c.find_and_modify({'_id': 1}, remove=True))
+
+            self.assertEqual(None, c.find_one({'_id': 1}))
+
+            self.assertEqual(None,
+                             c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}}))
+            # The return value changed in 2.1.2. See SERVER-6226.
+            if client_context.version.at_least(2, 1, 2):
+                self.assertEqual(None, c.find_and_modify({'_id': 1},
+                                                         {'$inc': {'i': 1}},
+                                                         upsert=True))
+            else:
+                self.assertEqual({}, c.find_and_modify({'_id': 1},
+                                                       {'$inc': {'i': 1}},
+                                                       upsert=True))
+            self.assertEqual({'_id': 1, 'i': 2},
+                             c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
+                                               upsert=True, new=True))
+
+            self.assertEqual({'_id': 1, 'i': 2},
+                             c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
+                                               fields=['i']))
+            self.assertEqual({'_id': 1, 'i': 4},
+                             c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
+                                               new=True, fields={'i': 1}))
+
+            # Test with full_response=True.
+            result = c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
+                                       new=True, upsert=True,
+                                       full_response=True,
+                                       fields={'i': 1})
+            self.assertEqual({'_id': 1, 'i': 5}, result["value"])
+            self.assertEqual(True,
+                             result["lastErrorObject"]["updatedExisting"])
+
+            result = c.find_and_modify({'_id': 2}, {'$inc': {'i': 1}},
+                                       new=True, upsert=True,
+                                       full_response=True,
+                                       fields={'i': 1})
+            self.assertEqual({'_id': 2, 'i': 1}, result["value"])
+            self.assertEqual(False,
+                             result["lastErrorObject"]["updatedExisting"])
+
+            class ExtendedDict(dict):
+                pass
+
+            result = c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
+                                        new=True, fields={'i': 1})
+            self.assertFalse(isinstance(result, ExtendedDict))
+            c = self.db.get_collection(
+                "test", codec_options=CodecOptions(as_class=ExtendedDict))
+            result = c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
+                                        new=True, fields={'i': 1})
+            self.assertTrue(isinstance(result, ExtendedDict))
+
+    def test_find_one_and(self):
+        c = self.db.test
+        c.drop()
+        c.insert({'_id': 1, 'i': 1})
+
         self.assertEqual({'_id': 1, 'i': 1},
-                         c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}}))
+                         c.find_one_and_update({'_id': 1}, {'$inc': {'i': 1}}))
         self.assertEqual({'_id': 1, 'i': 3},
-                         c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
-                                           new=True))
+                         c.find_one_and_update(
+                             {'_id': 1}, {'$inc': {'i': 1}},
+                             return_document=ReturnDocument.After))
 
         self.assertEqual({'_id': 1, 'i': 3},
-                         c.find_and_modify({'_id': 1}, remove=True))
-
+                         c.find_one_and_delete({'_id': 1}))
         self.assertEqual(None, c.find_one({'_id': 1}))
 
         self.assertEqual(None,
-                         c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}}))
-        # The return value changed in 2.1.2. See SERVER-6226.
-        if client_context.version.at_least(2, 1, 2):
-            self.assertEqual(None, c.find_and_modify({'_id': 1},
-                                                     {'$inc': {'i': 1}},
-                                                     upsert=True))
-        else:
-            self.assertEqual({}, c.find_and_modify({'_id': 1},
-                                                   {'$inc': {'i': 1}},
-                                                   upsert=True))
+                         c.find_one_and_update({'_id': 1}, {'$inc': {'i': 1}}))
+        self.assertEqual({'_id': 1, 'i': 1},
+                         c.find_one_and_update(
+                             {'_id': 1}, {'$inc': {'i': 1}},
+                             return_document=ReturnDocument.After,
+                             upsert=True))
         self.assertEqual({'_id': 1, 'i': 2},
-                         c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
-                                           upsert=True, new=True))
+                         c.find_one_and_update(
+                             {'_id': 1}, {'$inc': {'i': 1}},
+                             return_document=ReturnDocument.After))
 
-        self.assertEqual({'_id': 1, 'i': 2},
-                         c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
-                                           fields=['i']))
-        self.assertEqual({'_id': 1, 'i': 4},
-                         c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
-                                           new=True, fields={'i': 1}))
+        self.assertEqual({'_id': 1, 'i': 3},
+                         c.find_one_and_replace(
+                             {'_id': 1}, {'i': 3, 'j': 1},
+                             projection=['i'],
+                             return_document=ReturnDocument.After))
+        self.assertEqual({'i': 4},
+                         c.find_one_and_update(
+                             {'_id': 1}, {'$inc': {'i': 1}},
+                             projection={'i': 1, '_id': 0},
+                             return_document=ReturnDocument.After))
 
-        # Test with full_response=True.
-        result = c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
-                                   new=True, upsert=True,
-                                   full_response=True,
-                                   fields={'i': 1})
-        self.assertEqual({'_id': 1, 'i': 5}, result["value"])
-        self.assertEqual(True, result["lastErrorObject"]["updatedExisting"])
+        c.drop()
+        for j in range(5):
+            c.insert({'j': j, 'i': 0})
 
-        result = c.find_and_modify({'_id': 2}, {'$inc': {'i': 1}},
-                                   new=True, upsert=True,
-                                   full_response=True,
-                                   fields={'i': 1})
-        self.assertEqual({'_id': 2, 'i': 1}, result["value"])
-        self.assertEqual(False, result["lastErrorObject"]["updatedExisting"])
-
-        class ExtendedDict(dict):
-            pass
-
-        result = c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
-                                    new=True, fields={'i': 1})
-        self.assertFalse(isinstance(result, ExtendedDict))
-        c = self.db.get_collection(
-            "test", codec_options=CodecOptions(as_class=ExtendedDict))
-        result = c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
-                                    new=True, fields={'i': 1})
-        self.assertTrue(isinstance(result, ExtendedDict))
+        sort=[('j', DESCENDING)]
+        self.assertEqual(4, c.find_one_and_update({},
+                                                  {'$inc': {'i': 1}},
+                                                  sort=sort)['j'])
 
     def test_update_backward_compat(self):
         # MongoDB versions >= 2.6.0 don't return the updatedExisting field
@@ -2160,20 +2216,21 @@ class TestCollection(IntegrationTest):
         c.drop()
         c.insert({'_id': 1, 'i': 1})
 
-        # Test correct findAndModify
-        # With manipulators
-        self.assertEqual({'_id': 1, 'i': 1, 'collection': 'test'},
-                         c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
-                                           manipulate=True))
-        self.assertEqual({'_id': 1, 'i': 3, 'collection': 'test'},
-                         c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
-                                           new=True, manipulate=True))
-        # With out manipulators
-        self.assertEqual({'_id': 1, 'i': 3},
-                         c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}}))
-        self.assertEqual({'_id': 1, 'i': 5},
-                         c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
-                                           new=True))
+        with ignore_deprecations():
+            # Test correct findAndModify
+            # With manipulators
+            self.assertEqual({'_id': 1, 'i': 1, 'collection': 'test'},
+                             c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
+                                               manipulate=True))
+            self.assertEqual({'_id': 1, 'i': 3, 'collection': 'test'},
+                             c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
+                                               new=True, manipulate=True))
+            # With out manipulators
+            self.assertEqual({'_id': 1, 'i': 3},
+                             c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}}))
+            self.assertEqual({'_id': 1, 'i': 5},
+                             c.find_and_modify({'_id': 1}, {'$inc': {'i': 1}},
+                                               new=True))
 
 
 if __name__ == "__main__":

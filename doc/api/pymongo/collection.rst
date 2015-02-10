@@ -16,6 +16,12 @@
    .. autodata:: pymongo.cursor.TAILABLE_AWAIT
    .. autodata:: pymongo.cursor.EXHAUST
 
+   .. autoclass:: pymongo.collection.ReturnDocument
+
+      .. autoattribute:: Before
+         :annotation:
+      .. autoattribute:: After
+         :annotation:
 
    .. autoclass:: pymongo.collection.Collection(database, name[, create=False[, **kwargs]]])
 
@@ -59,4 +65,7 @@
       .. automethod:: map_reduce
       .. automethod:: inline_map_reduce
       .. automethod:: find_and_modify
+      .. automethod:: find_one_and_delete
+      .. automethod:: find_one_and_replace(filter, replacement, projection=None, sort=None, return_document=ReturnDocument.Before, **kwargs)
+      .. automethod:: find_one_and_update(filter, update, projection=None, sort=None, return_document=ReturnDocument.Before, **kwargs)
 

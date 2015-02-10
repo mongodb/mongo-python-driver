@@ -47,6 +47,20 @@ try:
 except ImportError:
     ordered_types = SON
 
+_NO_OBJ_ERROR = "No matching object found"
+
+
+class ReturnDocument(object):
+    """An enum used with :meth:`Collection.find_one_and_replace` and
+    :meth:`Collection.find_one_and_update`.
+    """
+    Before = False
+    """Return the original document before it was updated/replaced, or
+    ``None`` if no document matches the query.
+    """
+    After = True
+    """Return the updated/replaced or inserted document."""
+
 
 def _gen_index_name(keys):
     """Generate an index name from the set of fields it is over.
@@ -1536,7 +1550,7 @@ class Collection(common.BaseObject):
         if isinstance(key, string_type):
             group["$keyf"] = Code(key)
         elif key is not None:
-            group = {"key": helpers._fields_list_to_dict(key)}
+            group = {"key": helpers._fields_list_to_dict(key, "key")}
         group["ns"] = self.__name
         group["$reduce"] = Code(reduce)
         group["cond"] = condition
@@ -1720,54 +1734,13 @@ class Collection(common.BaseObject):
                         manipulate=False, **kwargs):
         """Update and return an object.
 
-        This is a thin wrapper around the findAndModify_ command. The
-        positional arguments are designed to match the first three arguments
-        to :meth:`update` however most options should be passed as named
-        parameters. Either `update` or `remove` arguments are required, all
-        others are optional.
-
-        Returns either the object before or after modification based on `new`
-        parameter. If no objects match the `query` and `upsert` is false,
-        returns ``None``. If upserting and `new` is false, returns ``{}``.
-
-        If the full_response parameter is ``True``, the return value will be
-        the entire response object from the server, including the 'ok' and
-        'lastErrorObject' fields, rather than just the modified object.
-        This is useful mainly because the 'lastErrorObject' document holds 
-        information about the command's execution.
-
-        :Parameters:
-            - `query`: filter for the update (default ``{}``)
-            - `update`: see second argument to :meth:`update` (no default)
-            - `upsert`: insert if object doesn't exist (default ``False``)
-            - `sort`: a list of (key, direction) pairs specifying the sort
-              order for this query. See :meth:`~pymongo.cursor.Cursor.sort`
-              for details.
-            - `full_response`: return the entire response object from the
-              server (default ``False``)
-            - `remove`: remove rather than updating (default ``False``)
-            - `new`: return updated rather than original object
-              (default ``False``)
-            - `fields`: see `projection` argument to :meth:`find` (default all)
-            - `manipulate`: (optional): If ``True``, apply any outgoing SON
-              manipulators before returning. Ignored when `full_response`
-              is set to True. Defaults to ``False``.
-            - `**kwargs` (optional): additional arguments to the findAndModify_
-              command may be passed as keyword arguments to this helper method
-
-        .. mongodoc:: findAndModify
-
-        .. _findAndModify: http://dochub.mongodb.org/core/findAndModify
-
-        .. versionchanged:: 2.8
-           Added the optional manipulate parameter
-
-        .. versionchanged:: 2.5
-           Added the optional full_response parameter
-
-        .. versionchanged:: 2.4
-           Deprecated the use of mapping types for the sort parameter
+        **DEPRECATED** - Use :meth:`find_one_and_delete`,
+        :meth:`find_one_and_replace`, or :meth:`find_one_and_update` instead.
         """
+        warnings.warn("find_and_modify is deprecated, use find_one_and_delete"
+                      ", find_one_and_replace, or find_one_and_update instead",
+                      DeprecationWarning, stacklevel=2)
+
         if (not update and not kwargs.get('remove', None)):
             raise ValueError("Must either update or remove")
 
@@ -1798,22 +1771,19 @@ class Collection(common.BaseObject):
                                  "pairs, a dict of len 1, or an instance of "
                                  "SON or OrderedDict")
 
-        no_obj_error = "No matching object found"
 
-        # XXX: Keep supporting this?
         fields = kwargs.pop("fields", None)
-        if (fields is not None and not
-                isinstance(fields, collections.Mapping)):
-            kwargs["fields"] = helpers._fields_list_to_dict(fields)
+        if fields is not None:
+            kwargs["fields"] = helpers._fields_list_to_dict(fields, "fields")
 
         cmd = SON([("findAndModify", self.__name)])
         cmd.update(kwargs)
         out = self._command(cmd,
                             ReadPreference.PRIMARY,
-                            allowable_errors=[no_obj_error])[0]
+                            allowable_errors=[_NO_OBJ_ERROR])[0]
 
         if not out['ok']:
-            if out["errmsg"] == no_obj_error:
+            if out["errmsg"] == _NO_OBJ_ERROR:
                 return None
             else:
                 # Should never get here b/c of allowable_errors
@@ -1826,6 +1796,130 @@ class Collection(common.BaseObject):
             if manipulate:
                 document = self.__database._fix_outgoing(document, self)
             return document
+
+    def __find_and_modify(self, filter, projection, sort, upsert=None,
+                          return_document=ReturnDocument.Before, **kwargs):
+        """Internal findAndModify helper."""
+        if not isinstance(filter, collections.Mapping):
+            raise TypeError("filter must be a mapping type")
+        if not isinstance(return_document, bool):
+            raise ValueError("return_document must be "
+                             "ReturnDocument.Before or ReturnDocument.After")
+        cmd = SON([("findAndModify", self.__name),
+                   ("query", filter),
+                   ("new", return_document)])
+        cmd.update(kwargs)
+        if projection is not None:
+            cmd["fields"] = helpers._fields_list_to_dict(projection,
+                                                         "projection")
+        if sort is not None:
+            cmd["sort"] = helpers._index_document(sort)
+        if upsert is not None:
+            if not isinstance(upsert, bool):
+                raise ValueError("upsert must be True or False")
+            cmd["upsert"] = upsert
+        out = self._command(cmd,
+                            ReadPreference.PRIMARY,
+                            allowable_errors=[_NO_OBJ_ERROR])[0]
+        return out.get("value")
+
+    def find_one_and_delete(self, filter,
+                            projection=None, sort=None, **kwargs):
+        """Finds a single document and deletes it, returning the document.
+
+        :Parameters:
+          - `filter`: A query that matches the document to delete.
+          - `projection` (optional): a list of field names that should be
+            returned in the result document or a mapping specifying the fields
+            to include or exclude. If `projection` is a list "_id" will
+            always be returned. Use a mapping to exclude fields from
+            the result (e.g. projection={'_id': False}).
+          - `sort` (optional): a list of (key, direction) pairs
+            specifying the sort order for the query. If multiple documents
+            match the query, they are sorted and the first is deleted.
+          - `**kwargs` (optional): additional command arguments can be passed
+            as keyword arguments (for example maxTimeMS can be used with
+            recent server versions).
+        """
+        kwargs['remove'] = True
+        return self.__find_and_modify(filter, projection, sort, **kwargs)
+
+    def find_one_and_replace(self, filter, replacement,
+                             projection=None, sort=None, upsert=False,
+                             return_document=ReturnDocument.Before, **kwargs):
+        """Finds a single document and replaces it, returning either the
+        original or the replaced document.
+
+        :Parameters:
+          - `filter`: A query that matches the document to replace.
+          - `replacement`: The replacement document.
+          - `projection` (optional): A list of field names that should be
+            returned in the result document or a mapping specifying the fields
+            to include or exclude. If `projection` is a list "_id" will
+            always be returned. Use a mapping to exclude fields from
+            the result (e.g. projection={'_id': False}).
+          - `sort` (optional): a list of (key, direction) pairs
+            specifying the sort order for the query. If multiple documents
+            match the query, they are sorted and the first is replaced.
+          - `upsert` (optional): When ``True``, inserts a new document if no
+            document matches the query. Defaults to ``False``.
+          - `return_document`: If :attr:`ReturnDocument.Before` (the default),
+            returns the original document before it was replaced, or ``None``
+            if no document matches. If :attr:`ReturnDocument.After`, returns
+            the replaced or inserted document.
+          - `**kwargs` (optional): additional command arguments can be passed
+            as keyword arguments (for example maxTimeMS can be used with
+            recent server versions).
+        """
+        if not isinstance(replacement, collections.Mapping):
+            raise TypeError('replacement must be a mapping type.')
+        # Replacement can be {}
+        if replacement:
+            first = next(iter(replacement))
+            if first.startswith('$'):
+                raise ValueError('replacement can not include $ operators')
+        kwargs['update'] = replacement
+        return self.__find_and_modify(filter, projection,
+                                      sort, upsert, return_document, **kwargs)
+
+    def find_one_and_update(self, filter, update,
+                            projection=None, sort=None, upsert=False,
+                            return_document=ReturnDocument.Before, **kwargs):
+        """Finds a single document and updates it, returning either the
+        original or the updated document.
+
+        :Parameters:
+          - `filter`: A query that matches the document to update.
+          - `update`: The update operations to apply.
+          - `projection` (optional): A list of field names that should be
+            returned in the result document or a mapping specifying the fields
+            to include or exclude. If `projection` is a list "_id" will
+            always be returned. Use a dict to exclude fields from
+            the result (e.g. projection={'_id': False}).
+          - `sort` (optional): a list of (key, direction) pairs
+            specifying the sort order for the query. If multiple documents
+            match the query, they are sorted and the first is updated.
+          - `upsert` (optional): When ``True``, inserts a new document if no
+            document matches the query. Defaults to ``False``.
+          - `return_document`: If :attr:`ReturnDocument.Before` (the default),
+            returns the original document before it was updated, or ``None``
+            if no document matches. If :attr:`ReturnDocument.After`, returns
+            the updated or inserted document.
+          - `**kwargs` (optional): additional command arguments can be passed
+            as keyword arguments (for example maxTimeMS can be used with
+            recent server versions).
+        """
+        if not isinstance(update, collections.Mapping):
+            raise TypeError('update must be a mapping type.')
+        # Update can not be {}
+        if not update:
+            raise ValueError('update only works with $ operators')
+        first = next(iter(update))
+        if not first.startswith('$'):
+            raise ValueError('update only works with $ operators')
+        kwargs['update'] = update
+        return self.__find_and_modify(filter, projection,
+                                      sort, upsert, return_document, **kwargs)
 
     def __iter__(self):
         return self
