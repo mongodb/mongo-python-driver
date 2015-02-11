@@ -39,6 +39,7 @@ from pymongo.errors import ConfigurationError, InvalidName, OperationFailure
 from pymongo.helpers import _check_write_command_response, _command
 from pymongo.message import _INSERT, _UPDATE, _DELETE
 from pymongo.read_preferences import ReadPreference
+from pymongo.write_concern import WriteConcern
 
 
 try:
@@ -48,6 +49,26 @@ except ImportError:
     ordered_types = SON
 
 _NO_OBJ_ERROR = "No matching object found"
+
+
+class InsertOneResult(object):
+    """The return type for :meth:`Collection.insert_one`."""
+
+    __slots__ = ("__inserted_id", "__acknowledged")
+
+    def __init__(self, inserted_id, acknowledged):
+        self.__inserted_id = inserted_id
+        self.__acknowledged = acknowledged
+
+    @property
+    def inserted_id(self):
+        """The inserted document's _id."""
+        return self.__inserted_id
+
+    @property
+    def acknowledged(self):
+        """Is this the result of an acknowledged write operation?"""
+        return self.__acknowledged
 
 
 class ReturnDocument(object):
@@ -483,8 +504,34 @@ class Collection(common.BaseObject):
 
         .. mongodoc:: insert
         """
+        write_concern = None
+        if kwargs:
+            write_concern = WriteConcern(**kwargs)
+        return self.__insert(doc_or_docs, not continue_on_error,
+                             check_keys, manipulate, write_concern)
+
+    def insert_one(self, document):
+        """Insert a single document.
+
+        :Parameters:
+          - `document`: The document to insert. Must be a mutable mapping
+            type. If the document does not have an _id field one will be
+            added automatically.
+
+        :Returns:
+          - An instance of :class:`InsertOneResult`.
+        """
+        if not isinstance(document, collections.MutableMapping):
+            raise TypeError("document must be a mutable mapping type")
+        if "_id" not in document:
+            document["_id"] = ObjectId()
+        return InsertOneResult(self.__insert(document),
+                               self.write_concern.acknowledged)
+
+    def __insert(self, docs, ordered=True,
+                 check_keys=True, manipulate=False, write_concern=None):
+        """Internal insert helper."""
         client = self.database.connection
-        docs = doc_or_docs
         return_one = False
         if isinstance(docs, collections.MutableMapping):
             return_one = True
@@ -512,13 +559,13 @@ class Collection(common.BaseObject):
                     ids.append(doc.get('_id'))
                     yield doc
 
-        concern = kwargs or self.write_concern.document
+        concern = (write_concern or self.write_concern).document
         safe = concern.get("w") != 0
 
         if client._writable_max_wire_version() > 1 and safe:
             # Insert command
             command = SON([('insert', self.name),
-                           ('ordered', not continue_on_error)])
+                           ('ordered', ordered)])
 
             if concern:
                 command['writeConcern'] = concern
@@ -530,9 +577,8 @@ class Collection(common.BaseObject):
         else:
             # Legacy batched OP_INSERT
             message._do_batched_insert(self.__full_name, gen(), check_keys,
-                                       safe, concern, continue_on_error,
+                                       safe, concern, not ordered,
                                        self.codec_options, client)
-
         if return_one:
             return ids[0]
         else:

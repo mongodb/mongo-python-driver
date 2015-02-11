@@ -35,10 +35,11 @@ from bson.son import SON
 from pymongo import (ASCENDING, DESCENDING, GEO2D,
                      GEOHAYSTACK, GEOSPHERE, HASHED, TEXT)
 from pymongo import MongoClient
-from pymongo.collection import Collection, ReturnDocument
+from pymongo.collection import Collection, ReturnDocument, InsertOneResult
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import EXHAUST
-from pymongo.errors import (DocumentTooLarge,
+from pymongo.errors import (ConfigurationError,
+                            DocumentTooLarge,
                             DuplicateKeyError,
                             InvalidDocument,
                             InvalidName,
@@ -604,6 +605,37 @@ class TestCollection(IntegrationTest):
 
         qcheck.check_unittest(self, remove_insert_find_one,
                               qcheck.gen_mongo_dict(3))
+
+    def test_insert_one(self):
+        db = self.db
+        db.test.drop()
+
+        document = {"_id": 1000}
+        result = db.test.insert_one(document)
+        self.assertTrue(isinstance(result, InsertOneResult))
+        self.assertTrue(isinstance(result.inserted_id, int))
+        self.assertEqual(document["_id"], result.inserted_id)
+        self.assertTrue(result.acknowledged)
+        self.assertIsNotNone(db.test.find_one({"_id": document["_id"]}))
+        self.assertEqual(1, db.test.count())
+
+        document = {"foo": "bar"}
+        result = db.test.insert_one(document)
+        self.assertTrue(isinstance(result, InsertOneResult))
+        self.assertTrue(isinstance(result.inserted_id, ObjectId))
+        self.assertEqual(document["_id"], result.inserted_id)
+        self.assertTrue(result.acknowledged)
+        self.assertIsNotNone(db.test.find_one({"_id": document["_id"]}))
+
+        db = db.connection.get_database(db.name,
+                                        write_concern=WriteConcern(w=0))
+        result = db.test.insert_one(document)
+        self.assertTrue(isinstance(result, InsertOneResult))
+        self.assertTrue(isinstance(result.inserted_id, ObjectId))
+        self.assertEqual(document["_id"], result.inserted_id)
+        self.assertFalse(result.acknowledged)
+        # The insert failed duplicate key...
+        self.assertEqual(2, db.test.count())
 
     def test_generator_insert(self):
         db = self.db
@@ -1231,7 +1263,7 @@ class TestCollection(IntegrationTest):
             wtimeout_err(coll.remove, {"x": 1}, w=w, wtimeout=1)
 
         # can't use fsync and j options together
-        self.assertRaises(OperationFailure, self.db.test.insert,
+        self.assertRaises(ConfigurationError, self.db.test.insert,
                           {"_id": 1}, j=True, fsync=True)
 
     def test_manual_last_error(self):

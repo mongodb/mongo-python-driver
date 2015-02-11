@@ -231,7 +231,7 @@ class BulkWriteResult(object):
 
     @property
     def acknowledged(self):
-        """Was this bulk write operation acknowledged?"""
+        """Is this the result of an acknowledged bulk write operation?"""
         return self.__acknowledged
 
     @property
