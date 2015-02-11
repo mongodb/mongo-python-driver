@@ -16,17 +16,7 @@
    .. autodata:: pymongo.cursor.TAILABLE_AWAIT
    .. autodata:: pymongo.cursor.EXHAUST
 
-   .. autoclass:: pymongo.collection.InsertOneResult
-      :members:
-
-   .. autoclass:: pymongo.collection.ReturnDocument
-
-      .. autoattribute:: Before
-         :annotation:
-      .. autoattribute:: After
-         :annotation:
-
-   .. autoclass:: pymongo.collection.Collection(database, name[, create=False[, **kwargs]]])
+   .. autoclass:: pymongo.collection.Collection(database, name[, create=False[, **kwargs]])
 
       .. describe:: c[name] || c.name
 

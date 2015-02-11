@@ -40,8 +40,10 @@ Sub-modules:
    message
    mongo_client
    mongo_replica_set_client
+   options
    pool
    read_preferences
+   results
    son_manipulator
    cursor_manager
    uri_parser

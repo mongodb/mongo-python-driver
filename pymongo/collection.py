@@ -29,16 +29,15 @@ from bson.son import SON
 from pymongo import (common,
                      helpers,
                      message)
-from pymongo.bulk import (BulkOperationBuilder,
-                          BulkWriteResult,
-                          _Bulk,
-                          _WriteOp)
+from pymongo.bulk import (BulkOperationBuilder, _Bulk)
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import Cursor
 from pymongo.errors import ConfigurationError, InvalidName, OperationFailure
 from pymongo.helpers import _check_write_command_response, _command
 from pymongo.message import _INSERT, _UPDATE, _DELETE
+from pymongo.options import ReturnDocument, _WriteOp
 from pymongo.read_preferences import ReadPreference
+from pymongo.results import InsertOneResult, BulkWriteResult
 from pymongo.write_concern import WriteConcern
 
 
@@ -49,38 +48,6 @@ except ImportError:
     ordered_types = SON
 
 _NO_OBJ_ERROR = "No matching object found"
-
-
-class InsertOneResult(object):
-    """The return type for :meth:`Collection.insert_one`."""
-
-    __slots__ = ("__inserted_id", "__acknowledged")
-
-    def __init__(self, inserted_id, acknowledged):
-        self.__inserted_id = inserted_id
-        self.__acknowledged = acknowledged
-
-    @property
-    def inserted_id(self):
-        """The inserted document's _id."""
-        return self.__inserted_id
-
-    @property
-    def acknowledged(self):
-        """Is this the result of an acknowledged write operation?"""
-        return self.__acknowledged
-
-
-class ReturnDocument(object):
-    """An enum used with :meth:`Collection.find_one_and_replace` and
-    :meth:`Collection.find_one_and_update`.
-    """
-    Before = False
-    """Return the original document before it was updated/replaced, or
-    ``None`` if no document matches the query.
-    """
-    After = True
-    """Return the updated/replaced or inserted document."""
 
 
 def _gen_index_name(keys):
@@ -321,11 +288,11 @@ class Collection(common.BaseObject):
         the :meth:`initialize_ordered_bulk_op` and
         :meth:`initialize_unordered_bulk_op` methods. Write operations are
         passed as a list using the write operation classes from the
-        :mod:`~pymongo.bulk` module::
+        :mod:`~pymongo.options` module::
 
           >>> # DeleteOne, UpdateOne, and UpdateMany are also available.
           ...
-          >>> from pymongo.bulk import InsertOne, DeleteMany, ReplaceOne
+          >>> from pymongo.options import InsertOne, DeleteMany, ReplaceOne
           >>> requests = [InsertOne({'foo': 1}), DeleteMany({'bar': 2}),
           ...             ReplaceOne({'bar': 1}, {'bim': 2}, upsert=True)]
           >>> coll.bulk_write(requests)
@@ -339,7 +306,7 @@ class Collection(common.BaseObject):
             parallel, and all operations will be attempted.
 
         :Returns:
-          An instance of :class:`~pymongo.bulk.BulkWriteResult`.
+          An instance of :class:`~pymongo.results.BulkWriteResult`.
 
         .. versionadded:: 3.0
         """
@@ -519,7 +486,7 @@ class Collection(common.BaseObject):
             added automatically.
 
         :Returns:
-          - An instance of :class:`InsertOneResult`.
+          - An instance of :class:`~pymongo.results.InsertOneResult`.
         """
         if not isinstance(document, collections.MutableMapping):
             raise TypeError("document must be a mutable mapping type")
@@ -1909,10 +1876,12 @@ class Collection(common.BaseObject):
             match the query, they are sorted and the first is replaced.
           - `upsert` (optional): When ``True``, inserts a new document if no
             document matches the query. Defaults to ``False``.
-          - `return_document`: If :attr:`ReturnDocument.Before` (the default),
+          - `return_document`: If
+            :attr:`~pymongo.options.ReturnDocument.Before` (the default),
             returns the original document before it was replaced, or ``None``
-            if no document matches. If :attr:`ReturnDocument.After`, returns
-            the replaced or inserted document.
+            if no document matches. If
+            :attr:`~pymongo.options.ReturnDocument.After`, returns the replaced
+            or inserted document.
           - `**kwargs` (optional): additional command arguments can be passed
             as keyword arguments (for example maxTimeMS can be used with
             recent server versions).
@@ -1947,10 +1916,12 @@ class Collection(common.BaseObject):
             match the query, they are sorted and the first is updated.
           - `upsert` (optional): When ``True``, inserts a new document if no
             document matches the query. Defaults to ``False``.
-          - `return_document`: If :attr:`ReturnDocument.Before` (the default),
+          - `return_document`: If
+            :attr:`~pymongo.options.ReturnDocument.Before` (the default),
             returns the original document before it was updated, or ``None``
-            if no document matches. If :attr:`ReturnDocument.After`, returns
-            the updated or inserted document.
+            if no document matches. If
+            :attr:`~pymongo.options.ReturnDocument.After`, returns the updated
+            or inserted document.
           - `**kwargs` (optional): additional command arguments can be passed
             as keyword arguments (for example maxTimeMS can be used with
             recent server versions).

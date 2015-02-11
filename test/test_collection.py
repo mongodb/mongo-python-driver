@@ -35,7 +35,7 @@ from bson.son import SON
 from pymongo import (ASCENDING, DESCENDING, GEO2D,
                      GEOHAYSTACK, GEOSPHERE, HASHED, TEXT)
 from pymongo import MongoClient
-from pymongo.collection import Collection, ReturnDocument, InsertOneResult
+from pymongo.collection import Collection
 from pymongo.command_cursor import CommandCursor
 from pymongo.cursor import EXHAUST
 from pymongo.errors import (ConfigurationError,
@@ -46,7 +46,9 @@ from pymongo.errors import (ConfigurationError,
                             InvalidOperation,
                             OperationFailure,
                             WTimeoutError)
+from pymongo.options import ReturnDocument
 from pymongo.read_preferences import ReadPreference
+from pymongo.results import InsertOneResult
 from pymongo.son_manipulator import SONManipulator
 from pymongo.write_concern import WriteConcern
 from test.test_client import IntegrationTest
