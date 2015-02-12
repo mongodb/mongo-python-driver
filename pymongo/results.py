@@ -17,19 +17,19 @@
 from pymongo.errors import InvalidOperation
 
 
-class InsertOneResult(object):
-    """The return type for :meth:`Collection.insert_one`."""
+class _WriteResult(object):
+    """Base class for write result classes."""
 
-    __slots__ = ("__inserted_id", "__acknowledged")
-
-    def __init__(self, inserted_id, acknowledged):
-        self.__inserted_id = inserted_id
+    def __init__(self, acknowledged):
         self.__acknowledged = acknowledged
 
-    @property
-    def inserted_id(self):
-        """The inserted document's _id."""
-        return self.__inserted_id
+    def _raise_if_unacknowledged(self, property_name):
+        """Raise an exception on property access if unacknowledged."""
+        if not self.__acknowledged:
+            raise InvalidOperation("A value for %s is not available when "
+                                   "the write is unacknowledged. Check the "
+                                   "acknowledged attribute to avoid this "
+                                   "error." % (property_name,))
 
     @property
     def acknowledged(self):
@@ -37,7 +37,66 @@ class InsertOneResult(object):
         return self.__acknowledged
 
 
-class BulkWriteResult(object):
+class InsertOneResult(_WriteResult):
+    """The return type for :meth:`Collection.insert_one`."""
+
+    __slots__ = ("__inserted_id", "__acknowledged")
+
+    def __init__(self, inserted_id, acknowledged):
+        self.__inserted_id = inserted_id
+        super(InsertOneResult, self).__init__(acknowledged)
+
+    @property
+    def inserted_id(self):
+        """The inserted document's _id."""
+        return self.__inserted_id
+
+
+class UpdateResult(_WriteResult):
+    """The return type for :meth:`~pymongo.collection.Collection.update_one`
+    and :meth:`~pymongo.collection.Collection.update_many`"""
+
+    __slots__ = ("__raw_result", "__acknowledged")
+
+    def __init__(self, raw_result, acknowledged):
+        self.__raw_result = raw_result
+        super(UpdateResult, self).__init__(acknowledged)
+
+    @property
+    def raw_result(self):
+        """The raw result document returned by the server."""
+        return self.__raw_result
+
+    @property
+    def matched_count(self):
+        """The number of documents matched for this update."""
+        self._raise_if_unacknowledged("matched_count")
+        if self.upserted_id is not None:
+            return 0
+        return self.__raw_result.get("n", 0)
+
+    @property
+    def modified_count(self):
+        """The number of documents modified.
+
+        .. note:: modified_count is only reported by MongoDB 2.6 and later.
+          When connected to an earlier server version, or in certain mixed
+          version sharding configurations, this attribute will be set to
+          ``None``.
+        """
+        self._raise_if_unacknowledged("modified_count")
+        return self.__raw_result.get("nModified")
+
+    @property
+    def upserted_id(self):
+        """The _id of the inserted document if an upsert took place. Otherwise
+        ``None``.
+        """
+        self._raise_if_unacknowledged("upserted_id")
+        return self.__raw_result.get("upserted")
+
+
+class BulkWriteResult(_WriteResult):
     """An object wrapper for bulk API write results."""
 
     __slots__ = ("__bulk_api_result", "__acknowledged")
@@ -52,15 +111,7 @@ class BulkWriteResult(object):
             :exc:`~pymongo.errors.InvalidOperation`.
         """
         self.__bulk_api_result = bulk_api_result
-        self.__acknowledged = acknowledged
-
-    def __raise_if_unacknowledged(self, property_name):
-        """Raise an exception on property access if unacknowledged."""
-        if not self.__acknowledged:
-            raise InvalidOperation("A value for %s is not available when "
-                                   "the write is unacknowledged. Check the "
-                                   "acknowledged attribute to avoid this "
-                                   "error." % (property_name,))
+        super(BulkWriteResult, self).__init__(acknowledged)
 
     @property
     def bulk_api_result(self):
@@ -68,20 +119,15 @@ class BulkWriteResult(object):
         return self.__bulk_api_result
 
     @property
-    def acknowledged(self):
-        """Is this the result of an acknowledged bulk write operation?"""
-        return self.__acknowledged
-
-    @property
     def inserted_count(self):
         """The number of documents inserted."""
-        self.__raise_if_unacknowledged("inserted_count")
+        self._raise_if_unacknowledged("inserted_count")
         return self.__bulk_api_result.get("nInserted")
 
     @property
     def matched_count(self):
         """The number of documents matched for an update."""
-        self.__raise_if_unacknowledged("matched_count")
+        self._raise_if_unacknowledged("matched_count")
         return self.__bulk_api_result.get("nMatched")
 
     @property
@@ -93,25 +139,25 @@ class BulkWriteResult(object):
           version sharding configurations, this attribute will be set to
           ``None``.
         """
-        self.__raise_if_unacknowledged("modified_count")
+        self._raise_if_unacknowledged("modified_count")
         return self.__bulk_api_result.get("nModified")
 
     @property
     def deleted_count(self):
         """The number of documents deleted."""
-        self.__raise_if_unacknowledged("deleted_count")
+        self._raise_if_unacknowledged("deleted_count")
         return self.__bulk_api_result.get("nRemoved")
 
     @property
     def upserted_count(self):
         """The number of documents upserted."""
-        self.__raise_if_unacknowledged("upserted_count")
+        self._raise_if_unacknowledged("upserted_count")
         return self.__bulk_api_result.get("nUpserted")
 
     @property
     def upserted_ids(self):
         """A map of operation index to the _id of the upserted document."""
-        self.__raise_if_unacknowledged("upserted_ids")
+        self._raise_if_unacknowledged("upserted_ids")
         if self.__bulk_api_result:
             return dict((upsert["index"], upsert["_id"])
                         for upsert in self.bulk_api_result["upserted"])

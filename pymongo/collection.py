@@ -37,7 +37,7 @@ from pymongo.helpers import _check_write_command_response, _command
 from pymongo.message import _INSERT, _UPDATE, _DELETE
 from pymongo.options import ReturnDocument, _WriteOp
 from pymongo.read_preferences import ReadPreference
-from pymongo.results import InsertOneResult, BulkWriteResult
+from pymongo.results import BulkWriteResult, InsertOneResult, UpdateResult
 from pymongo.write_concern import WriteConcern
 
 
@@ -647,15 +647,6 @@ class Collection(common.BaseObject):
             raise TypeError("spec must be a mapping type")
         if not isinstance(document, collections.Mapping):
             raise TypeError("document must be a mapping type")
-        if not isinstance(upsert, bool):
-            raise TypeError("upsert must be an instance of bool")
-
-        if manipulate:
-            document = self.__database._fix_incoming(document, self)
-
-        concern = kwargs or self.write_concern.document
-        safe = concern.get("w") != 0
-
         if document:
             # If a top level key begins with '$' this is a modify operation
             # and we should skip key validation. It doesn't matter which key
@@ -666,6 +657,73 @@ class Collection(common.BaseObject):
             if first.startswith('$'):
                 check_keys = False
 
+        write_concern = None
+        if kwargs:
+            write_concern = WriteConcern(**kwargs)
+        return self.__update(spec, document, upsert,
+                             check_keys, multi, manipulate, write_concern)
+
+    def replace_one(self, filter, replacement, upsert=False):
+        """Replace a single document matching the filter.
+
+        :Parameters:
+          - `filter`: A query that matches the document to replace.
+          - `replacement`: The new document.
+          - `upsert` (optional): If ``True``, perform an insert if no documents
+            match the filter.
+
+        :Returns:
+          - An instance of :class:`~pymongo.results.UpdateResult`.
+        """
+        helpers._check_ok_for_replace(replacement)
+        result = self.__update(filter, replacement, upsert)
+        return UpdateResult(result, self.write_concern.acknowledged)
+
+    def update_one(self, filter, update, upsert=False):
+        """Update a single document matching the filter.
+
+        :Parameters:
+          - `filter`: A query that matches the document to update.
+          - `update`: The modifications to apply.
+          - `upsert` (optional): If ``True``, perform an insert if no documents
+            match the filter.
+
+        :Returns:
+          - An instance of :class:`~pymongo.results.UpdateResult`.
+        """
+        helpers._check_ok_for_update(update)
+        result = self.__update(filter, update, upsert, False)
+        return UpdateResult(result, self.write_concern.acknowledged)
+
+    def update_many(self, filter, update, upsert=False):
+        """Update one or more documents that match the filter.
+
+        :Parameters:
+          - `filter`: A query that matches the documents to update.
+          - `update`: The modifications to apply.
+          - `upsert` (optional): If ``True``, perform an insert if no documents
+            match the filter.
+
+        :Returns:
+          - An instance of :class:`~pymongo.results.UpdateResult`.
+        """
+        helpers._check_ok_for_update(update)
+        result = self.__update(filter, update, upsert, False, True)
+        return UpdateResult(result, self.write_concern.acknowledged)
+
+    def __update(self, filter, document, upsert=False, check_keys=True,
+                 multi=False, manipulate=False, write_concern=None):
+        """Internal update / replace helper."""
+        if not isinstance(filter, collections.Mapping):
+            raise TypeError("filter must be a mapping type")
+        if not isinstance(upsert, bool):
+            raise TypeError("upsert must be an instance of bool")
+        if manipulate:
+            document = self.__database._fix_incoming(document, self)
+
+        concern = (write_concern or self.write_concern).document
+        safe = concern.get("w") != 0
+
         client = self.database.connection
         if client._writable_max_wire_version() > 1 and safe:
             # Update command
@@ -673,7 +731,7 @@ class Collection(common.BaseObject):
             if concern:
                 command['writeConcern'] = concern
 
-            docs = [SON([('q', spec), ('u', document),
+            docs = [SON([('q', filter), ('u', document),
                          ('multi', multi), ('upsert', upsert)])]
 
             results = message._do_batched_write_command(
@@ -698,7 +756,7 @@ class Collection(common.BaseObject):
             # Legacy OP_UPDATE
             return client._send_message(
                 message.update(self.__full_name, upsert, multi,
-                               spec, document, safe, concern,
+                               filter, document, safe, concern,
                                check_keys, self.codec_options), safe)
 
     def drop(self):
@@ -1886,13 +1944,7 @@ class Collection(common.BaseObject):
             as keyword arguments (for example maxTimeMS can be used with
             recent server versions).
         """
-        if not isinstance(replacement, collections.Mapping):
-            raise TypeError('replacement must be a mapping type.')
-        # Replacement can be {}
-        if replacement:
-            first = next(iter(replacement))
-            if first.startswith('$'):
-                raise ValueError('replacement can not include $ operators')
+        helpers._check_ok_for_replace(replacement)
         kwargs['update'] = replacement
         return self.__find_and_modify(filter, projection,
                                       sort, upsert, return_document, **kwargs)
@@ -1926,14 +1978,7 @@ class Collection(common.BaseObject):
             as keyword arguments (for example maxTimeMS can be used with
             recent server versions).
         """
-        if not isinstance(update, collections.Mapping):
-            raise TypeError('update must be a mapping type.')
-        # Update can not be {}
-        if not update:
-            raise ValueError('update only works with $ operators')
-        first = next(iter(update))
-        if not first.startswith('$'):
-            raise ValueError('update only works with $ operators')
+        helpers._check_ok_for_update(update)
         kwargs['update'] = update
         return self.__find_and_modify(filter, projection,
                                       sort, upsert, return_document, **kwargs)

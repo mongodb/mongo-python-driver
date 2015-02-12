@@ -23,6 +23,7 @@ import collections
 
 from bson.objectid import ObjectId
 from bson.son import SON
+from pymongo import helpers
 from pymongo.errors import (BulkWriteError,
                             DocumentTooLarge,
                             InvalidOperation,
@@ -208,14 +209,7 @@ class _Bulk(object):
     def add_update(self, selector, update, multi=False, upsert=False):
         """Create an update document and add it to the list of ops.
         """
-        if not isinstance(update, collections.Mapping):
-            raise TypeError('update must be a mapping type.')
-        # Update can not be {}
-        if not update:
-            raise ValueError('update only works with $ operators')
-        first = next(iter(update))
-        if not first.startswith('$'):
-            raise ValueError('update only works with $ operators')
+        helpers._check_ok_for_update(update)
         cmd = SON([('q', selector), ('u', update),
                    ('multi', multi), ('upsert', upsert)])
         self.ops.append((_UPDATE, cmd))
@@ -223,13 +217,7 @@ class _Bulk(object):
     def add_replace(self, selector, replacement, upsert=False):
         """Create a replace document and add it to the list of ops.
         """
-        if not isinstance(replacement, collections.Mapping):
-            raise TypeError('replacement must be a mapping type.')
-        # Replacement can be {}
-        if replacement:
-            first = next(iter(replacement))
-            if first.startswith('$'):
-                raise ValueError('replacement can not include $ operators')
+        helpers._check_ok_for_replace(replacement)
         cmd = SON([('q', selector), ('u', replacement),
                    ('multi', False), ('upsert', upsert)])
         self.ops.append((_UPDATE, cmd))

@@ -48,7 +48,7 @@ from pymongo.errors import (ConfigurationError,
                             WTimeoutError)
 from pymongo.options import ReturnDocument
 from pymongo.read_preferences import ReadPreference
-from pymongo.results import InsertOneResult
+from pymongo.results import InsertOneResult, UpdateResult
 from pymongo.son_manipulator import SONManipulator
 from pymongo.write_concern import WriteConcern
 from test.test_client import IntegrationTest
@@ -1071,6 +1071,127 @@ class TestCollection(IntegrationTest):
         db.test.update({"x": 6}, {"$inc": {"x": 1}})
         self.assertEqual(db.test.find_one(id1)["x"], 7)
         self.assertEqual(db.test.find_one(id2)["x"], 1)
+
+    def test_replace_one(self):
+        db = self.db
+        db.drop_collection("test")
+
+        self.assertRaises(ValueError,
+                          lambda: db.test.replace_one({}, {"$set": {"x": 1}}))
+
+        id1 = db.test.insert_one({"x": 1}).inserted_id
+        result = db.test.replace_one({"x": 1}, {"y": 1})
+        self.assertTrue(isinstance(result, UpdateResult))
+        self.assertEqual(1, result.matched_count)
+        self.assertTrue(result.modified_count in (None, 1))
+        self.assertIsNone(result.upserted_id)
+        self.assertTrue(result.acknowledged)
+        self.assertEqual(1, db.test.count({"y": 1}))
+        self.assertEqual(0, db.test.count({"x": 1}))
+        self.assertEqual(db.test.find_one(id1)["y"], 1)
+
+        result = db.test.replace_one({"x": 2}, {"y": 2}, True)
+        self.assertTrue(isinstance(result, UpdateResult))
+        self.assertEqual(0, result.matched_count)
+        self.assertTrue(result.modified_count in (None, 0))
+        self.assertTrue(isinstance(result.upserted_id, ObjectId))
+        self.assertTrue(result.acknowledged)
+        self.assertEqual(1, db.test.count({"y": 2}))
+
+        db = db.connection.get_database(db.name,
+                                        write_concern=WriteConcern(w=0))
+        result = db.test.replace_one({"x": 0}, {"y": 0})
+        self.assertTrue(isinstance(result, UpdateResult))
+        self.assertRaises(InvalidOperation, lambda: result.matched_count)
+        self.assertRaises(InvalidOperation, lambda: result.modified_count)
+        self.assertRaises(InvalidOperation, lambda: result.upserted_id)
+        self.assertFalse(result.acknowledged)
+
+    def test_update_one(self):
+        db = self.db
+        db.drop_collection("test")
+
+        self.assertRaises(ValueError,
+                          lambda: db.test.update_one({}, {"x": 1}))
+
+        id1 = db.test.insert_one({"x": 5}).inserted_id
+        result = db.test.update_one({}, {"$inc": {"x": 1}})
+        self.assertTrue(isinstance(result, UpdateResult))
+        self.assertEqual(1, result.matched_count)
+        self.assertTrue(result.modified_count in (None, 1))
+        self.assertIsNone(result.upserted_id)
+        self.assertTrue(result.acknowledged)
+        self.assertEqual(db.test.find_one(id1)["x"], 6)
+
+        id2 = db.test.insert_one({"x": 1}).inserted_id
+        result = db.test.update_one({"x": 6}, {"$inc": {"x": 1}})
+        self.assertTrue(isinstance(result, UpdateResult))
+        self.assertEqual(1, result.matched_count)
+        self.assertTrue(result.modified_count in (None, 1))
+        self.assertIsNone(result.upserted_id)
+        self.assertTrue(result.acknowledged)
+        self.assertEqual(db.test.find_one(id1)["x"], 7)
+        self.assertEqual(db.test.find_one(id2)["x"], 1)
+
+        result = db.test.update_one({"x": 2}, {"$set": {"y": 1}}, True)
+        self.assertTrue(isinstance(result, UpdateResult))
+        self.assertEqual(0, result.matched_count)
+        self.assertTrue(result.modified_count in (None, 0))
+        self.assertTrue(isinstance(result.upserted_id, ObjectId))
+        self.assertTrue(result.acknowledged)
+
+        db = db.connection.get_database(db.name,
+                                        write_concern=WriteConcern(w=0))
+        result = db.test.update_one({"x": 0}, {"$inc": {"x": 1}})
+        self.assertTrue(isinstance(result, UpdateResult))
+        self.assertRaises(InvalidOperation, lambda: result.matched_count)
+        self.assertRaises(InvalidOperation, lambda: result.modified_count)
+        self.assertRaises(InvalidOperation, lambda: result.upserted_id)
+        self.assertFalse(result.acknowledged)
+
+    def test_update_many(self):
+        db = self.db
+        db.drop_collection("test")
+
+        self.assertRaises(ValueError,
+                          lambda: db.test.update_many({}, {"x": 1}))
+
+        db.test.insert_one({"x": 4, "y": 3})
+        db.test.insert_one({"x": 5, "y": 5})
+        db.test.insert_one({"x": 4, "y": 4})
+
+        result = db.test.update_many({"x": 4}, {"$set": {"y": 5}})
+        self.assertTrue(isinstance(result, UpdateResult))
+        self.assertEqual(2, result.matched_count)
+        self.assertTrue(result.modified_count in (None, 2))
+        self.assertIsNone(result.upserted_id)
+        self.assertTrue(result.acknowledged)
+        self.assertEqual(3, db.test.count({"y": 5}))
+
+        result = db.test.update_many({"x": 5}, {"$set": {"y": 6}})
+        self.assertTrue(isinstance(result, UpdateResult))
+        self.assertEqual(1, result.matched_count)
+        self.assertTrue(result.modified_count in (None, 1))
+        self.assertIsNone(result.upserted_id)
+        self.assertTrue(result.acknowledged)
+        self.assertEqual(1, db.test.count({"y": 6}))
+
+        result = db.test.update_many({"x": 2}, {"$set": {"y": 1}}, True)
+        self.assertTrue(isinstance(result, UpdateResult))
+        self.assertEqual(0, result.matched_count)
+        self.assertTrue(result.modified_count in (None, 0))
+        self.assertTrue(isinstance(result.upserted_id, ObjectId))
+        self.assertTrue(result.acknowledged)
+
+        db = db.connection.get_database(db.name,
+                                        write_concern=WriteConcern(w=0))
+        result = db.test.update_many({"x": 0}, {"$inc": {"x": 1}})
+        self.assertTrue(isinstance(result, UpdateResult))
+        self.assertRaises(InvalidOperation, lambda: result.matched_count)
+        self.assertRaises(InvalidOperation, lambda: result.modified_count)
+        self.assertRaises(InvalidOperation, lambda: result.upserted_id)
+        self.assertFalse(result.acknowledged)
+
 
     def test_update_manipulate(self):
         db = self.db
