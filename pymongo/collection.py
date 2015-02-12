@@ -37,7 +37,7 @@ from pymongo.helpers import _check_write_command_response, _command
 from pymongo.message import _INSERT, _UPDATE, _DELETE
 from pymongo.options import ReturnDocument, _WriteOp
 from pymongo.read_preferences import ReadPreference
-from pymongo.results import BulkWriteResult, InsertOneResult, UpdateResult
+from pymongo.results import *
 from pymongo.write_concern import WriteConcern
 
 
@@ -832,8 +832,38 @@ class Collection(common.BaseObject):
             spec_or_id = {}
         if not isinstance(spec_or_id, collections.Mapping):
             spec_or_id = {"_id": spec_or_id}
+        write_concern = None
+        if kwargs:
+            write_concern = WriteConcern(**kwargs)
+        return self.__delete(spec_or_id, multi, write_concern)
 
-        concern = kwargs or self.write_concern.document
+    def delete_one(self, filter):
+        """Delete a single document matching the filter.
+
+        :Parameters:
+          - `filter`: A query that matches the document to delete.
+        :Returns:
+          - An instance of :class:`~pymongo.results.DeleteResult`.
+        """
+        return DeleteResult(self.__delete(filter, False),
+                            self.write_concern.acknowledged)
+
+    def delete_many(self, filter):
+        """Delete one or more documents matching the filter.
+
+        :Parameters:
+          - `filter`: A query that matches the documents to delete.
+        :Returns:
+          - An instance of :class:`~pymongo.results.DeleteResult`.
+        """
+        return DeleteResult(self.__delete(filter, True),
+                            self.write_concern.acknowledged)
+
+    def __delete(self, filter, multi, write_concern=None):
+        """Internal delete helper."""
+        if not isinstance(filter, collections.Mapping):
+            raise TypeError("filter must be a mapping type")
+        concern = (write_concern or self.write_concern).document
         safe = concern.get("w") != 0
 
         client = self.database.connection
@@ -843,7 +873,7 @@ class Collection(common.BaseObject):
             if concern:
                 command['writeConcern'] = concern
 
-            docs = [SON([('q', spec_or_id), ('limit', int(not multi))])]
+            docs = [SON([('q', filter), ('limit', int(not multi))])]
 
             results = message._do_batched_write_command(
                 self.database.name + '.$cmd', _DELETE, command,
@@ -856,7 +886,7 @@ class Collection(common.BaseObject):
         else:
             # Legacy OP_DELETE
             return client._send_message(
-                message.delete(self.__full_name, spec_or_id, safe,
+                message.delete(self.__full_name, filter, safe,
                                concern, self.codec_options,
                                int(not multi)), safe)
 

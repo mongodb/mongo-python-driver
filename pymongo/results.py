@@ -96,6 +96,28 @@ class UpdateResult(_WriteResult):
         return self.__raw_result.get("upserted")
 
 
+class DeleteResult(_WriteResult):
+    """The return type for :meth:`~pymongo.collection.Collection.delete_one`
+    and :meth:`~pymongo.collection.Collection.delete_many`"""
+
+    __slots__ = ("__raw_result", "__acknowledged")
+
+    def __init__(self, raw_result, acknowledged):
+        self.__raw_result = raw_result
+        super(DeleteResult, self).__init__(acknowledged)
+
+    @property
+    def raw_result(self):
+        """The raw result document returned by the server."""
+        return self.__raw_result
+
+    @property
+    def deleted_count(self):
+        """The number of documents deleted."""
+        self._raise_if_unacknowledged("deleted_count")
+        return self.__raw_result.get("n", 0)
+
+
 class BulkWriteResult(_WriteResult):
     """An object wrapper for bulk API write results."""
 

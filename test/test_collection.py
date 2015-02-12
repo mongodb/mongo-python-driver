@@ -48,7 +48,7 @@ from pymongo.errors import (ConfigurationError,
                             WTimeoutError)
 from pymongo.options import ReturnDocument
 from pymongo.read_preferences import ReadPreference
-from pymongo.results import InsertOneResult, UpdateResult
+from pymongo.results import DeleteResult, InsertOneResult, UpdateResult
 from pymongo.son_manipulator import SONManipulator
 from pymongo.write_concern import WriteConcern
 from test.test_client import IntegrationTest
@@ -674,6 +674,55 @@ class TestCollection(IntegrationTest):
         self.assertEqual(2, self.db.test.count())
 
         self.db.test.remove()
+        self.assertEqual(0, self.db.test.count())
+
+    def test_delete_one(self):
+        self.db.test.drop()
+
+        self.db.test.insert_one({"x": 1})
+        self.db.test.insert_one({"y": 1})
+        self.db.test.insert_one({"z": 1})
+
+        result = self.db.test.delete_one({"x": 1})
+        self.assertTrue(isinstance(result, DeleteResult))
+        self.assertEqual(1, result.deleted_count)
+        self.assertTrue(result.acknowledged)
+        self.assertEqual(2, self.db.test.count())
+
+        result = self.db.test.delete_one({"y": 1})
+        self.assertTrue(isinstance(result, DeleteResult))
+        self.assertEqual(1, result.deleted_count)
+        self.assertTrue(result.acknowledged)
+        self.assertEqual(1, self.db.test.count())
+
+        db = self.db.connection.get_database(self.db.name,
+                                             write_concern=WriteConcern(w=0))
+        result = db.test.delete_one({"z": 1})
+        self.assertTrue(isinstance(result, DeleteResult))
+        self.assertRaises(InvalidOperation, lambda: result.deleted_count)
+        self.assertFalse(result.acknowledged)
+        self.assertEqual(0, self.db.test.count())
+
+    def test_delete_many(self):
+        self.db.test.drop()
+
+        self.db.test.insert_one({"x": 1})
+        self.db.test.insert_one({"x": 1})
+        self.db.test.insert_one({"y": 1})
+        self.db.test.insert_one({"y": 1})
+
+        result = self.db.test.delete_many({"x": 1})
+        self.assertTrue(isinstance(result, DeleteResult))
+        self.assertEqual(2, result.deleted_count)
+        self.assertTrue(result.acknowledged)
+        self.assertEqual(0, self.db.test.count({"x": 2}))
+
+        db = self.db.connection.get_database(self.db.name,
+                                             write_concern=WriteConcern(w=0))
+        result = db.test.delete_many({"y": 1})
+        self.assertTrue(isinstance(result, DeleteResult))
+        self.assertRaises(InvalidOperation, lambda: result.deleted_count)
+        self.assertFalse(result.acknowledged)
         self.assertEqual(0, self.db.test.count())
 
     def test_find_w_fields(self):

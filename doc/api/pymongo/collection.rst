@@ -36,6 +36,8 @@
       .. automethod:: replace_one
       .. automethod:: update_one
       .. automethod:: update_many
+      .. automethod:: delete_one
+      .. automethod:: delete_many
       .. automethod:: insert(doc_or_docs[, manipulate=True[, check_keys=True[, continue_on_error=False[, **kwargs]]]])
       .. automethod:: save(to_save[, manipulate=True[, check_keys=True[, **kwargs]]])
       .. automethod:: update(spec, document[, upsert=False[, manipulate=False[, multi=False[, check_keys=True[, **kwargs]]]]])
